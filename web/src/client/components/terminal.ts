@@ -15,6 +15,10 @@ import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { processKeyboardShortcuts } from '../utils/keyboard-shortcut-highlighter.js';
 import { createLogger } from '../utils/logger.js';
+import { detectMobile } from '../utils/mobile-utils.js';
+import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
+import { TERMINAL_THEMES, type TerminalThemeId } from '../utils/terminal-themes.js';
+import { getCurrentTheme } from '../utils/theme-utils.js';
 import { UrlHighlighter } from '../utils/url-highlighter';
 
 const logger = createLogger('terminal');
@@ -33,6 +37,7 @@ export class Terminal extends LitElement {
   @property({ type: Number }) fontSize = 14;
   @property({ type: Boolean }) fitHorizontally = false;
   @property({ type: Number }) maxCols = 0; // 0 means no limit
+  @property({ type: String }) theme: TerminalThemeId = 'auto';
   @property({ type: Boolean }) disableClick = false; // Disable click handling (for mobile direct keyboard)
   @property({ type: Boolean }) hideScrollButton = false; // Hide scroll-to-bottom button
   @property({ type: Number }) initialCols = 0; // Initial terminal width from session creation
@@ -88,34 +93,81 @@ export class Terminal extends LitElement {
     if (!this.renderPending) {
       this.renderPending = true;
       requestAnimationFrame(() => {
-        this.processOperationQueue();
-        this.renderPending = false;
+        this.processOperationQueue().then(() => {
+          // Only clear renderPending when queue is truly empty
+          if (this.operationQueue.length === 0) {
+            this.renderPending = false;
+          }
+        });
       });
     }
   }
 
   private requestRenderBuffer() {
-    this.queueRenderOperation(() => {});
+    logger.debug('Requesting render buffer update');
+    this.queueRenderOperation(() => {
+      logger.debug('Executing render operation');
+    });
   }
 
-  private async processOperationQueue() {
-    // Process all queued operations in order
+  private async processOperationQueue(): Promise<void> {
+    const startTime = performance.now();
+    const MAX_FRAME_TIME = 8; // Target ~120fps, yield more frequently for better touch responsiveness
+
+    // Process queued operations, but yield periodically
     while (this.operationQueue.length > 0) {
       const operation = this.operationQueue.shift();
       if (operation) {
         await operation();
       }
+
+      // Check if we've been running too long
+      if (performance.now() - startTime > MAX_FRAME_TIME && this.operationQueue.length > 0) {
+        // Still have more operations, yield control and continue in next frame
+        await new Promise<void>((resolve) => {
+          requestAnimationFrame(() => {
+            this.processOperationQueue().then(resolve);
+          });
+        });
+        return; // Exit early to let browser process events
+      }
     }
 
-    // Render once after all operations are complete
+    // All operations complete, render the buffer
     this.renderBuffer();
+
+    // Clear renderPending flag when truly done
+    if (this.operationQueue.length === 0) {
+      this.renderPending = false;
+    }
   }
 
+  private themeObserver?: MutationObserver;
+
   connectedCallback() {
+    const prefs = TerminalPreferencesManager.getInstance();
+    this.theme = prefs.getTheme();
     super.connectedCallback();
 
     // Check for debug mode
     this.debugMode = new URLSearchParams(window.location.search).has('debug');
+
+    // Watch for theme changes (only when using auto theme)
+    this.themeObserver = new MutationObserver(() => {
+      if (this.terminal && this.theme === 'auto') {
+        logger.debug('Auto theme detected system change, updating terminal');
+        this.terminal.options.theme = this.getTerminalTheme();
+        this.updateTerminalColorProperties(this.getTerminalTheme());
+        this.requestRenderBuffer();
+      } else if (this.theme !== 'auto') {
+        logger.debug('Ignoring system theme change - explicit theme selected:', this.theme);
+      }
+    });
+
+    this.themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
 
     // Restore user override preference if we have a sessionId
     if (this.sessionId) {
@@ -179,16 +231,50 @@ export class Terminal extends LitElement {
         this.requestResize('property-change');
       }
     }
+
+    if (changedProperties.has('theme')) {
+      logger.debug('Terminal theme changed to:', this.theme);
+      if (this.terminal?.options) {
+        const resolvedTheme = this.getTerminalTheme();
+        logger.debug('Applying terminal theme:', this.theme);
+        this.terminal.options.theme = resolvedTheme;
+
+        // Update CSS custom properties for terminal colors
+        this.updateTerminalColorProperties(resolvedTheme);
+
+        // Force complete HTML regeneration to pick up new colors
+        if (this.container) {
+          // Clear the container first
+          this.container.innerHTML = '';
+        }
+
+        // Force immediate buffer re-render with new colors
+        this.requestRenderBuffer();
+      } else {
+        logger.warn('No terminal instance found for theme update');
+      }
+    }
   }
 
   disconnectedCallback() {
     this.cleanup();
+    if (this.themeObserver) {
+      this.themeObserver.disconnect();
+    }
     super.disconnectedCallback();
   }
 
   // Method to set user override when width is manually selected
   setUserOverrideWidth(override: boolean) {
     this.userOverrideWidth = override;
+
+    // Reset mobile width resize complete flag when user manually changes width
+    // This allows the new width to be applied
+    if (this.isMobile && override) {
+      this.mobileWidthResizeComplete = false;
+      logger.debug('[Terminal] Mobile: Resetting width resize block for user-initiated change');
+    }
+
     // Persist the preference
     if (this.sessionId) {
       try {
@@ -241,18 +327,9 @@ export class Terminal extends LitElement {
     this.initializeTerminal();
   }
 
-  // Consistent mobile detection across the app
-  private detectMobile(): boolean {
-    // Use the same logic as index.html for consistency
-    return (
-      /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
-      (navigator.maxTouchPoints !== undefined && navigator.maxTouchPoints > 1)
-    );
-  }
-
   private requestResize(source: string) {
     // Update mobile state using consistent detection
-    this.isMobile = this.detectMobile();
+    this.isMobile = detectMobile();
 
     logger.debug(`[Terminal] Resize requested from ${source} (mobile: ${this.isMobile})`);
 
@@ -270,7 +347,8 @@ export class Terminal extends LitElement {
 
   private shouldResize(cols: number, rows: number): boolean {
     // On mobile, prevent WIDTH changes after initial setup, but allow HEIGHT changes
-    if (this.isMobile && this.mobileWidthResizeComplete) {
+    // Exception: Allow width changes when user has manually selected a width through settings
+    if (this.isMobile && this.mobileWidthResizeComplete && !this.userOverrideWidth) {
       // Check if only height changed (allow keyboard resizes)
       const widthChanged = this.lastCols !== cols;
       const heightChanged = this.lastRows !== rows;
@@ -309,6 +387,66 @@ export class Terminal extends LitElement {
     }
 
     return changed;
+  }
+
+  private getTerminalTheme() {
+    let themeId = this.theme;
+
+    if (themeId === 'auto') {
+      themeId = getCurrentTheme();
+    }
+
+    const preset = TERMINAL_THEMES.find((t) => t.id === themeId) || TERMINAL_THEMES[0];
+    return { ...preset.colors };
+  }
+
+  /**
+   * Updates CSS custom properties for terminal colors based on theme
+   * This allows the already-rendered HTML to immediately pick up new colors
+   */
+  private updateTerminalColorProperties(themeColors: Record<string, string>) {
+    logger.debug('Updating terminal CSS color properties');
+
+    // Standard 16 colors mapping from XTerm.js theme to CSS custom properties
+    const colorMapping = {
+      black: 0,
+      red: 1,
+      green: 2,
+      yellow: 3,
+      blue: 4,
+      magenta: 5,
+      cyan: 6,
+      white: 7,
+      brightBlack: 8,
+      brightRed: 9,
+      brightGreen: 10,
+      brightYellow: 11,
+      brightBlue: 12,
+      brightMagenta: 13,
+      brightCyan: 14,
+      brightWhite: 15,
+    };
+
+    // Update the CSS custom properties
+    Object.entries(colorMapping).forEach(([colorName, colorIndex]) => {
+      if (themeColors[colorName]) {
+        const cssProperty = `--terminal-color-${colorIndex}`;
+        document.documentElement.style.setProperty(cssProperty, themeColors[colorName]);
+        logger.debug(`Set CSS property ${cssProperty}:`, themeColors[colorName]);
+      }
+    });
+
+    // Update main terminal foreground and background colors
+    if (themeColors.foreground) {
+      document.documentElement.style.setProperty('--terminal-foreground', themeColors.foreground);
+      logger.debug('Set terminal foreground color:', themeColors.foreground);
+    }
+    if (themeColors.background) {
+      document.documentElement.style.setProperty('--terminal-background', themeColors.background);
+      logger.debug('Set terminal background color:', themeColors.background);
+    }
+
+    logger.debug('CSS terminal color properties updated');
   }
 
   private async initializeTerminal() {
@@ -375,29 +513,7 @@ export class Terminal extends LitElement {
         altClickMovesCursor: true,
         rightClickSelectsWord: false,
         wordSeparator: ' ()[]{}\'"`',
-        theme: {
-          background: '#1e1e1e',
-          foreground: '#d4d4d4',
-          cursor: '#10B981',
-          cursorAccent: '#1e1e1e',
-          // Standard 16 colors (0-15) - using proper xterm colors
-          black: '#000000',
-          red: '#cd0000',
-          green: '#00cd00',
-          yellow: '#cdcd00',
-          blue: '#0000ee',
-          magenta: '#cd00cd',
-          cyan: '#00cdcd',
-          white: '#e5e5e5',
-          brightBlack: '#7f7f7f',
-          brightRed: '#ff0000',
-          brightGreen: '#00ff00',
-          brightYellow: '#ffff00',
-          brightBlue: '#5c5cff',
-          brightMagenta: '#ff00ff',
-          brightCyan: '#00ffff',
-          brightWhite: '#ffffff',
-        },
+        theme: this.getTerminalTheme(),
       });
 
       // Set terminal size - don't call .open() to keep it headless
@@ -619,7 +735,7 @@ export class Terminal extends LitElement {
     if (!this.container) return;
 
     // Set the class property using consistent detection
-    this.isMobile = this.detectMobile();
+    this.isMobile = detectMobile();
     logger.debug(
       `[Terminal] Setting up resize - isMobile: ${this.isMobile}, userAgent: ${navigator.userAgent}`
     );
@@ -1091,9 +1207,9 @@ export class Terminal extends LitElement {
         const tempFg = style.match(/color: ([^;]+);/)?.[1];
         const tempBg = style.match(/background-color: ([^;]+);/)?.[1];
 
-        // Default terminal colors
-        const defaultFg = '#e4e4e4';
-        const defaultBg = '#0a0a0a';
+        // Use theme colors as defaults
+        const defaultFg = 'var(--terminal-foreground, #e4e4e4)';
+        const defaultBg = 'var(--terminal-background, #0a0a0a)';
 
         // Determine actual foreground and background
         const actualFg = tempFg || defaultFg;
@@ -1109,7 +1225,7 @@ export class Terminal extends LitElement {
 
       // Apply cursor styling after inverse to ensure it takes precedence
       if (isCursor) {
-        style += `background-color: #10B981;`;
+        style += `background-color: rgb(var(--color-primary));`;
       }
 
       // Handle invisible text
@@ -1471,11 +1587,20 @@ export class Terminal extends LitElement {
     this.requestUpdate();
   };
 
-  private handlePaste = (e: ClipboardEvent) => {
+  private handlePaste = async (e: ClipboardEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const clipboardData = e.clipboardData?.getData('text/plain');
+    let clipboardData = e.clipboardData?.getData('text/plain');
+
+    if (!clipboardData && navigator.clipboard) {
+      try {
+        clipboardData = await navigator.clipboard.readText();
+      } catch (error) {
+        logger.error('Failed to read clipboard via navigator API', error);
+      }
+    }
+
     if (clipboardData) {
       // Dispatch a custom event with the pasted text
       this.dispatchEvent(
@@ -1510,6 +1635,13 @@ export class Terminal extends LitElement {
   };
 
   render() {
+    const terminalTheme = this.getTerminalTheme();
+    const containerStyle = `
+      view-transition-name: session-${this.sessionId};
+      background-color: ${terminalTheme.background || 'var(--terminal-background, #0a0a0a)'};
+      color: ${terminalTheme.foreground || 'var(--terminal-foreground, #e4e4e4)'};
+    `;
+
     return html`
       <style>
         /* Dynamic terminal sizing */
@@ -1530,7 +1662,7 @@ export class Terminal extends LitElement {
           class="terminal-container w-full h-full overflow-hidden p-0 m-0"
           tabindex="0"
           contenteditable="false"
-          style="view-transition-name: session-${this.sessionId}"
+          style="${containerStyle}"
           @paste=${this.handlePaste}
           @click=${this.handleClick}
           data-testid="terminal-container"

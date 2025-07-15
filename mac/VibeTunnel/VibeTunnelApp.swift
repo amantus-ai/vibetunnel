@@ -297,7 +297,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
                     repositoryDiscovery: repositoryDiscoveryService
                 )
             }
-            
+
             // Set up multi-layer cleanup for cloudflared processes
             setupMultiLayerCleanup()
         }
@@ -423,26 +423,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
 
     func applicationWillTerminate(_ notification: Notification) {
         logger.info("🚨 applicationWillTerminate called - starting cleanup process")
-        
+
         let processInfo = ProcessInfo.processInfo
         let isRunningInTests = processInfo.environment["XCTestConfigurationFilePath"] != nil ||
             processInfo.environment["XCTestBundlePath"] != nil ||
             processInfo.environment["XCTestSessionIdentifier"] != nil ||
             processInfo.arguments.contains("-XCTest") ||
             NSClassFromString("XCTestCase") != nil
-        
+
         // Skip cleanup during tests
         if isRunningInTests {
             logger.info("Running in test mode - skipping termination cleanup")
             return
         }
-        
+
         // Ultra-fast cleanup for cloudflared - just send signals and exit
         if let cloudflareService = app?.cloudflareService, cloudflareService.isRunning {
             logger.info("🔥 Sending quick termination signal to Cloudflare")
             cloudflareService.sendTerminationSignal()
         }
-        
+
         // Stop HTTP server with very short timeout
         if let serverManager = app?.serverManager {
             let semaphore = DispatchSemaphore(value: 0)
@@ -453,24 +453,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
             // Only wait 0.5 seconds max
             _ = semaphore.wait(timeout: .now() + .milliseconds(500))
         }
-        
+
         // Remove observers (quick operations)
         #if !DEBUG
-        if !isRunningInTests {
-            DistributedNotificationCenter.default().removeObserver(
-                self,
-                name: Self.showSettingsNotification,
-                object: nil
-            )
-        }
+            if !isRunningInTests {
+                DistributedNotificationCenter.default().removeObserver(
+                    self,
+                    name: Self.showSettingsNotification,
+                    object: nil
+                )
+            }
         #endif
-        
+
         NotificationCenter.default.removeObserver(
             self,
             name: Notification.Name("checkForUpdates"),
             object: nil
         )
-        
+
         logger.info("🚨 applicationWillTerminate completed quickly")
     }
 
@@ -507,13 +507,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
     /// Set up lightweight cleanup system for cloudflared processes
     private func setupMultiLayerCleanup() {
         logger.info("🛡️ Setting up cloudflared cleanup system")
-        
+
         // Only set up minimal cleanup - no atexit, no complex watchdog
         // The OS will clean up child processes automatically when parent dies
-        
+
         logger.info("🛡️ Cleanup system initialized (minimal mode)")
     }
-    
-
-
 }

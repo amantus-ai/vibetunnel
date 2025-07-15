@@ -1,5 +1,48 @@
 # Changelog
 
+## [1.0.0-beta.9] - 2025-01-11
+
+### 🛡️ Stability & Reliability
+
+#### **Critical Crash Fix**
+- **FIXED**: Eliminated random terminal crashes by replacing Microsoft's node-pty with a custom fork that provides thread-safe operations and better resource management. This resolves critical stability issues that affected VS Code and other Electron applications.
+
+#### **Server Crash Detection**
+- **NEW**: Intelligent crash detection and recovery system that automatically detects server failures and provides immediate feedback with specific error codes, dramatically reducing troubleshooting time.
+
+### 📱 Mobile Experience
+
+#### **Terminal Stability on Mobile**
+- **FIXED**: Resolved the continuous resize loop that made terminals unusable on mobile devices. The terminal now maintains a stable view without jumping or unexpected scrolling.
+- **IMPROVED**: Better mobile terminal width management - user preferences are now properly respected throughout the session.
+- **ENHANCED**: Support for smaller grid sizes on compact mobile devices, providing better visibility on phones.
+
+#### **Mobile Keyboard Support**
+- **NEW**: Added Alt+Delete/Left/Right keyboard shortcuts specifically for mobile users, improving text editing capabilities.
+- **FIXED**: Mobile header no longer overflows when using dropdown menus, providing a cleaner interface.
+
+### 🚀 Features & Improvements
+
+#### **Cloudflare Integration**
+- **ENHANCED**: Significantly improved Cloudflare tunnel setup with faster, more reliable stream-based monitoring instead of polling. Setup is now smoother with better error handling.
+
+#### **Git Repository Discovery**
+- **IMPROVED**: Enhanced folder selection when creating new sessions - VibeTunnel now intelligently discovers Git repositories in your selected folder, making project navigation easier.
+- **FIXED**: Several bugs in repository discovery that could cause incorrect folder detection or errors.
+
+### 🎨 UI Polish
+
+#### **Visual Stability**
+- **FIXED**: Terminal titles no longer jump around due to activity indicators, providing a stable and professional interface.
+- **IMPROVED**: Consolidated z-index management throughout the interface, preventing UI elements from appearing in incorrect layers.
+
+### 🔧 Under the Hood
+
+- Enhanced event handling for better cross-platform compatibility
+- Improved file browser functionality with better click handling
+- Updated documentation with expanded specifications and data flow diagrams
+- Various test improvements for better code quality
+
 ## [1.0.0-beta.8] - 2025-07-08
 
 #### **Homebrew Library Dependencies**

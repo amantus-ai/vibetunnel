@@ -362,10 +362,10 @@ final class TerminalLauncher {
     }
 
     func verifyPreferredTerminal() {
-        let currentPreference = UserDefaults.standard.string(forKey: "preferredTerminal") ?? Terminal.terminal.rawValue
+        let currentPreference = AppConstants.getPreferredTerminal() ?? Terminal.terminal.rawValue
         let terminal = Terminal(rawValue: currentPreference) ?? .terminal
         if !terminal.isInstalled {
-            UserDefaults.standard.set(Terminal.terminal.rawValue, forKey: "preferredTerminal")
+            AppConstants.setPreferredTerminal(Terminal.terminal.rawValue)
         }
     }
 
@@ -373,19 +373,19 @@ final class TerminalLauncher {
 
     private func performFirstRunAutoDetection() {
         // Check if terminal preference has already been set
-        let hasSetPreference = UserDefaults.standard.object(forKey: "preferredTerminal") != nil
+        let hasSetPreference = AppConstants.getPreferredTerminal() != nil
 
         if !hasSetPreference {
             logger.info("First run detected, auto-detecting preferred terminal from running processes")
 
             if let detectedTerminal = detectRunningTerminals() {
-                UserDefaults.standard.set(detectedTerminal.rawValue, forKey: "preferredTerminal")
+                AppConstants.setPreferredTerminal(detectedTerminal.rawValue)
                 logger.info("Auto-detected and set preferred terminal to: \(detectedTerminal.rawValue)")
             } else {
                 // No terminals detected in running processes, check installed terminals
                 let installedTerminals = Terminal.installed.filter { $0 != .terminal }
                 if let bestTerminal = installedTerminals.max(by: { $0.detectionPriority < $1.detectionPriority }) {
-                    UserDefaults.standard.set(bestTerminal.rawValue, forKey: "preferredTerminal")
+                    AppConstants.setPreferredTerminal(bestTerminal.rawValue)
                     logger
                         .info(
                             "No running terminals found, set preferred terminal to most popular installed: \(bestTerminal.rawValue)"
@@ -414,15 +414,15 @@ final class TerminalLauncher {
     }
 
     private func getValidTerminal() -> Terminal {
-        // Read the current preference directly from UserDefaults
+        // Read the current preference using helper method
         // @AppStorage doesn't work properly in non-View contexts
-        let currentPreference = UserDefaults.standard.string(forKey: "preferredTerminal") ?? Terminal.terminal.rawValue
+        let currentPreference = AppConstants.getPreferredTerminal() ?? Terminal.terminal.rawValue
         let terminal = Terminal(rawValue: currentPreference) ?? .terminal
         let actualTerminal = terminal.isInstalled ? terminal : .terminal
 
         if actualTerminal != terminal {
             // Update preference to fallback
-            UserDefaults.standard.set(actualTerminal.rawValue, forKey: "preferredTerminal")
+            AppConstants.setPreferredTerminal(actualTerminal.rawValue)
             logger
                 .warning(
                     "Preferred terminal \(terminal.rawValue) not installed, falling back to \(actualTerminal.rawValue)"
@@ -464,9 +464,19 @@ final class TerminalLauncher {
                     let components = result.split(separator: "|").map(String.init)
                     logger.debug("Terminal.app components: \(components)")
                     if components.count >= 2 {
-                        windowID = CGWindowID(components[0])
-                        tabReference = "tab id \(components[1]) of window id \(components[0])"
-                        logger.info("Terminal.app window ID: \(windowID ?? 0), tab reference: \(tabReference ?? "")")
+                        if let windowIDValue = UInt32(components[0]) {
+                            windowID = CGWindowID(windowIDValue)
+                            tabReference = "tab id \(components[1]) of window id \(components[0])"
+                            logger
+                                .info("Terminal.app window ID: \(windowID ?? 0), tab reference: \(tabReference ?? "")")
+                        } else {
+                            logger.warning("Failed to parse window ID from components[0]: '\(components[0])'")
+                        }
+                    } else {
+                        logger
+                            .warning(
+                                "Unexpected AppleScript result format for Terminal.app. Expected 'windowID|tabID', got: '\(result)'. Components: \(components)"
+                            )
                     }
                 } else if config.terminal == .iTerm2 {
                     // iTerm2 returns window ID

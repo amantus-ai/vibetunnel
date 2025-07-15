@@ -33,8 +33,8 @@ export class ScreencapView extends LitElement {
       display: flex;
       flex-direction: column;
       height: 100vh;
-      background: #0a0a0a;
-      color: #e4e4e4;
+      background: rgb(var(--color-bg));
+      color: rgb(var(--color-text));
       font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
       
       /* Honor safe areas on mobile devices */
@@ -48,17 +48,17 @@ export class ScreencapView extends LitElement {
       display: flex;
       align-items: center;
       padding: 0.75rem 1.5rem;
-      background: linear-gradient(to right, #141414, #1f1f1f);
-      border-bottom: 1px solid #2a2a2a;
+      background: linear-gradient(to right, rgb(var(--color-bg-secondary)), rgb(var(--color-bg-tertiary)));
+      border-bottom: 1px solid rgb(var(--color-border));
       gap: 1rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 1px 3px rgb(var(--color-bg-base) / 0.3);
     }
 
     .header h1 {
       margin: 0;
       font-size: 1.25rem;
       font-weight: 700;
-      color: #10B981;
+      color: rgb(var(--color-primary));
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -72,10 +72,10 @@ export class ScreencapView extends LitElement {
 
     .btn {
       padding: 0.5rem 1rem;
-      border: 1px solid #2a2a2a;
+      border: 1px solid rgb(var(--color-border));
       border-radius: 0.5rem;
       background: transparent;
-      color: #e4e4e4;
+      color: rgb(var(--color-text));
       cursor: pointer;
       transition: all 0.2s;
       font-family: inherit;
@@ -87,31 +87,31 @@ export class ScreencapView extends LitElement {
     }
 
     .btn:hover {
-      border-color: #10B981;
-      color: #10B981;
+      border-color: rgb(var(--color-primary));
+      color: rgb(var(--color-primary));
     }
 
     .btn.primary {
-      background: #10B981;
-      color: #0a0a0a;
-      border-color: #10B981;
+      background: rgb(var(--color-primary));
+      color: rgb(var(--color-bg));
+      border-color: rgb(var(--color-primary));
       font-weight: 500;
     }
 
     .btn.primary:hover {
-      background: #0D9668;
-      border-color: #0D9668;
+      background: rgb(var(--color-primary-hover));
+      border-color: rgb(var(--color-primary-hover));
     }
 
     .btn.danger {
-      background: #EF4444;
-      color: white;
-      border-color: #EF4444;
+      background: rgb(var(--color-status-error));
+      color: rgb(var(--color-text-bright));
+      border-color: rgb(var(--color-status-error));
     }
 
     .btn.danger:hover {
-      background: #DC2626;
-      border-color: #DC2626;
+      background: rgb(var(--color-status-error));
+      border-color: rgb(var(--color-status-error));
     }
 
     .main-container {
@@ -147,7 +147,7 @@ export class ScreencapView extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #0a0a0a;
+      background: rgb(var(--color-bg));
       overflow: hidden;
       padding: 1rem;
     }
@@ -171,11 +171,11 @@ export class ScreencapView extends LitElement {
       width: 100%;
       height: 100%;
       object-fit: contain;
-      background: #000;
+      background: rgb(var(--color-bg));
     }
 
     :host(:focus) {
-      outline: 2px solid #60a5fa;
+      outline: 2px solid rgb(var(--color-status-info));
       outline-offset: -2px;
     }
 
@@ -198,7 +198,7 @@ export class ScreencapView extends LitElement {
     }
 
     video.capture-preview {
-      background: #000;
+      background: rgb(var(--color-bg));
     }
 
     .capture-overlay {
@@ -213,23 +213,23 @@ export class ScreencapView extends LitElement {
 
     .status-message {
       font-size: 1.125rem;
-      color: #a3a3a3;
+      color: rgb(var(--color-text-muted));
       max-width: 500px;
     }
 
     .status-message.error {
-      color: #EF4444;
+      color: rgb(var(--color-status-error));
       font-weight: 500;
-      background: rgba(239, 68, 68, 0.1);
+      background: rgb(var(--color-status-error) / 0.1);
       padding: 1rem 1.5rem;
       border-radius: 0.5rem;
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      border: 1px solid rgb(var(--color-status-error) / 0.3);
       line-height: 1.6;
     }
 
     .status-message.loading,
     .status-message.starting {
-      color: #F59E0B;
+      color: rgb(var(--color-status-warning));
     }
 
     .fps-indicator {
@@ -244,14 +244,14 @@ export class ScreencapView extends LitElement {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      color: #10B981;
+      color: rgb(var(--color-primary));
       border: 1px solid rgba(16, 185, 129, 0.3);
     }
 
     .back-btn {
       background: none;
       border: none;
-      color: #a3a3a3;
+      color: rgb(var(--color-text-muted));
       cursor: pointer;
       padding: 0.5rem;
       display: flex;
@@ -262,13 +262,13 @@ export class ScreencapView extends LitElement {
     }
 
     .back-btn:hover {
-      color: #10B981;
+      color: rgb(var(--color-primary));
     }
 
     .toggle-btn {
       background: none;
       border: none;
-      color: #a3a3a3;
+      color: rgb(var(--color-text-muted));
       cursor: pointer;
       padding: 0.5rem;
       display: flex;
@@ -279,11 +279,11 @@ export class ScreencapView extends LitElement {
     }
 
     .toggle-btn:hover {
-      color: #e4e4e4;
+      color: rgb(var(--color-text));
     }
 
     .toggle-btn.active {
-      color: #10B981;
+      color: rgb(var(--color-primary));
     }
 
     .status-log {
@@ -294,15 +294,15 @@ export class ScreencapView extends LitElement {
       max-width: 600px;
       max-height: 200px;
       overflow-y: auto;
-      background: rgba(10, 10, 10, 0.95);
+      background: rgb(var(--color-bg-elevated) / 0.95);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(64, 64, 64, 0.3);
+      border: 1px solid rgb(var(--color-border) / 0.3);
       border-radius: 0.5rem;
       padding: 1rem;
       font-family: var(--font-mono);
       font-size: 0.75rem;
       line-height: 1.5;
-      color: #a3a3a3;
+      color: rgb(var(--color-text-muted));
     }
 
     .status-log-entry {
@@ -312,7 +312,7 @@ export class ScreencapView extends LitElement {
     }
 
     .status-log-time {
-      color: #737373;
+      color: rgb(var(--color-text-dim));
       flex-shrink: 0;
     }
 
@@ -320,10 +320,10 @@ export class ScreencapView extends LitElement {
       flex: 1;
     }
 
-    .status-log-entry.info { color: #60a5fa; }
-    .status-log-entry.success { color: #10b981; }
-    .status-log-entry.warning { color: #f59e0b; }
-    .status-log-entry.error { color: #ef4444; }
+    .status-log-entry.info { color: rgb(var(--color-status-info)); }
+    .status-log-entry.success { color: rgb(var(--color-status-success)); }
+    .status-log-entry.warning { color: rgb(var(--color-status-warning)); }
+    .status-log-entry.error { color: rgb(var(--color-status-error)); }
 
     .switch {
       display: flex;
@@ -337,7 +337,7 @@ export class ScreencapView extends LitElement {
       width: 36px;
       height: 20px;
       border-radius: 10px;
-      background: #3f3f46;
+      background: rgb(var(--color-surface-hover));
       position: relative;
       cursor: pointer;
       transition: background-color 0.2s;
@@ -349,14 +349,14 @@ export class ScreencapView extends LitElement {
       width: 16px;
       height: 16px;
       border-radius: 50%;
-      background: white;
+      background: rgb(var(--color-text-bright));
       top: 2px;
       left: 2px;
       transition: transform 0.2s;
     }
 
     .switch input:checked {
-      background-color: #10B981;
+      background-color: rgb(var(--color-primary));
     }
 
     .switch input:checked::before {
@@ -368,8 +368,8 @@ export class ScreencapView extends LitElement {
       bottom: calc(1rem + env(safe-area-inset-bottom));
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.8);
-      color: #a1a1aa;
+      background: rgb(var(--color-bg-base) / 0.8);
+      color: rgb(var(--color-text-muted));
       padding: 0.5rem 1rem;
       border-radius: 0.5rem;
       font-size: 0.875rem;
@@ -387,26 +387,26 @@ export class ScreencapView extends LitElement {
       right: calc(20px + env(safe-area-inset-right));
       width: 60px;
       height: 60px;
-      background: #10B981;
+      background: rgb(var(--color-primary));
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 4px 6px rgb(var(--color-bg-base) / 0.3);
       z-index: 1000;
       cursor: pointer;
       transition: all 0.2s;
     }
 
     .keyboard-button:hover {
-      background: #0D9668;
+      background: rgb(var(--color-primary-hover));
       transform: scale(1.1);
     }
 
     .keyboard-button svg {
       width: 28px;
       height: 28px;
-      color: white;
+      color: rgb(var(--color-text-bright));
     }
 
     .mobile-keyboard-input {

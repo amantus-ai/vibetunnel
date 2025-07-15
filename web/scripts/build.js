@@ -64,7 +64,7 @@ async function build() {
 
   // Build server TypeScript
   console.log('Building server...');
-  execSync('tsc', { stdio: 'inherit' });
+  execSync('npx tsc', { stdio: 'inherit' });
 
   // Bundle CLI
   console.log('Bundling CLI...');

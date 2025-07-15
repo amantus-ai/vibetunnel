@@ -17,6 +17,8 @@ import type { AuthClient } from '../services/auth-client.js';
 import { isAIAssistantSession, sendAIPrompt } from '../utils/ai-sessions.js';
 import { createLogger } from '../utils/logger.js';
 import { copyToClipboard } from '../utils/path-utils.js';
+import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
+import type { TerminalThemeId } from '../utils/terminal-themes.js';
 
 const logger = createLogger('session-card');
 import './vibe-terminal-buffer.js';
@@ -57,17 +59,39 @@ export class SessionCard extends LitElement {
 
   @property({ type: Object }) session!: Session;
   @property({ type: Object }) authClient!: AuthClient;
+  @property({ type: Boolean }) selected = false;
   @state() private killing = false;
   @state() private killingFrame = 0;
   @state() private isActive = false;
   @state() private isHovered = false;
   @state() private isSendingPrompt = false;
+  @state() private terminalTheme: TerminalThemeId = 'auto';
 
   private killingInterval: number | null = null;
   private activityTimeout: number | null = null;
+  private storageListener: ((e: StorageEvent) => void) | null = null;
+  private themeChangeListener: ((e: CustomEvent) => void) | null = null;
+  private preferencesManager = TerminalPreferencesManager.getInstance();
 
   connectedCallback() {
     super.connectedCallback();
+
+    // Load initial theme from TerminalPreferencesManager
+    this.loadThemeFromStorage();
+
+    // Listen for storage changes to update theme reactively (cross-tab)
+    this.storageListener = (e: StorageEvent) => {
+      if (e.key === 'vibetunnel_terminal_preferences') {
+        this.loadThemeFromStorage();
+      }
+    };
+    window.addEventListener('storage', this.storageListener);
+
+    // Listen for custom theme change events (same-tab)
+    this.themeChangeListener = (e: CustomEvent) => {
+      this.terminalTheme = e.detail as TerminalThemeId;
+    };
+    window.addEventListener('terminal-theme-changed', this.themeChangeListener as EventListener);
   }
 
   disconnectedCallback() {
@@ -77,6 +101,17 @@ export class SessionCard extends LitElement {
     }
     if (this.activityTimeout) {
       clearTimeout(this.activityTimeout);
+    }
+    if (this.storageListener) {
+      window.removeEventListener('storage', this.storageListener);
+      this.storageListener = null;
+    }
+    if (this.themeChangeListener) {
+      window.removeEventListener(
+        'terminal-theme-changed',
+        this.themeChangeListener as EventListener
+      );
+      this.themeChangeListener = null;
     }
   }
 
@@ -339,6 +374,10 @@ export class SessionCard extends LitElement {
     this.isHovered = false;
   }
 
+  private loadThemeFromStorage() {
+    this.terminalTheme = this.preferencesManager.getTheme();
+  }
+
   render() {
     // Debug logging to understand what's in the session
     if (!this.session.name) {
@@ -357,7 +396,7 @@ export class SessionCard extends LitElement {
           this.isActive && this.session.status === 'running'
             ? 'ring-2 ring-primary shadow-glow-sm'
             : ''
-        }"
+        } ${this.selected ? 'ring-2 ring-accent-primary shadow-card-hover' : ''}"
         style="view-transition-name: session-${this.session.id}; --session-id: session-${
           this.session.id
         }"
@@ -371,9 +410,9 @@ export class SessionCard extends LitElement {
       >
         <!-- Compact Header -->
         <div
-          class="flex justify-between items-center px-3 py-2 border-b border-dark-border bg-gradient-to-r from-dark-bg-secondary to-dark-bg-tertiary"
+          class="flex justify-between items-center px-3 py-2 border-b border-base bg-gradient-to-r from-secondary to-tertiary"
         >
-          <div class="text-xs font-mono pr-2 flex-1 min-w-0 text-accent-green">
+          <div class="text-xs font-mono pr-2 flex-1 min-w-0 text-primary">
             <inline-edit
               .value=${this.session.name || this.session.command?.join(' ') || ''}
               .placeholder=${this.session.command?.join(' ') || ''}
@@ -392,7 +431,7 @@ export class SessionCard extends LitElement {
               this.session.status === 'running' && isAIAssistantSession(this.session)
                 ? html`
                   <button
-                    class="bg-transparent border-0 p-0 cursor-pointer opacity-50 hover:opacity-100 transition-opacity duration-200 text-accent-primary"
+                    class="bg-transparent border-0 p-0 cursor-pointer opacity-50 hover:opacity-100 transition-opacity duration-200 text-primary"
                     @click=${(e: Event) => {
                       e.stopPropagation();
                       this.handleMagicButton();
@@ -456,10 +495,10 @@ export class SessionCard extends LitElement {
 
         <!-- Terminal display (main content) -->
         <div
-          class="session-preview bg-black overflow-hidden flex-1 relative ${
+          class="session-preview bg-bg overflow-hidden flex-1 relative ${
             this.session.status === 'exited' ? 'session-exited' : ''
           }"
-          style="background: linear-gradient(to bottom, #0a0a0a, #080808); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);"
+          style="background: linear-gradient(to bottom, rgb(var(--color-bg)), rgb(var(--color-bg-secondary))); box-shadow: inset 0 1px 3px rgb(var(--color-bg) / 0.5);"
         >
           ${
             this.killing
@@ -474,6 +513,7 @@ export class SessionCard extends LitElement {
               : html`
                 <vibe-terminal-buffer
                   .sessionId=${this.session.id}
+                  .theme=${this.terminalTheme}
                   class="w-full h-full"
                   style="pointer-events: none;"
                   @content-changed=${this.handleContentChanged}
@@ -484,7 +524,7 @@ export class SessionCard extends LitElement {
 
         <!-- Compact Footer -->
         <div
-          class="px-3 py-2 text-dark-text-muted text-xs border-t border-dark-border bg-gradient-to-r from-dark-bg-tertiary to-dark-bg-secondary"
+          class="px-3 py-2 text-muted text-xs border-t border-base bg-gradient-to-r from-tertiary to-secondary"
         >
           <div class="flex justify-between items-center min-w-0">
             <span 
@@ -498,7 +538,7 @@ export class SessionCard extends LitElement {
                 this.session.status === 'running' &&
                 this.isActive &&
                 !this.session.activityStatus?.specificStatus
-                  ? html`<span class="text-accent-green animate-pulse ml-1">●</span>`
+                  ? html`<span class="text-primary animate-pulse ml-1">●</span>`
                   : ''
               }
             </span>
@@ -506,7 +546,7 @@ export class SessionCard extends LitElement {
               this.session.pid
                 ? html`
                   <span
-                    class="cursor-pointer hover:text-accent-green transition-colors text-xs flex-shrink-0 ml-2 inline-flex items-center gap-1"
+                    class="cursor-pointer hover:text-primary transition-colors text-xs flex-shrink-0 ml-2 inline-flex items-center gap-1"
                     @click=${this.handlePidClick}
                     title="Click to copy PID"
                   >
@@ -549,7 +589,7 @@ export class SessionCard extends LitElement {
       return 'text-status-error';
     }
     if (this.session.active === false) {
-      return 'text-dark-text-muted';
+      return 'text-muted';
     }
     return this.session.status === 'running' ? 'text-status-success' : 'text-status-warning';
   }
@@ -559,7 +599,7 @@ export class SessionCard extends LitElement {
       return 'text-status-error';
     }
     if (this.session.active === false) {
-      return 'text-dark-text-muted';
+      return 'text-muted';
     }
     if (this.session.status === 'running' && this.session.activityStatus?.specificStatus) {
       return 'text-status-warning';
@@ -572,7 +612,7 @@ export class SessionCard extends LitElement {
       return 'bg-status-error animate-pulse';
     }
     if (this.session.active === false) {
-      return 'bg-dark-text-muted';
+      return 'bg-muted';
     }
     if (this.session.status === 'running') {
       if (this.session.activityStatus?.specificStatus) {

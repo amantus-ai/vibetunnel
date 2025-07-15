@@ -79,6 +79,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Source state management functions
+source "$SCRIPT_DIR/release-state.sh"
+
 # Color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -90,11 +93,14 @@ NC='\033[0m'
 DRY_RUN=false
 RELEASE_TYPE=""
 PRERELEASE_NUMBER=""
+RESUME_MODE=false
 
 # Function to show usage
 show_usage() {
     echo "Usage:"
     echo "  $0 [--dry-run] <release-type> [number]"
+    echo "  $0 --resume"
+    echo "  $0 --status"
     echo ""
     echo "Arguments:"
     echo "  release-type    stable, beta, alpha, or rc"
@@ -102,6 +108,8 @@ show_usage() {
     echo ""
     echo "Options:"
     echo "  --dry-run       Show what would be done without making changes"
+    echo "  --resume        Resume an interrupted release"
+    echo "  --status        Show current release progress"
     echo ""
     echo "Examples:"
     echo "  $0 stable                    # Create stable release"
@@ -110,6 +118,8 @@ show_usage() {
     echo "  $0 rc 3                      # Create rc.3 release"
     echo "  $0 --dry-run stable          # Preview stable release"
     echo "  $0 --dry-run beta 1          # Preview beta.1 release"
+    echo "  $0 --resume                  # Resume interrupted release"
+    echo "  $0 --status                  # Check release progress"
 }
 
 # Parse command line arguments
@@ -118,6 +128,14 @@ while [[ $# -gt 0 ]]; do
         --dry-run)
             DRY_RUN=true
             shift
+            ;;
+        --resume)
+            RESUME_MODE=true
+            shift
+            ;;
+        --status)
+            show_progress
+            exit 0
             ;;
         -h|--help)
             show_usage
@@ -149,12 +167,32 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Validate required arguments
-if [[ -z "$RELEASE_TYPE" ]]; then
-    echo -e "${RED}❌ Error: Release type is required${NC}"
+# Handle resume mode
+if [[ "$RESUME_MODE" == "true" ]]; then
+    if ! can_resume; then
+        echo -e "${RED}❌ Error: No release in progress to resume${NC}"
+        echo ""
+        echo "Start a new release with: $0 <release-type> [number]"
+        exit 1
+    fi
+    
+    # Load release info from state
+    RELEASE_TYPE=$(get_release_info "release_type")
+    RELEASE_VERSION=$(get_release_info "release_version")
+    BUILD_NUMBER=$(get_release_info "build_number")
+    TAG_NAME=$(get_release_info "tag_name")
+    
+    echo -e "${BLUE}📋 Resuming release${NC}"
+    show_progress
     echo ""
-    show_usage
-    exit 1
+else
+    # Normal mode - validate required arguments
+    if [[ -z "$RELEASE_TYPE" ]]; then
+        echo -e "${RED}❌ Error: Release type is required${NC}"
+        echo ""
+        show_usage
+        exit 1
+    fi
 fi
 
 # Validate release type
@@ -274,17 +312,12 @@ if ! gh auth status >/dev/null 2>&1; then
     exit 1
 fi
 
-# Check if changelog file exists - prefer project root location
+# Check if changelog file exists in project root
 if [[ -f "$PROJECT_ROOT/../CHANGELOG.md" ]]; then
     CHANGELOG_PATH="$PROJECT_ROOT/../CHANGELOG.md"
-elif [[ -f "$PROJECT_ROOT/CHANGELOG.md" ]]; then
-    # Fallback to mac/ directory if it exists there
-    CHANGELOG_PATH="$PROJECT_ROOT/CHANGELOG.md"
 else
     echo -e "${YELLOW}⚠️  Warning: CHANGELOG.md not found${NC}"
-    echo "   Searched in:"
-    echo "   - Project root: $PROJECT_ROOT/../CHANGELOG.md"
-    echo "   - Mac directory: $PROJECT_ROOT/CHANGELOG.md"
+    echo "   Expected location: $PROJECT_ROOT/../CHANGELOG.md"
     echo "   Release notes will be basic"
     CHANGELOG_PATH=""
 fi
@@ -347,6 +380,11 @@ echo "   Version: $RELEASE_VERSION"
 echo "   Build: $BUILD_NUMBER"
 echo "   Tag: $TAG_NAME"
 echo ""
+
+# Initialize state tracking for new releases
+if [[ "$RESUME_MODE" != "true" ]]; then
+    init_state "$RELEASE_TYPE" "$RELEASE_VERSION" "$BUILD_NUMBER" "$TAG_NAME"
+fi
 
 # Additional validation after version determination
 echo -e "${BLUE}🔍 Validating release configuration...${NC}"
@@ -461,26 +499,18 @@ else
     echo ""
     echo "🔍 Checking for custom Node.js build..."
     WEB_DIR="$PROJECT_ROOT/../web"
-    CUSTOM_NODE_PATH=$(find "$WEB_DIR/.node-builds" -name "node-v*-minimal" -type d 2>/dev/null | sort -V | tail -n1)/out/Release/node
+    
+    # Check if .node-builds directory exists
+    if [[ -d "$WEB_DIR/.node-builds" ]]; then
+        CUSTOM_NODE_PATH=$(find "$WEB_DIR/.node-builds" -name "node-v*-minimal" -type d 2>/dev/null | sort -V | tail -n1)/out/Release/node
+    else
+        CUSTOM_NODE_PATH=""
+    fi
     
     if [[ ! -f "$CUSTOM_NODE_PATH" ]]; then
-        echo -e "${YELLOW}⚠️  Custom Node.js not found. Building for optimal app size...${NC}"
-        echo "   This will take 10-20 minutes on first run."
-        
-        # Build custom Node.js
-        pushd "$WEB_DIR" > /dev/null
-        if node build-custom-node.js --latest; then
-            echo -e "${GREEN}✅ Custom Node.js built successfully${NC}"
-            CUSTOM_NODE_PATH=$(find "$WEB_DIR/.node-builds" -name "node-v*-minimal" -type d 2>/dev/null | sort -V | tail -n1)/out/Release/node
-            if [[ -f "$CUSTOM_NODE_PATH" ]]; then
-                CUSTOM_NODE_SIZE=$(ls -lh "$CUSTOM_NODE_PATH" | awk '{print $5}')
-                echo "   Size: $CUSTOM_NODE_SIZE (vs ~110MB for standard Node.js)"
-            fi
-        else
-            echo -e "${RED}❌ Failed to build custom Node.js${NC}"
-            echo "   Continuing with standard Node.js (larger app size)"
-        fi
-        popd > /dev/null
+        echo -e "${YELLOW}⚠️  Custom Node.js not found. Using system Node.js...${NC}"
+        echo "   Note: Release will work but app size will be larger."
+        # Continue with default Node.js
     else
         CUSTOM_NODE_SIZE=$(ls -lh "$CUSTOM_NODE_PATH" | awk '{print $5}')
         CUSTOM_NODE_VERSION=$("$CUSTOM_NODE_PATH" --version 2>/dev/null || echo "unknown")
@@ -502,11 +532,22 @@ else
     echo "🔨 Building ARM64 binary..."
     "$SCRIPT_DIR/build.sh" --configuration Release
     
-    # Verify build
+    # Find the built app - could be in build directory or DerivedData
     APP_PATH="$PROJECT_ROOT/build/Build/Products/Release/VibeTunnel.app"
     if [[ ! -d "$APP_PATH" ]]; then
-        echo -e "${RED}❌ Build failed - app not found${NC}"
-        exit 1
+        # Check DerivedData
+        DEFAULT_DERIVED_DATA="$HOME/Library/Developer/Xcode/DerivedData"
+        APP_PATH=$(find "$DEFAULT_DERIVED_DATA" -name "VibeTunnel.app" -path "*/Build/Products/Release/*" ! -path "*/Index.noindex/*" 2>/dev/null | head -n 1)
+        
+        if [[ ! -d "$APP_PATH" ]]; then
+            echo -e "${RED}❌ Build failed - app not found${NC}"
+            exit 1
+        fi
+        
+        # Copy to expected location for consistency
+        mkdir -p "$PROJECT_ROOT/build/Build/Products/Release"
+        cp -R "$APP_PATH" "$PROJECT_ROOT/build/Build/Products/Release/"
+        APP_PATH="$PROJECT_ROOT/build/Build/Products/Release/VibeTunnel.app"
     fi
     
     # Verify build number

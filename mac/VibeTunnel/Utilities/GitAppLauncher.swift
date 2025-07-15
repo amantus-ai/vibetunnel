@@ -109,13 +109,13 @@ final class GitAppLauncher {
     }
 
     func verifyPreferredGitApp() {
-        let currentPreference = UserDefaults.standard.string(forKey: "preferredGitApp")
+        let currentPreference = AppConstants.getPreferredGitApp()
         if let preference = currentPreference,
            let gitApp = GitApp(rawValue: preference),
            !gitApp.isInstalled
         {
             // If the preferred app is no longer installed, clear the preference
-            UserDefaults.standard.removeObject(forKey: "preferredGitApp")
+            AppConstants.setPreferredGitApp(nil)
         }
     }
 
@@ -123,7 +123,7 @@ final class GitAppLauncher {
 
     private func performFirstRunAutoDetection() {
         // Check if git app preference has already been set
-        let hasSetPreference = UserDefaults.standard.object(forKey: "preferredGitApp") != nil
+        let hasSetPreference = AppConstants.getPreferredGitApp() != nil
 
         if !hasSetPreference {
             logger.info("First run detected, auto-detecting preferred Git app")
@@ -131,7 +131,7 @@ final class GitAppLauncher {
             // Check installed git apps
             let installedGitApps = GitApp.installed
             if let bestGitApp = installedGitApps.max(by: { $0.detectionPriority < $1.detectionPriority }) {
-                UserDefaults.standard.set(bestGitApp.rawValue, forKey: "preferredGitApp")
+                AppConstants.setPreferredGitApp(bestGitApp.rawValue)
                 logger.info("Auto-detected and set preferred Git app to: \(bestGitApp.rawValue)")
             }
         }
@@ -139,7 +139,7 @@ final class GitAppLauncher {
 
     private func getValidGitApp() -> GitApp {
         // Read the current preference
-        if let currentPreference = UserDefaults.standard.string(forKey: "preferredGitApp"),
+        if let currentPreference = AppConstants.getPreferredGitApp(),
            !currentPreference.isEmpty,
            let gitApp = GitApp(rawValue: currentPreference),
            gitApp.isInstalled

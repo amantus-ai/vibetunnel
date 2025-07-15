@@ -21,9 +21,9 @@ export class TerminalIcon extends LitElement {
     .terminal-icon {
       border-radius: 20%;
       box-shadow:
-        0 2px 8px rgba(0, 0, 0, 0.3),
-        0 1px 3px rgba(0, 0, 0, 0.2);
-      background: rgba(255, 255, 255, 0.05);
+        0 2px 8px rgb(var(--color-bg-base) / 0.3),
+        0 1px 3px rgb(var(--color-bg-base) / 0.2);
+      background: rgb(var(--color-text-bright) / 0.05);
       padding: 2px;
     }
   `;

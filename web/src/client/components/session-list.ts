@@ -51,6 +51,121 @@ export class SessionList extends LitElement {
   @state() private cleaningExited = false;
   private previousRunningCount = 0;
 
+  connectedCallback() {
+    super.connectedCallback();
+    // Make the component focusable
+    this.tabIndex = 0;
+    // Add keyboard listener only to this component
+    this.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.removeEventListener('keydown', this.handleKeyDown);
+  }
+
+  private getVisibleSessions() {
+    const running = this.sessions.filter((s) => s.status === 'running');
+    const exited = this.sessions.filter((s) => s.status === 'exited');
+    return this.hideExited ? running : running.concat(exited);
+  }
+
+  private getGridColumns(): number {
+    // Get the grid container element
+    const gridContainer = this.querySelector('.session-flex-responsive');
+    if (!gridContainer || this.compactMode) return 1; // Compact mode is single column
+
+    // Get the computed style to check the actual grid columns
+    const computedStyle = window.getComputedStyle(gridContainer);
+    const templateColumns = computedStyle.getPropertyValue('grid-template-columns');
+
+    // Count the number of columns by splitting the template value
+    const columns = templateColumns.split(' ').filter((col) => col && col !== '0px').length;
+
+    // Fallback: calculate based on container width and minimum item width
+    if (columns === 0 || columns === 1) {
+      const containerWidth = gridContainer.clientWidth;
+      const minItemWidth = 280; // From CSS: minmax(280px, 1fr)
+      const gap = 20; // 1.25rem = 20px
+      return Math.max(1, Math.floor((containerWidth + gap) / (minItemWidth + gap)));
+    }
+
+    return columns;
+  }
+
+  private handleKeyDown = (e: KeyboardEvent) => {
+    const { key } = e;
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'].includes(key)) {
+      return;
+    }
+
+    // Check if we're inside an input element - since we're now listening on the component
+    // itself, we need to stop propagation for child inputs
+    const target = e.target as HTMLElement;
+    if (
+      target !== this &&
+      (target.closest('input, textarea, select') || target.isContentEditable)
+    ) {
+      return;
+    }
+
+    const sessions = this.getVisibleSessions();
+    if (sessions.length === 0) return;
+
+    e.preventDefault();
+    e.stopPropagation(); // Prevent event from bubbling up
+
+    let index = this.selectedSessionId
+      ? sessions.findIndex((s) => s.id === this.selectedSessionId)
+      : 0;
+    if (index < 0) index = 0;
+
+    if (key === 'Enter') {
+      this.handleSessionSelect({ detail: sessions[index] } as CustomEvent);
+      return;
+    }
+
+    const columns = this.getGridColumns();
+
+    if (key === 'ArrowLeft') {
+      // Move left, wrap to previous row
+      index = (index - 1 + sessions.length) % sessions.length;
+    } else if (key === 'ArrowRight') {
+      // Move right, wrap to next row
+      index = (index + 1) % sessions.length;
+    } else if (key === 'ArrowUp') {
+      // Move up one row
+      index = index - columns;
+      if (index < 0) {
+        // Wrap to the bottom, trying to maintain column position
+        const currentColumn = index + columns; // Original index
+        const lastRowStart = Math.floor((sessions.length - 1) / columns) * columns;
+        index = Math.min(lastRowStart + currentColumn, sessions.length - 1);
+      }
+    } else if (key === 'ArrowDown') {
+      // Move down one row
+      const oldIndex = index;
+      index = index + columns;
+      if (index >= sessions.length) {
+        // Wrap to the top, maintaining column position
+        const currentColumn = oldIndex % columns;
+        index = currentColumn;
+      }
+    }
+
+    this.selectedSessionId = sessions[index].id;
+    this.requestUpdate();
+
+    // Ensure the selected element is visible by scrolling it into view
+    setTimeout(() => {
+      const selectedCard =
+        this.querySelector(`session-card[selected]`) ||
+        this.querySelector(`div[class*="bg-bg-elevated"][class*="border-accent-primary"]`);
+      if (selectedCard) {
+        selectedCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 0);
+  };
   private handleRefresh() {
     this.dispatchEvent(new CustomEvent('refresh'));
   }
@@ -260,75 +375,75 @@ export class SessionList extends LitElement {
     const showExitedSection = !this.hideExited && hasExitedSessions;
 
     return html`
-      <div class="font-mono text-sm" data-testid="session-list-container">
+      <div class="font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-bg-primary rounded-lg" data-testid="session-list-container">
         <div class="p-4 pt-5">
         ${
           !hasRunningSessions && (!hasExitedSessions || this.hideExited)
             ? html`
-              <div class="text-dark-text-muted text-center py-8">
+              <div class="text-text-muted text-center py-8">
                 ${
                   this.loading
                     ? 'Loading sessions...'
                     : this.hideExited && this.sessions.length > 0
                       ? html`
                         <div class="space-y-4 max-w-2xl mx-auto text-left">
-                          <div class="text-lg font-semibold text-dark-text">
+                          <div class="text-lg font-semibold text-text">
                             No running sessions
                           </div>
-                          <div class="text-sm text-dark-text-muted">
+                          <div class="text-sm text-text-muted">
                             There are exited sessions. Show them by toggling "Hide exited" above.
                           </div>
                         </div>
                       `
                       : html`
                         <div class="space-y-6 max-w-2xl mx-auto text-left">
-                          <div class="text-lg font-semibold text-dark-text">
+                          <div class="text-lg font-semibold text-text">
                             No terminal sessions yet!
                           </div>
 
                           <div class="space-y-3">
-                            <div class="text-sm text-dark-text-muted">
+                            <div class="text-sm text-text-muted">
                               Get started by using the
-                              <code class="bg-dark-bg-secondary px-2 py-1 rounded">vt</code> command
+                              <code class="bg-bg-secondary px-2 py-1 rounded">vt</code> command
                               in your terminal:
                             </div>
 
                             <div
-                              class="bg-dark-bg-secondary p-4 rounded-lg font-mono text-xs space-y-2"
+                              class="bg-bg-secondary p-4 rounded-lg font-mono text-xs space-y-2"
                             >
-                              <div class="text-green-400">vt pnpm run dev</div>
-                              <div class="text-dark-text-muted pl-4"># Monitor your dev server</div>
+                              <div class="text-status-success">vt pnpm run dev</div>
+                              <div class="text-text-muted pl-4"># Monitor your dev server</div>
 
-                              <div class="text-green-400">vt claude --dangerously...</div>
-                              <div class="text-dark-text-muted pl-4">
+                              <div class="text-status-success">vt claude --dangerously...</div>
+                              <div class="text-text-muted pl-4">
                                 # Keep an eye on AI agents
                               </div>
 
-                              <div class="text-green-400">vt --shell</div>
-                              <div class="text-dark-text-muted pl-4">
+                              <div class="text-status-success">vt --shell</div>
+                              <div class="text-text-muted pl-4">
                                 # Open an interactive shell
                               </div>
 
-                              <div class="text-green-400">vt python train.py</div>
-                              <div class="text-dark-text-muted pl-4">
+                              <div class="text-status-success">vt python train.py</div>
+                              <div class="text-text-muted pl-4">
                                 # Watch long-running scripts
                               </div>
                             </div>
                           </div>
 
-                          <div class="space-y-3 border-t border-dark-border pt-4">
-                            <div class="text-sm font-semibold text-dark-text">
+                          <div class="space-y-3 border-t border-border pt-4">
+                            <div class="text-sm font-semibold text-text">
                               Haven't installed the CLI yet?
                             </div>
-                            <div class="text-sm text-dark-text-muted space-y-1">
+                            <div class="text-sm text-text-muted space-y-1">
                               <div>→ Click the VibeTunnel menu bar icon</div>
                               <div>→ Go to Settings → Advanced → Install CLI Tools</div>
                             </div>
                           </div>
 
-                          <div class="text-xs text-dark-text-muted mt-4">
+                          <div class="text-xs text-text-muted mt-4">
                             Once installed, any command prefixed with
-                            <code class="bg-dark-bg-secondary px-1 rounded">vt</code> will appear
+                            <code class="bg-bg-secondary px-1 rounded">vt</code> will appear
                             here, accessible from any browser at localhost:4020.
                           </div>
                         </div>
@@ -342,8 +457,8 @@ export class SessionList extends LitElement {
                 hasRunningSessions
                   ? html`
                     <div class="mb-6">
-                      <h3 class="text-xs font-semibold text-dark-text-muted uppercase tracking-wider mb-4">
-                        Active <span class="text-dark-text-dim">(${runningSessions.length})</span>
+                      <h3 class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">
+                        Active <span class="text-text-dim">(${runningSessions.length})</span>
                       </h3>
                       <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'} relative">
                         ${repeat(
@@ -357,8 +472,8 @@ export class SessionList extends LitElement {
                           <div
                             class="group flex items-center gap-3 p-3 rounded-lg cursor-pointer ${
                               session.id === this.selectedSessionId
-                                ? 'bg-dark-bg-elevated border border-accent-primary shadow-card-hover'
-                                : 'bg-dark-bg-secondary border border-dark-border hover:bg-dark-bg-tertiary hover:border-dark-border-light hover:shadow-card'
+                                ? 'bg-bg-elevated border border-accent-primary shadow-card-hover'
+                                : 'bg-bg-secondary border border-border hover:bg-bg-tertiary hover:border-border-light hover:shadow-card'
                             }"
                             @click=${() =>
                               this.handleSessionSelect({ detail: session } as CustomEvent)}
@@ -394,7 +509,7 @@ export class SessionList extends LitElement {
                             </div>
                             
                             <!-- Elegant divider line -->
-                            <div class="w-px h-8 bg-gradient-to-b from-transparent via-dark-border to-transparent"></div>
+                            <div class="w-px h-8 bg-gradient-to-b from-transparent via-border to-transparent"></div>
                             
                             <!-- Session content -->
                             <div class="flex-1 min-w-0">
@@ -402,7 +517,7 @@ export class SessionList extends LitElement {
                                 class="text-sm font-mono truncate ${
                                   session.id === this.selectedSessionId
                                     ? 'text-accent-primary font-medium'
-                                    : 'text-dark-text group-hover:text-accent-primary transition-colors'
+                                    : 'text-text group-hover:text-accent-primary transition-colors'
                                 }"
                               >
                                 <inline-edit
@@ -420,7 +535,7 @@ export class SessionList extends LitElement {
                                   .onSave=${(newName: string) => this.handleRename(session.id, newName)}
                                 ></inline-edit>
                               </div>
-                              <div class="text-xs text-dark-text-muted truncate flex items-center gap-1">
+                              <div class="text-xs text-text-muted truncate flex items-center gap-1">
                                 ${(() => {
                                   // Debug logging for activity status
                                   if (session.status === 'running' && session.activityStatus) {
@@ -436,7 +551,7 @@ export class SessionList extends LitElement {
                                       <span class="text-status-warning flex-shrink-0">
                                         ${session.activityStatus.specificStatus.status}
                                       </span>
-                                      <span class="text-dark-text-muted/50">·</span>
+                                      <span class="text-text-muted/50">·</span>
                                       <span class="truncate">
                                         ${formatPathForDisplay(session.workingDir)}
                                       </span>
@@ -458,7 +573,7 @@ export class SessionList extends LitElement {
                                       session.status === 'running' || session.status === 'exited'
                                         ? html`
                                           <button
-                                            class="btn-ghost text-status-error p-1.5 rounded-md transition-all hover:bg-dark-bg-elevated hover:shadow-sm hover:scale-110"
+                                            class="btn-ghost text-status-error p-1.5 rounded-md transition-all hover:bg-elevated hover:shadow-sm hover:scale-110"
                                             @click=${async (e: Event) => {
                                               e.stopPropagation();
                                               // Kill the session
@@ -477,13 +592,13 @@ export class SessionList extends LitElement {
                                         `
                                         : ''
                                     }
-                                    <div class="text-xs text-dark-text-muted font-mono">
+                                    <div class="text-xs text-text-muted font-mono">
                                       ${session.startedAt ? formatSessionDuration(session.startedAt) : ''}
                                     </div>
                                   `
                                   : html`
                                     <!-- Desktop: Time that hides on hover -->
-                                    <div class="text-xs text-dark-text-muted font-mono transition-opacity group-hover:opacity-0">
+                                    <div class="text-xs text-text-muted font-mono transition-opacity group-hover:opacity-0">
                                       ${session.startedAt ? formatSessionDuration(session.startedAt) : ''}
                                     </div>
                                     
@@ -494,7 +609,7 @@ export class SessionList extends LitElement {
                                         session.status === 'running' || session.status === 'exited'
                                           ? html`
                                             <button
-                                              class="btn-ghost text-status-error p-1.5 rounded-md transition-all hover:bg-dark-bg-elevated hover:shadow-sm hover:scale-110"
+                                              class="btn-ghost text-status-error p-1.5 rounded-md transition-all hover:bg-elevated hover:shadow-sm hover:scale-110"
                                               @click=${async (e: Event) => {
                                                 e.stopPropagation();
                                                 // Kill the session
@@ -524,6 +639,7 @@ export class SessionList extends LitElement {
                           <session-card
                             .session=${session}
                             .authClient=${this.authClient}
+                            .selected=${session.id === this.selectedSessionId}
                             @session-select=${this.handleSessionSelect}
                             @session-killed=${this.handleSessionKilled}
                             @session-kill-error=${this.handleSessionKillError}
@@ -546,8 +662,8 @@ export class SessionList extends LitElement {
                 showExitedSection
                   ? html`
                     <div>
-                      <h3 class="text-xs font-semibold text-dark-text-muted uppercase tracking-wider mb-4">
-                        Idle <span class="text-dark-text-dim">(${exitedSessions.length})</span>
+                      <h3 class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">
+                        Idle <span class="text-text-dim">(${exitedSessions.length})</span>
                       </h3>
                       <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'} relative">
                         ${repeat(
@@ -561,8 +677,8 @@ export class SessionList extends LitElement {
                                   <div
                                     class="group flex items-center gap-3 p-3 rounded-lg cursor-pointer ${
                                       session.id === this.selectedSessionId
-                                        ? 'bg-dark-bg-elevated border border-accent-primary shadow-card-hover'
-                                        : 'bg-dark-bg-secondary border border-dark-border hover:bg-dark-bg-tertiary hover:border-dark-border-light hover:shadow-card opacity-75'
+                                        ? 'bg-bg-elevated border border-accent-primary shadow-card-hover'
+                                        : 'bg-bg-secondary border border-border hover:bg-bg-tertiary hover:border-border-light hover:shadow-card opacity-75'
                                     }"
                                     @click=${() =>
                                       this.handleSessionSelect({ detail: session } as CustomEvent)}
@@ -573,7 +689,7 @@ export class SessionList extends LitElement {
                                     </div>
                                     
                                     <!-- Elegant divider line -->
-                                    <div class="w-px h-8 bg-gradient-to-b from-transparent via-dark-border to-transparent"></div>
+                                    <div class="w-px h-8 bg-gradient-to-b from-transparent via-border to-transparent"></div>
                                     
                                     <!-- Session content -->
                                     <div class="flex-1 min-w-0">
@@ -581,7 +697,7 @@ export class SessionList extends LitElement {
                                         class="text-sm font-mono truncate ${
                                           session.id === this.selectedSessionId
                                             ? 'text-accent-primary font-medium'
-                                            : 'text-dark-text-muted group-hover:text-dark-text transition-colors'
+                                            : 'text-text-muted group-hover:text-text transition-colors'
                                         }"
                                         title="${
                                           session.name ||
@@ -597,7 +713,7 @@ export class SessionList extends LitElement {
                                             : session.command)
                                         }
                                       </div>
-                                      <div class="text-xs text-dark-text-dim truncate">
+                                      <div class="text-xs text-text-dim truncate">
                                         ${formatPathForDisplay(session.workingDir)}
                                       </div>
                                     </div>
@@ -605,13 +721,13 @@ export class SessionList extends LitElement {
                                     <!-- Right side: duration and close button -->
                                     <div class="relative flex items-center flex-shrink-0 gap-1">
                                       <!-- Session duration -->
-                                      <div class="text-xs text-dark-text-dim font-mono">
+                                      <div class="text-xs text-text-dim font-mono">
                                         ${session.startedAt ? formatSessionDuration(session.startedAt) : ''}
                                       </div>
                                       
                                       <!-- Clean up button -->
                                       <button
-                                        class="btn-ghost text-dark-text-muted p-1.5 rounded-md transition-all flex-shrink-0 hover:text-status-warning hover:bg-dark-bg-elevated hover:shadow-sm"
+                                        class="btn-ghost text-text-muted p-1.5 rounded-md transition-all flex-shrink-0 hover:text-status-warning hover:bg-bg-elevated hover:shadow-sm"
                                         @click=${async (e: Event) => {
                                           e.stopPropagation();
                                           try {
@@ -655,6 +771,7 @@ export class SessionList extends LitElement {
                                   <session-card
                                     .session=${session}
                                     .authClient=${this.authClient}
+                                    .selected=${session.id === this.selectedSessionId}
                                     @session-select=${this.handleSessionSelect}
                                     @session-killed=${this.handleSessionKilled}
                                     @session-kill-error=${this.handleSessionKillError}
@@ -688,7 +805,7 @@ export class SessionList extends LitElement {
     if (exitedSessions.length === 0 && runningSessions.length === 0) return '';
 
     return html`
-      <div class="sticky bottom-0 border-t border-dark-border bg-dark-bg-secondary p-3 flex flex-wrap gap-2 shadow-lg" style="z-index: ${Z_INDEX.SESSION_LIST_BOTTOM_BAR};">
+      <div class="sticky bottom-0 border-t border-border bg-bg-secondary p-3 flex flex-wrap gap-2 shadow-lg" style="z-index: ${Z_INDEX.SESSION_LIST_BOTTOM_BAR};">
         <!-- Control buttons with consistent styling -->
         ${
           exitedSessions.length > 0
@@ -697,8 +814,8 @@ export class SessionList extends LitElement {
                 <button
                   class="font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 ${
                     this.hideExited
-                      ? 'border-dark-border bg-dark-bg-elevated text-dark-text-muted hover:bg-dark-surface-hover hover:text-accent-primary hover:border-accent-primary hover:shadow-sm'
-                      : 'border-accent-primary bg-accent-primary bg-opacity-10 text-accent-primary hover:bg-opacity-20 hover:shadow-glow-primary-sm'
+                      ? 'border-border bg-bg-elevated text-text-muted hover:bg-surface-hover hover:text-accent-primary hover:border-accent-primary hover:shadow-sm active:scale-95'
+                      : 'border-accent-primary bg-accent-primary bg-opacity-10 text-accent-primary hover:bg-opacity-20 hover:shadow-glow-primary-sm active:scale-95'
                   }"
                   @click=${() =>
                     this.dispatchEvent(
@@ -707,7 +824,7 @@ export class SessionList extends LitElement {
                   data-testid="${this.hideExited ? 'show-exited-button' : 'hide-exited-button'}"
                 >
                   ${this.hideExited ? 'Show' : 'Hide'} Exited
-                  <span class="text-dark-text-dim">(${exitedSessions.length})</span>
+                  <span class="text-text-dim">(${exitedSessions.length})</span>
                 </button>
                 
                 <!-- Clean Exited button (only when Show Exited is active) -->
@@ -715,7 +832,7 @@ export class SessionList extends LitElement {
                   !this.hideExited
                     ? html`
                       <button
-                        class="font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 border-status-warning bg-status-warning bg-opacity-10 text-status-warning hover:bg-opacity-20 hover:shadow-glow-warning-sm disabled:opacity-50"
+                        class="font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 border-status-warning bg-status-warning bg-opacity-10 text-status-warning hover:bg-opacity-20 hover:shadow-glow-warning-sm active:scale-95 disabled:opacity-50"
                         @click=${this.handleCleanupExited}
                         ?disabled=${this.cleaningExited}
                         data-testid="clean-exited-button"
@@ -734,11 +851,11 @@ export class SessionList extends LitElement {
           runningSessions.length > 0
             ? html`
               <button
-                class="font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 border-status-error bg-status-error bg-opacity-10 text-status-error hover:bg-opacity-20"
+                class="font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 border-status-error bg-status-error bg-opacity-10 text-status-error hover:bg-opacity-20 hover:shadow-glow-error-sm active:scale-95"
                 @click=${() => this.dispatchEvent(new CustomEvent('kill-all-sessions'))}
                 data-testid="kill-all-button"
               >
-                Kill All <span class="text-dark-text-dim">(${runningSessions.length})</span>
+                Kill All <span class="text-text-dim">(${runningSessions.length})</span>
               </button>
             `
             : ''

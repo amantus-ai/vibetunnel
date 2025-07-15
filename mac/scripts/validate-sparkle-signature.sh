@@ -14,7 +14,19 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Configuration
-SPARKLE_PRIVATE_KEY_PATH="${SPARKLE_PRIVATE_KEY_PATH:-private/sparkle_private_key}"
+# Use the clean key file without comments for sign_update
+SPARKLE_PRIVATE_KEY_PATH="${SPARKLE_PRIVATE_KEY_PATH:-private/sparkle_ed_private_key}"
+# Fallback to commented key file if clean one doesn't exist
+if [ ! -f "$SPARKLE_PRIVATE_KEY_PATH" ] && [ -f "private/sparkle_private_key" ]; then
+    # Extract just the key from the commented file
+    KEY_LINE=$(grep -E '^[A-Za-z0-9+/]+=*$' "private/sparkle_private_key" | head -1)
+    if [ -n "$KEY_LINE" ]; then
+        echo "$KEY_LINE" > "private/sparkle_ed_private_key"
+        SPARKLE_PRIVATE_KEY_PATH="private/sparkle_ed_private_key"
+    else
+        SPARKLE_PRIVATE_KEY_PATH="private/sparkle_private_key"
+    fi
+fi
 EXPECTED_PUBLIC_KEY="AGCY8w5vHirVfGGDGc8Szc5iuOqupZSh9pMj/Qs67XI="
 
 # Function to print colored output

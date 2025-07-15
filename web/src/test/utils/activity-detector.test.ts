@@ -73,6 +73,10 @@ describe('Activity Detector', () => {
           input: '◐ Processing… (42s · ↑ 1.2k tokens · esc to interrupt)\n',
           expected: '◐ Processing (42s, ↑1.2k)',
         },
+        {
+          input: '✻ Compacting conversation… (303s · ↑ 16.3k tokens · esc to interrupt)\n',
+          expected: '✻ Compacting conversation (303s, ↑16.3k)',
+        },
       ];
 
       for (const { input, expected } of statuses) {

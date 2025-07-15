@@ -74,7 +74,7 @@ export class MagicWandButton extends LitElement {
 
     return html`
       <button
-        class="btn-ghost text-accent-primary ${buttonClasses} rounded-md transition-all hover:bg-dark-bg-elevated hover:shadow-sm hover:scale-110 disabled:opacity-50"
+        class="btn-ghost text-primary ${buttonClasses} rounded-md transition-all hover:bg-elevated hover:shadow-sm hover:scale-110 disabled:opacity-50"
         @click=${this.handleClick}
         ?disabled=${this.sending}
         title="Send prompt to update terminal title"

@@ -72,7 +72,9 @@ export class TerminalQuickKeys extends LitElement {
   @property({ type: Function }) onKeyPress?: (
     key: string,
     isModifier?: boolean,
-    isSpecial?: boolean
+    isSpecial?: boolean,
+    isToggle?: boolean,
+    pasteText?: string
   ) => void;
   @property({ type: Boolean }) visible = false;
   @property({ type: Number }) keyboardHeight = 0;
@@ -194,6 +196,16 @@ export class TerminalQuickKeys extends LitElement {
     }
   }
 
+  private handlePasteImmediate(e: Event) {
+    console.log('[QuickKeys] Paste button touched - delegating to paste handler');
+
+    // Always delegate to the main paste handler in direct-keyboard-manager
+    // This preserves user gesture context while keeping all clipboard logic in one place
+    if (this.onKeyPress) {
+      this.onKeyPress('Paste', false, false);
+    }
+  }
+
   private startKeyRepeat(key: string, isModifier: boolean, isSpecial: boolean) {
     // Only enable key repeat for arrow keys
     if (!key.startsWith('Arrow')) return;
@@ -272,14 +284,14 @@ export class TerminalQuickKeys extends LitElement {
         
         /* The actual bar with buttons */
         .quick-keys-bar {
-          background: #0a0a0a;
-          border-top: 1px solid #2a2a2a;
+          background: rgb(var(--color-bg-base));
+          border-top: 1px solid rgb(var(--color-border-base));
           padding: 0.5rem 0.25rem;
           /* Prevent iOS from adding its own styling */
           -webkit-appearance: none;
           appearance: none;
           /* Add shadow for visibility */
-          box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
+          box-shadow: 0 -2px 10px rgb(var(--color-bg-base) / 0.5);
         }
         
         /* Quick key buttons */
@@ -294,23 +306,23 @@ export class TerminalQuickKeys extends LitElement {
         
         /* Modifier key styling */
         .modifier-key {
-          background-color: #141414;
-          border-color: #444;
+          background-color: rgb(var(--color-bg-tertiary));
+          border-color: rgb(var(--color-border-base));
         }
         
         .modifier-key:hover {
-          background-color: #1f1f1f;
+          background-color: rgb(var(--color-bg-secondary));
         }
         
         /* Active modifier styling */
         .modifier-key.active {
-          background-color: rgb(59, 130, 246);
-          border-color: rgb(59, 130, 246);
-          color: white;
+          background-color: rgb(var(--color-primary));
+          border-color: rgb(var(--color-primary));
+          color: rgb(var(--color-text-bright));
         }
         
         .modifier-key.active:hover {
-          background-color: rgb(37, 99, 235);
+          background-color: rgb(var(--color-primary-hover));
         }
         
         /* Arrow key styling */
@@ -321,23 +333,23 @@ export class TerminalQuickKeys extends LitElement {
         
         /* Combo key styling (like ^C, ^Z) */
         .combo-key {
-          background-color: #141414;
-          border-color: #555;
+          background-color: rgb(var(--color-bg-tertiary));
+          border-color: rgb(var(--color-border-accent));
         }
         
         .combo-key:hover {
-          background-color: #1f1f1f;
+          background-color: rgb(var(--color-bg-secondary));
         }
         
         /* Special key styling (like ABC) */
         .special-key {
-          background-color: rgb(16, 185, 129);
-          border-color: rgb(16, 185, 129);
-          color: white;
+          background-color: rgb(var(--color-primary));
+          border-color: rgb(var(--color-primary));
+          color: rgb(var(--color-text-bright));
         }
         
         .special-key:hover {
-          background-color: rgb(5, 150, 105);
+          background-color: rgb(var(--color-primary-hover));
         }
         
         /* Function key styling */
@@ -351,22 +363,22 @@ export class TerminalQuickKeys extends LitElement {
         
         /* Toggle button styling */
         .toggle-key {
-          background-color: #1f1f1f;
-          border-color: #666;
+          background-color: rgb(var(--color-bg-secondary));
+          border-color: rgb(var(--color-border-accent));
         }
         
         .toggle-key:hover {
-          background-color: #2a2a2a;
+          background-color: rgb(var(--color-bg-tertiary));
         }
         
         .toggle-key.active {
-          background-color: rgb(16, 185, 129);
-          border-color: rgb(16, 185, 129);
-          color: white;
+          background-color: rgb(var(--color-primary));
+          border-color: rgb(var(--color-primary));
+          color: rgb(var(--color-text-bright));
         }
         
         .toggle-key.active:hover {
-          background-color: rgb(5, 150, 105);
+          background-color: rgb(var(--color-primary-hover));
         }
         
         /* Ctrl shortcut button styling */
@@ -427,7 +439,7 @@ export class TerminalQuickKeys extends LitElement {
                 <button
                   type="button"
                   tabindex="-1"
-                  class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-dark-bg-tertiary text-dark-text text-xs font-mono rounded border border-dark-border hover:bg-dark-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && ((key === 'CtrlExpand' && this.showCtrlKeys) || (key === 'F' && this.showFunctionKeys)) ? 'active' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
+                  class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && ((key === 'CtrlExpand' && this.showCtrlKeys) || (key === 'F' && this.showFunctionKeys)) ? 'active' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
                   @mousedown=${(e: Event) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -479,7 +491,7 @@ export class TerminalQuickKeys extends LitElement {
                     <button
                       type="button"
                       tabindex="-1"
-                      class="ctrl-shortcut-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-dark-bg-tertiary text-dark-text text-xs font-mono rounded border border-dark-border hover:bg-dark-surface hover:border-accent-green transition-all whitespace-nowrap ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''}"
+                      class="ctrl-shortcut-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''}"
                       @mousedown=${(e: Event) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -514,7 +526,7 @@ export class TerminalQuickKeys extends LitElement {
                     <button
                       type="button"
                       tabindex="-1"
-                      class="func-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-dark-bg-tertiary text-dark-text text-xs font-mono rounded border border-dark-border hover:bg-dark-surface hover:border-accent-green transition-all whitespace-nowrap"
+                      class="func-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap"
                       @mousedown=${(e: Event) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -548,7 +560,7 @@ export class TerminalQuickKeys extends LitElement {
                     <button
                       type="button"
                       tabindex="-1"
-                      class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-dark-bg-tertiary text-dark-text text-xs font-mono rounded border border-dark-border hover:bg-dark-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && this.showFunctionKeys ? 'active' : ''}"
+                      class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && this.showFunctionKeys ? 'active' : ''}"
                       @mousedown=${(e: Event) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -560,7 +572,11 @@ export class TerminalQuickKeys extends LitElement {
                       @touchend=${(e: Event) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        this.handleKeyPress(key, modifier || combo, special, toggle, e);
+                        if (key === 'Paste') {
+                          this.handlePasteImmediate(e);
+                        } else {
+                          this.handleKeyPress(key, modifier || combo, special, toggle, e);
+                        }
                       }}
                       @click=${(e: MouseEvent) => {
                         if (e.detail !== 0) {
@@ -583,7 +599,7 @@ export class TerminalQuickKeys extends LitElement {
                 <button
                   type="button"
                   tabindex="-1"
-                  class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-0.5' : 'py-1'} bg-dark-bg-tertiary text-dark-text text-xs font-mono rounded border border-dark-border hover:bg-dark-surface hover:border-accent-green transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
+                  class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-0.5' : 'py-1'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
                   @mousedown=${(e: Event) => {
                     e.preventDefault();
                     e.stopPropagation();

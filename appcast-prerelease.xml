@@ -6,6 +6,80 @@
         <description>VibeTunnel pre-release and beta updates feed</description>
         <language>en</language>
         <item>
+            <title>VibeTunnel 1.0.0-beta.9</title>
+            <link>https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.9/VibeTunnel-1.0.0-beta.9.dmg</link>
+            <sparkle:version>173</sparkle:version>
+            <sparkle:shortVersionString>1.0.0-beta.9</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>VibeTunnel 1.0.0-beta.9</h2>
+                <p><strong>Pre-release version</strong></p>
+                
+                <h3>🛡️ Stability & Reliability</h3>
+                
+                <h4><strong>Critical Crash Fix</strong></h4>
+                <ul>
+                <li><strong>FIXED</strong>: Eliminated random terminal crashes by replacing Microsoft's node-pty with a custom fork that provides thread-safe operations and better resource management. This resolves critical stability issues that affected VS Code and other Electron applications.</li>
+                </ul>
+                
+                <h4><strong>Server Crash Detection</strong></h4>
+                <ul>
+                <li><strong>NEW</strong>: Intelligent crash detection and recovery system that automatically detects server failures and provides immediate feedback with specific error codes, dramatically reducing troubleshooting time.</li>
+                </ul>
+                
+                <h3>📱 Mobile Experience</h3>
+                
+                <h4><strong>Terminal Stability on Mobile</strong></h4>
+                <ul>
+                <li><strong>FIXED</strong>: Resolved the continuous resize loop that made terminals unusable on mobile devices. The terminal now maintains a stable view without jumping or unexpected scrolling.</li>
+                <li><strong>IMPROVED</strong>: Better mobile terminal width management - user preferences are now properly respected throughout the session.</li>
+                <li><strong>ENHANCED</strong>: Support for smaller grid sizes on compact mobile devices, providing better visibility on phones.</li>
+                </ul>
+                
+                <h4><strong>Mobile Keyboard Support</strong></h4>
+                <ul>
+                <li><strong>NEW</strong>: Added Alt+Delete/Left/Right keyboard shortcuts specifically for mobile users, improving text editing capabilities.</li>
+                <li><strong>FIXED</strong>: Mobile header no longer overflows when using dropdown menus, providing a cleaner interface.</li>
+                </ul>
+                
+                <h3>🚀 Features & Improvements</h3>
+                
+                <h4><strong>Cloudflare Integration</strong></h4>
+                <ul>
+                <li><strong>ENHANCED</strong>: Significantly improved Cloudflare tunnel setup with faster, more reliable stream-based monitoring instead of polling. Setup is now smoother with better error handling.</li>
+                </ul>
+                
+                <h4><strong>Git Repository Discovery</strong></h4>
+                <ul>
+                <li><strong>IMPROVED</strong>: Enhanced folder selection when creating new sessions - VibeTunnel now intelligently discovers Git repositories in your selected folder, making project navigation easier.</li>
+                <li><strong>FIXED</strong>: Several bugs in repository discovery that could cause incorrect folder detection or errors.</li>
+                </ul>
+                
+                <h3>🎨 UI Polish</h3>
+                
+                <h4><strong>Visual Stability</strong></h4>
+                <ul>
+                <li><strong>FIXED</strong>: Terminal titles no longer jump around due to activity indicators, providing a stable and professional interface.</li>
+                <li><strong>IMPROVED</strong>: Consolidated z-index management throughout the interface, preventing UI elements from appearing in incorrect layers.</li>
+                </ul>
+                
+                <h3>🔧 Under the Hood</h3>
+                
+                <ul>
+                <li>Enhanced event handling for better cross-platform compatibility</li>
+                <li>Improved file browser functionality with better click handling</li>
+                <li>Updated documentation with expanded specifications and data flow diagrams</li>
+                <li>Various test improvements for better code quality</li>
+                </ul>
+            ]]></description>
+            <pubDate>Fri, 11 Jul 2025 10:48:00 +0200</pubDate>
+            <enclosure url="https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.9/VibeTunnel-1.0.0-beta.9.dmg" 
+                       sparkle:version="173" 
+                       sparkle:shortVersionString="1.0.0-beta.9" 
+                       length="44821464" 
+                       type="application/x-apple-diskimage" 
+                       sparkle:edSignature="xAzHFZ1FYtncpZx1xKMAIMT9kDkEiZfH1uuY80weKzi7JE8Yd673/7919f3D3g4j/B7fTMs88TVlTxocL9zRCw=="/>
+        </item>
+        <item>
             <title>VibeTunnel 1.0.0-beta.8</title>
             <link>https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.8/VibeTunnel-1.0.0-beta.8.dmg</link>
             <sparkle:version>172</sparkle:version>

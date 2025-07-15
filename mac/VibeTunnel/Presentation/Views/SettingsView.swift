@@ -8,7 +8,7 @@ import SwiftUI
 struct SettingsView: View {
     @State private var selectedTab: SettingsTab = .general
     @State private var contentSize: CGSize = .zero
-    @AppStorage("debugMode")
+    @AppStorage(AppConstants.UserDefaultsKeys.debugMode)
     private var debugMode = false
 
     // MARK: - Constants

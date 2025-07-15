@@ -76,6 +76,16 @@ DerivedData/
 *~
 .*.swp
 
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm
+.yarn
+.pnpm-store
+
 # Local Development Settings
 Local.xcconfig
 
@@ -116,6 +126,7 @@ tty-fwd/Cargo.lock
 # Bun prebuilt executables (should be built during build process)
 mac/Resources/BunPrebuilts/
 /ios/TestResults.xcresult
+/ios/TestResults-iOS.xcresult
 
 # Playwright test results
 web/playwright-report/

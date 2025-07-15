@@ -1,0 +1,65 @@
+# Development and build files
+src/
+scripts/
+docs/
+test/
+playwright/
+coverage/
+.husky/
+
+# Config files not needed in production
+.gitignore
+.prettierignore
+.prettierrc
+biome.json
+vitest.config.ts
+playwright.config.ts
+playwright.config.skip-failing.ts
+tsconfig.*.json
+tsconfig.json
+postcss.config.js
+tailwind.config.js
+
+# Build artifacts and temp files
+build/
+*.log
+*.tmp
+.DS_Store
+node_modules/
+pnpm-lock.yaml
+
+# Native build scripts - not needed for npm package
+build-native.js
+build-native-clean.sh
+build-custom-node.js
+custom-node.md
+native/
+
+# Development files
+CLAUDE.md
+DEVELOPMENT.md
+LOGGING_STYLE_GUIDE.md
+SECURITY.md
+fwd-test.ts
+spec.md
+
+# Only include the built node-pty, not source
+node-pty/src/
+node-pty/tsconfig.json
+node-pty/*.ts
+node-pty/node_modules/
+
+# Test files
+public/bundle/test.js
+public/bundle/screencap.js
+public/test/
+public/test.cast
+
+# Keep:
+# - dist/ (compiled server code)
+# - public/ (web interface)
+# - bin/ (CLI entry points)
+# - node-pty/build/ (native module)
+# - node-pty/lib/ (JS files)
+# - package.json
+# - README.md

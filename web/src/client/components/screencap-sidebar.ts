@@ -11,17 +11,17 @@ export class ScreencapSidebar extends LitElement {
     :host {
       display: block;
       height: 100%;
-      background: #0f0f0f;
-      border-right: 1px solid #2a2a2a;
+      background: rgb(var(--color-bg));
+      border-right: 1px solid rgb(var(--color-border));
       overflow-y: auto;
       scrollbar-width: thin;
-      scrollbar-color: #2a2a2a #0f0f0f;
+      scrollbar-color: rgb(var(--color-border)) rgb(var(--color-bg));
     }
 
     .sidebar-header {
       padding: 1rem;
-      border-bottom: 1px solid #2a2a2a;
-      background: linear-gradient(to bottom, #141414, #0f0f0f);
+      border-bottom: 1px solid rgb(var(--color-border));
+      background: linear-gradient(to bottom, rgb(var(--color-bg-secondary)), rgb(var(--color-bg-base)));
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -32,7 +32,7 @@ export class ScreencapSidebar extends LitElement {
       margin: 0;
       font-size: 1rem;
       font-weight: 600;
-      color: #e4e4e4;
+      color: rgb(var(--color-text));
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -48,17 +48,17 @@ export class ScreencapSidebar extends LitElement {
       align-items: center;
       justify-content: space-between;
       margin-bottom: 0.75rem;
-      color: #a3a3a3;
+      color: rgb(var(--color-text-muted));
       font-size: 0.875rem;
       font-weight: 500;
     }
 
     .refresh-btn {
       padding: 0.25rem 0.5rem;
-      border: 1px solid #2a2a2a;
+      border: 1px solid rgb(var(--color-border));
       border-radius: 0.375rem;
       background: transparent;
-      color: #a3a3a3;
+      color: rgb(var(--color-text-muted));
       cursor: pointer;
       transition: all 0.2s;
       font-size: 0.75rem;
@@ -68,8 +68,8 @@ export class ScreencapSidebar extends LitElement {
     }
 
     .refresh-btn:hover {
-      border-color: #10B981;
-      color: #10B981;
+      border-color: rgb(var(--color-primary));
+      color: rgb(var(--color-primary));
     }
 
     .refresh-btn.loading {
@@ -85,15 +85,15 @@ export class ScreencapSidebar extends LitElement {
     }
 
     .process-item {
-      background: #1a1a1a;
-      border: 1px solid #2a2a2a;
+      background: rgb(var(--color-surface));
+      border: 1px solid rgb(var(--color-border));
       border-radius: 0.5rem;
       overflow: hidden;
       transition: all 0.2s;
     }
 
     .process-item:hover {
-      border-color: #3a3a3a;
+      border-color: rgb(var(--color-border-light));
     }
 
     .process-header {
@@ -106,14 +106,14 @@ export class ScreencapSidebar extends LitElement {
     }
 
     .process-header:hover {
-      background: #262626;
+      background: rgb(var(--color-bg-elevated));
     }
 
     .process-icon {
       width: 24px;
       height: 24px;
       border-radius: 0.375rem;
-      background: #262626;
+      background: rgb(var(--color-bg-elevated));
       display: flex;
       align-items: center;
       justify-content: center;
@@ -132,7 +132,7 @@ export class ScreencapSidebar extends LitElement {
 
     .process-name {
       font-weight: 500;
-      color: #e4e4e4;
+      color: rgb(var(--color-text));
       font-size: 0.875rem;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -144,7 +144,7 @@ export class ScreencapSidebar extends LitElement {
       align-items: center;
       gap: 0.5rem;
       font-size: 0.75rem;
-      color: #737373;
+      color: rgb(var(--color-text-dim));
       margin-top: 0.125rem;
     }
 
@@ -152,8 +152,8 @@ export class ScreencapSidebar extends LitElement {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: #262626;
-      color: #a3a3a3;
+      background: rgb(var(--color-bg-elevated));
+      color: rgb(var(--color-text-muted));
       padding: 0.125rem 0.5rem;
       border-radius: 0.25rem;
       font-size: 0.75rem;
@@ -164,7 +164,7 @@ export class ScreencapSidebar extends LitElement {
     .expand-icon {
       width: 16px;
       height: 16px;
-      color: #737373;
+      color: rgb(var(--color-text-dim));
       transition: transform 0.2s;
     }
 
@@ -182,7 +182,7 @@ export class ScreencapSidebar extends LitElement {
       flex-direction: column;
       gap: 0.25rem;
       padding: 0.5rem 0.75rem 0.75rem 0.75rem;
-      background: #0a0a0a;
+      background: rgb(var(--color-bg));
     }
 
     .process-item.expanded .window-list {
@@ -194,26 +194,26 @@ export class ScreencapSidebar extends LitElement {
       flex-direction: column;
       align-items: stretch;
       padding: 0.75rem;
-      background: #141414;
-      border: 1px solid #262626;
+      background: rgb(var(--color-bg-secondary));
+      border: 1px solid rgb(var(--color-border));
       border-radius: 0.375rem;
       cursor: pointer;
       transition: all 0.2s;
       font-size: 0.875rem;
-      color: #e4e4e4;
+      color: rgb(var(--color-text));
       gap: 0.25rem;
       min-height: 3.5rem;
     }
 
     .window-item:hover {
-      background: #1a1a1a;
-      border-color: #3a3a3a;
+      background: rgb(var(--color-surface));
+      border-color: rgb(var(--color-border-light));
     }
 
     .window-item.selected {
-      background: #10B981;
-      border-color: #10B981;
-      color: #0a0a0a;
+      background: rgb(var(--color-primary));
+      border-color: rgb(var(--color-primary));
+      color: rgb(var(--color-bg));
       font-weight: 500;
     }
 
@@ -238,30 +238,30 @@ export class ScreencapSidebar extends LitElement {
       align-items: center;
       justify-content: space-between;
       padding: 0.75rem;
-      background: #1a1a1a;
-      border: 1px solid #2a2a2a;
+      background: rgb(var(--color-surface));
+      border: 1px solid rgb(var(--color-border));
       border-radius: 0.5rem;
       cursor: pointer;
       transition: all 0.2s;
     }
 
     .display-item:hover {
-      background: #262626;
-      border-color: #3a3a3a;
+      background: rgb(var(--color-bg-elevated));
+      border-color: rgb(var(--color-border-light));
     }
 
     .display-item.selected {
-      background: #10B981;
-      border-color: #10B981;
+      background: rgb(var(--color-primary));
+      border-color: rgb(var(--color-primary));
     }
 
     .display-item.selected .display-name {
-      color: #0a0a0a;
+      color: rgb(var(--color-bg));
       font-weight: 500;
     }
 
     .display-item.selected .display-size {
-      color: #0a0a0a;
+      color: rgb(var(--color-bg));
       opacity: 0.8;
     }
 
@@ -274,7 +274,7 @@ export class ScreencapSidebar extends LitElement {
     .display-icon {
       width: 32px;
       height: 24px;
-      background: #262626;
+      background: rgb(var(--color-bg-elevated));
       border-radius: 0.25rem;
       display: flex;
       align-items: center;
@@ -283,28 +283,28 @@ export class ScreencapSidebar extends LitElement {
     }
 
     .display-item.selected .display-icon {
-      background: rgba(255, 255, 255, 0.2);
+      background: rgb(var(--color-text-bright) / 0.2);
     }
 
     .display-name {
       font-weight: 500;
-      color: #e4e4e4;
+      color: rgb(var(--color-text));
       font-size: 0.875rem;
     }
 
     .display-size {
       font-size: 0.75rem;
-      color: #737373;
+      color: rgb(var(--color-text-dim));
       margin-top: 0.125rem;
     }
 
     .all-displays-btn {
       width: 100%;
       padding: 0.75rem;
-      border: 1px solid #2a2a2a;
+      border: 1px solid rgb(var(--color-border));
       border-radius: 0.5rem;
-      background: linear-gradient(135deg, #1a1a1a, #262626);
-      color: #e4e4e4;
+      background: linear-gradient(135deg, rgb(var(--color-bg-secondary)), rgb(var(--color-bg-tertiary)));
+      color: rgb(var(--color-text));
       cursor: pointer;
       transition: all 0.2s;
       font-family: inherit;
@@ -317,14 +317,14 @@ export class ScreencapSidebar extends LitElement {
     }
 
     .all-displays-btn:hover {
-      border-color: #10B981;
-      background: linear-gradient(135deg, #262626, #2a2a2a);
+      border-color: rgb(var(--color-primary));
+      background: linear-gradient(135deg, rgb(var(--color-bg-tertiary)), rgb(var(--color-surface)));
     }
 
     .all-displays-btn.selected {
-      background: #10B981;
-      border-color: #10B981;
-      color: #0a0a0a;
+      background: rgb(var(--color-primary));
+      border-color: rgb(var(--color-primary));
+      color: rgb(var(--color-bg));
       font-weight: 500;
     }
   `;
@@ -474,7 +474,7 @@ export class ScreencapSidebar extends LitElement {
                   ${
                     process.iconData
                       ? html`<img src="data:image/png;base64,${process.iconData}" alt="${process.processName}">`
-                      : html`<svg width="20" height="20" viewBox="0 0 24 24" fill="#737373">
+                      : html`<svg width="20" height="20" viewBox="0 0 24 24" fill="rgb(var(--color-text-dim))">
                         <rect x="3" y="3" width="18" height="18" rx="2" />
                       </svg>`
                   }

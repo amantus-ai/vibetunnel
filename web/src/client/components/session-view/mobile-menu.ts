@@ -8,6 +8,7 @@ import { html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { Z_INDEX } from '../../utils/constants.js';
 import type { Session } from '../session-list.js';
+import type { Theme } from '../theme-toggle-icon.js';
 
 @customElement('mobile-menu')
 export class MobileMenu extends LitElement {
@@ -24,6 +25,7 @@ export class MobileMenu extends LitElement {
   @property({ type: Function }) onScreenshare?: () => void;
   @property({ type: Function }) onMaxWidthToggle?: () => void;
   @property({ type: Function }) onOpenSettings?: () => void;
+  @property({ type: String }) currentTheme: Theme = 'system';
 
   @state() private showMenu = false;
   @state() private focusedIndex = -1;
@@ -48,12 +50,80 @@ export class MobileMenu extends LitElement {
     }
   }
 
+  private handleThemeChange() {
+    // Cycle through themes: light -> dark -> system
+    const themes: Theme[] = ['light', 'dark', 'system'];
+    const currentIndex = themes.indexOf(this.currentTheme);
+    const nextIndex = (currentIndex + 1) % themes.length;
+    const newTheme = themes[nextIndex];
+
+    // Update theme
+    this.currentTheme = newTheme;
+    localStorage.setItem('vibetunnel-theme', newTheme);
+
+    // Apply theme
+    const root = document.documentElement;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    let effectiveTheme: 'light' | 'dark';
+
+    if (newTheme === 'system') {
+      effectiveTheme = mediaQuery.matches ? 'dark' : 'light';
+    } else {
+      effectiveTheme = newTheme;
+    }
+
+    root.setAttribute('data-theme', effectiveTheme);
+
+    // Update meta theme-color
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute('content', effectiveTheme === 'dark' ? '#0a0a0a' : '#fafafa');
+    }
+
+    // Dispatch event
+    this.dispatchEvent(
+      new CustomEvent('theme-changed', {
+        detail: { theme: newTheme },
+        bubbles: true,
+        composed: true,
+      })
+    );
+
+    // Close menu
+    this.showMenu = false;
+    this.focusedIndex = -1;
+  }
+
+  private getThemeIcon() {
+    switch (this.currentTheme) {
+      case 'light':
+        return html`<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
+        </svg>`;
+      case 'dark':
+        return html`<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+        </svg>`;
+      case 'system':
+        return html`<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clip-rule="evenodd"/>
+        </svg>`;
+    }
+  }
+
+  private getThemeLabel() {
+    return this.currentTheme.charAt(0).toUpperCase() + this.currentTheme.slice(1);
+  }
+
   connectedCallback() {
     super.connectedCallback();
     // Close menu when clicking outside
     document.addEventListener('click', this.handleOutsideClick);
     // Add keyboard support
     document.addEventListener('keydown', this.handleKeyDown);
+    // Load saved theme preference
+    const saved = localStorage.getItem('vibetunnel-theme') as Theme | null;
+    this.currentTheme = saved || 'system';
   }
 
   disconnectedCallback() {
@@ -137,7 +207,7 @@ export class MobileMenu extends LitElement {
     return html`
       <div class="relative w-[44px] flex-shrink-0">
         <button
-          class="p-2 ${this.showMenu ? 'text-accent-primary border-accent-primary' : 'text-dark-text border-dark-border'} hover:border-accent-primary hover:text-accent-primary rounded-lg"
+          class="p-2 ${this.showMenu ? 'text-primary border-primary' : 'text-primary border-base'} hover:border-primary hover:text-primary rounded-lg"
           @click=${this.toggleMenu}
           @keydown=${this.handleMenuButtonKeyDown}
           title="More actions"
@@ -157,13 +227,13 @@ export class MobileMenu extends LitElement {
   private renderDropdown() {
     return html`
       <div 
-        class="absolute right-0 top-full mt-2 bg-dark-surface border border-dark-border rounded-lg shadow-xl py-1 min-w-[200px]"
+        class="absolute right-0 top-full mt-2 bg-surface border border-base rounded-lg shadow-xl py-1 min-w-[200px]"
         style="z-index: ${Z_INDEX.WIDTH_SELECTOR_DROPDOWN};"
       >
         
         <!-- New Session -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 0 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 0 ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onCreateSession)}
           data-testid="mobile-new-session"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -174,11 +244,11 @@ export class MobileMenu extends LitElement {
           New Session
         </button>
         
-        <div class="border-t border-dark-border my-1"></div>
+        <div class="border-t border-base my-1"></div>
         
         <!-- File Browser -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 1 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 1 ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onOpenFileBrowser)}
           data-testid="mobile-file-browser"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -191,7 +261,7 @@ export class MobileMenu extends LitElement {
         
         <!-- Screenshare -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 2 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 2 ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onScreenshare)}
           data-testid="mobile-screenshare"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -207,7 +277,7 @@ export class MobileMenu extends LitElement {
         
         <!-- Width Settings -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 3 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 3 ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onMaxWidthToggle)}
           data-testid="mobile-width-settings"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -218,9 +288,20 @@ export class MobileMenu extends LitElement {
           Width: ${this.widthLabel}
         </button>
         
+        <!-- Theme Toggle -->
+        <button
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 4 ? 'bg-secondary text-primary' : ''}"
+          @click=${() => this.handleThemeChange()}
+          data-testid="mobile-theme-toggle"
+          tabindex="${this.showMenu ? '0' : '-1'}"
+        >
+          ${this.getThemeIcon()}
+          Theme: ${this.getThemeLabel()}
+        </button>
+        
         <!-- Settings -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-dark-text hover:bg-dark-bg-secondary hover:text-accent-primary flex items-center gap-3 ${this.focusedIndex === 4 ? 'bg-dark-bg-secondary text-accent-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 5 ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onOpenSettings)}
           data-testid="mobile-settings"
           tabindex="${this.showMenu ? '0' : '-1'}"

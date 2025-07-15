@@ -17,6 +17,12 @@ vim CHANGELOG.md                 # Add entry for new version
 export SPARKLE_ACCOUNT="VibeTunnel"
 ./scripts/release.sh beta 5      # For beta.5
 ./scripts/release.sh stable      # For stable release
+
+# If interrupted, resume with:
+./scripts/release.sh --resume
+
+# Check release status:
+./scripts/release.sh --status
 ```
 
 ### If Release Script Fails
@@ -109,6 +115,8 @@ For releasing 1.0.0-beta.2:
    ```
 
 ## 📋 Pre-Release Checklist
+
+**Automated Checklist**: Run `./scripts/release-checklist.sh` for an interactive pre-release validation.
 
 Before running ANY release commands, verify these items:
 
@@ -207,9 +215,13 @@ Before running ANY release commands, verify these items:
 
 ### Step 1: Pre-flight Check
 ```bash
+# Run the comprehensive release checklist
+./scripts/release-checklist.sh
+
+# Then run the automated preflight check
 ./scripts/preflight-check.sh
 ```
-This validates your environment is ready for release.
+These scripts validate your environment is ready for release.
 
 ### Step 2: CRITICAL Pre-Release Version Check
 **IMPORTANT**: Before running the release script, ensure your version.xcconfig is set correctly:
@@ -257,6 +269,8 @@ For long-running operations, consider using screen or tmux:
 screen -S release
 ./scripts/release.sh beta 5 --verbose --log
 ```
+
+**IMPORTANT**: When using Claude Code or any automated tool, NEVER run the release script in the background. Always run it directly in the foreground to ensure proper completion and error handling.
 
 ```bash
 # For stable releases:
@@ -440,8 +454,10 @@ YOUR_PRIVATE_KEY_CONTENT
 **ALWAYS use the file-based private key for signing!**
 
 VibeTunnel uses EdDSA signatures for Sparkle updates. The correct private key is stored at:
-- `private/sparkle_private_key` (primary location)
-- `sparkle-private-ed-key.pem` (alternate location)
+- `private/sparkle_ed_private_key` (clean key file - REQUIRED for sign_update)
+- `private/sparkle_private_key` (commented version for documentation)
+
+**CRITICAL**: The sign_update tool requires a clean key file with ONLY the base64 key. If you only have the commented version, the scripts will automatically extract and create the clean version.
 
 **WARNING**: Your system may have multiple Sparkle private keys:
 1. **File-based key** (CORRECT) - Matches the public key in Info.plist
@@ -450,13 +466,18 @@ VibeTunnel uses EdDSA signatures for Sparkle updates. The correct private key is
 **ALWAYS use the `-f` flag when signing:**
 ```bash
 # ✅ CORRECT - Uses file-based key
-sign_update -f private/sparkle_private_key build/VibeTunnel-*.dmg
+sign_update -f private/sparkle_ed_private_key build/VibeTunnel-*.dmg
 
 # ❌ WRONG - May use keychain key
 sign_update build/VibeTunnel-*.dmg
 ```
 
 The public key in Info.plist is: `AGCY8w5vHirVfGGDGc8Szc5iuOqupZSh9pMj/Qs67XI=`
+
+**Key File Format Requirements**:
+- The clean key file (`sparkle_ed_private_key`) must contain ONLY the base64 key
+- No comments, no extra lines, just the key: `SMYPxE98bJ5iLdHTLHTqGKZNFcZLgrT5Hyjh79h3TaU=`
+- The scripts handle this automatically by extracting from the commented file
 
 ### Sparkle Requirements for Non-Sandboxed Apps
 
@@ -1051,6 +1072,53 @@ Where possible, run independent operations in parallel:
 4. Create GitHub release with `gh release create`
 5. Sign DMG for Sparkle with `sign_update --account VibeTunnel`
 6. Manually update appcast XML files
+
+### Additional Lessons from v1.0.0-beta.9 Release
+
+#### Private Key Format Requirements
+**Issue**: The sign_update tool fails with "ERROR! Failed to decode base64 encoded key data" when the private key file contains comments.
+**Solution**: 
+- Create a clean private key file containing ONLY the base64 key: `private/sparkle_ed_private_key`
+- The commented key file (`private/sparkle_private_key`) is kept for documentation
+- All scripts now use the clean key file automatically
+- Scripts will extract the key from the commented file if the clean one doesn't exist
+
+#### Missing Custom Node.js Build Handling
+**Issue**: Release script failed when custom Node.js build wasn't prepared in `web/.node-builds/`.
+**Solution**: 
+- Script now checks for custom Node.js and gracefully falls back to system Node.js
+- Shows warning: "Custom Node.js not found. Using system Node.js... Note: Release will work but app size will be larger."
+- No longer a blocking error - release continues with system Node.js
+
+#### App Location in DerivedData
+**Issue**: Built app wasn't found in expected `build/` directory but was in DerivedData.
+**Solution**: 
+- Script now searches DerivedData if app not found in build directory
+- Automatically copies app to expected location for consistency
+- Handles both local build directory and Xcode's DerivedData locations
+
+#### State Tracking and Resume Capability
+**New Feature**: Release process now supports interruption and resumption.
+- Added `release-state.sh` for state management
+- Tracks 9 major release steps with progress
+- Use `./scripts/release.sh --resume` to continue interrupted release
+- Use `./scripts/release.sh --status` to check current state
+- State file at `.release-state` contains progress information
+
+#### Critical: Never Background Release Scripts
+**Issue**: Release scripts were getting backgrounded or interrupted, causing incomplete releases.
+**Solution**: 
+- **ALWAYS run release scripts directly in the foreground**
+- Never use `&` or run in background
+- Use `screen` or `tmux` if you need to disconnect
+- Claude Code and other tools must run scripts blocking/synchronously
+
+#### Stats.store Integration
+**Issue**: Stats.store returns "Application not found" error when checking statistics.
+**Status**: 
+- Integration not fully configured - needs further investigation
+- Does not block releases but statistics won't be tracked
+- Manual verification: `https://stats.store/app/<app-id>`
 
 ## 🚀 Long-term Improvements
 

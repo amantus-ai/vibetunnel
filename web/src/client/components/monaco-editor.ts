@@ -296,7 +296,7 @@ export class MonacoEditor extends LitElement {
   private setupTheme() {
     // Use the default VS dark theme
     if (!window.monaco) return;
-    window.monaco.editor.setTheme('vs-dark');
+    // Theme is already handled by monaco-loader.ts with theme change observer
   }
 
   private detectLanguage(): string {
@@ -472,14 +472,14 @@ export class MonacoEditor extends LitElement {
         <div
           class="editor-container"
           ${ref(this.containerRef)}
-          style="width: 100%; height: 100%; position: relative; background: #1e1e1e;"
+          style="width: 100%; height: 100%; position: relative; background: rgb(var(--color-bg-secondary));"
         >
           ${
             this.isLoading
               ? html`
                 <div
                   class="loading"
-                  style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #666; font-family: ui-monospace, monospace;"
+                  style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgb(var(--color-text-muted)); font-family: ui-monospace, monospace;"
                 >
                   Loading editor...
                 </div>
@@ -491,18 +491,18 @@ export class MonacoEditor extends LitElement {
               ? html`
                 <button
                   class="mode-toggle"
-                  style="position: absolute; top: 10px; right: 10px; z-index: 10; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;"
+                  style="position: absolute; top: 10px; right: 10px; z-index: 10; background: rgb(var(--color-surface)); border: 1px solid rgb(var(--color-border)); color: rgb(var(--color-text)); padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;"
                   @click=${this.toggleDiffMode}
                   title="Toggle between inline and side-by-side diff"
                   @mouseenter=${(e: MouseEvent) => {
                     const btn = e.target as HTMLButtonElement;
-                    btn.style.background = 'rgba(255, 255, 255, 0.2)';
-                    btn.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                    btn.style.background = 'rgb(var(--color-surface-hover))';
+                    btn.style.borderColor = 'rgb(var(--color-border-focus))';
                   }}
                   @mouseleave=${(e: MouseEvent) => {
                     const btn = e.target as HTMLButtonElement;
-                    btn.style.background = 'rgba(255, 255, 255, 0.1)';
-                    btn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                    btn.style.background = 'rgb(var(--color-surface))';
+                    btn.style.borderColor = 'rgb(var(--color-border))';
                   }}
                 >
                   ${this.diffMode === 'inline' ? 'Side by Side' : 'Inline'}

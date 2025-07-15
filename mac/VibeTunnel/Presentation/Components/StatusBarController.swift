@@ -52,7 +52,7 @@ final class StatusBarController: NSObject {
         self.terminalLauncher = terminalLauncher
         self.gitRepositoryMonitor = gitRepositoryMonitor
         self.repositoryDiscovery = repositoryDiscovery
-        
+
         self.menuManager = StatusBarMenuManager()
 
         super.init()
@@ -78,7 +78,7 @@ final class StatusBarController: NSObject {
             button.setButtonType(.toggle)
 
             // Accessibility
-            button.setAccessibilityTitle("VibeTunnel")
+            button.setAccessibilityTitle(getAppDisplayName())
             button.setAccessibilityRole(.button)
             button.setAccessibilityHelp("Shows terminal sessions and server information")
 
@@ -139,6 +139,9 @@ final class StatusBarController: NSObject {
 
     func updateStatusItemDisplay() {
         guard let button = statusItem?.button else { return }
+
+        // Update accessibility title (might have changed due to debug/dev server state)
+        button.setAccessibilityTitle(getAppDisplayName())
 
         // Update icon based on server status only
         let iconName = serverManager.isRunning ? "menubar" : "menubar.inactive"
@@ -269,6 +272,18 @@ final class StatusBarController: NSObject {
     func toggleCustomWindow() {
         guard let button = statusItem?.button else { return }
         menuManager.toggleCustomWindow(relativeTo: button)
+    }
+
+    // MARK: - Helpers
+
+    private func getAppDisplayName() -> String {
+        let (debugMode, useDevServer) = AppConstants.getDevelopmentStatus()
+
+        var name = debugMode ? "VibeTunnel Debug" : "VibeTunnel"
+        if useDevServer && serverManager.isRunning {
+            name += " Dev Server"
+        }
+        return name
     }
 
     // MARK: - Cleanup

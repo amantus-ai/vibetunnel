@@ -116,7 +116,7 @@ describe('FilePicker Component', () => {
     const cancelEventSpy = vi.fn();
     element.addEventListener('file-cancel', cancelEventSpy);
 
-    const modal = element.querySelector('.bg-dark-bg-elevated');
+    const modal = element.querySelector('.bg-elevated');
     expect(modal).toBeTruthy();
 
     modal?.dispatchEvent(new MouseEvent('click', { bubbles: true }));

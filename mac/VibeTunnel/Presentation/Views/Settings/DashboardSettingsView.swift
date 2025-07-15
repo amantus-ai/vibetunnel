@@ -5,15 +5,15 @@ import UserNotifications
 
 /// Dashboard settings tab for server and access configuration
 struct DashboardSettingsView: View {
-    @AppStorage("serverPort")
+    @AppStorage(AppConstants.UserDefaultsKeys.serverPort)
     private var serverPort = "4020"
     @AppStorage("ngrokEnabled")
     private var ngrokEnabled = false
-    @AppStorage("authenticationMode")
+    @AppStorage(AppConstants.UserDefaultsKeys.authenticationMode)
     private var authModeString = "os"
     @AppStorage("ngrokTokenPresent")
     private var ngrokTokenPresent = false
-    @AppStorage("dashboardAccessMode")
+    @AppStorage(AppConstants.UserDefaultsKeys.dashboardAccessMode)
     private var accessModeString = DashboardAccessMode.network.rawValue
 
     @State private var authMode: SecuritySection.AuthenticationMode = .osAuth
@@ -159,8 +159,12 @@ struct DashboardSettingsView: View {
 
     private func restartServerWithNewBindAddress() {
         Task {
-            // Update the bind address in ServerManager and restart
-            serverManager.bindAddress = accessMode.bindAddress
+            // Restart server to pick up the new bind address from UserDefaults
+            // (accessModeString is already persisted via @AppStorage)
+            logger
+                .info(
+                    "Restarting server due to access mode change: \(accessMode.displayName) -> \(accessMode.bindAddress)"
+                )
             await serverManager.restart()
             logger.info("Server restarted with bind address \(accessMode.bindAddress)")
 

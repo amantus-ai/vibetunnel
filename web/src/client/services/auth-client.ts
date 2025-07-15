@@ -97,13 +97,28 @@ export class AuthClient {
     }
 
     // Return generic avatar SVG for non-macOS or when no avatar found
+    // Get computed theme colors from CSS variables
+    const computedStyle = getComputedStyle(document.documentElement);
+    const bgColor = computedStyle
+      .getPropertyValue('--color-text-dim')
+      .trim()
+      .split(' ')
+      .map((v) => Number.parseInt(v));
+    const fgColor = computedStyle
+      .getPropertyValue('--color-text-muted')
+      .trim()
+      .split(' ')
+      .map((v) => Number.parseInt(v));
+    const bgColorStr = `rgb(${bgColor.join(', ')})`;
+    const fgColorStr = `rgb(${fgColor.join(', ')})`;
+
     return (
       'data:image/svg+xml;base64,' +
       btoa(`
       <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="24" cy="24" r="24" fill="#6B7280"/>
-        <circle cx="24" cy="18" r="8" fill="#9CA3AF"/>
-        <path d="M8 38c0-8.837 7.163-16 16-16s16 7.163 16 16" fill="#9CA3AF"/>
+        <circle cx="24" cy="24" r="24" fill="${bgColorStr}"/>
+        <circle cx="24" cy="18" r="8" fill="${fgColorStr}"/>
+        <path d="M8 38c0-8.837 7.163-16 16-16s16 7.163 16 16" fill="${fgColorStr}"/>
       </svg>
     `)
     );

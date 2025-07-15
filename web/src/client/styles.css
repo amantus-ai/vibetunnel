@@ -4,6 +4,33 @@
 
 /* CSS Custom Properties for VibeTunnel constants */
 :root {
+  /* Theme Colors - Light Mode (Default) */
+  --color-bg: 250 250 250; /* #fafafa - Off-white background */
+  --color-bg-secondary: 245 245 245; /* #f5f5f5 - Subtle gray */
+  --color-bg-tertiary: 237 237 237; /* #ededed - Card backgrounds */
+  --color-bg-elevated: 255 255 255; /* #ffffff - Pure white for elevated surfaces */
+  --color-surface: 245 245 245; /* #f5f5f5 */
+  --color-surface-hover: 237 237 237; /* #ededed */
+  --color-border: 226 226 226; /* #e2e2e2 - Subtle gray borders */
+  --color-border-light: 237 237 237; /* #ededed */
+  --color-border-focus: 200 200 200; /* #c8c8c8 */
+  
+  /* Text colors - Light Mode */
+  --color-text: 23 23 23; /* #171717 - Near black for high contrast */
+  --color-text-bright: 0 0 0; /* #000000 - Pure black for emphasis */
+  --color-text-muted: 75 75 75; /* #4b4b4b - Darker muted gray for AAA compliance */
+  --color-text-dim: 115 115 115; /* #737373 - Darker dim gray for AA compliance */
+  
+  /* Primary color (same across themes) */
+  --color-primary: 16 185 129; /* #10B981 - VibeTunnel green */
+  --color-primary-hover: 5 150 105; /* #059669 */
+  --color-primary-dark: 4 120 87; /* #047857 */
+  
+  /* Status colors */
+  --color-status-error: 239 68 68; /* #EF4444 */
+  --color-status-warning: 245 158 11; /* #F59E0B */
+  --color-status-success: 16 185 129; /* #10B981 */
+  --color-status-info: 59 130 246; /* #3B82F6 */
   /* Breakpoints */
   --vt-breakpoint-mobile: 768px;
   --vt-breakpoint-tablet: 1024px;
@@ -31,16 +58,77 @@
   --vt-terminal-resize-debounce: 100ms;
 }
 
-/* Global dark theme styles */
+/* Dark mode theme colors */
+[data-theme="dark"] {
+  --color-bg: 10 10 10; /* #0a0a0a */
+  --color-bg-secondary: 20 20 20; /* #141414 */
+  --color-bg-tertiary: 31 31 31; /* #1f1f1f */
+  --color-bg-elevated: 38 38 38; /* #262626 */
+  --color-surface: 26 26 26; /* #1a1a1a */
+  --color-surface-hover: 42 42 42; /* #2a2a2a */
+  --color-border: 26 26 26; /* #1a1a1a - Much more subtle */
+  --color-border-light: 31 31 31; /* #1f1f1f - More subtle */
+  --color-border-focus: 58 58 58; /* #3a3a3a - Keep some contrast for focus */
+  
+  /* Text colors - Dark Mode */
+  --color-text: 228 228 228; /* #e4e4e4 */
+  --color-text-bright: 255 255 255; /* #ffffff */
+  --color-text-muted: 163 163 163; /* #a3a3a3 */
+  --color-text-dim: 115 115 115; /* #737373 */
+  
+  /* Primary color (same as light mode) */
+  --color-primary: 16 185 129; /* #10B981 */
+  --color-primary-hover: 5 150 105; /* #059669 */
+  --color-primary-dark: 4 120 87; /* #047857 */
+  
+  /* Status colors (same as light mode) */
+  --color-status-error: 239 68 68; /* #EF4444 */
+  --color-status-warning: 245 158 11; /* #F59E0B */
+  --color-status-success: 16 185 129; /* #10B981 */
+  --color-status-info: 59 130 246; /* #3B82F6 */
+}
+
+/* System preference detection */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: 10 10 10;
+    --color-bg-secondary: 20 20 20;
+    --color-bg-tertiary: 31 31 31;
+    --color-bg-elevated: 38 38 38;
+    --color-surface: 26 26 26;
+    --color-surface-hover: 42 42 42;
+    --color-border: 26 26 26;
+    --color-border-light: 31 31 31;
+    --color-border-focus: 58 58 58;
+    --color-text: 228 228 228;
+    --color-text-bright: 255 255 255;
+    --color-text-muted: 163 163 163;
+    --color-text-dim: 115 115 115;
+    --color-primary: 16 185 129;
+    --color-primary-hover: 5 150 105;
+    --color-primary-dark: 4 120 87;
+    --color-status-error: 239 68 68;
+    --color-status-warning: 245 158 11;
+    --color-status-success: 16 185 129;
+    --color-status-info: 59 130 246;
+  }
+}
+
+/* Global theme-aware styles */
 @layer base {
+  html {
+    @apply bg-bg text-text;
+  }
+  
   body {
-    @apply bg-black text-dark-text;
+    @apply bg-bg text-text;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   /* Default focus styles */
   :focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 0 2px rgb(var(--color-primary) / 0.3);
   }
 
   /* iOS Safe Area Support */
@@ -66,16 +154,16 @@
   /* Glowing terminal icon */
   .terminal-icon {
     @apply text-primary;
-    filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.6));
+    filter: drop-shadow(0 0 10px rgb(var(--color-primary) / 0.6));
   }
 
   /* Input fields with unified style */
   .input-field {
-    @apply bg-dark-bg-secondary border border-dark-border rounded-lg px-4 py-3 text-dark-text w-full;
+    @apply bg-bg-secondary border border-border rounded-lg px-4 py-3 text-text w-full;
     @apply transition-all duration-200 ease-in-out;
     @apply hover:border-primary/50 focus:border-primary;
     @apply focus:shadow-glow-sm focus:outline-none;
-    @apply text-left placeholder:text-dark-text-muted;
+    @apply text-left placeholder:text-text-muted;
   }
 
   /* Unified button styles */
@@ -98,7 +186,7 @@
   }
 
   .btn-primary {
-    @apply btn-md bg-primary text-black;
+    @apply btn-md bg-primary text-bg;
     @apply hover:bg-primary-hover hover:shadow-glow;
     @apply active:scale-95;
   }
@@ -110,19 +198,23 @@
   }
 
   .btn-ghost {
-    @apply btn-md text-dark-text-muted;
-    @apply hover:text-dark-text hover:bg-dark-bg-tertiary;
+    @apply btn-md text-text-muted;
+    @apply hover:text-text hover:bg-bg-tertiary;
   }
 
   /* Enhanced card styles */
   .card {
-    @apply bg-dark-bg-secondary border border-dark-border rounded-lg p-0;
+    @apply bg-bg-secondary border border-border rounded-lg p-0;
     @apply transition-all duration-300 ease-out shadow-sm;
-    @apply hover:border-dark-border-light hover:shadow-lg hover:-translate-y-1;
+    @apply hover:border-border-light hover:shadow-lg hover:-translate-y-1;
     position: relative;
     overflow: hidden;
     /* Ensure cards have proper z-index for hover */
     z-index: 1;
+    /* Ensure proper box sizing and prevent overflow */
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
   }
   
   .card:hover {
@@ -134,7 +226,7 @@
     content: '';
     position: absolute;
     inset: -2px;
-    background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(16, 185, 129, 0.1) 100%);
+    background: radial-gradient(circle at 50% 50%, transparent 60%, rgb(var(--color-primary) / 0.1) 100%);
     opacity: 0;
     transition: opacity 0.3s ease-out;
     pointer-events: none;
@@ -146,8 +238,8 @@
   }
   
   .card-elevated {
-    @apply bg-dark-bg-elevated rounded-xl p-6 shadow-card;
-    @apply hover:shadow-elevated hover:bg-dark-surface-hover;
+    @apply bg-bg-elevated rounded-xl p-6 shadow-card;
+    @apply hover:shadow-elevated hover:bg-surface-hover;
     @apply transition-all duration-200;
   }
   
@@ -174,26 +266,26 @@
 
   /* Quick start buttons */
   .quick-start-btn {
-    @apply bg-dark-bg-tertiary border border-dark-border rounded-lg px-4 py-3 h-12;
-    @apply transition-all duration-200 ease-in-out text-dark-text-muted;
+    @apply bg-bg-tertiary border border-border rounded-lg px-4 py-3 h-12;
+    @apply transition-all duration-200 ease-in-out text-text-muted;
     @apply hover:border-primary hover:text-primary hover:shadow-glow-sm;
     @apply active:scale-95;
   }
 
   .quick-start-btn.active {
-    @apply bg-primary text-black border-primary shadow-glow-sm;
+    @apply bg-primary text-bg border-primary shadow-glow-sm;
   }
 
   /* Modal backdrop */
   .modal-backdrop {
-    @apply fixed inset-0 bg-black bg-opacity-80;
+    @apply fixed inset-0 bg-bg bg-opacity-80;
     z-index: 1000;
     backdrop-filter: blur(4px);
   }
 
   /* Modal content */
   .modal-content {
-    @apply bg-dark-bg-secondary border border-dark-border rounded-xl;
+    @apply bg-bg-secondary border border-border rounded-xl;
     @apply shadow-2xl shadow-black/50;
     position: relative;
     z-index: 1001;
@@ -209,13 +301,13 @@
 
   /* Labels */
   .form-label {
-    @apply text-dark-text-muted text-sm font-medium mb-2 flex items-center gap-2;
+    @apply text-text-muted text-sm font-medium mb-2 flex items-center gap-2;
   }
 
   /* Enhanced responsive session grid layout */
   .session-flex-responsive {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     grid-auto-rows: 400px;
     gap: 1.25rem;
     padding: 0.5rem 0.75rem;
@@ -234,18 +326,68 @@
     overflow: visible;
   }
 
+  /* Adjust grid for smaller tablets and large phones */
+  @media (max-width: 768px) {
+    .session-flex-responsive {
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      grid-auto-rows: 380px;
+      gap: 1rem;
+      padding: 0.5rem;
+    }
+  }
+  
+  /* Single column layout for small screens */
+  @media (max-width: 540px) {
+    .session-flex-responsive {
+      grid-template-columns: minmax(0, 1fr);
+      grid-auto-rows: auto;  /* Let cards size themselves */
+      gap: 0.875rem;
+      padding: 0 1rem;  /* Consistent horizontal padding */
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    /* Ensure cards respect viewport width */
+    .session-flex-responsive > * {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      min-height: 280px;
+      max-height: 400px;
+      aspect-ratio: 4/3;  /* Maintain aspect ratio */
+    }
+  }
+  
+  /* Small phones - more aggressive constraints */
   @media (max-width: 420px) {
     .session-flex-responsive {
-      padding: 0 0.5rem;
-      grid-template-columns: 1fr;
-      grid-auto-rows: 320px;
-      gap: 1rem;
+      padding: 0 0.75rem;  /* 12px padding each side */
+      gap: 0.75rem;
+    }
+    
+    .session-flex-responsive > * {
+      min-height: 260px;
+      max-height: 360px;
+    }
+  }
+  
+  /* Extra small screens - maximum space efficiency */
+  @media (max-width: 380px) {
+    .session-flex-responsive {
+      padding: 0 0.625rem;  /* 10px padding each side */
+      gap: 0.625rem;
+    }
+    
+    .session-flex-responsive > * {
+      min-height: 240px;
+      max-height: 320px;
+      aspect-ratio: 16/11;  /* Slightly wider for small screens */
     }
   }
 
   /* Enhanced authentication styles */
   .auth-container {
-    @apply bg-gradient-to-br from-dark-bg to-dark-bg-secondary flex items-center justify-center p-4;
+    @apply bg-gradient-to-br from-bg to-bg-secondary flex items-center justify-center p-4;
     min-height: 100vh;
     min-height: 100dvh; /* Dynamic viewport height for mobile */
   }
@@ -265,36 +407,36 @@
   }
 
   .auth-title {
-    @apply text-3xl font-mono font-bold text-dark-text-bright;
+    @apply text-3xl font-mono font-bold text-text-bright;
     font-family: 'JetBrains Mono', monospace;
     letter-spacing: -0.02em;
   }
 
   .auth-subtitle {
-    @apply text-dark-text-muted font-mono text-xs;
+    @apply text-text-muted font-mono text-xs;
   }
 
   .auth-form {
-    @apply bg-dark-bg-elevated border border-dark-border rounded-xl shadow-card p-0 w-full;
+    @apply bg-bg-elevated border border-border rounded-xl shadow-card p-0 w-full;
   }
 
   .auth-divider {
-    @apply relative text-center text-dark-text-muted font-mono text-sm;
+    @apply relative text-center text-text-muted font-mono text-sm;
   }
 
   .auth-divider::before {
-    @apply absolute top-1/2 left-0 w-full h-px bg-dark-border;
+    @apply absolute top-1/2 left-0 w-full h-px bg-border;
     content: '';
     transform: translateY(-50%);
   }
 
   .auth-divider span {
-    @apply bg-dark-bg-secondary px-4;
+    @apply bg-bg-secondary px-4;
   }
 
   /* SSH Key Manager styles */
   .ssh-key-item {
-    @apply bg-dark-bg border-0 rounded-lg p-6;
+    @apply bg-bg border-0 rounded-lg p-6;
     @apply transition-all duration-200 ease-in-out;
   }
 
@@ -303,11 +445,11 @@
   }
 
   .badge-rsa {
-    @apply bg-blue-500 text-white;
+    @apply bg-status-info text-bg-elevated;
   }
 
   .badge-ed25519 {
-    @apply bg-purple-500 text-white;
+    @apply bg-primary text-bg-elevated;
   }
 }
 
@@ -527,6 +669,42 @@ body {
 /* Session cards - prevent pull-to-refresh */
 .session-card {
   overscroll-behavior: none;
+  /* Ensure session cards don't overflow their container */
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Ensure all elements inside session cards respect width constraints */
+.session-card * {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Prevent terminal previews from forcing card width */
+.session-card .terminal-preview,
+.session-card .session-preview {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Mobile-specific card constraints */
+@media (max-width: 540px) {
+  .session-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden;
+  }
+  
+  /* Ensure card content doesn't overflow */
+  .session-card .card-content,
+  .session-card .terminal-container {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
 }
 
 /* Session grid flow animations */
@@ -808,9 +986,19 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 
 /* Enhanced terminal container styling */
 .terminal-container {
-  color: #e4e4e4;
   overflow: hidden;
-  background-color: #0a0a0a;
+}
+
+/* Terminal container theme styling */
+[data-theme="dark"] .terminal-container,
+:root:not([data-theme="light"]) .terminal-container {
+  /* Terminal colors are now handled by xterm.js theme */
+}
+
+/* Light theme terminal container styling */
+[data-theme="light"] .terminal-container {
+  /* Terminal colors are now handled by xterm.js theme */
+  /* Removed border and border-radius to prevent double-line effect with card borders */
 }
 
 /* Terminal line styling */
@@ -865,25 +1053,34 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 /* Enhanced cursor styling */
 .terminal-char.cursor {
   animation: cursor-blink 1s infinite;
-  background-color: #10B981;
-  color: #0a0a0a;
+  background-color: rgb(var(--color-primary));
+  color: rgb(10 10 10); /* Always dark text on cursor */
 }
 
 @keyframes cursor-blink {
   0%,
   50% {
     opacity: 1;
-    background-color: #10B981;
+    background-color: rgb(var(--color-primary));
   }
   51%,
   100% {
     opacity: 0.4;
-    background-color: #10B981;
+    background-color: rgb(var(--color-primary));
   }
 }
 
 .xterm .xterm-viewport {
   background-color: transparent !important;
+}
+
+/* Light mode terminal styling */
+[data-theme="light"] .xterm {
+  /* Terminal background is now handled by xterm.js theme */
+}
+
+[data-theme="light"] .session-card .terminal-container {
+  /* Removed border and box-shadow to prevent double-line effect with card borders */
 }
 
 /* Ensure terminal container has proper size */
@@ -896,8 +1093,8 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 
 /* Enhanced terminal focus indicator */
 .terminal-focused {
-  box-shadow: 0 0 0 2px #10B981, 0 0 20px rgba(16, 185, 129, 0.3);
-  border-color: #10B981 !important;
+  box-shadow: 0 0 0 2px rgb(var(--color-primary)), 0 0 20px rgb(var(--color-primary) / 0.3);
+  border-color: rgb(var(--color-primary)) !important;
   transition: all 0.2s ease-out;
 }
 
@@ -906,17 +1103,17 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   position: fixed;
   top: 10px;
   right: 10px;
-  background: rgba(16, 185, 129, 0.1);
+  background: rgb(var(--color-primary) / 0.1);
   backdrop-filter: blur(8px);
-  border: 1px solid #10B981;
-  color: #10B981;
+  border: 1px solid rgb(var(--color-primary));
+  color: rgb(var(--color-primary));
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
   z-index: 1000;
   animation: slideInFromTop 0.3s ease-out;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 2px 8px rgb(var(--color-primary) / 0.2);
 }
 
 @keyframes slideInFromTop {
@@ -931,6 +1128,12 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 }
 
 /* Force XTerm terminal to fit within session card bounds */
+.session-preview {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 .session-preview .xterm {
   min-width: unset !important;
   min-height: unset !important;
@@ -939,15 +1142,18 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   width: 100% !important;
   height: 100% !important;
   overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 
 .session-preview .xterm .xterm-screen {
   max-width: 100% !important;
   max-height: 100% !important;
+  width: 100% !important;
 }
 
 .session-preview .xterm .xterm-viewport {
   overflow: hidden !important;
+  max-width: 100% !important;
 }
 
 .xterm .xterm-helper-textarea {
@@ -1231,8 +1437,8 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 .keyboard-button {
   @apply absolute flex items-center justify-center;
   @apply w-12 h-12 rounded-md;
-  @apply bg-dark-bg/20 border border-dark-border/50;
-  @apply text-dark-text text-2xl;
+  @apply bg-bg/20 border border-border/50;
+  @apply text-text text-2xl;
   @apply cursor-pointer select-none;
   @apply transition-all duration-200;
   backdrop-filter: blur(12px) saturate(1.5);
@@ -1247,13 +1453,19 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 
 /* Position keyboard button */
 .keyboard-button {
-  @apply fixed bottom-3 right-3 z-20;
+  @apply fixed bottom-3 right-3 z-50;
+  /* Ensure button is always touchable */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* Prevent touch delays */
+  -webkit-touch-callout: none;
+  user-select: none;
 }
 
 /* Hover state for both buttons */
 .scroll-to-bottom:hover,
 .keyboard-button:hover {
-  @apply bg-dark-bg/40 border-primary text-primary;
+  @apply bg-bg/40 border-primary text-primary;
   @apply -translate-y-0.5 shadow-glow-sm;
   backdrop-filter: blur(16px) saturate(1.8);
   -webkit-backdrop-filter: blur(16px) saturate(1.8);
@@ -1276,7 +1488,7 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   padding: 8px 12px;
   font-family: 'Fira Code', monospace;
   font-size: 11px;
-  color: #e4e4e4;
+  color: rgb(228 228 228); /* Always light for terminal */
   user-select: none;
   z-index: 10;
   line-height: 1.4;
@@ -1311,7 +1523,7 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #e4e4e4;
+  color: rgb(var(--color-text));
   font-size: 20px;
   transition: all 0.2s ease;
   user-select: none;
@@ -1321,9 +1533,9 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 .fit-toggle:hover {
   background: rgba(26, 26, 26, 1);
   border-color: #10B981;
-  color: #10B981;
+  color: rgb(var(--color-primary));
   transform: translateY(-1px);
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 10px rgb(var(--color-primary) / 0.3);
 }
 
 .fit-toggle:active {
@@ -1332,8 +1544,8 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 
 .fit-toggle.active {
   border-color: #10B981;
-  color: #10B981;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  color: rgb(var(--color-primary));
+  box-shadow: 0 0 10px rgb(var(--color-primary) / 0.3);
 }
 
 /* View Transitions */
@@ -1395,83 +1607,12 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
     z-index: 1000;
   }
 
-  /* Custom morph animation from button to modal with spring effect */
-  @keyframes expand-from-button {
-    0% {
-      transform: scale(0)
-        translate(calc(var(--vt-button-x) - 50vw), calc(var(--vt-button-y) - 50vh));
-      opacity: 0;
-      border-radius: 0.5rem;
-    }
-    85% {
-      transform: scale(1.01) translate(0, 0);
-      opacity: 1;
-      border-radius: 0.75rem;
-    }
-    100% {
-      transform: scale(1) translate(0, 0);
-      opacity: 1;
-      border-radius: 0.75rem;
-    }
-  }
-
-  @keyframes shrink-to-button {
-    0% {
-      transform: scale(1) translate(0, 0);
-      opacity: 1;
-      border-radius: 0.75rem;
-    }
-    100% {
-      transform: scale(0)
-        translate(calc(var(--vt-button-x) - 50vw), calc(var(--vt-button-y) - 50vh));
-      opacity: 0;
-      border-radius: 0.5rem;
-    }
-  }
-
-  /* Apply the custom animations */
-  ::view-transition-new(create-session-modal) {
-    animation: expand-from-button 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  }
-
-  ::view-transition-old(create-session-modal) {
-    animation: shrink-to-button 0.25s cubic-bezier(0.4, 0, 0.6, 1);
-  }
-
-  /* Hide button during forward transition */
-  ::view-transition-old(create-session-button) {
-    animation: fade-out 0.15s ease-out;
-  }
-
-  /* Show button during reverse transition */
-  ::view-transition-new(create-session-button) {
-    animation: fade-in 0.15s ease-out;
-  }
-
-  /* Make button invisible during transition */
-  .vt-create-button {
-    contain: layout;
-  }
 
   /* Ensure smooth backdrop fade */
   .modal-backdrop {
     animation: fade-in 0.3s ease-out;
   }
 
-  /* During close transition, fade backdrop out faster */
-  body:has(::view-transition-old(create-session-modal)) .modal-backdrop {
-    animation: fade-out 0.25s ease-out;
-  }
-  
-  /* Prevent flicker during modal close on mobile Safari */
-  body.modal-closing .modal-content {
-    opacity: 0 !important;
-    pointer-events: none !important;
-  }
-  
-  body.modal-closing .modal-backdrop {
-    opacity: 0 !important;
-  }
 
 
   /* Black hole collapse animation for session removal */

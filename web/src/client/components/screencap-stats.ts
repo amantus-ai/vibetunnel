@@ -25,13 +25,13 @@ export class ScreencapStats extends LitElement {
       position: absolute;
       top: 1rem;
       right: 1rem;
-      background: rgba(15, 15, 15, 0.95);
+      background: rgba(var(--color-bg), 0.95);
       backdrop-filter: blur(10px);
-      border: 1px solid #2a2a2a;
+      border: 1px solid rgb(var(--color-border));
       border-radius: 0.75rem;
       padding: 1rem;
       min-width: 250px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 4px 6px rgb(var(--color-bg-base) / 0.3);
       font-size: 0.875rem;
     }
 
@@ -39,7 +39,7 @@ export class ScreencapStats extends LitElement {
       margin: 0 0 0.75rem 0;
       font-size: 1rem;
       font-weight: 600;
-      color: #e4e4e4;
+      color: rgb(var(--color-text));
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -50,7 +50,7 @@ export class ScreencapStats extends LitElement {
       justify-content: space-between;
       align-items: center;
       padding: 0.375rem 0;
-      border-bottom: 1px solid rgba(42, 42, 42, 0.5);
+      border-bottom: 1px solid rgba(var(--color-border), 0.5);
     }
 
     .stat-row:last-child {
@@ -58,43 +58,43 @@ export class ScreencapStats extends LitElement {
     }
 
     .stat-label {
-      color: #a3a3a3;
+      color: rgb(var(--color-text-muted));
       font-weight: 500;
     }
 
     .stat-value {
-      color: #e4e4e4;
+      color: rgb(var(--color-text));
       font-variant-numeric: tabular-nums;
     }
 
     .stat-value.codec-h264,
     .stat-value.codec-h265 {
-      color: #10B981;
+      color: rgb(var(--color-primary));
     }
 
     .stat-value.codec-vp8,
     .stat-value.codec-vp9 {
-      color: #3B82F6;
+      color: rgb(var(--color-status-info));
     }
 
     .stat-value.codec-av1 {
-      color: #8B5CF6;
+      color: rgb(var(--color-status-info));
     }
 
     .stat-value.latency-good {
-      color: #10B981;
+      color: rgb(var(--color-primary));
     }
 
     .stat-value.latency-warning {
-      color: #F59E0B;
+      color: rgb(var(--color-status-warning));
     }
 
     .stat-value.latency-bad {
-      color: #EF4444;
+      color: rgb(var(--color-status-error));
     }
 
     .loading-message {
-      color: #a3a3a3;
+      color: rgb(var(--color-text-muted));
       text-align: center;
       padding: 1rem;
     }
@@ -121,19 +121,19 @@ export class ScreencapStats extends LitElement {
     }
 
     .quality-excellent .quality-dot {
-      background: #10B981;
+      background: rgb(var(--color-primary));
     }
 
     .quality-good .quality-dot {
-      background: #3B82F6;
+      background: rgb(var(--color-status-info));
     }
 
     .quality-fair .quality-dot {
-      background: #F59E0B;
+      background: rgb(var(--color-status-warning));
     }
 
     .quality-poor .quality-dot {
-      background: #EF4444;
+      background: rgb(var(--color-status-error));
     }
   `;
 

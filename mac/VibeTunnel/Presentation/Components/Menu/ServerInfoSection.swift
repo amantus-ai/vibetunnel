@@ -17,6 +17,16 @@ struct ServerInfoHeader: View {
     @Environment(\.colorScheme)
     private var colorScheme
 
+    private var appDisplayName: String {
+        let (debugMode, useDevServer) = AppConstants.getDevelopmentStatus()
+
+        var name = debugMode ? "VibeTunnel Debug" : "VibeTunnel"
+        if useDevServer && serverManager.isRunning {
+            name += " Dev Server"
+        }
+        return name
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Title and status
@@ -27,7 +37,7 @@ struct ServerInfoHeader: View {
                         .frame(width: 24, height: 24)
                         .cornerRadius(4)
 
-                    Text("VibeTunnel")
+                    Text(appDisplayName)
                         .font(.system(size: 14, weight: .semibold))
                 }
 

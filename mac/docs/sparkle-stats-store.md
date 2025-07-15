@@ -33,6 +33,44 @@ VibeTunnel App → Stats.store (Proxy) → GitHub (appcast.xml) → Stats.store 
 
 These endpoints proxy to the actual appcast files hosted on GitHub.
 
+## Initial Setup and Registration
+
+### Prerequisites
+
+Before Stats.store can serve your appcast files, you need to:
+
+1. **Register your application** with Stats.store
+2. **Configure your app** to use Stats.store endpoints
+3. **Ensure proper User-Agent** headers are sent
+
+### Stats.store Registration
+
+**Important**: As of the beta 9 release, VibeTunnel shows "Application not found" when querying Stats.store, indicating the app may not be properly registered or configured.
+
+To register your app with Stats.store:
+
+1. Visit [stats.store](https://stats.store) and create an account
+2. Add your application with:
+   - App name: `VibeTunnel`
+   - Bundle ID: `sh.vibetunnel.vibetunnel`
+   - GitHub repository: `amantus-ai/vibetunnel`
+3. Configure the appcast URLs to proxy to:
+   - Stable: `https://raw.githubusercontent.com/amantus-ai/vibetunnel/main/appcast.xml`
+   - Pre-release: `https://raw.githubusercontent.com/amantus-ai/vibetunnel/main/appcast-prerelease.xml`
+
+### Verifying Configuration
+
+Check if your app is properly configured:
+
+```bash
+# This will fail with "Application not found" if not registered
+curl -H "User-Agent: VibeTunnel/1.0.0-beta.9 Sparkle/2.7.1" \
+     https://stats.store/api/v1/appcast/appcast-prerelease.xml
+
+# Check your app's stats page (replace with your app ID)
+# https://stats.store/app/YOUR_APP_ID
+```
+
 ## Configuration Details
 
 ### App Configuration (Info.plist)
@@ -160,8 +198,47 @@ Complete signature reference for all VibeTunnel beta releases:
 | 1.0.0-beta.6 | 159 | 43,312,816 | `g84r8XLzvfeVHccjULfpjRGClf9Wll14PVLXCktUBkc+TRA312troC8dw1+bEn/ta5itW7nErwOCCIGD8U21DA==` |
 | 1.0.0-beta.7 | 165 | 43,383,612 | `vdcImChUp1qKY3V/8CTnyxq0TXkQjPXnEbEvks0xwWbzqvSP1xe3MBr/5kalilFpC9dH7wMxO9ohoNhHTjOvBQ==` |
 | 1.0.0-beta.8 | 172 | 44,748,347 | `/538z6L/qhhnHkfWU1hVoqeKvFdHubFRobfq6Vfmwz4UCpDVhJrqG+W28xW1wU4W9+xt41NMgei+DLJr1JV8Cg==` |
+| 1.0.0-beta.9 | 173 | 44,748,582 | `xAzHFZ1FYtncpZx1xKMAIMT9kDkEiZfH1uuY80weKzi7JE8Yd673/7919f3D3g4j/B7fTMs88TVlTxocL9zRCw==` |
 
 All signatures above are generated with the correct file-based private key and verified to work with the public key in Info.plist.
+
+## Fallback Options Without Stats.store
+
+If Stats.store is not configured or you need to release before registration is complete, you can use direct GitHub URLs:
+
+### Temporary Direct Configuration
+
+Update `UpdateChannel.swift` to use GitHub directly:
+
+```swift
+// Stable channel
+case .stable:
+    return URL(string: "https://raw.githubusercontent.com/amantus-ai/vibetunnel/main/appcast.xml")!
+
+// Pre-release channel
+case .preRelease:
+    return URL(string: "https://raw.githubusercontent.com/amantus-ai/vibetunnel/main/appcast-prerelease.xml")!
+```
+
+### Implications of Direct URLs
+
+**Pros:**
+- Works immediately without registration
+- No dependency on third-party service
+- Updates still function normally
+
+**Cons:**
+- No analytics or usage statistics
+- No geographic CDN benefits
+- No A/B testing capabilities
+- Missing crash/update correlation data
+
+### Migration Path
+
+1. **Release with direct URLs** if Stats.store isn't ready
+2. **Register with Stats.store** when convenient
+3. **Update app in next release** to use Stats.store endpoints
+4. **Existing users will update** and start using Stats.store
 
 ## Benefits of Stats.store
 
@@ -193,8 +270,27 @@ All signatures above are generated with the correct file-based private key and v
 ### Common Issues
 
 #### "Application not found" Error
-- **Cause**: Missing or incorrect User-Agent header
-- **Fix**: Ensure Sparkle is configured correctly in the app
+
+This is the most common Stats.store integration issue. There are several potential causes:
+
+1. **App not registered with Stats.store**
+   - **Solution**: Register at [stats.store](https://stats.store)
+   - Create account and add VibeTunnel as an application
+   - Configure GitHub repository URLs for appcast proxying
+
+2. **Incorrect User-Agent header**
+   - **Required format**: `VibeTunnel/VERSION Sparkle/VERSION`
+   - **Example**: `VibeTunnel/1.0.0-beta.9 Sparkle/2.7.1`
+   - **Fix**: Ensure Sparkle framework is properly integrated
+
+3. **Bundle ID mismatch**
+   - **Expected**: `sh.vibetunnel.vibetunnel`
+   - **Check**: Verify in Info.plist that CFBundleIdentifier matches
+
+4. **Testing before registration**
+   - **Note**: You can still release without Stats.store
+   - **Alternative**: Use direct GitHub URLs in Info.plist temporarily
+   - **Update later**: Once registered, update SUFeedURL to Stats.store endpoints
 
 #### Signature Verification Failed
 - **Cause**: Wrong private key used for signing

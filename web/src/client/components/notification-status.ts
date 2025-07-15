@@ -110,7 +110,7 @@ export class NotificationStatus extends LitElement {
     return html`
       <button
         @click=${this.handleClick}
-        class="p-2 ${color} hover:text-dark-text transition-colors relative"
+        class="p-2 ${color} hover:text-primary transition-colors relative"
         title="${tooltip}"
       >
         ${this.renderIcon()}

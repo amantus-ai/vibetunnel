@@ -23,6 +23,7 @@ import type { FilePicker } from './file-picker.js';
 import './clickable-path.js';
 import './terminal-quick-keys.js';
 import './session-view/mobile-input-overlay.js';
+import { titleManager } from '../utils/title-manager.js';
 import './session-view/ctrl-alpha-overlay.js';
 import './session-view/width-selector.js';
 import './session-view/session-header.js';
@@ -32,6 +33,7 @@ import {
   COMMON_TERMINAL_WIDTHS,
   TerminalPreferencesManager,
 } from '../utils/terminal-preferences.js';
+import type { TerminalThemeId } from '../utils/terminal-themes.js';
 import { ConnectionManager } from './session-view/connection-manager.js';
 import {
   type DirectKeyboardCallbacks,
@@ -87,6 +89,7 @@ export class SessionView extends LitElement {
   @state() private showImagePicker = false;
   @state() private isDragOver = false;
   @state() private terminalFontSize = 14;
+  @state() private terminalTheme: TerminalThemeId = 'auto';
   @state() private terminalContainerHeight = '100%';
   @state() private isLandscape = false;
 
@@ -369,8 +372,11 @@ export class SessionView extends LitElement {
     // Load terminal preferences
     this.terminalMaxCols = this.preferencesManager.getMaxCols();
     this.terminalFontSize = this.preferencesManager.getFontSize();
+    this.terminalTheme = this.preferencesManager.getTheme();
+    logger.debug('Loaded terminal theme:', this.terminalTheme);
     this.terminalLifecycleManager.setTerminalFontSize(this.terminalFontSize);
     this.terminalLifecycleManager.setTerminalMaxCols(this.terminalMaxCols);
+    this.terminalLifecycleManager.setTerminalTheme(this.terminalTheme);
 
     // Initialize lifecycle event manager
     this.lifecycleEventManager = new LifecycleEventManager();
@@ -453,24 +459,34 @@ export class SessionView extends LitElement {
 
   firstUpdated(changedProperties: PropertyValues) {
     super.firstUpdated(changedProperties);
-    if (this.session && this.connected) {
-      // Terminal setup is handled by state machine when reaching active state
-      this.terminalLifecycleManager.setupTerminal();
-    }
+
+    // Load terminal preferences BEFORE terminal setup to ensure proper initialization
+    this.terminalTheme = this.preferencesManager.getTheme();
+    logger.debug('Loaded terminal theme from preferences:', this.terminalTheme);
+
+    // Don't setup terminal here - wait for session data to be available
+    // Terminal setup will be triggered in updated() when session becomes available
   }
 
   updated(changedProperties: Map<string, unknown>) {
     super.updated(changedProperties);
 
-    // If session changed, clean up old stream connection
+    // If session changed, clean up old stream connection and reset terminal state
     if (changedProperties.has('session')) {
       const oldSession = changedProperties.get('session') as Session | null;
-      if (oldSession && oldSession.id !== this.session?.id) {
+      const sessionChanged = oldSession?.id !== this.session?.id;
+
+      if (sessionChanged && oldSession) {
         logger.log('Session changed, cleaning up old stream connection');
         if (this.connectionManager) {
           this.connectionManager.cleanupStreamConnection();
         }
+        // Clean up terminal lifecycle manager for fresh start
+        if (this.terminalLifecycleManager) {
+          this.terminalLifecycleManager.cleanup();
+        }
       }
+
       // Update managers with new session
       if (this.inputManager) {
         this.inputManager.setSession(this.session);
@@ -481,59 +497,64 @@ export class SessionView extends LitElement {
       if (this.lifecycleEventManager) {
         this.lifecycleEventManager.setSession(this.session);
       }
+
+      // Initialize terminal when session first becomes available
+      if (this.session && this.connected && !oldSession) {
+        logger.log('Session data now available, initializing terminal');
+        this.ensureTerminalInitialized();
+      }
     }
 
-    // Stop loading and create terminal when session becomes available
+    // Stop loading and ensure terminal is initialized when session becomes available
     if (
       changedProperties.has('session') &&
       this.session &&
       this.loadingAnimationManager.isLoading()
     ) {
       this.loadingAnimationManager.stopLoading();
-      this.terminalLifecycleManager.setupTerminal();
+      this.ensureTerminalInitialized();
     }
 
-    // Initialize terminal after first render when terminal element exists
-    if (!this.terminalLifecycleManager.getTerminal() && this.session && this.connected) {
-      const terminalElement = this.querySelector('vibe-terminal') as Terminal;
-      if (terminalElement) {
-        this.terminalLifecycleManager.initializeTerminal();
-      }
+    // Ensure terminal is initialized when connected state changes
+    if (changedProperties.has('connected') && this.connected && this.session) {
+      this.ensureTerminalInitialized();
+    }
+  }
+
+  /**
+   * Ensures terminal is properly initialized with current session data.
+   * This method is idempotent and can be called multiple times safely.
+   */
+  private ensureTerminalInitialized() {
+    if (!this.session || !this.connected) {
+      logger.log('Cannot initialize terminal: missing session or not connected');
+      return;
     }
 
-    // Create hidden input if direct keyboard is enabled on mobile
-    if (
-      this.isMobile &&
-      this.useDirectKeyboard &&
-      !this.directKeyboardManager.getShowQuickKeys() &&
-      this.session &&
-      this.connected
-    ) {
-      // Clear any existing timeout
-      if (this.createHiddenInputTimeout) {
-        clearTimeout(this.createHiddenInputTimeout);
-      }
-
-      // Delay creation to ensure terminal is rendered and DOM is stable
-      const TERMINAL_RENDER_DELAY_MS = 100;
-      this.createHiddenInputTimeout = setTimeout(() => {
-        try {
-          // Re-validate conditions in case component state changed during the delay
-          if (
-            this.isMobile &&
-            this.useDirectKeyboard &&
-            !this.directKeyboardManager.getShowQuickKeys() &&
-            this.connected // Ensure component is still connected to DOM
-          ) {
-            this.directKeyboardManager.ensureHiddenInputVisible();
-          }
-        } catch (error) {
-          logger.warn('Failed to create hidden input during setTimeout:', error);
-        }
-        // Clear the timeout reference after execution
-        this.createHiddenInputTimeout = null;
-      }, TERMINAL_RENDER_DELAY_MS);
+    // Check if terminal is already initialized
+    if (this.terminalLifecycleManager.getTerminal()) {
+      logger.log('Terminal already initialized');
+      return;
     }
+
+    // Check if terminal element exists in DOM
+    const terminalElement = this.querySelector('vibe-terminal') as Terminal;
+    if (!terminalElement) {
+      logger.log('Terminal element not found in DOM, deferring initialization');
+      // Retry after next render cycle
+      requestAnimationFrame(() => {
+        this.ensureTerminalInitialized();
+      });
+      return;
+    }
+
+    logger.log('Initializing terminal with session:', this.session.id);
+
+    // Setup terminal with session data
+    this.terminalLifecycleManager.setupTerminal();
+
+    // Initialize terminal after setup
+    this.terminalLifecycleManager.initializeTerminal();
   }
 
   async handleKeyboardInput(e: KeyboardEvent) {
@@ -869,6 +890,20 @@ export class SessionView extends LitElement {
     }
   }
 
+  private handleThemeChange(newTheme: TerminalThemeId) {
+    logger.debug('Changing terminal theme to:', newTheme);
+
+    this.terminalTheme = newTheme;
+    this.preferencesManager.setTheme(newTheme);
+    this.terminalLifecycleManager.setTerminalTheme(newTheme);
+
+    const terminal = this.querySelector('vibe-terminal') as Terminal;
+    if (terminal) {
+      terminal.theme = newTheme;
+      terminal.requestUpdate();
+    }
+  }
+
   private handleOpenFileBrowser() {
     this.showFileBrowser = true;
   }
@@ -946,6 +981,10 @@ export class SessionView extends LitElement {
 
       // Update the local session object with the server-assigned name
       this.session = { ...this.session, name: actualName };
+
+      // Update the page title with the new session name
+      const sessionName = actualName || this.session.command.join(' ');
+      titleManager.setSessionTitle(sessionName);
 
       // Dispatch event to notify parent components with the actual name
       this.dispatchEvent(
@@ -1194,10 +1233,10 @@ export class SessionView extends LitElement {
   render() {
     if (!this.session) {
       return html`
-        <div class="fixed inset-0 bg-dark-bg flex items-center justify-center">
-          <div class="text-dark-text font-mono text-center">
+        <div class="fixed inset-0 bg-base flex items-center justify-center">
+          <div class="text-primary font-mono text-center">
             <div class="text-2xl mb-2">${this.loadingAnimationManager.getLoadingText()}</div>
-            <div class="text-sm text-dark-text-muted">Waiting for session...</div>
+            <div class="text-sm text-muted">Waiting for session...</div>
           </div>
         </div>
       `;
@@ -1212,12 +1251,12 @@ export class SessionView extends LitElement {
           box-shadow: none !important;
         }
         session-view:focus {
-          outline: 2px solid rgb(16 185 129) !important;
+          outline: 2px solid rgb(var(--color-primary)) !important;
           outline-offset: -2px;
         }
       </style>
       <div
-        class="flex flex-col bg-dark-bg font-mono relative"
+        class="flex flex-col bg-base font-mono relative"
         style="height: 100vh; height: 100dvh; outline: none !important; box-shadow: none !important;"
       >
         <!-- Session Header -->
@@ -1252,7 +1291,7 @@ export class SessionView extends LitElement {
 
         <!-- Enhanced Terminal Container -->
         <div
-          class="${this.terminalContainerHeight === '100%' ? 'flex-1' : ''} bg-dark-bg overflow-hidden min-h-0 relative ${
+          class="${this.terminalContainerHeight === '100%' ? 'flex-1' : ''} bg-bg overflow-hidden min-h-0 relative ${
             this.session?.status === 'exited' ? 'session-exited opacity-90' : ''
           } ${
             // Add safe area padding for landscape mode on mobile to handle notch
@@ -1266,11 +1305,11 @@ export class SessionView extends LitElement {
               ? html`
                 <!-- Enhanced Loading overlay -->
                 <div
-                  class="absolute inset-0 bg-dark-bg bg-opacity-90 backdrop-filter backdrop-blur-sm flex items-center justify-center z-10 animate-fade-in"
+                  class="absolute inset-0 bg-bg bg-opacity-90 backdrop-filter backdrop-blur-sm flex items-center justify-center z-10 animate-fade-in"
                 >
-                  <div class="text-dark-text font-mono text-center">
-                    <div class="text-2xl mb-3 text-accent-primary animate-pulse-primary">${this.loadingAnimationManager.getLoadingText()}</div>
-                    <div class="text-sm text-dark-text-muted">Connecting to session...</div>
+                  <div class="text-primary font-mono text-center">
+                    <div class="text-2xl mb-3 text-primary animate-pulse-primary">${this.loadingAnimationManager.getLoadingText()}</div>
+                    <div class="text-sm text-muted">Connecting to session...</div>
                   </div>
                 </div>
               `
@@ -1285,6 +1324,7 @@ export class SessionView extends LitElement {
             .fontSize=${this.terminalFontSize}
             .fitHorizontally=${false}
             .maxCols=${this.terminalMaxCols}
+            .theme=${this.terminalTheme}
             .initialCols=${this.session?.initialCols || 0}
             .initialRows=${this.session?.initialRows || 0}
             .disableClick=${this.isMobile && this.useDirectKeyboard}
@@ -1303,7 +1343,7 @@ export class SessionView extends LitElement {
                 class="fixed inset-0 flex items-center justify-center pointer-events-none z-[25]"
               >
                 <div
-                  class="bg-dark-bg-elevated border border-status-warning text-status-warning font-medium text-sm tracking-wide px-6 py-3 rounded-lg shadow-elevated animate-scale-in"
+                  class="bg-elevated border border-status-warning text-status-warning font-medium text-sm tracking-wide px-6 py-3 rounded-lg shadow-elevated animate-scale-in"
                 >
                   <span class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-status-warning"></span>
@@ -1319,7 +1359,7 @@ export class SessionView extends LitElement {
         ${
           this.isMobile && !this.showMobileInput && !this.useDirectKeyboard
             ? html`
-              <div class="flex-shrink-0 p-4" style="background: black;">
+              <div class="flex-shrink-0 p-4 bg-secondary">
                 <!-- First row: Arrow keys -->
                 <div class="flex gap-2 mb-2">
                   <button
@@ -1474,39 +1514,41 @@ export class SessionView extends LitElement {
         ></file-picker>
         
         <!-- Width Selector Modal (moved here for proper positioning) -->
-        <width-selector
+        <terminal-settings-modal
           .visible=${this.showWidthSelector}
           .terminalMaxCols=${this.terminalMaxCols}
           .terminalFontSize=${this.terminalFontSize}
+          .terminalTheme=${this.terminalTheme}
           .customWidth=${this.customWidth}
           .isMobile=${this.isMobile}
           .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
           .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
+          .onThemeChange=${(theme: TerminalThemeId) => this.handleThemeChange(theme)}
           .onClose=${() => {
             this.showWidthSelector = false;
             this.customWidth = '';
           }}
-        ></width-selector>
+        ></terminal-settings-modal>
 
         <!-- Drag & Drop Overlay -->
         ${
           this.isDragOver
             ? html`
-              <div class="fixed inset-0 bg-black bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none animate-fade-in">
-                <div class="bg-dark-bg-elevated border-2 border-dashed border-accent-primary rounded-xl p-10 text-center max-w-md mx-4 shadow-2xl animate-scale-in">
+              <div class="fixed inset-0 bg-bg bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none animate-fade-in">
+                <div class="bg-elevated border-2 border-dashed border-primary rounded-xl p-10 text-center max-w-md mx-4 shadow-2xl animate-scale-in">
                   <div class="relative mb-6">
-                    <div class="w-24 h-24 mx-auto bg-gradient-to-br from-accent-primary to-accent-primary-light rounded-full flex items-center justify-center shadow-glow-primary">
-                      <svg class="w-12 h-12 text-dark-bg" fill="currentColor" viewBox="0 0 20 20">
+                    <div class="w-24 h-24 mx-auto bg-gradient-to-br from-primary to-primary-light rounded-full flex items-center justify-center shadow-glow">
+                      <svg class="w-12 h-12 text-base" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
                       </svg>
                     </div>
-                    <div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-accent-primary to-transparent opacity-50"></div>
+                    <div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50"></div>
                   </div>
-                  <h3 class="text-2xl font-bold text-dark-text mb-3">Drop files here</h3>
-                  <p class="text-sm text-dark-text-muted mb-4">Files will be uploaded and the path sent to terminal</p>
-                  <div class="inline-flex items-center gap-2 text-xs text-dark-text-dim bg-dark-bg-secondary px-4 py-2 rounded-lg">
+                  <h3 class="text-2xl font-bold text-primary mb-3">Drop files here</h3>
+                  <p class="text-sm text-muted mb-4">Files will be uploaded and the path sent to terminal</p>
+                  <div class="inline-flex items-center gap-2 text-xs text-dim bg-secondary px-4 py-2 rounded-lg">
                     <span class="opacity-75">Or press</span>
-                    <kbd class="px-2 py-1 bg-dark-bg-tertiary border border-dark-border rounded text-accent-primary font-mono text-xs">⌘V</kbd>
+                    <kbd class="px-2 py-1 bg-tertiary border border-base rounded text-primary font-mono text-xs">⌘V</kbd>
                     <span class="opacity-75">to paste from clipboard</span>
                   </div>
                 </div>

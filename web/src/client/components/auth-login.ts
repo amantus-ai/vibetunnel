@@ -162,7 +162,7 @@ export class AuthLogin extends LitElement {
       <div class="auth-container">
         <!-- Settings button in top right corner -->
         <button
-          class="absolute top-4 right-4 p-2 text-dark-text-muted hover:text-dark-text transition-colors"
+          class="absolute top-4 right-4 p-2 text-muted hover:text-primary transition-colors"
           @click=${this.handleOpenSettings}
           title="Settings"
         >
@@ -176,7 +176,7 @@ export class AuthLogin extends LitElement {
             <div class="flex flex-col items-center gap-2 sm:gap-3 mb-4 sm:mb-8">
               <terminal-icon
                 size="${this.isMobile ? '48' : '56'}"
-                style="filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.4));"
+                style="filter: drop-shadow(0 0 15px rgb(var(--color-primary) / 0.4));"
               ></terminal-icon>
               <h2 class="auth-title text-2xl sm:text-3xl mt-1 sm:mt-2">VibeTunnel</h2>
               <p class="auth-subtitle text-xs sm:text-sm">Please authenticate to continue</p>
@@ -187,7 +187,7 @@ export class AuthLogin extends LitElement {
             this.error
               ? html`
                 <div
-                  class="bg-status-error text-dark-bg px-3 py-1.5 rounded mb-3 font-mono text-xs sm:text-sm"
+                  class="bg-status-error text-base px-3 py-1.5 rounded mb-3 font-mono text-xs sm:text-sm"
                   data-testid="error-message"
                 >
                   ${this.error}
@@ -195,7 +195,7 @@ export class AuthLogin extends LitElement {
                     @click=${() => {
                       this.error = '';
                     }}
-                    class="ml-2 text-dark-bg hover:text-dark-text"
+                    class="ml-2 text-base hover:text-primary"
                     data-testid="error-close"
                   >
                     ✕
@@ -208,14 +208,14 @@ export class AuthLogin extends LitElement {
             this.success
               ? html`
                 <div
-                  class="bg-status-success text-dark-bg px-3 py-1.5 rounded mb-3 font-mono text-xs sm:text-sm"
+                  class="bg-status-success text-base px-3 py-1.5 rounded mb-3 font-mono text-xs sm:text-sm"
                 >
                   ${this.success}
                   <button
                     @click=${() => {
                       this.success = '';
                     }}
-                    class="ml-2 text-dark-bg hover:text-dark-text"
+                    class="ml-2 text-base hover:text-primary"
                   >
                     ✕
                   </button>
@@ -233,7 +233,7 @@ export class AuthLogin extends LitElement {
                     <div class="flex flex-col items-center mb-4 sm:mb-6">
                       <div
                         class="w-24 h-24 sm:w-28 sm:h-28 rounded-full mb-3 sm:mb-4 overflow-hidden"
-                        style="box-shadow: 0 0 25px rgba(16, 185, 129, 0.3);"
+                        style="box-shadow: 0 0 25px rgb(var(--color-primary) / 0.3);"
                       >
                         ${
                           this.userAvatar
@@ -248,10 +248,10 @@ export class AuthLogin extends LitElement {
                             `
                             : html`
                               <div
-                                class="w-full h-full bg-dark-bg-secondary flex items-center justify-center"
+                                class="w-full h-full bg-secondary flex items-center justify-center"
                               >
                                 <svg
-                                  class="w-12 h-12 sm:w-14 sm:h-14 text-dark-text-muted"
+                                  class="w-12 h-12 sm:w-14 sm:h-14 text-muted"
                                   fill="currentColor"
                                   viewBox="0 0 20 20"
                                 >
@@ -261,7 +261,7 @@ export class AuthLogin extends LitElement {
                             `
                         }
                       </div>
-                      <p class="text-dark-text text-base sm:text-lg font-medium">
+                      <p class="text-primary text-base sm:text-lg font-medium">
                         Welcome back, ${this.currentUserId || '...'}
                       </p>
                     </div>
@@ -300,7 +300,7 @@ export class AuthLogin extends LitElement {
                   <div class="ssh-key-item p-6 sm:p-8">
                     <div class="flex flex-col items-center mb-4 sm:mb-6">
                       <div
-                        class="w-16 h-16 sm:w-20 sm:h-20 rounded-full mb-2 sm:mb-3 overflow-hidden border-2 border-dark-border"
+                        class="w-16 h-16 sm:w-20 sm:h-20 rounded-full mb-2 sm:mb-3 overflow-hidden border-2 border-base"
                       >
                         ${
                           this.userAvatar
@@ -315,10 +315,10 @@ export class AuthLogin extends LitElement {
                             `
                             : html`
                               <div
-                                class="w-full h-full bg-dark-bg-secondary flex items-center justify-center"
+                                class="w-full h-full bg-secondary flex items-center justify-center"
                               >
                                 <svg
-                                  class="w-8 h-8 sm:w-10 sm:h-10 text-dark-text-muted"
+                                  class="w-8 h-8 sm:w-10 sm:h-10 text-muted"
                                   fill="currentColor"
                                   viewBox="0 0 20 20"
                                 >
@@ -328,14 +328,14 @@ export class AuthLogin extends LitElement {
                             `
                         }
                       </div>
-                      <p class="text-dark-text text-xs sm:text-sm">
+                      <p class="text-primary text-xs sm:text-sm">
                         ${
                           this.currentUserId
                             ? `Welcome back, ${this.currentUserId}`
                             : 'Please authenticate to continue'
                         }
                       </p>
-                      <p class="text-dark-text-muted text-xs mt-1 sm:mt-2">
+                      <p class="text-muted text-xs mt-1 sm:mt-2">
                         SSH key authentication required
                       </p>
                     </div>
@@ -374,11 +374,11 @@ export class AuthLogin extends LitElement {
                     </div>
 
                     <div class="space-y-3">
-                      <div class="bg-dark-bg border border-dark-border rounded p-3">
-                        <p class="text-dark-text-muted text-xs mb-2">
+                      <div class="bg-base border border-base rounded p-3">
+                        <p class="text-muted text-xs mb-2">
                           Generate SSH keys for browser-based authentication
                         </p>
-                        <p class="text-dark-text-muted text-xs">
+                        <p class="text-muted text-xs">
                           💡 SSH keys work in both browser and terminal
                         </p>
                       </div>
