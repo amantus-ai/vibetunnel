@@ -140,7 +140,7 @@ describe('UnifiedSettings - Repository Path Bidirectional Sync', () => {
       // Get the WebSocket instance
       const ws = MockWebSocket.instances[0];
       expect(ws).toBeTruthy();
-      
+
       // Wait for WebSocket to be ready
       await new Promise((resolve) => setTimeout(resolve, 50));
 
