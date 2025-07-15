@@ -21,6 +21,17 @@ const ALL_PLATFORMS = {
   linux: ['x64', 'arm64']
 };
 
+// Map Node.js versions to ABI versions
+function getNodeAbi(nodeVersion) {
+  const abiMap = {
+    '20': '115',
+    '22': '127',
+    '23': '131',
+    '24': '134'
+  };
+  return abiMap[nodeVersion];
+}
+
 // Parse command line arguments
 const args = process.argv.slice(2);
 const currentOnly = args.includes('--current-only');
@@ -112,16 +123,87 @@ function buildMacOS() {
     }
   }
   
+  // Build universal spawn-helper binaries for macOS
+  console.log('  Building universal spawn-helper binaries...');
+  const spawnHelperSrc = path.join(nodePtyDir, 'src', 'unix', 'spawn-helper.cc');
+  const tempDir = path.join(__dirname, '..', 'temp-spawn-helper');
+  
+  // Ensure temp directory exists
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+  
+  try {
+    // Build for x64
+    console.log(`    → spawn-helper for x64`);
+    execSync(`clang++ -arch x86_64 -o ${tempDir}/spawn-helper-x64 ${spawnHelperSrc}`, {
+      stdio: 'pipe'
+    });
+    
+    // Build for arm64
+    console.log(`    → spawn-helper for arm64`);
+    execSync(`clang++ -arch arm64 -o ${tempDir}/spawn-helper-arm64 ${spawnHelperSrc}`, {
+      stdio: 'pipe'
+    });
+    
+    // Create universal binary
+    console.log(`    → Creating universal spawn-helper binary`);
+    execSync(`lipo -create ${tempDir}/spawn-helper-x64 ${tempDir}/spawn-helper-arm64 -output ${tempDir}/spawn-helper-universal`, {
+      stdio: 'pipe'
+    });
+    
+    // Add universal spawn-helper to each macOS prebuild
+    for (const nodeVersion of NODE_VERSIONS) {
+      for (const arch of PLATFORMS.darwin || []) {
+        const prebuildFile = path.join(nodePtyDir, 'prebuilds', `node-pty-v1.0.0-node-v${getNodeAbi(nodeVersion)}-darwin-${arch}.tar.gz`);
+        if (fs.existsSync(prebuildFile)) {
+          console.log(`    → Adding spawn-helper to ${path.basename(prebuildFile)}`);
+          
+          // Extract existing prebuild
+          const extractDir = path.join(tempDir, `extract-${nodeVersion}-${arch}`);
+          if (fs.existsSync(extractDir)) {
+            fs.rmSync(extractDir, { recursive: true, force: true });
+          }
+          fs.mkdirSync(extractDir, { recursive: true });
+          
+          execSync(`tar -xzf ${prebuildFile} -C ${extractDir}`, { stdio: 'pipe' });
+          
+          // Copy universal spawn-helper
+          fs.copyFileSync(`${tempDir}/spawn-helper-universal`, `${extractDir}/build/Release/spawn-helper`);
+          fs.chmodSync(`${extractDir}/build/Release/spawn-helper`, '755');
+          
+          // Repackage prebuild
+          execSync(`tar -czf ${prebuildFile} -C ${extractDir} .`, { stdio: 'pipe' });
+          
+          // Clean up extract directory
+          fs.rmSync(extractDir, { recursive: true, force: true });
+        }
+      }
+    }
+    
+    // Clean up temp directory
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    console.log('    ✅ Universal spawn-helper binaries created and added to prebuilds');
+    
+  } catch (error) {
+    console.error(`      ❌ Failed to build universal spawn-helper: ${error.message}`);
+    // Clean up on error
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+    process.exit(1);
+  }
+  
   // Build authenticate-pam
   console.log('  Building authenticate-pam...');
-  const rootDir = path.join(__dirname, '..');
+  const authenticatePamDir = path.join(__dirname, '..', 'node_modules', '.pnpm', 'authenticate-pam@1.0.5', 'node_modules', 'authenticate-pam');
   
   for (const nodeVersion of NODE_VERSIONS) {
     for (const arch of PLATFORMS.darwin || []) {
       console.log(`    → authenticate-pam for Node.js ${nodeVersion} ${arch}`);
       try {
-        execSync(`npx prebuild --runtime node --target ${nodeVersion}.0.0 --arch ${arch} --tag-prefix authenticate-pam-v --upload false`, {
-          cwd: rootDir,
+        execSync(`npx prebuild --runtime node --target ${nodeVersion}.0.0 --arch ${arch} --tag-prefix authenticate-pam-v`, {
+          cwd: authenticatePamDir,
           stdio: 'pipe',
           env: { ...process.env, npm_config_target_platform: 'darwin', npm_config_target_arch: arch }
         });
@@ -145,9 +227,14 @@ function buildLinux() {
     export CI=true
     export DEBIAN_FRONTEND=noninteractive
     
-    # Install dependencies
+    # Install dependencies including cross-compilation tools
     apt-get update -qq
-    apt-get install -y -qq python3 make g++ git libpam0g-dev
+    apt-get install -y -qq python3 make g++ git libpam0g-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+    
+    # Add ARM64 architecture for cross-compilation
+    dpkg --add-architecture arm64
+    apt-get update -qq
+    apt-get install -y -qq libpam0g-dev:arm64
     
     # Install pnpm
     npm install -g pnpm --force --no-frozen-lockfile
@@ -161,18 +248,36 @@ function buildLinux() {
     for node_version in ${NODE_VERSIONS.join(' ')}; do
       for arch in ${(PLATFORMS.linux || []).join(' ')}; do
         echo "Building node-pty for Node.js \$node_version \$arch"
+        if [ "\$arch" = "arm64" ]; then
+          export CC=aarch64-linux-gnu-gcc
+          export CXX=aarch64-linux-gnu-g++
+          export AR=aarch64-linux-gnu-ar
+          export STRIP=aarch64-linux-gnu-strip
+          export LINK=aarch64-linux-gnu-g++
+        else
+          unset CC CXX AR STRIP LINK
+        fi
         npm_config_target_platform=linux npm_config_target_arch=\$arch \\
           npx prebuild --runtime node --target \$node_version.0.0 --arch \$arch || exit 1
       done
     done
     
     # Build authenticate-pam for Linux  
-    cd /workspace
+    cd /workspace/node_modules/.pnpm/authenticate-pam@1.0.5/node_modules/authenticate-pam
     for node_version in ${NODE_VERSIONS.join(' ')}; do
       for arch in ${(PLATFORMS.linux || []).join(' ')}; do
         echo "Building authenticate-pam for Node.js \$node_version \$arch"
+        if [ "\$arch" = "arm64" ]; then
+          export CC=aarch64-linux-gnu-gcc
+          export CXX=aarch64-linux-gnu-g++
+          export AR=aarch64-linux-gnu-ar
+          export STRIP=aarch64-linux-gnu-strip
+          export LINK=aarch64-linux-gnu-g++
+        else
+          unset CC CXX AR STRIP LINK
+        fi
         npm_config_target_platform=linux npm_config_target_arch=\$arch \\
-          npx prebuild --runtime node --target \$node_version.0.0 --arch \$arch --tag-prefix authenticate-pam-v --upload false || exit 1
+          npx prebuild --runtime node --target \$node_version.0.0 --arch \$arch --tag-prefix authenticate-pam-v || exit 1
       done
     done
     
@@ -180,7 +285,7 @@ function buildLinux() {
   `;
   
   try {
-    execSync(`docker run --rm -v "\${PWD}:/workspace" -w /workspace node:22-bookworm bash -c '${dockerScript}'`, {
+    execSync(`docker run --rm --platform linux/amd64 -v "\${PWD}:/workspace" -w /workspace node:22-bookworm bash -c '${dockerScript}'`, {
       stdio: 'inherit',
       cwd: path.join(__dirname, '..')
     });
@@ -217,7 +322,20 @@ function mergePrebuilds() {
     }
   }
   
-  // authenticate-pam prebuilds should already be in root prebuilds directory
+  // Copy authenticate-pam prebuilds
+  const authenticatePamPrebuildsDir = path.join(__dirname, '..', 'node_modules', '.pnpm', 'authenticate-pam@1.0.5', 'node_modules', 'authenticate-pam', 'prebuilds');
+  if (fs.existsSync(authenticatePamPrebuildsDir)) {
+    console.log('  Copying authenticate-pam prebuilds...');
+    const pamFiles = fs.readdirSync(authenticatePamPrebuildsDir);
+    for (const file of pamFiles) {
+      const srcPath = path.join(authenticatePamPrebuildsDir, file);
+      const destPath = path.join(rootPrebuildsDir, file);
+      if (fs.statSync(srcPath).isFile()) {
+        fs.copyFileSync(srcPath, destPath);
+        console.log(`    → ${file}`);
+      }
+    }
+  }
   
   // Count total prebuilds
   const allPrebuilds = fs.readdirSync(rootPrebuildsDir).filter(f => f.endsWith('.tar.gz'));

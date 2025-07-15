@@ -192,34 +192,35 @@ int main (int argc, char** argv) {
 ```
 
 ### Installation Handling
-- **Current approach**: spawn-helper builds during installation via node-gyp
-- **Alternative approach**: Could ship prebuilt universal binaries (see below)
-- **Fallback path**: Compilation happens automatically when needed
+- **Current approach**: Universal spawn-helper binary included in prebuilds (macOS only)
+- **Benefits**: No compilation needed, faster installation, works without build tools
+- **Fallback path**: If prebuild fails, compilation happens automatically via node-gyp
 - **Error handling**: Non-fatal if missing (warns but continues)
 
-### Universal Binary Option
-Since spawn-helper is pure C with no Node.js dependencies, we could potentially ship prebuilt universal binaries:
+### Universal Binary Implementation
+spawn-helper is now shipped as a prebuilt universal binary in all macOS prebuilds:
+
+**Implementation**: 
+- Built for both x64 and arm64 architectures using clang++
+- Combined into universal binary with `lipo`
+- Included in every macOS node-pty prebuild automatically
 
 **Benefits**:
-- Faster installation (no compilation needed)
-- Works without build tools
-- Smaller than compiling during install
+- ✅ Faster installation (no compilation needed)
+- ✅ Works without build tools (Xcode Command Line Tools)
+- ✅ Universal compatibility across Intel and Apple Silicon Macs
+- ✅ Smaller download than compiling during install
 
-**Current limitation**: 
-- Would need both x64 and arm64 builds
-- Requires proper code signing for distribution
-- Need to ensure compatibility across macOS versions
-
-**Implementation**: Create universal binary with `lipo`:
+**Build process**:
 ```bash
 # Build for both architectures
-clang -arch x64 -o spawn-helper-x64 spawn-helper.cc
-clang -arch arm64 -o spawn-helper-arm64 spawn-helper.cc
+clang++ -arch x86_64 -o spawn-helper-x64 spawn-helper.cc
+clang++ -arch arm64 -o spawn-helper-arm64 spawn-helper.cc
 
 # Create universal binary  
 lipo -create spawn-helper-x64 spawn-helper-arm64 -output spawn-helper-universal
 
-# Include in prebuilds for macOS
+# Include in all macOS prebuilds
 ```
 
 ## Package Optimization

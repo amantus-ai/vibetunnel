@@ -152,3 +152,6 @@ spawn-helper*
 # Test recordings and artifacts
 *.cast
 test.cast
+
+# Temporary build directories
+temp-spawn-helper/
