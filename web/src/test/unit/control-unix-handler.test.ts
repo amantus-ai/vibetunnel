@@ -1,6 +1,4 @@
-import type { Socket } from 'net';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ControlMessage } from '../../server/websocket/control-protocol';
 import { controlUnixHandler } from '../../server/websocket/control-unix-handler';
 
 // Mock dependencies
@@ -36,32 +34,9 @@ vi.mock('../../server/utils/logger', () => ({
   })),
 }));
 
-// Helper to create a mock Socket
-const mockSocket = () => {
-  const listeners: Record<string, ((...args: unknown[]) => void)[]> = {};
-  const socket = {
-    on: vi.fn((event: string, listener: (...args: unknown[]) => void) => {
-      if (!listeners[event]) listeners[event] = [];
-      listeners[event].push(listener);
-    }),
-    write: vi.fn(),
-    end: vi.fn(),
-    // Helper to emit events
-    emit: (event: string, ...args: unknown[]) => {
-      if (listeners[event]) {
-        listeners[event].forEach((listener) => listener(...args));
-      }
-    },
-  };
-  return socket as unknown as Socket;
-};
-
 describe('Control Unix Handler', () => {
-  let mockMacSocket: ReturnType<typeof mockSocket>;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    mockMacSocket = mockSocket();
   });
 
   afterEach(() => {
