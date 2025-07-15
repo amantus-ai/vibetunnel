@@ -87,7 +87,6 @@ export class KeyboardCaptureIndicator extends LitElement {
       return [
         { key: 'Cmd+A', desc: 'Line start (not select all)' },
         { key: 'Cmd+E', desc: 'Line end' },
-        { key: 'Cmd+W', desc: 'Delete word (not close tab)' },
         { key: 'Cmd+R', desc: 'History search (not reload)' },
         { key: 'Cmd+L', desc: 'Clear screen (not address bar)' },
         { key: 'Cmd+D', desc: 'EOF/Exit (not bookmark)' },
@@ -101,7 +100,6 @@ export class KeyboardCaptureIndicator extends LitElement {
       return [
         { key: 'Ctrl+A', desc: 'Line start (not select all)' },
         { key: 'Ctrl+E', desc: 'Line end' },
-        { key: 'Ctrl+W', desc: 'Delete word (not close tab)' },
         { key: 'Ctrl+R', desc: 'History search (not reload)' },
         { key: 'Ctrl+L', desc: 'Clear screen (not address bar)' },
         { key: 'Ctrl+D', desc: 'EOF/Exit (not bookmark)' },

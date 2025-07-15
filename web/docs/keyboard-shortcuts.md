@@ -26,6 +26,7 @@ These shortcuts always pass through to the browser regardless of capture mode:
 
 ### Tab and Window Management
 - `Ctrl/Cmd + T` - New tab
+- `Ctrl/Cmd + W` - Close tab
 - `Ctrl/Cmd + N` - New window  
 - `Ctrl/Cmd + Shift + T` - Reopen closed tab
 - `Ctrl/Cmd + 1-9` - Switch to tab by number
@@ -47,7 +48,6 @@ When keyboard capture is enabled, these shortcuts are sent to the terminal inste
 ### macOS Captured Shortcuts
 - `Cmd + A` - Line start (instead of select all)
 - `Cmd + E` - Line end  
-- `Cmd + W` - Delete word (instead of close tab)
 - `Cmd + R` - History search (instead of reload)
 - `Cmd + L` - Clear screen (instead of address bar)
 - `Cmd + D` - EOF/Exit (instead of bookmark)
@@ -60,7 +60,6 @@ When keyboard capture is enabled, these shortcuts are sent to the terminal inste
 ### Windows/Linux Captured Shortcuts
 - `Ctrl + A` - Line start (instead of select all)
 - `Ctrl + E` - Line end
-- `Ctrl + W` - Delete word (instead of close tab)
 - `Ctrl + R` - History search (instead of reload)
 - `Ctrl + L` - Clear screen (instead of address bar)
 - `Ctrl + D` - EOF/Exit (instead of bookmark)
