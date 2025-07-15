@@ -19,12 +19,7 @@ final class SystemControlHandler {
     init(onSystemReady: @escaping () -> Void = {}) {
         self.onSystemReady = onSystemReady
         logger.info("SystemControlHandler initialized")
-
-        // Register with SharedUnixSocketManager
-        SharedUnixSocketManager.shared.registerControlHandler(for: .system) { [weak self] data in
-            guard let self else { return nil }
-            return await self.handleMessage(data)
-        }
+        // Note: Registration with SharedUnixSocketManager is handled by SharedUnixSocketManager.initializeSystemHandler()
     }
 
     // MARK: - Message Handling
