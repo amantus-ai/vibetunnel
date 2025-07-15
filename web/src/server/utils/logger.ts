@@ -16,15 +16,15 @@ export function setLogFilePath(filePath: string): void {
     logFileHandle.end();
     logFileHandle = null;
   }
-  
+
   LOG_FILE = filePath;
-  
+
   // Ensure directory exists
   const dir = path.dirname(LOG_FILE);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
-  
+
   // Re-open log file at new location
   try {
     logFileHandle = fs.createWriteStream(LOG_FILE, { flags: 'a' });

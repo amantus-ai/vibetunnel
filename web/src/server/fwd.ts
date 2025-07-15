@@ -21,7 +21,14 @@ import { SessionManager } from './pty/session-manager.js';
 import { VibeTunnelSocketClient } from './pty/socket-client.js';
 import { ActivityDetector } from './utils/activity-detector.js';
 import { checkAndPatchClaude } from './utils/claude-patcher.js';
-import { closeLogger, createLogger, parseVerbosityLevel, setLogFilePath, setVerbosityLevel, VerbosityLevel } from './utils/logger.js';
+import {
+  closeLogger,
+  createLogger,
+  parseVerbosityLevel,
+  setLogFilePath,
+  setVerbosityLevel,
+  VerbosityLevel,
+} from './utils/logger.js';
 import { generateSessionName } from './utils/session-naming.js';
 import { generateTitleSequence } from './utils/terminal-title.js';
 import { BUILD_DATE, GIT_COMMIT, VERSION } from './version.js';
@@ -62,7 +69,9 @@ function showUsage() {
   console.log(`  ${chalk.blue('verbose')}  - All messages except debug`);
   console.log(`  ${chalk.magenta('debug')}    - All messages including debug`);
   console.log('');
-  console.log('Quick verbosity: ' + chalk.cyan('-q (quiet), -v (verbose), -vv (extra), -vvv (debug)'));
+  console.log(
+    `Quick verbosity: ${chalk.cyan('-q (quiet), -v (verbose), -vv (extra), -vvv (debug)')}`
+  );
   console.log('');
   console.log('Environment Variables:');
   console.log('  VIBETUNNEL_TITLE_MODE=<mode>         Set default title mode');

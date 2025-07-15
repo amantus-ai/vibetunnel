@@ -8,7 +8,13 @@ suppressXtermErrors();
 
 import { startVibeTunnelForward } from './server/fwd.js';
 import { startVibeTunnelServer } from './server/server.js';
-import { closeLogger, createLogger, initLogger, parseVerbosityLevel, VerbosityLevel } from './server/utils/logger.js';
+import {
+  closeLogger,
+  createLogger,
+  initLogger,
+  parseVerbosityLevel,
+  VerbosityLevel,
+} from './server/utils/logger.js';
 import { VERSION } from './server/version.js';
 
 // Initialize logger before anything else

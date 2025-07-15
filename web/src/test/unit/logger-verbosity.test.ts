@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  VerbosityLevel,
   createLogger,
   getVerbosityLevel,
   initLogger,
   isVerbosityLevel,
   parseVerbosityLevel,
   setVerbosityLevel,
+  VerbosityLevel,
 } from '../../server/utils/logger';
 
 describe('Logger Verbosity Control', () => {
@@ -17,7 +17,7 @@ describe('Logger Verbosity Control', () => {
   beforeEach(() => {
     // Reset to default verbosity
     setVerbosityLevel(VerbosityLevel.ERROR);
-    
+
     // Spy on console methods
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -66,9 +66,7 @@ describe('Logger Verbosity Control', () => {
       expect(consoleLogSpy).not.toHaveBeenCalled();
       expect(consoleWarnSpy).not.toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('error message')
-      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('error message'));
     });
 
     it('should show errors and warnings at WARN level', () => {
@@ -141,23 +139,21 @@ describe('Logger Verbosity Control', () => {
   describe('Backward Compatibility', () => {
     it('should support setDebugMode for backward compatibility', () => {
       const logger = createLogger('test-module');
-      
+
       // Enable debug mode
       logger.setDebugMode(true);
       expect(getVerbosityLevel()).toBe(VerbosityLevel.DEBUG);
 
       // Debug messages should now appear
       logger.debug('debug message');
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('debug message')
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('debug message'));
     });
   });
 
   describe('Logger Instance Methods', () => {
     it('should support per-logger verbosity control', () => {
       const logger = createLogger('test-module');
-      
+
       // Set verbosity through logger instance
       logger.setVerbosity(VerbosityLevel.WARN);
       expect(getVerbosityLevel()).toBe(VerbosityLevel.WARN);
