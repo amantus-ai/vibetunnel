@@ -360,7 +360,7 @@ async function main() {
   delete packageJson.scripts.postinstall;
   
   // Add prebuild dependencies for npm package only
-  packageJson.dependencies['prebuild-install'] = '^7.1.2';
+  packageJson.dependencies['prebuild-install'] = '^7.1.3';
   
   // Write modified package.json
   fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
