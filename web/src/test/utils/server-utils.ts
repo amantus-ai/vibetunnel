@@ -41,7 +41,7 @@ export interface ServerInstance {
  */
 const CLI_PATH = path.join(process.cwd(), 'src', 'cli.ts');
 const BUILT_CLI_PATH = path.join(process.cwd(), 'dist', 'vibetunnel-cli');
-const DEFAULT_TIMEOUT = 10000;
+const DEFAULT_TIMEOUT = 30000;
 const HEALTH_CHECK_INTERVAL = 100;
 const PROCESS_KILL_TIMEOUT = 5000;
 

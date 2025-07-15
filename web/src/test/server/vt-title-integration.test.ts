@@ -5,6 +5,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 import { v4 as uuidv4 } from 'uuid';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getVtScriptPath, getVibetunnelBinaryPath } from '../helpers/vt-paths.js';
 
 const execAsync = promisify(exec);
 
@@ -23,8 +24,8 @@ describe('vt title Command Integration', () => {
     await fs.mkdir(testControlDir, { recursive: true });
 
     // Get path to vt script and vibetunnel binary
-    vtScriptPath = path.join(process.cwd(), '..', 'mac', 'VibeTunnel', 'vt');
-    vibetunnelPath = path.join(process.cwd(), 'native', 'vibetunnel');
+    vtScriptPath = getVtScriptPath();
+    vibetunnelPath = getVibetunnelBinaryPath();
   });
 
   afterEach(async () => {

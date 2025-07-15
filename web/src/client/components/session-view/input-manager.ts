@@ -327,7 +327,7 @@ export class InputManager {
         if (['h'].includes(key)) return true; // Hide window
       }
       if (e.metaKey && e.shiftKey && !e.altKey) {
-        if (['t', 'n'].includes(key)) return true; // Reopen tab, new incognito
+        if (['t', 'n', 'a'].includes(key)) return true; // Reopen tab, new incognito, Chrome tab search
       }
     } else {
       // Windows/Linux critical shortcuts - these should NEVER be captured
@@ -376,11 +376,6 @@ export class InputManager {
 
     // If capture is disabled, allow common browser shortcuts
     if (!captureActive) {
-      // Chrome-specific shortcuts
-      if (isMacOS && e.metaKey && e.shiftKey && key === 'a') {
-        return true; // Chrome tab search
-      }
-
       // Common browser shortcuts that are normally captured for terminal
       if (isMacOS && e.metaKey && !e.shiftKey && !e.altKey) {
         if (['a', 'f', 'r', 'l', 'w', 'p', 's', 'd'].includes(key)) {

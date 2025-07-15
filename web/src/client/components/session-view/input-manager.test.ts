@@ -25,6 +25,7 @@ describe('InputManager', () => {
 
     mockCallbacks = {
       requestUpdate: vi.fn(),
+      getKeyboardCaptureActive: vi.fn().mockReturnValue(false), // Default to capture OFF for browser shortcut tests
     };
 
     inputManager.setSession(mockSession);
