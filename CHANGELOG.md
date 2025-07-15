@@ -1,5 +1,57 @@
 # Changelog
 
+## [1.0.0-beta.10] - 2025-01-15
+
+### 🎯 Major Features
+
+#### **Repository Discovery**
+- Automatic Git repository detection when creating new sessions
+- Recently modified repositories are displayed in the new session dialog
+- Quick project access with one-click repository selection
+
+#### **Keyboard Shortcut Handling**
+- Redesigned keyboard capture system with intelligent priority handling
+- Browser shortcuts now work naturally: Cmd+Shift+A (tab search), Cmd+1-9 (tab switching), Alt+Arrow keys (browser navigation)
+- Visual keyboard capture indicator with detailed tooltips
+- Double-Escape toggle for switching between browser and terminal keyboard modes
+
+#### **Theme System**
+- Dracula theme is now the default for new users
+- Professional light mode with improved contrast and modern styling
+- Easy theme switching between light and dark modes
+- Enhanced terminal color schemes and theme management
+
+### 🚀 Performance & Developer Experience
+
+#### **Development Server Mode**
+- New "Development Server" mode in Debug Settings enables hot reload for web changes
+- Significantly faster iteration when developing the web interface
+- Hot reload works with full VibeTunnel functionality
+
+### 🛠️ Bug Fixes & Improvements
+
+#### **Cross-Platform Compatibility**
+- **FIXED**: Safari clipboard paste now works reliably on iOS and macOS
+- Improved mobile experience with better responsive behavior
+- Enhanced cross-browser compatibility
+
+#### **Session Management**
+- **FIXED**: Prevented duplicate session creation with intelligent detection
+- Added keyboard navigation in session grid (arrow keys, Enter, etc.)
+- Improved session organization and list management
+
+#### **Network & SSH**
+- **FIXED**: Race conditions in network access mode that caused connection failures
+- More robust network configuration handling and error recovery
+- Improved SSH key manager with better modal layout and responsive design
+
+### 🔧 Under the Hood
+
+- Updated all dependencies to latest stable versions
+- Enhanced TypeScript configuration with better type safety
+- Simplified CI workflow and improved build reliability
+- More comprehensive test suite with better coverage
+
 ## [1.0.0-beta.9] - 2025-01-11
 
 ### 🛡️ Stability & Reliability
