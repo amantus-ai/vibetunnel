@@ -217,3 +217,12 @@ export interface PushDeviceRegistration {
   subscription: PushSubscription;
   userAgent?: string;
 }
+
+/**
+ * Server status information
+ */
+export interface ServerStatus {
+  macAppConnected: boolean;
+  isHQMode: boolean;
+  version: string;
+}

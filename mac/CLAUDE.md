@@ -413,3 +413,18 @@ The VibeTunnel server runs on localhost:4020 by default. To test the web interfa
 2. The web frontend auto-reloads on changes (when `pnpm run dev` is running)
 3. Use Playwright MCP to test integration between components
 4. Monitor all logs with `vtlog -f` during development
+
+## Unix Socket Communication Protocol
+
+### Type Synchronization Between Mac and Web
+When implementing new Unix socket message types between the Mac app and web server, it's essential to maintain type safety on both sides:
+
+1. **Mac Side**: Define message types in Swift (typically in `ControlProtocol.swift` or related files)
+2. **Web Side**: Create corresponding TypeScript interfaces in `web/src/shared/types.ts`
+3. **Keep Types in Sync**: Whenever you add or modify Unix socket messages, update the types on both platforms to ensure type safety and prevent runtime errors
+
+Example workflow:
+- Add new message type to `ControlProtocol.swift` (Mac)
+- Add corresponding interface to `types.ts` (Web)
+- Update handlers on both sides to use the typed messages
+- This prevents bugs from mismatched message formats and makes the protocol self-documenting
