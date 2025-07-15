@@ -375,7 +375,22 @@ export class InputManager {
       return true;
     }
 
-    // Everything else is captured when capture is active
+    // When capture is active, everything else goes to terminal
+    // When capture is inactive, check if this is a browser shortcut
+    if (!captureActive) {
+      // Common browser shortcuts that should go to browser when capture is disabled
+      if (isMacOS) {
+        if (e.metaKey && !e.shiftKey && !e.altKey) {
+          if (['a', 'f', 'r', 'l', 'w', 'p', 's', 'd'].includes(key)) return true;
+        }
+      } else {
+        if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+          if (['a', 'f', 'r', 'l', 'w', 'p', 's', 'd'].includes(key)) return true;
+        }
+      }
+    }
+
+    // Everything else is captured (goes to terminal)
     return false;
   }
 

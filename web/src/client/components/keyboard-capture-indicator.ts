@@ -6,39 +6,20 @@ const logger = createLogger('keyboard-capture-indicator');
 
 @customElement('keyboard-capture-indicator')
 export class KeyboardCaptureIndicator extends LitElement {
+  // Disable shadow DOM to use Tailwind classes
+  createRenderRoot() {
+    return this;
+  }
+
   static styles = css`
-    :host {
-      display: inline-flex;
-      align-items: center;
-      cursor: pointer;
-      user-select: none;
-      position: relative;
-    }
-
-    .indicator {
-      font-size: 1.2em;
-      padding: 0.25em 0.5em;
-      border-radius: 0.25em;
-      transition: all 0.2s ease;
-      position: relative;
-    }
-
-    .indicator.active {
-      opacity: 1;
-    }
-
-    .indicator.inactive {
-      opacity: 0.5;
-    }
-
-    .indicator.animating {
-      animation: pulse 0.4s ease;
-    }
-
     @keyframes pulse {
       0% { transform: scale(1); }
       50% { transform: scale(1.2); filter: brightness(1.3); }
       100% { transform: scale(1); }
+    }
+
+    .animating {
+      animation: pulse 0.4s ease;
     }
 
     .tooltip {
@@ -182,6 +163,20 @@ export class KeyboardCaptureIndicator extends LitElement {
     }
   }
 
+  private renderKeyboardIcon() {
+    return html`
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="6" width="20" height="12" rx="2"/>
+        <circle cx="7" cy="10" r="1"/>
+        <circle cx="12" cy="10" r="1"/>
+        <circle cx="17" cy="10" r="1"/>
+        <circle cx="7" cy="14" r="1"/>
+        <rect x="9" y="13" width="6" height="2" rx="1"/>
+        <circle cx="17" cy="14" r="1"/>
+      </svg>
+    `;
+  }
+
   render() {
     if (this.isMobile) return html``;
 
@@ -223,14 +218,23 @@ export class KeyboardCaptureIndicator extends LitElement {
           </div>
         `;
 
+    // Use the same button styling as other header buttons
+    const buttonClasses = `
+      bg-elevated border border-base rounded-lg p-2 font-mono text-muted 
+      transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary 
+      hover:shadow-sm flex-shrink-0 relative
+      ${this.active ? 'text-primary bg-primary bg-opacity-10 border-primary' : ''}
+      ${this.animating ? 'animating' : ''}
+    `.trim();
+
     return html`
-      <div 
-        class="indicator ${this.active ? 'active' : 'inactive'} ${this.animating ? 'animating' : ''}"
+      <button 
+        class="${buttonClasses}"
         @click=${this.handleClick}
         title="${this.active ? 'Keyboard capture active' : 'Keyboard capture inactive'}"
       >
-        ⌨️
-      </div>
+        ${this.renderKeyboardIcon()}
+      </button>
       ${tooltipContent}
     `;
   }
