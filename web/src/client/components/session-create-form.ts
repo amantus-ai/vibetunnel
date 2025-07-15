@@ -16,6 +16,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import './file-browser.js';
 import { TitleMode } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
+import { gitAppLauncher } from '../services/git-app-launcher.js';
 import { createLogger } from '../utils/logger.js';
 import type { Session } from './session-list.js';
 import {
@@ -476,6 +477,31 @@ export class SessionCreateForm extends LitElement {
     this.showRepositoryDropdown = false;
   }
 
+  private async handleOpenInGitApp(event: Event, repoPath: string) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    try {
+      const success = await gitAppLauncher.openRepository(repoPath);
+      if (!success) {
+        logger.warn('Failed to open repository in Git app');
+        this.dispatchEvent(
+          new CustomEvent('error', {
+            detail:
+              'No Git app detected. Please install a Git client like Fork, Tower, or GitHub Desktop.',
+          })
+        );
+      }
+    } catch (error) {
+      logger.error('Error opening Git app:', error);
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: 'Failed to open Git app',
+        })
+      );
+    }
+  }
+
   render() {
     if (!this.visible) {
       return html``;
@@ -593,21 +619,47 @@ export class SessionCreateForm extends LitElement {
                       <div class="max-h-48 overflow-y-auto">
                         ${this.repositories.map(
                           (repo) => html`
-                            <button
-                              @click=${() => this.handleSelectRepository(repo.path)}
-                              class="w-full text-left px-3 py-2 hover:bg-surface-hover transition-colors duration-200 border-b border-border last:border-b-0"
-                              type="button"
-                            >
-                              <div class="flex items-center justify-between">
-                                <div>
-                                  <div class="text-dark-text text-xs sm:text-sm font-medium">${repo.folderName}</div>
-                                  <div class="text-dark-text-muted text-[9px] sm:text-[10px] mt-0.5">${repo.relativePath}</div>
+                            <div class="flex items-center border-b border-border last:border-b-0">
+                              <button
+                                @click=${() => this.handleSelectRepository(repo.path)}
+                                class="flex-1 text-left px-3 py-2 hover:bg-surface-hover transition-colors duration-200"
+                                type="button"
+                              >
+                                <div class="flex items-center justify-between">
+                                  <div>
+                                    <div class="text-dark-text text-xs sm:text-sm font-medium">${repo.folderName}</div>
+                                    <div class="text-dark-text-muted text-[9px] sm:text-[10px] mt-0.5">${repo.relativePath}</div>
+                                  </div>
+                                  <div class="text-dark-text-muted text-[9px] sm:text-[10px]">
+                                    ${new Date(repo.lastModified).toLocaleDateString()}
+                                  </div>
                                 </div>
-                                <div class="text-dark-text-muted text-[9px] sm:text-[10px]">
-                                  ${new Date(repo.lastModified).toLocaleDateString()}
-                                </div>
-                              </div>
-                            </button>
+                              </button>
+                              <button
+                                @click=${(e: Event) => this.handleOpenInGitApp(e, repo.path)}
+                                class="px-3 py-2 hover:bg-surface-hover transition-colors duration-200 border-l border-border"
+                                type="button"
+                                title="Open in Git app"
+                              >
+                                <svg
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  stroke-width="2"
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  class="text-muted hover:text-primary"
+                                >
+                                  <circle cx="12" cy="12" r="3"></circle>
+                                  <circle cx="19" cy="5" r="3"></circle>
+                                  <circle cx="5" cy="19" r="3"></circle>
+                                  <line x1="12" y1="12" x2="19" y2="5"></line>
+                                  <line x1="12" y1="12" x2="5" y2="19"></line>
+                                </svg>
+                              </button>
+                            </div>
                           `
                         )}
                       </div>
