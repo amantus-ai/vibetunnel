@@ -12,6 +12,8 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { cellsToText } from '../../shared/terminal-text-formatter.js';
 import { bufferSubscriptionService } from '../services/buffer-subscription-service.js';
 import { type BufferCell, TerminalRenderer } from '../utils/terminal-renderer.js';
+import { TERMINAL_THEMES, type TerminalThemeId } from '../utils/terminal-themes.js';
+import { getCurrentTheme } from '../utils/theme-utils.js';
 
 interface BufferSnapshot {
   cols: number;
@@ -30,6 +32,7 @@ export class VibeTerminalBuffer extends LitElement {
   }
 
   @property({ type: String }) sessionId = '';
+  @property({ type: String }) theme: TerminalThemeId = 'auto';
 
   @state() private buffer: BufferSnapshot | null = null;
   @state() private error: string | null = null;
@@ -182,8 +185,20 @@ export class VibeTerminalBuffer extends LitElement {
     // Subscription happens in firstUpdated or when sessionId changes
   }
 
+  private getTerminalTheme() {
+    let themeId = this.theme;
+
+    if (themeId === 'auto') {
+      themeId = getCurrentTheme();
+    }
+
+    const preset = TERMINAL_THEMES.find((t) => t.id === themeId) || TERMINAL_THEMES[0];
+    return { ...preset.colors };
+  }
+
   render() {
     const lineHeight = this.displayedFontSize * 1.2;
+    const terminalTheme = this.getTerminalTheme();
 
     return html`
       <style>
@@ -199,8 +214,13 @@ export class VibeTerminalBuffer extends LitElement {
         }
       </style>
       <div
-        class="relative w-full h-full overflow-hidden bg-bg"
-        style="view-transition-name: terminal-${this.sessionId}; min-height: 200px;"
+        class="relative w-full h-full overflow-hidden"
+        style="
+          view-transition-name: terminal-${this.sessionId}; 
+          min-height: 200px;
+          background-color: ${terminalTheme.background || 'var(--terminal-background, #0a0a0a)'};
+          color: ${terminalTheme.foreground || 'var(--terminal-foreground, #e4e4e4)'};
+        "
       >
         ${
           this.error

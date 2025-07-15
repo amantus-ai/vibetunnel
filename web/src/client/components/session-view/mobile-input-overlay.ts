@@ -244,8 +244,15 @@ export class MobileInputOverlay extends LitElement {
               style="height: 120px; background: rgb(var(--color-bg)); color: rgb(var(--color-text)); border: none; padding: 12px;"
               autocomplete="off"
               autocorrect="off"
-              autocapitalize="off"
+              autocapitalize="none"
               spellcheck="false"
+              data-autocorrect="off"
+              data-gramm="false"
+              data-ms-editor="false"
+              data-smartpunctuation="false"
+              data-form-type="other"
+              inputmode="text"
+              enterkeyhint="done"
             ></textarea>
           </div>
 

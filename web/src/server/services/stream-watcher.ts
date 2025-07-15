@@ -511,7 +511,6 @@ export class StreamWatcher {
 
             try {
               client.response.write(clientData);
-              // @ts-expect-error - flush exists but not in types
               if (client.response.flush) client.response.flush();
             } catch (error) {
               logger.debug(
@@ -532,7 +531,6 @@ export class StreamWatcher {
 
         try {
           client.response.write(clientData);
-          // @ts-expect-error - flush exists but not in types
           if (client.response.flush) client.response.flush();
         } catch (error) {
           logger.debug(

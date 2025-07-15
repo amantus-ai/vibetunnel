@@ -16,11 +16,27 @@
 
 Ever wanted to check on your AI agents while you're away? Need to monitor that long-running build from your phone? Want to share a terminal session with a colleague without complex SSH setups? VibeTunnel makes it happen with zero friction.
 
+## Installation Options
+
+### macOS App (Recommended for Mac users)
+The native macOS app provides the best experience with menu bar integration and automatic updates.
+
+### npm Package (Linux & Headless Systems)
+For Linux servers, Docker containers, or headless macOS systems, install via npm:
+
+```bash
+npm install -g vibetunnel
+```
+
+This gives you the full VibeTunnel server with web UI, just without the macOS menu bar app. See the [npm Package section](#npm-package) for detailed usage.
+
 ## Quick Start
 
 ### Requirements
 
-**VibeTunnel requires an Apple Silicon Mac (M1+).** Intel Macs are not supported.
+**macOS App**: Requires an Apple Silicon Mac (M1+). Intel Macs are not supported for the native app.
+
+**npm Package**: Works on any system with Node.js 20+, including Intel Macs and Linux. Windows is not yet supported ([#252](https://github.com/amantus-ai/vibetunnel/issues/252)).
 
 ### 1. Download & Install
 
@@ -37,6 +53,24 @@ brew install --cask vibetunnel
 VibeTunnel lives in your menu bar. Click the icon to start the server.
 
 ### 3. Use the `vt` Command
+
+The `vt` command is a smart wrapper that forwards your terminal sessions through VibeTunnel:
+
+**How it works**:
+- `vt` is a bash script that internally calls `vibetunnel fwd` to forward terminal output
+- It provides additional features like shell alias resolution and session title management
+- Available from both the Mac app and npm package installations
+
+**Installation sources**:
+- **macOS App**: Creates `/usr/local/bin/vt` symlink during installation
+- **npm Package**: Installs `vt` globally, with intelligent Mac app detection
+
+**Smart detection**:
+When you run `vt` from the npm package, it:
+1. Checks if the Mac app is installed at `/Applications/VibeTunnel.app`
+2. If found, forwards to the Mac app's `vt` for the best experience
+3. If not found, uses the npm-installed `vibetunnel fwd`
+4. This ensures `vt` always uses the best available implementation
 
 ```bash
 # Run any command in the browser
@@ -67,11 +101,11 @@ Visit [http://localhost:4020](http://localhost:4020) to see all your terminal se
 - **🚀 Zero Configuration** - No SSH keys, no port forwarding, no complexity
 - **🤖 AI Agent Friendly** - Perfect for monitoring Claude Code, ChatGPT, or any terminal-based AI tools
 - **📊 Dynamic Terminal Titles** - Real-time activity tracking shows what's happening in each session
-- **🔒 Secure by Design** - Password protection, localhost-only mode, or secure tunneling via Tailscale/ngrok
+- **🔒 Secure by Design** - Multiple authentication modes, localhost-only mode, or secure tunneling via Tailscale/ngrok
 - **📱 Mobile Ready** - Native iOS app and responsive web interface for phones and tablets
 - **🎬 Session Recording** - All sessions recorded in asciinema format for later playback
-- **⚡ High Performance** - Powered by Bun runtime for blazing-fast JavaScript execution
-- **🍎 Apple Silicon Native** - Optimized for M1/M2/M3 Macs with ARM64-only binaries
+- **⚡ High Performance** - Optimized Node.js server with minimal resource usage
+- **🍎 Apple Silicon Native** - Optimized for Apple Silicon (M1+) Macs with ARM64-only binaries
 - **🐚 Shell Alias Support** - Your custom aliases and shell functions work automatically
 
 > **Note**: The iOS app and Tauri-based components are still work in progress and not recommended for production use yet.
@@ -81,10 +115,10 @@ Visit [http://localhost:4020](http://localhost:4020) to see all your terminal se
 VibeTunnel consists of three main components:
 
 1. **macOS Menu Bar App** - Native Swift application that manages the server lifecycle
-2. **Node.js/Bun Server** - High-performance TypeScript server handling terminal sessions
+2. **Node.js Server** - High-performance TypeScript server handling terminal sessions
 3. **Web Frontend** - Modern web interface using Lit components and xterm.js
 
-The server runs as a standalone Bun executable with embedded Node.js modules, providing excellent performance and minimal resource usage.
+The server runs as a standalone Node.js executable with embedded modules, providing excellent performance and minimal resource usage.
 
 ## Remote Access Options
 
@@ -132,7 +166,7 @@ The server runs as a standalone Bun executable with embedded Node.js modules, pr
 **Note**: Free ngrok URLs change each time you restart the tunnel. You can claim one free static domain per user, or upgrade to a paid plan for multiple domains.
 
 ### Option 3: Local Network
-1. Set a dashboard password in settings
+1. Configure authentication (see Authentication section)
 2. Switch to "Network" mode
 3. Access via `http://[your-mac-ip]:4020`
 
@@ -165,13 +199,224 @@ Dynamic mode includes real-time activity detection:
 - Shows `•` when there's terminal output within 5 seconds
 - Claude commands show specific status (Crafting, Transitioning, etc.)
 - Extensible system for future app-specific detectors
+
+## Authentication
+
+VibeTunnel provides multiple authentication modes to secure your terminal sessions:
+
+### Authentication Modes
+
+#### 1. System Authentication (Default)
+Uses your operating system's native authentication:
+- **macOS**: Authenticates against local user accounts
+- **Linux**: Uses PAM (Pluggable Authentication Modules)
+- Login with your system username and password
+
+#### 2. Environment Variable Authentication
+Simple authentication for deployments:
+```bash
+export VIBETUNNEL_USERNAME=admin
+export VIBETUNNEL_PASSWORD=your-secure-password
+npm run start
+```
+
+#### 3. SSH Key Authentication
+Use Ed25519 SSH keys from `~/.ssh/authorized_keys`:
+```bash
+# Enable SSH key authentication
+npm run start -- --enable-ssh-keys
+
+# Make SSH keys mandatory (disable password auth)
+npm run start -- --enable-ssh-keys --disallow-user-password
+```
+
+#### 4. No Authentication
+For trusted environments only:
+```bash
+npm run start -- --no-auth
+```
+
+#### 5. Local Bypass (Development Only)
+Allow localhost connections to bypass authentication:
+```bash
+# Basic local bypass (DEVELOPMENT ONLY - NOT FOR PRODUCTION)
+npm run start -- --allow-local-bypass
+
+# With token for additional security (minimum for production)
+npm run start -- --allow-local-bypass --local-auth-token mytoken
+```
+
+**Security Note**: Local bypass uses `req.socket.remoteAddress` which cannot be spoofed remotely due to TCP's three-way handshake. The implementation also rejects requests with proxy headers (`X-Forwarded-For`, etc.) to prevent header injection attacks. However:
+- **Development only**: Basic bypass without token should never be used in production
+- **Local processes**: Any process on the same machine can access the API
+- **Always use tokens**: In production, always require `--local-auth-token`
+- **Consider alternatives**: For production, use proper authentication instead of local bypass
+
+### macOS App Authentication
+
+The macOS menu bar app supports these authentication modes:
+- **No Authentication**: For trusted environments only
+- **System Authentication**: Uses your macOS user account credentials
+- **SSH Key Authentication**: Uses Ed25519 SSH keys from `~/.ssh/authorized_keys`
+- Configure via Settings → Security when in "Network" mode
+
+### Security Best Practices
+
+1. **Always use authentication** when binding to network interfaces (`--bind 0.0.0.0`)
+2. **Use HTTPS** in production with a reverse proxy (nginx, Caddy)
+3. **Rotate credentials** regularly
+4. **Consider SSH keys** for stronger security
+5. **Never use local bypass without tokens** in production environments
+6. **Monitor access logs** for suspicious authentication patterns
+7. **Default to secure** - explicitly enable less secure options only when needed
+
+
+## npm Package
+
+The VibeTunnel npm package provides the full server functionality for Linux, Docker, CI/CD environments, and headless macOS systems.
+
+### Installation
+
+```bash
+# Install globally via npm
+npm install -g vibetunnel
+
+# Or with yarn
+yarn global add vibetunnel
+
+# Or with pnpm
+pnpm add -g vibetunnel
+```
+
+**Requirements**: Node.js 20.0.0 or higher
+
+### Running the VibeTunnel Server
+
+#### Basic Usage
+
+```bash
+# Start with default settings (localhost:4020)
+vibetunnel
+
+# Bind to all network interfaces
+vibetunnel --bind 0.0.0.0
+
+# Use a custom port
+vibetunnel --port 8080
+
+# With authentication
+VIBETUNNEL_USERNAME=admin VIBETUNNEL_PASSWORD=secure vibetunnel --bind 0.0.0.0
+
+# Enable debug logging
+VIBETUNNEL_DEBUG=1 vibetunnel
+
+# Run without authentication (trusted networks only!)
+vibetunnel --no-auth
+```
+
+#### Using the `vt` Command
+
+The `vt` command wrapper makes it easy to forward terminal sessions:
+
+```bash
+# Monitor AI agents with automatic activity tracking
+vt claude
+vt claude --dangerously-skip-permissions
+vt --title-mode dynamic claude    # See real-time Claude status
+
+# Run any command and see it in the browser
+vt npm test
+vt python script.py
+vt cargo build --release
+
+# Open an interactive shell
+vt --shell
+vt -i  # short form
+
+# Control terminal titles
+vt --title-mode static npm run dev    # Shows path and command
+vt --title-mode dynamic python app.py  # Shows path, command, and activity
+vt --title-mode filter vim            # Blocks vim from changing title
+
+# Shell aliases work automatically!
+vt claude-danger  # Your custom alias for claude --dangerously-skip-permissions
+
+# Update session title (inside a VibeTunnel session)
+vt title "My Project - Testing"
+```
+
+### Mac App Interoperability
+
+The npm package is designed to work seamlessly alongside the Mac app:
+
+#### Smart Command Routing
+- The `vt` command automatically detects if the Mac app is installed
+- If found at `/Applications/VibeTunnel.app`, it defers to the Mac app
+- If not found, it uses the npm-installed server
+- This ensures you always get the best available implementation
+
+#### Installation Behavior
+- If `/usr/local/bin/vt` already exists (from another tool), npm won't overwrite it
+- You'll see a helpful warning with alternatives: `vibetunnel` or `npx vt`
+- The installation always succeeds, even if the `vt` symlink can't be created
+
+#### When to Use Each Version
+- **Mac app only**: Best for macOS users who want menu bar integration
+- **npm only**: Perfect for Linux, Docker, CI/CD, or headless servers
+- **Both installed**: Mac app takes precedence, npm serves as fallback
+- **Development**: npm package useful for testing without affecting Mac app
+
+### Package Contents
+
+The npm package includes:
+- Full VibeTunnel server with web UI
+- CLI tools (`vibetunnel` and `vt` commands)
+- Native PTY support via node-pty
+- Pre-built binaries for common platforms
+- Complete feature parity with macOS app (minus menu bar)
+
+### Building the npm Package
+
+For maintainers who need to build the npm package:
+
+#### Unified Build (Multi-Platform by Default)
+```bash
+# Build with prebuilt binaries for all platforms
+# Requires Docker for Linux cross-compilation
+npm run build:npm
+```
+
+This creates prebuilt binaries for:
+- macOS (x64, arm64) - Node.js 20, 22, 23, 24
+- Linux (x64, arm64) - Node.js 20, 22, 23, 24
+
+#### Build Options
+```bash
+# Current platform only (faster for development)
+node scripts/build-npm.js --current-only
+
+# Specific platform/architecture
+node scripts/build-npm.js --platform darwin --arch arm64
+
+# Skip Docker builds
+node scripts/build-npm.js --no-docker
+```
+
+#### Publishing
+```bash
+# Test the package locally
+npm pack
+
+# Publish to npm
+npm publish
+```
+
 ## Building from Source
 
 ### Prerequisites
-- macOS 14.0+ (Sonoma) on Apple Silicon (M1/M2/M3)
+- macOS 14.0+ (Sonoma) on Apple Silicon (M1+)
 - Xcode 16.0+
-- Node.js 20+
-- Bun runtime
+- Node.js 20+ (minimum supported version)
 
 ### Build Steps
 

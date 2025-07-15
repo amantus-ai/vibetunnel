@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+
+// Start the CLI - it handles all command routing including 'fwd'
+require('../dist/cli.js');

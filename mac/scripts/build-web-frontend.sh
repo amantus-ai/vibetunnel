@@ -282,7 +282,17 @@ else
     echo "Warning: authenticate_pam.node not found. PAM authentication may not work."
 fi
 
-echo "✓ Native executable and modules copied successfully"
+# Copy unified vt script
+if [ -f "${WEB_DIR}/bin/vt" ]; then
+    echo "Copying unified vt script..."
+    cp "${WEB_DIR}/bin/vt" "${APP_RESOURCES}/"
+    chmod +x "${APP_RESOURCES}/vt"
+else
+    echo "error: Unified vt script not found at ${WEB_DIR}/bin/vt"
+    exit 1
+fi
+
+echo "✓ Native executable, modules, and vt script copied successfully"
 
 # Sanity check: Verify all required binaries are present in the app bundle
 echo "Performing final sanity check..."
@@ -314,6 +324,16 @@ if [ -f "${APP_RESOURCES}/spawn-helper" ] && [ ! -x "${APP_RESOURCES}/spawn-help
     MISSING_FILES+=("spawn-helper is not executable")
 fi
 
+# Check for vt script
+if [ ! -f "${APP_RESOURCES}/vt" ]; then
+    MISSING_FILES+=("vt script")
+fi
+
+# Check if vt script is executable
+if [ -f "${APP_RESOURCES}/vt" ] && [ ! -x "${APP_RESOURCES}/vt" ]; then
+    MISSING_FILES+=("vt script is not executable")
+fi
+
 # If any files are missing, fail the build
 if [ ${#MISSING_FILES[@]} -gt 0 ]; then
     echo "error: Build sanity check failed! Missing required files:"
@@ -323,7 +343,7 @@ if [ ${#MISSING_FILES[@]} -gt 0 ]; then
     echo "Build artifacts in ${NATIVE_DIR}:"
     ls -la "${NATIVE_DIR}" || echo "  Directory does not exist"
     echo "App resources in ${APP_RESOURCES}:"
-    ls -la "${APP_RESOURCES}/vibetunnel" "${APP_RESOURCES}/pty.node" "${APP_RESOURCES}/spawn-helper" 2>/dev/null || true
+    ls -la "${APP_RESOURCES}/vibetunnel" "${APP_RESOURCES}/pty.node" "${APP_RESOURCES}/spawn-helper" "${APP_RESOURCES}/vt" 2>/dev/null || true
     exit 1
 fi
 

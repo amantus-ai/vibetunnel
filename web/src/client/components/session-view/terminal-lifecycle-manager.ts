@@ -7,6 +7,7 @@
 
 import { authClient } from '../../services/auth-client.js';
 import { createLogger } from '../../utils/logger.js';
+import type { TerminalThemeId } from '../../utils/terminal-themes.js';
 import type { Session } from '../session-list.js';
 import type { Terminal } from '../terminal.js';
 import type { ConnectionManager } from './connection-manager.js';
@@ -32,6 +33,7 @@ export class TerminalLifecycleManager {
   private connected = false;
   private terminalFontSize = 14;
   private terminalMaxCols = 0;
+  private terminalTheme: TerminalThemeId = 'auto';
   private resizeTimeout: number | null = null;
   private lastResizeWidth = 0;
   private lastResizeHeight = 0;
@@ -65,6 +67,10 @@ export class TerminalLifecycleManager {
 
   setTerminalMaxCols(maxCols: number) {
     this.terminalMaxCols = maxCols;
+  }
+
+  setTerminalTheme(theme: TerminalThemeId) {
+    this.terminalTheme = theme;
   }
 
   getTerminal(): Terminal | null {
@@ -114,6 +120,7 @@ export class TerminalLifecycleManager {
     this.terminal.fontSize = this.terminalFontSize; // Apply saved font size preference
     this.terminal.fitHorizontally = false; // Allow natural terminal sizing
     this.terminal.maxCols = this.terminalMaxCols; // Apply saved max width preference
+    this.terminal.theme = this.terminalTheme;
 
     if (this.eventHandlers) {
       // Listen for session exit events

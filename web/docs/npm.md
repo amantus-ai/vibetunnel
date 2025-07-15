@@ -1,0 +1,406 @@
+# VibeTunnel NPM Package Distribution
+
+This document explains the npm package build process, native module handling, and prebuild system for VibeTunnel.
+
+## Overview
+
+VibeTunnel is distributed as an npm package that includes:
+- Full web server with terminal sharing capabilities
+- Native modules for terminal (PTY) and authentication (PAM) support
+- Cross-platform prebuilt binaries to avoid requiring build tools
+- Command-line tools (`vibetunnel` and `vt`)
+
+## Package Structure
+
+```
+vibetunnel/
+├── dist/                    # Compiled server code
+├── public/                  # Web interface assets
+├── bin/                     # CLI entry points
+│   ├── vibetunnel          # Main server executable
+│   └── vt                  # Terminal wrapper command
+├── node-pty/               # Vendored PTY implementation
+│   ├── lib/                # TypeScript compiled code
+│   └── package.json        # PTY package configuration
+├── prebuilds/              # Native module prebuilt binaries
+│   ├── node-pty-*          # PTY binaries for all platforms/Node versions
+│   └── authenticate-pam-*  # PAM binaries for all platforms/Node versions
+└── README.md               # Package documentation
+```
+
+## Native Modules
+
+VibeTunnel requires two native modules:
+
+### 1. node-pty (Terminal Support)
+- **Purpose**: Provides pseudo-terminal (PTY) functionality
+- **Components**:
+  - `pty.node`: Main Node.js addon for terminal operations
+  - `spawn-helper`: macOS-only C helper binary for process spawning
+- **Platforms**: All (macOS, Linux)
+- **Dependencies**: None (vendored implementation)
+
+### 2. authenticate-pam (Authentication)
+- **Purpose**: PAM (Pluggable Authentication Modules) integration
+- **Components**:
+  - `authenticate_pam.node`: Node.js addon for system authentication
+- **Platforms**: Linux primarily, macOS for compatibility
+- **Dependencies**: System PAM libraries
+
+## Prebuild System
+
+### Overview
+We use `prebuild` and `prebuild-install` to provide precompiled native modules, eliminating the need for users to have build tools installed.
+
+### Coverage
+- **Node.js versions**: 20, 22, 23, 24
+- **Platforms**: macOS (x64, arm64), Linux (x64, arm64)
+- **Total prebuilds**: 32 binaries (16 per native module)
+
+### Prebuild Files
+```
+prebuilds/
+├── node-pty-v1.0.0-node-v115-darwin-arm64.tar.gz
+├── node-pty-v1.0.0-node-v115-darwin-x64.tar.gz
+├── node-pty-v1.0.0-node-v115-linux-arm64.tar.gz
+├── node-pty-v1.0.0-node-v115-linux-x64.tar.gz
+├── authenticate-pam-v1.0.5-node-v115-darwin-arm64.tar.gz
+├── authenticate-pam-v1.0.5-node-v115-darwin-x64.tar.gz
+├── authenticate-pam-v1.0.5-node-v115-linux-arm64.tar.gz
+├── authenticate-pam-v1.0.5-node-v115-linux-x64.tar.gz
+└── ... (similar for node versions 22, 23, 24)
+```
+
+Note: Node version numbers map to internal versions (v115=Node 20, v127=Node 22, v131=Node 23, v134=Node 24)
+
+## Build Process
+
+### Unified Build (Multi-Platform by Default)
+```bash
+npm run build:npm
+```
+- Compiles TypeScript and bundles client code
+- Builds native modules for all supported platforms (macOS x64/arm64, Linux x64/arm64)
+- Creates comprehensive prebuilds for zero-dependency installation
+- Generates npm README optimized for package distribution
+
+### Build Options
+The unified build script supports flexible targeting:
+
+```bash
+# Default: All platforms
+npm run build:npm
+
+# Current platform only (faster for development)
+node scripts/build-npm.js --current-only
+
+# Specific platform/architecture
+node scripts/build-npm.js --platform darwin --arch arm64
+node scripts/build-npm.js --platform linux
+
+# Skip Docker (Linux builds will be skipped)
+node scripts/build-npm.js --no-docker
+```
+
+### Docker Requirements
+For Linux builds, Docker is required:
+- **Recommended**: [OrbStack](https://orbstack.dev/)
+- **Alternative**: [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+
+The build will fail with helpful error messages if Docker is not available.
+
+## Installation Process
+
+### For End Users
+1. **Install package**: `npm install -g vibetunnel`
+2. **Prebuild-install runs**: Attempts to download prebuilt binaries
+3. **Fallback compilation**: If prebuilds fail, compiles from source
+4. **Result**: Working VibeTunnel installation
+
+### Installation Scripts
+The package uses a multi-stage installation approach:
+
+```json
+{
+  "scripts": {
+    "install": "prebuild-install || node scripts/postinstall-npm.js"
+  }
+}
+```
+
+#### Stage 1: prebuild-install
+- Downloads appropriate prebuilt binary for current platform/Node version
+- Installs to standard locations
+- **Success**: Installation complete, no compilation needed
+- **Failure**: Proceeds to Stage 2
+
+#### Stage 2: postinstall-npm.js
+- **node-pty**: Essential module, installation fails if build fails
+- **authenticate-pam**: Optional module, warns if build fails
+- Provides helpful error messages about required build tools
+
+## Platform-Specific Details
+
+### macOS
+- **spawn-helper**: Additional C binary needed for proper PTY operations
+- **Built during install**: spawn-helper compiles via node-gyp when needed
+- **Architecture**: Supports both Intel (x64) and Apple Silicon (arm64)
+- **Build tools**: Requires Xcode Command Line Tools for source compilation
+
+### Linux
+- **PAM libraries**: Requires `libpam0g-dev` for authenticate-pam compilation
+- **spawn-helper**: Not used on Linux (macOS-only)
+- **Build tools**: Requires `build-essential` package for source compilation
+
+### Docker Build Environment
+Linux prebuilds are created using Docker with:
+- **Base image**: `node:22-bookworm`
+- **Dependencies**: `python3 make g++ git libpam0g-dev`
+- **Package manager**: pnpm (more reliable than npm in Docker)
+- **Environment**: `CI=true` to avoid interactive prompts
+
+## spawn-helper Binary
+
+### What is spawn-helper?
+`spawn-helper` is a small C helper binary used by node-pty for proper terminal process spawning on macOS.
+
+### Key Facts
+- **Size**: ~70KB pure C binary
+- **Platform**: macOS only (Linux doesn't use it)
+- **Purpose**: Handles terminal device attachment for spawned processes
+- **Dependencies**: None (pure C, no Node.js dependencies)
+- **Architecture**: Platform-specific (x64 vs arm64)
+
+### Source Code
+```c
+// Simplified version of spawn-helper functionality
+int main (int argc, char** argv) {
+  char *slave_path = ttyname(STDIN_FILENO);
+  close(open(slave_path, O_RDWR));  // Attach to terminal
+  
+  char *cwd = argv[1];
+  char *file = argv[2];
+  argv = &argv[2];
+  
+  if (strlen(cwd) && chdir(cwd) == -1) {
+    _exit(1);
+  }
+  
+  execvp(file, argv);  // Execute the target command
+  return 1;
+}
+```
+
+### Installation Handling
+- **Current approach**: Universal spawn-helper binary included in prebuilds (macOS only)
+- **Benefits**: No compilation needed, faster installation, works without build tools
+- **Fallback path**: If prebuild fails, compilation happens automatically via node-gyp
+- **Error handling**: Non-fatal if missing (warns but continues)
+
+### Universal Binary Implementation
+spawn-helper is now shipped as a prebuilt universal binary in all macOS prebuilds:
+
+**Implementation**: 
+- Built for both x64 and arm64 architectures using clang++
+- Combined into universal binary with `lipo`
+- Included in every macOS node-pty prebuild automatically
+
+**Benefits**:
+- ✅ Faster installation (no compilation needed)
+- ✅ Works without build tools (Xcode Command Line Tools)
+- ✅ Universal compatibility across Intel and Apple Silicon Macs
+- ✅ Smaller download than compiling during install
+
+**Build process**:
+```bash
+# Build for both architectures
+clang++ -arch x86_64 -o spawn-helper-x64 spawn-helper.cc
+clang++ -arch arm64 -o spawn-helper-arm64 spawn-helper.cc
+
+# Create universal binary  
+lipo -create spawn-helper-x64 spawn-helper-arm64 -output spawn-helper-universal
+
+# Include in all macOS prebuilds
+```
+
+## Package Optimization
+
+### File Exclusions
+Development artifacts are excluded from the final package:
+- Test files (`public/bundle/test.js`, `public/test/` directory)
+- Recording files (`*.cast` prevented by .gitignore)
+- Build artifacts (`dist/` selectively included via package.json `files` field)
+
+**Note**: `screencap.js` is kept as it provides screen capture functionality for the web interface.
+
+### Size Optimization
+- **Final size**: ~8.5 MB
+- **File count**: ~275 files
+- **Prebuilds**: Included for zero-build installation experience
+- **Source code**: Minimal, compiled assets only
+
+## Development Commands
+
+### Local Development
+```bash
+# Multi-platform build with prebuilds (default)
+npm run build:npm
+
+# Single-platform build for local testing
+node scripts/build-npm.js --current-only
+
+# Test package locally
+npm pack
+
+# Verify package contents
+tar -tzf vibetunnel-*.tgz | head -20
+```
+
+### Quality Checks
+Always run before publishing:
+```bash
+pnpm run lint          # Check code style
+pnpm run typecheck     # Verify TypeScript
+```
+
+## Publishing
+
+### Prerequisites
+1. Update version in `package.json`
+2. Run multi-platform build
+3. Test package locally
+4. Verify all prebuilds are included
+
+### Publish Command
+```bash
+npm publish
+```
+
+## Usage After Installation
+
+### Installation
+```bash
+# Install globally
+npm install -g vibetunnel
+```
+
+### Starting the Server
+```bash
+# Start with default settings (port 4020)
+vibetunnel
+
+# Start with custom port
+vibetunnel --port 8080
+
+# Start without authentication
+vibetunnel --no-auth
+```
+
+Then open http://localhost:4020 in your browser to access the web interface.
+
+### Using the vt Command
+```bash
+# Monitor AI agents with automatic activity tracking
+vt claude
+vt claude --dangerously-skip-permissions
+
+# Run commands with output visible in VibeTunnel
+vt npm test
+vt python script.py
+vt top
+
+# Launch interactive shell
+vt --shell
+vt -i
+
+# Update session title (inside a session)
+vt title "My Project"
+```
+
+### Command Forwarding
+```bash
+# Basic usage
+vibetunnel fwd <session-id> <command> [args...]
+
+# Examples
+vibetunnel fwd --session-id abc123 ls -la
+vibetunnel fwd --session-id abc123 npm test
+vibetunnel fwd --session-id abc123 python script.py
+```
+
+## Coexistence with Mac App
+
+The npm package works seamlessly alongside the Mac app:
+
+### Command Routing
+- The `vt` command from npm automatically detects if the Mac app is installed
+- If Mac app found at `/Applications/VibeTunnel.app`, npm `vt` defers to it
+- Ensures you always get the best available implementation
+
+### Installation Behavior
+- Won't overwrite existing `/usr/local/bin/vt` from other tools
+- Provides helpful warnings if conflicts exist
+- Installation always succeeds, even if `vt` symlink can't be created
+- Use `vibetunnel` or `npx vt` as alternatives
+
+## Troubleshooting
+
+### Common Issues
+
+#### Missing Build Tools
+**Error**: `gyp ERR! stack Error: not found: make`
+**Solution**: Install build tools:
+- **macOS**: `xcode-select --install`
+- **Linux**: `apt-get install build-essential`
+
+#### Missing PAM Development Libraries
+**Error**: `fatal error: security/pam_appl.h: No such file or directory`
+**Solution**: Install PAM development libraries:
+- **Linux**: `apt-get install libpam0g-dev`
+- **macOS**: Usually available by default
+
+#### Docker Not Available
+**Error**: `Docker is required for multi-platform builds`
+**Solution**: Install Docker using OrbStack or Docker Desktop
+
+#### Prebuild Download Failures
+**Error**: `prebuild-install warn install No prebuilt binaries found`
+**Cause**: Network issues or unsupported platform/Node version
+**Result**: Automatic fallback to source compilation
+
+### Debugging Installation
+```bash
+# Verbose npm install
+npm install -g vibetunnel --verbose
+
+# Check prebuild availability
+npx prebuild-install --list
+
+# Force source compilation
+npm install -g vibetunnel --build-from-source
+```
+
+## Architecture Decisions
+
+### Why Prebuilds?
+- **User experience**: No build tools required for most users
+- **Installation speed**: Pre-compiled binaries install much faster
+- **Reliability**: Eliminates compilation errors in user environments
+- **Cross-platform**: Supports all target platforms without user setup
+
+### Why Docker for Linux Builds?
+- **Cross-compilation**: Build Linux binaries from macOS development machine
+- **Consistency**: Reproducible build environment
+- **Dependencies**: Proper PAM library versions for Linux
+
+### Why Vendored node-pty?
+- **Control**: Custom modifications for VibeTunnel's needs
+- **Reliability**: Avoid external dependency issues
+- **Optimization**: Minimal implementation without unnecessary features
+
+## Related Files
+
+- `scripts/build-npm.js` - Unified npm build process with multi-platform support
+- `scripts/postinstall-npm.js` - Fallback compilation logic
+- `.prebuildrc` - Prebuild configuration for target platforms
+- `package.json` - Package configuration and file inclusions

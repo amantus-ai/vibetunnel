@@ -17,6 +17,8 @@ import type { AuthClient } from '../services/auth-client.js';
 import { isAIAssistantSession, sendAIPrompt } from '../utils/ai-sessions.js';
 import { createLogger } from '../utils/logger.js';
 import { copyToClipboard } from '../utils/path-utils.js';
+import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
+import type { TerminalThemeId } from '../utils/terminal-themes.js';
 
 const logger = createLogger('session-card');
 import './vibe-terminal-buffer.js';
@@ -63,12 +65,33 @@ export class SessionCard extends LitElement {
   @state() private isActive = false;
   @state() private isHovered = false;
   @state() private isSendingPrompt = false;
+  @state() private terminalTheme: TerminalThemeId = 'auto';
 
   private killingInterval: number | null = null;
   private activityTimeout: number | null = null;
+  private storageListener: ((e: StorageEvent) => void) | null = null;
+  private themeChangeListener: ((e: CustomEvent) => void) | null = null;
+  private preferencesManager = TerminalPreferencesManager.getInstance();
 
   connectedCallback() {
     super.connectedCallback();
+
+    // Load initial theme from TerminalPreferencesManager
+    this.loadThemeFromStorage();
+
+    // Listen for storage changes to update theme reactively (cross-tab)
+    this.storageListener = (e: StorageEvent) => {
+      if (e.key === 'vibetunnel_terminal_preferences') {
+        this.loadThemeFromStorage();
+      }
+    };
+    window.addEventListener('storage', this.storageListener);
+
+    // Listen for custom theme change events (same-tab)
+    this.themeChangeListener = (e: CustomEvent) => {
+      this.terminalTheme = e.detail as TerminalThemeId;
+    };
+    window.addEventListener('terminal-theme-changed', this.themeChangeListener as EventListener);
   }
 
   disconnectedCallback() {
@@ -78,6 +101,17 @@ export class SessionCard extends LitElement {
     }
     if (this.activityTimeout) {
       clearTimeout(this.activityTimeout);
+    }
+    if (this.storageListener) {
+      window.removeEventListener('storage', this.storageListener);
+      this.storageListener = null;
+    }
+    if (this.themeChangeListener) {
+      window.removeEventListener(
+        'terminal-theme-changed',
+        this.themeChangeListener as EventListener
+      );
+      this.themeChangeListener = null;
     }
   }
 
@@ -340,6 +374,10 @@ export class SessionCard extends LitElement {
     this.isHovered = false;
   }
 
+  private loadThemeFromStorage() {
+    this.terminalTheme = this.preferencesManager.getTheme();
+  }
+
   render() {
     // Debug logging to understand what's in the session
     if (!this.session.name) {
@@ -475,6 +513,7 @@ export class SessionCard extends LitElement {
               : html`
                 <vibe-terminal-buffer
                   .sessionId=${this.session.id}
+                  .theme=${this.terminalTheme}
                   class="w-full h-full"
                   style="pointer-events: none;"
                   @content-changed=${this.handleContentChanged}

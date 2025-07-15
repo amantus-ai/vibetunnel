@@ -16,7 +16,7 @@ export class SidebarHeader extends HeaderBase {
 
     return html`
       <div
-        class="app-header sidebar-header bg-gradient-to-r from-bg-secondary to-bg-tertiary border-b border-border px-4 py-2 shadow-sm"
+        class="app-header sidebar-header bg-gradient-to-r from-bg-secondary to-bg-tertiary px-4 py-2"
         style="padding-top: max(0.625rem, env(safe-area-inset-top));"
       >
         <!-- Compact layout for sidebar -->

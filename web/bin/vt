@@ -1,47 +1,107 @@
 #!/bin/bash
-# VibeTunnel CLI wrapper
+# Unified VibeTunnel CLI wrapper - compatible with both Mac app and npm installations
 
-# First, find the VibeTunnel app location
-# Try standard locations first, but verify the binary exists
-APP_PATH=""
-for TRY_PATH in "/Applications/VibeTunnel.app" "$HOME/Applications/VibeTunnel.app"; do
-    if [ -d "$TRY_PATH" ] && [ -f "$TRY_PATH/Contents/Resources/vibetunnel" ]; then
-        APP_PATH="$TRY_PATH"
-        break
-    fi
-done
+# Only check for Mac app on macOS
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS symlink resolution function using BSD readlink
+    resolve_symlink_macos() {
+        local target="$1"
+        local current="$target"
+        while [ -L "$current" ]; do
+            current="$(readlink "$current")"
+            # Handle relative symlinks
+            if [[ "$current" != /* ]]; then
+                current="$(dirname "$target")/$current"
+            fi
+        done
+        echo "$current"
+    }
 
-# If not found in standard locations with valid binary, search for it
-if [ -z "$APP_PATH" ]; then
-    # First try DerivedData (for development)
-    for CANDIDATE in $(find ~/Library/Developer/Xcode/DerivedData -name "VibeTunnel.app" -type d 2>/dev/null | grep -v "\.dSYM" | grep -v "Index\.noindex"); do
-        if [ -f "$CANDIDATE/Contents/Resources/vibetunnel" ]; then
-            APP_PATH="$CANDIDATE"
+    # Get the real path of this script to avoid infinite recursion
+    SCRIPT_REAL_PATH="$(resolve_symlink_macos "${BASH_SOURCE[0]}")"
+
+    # Comprehensive Mac app search - try standard locations first, then development locations
+    APP_PATH=""
+    
+    # First try standard locations with valid binary check
+    for TRY_PATH in "/Applications/VibeTunnel.app" "$HOME/Applications/VibeTunnel.app"; do
+        if [ -d "$TRY_PATH" ] && [ -f "$TRY_PATH/Contents/Resources/vibetunnel" ]; then
+            VT_SCRIPT="$TRY_PATH/Contents/Resources/vt"
+            if [ -f "$VT_SCRIPT" ] && [ -x "$VT_SCRIPT" ]; then
+                # Avoid infinite recursion by checking if this is the same script
+                VT_REAL_PATH="$(resolve_symlink_macos "$VT_SCRIPT")"
+                if [ "$SCRIPT_REAL_PATH" != "$VT_REAL_PATH" ]; then
+                    exec "$VT_SCRIPT" "$@"
+                fi
+            fi
+            APP_PATH="$TRY_PATH"
             break
         fi
     done
     
-    # If still not found, use mdfind as last resort
+    # If not found in standard locations, search for development builds
     if [ -z "$APP_PATH" ]; then
-        for CANDIDATE in $(mdfind -name "VibeTunnel.app" 2>/dev/null | grep -v "\.dSYM"); do
+        # First try DerivedData (for development)
+        for CANDIDATE in $(find ~/Library/Developer/Xcode/DerivedData -name "VibeTunnel.app" -type d 2>/dev/null | grep -v "\.dSYM" | grep -v "Index\.noindex"); do
             if [ -f "$CANDIDATE/Contents/Resources/vibetunnel" ]; then
+                VT_SCRIPT="$CANDIDATE/Contents/Resources/vt"
+                if [ -f "$VT_SCRIPT" ] && [ -x "$VT_SCRIPT" ]; then
+                    VT_REAL_PATH="$(resolve_symlink_macos "$VT_SCRIPT")"
+                    if [ "$SCRIPT_REAL_PATH" != "$VT_REAL_PATH" ]; then
+                        exec "$VT_SCRIPT" "$@"
+                    fi
+                fi
                 APP_PATH="$CANDIDATE"
                 break
             fi
         done
+        
+        # If still not found, use mdfind as last resort
+        if [ -z "$APP_PATH" ]; then
+            for CANDIDATE in $(mdfind -name "VibeTunnel.app" 2>/dev/null | grep -v "\.dSYM"); do
+                if [ -f "$CANDIDATE/Contents/Resources/vibetunnel" ]; then
+                    VT_SCRIPT="$CANDIDATE/Contents/Resources/vt"
+                    if [ -f "$VT_SCRIPT" ] && [ -x "$VT_SCRIPT" ]; then
+                        VT_REAL_PATH="$(resolve_symlink_macos "$VT_SCRIPT")"
+                        if [ "$SCRIPT_REAL_PATH" != "$VT_REAL_PATH" ]; then
+                            exec "$VT_SCRIPT" "$@"
+                        fi
+                    fi
+                    APP_PATH="$CANDIDATE"
+                    break
+                fi
+            done
+        fi
     fi
     
-    if [ -z "$APP_PATH" ]; then
-        echo "Error: VibeTunnel.app with vibetunnel binary not found anywhere on the system" >&2
-        exit 1
+    # If we found a Mac app but couldn't use its vt script, use its binary directly
+    if [ -n "$APP_PATH" ]; then
+        VIBETUNNEL_BIN="$APP_PATH/Contents/Resources/vibetunnel"
+        if [ -f "$VIBETUNNEL_BIN" ]; then
+            # Found Mac app bundle - will use this binary
+            echo "# Using VibeTunnel from Mac app bundle" >&2
+        fi
     fi
 fi
 
-# Execute vibetunnel from app bundle
-VIBETUNNEL_BIN="$APP_PATH/Contents/Resources/vibetunnel"
-if [ ! -f "$VIBETUNNEL_BIN" ]; then
-    echo "Error: vibetunnel binary not found in app bundle at $VIBETUNNEL_BIN" >&2
-    exit 1
+# If we get here without a Mac app, use the npm-installed vibetunnel
+if [ -z "$VIBETUNNEL_BIN" ]; then
+    # First, try to find vibetunnel in the same directory as this script
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ -f "$SCRIPT_DIR/vibetunnel" ]; then
+        VIBETUNNEL_BIN="$SCRIPT_DIR/vibetunnel"
+    else
+        # Try to find vibetunnel in PATH
+        if command -v vibetunnel >/dev/null 2>&1; then
+            VIBETUNNEL_BIN="$(command -v vibetunnel)"
+        fi
+    fi
+
+    if [ -z "$VIBETUNNEL_BIN" ] || [ ! -f "$VIBETUNNEL_BIN" ]; then
+        echo "Error: vibetunnel binary not found. Please ensure vibetunnel is installed." >&2
+        echo "Install with: npm install -g vibetunnel" >&2
+        exit 1
+    fi
 fi
 
 # Check if we're already inside a VibeTunnel session
@@ -115,8 +175,9 @@ TITLE MODES:
     dynamic    Show directory, command, and live activity status (default for web UI)
 
 NOTE:
-    This script automatically uses the vibetunnel executable bundled with
-    VibeTunnel from the app bundle.
+    This script automatically detects and uses the best available VibeTunnel installation:
+    - Mac app bundle (preferred on macOS)
+    - npm package installation (fallback)
 EOF
     
     # Show path and version info
@@ -124,19 +185,38 @@ EOF
     echo "VIBETUNNEL BINARY:"
     echo "    Path: $VIBETUNNEL_BIN"
     if [ -f "$VIBETUNNEL_BIN" ]; then
-        # Extract version from the vibetunnel output
+        # Try to get version from binary output first (works for both Mac app and npm)
         VERSION_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^VibeTunnel Server" | head -n 1)
         BUILD_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^Built:" | head -n 1)
         PLATFORM_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^Platform:" | head -n 1)
         
         if [ -n "$VERSION_INFO" ]; then
             echo "    Version: ${VERSION_INFO#VibeTunnel Server }"
+        else
+            # Fallback to package.json for npm installations
+            PACKAGE_JSON="$(dirname "$(dirname "$VIBETUNNEL_BIN")")/package.json"
+            if [ -f "$PACKAGE_JSON" ]; then
+                VERSION=$(grep '"version"' "$PACKAGE_JSON" | head -1 | sed 's/.*"version".*:.*"\(.*\)".*/\1/')
+                echo "    Version: $VERSION"
+            fi
         fi
+        
         if [ -n "$BUILD_INFO" ]; then
             echo "    ${BUILD_INFO}"
         fi
         if [ -n "$PLATFORM_INFO" ]; then
             echo "    ${PLATFORM_INFO}"
+        fi
+        
+        # Determine installation type
+        if [[ "$VIBETUNNEL_BIN" == */Applications/VibeTunnel.app/* ]]; then
+            echo "    Status: Mac app bundle"
+        elif [[ "$VIBETUNNEL_BIN" == */DerivedData/* ]]; then
+            echo "    Status: Development build"
+        elif [[ "$VIBETUNNEL_BIN" == *npm* ]] || [[ "$VIBETUNNEL_BIN" == */bin/vibetunnel ]]; then
+            echo "    Status: Installed via npm"
+        else
+            echo "    Status: Unknown installation"
         fi
     else
         echo "    Status: Not found"
@@ -156,15 +236,15 @@ resolve_command() {
     case "$shell_name" in
         zsh)
             # For zsh, we need interactive mode to get aliases
-            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
+            exec "$VIBETUNNEL_BIN" fwd ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
             ;;
         bash)
             # For bash, expand aliases in non-interactive mode
-            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
+            exec "$VIBETUNNEL_BIN" fwd ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
             ;;
         *)
             # Generic shell handling
-            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
+            exec "$VIBETUNNEL_BIN" fwd ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
             ;;
     esac
 }
@@ -207,12 +287,12 @@ fi
 if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     if [[ "$NO_SHELL_WRAP" == "true" ]]; then
         # Execute directly without shell wrapper
-        exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
+        exec "$VIBETUNNEL_BIN" fwd ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
     else
         # Check if the first argument is a real binary
         if which "$1" >/dev/null 2>&1; then
             # It's a real binary, execute directly
-            exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
+            exec "$VIBETUNNEL_BIN" fwd ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
         else
             # Not a real binary, try alias resolution
             resolve_command "$@"
@@ -220,5 +300,5 @@ if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     fi
 else
     # Run with fwd command (original behavior for options)
-    exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
+    exec "$VIBETUNNEL_BIN" fwd ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
 fi

@@ -71,12 +71,10 @@ final class CloudflareService {
     /// Checks if cloudflared CLI is installed
     func checkCLIInstallation() -> Bool {
         // Check standard paths first
-        for path in Self.cloudflaredPaths {
-            if FileManager.default.fileExists(atPath: path) {
-                cloudflaredPath = path
-                logger.info("Found cloudflared at: \(path)")
-                return true
-            }
+        for path in Self.cloudflaredPaths where FileManager.default.fileExists(atPath: path) {
+            cloudflaredPath = path
+            logger.info("Found cloudflared at: \(path)")
+            return true
         }
 
         // Try using 'which' command as fallback
