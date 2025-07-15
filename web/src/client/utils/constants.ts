@@ -42,9 +42,12 @@ export const Z_INDEX = {
   SIDEBAR_MOBILE: 30,
   MOBILE_INPUT_OVERLAY: 40,
   CTRL_ALPHA_OVERLAY: 45,
+  TERMINAL_QUICK_KEYS: 48, // Quick keys bar above keyboard
 
   // Dropdowns and popovers (50-99)
+  KEYBOARD_BUTTON: 50, // Floating keyboard toggle button
   WIDTH_SELECTOR_DROPDOWN: 60,
+  TERMINAL_QUICK_KEYS_HIGH: 90, // Quick keys when they need to be above dropdowns
 
   // Modals and overlays (100-199)
   MODAL_BACKDROP: 100,

@@ -98,6 +98,7 @@ export class SessionView extends LitElement {
   // Bound event handlers to ensure proper cleanup
   private boundHandleDragOver = this.handleDragOver.bind(this);
   private boundHandleDragLeave = this.handleDragLeave.bind(this);
+
   private boundHandleDrop = this.handleDrop.bind(this);
   private boundHandlePaste = this.handlePaste.bind(this);
   private boundHandleOrientationChange?: () => void;
@@ -787,18 +788,32 @@ export class SessionView extends LitElement {
   }
 
   private handleKeyboardButtonClick() {
+    console.log('[SessionView] Keyboard button clicked');
+
     // Show quick keys immediately for visual feedback
     this.showQuickKeys = true;
 
     // Update terminal transform immediately
     this.updateTerminalTransform();
 
-    // Focus the hidden input synchronously - critical for iOS Safari
-    // Must be called directly in the click handler without any delays
-    this.directKeyboardManager.focusHiddenInput();
-
     // Request update after all synchronous operations
     this.requestUpdate();
+
+    // Try immediate focus first (preserves gesture context on iOS)
+    console.log('[SessionView] Attempting immediate focus for gesture context');
+    this.directKeyboardManager.focusHiddenInput();
+
+    // Also add a fallback delay in case immediate focus fails
+    setTimeout(() => {
+      console.log('[SessionView] Fallback focus after 100ms delay');
+      console.log('[SessionView] DOM state:', {
+        showQuickKeys: this.showQuickKeys,
+        directKeyboardManager: !!this.directKeyboardManager,
+        activeElement: document.activeElement?.tagName,
+        timestamp: Date.now(),
+      });
+      this.directKeyboardManager.focusHiddenInput();
+    }, 100); // Shorter 100ms delay as fallback
   }
 
   private handleTerminalFitToggle() {
@@ -1256,10 +1271,10 @@ export class SessionView extends LitElement {
         }
       </style>
       <div
-        class="flex flex-col bg-base font-mono relative"
-        style="height: 100vh; height: 100dvh; outline: none !important; box-shadow: none !important;"
+        class="bg-base font-mono relative"
+        style="height: 100vh; height: 100dvh; outline: none !important; box-shadow: none !important; display: grid; grid-template-rows: auto 1fr;"
       >
-        <!-- Session Header -->
+        <!-- Session Header (fixed height, isolated from content changes) -->
         <session-header
           .session=${this.session}
           .showBackButton=${this.showBackButton}
@@ -1289,16 +1304,21 @@ export class SessionView extends LitElement {
         >
         </session-header>
 
-        <!-- Enhanced Terminal Container -->
+        <!-- Enhanced Terminal Container (isolated from header layout) -->
         <div
-          class="${this.terminalContainerHeight === '100%' ? 'flex-1' : ''} bg-bg overflow-hidden min-h-0 relative ${
+          class="bg-bg overflow-hidden min-h-0 relative ${
             this.session?.status === 'exited' ? 'session-exited opacity-90' : ''
           } ${
             // Add safe area padding for landscape mode on mobile to handle notch
             this.isMobile && this.isLandscape ? 'safe-area-left safe-area-right' : ''
           }"
           id="terminal-container"
-          style="${this.terminalContainerHeight !== '100%' ? `height: ${this.terminalContainerHeight}; flex: none; max-height: ${this.terminalContainerHeight};` : ''}"
+          style="
+            ${this.terminalContainerHeight !== '100%' ? `height: ${this.terminalContainerHeight};` : ''}
+            contain: layout style size;
+            will-change: auto;
+            isolation: isolate;
+          "
         >
           ${
             this.loadingAnimationManager.isLoading()
@@ -1474,13 +1494,47 @@ export class SessionView extends LitElement {
               <div
                 class="keyboard-button"
                 @pointerdown=${(e: PointerEvent) => {
+                  console.log('[SessionView] Keyboard button pointerdown', {
+                    type: e.pointerType,
+                    pointerId: e.pointerId,
+                    timestamp: Date.now(),
+                  });
                   e.preventDefault();
                   e.stopPropagation();
                 }}
+                @pointerup=${(e: PointerEvent) => {
+                  console.log('[SessionView] Keyboard button pointerup', {
+                    type: e.pointerType,
+                    pointerId: e.pointerId,
+                    timestamp: Date.now(),
+                  });
+                  // Handle the action on pointerup for mobile since click may not fire
+                  if (e.pointerType === 'touch') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleKeyboardButtonClick();
+                  }
+                }}
                 @click=${(e: MouseEvent) => {
+                  console.log('[SessionView] Keyboard button click event');
                   e.preventDefault();
                   e.stopPropagation();
-                  this.handleKeyboardButtonClick();
+                  // Only handle click for mouse to avoid double-firing
+                  if (!('ontouchstart' in window)) {
+                    this.handleKeyboardButtonClick();
+                  }
+                }}
+                @touchstart=${(e: TouchEvent) => {
+                  console.log('[SessionView] Keyboard button touchstart', {
+                    touches: e.touches.length,
+                    timestamp: Date.now(),
+                  });
+                }}
+                @touchend=${(e: TouchEvent) => {
+                  console.log('[SessionView] Keyboard button touchend', {
+                    touches: e.touches.length,
+                    timestamp: Date.now(),
+                  });
                 }}
                 title="Show keyboard"
               >

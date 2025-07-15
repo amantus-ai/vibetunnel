@@ -207,7 +207,7 @@ export class MobileMenu extends LitElement {
     return html`
       <div class="relative w-[44px] flex-shrink-0">
         <button
-          class="p-2 ${this.showMenu ? 'text-primary border-primary' : 'text-primary border-base'} hover:border-primary hover:text-primary rounded-lg"
+          class="bg-elevated border border-base rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary hover:shadow-sm flex-shrink-0 ${this.showMenu ? 'text-primary border-primary bg-hover' : ''}"
           @click=${this.toggleMenu}
           @keydown=${this.handleMenuButtonKeyDown}
           title="More actions"

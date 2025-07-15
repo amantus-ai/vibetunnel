@@ -490,9 +490,6 @@ export class ScreencapView extends LitElement {
       this.removeEventListener('keydown', this.boundHandleKeyDown);
       this.boundHandleKeyDown = null;
     }
-    if (this.mouseMoveThrottleTimeout) {
-      clearTimeout(this.mouseMoveThrottleTimeout);
-    }
   }
 
   private handleLogScroll(event: Event) {
@@ -1235,14 +1232,11 @@ export class ScreencapView extends LitElement {
           autoplay
           playsinline
           muted
-          @mousedown=${this.handleMouseDown}
-          @mouseup=${this.handleMouseUp}
-          @mousemove=${this.handleMouseMove}
+          @pointerdown=${this.handlePointerDown}
+          @pointerup=${this.handlePointerUp}
+          @pointermove=${this.handlePointerMove}
           @click=${this.handleClick}
           @contextmenu=${this.handleContextMenu}
-          @touchstart=${this.handleTouchStart}
-          @touchmove=${this.handleTouchMove}
-          @touchend=${this.handleTouchEnd}
         ></video>
         ${
           this.showStats
@@ -1279,14 +1273,11 @@ export class ScreencapView extends LitElement {
           src="${this.frameUrl}" 
           class="capture-preview fit-${this.fitMode} ${this.captureMode === 'window' ? 'window-mode' : ''}"
           alt="Screen capture"
-          @mousedown=${this.handleMouseDown}
-          @mouseup=${this.handleMouseUp}
-          @mousemove=${this.handleMouseMove}
+          @pointerdown=${this.handlePointerDown}
+          @pointerup=${this.handlePointerUp}
+          @pointermove=${this.handlePointerMove}
           @click=${this.handleClick}
           @contextmenu=${this.handleContextMenu}
-          @touchstart=${this.handleTouchStart}
-          @touchmove=${this.handleTouchMove}
-          @touchend=${this.handleTouchEnd}
         />
         <div class="fps-indicator">
           <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
@@ -1412,55 +1403,6 @@ export class ScreencapView extends LitElement {
     }
   }
 
-  private async handleMouseDown(event: MouseEvent) {
-    event.preventDefault();
-    if (!this.wsClient || !this.isCapturing) return;
-
-    const coords = this.getNormalizedCoordinates(event);
-    if (!coords) return;
-
-    try {
-      await this.wsClient.sendMouseDown(coords.x, coords.y);
-    } catch (error) {
-      console.error('Failed to send mouse down:', error);
-    }
-  }
-
-  private async handleMouseUp(event: MouseEvent) {
-    event.preventDefault();
-    if (!this.wsClient || !this.isCapturing) return;
-
-    const coords = this.getNormalizedCoordinates(event);
-    if (!coords) return;
-
-    try {
-      await this.wsClient.sendMouseUp(coords.x, coords.y);
-    } catch (error) {
-      console.error('Failed to send mouse up:', error);
-    }
-  }
-
-  private async handleMouseMove(event: MouseEvent) {
-    event.preventDefault();
-    if (!this.wsClient || !this.isCapturing) return;
-
-    // Throttle mouse move events
-    if (this.mouseMoveThrottleTimeout) return;
-
-    this.mouseMoveThrottleTimeout = window.setTimeout(() => {
-      this.mouseMoveThrottleTimeout = null;
-    }, 16); // ~60fps
-
-    const coords = this.getNormalizedCoordinates(event);
-    if (!coords) return;
-
-    try {
-      await this.wsClient.sendMouseMove(coords.x, coords.y);
-    } catch (error) {
-      console.error('Failed to send mouse move:', error);
-    }
-  }
-
   private handleContextMenu(event: MouseEvent) {
     event.preventDefault(); // Prevent context menu from showing
   }
@@ -1488,15 +1430,15 @@ export class ScreencapView extends LitElement {
     }
   }
 
-  private mouseMoveThrottleTimeout: number | null = null;
-
-  // Touch event handlers
-  private handleTouchStart(event: TouchEvent) {
+  // Unified pointer event handlers (handles mouse, touch, and pen)
+  private handlePointerDown(event: PointerEvent) {
     event.preventDefault();
-    if (!this.wsClient || !this.isCapturing || event.touches.length !== 1) return;
+    if (!this.wsClient || !this.isCapturing) return;
 
-    const touch = event.touches[0];
-    const coords = this.getNormalizedCoordinates(touch);
+    // Capture the pointer for reliable tracking
+    (event.target as Element).setPointerCapture(event.pointerId);
+
+    const coords = this.getNormalizedCoordinates(event);
     if (!coords) return;
 
     this.isDragging = true;
@@ -1504,49 +1446,43 @@ export class ScreencapView extends LitElement {
 
     // Send mouse down event
     this.wsClient.sendMouseDown(coords.x, coords.y).catch((error) => {
-      console.error('Failed to send touch start:', error);
+      console.error('Failed to send pointer down:', error);
     });
   }
 
-  private handleTouchMove(event: TouchEvent) {
+  private handlePointerMove(event: PointerEvent) {
     event.preventDefault();
-    if (!this.wsClient || !this.isCapturing || !this.isDragging || event.touches.length !== 1)
-      return;
+    if (!this.wsClient || !this.isCapturing || !this.isDragging) return;
 
-    const touch = event.touches[0];
-    const coords = this.getNormalizedCoordinates(touch);
+    const coords = this.getNormalizedCoordinates(event);
     if (!coords) return;
 
     // Send mouse move event
     this.wsClient.sendMouseMove(coords.x, coords.y).catch((error) => {
-      console.error('Failed to send touch move:', error);
+      console.error('Failed to send pointer move:', error);
     });
   }
 
-  private handleTouchEnd(event: TouchEvent) {
+  private handlePointerUp(event: PointerEvent) {
     event.preventDefault();
     if (!this.wsClient || !this.isCapturing || !this.isDragging) return;
 
-    // Use the last touch position
-    if (event.changedTouches.length > 0) {
-      const touch = event.changedTouches[0];
-      const coords = this.getNormalizedCoordinates(touch);
-      if (coords) {
-        // Send mouse up event
-        this.wsClient.sendMouseUp(coords.x, coords.y).catch((error) => {
-          console.error('Failed to send touch end:', error);
-        });
+    const coords = this.getNormalizedCoordinates(event);
+    if (coords) {
+      // Send mouse up event
+      this.wsClient.sendMouseUp(coords.x, coords.y).catch((error) => {
+        console.error('Failed to send pointer up:', error);
+      });
 
-        // If it was a tap (not a drag), send a click
-        if (
-          this.dragStartCoords &&
-          Math.abs(coords.x - this.dragStartCoords.x) < 10 &&
-          Math.abs(coords.y - this.dragStartCoords.y) < 10
-        ) {
-          this.wsClient.sendClick(coords.x, coords.y).catch((error) => {
-            console.error('Failed to send tap:', error);
-          });
-        }
+      // If it was a tap/click (not a drag), send a click
+      if (
+        this.dragStartCoords &&
+        Math.abs(coords.x - this.dragStartCoords.x) < 10 &&
+        Math.abs(coords.y - this.dragStartCoords.y) < 10
+      ) {
+        this.wsClient.sendClick(coords.x, coords.y).catch((error) => {
+          console.error('Failed to send click:', error);
+        });
       }
     }
 

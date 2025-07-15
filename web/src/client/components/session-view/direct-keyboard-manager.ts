@@ -113,6 +113,14 @@ export class DirectKeyboardManager {
 
   focusHiddenInput(): void {
     logger.log('Entering keyboard mode');
+    console.log('[DirectKeyboard] focusHiddenInput called', {
+      hiddenInputExists: !!this.hiddenInput,
+      keyboardMode: this.keyboardMode,
+      showQuickKeys: this.showQuickKeys,
+      activeElement: document.activeElement?.tagName,
+      timestamp: Date.now(),
+    });
+
     // Enter keyboard mode
     this.keyboardMode = true;
     this.keyboardModeTimestamp = Date.now();
@@ -176,7 +184,11 @@ export class DirectKeyboardManager {
 
   ensureHiddenInputVisible(): void {
     if (!this.hiddenInput) {
+      console.log('[DirectKeyboard] Hidden input does not exist, creating...');
       this.createHiddenInput();
+      console.log('[DirectKeyboard] Hidden input created:', !!this.hiddenInput);
+    } else {
+      console.log('[DirectKeyboard] Hidden input already exists');
     }
 
     // Show quick keys immediately when entering keyboard mode
@@ -191,15 +203,40 @@ export class DirectKeyboardManager {
 
     // Now that we're in keyboard mode, focus the input synchronously
     if (this.hiddenInput && this.keyboardMode) {
+      console.log('[DirectKeyboard] About to focus hidden input', {
+        inputStyle: {
+          display: this.hiddenInput.style.display,
+          visibility: this.hiddenInput.style.visibility,
+          position: this.hiddenInput.style.position,
+          left: this.hiddenInput.style.left,
+          top: this.hiddenInput.style.top,
+          width: this.hiddenInput.style.width,
+          height: this.hiddenInput.style.height,
+          zIndex: this.hiddenInput.style.zIndex,
+        },
+        inputType: this.hiddenInput.type,
+        inputTabIndex: this.hiddenInput.tabIndex,
+        inputReadOnly: this.hiddenInput.readOnly,
+        inputDisabled: this.hiddenInput.disabled,
+      });
+
       // Make sure input is visible and ready
       this.hiddenInput.style.display = 'block';
       this.hiddenInput.style.visibility = 'visible';
 
       // Focus synchronously - critical for iOS Safari
-      this.hiddenInput.focus();
+      const focusResult = this.hiddenInput.focus();
+      console.log('[DirectKeyboard] Focus result:', focusResult);
+      console.log('[DirectKeyboard] Active element after focus:', document.activeElement?.tagName);
 
-      // Also click synchronously to help trigger keyboard
-      this.hiddenInput.click();
+      // Check focus immediately after
+      setTimeout(() => {
+        console.log('[DirectKeyboard] Active element after 10ms:', document.activeElement?.tagName);
+      }, 10);
+
+      // DON'T click - this might be stealing focus
+      // this.hiddenInput.click();
+      console.log('[DirectKeyboard] Skipped click to avoid focus theft');
       logger.log('Focused and clicked hidden input synchronously');
     }
   }
@@ -227,6 +264,9 @@ export class DirectKeyboardManager {
     this.hiddenInput.setAttribute('data-ms-editor', 'false'); // Disable Microsoft Editor
     this.hiddenInput.setAttribute('data-smartpunctuation', 'false'); // Disable smart quotes/dashes
     this.hiddenInput.setAttribute('data-form-type', 'other'); // Hint this isn't a form field
+    this.hiddenInput.setAttribute('data-enable-grammarly', 'false'); // Extra Grammarly disable
+    this.hiddenInput.setAttribute('data-lpignore', 'true'); // Disable LastPass
+    this.hiddenInput.setAttribute('data-1p-ignore', 'true'); // Disable 1Password
     this.hiddenInput.setAttribute('inputmode', 'text'); // Allow keyboard but disable optimizations
     this.hiddenInput.setAttribute('enterkeyhint', 'done'); // Prevent iOS enter key behavior
     this.hiddenInput.setAttribute('aria-hidden', 'true');
@@ -273,8 +313,17 @@ export class DirectKeyboardManager {
     this.hiddenInput.addEventListener('input', (e) => {
       const input = e.target as HTMLInputElement;
 
+      console.log('[DirectKeyboard] Input event triggered:', {
+        value: input.value,
+        isComposing: this.isComposing,
+        inputType: (e as InputEvent).inputType,
+        data: (e as InputEvent).data,
+        timestamp: Date.now(),
+      });
+
       // Skip processing if we're in the middle of IME composition
       if (this.isComposing) {
+        console.log('[DirectKeyboard] Skipping input - IME composition in progress');
         return;
       }
 
@@ -283,8 +332,14 @@ export class DirectKeyboardManager {
         const showMobileInput = this.callbacks?.getShowMobileInput() ?? false;
         const showCtrlAlpha = this.callbacks?.getShowCtrlAlpha() ?? false;
         if (!showMobileInput && !showCtrlAlpha && this.inputManager) {
+          console.log('[DirectKeyboard] Sending input to terminal:', input.value);
           // Send each character to terminal (only for non-IME input)
           this.inputManager.sendInputText(input.value);
+        } else {
+          console.log('[DirectKeyboard] Skipping input - overlay visible:', {
+            showMobileInput,
+            showCtrlAlpha,
+          });
         }
         // Always clear the input to prevent buffer buildup
         input.value = '';
@@ -363,7 +418,17 @@ export class DirectKeyboardManager {
     });
 
     this.hiddenInput.addEventListener('blur', (e) => {
-      const _event = e as FocusEvent;
+      const focusEvent = e as FocusEvent;
+      const relatedTarget = focusEvent.relatedTarget as HTMLElement;
+
+      console.log('[DirectKeyboard] Hidden input BLURRED - focus stolen!', {
+        keyboardMode: this.keyboardMode,
+        newActiveElement: document.activeElement?.tagName,
+        newActiveElementClass: document.activeElement?.className,
+        relatedTarget: relatedTarget?.tagName,
+        relatedTargetClass: relatedTarget?.className,
+        timestamp: Date.now(),
+      });
 
       logger.log(`Hidden input blurred. Keyboard mode: ${this.keyboardMode}`);
       logger.log(
@@ -678,9 +743,17 @@ export class DirectKeyboardManager {
       this.hiddenInput.style.top = '0';
       this.hiddenInput.style.left = '0';
       this.hiddenInput.style.width = '100%';
-      this.hiddenInput.style.height = '1px';
+      this.hiddenInput.style.height = '50px'; // Increased from 1px - iOS needs larger input
       this.hiddenInput.style.zIndex = String(Z_INDEX.TERMINAL_OVERLAY);
       this.hiddenInput.style.pointerEvents = 'none';
+      console.log('[DirectKeyboard] Updated hidden input position for keyboard mode:', {
+        position: this.hiddenInput.style.position,
+        top: this.hiddenInput.style.top,
+        left: this.hiddenInput.style.left,
+        width: this.hiddenInput.style.width,
+        height: this.hiddenInput.style.height,
+        zIndex: this.hiddenInput.style.zIndex,
+      });
     } else {
       // In scroll mode: position off-screen
       this.hiddenInput.style.position = 'fixed';

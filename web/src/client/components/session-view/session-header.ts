@@ -105,7 +105,21 @@ export class SessionHeader extends LitElement {
               ? html`
                 <button
                   class="bg-elevated border border-base rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary hover:shadow-sm flex-shrink-0"
-                  @click=${() => this.onSidebarToggle?.()}
+                  @pointerdown=${(e: PointerEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  @pointerup=${(e: PointerEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.onSidebarToggle?.();
+                  }}
+                  @click=${(e: MouseEvent) => {
+                    // Fallback for keyboard navigation
+                    if (e.detail === 0) {
+                      this.onSidebarToggle?.();
+                    }
+                  }}
                   title="Show sidebar (⌘B)"
                   aria-label="Show sidebar"
                   aria-expanded="false"
@@ -120,7 +134,21 @@ export class SessionHeader extends LitElement {
                 <!-- Create Session button (desktop only) -->
                 <button
                   class="hidden sm:flex bg-primary bg-opacity-10 border border-primary text-primary rounded-lg p-2 font-mono transition-all duration-200 hover:bg-primary hover:text-base hover:shadow-glow-primary-sm flex-shrink-0"
-                  @click=${() => this.onCreateSession?.()}
+                  @pointerdown=${(e: PointerEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  @pointerup=${(e: PointerEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.onCreateSession?.();
+                  }}
+                  @click=${(e: MouseEvent) => {
+                    // Fallback for keyboard navigation
+                    if (e.detail === 0) {
+                      this.onCreateSession?.();
+                    }
+                  }}
                   title="Create New Session (⌘K)"
                   data-testid="create-session-button"
                 >
@@ -146,7 +174,31 @@ export class SessionHeader extends LitElement {
               ? html`
                 <button
                   class="bg-elevated border border-base rounded-lg px-3 py-1.5 font-mono text-xs text-muted transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary hover:shadow-sm flex-shrink-0"
-                  @click=${() => this.onBack?.()}
+                  @pointerdown=${(e: PointerEvent) => {
+                    console.log('[SessionHeader] Back button pointerdown', {
+                      type: e.pointerType,
+                      pointerId: e.pointerId,
+                      timestamp: Date.now(),
+                    });
+                  }}
+                  @pointerup=${(e: PointerEvent) => {
+                    console.log('[SessionHeader] Back button pointerup', {
+                      type: e.pointerType,
+                      pointerId: e.pointerId,
+                      timestamp: Date.now(),
+                    });
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('[SessionHeader] Back button triggered via pointerup');
+                    this.onBack?.();
+                  }}
+                  @click=${(e: MouseEvent) => {
+                    console.log('[SessionHeader] Back button clicked');
+                    // Fallback for keyboard navigation
+                    if (e.detail === 0) {
+                      this.onBack?.();
+                    }
+                  }}
                 >
                   Back
                 </button>
@@ -176,9 +228,21 @@ export class SessionHeader extends LitElement {
                     ? html`
                       <button
                         class="bg-transparent border-0 p-0 cursor-pointer transition-opacity duration-200 text-primary magic-button flex-shrink-0 ${this.isHovered ? 'opacity-50 hover:opacity-100' : 'opacity-0'}"
-                        @click=${(e: Event) => {
+                        @pointerdown=${(e: PointerEvent) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        @pointerup=${(e: PointerEvent) => {
+                          e.preventDefault();
                           e.stopPropagation();
                           this.handleMagicButton();
+                        }}
+                        @click=${(e: MouseEvent) => {
+                          // Fallback for keyboard navigation
+                          if (e.detail === 0) {
+                            e.stopPropagation();
+                            this.handleMagicButton();
+                          }
                         }}
                         title="Send prompt to update terminal title"
                       >
@@ -231,9 +295,21 @@ export class SessionHeader extends LitElement {
             
             <button
               class="bg-elevated border border-base rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary hover:shadow-sm flex-shrink-0"
-              @click=${(e: Event) => {
+              @pointerdown=${(e: PointerEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              @pointerup=${(e: PointerEvent) => {
+                e.preventDefault();
                 e.stopPropagation();
                 this.onOpenFileBrowser?.();
+              }}
+              @click=${(e: MouseEvent) => {
+                // Fallback for keyboard navigation
+                if (e.detail === 0) {
+                  e.stopPropagation();
+                  this.onOpenFileBrowser?.();
+                }
               }}
               title="Browse Files (⌘O)"
               data-testid="file-browser-button"
@@ -246,7 +322,21 @@ export class SessionHeader extends LitElement {
             </button>
             <button
               class="bg-elevated border border-base rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary hover:shadow-sm flex-shrink-0"
-              @click=${() => this.onScreenshare?.()}
+              @pointerdown=${(e: PointerEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              @pointerup=${(e: PointerEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.onScreenshare?.();
+              }}
+              @click=${(e: MouseEvent) => {
+                // Fallback for keyboard navigation
+                if (e.detail === 0) {
+                  this.onScreenshare?.();
+                }
+              }}
               title="Start Screenshare"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -258,7 +348,21 @@ export class SessionHeader extends LitElement {
             </button>
             <button
               class="bg-elevated border border-base rounded-lg px-3 py-2 font-mono text-xs text-muted transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary hover:shadow-sm flex-shrink-0 width-selector-button"
-              @click=${() => this.onMaxWidthToggle?.()}
+              @pointerdown=${(e: PointerEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              @pointerup=${(e: PointerEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.onMaxWidthToggle?.();
+              }}
+              @click=${(e: MouseEvent) => {
+                // Fallback for keyboard navigation
+                if (e.detail === 0) {
+                  this.onMaxWidthToggle?.();
+                }
+              }}
               title="${this.widthTooltip}"
             >
               ${this.widthLabel}

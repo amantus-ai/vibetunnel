@@ -1,5 +1,6 @@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { Z_INDEX } from '../utils/constants.js';
 
 // Terminal-specific quick keys for mobile use
 const TERMINAL_QUICK_KEYS = [
@@ -275,8 +276,8 @@ export class TerminalQuickKeys extends LitElement {
           /* Chrome: Use env() if supported */
           bottom: env(keyboard-inset-height, 0px);
           /* Safari: Will be overridden by inline style */
-          z-index: 999999;
-          /* Ensure it stays on top */
+          z-index: ${Z_INDEX.TERMINAL_QUICK_KEYS_HIGH};
+          /* Above other UI but not excessive */
           isolation: isolate;
           /* Smooth transition when keyboard appears/disappears */
           transition: bottom 0.3s ease-out;
@@ -302,6 +303,11 @@ export class TerminalQuickKeys extends LitElement {
           -webkit-user-select: none;
           /* Ensure buttons are clickable */
           touch-action: manipulation;
+          /* Ensure button is not blocked by other elements */
+          position: relative;
+          z-index: 2;
+          /* Prevent layout shifts during touch */
+          will-change: transform;
         }
         
         /* Modifier key styling */
@@ -428,8 +434,6 @@ export class TerminalQuickKeys extends LitElement {
       <div 
         class="terminal-quick-keys-container"
         style=${bottomPosition ? `bottom: ${bottomPosition}` : ''}
-        @mousedown=${(e: Event) => e.preventDefault()}
-        @touchstart=${(e: Event) => e.preventDefault()}
       >
         <div class="quick-keys-bar">
           <!-- Row 1 -->
@@ -440,38 +444,43 @@ export class TerminalQuickKeys extends LitElement {
                   type="button"
                   tabindex="-1"
                   class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && ((key === 'CtrlExpand' && this.showCtrlKeys) || (key === 'F' && this.showFunctionKeys)) ? 'active' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
-                  @mousedown=${(e: Event) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  @touchstart=${(e: Event) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Start key repeat for arrow keys
-                    if (arrow) {
-                      this.startKeyRepeat(key, modifier || false, false);
+                  @pointerdown=${(e: PointerEvent) => {
+                    if (e.pointerType === 'touch' || e.pointerType === 'mouse') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // Add visual feedback
+                      (e.currentTarget as HTMLElement).classList.add('active');
+                      // Start key repeat for arrow keys
+                      if (arrow) {
+                        this.startKeyRepeat(key, modifier || false, false);
+                      }
                     }
                   }}
-                  @touchend=${(e: Event) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Stop key repeat
-                    if (arrow) {
-                      this.stopKeyRepeat();
-                    } else {
-                      this.handleKeyPress(key, modifier, false, toggle, e);
+                  @pointerup=${(e: PointerEvent) => {
+                    if (e.pointerType === 'touch' || e.pointerType === 'mouse') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // Remove visual feedback
+                      (e.currentTarget as HTMLElement).classList.remove('active');
+                      // Stop key repeat
+                      if (arrow) {
+                        this.stopKeyRepeat();
+                      } else {
+                        this.handleKeyPress(key, modifier, false, toggle, e);
+                      }
                     }
                   }}
-                  @touchcancel=${(_e: Event) => {
-                    // Also stop on touch cancel
+                  @pointercancel=${(e: PointerEvent) => {
+                    // Remove visual feedback and stop repeat
+                    (e.currentTarget as HTMLElement).classList.remove('active');
                     if (arrow) {
                       this.stopKeyRepeat();
                     }
                   }}
                   @click=${(e: MouseEvent) => {
-                    if (e.detail !== 0 && !arrow) {
-                      this.handleKeyPress(key, modifier, false, toggle, e);
-                    }
+                    // Prevent double-firing
+                    e.preventDefault();
+                    e.stopPropagation();
                   }}
                 >
                   ${label}
@@ -492,21 +501,18 @@ export class TerminalQuickKeys extends LitElement {
                       type="button"
                       tabindex="-1"
                       class="ctrl-shortcut-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''}"
-                      @mousedown=${(e: Event) => {
+                      @pointerdown=${(e: PointerEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
                       }}
-                      @touchstart=${(e: Event) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      @touchend=${(e: Event) => {
+                      @pointerup=${(e: PointerEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
                         this.handleKeyPress(key, false, special, false, e);
                       }}
                       @click=${(e: MouseEvent) => {
-                        if (e.detail !== 0) {
+                        // Fallback for keyboard navigation
+                        if (e.detail === 0) {
                           this.handleKeyPress(key, false, special, false, e);
                         }
                       }}
@@ -527,21 +533,18 @@ export class TerminalQuickKeys extends LitElement {
                       type="button"
                       tabindex="-1"
                       class="func-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap"
-                      @mousedown=${(e: Event) => {
+                      @pointerdown=${(e: PointerEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
                       }}
-                      @touchstart=${(e: Event) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      @touchend=${(e: Event) => {
+                      @pointerup=${(e: PointerEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
                         this.handleKeyPress(key, false, false, false, e);
                       }}
                       @click=${(e: MouseEvent) => {
-                        if (e.detail !== 0) {
+                        // Fallback for keyboard navigation
+                        if (e.detail === 0) {
                           this.handleKeyPress(key, false, false, false, e);
                         }
                       }}
@@ -561,15 +564,11 @@ export class TerminalQuickKeys extends LitElement {
                       type="button"
                       tabindex="-1"
                       class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-1' : 'py-1.5'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && this.showFunctionKeys ? 'active' : ''}"
-                      @mousedown=${(e: Event) => {
+                      @pointerdown=${(e: PointerEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
                       }}
-                      @touchstart=${(e: Event) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      @touchend=${(e: Event) => {
+                      @pointerup=${(e: PointerEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
                         if (key === 'Paste') {
@@ -579,7 +578,8 @@ export class TerminalQuickKeys extends LitElement {
                         }
                       }}
                       @click=${(e: MouseEvent) => {
-                        if (e.detail !== 0) {
+                        // Fallback for keyboard navigation
+                        if (e.detail === 0) {
                           this.handleKeyPress(key, modifier || combo, special, toggle, e);
                         }
                       }}
@@ -600,21 +600,18 @@ export class TerminalQuickKeys extends LitElement {
                   type="button"
                   tabindex="-1"
                   class="quick-key-btn flex-1 min-w-0 px-0.5 ${this.isLandscape ? 'py-0.5' : 'py-1'} bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
-                  @mousedown=${(e: Event) => {
+                  @pointerdown=${(e: PointerEvent) => {
                     e.preventDefault();
                     e.stopPropagation();
                   }}
-                  @touchstart=${(e: Event) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  @touchend=${(e: Event) => {
+                  @pointerup=${(e: PointerEvent) => {
                     e.preventDefault();
                     e.stopPropagation();
                     this.handleKeyPress(key, modifier || combo, special, false, e);
                   }}
                   @click=${(e: MouseEvent) => {
-                    if (e.detail !== 0) {
+                    // Fallback for keyboard navigation
+                    if (e.detail === 0) {
                       this.handleKeyPress(key, modifier || combo, special, false, e);
                     }
                   }}
