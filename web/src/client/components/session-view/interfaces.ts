@@ -20,6 +20,7 @@ export interface StateCallbacks {
   setCustomWidth(value: string): void;
   setKeyboardHeight(value: number): void;
   setConnected(connected: boolean): void;
+  getKeyboardCaptureActive(): boolean;
 }
 
 /**

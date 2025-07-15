@@ -74,10 +74,13 @@ export class VibeTunnelApp extends LitElement {
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
   @state() private showLogLink = false;
   @state() private hasActiveOverlay = false;
+  @state() private keyboardCaptureActive = true;
   private initialLoadComplete = false;
   private responsiveObserverInitialized = false;
   private initialRenderComplete = false;
   private sidebarAnimationReady = false;
+  private lastEscapeTime = 0;
+  private readonly DOUBLE_ESCAPE_THRESHOLD = 500; // ms
 
   private hotReloadWs: WebSocket | null = null;
   private errorTimeoutId: number | null = null;
@@ -161,37 +164,211 @@ export class VibeTunnelApp extends LitElement {
   private handleKeyDown = (e: KeyboardEvent) => {
     const isMacOS = navigator.platform.toLowerCase().includes('mac');
 
-    // Allow browser shortcuts to pass through - check these FIRST
-    // Cmd+Shift+A (Chrome tab search) on macOS
-    if (isMacOS && e.metaKey && e.shiftKey && e.key.toLowerCase() === 'a') {
+    // Handle double escape for keyboard capture toggle
+    if (e.key === 'Escape' && this.currentView === 'session') {
+      const now = Date.now();
+      if (now - this.lastEscapeTime < this.DOUBLE_ESCAPE_THRESHOLD) {
+        // Double escape detected - toggle capture
+        this.keyboardCaptureActive = !this.keyboardCaptureActive;
+        this.lastEscapeTime = 0;
+        logger.log(
+          `Keyboard capture ${this.keyboardCaptureActive ? 'enabled' : 'disabled'} via double Escape`
+        );
+        return; // Don't process this escape further
+      }
+      this.lastEscapeTime = now;
+    }
+
+    // Define really critical browser shortcuts that ALWAYS pass through
+    const isReallyCriticalShortcut = (): boolean => {
+      const key = e.key.toLowerCase();
+
+      if (isMacOS) {
+        // macOS critical shortcuts
+        if (e.metaKey && !e.shiftKey && !e.altKey) {
+          if (['t', 'n', 'q'].includes(key)) return true; // New tab, new window, quit
+          if (['h'].includes(key)) return true; // Hide window
+        }
+        if (e.metaKey && e.shiftKey && !e.altKey) {
+          if (['t', 'n'].includes(key)) return true; // Reopen tab, new incognito
+        }
+      } else {
+        // Windows/Linux critical shortcuts
+        if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+          if (['t', 'n'].includes(key)) return true; // New tab, new window
+        }
+        if (e.ctrlKey && e.shiftKey && !e.altKey) {
+          if (['t', 'n', 'q'].includes(key)) return true; // Reopen tab, new incognito, quit
+        }
+        if (e.altKey && !e.ctrlKey && key === 'f4') return true; // Close window
+      }
+
+      return false;
+    };
+
+    // Check if we're capturing and what the shortcut would do
+    const checkCapturedShortcut = (): {
+      captured: boolean;
+      browserAction?: string;
+      terminalAction?: string;
+    } => {
+      const key = e.key.toLowerCase();
+
+      // Define what shortcuts we capture and their actions
+      const capturedShortcuts: Record<
+        string,
+        { browser: string; terminal: string; check: () => boolean }
+      > = {
+        'mod+a': {
+          browser: 'Select all',
+          terminal: 'Line start',
+          check: () => (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && key === 'a',
+        },
+        'mod+e': {
+          browser: 'Search/Extension',
+          terminal: 'Line end',
+          check: () => (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && key === 'e',
+        },
+        'mod+w': {
+          browser: 'Close tab',
+          terminal: 'Delete word',
+          check: () => (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && key === 'w',
+        },
+        'mod+r': {
+          browser: 'Reload',
+          terminal: 'History search',
+          check: () => (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && key === 'r',
+        },
+        'mod+l': {
+          browser: 'Address bar',
+          terminal: 'Clear screen',
+          check: () => (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && key === 'l',
+        },
+        'mod+d': {
+          browser: 'Bookmark',
+          terminal: 'EOF/Exit',
+          check: () => (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && key === 'd',
+        },
+        'mod+f': {
+          browser: 'Find',
+          terminal: 'Forward char',
+          check: () => (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && key === 'f',
+        },
+        'mod+p': {
+          browser: 'Print',
+          terminal: 'Previous cmd',
+          check: () => (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && key === 'p',
+        },
+        'mod+u': {
+          browser: 'View source',
+          terminal: 'Delete to start',
+          check: () => (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && key === 'u',
+        },
+        'mod+k': {
+          browser: 'Search bar',
+          terminal: 'Delete to end',
+          check: () => (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && key === 'k',
+        },
+        'alt+d': {
+          browser: 'Address bar',
+          terminal: 'Delete word fwd',
+          check: () => e.altKey && !e.ctrlKey && !e.metaKey && key === 'd',
+        },
+      };
+
+      for (const config of Object.values(capturedShortcuts)) {
+        if (config.check()) {
+          return {
+            captured: true,
+            browserAction: config.browser,
+            terminalAction: config.terminal,
+          };
+        }
+      }
+
+      return { captured: false };
+    };
+
+    // Always allow really critical shortcuts
+    if (isReallyCriticalShortcut()) {
       return;
     }
 
-    // Cmd+1-9 (tab switching) on macOS
-    if (isMacOS && e.metaKey && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
+    // In session view with capture active, check if we're capturing this shortcut
+    if (this.currentView === 'session' && this.keyboardCaptureActive) {
+      const { captured, browserAction, terminalAction } = checkCapturedShortcut();
+      if (captured) {
+        // Dispatch event for indicator animation
+        window.dispatchEvent(
+          new CustomEvent('shortcut-captured', {
+            detail: {
+              shortcut: this.formatShortcut(e),
+              browserAction,
+              terminalAction,
+            },
+          })
+        );
+        // Don't prevent default - let terminal handle it
+        // The terminal's input manager will capture these
+      }
+    }
+
+    // Legacy browser shortcut checking for non-session views
+    const shouldAllowBrowserShortcut = (): boolean => {
+      // If we're not in session view or capture is disabled, use the legacy allow list
+      if (this.currentView !== 'session' || !this.keyboardCaptureActive) {
+        const key = e.key.toLowerCase();
+        const hasModifier = e.ctrlKey || e.metaKey;
+        const hasShift = e.shiftKey;
+        const hasAlt = e.altKey;
+
+        // Tab management shortcuts
+        if (hasModifier && !hasShift && !hasAlt) {
+          if (['t', 'w', 'r'].includes(key)) return true;
+          if (/^[1-9]$/.test(key)) return true;
+          if (['l', 'p', 's', 'f', 'd', 'h', 'j'].includes(key)) return true;
+        }
+
+        // Ctrl/Cmd + Shift shortcuts
+        if (hasModifier && hasShift && !hasAlt) {
+          if (['t', 'r', 'n'].includes(key)) return true;
+          if (key === 'delete') return true;
+          if (key === 'tab') return true;
+          if (!isMacOS && key === 'q') return true;
+          if (isMacOS && key === 'a') return true;
+        }
+
+        // Ctrl/Cmd + Tab
+        if (hasModifier && !hasShift && !hasAlt && key === 'tab') {
+          return true;
+        }
+
+        // Function keys
+        if (['f5', 'f6', 'f11'].includes(key)) return true;
+      }
+
+      return false;
+    };
+
+    // Check if this is a browser shortcut we should not intercept
+    if (shouldAllowBrowserShortcut()) {
       return;
     }
 
-    // Ctrl+1-9 (tab switching) on non-macOS
-    if (!isMacOS && e.ctrlKey && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
-      return;
-    }
+    // VibeTunnel-specific shortcuts below this line
 
-    // Cmd+Option+Left/Right (word navigation) on macOS
-    if (isMacOS && e.metaKey && e.altKey && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
-      return;
-    }
-
-    // Handle Cmd+O / Ctrl+O to open file browser
+    // Handle Cmd+O / Ctrl+O to open file browser (only in list view)
     if ((e.metaKey || e.ctrlKey) && e.key === 'o' && this.currentView === 'list') {
       e.preventDefault();
       this.handleNavigateToFileBrowser();
+      return;
     }
 
     // Handle Cmd+B / Ctrl+B to toggle sidebar
     if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
       e.preventDefault();
       this.handleToggleSidebar();
+      return;
     }
 
     // Handle Escape to close the session and return to list view
@@ -202,6 +379,7 @@ export class VibeTunnelApp extends LitElement {
     ) {
       e.preventDefault();
       this.handleNavigateToList();
+      return;
     }
   };
 
@@ -861,6 +1039,16 @@ export class VibeTunnelApp extends LitElement {
     this.saveSidebarState(this.sidebarCollapsed);
   }
 
+  private formatShortcut(e: KeyboardEvent): string {
+    const parts: string[] = [];
+    if (e.ctrlKey) parts.push('Ctrl');
+    if (e.metaKey) parts.push('Cmd');
+    if (e.shiftKey) parts.push('Shift');
+    if (e.altKey) parts.push(navigator.platform.toLowerCase().includes('mac') ? 'Option' : 'Alt');
+    parts.push(e.key);
+    return parts.join('+');
+  }
+
   private handleSessionStatusChanged(e: CustomEvent) {
     logger.log('Session status changed:', e.detail);
     // Immediately refresh the session list to show updated status
@@ -1208,6 +1396,13 @@ export class VibeTunnelApp extends LitElement {
     }
   };
 
+  private handleCaptureToggled = (e: CustomEvent) => {
+    this.keyboardCaptureActive = e.detail.active;
+    logger.log(
+      `Keyboard capture ${this.keyboardCaptureActive ? 'enabled' : 'disabled'} via indicator`
+    );
+  };
+
   private get showSplitView(): boolean {
     return this.currentView === 'session' && this.selectedSessionId !== null;
   }
@@ -1501,11 +1696,13 @@ export class VibeTunnelApp extends LitElement {
                       .showSidebarToggle=${true}
                       .sidebarCollapsed=${this.sidebarCollapsed}
                       .disableFocusManagement=${this.hasActiveOverlay}
+                      .keyboardCaptureActive=${this.keyboardCaptureActive}
                       @navigate-to-list=${this.handleNavigateToList}
                       @toggle-sidebar=${this.handleToggleSidebar}
                       @create-session=${this.handleCreateSession}
                       @session-status-changed=${this.handleSessionStatusChanged}
                       @open-settings=${this.handleOpenSettings}
+                      @capture-toggled=${this.handleCaptureToggled}
                     ></session-view>
                   `
                 )}

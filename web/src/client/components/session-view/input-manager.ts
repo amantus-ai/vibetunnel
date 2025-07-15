@@ -15,6 +15,7 @@ const logger = createLogger('input-manager');
 
 export interface InputManagerCallbacks {
   requestUpdate(): void;
+  getKeyboardCaptureActive?(): boolean;
 }
 
 export class InputManager {
@@ -279,10 +280,34 @@ export class InputManager {
       return false;
     }
 
-    // Allow important browser shortcuts to pass through
-    const isMacOS = navigator.platform.toLowerCase().includes('mac');
+    // Get keyboard capture state
+    const captureActive = this.callbacks?.getKeyboardCaptureActive?.() ?? true;
 
-    // Allow F12 and Ctrl+Shift+I (DevTools)
+    const isMacOS = navigator.platform.toLowerCase().includes('mac');
+    const key = e.key.toLowerCase();
+
+    // Always allow really critical browser shortcuts (regardless of capture state)
+    if (isMacOS) {
+      // macOS critical shortcuts
+      if (e.metaKey && !e.shiftKey && !e.altKey) {
+        if (['t', 'n', 'q'].includes(key)) return true; // New tab, new window, quit
+        if (['h'].includes(key)) return true; // Hide window
+      }
+      if (e.metaKey && e.shiftKey && !e.altKey) {
+        if (['t', 'n'].includes(key)) return true; // Reopen tab, new incognito
+      }
+    } else {
+      // Windows/Linux critical shortcuts
+      if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+        if (['t', 'n'].includes(key)) return true; // New tab, new window
+      }
+      if (e.ctrlKey && e.shiftKey && !e.altKey) {
+        if (['t', 'n', 'q'].includes(key)) return true; // Reopen tab, new incognito, quit
+      }
+      if (e.altKey && !e.ctrlKey && key === 'f4') return true; // Close window
+    }
+
+    // Always allow DevTools shortcuts
     if (
       e.key === 'F12' ||
       (!isMacOS && e.ctrlKey && e.shiftKey && e.key === 'I') ||
@@ -291,52 +316,66 @@ export class InputManager {
       return true;
     }
 
-    // Allow Cmd+Shift+A (Chrome tab search) on macOS - check lowercase too
-    if (isMacOS && e.metaKey && e.shiftKey && e.key.toLowerCase() === 'a') {
-      return true;
-    }
-
-    // Allow Cmd+1-9 (tab switching) on macOS
+    // Always allow tab switching
     if (isMacOS && e.metaKey && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
       return true;
     }
-
-    // Allow Ctrl+1-9 (tab switching) on non-macOS
     if (!isMacOS && e.ctrlKey && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
       return true;
     }
 
-    // Allow Cmd+Option+Left/Right (word navigation) on macOS
-    if (isMacOS && e.metaKey && e.altKey && ['ArrowLeft', 'ArrowRight'].includes(e.key)) {
-      return true;
-    }
-
-    // Allow Ctrl+A (select all), Ctrl+F (find), Ctrl+R (refresh), Ctrl+C/V (copy/paste), etc.
-    if (
-      !isMacOS &&
-      e.ctrlKey &&
-      !e.shiftKey &&
-      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v'].includes(e.key.toLowerCase())
-    ) {
-      return true;
-    }
-
-    // Allow Cmd+A, Cmd+F, Cmd+R, Cmd+C/V (copy/paste), etc. on macOS (but NOT Cmd+K)
-    if (
-      isMacOS &&
-      e.metaKey &&
-      !e.shiftKey &&
-      !e.altKey &&
-      ['a', 'f', 'r', 'l', 't', 'w', 'n', 'c', 'v'].includes(e.key.toLowerCase())
-    ) {
-      return true;
-    }
-
-    // Allow Alt+Tab, Cmd+Tab (window switching)
+    // Always allow window switching
     if ((e.altKey || e.metaKey) && e.key === 'Tab') {
       return true;
     }
 
+    // If capture is disabled, allow more browser shortcuts
+    if (!captureActive) {
+      // Chrome-specific shortcuts
+      if (isMacOS && e.metaKey && e.shiftKey && key === 'a') {
+        return true; // Chrome tab search
+      }
+
+      // Common browser shortcuts that are normally captured for terminal
+      if (
+        !isMacOS &&
+        e.ctrlKey &&
+        !e.shiftKey &&
+        ['a', 'f', 'r', 'l', 'w', 'p', 's', 'd', 'c', 'v'].includes(key)
+      ) {
+        return true;
+      }
+
+      if (
+        isMacOS &&
+        e.metaKey &&
+        !e.shiftKey &&
+        !e.altKey &&
+        ['a', 'f', 'r', 'l', 'w', 'p', 's', 'd', 'c', 'v'].includes(key)
+      ) {
+        return true;
+      }
+
+      // Word navigation on macOS
+      if (isMacOS && e.metaKey && e.altKey && ['arrowleft', 'arrowright'].includes(key)) {
+        return true;
+      }
+    }
+
+    // When capture is active:
+    // - Copy/Paste are always allowed (special terminal handling)
+    const isStandardCopy =
+      (isMacOS && e.metaKey && key === 'c' && !e.ctrlKey && !e.shiftKey) ||
+      (!isMacOS && e.ctrlKey && key === 'c' && !e.shiftKey);
+    const isStandardPaste =
+      (isMacOS && e.metaKey && key === 'v' && !e.ctrlKey && !e.shiftKey) ||
+      (!isMacOS && e.ctrlKey && key === 'v' && !e.shiftKey);
+
+    if (isStandardCopy || isStandardPaste) {
+      return true;
+    }
+
+    // Everything else is captured when capture is active
     return false;
   }
 

@@ -11,6 +11,7 @@ import '../clickable-path.js';
 import './width-selector.js';
 import '../inline-edit.js';
 import '../notification-status.js';
+import '../keyboard-capture-indicator.js';
 import { authClient } from '../../services/auth-client.js';
 import { isAIAssistantSession, sendAIPrompt } from '../../utils/ai-sessions.js';
 import { createLogger } from '../../utils/logger.js';
@@ -47,6 +48,8 @@ export class SessionHeader extends LitElement {
   @property({ type: Function }) onScreenshare?: () => void;
   @property({ type: Function }) onOpenSettings?: () => void;
   @property({ type: String }) currentTheme = 'system';
+  @property({ type: Boolean }) keyboardCaptureActive = true;
+  @property({ type: Boolean }) isMobile = false;
   @state() private isHovered = false;
 
   connectedCallback() {
@@ -218,6 +221,21 @@ export class SessionHeader extends LitElement {
               @open-settings=${() => this.onOpenSettings?.()}
             ></notification-status>
           </div>
+          
+          <!-- Keyboard capture indicator -->
+          <keyboard-capture-indicator
+            .active=${this.keyboardCaptureActive}
+            .isMobile=${this.isMobile}
+            @capture-toggled=${(e: CustomEvent) => {
+              this.dispatchEvent(
+                new CustomEvent('capture-toggled', {
+                  detail: e.detail,
+                  bubbles: true,
+                  composed: true,
+                })
+              );
+            }}
+          ></keyboard-capture-indicator>
           
           <!-- Desktop buttons - hidden on mobile -->
           <div class="hidden sm:flex items-center gap-2">
