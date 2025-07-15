@@ -1,12 +1,15 @@
 import chalk from 'chalk';
 import type { Response } from 'express';
 import * as fs from 'fs';
-import type { SessionInfo } from '../../shared/types.js';
 import type { SessionManager } from '../pty/session-manager.js';
 import type { AsciinemaHeader } from '../pty/types.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('stream-watcher');
+
+// Constants
+const HEADER_READ_BUFFER_SIZE = 4096;
+const CLEAR_SEQUENCE = '\x1b[3J';
 
 interface StreamClient {
   response: Response;
@@ -39,6 +42,15 @@ function isResizeEvent(event: AsciinemaEvent): event is AsciinemaResizeEvent {
 
 function isExitEvent(event: AsciinemaEvent): event is AsciinemaExitEvent {
   return Array.isArray(event) && event[0] === 'exit';
+}
+
+/**
+ * Checks if an output event contains a terminal clear sequence
+ * @param event - The asciinema event to check
+ * @returns true if the event contains a clear sequence
+ */
+function containsClearSequence(event: AsciinemaEvent): boolean {
+  return isOutputEvent(event) && event[2].includes(CLEAR_SEQUENCE);
 }
 
 interface WatcherInfo {
@@ -156,24 +168,36 @@ export class StreamWatcher {
    */
   private sendExistingContent(sessionId: string, streamPath: string, client: StreamClient): void {
     try {
-      const sessionInfo: SessionInfo =
-        this.sessionManager.loadSessionInfo(sessionId) || ({ id: sessionId } as SessionInfo);
-      const startOffset = sessionInfo.lastClearOffset ?? 0;
+      // Load existing session info or use defaults, but don't save incomplete session data
+      const sessionInfo = this.sessionManager.loadSessionInfo(sessionId);
+
+      // Validate offset to ensure we don't read beyond file size
+      let startOffset = sessionInfo?.lastClearOffset ?? 0;
+      if (fs.existsSync(streamPath)) {
+        const stats = fs.statSync(streamPath);
+        startOffset = Math.min(startOffset, stats.size);
+      }
 
       // Read header line separately (first line of file)
+      // We need to track byte position separately from string length due to UTF-8 encoding
       let header: AsciinemaHeader | null = null;
       try {
         const fd = fs.openSync(streamPath, 'r');
-        const buf = Buffer.alloc(4096);
+        const buf = Buffer.alloc(HEADER_READ_BUFFER_SIZE);
         let data = '';
-        let bytesRead = fs.readSync(fd, buf, 0, buf.length, data.length);
+        let filePosition = 0; // Track actual byte position in file
+        let bytesRead = fs.readSync(fd, buf, 0, buf.length, filePosition);
+
         while (!data.includes('\n') && bytesRead > 0) {
           data += buf.toString('utf8', 0, bytesRead);
+          filePosition += bytesRead; // Update file position by bytes read
+
           if (!data.includes('\n')) {
-            bytesRead = fs.readSync(fd, buf, 0, buf.length, data.length);
+            bytesRead = fs.readSync(fd, buf, 0, buf.length, filePosition);
           }
         }
         fs.closeSync(fd);
+
         const idx = data.indexOf('\n');
         if (idx !== -1) {
           header = JSON.parse(data.slice(0, idx));
@@ -182,7 +206,8 @@ export class StreamWatcher {
         logger.debug(`failed to read asciinema header for session ${sessionId}: ${e}`);
       }
 
-      // Analyze the stream starting from stored offset
+      // Analyze the stream starting from stored offset to find the most recent clear sequence
+      // This allows us to prune old terminal content and only send what's currently visible
       const analysisStream = fs.createReadStream(streamPath, {
         encoding: 'utf8',
         start: startOffset,
@@ -192,6 +217,9 @@ export class StreamWatcher {
       let lastClearIndex = -1;
       let lastResizeBeforeClear: AsciinemaResizeEvent | null = null;
       let currentResize: AsciinemaResizeEvent | null = null;
+
+      // Track byte offset in the file for accurate position tracking
+      // This is crucial for UTF-8 encoded files where character count != byte count
       let fileOffset = startOffset;
       let lastClearOffset = startOffset;
 
@@ -201,6 +229,9 @@ export class StreamWatcher {
         while (index !== -1) {
           const line = lineBuffer.slice(0, index);
           lineBuffer = lineBuffer.slice(index + 1);
+
+          // Calculate byte length of the line plus newline character
+          // Buffer.byteLength correctly handles multi-byte UTF-8 characters
           fileOffset += Buffer.byteLength(line, 'utf8') + 1;
 
           if (line.trim()) {
@@ -221,7 +252,7 @@ export class StreamWatcher {
                   }
 
                   // Check for clear sequence in output events
-                  if (isOutputEvent(event) && event[2].includes('\x1b[3J')) {
+                  if (containsClearSequence(event)) {
                     lastClearIndex = events.length;
                     lastResizeBeforeClear = currentResize;
                     lastClearOffset = fileOffset;
@@ -256,7 +287,7 @@ export class StreamWatcher {
                 if (isResizeEvent(event)) {
                   currentResize = event;
                 }
-                if (isOutputEvent(event) && event[2].includes('\x1b[3J')) {
+                if (containsClearSequence(event)) {
                   lastClearIndex = events.length;
                   lastResizeBeforeClear = currentResize;
                   lastClearOffset = fileOffset;
@@ -284,9 +315,11 @@ export class StreamWatcher {
             )
           );
 
-          // Persist new clear offset to session
-          sessionInfo.lastClearOffset = lastClearOffset;
-          this.sessionManager.saveSessionInfo(sessionId, sessionInfo);
+          // Persist new clear offset to session only if session already exists
+          if (sessionInfo) {
+            sessionInfo.lastClearOffset = lastClearOffset;
+            this.sessionManager.saveSessionInfo(sessionId, sessionInfo);
+          }
         }
 
         // Send header first - update dimensions if we have a resize
