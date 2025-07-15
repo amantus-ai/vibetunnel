@@ -181,22 +181,29 @@ export class StreamWatcher {
       // Read header line separately (first line of file)
       // We need to track byte position separately from string length due to UTF-8 encoding
       let header: AsciinemaHeader | null = null;
+      let fd: number | null = null;
       try {
-        const fd = fs.openSync(streamPath, 'r');
+        fd = fs.openSync(streamPath, 'r');
         const buf = Buffer.alloc(HEADER_READ_BUFFER_SIZE);
         let data = '';
+        
+        // Important: Use filePosition (bytes) not data.length (characters) for fs.readSync
+        // UTF-8 strings have character count != byte count for multi-byte characters
         let filePosition = 0; // Track actual byte position in file
         let bytesRead = fs.readSync(fd, buf, 0, buf.length, filePosition);
 
         while (!data.includes('\n') && bytesRead > 0) {
           data += buf.toString('utf8', 0, bytesRead);
-          filePosition += bytesRead; // Update file position by bytes read
+          
+          // Increment by actual bytes read, not string characters
+          // This ensures correct file positioning for subsequent reads
+          filePosition += bytesRead;
 
           if (!data.includes('\n')) {
+            // Use filePosition (byte offset) not data.length (character count)
             bytesRead = fs.readSync(fd, buf, 0, buf.length, filePosition);
           }
         }
-        fs.closeSync(fd);
 
         const idx = data.indexOf('\n');
         if (idx !== -1) {
@@ -204,6 +211,16 @@ export class StreamWatcher {
         }
       } catch (e) {
         logger.debug(`failed to read asciinema header for session ${sessionId}: ${e}`);
+      } finally {
+        // Ensure file descriptor is always closed to prevent leaks
+        // This executes even if an exception occurs during read operations
+        if (fd !== null) {
+          try {
+            fs.closeSync(fd);
+          } catch (closeError) {
+            logger.debug(`failed to close file descriptor: ${closeError}`);
+          }
+        }
       }
 
       // Analyze the stream starting from stored offset to find the most recent clear sequence
