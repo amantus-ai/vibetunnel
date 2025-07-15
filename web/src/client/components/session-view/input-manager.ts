@@ -22,6 +22,8 @@ export class InputManager {
   private session: Session | null = null;
   private callbacks: InputManagerCallbacks | null = null;
   private useWebSocketInput = true; // Feature flag for WebSocket input
+  private lastEscapeTime = 0;
+  private readonly DOUBLE_ESCAPE_THRESHOLD = 500; // ms
 
   setSession(session: Session | null): void {
     this.session = session;
@@ -115,9 +117,40 @@ export class InputManager {
           inputText = 'enter';
         }
         break;
-      case 'Escape':
+      case 'Escape': {
+        // Handle double-escape for keyboard capture toggle
+        const now = Date.now();
+        const timeSinceLastEscape = now - this.lastEscapeTime;
+
+        if (timeSinceLastEscape < this.DOUBLE_ESCAPE_THRESHOLD) {
+          // Double escape detected - toggle keyboard capture
+          logger.log('🔄 Double Escape detected in input manager - toggling keyboard capture');
+
+          // Dispatch event to parent to toggle capture
+          if (this.callbacks) {
+            // Create a synthetic capture-toggled event
+            const currentCapture = this.callbacks.getKeyboardCaptureActive?.() ?? true;
+            const newCapture = !currentCapture;
+
+            // Dispatch custom event that will bubble up
+            const event = new CustomEvent('capture-toggled', {
+              detail: { active: newCapture },
+              bubbles: true,
+              composed: true,
+            });
+
+            // Dispatch on document to ensure it reaches the app
+            document.dispatchEvent(event);
+          }
+
+          this.lastEscapeTime = 0; // Reset to prevent triple-tap
+          return; // Don't send this escape to terminal
+        }
+
+        this.lastEscapeTime = now;
         inputText = 'escape';
         break;
+      }
       case 'ArrowUp':
         inputText = 'arrow_up';
         break;

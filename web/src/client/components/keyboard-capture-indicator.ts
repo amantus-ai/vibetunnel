@@ -82,6 +82,7 @@ export class KeyboardCaptureIndicator extends LitElement {
   @state() private animating = false;
   @state() private lastCapturedShortcut = '';
   @state() private showDynamicTooltip = false;
+  @state() private isHovered = false;
 
   private animationTimeout?: number;
   private tooltipTimeout?: number;
@@ -91,6 +92,12 @@ export class KeyboardCaptureIndicator extends LitElement {
     super.connectedCallback();
     // Listen for captured shortcuts
     window.addEventListener('shortcut-captured', this.handleShortcutCaptured as EventListener);
+  }
+
+  willUpdate(changedProperties: Map<string, unknown>) {
+    if (changedProperties.has('active')) {
+      logger.log(`Keyboard capture indicator updated: ${this.active ? 'ON' : 'OFF'}`);
+    }
   }
 
   disconnectedCallback() {
@@ -144,21 +151,31 @@ export class KeyboardCaptureIndicator extends LitElement {
   private getOSSpecificShortcuts() {
     if (this.isMacOS) {
       return [
-        { key: 'Cmd+A/E', desc: 'Line start/end' },
-        { key: 'Cmd+W', desc: 'Delete word' },
-        { key: 'Cmd+U/K', desc: 'Delete to start/end' },
-        { key: 'Cmd+R', desc: 'History search' },
-        { key: 'Cmd+L', desc: 'Clear screen' },
-        { key: 'Option+←/→', desc: 'Word navigation' },
+        { key: 'Cmd+A', desc: 'Line start (not select all)' },
+        { key: 'Cmd+E', desc: 'Line end' },
+        { key: 'Cmd+W', desc: 'Delete word (not close tab)' },
+        { key: 'Cmd+R', desc: 'History search (not reload)' },
+        { key: 'Cmd+L', desc: 'Clear screen (not address bar)' },
+        { key: 'Cmd+D', desc: 'EOF/Exit (not bookmark)' },
+        { key: 'Cmd+F', desc: 'Forward char (not find)' },
+        { key: 'Cmd+P', desc: 'Previous cmd (not print)' },
+        { key: 'Cmd+U', desc: 'Delete to start (not view source)' },
+        { key: 'Cmd+K', desc: 'Delete to end (not search bar)' },
+        { key: 'Option+D', desc: 'Delete word forward' },
       ];
     } else {
       return [
-        { key: 'Ctrl+A/E', desc: 'Line start/end' },
-        { key: 'Ctrl+W', desc: 'Delete word' },
-        { key: 'Ctrl+U/K', desc: 'Delete to start/end' },
-        { key: 'Ctrl+R', desc: 'History search' },
-        { key: 'Ctrl+L', desc: 'Clear screen' },
-        { key: 'Alt+←/→', desc: 'Word navigation' },
+        { key: 'Ctrl+A', desc: 'Line start (not select all)' },
+        { key: 'Ctrl+E', desc: 'Line end' },
+        { key: 'Ctrl+W', desc: 'Delete word (not close tab)' },
+        { key: 'Ctrl+R', desc: 'History search (not reload)' },
+        { key: 'Ctrl+L', desc: 'Clear screen (not address bar)' },
+        { key: 'Ctrl+D', desc: 'EOF/Exit (not bookmark)' },
+        { key: 'Ctrl+F', desc: 'Forward char (not find)' },
+        { key: 'Ctrl+P', desc: 'Previous cmd (not print)' },
+        { key: 'Ctrl+U', desc: 'Delete to start (not view source)' },
+        { key: 'Ctrl+K', desc: 'Delete to end (not search bar)' },
+        { key: 'Alt+D', desc: 'Delete word forward' },
       ];
     }
   }
@@ -189,7 +206,7 @@ export class KeyboardCaptureIndicator extends LitElement {
       ${this.animating ? 'animating' : ''}
     `.trim();
 
-    const tooltipContent =
+    const _tooltipContent =
       this.showDynamicTooltip && this.lastCapturedShortcut
         ? html`<div class="tooltip dynamic">${this.lastCapturedShortcut}</div>`
         : html`
@@ -228,14 +245,78 @@ export class KeyboardCaptureIndicator extends LitElement {
         `;
 
     return html`
-      <div class="tooltip-container relative">
+      <div 
+        class="relative flex-shrink-0"
+        @mouseenter=${() => {
+          this.isHovered = true;
+        }}
+        @mouseleave=${() => {
+          this.isHovered = false;
+        }}
+      >
         <button 
           class="${buttonClasses}"
           @click=${this.handleClick}
         >
           ${this.renderKeyboardIcon()}
         </button>
-        ${tooltipContent}
+        ${
+          this.isHovered
+            ? html`
+          <div 
+            style="
+              position: absolute;
+              top: 100%;
+              left: 50%;
+              transform: translateX(-50%);
+              margin-top: 0.5em;
+              padding: 0.75em 1em;
+              background: #1a1a1a;
+              color: #e0e0e0;
+              border: 1px solid #333;
+              border-radius: 0.25em;
+              font-size: 0.875em;
+              white-space: normal;
+              z-index: 1000;
+              max-width: 300px;
+              width: 300px;
+              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            "
+          >
+            <div>
+              <strong>Keyboard Capture ${this.active ? 'ON' : 'OFF'}</strong>
+            </div>
+            <div style="margin-top: 0.5em;">
+              ${
+                this.active
+                  ? 'Terminal receives priority for shortcuts'
+                  : 'Browser shortcuts work normally'
+              }
+            </div>
+            <div style="margin-top: 0.5em;">
+              Double-tap <strong>Escape</strong> to toggle
+            </div>
+            ${
+              this.active
+                ? html`
+              <div style="margin-top: 0.5em; padding-top: 0.5em; border-top: 1px solid #333;">
+                <div style="margin-bottom: 0.5em; font-weight: bold;">Captured for terminal:</div>
+                ${this.getOSSpecificShortcuts().map(
+                  ({ key, desc }) => html`
+                  <div style="display: flex; justify-content: space-between; gap: 1em; margin: 0.25em 0; font-family: monospace;">
+                    <span style="font-weight: bold;">${key}</span>
+                    <span style="color: #999;">${desc}</span>
+                  </div>
+                `
+                )}
+              </div>
+            `
+                : ''
+            }
+          </div>
+        `
+            : ''
+        }
       </div>
     `;
   }

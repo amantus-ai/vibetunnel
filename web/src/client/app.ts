@@ -79,8 +79,6 @@ export class VibeTunnelApp extends LitElement {
   private responsiveObserverInitialized = false;
   private initialRenderComplete = false;
   private sidebarAnimationReady = false;
-  private lastEscapeTime = 0;
-  private readonly DOUBLE_ESCAPE_THRESHOLD = 500; // ms
 
   private hotReloadWs: WebSocket | null = null;
   private errorTimeoutId: number | null = null;
@@ -99,6 +97,8 @@ export class VibeTunnelApp extends LitElement {
     this.setupPreferences();
     // Initialize title updater
     titleManager.initAutoUpdates();
+    // Listen for keyboard capture toggle events from input manager
+    document.addEventListener('capture-toggled', this.handleCaptureToggled as EventListener);
     // Initialize authentication and routing together
     this.initializeApp();
   }
@@ -148,6 +148,8 @@ export class VibeTunnelApp extends LitElement {
     window.removeEventListener('popstate', this.handlePopState);
     // Clean up keyboard shortcuts
     window.removeEventListener('keydown', this.handleKeyDown);
+    // Clean up capture toggle listener
+    document.removeEventListener('capture-toggled', this.handleCaptureToggled as EventListener);
     // Clean up auto refresh interval
     if (this.autoRefreshIntervalId !== null) {
       clearInterval(this.autoRefreshIntervalId);
@@ -163,21 +165,6 @@ export class VibeTunnelApp extends LitElement {
 
   private handleKeyDown = (e: KeyboardEvent) => {
     const isMacOS = navigator.platform.toLowerCase().includes('mac');
-
-    // Handle double escape for keyboard capture toggle
-    if (e.key === 'Escape' && this.currentView === 'session') {
-      const now = Date.now();
-      if (now - this.lastEscapeTime < this.DOUBLE_ESCAPE_THRESHOLD) {
-        // Double escape detected - toggle capture
-        this.keyboardCaptureActive = !this.keyboardCaptureActive;
-        this.lastEscapeTime = 0;
-        logger.log(
-          `Keyboard capture ${this.keyboardCaptureActive ? 'enabled' : 'disabled'} via double Escape`
-        );
-        return; // Don't process this escape further
-      }
-      this.lastEscapeTime = now;
-    }
 
     // Define really critical browser shortcuts that ALWAYS pass through
     const isReallyCriticalShortcut = (): boolean => {

@@ -168,7 +168,7 @@ describe('requestTerminalSpawn', () => {
         type: 'response',
         category: 'terminal',
         action: 'spawn',
-        payload: { message: 'some other data' } as any, // No success field
+        payload: { message: 'some other data' } as Record<string, unknown>, // No success field
         sessionId: testParams.sessionId,
       };
 
@@ -297,7 +297,7 @@ describe('requestTerminalSpawn', () => {
         type: 'response',
         category: 'terminal',
         action: 'spawn',
-        payload: base64Payload as any, // This would be wrong - payload should be object
+        payload: base64Payload as Record<string, unknown>, // This would be wrong - payload should be object
         sessionId: testParams.sessionId,
       };
 
