@@ -557,7 +557,7 @@ export class SessionCreateForm extends LitElement {
                   data-testid="working-dir-input"
                 />
                 <button
-                  class="bg-elevated border border-base rounded-lg p-1.5 sm:p-2 lg:p-3 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary hover:shadow-sm flex-shrink-0"
+                  class="bg-bg-tertiary border border-border rounded-lg p-1.5 sm:p-2 lg:p-3 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0"
                   @click=${this.handleBrowse}
                   ?disabled=${this.disabled || this.isCreating}
                   title="Browse directories"
@@ -570,7 +570,7 @@ export class SessionCreateForm extends LitElement {
                   </svg>
                 </button>
                 <button
-                  class="bg-dark-bg-elevated border border-dark-border rounded-lg p-1.5 sm:p-2 lg:p-3 font-mono text-dark-text-muted transition-all duration-200 hover:text-primary hover:bg-dark-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0 ${
+                  class="bg-bg-tertiary border border-border rounded-lg p-1.5 sm:p-2 lg:p-3 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0 ${
                     this.showRepositoryDropdown ? 'text-primary border-primary' : ''
                   }"
                   @click=${this.handleToggleRepositoryDropdown}
@@ -589,13 +589,13 @@ export class SessionCreateForm extends LitElement {
               ${
                 this.showRepositoryDropdown && this.repositories.length > 0
                   ? html`
-                    <div class="mt-2 bg-dark-bg-elevated border border-dark-border rounded-lg overflow-hidden">
+                    <div class="mt-2 bg-bg-elevated border border-border rounded-lg overflow-hidden">
                       <div class="max-h-48 overflow-y-auto">
                         ${this.repositories.map(
                           (repo) => html`
                             <button
                               @click=${() => this.handleSelectRepository(repo.path)}
-                              class="w-full text-left px-3 py-2 hover:bg-dark-surface-hover transition-colors duration-200 border-b border-dark-border last:border-b-0"
+                              class="w-full text-left px-3 py-2 hover:bg-surface-hover transition-colors duration-200 border-b border-border last:border-b-0"
                               type="button"
                             >
                               <div class="flex items-center justify-between">

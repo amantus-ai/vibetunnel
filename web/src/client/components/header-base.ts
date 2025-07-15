@@ -15,6 +15,7 @@ export abstract class HeaderBase extends LitElement {
   @property({ type: Boolean }) hideExited = true;
   @property({ type: String }) currentUser: string | null = null;
   @property({ type: String }) authMethod: string | null = null;
+  @property({ type: String }) currentTheme = 'system';
   @state() protected killingAll = false;
   @state() protected showUserMenu = false;
 
@@ -108,6 +109,9 @@ export abstract class HeaderBase extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     document.addEventListener('click', this.handleClickOutside);
+    // Load saved theme preference
+    const saved = localStorage.getItem('vibetunnel-theme');
+    this.currentTheme = (saved as 'light' | 'dark' | 'system') || 'system';
   }
 
   disconnectedCallback() {

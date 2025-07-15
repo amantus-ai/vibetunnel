@@ -6,6 +6,18 @@ import { InputManager } from './input-manager.js';
 // Mock fetch globally
 global.fetch = vi.fn();
 
+// Mock websocket input client
+vi.mock('../../services/websocket-input-client.js', () => ({
+  websocketInputClient: {
+    connect: vi.fn().mockResolvedValue(undefined),
+    disconnect: vi.fn(),
+    sendInput: vi.fn().mockReturnValue(false), // Return false to fall back to HTTP
+  },
+}));
+
+// We don't need to mock browser-shortcuts because the tests should verify
+// the actual behavior of the module
+
 describe('InputManager', () => {
   let inputManager: InputManager;
   let mockSession: Session;

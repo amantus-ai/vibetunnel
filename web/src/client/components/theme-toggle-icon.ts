@@ -119,7 +119,7 @@ export class ThemeToggleIcon extends LitElement {
     return html`
       <button
         @click=${this.cycleTheme}
-        class="bg-elevated border border-base rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-hover hover:border-primary hover:shadow-sm flex-shrink-0"
+        class="bg-bg-tertiary border border-border rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0"
         title="${this.getTooltip()}"
         aria-label="Toggle theme"
       >

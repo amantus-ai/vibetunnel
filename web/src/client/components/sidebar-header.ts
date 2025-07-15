@@ -16,7 +16,7 @@ export class SidebarHeader extends HeaderBase {
 
     return html`
       <div
-        class="app-header sidebar-header bg-gradient-to-r from-bg-secondary to-bg-tertiary px-4 py-2"
+        class="app-header sidebar-header bg-bg-secondary px-4 py-2"
         style="padding-top: max(0.625rem, env(safe-area-inset-top));"
       >
         <!-- Compact layout for sidebar -->
@@ -56,9 +56,9 @@ export class SidebarHeader extends HeaderBase {
           
           <!-- Action buttons group with consistent styling -->
           <div class="flex items-center gap-2 flex-shrink-0">
-            <!-- Create Session button with primary styling -->
+            <!-- Create Session button with dark theme styling -->
             <button
-              class="p-2 text-primary bg-primary bg-opacity-10 border border-primary hover:bg-opacity-20 rounded-md transition-all duration-200 flex-shrink-0"
+              class="p-2 text-primary bg-bg-tertiary border border-border hover:bg-surface-hover hover:border-primary rounded-md transition-all duration-200 flex-shrink-0"
               @click=${this.handleCreateSession}
               title="Create New Session (⌘K)"
               data-testid="create-session-button"

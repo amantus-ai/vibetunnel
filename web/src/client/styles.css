@@ -60,15 +60,15 @@
 
 /* Dark mode theme colors */
 [data-theme="dark"] {
-  --color-bg: 10 10 10; /* #0a0a0a */
-  --color-bg-secondary: 20 20 20; /* #141414 */
-  --color-bg-tertiary: 31 31 31; /* #1f1f1f */
-  --color-bg-elevated: 38 38 38; /* #262626 */
-  --color-surface: 26 26 26; /* #1a1a1a */
-  --color-surface-hover: 42 42 42; /* #2a2a2a */
-  --color-border: 26 26 26; /* #1a1a1a - Much more subtle */
-  --color-border-light: 31 31 31; /* #1f1f1f - More subtle */
-  --color-border-focus: 58 58 58; /* #3a3a3a - Keep some contrast for focus */
+  --color-bg: 23 23 23; /* #171717 - Lighter neutral dark */
+  --color-bg-secondary: 32 32 32; /* #202020 - Slightly darker for sidebar */
+  --color-bg-tertiary: 40 40 40; /* #282828 - For buttons and cards */
+  --color-bg-elevated: 48 48 48; /* #303030 - Elevated surfaces */
+  --color-surface: 36 36 36; /* #242424 - Surface color */
+  --color-surface-hover: 52 52 52; /* #343434 - Hover states */
+  --color-border: 64 64 64; /* #404040 - Subtle borders */
+  --color-border-light: 72 72 72; /* #484848 - Light borders */
+  --color-border-focus: 80 80 80; /* #505050 - Focus borders */
   
   /* Text colors - Dark Mode */
   --color-text: 228 228 228; /* #e4e4e4 */
@@ -91,15 +91,15 @@
 /* System preference detection */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-bg: 10 10 10;
-    --color-bg-secondary: 20 20 20;
-    --color-bg-tertiary: 31 31 31;
-    --color-bg-elevated: 38 38 38;
-    --color-surface: 26 26 26;
-    --color-surface-hover: 42 42 42;
-    --color-border: 26 26 26;
-    --color-border-light: 31 31 31;
-    --color-border-focus: 58 58 58;
+    --color-bg: 23 23 23;
+    --color-bg-secondary: 32 32 32;
+    --color-bg-tertiary: 40 40 40;
+    --color-bg-elevated: 48 48 48;
+    --color-surface: 36 36 36;
+    --color-surface-hover: 52 52 52;
+    --color-border: 64 64 64;
+    --color-border-light: 72 72 72;
+    --color-border-focus: 80 80 80;
     --color-text: 228 228 228;
     --color-text-bright: 255 255 255;
     --color-text-muted: 163 163 163;
