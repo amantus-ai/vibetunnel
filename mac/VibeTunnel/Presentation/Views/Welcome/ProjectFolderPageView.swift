@@ -7,18 +7,18 @@ import SwiftUI
 struct ProjectFolderPageView: View {
     @AppStorage(AppConstants.UserDefaultsKeys.repositoryBasePath)
     private var repositoryBasePath = AppConstants.Defaults.repositoryBasePath
-    
+
     @State private var selectedPath = ""
     @State private var isShowingPicker = false
     @State private var discoveredRepos: [RepositoryInfo] = []
     @State private var isScanning = false
-    
+
     struct RepositoryInfo: Identifiable {
         let id = UUID()
         let name: String
         let path: String
     }
-    
+
     var body: some View {
         VStack(spacing: 24) {
             // Title and description
@@ -26,20 +26,22 @@ struct ProjectFolderPageView: View {
                 Text("Choose Your Project Folder")
                     .font(.system(size: 24, weight: .semibold))
                     .foregroundColor(.primary)
-                
-                Text("Select the folder where you keep your projects. VibeTunnel will use this for quick access and repository discovery.")
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 400)
+
+                Text(
+                    "Select the folder where you keep your projects. VibeTunnel will use this for quick access and repository discovery."
+                )
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 400)
             }
-            
+
             // Folder picker section
             VStack(alignment: .leading, spacing: 12) {
                 Text("Project Folder")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.secondary)
-                
+
                 HStack {
                     Text(selectedPath.isEmpty ? "~/" : selectedPath)
                         .font(.system(size: 13))
@@ -49,13 +51,13 @@ struct ProjectFolderPageView: View {
                         .padding(.vertical, 6)
                         .background(Color(NSColor.controlBackgroundColor))
                         .cornerRadius(6)
-                    
+
                     Button("Choose...") {
                         showFolderPicker()
                     }
                     .buttonStyle(.bordered)
                 }
-                
+
                 // Repository preview
                 if !selectedPath.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
@@ -63,16 +65,16 @@ struct ProjectFolderPageView: View {
                             Text("Discovered Repositories")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.secondary)
-                            
+
                             if isScanning {
                                 ProgressView()
                                     .scaleEffect(0.5)
                                     .frame(width: 16, height: 16)
                             }
-                            
+
                             Spacer()
                         }
-                        
+
                         ScrollView {
                             VStack(alignment: .leading, spacing: 4) {
                                 if discoveredRepos.isEmpty && !isScanning {
@@ -87,11 +89,11 @@ struct ProjectFolderPageView: View {
                                             Image(systemName: "folder.badge.gearshape")
                                                 .font(.system(size: 11))
                                                 .foregroundColor(.secondary)
-                                            
+
                                             Text(repo.name)
                                                 .font(.system(size: 11))
                                                 .lineLimit(1)
-                                            
+
                                             Spacer()
                                         }
                                         .padding(.vertical, 2)
@@ -107,24 +109,24 @@ struct ProjectFolderPageView: View {
                 }
             }
             .frame(maxWidth: 400)
-            
+
             // Tips
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "lightbulb")
                         .font(.system(size: 12))
                         .foregroundColor(.orange)
-                    
+
                     Text("You can change this later in Settings → Application → Repository Base Path")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
-                
+
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "info.circle")
                         .font(.system(size: 12))
                         .foregroundColor(.blue)
-                    
+
                     Text("VibeTunnel will scan up to 3 levels deep for Git repositories")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
@@ -147,7 +149,7 @@ struct ProjectFolderPageView: View {
             }
         }
     }
-    
+
     private func showFolderPicker() {
         let panel = NSOpenPanel()
         panel.title = "Choose Project Folder"
@@ -157,7 +159,7 @@ struct ProjectFolderPageView: View {
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
-        
+
         // Set initial directory
         if !selectedPath.isEmpty {
             let expandedPath = (selectedPath as NSString).expandingTildeInPath
@@ -165,11 +167,11 @@ struct ProjectFolderPageView: View {
         } else {
             panel.directoryURL = URL(fileURLWithPath: NSHomeDirectory())
         }
-        
+
         if panel.runModal() == .OK, let url = panel.url {
             let path = url.path
             let homePath = NSHomeDirectory()
-            
+
             // Convert to ~/ format if it's in the home directory
             if path.hasPrefix(homePath) {
                 selectedPath = "~" + path.dropFirst(homePath.count)
@@ -178,15 +180,15 @@ struct ProjectFolderPageView: View {
             }
         }
     }
-    
+
     private func scanForRepositories() {
         isScanning = true
         discoveredRepos = []
-        
+
         Task {
             let expandedPath = (selectedPath as NSString).expandingTildeInPath
             let repos = await findGitRepositories(in: expandedPath, maxDepth: 3)
-            
+
             await MainActor.run {
                 discoveredRepos = repos.prefix(10).map { path in
                     RepositoryInfo(name: URL(fileURLWithPath: path).lastPathComponent, path: path)
@@ -195,26 +197,26 @@ struct ProjectFolderPageView: View {
             }
         }
     }
-    
+
     private func findGitRepositories(in path: String, maxDepth: Int) async -> [String] {
         var repositories: [String] = []
-        
+
         func scanDirectory(_ dirPath: String, depth: Int) {
             guard depth <= maxDepth else { return }
-            
+
             do {
                 let contents = try FileManager.default.contentsOfDirectory(atPath: dirPath)
-                
+
                 for item in contents {
                     let fullPath = (dirPath as NSString).appendingPathComponent(item)
                     var isDirectory: ObjCBool = false
-                    
+
                     guard FileManager.default.fileExists(atPath: fullPath, isDirectory: &isDirectory),
                           isDirectory.boolValue else { continue }
-                    
+
                     // Skip hidden directories except .git
                     if item.hasPrefix(".") && item != ".git" { continue }
-                    
+
                     // Check if this directory contains .git
                     let gitPath = (fullPath as NSString).appendingPathComponent(".git")
                     if FileManager.default.fileExists(atPath: gitPath) {
@@ -228,7 +230,7 @@ struct ProjectFolderPageView: View {
                 // Ignore directories we can't read
             }
         }
-        
+
         scanDirectory(path, depth: 0)
         return repositories
     }

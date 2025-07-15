@@ -150,7 +150,7 @@ enum ControlProtocol {
             payload: SystemPingResponse()
         )
     }
-    
+
     static func repositoryPathUpdateRequest(path: String) -> RepositoryPathUpdateRequestMessage {
         ControlMessage(
             type: .request,
@@ -159,13 +159,15 @@ enum ControlProtocol {
             payload: RepositoryPathUpdateRequest(path: path)
         )
     }
-    
+
     static func repositoryPathUpdateResponse(
         to request: RepositoryPathUpdateRequestMessage,
         success: Bool,
         path: String? = nil,
         error: String? = nil
-    ) -> RepositoryPathUpdateResponseMessage {
+    )
+        -> RepositoryPathUpdateResponseMessage
+    {
         ControlMessage(
             id: request.id,
             type: .response,

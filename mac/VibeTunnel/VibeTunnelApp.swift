@@ -260,7 +260,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
 
         // Start the shared unix socket manager after all handlers are registered
         SharedUnixSocketManager.shared.connect()
-        
+
         // Initialize repository path sync service after Unix socket is connected
         repositoryPathSync = RepositoryPathSyncService()
         // Sync current path after initial connection
