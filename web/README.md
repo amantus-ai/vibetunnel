@@ -1,81 +1,99 @@
-# VibeTunnel Web
+# VibeTunnel CLI
 
-Web terminal interface and server for VibeTunnel.
+Full-featured terminal sharing server with web interface for macOS and Linux. Windows not yet supported.
 
-## Quick Start
-
-Production users: Use the pre-built VibeTunnel executable from the main app.
-
-## Development
+## Installation
 
 ```bash
-pnpm install
-pnpm run dev        # Watch mode: server + client
-pnpm run dev:client # Watch mode: client only (for debugging server)
+npm install -g vibetunnel
 ```
 
-Open http://localhost:3000
+## Requirements
 
-### Pre-commit Hooks
+- Node.js >= 20.0.0
+- macOS or Linux (Windows not yet supported)
+- Build tools for native modules (Xcode on macOS, build-essential on Linux)
 
-This project uses husky and lint-staged to enforce code quality standards. After running `pnpm install`, pre-commit hooks will automatically:
+## Usage
 
-- Format code with Biome
-- Check for linting errors
-- Run TypeScript type checking for all configs
-
-If your commit fails due to linting or type errors, fix the issues and try again. Many formatting issues will be auto-fixed.
-
-### Build Commands
+### Start the server
 
 ```bash
-pnpm run clean      # Remove build artifacts
-pnpm run build      # Build everything (including native executable)
-pnpm run lint       # Check code style
-pnpm run lint:fix   # Fix code style
-pnpm run typecheck  # Type checking
-pnpm run test       # Run all tests (unit + e2e)
-pnpm run format     # Format code
+# Start with default settings (port 4020)
+vibetunnel
+
+# Start with custom port
+vibetunnel --port 8080
+
+# Start without authentication
+vibetunnel --no-auth
 ```
 
-## Production Build
+Then open http://localhost:4020 in your browser to access the web interface.
+
+### Use the vt command wrapper
+
+The `vt` command allows you to run commands with TTY forwarding:
 
 ```bash
-pnpm run build          # Creates Node.js SEA executable
-./native/vibetunnel    # Run standalone executable (no Node.js required)
+# Monitor AI agents with automatic activity tracking
+vt claude
+vt claude --dangerously-skip-permissions
+
+# Run commands with output visible in VibeTunnel
+vt npm test
+vt python script.py
+vt top
+
+# Launch interactive shell
+vt --shell
+vt -i
+
+# Update session title (inside a session)
+vt title "My Project"
 ```
 
-## Architecture
+### Forward commands to a session
 
-See [spec.md](./spec.md) for detailed architecture documentation.
+```bash
+# Basic usage
+vibetunnel fwd <session-id> <command> [args...]
 
-## Key Features
+# Examples
+vibetunnel fwd --session-id abc123 ls -la
+vibetunnel fwd --session-id abc123 npm test
+vibetunnel fwd --session-id abc123 python script.py
+```
 
-- Terminal sessions via node-pty
-- Real-time streaming (SSE + WebSocket)
-- Binary-optimized buffer updates
-- Multi-session support
-- File browser integration
+## Features
 
-## Terminal Resizing Behavior
+- **Web-based terminal interface** - Access terminals from any browser
+- **Multiple concurrent sessions** - Run multiple terminals simultaneously
+- **Real-time synchronization** - See output in real-time
+- **TTY forwarding** - Full terminal emulation support
+- **Session management** - Create, list, and manage sessions
+- **Cross-platform** - Works on macOS and Linux
+- **No dependencies** - Just Node.js required
 
-VibeTunnel intelligently handles terminal width based on how the session was created:
+## Package Contents
 
-### Tunneled Sessions (via `vt` command)
-- Sessions created by running `vt` in a native terminal window
-- Terminal width is automatically limited to the native terminal's width to prevent text overflow
-- Prevents flickering and display issues in the native terminal
-- Shows "≤120" (or actual width) in the width selector when limited
-- Users can manually override this limit using the width selector
+This npm package includes:
+- Full VibeTunnel server with web UI
+- Command-line tools (vibetunnel, vt)
+- Native PTY support for terminal emulation
+- Web interface with xterm.js
+- Session management and forwarding
 
-### Frontend-Created Sessions
-- Sessions created directly from the web interface (using the "New Session" button)
-- No width restrictions by default - uses full browser width
-- Perfect for web-only workflows where no native terminal is involved
-- Shows "∞" in the width selector for unlimited width
+## Platform Support
 
-### Manual Width Control
-- Click the width indicator in the session header to open the width selector
-- Choose from common terminal widths (80, 120, 132, etc.) or unlimited
-- Width preferences are saved per session and persist across reloads
-- Selecting any width manually overrides automatic limitations
+- macOS (Intel and Apple Silicon)
+- Linux (x64 and ARM64)
+- Windows: Not yet supported ([#252](https://github.com/amantus-ai/vibetunnel/issues/252))
+
+## Documentation
+
+See the main repository for complete documentation: https://github.com/amantus-ai/vibetunnel
+
+## License
+
+MIT

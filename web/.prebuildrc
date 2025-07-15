@@ -1,0 +1,35 @@
+{
+  "targets": [
+    {
+      "runtime": "node",
+      "target": "20.0.0"
+    },
+    {
+      "runtime": "node", 
+      "target": "22.0.0"
+    },
+    {
+      "runtime": "node",
+      "target": "23.0.0"
+    },
+    {
+      "runtime": "node",
+      "target": "24.0.0"
+    }
+  ],
+  "include": [
+    "node-pty/build/Release/pty.node"
+  ],
+  "prebuild": [
+    {
+      "name": "node-pty",
+      "binary": {
+        "module_name": "pty",
+        "module_path": "./node-pty/build/Release/",
+        "remote_path": "{version}",
+        "package_name": "{module_name}-v{version}-{node_abi}-{platform}-{arch}.tar.gz",
+        "host": "https://github.com/amantus-ai/vibetunnel/releases/download/"
+      }
+    }
+  ]
+}

@@ -1,10 +1,35 @@
 {
-  "name": "@vibetunnel/vibetunnel-cli",
+  "name": "vibetunnel",
   "version": "1.0.0-beta.10",
-  "description": "Web frontend for terminal multiplexer",
-  "main": "dist/server.js",
+  "description": "Terminal sharing server with web interface - supports macOS, Linux, and headless environments",
+  "main": "dist/server/server.js",
   "bin": {
-    "vibetunnel": "./dist/vibetunnel-cli"
+    "vibetunnel": "./bin/vibetunnel"
+  },
+  "files": [
+    "dist/",
+    "public/",
+    "bin/",
+    "node-pty/lib/",
+    "node-pty/package.json",
+    "prebuilds/",
+    "README.md"
+  ],
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amantus-ai/vibetunnel.git",
+    "directory": "web"
+  },
+  "homepage": "https://vibetunnel.sh",
+  "bugs": {
+    "url": "https://github.com/amantus-ai/vibetunnel/issues"
   },
   "scripts": {
     "clean": "node scripts/clean.js",
@@ -13,7 +38,11 @@
     "dev:client": "node scripts/dev.js --client-only",
     "build": "node scripts/build.js",
     "build:ci": "node scripts/build-ci.js",
+    "build:npm": "node scripts/build-npm.js",
+    "prepublishOnly": "npm run build:npm",
     "postinstall": "node scripts/ensure-native-modules.js",
+    "prebuild": "echo 'Skipping prebuild - handled by build-npm.js'",
+    "prebuild:upload": "echo 'Skipping prebuild:upload - not used'",
     "lint": "concurrently -n biome,tsc-server,tsc-client,tsc-sw \"biome check src\" \"tsc --noEmit --project tsconfig.server.json\" \"tsc --noEmit --project tsconfig.client.json\" \"tsc --noEmit --project tsconfig.sw.json\"",
     "lint:fix": "biome check src --write",
     "lint:biome": "biome check src",

@@ -121,6 +121,10 @@ native/
 # Custom Node.js builds
 .node-builds/
 
+# Prebuild binaries (generated)
+prebuilds/
+prebuilds-linux/
+
 # Bun lockfile (generated during native build)
 bun.lock
 
@@ -137,3 +141,17 @@ coverage-summary.json
 # Playwright traces and test data
 data/
 trace/
+
+# Compiled binaries (should not be in git)
+bin-macos/
+*.dylib
+*.so
+*.exe
+spawn-helper*
+
+# Test recordings and artifacts
+*.cast
+test.cast
+
+# Temporary build directories
+temp-spawn-helper/
