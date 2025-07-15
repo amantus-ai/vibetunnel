@@ -51,7 +51,7 @@ describe('version', () => {
 
   describe('constants', () => {
     it('should have expected version format', () => {
-      expect(VERSION).toMatch(/^\d+\.\d+\.\d+(-\w+(\.\d+)?(-\d+)?)?$/);
+      expect(VERSION).toMatch(/^\d+\.\d+\.\d+(-\w+(\.\d+)?)?$/);
     });
 
     it('should have defaults for git commit', () => {
