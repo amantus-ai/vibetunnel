@@ -49,11 +49,13 @@ const extractPrebuild = (name, version, targetDir) => {
     return false;
   }
 
-  const buildDir = path.join(targetDir, 'build', 'Release');
-  fs.mkdirSync(buildDir, { recursive: true });
+  // Create the parent directory
+  const buildParentDir = path.join(targetDir);
+  fs.mkdirSync(buildParentDir, { recursive: true });
 
   try {
-    execSync(`tar -xzf "${prebuildFile}" -C "${buildDir}"`, { stdio: 'inherit' });
+    // Extract directly into the module directory - the tar already contains build/Release structure
+    execSync(`tar -xzf "${prebuildFile}" -C "${buildParentDir}"`, { stdio: 'inherit' });
     console.log(`✓ ${name} prebuilt binary extracted`);
     return true;
   } catch (error) {

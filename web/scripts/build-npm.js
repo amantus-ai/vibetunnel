@@ -352,16 +352,19 @@ async function main() {
   const originalPackageJson = fs.readFileSync(packageJsonPath, 'utf8');
   const packageJson = JSON.parse(originalPackageJson);
   
-  // Store original postinstall
-  const originalPostinstall = packageJson.scripts.postinstall;
+  // Store original scripts
+  const originalScripts = { ...packageJson.scripts };
   
-  // Remove all install-related scripts for npm package
-  delete packageJson.scripts.postinstall;
+  // Update postinstall to use the npm-specific script
+  packageJson.scripts.postinstall = 'node scripts/postinstall-npm.js';
   delete packageJson.scripts.preinstall;
   delete packageJson.scripts.install;
   
-  // Add prebuild dependencies for npm package only
-  packageJson.dependencies['prebuild-install'] = '^7.1.3';
+  // Remove prebuild-install dependency (we handle prebuilds ourselves)
+  delete packageJson.dependencies['prebuild-install'];
+  
+  // Remove node-pty from dependencies (it's bundled directly)
+  delete packageJson.dependencies['node-pty'];
   
   // Write modified package.json
   fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
@@ -587,9 +590,18 @@ MIT
     }
   }
   
-  console.log('\n🎉 npm package build completed successfully!');
+  console.log('\n7️⃣ Creating npm package...\n');
+  try {
+    execSync('npm pack', { stdio: 'inherit' });
+    console.log('✅ npm package created\n');
+  } catch (error) {
+    console.error('❌ npm pack failed:', error.message);
+    process.exit(1);
+  }
+  
+  console.log('🎉 npm package build completed successfully!');
   console.log('\nNext steps:');
-  console.log('  - Test locally: npm pack');
+  console.log('  - Test the package');
   console.log('  - Publish: npm publish');
   
   // Don't restore package.json here - let the process exit handler do it
