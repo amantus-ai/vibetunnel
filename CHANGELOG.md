@@ -56,37 +56,43 @@
 
 ### 🛡️ Stability & Reliability
 
-#### **Critical Crash Fix**
-- **FIXED**: Eliminated random terminal crashes by replacing Microsoft's node-pty with a custom fork that provides thread-safe operations and better resource management. This resolves critical stability issues that affected VS Code and other Electron applications.
+#### **Terminal Crash Fix**
+- **FIXED**: Replaced Microsoft's node-pty with a custom fork to resolve random terminal crashes
+- Improved thread-safe operations and resource management
+- Addresses stability issues affecting VS Code and other Electron applications
 
 #### **Server Crash Detection**
-- **NEW**: Intelligent crash detection and recovery system that automatically detects server failures and provides immediate feedback with specific error codes, dramatically reducing troubleshooting time.
+- Added crash detection and recovery system for server failures
+- Provides immediate feedback with specific error codes
+- Improved troubleshooting and error reporting
 
 ### 📱 Mobile Experience
 
 #### **Terminal Stability on Mobile**
-- **FIXED**: Resolved the continuous resize loop that made terminals unusable on mobile devices. The terminal now maintains a stable view without jumping or unexpected scrolling.
-- **IMPROVED**: Better mobile terminal width management - user preferences are now properly respected throughout the session.
-- **ENHANCED**: Support for smaller grid sizes on compact mobile devices, providing better visibility on phones.
+- **FIXED**: Resolved continuous resize loop on mobile devices
+- Improved mobile terminal width management and user preference handling
+- Added support for smaller grid sizes on compact mobile devices
 
 #### **Mobile Keyboard Support**
-- **NEW**: Added Alt+Delete/Left/Right keyboard shortcuts specifically for mobile users, improving text editing capabilities.
-- **FIXED**: Mobile header no longer overflows when using dropdown menus, providing a cleaner interface.
+- Added Alt+Delete/Left/Right keyboard shortcuts for mobile users
+- **FIXED**: Mobile header overflow when using dropdown menus
 
 ### 🚀 Features & Improvements
 
 #### **Cloudflare Integration**
-- **ENHANCED**: Significantly improved Cloudflare tunnel setup with faster, more reliable stream-based monitoring instead of polling. Setup is now smoother with better error handling.
+- Improved Cloudflare tunnel setup with stream-based monitoring instead of polling
+- Enhanced error handling and more reliable setup process
 
 #### **Git Repository Discovery**
-- **IMPROVED**: Enhanced folder selection when creating new sessions - VibeTunnel now intelligently discovers Git repositories in your selected folder, making project navigation easier.
-- **FIXED**: Several bugs in repository discovery that could cause incorrect folder detection or errors.
+- Enhanced folder selection when creating new sessions
+- Added intelligent Git repository discovery in selected folders
+- **FIXED**: Multiple bugs in repository discovery causing incorrect folder detection
 
 ### 🎨 UI Polish
 
 #### **Visual Stability**
-- **FIXED**: Terminal titles no longer jump around due to activity indicators, providing a stable and professional interface.
-- **IMPROVED**: Consolidated z-index management throughout the interface, preventing UI elements from appearing in incorrect layers.
+- **FIXED**: Terminal titles no longer jump due to activity indicators
+- Consolidated z-index management to prevent UI layer conflicts
 
 ### 🔧 Under the Hood
 
@@ -109,19 +115,19 @@
 
 ### 🎯 Major Features
 
-#### 🖥️ **Remote Screen Sharing (Beta) **
-- Share your Mac screen remotely through any web browser - perfect for demonstrations, pair programming, or remote support
-- Ultra-low latency using WebRTC technology with automatic quality adjustment based on network conditions
-- Privacy-focused with deferred permission requests (only asks for screen recording when you actually start sharing)
+#### **Remote Screen Sharing (Beta)**
+- Share Mac screen remotely through web browsers
+- WebRTC technology with automatic quality adjustment based on network conditions
+- Deferred permission requests (only asks for screen recording when starting sharing)
 - Automatic 4K resolution capping for 5K+ displays to prevent web interface clipping
-- Clear visual indicators when screen sharing is active
+- Visual indicators when screen sharing is active
 
-#### 🪄 **Magic Wand for AI Sessions**
-- Instantly inject helpful context into Claude.ai sessions with a single click
+#### **AI Session Context Injection**
+- Inject project context into Claude.ai sessions with a single click
 - Automatically detects Claude browser windows and adds project information
 - Includes git repository details, current branch, and recent commit history
-- Configurable prompts to match your workflow
-- More forceful prompt injection to prevent AI from directly using the injected title
+- Configurable prompts to match workflow
+- Enhanced prompt injection to prevent AI from using the injected title directly
 
 ### 🚀 Performance & Stability Improvements
 
