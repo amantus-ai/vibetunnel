@@ -1,13 +1,6 @@
 import Foundation
 import OSLog
 
-// MARK: - Notification Names
-
-extension Notification.Name {
-    static let disablePathSync = Notification.Name("disablePathSync")
-    static let enablePathSync = Notification.Name("enablePathSync")
-}
-
 /// Handles system-level control messages
 /// IMPORTANT: System:ready message handling
 /// This handler specifically processes system:ready messages that were previously
