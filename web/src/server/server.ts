@@ -715,6 +715,7 @@ export async function createApp(): Promise<AppInstance> {
         type: 'config',
         data: {
           repositoryBasePath: updatedConfig.repositoryBasePath,
+          serverConfigured: true, // Path from Mac app is always server-configured
         },
       });
 
@@ -927,6 +928,7 @@ export async function createApp(): Promise<AppInstance> {
           type: 'config',
           data: {
             repositoryBasePath: config.repositoryBasePath || '~/',
+            serverConfigured: config.repositoryBasePath !== null,
           },
         })
       );

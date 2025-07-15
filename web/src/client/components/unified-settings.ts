@@ -313,8 +313,8 @@ export class UnifiedSettings extends LitElement {
         logger.log('Config WebSocket closed');
         // Attempt to reconnect after a delay
         setTimeout(() => {
-          // Check if component is still connected
-          if (this.isConnected !== undefined) {
+          // Check if component is still connected to DOM
+          if (this.isConnected) {
             this.connectConfigWebSocket();
           }
         }, 5000);
