@@ -70,6 +70,10 @@ final class SystemPermissionManager {
         .accessibility: false
     ]
 
+    /// Cache for screen recording permission with timestamp
+    private var screenRecordingPermissionCache: (granted: Bool, timestamp: Date)?
+    private let cacheValidityDuration: TimeInterval = 5.0 // 5 seconds cache
+
     private let logger = Logger(
         subsystem: "sh.vibetunnel.vibetunnel",
         category: "SystemPermissions"
@@ -112,7 +116,7 @@ final class SystemPermissionManager {
         case .appleScript:
             requestAppleScriptPermission()
         case .screenRecording:
-            openSystemSettings(for: permission)
+            requestScreenRecordingPermission()
         case .accessibility:
             requestAccessibilityPermission()
         }
@@ -133,6 +137,9 @@ final class SystemPermissionManager {
         permissions[.accessibility] = false
         permissions[.screenRecording] = false
         permissions[.appleScript] = false
+
+        // Clear screen recording cache
+        screenRecordingPermissionCache = nil
 
         // Immediate check
         Task { @MainActor in
@@ -266,13 +273,69 @@ final class SystemPermissionManager {
     // MARK: - Screen Recording Permission
 
     private func checkScreenRecordingPermission() async -> Bool {
+        // Check cache first
+        if let cache = screenRecordingPermissionCache {
+            let age = Date().timeIntervalSince(cache.timestamp)
+            if age < cacheValidityDuration {
+                logger.debug("Using cached screen recording permission: \(cache.granted) (age: \(age)s)")
+                return cache.granted
+            }
+        }
+
+        // First try CGPreflightScreenCaptureAccess which doesn't trigger the permission dialog
+        if CGPreflightScreenCaptureAccess() {
+            logger.debug("Screen recording permission confirmed via CGPreflightScreenCaptureAccess")
+            screenRecordingPermissionCache = (granted: true, timestamp: Date())
+            return true
+        }
+
+        // If CGPreflightScreenCaptureAccess returns false, we need to verify
+        // because it might be a false negative on some macOS versions
+        // Try SCShareableContent with a very short timeout to avoid hanging
         do {
-            // This will trigger the permission prompt if needed
             _ = try await SCShareableContent.current
+
+            logger.debug("Screen recording permission confirmed via SCShareableContent")
+            screenRecordingPermissionCache = (granted: true, timestamp: Date())
             return true
         } catch {
-            logger.debug("Screen recording permission not granted: \(error)")
+            logger.debug("Screen recording permission not granted or check timed out: \(error)")
+            screenRecordingPermissionCache = (granted: false, timestamp: Date())
             return false
+        }
+    }
+
+    // MARK: - Screen Recording Permission Request
+
+    private func requestScreenRecordingPermission() {
+        Task {
+            // First check if we already have permission using the non-triggering method
+            let hasPermission = CGPreflightScreenCaptureAccess()
+
+            if hasPermission {
+                logger.info("Screen recording permission already granted")
+                // Update our state
+                permissions[.screenRecording] = true
+                screenRecordingPermissionCache = (granted: true, timestamp: Date())
+                NotificationCenter.default.post(name: .permissionsUpdated, object: nil)
+                return
+            }
+
+            // If no permission, trigger the system dialog by attempting to use SCShareableContent
+            do {
+                _ = try await SCShareableContent.current
+                // If we reach here, permission was granted
+                logger.info("Screen recording permission granted after prompt")
+                permissions[.screenRecording] = true
+                screenRecordingPermissionCache = (granted: true, timestamp: Date())
+                NotificationCenter.default.post(name: .permissionsUpdated, object: nil)
+            } catch {
+                logger.info("Screen recording permission dialog shown or denied")
+                // Also open System Settings as a fallback
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                    self?.openSystemSettings(for: .screenRecording)
+                }
+            }
         }
     }
 

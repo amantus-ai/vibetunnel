@@ -507,14 +507,17 @@ public final class DisplayCoordinator: NSObject {
 
     /// Check if screen recording permission is granted
     private func isScreenRecordingAllowed() async -> Bool {
-        do {
-            // Try to get shareable content - this will fail if no permission
-            _ = try await SCShareableContent.current
-            logger.info("✅ Screen recording permission is granted")
-            return true
-        } catch {
-            logger.warning("❌ Screen recording permission check failed: \(error)")
-            return false
+        // Use SystemPermissionManager which has better caching and non-triggering checks
+        let hasPermission = await MainActor.run {
+            SystemPermissionManager.shared.hasPermission(.screenRecording)
         }
+
+        if hasPermission {
+            logger.info("✅ Screen recording permission is granted")
+        } else {
+            logger.warning("❌ Screen recording permission not granted")
+        }
+
+        return hasPermission
     }
 }

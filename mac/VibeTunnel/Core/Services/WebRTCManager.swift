@@ -685,9 +685,10 @@ final class WebRTCManager: NSObject {
                     🔄 [SECURITY] Session update for start-capture
                       Previous session: \(previousSession ?? "nil")
                       New session: \(sessionId)
-                      Time since last session: \(self.sessionStartTime.map { Date().timeIntervalSince($0) }?
-                        .description ?? "N/A"
-                      ) seconds
+                      Time since last session: \(
+                          self.sessionStartTime.map { Date().timeIntervalSince($0) }?
+                              .description ?? "N/A"
+                    ) seconds
                     """)
                 }
                 activeSessionId = sessionId
@@ -800,6 +801,28 @@ final class WebRTCManager: NSObject {
 
         guard let service = screencapService else {
             logger.error("❌ No screencapService available for initial data")
+            return
+        }
+
+        // Check screen recording permission first
+        let hasPermission = await MainActor.run {
+            SystemPermissionManager.shared.hasPermission(.screenRecording)
+        }
+
+        if !hasPermission {
+            logger.warning("⚠️ Screen recording permission not granted for initial data fetch")
+            // Send permission required response
+            if let messageData = try? ControlProtocol.encodeWithDictionaryPayload(
+                type: .response,
+                category: .screencap,
+                action: "sources-error",
+                payload: [
+                    "error": "Screen recording permission required",
+                    "code": "permission_denied"
+                ]
+            ) {
+                await sendControlMessage(messageData)
+            }
             return
         }
 
@@ -924,8 +947,9 @@ final class WebRTCManager: NSObject {
                 Request session: \(sessionId ?? "nil")
                 Active session: \(self.activeSessionId ?? "nil")
                 Session match: \(sessionId == self.activeSessionId ? "YES" : "NO")
-                Session age: \(self.sessionStartTime.map { Date().timeIntervalSince($0) }?
-                    .description ?? "N/A"
+                Session age: \(
+                    self.sessionStartTime.map { Date().timeIntervalSince($0) }?
+                        .description ?? "N/A"
                 ) seconds
                 """
                 logger.error("\(errorDetails)")
@@ -1015,6 +1039,18 @@ final class WebRTCManager: NSObject {
         let service = screencapService
         guard let service else {
             throw WebRTCError.invalidConfiguration
+        }
+
+        // Check screen recording permission first for endpoints that need it
+        if endpoint == "/processes" || endpoint == "/displays" {
+            let hasPermission = await MainActor.run {
+                SystemPermissionManager.shared.hasPermission(.screenRecording)
+            }
+
+            if !hasPermission {
+                logger.warning("⚠️ Screen recording permission not granted for \(endpoint)")
+                throw ScreencapError.permissionDenied
+            }
         }
 
         switch (method, endpoint) {
