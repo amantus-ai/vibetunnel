@@ -19,7 +19,7 @@ export PATH="$HOME/.local/bin:$PATH"
 
 # Load GitHub configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="$(dirname "$SCRIPT_DIR")/.github-config"
+CONFIG_FILE="$SCRIPT_DIR/../.github-config"
 if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
 fi

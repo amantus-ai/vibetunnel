@@ -254,6 +254,13 @@ All notable changes to VibeTunnel will be documented in this file.
 
 **CRITICAL**: The appcast generation relies on the local CHANGELOG.md file, NOT the GitHub release description. The changelog must be added to CHANGELOG.md BEFORE running the release script.
 
+**IMPORTANT - Per-Release Changelog**: The release script automatically extracts ONLY the changelog section for the specific version being released. For example:
+- When releasing beta.10, only the `## [1.0.0-beta.10]` section is used
+- When releasing beta.11, only the `## [1.0.0-beta.11]` section is used
+- This keeps GitHub release pages focused and prevents endless scrolling to find download links
+
+The script uses `changelog-to-html.sh` to extract the specific version's changes, not the entire changelog history.
+
 ### Step 4: Create the Release
 
 ⚠️ **CRITICAL UNDERSTANDING**: The release script parameters are ONLY for:
@@ -304,6 +311,9 @@ The script will:
 
 ### Step 5: Verify Success
 - Check the GitHub releases page
+- **IMPORTANT**: Verify the GitHub release shows ONLY the current version's changelog, not the entire history
+  - If it shows the full changelog, the release notes were not generated correctly
+  - The release should only show changes for that specific version (e.g., beta.10 shows only beta.10 changes)
 - Verify the appcast was updated correctly with proper changelog content
 - **Critical**: Verify the Sparkle signature is correct:
   ```bash

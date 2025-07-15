@@ -795,15 +795,32 @@ else
     RELEASE_NOTES="$CHANGELOG_HTML"
 fi
 
+# Format the release title properly
+# Convert "1.0.0-beta.10" to "VibeTunnel 1.0.0 Beta 10"
+RELEASE_TITLE="VibeTunnel $RELEASE_VERSION"
+if [[ "$RELEASE_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-beta\.([0-9]+)$ ]]; then
+    VERSION_BASE="${BASH_REMATCH[1]}"
+    BETA_NUM="${BASH_REMATCH[2]}"
+    RELEASE_TITLE="VibeTunnel $VERSION_BASE Beta $BETA_NUM"
+elif [[ "$RELEASE_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-alpha\.([0-9]+)$ ]]; then
+    VERSION_BASE="${BASH_REMATCH[1]}"
+    ALPHA_NUM="${BASH_REMATCH[2]}"
+    RELEASE_TITLE="VibeTunnel $VERSION_BASE Alpha $ALPHA_NUM"
+elif [[ "$RELEASE_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-rc\.([0-9]+)$ ]]; then
+    VERSION_BASE="${BASH_REMATCH[1]}"
+    RC_NUM="${BASH_REMATCH[2]}"
+    RELEASE_TITLE="VibeTunnel $VERSION_BASE RC $RC_NUM"
+fi
+
 if [[ "$RELEASE_TYPE" == "stable" ]]; then
     gh release create "$TAG_NAME" \
-        --title "VibeTunnel $RELEASE_VERSION" \
+        --title "$RELEASE_TITLE" \
         --notes "$RELEASE_NOTES" \
         "$DMG_PATH" \
         "$ZIP_PATH"
 else
     gh release create "$TAG_NAME" \
-        --title "VibeTunnel $RELEASE_VERSION" \
+        --title "$RELEASE_TITLE" \
         --notes "$RELEASE_NOTES" \
         --prerelease \
         "$DMG_PATH" \
