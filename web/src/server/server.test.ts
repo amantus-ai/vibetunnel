@@ -1,19 +1,18 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import WebSocket from 'ws';
-import type { ControlUnixHandler } from './websocket/control-unix-handler.js';
 import type { ControlMessage } from './websocket/control-protocol.js';
+import type { ControlUnixHandler } from './websocket/control-unix-handler.js';
 
 // Mock WebSocket
 vi.mock('ws');
 
 describe('Config WebSocket', () => {
-  let mockWs: any;
   let mockControlUnixHandler: ControlUnixHandler;
   let messageHandler: (data: any) => void;
 
   beforeEach(() => {
     // Create mock WebSocket instance
-    mockWs = {
+    const _mockWs = {
       on: vi.fn((event: string, handler: Function) => {
         if (event === 'message') {
           messageHandler = handler;

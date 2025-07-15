@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import WebSocket from 'ws';
 import type { Server } from 'http';
-import type { Express } from 'express';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import WebSocket from 'ws';
 
 // Mock the control Unix handler
 const mockControlUnixHandler = {
@@ -48,7 +47,7 @@ describe('Repository Path Bidirectional Sync Integration', () => {
           const message = JSON.parse(data.toString());
           if (message.type === 'update-repository-path') {
             // Simulate forwarding to Mac
-            const response = await mockControlUnixHandler.sendControlMessage({
+            const _response = await mockControlUnixHandler.sendControlMessage({
               id: 'test-id',
               type: 'request',
               category: 'system',
@@ -107,7 +106,7 @@ describe('Repository Path Bidirectional Sync Integration', () => {
 
     // Connect client
     client = new WebSocket(`ws://localhost:${port}/ws/config`);
-    
+
     await new Promise<void>((resolve) => {
       client.on('open', resolve);
     });
@@ -164,7 +163,7 @@ describe('Repository Path Bidirectional Sync Integration', () => {
   it('should handle Mac-initiated updates', async () => {
     // Connect client
     client = new WebSocket(`ws://localhost:${port}/ws/config`);
-    
+
     await new Promise<void>((resolve) => {
       client.on('open', resolve);
     });
@@ -261,7 +260,7 @@ describe('Repository Path Bidirectional Sync Integration', () => {
 
     // Connect client
     client = new WebSocket(`ws://localhost:${port}/ws/config`);
-    
+
     await new Promise<void>((resolve) => {
       client.on('open', resolve);
     });

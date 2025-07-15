@@ -275,7 +275,7 @@ describe('UnifiedSettings - Repository Path Bidirectional Sync', () => {
       await el.updateComplete;
 
       // Initially not server-configured
-      let description = el.querySelector('p.text-xs')?.textContent;
+      const description = el.querySelector('p.text-xs')?.textContent;
       expect(description).toContain('Default directory for new sessions');
 
       // Get the WebSocket instance
