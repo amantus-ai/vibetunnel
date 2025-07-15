@@ -1,4 +1,5 @@
 import SwiftUI
+import os.log
 
 /// General settings tab for basic app preferences
 struct GeneralSettingsView: View {
@@ -10,13 +11,28 @@ struct GeneralSettingsView: View {
     private var updateChannelRaw = UpdateChannel.stable.rawValue
     @AppStorage(AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
     private var preventSleepWhenRunning = true
+    @AppStorage(AppConstants.UserDefaultsKeys.serverPort)
+    private var serverPort = "4020"
+    @AppStorage(AppConstants.UserDefaultsKeys.dashboardAccessMode)
+    private var accessModeString = DashboardAccessMode.network.rawValue
 
     @State private var isCheckingForUpdates = false
+    @State private var localIPAddress: String?
+    @State private var showingServerErrorAlert = false
+    @State private var serverErrorMessage = ""
+
+    @Environment(ServerManager.self)
+    private var serverManager
 
     private let startupManager = StartupManager()
+    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "GeneralSettings")
 
     var updateChannel: UpdateChannel {
         UpdateChannel(rawValue: updateChannelRaw) ?? .stable
+    }
+
+    private var accessMode: DashboardAccessMode {
+        DashboardAccessMode(rawValue: accessModeString) ?? .localhost
     }
 
     var body: some View {
@@ -99,8 +115,15 @@ struct GeneralSettingsView: View {
                         .font(.headline)
                 }
 
-                // Permissions Section
-                PermissionsSection()
+                ServerConfigurationSection(
+                    accessMode: accessMode,
+                    accessModeString: $accessModeString,
+                    serverPort: $serverPort,
+                    localIPAddress: localIPAddress,
+                    restartServerWithNewBindAddress: restartServerWithNewBindAddress,
+                    restartServerWithNewPort: restartServerWithNewPort,
+                    serverManager: serverManager
+                )
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
@@ -109,6 +132,14 @@ struct GeneralSettingsView: View {
         .task {
             // Sync launch at login status
             autostart = startupManager.isLaunchAtLoginEnabled
+        }
+        .onAppear {
+            updateLocalIPAddress()
+        }
+        .alert("Failed to Restart Server", isPresented: $showingServerErrorAlert) {
+            Button("OK") {}
+        } message: {
+            Text(serverErrorMessage)
         }
     }
 
@@ -147,193 +178,248 @@ struct GeneralSettingsView: View {
             isCheckingForUpdates = false
         }
     }
+
+    private func restartServerWithNewPort(_ port: Int) {
+        Task {
+            // Update the port in ServerManager and restart
+            serverManager.port = String(port)
+            await serverManager.restart()
+            logger.info("Server restarted on port \(port)")
+
+            // Wait for server to be fully ready before restarting session monitor
+            try? await Task.sleep(for: .seconds(1))
+
+            // Session monitoring will automatically detect the port change
+        }
+    }
+
+    private func restartServerWithNewBindAddress() {
+        Task {
+            // Restart server to pick up the new bind address from UserDefaults
+            // (accessModeString is already persisted via @AppStorage)
+            logger
+                .info(
+                    "Restarting server due to access mode change: \(accessMode.displayName) -> \(accessMode.bindAddress)"
+                )
+            await serverManager.restart()
+            logger.info("Server restarted with bind address \(accessMode.bindAddress)")
+
+            // Wait for server to be fully ready before restarting session monitor
+            try? await Task.sleep(for: .seconds(1))
+
+            // Session monitoring will automatically detect the bind address change
+        }
+    }
+
+    private func updateLocalIPAddress() {
+        Task {
+            if accessMode == .network {
+                localIPAddress = NetworkUtility.getLocalIPAddress()
+            } else {
+                localIPAddress = nil
+            }
+        }
+    }
 }
 
-// MARK: - Permissions Section
+// MARK: - Server Configuration Section
 
-private struct PermissionsSection: View {
-    @Environment(SystemPermissionManager.self)
-    private var permissionManager
-    @State private var permissionUpdateTrigger = 0
-
-    // IMPORTANT: These computed properties ensure the UI always shows current permission state.
-    // The permissionUpdateTrigger dependency forces SwiftUI to re-evaluate these properties
-    // when permissions change. Without this, the UI would not update when permissions are
-    // granted in System Settings while this view is visible.
-    //
-    // We use computed properties instead of @State to avoid UI flashing - the initial
-    // permission check in .task happens before the first render, ensuring correct state
-    // from the start.
-    private var hasAppleScriptPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.appleScript)
-    }
-
-    private var hasAccessibilityPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.accessibility)
-    }
-
-    private var hasScreenRecordingPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.screenRecording)
-    }
+private struct ServerConfigurationSection: View {
+    let accessMode: DashboardAccessMode
+    @Binding var accessModeString: String
+    @Binding var serverPort: String
+    let localIPAddress: String?
+    let restartServerWithNewBindAddress: () -> Void
+    let restartServerWithNewPort: (Int) -> Void
+    let serverManager: ServerManager
 
     var body: some View {
         Section {
-            // Automation permission
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Terminal Automation")
-                        .font(.body)
-                    Text("Required to launch and control terminal applications.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+            VStack(alignment: .leading, spacing: 12) {
+                AccessModeView(
+                    accessMode: accessMode,
+                    accessModeString: $accessModeString,
+                    serverPort: serverPort,
+                    localIPAddress: localIPAddress,
+                    restartServerWithNewBindAddress: restartServerWithNewBindAddress
+                )
 
-                Spacer()
-
-                if hasAppleScriptPermission {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Granted")
-                            .foregroundColor(.secondary)
-                    }
-                    .font(.caption)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 2)
-                    .frame(height: 22) // Match small button height
-                    .contextMenu {
-                        Button("Refresh Status") {
-                            permissionManager.forcePermissionRecheck()
-                        }
-                        Button("Open System Settings...") {
-                            permissionManager.requestPermission(.appleScript)
-                        }
-                    }
-                } else {
-                    Button("Grant Permission") {
-                        permissionManager.requestPermission(.appleScript)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-            }
-
-            // Accessibility permission
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Accessibility")
-                        .font(.body)
-                    Text("Required to enter terminal startup commands.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                if hasAccessibilityPermission {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Granted")
-                            .foregroundColor(.secondary)
-                    }
-                    .font(.caption)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 2)
-                    .frame(height: 22) // Match small button height
-                    .contextMenu {
-                        Button("Refresh Status") {
-                            permissionManager.forcePermissionRecheck()
-                        }
-                        Button("Open System Settings...") {
-                            permissionManager.requestPermission(.accessibility)
-                        }
-                    }
-                } else {
-                    Button("Grant Permission") {
-                        permissionManager.requestPermission(.accessibility)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-            }
-
-            // Screen Recording permission
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Screen Recording")
-                        .font(.body)
-                    Text("Required for screen sharing and remote viewing.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                if hasScreenRecordingPermission {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Granted")
-                            .foregroundColor(.secondary)
-                    }
-                    .font(.caption)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 2)
-                    .frame(height: 22) // Match small button height
-                    .contextMenu {
-                        Button("Refresh Status") {
-                            permissionManager.forcePermissionRecheck()
-                        }
-                        Button("Open System Settings...") {
-                            permissionManager.requestPermission(.screenRecording)
-                        }
-                    }
-                } else {
-                    Button("Grant Permission") {
-                        permissionManager.requestPermission(.screenRecording)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
+                PortConfigurationView(
+                    serverPort: $serverPort,
+                    restartServerWithNewPort: restartServerWithNewPort,
+                    serverManager: serverManager
+                )
             }
         } header: {
-            Text("Permissions")
+            Text("Server Configuration")
                 .font(.headline)
         } footer: {
-            if hasAppleScriptPermission && hasAccessibilityPermission && hasScreenRecordingPermission {
-                Text(
-                    "All permissions granted. VibeTunnel has full functionality."
-                )
-                .font(.caption)
+            // Dashboard URL display
+            if accessMode == .localhost {
+                HStack(spacing: 5) {
+                    Text("Dashboard available at")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    if let url = DashboardURLBuilder.dashboardURL(port: serverPort) {
+                        Link(url.absoluteString, destination: url)
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+                    }
+                }
                 .frame(maxWidth: .infinity)
                 .multilineTextAlignment(.center)
-                .foregroundColor(.green)
-            } else {
-                Text(
-                    "Terminals can be captured without permissions, however new sessions won't load."
-                )
-                .font(.caption)
-                .frame(maxWidth: .infinity)
-                .multilineTextAlignment(.center)
+            } else if accessMode == .network {
+                if let ip = localIPAddress {
+                    HStack(spacing: 5) {
+                        Text("Dashboard available at")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        if let url = URL(string: "http://\(ip):\(serverPort)") {
+                            Link(url.absoluteString, destination: url)
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
+                } else {
+                    Text("Fetching local IP address...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                }
             }
         }
-        .task {
-            // Check permissions before first render to avoid UI flashing
-            await permissionManager.checkAllPermissions()
+    }
+}
 
-            // Register for continuous monitoring
-            permissionManager.registerForMonitoring()
+// MARK: - Access Mode View
+
+private struct AccessModeView: View {
+    let accessMode: DashboardAccessMode
+    @Binding var accessModeString: String
+    let serverPort: String
+    let localIPAddress: String?
+    let restartServerWithNewBindAddress: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Access Mode")
+                    .font(.callout)
+                Spacer()
+                Picker("", selection: $accessModeString) {
+                    ForEach(DashboardAccessMode.allCases, id: \.rawValue) { mode in
+                        Text(mode.displayName)
+                            .tag(mode.rawValue)
+                    }
+                }
+                .labelsHidden()
+                .onChange(of: accessModeString) { _, _ in
+                    restartServerWithNewBindAddress()
+                }
+            }
         }
-        .onDisappear {
-            permissionManager.unregisterFromMonitoring()
+    }
+}
+
+// MARK: - Port Configuration View
+
+private struct PortConfigurationView: View {
+    @Binding var serverPort: String
+    let restartServerWithNewPort: (Int) -> Void
+    let serverManager: ServerManager
+
+    @FocusState private var isPortFieldFocused: Bool
+    @State private var pendingPort: String = ""
+    @State private var portError: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Port")
+                    .font(.callout)
+                Spacer()
+                HStack(spacing: 4) {
+                    TextField("", text: $pendingPort)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 80)
+                        .multilineTextAlignment(.center)
+                        .focused($isPortFieldFocused)
+                        .onSubmit {
+                            validateAndUpdatePort()
+                        }
+                        .onAppear {
+                            pendingPort = serverPort
+                        }
+                        .onChange(of: pendingPort) { _, newValue in
+                            // Clear error when user types
+                            portError = nil
+                            // Limit to 5 digits
+                            if newValue.count > 5 {
+                                pendingPort = String(newValue.prefix(5))
+                            }
+                        }
+
+                    VStack(spacing: 0) {
+                        Button(action: {
+                            if let port = Int(pendingPort), port < 65_535 {
+                                pendingPort = String(port + 1)
+                                validateAndUpdatePort()
+                            }
+                        }, label: {
+                            Image(systemName: "chevron.up")
+                                .font(.system(size: 10))
+                                .frame(width: 16, height: 11)
+                        })
+                        .buttonStyle(.borderless)
+
+                        Button(action: {
+                            if let port = Int(pendingPort), port > 1_024 {
+                                pendingPort = String(port - 1)
+                                validateAndUpdatePort()
+                            }
+                        }, label: {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 10))
+                                .frame(width: 16, height: 11)
+                        })
+                        .buttonStyle(.borderless)
+                    }
+                }
+            }
+
+            if let error = portError {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundColor(.red)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+            }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .permissionsUpdated)) { _ in
-            // Increment trigger to force computed property re-evaluation
-            permissionUpdateTrigger += 1
+    }
+
+    private func validateAndUpdatePort() {
+        guard let port = Int(pendingPort) else {
+            portError = "Invalid port number"
+            pendingPort = serverPort
+            return
+        }
+
+        guard port >= 1_024 && port <= 65_535 else {
+            portError = "Port must be between 1024 and 65535"
+            pendingPort = serverPort
+            return
+        }
+
+        if String(port) != serverPort {
+            restartServerWithNewPort(port)
+            serverPort = String(port)
         }
     }
 }

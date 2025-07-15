@@ -22,6 +22,8 @@ struct SettingsView: View {
     private let tabSizes: [SettingsTab: CGSize] = [
         .general: Layout.defaultTabSize,
         .dashboard: Layout.defaultTabSize,
+        .remoteAccess: Layout.defaultTabSize,
+        .securityPermissions: Layout.defaultTabSize,
         .advanced: Layout.defaultTabSize,
         .debug: Layout.defaultTabSize,
         .about: Layout.defaultTabSize
@@ -40,6 +42,18 @@ struct SettingsView: View {
                     Label(SettingsTab.dashboard.displayName, systemImage: SettingsTab.dashboard.icon)
                 }
                 .tag(SettingsTab.dashboard)
+
+            RemoteAccessSettingsView()
+                .tabItem {
+                    Label(SettingsTab.remoteAccess.displayName, systemImage: SettingsTab.remoteAccess.icon)
+                }
+                .tag(SettingsTab.remoteAccess)
+
+            SecurityPermissionsSettingsView()
+                .tabItem {
+                    Label(SettingsTab.securityPermissions.displayName, systemImage: SettingsTab.securityPermissions.icon)
+                }
+                .tag(SettingsTab.securityPermissions)
 
             AdvancedSettingsView()
                 .tabItem {
