@@ -347,6 +347,32 @@ function mergePrebuilds() {
 
 // Main build process
 async function main() {
+  // Step 0: Temporarily modify package.json for npm packaging
+  const packageJsonPath = path.join(__dirname, '..', 'package.json');
+  const originalPackageJson = fs.readFileSync(packageJsonPath, 'utf8');
+  const packageJson = JSON.parse(originalPackageJson);
+  
+  // Store original postinstall
+  const originalPostinstall = packageJson.scripts.postinstall;
+  
+  // Set install script for npm package
+  packageJson.scripts.install = 'prebuild-install || node scripts/postinstall-npm.js';
+  delete packageJson.scripts.postinstall;
+  
+  // Add prebuild dependencies for npm package only
+  packageJson.dependencies['prebuild-install'] = '^7.1.2';
+  
+  // Write modified package.json
+  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
+  
+  // Restore original package.json on exit
+  const restorePackageJson = () => {
+    fs.writeFileSync(packageJsonPath, originalPackageJson);
+  };
+  process.on('exit', restorePackageJson);
+  process.on('SIGINT', () => { restorePackageJson(); process.exit(1); });
+  process.on('SIGTERM', () => { restorePackageJson(); process.exit(1); });
+  
   // Step 1: Standard build process (includes spawn-helper)
   console.log('1️⃣ Running standard build process...\n');
   try {
@@ -564,6 +590,9 @@ MIT
   console.log('\nNext steps:');
   console.log('  - Test locally: npm pack');
   console.log('  - Publish: npm publish');
+  
+  // Restore original package.json
+  restorePackageJson();
 }
 
 main().catch(error => {
