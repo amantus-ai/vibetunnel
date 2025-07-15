@@ -384,6 +384,10 @@ export class InputManager {
       // Common browser shortcuts that are normally captured for terminal
       if (isMacOS && e.metaKey && !e.shiftKey && !e.altKey) {
         if (['a', 'f', 'r', 'l', 'w', 'p', 's', 'd'].includes(key)) {
+          // Debug logging for Cmd+R
+          if (key === 'r') {
+            logger.log(`🔍 Cmd+R: capture OFF, allowing browser shortcut`);
+          }
           return true;
         }
       }
@@ -401,7 +405,14 @@ export class InputManager {
     }
 
     // When capture is active, everything else goes to terminal
-    return false;
+    const result = false;
+
+    // Debug logging for Cmd+R
+    if (e.metaKey && e.key.toLowerCase() === 'r') {
+      logger.log(`🔍 Cmd+R result: returning ${result} (${result ? 'BROWSER' : 'TERMINAL'})`);
+    }
+
+    return result;
   }
 
   cleanup(): void {
