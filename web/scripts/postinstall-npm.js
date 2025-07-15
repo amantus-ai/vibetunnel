@@ -21,6 +21,24 @@ if (isDevelopment) {
   return;
 }
 
+// Create node_modules directory if it doesn't exist
+const nodeModulesDir = path.join(__dirname, '..', 'node_modules');
+if (!fs.existsSync(nodeModulesDir)) {
+  fs.mkdirSync(nodeModulesDir, { recursive: true });
+}
+
+// Create symlink for node-pty so it can be required normally
+const nodePtySource = path.join(__dirname, '..', 'node-pty');
+const nodePtyTarget = path.join(nodeModulesDir, 'node-pty');
+if (!fs.existsSync(nodePtyTarget) && fs.existsSync(nodePtySource)) {
+  try {
+    fs.symlinkSync(nodePtySource, nodePtyTarget, 'dir');
+    console.log('✓ Created node-pty symlink in node_modules');
+  } catch (error) {
+    console.warn('Warning: Could not create node-pty symlink:', error.message);
+  }
+}
+
 // Get Node ABI version
 const nodeABI = process.versions.modules;
 
