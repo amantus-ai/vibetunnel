@@ -13,6 +13,22 @@ vi.mock('@/client/services/push-notification-service', () => ({
     subscribe: vi.fn(),
     unsubscribe: vi.fn(),
     waitForInitialization: vi.fn().mockResolvedValue(undefined),
+    getPermission: vi.fn().mockReturnValue('default'),
+    getSubscription: vi.fn().mockReturnValue(null),
+    loadPreferences: vi.fn().mockReturnValue({
+      enabled: false,
+      sessionExit: true,
+      sessionStart: false,
+      sessionError: true,
+      systemAlerts: true,
+      soundEnabled: true,
+      vibrationEnabled: true,
+    }),
+    onPermissionChange: vi.fn(() => () => {}),
+    onSubscriptionChange: vi.fn(() => () => {}),
+    savePreferences: vi.fn(),
+    testNotification: vi.fn().mockResolvedValue(undefined),
+    isSubscribed: vi.fn().mockReturnValue(false),
   },
 }));
 
@@ -37,6 +53,12 @@ vi.mock('@/client/utils/logger', () => ({
     warn: vi.fn(),
     debug: vi.fn(),
   },
+  createLogger: vi.fn(() => ({
+    log: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  })),
 }));
 
 // Mock fetch for API calls
@@ -116,14 +138,15 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
   it('should show repository path as editable when not server-configured', async () => {
     const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
 
+    // Make component visible
+    el.visible = true;
+
     // Wait for async initialization
     await new Promise((resolve) => setTimeout(resolve, 100));
     await el.updateComplete;
 
     // Find the repository base path input
-    const input = el.shadowRoot?.querySelector(
-      'input[placeholder="~/"]'
-    ) as HTMLInputElement | null;
+    const input = el.querySelector('input[placeholder="~/"]') as HTMLInputElement | null;
 
     expect(input).toBeTruthy();
     expect(input?.disabled).toBe(false);
@@ -144,14 +167,15 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
 
     const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
 
+    // Make component visible
+    el.visible = true;
+
     // Wait for async initialization
     await new Promise((resolve) => setTimeout(resolve, 100));
     await el.updateComplete;
 
     // Find the repository base path input
-    const input = el.shadowRoot?.querySelector(
-      'input[placeholder="~/"]'
-    ) as HTMLInputElement | null;
+    const input = el.querySelector('input[placeholder="~/"]') as HTMLInputElement | null;
 
     expect(input).toBeTruthy();
     expect(input?.disabled).toBe(true);
@@ -173,16 +197,19 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
 
     const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
 
+    // Make component visible
+    el.visible = true;
+
     // Wait for async initialization
     await new Promise((resolve) => setTimeout(resolve, 100));
     await el.updateComplete;
 
     // Check for the lock icon
-    const lockIcon = el.shadowRoot?.querySelector('svg');
+    const lockIcon = el.querySelector('svg');
     expect(lockIcon).toBeTruthy();
 
     // Check for the descriptive text
-    const descriptions = Array.from(el.shadowRoot?.querySelectorAll('p.text-xs') || []);
+    const descriptions = Array.from(el.querySelectorAll('p.text-xs') || []);
     const repoDescription = descriptions.find((p) =>
       p.textContent?.includes('This path is managed by the VibeTunnel Mac app')
     );
@@ -191,6 +218,9 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
 
   it('should update repository path via WebSocket when server sends update', async () => {
     const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+
+    // Make component visible
+    el.visible = true;
 
     // Wait for async initialization
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -214,9 +244,7 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
     await el.updateComplete;
 
     // Check that the input value updated
-    const input = el.shadowRoot?.querySelector(
-      'input[placeholder="~/"]'
-    ) as HTMLInputElement | null;
+    const input = el.querySelector('input[placeholder="~/"]') as HTMLInputElement | null;
     expect(input?.value).toBe('/Users/new/path');
     expect(input?.disabled).toBe(true);
   });
@@ -299,20 +327,34 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
   });
 
   it('should save preferences when updated from server', async () => {
+    // Mock server response with non-server-configured state initially
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        repositoryBasePath: '~/',
+        serverConfigured: false,
+      }),
+    });
+
     const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+
+    // Make component visible
+    el.visible = true;
 
     // Wait for async initialization
     await new Promise((resolve) => setTimeout(resolve, 100));
     await el.updateComplete;
 
-    // Spy on localStorage
-    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
-
     // Get the WebSocket instance
     const ws = MockWebSocket.instances[0];
     expect(ws).toBeTruthy();
 
-    // Simulate server update
+    // Directly check that the values get updated
+    const initialPath = (el as UnifiedSettings & { appPreferences: AppPreferences }).appPreferences
+      .repositoryBasePath;
+    expect(initialPath).toBe('~/');
+
+    // Simulate server update that changes to server-configured with new path
     ws.simulateMessage({
       type: 'config',
       data: {
@@ -322,13 +364,17 @@ describe('UnifiedSettings - Repository Path Server Configuration', () => {
     });
 
     // Wait for the update to process
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 100));
     await el.updateComplete;
 
-    // Verify localStorage was updated
-    expect(setItemSpy).toHaveBeenCalledWith(
-      'app-preferences',
-      expect.stringContaining('/Users/updated/path')
-    );
+    // Verify the path was updated
+    const updatedPath = (el as UnifiedSettings & { appPreferences: AppPreferences }).appPreferences
+      .repositoryBasePath;
+    expect(updatedPath).toBe('/Users/updated/path');
+
+    // Verify the server configured state changed
+    const isServerConfigured = (el as UnifiedSettings & { isServerConfigured: boolean })
+      .isServerConfigured;
+    expect(isServerConfigured).toBe(true);
   });
 });

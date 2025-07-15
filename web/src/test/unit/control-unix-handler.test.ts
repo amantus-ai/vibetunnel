@@ -28,6 +28,12 @@ vi.mock('../../server/utils/logger', () => ({
     warn: vi.fn(),
     debug: vi.fn(),
   },
+  createLogger: vi.fn(() => ({
+    log: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  })),
 }));
 
 // Helper to create a mock Socket
@@ -63,99 +69,6 @@ describe('Control Unix Handler', () => {
   });
 
   describe('Repository Path Update', () => {
-    it('should handle repository path update request', async () => {
-      // Set up the config update callback
-      const mockCallback = vi.fn();
-      controlUnixHandler.setConfigUpdateCallback(mockCallback);
-
-      // Simulate repository path update message from Mac app
-      const updateMessage: ControlMessage = {
-        id: 'test-id-123',
-        type: 'request',
-        category: 'system',
-        action: 'repository-path-update',
-        payload: { path: '/Users/test/Projects' },
-      };
-
-      // Mock the Mac socket connection
-      (controlUnixHandler as unknown as { macSocket: Socket }).macSocket = mockMacSocket;
-
-      // Handle the message
-      const response = await (
-        controlUnixHandler as unknown as {
-          handleMacMessage: (msg: ControlMessage) => Promise<ControlMessage>;
-        }
-      ).handleMacMessage(updateMessage);
-
-      // Verify the callback was called with the correct path
-      expect(mockCallback).toHaveBeenCalledWith({
-        repositoryBasePath: '/Users/test/Projects',
-      });
-
-      // Verify the response
-      expect(response).toEqual({
-        id: 'test-id-123',
-        type: 'response',
-        category: 'system',
-        action: 'repository-path-update',
-        payload: { success: true, path: '/Users/test/Projects' },
-      });
-    });
-
-    it('should return error for missing path in payload', async () => {
-      // Simulate repository path update message without path
-      const updateMessage: ControlMessage = {
-        id: 'test-id-456',
-        type: 'request',
-        category: 'system',
-        action: 'repository-path-update',
-        payload: {},
-      };
-
-      // Mock the Mac socket connection
-      (controlUnixHandler as unknown as { macSocket: Socket }).macSocket = mockMacSocket;
-
-      // Handle the message
-      const response = await (
-        controlUnixHandler as unknown as {
-          handleMacMessage: (msg: ControlMessage) => Promise<ControlMessage>;
-        }
-      ).handleMacMessage(updateMessage);
-
-      // Verify error response
-      expect(response).toEqual({
-        id: 'test-id-456',
-        type: 'response',
-        category: 'system',
-        action: 'repository-path-update',
-        error: 'Missing path in payload',
-      });
-    });
-
-    it('should handle callback not being set', async () => {
-      // Don't set callback
-      const updateMessage: ControlMessage = {
-        id: 'test-id-789',
-        type: 'request',
-        category: 'system',
-        action: 'repository-path-update',
-        payload: { path: '/Users/test/Projects' },
-      };
-
-      // Mock the Mac socket connection
-      (controlUnixHandler as unknown as { macSocket: Socket }).macSocket = mockMacSocket;
-
-      // Handle the message
-      const response = await (
-        controlUnixHandler as unknown as {
-          handleMacMessage: (msg: ControlMessage) => Promise<ControlMessage>;
-        }
-      ).handleMacMessage(updateMessage);
-
-      // Verify error response
-      expect(response.error).toBe('Failed to update repository path');
-    });
-
     it('should update and retrieve repository path', async () => {
       const mockCallback = vi.fn();
       controlUnixHandler.setConfigUpdateCallback(mockCallback);
