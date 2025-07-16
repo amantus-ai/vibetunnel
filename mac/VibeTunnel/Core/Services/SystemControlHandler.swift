@@ -19,7 +19,8 @@ final class SystemControlHandler {
     init(onSystemReady: @escaping () -> Void = {}) {
         self.onSystemReady = onSystemReady
         logger.info("SystemControlHandler initialized")
-        // Note: Registration with SharedUnixSocketManager is handled by SharedUnixSocketManager.initializeSystemHandler()
+        // Note: Registration with SharedUnixSocketManager is handled by
+        // SharedUnixSocketManager.initializeSystemHandler()
     }
 
     // MARK: - Message Handling
