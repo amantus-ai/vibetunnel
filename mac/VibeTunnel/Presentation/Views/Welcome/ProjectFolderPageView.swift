@@ -86,11 +86,6 @@ struct ProjectFolderPageView: View {
                     }
                     // Tip
                     HStack(alignment: .top, spacing: 6) {
-                        Image(systemName: "lightbulb")
-                            .font(.system(size: 11))
-                            .foregroundColor(.orange)
-                            .frame(width: 14)
-
                         Text("You can change this later in Settings → Application → Repository")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)

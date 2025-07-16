@@ -617,10 +617,10 @@ export class UnifiedSettings extends LitElement {
         </div>
 
         <!-- Repository Base Path -->
-        <div class="p-4 bg-dark-bg-tertiary rounded-lg border border-dark-border">
+        <div class="p-4 bg-tertiary rounded-lg border border-base">
           <div class="mb-3">
-            <label class="text-dark-text font-medium">Repository Base Path</label>
-            <p class="text-dark-text-muted text-xs mt-1">
+            <label class="text-primary font-medium">Repository Base Path</label>
+            <p class="text-muted text-xs mt-1">
               ${
                 this.isServerConfigured
                   ? 'This path is synced with the VibeTunnel Mac app'
@@ -646,7 +646,7 @@ export class UnifiedSettings extends LitElement {
             ${
               this.isServerConfigured
                 ? html`
-                  <div class="flex items-center text-dark-text-muted" title="Synced with Mac app">
+                  <div class="flex items-center text-muted" title="Synced with Mac app">
                     <svg
                       class="w-5 h-5"
                       fill="none"
