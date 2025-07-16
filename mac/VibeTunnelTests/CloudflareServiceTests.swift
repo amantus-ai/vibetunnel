@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 @testable import VibeTunnel
@@ -182,12 +183,21 @@ struct CloudflareServiceTests {
     @MainActor
     func installationMethodUrls() {
         let service = CloudflareService.shared
+        
+        // Enable test mode to prevent opening URLs
+        CloudflareService.isTestMode = true
+        defer { CloudflareService.isTestMode = false }
 
         // Test that installation methods don't crash
-        // These should open URLs or copy to clipboard
+        // These should NOT open URLs in test mode
         service.openHomebrewInstall()
         service.openDownloadPage()
         service.openSetupGuide()
+        
+        // Verify clipboard was populated for homebrew install
+        let pasteboard = NSPasteboard.general
+        let copiedString = pasteboard.string(forType: .string)
+        #expect(copiedString == "brew install cloudflared")
 
         // No exceptions should be thrown
         #expect(Bool(true))

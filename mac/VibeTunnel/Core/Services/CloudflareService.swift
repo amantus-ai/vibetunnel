@@ -52,6 +52,9 @@ final class CloudflareService {
 
     /// Path to the cloudflared binary if found
     private(set) var cloudflaredPath: String?
+    
+    /// Flag to disable URL opening in tests
+    static var isTestMode = false
 
     /// Currently running cloudflared process
     private var cloudflaredProcess: Process?
@@ -507,22 +510,22 @@ final class CloudflareService {
         logger.info("Copied Homebrew install command to clipboard: \(command)")
 
         // Optionally open Terminal to run the command
-        if let url = URL(string: "https://formulae.brew.sh/formula/cloudflared") {
+        if !Self.isTestMode, let url = URL(string: "https://formulae.brew.sh/formula/cloudflared") {
             NSWorkspace.shared.open(url)
         }
     }
 
     /// Opens the direct download page
     func openDownloadPage() {
-        if let url = URL(string: "https://github.com/cloudflare/cloudflared/releases/latest") {
+        if !Self.isTestMode, let url = URL(string: "https://github.com/cloudflare/cloudflared/releases/latest") {
             NSWorkspace.shared.open(url)
         }
     }
 
     /// Opens the setup guide
     func openSetupGuide() {
-        if let url =
-            URL(string: "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/")
+        if !Self.isTestMode,
+           let url = URL(string: "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/")
         {
             NSWorkspace.shared.open(url)
         }

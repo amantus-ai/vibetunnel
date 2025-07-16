@@ -91,7 +91,10 @@ struct VibeTunnelApp: App {
                 .environment(terminalLauncher)
                 .environment(gitRepositoryMonitor)
                 .environment(repositoryDiscoveryService)
-                .environment(sessionService ?? SessionService(serverManager: serverManager, sessionMonitor: sessionMonitor))
+                .environment(sessionService ?? SessionService(
+                    serverManager: serverManager,
+                    sessionMonitor: sessionMonitor
+                ))
         }
         .commands {
             CommandGroup(after: .appInfo) {
