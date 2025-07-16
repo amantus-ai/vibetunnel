@@ -45,9 +45,9 @@ jobs:
           node-version: ${{ matrix.node }}
       
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
       
       - name: Cache Rust dependencies
         uses: actions/cache@v3
@@ -96,6 +96,9 @@ jobs:
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       
@@ -110,12 +113,14 @@ jobs:
           node-version: 20
       
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9
       
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
       
       - name: Install dependencies
         working-directory: web/native-pty
@@ -135,6 +140,9 @@ jobs:
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       
