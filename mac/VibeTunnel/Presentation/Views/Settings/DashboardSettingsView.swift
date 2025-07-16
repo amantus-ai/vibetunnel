@@ -76,9 +76,12 @@ struct DashboardSettingsView: View {
         // Update server status
         serverStatus = serverManager.isRunning ? .running : .stopped
 
-        // Update active sessions
+        // Update active sessions - filter out zombie and exited sessions
         activeSessions = sessionMonitor.sessions.values.compactMap { session in
-            DashboardSessionInfo(
+            // Only include sessions that are actually running
+            guard session.status == "running" else { return nil }
+            
+            return DashboardSessionInfo(
                 id: session.id,
                 title: session.name ?? "Untitled",
                 createdAt: Date(), // Need to parse session.startedAt

@@ -14,7 +14,7 @@ struct SettingsView: View {
     // MARK: - Constants
 
     private enum Layout {
-        static let defaultTabSize = CGSize(width: 500, height: 700)
+        static let defaultTabSize = CGSize(width: 500, height: 710)
         static let fallbackTabSize = CGSize(width: 500, height: 450)
     }
 

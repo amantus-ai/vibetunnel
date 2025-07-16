@@ -14,8 +14,6 @@ struct AdvancedSettingsView: View {
     private var debugMode = false
     @AppStorage(AppConstants.UserDefaultsKeys.cleanupOnStartup)
     private var cleanupOnStartup = true
-    @AppStorage(AppConstants.UserDefaultsKeys.showInDock)
-    private var showInDock = true
     @AppStorage(AppConstants.UserDefaultsKeys.updateChannel)
     private var updateChannelRaw = UpdateChannel.stable.rawValue
 
@@ -85,19 +83,6 @@ struct AdvancedSettingsView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    // Show in Dock
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle("Show in Dock", isOn: showInDockBinding)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Show VibeTunnel icon in the Dock.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text("The dock icon is always displayed when the Settings dialog is visible.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
                     // Debug mode toggle
                     VStack(alignment: .leading, spacing: 4) {
                         Toggle("Debug mode", isOn: $debugMode)
@@ -114,17 +99,6 @@ struct AdvancedSettingsView: View {
             .scrollContentBackground(.hidden)
             .navigationTitle("Advanced Settings")
         }
-    }
-
-    private var showInDockBinding: Binding<Bool> {
-        Binding(
-            get: { showInDock },
-            set: { newValue in
-                showInDock = newValue
-                // Don't change activation policy while settings window is open
-                // The change will be applied when the settings window closes
-            }
-        )
     }
 
     private var updateChannelBinding: Binding<UpdateChannel> {

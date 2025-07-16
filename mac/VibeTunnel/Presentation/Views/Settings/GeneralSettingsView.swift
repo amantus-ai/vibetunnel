@@ -10,6 +10,8 @@ struct GeneralSettingsView: View {
     private var showNotifications = true
     @AppStorage(AppConstants.UserDefaultsKeys.updateChannel)
     private var updateChannelRaw = UpdateChannel.stable.rawValue
+    @AppStorage(AppConstants.UserDefaultsKeys.showInDock)
+    private var showInDock = true
     @AppStorage(AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
     private var preventSleepWhenRunning = true
     @AppStorage(AppConstants.UserDefaultsKeys.repositoryBasePath)
@@ -65,6 +67,19 @@ struct GeneralSettingsView: View {
                             .foregroundStyle(.secondary)
                     }
 
+                    // Show in Dock
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle("Show in Dock", isOn: showInDockBinding)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Show VibeTunnel icon in the Dock.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text("The dock icon is always displayed when the Settings dialog is visible.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
                     // Prevent Sleep
                     VStack(alignment: .leading, spacing: 4) {
                         Toggle("Prevent Sleep When Running", isOn: $preventSleepWhenRunning)
@@ -99,6 +114,17 @@ struct GeneralSettingsView: View {
             set: { newValue in
                 autostart = newValue
                 startupManager.setLaunchAtLogin(enabled: newValue)
+            }
+        )
+    }
+
+    private var showInDockBinding: Binding<Bool> {
+        Binding(
+            get: { showInDock },
+            set: { newValue in
+                showInDock = newValue
+                // Don't change activation policy while settings window is open
+                // The change will be applied when the settings window closes
             }
         )
     }
