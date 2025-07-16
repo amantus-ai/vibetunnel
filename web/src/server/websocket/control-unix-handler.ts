@@ -540,6 +540,9 @@ export class ControlUnixHandler {
         // Handle browser -> Mac messages
         if (message.category === 'screencap') {
           logger.log(`🖥️ Processing screencap message: ${message.action}`);
+          logger.log(`📋 Message ID: ${message.id}`);
+          logger.log(`📋 Message type: ${message.type}`);
+          logger.log(`📋 Full message:`, JSON.stringify(message));
 
           // Add authentication context to the message
           const authenticatedMessage = {
@@ -553,6 +556,7 @@ export class ControlUnixHandler {
             logger.log(
               `📤 Forwarding ${message.action} to Mac app via Unix socket with auth context`
             );
+            logger.log(`🔌 Mac socket state: ${this.macSocket.destroyed ? 'DESTROYED' : 'ACTIVE'}`);
             this.sendToMac(authenticatedMessage);
           } else {
             logger.warn('❌ No Mac connected to handle screen capture request');
@@ -715,6 +719,7 @@ export class ControlUnixHandler {
       logger.log(
         `📤 Sending to Mac: ${message.category}:${message.action}, header: 4 bytes, payload: ${jsonData.length} bytes, total: ${fullData.length} bytes`
       );
+      logger.log(`📋 Message ID being sent: ${message.id}`);
       logger.debug(`📝 Message content: ${jsonStr.substring(0, 200)}...`);
 
       // Log the actual bytes for the first few messages
