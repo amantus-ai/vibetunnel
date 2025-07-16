@@ -74,6 +74,9 @@ jobs:
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       
@@ -100,6 +103,9 @@ jobs:
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       
@@ -115,6 +121,9 @@ jobs:
   check-features:
     name: Check Feature Combinations
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       
