@@ -154,7 +154,7 @@ jobs:
       run: |
         echo "Resolving Swift package dependencies..."
         # Workspace is at root level
-        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -parallel || echo "Dependency resolution completed"
+        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -parallelizeTargets || echo "Dependency resolution completed"
         
         # Debug: List available schemes
         echo "=== Available schemes ==="
