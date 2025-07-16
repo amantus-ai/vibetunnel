@@ -142,10 +142,6 @@ struct SystemPingResponse: Codable {
 
 struct RepositoryPathUpdateRequest: Codable {
     let path: String
-
-    init(path: String) {
-        self.path = path
-    }
 }
 
 struct RepositoryPathUpdateResponse: Codable {
