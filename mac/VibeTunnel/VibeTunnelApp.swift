@@ -22,9 +22,7 @@ struct VibeTunnelApp: App {
     @State var gitRepositoryMonitor = GitRepositoryMonitor()
     @State var repositoryDiscoveryService = RepositoryDiscoveryService()
     @State var screencapService: ScreencapService?
-    private var sessionService: SessionService {
-        SessionService(serverManager: serverManager, sessionMonitor: sessionMonitor)
-    }
+    @State var sessionService: SessionService?
 
     init() {
         // Connect the app delegate to this app instance
@@ -93,7 +91,7 @@ struct VibeTunnelApp: App {
                 .environment(terminalLauncher)
                 .environment(gitRepositoryMonitor)
                 .environment(repositoryDiscoveryService)
-                .environment(sessionService)
+                .environment(sessionService ?? SessionService(serverManager: serverManager, sessionMonitor: sessionMonitor))
         }
         .commands {
             CommandGroup(after: .appInfo) {
@@ -246,6 +244,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
             logger.info("🎥 ScreencapService initialized and retained")
         } else {
             logger.warning("🎥 Screencap service is disabled in settings")
+        }
+
+        // Initialize SessionService
+        if let serverManager = app?.serverManager, let sessionMonitor = app?.sessionMonitor {
+            app?.sessionService = SessionService(serverManager: serverManager, sessionMonitor: sessionMonitor)
         }
 
         // Start the terminal control handler (registers its handler)

@@ -81,10 +81,13 @@ struct DashboardSettingsView: View {
             // Only include sessions that are actually running
             guard session.status == "running" else { return nil }
             
+            // Parse the ISO 8601 date string
+            let createdAt = ISO8601DateFormatter().date(from: session.startedAt) ?? Date()
+            
             return DashboardSessionInfo(
                 id: session.id,
                 title: session.name ?? "Untitled",
-                createdAt: Date(), // Need to parse session.startedAt
+                createdAt: createdAt,
                 isActive: session.isRunning
             )
         }.sorted { $0.createdAt > $1.createdAt }

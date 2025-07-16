@@ -108,7 +108,7 @@ struct SecurityPermissionsSettingsView: View {
 
     private func onAppearSetup() {
         // Initialize authentication mode from stored value
-        let storedMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
+        let storedMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.authenticationMode) ?? "os"
         authMode = AuthenticationMode(rawValue: storedMode) ?? .osAuth
     }
 }
@@ -168,7 +168,7 @@ private struct SecuritySection: View {
                         .frame(alignment: .trailing)
                         .onChange(of: authMode) { _, newValue in
                             // Save the authentication mode
-                            UserDefaults.standard.set(newValue.rawValue, forKey: "authenticationMode")
+                            UserDefaults.standard.set(newValue.rawValue, forKey: AppConstants.UserDefaultsKeys.authenticationMode)
 
                             Task {
                                 logger.info("Authentication mode changed to: \(newValue.rawValue)")
