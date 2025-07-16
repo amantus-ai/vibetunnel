@@ -20,9 +20,9 @@ struct ProjectFolderPageView: View {
     }
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 16) {
             // Title and description
-            VStack(spacing: 12) {
+            VStack(spacing: 8) {
                 Text("Choose Your Project Folder")
                     .font(.system(size: 24, weight: .semibold))
                     .foregroundColor(.primary)
@@ -37,11 +37,10 @@ struct ProjectFolderPageView: View {
             }
 
             // Folder picker section
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("Project Folder")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.secondary)
-
                 HStack {
                     Text(selectedPath.isEmpty ? "~/" : selectedPath)
                         .font(.system(size: 13))
@@ -60,20 +59,10 @@ struct ProjectFolderPageView: View {
 
                 // Repository preview
                 if !selectedPath.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Discovered Repositories")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.secondary)
-
-                            if isScanning {
-                                ProgressView()
-                                    .scaleEffect(0.5)
-                                    .frame(width: 16, height: 16)
-                            }
-
-                            Spacer()
-                        }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Discovered Repositories")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
 
                         HStack {
                             Image(systemName: "folder.badge.gearshape")
@@ -96,8 +85,8 @@ struct ProjectFolderPageView: View {
                             
                             Spacer()
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
                         .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
                         .cornerRadius(6)
                     }
@@ -105,32 +94,23 @@ struct ProjectFolderPageView: View {
             }
             .frame(maxWidth: 400)
 
-            // Tips
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "lightbulb")
-                        .font(.system(size: 12))
-                        .foregroundColor(.orange)
+            // Tip at bottom - single line with icon
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "lightbulb")
+                    .font(.system(size: 11))
+                    .foregroundColor(.orange)
+                    .frame(width: 14)
 
-                    Text("You can change this later in Settings → Application → Repository Base Path")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 12))
-                        .foregroundColor(.blue)
-
-                    Text("VibeTunnel will scan up to 3 levels deep for Git repositories")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
+                Text("You can change this later in Settings → Application → Repository Base Path")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: 400)
-            .padding(.top, 12)
+            .padding(.top, 8)
         }
-        .padding(.horizontal, 40)
+        .padding(.horizontal, 30)
         .onAppear {
             selectedPath = repositoryBasePath
             if !selectedPath.isEmpty {
