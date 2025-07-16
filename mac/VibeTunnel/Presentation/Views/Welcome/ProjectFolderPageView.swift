@@ -75,34 +75,29 @@ struct ProjectFolderPageView: View {
                             Spacer()
                         }
 
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 4) {
-                                if discoveredRepos.isEmpty && !isScanning {
-                                    Text("No repositories found in this folder")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.secondary)
-                                        .italic()
-                                        .padding(.vertical, 8)
-                                } else {
-                                    ForEach(discoveredRepos) { repo in
-                                        HStack {
-                                            Image(systemName: "folder.badge.gearshape")
-                                                .font(.system(size: 11))
-                                                .foregroundColor(.secondary)
-
-                                            Text(repo.name)
-                                                .font(.system(size: 11))
-                                                .lineLimit(1)
-
-                                            Spacer()
-                                        }
-                                        .padding(.vertical, 2)
-                                    }
-                                }
+                        HStack {
+                            Image(systemName: "folder.badge.gearshape")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                            
+                            if isScanning {
+                                Text("Scanning...")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            } else if discoveredRepos.isEmpty {
+                                Text("No repositories found")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            } else {
+                                Text("\(discoveredRepos.count) repositor\(discoveredRepos.count == 1 ? "y" : "ies") found")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.primary)
                             }
+                            
+                            Spacer()
                         }
-                        .frame(maxHeight: 100)
-                        .padding(8)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
                         .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
                         .cornerRadius(6)
                     }
@@ -190,7 +185,7 @@ struct ProjectFolderPageView: View {
             let repos = await findGitRepositories(in: expandedPath, maxDepth: 3)
 
             await MainActor.run {
-                discoveredRepos = repos.prefix(10).map { path in
+                discoveredRepos = repos.map { path in
                     RepositoryInfo(name: URL(fileURLWithPath: path).lastPathComponent, path: path)
                 }
                 isScanning = false
