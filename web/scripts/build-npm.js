@@ -396,17 +396,21 @@ function validatePackageHybrid() {
     }
   }
   
-  // Check prebuilds
+  // Check prebuilds (only required when not in current-only mode)
   const prebuildsDir = path.join(DIST_DIR, 'prebuilds');
-  if (!fs.existsSync(prebuildsDir)) {
-    errors.push('Missing prebuilds directory in dist-npm');
-  } else {
-    const prebuilds = fs.readdirSync(prebuildsDir).filter(f => f.endsWith('.tar.gz'));
-    if (prebuilds.length === 0) {
-      warnings.push('No prebuilds found in dist-npm prebuilds directory');
+  if (!currentOnly) {
+    if (!fs.existsSync(prebuildsDir)) {
+      errors.push('Missing prebuilds directory in dist-npm');
     } else {
-      console.log(`  Found ${prebuilds.length} prebuilds in dist-npm`);
+      const prebuilds = fs.readdirSync(prebuildsDir).filter(f => f.endsWith('.tar.gz'));
+      if (prebuilds.length === 0) {
+        warnings.push('No prebuilds found in dist-npm prebuilds directory');
+      } else {
+        console.log(`  Found ${prebuilds.length} prebuilds in dist-npm`);
+      }
     }
+  } else {
+    console.log('  ⚠️  Prebuilds skipped in current-only mode');
   }
   
   // Check authenticate-pam (Linux support)
