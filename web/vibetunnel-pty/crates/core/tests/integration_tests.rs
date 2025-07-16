@@ -137,7 +137,7 @@ fn test_concurrent_pty_operations() {
         let handle = thread::spawn(move || {
             let config = PtyConfig {
                 shell: Some("/bin/sh".to_string()),
-                args: vec!["-c".to_string(), format!("echo 'Thread {}' && exit", i)],
+                args: vec!["-c".to_string(), format!("echo 'Thread {i}' && exit")],
                 ..Default::default()
             };
 
@@ -164,7 +164,7 @@ fn test_concurrent_pty_operations() {
     assert_eq!(results.len(), 3);
 
     for (i, output) in results.iter() {
-        assert!(output.contains(&format!("Thread {}", i)));
+        assert!(output.contains(&format!("Thread {i}")));
     }
 }
 

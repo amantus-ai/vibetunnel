@@ -10,6 +10,9 @@ use crate::manager::PTY_MANAGER;
 use vibetunnel_pty_core::pty::{create_pty, resize_pty};
 use vibetunnel_pty_core::{ActivityDetector as CoreActivityDetector, PtyConfig, SessionInfo};
 
+// Type alias to reduce complexity
+type DataCallback = Arc<Mutex<Option<ThreadsafeFunction<Vec<u8>, ErrorStrategy::Fatal>>>>;
+
 #[napi]
 pub struct NativePty {
     session_id: String,
@@ -18,7 +21,7 @@ pub struct NativePty {
     cols: u16,
     #[allow(dead_code)]
     rows: u16,
-    data_callback: Arc<Mutex<Option<ThreadsafeFunction<Vec<u8>, ErrorStrategy::Fatal>>>>,
+    data_callback: DataCallback,
     reader_thread: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
 }
 
