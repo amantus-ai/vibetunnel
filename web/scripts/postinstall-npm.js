@@ -21,23 +21,8 @@ if (isDevelopment) {
   return;
 }
 
-// Create node_modules directory if it doesn't exist
-const nodeModulesDir = path.join(__dirname, '..', 'node_modules');
-if (!fs.existsSync(nodeModulesDir)) {
-  fs.mkdirSync(nodeModulesDir, { recursive: true });
-}
-
-// Create symlink for node-pty so it can be required normally
-const nodePtySource = path.join(__dirname, '..', 'node-pty');
-const nodePtyTarget = path.join(nodeModulesDir, 'node-pty');
-if (!fs.existsSync(nodePtyTarget) && fs.existsSync(nodePtySource)) {
-  try {
-    fs.symlinkSync(nodePtySource, nodePtyTarget, 'dir');
-    console.log('✓ Created node-pty symlink in node_modules');
-  } catch (error) {
-    console.warn('Warning: Could not create node-pty symlink:', error.message);
-  }
-}
+// For npm package, node-pty is bundled in the package root
+// No need to create symlinks as it's accessed directly
 
 // Get Node ABI version
 const nodeABI = process.versions.modules;
@@ -114,51 +99,8 @@ const compileFromSource = (moduleName, moduleDir) => {
       execSync('npm install -g node-gyp', { stdio: 'inherit' });
     }
     
-    // For node-pty, ensure node-addon-api is available
-    if (moduleName === 'node-pty') {
-      const nodeAddonApiPath = path.join(moduleDir, 'node_modules', 'node-addon-api');
-      if (!fs.existsSync(nodeAddonApiPath)) {
-        console.log(`  Setting up node-addon-api for ${moduleName}...`);
-        
-        // Create node_modules directory
-        const nodeModulesDir = path.join(moduleDir, 'node_modules');
-        fs.mkdirSync(nodeModulesDir, { recursive: true });
-        
-        // Try multiple locations for node-addon-api
-        const possiblePaths = [
-          path.join(__dirname, '..', 'node_modules', 'node-addon-api'),
-          path.join(__dirname, '..', '..', 'node_modules', 'node-addon-api'),
-          path.join(__dirname, '..', '..', '..', 'node_modules', 'node-addon-api'),
-          '/usr/local/lib/node_modules/vibetunnel/node_modules/node-addon-api',
-          '/usr/lib/node_modules/vibetunnel/node_modules/node-addon-api'
-        ];
-        
-        let found = false;
-        for (const sourcePath of possiblePaths) {
-          if (fs.existsSync(sourcePath)) {
-            console.log(`  Found node-addon-api at: ${sourcePath}`);
-            console.log(`  Copying to ${nodeAddonApiPath}...`);
-            fs.cpSync(sourcePath, nodeAddonApiPath, { recursive: true });
-            found = true;
-            break;
-          }
-        }
-        
-        if (!found) {
-          // As a fallback, install it
-          console.log(`  Installing node-addon-api package...`);
-          try {
-            execSync('npm install node-addon-api@^7.1.0 --no-save --no-package-lock', {
-              cwd: moduleDir,
-              stdio: 'inherit'
-            });
-          } catch (e) {
-            console.error('  Failed to install node-addon-api:', e.message);
-            console.error('  Trying to continue anyway...');
-          }
-        }
-      }
-    }
+    // For node-pty, node-addon-api is included as a dependency in its package.json
+    // npm should handle it automatically during source compilation
     
     execSync('node-gyp rebuild', {
       cwd: moduleDir,
@@ -186,7 +128,7 @@ const modules = [
     version: '1.0.5',
     dir: path.join(__dirname, '..', 'node_modules', 'authenticate-pam'),
     build: path.join(__dirname, '..', 'node_modules', 'authenticate-pam', 'build', 'Release', 'authenticate_pam.node'),
-    essential: true, // PAM is essential for server environments
+    essential: false, // Optional - falls back to other auth methods
     platforms: ['linux', 'darwin'] // Needed on Linux and macOS
   }
 ];

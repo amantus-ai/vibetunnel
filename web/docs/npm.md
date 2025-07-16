@@ -415,3 +415,69 @@ npm install -g vibetunnel --build-from-source
 - `scripts/postinstall-npm.js` - Fallback compilation logic
 - `.prebuildrc` - Prebuild configuration for target platforms
 - `package.json` - Package configuration and file inclusions
+
+## Release Notes
+
+### Version 1.0.0-beta.11 (2025-07-16)
+
+**Published to npm**: Successfully published as `vibetunnel@beta`
+
+**Key Features**:
+- Cross-platform support for macOS (x64, arm64) and Linux (x64, arm64)
+- Pre-built native binaries for Node.js versions 20, 22, 23, and 24
+- Zero-dependency installation experience (no build tools required)
+- Comprehensive prebuild system with 24 total binaries included
+
+**Release Process Learnings**:
+
+1. **Version Synchronization**:
+   - Must update version in both `web/package.json` and `mac/VibeTunnel/version.xcconfig`
+   - Build process validates version sync to prevent mismatches
+   - Version mismatch will cause build failure with clear error message
+
+2. **NPM Publishing Requirements**:
+   - Beta versions require `--tag beta` flag when publishing
+   - Previously published versions cannot be overwritten (must increment version)
+   - Use `--access public` flag for public package publishing
+
+3. **Package Build Process**:
+   - `pnpm run build:npm` creates the complete package with all prebuilds
+   - Build output filename may show older version in logs but creates correct package
+   - Always verify package version in `dist-npm/package.json` before publishing
+
+4. **Docker Testing Verification**:
+   - Successfully tested on Ubuntu 22.04 (both ARM64 and x64 architectures)
+   - Installation works without any build tools installed
+   - Server starts correctly with all expected functionality
+   - HTTP endpoints respond properly
+
+5. **Package Structure**:
+   - Final package size: 8.3 MB (24.9 MB unpacked)
+   - Contains 198 files including all prebuilds and web assets
+   - Proper postinstall script ensures seamless installation
+
+**Installation**:
+```bash
+npm install -g vibetunnel@beta
+```
+
+**Testing Commands Used**:
+```bash
+# Build the package
+cd web && pnpm run build:npm
+
+# Verify package contents
+tar -tzf vibetunnel-1.0.0-beta.11.tgz | head -50
+
+# Test with Docker
+docker build -t vibetunnel-test .
+docker run --rm vibetunnel-test
+
+# Test cross-platform
+docker run --rm --platform linux/amd64 vibetunnel-test
+```
+
+### Version History
+
+- **1.0.0-beta.11** (2025-07-16): Current release with full prebuild system
+- **1.0.0-beta.10** (2025-07-14): Previous version (unpublished)

@@ -375,6 +375,27 @@ function mergePrebuilds() {
   console.log(`✅ Merged prebuilds: ${nodePtyCount} node-pty + ${pamCount} authenticate-pam = ${allPrebuilds.length} total\n`);
 }
 
+// Bundle node-pty with its dependencies
+function bundleNodePty() {
+  console.log('📦 Bundling node-pty with dependencies...\n');
+  
+  const nodePtyDir = path.join(DIST_DIR, 'node-pty');
+  
+  // Ensure node-pty has node-addon-api bundled for source compilation
+  const nodeAddonApiSrc = path.join(ROOT_DIR, 'node_modules', '.pnpm', 'node-addon-api@7.1.1', 'node_modules', 'node-addon-api');
+  const nodeAddonApiDest = path.join(nodePtyDir, 'node_modules', 'node-addon-api');
+  
+  if (fs.existsSync(nodeAddonApiSrc)) {
+    fs.mkdirSync(path.dirname(nodeAddonApiDest), { recursive: true });
+    fs.cpSync(nodeAddonApiSrc, nodeAddonApiDest, { recursive: true });
+    console.log('  ✅ Bundled node-addon-api for source compilation fallback');
+  } else {
+    console.warn('  ⚠️  node-addon-api not found, source compilation may fail');
+  }
+  
+  console.log('✅ node-pty bundled with dependencies\n');
+}
+
 // Copy authenticate-pam module for Linux support (OUR LINUX FIX)
 function copyAuthenticatePam() {
   console.log('📦 Copying authenticate-pam module for Linux support...\n');
@@ -577,11 +598,14 @@ async function main() {
     copyRecursive(src, dest);
   });
   
-  // Step 4: Copy authenticate-pam module for Linux support (OUR ENHANCEMENT)
+  // Step 4: Bundle node-pty with dependencies
+  bundleNodePty();
+  
+  // Step 5: Copy authenticate-pam module for Linux support (OUR ENHANCEMENT)
   copyAuthenticatePam();
   
-  // Step 5: Use package.npm.json if available, otherwise create clean package.json
-  console.log('\n4️⃣ Creating package.json for npm...\n');
+  // Step 6: Use package.npm.json if available, otherwise create clean package.json
+  console.log('\n6️⃣ Creating package.json for npm...\n');
   
   const npmPackageJsonPath = path.join(ROOT_DIR, 'package.npm.json');
   let npmPackageJson;
