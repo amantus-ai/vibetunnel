@@ -746,7 +746,8 @@ export async function createApp(): Promise<AppInstance> {
     if (
       parsedUrl.pathname !== '/buffers' &&
       parsedUrl.pathname !== '/ws/input' &&
-      parsedUrl.pathname !== '/ws/screencap-signal'
+      parsedUrl.pathname !== '/ws/screencap-signal' &&
+      parsedUrl.pathname !== '/ws/config'
     ) {
       socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
       socket.destroy();
@@ -944,7 +945,7 @@ export async function createApp(): Promise<AppInstance> {
             // Forward to Mac app via Unix socket if available
             if (controlUnixHandler) {
               const controlMessage = {
-                id: crypto.randomUUID(),
+                id: uuidv4(),
                 type: 'request' as const,
                 category: 'system' as const,
                 action: 'repository-path-update',
