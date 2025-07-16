@@ -186,8 +186,8 @@ const modules = [
     version: '1.0.5',
     dir: path.join(__dirname, '..', 'node_modules', 'authenticate-pam'),
     build: path.join(__dirname, '..', 'node_modules', 'authenticate-pam', 'build', 'Release', 'authenticate_pam.node'),
-    essential: false,
-    platforms: ['linux'] // Only needed on Linux
+    essential: true, // PAM is essential for server environments
+    platforms: ['linux', 'darwin'] // Needed on Linux and macOS
   }
 ];
 
@@ -235,7 +235,12 @@ for (const module of modules) {
 
   // Check final result
   if (!success) {
-    if (module.essential) {
+    // Special handling for authenticate-pam on macOS
+    if (module.name === 'authenticate-pam' && process.platform === 'darwin') {
+      console.warn(`⚠️  Warning: ${module.name} installation failed on macOS.`);
+      console.warn('   This is expected - macOS will fall back to environment variable or SSH key authentication.');
+      console.warn('   To enable PAM authentication, install Xcode Command Line Tools and rebuild.');
+    } else if (module.essential) {
       console.error(`\n❌ ${module.name} is required for VibeTunnel to function.`);
       console.error('You may need to install build tools for your platform:');
       console.error('- macOS: Install Xcode Command Line Tools');
