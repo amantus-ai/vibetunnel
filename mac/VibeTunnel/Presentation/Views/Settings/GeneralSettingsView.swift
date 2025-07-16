@@ -1,3 +1,5 @@
+import AppKit
+import os.log
 import SwiftUI
 
 /// General settings tab for basic app preferences
@@ -8,12 +10,29 @@ struct GeneralSettingsView: View {
     private var showNotifications = true
     @AppStorage(AppConstants.UserDefaultsKeys.updateChannel)
     private var updateChannelRaw = UpdateChannel.stable.rawValue
+    @AppStorage(AppConstants.UserDefaultsKeys.showInDock)
+    private var showInDock = true
     @AppStorage(AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
     private var preventSleepWhenRunning = true
+    @AppStorage(AppConstants.UserDefaultsKeys.repositoryBasePath)
+    private var repositoryBasePath = AppConstants.Defaults.repositoryBasePath
+    @AppStorage(AppConstants.UserDefaultsKeys.serverPort)
+    private var serverPort = "4020"
+    @AppStorage(AppConstants.UserDefaultsKeys.dashboardAccessMode)
+    private var accessModeString = DashboardAccessMode.network.rawValue
 
     @State private var isCheckingForUpdates = false
+    @State private var localIPAddress: String?
+
+    @Environment(ServerManager.self)
+    private var serverManager
 
     private let startupManager = StartupManager()
+    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "GeneralSettings")
+
+    private var accessMode: DashboardAccessMode {
+        DashboardAccessMode(rawValue: accessModeString) ?? .localhost
+    }
 
     var updateChannel: UpdateChannel {
         UpdateChannel(rawValue: updateChannelRaw) ?? .stable
@@ -22,6 +41,23 @@ struct GeneralSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                // Server Configuration section
+                ServerConfigurationSection(
+                    accessMode: accessMode,
+                    accessModeString: $accessModeString,
+                    serverPort: $serverPort,
+                    localIPAddress: localIPAddress,
+                    restartServerWithNewBindAddress: restartServerWithNewBindAddress,
+                    restartServerWithNewPort: restartServerWithNewPort,
+                    serverManager: serverManager
+                )
+
+                // CLI Installation section
+                CLIInstallationSection()
+
+                // Repository section
+                RepositorySettingsSection(repositoryBasePath: $repositoryBasePath)
+
                 Section {
                     // Launch at Login
                     VStack(alignment: .leading, spacing: 4) {
@@ -31,6 +67,19 @@ struct GeneralSettingsView: View {
                             .foregroundStyle(.secondary)
                     }
 
+                    // Show in Dock
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle("Show in Dock", isOn: showInDockBinding)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Show VibeTunnel icon in the Dock.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text("The dock icon is always displayed when the Settings dialog is visible.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
                     // Prevent Sleep
                     VStack(alignment: .leading, spacing: 4) {
                         Toggle("Prevent Sleep When Running", isOn: $preventSleepWhenRunning)
@@ -38,69 +87,10 @@ struct GeneralSettingsView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-
-                    // Screen sharing service
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle("Enable screen sharing service", isOn: .init(
-                            get: { AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.enableScreencapService) },
-                            set: { UserDefaults.standard.set(
-                                $0,
-                                forKey: AppConstants.UserDefaultsKeys.enableScreencapService
-                            )
-                            }
-                        ))
-                        Text("Allow screen sharing feature in the web interface.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
                 } header: {
                     Text("Application")
                         .font(.headline)
                 }
-
-                Section {
-                    // Update Channel
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text("Update Channel")
-                            Spacer()
-                            Picker("", selection: updateChannelBinding) {
-                                ForEach(UpdateChannel.allCases) { channel in
-                                    Text(channel.displayName).tag(channel)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .labelsHidden()
-                        }
-                        Text(updateChannel.description)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    // Check for Updates
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Check for Updates")
-                            Text("Check for new versions of VibeTunnel.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-
-                        Button("Check Now") {
-                            checkForUpdates()
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(isCheckingForUpdates)
-                    }
-                } header: {
-                    Text("Updates")
-                        .font(.headline)
-                }
-
-                // Permissions Section
-                PermissionsSection()
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
@@ -109,6 +99,12 @@ struct GeneralSettingsView: View {
         .task {
             // Sync launch at login status
             autostart = startupManager.isLaunchAtLoginEnabled
+
+            // Update local IP address
+            updateLocalIPAddress()
+        }
+        .onAppear {
+            updateLocalIPAddress()
         }
     }
 
@@ -118,6 +114,17 @@ struct GeneralSettingsView: View {
             set: { newValue in
                 autostart = newValue
                 startupManager.setLaunchAtLogin(enabled: newValue)
+            }
+        )
+    }
+
+    private var showInDockBinding: Binding<Bool> {
+        Binding(
+            get: { showInDock },
+            set: { newValue in
+                showInDock = newValue
+                // Don't change activation policy while settings window is open
+                // The change will be applied when the settings window closes
             }
         )
     }
@@ -147,193 +154,25 @@ struct GeneralSettingsView: View {
             isCheckingForUpdates = false
         }
     }
-}
 
-// MARK: - Permissions Section
-
-private struct PermissionsSection: View {
-    @Environment(SystemPermissionManager.self)
-    private var permissionManager
-    @State private var permissionUpdateTrigger = 0
-
-    // IMPORTANT: These computed properties ensure the UI always shows current permission state.
-    // The permissionUpdateTrigger dependency forces SwiftUI to re-evaluate these properties
-    // when permissions change. Without this, the UI would not update when permissions are
-    // granted in System Settings while this view is visible.
-    //
-    // We use computed properties instead of @State to avoid UI flashing - the initial
-    // permission check in .task happens before the first render, ensuring correct state
-    // from the start.
-    private var hasAppleScriptPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.appleScript)
+    private func restartServerWithNewPort(_ port: Int) {
+        Task {
+            await ServerConfigurationHelpers.restartServerWithNewPort(port, serverManager: serverManager)
+        }
     }
 
-    private var hasAccessibilityPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.accessibility)
+    private func restartServerWithNewBindAddress() {
+        Task {
+            await ServerConfigurationHelpers.restartServerWithNewBindAddress(
+                accessMode: accessMode,
+                serverManager: serverManager
+            )
+        }
     }
 
-    private var hasScreenRecordingPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.screenRecording)
-    }
-
-    var body: some View {
-        Section {
-            // Automation permission
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Terminal Automation")
-                        .font(.body)
-                    Text("Required to launch and control terminal applications.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                if hasAppleScriptPermission {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Granted")
-                            .foregroundColor(.secondary)
-                    }
-                    .font(.caption)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 2)
-                    .frame(height: 22) // Match small button height
-                    .contextMenu {
-                        Button("Refresh Status") {
-                            permissionManager.forcePermissionRecheck()
-                        }
-                        Button("Open System Settings...") {
-                            permissionManager.requestPermission(.appleScript)
-                        }
-                    }
-                } else {
-                    Button("Grant Permission") {
-                        permissionManager.requestPermission(.appleScript)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-            }
-
-            // Accessibility permission
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Accessibility")
-                        .font(.body)
-                    Text("Required to enter terminal startup commands.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                if hasAccessibilityPermission {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Granted")
-                            .foregroundColor(.secondary)
-                    }
-                    .font(.caption)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 2)
-                    .frame(height: 22) // Match small button height
-                    .contextMenu {
-                        Button("Refresh Status") {
-                            permissionManager.forcePermissionRecheck()
-                        }
-                        Button("Open System Settings...") {
-                            permissionManager.requestPermission(.accessibility)
-                        }
-                    }
-                } else {
-                    Button("Grant Permission") {
-                        permissionManager.requestPermission(.accessibility)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-            }
-
-            // Screen Recording permission
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Screen Recording")
-                        .font(.body)
-                    Text("Required for screen sharing and remote viewing.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                if hasScreenRecordingPermission {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Granted")
-                            .foregroundColor(.secondary)
-                    }
-                    .font(.caption)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 2)
-                    .frame(height: 22) // Match small button height
-                    .contextMenu {
-                        Button("Refresh Status") {
-                            permissionManager.forcePermissionRecheck()
-                        }
-                        Button("Open System Settings...") {
-                            permissionManager.requestPermission(.screenRecording)
-                        }
-                    }
-                } else {
-                    Button("Grant Permission") {
-                        permissionManager.requestPermission(.screenRecording)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-            }
-        } header: {
-            Text("Permissions")
-                .font(.headline)
-        } footer: {
-            if hasAppleScriptPermission && hasAccessibilityPermission && hasScreenRecordingPermission {
-                Text(
-                    "All permissions granted. VibeTunnel has full functionality."
-                )
-                .font(.caption)
-                .frame(maxWidth: .infinity)
-                .multilineTextAlignment(.center)
-                .foregroundColor(.green)
-            } else {
-                Text(
-                    "Terminals can be captured without permissions, however new sessions won't load."
-                )
-                .font(.caption)
-                .frame(maxWidth: .infinity)
-                .multilineTextAlignment(.center)
-            }
-        }
-        .task {
-            // Check permissions before first render to avoid UI flashing
-            await permissionManager.checkAllPermissions()
-
-            // Register for continuous monitoring
-            permissionManager.registerForMonitoring()
-        }
-        .onDisappear {
-            permissionManager.unregisterFromMonitoring()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .permissionsUpdated)) { _ in
-            // Increment trigger to force computed property re-evaluation
-            permissionUpdateTrigger += 1
+    private func updateLocalIPAddress() {
+        Task {
+            localIPAddress = await ServerConfigurationHelpers.updateLocalIPAddress(accessMode: accessMode)
         }
     }
 }
