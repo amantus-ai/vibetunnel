@@ -8,6 +8,10 @@ import VideoToolbox
 @preconcurrency import WebRTC
 
 /// Manages WebRTC connections for screen sharing
+///
+/// Important: This class is marked as @MainActor to ensure thread safety.
+/// WebRTC completion handlers are called on WebRTC's internal signaling thread,
+/// so all callbacks must be dispatched to the main thread using Task { @MainActor in ... }
 @MainActor
 final class WebRTCManager: NSObject {
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "WebRTCManager")
@@ -1269,8 +1273,10 @@ final class WebRTCManager: NSObject {
                 Error
             >) in
                 peerConnection.offer(for: constraints) { offer, error in
-                    // WebRTC calls this on its signaling thread, dispatch to main
-                    Task { @MainActor in
+                    // WebRTC calls completion handlers on its signaling thread.
+                    // We must dispatch to main thread since WebRTCManager is @MainActor
+                    Task { @MainActor [weak self] in
+                        guard self != nil else { return }
                         if let error {
                             continuation.resume(throwing: error)
                         } else if let offer {
@@ -1290,8 +1296,10 @@ final class WebRTCManager: NSObject {
             // Set local description
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 peerConnection.setLocalDescription(modifiedOffer) { error in
-                    // WebRTC calls this on its signaling thread, dispatch to main
-                    Task { @MainActor in
+                    // WebRTC calls completion handlers on its signaling thread.
+                    // We must dispatch to main thread since WebRTCManager is @MainActor
+                    Task { @MainActor [weak self] in
+                        guard self != nil else { return }
                         if let error {
                             continuation.resume(throwing: error)
                         } else {
@@ -1322,8 +1330,10 @@ final class WebRTCManager: NSObject {
         do {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 peerConnection.setRemoteDescription(description) { error in
-                    // WebRTC calls this on its signaling thread, dispatch to main
-                    Task { @MainActor in
+                    // WebRTC calls completion handlers on its signaling thread.
+                    // We must dispatch to main thread since WebRTCManager is @MainActor
+                    Task { @MainActor [weak self] in
+                        guard self != nil else { return }
                         if let error {
                             continuation.resume(throwing: error)
                         } else {
