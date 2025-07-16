@@ -280,12 +280,7 @@ export class MobileMenu extends LitElement {
                 Screenshare
               </button>
             `
-            : (
-                () => {
-                  menuItemIndex++;
-                  return '';
-                }
-              )()
+            : ''
         }
         
         <!-- Width Settings -->
