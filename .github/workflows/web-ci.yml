@@ -51,9 +51,9 @@ jobs:
       - name: Run linting
         run: pnpm run lint
 
-      - name: Install node-pty for TypeScript
+      - name: Build node-pty for TypeScript
         run: |
-          cd node-pty && pnpm install --no-frozen-lockfile && cd ..
+          cd node-pty && pnpm install --no-frozen-lockfile
 
       - name: Run type checking
         run: pnpm run typecheck
@@ -87,6 +87,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build node-pty
+        run: |
+          cd node-pty && pnpm install --no-frozen-lockfile
 
       - name: Build project
         run: pnpm run build
