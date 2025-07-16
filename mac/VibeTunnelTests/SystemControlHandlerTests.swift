@@ -7,12 +7,20 @@ struct SystemControlHandlerTests {
     @MainActor
     @Test("Handles repository path update from web correctly")
     func repositoryPathUpdateFromWeb() async throws {
-        // Given - Clean state first
-        UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
-        UserDefaults.standard.synchronize()
-
+        // Given - Store original and set test value
+        let originalPath = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        defer {
+            // Restore original value
+            if let original = originalPath {
+                UserDefaults.standard.set(original, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+            } else {
+                UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+            }
+        }
+        
         let initialPath = "~/Projects"
         UserDefaults.standard.set(initialPath, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        UserDefaults.standard.synchronize()
 
         var systemReadyCalled = false
         let handler = SystemControlHandler(onSystemReady: {
@@ -52,7 +60,7 @@ struct SystemControlHandlerTests {
         }
 
         // Allow time for async UserDefaults update
-        try await Task.sleep(for: .milliseconds(100))
+        try await Task.sleep(for: .milliseconds(200))
 
         // Verify UserDefaults was updated
         let updatedPath = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
@@ -62,12 +70,20 @@ struct SystemControlHandlerTests {
     @MainActor
     @Test("Ignores repository path update from non-web sources")
     func ignoresNonWebPathUpdates() async throws {
-        // Given - Clean state first
-        UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
-        UserDefaults.standard.synchronize()
-
+        // Given - Store original and set test value
+        let originalPath = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        defer {
+            // Restore original value
+            if let original = originalPath {
+                UserDefaults.standard.set(original, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+            } else {
+                UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+            }
+        }
+        
         let initialPath = "~/Projects"
         UserDefaults.standard.set(initialPath, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        UserDefaults.standard.synchronize()
 
         let handler = SystemControlHandler()
 
@@ -89,7 +105,7 @@ struct SystemControlHandlerTests {
         #expect(response != nil)
 
         // Allow time for any potential UserDefaults update
-        try await Task.sleep(for: .milliseconds(100))
+        try await Task.sleep(for: .milliseconds(200))
 
         // Verify UserDefaults was NOT updated
         let currentPath = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
