@@ -815,6 +815,24 @@ export async function createApp(): Promise<AppInstance> {
     // Parse the URL to extract path and query parameters
     const parsedUrl = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
 
+    // Validate origin for security
+    const origin = request.headers.origin;
+    const host = request.headers.host;
+
+    if (origin && host) {
+      const originUrl = new URL(origin);
+      const expectedHost = host.split(':')[0]; // Remove port if present
+      const originHost = originUrl.hostname;
+
+      // Only allow same-origin requests unless explicitly configured otherwise
+      if (originHost !== expectedHost && originHost !== 'localhost' && originHost !== '127.0.0.1') {
+        logger.warn(`WebSocket upgrade denied: Invalid origin ${origin} for host ${host}`);
+        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+    }
+
     // Handle WebSocket paths
     if (
       parsedUrl.pathname !== '/buffers' &&

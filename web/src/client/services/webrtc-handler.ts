@@ -186,6 +186,14 @@ export class WebRTCHandler {
       this.vp8UpgradeTimeout = undefined;
     }
 
+    // Clean up MediaStream tracks before closing peer connection
+    if (this.remoteStream) {
+      this.remoteStream.getTracks().forEach((track) => {
+        track.stop();
+        track.dispatchEvent(new Event('ended'));
+      });
+    }
+
     if (this.peerConnection) {
       this.peerConnection.close();
       this.peerConnection = null;

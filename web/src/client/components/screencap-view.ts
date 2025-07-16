@@ -522,6 +522,18 @@ export class ScreencapView extends LitElement {
       clearInterval(this.frameUpdateInterval);
     }
 
+    // Clean up any active MediaStream tracks
+    if (this.videoElement?.srcObject) {
+      const stream = this.videoElement.srcObject as MediaStream;
+      if (stream) {
+        stream.getTracks().forEach((track) => {
+          track.stop();
+          track.dispatchEvent(new Event('ended'));
+        });
+      }
+      this.videoElement.srcObject = null;
+    }
+
     // Remove keyboard listener
     if (this.boundHandleKeyDown) {
       this.removeEventListener('keydown', this.boundHandleKeyDown);
@@ -1082,6 +1094,16 @@ export class ScreencapView extends LitElement {
     if (this.useWebRTC && this.webrtcHandler) {
       await this.webrtcHandler.stopCapture();
       if (this.videoElement) {
+        // Properly clean up MediaStream tracks
+        if (this.videoElement.srcObject) {
+          const stream = this.videoElement.srcObject as MediaStream;
+          if (stream) {
+            stream.getTracks().forEach((track) => {
+              track.stop();
+              track.dispatchEvent(new Event('ended'));
+            });
+          }
+        }
         this.videoElement.srcObject = null;
       }
     } else if (this.wsClient) {
@@ -1090,6 +1112,18 @@ export class ScreencapView extends LitElement {
       } catch (error) {
         logger.error('Failed to stop capture:', error);
       }
+    }
+
+    // Clean up any browser capture streams
+    if (this.useBrowserCapture && this.videoElement?.srcObject) {
+      const stream = this.videoElement.srcObject as MediaStream;
+      if (stream) {
+        stream.getTracks().forEach((track) => {
+          track.stop();
+          track.dispatchEvent(new Event('ended'));
+        });
+      }
+      this.videoElement.srcObject = null;
     }
 
     this.frameUrl = '';

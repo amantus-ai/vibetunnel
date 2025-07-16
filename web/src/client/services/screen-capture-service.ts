@@ -23,16 +23,10 @@ export interface CaptureCapabilities {
  * Handles both native Mac app capture and browser-based capture
  */
 export class ScreenCaptureService {
-  private macAppHandler?: MacAppScreenCapture;
   private browserHandler: BrowserScreenCapture;
 
   constructor() {
     this.browserHandler = new BrowserScreenCapture();
-
-    // Initialize Mac app handler only on macOS and when available
-    if (this.isMacOS() && this.hasNativeAppSupport()) {
-      this.macAppHandler = new MacAppScreenCapture();
-    }
   }
 
   /**
@@ -41,13 +35,7 @@ export class ScreenCaptureService {
   async startCapture(options: CaptureOptions = {}): Promise<MediaStream> {
     logger.log('Starting screen capture with options:', options);
 
-    // Use Mac app if available and connected
-    if (this.macAppHandler?.isAvailable()) {
-      logger.log('Using native Mac app capture');
-      return this.macAppHandler.capture(options);
-    }
-
-    // Fall back to browser API
+    // Use browser API for screen capture
     logger.log('Using browser API capture');
     return this.browserHandler.capture(options);
   }
@@ -57,7 +45,7 @@ export class ScreenCaptureService {
    */
   getCapabilities(): CaptureCapabilities {
     return {
-      hasNativeApp: this.macAppHandler?.isAvailable() ?? false,
+      hasNativeApp: false,
       hasBrowserAPI: this.browserHandler.isSupported(),
       canCaptureAudio: this.browserHandler.canCaptureAudio(),
       canSelectWindow: this.browserHandler.canSelectWindow(),
@@ -69,17 +57,13 @@ export class ScreenCaptureService {
    * Check if screen capture is supported
    */
   isSupported(): boolean {
-    return this.macAppHandler?.isAvailable() || this.browserHandler.isSupported();
+    return this.browserHandler.isSupported();
   }
 
   /**
    * Get platform-specific capture instructions
    */
   getCaptureInstructions(): string {
-    if (this.macAppHandler?.isAvailable()) {
-      return 'Screen capture will use the native VibeTunnel Mac app for optimal performance.';
-    }
-
     if (this.browserHandler.isSupported()) {
       const platform = this.getPlatform();
       if (platform === 'linux') {
@@ -102,10 +86,12 @@ export class ScreenCaptureService {
   }
 
   private getPlatform(): string {
-    const platform = navigator.platform.toLowerCase();
-    if (platform.includes('linux')) return 'linux';
-    if (platform.includes('win')) return 'windows';
-    if (platform.includes('mac')) return 'macos';
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (userAgent.includes('linux')) return 'linux';
+    if (userAgent.includes('win')) return 'windows';
+    if (userAgent.includes('mac')) return 'macos';
+    if (userAgent.includes('android')) return 'android';
+    if (userAgent.includes('ios')) return 'ios';
     return 'unknown';
   }
 }
@@ -152,8 +138,21 @@ class BrowserScreenCapture {
   }
 
   canCaptureAudio(): boolean {
-    // Most browsers support audio capture with screen sharing
-    return this.isSupported();
+    if (!this.isSupported()) return false;
+
+    // Check for known browser limitations
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isFirefox = userAgent.includes('firefox');
+
+    // Firefox has different audio capabilities
+    if (isFirefox) {
+      const firefoxMatch = userAgent.match(/firefox\/(\d+)/);
+      const firefoxVersion = firefoxMatch ? Number.parseInt(firefoxMatch[1]) : 0;
+      return firefoxVersion >= 60;
+    }
+
+    // Chrome, Safari, Edge generally support audio capture
+    return true;
   }
 
   canSelectWindow(): boolean {
@@ -184,21 +183,5 @@ class BrowserScreenCapture {
     }
 
     return new Error(`Screen capture failed: ${error.message}`);
-  }
-}
-
-/**
- * Native Mac app screen capture (placeholder for existing implementation)
- */
-class MacAppScreenCapture {
-  async capture(options: CaptureOptions): Promise<MediaStream> {
-    // This would integrate with the existing Mac app WebSocket implementation
-    // For now, throw an error to fall back to browser capture
-    throw new Error('Native Mac app capture not yet integrated');
-  }
-
-  isAvailable(): boolean {
-    // Check if the Mac app is connected and available
-    return false; // Placeholder - would check actual connection status
   }
 }
