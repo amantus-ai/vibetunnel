@@ -251,8 +251,8 @@ function buildLinux() {
     cd /workspace/node-pty
     for node_version in ${NODE_VERSIONS.join(' ')}; do
       for arch in ${(PLATFORMS.linux || []).join(' ')}; do
-        echo "Building node-pty for Node.js $node_version $arch"
-        if [ "$arch" = "arm64" ]; then
+        echo "Building node-pty for Node.js \$node_version \$arch"
+        if [ "\$arch" = "arm64" ]; then
           export CC=aarch64-linux-gnu-gcc
           export CXX=aarch64-linux-gnu-g++
           export AR=aarch64-linux-gnu-ar
@@ -261,8 +261,8 @@ function buildLinux() {
         else
           unset CC CXX AR STRIP LINK
         fi
-        npm_config_target_platform=linux npm_config_target_arch=$arch \\
-          npx prebuild --runtime node --target $node_version.0.0 --arch $arch || exit 1
+        npm_config_target_platform=linux npm_config_target_arch=\$arch \\
+          npx prebuild --runtime node --target \$node_version.0.0 --arch \$arch || exit 1
       done
     done
     
@@ -270,8 +270,8 @@ function buildLinux() {
     cd /workspace/node_modules/.pnpm/authenticate-pam@1.0.5/node_modules/authenticate-pam
     for node_version in ${NODE_VERSIONS.join(' ')}; do
       for arch in ${(PLATFORMS.linux || []).join(' ')}; do
-        echo "Building authenticate-pam for Node.js $node_version $arch"
-        if [ "$arch" = "arm64" ]; then
+        echo "Building authenticate-pam for Node.js \$node_version \$arch"
+        if [ "\$arch" = "arm64" ]; then
           export CC=aarch64-linux-gnu-gcc
           export CXX=aarch64-linux-gnu-g++
           export AR=aarch64-linux-gnu-ar
@@ -280,8 +280,8 @@ function buildLinux() {
         else
           unset CC CXX AR STRIP LINK
         fi
-        npm_config_target_platform=linux npm_config_target_arch=$arch \\
-          npx prebuild --runtime node --target $node_version.0.0 --arch $arch --tag-prefix authenticate-pam-v || exit 1
+        npm_config_target_platform=linux npm_config_target_arch=\$arch \\
+          npx prebuild --runtime node --target \$node_version.0.0 --arch \$arch --tag-prefix authenticate-pam-v || exit 1
       done
     done
     
