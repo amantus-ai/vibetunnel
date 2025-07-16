@@ -17,7 +17,7 @@ struct SystemControlHandlerTests {
                 UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
             }
         }
-        
+
         let initialPath = "~/Projects"
         UserDefaults.standard.set(initialPath, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
         UserDefaults.standard.synchronize()
@@ -80,7 +80,7 @@ struct SystemControlHandlerTests {
                 UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
             }
         }
-        
+
         let initialPath = "~/Projects"
         UserDefaults.standard.set(initialPath, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
         UserDefaults.standard.synchronize()

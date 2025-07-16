@@ -17,7 +17,9 @@ extension View {
         interval: TimeInterval,
         tolerance: TimeInterval = 0.1,
         action: @escaping @Sendable () async -> Void
-    ) -> some View {
+    )
+        -> some View
+    {
         modifier(PeriodicTimerModifier(interval: interval, tolerance: tolerance, action: action))
     }
 }
@@ -27,9 +29,9 @@ private struct PeriodicTimerModifier: ViewModifier {
     let interval: TimeInterval
     let tolerance: TimeInterval
     let action: @Sendable () async -> Void
-    
+
     @State private var timer: Timer?
-    
+
     func body(content: Content) -> some View {
         content
             .onAppear {
@@ -39,13 +41,13 @@ private struct PeriodicTimerModifier: ViewModifier {
                 stopTimer()
             }
     }
-    
+
     private func startTimer() {
         // Execute immediately
         Task {
             await action()
         }
-        
+
         // Then set up periodic execution
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
             Task {
@@ -54,7 +56,7 @@ private struct PeriodicTimerModifier: ViewModifier {
         }
         timer?.tolerance = tolerance
     }
-    
+
     private func stopTimer() {
         timer?.invalidate()
         timer = nil

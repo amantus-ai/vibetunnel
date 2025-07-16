@@ -302,14 +302,14 @@ final class SystemPermissionManager {
         } catch {
             logger.error("❌ Screen recording permission check failed: \(error.localizedDescription)")
             logger.error("Error type: \(type(of: error)), error: \(error)")
-            
+
             // Don't cache false result if it's a timeout or other non-permission error
             let errorString = String(describing: error).lowercased()
             if errorString.contains("timeout") || errorString.contains("cancelled") {
                 logger.warning("⚠️ Permission check timed out, not caching result")
                 return false
             }
-            
+
             screenRecordingPermissionCache = (granted: false, timestamp: Date())
             return false
         }

@@ -80,10 +80,10 @@ struct DashboardSettingsView: View {
         activeSessions = sessionMonitor.sessions.values.compactMap { session in
             // Only include sessions that are actually running
             guard session.status == "running" else { return nil }
-            
+
             // Parse the ISO 8601 date string
             let createdAt = ISO8601DateFormatter().date(from: session.startedAt) ?? Date()
-            
+
             return DashboardSessionInfo(
                 id: session.id,
                 title: session.name ?? "Untitled",

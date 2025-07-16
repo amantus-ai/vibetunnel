@@ -61,10 +61,14 @@ struct ControlAgentArmyPageView: View {
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 420)
                         .fixedSize(horizontal: false, vertical: true)
-                        
-                        Link("Learn more", destination: URL(string: "https://steipete.me/posts/command-your-claude-code-army-reloaded")!)
-                            .font(.caption)
-                            .foregroundColor(.accentColor)
+
+                        Link(
+                            "Learn more",
+                            destination: URL(string: "https://steipete.me/posts/command-your-claude-code-army-reloaded"
+                            )!
+                        )
+                        .font(.caption)
+                        .foregroundColor(.accentColor)
                     }
                 }
                 .padding(.vertical, 12)

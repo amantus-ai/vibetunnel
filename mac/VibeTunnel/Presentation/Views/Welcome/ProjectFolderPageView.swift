@@ -61,7 +61,7 @@ struct ProjectFolderPageView: View {
                             Image(systemName: "folder.badge.gearshape")
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary)
-                            
+
                             if isScanning {
                                 Text("Scanning...")
                                     .font(.system(size: 12))
@@ -71,11 +71,13 @@ struct ProjectFolderPageView: View {
                                     .font(.system(size: 12))
                                     .foregroundColor(.secondary)
                             } else {
-                                Text("\(discoveredRepos.count) repositor\(discoveredRepos.count == 1 ? "y" : "ies") found")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.primary)
+                                Text(
+                                    "\(discoveredRepos.count) repositor\(discoveredRepos.count == 1 ? "y" : "ies") found"
+                                )
+                                .font(.system(size: 12))
+                                .foregroundColor(.primary)
                             }
-                            
+
                             Spacer()
                         }
                         .padding(.horizontal, 10)
