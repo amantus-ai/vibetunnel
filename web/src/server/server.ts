@@ -42,6 +42,7 @@ import { closeLogger, createLogger, initLogger, setDebugMode } from './utils/log
 import { VapidManager } from './utils/vapid-manager.js';
 import { getVersionInfo, printVersionBanner } from './version.js';
 import { controlUnixHandler } from './websocket/control-unix-handler.js';
+import { linuxScreencapHandler } from './websocket/linux-screencap-handler.js';
 
 // Extended WebSocket request with authentication and routing info
 interface WebSocketRequest extends http.IncomingMessage {
@@ -784,31 +785,36 @@ export async function createApp(): Promise<AppInstance> {
   try {
     await initializeScreencap();
 
-    // Set up configuration update callback
-    controlUnixHandler.setConfigUpdateCallback((updatedConfig) => {
-      // Update server configuration
-      config.repositoryBasePath = updatedConfig.repositoryBasePath;
+    // Only initialize control Unix handler on non-Linux platforms
+    if (process.platform !== 'linux') {
+      // Set up configuration update callback
+      controlUnixHandler.setConfigUpdateCallback((updatedConfig) => {
+        // Update server configuration
+        config.repositoryBasePath = updatedConfig.repositoryBasePath;
 
-      // Broadcast to all connected config WebSocket clients
-      const message = JSON.stringify({
-        type: 'config',
-        data: {
-          repositoryBasePath: updatedConfig.repositoryBasePath,
-          serverConfigured: true, // Path from Mac app is always server-configured
-        },
+        // Broadcast to all connected config WebSocket clients
+        const message = JSON.stringify({
+          type: 'config',
+          data: {
+            repositoryBasePath: updatedConfig.repositoryBasePath,
+            serverConfigured: true, // Path from Mac app is always server-configured
+          },
+        });
+
+        configWebSocketClients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+          }
+        });
+
+        logger.log(`Broadcast config update to ${configWebSocketClients.size} clients`);
       });
 
-      configWebSocketClients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(message);
-        }
-      });
-
-      logger.log(`Broadcast config update to ${configWebSocketClients.size} clients`);
-    });
-
-    await controlUnixHandler.start();
-    logger.log(chalk.green('Control UNIX socket: READY'));
+      await controlUnixHandler.start();
+      logger.log(chalk.green('Control UNIX socket: READY'));
+    } else {
+      logger.log(chalk.green('Linux screencap handler: READY'));
+    }
   } catch (error) {
     logger.error('Failed to initialize screencap or control socket:', error);
     logger.warn('Screen capture and Mac control features will not be available.');
@@ -1008,14 +1014,18 @@ export async function createApp(): Promise<AppInstance> {
       const userId = wsReq.userId || 'unknown';
       logger.log(`🖥️ Screencap WebSocket user: ${userId}`);
 
-      if (!controlUnixHandler) {
-        logger.error('❌ controlUnixHandler not initialized!');
+      // Check if we're on Linux - use Linux handler instead of controlUnixHandler
+      if (process.platform === 'linux') {
+        logger.log('🐧 Using Linux screencap handler');
+        linuxScreencapHandler.handleBrowserConnection(ws, userId);
+      } else if (controlUnixHandler) {
+        logger.log('✅ Passing connection to controlUnixHandler with userId:', userId);
+        controlUnixHandler.handleBrowserConnection(ws, userId);
+      } else {
+        logger.error('❌ No screencap handler available for platform:', process.platform);
         ws.close();
         return;
       }
-
-      logger.log('✅ Passing connection to controlUnixHandler with userId:', userId);
-      controlUnixHandler.handleBrowserConnection(ws, userId);
     } else if (pathname === '/ws/config') {
       logger.log('⚙️ Handling config WebSocket connection');
       // Add client to the set

@@ -170,6 +170,37 @@ global.EventSource = class EventSource extends EventTarget {
   }
 } as unknown as typeof EventSource;
 
+// Mock MediaSource for media tests
+global.MediaSource = class MediaSource extends EventTarget {
+  static isTypeSupported = vi.fn().mockReturnValue(true);
+
+  readyState: string = 'closed';
+  duration: number = Number.NaN;
+  sourceBuffers: any[] = [];
+  activeSourceBuffers: any[] = [];
+
+  constructor() {
+    super();
+  }
+
+  addSourceBuffer(mimeType: string) {
+    const buffer = {
+      mode: 'segments',
+      updating: false,
+      appendBuffer: vi.fn(),
+      remove: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+    this.sourceBuffers.push(buffer);
+    return buffer;
+  }
+
+  endOfStream(error?: string) {}
+  setLiveSeekableRange(start: number, end: number) {}
+  clearLiveSeekableRange() {}
+} as unknown as typeof MediaSource;
+
 // Set up fetch mock (only for non-e2e tests)
 if (typeof window !== 'undefined') {
   global.fetch = vi.fn();

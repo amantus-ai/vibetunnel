@@ -1,5 +1,4 @@
 import { EventEmitter } from 'node:events';
-import { Readable } from 'node:stream';
 import type { WebSocket } from 'ws';
 import { createLogger } from '../utils/logger.js';
 import type { CaptureSession } from './desktop-capture-service.js';
@@ -13,13 +12,62 @@ export interface StreamClient {
   lastActivity: number;
 }
 
+type StreamCallback = (frame: ArrayBuffer) => void;
+
 /**
  * Handles streaming captured video to WebSocket clients
- * The client will handle WebRTC peer connections
+ * For Linux, this handles direct FFmpeg stream distribution
  */
 export class StreamHandler extends EventEmitter {
   private clients = new Map<string, StreamClient>();
   private streamingSessions = new Map<string, Set<string>>(); // sessionId -> Set of clientIds
+  private streamSubscribers = new Map<string, Set<StreamCallback>>(); // sessionId -> Set of callbacks
+
+  /**
+   * Subscribe to stream updates for a session
+   */
+  subscribe(sessionId: string, callback: StreamCallback): () => void {
+    if (!this.streamSubscribers.has(sessionId)) {
+      this.streamSubscribers.set(sessionId, new Set());
+    }
+
+    const subscribers = this.streamSubscribers.get(sessionId);
+    if (!subscribers) {
+      throw new Error(`No subscribers set found for session ${sessionId}`);
+    }
+    subscribers.add(callback);
+
+    logger.log(`Added stream subscriber for session ${sessionId}, total: ${subscribers.size}`);
+
+    // Return unsubscribe function
+    return () => {
+      subscribers.delete(callback);
+      if (subscribers.size === 0) {
+        this.streamSubscribers.delete(sessionId);
+      }
+      logger.log(
+        `Removed stream subscriber for session ${sessionId}, remaining: ${subscribers.size}`
+      );
+    };
+  }
+
+  /**
+   * Distribute frame to all subscribers
+   */
+  distributeFrame(sessionId: string, frame: ArrayBuffer): void {
+    const subscribers = this.streamSubscribers.get(sessionId);
+    if (!subscribers || subscribers.size === 0) {
+      return;
+    }
+
+    subscribers.forEach((callback) => {
+      try {
+        callback(frame);
+      } catch (error) {
+        logger.error(`Error in stream subscriber callback:`, error);
+      }
+    });
+  }
 
   /**
    * Add a WebSocket client for streaming
@@ -40,7 +88,7 @@ export class StreamHandler extends EventEmitter {
     if (!this.streamingSessions.has(sessionId)) {
       this.streamingSessions.set(sessionId, new Set());
     }
-    this.streamingSessions.get(sessionId)!.add(clientId);
+    this.streamingSessions.get(sessionId)?.add(clientId);
 
     // Handle client disconnect
     socket.on('close', () => {
@@ -93,7 +141,7 @@ export class StreamHandler extends EventEmitter {
   /**
    * Handle messages from clients
    */
-  private handleClientMessage(clientId: string, message: any): void {
+  private handleClientMessage(clientId: string, message: { type: string; quality?: string }): void {
     const client = this.clients.get(clientId);
     if (!client) return;
 
@@ -148,7 +196,7 @@ export class StreamHandler extends EventEmitter {
 
     // Stream video chunks
     stream.on('data', (chunk: Buffer) => {
-      // Send chunk to all clients
+      // Send chunk to all WebSocket clients
       clients.forEach((clientId) => {
         const client = this.clients.get(clientId);
         if (client && client.socket.readyState === client.socket.OPEN) {
@@ -156,6 +204,9 @@ export class StreamHandler extends EventEmitter {
           client.socket.send(chunk, { binary: true });
         }
       });
+
+      // Also distribute to subscribers (e.g., LinuxScreencapHandler)
+      this.distributeFrame(sessionId, chunk);
     });
 
     stream.on('end', () => {
@@ -180,7 +231,7 @@ export class StreamHandler extends EventEmitter {
   /**
    * Send a message to a specific client
    */
-  private sendToClient(clientId: string, message: any): void {
+  private sendToClient(clientId: string, message: Record<string, unknown>): void {
     const client = this.clients.get(clientId);
     if (client && client.socket.readyState === client.socket.OPEN) {
       client.socket.send(JSON.stringify(message));
@@ -190,7 +241,7 @@ export class StreamHandler extends EventEmitter {
   /**
    * Broadcast a message to all clients of a session
    */
-  broadcastToSession(sessionId: string, message: any): void {
+  broadcastToSession(sessionId: string, message: Record<string, unknown>): void {
     const clients = this.streamingSessions.get(sessionId);
     if (!clients) return;
 

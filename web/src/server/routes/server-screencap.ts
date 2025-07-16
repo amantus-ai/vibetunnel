@@ -1,9 +1,22 @@
 import { type Request, type Response, Router } from 'express';
+import type { WebSocket } from 'ws';
 import { desktopCaptureService } from '../capture/desktop-capture-service.js';
 import { streamHandler } from '../capture/stream-handler.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('server-screencap-routes');
+
+// Control message types to match Mac implementation
+interface ControlMessage {
+  id: string;
+  type: 'request' | 'response' | 'event';
+  category: 'screencap';
+  action: string;
+  payload?: unknown;
+  sessionId?: string;
+  userId?: string;
+  error?: string;
+}
 
 export function createServerScreencapRoutes(): Router {
   const router = Router();
@@ -43,7 +56,7 @@ export function createServerScreencapRoutes(): Router {
         sessionId: session.id,
         mode: session.mode,
         displayServer: session.displayServer,
-        streamUrl: `/api/server-screencap/stream/${session.id}`,
+        // Streaming is handled via WebSocket at /ws/server-capture?sessionId=...
       });
     } catch (error) {
       logger.error('Failed to start capture:', error);
@@ -88,40 +101,6 @@ export function createServerScreencapRoutes(): Router {
     } catch (error) {
       logger.error('Failed to get session:', error);
       res.status(500).json({ error: 'Failed to get session info' });
-    }
-  });
-
-  // HTTP streaming endpoint for video
-  router.get('/stream/:sessionId', async (req: Request, res: Response) => {
-    try {
-      const { sessionId } = req.params;
-      const session = await desktopCaptureService.getSession(sessionId);
-
-      if (!session) {
-        return res.status(404).json({ error: 'Session not found' });
-      }
-
-      if (!session.captureStream) {
-        return res.status(400).json({ error: 'No capture stream available' });
-      }
-
-      // Set appropriate headers for streaming
-      res.setHeader('Content-Type', 'video/webm');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('Transfer-Encoding', 'chunked');
-
-      // Stream the video data
-      session.captureStream.stream.pipe(res);
-
-      // Handle client disconnect
-      req.on('close', () => {
-        logger.log(`Client disconnected from stream ${sessionId}`);
-        // The stream will be cleaned up when the capture stops
-      });
-    } catch (error) {
-      logger.error('Streaming error:', error);
-      res.status(500).json({ error: 'Streaming failed' });
     }
   });
 
