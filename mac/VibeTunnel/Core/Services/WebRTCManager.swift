@@ -1043,13 +1043,27 @@ final class WebRTCManager: NSObject {
 
         // Check screen recording permission first for endpoints that need it
         if endpoint == "/processes" || endpoint == "/displays" {
+            logger.info("🔍 Checking screen recording permission for endpoint: \(endpoint)")
+            
             let hasPermission = await MainActor.run {
                 SystemPermissionManager.shared.hasPermission(.screenRecording)
             }
+            
+            logger.info("📋 Screen recording permission check result: \(hasPermission)")
 
             if !hasPermission {
-                logger.warning("⚠️ Screen recording permission not granted for \(endpoint)")
-                throw ScreencapError.permissionDenied
+                logger.error("❌ Screen recording permission not granted for \(endpoint)")
+                // Force a re-check in case of cached false negative
+                logger.info("🔄 Forcing permission re-check...")
+                await SystemPermissionManager.shared.checkAllPermissions()
+                let hasPermissionRetry = await MainActor.run {
+                    SystemPermissionManager.shared.hasPermission(.screenRecording)
+                }
+                logger.info("📋 Re-check result: \(hasPermissionRetry)")
+                
+                if !hasPermissionRetry {
+                    throw ScreencapError.permissionDenied
+                }
             }
         }
 

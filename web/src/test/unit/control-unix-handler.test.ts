@@ -182,4 +182,117 @@ describe('Control Unix Handler', () => {
       expect(mockCallback).not.toHaveBeenCalled();
     });
   });
+
+  describe('Screencap Response Forwarding', () => {
+    it('should forward screencap response messages even without pending requests', async () => {
+      // Mock WebSocket for browser connection
+      const mockBrowserSocket = {
+        readyState: 1, // OPEN
+        send: vi.fn(),
+      };
+
+      // Mock the screen capture handler
+      const mockScreenCaptureHandler = {
+        setBrowserSocket: vi.fn(),
+        handleMessage: vi.fn().mockResolvedValue(null),
+        getUserId: vi.fn().mockReturnValue('test-user-id'),
+      };
+
+      // Set up the handler
+      (controlUnixHandler as any).screenCaptureHandler = mockScreenCaptureHandler;
+      (controlUnixHandler as any).handlers.set('screencap', mockScreenCaptureHandler);
+      mockScreenCaptureHandler.browserSocket = mockBrowserSocket;
+
+      // Create a screencap API response message (simulating response from Mac app)
+      const screencapResponse = {
+        id: 'response-123',
+        type: 'response' as const,
+        category: 'screencap' as const,
+        action: 'api-response',
+        payload: {
+          method: 'GET',
+          endpoint: '/processes',
+          data: [
+            { processName: 'Terminal', pid: 1234, windows: [] },
+            { processName: 'Safari', pid: 5678, windows: [] },
+          ],
+        },
+      };
+
+      // Call handleMacMessage directly
+      await (controlUnixHandler as any).handleMacMessage(screencapResponse);
+
+      // Verify the handler was called with the message
+      expect(mockScreenCaptureHandler.handleMessage).toHaveBeenCalledWith(screencapResponse);
+    });
+
+    it('should ignore non-screencap response messages without pending requests', async () => {
+      // Mock a handler for system messages
+      const mockSystemHandler = {
+        handleMessage: vi.fn().mockResolvedValue(null),
+      };
+      (controlUnixHandler as any).handlers.set('system', mockSystemHandler);
+
+      // Create a system response message without a pending request
+      const systemResponse = {
+        id: 'response-456',
+        type: 'response' as const,
+        category: 'system' as const,
+        action: 'some-action',
+        payload: { data: 'test' },
+      };
+
+      // Call handleMacMessage directly
+      await (controlUnixHandler as any).handleMacMessage(systemResponse);
+
+      // Verify the handler was NOT called (message should be ignored)
+      expect(mockSystemHandler.handleMessage).not.toHaveBeenCalled();
+    });
+
+    it('should process screencap request messages normally', async () => {
+      // Mock the screen capture handler
+      const mockScreenCaptureHandler = {
+        handleMessage: vi.fn().mockResolvedValue({
+          id: 'request-789',
+          type: 'response',
+          category: 'screencap',
+          action: 'api-request',
+          payload: { success: true },
+        }),
+      };
+
+      (controlUnixHandler as any).handlers.set('screencap', mockScreenCaptureHandler);
+
+      // Create a screencap request message
+      const screencapRequest = {
+        id: 'request-789',
+        type: 'request' as const,
+        category: 'screencap' as const,
+        action: 'api-request',
+        payload: {
+          method: 'GET',
+          endpoint: '/displays',
+        },
+      };
+
+      // Mock sendToMac to capture the response
+      const sendToMacSpy = vi
+        .spyOn(controlUnixHandler as any, 'sendToMac')
+        .mockImplementation(() => {});
+
+      // Call handleMacMessage
+      await (controlUnixHandler as any).handleMacMessage(screencapRequest);
+
+      // Verify the handler was called
+      expect(mockScreenCaptureHandler.handleMessage).toHaveBeenCalledWith(screencapRequest);
+
+      // Verify response was sent back to Mac
+      expect(sendToMacSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'response',
+          category: 'screencap',
+        })
+      );
+    });
+  });
 });

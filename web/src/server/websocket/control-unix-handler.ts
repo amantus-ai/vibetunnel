@@ -153,7 +153,7 @@ class ScreenCaptureHandler implements MessageHandler {
 
   async handleMessage(message: ControlMessage): Promise<ControlMessage | null> {
     logger.log(`Screen capture handler: ${message.action}`);
-    
+
     // If message has a sessionId and we have a userId, associate them
     if (message.sessionId && this.userId) {
       logger.log(`🔐 Associating sessionId ${message.sessionId} with userId ${this.userId}`);
@@ -550,7 +550,9 @@ export class ControlUnixHandler {
 
           // Forward screen capture messages to Mac
           if (this.macSocket) {
-            logger.log(`📤 Forwarding ${message.action} to Mac app via Unix socket with auth context`);
+            logger.log(
+              `📤 Forwarding ${message.action} to Mac app via Unix socket with auth context`
+            );
             this.sendToMac(authenticatedMessage);
           } else {
             logger.warn('❌ No Mac connected to handle screen capture request');
@@ -620,11 +622,19 @@ export class ControlUnixHandler {
 
     // Skip processing for response messages that aren't pending requests
     // This prevents response loops where error responses get processed again
-    if (message.type === 'response') {
+    // EXCEPT for screencap messages which need to be forwarded to the browser
+    if (message.type === 'response' && message.category !== 'screencap') {
       logger.debug(
         `Ignoring response message that has no pending request: ${message.id}, action: ${message.action}`
       );
       return;
+    }
+
+    // Log screencap responses that will be forwarded
+    if (message.type === 'response' && message.category === 'screencap') {
+      logger.log(
+        `📡 Forwarding screencap response to handler: ${message.id}, action: ${message.action}`
+      );
     }
 
     const handler = this.handlers.get(message.category);

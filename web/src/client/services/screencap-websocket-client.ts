@@ -34,7 +34,9 @@ export class ScreencapWebSocketClient {
   constructor(private wsUrl: string) {
     // Generate session ID immediately for all requests
     this.sessionId = crypto.randomUUID();
-    logger.log(`📡 ScreencapWebSocketClient created with URL: ${wsUrl}, sessionId: ${this.sessionId}`);
+    logger.log(
+      `📡 ScreencapWebSocketClient created with URL: ${wsUrl}, sessionId: ${this.sessionId}`
+    );
   }
 
   private async connect(): Promise<void> {
