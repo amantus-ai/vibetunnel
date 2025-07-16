@@ -587,6 +587,13 @@ export class ControlUnixHandler {
       return;
     }
 
+    // Skip processing for response messages that aren't pending requests
+    // This prevents response loops where error responses get processed again
+    if (message.type === 'response') {
+      logger.debug(`Ignoring response message that has no pending request: ${message.id}`);
+      return;
+    }
+
     const handler = this.handlers.get(message.category);
     if (!handler) {
       logger.warn(`No handler for category: ${message.category}`);
