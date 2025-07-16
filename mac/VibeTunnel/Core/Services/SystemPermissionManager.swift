@@ -292,14 +292,24 @@ final class SystemPermissionManager {
         // If CGPreflightScreenCaptureAccess returns false, we need to verify
         // because it might be a false negative on some macOS versions
         // Try SCShareableContent with a very short timeout to avoid hanging
+        logger.info("CGPreflightScreenCaptureAccess returned false, checking with SCShareableContent...")
         do {
             _ = try await SCShareableContent.current
 
-            logger.debug("Screen recording permission confirmed via SCShareableContent")
+            logger.info("✅ Screen recording permission confirmed via SCShareableContent")
             screenRecordingPermissionCache = (granted: true, timestamp: Date())
             return true
         } catch {
-            logger.debug("Screen recording permission not granted or check timed out: \(error)")
+            logger.error("❌ Screen recording permission check failed: \(error.localizedDescription)")
+            logger.error("Error type: \(type(of: error)), error: \(error)")
+            
+            // Don't cache false result if it's a timeout or other non-permission error
+            let errorString = String(describing: error).lowercased()
+            if errorString.contains("timeout") || errorString.contains("cancelled") {
+                logger.warning("⚠️ Permission check timed out, not caching result")
+                return false
+            }
+            
             screenRecordingPermissionCache = (granted: false, timestamp: Date())
             return false
         }

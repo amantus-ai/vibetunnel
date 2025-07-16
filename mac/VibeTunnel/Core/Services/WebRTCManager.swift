@@ -605,10 +605,17 @@ final class WebRTCManager: NSObject {
               let action = json["action"] as? String
         else {
             logger.error("Failed to decode control message")
+            logger.error("  📋 Raw data length: \(data.count) bytes")
+            if let str = String(data: data, encoding: .utf8) {
+                logger.error("  📋 Raw data preview: \(str.prefix(200))...")
+            }
             return nil
         }
 
         logger.info("📥 Received control message with action: \(action)")
+        logger.info("  📋 Message ID: \(json["id"] as? String ?? "NO ID")")
+        logger.info("  📋 Message type: \(json["type"] as? String ?? "NO TYPE")")
+        logger.info("  📋 Message category: \(json["category"] as? String ?? "NO CATEGORY")")
 
         // Log detailed info for api-request messages
         if action == "api-request" {
@@ -893,25 +900,37 @@ final class WebRTCManager: NSObject {
     private func handleApiRequest(_ json: [String: Any]) async {
         logger.info("🔍 Starting handleApiRequest...")
         logger.info("  📋 JSON data: \(json)")
+        logger.info("  🔍 Message ID from json: \(json["id"] as? String ?? "NO ID")")
 
-        guard let requestId = json["requestId"] as? String,
-              let method = json["method"] as? String,
-              let endpoint = json["endpoint"] as? String
+        // Extract payload which contains the actual API request details
+        guard let payload = json["payload"] as? [String: Any] else {
+            logger.error("❌ Missing payload in API request")
+            logger.error("  📋 Full json keys: \(json.keys.joined(separator: ", "))")
+            return
+        }
+        
+        logger.info("  📋 Payload data: \(payload)")
+
+        guard let requestId = payload["requestId"] as? String,
+              let method = payload["method"] as? String,
+              let endpoint = payload["endpoint"] as? String
         else {
             logger.error("Invalid API request format")
             logger
                 .error(
-                    "  📋 Missing fields - requestId: \(json["requestId"] != nil), method: \(json["method"] != nil), endpoint: \(json["endpoint"] != nil)"
+                    "  📋 Missing fields - requestId: \(payload["requestId"] != nil), method: \(payload["method"] != nil), endpoint: \(payload["endpoint"] != nil)"
                 )
+            logger.error("  📋 Full payload keys: \(payload.keys.joined(separator: ", "))")
             return
         }
 
         logger.info("📨 Received API request: \(method) \(endpoint)")
         logger.info("  📋 Request ID: \(requestId)")
+        logger.info("  📋 Message ID: \(json["id"] as? String ?? "NO ID")")
         logger.info("  📋 Full request data: \(json)")
 
-        // Extract session ID from request
-        let sessionId = json["sessionId"] as? String
+        // Extract session ID from payload (where the browser puts it)
+        let sessionId = payload["sessionId"] as? String
         logger.info("  📋 Request session ID: \(sessionId ?? "nil")")
         logger.info("  📋 Current active session: \(self.activeSessionId ?? "nil")")
 
@@ -974,17 +993,17 @@ final class WebRTCManager: NSObject {
         // Process API request on background queue to avoid blocking main thread
         Task {
             logger.info("🔄 Starting Task for API request: \(requestId)")
-            logger.info("📋 About to extract params from json")
-            logger.info("📋 json keys: \(json.keys.sorted())")
-            logger.info("📋 json[\"params\"] exists: \(json["params"] != nil)")
-            logger.info("📋 json[\"params\"] type: \(type(of: json["params"]))")
+            logger.info("📋 About to extract params from payload")
+            logger.info("📋 payload keys: \(payload.keys.sorted())")
+            logger.info("📋 payload[\"params\"] exists: \(payload["params"] != nil)")
+            logger.info("📋 payload[\"params\"] type: \(type(of: payload["params"]))")
 
             do {
                 logger.info("🔄 About to call processApiRequest")
                 let result = try await processApiRequest(
                     method: method,
                     endpoint: endpoint,
-                    params: json["params"],
+                    params: payload["params"],
                     sessionId: sessionId
                 )
                 logger.info("📤 Sending API response for request \(requestId)")
@@ -1043,13 +1062,27 @@ final class WebRTCManager: NSObject {
 
         // Check screen recording permission first for endpoints that need it
         if endpoint == "/processes" || endpoint == "/displays" {
+            logger.info("🔍 Checking screen recording permission for endpoint: \(endpoint)")
+            
             let hasPermission = await MainActor.run {
                 SystemPermissionManager.shared.hasPermission(.screenRecording)
             }
+            
+            logger.info("📋 Screen recording permission check result: \(hasPermission)")
 
             if !hasPermission {
-                logger.warning("⚠️ Screen recording permission not granted for \(endpoint)")
-                throw ScreencapError.permissionDenied
+                logger.error("❌ Screen recording permission not granted for \(endpoint)")
+                // Force a re-check in case of cached false negative
+                logger.info("🔄 Forcing permission re-check...")
+                await SystemPermissionManager.shared.checkAllPermissions()
+                let hasPermissionRetry = await MainActor.run {
+                    SystemPermissionManager.shared.hasPermission(.screenRecording)
+                }
+                logger.info("📋 Re-check result: \(hasPermissionRetry)")
+                
+                if !hasPermissionRetry {
+                    throw ScreencapError.permissionDenied
+                }
             }
         }
 

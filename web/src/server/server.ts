@@ -985,8 +985,8 @@ export async function createApp(): Promise<AppInstance> {
         return;
       }
 
-      logger.log('✅ Passing connection to controlUnixHandler');
-      controlUnixHandler.handleBrowserConnection(ws);
+      logger.log('✅ Passing connection to controlUnixHandler with userId:', userId);
+      controlUnixHandler.handleBrowserConnection(ws, userId);
     } else if (pathname === '/ws/config') {
       logger.log('⚙️ Handling config WebSocket connection');
       // Add client to the set
