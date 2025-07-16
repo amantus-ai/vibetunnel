@@ -10,7 +10,7 @@ fn test_title_mode_parsing() {
     let modes = vec![TitleMode::None, TitleMode::Filter, TitleMode::Static, TitleMode::Dynamic];
 
     for mode in modes {
-        let mode_str = format!("{:?}", mode).to_lowercase();
+        let mode_str = format!("{mode:?}").to_lowercase();
         assert!(!mode_str.is_empty());
     }
 }

@@ -75,7 +75,7 @@ mod tests {
 
         for input in test_cases {
             let activity = detector.detect(input.as_bytes());
-            assert!(activity.is_none(), "Unexpected activity detected for: {}", input);
+            assert!(activity.is_none(), "Unexpected activity detected for: {input}");
         }
     }
 
@@ -176,7 +176,7 @@ mod tests {
             details: Some("Debug Details".to_string()),
         };
 
-        let debug_str = format!("{:?}", activity);
+        let debug_str = format!("{activity:?}");
         assert!(debug_str.contains("Activity"));
         assert!(debug_str.contains("1234567890.0"));
         assert!(debug_str.contains("Debug Test"));
@@ -215,7 +215,7 @@ mod tests {
 
         for (input, expected_status, expected_details) in test_cases {
             let activity = detector.detect(input.as_bytes());
-            assert!(activity.is_some(), "Failed to detect activity in: {}", input);
+            assert!(activity.is_some(), "Failed to detect activity in: {input}");
 
             let activity = activity.unwrap();
             assert_eq!(activity.status, expected_status);
