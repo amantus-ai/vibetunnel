@@ -9,11 +9,12 @@ import { createServer } from 'http';
 import * as os from 'os';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { WebSocketServer } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 import type { AuthenticatedRequest } from './middleware/auth.js';
 import { createAuthMiddleware } from './middleware/auth.js';
 import { PtyManager } from './pty/index.js';
 import { createAuthRoutes } from './routes/auth.js';
+import { createConfigRoutes } from './routes/config.js';
 import { createFileRoutes } from './routes/files.js';
 import { createFilesystemRoutes } from './routes/filesystem.js';
 import { createLogRoutes } from './routes/logs.js';
@@ -88,6 +89,8 @@ interface Config {
   noHqAuth: boolean;
   // mDNS advertisement
   enableMDNS: boolean;
+  // Repository configuration
+  repositoryBasePath: string | null;
 }
 
 // Show help message
@@ -107,6 +110,7 @@ Options:
   --no-auth             Disable authentication (auto-login as current user)
   --allow-local-bypass  Allow localhost connections to bypass authentication
   --local-auth-token <token>  Token for localhost authentication bypass
+  --repository-base-path <path>  Base path for repository discovery (default: ~/)
   --debug               Enable debug logging
 
 Push Notification Options:
@@ -181,6 +185,8 @@ function parseArgs(): Config {
     noHqAuth: false,
     // mDNS advertisement
     enableMDNS: true, // Enable mDNS by default
+    // Repository configuration
+    repositoryBasePath: null as string | null,
   };
 
   // Check for help flag first
@@ -246,6 +252,9 @@ function parseArgs(): Config {
       config.noHqAuth = true;
     } else if (args[i] === '--no-mdns') {
       config.enableMDNS = false;
+    } else if (args[i] === '--repository-base-path' && i + 1 < args.length) {
+      config.repositoryBasePath = args[i + 1];
+      i++; // Skip the path value in next iteration
     } else if (args[i].startsWith('--')) {
       // Unknown argument
       logger.error(`Unknown argument: ${args[i]}`);
@@ -703,6 +712,15 @@ export async function createApp(): Promise<AppInstance> {
   app.use('/api', createRepositoryRoutes());
   logger.debug('Mounted repository routes');
 
+  // Mount config routes
+  app.use(
+    '/api',
+    createConfigRoutes({
+      getRepositoryBasePath: () => config.repositoryBasePath,
+    })
+  );
+  logger.debug('Mounted config routes');
+
   // Mount push notification routes
   if (vapidManager) {
     app.use(
@@ -727,6 +745,30 @@ export async function createApp(): Promise<AppInstance> {
   // Initialize screencap service and control socket
   try {
     await initializeScreencap();
+
+    // Set up configuration update callback
+    controlUnixHandler.setConfigUpdateCallback((updatedConfig) => {
+      // Update server configuration
+      config.repositoryBasePath = updatedConfig.repositoryBasePath;
+
+      // Broadcast to all connected config WebSocket clients
+      const message = JSON.stringify({
+        type: 'config',
+        data: {
+          repositoryBasePath: updatedConfig.repositoryBasePath,
+          serverConfigured: true, // Path from Mac app is always server-configured
+        },
+      });
+
+      configWebSocketClients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(message);
+        }
+      });
+
+      logger.log(`Broadcast config update to ${configWebSocketClients.size} clients`);
+    });
+
     await controlUnixHandler.start();
     logger.log(chalk.green('Control UNIX socket: READY'));
   } catch (error) {
@@ -745,7 +787,8 @@ export async function createApp(): Promise<AppInstance> {
     if (
       parsedUrl.pathname !== '/buffers' &&
       parsedUrl.pathname !== '/ws/input' &&
-      parsedUrl.pathname !== '/ws/screencap-signal'
+      parsedUrl.pathname !== '/ws/screencap-signal' &&
+      parsedUrl.pathname !== '/ws/config'
     ) {
       socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
       socket.destroy();
@@ -865,6 +908,9 @@ export async function createApp(): Promise<AppInstance> {
     });
   });
 
+  // Store connected config WebSocket clients
+  const configWebSocketClients = new Set<WebSocket>();
+
   // WebSocket connection router
   wss.on('connection', (ws, req) => {
     const wsReq = req as WebSocketRequest;
@@ -913,6 +959,72 @@ export async function createApp(): Promise<AppInstance> {
 
       logger.log('✅ Passing connection to controlUnixHandler');
       controlUnixHandler.handleBrowserConnection(ws);
+    } else if (pathname === '/ws/config') {
+      logger.log('⚙️ Handling config WebSocket connection');
+      // Add client to the set
+      configWebSocketClients.add(ws);
+
+      // Send current configuration
+      ws.send(
+        JSON.stringify({
+          type: 'config',
+          data: {
+            repositoryBasePath: config.repositoryBasePath || '~/',
+            serverConfigured: config.repositoryBasePath !== null,
+          },
+        })
+      );
+
+      // Handle incoming messages from web client
+      ws.on('message', async (data) => {
+        try {
+          const message = JSON.parse(data.toString());
+          if (message.type === 'update-repository-path') {
+            const newPath = message.path;
+            logger.log(`Received repository path update from web: ${newPath}`);
+
+            // Forward to Mac app via Unix socket if available
+            if (controlUnixHandler) {
+              const controlMessage = {
+                id: uuidv4(),
+                type: 'request' as const,
+                category: 'system' as const,
+                action: 'repository-path-update',
+                payload: { path: newPath, source: 'web' },
+              };
+
+              // Send to Mac and wait for response
+              const response = await controlUnixHandler.sendControlMessage(controlMessage);
+              if (response && response.type === 'response') {
+                const payload = response.payload as { success?: boolean };
+                if (payload?.success) {
+                  logger.log(`Mac app confirmed repository path update: ${newPath}`);
+                  // The update will be broadcast back via the config update callback
+                } else {
+                  logger.error('Mac app failed to update repository path');
+                }
+              } else {
+                logger.error('No response from Mac app for repository path update');
+              }
+            } else {
+              logger.warn('No control Unix handler available, cannot forward path update to Mac');
+            }
+          }
+        } catch (error) {
+          logger.error('Failed to handle config WebSocket message:', error);
+        }
+      });
+
+      // Handle client disconnection
+      ws.on('close', () => {
+        configWebSocketClients.delete(ws);
+        logger.log('Config WebSocket client disconnected');
+      });
+
+      ws.on('error', (error) => {
+        logger.error('Config WebSocket error:', error);
+        configWebSocketClients.delete(ws);
+      });
     } else {
       logger.error(`❌ Unknown WebSocket path: ${pathname}`);
       ws.close();

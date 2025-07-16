@@ -16,6 +16,11 @@ export interface AppPreferences {
   repositoryBasePath: string;
 }
 
+interface ServerConfig {
+  repositoryBasePath: string;
+  serverConfigured?: boolean;
+}
+
 const DEFAULT_APP_PREFERENCES: AppPreferences = {
   useDirectKeyboard: true, // Default to modern direct keyboard for new users
   showLogLink: false,
@@ -52,15 +57,19 @@ export class UnifiedSettings extends LitElement {
   // App settings state
   @state() private appPreferences: AppPreferences = DEFAULT_APP_PREFERENCES;
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
+  @state() private serverConfig: ServerConfig | null = null;
+  @state() private isServerConfigured = false;
 
   private permissionChangeUnsubscribe?: () => void;
   private subscriptionChangeUnsubscribe?: () => void;
   private unsubscribeResponsive?: () => void;
+  private configWebSocket?: WebSocket;
 
   connectedCallback() {
     super.connectedCallback();
     this.initializeNotifications();
     this.loadAppPreferences();
+    this.connectConfigWebSocket();
 
     // Subscribe to responsive changes
     this.unsubscribeResponsive = responsiveObserver.subscribe((state) => {
@@ -78,6 +87,10 @@ export class UnifiedSettings extends LitElement {
     }
     if (this.unsubscribeResponsive) {
       this.unsubscribeResponsive();
+    }
+    if (this.configWebSocket) {
+      this.configWebSocket.close();
+      this.configWebSocket = undefined;
     }
     // Clean up keyboard listener
     document.removeEventListener('keydown', this.handleKeyDown);
@@ -115,11 +128,36 @@ export class UnifiedSettings extends LitElement {
     );
   }
 
-  private loadAppPreferences() {
+  private async loadAppPreferences() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         this.appPreferences = { ...DEFAULT_APP_PREFERENCES, ...JSON.parse(stored) };
+      }
+
+      // Fetch server configuration
+      try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+          const serverConfig: ServerConfig = await response.json();
+          this.serverConfig = serverConfig;
+          this.isServerConfigured = serverConfig.serverConfigured ?? false;
+
+          // If server-configured, always use server's path
+          if (this.isServerConfigured) {
+            this.appPreferences.repositoryBasePath = serverConfig.repositoryBasePath;
+            // Save the updated preferences
+            this.saveAppPreferences();
+          } else if (!stored || !JSON.parse(stored).repositoryBasePath) {
+            // If we don't have a local repository base path and not server-configured, use the server's default
+            this.appPreferences.repositoryBasePath =
+              serverConfig.repositoryBasePath || DEFAULT_APP_PREFERENCES.repositoryBasePath;
+            // Save the updated preferences
+            this.saveAppPreferences();
+          }
+        }
+      } catch (error) {
+        logger.warn('Failed to fetch server config', error);
       }
     } catch (error) {
       logger.error('Failed to load app preferences', error);
@@ -226,8 +264,75 @@ export class UnifiedSettings extends LitElement {
   }
 
   private handleAppPreferenceChange(key: keyof AppPreferences, value: boolean | string) {
+    // Don't allow changes to repository path if server-configured
+    if (key === 'repositoryBasePath' && this.isServerConfigured) {
+      return;
+    }
     this.appPreferences = { ...this.appPreferences, [key]: value };
     this.saveAppPreferences();
+
+    // Send repository path updates to server/Mac app
+    if (key === 'repositoryBasePath' && this.configWebSocket?.readyState === WebSocket.OPEN) {
+      logger.log('Sending repository path update to server:', value);
+      this.configWebSocket.send(
+        JSON.stringify({
+          type: 'update-repository-path',
+          path: value as string,
+        })
+      );
+    }
+  }
+
+  private connectConfigWebSocket() {
+    try {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws/config`;
+
+      this.configWebSocket = new WebSocket(wsUrl);
+
+      this.configWebSocket.onopen = () => {
+        logger.log('Config WebSocket connected');
+      };
+
+      this.configWebSocket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type === 'config' && message.data) {
+            const { repositoryBasePath } = message.data;
+
+            // Update server config state
+            this.serverConfig = message.data;
+            this.isServerConfigured = message.data.serverConfigured ?? false;
+
+            // If server-configured, update the app preferences
+            if (this.isServerConfigured && repositoryBasePath) {
+              this.appPreferences.repositoryBasePath = repositoryBasePath;
+              this.saveAppPreferences();
+              logger.log('Repository path updated from server:', repositoryBasePath);
+            }
+          }
+        } catch (error) {
+          logger.error('Failed to parse config WebSocket message:', error);
+        }
+      };
+
+      this.configWebSocket.onerror = (error) => {
+        logger.error('Config WebSocket error:', error);
+      };
+
+      this.configWebSocket.onclose = () => {
+        logger.log('Config WebSocket closed');
+        // Attempt to reconnect after a delay
+        setTimeout(() => {
+          // Check if component is still connected to DOM
+          if (this.isConnected) {
+            this.connectConfigWebSocket();
+          }
+        }, 5000);
+      };
+    } catch (error) {
+      logger.error('Failed to connect config WebSocket:', error);
+    }
   }
 
   private get isNotificationsSupported(): boolean {
@@ -512,11 +617,15 @@ export class UnifiedSettings extends LitElement {
         </div>
 
         <!-- Repository Base Path -->
-        <div class="p-4 bg-dark-bg-tertiary rounded-lg border border-dark-border">
+        <div class="p-4 bg-tertiary rounded-lg border border-base">
           <div class="mb-3">
-            <label class="text-dark-text font-medium">Repository Base Path</label>
-            <p class="text-dark-text-muted text-xs mt-1">
-              Default directory for new sessions and repository discovery
+            <label class="text-primary font-medium">Repository Base Path</label>
+            <p class="text-muted text-xs mt-1">
+              ${
+                this.isServerConfigured
+                  ? 'This path is synced with the VibeTunnel Mac app'
+                  : 'Default directory for new sessions and repository discovery'
+              }
             </p>
           </div>
           <div class="flex gap-2">
@@ -528,8 +637,33 @@ export class UnifiedSettings extends LitElement {
                 this.handleAppPreferenceChange('repositoryBasePath', input.value);
               }}
               placeholder="~/"
-              class="input-field py-2 text-sm flex-1"
+              class="input-field py-2 text-sm flex-1 ${
+                this.isServerConfigured ? 'opacity-60 cursor-not-allowed' : ''
+              }"
+              ?disabled=${this.isServerConfigured}
+              ?readonly=${this.isServerConfigured}
             />
+            ${
+              this.isServerConfigured
+                ? html`
+                  <div class="flex items-center text-muted" title="Synced with Mac app">
+                    <svg
+                      class="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                  </div>
+                `
+                : ''
+            }
           </div>
         </div>
       </div>

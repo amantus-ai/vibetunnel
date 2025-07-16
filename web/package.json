@@ -1,6 +1,6 @@
 {
   "name": "vibetunnel",
-  "version": "1.0.0-beta.10",
+  "version": "1.0.0-beta.11",
   "description": "Terminal sharing server with web interface - supports macOS, Linux, and headless environments",
   "main": "dist/server/server.js",
   "bin": {

@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.0.0-beta.11] - 2025-01-16
+
+### 🎨 UI Improvements
+
+#### **Settings Organization**
+- Reorganized Mac settings into logical tabs for better usability
+- Cleaner, more intuitive settings interface with grouped related options
+
+#### **File Browser Polish**
+- **FIXED**: File browser no longer constantly refreshes, improving performance
+- **FIXED**: File browser now appears correctly above modal backdrops
+
+### 🚀 Features & Improvements
+
+#### **Developer Experience**
+- Added verbosity control to `vt` command for better debugging capabilities
+- Spawn window toggle now only appears when Mac app is connected
+- Release process improvements with normalized titles and per-version changelogs
+
+### 🛡️ Privacy & Permissions
+- **FIXED**: Prevented repeated screen recording permission dialogs
+- Better handling of system permission requests
+
+### 🔧 Under the Hood
+- **FIXED**: Resolved Tailwind CSS content pattern performance warning
+- Improved release process with better changelog generation
+- Various documentation improvements including Discord server link
+
 ## [1.0.0-beta.10] - 2025-01-15
 
 ### 🎯 Major Features

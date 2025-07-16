@@ -1336,7 +1336,7 @@ export class ScreencapView extends LitElement {
 
     // Show overlay when not capturing or waiting to start
     return html`
-      <div class.capture-overlay>
+      <div class="capture-overlay">
         <div class="status-message ${this.status}">
           ${
             this.status === 'loading'

@@ -14,12 +14,14 @@ struct AdvancedSettingsView: View {
     private var debugMode = false
     @AppStorage(AppConstants.UserDefaultsKeys.cleanupOnStartup)
     private var cleanupOnStartup = true
-    @AppStorage(AppConstants.UserDefaultsKeys.showInDock)
-    private var showInDock = true
-    @AppStorage(AppConstants.UserDefaultsKeys.repositoryBasePath)
-    private var repositoryBasePath = AppConstants.Defaults.repositoryBasePath
-    @State private var cliInstaller = CLIInstaller()
-    @State private var showingVtConflictAlert = false
+    @AppStorage(AppConstants.UserDefaultsKeys.updateChannel)
+    private var updateChannelRaw = UpdateChannel.stable.rawValue
+
+    @State private var isCheckingForUpdates = false
+
+    var updateChannel: UpdateChannel {
+        UpdateChannel(rawValue: updateChannelRaw) ?? .stable
+    }
 
     var body: some View {
         NavigationStack {
@@ -27,112 +29,50 @@ struct AdvancedSettingsView: View {
                 // Apps preference section
                 TerminalPreferenceSection()
 
-                // Repository section
-                RepositorySettingsSection(repositoryBasePath: $repositoryBasePath)
-
-                // Integration section
-                Section {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text("Install CLI Tool")
-                            Spacer()
-                            ZStack {
-                                // Hidden button to maintain consistent height
-                                Button("Placeholder") {}
-                                    .buttonStyle(.bordered)
-                                    .opacity(0)
-                                    .allowsHitTesting(false)
-
-                                // Actual content
-                                if cliInstaller.isInstalled {
-                                    HStack(spacing: 8) {
-                                        if cliInstaller.isOutdated {
-                                            Image(systemName: "exclamationmark.triangle.fill")
-                                                .foregroundColor(.orange)
-                                            Text("VT update available")
-                                                .foregroundColor(.secondary)
-
-                                            Button("Update") {
-                                                Task {
-                                                    await cliInstaller.install()
-                                                }
-                                            }
-                                            .buttonStyle(.bordered)
-                                            .disabled(cliInstaller.isInstalling)
-                                        } else {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .foregroundColor(.green)
-                                            Text("VT installed")
-                                                .foregroundColor(.secondary)
-
-                                            // Show reinstall button in debug mode
-                                            if debugMode {
-                                                Button(action: {
-                                                    cliInstaller.installCLITool()
-                                                }, label: {
-                                                    Image(systemName: "arrow.clockwise.circle")
-                                                        .font(.system(size: 14))
-                                                })
-                                                .buttonStyle(.plain)
-                                                .foregroundColor(.accentColor)
-                                                .help("Reinstall CLI tool")
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    Button("Install 'vt' Command") {
-                                        Task {
-                                            await cliInstaller.install()
-                                        }
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .disabled(cliInstaller.isInstalling)
-                                }
-                            }
-                        }
-
-                        if let error = cliInstaller.lastError {
-                            Text(error)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                        } else {
-                            HStack(alignment: .center, spacing: 8) {
-                                if cliInstaller.isInstalled {
-                                    Text("The 'vt' command line tool is installed at /usr/local/bin/vt")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                } else {
-                                    Text("Install the 'vt' command line tool to /usr/local/bin for terminal access.")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-
-                                Spacer()
-
-                                Button(action: {
-                                    showingVtConflictAlert = true
-                                }, label: {
-                                    Text("Use a different name")
-                                        .font(.caption)
-                                })
-                                .buttonStyle(.link)
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Integration")
-                        .font(.headline)
-                } footer: {
-                    Text(
-                        "Prefix any terminal command with 'vt' to enable remote control."
-                    )
-                    .font(.caption)
-                    .frame(maxWidth: .infinity)
-                    .multilineTextAlignment(.center)
-                }
-
                 // Window Highlight section
                 WindowHighlightSettingsSection()
+
+                // Updates section
+                Section {
+                    // Update Channel
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Update Channel")
+                            Spacer()
+                            Picker("", selection: updateChannelBinding) {
+                                ForEach(UpdateChannel.allCases) { channel in
+                                    Text(channel.displayName).tag(channel)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                        }
+                        Text(updateChannel.description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    // Check for Updates
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Check for Updates")
+                            Text("Check for new versions of VibeTunnel.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Button("Check Now") {
+                            checkForUpdates()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isCheckingForUpdates)
+                    }
+                } header: {
+                    Text("Updates")
+                        .font(.headline)
+                }
 
                 // Advanced section
                 Section {
@@ -141,19 +81,6 @@ struct AdvancedSettingsView: View {
                         Text("Automatically remove terminated sessions when the app starts.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                    }
-
-                    // Show in Dock
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle("Show in Dock", isOn: showInDockBinding)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Show VibeTunnel icon in the Dock.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text("The dock icon is always displayed when the Settings dialog is visible.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
                     }
 
                     // Debug mode toggle
@@ -172,50 +99,32 @@ struct AdvancedSettingsView: View {
             .scrollContentBackground(.hidden)
             .navigationTitle("Advanced Settings")
         }
-        .onAppear {
-            cliInstaller.checkInstallationStatus()
-        }
-        .alert("Using a Different Command Name", isPresented: $showingVtConflictAlert) {
-            Button("OK") {}
-            Button("Copy to Clipboard") {
-                copyCommandToClipboard()
-            }
-        } message: {
-            Text(vtConflictMessage)
-        }
     }
 
-    private var showInDockBinding: Binding<Bool> {
+    private var updateChannelBinding: Binding<UpdateChannel> {
         Binding(
-            get: { showInDock },
+            get: { updateChannel },
             set: { newValue in
-                showInDock = newValue
-                // Don't change activation policy while settings window is open
-                // The change will be applied when the settings window closes
+                updateChannelRaw = newValue.rawValue
+                // Notify the updater manager about the channel change
+                NotificationCenter.default.post(
+                    name: Notification.Name("UpdateChannelChanged"),
+                    object: nil,
+                    userInfo: ["channel": newValue]
+                )
             }
         )
     }
 
-    private var vtScriptPath: String {
-        if let path = Bundle.main.path(forResource: "vt", ofType: nil) {
-            return path
+    private func checkForUpdates() {
+        isCheckingForUpdates = true
+        NotificationCenter.default.post(name: Notification.Name("checkForUpdates"), object: nil)
+
+        // Reset after a delay
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            isCheckingForUpdates = false
         }
-        return "/Applications/VibeTunnel.app/Contents/Resources/vt"
-    }
-
-    private var vtConflictMessage: String {
-        """
-        You can install the `vt` bash script with a different name. For example:
-
-        cp "\(vtScriptPath)" /usr/local/bin/vtunnel && chmod +x /usr/local/bin/vtunnel
-        """
-    }
-
-    private func copyCommandToClipboard() {
-        let command = "cp \"\(vtScriptPath)\" /usr/local/bin/vtunnel && chmod +x /usr/local/bin/vtunnel"
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(command, forType: .string)
     }
 }
 
@@ -571,61 +480,6 @@ private struct WindowHighlightSettingsSection: View {
             return .default
         default:
             return .default
-        }
-    }
-}
-
-// MARK: - Repository Settings Section
-
-private struct RepositorySettingsSection: View {
-    @Binding var repositoryBasePath: String
-
-    var body: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
-                    TextField("Default base path", text: $repositoryBasePath)
-                        .textFieldStyle(.roundedBorder)
-
-                    Button(action: selectDirectory) {
-                        Image(systemName: "folder")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Choose directory")
-                }
-
-                Text("Base path where VibeTunnel will search for Git repositories to show in the New Session form.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        } header: {
-            Text("Repository Discovery")
-                .font(.headline)
-        } footer: {
-            Text("Git repositories found in this directory will appear in the New Session form for quick access.")
-                .font(.caption)
-                .frame(maxWidth: .infinity)
-                .multilineTextAlignment(.center)
-        }
-    }
-
-    private func selectDirectory() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.directoryURL = URL(fileURLWithPath: NSString(string: repositoryBasePath).expandingTildeInPath)
-
-        if panel.runModal() == .OK, let url = panel.url {
-            let path = url.path
-            let homeDir = NSHomeDirectory()
-            if path.hasPrefix(homeDir) {
-                repositoryBasePath = "~" + path.dropFirst(homeDir.count)
-            } else {
-                repositoryBasePath = path
-            }
         }
     }
 }

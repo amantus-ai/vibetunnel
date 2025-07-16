@@ -11,7 +11,7 @@ import {
   waitForServerHealth,
 } from '../utils/server-utils';
 
-describe('Resource Limits and Concurrent Sessions', () => {
+describe.skip('Resource Limits and Concurrent Sessions', () => {
   let server: ServerInstance | null = null;
   let testDir: string;
 

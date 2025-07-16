@@ -50,6 +50,7 @@ export class SessionHeader extends LitElement {
   @property({ type: String }) currentTheme = 'system';
   @property({ type: Boolean }) keyboardCaptureActive = true;
   @property({ type: Boolean }) isMobile = false;
+  @property({ type: Boolean }) macAppConnected = false;
   @state() private isHovered = false;
 
   connectedCallback() {
@@ -262,18 +263,24 @@ export class SessionHeader extends LitElement {
                 />
               </svg>
             </button>
-            <button
-              class="bg-bg-tertiary border border-border rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0"
-              @click=${() => this.onScreenshare?.()}
-              title="Start Screenshare"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="3" width="20" height="14" rx="2"/>
-                <line x1="8" y1="21" x2="16" y2="21"/>
-                <line x1="12" y1="17" x2="12" y2="21"/>
-                <circle cx="12" cy="10" r="3" fill="currentColor" stroke="none"/>
-              </svg>
-            </button>
+            ${
+              this.macAppConnected
+                ? html`
+                  <button
+                    class="bg-bg-tertiary border border-border rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0"
+                    @click=${() => this.onScreenshare?.()}
+                    title="Start Screenshare"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="2" y="3" width="20" height="14" rx="2"/>
+                      <line x1="8" y1="21" x2="16" y2="21"/>
+                      <line x1="12" y1="17" x2="12" y2="21"/>
+                      <circle cx="12" cy="10" r="3" fill="currentColor" stroke="none"/>
+                    </svg>
+                  </button>
+                `
+                : ''
+            }
             <button
               class="bg-bg-tertiary border border-border rounded-lg px-3 py-2 font-mono text-xs text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0 width-selector-button"
               @click=${() => this.onMaxWidthToggle?.()}
@@ -295,6 +302,7 @@ export class SessionHeader extends LitElement {
               .onOpenSettings=${this.onOpenSettings}
               .onCreateSession=${this.onCreateSession}
               .currentTheme=${this.currentTheme}
+              .macAppConnected=${this.macAppConnected}
             ></mobile-menu>
           </div>
           

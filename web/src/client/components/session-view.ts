@@ -93,6 +93,7 @@ export class SessionView extends LitElement {
   @state() private terminalTheme: TerminalThemeId = 'auto';
   @state() private terminalContainerHeight = '100%';
   @state() private isLandscape = false;
+  @state() private macAppConnected = false;
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
 
@@ -198,6 +199,9 @@ export class SessionView extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.connected = true;
+
+    // Check server status to see if Mac app is connected
+    this.checkServerStatus();
 
     // Check initial orientation
     this.checkOrientation();
@@ -611,6 +615,11 @@ export class SessionView extends LitElement {
   }
 
   private handleScreenshare() {
+    // Only allow screenshare if Mac app is connected
+    if (!this.macAppConnected) {
+      logger.warn('Screenshare requested but Mac app is not connected');
+      return;
+    }
     // Dispatch event to start screenshare
     this.dispatchEvent(
       new CustomEvent('start-screenshare', {
@@ -618,6 +627,23 @@ export class SessionView extends LitElement {
         composed: true,
       })
     );
+  }
+
+  private async checkServerStatus() {
+    try {
+      const response = await fetch('/api/server/status', {
+        headers: authClient.getAuthHeader(),
+      });
+      if (response.ok) {
+        const status = await response.json();
+        this.macAppConnected = status.macAppConnected || false;
+        logger.debug('server status:', status);
+      }
+    } catch (error) {
+      logger.warn('failed to check server status:', error);
+      // Default to not connected if we can't check
+      this.macAppConnected = false;
+    }
   }
 
   private handleOpenSettings() {
@@ -1293,6 +1319,7 @@ export class SessionView extends LitElement {
           .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
           .onScreenshare=${() => this.handleScreenshare()}
           .onOpenSettings=${() => this.handleOpenSettings()}
+          .macAppConnected=${this.macAppConnected}
           @close-width-selector=${() => {
             this.showWidthSelector = false;
             this.customWidth = '';

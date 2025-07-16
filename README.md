@@ -675,6 +675,19 @@ When developing the web interface, you often need to test changes on external de
 - **Firewall**: macOS may prompt to allow incoming connections - click "Allow"
 - **Auto-rebuild**: Changes to the web code are automatically rebuilt, but you need to manually refresh the browser
 
+##### Pasting on Mobile Devices
+
+When using VibeTunnel on mobile browsers (Safari, Chrome), pasting works differently than on desktop:
+
+**To paste on mobile:**
+1. Press the paste button on the keyboard toolbar
+2. A white input box will appear
+3. Long-press inside the white box to bring up the paste menu
+4. Select "Paste" from the menu
+5. The text will be pasted into your terminal session
+
+**Note**: Due to browser security restrictions on non-HTTPS connections, the paste API is limited on mobile devices. The white input box is a workaround that allows clipboard access through the browser's native paste functionality.
+
 #### Future: Hot Module Replacement
 
 For true hot module replacement without manual refresh, see our [Vite migration plan](docs/vite-plan.md) which would provide:

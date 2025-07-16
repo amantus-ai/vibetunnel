@@ -26,6 +26,7 @@ export class MobileMenu extends LitElement {
   @property({ type: Function }) onMaxWidthToggle?: () => void;
   @property({ type: Function }) onOpenSettings?: () => void;
   @property({ type: String }) currentTheme: Theme = 'system';
+  @property({ type: Boolean }) macAppConnected = false;
 
   @state() private showMenu = false;
   @state() private focusedIndex = -1;
@@ -225,6 +226,7 @@ export class MobileMenu extends LitElement {
   }
 
   private renderDropdown() {
+    let menuItemIndex = 0;
     return html`
       <div 
         class="absolute right-0 top-full mt-2 bg-surface border border-base rounded-lg shadow-xl py-1 min-w-[200px]"
@@ -233,7 +235,7 @@ export class MobileMenu extends LitElement {
         
         <!-- New Session -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 0 ? 'bg-secondary text-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onCreateSession)}
           data-testid="mobile-new-session"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -248,7 +250,7 @@ export class MobileMenu extends LitElement {
         
         <!-- File Browser -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 1 ? 'bg-secondary text-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onOpenFileBrowser)}
           data-testid="mobile-file-browser"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -259,25 +261,31 @@ export class MobileMenu extends LitElement {
           Browse Files
         </button>
         
-        <!-- Screenshare -->
-        <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 2 ? 'bg-secondary text-primary' : ''}"
-          @click=${() => this.handleAction(this.onScreenshare)}
-          data-testid="mobile-screenshare"
-          tabindex="${this.showMenu ? '0' : '-1'}"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="3" width="20" height="14" rx="2"/>
-            <line x1="8" y1="21" x2="16" y2="21"/>
-            <line x1="12" y1="17" x2="12" y2="21"/>
-            <circle cx="12" cy="10" r="3" fill="currentColor" stroke="none"/>
-          </svg>
-          Screenshare
-        </button>
+        <!-- Screenshare - only show if Mac app is connected -->
+        ${
+          this.macAppConnected
+            ? html`
+              <button
+                class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
+                @click=${() => this.handleAction(this.onScreenshare)}
+                data-testid="mobile-screenshare"
+                tabindex="${this.showMenu ? '0' : '-1'}"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="3" width="20" height="14" rx="2"/>
+                  <line x1="8" y1="21" x2="16" y2="21"/>
+                  <line x1="12" y1="17" x2="12" y2="21"/>
+                  <circle cx="12" cy="10" r="3" fill="currentColor" stroke="none"/>
+                </svg>
+                Screenshare
+              </button>
+            `
+            : ''
+        }
         
         <!-- Width Settings -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 3 ? 'bg-secondary text-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onMaxWidthToggle)}
           data-testid="mobile-width-settings"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -290,7 +298,7 @@ export class MobileMenu extends LitElement {
         
         <!-- Theme Toggle -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 4 ? 'bg-secondary text-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleThemeChange()}
           data-testid="mobile-theme-toggle"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -301,7 +309,7 @@ export class MobileMenu extends LitElement {
         
         <!-- Settings -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === 5 ? 'bg-secondary text-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onOpenSettings)}
           data-testid="mobile-settings"
           tabindex="${this.showMenu ? '0' : '-1'}"

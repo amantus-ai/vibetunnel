@@ -65,6 +65,8 @@ enum ControlProtocol {
     typealias SystemReadyMessage = ControlMessage<SystemReadyEvent>
     typealias SystemPingRequestMessage = ControlMessage<SystemPingRequest>
     typealias SystemPingResponseMessage = ControlMessage<SystemPingResponse>
+    typealias RepositoryPathUpdateRequestMessage = ControlMessage<RepositoryPathUpdateRequest>
+    typealias RepositoryPathUpdateResponseMessage = ControlMessage<RepositoryPathUpdateResponse>
 
     // MARK: - Convenience builders for specific message types
 
@@ -146,6 +148,37 @@ enum ControlProtocol {
             category: .system,
             action: "ping",
             payload: SystemPingResponse()
+        )
+    }
+
+    static func repositoryPathUpdateRequest(path: String) -> RepositoryPathUpdateRequestMessage {
+        ControlMessage(
+            type: .request,
+            category: .system,
+            action: "repository-path-update",
+            payload: RepositoryPathUpdateRequest(path: path)
+        )
+    }
+
+    static func repositoryPathUpdateResponse(
+        to request: RepositoryPathUpdateRequestMessage,
+        success: Bool,
+        path: String? = nil,
+        error: String? = nil
+    )
+        -> RepositoryPathUpdateResponseMessage
+    {
+        ControlMessage(
+            id: request.id,
+            type: .response,
+            category: .system,
+            action: "repository-path-update",
+            payload: RepositoryPathUpdateResponse(
+                success: success,
+                path: path,
+                error: error
+            ),
+            error: error
         )
     }
 

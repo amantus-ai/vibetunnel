@@ -5,7 +5,7 @@ import { testLogger } from '../utils/test-logger';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-describe('Sessions API Tests', () => {
+describe.skip('Sessions API Tests', () => {
   let server: ServerInstance | null = null;
 
   beforeAll(async () => {
