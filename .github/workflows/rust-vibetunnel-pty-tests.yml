@@ -81,6 +81,7 @@ jobs:
     defaults:
       run:
         shell: bash
+        working-directory: web/vibetunnel-pty
     steps:
       - uses: actions/checkout@v4
       
@@ -90,7 +91,9 @@ jobs:
           components: llvm-tools-preview
       
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
       
       - name: Generate code coverage
         working-directory: web/vibetunnel-pty
@@ -110,6 +113,7 @@ jobs:
     defaults:
       run:
         shell: bash
+        working-directory: web/vibetunnel-pty
     steps:
       - uses: actions/checkout@v4
       
@@ -128,6 +132,7 @@ jobs:
     defaults:
       run:
         shell: bash
+        working-directory: web/vibetunnel-pty
     steps:
       - uses: actions/checkout@v4
       

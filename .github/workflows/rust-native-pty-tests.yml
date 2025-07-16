@@ -103,6 +103,7 @@ jobs:
     defaults:
       run:
         shell: bash
+        working-directory: web/native-pty
     steps:
       - uses: actions/checkout@v4
       
@@ -147,6 +148,7 @@ jobs:
     defaults:
       run:
         shell: bash
+        working-directory: web/native-pty
     steps:
       - uses: actions/checkout@v4
       
