@@ -6,7 +6,7 @@ mod tests {
     fn create_test_session(id: &str) -> SessionInfo {
         SessionInfo {
             id: id.to_string(),
-            name: format!("Test Session {}", id),
+            name: format!("Test Session {id}"),
             command: vec!["/bin/bash".to_string()],
             pid: Some(12345),
             created_at: Utc::now(),
@@ -254,7 +254,7 @@ mod tests {
     #[test]
     fn test_session_debug_format() {
         let session = create_test_session("debug-test");
-        let debug_str = format!("{:?}", session);
+        let debug_str = format!("{session:?}");
 
         // Verify Debug trait includes key fields
         assert!(debug_str.contains("SessionInfo"));

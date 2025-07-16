@@ -72,7 +72,7 @@ impl std::str::FromStr for TitleMode {
             "filter" => Ok(TitleMode::Filter),
             "static" => Ok(TitleMode::Static),
             "dynamic" => Ok(TitleMode::Dynamic),
-            _ => Err(format!("Invalid title mode: {}", s)),
+            _ => Err(format!("Invalid title mode: {s}")),
         }
     }
 }
