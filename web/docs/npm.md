@@ -75,6 +75,14 @@ Note: Node version numbers map to internal versions (v115=Node 20, v127=Node 22,
 
 ## Build Process
 
+### Clean Build Approach
+The npm build process uses a clean distribution directory approach that follows npm best practices:
+
+1. **Creates dist-npm/ directory** - Separate from source files
+2. **Generates clean package.json** - Only production fields, no dev dependencies
+3. **Bundles dependencies** - node-pty is bundled directly, no symlinks needed
+4. **Preserves source integrity** - Never modifies source package.json
+
 ### Unified Build (Multi-Platform by Default)
 ```bash
 npm run build:npm
@@ -83,6 +91,7 @@ npm run build:npm
 - Builds native modules for all supported platforms (macOS x64/arm64, Linux x64/arm64)
 - Creates comprehensive prebuilds for zero-dependency installation
 - Generates npm README optimized for package distribution
+- Creates clean dist-npm/ directory for packaging
 
 ### Build Options
 The unified build script supports flexible targeting:
@@ -113,31 +122,31 @@ The build will fail with helpful error messages if Docker is not available.
 
 ### For End Users
 1. **Install package**: `npm install -g vibetunnel`
-2. **Prebuild-install runs**: Attempts to download prebuilt binaries
-3. **Fallback compilation**: If prebuilds fail, compiles from source
-4. **Result**: Working VibeTunnel installation
+2. **Postinstall script runs**: Extracts appropriate prebuilt binaries
+3. **No compilation needed**: Prebuilds included for all supported platforms
+4. **Result**: Working VibeTunnel installation without build tools
+
+### Key Improvements
+- **No symlinks**: node-pty is bundled directly, avoiding postinstall symlink issues
+- **Clean package structure**: Only production files in the npm package
+- **Reliable installation**: Works in restricted environments (Docker, CI)
 
 ### Installation Scripts
-The package uses a multi-stage installation approach:
+The package uses a simplified postinstall approach:
 
 ```json
 {
   "scripts": {
-    "install": "prebuild-install || node scripts/postinstall-npm.js"
+    "postinstall": "node scripts/postinstall.js"
   }
 }
 ```
 
-#### Stage 1: prebuild-install
-- Downloads appropriate prebuilt binary for current platform/Node version
-- Installs to standard locations
-- **Success**: Installation complete, no compilation needed
-- **Failure**: Proceeds to Stage 2
-
-#### Stage 2: postinstall-npm.js
-- **node-pty**: Essential module, installation fails if build fails
-- **authenticate-pam**: Optional module, warns if build fails
-- Provides helpful error messages about required build tools
+#### Postinstall Process
+- **Prebuild extraction**: Extracts the appropriate prebuild for the current platform
+- **No downloads**: All prebuilds are included in the package
+- **No compilation**: Everything is pre-built, no build tools required
+- **Platform detection**: Automatically selects correct binary based on OS and architecture
 
 ## Platform-Specific Details
 
