@@ -1,0 +1,47 @@
+# Clean test for VibeTunnel npm package installation
+FROM node:24-slim
+
+# Install build essentials and dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3 \
+    make \
+    g++ \
+    libpam0g-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create test directory
+WORKDIR /test
+
+# Copy the npm package
+COPY vibetunnel-*.tgz ./
+
+# Debug: Show package contents before installation
+RUN echo "=== Package contents ===" && \
+    tar -tzf vibetunnel-*.tgz | head -20
+
+# Install the package globally with verbose output
+RUN echo "=== Installing package ===" && \
+    npm install -g ./vibetunnel-*.tgz --verbose
+
+# Debug: Check what was installed
+RUN echo "=== Checking installation ===" && \
+    ls -la /usr/local/lib/node_modules/vibetunnel/ && \
+    echo "=== Checking node_modules ===" && \
+    ls -la /usr/local/lib/node_modules/vibetunnel/node_modules/ || echo "No node_modules found" && \
+    echo "=== Checking bin links ===" && \
+    ls -la /usr/local/bin/vibetunnel /usr/local/bin/vt && \
+    echo "=== Package.json contents ===" && \
+    cat /usr/local/lib/node_modules/vibetunnel/package.json
+
+# Test basic commands
+RUN echo "=== Testing vibetunnel --version ===" && \
+    vibetunnel --version
+
+# Test server startup
+RUN echo "=== Testing server startup ===" && \
+    timeout 5s vibetunnel --no-auth --port 4020 || true
+
+# Final test with curl
+CMD ["bash", "-c", "vibetunnel --no-auth --port 4020 & sleep 3 && curl -f http://localhost:4020 && echo 'SUCCESS: Server is running!' || echo 'FAILED: Server not accessible'"]

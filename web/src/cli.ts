@@ -56,7 +56,9 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Only execute if this is the main module (or in SEA/bundled context where require.main is undefined)
 // In bundled builds, both module.parent and require.main are undefined
-const isMainModule = !module.parent && (require.main === module || require.main === undefined);
+// In npm package context, always execute since this is a CLI bundle
+const isMainModule = !module.parent || require.main === undefined || 
+  (require.main && require.main.filename && require.main.filename.includes('cli.js'));
 
 if (isMainModule) {
   if (process.argv[2] === 'version') {
