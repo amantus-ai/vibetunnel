@@ -26,12 +26,14 @@ const DIST_DIR = path.join(__dirname, '..', 'dist-npm');
 const ROOT_DIR = path.join(__dirname, '..');
 
 // Map Node.js versions to ABI versions
+// ABI versions from: https://nodejs.org/api/n-api.html#node-api-version-matrix
+// These map to the internal V8 ABI versions used by prebuild
 function getNodeAbi(nodeVersion) {
   const abiMap = {
-    '20': '115',
-    '22': '127',
-    '23': '131',
-    '24': '134'
+    '20': '115', // Node.js 20.x uses ABI 115
+    '22': '127', // Node.js 22.x uses ABI 127
+    '23': '131', // Node.js 23.x uses ABI 131
+    '24': '134'  // Node.js 24.x uses ABI 134
   };
   return abiMap[nodeVersion];
 }
@@ -44,6 +46,20 @@ const platformFilter = args.find(arg => arg.startsWith('--platform'))?.split('='
                       (args.includes('--platform') ? args[args.indexOf('--platform') + 1] : null);
 const archFilter = args.find(arg => arg.startsWith('--arch'))?.split('=')[1] || 
                   (args.includes('--arch') ? args[args.indexOf('--arch') + 1] : null);
+
+// Validate platform and architecture arguments
+const VALID_PLATFORMS = ['darwin', 'linux'];
+const VALID_ARCHS = ['x64', 'arm64'];
+
+if (platformFilter && !VALID_PLATFORMS.includes(platformFilter)) {
+  console.error(`❌ Invalid platform: ${platformFilter}. Valid options: ${VALID_PLATFORMS.join(', ')}`);
+  process.exit(1);
+}
+
+if (archFilter && !VALID_ARCHS.includes(archFilter)) {
+  console.error(`❌ Invalid arch: ${archFilter}. Valid options: ${VALID_ARCHS.join(', ')}`);
+  process.exit(1);
+}
 
 let PLATFORMS = ALL_PLATFORMS;
 
