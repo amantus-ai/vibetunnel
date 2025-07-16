@@ -10,6 +10,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { WebSocket, WebSocketServer } from 'ws';
+import { desktopCaptureService } from './capture/desktop-capture-service.js';
 import type { AuthenticatedRequest } from './middleware/auth.js';
 import { createAuthMiddleware } from './middleware/auth.js';
 import { PtyManager } from './pty/index.js';
@@ -22,6 +23,7 @@ import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createRepositoryRoutes } from './routes/repositories.js';
 import { createScreencapRoutes, initializeScreencap } from './routes/screencap.js';
+import { createServerScreencapRoutes } from './routes/server-screencap.js';
 import { createSessionRoutes } from './routes/sessions.js';
 import { createWebRTCConfigRouter } from './routes/webrtc-config.js';
 import { WebSocketInputHandler } from './routes/websocket-input.js';
@@ -770,6 +772,10 @@ export async function createApp(): Promise<AppInstance> {
   app.use('/', createScreencapRoutes());
   logger.debug('Mounted screencap routes');
 
+  // Mount server screencap routes
+  app.use('/api/server-screencap', createServerScreencapRoutes());
+  logger.debug('Mounted server screencap routes');
+
   // WebRTC configuration route
   app.use('/api', createWebRTCConfigRouter());
   logger.debug('Mounted WebRTC config routes');
@@ -838,7 +844,8 @@ export async function createApp(): Promise<AppInstance> {
       parsedUrl.pathname !== '/buffers' &&
       parsedUrl.pathname !== '/ws/input' &&
       parsedUrl.pathname !== '/ws/screencap-signal' &&
-      parsedUrl.pathname !== '/ws/config'
+      parsedUrl.pathname !== '/ws/config' &&
+      parsedUrl.pathname !== '/ws/server-capture'
     ) {
       socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
       socket.destroy();
@@ -1075,6 +1082,46 @@ export async function createApp(): Promise<AppInstance> {
         logger.error('Config WebSocket error:', error);
         configWebSocketClients.delete(ws);
       });
+    } else if (pathname === '/ws/server-capture') {
+      logger.log('🎥 Handling server capture WebSocket connection');
+      // Handle server capture streaming
+      const sessionId = searchParams?.get('sessionId');
+
+      if (!sessionId) {
+        logger.error('Server capture WebSocket connection missing sessionId parameter');
+        ws.close();
+        return;
+      }
+
+      // Handle async operations for server capture
+      (async () => {
+        try {
+          // Import stream handler
+          const { streamHandler } = await import('./capture/stream-handler.js');
+          const clientId = `client-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+          // Get session to start streaming
+          const session = await desktopCaptureService.getSession(sessionId);
+          if (!session) {
+            logger.error(`Session ${sessionId} not found for streaming`);
+            ws.close();
+            return;
+          }
+
+          // Add client to stream handler
+          streamHandler.addClient(clientId, ws, sessionId);
+
+          // Start streaming if capture is available
+          if (session.captureStream) {
+            streamHandler.streamToSession(sessionId, session);
+          }
+
+          logger.log(`Client ${clientId} connected to server capture session ${sessionId}`);
+        } catch (error) {
+          logger.error('Failed to handle server capture WebSocket:', error);
+          ws.close();
+        }
+      })();
     } else {
       logger.error(`❌ Unknown WebSocket path: ${pathname}`);
       ws.close();
