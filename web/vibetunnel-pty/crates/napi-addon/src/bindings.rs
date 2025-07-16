@@ -211,8 +211,7 @@ impl NativePty {
         let tsfn: ThreadsafeFunction<Vec<u8>, ErrorStrategy::Fatal> = callback
             .create_threadsafe_function(0, |ctx| {
                 // Create buffer from Vec<u8> data
-                let buffer = ctx.env.create_buffer_with_data(ctx.value)
-                    .map(|b| b.into_raw())?;
+                let buffer = ctx.env.create_buffer_with_data(ctx.value).map(|b| b.into_raw())?;
                 Ok(vec![buffer])
             })?;
 
@@ -227,16 +226,16 @@ impl NativePty {
         if reader_thread.is_none() {
             let session_id = self.session_id.clone();
             let data_callback = Arc::clone(&self.data_callback);
-            
+
             // Spawn reader thread
             let handle = thread::spawn(move || {
                 // Get the reader from the PTY handle
                 let mut buffer = vec![0u8; 4096];
-                
+
                 loop {
                     // Sleep briefly to avoid busy-waiting
                     thread::sleep(std::time::Duration::from_millis(10));
-                    
+
                     // Try to get the session's reader
                     let read_result = {
                         let mut manager = PTY_MANAGER.lock().unwrap();
@@ -274,7 +273,7 @@ impl NativePty {
                     }
                 }
             });
-            
+
             *reader_thread = Some(handle);
         }
 
