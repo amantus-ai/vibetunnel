@@ -1276,11 +1276,17 @@ final class WebRTCManager: NSObject {
                     // WebRTC calls completion handlers on its signaling thread.
                     // We must dispatch to main thread since WebRTCManager is @MainActor
                     if let error {
-                        continuation.resume(throwing: error)
+                        Task { @MainActor in
+                            continuation.resume(throwing: error)
+                        }
                     } else if let offer {
-                        continuation.resume(returning: offer)
+                        Task { @MainActor in
+                            continuation.resume(returning: offer)
+                        }
                     } else {
-                        continuation.resume(throwing: WebRTCError.failedToCreatePeerConnection)
+                        Task { @MainActor in
+                            continuation.resume(throwing: WebRTCError.failedToCreatePeerConnection)
+                        }
                     }
                 }
             }
@@ -1296,9 +1302,13 @@ final class WebRTCManager: NSObject {
                     // WebRTC calls completion handlers on its signaling thread.
                     // We must dispatch to main thread since WebRTCManager is @MainActor
                     if let error {
-                        continuation.resume(throwing: error)
+                        Task { @MainActor in
+                            continuation.resume(throwing: error)
+                        }
                     } else {
-                        continuation.resume()
+                        Task { @MainActor in
+                            continuation.resume()
+                        }
                     }
                 }
             }
@@ -1327,9 +1337,13 @@ final class WebRTCManager: NSObject {
                     // WebRTC calls completion handlers on its signaling thread.
                     // We must dispatch to main thread since WebRTCManager is @MainActor
                     if let error {
-                        continuation.resume(throwing: error)
+                        Task { @MainActor in
+                            continuation.resume(throwing: error)
+                        }
                     } else {
-                        continuation.resume()
+                        Task { @MainActor in
+                            continuation.resume()
+                        }
                     }
                 }
             }
