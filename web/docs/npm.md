@@ -41,11 +41,12 @@ VibeTunnel requires two native modules:
 - **Dependencies**: None (vendored implementation)
 
 ### 2. authenticate-pam (Authentication)
-- **Purpose**: PAM (Pluggable Authentication Modules) integration
+- **Purpose**: PAM (Pluggable Authentication Modules) integration for system authentication
 - **Components**:
   - `authenticate_pam.node`: Node.js addon for system authentication
-- **Platforms**: Linux primarily, macOS for compatibility
+- **Platforms**: Both macOS and Linux
 - **Dependencies**: System PAM libraries
+- **Note**: While macOS uses different authentication mechanisms internally (OpenDirectory), VibeTunnel attempts PAM authentication on both platforms as a fallback after SSH key authentication
 
 ## Prebuild System
 
@@ -55,7 +56,9 @@ We use `prebuild` and `prebuild-install` to provide precompiled native modules, 
 ### Coverage
 - **Node.js versions**: 20, 22, 23, 24
 - **Platforms**: macOS (x64, arm64), Linux (x64, arm64)
-- **Total prebuilds**: 32 binaries (16 per native module)
+- **Total prebuilds**: 24 binaries
+  - node-pty: 16 binaries (macOS and Linux, all architectures)
+  - authenticate-pam: 8 binaries (Linux only - macOS builds may fail due to PAM differences)
 
 ### Prebuild Files
 ```
@@ -64,11 +67,9 @@ prebuilds/
 ├── node-pty-v1.0.0-node-v115-darwin-x64.tar.gz
 ├── node-pty-v1.0.0-node-v115-linux-arm64.tar.gz
 ├── node-pty-v1.0.0-node-v115-linux-x64.tar.gz
-├── authenticate-pam-v1.0.5-node-v115-darwin-arm64.tar.gz
-├── authenticate-pam-v1.0.5-node-v115-darwin-x64.tar.gz
 ├── authenticate-pam-v1.0.5-node-v115-linux-arm64.tar.gz
 ├── authenticate-pam-v1.0.5-node-v115-linux-x64.tar.gz
-└── ... (similar for node versions 22, 23, 24)
+└── ... (similar for node versions 22, 23, 24, Linux only)
 ```
 
 Note: Node version numbers map to internal versions (v115=Node 20, v127=Node 22, v131=Node 23, v134=Node 24)
@@ -151,15 +152,16 @@ The package uses a simplified postinstall approach:
 ## Platform-Specific Details
 
 ### macOS
-- **spawn-helper**: Additional C binary needed for proper PTY operations
-- **Built during install**: spawn-helper compiles via node-gyp when needed
+- **spawn-helper**: Additional C binary needed for proper PTY operations (now prebuilt as universal binary)
+- **Authentication**: Attempts PAM authentication but may fall back to environment variables or SSH keys
 - **Architecture**: Supports both Intel (x64) and Apple Silicon (arm64)
-- **Build tools**: Requires Xcode Command Line Tools for source compilation
+- **Build tools**: Not required with prebuilds; Xcode Command Line Tools only needed for source compilation fallback
 
 ### Linux
-- **PAM libraries**: Requires `libpam0g-dev` for authenticate-pam compilation
+- **PAM authentication**: Full support via authenticate-pam module
+- **PAM libraries**: Requires `libpam0g-dev` for authenticate-pam compilation from source
 - **spawn-helper**: Not used on Linux (macOS-only)
-- **Build tools**: Requires `build-essential` package for source compilation
+- **Build tools**: Not required with prebuilds; `build-essential` only needed for source compilation fallback
 
 ### Docker Build Environment
 Linux prebuilds are created using Docker with:
