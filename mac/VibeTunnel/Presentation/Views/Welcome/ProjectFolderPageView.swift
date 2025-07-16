@@ -21,6 +21,8 @@ struct ProjectFolderPageView: View {
 
     var body: some View {
         VStack(spacing: 16) {
+            Spacer()
+            
             // Title and description
             VStack(spacing: 8) {
                 Text("Choose Your Project Folder")
@@ -92,7 +94,7 @@ struct ProjectFolderPageView: View {
                     .foregroundColor(.orange)
                     .frame(width: 14)
 
-                Text("You can change this later in Settings → Application → Repository Base Path")
+                Text("You can change this later in Settings → Application → Repository")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.leading)
@@ -100,6 +102,8 @@ struct ProjectFolderPageView: View {
             }
             .frame(maxWidth: 400)
             .padding(.top, 8)
+            
+            Spacer()
         }
         .padding(.horizontal, 30)
         .onAppear {
