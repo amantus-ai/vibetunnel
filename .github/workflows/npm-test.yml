@@ -114,8 +114,10 @@ jobs:
           
           # Test API endpoint
           RESPONSE=$(curl -s http://localhost:4020/api/sessions)
-          if echo "$RESPONSE" | grep -q "sessions"; then
+          # Check if response is an array (either empty [] or with sessions)
+          if echo "$RESPONSE" | grep -E '^\[.*\]$' > /dev/null; then
             echo "✅ API is responding correctly"
+            echo "Response: $RESPONSE"
           else
             echo "❌ API not responding correctly"
             echo "Response: $RESPONSE"
