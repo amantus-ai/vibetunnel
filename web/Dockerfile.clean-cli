@@ -1,0 +1,38 @@
+FROM node:20-slim
+
+# Install build tools
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3 \
+    make \
+    g++ \
+    libpam0g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /test
+COPY vibetunnel-1.0.0-beta.10.tgz .
+
+# Install and debug
+RUN npm install -g vibetunnel-1.0.0-beta.10.tgz && \
+    echo "=== Installation complete ===" && \
+    echo && \
+    echo "=== CLI location ===" && \
+    which vibetunnel && \
+    ls -la $(which vibetunnel) && \
+    echo && \
+    echo "=== CLI content ===" && \
+    head -10 $(which vibetunnel) && \
+    echo && \
+    echo "=== Checking lib/cli.js ===" && \
+    cd $(npm root -g)/vibetunnel && \
+    ls -la lib/ && \
+    echo && \
+    echo "=== cli.js content ===" && \
+    cat lib/cli.js && \
+    echo && \
+    echo "=== Testing direct execution ===" && \
+    node lib/vibetunnel-cli --version 2>&1 || echo "Direct execution failed" && \
+    echo && \
+    echo "=== Testing via wrapper ===" && \
+    node lib/cli.js --version 2>&1 || echo "Wrapper execution failed"
+

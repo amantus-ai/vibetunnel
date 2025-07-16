@@ -1,0 +1,48 @@
+FROM node:20-slim
+
+# Install build tools and debug utilities
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3 \
+    make \
+    g++ \
+    libpam0g-dev \
+    curl \
+    netcat-traditional \
+    lsof \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /test
+COPY vibetunnel-1.0.0-beta.10.tgz .
+
+# Install
+RUN npm install -g vibetunnel-1.0.0-beta.10.tgz
+
+# Create test script
+RUN echo '#!/bin/bash' > /test.sh && \
+    echo 'set -x' >> /test.sh && \
+    echo '' >> /test.sh && \
+    echo 'echo "=== Starting server with detailed logging ===="' >> /test.sh && \
+    echo 'export NODE_ENV=development' >> /test.sh && \
+    echo 'export VIBETUNNEL_DEBUG=1' >> /test.sh && \
+    echo 'export VIBETUNNEL_VERBOSITY=debug' >> /test.sh && \
+    echo '' >> /test.sh && \
+    echo 'vibetunnel --port 4020 --no-auth > /server.log 2>&1 &' >> /test.sh && \
+    echo 'SERVER_PID=$!' >> /test.sh && \
+    echo '' >> /test.sh && \
+    echo 'echo "Server started with PID: $SERVER_PID"' >> /test.sh && \
+    echo 'sleep 10' >> /test.sh && \
+    echo '' >> /test.sh && \
+    echo 'echo "=== Port check with lsof ===="' >> /test.sh && \
+    echo 'lsof -i :4020 || echo "No process on port 4020"' >> /test.sh && \
+    echo '' >> /test.sh && \
+    echo 'echo "=== Testing with netcat ===="' >> /test.sh && \
+    echo 'echo -e "GET /api/health HTTP/1.1\r\nHost: localhost\r\n\r\n" | nc localhost 4020 || echo "Netcat failed"' >> /test.sh && \
+    echo '' >> /test.sh && \
+    echo 'echo "=== Server logs ===="' >> /test.sh && \
+    echo 'cat /server.log | tail -100' >> /test.sh && \
+    echo '' >> /test.sh && \
+    echo 'kill $SERVER_PID 2>/dev/null || true' >> /test.sh && \
+    chmod +x /test.sh
+
+CMD ["/test.sh"]

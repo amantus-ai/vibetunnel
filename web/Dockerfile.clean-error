@@ -1,0 +1,24 @@
+FROM node:20-slim
+
+# Install build tools
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3 \
+    make \
+    g++ \
+    libpam0g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /test
+COPY vibetunnel-1.0.0-beta.10.tgz .
+
+# Install
+RUN npm install -g vibetunnel-1.0.0-beta.10.tgz
+
+# Test execution with error catching
+CMD cd $(npm root -g)/vibetunnel && \
+    echo "=== Starting server with error output ===" && \
+    export NODE_ENV=development && \
+    export VIBETUNNEL_DEBUG=1 && \
+    export VIBETUNNEL_VERBOSITY=debug && \
+    node lib/vibetunnel-cli --port 4020 --no-auth 2>&1 || echo "Server exited with code: $?"

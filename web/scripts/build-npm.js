@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Unified npm build script for VibeTunnel
+ * Clean npm build script for VibeTunnel
+ * Uses a separate dist-npm directory with its own package.json
  * Builds for all platforms by default with complete prebuild support
  * 
  * Options:
@@ -11,7 +12,7 @@
  *   --arch <arch>    Build for specific architecture (x64, arm64)
  */
 
-const { execSync, spawn } = require('child_process');
+const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -20,6 +21,9 @@ const ALL_PLATFORMS = {
   darwin: ['x64', 'arm64'],
   linux: ['x64', 'arm64']
 };
+
+const DIST_DIR = path.join(__dirname, '..', 'dist-npm');
+const ROOT_DIR = path.join(__dirname, '..');
 
 // Map Node.js versions to ABI versions
 function getNodeAbi(nodeVersion) {
@@ -61,7 +65,7 @@ if (currentOnly) {
   }
 }
 
-console.log('🚀 Building VibeTunnel for npm distribution...\n');
+console.log('🚀 Building VibeTunnel for npm distribution (clean approach)...\n');
 
 if (currentOnly) {
   console.log(`📦 Legacy mode: Building for ${process.platform}/${process.arch} only\n`);
@@ -347,40 +351,20 @@ function mergePrebuilds() {
 
 // Main build process
 async function main() {
-  // Step 0: Temporarily modify package.json for npm packaging
-  const packageJsonPath = path.join(__dirname, '..', 'package.json');
-  const originalPackageJson = fs.readFileSync(packageJsonPath, 'utf8');
-  const packageJson = JSON.parse(originalPackageJson);
+  // Step 0: Clean previous build
+  console.log('0️⃣ Cleaning previous build...');
+  if (fs.existsSync(DIST_DIR)) {
+    fs.rmSync(DIST_DIR, { recursive: true });
+  }
+  fs.mkdirSync(DIST_DIR, { recursive: true });
   
-  // Store original scripts
-  const originalScripts = { ...packageJson.scripts };
-  
-  // Update postinstall to use the npm-specific script
-  packageJson.scripts.postinstall = 'node scripts/postinstall-npm.js';
-  delete packageJson.scripts.preinstall;
-  delete packageJson.scripts.install;
-  
-  // Remove prebuild-install dependency (we handle prebuilds ourselves)
-  delete packageJson.dependencies['prebuild-install'];
-  
-  // Remove node-pty from dependencies (it's bundled directly)
-  delete packageJson.dependencies['node-pty'];
-  
-  // Write modified package.json
-  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
-  
-  // Restore original package.json on exit
-  const restorePackageJson = () => {
-    fs.writeFileSync(packageJsonPath, originalPackageJson);
-  };
-  process.on('exit', restorePackageJson);
-  process.on('SIGINT', () => { restorePackageJson(); process.exit(1); });
-  process.on('SIGTERM', () => { restorePackageJson(); process.exit(1); });
-  
-  // Step 1: Standard build process (includes spawn-helper)
-  console.log('1️⃣ Running standard build process...\n');
+  // Step 1: Standard build process
+  console.log('\n1️⃣ Running standard build process...\n');
   try {
-    execSync('node scripts/build.js', { stdio: 'inherit' });
+    execSync('npm run build', { 
+      cwd: ROOT_DIR, 
+      stdio: 'inherit' 
+    });
     console.log('✅ Standard build completed\n');
   } catch (error) {
     console.error('❌ Standard build failed:', error.message);
@@ -410,25 +394,226 @@ async function main() {
     mergePrebuilds();
   }
   
-  // Step 3: Ensure node-pty is built for current platform
-  console.log('3️⃣ Ensuring node-pty is built for current platform...\n');
-  const nodePtyBuild = path.join(__dirname, '..', 'node-pty', 'build', 'Release', 'pty.node');
-  if (!fs.existsSync(nodePtyBuild)) {
-    console.log('  Building node-pty for current platform...');
-    const nodePtyDir = path.join(__dirname, '..', 'node-pty');
-    try {
-      execSync('npm run install', { cwd: nodePtyDir, stdio: 'inherit' });
-      console.log('✅ node-pty built successfully');
-    } catch (error) {
-      console.error('❌ Failed to build node-pty:', error.message);
-      process.exit(1);
+  // Step 3: Copy necessary files to dist-npm
+  console.log('3️⃣ Copying files to dist-npm...\n');
+  
+  const filesToCopy = [
+    // Compiled CLI
+    { src: 'dist/vibetunnel-cli', dest: 'lib/cli.js' },
+    { src: 'dist/tsconfig.server.tsbuildinfo', dest: 'lib/tsconfig.server.tsbuildinfo' },
+    
+    // Bin scripts
+    { src: 'bin', dest: 'bin' },
+    
+    // Public assets
+    { src: 'public', dest: 'public' },
+    
+    // Node-pty module (bundled)
+    { src: 'node-pty/lib', dest: 'node-pty/lib' },
+    { src: 'node-pty/src', dest: 'node-pty/src' },
+    { src: 'node-pty/binding.gyp', dest: 'node-pty/binding.gyp' },
+    { src: 'node-pty/package.json', dest: 'node-pty/package.json' },
+    { src: 'node-pty/README.md', dest: 'node-pty/README.md' },
+    
+    // Prebuilds
+    { src: 'prebuilds', dest: 'prebuilds' },
+    
+    // Scripts
+    { src: 'scripts/postinstall-npm.js', dest: 'scripts/postinstall.js' },
+    { src: 'scripts/node-pty-plugin.js', dest: 'scripts/node-pty-plugin.js' }
+  ];
+  
+  function copyRecursive(src, dest) {
+    const srcPath = path.join(ROOT_DIR, src);
+    const destPath = path.join(DIST_DIR, dest);
+    
+    if (!fs.existsSync(srcPath)) {
+      console.warn(`  ⚠️  Source not found: ${src}`);
+      return;
     }
-  } else {
-    console.log('✅ node-pty already built');
+    
+    const destDir = path.dirname(destPath);
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+    
+    const stats = fs.statSync(srcPath);
+    if (stats.isDirectory()) {
+      fs.cpSync(srcPath, destPath, { recursive: true });
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+    
+    console.log(`  ✓ ${src} → ${dest}`);
   }
   
-  // Step 4: Create package-specific README
-  console.log('\n4️⃣ Creating npm package README...\n');
+  filesToCopy.forEach(({ src, dest }) => {
+    copyRecursive(src, dest);
+  });
+  
+  // Step 4: Create clean package.json for npm
+  console.log('\n4️⃣ Creating clean package.json...\n');
+  
+  const sourcePackageJson = JSON.parse(
+    fs.readFileSync(path.join(ROOT_DIR, 'package.json'), 'utf8')
+  );
+  
+  // Extract only necessary fields for npm package
+  const npmPackageJson = {
+    name: sourcePackageJson.name,
+    version: sourcePackageJson.version,
+    description: sourcePackageJson.description,
+    keywords: sourcePackageJson.keywords,
+    author: sourcePackageJson.author,
+    license: sourcePackageJson.license,
+    homepage: sourcePackageJson.homepage,
+    repository: sourcePackageJson.repository,
+    bugs: sourcePackageJson.bugs,
+    
+    // Main entry point
+    main: 'lib/cli.js',
+    
+    // Bin scripts
+    bin: {
+      vibetunnel: './bin/vibetunnel',
+      vt: './bin/vt'
+    },
+    
+    // Only runtime dependencies
+    dependencies: Object.fromEntries(
+      Object.entries(sourcePackageJson.dependencies)
+        .filter(([key]) => !key.includes('node-pty')) // Exclude node-pty, it's bundled
+    ),
+    
+    // Minimal scripts
+    scripts: {
+      postinstall: 'node scripts/postinstall.js'
+    },
+    
+    // Node.js requirements
+    engines: sourcePackageJson.engines,
+    os: sourcePackageJson.os,
+    
+    // Files to include (everything in dist-npm)
+    files: [
+      'lib/',
+      'bin/',
+      'public/',
+      'node-pty/',
+      'prebuilds/',
+      'scripts/',
+      'README.md'
+    ]
+  };
+  
+  fs.writeFileSync(
+    path.join(DIST_DIR, 'package.json'),
+    JSON.stringify(npmPackageJson, null, 2) + '\n'
+  );
+
+  // Step 5: Create a simpler postinstall script
+  console.log('\n5️⃣ Creating postinstall script...\n');
+  
+  const postinstallContent = `#!/usr/bin/env node
+
+/**
+ * Postinstall script for npm package
+ * Extracts prebuilds for the current platform
+ */
+
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+const os = require('os');
+
+console.log('Setting up native modules for VibeTunnel...');
+
+// Get Node ABI version
+const nodeABI = process.versions.modules;
+
+// Get platform and architecture
+const platform = process.platform;
+const arch = os.arch();
+
+// Convert architecture names
+const archMap = {
+  'arm64': 'arm64',
+  'aarch64': 'arm64',
+  'x64': 'x64',
+  'x86_64': 'x64'
+};
+const normalizedArch = archMap[arch] || arch;
+
+console.log(\`Platform: \${platform}-\${normalizedArch}, Node ABI: \${nodeABI}\`);
+
+// Function to extract prebuild
+const extractPrebuild = (name, version, targetDir) => {
+  const prebuildFile = path.join(__dirname, '..', 'prebuilds', 
+    \`\${name}-v\${version}-node-v\${nodeABI}-\${platform}-\${normalizedArch}.tar.gz\`);
+  
+  if (!fs.existsSync(prebuildFile)) {
+    console.log(\`  No prebuild found for \${name} on this platform\`);
+    return false;
+  }
+
+  // Create the parent directory
+  fs.mkdirSync(targetDir, { recursive: true });
+
+  try {
+    // Extract directly into the module directory
+    execSync(\`tar -xzf "\${prebuildFile}" -C "\${targetDir}"\`, { stdio: 'inherit' });
+    console.log(\`✓ \${name} prebuilt binary extracted\`);
+    return true;
+  } catch (error) {
+    console.error(\`  Failed to extract \${name} prebuild:\`, error.message);
+    return false;
+  }
+};
+
+// Extract node-pty prebuild
+const nodePtyDir = path.join(__dirname, '..', 'node-pty');
+if (!fs.existsSync(path.join(nodePtyDir, 'build', 'Release', 'pty.node'))) {
+  extractPrebuild('node-pty', '1.0.0', nodePtyDir);
+}
+
+// Extract authenticate-pam prebuild (Linux only)
+if (platform === 'linux') {
+  const authPamDir = path.join(__dirname, '..', 'node_modules', 'authenticate-pam');
+  if (fs.existsSync(authPamDir) && !fs.existsSync(path.join(authPamDir, 'build', 'Release', 'authenticate_pam.node'))) {
+    extractPrebuild('authenticate-pam', '1.0.5', authPamDir);
+  }
+}
+
+console.log('✓ VibeTunnel is ready to use');
+`;
+  
+  fs.writeFileSync(
+    path.join(DIST_DIR, 'scripts', 'postinstall.js'),
+    postinstallContent,
+    { mode: 0o755 }
+  );
+  
+  // Step 6: Fix the CLI structure
+  console.log('\n6️⃣ Fixing CLI structure...\n');
+  
+  // The dist/vibetunnel-cli was copied to lib/cli.js
+  // We need to rename it and create a wrapper
+  const cliPath = path.join(DIST_DIR, 'lib', 'cli.js');
+  const cliBundlePath = path.join(DIST_DIR, 'lib', 'vibetunnel-cli');
+  
+  // Rename the bundle
+  fs.renameSync(cliPath, cliBundlePath);
+  
+  // Create a simple wrapper that requires the bundle
+  const cliWrapperContent = `#!/usr/bin/env node
+require('./vibetunnel-cli');
+`;
+  
+  fs.writeFileSync(cliPath, cliWrapperContent, { mode: 0o755 });
+  
+  // Step 7: Create README
+  console.log('\n7️⃣ Creating npm README...\n');
+  
   const readmeContent = `# VibeTunnel CLI
 
 Full-featured terminal sharing server with web interface for macOS and Linux. Windows not yet supported.
@@ -529,20 +714,21 @@ See the main repository for complete documentation: https://github.com/amantus-a
 
 MIT
 `;
-
-  const readmePath = path.join(__dirname, '..', 'README.md');
-  fs.writeFileSync(readmePath, readmeContent);
-  console.log('✅ npm README created');
-
-  // Step 5: Clean up test files (keep screencap.js - it's needed)
-  console.log('\n5️⃣ Cleaning up test files...\n');
+  
+  fs.writeFileSync(
+    path.join(DIST_DIR, 'README.md'),
+    readmeContent
+  );
+  
+  // Step 8: Clean up test files in dist-npm
+  console.log('\n8️⃣ Cleaning up test files...\n');
   const testFiles = [
     'public/bundle/test.js',
     'public/test'  // Remove entire test directory
   ];
-
+  
   for (const file of testFiles) {
-    const filePath = path.join(__dirname, '..', file);
+    const filePath = path.join(DIST_DIR, file);
     if (fs.existsSync(filePath)) {
       if (fs.statSync(filePath).isDirectory()) {
         fs.rmSync(filePath, { recursive: true, force: true });
@@ -553,58 +739,36 @@ MIT
       }
     }
   }
-
-  // Step 6: Show final package info
-  console.log('\n6️⃣ Package summary...\n');
   
-  // Calculate total size
-  function getDirectorySize(dirPath) {
-    let totalSize = 0;
-    const items = fs.readdirSync(dirPath);
-    
-    for (const item of items) {
-      const itemPath = path.join(dirPath, item);
-      const stats = fs.statSync(itemPath);
-      
-      if (stats.isFile()) {
-        totalSize += stats.size;
-      } else if (stats.isDirectory()) {
-        totalSize += getDirectorySize(itemPath);
-      }
-    }
-    
-    return totalSize;
-  }
-  
-  const packageRoot = path.join(__dirname, '..');
-  const totalSize = getDirectorySize(packageRoot);
-  const sizeMB = (totalSize / 1024 / 1024).toFixed(1);
-  
-  console.log(`📦 Package size: ${sizeMB} MB`);
-  
-  if (!currentOnly) {
-    const prebuildsDir = path.join(__dirname, '..', 'prebuilds');
-    if (fs.existsSync(prebuildsDir)) {
-      const prebuildFiles = fs.readdirSync(prebuildsDir).filter(f => f.endsWith('.tar.gz'));
-      console.log(`🔧 Prebuilds: ${prebuildFiles.length} binaries included`);
-    }
-  }
-  
-  console.log('\n7️⃣ Creating npm package...\n');
+  // Step 9: Create npm package
+  console.log('\n9️⃣ Creating npm package...\n');
   try {
-    execSync('npm pack', { stdio: 'inherit' });
-    console.log('✅ npm package created\n');
+    execSync('npm pack', {
+      cwd: DIST_DIR,
+      stdio: 'inherit'
+    });
+    
+    // Move the package to root directory
+    const packageFiles = fs.readdirSync(DIST_DIR)
+      .filter(f => f.endsWith('.tgz'));
+    
+    if (packageFiles.length > 0) {
+      const packageFile = packageFiles[0];
+      fs.renameSync(
+        path.join(DIST_DIR, packageFile),
+        path.join(ROOT_DIR, packageFile)
+      );
+      console.log(`\n✅ Package created: ${packageFile}`);
+    }
   } catch (error) {
     console.error('❌ npm pack failed:', error.message);
     process.exit(1);
   }
   
-  console.log('🎉 npm package build completed successfully!');
+  console.log('\n🎉 Clean npm build completed successfully!');
   console.log('\nNext steps:');
-  console.log('  - Test the package');
+  console.log('  - Test the package locally');
   console.log('  - Publish: npm publish');
-  
-  // Don't restore package.json here - let the process exit handler do it
 }
 
 main().catch(error => {
