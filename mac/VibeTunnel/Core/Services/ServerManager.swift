@@ -246,7 +246,8 @@ class ServerManager {
             // Initialize terminal control handler
             // The handler registers itself with SharedUnixSocketManager during init
             _ = TerminalControlHandler.shared
-            // Note: SystemControlHandler is initialized in AppDelegate via SharedUnixSocketManager.initializeSystemHandler()
+            // Note: SystemControlHandler is initialized in AppDelegate via
+            // SharedUnixSocketManager.initializeSystemHandler()
 
             // This allows the screencap API to be available for queries (like listing
             // windows/displays) without triggering the permission dialog. The permission

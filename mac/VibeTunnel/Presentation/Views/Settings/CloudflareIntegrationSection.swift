@@ -114,9 +114,11 @@ struct CloudflareIntegrationSection: View {
                             PublicURLView(url: publicUrl)
                         }
 
-                        // Error display
-                        if let error = cloudflareService.statusError, !error.isEmpty {
-                            ErrorView(error: error)
+                        // Error display - only show when tunnel is enabled or being toggled
+                        if tunnelEnabled || isTogglingTunnel {
+                            if let error = cloudflareService.statusError, !error.isEmpty {
+                                ErrorView(error: error)
+                            }
                         }
                     }
                 }

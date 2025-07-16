@@ -12,6 +12,8 @@ struct DashboardSettingsView: View {
     private var serverManager
     @Environment(SessionService.self)
     private var sessionService
+    @Environment(SessionMonitor.self)
+    private var sessionMonitor
     @Environment(NgrokService.self)
     private var ngrokService
     @Environment(TailscaleService.self)
@@ -20,7 +22,7 @@ struct DashboardSettingsView: View {
     private var cloudflareService
 
     @State private var serverStatus: ServerStatus = .stopped
-    @State private var activeSessions: [SessionInfo] = []
+    @State private var activeSessions: [DashboardSessionInfo] = []
     @State private var ngrokStatus: NgrokTunnelStatus?
     @State private var tailscaleStatus: (isInstalled: Bool, isRunning: Bool, hostname: String?)?
 
@@ -75,12 +77,12 @@ struct DashboardSettingsView: View {
         serverStatus = serverManager.isRunning ? .running : .stopped
 
         // Update active sessions
-        activeSessions = sessionService.allSessions.values.compactMap { session in
-            SessionInfo(
-                id: session.sessionId,
-                title: session.title ?? "Untitled",
-                createdAt: session.createdAt,
-                isActive: session.isActive
+        activeSessions = sessionMonitor.sessions.values.compactMap { session in
+            DashboardSessionInfo(
+                id: session.id,
+                title: session.name ?? "Untitled",
+                createdAt: Date(), // Need to parse session.startedAt
+                isActive: session.isRunning
             )
         }.sorted { $0.createdAt > $1.createdAt }
 
@@ -102,7 +104,7 @@ struct DashboardSettingsView: View {
 
 // MARK: - Server Status
 
-private enum ServerStatus {
+private enum ServerStatus: Equatable {
     case running
     case stopped
     case starting
@@ -111,7 +113,7 @@ private enum ServerStatus {
 
 // MARK: - Session Info
 
-private struct SessionInfo: Identifiable {
+private struct DashboardSessionInfo: Identifiable {
     let id: String
     let title: String
     let createdAt: Date
@@ -125,110 +127,184 @@ private struct ServerStatusSection: View {
     let serverPort: String
     let accessMode: DashboardAccessMode
     let serverManager: ServerManager
-    
+
+    @State private var portConflict: PortConflict?
+    @State private var isCheckingPort = false
+
+    private var isServerRunning: Bool {
+        serverStatus == .running
+    }
+
+    private var serverPortInt: Int {
+        Int(serverPort) ?? 4_020
+    }
+
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
-                // Status indicator
-                HStack {
-                    switch serverStatus {
-                    case .running:
-                        Image(systemName: "circle.fill")
-                            .foregroundColor(.green)
-                            .font(.system(size: 10))
-                        Text("Server is running")
-                            .font(.callout)
-                    case .stopped:
-                        Image(systemName: "circle.fill")
-                            .foregroundColor(.red)
-                            .font(.system(size: 10))
-                        Text("Server is stopped")
-                            .font(.callout)
-                    case .starting:
-                        ProgressView()
-                            .scaleEffect(0.7)
-                        Text("Server is starting...")
-                            .font(.callout)
-                    case .error(let message):
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.orange)
-                            .font(.system(size: 10))
-                        Text("Error: \(message)")
-                            .font(.callout)
-                            .foregroundColor(.secondary)
+                // Server Information
+                VStack(alignment: .leading, spacing: 8) {
+                    LabeledContent("Status") {
+                        switch serverStatus {
+                        case .running:
+                            HStack {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                                Text("Running")
+                            }
+                        case .stopped:
+                            Text("Stopped")
+                                .foregroundStyle(.secondary)
+                        case .starting:
+                            HStack {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                Text("Starting...")
+                            }
+                        case .error(let message):
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
+                                Text(message)
+                                    .lineLimit(1)
+                            }
+                        }
                     }
-                    
+
+                    LabeledContent("Port") {
+                        Text(serverPort)
+                    }
+
+                    LabeledContent("Bind Address") {
+                        Text(serverManager.bindAddress)
+                            .font(.system(.body, design: .monospaced))
+                    }
+
+                    LabeledContent("Base URL") {
+                        let baseAddress = serverManager.bindAddress == "0.0.0.0" ? "127.0.0.1" : serverManager
+                            .bindAddress
+                        if let serverURL = URL(string: "http://\(baseAddress):\(serverPort)") {
+                            Link("http://\(baseAddress):\(serverPort)", destination: serverURL)
+                                .font(.system(.body, design: .monospaced))
+                        } else {
+                            Text("http://\(baseAddress):\(serverPort)")
+                                .font(.system(.body, design: .monospaced))
+                        }
+                    }
+                }
+
+                Divider()
+
+                // Server Status
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("HTTP Server")
+                            Circle()
+                                .fill(isServerRunning ? .green : .red)
+                                .frame(width: 8, height: 8)
+                        }
+                        Text(isServerRunning ? "Server is running on port \(serverPort)" : "Server is stopped")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
                     Spacer()
-                    
+
                     if serverStatus == .stopped {
                         Button("Start") {
                             Task {
                                 await serverManager.start()
                             }
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                        .buttonStyle(.borderedProminent)
                     } else if serverStatus == .running {
                         Button("Restart") {
                             Task {
-                                await serverManager.restart()
+                                await serverManager.manualRestart()
                             }
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                        .buttonStyle(.borderedProminent)
                     }
                 }
-                
-                // Server details
-                if serverStatus == .running {
+
+                // Port conflict warning
+                if let conflict = portConflict {
                     VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("Port:")
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
                                 .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text(serverPort)
+
+                            Text("Port \(conflict.port) is used by \(conflict.process.name)")
                                 .font(.caption)
-                                .fontWeight(.medium)
+                                .foregroundColor(.orange)
                         }
-                        
-                        HStack {
-                            Text("Access Mode:")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text(accessMode.displayName)
-                                .font(.caption)
-                                .fontWeight(.medium)
-                        }
-                        
-                        if accessMode == .localhost {
-                            HStack {
-                                Text("URL:")
+
+                        if !conflict.alternativePorts.isEmpty {
+                            HStack(spacing: 4) {
+                                Text("Try port:")
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
-                                if let url = DashboardURLBuilder.dashboardURL(port: serverPort) {
-                                    Link(url.absoluteString, destination: url)
-                                        .font(.caption)
-                                }
-                            }
-                        } else if accessMode == .network {
-                            if let ip = NetworkUtility.getLocalIPAddress() {
-                                HStack {
-                                    Text("URL:")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    if let url = URL(string: "http://\(ip):\(serverPort)") {
-                                        Link(url.absoluteString, destination: url)
-                                            .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                ForEach(conflict.alternativePorts.prefix(3), id: \.self) { port in
+                                    Button(String(port)) {
+                                        Task {
+                                            await ServerConfigurationHelpers.restartServerWithNewPort(
+                                                port,
+                                                serverManager: serverManager
+                                            )
+                                        }
                                     }
+                                    .buttonStyle(.link)
+                                    .font(.caption)
                                 }
                             }
                         }
                     }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(6)
                 }
+            }
+            .padding(.vertical, 4)
+            .task {
+                await checkPortAvailability()
+            }
+            .task(id: serverPort) {
+                await checkPortAvailability()
             }
         } header: {
             Text("Server Status")
                 .font(.headline)
+        }
+    }
+
+    private func checkPortAvailability() async {
+        isCheckingPort = true
+        defer { isCheckingPort = false }
+
+        let port = serverPortInt
+
+        // Only check if it's not the port we're already successfully using
+        if serverManager.isRunning && Int(serverManager.port) == port {
+            portConflict = nil
+            return
+        }
+
+        if let conflict = await PortConflictResolver.shared.detectConflict(on: port) {
+            // Only show warning for non-VibeTunnel processes
+            // VibeTunnel instances will be auto-killed by ServerManager
+            if case .reportExternalApp = conflict.suggestedAction {
+                portConflict = conflict
+            } else {
+                // It's our own process, will be handled automatically
+                portConflict = nil
+            }
+        } else {
+            portConflict = nil
         }
     }
 }
@@ -236,9 +312,9 @@ private struct ServerStatusSection: View {
 // MARK: - Active Sessions Section
 
 private struct ActiveSessionsSection: View {
-    let activeSessions: [SessionInfo]
+    let activeSessions: [DashboardSessionInfo]
     let sessionService: SessionService
-    
+
     var body: some View {
         Section {
             if activeSessions.isEmpty {
@@ -259,9 +335,9 @@ private struct ActiveSessionsSection: View {
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                            
+
                             Spacer()
-                            
+
                             if session.isActive {
                                 Image(systemName: "circle.fill")
                                     .foregroundColor(.green)
@@ -273,7 +349,7 @@ private struct ActiveSessionsSection: View {
                             }
                         }
                     }
-                    
+
                     if activeSessions.count > 5 {
                         Text("And \(activeSessions.count - 5) more...")
                             .font(.caption)
@@ -306,7 +382,7 @@ private struct RemoteAccessStatusSection: View {
     let cloudflareService: CloudflareService
     let serverPort: String
     let accessMode: DashboardAccessMode
-    
+
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
@@ -348,7 +424,7 @@ private struct RemoteAccessStatusSection: View {
                     }
                     Spacer()
                 }
-                
+
                 // ngrok status
                 HStack {
                     if let status = ngrokStatus {
@@ -371,7 +447,7 @@ private struct RemoteAccessStatusSection: View {
                     }
                     Spacer()
                 }
-                
+
                 // Cloudflare status
                 HStack {
                     if cloudflareService.isRunning {
@@ -381,10 +457,12 @@ private struct RemoteAccessStatusSection: View {
                         Text("Cloudflare")
                             .font(.callout)
                         if let url = cloudflareService.publicUrl {
-                            Text("(\(url.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: ".trycloudflare.com", with: "")))")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
+                            Text(
+                                "(\(url.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: ".trycloudflare.com", with: "")))"
+                            )
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
                         }
                     } else {
                         Image(systemName: "circle")
@@ -401,7 +479,7 @@ private struct RemoteAccessStatusSection: View {
             Text("Remote Access")
                 .font(.headline)
         } footer: {
-            Text("Configure remote access options in the Remote Access tab")
+            Text("Configure remote access options in the Remote tab")
                 .font(.caption)
                 .frame(maxWidth: .infinity)
                 .multilineTextAlignment(.center)

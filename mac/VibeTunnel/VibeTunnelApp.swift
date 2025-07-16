@@ -22,6 +22,9 @@ struct VibeTunnelApp: App {
     @State var gitRepositoryMonitor = GitRepositoryMonitor()
     @State var repositoryDiscoveryService = RepositoryDiscoveryService()
     @State var screencapService: ScreencapService?
+    private var sessionService: SessionService {
+        SessionService(serverManager: serverManager, sessionMonitor: sessionMonitor)
+    }
 
     init() {
         // Connect the app delegate to this app instance
@@ -29,19 +32,38 @@ struct VibeTunnelApp: App {
     }
 
     var body: some Scene {
-        #if os(macOS)
-            // Hidden WindowGroup to make Settings work in MenuBarExtra-only apps
-            // This is a workaround for FB10184971
-            WindowGroup("HiddenWindow") {
-                HiddenWindowView()
-            }
-            .windowResizability(.contentSize)
-            .defaultSize(width: 1, height: 1)
-            .windowStyle(.hiddenTitleBar)
+        // Hidden WindowGroup to make Settings work in MenuBarExtra-only apps
+        // This is a workaround for FB10184971
+        WindowGroup("HiddenWindow") {
+            HiddenWindowView()
+        }
+        .windowResizability(.contentSize)
+        .defaultSize(width: 1, height: 1)
+        .windowStyle(.hiddenTitleBar)
 
-            // Welcome Window
-            WindowGroup("Welcome", id: "welcome") {
-                WelcomeView()
+        // Welcome Window
+        WindowGroup("Welcome", id: "welcome") {
+            WelcomeView()
+                .environment(sessionMonitor)
+                .environment(serverManager)
+                .environment(ngrokService)
+                .environment(tailscaleService)
+                .environment(cloudflareService)
+                .environment(permissionManager)
+                .environment(terminalLauncher)
+                .environment(gitRepositoryMonitor)
+                .environment(repositoryDiscoveryService)
+        }
+        .windowResizability(.contentSize)
+        .defaultSize(width: 580, height: 480)
+        .windowStyle(.hiddenTitleBar)
+
+        // Session Detail Window
+        WindowGroup("Session Details", id: "session-detail", for: String.self) { $sessionId in
+            if let sessionId,
+               let session = sessionMonitor.sessions[sessionId]
+            {
+                SessionDetailView(session: session)
                     .environment(sessionMonitor)
                     .environment(serverManager)
                     .environment(ngrokService)
@@ -51,65 +73,43 @@ struct VibeTunnelApp: App {
                     .environment(terminalLauncher)
                     .environment(gitRepositoryMonitor)
                     .environment(repositoryDiscoveryService)
+            } else {
+                Text("Session not found")
+                    .frame(width: 400, height: 300)
             }
-            .windowResizability(.contentSize)
-            .defaultSize(width: 580, height: 480)
-            .windowStyle(.hiddenTitleBar)
+        }
+        .windowResizability(.contentSize)
 
-            // Session Detail Window
-            WindowGroup("Session Details", id: "session-detail", for: String.self) { $sessionId in
-                if let sessionId,
-                   let session = sessionMonitor.sessions[sessionId]
-                {
-                    SessionDetailView(session: session)
-                        .environment(sessionMonitor)
-                        .environment(serverManager)
-                        .environment(ngrokService)
-                        .environment(tailscaleService)
-                        .environment(cloudflareService)
-                        .environment(permissionManager)
-                        .environment(terminalLauncher)
-                        .environment(gitRepositoryMonitor)
-                        .environment(repositoryDiscoveryService)
-                } else {
-                    Text("Session not found")
-                        .frame(width: 400, height: 300)
-                }
-            }
-            .windowResizability(.contentSize)
+        // New Session is now integrated into the popover
 
-            // New Session is now integrated into the popover
-
-            Settings {
-                SettingsView()
-                    .environment(sessionMonitor)
-                    .environment(serverManager)
-                    .environment(ngrokService)
-                    .environment(tailscaleService)
-                    .environment(cloudflareService)
-                    .environment(permissionManager)
-                    .environment(terminalLauncher)
-                    .environment(gitRepositoryMonitor)
-                    .environment(repositoryDiscoveryService)
-            }
-            .commands {
-                CommandGroup(after: .appInfo) {
-                    Button("About VibeTunnel") {
-                        SettingsOpener.openSettings()
-                        // Navigate to About tab after settings opens
-                        Task {
-                            try? await Task.sleep(for: .milliseconds(100))
-                            NotificationCenter.default.post(
-                                name: .openSettingsTab,
-                                object: SettingsTab.about
-                            )
-                        }
+        Settings {
+            SettingsView()
+                .environment(sessionMonitor)
+                .environment(serverManager)
+                .environment(ngrokService)
+                .environment(tailscaleService)
+                .environment(cloudflareService)
+                .environment(permissionManager)
+                .environment(terminalLauncher)
+                .environment(gitRepositoryMonitor)
+                .environment(repositoryDiscoveryService)
+                .environment(sessionService)
+        }
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button("About VibeTunnel") {
+                    SettingsOpener.openSettings()
+                    // Navigate to About tab after settings opens
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(100))
+                        NotificationCenter.default.post(
+                            name: .openSettingsTab,
+                            object: SettingsTab.about
+                        )
                     }
                 }
             }
-
-            // MenuBarExtra is replaced by custom StatusBarController in AppDelegate
-        #endif
+        }
     }
 }
 
@@ -124,7 +124,7 @@ struct VibeTunnelApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
     // Needed for some gross menu item highlight hack
-    weak static var shared: AppDelegate?
+    static weak var shared: AppDelegate?
     override init() {
         super.init()
         Self.shared = self

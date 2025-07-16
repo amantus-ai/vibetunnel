@@ -14,7 +14,7 @@ struct SettingsView: View {
     // MARK: - Constants
 
     private enum Layout {
-        static let defaultTabSize = CGSize(width: 500, height: 670)
+        static let defaultTabSize = CGSize(width: 500, height: 700)
         static let fallbackTabSize = CGSize(width: 500, height: 450)
     }
 
@@ -51,7 +51,10 @@ struct SettingsView: View {
 
             SecurityPermissionsSettingsView()
                 .tabItem {
-                    Label(SettingsTab.securityPermissions.displayName, systemImage: SettingsTab.securityPermissions.icon)
+                    Label(
+                        SettingsTab.securityPermissions.displayName,
+                        systemImage: SettingsTab.securityPermissions.icon
+                    )
                 }
                 .tag(SettingsTab.securityPermissions)
 

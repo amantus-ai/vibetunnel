@@ -6,20 +6,20 @@ import SwiftUI
 struct SecurityPermissionsSettingsView: View {
     @AppStorage(AppConstants.UserDefaultsKeys.authenticationMode)
     private var authModeString = "os"
-    
+
     @State private var authMode: AuthenticationMode = .osAuth
-    
+
     @Environment(SystemPermissionManager.self)
     private var permissionManager
     @Environment(ServerManager.self)
     private var serverManager
-    
+
     @State private var permissionUpdateTrigger = 0
-    
+
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SecurityPermissionsSettings")
-    
+
     // MARK: - Helper Properties
-    
+
     // IMPORTANT: These computed properties ensure the UI always shows current permission state.
     // The permissionUpdateTrigger dependency forces SwiftUI to re-evaluate these properties
     // when permissions change. Without this, the UI would not update when permissions are
@@ -32,17 +32,17 @@ struct SecurityPermissionsSettingsView: View {
         _ = permissionUpdateTrigger
         return permissionManager.hasPermission(.appleScript)
     }
-    
+
     private var hasAccessibilityPermission: Bool {
         _ = permissionUpdateTrigger
         return permissionManager.hasPermission(.accessibility)
     }
-    
+
     private var hasScreenRecordingPermission: Bool {
         _ = permissionUpdateTrigger
         return permissionManager.hasPermission(.screenRecording)
     }
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -52,7 +52,27 @@ struct SecurityPermissionsSettingsView: View {
                     logger: logger,
                     serverManager: serverManager
                 )
-                
+
+                // Screen Sharing section
+                Section {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle("Enable screen sharing service", isOn: .init(
+                            get: { AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.enableScreencapService) },
+                            set: { UserDefaults.standard.set(
+                                $0,
+                                forKey: AppConstants.UserDefaultsKeys.enableScreencapService
+                            )
+                            }
+                        ))
+                        Text("Allow screen sharing feature in the web interface.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("Screen Sharing")
+                        .font(.headline)
+                }
+
                 PermissionsSection(
                     hasAppleScriptPermission: hasAppleScriptPermission,
                     hasAccessibilityPermission: hasAccessibilityPermission,
@@ -63,14 +83,14 @@ struct SecurityPermissionsSettingsView: View {
             .formStyle(.grouped)
             .frame(minWidth: 500, idealWidth: 600)
             .scrollContentBackground(.hidden)
-            .navigationTitle("Security & Permissions")
+            .navigationTitle("Security")
             .onAppear {
                 onAppearSetup()
             }
             .task {
                 // Check permissions before first render to avoid UI flashing
                 await permissionManager.checkAllPermissions()
-                
+
                 // Register for continuous monitoring
                 permissionManager.registerForMonitoring()
             }
@@ -83,9 +103,9 @@ struct SecurityPermissionsSettingsView: View {
             }
         }
     }
-    
+
     // MARK: - Private Methods
-    
+
     private func onAppearSetup() {
         // Initialize authentication mode from stored value
         let storedMode = UserDefaults.standard.string(forKey: "authenticationMode") ?? "os"
@@ -100,7 +120,7 @@ private enum AuthenticationMode: String, CaseIterable {
     case osAuth = "os"
     case sshKeys = "ssh"
     case both = "both"
-    
+
     var displayName: String {
         switch self {
         case .none: "None"
@@ -109,7 +129,7 @@ private enum AuthenticationMode: String, CaseIterable {
         case .both: "Both"
         }
     }
-    
+
     var description: String {
         switch self {
         case .none: "Anyone can access the dashboard (not recommended)"
@@ -127,7 +147,7 @@ private struct SecuritySection: View {
     @Binding var enableSSHKeys: Bool
     let logger: Logger
     let serverManager: ServerManager
-    
+
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 16) {
@@ -149,21 +169,21 @@ private struct SecuritySection: View {
                         .onChange(of: authMode) { _, newValue in
                             // Save the authentication mode
                             UserDefaults.standard.set(newValue.rawValue, forKey: "authenticationMode")
-                            
+
                             Task {
                                 logger.info("Authentication mode changed to: \(newValue.rawValue)")
                                 await serverManager.restart()
                             }
                         }
                     }
-                    
+
                     Text(authMode.description)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                
+
                 // Additional info based on selected mode
                 if authMode == .osAuth || authMode == .both {
                     HStack(alignment: .center, spacing: 6) {
@@ -177,7 +197,7 @@ private struct SecuritySection: View {
                         Spacer()
                     }
                 }
-                
+
                 if authMode == .sshKeys || authMode == .both {
                     HStack(alignment: .center, spacing: 6) {
                         Image(systemName: "key.fill")
@@ -226,7 +246,7 @@ private struct PermissionsSection: View {
     let hasAccessibilityPermission: Bool
     let hasScreenRecordingPermission: Bool
     let permissionManager: SystemPermissionManager
-    
+
     var body: some View {
         Section {
             // Automation permission
@@ -238,9 +258,9 @@ private struct PermissionsSection: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 if hasAppleScriptPermission {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
@@ -268,7 +288,7 @@ private struct PermissionsSection: View {
                     .controlSize(.small)
                 }
             }
-            
+
             // Accessibility permission
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
@@ -278,9 +298,9 @@ private struct PermissionsSection: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 if hasAccessibilityPermission {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
@@ -308,7 +328,7 @@ private struct PermissionsSection: View {
                     .controlSize(.small)
                 }
             }
-            
+
             // Screen Recording permission
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
@@ -318,9 +338,9 @@ private struct PermissionsSection: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 if hasScreenRecordingPermission {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")

@@ -19,6 +19,8 @@ struct RemoteAccessSettingsView: View {
     private var tailscaleService
     @Environment(CloudflareService.self)
     private var cloudflareService
+    @Environment(ServerManager.self)
+    private var serverManager
 
     @State private var ngrokAuthToken = ""
     @State private var ngrokStatus: NgrokTunnelStatus?
@@ -28,6 +30,9 @@ struct RemoteAccessSettingsView: View {
     @State private var showingKeychainAlert = false
     @State private var isTokenRevealed = false
     @State private var maskedToken = ""
+    @State private var localIPAddress: String?
+    @State private var showingServerErrorAlert = false
+    @State private var serverErrorMessage = ""
 
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "RemoteAccessSettings")
 
@@ -69,9 +74,10 @@ struct RemoteAccessSettingsView: View {
             .formStyle(.grouped)
             .frame(minWidth: 500, idealWidth: 600)
             .scrollContentBackground(.hidden)
-            .navigationTitle("Remote Access")
+            .navigationTitle("Remote")
             .onAppear {
                 onAppearSetup()
+                updateLocalIPAddress()
             }
         }
         .alert("ngrok Authentication Required", isPresented: $showingAuthTokenAlert) {
@@ -83,6 +89,11 @@ struct RemoteAccessSettingsView: View {
             Button("OK") {}
         } message: {
             Text("Failed to save the auth token to the keychain. Please check your keychain permissions and try again.")
+        }
+        .alert("Failed to Restart Server", isPresented: $showingServerErrorAlert) {
+            Button("OK") {}
+        } message: {
+            Text(serverErrorMessage)
         }
     }
 
@@ -174,6 +185,27 @@ struct RemoteAccessSettingsView: View {
                 ngrokAuthToken = ""
                 isTokenRevealed = true
             }
+        }
+    }
+
+    private func restartServerWithNewPort(_ port: Int) {
+        Task {
+            await ServerConfigurationHelpers.restartServerWithNewPort(port, serverManager: serverManager)
+        }
+    }
+
+    private func restartServerWithNewBindAddress() {
+        Task {
+            await ServerConfigurationHelpers.restartServerWithNewBindAddress(
+                accessMode: accessMode,
+                serverManager: serverManager
+            )
+        }
+    }
+
+    private func updateLocalIPAddress() {
+        Task {
+            localIPAddress = await ServerConfigurationHelpers.updateLocalIPAddress(accessMode: accessMode)
         }
     }
 }
@@ -272,7 +304,7 @@ private struct TailscaleIntegrationSection: View {
                                     .foregroundColor(.orange)
                                     .font(.system(size: 12))
                                 Text(
-                                    "Server is in localhost-only mode. Change to 'Network' mode in General settings to access via Tailscale."
+                                    "Server is in localhost-only mode. Change to 'Network' mode above to access via Tailscale."
                                 )
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -317,7 +349,6 @@ private struct TailscaleIntegrationSection: View {
         }
     }
 }
-
 
 // MARK: - ngrok Integration Section
 

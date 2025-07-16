@@ -17,8 +17,8 @@ enum SettingsTab: String, CaseIterable {
         switch self {
         case .general: "General"
         case .dashboard: "Dashboard"
-        case .remoteAccess: "Remote Access"
-        case .securityPermissions: "Security & Permissions"
+        case .remoteAccess: "Remote"
+        case .securityPermissions: "Security"
         case .advanced: "Advanced"
         case .debug: "Debug"
         case .about: "About"
