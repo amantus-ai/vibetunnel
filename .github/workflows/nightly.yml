@@ -138,7 +138,7 @@ jobs:
     - name: Resolve Dependencies
       run: |
         echo "Resolving Swift package dependencies..."
-        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -parallelizeTargets || echo "Dependency resolution completed"
+        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -parallel || echo "Dependency resolution completed"
     
     # BUILD RELEASE CONFIGURATION
     - name: Build Release (Universal Binary)
