@@ -681,8 +681,18 @@ const child = spawn('node', [cliPath, ...args], {
   env: process.env
 });
 
-child.on('exit', (code) => {
-  process.exit(code);
+child.on('exit', (code, signal) => {
+  if (signal) {
+    // Process was killed by signal, exit with 128 + signal number convention
+    // Common signals: SIGTERM=15, SIGINT=2, SIGKILL=9
+    const signalExitCode = signal === 'SIGTERM' ? 143 : 
+                          signal === 'SIGINT' ? 130 : 
+                          signal === 'SIGKILL' ? 137 : 128;
+    process.exit(signalExitCode);
+  } else {
+    // Normal exit, use the exit code (or 0 if null)
+    process.exit(code ?? 0);
+  }
 });
 `;
   fs.writeFileSync(binVibetunnelPath, binVibetunnelContent, { mode: 0o755 });
