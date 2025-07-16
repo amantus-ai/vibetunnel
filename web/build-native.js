@@ -248,6 +248,11 @@ async function main() {
       --external:authenticate-pam \\
       --external:../build/Release/pty.node \\
       --external:./build/Release/pty.node \\
+      --external:./vibetunnel-pty/vibetunnel-pty.darwin-arm64.node \\
+      --external:./vibetunnel-pty/vibetunnel-pty.darwin-x64.node \\
+      --external:./vibetunnel-pty/vibetunnel-pty.linux-x64-gnu.node \\
+      --external:./vibetunnel-pty/vibetunnel-pty.linux-arm64-gnu.node \\
+      --external:../../../vibetunnel-pty \\
       --define:process.env.BUILD_DATE='"${buildDate}"' \\
       --define:process.env.BUILD_TIMESTAMP='"${buildTimestamp}"' \\
       --define:process.env.VIBETUNNEL_SEA='"true"'`;
