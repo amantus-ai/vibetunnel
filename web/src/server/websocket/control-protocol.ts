@@ -12,6 +12,7 @@ export interface ControlMessage {
   action: string;
   payload?: unknown;
   sessionId?: string;
+  userId?: string;
   error?: string;
 }
 
