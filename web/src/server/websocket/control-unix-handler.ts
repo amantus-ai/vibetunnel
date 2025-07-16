@@ -82,23 +82,28 @@ class SystemHandler implements MessageHandler {
   constructor(private controlUnixHandler: ControlUnixHandler) {}
 
   async handleMessage(message: ControlMessage): Promise<ControlMessage | null> {
-    logger.log(`System handler: ${message.action}`);
+    logger.log(`System handler: ${message.action}, type: ${message.type}, id: ${message.id}`);
 
     switch (message.action) {
       case 'repository-path-update': {
         const payload = message.payload as { path: string };
+        logger.log(`Repository path update received: ${JSON.stringify(payload)}`);
+
         if (!payload?.path) {
+          logger.error('Missing path in payload');
           return createControlResponse(message, null, 'Missing path in payload');
         }
 
         try {
           // Update the server configuration
+          logger.log(`Calling updateRepositoryPath with: ${payload.path}`);
           const updateSuccess = await this.controlUnixHandler.updateRepositoryPath(payload.path);
 
           if (updateSuccess) {
-            logger.log(`Updated repository path to: ${payload.path}`);
+            logger.log(`Successfully updated repository path to: ${payload.path}`);
             return createControlResponse(message, { success: true, path: payload.path });
           } else {
+            logger.error('updateRepositoryPath returned false');
             return createControlResponse(message, null, 'Failed to update repository path');
           }
         } catch (error) {
@@ -566,7 +571,7 @@ export class ControlUnixHandler {
 
   private async handleMacMessage(message: ControlMessage) {
     logger.log(
-      `Mac message - category: ${message.category}, action: ${message.action}, id: ${message.id}`
+      `Mac message - category: ${message.category}, action: ${message.action}, type: ${message.type}, id: ${message.id}`
     );
 
     // Handle ping keep-alive from Mac client
@@ -574,6 +579,11 @@ export class ControlUnixHandler {
       const pong = createControlResponse(message, { status: 'ok' });
       this.sendToMac(pong);
       return;
+    }
+
+    // Log repository-path-update messages specifically
+    if (message.category === 'system' && message.action === 'repository-path-update') {
+      logger.log(`🔍 Repository path update message details:`, JSON.stringify(message));
     }
 
     // Check if this is a response to a pending request
@@ -590,7 +600,9 @@ export class ControlUnixHandler {
     // Skip processing for response messages that aren't pending requests
     // This prevents response loops where error responses get processed again
     if (message.type === 'response') {
-      logger.debug(`Ignoring response message that has no pending request: ${message.id}`);
+      logger.debug(
+        `Ignoring response message that has no pending request: ${message.id}, action: ${message.action}`
+      );
       return;
     }
 
@@ -729,16 +741,21 @@ export class ControlUnixHandler {
    * Update the repository path and notify all connected clients
    */
   async updateRepositoryPath(path: string): Promise<boolean> {
+    logger.log(`updateRepositoryPath called with path: ${path}`);
+
     try {
       this.currentRepositoryPath = path;
+      logger.log(`Set currentRepositoryPath to: ${this.currentRepositoryPath}`);
 
       // Call the callback to update server configuration and broadcast to web clients
       if (this.configUpdateCallback) {
+        logger.log('Calling configUpdateCallback...');
         this.configUpdateCallback({ repositoryBasePath: path });
+        logger.log('configUpdateCallback completed successfully');
         return true;
       }
 
-      logger.warn('No config update callback set');
+      logger.warn('No config update callback set - is the server initialized?');
       return false;
     } catch (error) {
       logger.error('Failed to update repository path:', error);
