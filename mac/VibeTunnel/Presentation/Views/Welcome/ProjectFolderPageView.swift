@@ -20,45 +20,44 @@ struct ProjectFolderPageView: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            
-            // Title and description
-            VStack(spacing: 8) {
+        VStack(spacing: 30) {
+            VStack(spacing: 16) {
                 Text("Choose Your Project Folder")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .font(.largeTitle)
+                    .fontWeight(.semibold)
 
                 Text(
                     "Select the folder where you keep your projects. VibeTunnel will use this for quick access and repository discovery."
                 )
-                .font(.system(size: 14))
+                .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 400)
-            }
+                .frame(maxWidth: 480)
+                .fixedSize(horizontal: false, vertical: true)
 
-            // Folder picker section
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text(selectedPath.isEmpty ? "~/" : selectedPath)
-                        .font(.system(size: 13))
-                        .foregroundColor(selectedPath.isEmpty ? .secondary : .primary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color(NSColor.controlBackgroundColor))
-                        .cornerRadius(6)
-
-                    Button("Choose...") {
-                        showFolderPicker()
-                    }
-                    .buttonStyle(.bordered)
-                }
-
-                // Repository preview
-                if !selectedPath.isEmpty {
+                // Folder and repository section
+                VStack(spacing: 16) {
+                    // Folder picker
                     HStack {
+                        Text(selectedPath.isEmpty ? "~/" : selectedPath)
+                            .font(.system(size: 13))
+                            .foregroundColor(selectedPath.isEmpty ? .secondary : .primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color(NSColor.controlBackgroundColor))
+                            .cornerRadius(6)
+
+                        Button("Choose...") {
+                            showFolderPicker()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .frame(width: 350)
+
+                    // Repository count
+                    if !selectedPath.isEmpty {
+                        HStack {
                             Image(systemName: "folder.badge.gearshape")
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary)
@@ -78,34 +77,33 @@ struct ProjectFolderPageView: View {
                             }
                             
                             Spacer()
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                        .cornerRadius(6)
+                        .frame(width: 350)
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-                    .cornerRadius(6)
+                    // Tip
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "lightbulb")
+                            .font(.system(size: 11))
+                            .foregroundColor(.orange)
+                            .frame(width: 14)
+
+                        Text("You can change this later in Settings → Application → Repository")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: 350)
+                    .padding(.top, 8)
                 }
             }
-            .frame(maxWidth: 400)
-
-            // Tip at bottom - single line with icon
-            HStack(alignment: .top, spacing: 6) {
-                Image(systemName: "lightbulb")
-                    .font(.system(size: 11))
-                    .foregroundColor(.orange)
-                    .frame(width: 14)
-
-                Text("You can change this later in Settings → Application → Repository")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: 400)
-            .padding(.top, 8)
-            
             Spacer()
         }
-        .padding(.horizontal, 30)
+        .padding()
         .onAppear {
             selectedPath = repositoryBasePath
             if !selectedPath.isEmpty {
