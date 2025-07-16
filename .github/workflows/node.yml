@@ -172,6 +172,11 @@ jobs:
       working-directory: web
       run: pnpm install --frozen-lockfile
 
+    - name: Build node-pty
+      working-directory: web
+      run: |
+        cd node-pty && npm install && npm run build
+
     - name: Build frontend and backend
       working-directory: web
       run: pnpm run build:ci
@@ -326,6 +331,11 @@ jobs:
     - name: Install dependencies
       working-directory: web
       run: pnpm install --frozen-lockfile
+
+    - name: Build node-pty for TypeScript
+      working-directory: web
+      run: |
+        cd node-pty && npm install && npm run build
 
     - name: Check TypeScript types
       working-directory: web

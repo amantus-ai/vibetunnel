@@ -51,6 +51,10 @@ jobs:
       - name: Run linting
         run: pnpm run lint
 
+      - name: Build node-pty for TypeScript
+        run: |
+          cd node-pty && npm install && npm run build
+
       - name: Run type checking
         run: pnpm run typecheck
 
@@ -83,6 +87,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build node-pty
+        run: |
+          cd node-pty && npm install && npm run build
 
       - name: Build project
         run: pnpm run build
@@ -144,3 +152,4 @@ jobs:
           name: server-coverage-report
           path: web/coverage/server/
           retention-days: 7
+

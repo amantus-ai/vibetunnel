@@ -17,7 +17,23 @@ Basic CI workflow that runs on every push and PR affecting the web directory.
 - Pull requests to `main`
 - Only when files in `web/` directory change
 
-### 2. SEA Build Test (`sea-build-test.yml`)
+### 2. NPM Package Test (`npm-test.yml`)
+Dedicated workflow for testing the npm package build and installation.
+
+**Jobs:**
+- **Test NPM Package**: Builds the npm package and tests installation in a clean environment
+
+**Features:**
+- Builds npm package using the clean build approach
+- Tests global installation without requiring build tools
+- Verifies server startup and API functionality
+- Validates package structure and dependencies
+
+**Triggers:**
+- Push to `main` or `npm-build` branches when web files change
+- Pull requests to `main` when web files change
+
+### 3. SEA Build Test (`sea-build-test.yml`)
 Advanced workflow for testing Single Executable Application (SEA) builds with custom Node.js.
 
 **Features:**
@@ -46,7 +62,7 @@ Advanced workflow for testing Single Executable Application (SEA) builds with cu
    - Helps identify any Blacksmith-specific issues
    - Runs only on push events
 
-### 3. Xcode SEA Test (`xcode-sea-test.yml`)
+### 4. Xcode SEA Test (`xcode-sea-test.yml`)
 Tests the macOS Xcode build with custom Node.js to ensure the VibeTunnel.app works correctly with SEA executables.
 
 **Features:**

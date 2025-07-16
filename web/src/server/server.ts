@@ -559,7 +559,76 @@ export async function createApp(): Promise<AppInstance> {
   });
 
   // Serve static files with .html extension handling and caching headers
-  const publicPath = path.join(process.cwd(), 'public');
+  // In production/bundled mode, use the package directory; in development, use cwd
+  const getPublicPath = () => {
+    // More precise npm package detection:
+    // 1. Check if we're explicitly in an npm package structure
+    // 2. The file should be in node_modules/vibetunnel/lib/
+    // 3. Or check for our specific package markers
+    const isNpmPackage = (() => {
+      // Most reliable: check if we're in node_modules/vibetunnel structure
+      if (__filename.includes(path.join('node_modules', 'vibetunnel', 'lib'))) {
+        return true;
+      }
+
+      // Check for Windows path variant
+      if (__filename.includes('node_modules\\vibetunnel\\lib')) {
+        return true;
+      }
+
+      // Secondary check: if we're in a lib directory, verify it's actually an npm package
+      // by checking for the existence of package.json in the parent directory
+      if (path.basename(__dirname) === 'lib') {
+        const parentDir = path.dirname(__dirname);
+        const packageJsonPath = path.join(parentDir, 'package.json');
+        try {
+          const packageJson = require(packageJsonPath);
+          // Verify this is actually our package
+          return packageJson.name === 'vibetunnel';
+        } catch {
+          // Not a valid npm package structure
+          return false;
+        }
+      }
+
+      return false;
+    })();
+
+    if (process.env.VIBETUNNEL_BUNDLED === 'true' || process.env.BUILD_DATE || isNpmPackage) {
+      // In bundled/production/npm mode, find package root
+      // When bundled, __dirname is /path/to/package/dist, so go up one level
+      // When globally installed, we need to find the package root
+      let packageRoot = __dirname;
+
+      // If we're in the dist directory, go up one level
+      if (path.basename(packageRoot) === 'dist') {
+        packageRoot = path.dirname(packageRoot);
+      }
+
+      // For npm package context, if we're in lib directory, go up one level
+      if (path.basename(packageRoot) === 'lib') {
+        packageRoot = path.dirname(packageRoot);
+      }
+
+      // Look for package.json to confirm we're in the right place
+      const publicPath = path.join(packageRoot, 'public');
+      const indexPath = path.join(publicPath, 'index.html');
+
+      // If index.html exists, we found the right path
+      if (require('fs').existsSync(indexPath)) {
+        return publicPath;
+      }
+
+      // Fallback: try going up from the bundled CLI location
+      // The bundled CLI might be in node_modules/vibetunnel/dist/
+      return path.join(__dirname, '..', 'public');
+    } else {
+      // In development mode, use current working directory
+      return path.join(process.cwd(), 'public');
+    }
+  };
+
+  const publicPath = getPublicPath();
   const isDevelopment = !process.env.BUILD_DATE || process.env.NODE_ENV === 'development';
 
   app.use(

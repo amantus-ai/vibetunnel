@@ -65,6 +65,13 @@ describe('SessionView', () => {
     // Setup fetch mock
     fetchMock = setupFetchMock();
 
+    // Mock the server status endpoint that's called on component connect
+    fetchMock.mockResponse('/api/server/status', {
+      macAppConnected: false,
+      cloudflareEnabled: false,
+      isDevelopmentServer: false,
+    });
+
     // Create component
     element = await fixture<SessionView>(html` <session-view></session-view> `);
 

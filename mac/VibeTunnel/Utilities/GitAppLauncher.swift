@@ -10,6 +10,7 @@ enum GitApp: String, CaseIterable {
     case fork = "Fork"
     case githubDesktop = "GitHub Desktop"
     case gitup = "GitUp"
+    case juxtaCode = "JuxtaCode"
     case sourcetree = "SourceTree"
     case sublimeMerge = "Sublime Merge"
     case tower = "Tower"
@@ -26,6 +27,8 @@ enum GitApp: String, CaseIterable {
             "com.github.GitHubClient"
         case .gitup:
             "co.gitup.mac"
+        case .juxtaCode:
+            "com.naiveapps.juxtacode"
         case .sourcetree:
             "com.torusknot.SourceTreeNotMAS"
         case .sublimeMerge:
@@ -46,6 +49,7 @@ enum GitApp: String, CaseIterable {
         case .fork: 75
         case .githubDesktop: 90
         case .gitup: 60
+        case .juxtaCode: 82
         case .sourcetree: 80
         case .sublimeMerge: 85
         case .tower: 100

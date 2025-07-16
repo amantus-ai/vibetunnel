@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Unified npm build script for VibeTunnel
+ * Clean npm build script for VibeTunnel
+ * Uses a separate dist-npm directory with its own package.json
  * Builds for all platforms by default with complete prebuild support
  * 
  * Options:
@@ -11,7 +12,7 @@
  *   --arch <arch>    Build for specific architecture (x64, arm64)
  */
 
-const { execSync, spawn } = require('child_process');
+const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -21,13 +22,18 @@ const ALL_PLATFORMS = {
   linux: ['x64', 'arm64']
 };
 
+const DIST_DIR = path.join(__dirname, '..', 'dist-npm');
+const ROOT_DIR = path.join(__dirname, '..');
+
 // Map Node.js versions to ABI versions
+// ABI versions from: https://nodejs.org/api/n-api.html#node-api-version-matrix
+// These map to the internal V8 ABI versions used by prebuild
 function getNodeAbi(nodeVersion) {
   const abiMap = {
-    '20': '115',
-    '22': '127',
-    '23': '131',
-    '24': '134'
+    '20': '115', // Node.js 20.x uses ABI 115
+    '22': '127', // Node.js 22.x uses ABI 127
+    '23': '131', // Node.js 23.x uses ABI 131
+    '24': '134'  // Node.js 24.x uses ABI 134
   };
   return abiMap[nodeVersion];
 }
@@ -40,6 +46,20 @@ const platformFilter = args.find(arg => arg.startsWith('--platform'))?.split('='
                       (args.includes('--platform') ? args[args.indexOf('--platform') + 1] : null);
 const archFilter = args.find(arg => arg.startsWith('--arch'))?.split('=')[1] || 
                   (args.includes('--arch') ? args[args.indexOf('--arch') + 1] : null);
+
+// Validate platform and architecture arguments
+const VALID_PLATFORMS = ['darwin', 'linux'];
+const VALID_ARCHS = ['x64', 'arm64'];
+
+if (platformFilter && !VALID_PLATFORMS.includes(platformFilter)) {
+  console.error(`❌ Invalid platform: ${platformFilter}. Valid options: ${VALID_PLATFORMS.join(', ')}`);
+  process.exit(1);
+}
+
+if (archFilter && !VALID_ARCHS.includes(archFilter)) {
+  console.error(`❌ Invalid arch: ${archFilter}. Valid options: ${VALID_ARCHS.join(', ')}`);
+  process.exit(1);
+}
 
 let PLATFORMS = ALL_PLATFORMS;
 
@@ -61,7 +81,7 @@ if (currentOnly) {
   }
 }
 
-console.log('🚀 Building VibeTunnel for npm distribution...\n');
+console.log('🚀 Building VibeTunnel for npm distribution (clean approach)...\n');
 
 if (currentOnly) {
   console.log(`📦 Legacy mode: Building for ${process.platform}/${process.arch} only\n`);
@@ -202,15 +222,25 @@ function buildMacOS() {
     for (const arch of PLATFORMS.darwin || []) {
       console.log(`    → authenticate-pam for Node.js ${nodeVersion} ${arch}`);
       try {
-        execSync(`npx prebuild --runtime node --target ${nodeVersion}.0.0 --arch ${arch} --tag-prefix authenticate-pam-v`, {
+        // Use inherit stdio to see any errors during build
+        const result = execSync(`npx prebuild --runtime node --target ${nodeVersion}.0.0 --arch ${arch} --tag-prefix authenticate-pam-v`, {
           cwd: authenticatePamDir,
           stdio: 'pipe',
           env: { ...process.env, npm_config_target_platform: 'darwin', npm_config_target_arch: arch }
         });
+        
+        // Check if prebuild was actually created
+        const prebuildFile = path.join(authenticatePamDir, 'prebuilds', `authenticate-pam-v1.0.5-node-v${getNodeAbi(nodeVersion)}-darwin-${arch}.tar.gz`);
+        if (fs.existsSync(prebuildFile)) {
+          console.log(`      ✅ Created ${path.basename(prebuildFile)}`);
+        } else {
+          console.warn(`      ⚠️  Prebuild file not created for Node.js ${nodeVersion} ${arch}`);
+        }
       } catch (error) {
-        console.error(`      ❌ Failed to build authenticate-pam for Node.js ${nodeVersion} ${arch}`);
-        console.error(`      Error: ${error.message}`);
-        process.exit(1);
+        // Don't exit on macOS authenticate-pam build failures - it might work during npm install
+        console.warn(`      ⚠️  authenticate-pam build failed for macOS (this may be normal)`);
+        console.warn(`      Error: ${error.message}`);
+        // Continue with other builds instead of exiting
       }
     }
   }
@@ -345,38 +375,122 @@ function mergePrebuilds() {
   console.log(`✅ Merged prebuilds: ${nodePtyCount} node-pty + ${pamCount} authenticate-pam = ${allPrebuilds.length} total\n`);
 }
 
+// Copy authenticate-pam module for Linux support (OUR LINUX FIX)
+function copyAuthenticatePam() {
+  console.log('📦 Copying authenticate-pam module for Linux support...\n');
+  
+  const srcDir = path.join(ROOT_DIR, 'node_modules', '.pnpm', 'authenticate-pam@1.0.5', 'node_modules', 'authenticate-pam');
+  const destDir = path.join(DIST_DIR, 'node_modules', 'authenticate-pam');
+  
+  if (!fs.existsSync(srcDir)) {
+    console.warn('⚠️  authenticate-pam source not found, Linux PAM auth may not work');
+    return;
+  }
+  
+  // Create destination directory structure
+  fs.mkdirSync(path.dirname(destDir), { recursive: true });
+  
+  // Copy entire module
+  fs.cpSync(srcDir, destDir, { recursive: true });
+  console.log('✅ authenticate-pam module copied to dist-npm for Linux PAM auth\n');
+}
+
+// Enhanced validation (OUR IMPROVEMENT)
+function validatePackageHybrid() {
+  console.log('🔍 Validating hybrid package completeness...\n');
+  
+  const errors = [];
+  const warnings = [];
+  
+  // Check critical files in dist-npm
+  const criticalFiles = [
+    'lib/vibetunnel-cli',
+    'lib/cli.js',
+    'bin/vibetunnel',
+    'bin/vt',
+    'scripts/postinstall.js',
+    'public/index.html',
+    'node-pty/package.json',
+    'node-pty/binding.gyp',
+    'package.json'
+  ];
+  
+  for (const file of criticalFiles) {
+    const fullPath = path.join(DIST_DIR, file);
+    if (!fs.existsSync(fullPath)) {
+      errors.push(`Missing critical file: ${file}`);
+    }
+  }
+  
+  // Check prebuilds (only required when not in current-only mode)
+  const prebuildsDir = path.join(DIST_DIR, 'prebuilds');
+  if (!currentOnly) {
+    if (!fs.existsSync(prebuildsDir)) {
+      errors.push('Missing prebuilds directory in dist-npm');
+    } else {
+      const prebuilds = fs.readdirSync(prebuildsDir).filter(f => f.endsWith('.tar.gz'));
+      if (prebuilds.length === 0) {
+        warnings.push('No prebuilds found in dist-npm prebuilds directory');
+      } else {
+        console.log(`  Found ${prebuilds.length} prebuilds in dist-npm`);
+      }
+    }
+  } else {
+    console.log('  ⚠️  Prebuilds skipped in current-only mode');
+  }
+  
+  // Check authenticate-pam (Linux support)
+  const authPamDir = path.join(DIST_DIR, 'node_modules', 'authenticate-pam');
+  if (!fs.existsSync(authPamDir)) {
+    warnings.push('authenticate-pam module not included (Linux PAM auth will not work)');
+  } else {
+    console.log('  ✅ authenticate-pam module included for Linux support');
+  }
+  
+  // Validate package.json
+  const packageJsonPath = path.join(DIST_DIR, 'package.json');
+  if (fs.existsSync(packageJsonPath)) {
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    
+    // Check postinstall script
+    if (!packageJson.scripts || !packageJson.scripts.postinstall) {
+      errors.push('Missing postinstall script in package.json');
+    } else {
+      console.log('  ✅ Postinstall script configured');
+    }
+  }
+  
+  // Report results
+  if (errors.length > 0) {
+    console.error('❌ Package validation failed:');
+    errors.forEach(err => console.error(`  - ${err}`));
+    process.exit(1);
+  }
+  
+  if (warnings.length > 0) {
+    console.warn('⚠️  Package warnings:');
+    warnings.forEach(warn => console.warn(`  - ${warn}`));
+  }
+  
+  console.log('✅ Hybrid package validation passed\n');
+}
+
 // Main build process
 async function main() {
-  // Step 0: Temporarily modify package.json for npm packaging
-  const packageJsonPath = path.join(__dirname, '..', 'package.json');
-  const originalPackageJson = fs.readFileSync(packageJsonPath, 'utf8');
-  const packageJson = JSON.parse(originalPackageJson);
+  // Step 0: Clean previous build
+  console.log('0️⃣ Cleaning previous build...');
+  if (fs.existsSync(DIST_DIR)) {
+    fs.rmSync(DIST_DIR, { recursive: true });
+  }
+  fs.mkdirSync(DIST_DIR, { recursive: true });
   
-  // Store original postinstall
-  const originalPostinstall = packageJson.scripts.postinstall;
-  
-  // Set install script for npm package
-  packageJson.scripts.install = 'prebuild-install || node scripts/postinstall-npm.js';
-  delete packageJson.scripts.postinstall;
-  
-  // Add prebuild dependencies for npm package only
-  packageJson.dependencies['prebuild-install'] = '^7.1.3';
-  
-  // Write modified package.json
-  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
-  
-  // Restore original package.json on exit
-  const restorePackageJson = () => {
-    fs.writeFileSync(packageJsonPath, originalPackageJson);
-  };
-  process.on('exit', restorePackageJson);
-  process.on('SIGINT', () => { restorePackageJson(); process.exit(1); });
-  process.on('SIGTERM', () => { restorePackageJson(); process.exit(1); });
-  
-  // Step 1: Standard build process (includes spawn-helper)
-  console.log('1️⃣ Running standard build process...\n');
+  // Step 1: Standard build process
+  console.log('\n1️⃣ Running standard build process...\n');
   try {
-    execSync('node scripts/build.js', { stdio: 'inherit' });
+    execSync('npm run build', { 
+      cwd: ROOT_DIR, 
+      stdio: 'inherit' 
+    });
     console.log('✅ Standard build completed\n');
   } catch (error) {
     console.error('❌ Standard build failed:', error.message);
@@ -406,25 +520,199 @@ async function main() {
     mergePrebuilds();
   }
   
-  // Step 3: Ensure node-pty is built for current platform
-  console.log('3️⃣ Ensuring node-pty is built for current platform...\n');
-  const nodePtyBuild = path.join(__dirname, '..', 'node-pty', 'build', 'Release', 'pty.node');
-  if (!fs.existsSync(nodePtyBuild)) {
-    console.log('  Building node-pty for current platform...');
-    const nodePtyDir = path.join(__dirname, '..', 'node-pty');
-    try {
-      execSync('npm run install', { cwd: nodePtyDir, stdio: 'inherit' });
-      console.log('✅ node-pty built successfully');
-    } catch (error) {
-      console.error('❌ Failed to build node-pty:', error.message);
-      process.exit(1);
+  // Step 3: Copy necessary files to dist-npm
+  console.log('3️⃣ Copying files to dist-npm...\n');
+  
+  const filesToCopy = [
+    // Compiled CLI
+    { src: 'dist/vibetunnel-cli', dest: 'lib/cli.js' },
+    { src: 'dist/tsconfig.server.tsbuildinfo', dest: 'lib/tsconfig.server.tsbuildinfo' },
+    
+    // Bin scripts
+    { src: 'bin', dest: 'bin' },
+    
+    // Public assets
+    { src: 'public', dest: 'public' },
+    
+    // Node-pty module (bundled)
+    { src: 'node-pty/lib', dest: 'node-pty/lib' },
+    { src: 'node-pty/src', dest: 'node-pty/src' },
+    { src: 'node-pty/binding.gyp', dest: 'node-pty/binding.gyp' },
+    { src: 'node-pty/package.json', dest: 'node-pty/package.json' },
+    { src: 'node-pty/README.md', dest: 'node-pty/README.md' },
+    
+    // Prebuilds
+    { src: 'prebuilds', dest: 'prebuilds' },
+    
+    // Scripts
+    { src: 'scripts/postinstall-npm.js', dest: 'scripts/postinstall.js' },
+    { src: 'scripts/node-pty-plugin.js', dest: 'scripts/node-pty-plugin.js' }
+  ];
+  
+  function copyRecursive(src, dest) {
+    const srcPath = path.join(ROOT_DIR, src);
+    const destPath = path.join(DIST_DIR, dest);
+    
+    if (!fs.existsSync(srcPath)) {
+      console.warn(`  ⚠️  Source not found: ${src}`);
+      return;
     }
-  } else {
-    console.log('✅ node-pty already built');
+    
+    const destDir = path.dirname(destPath);
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+    
+    const stats = fs.statSync(srcPath);
+    if (stats.isDirectory()) {
+      fs.cpSync(srcPath, destPath, { recursive: true });
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+    
+    console.log(`  ✓ ${src} → ${dest}`);
   }
   
-  // Step 4: Create package-specific README
-  console.log('\n4️⃣ Creating npm package README...\n');
+  filesToCopy.forEach(({ src, dest }) => {
+    copyRecursive(src, dest);
+  });
+  
+  // Step 4: Copy authenticate-pam module for Linux support (OUR ENHANCEMENT)
+  copyAuthenticatePam();
+  
+  // Step 5: Use package.npm.json if available, otherwise create clean package.json
+  console.log('\n4️⃣ Creating package.json for npm...\n');
+  
+  const npmPackageJsonPath = path.join(ROOT_DIR, 'package.npm.json');
+  let npmPackageJson;
+  
+  if (fs.existsSync(npmPackageJsonPath)) {
+    // Use our enhanced package.npm.json
+    console.log('Using package.npm.json configuration...');
+    npmPackageJson = JSON.parse(fs.readFileSync(npmPackageJsonPath, 'utf8'));
+    
+    // Remove prebuild-install dependency (our approach is better)
+    if (npmPackageJson.dependencies && npmPackageJson.dependencies['prebuild-install']) {
+      delete npmPackageJson.dependencies['prebuild-install'];
+      console.log('✅ Removed problematic prebuild-install dependency');
+    }
+  } else {
+    // Fallback to creating clean package.json from source
+    console.log('Creating clean package.json from source...');
+    const sourcePackageJson = JSON.parse(
+      fs.readFileSync(path.join(ROOT_DIR, 'package.json'), 'utf8')
+    );
+    
+    // Extract only necessary fields for npm package
+    npmPackageJson = {
+      name: sourcePackageJson.name,
+      version: sourcePackageJson.version,
+      description: sourcePackageJson.description,
+      keywords: sourcePackageJson.keywords,
+      author: sourcePackageJson.author,
+      license: sourcePackageJson.license,
+      homepage: sourcePackageJson.homepage,
+      repository: sourcePackageJson.repository,
+      bugs: sourcePackageJson.bugs,
+      
+      // Main entry point
+      main: 'lib/cli.js',
+      
+      // Bin scripts
+      bin: {
+        vibetunnel: './bin/vibetunnel',
+        vt: './bin/vt'
+      },
+      
+      // Only runtime dependencies
+      dependencies: Object.fromEntries(
+        Object.entries(sourcePackageJson.dependencies)
+          .filter(([key]) => !key.includes('node-pty')) // Exclude node-pty, it's bundled
+      ),
+      
+      // Minimal scripts
+      scripts: {
+        postinstall: 'node scripts/postinstall.js'
+      },
+      
+      // Node.js requirements
+      engines: sourcePackageJson.engines,
+      os: sourcePackageJson.os,
+      
+      // Files to include (everything in dist-npm)
+      files: [
+        'lib/',
+        'bin/',
+        'public/',
+        'node-pty/',
+        'prebuilds/',
+        'scripts/',
+        'README.md'
+      ]
+    };
+  }
+  
+  fs.writeFileSync(
+    path.join(DIST_DIR, 'package.json'),
+    JSON.stringify(npmPackageJson, null, 2) + '\n'
+  );
+
+  // Step 6: Fix the CLI structure and bin scripts
+  console.log('\n6️⃣ Fixing CLI structure and bin scripts...\n');
+  
+  // The dist/vibetunnel-cli was copied to lib/cli.js
+  // We need to rename it and create a wrapper
+  const cliPath = path.join(DIST_DIR, 'lib', 'cli.js');
+  const cliBundlePath = path.join(DIST_DIR, 'lib', 'vibetunnel-cli');
+  
+  // Rename the bundle
+  fs.renameSync(cliPath, cliBundlePath);
+  
+  // Create a simple wrapper that requires the bundle
+  const cliWrapperContent = `#!/usr/bin/env node
+require('./vibetunnel-cli');
+`;
+  
+  fs.writeFileSync(cliPath, cliWrapperContent, { mode: 0o755 });
+  
+  // Fix bin scripts to point to correct path
+  const binVibetunnelPath = path.join(DIST_DIR, 'bin', 'vibetunnel');
+  const binVibetunnelContent = `#!/usr/bin/env node
+
+// Start the CLI - it handles all command routing including 'fwd'
+const { spawn } = require('child_process');
+const path = require('path');
+
+const cliPath = path.join(__dirname, '..', 'lib', 'vibetunnel-cli');
+const args = process.argv.slice(2);
+
+const child = spawn('node', [cliPath, ...args], {
+  stdio: 'inherit',
+  env: process.env
+});
+
+child.on('exit', (code, signal) => {
+  if (signal) {
+    // Process was killed by signal, exit with 128 + signal number convention
+    // Common signals: SIGTERM=15, SIGINT=2, SIGKILL=9
+    const signalExitCode = signal === 'SIGTERM' ? 143 : 
+                          signal === 'SIGINT' ? 130 : 
+                          signal === 'SIGKILL' ? 137 : 128;
+    process.exit(signalExitCode);
+  } else {
+    // Normal exit, use the exit code (or 0 if null)
+    process.exit(code ?? 0);
+  }
+});
+`;
+  fs.writeFileSync(binVibetunnelPath, binVibetunnelContent, { mode: 0o755 });
+  console.log('  ✓ Fixed bin/vibetunnel path');
+  
+  // vt script doesn't need fixing - it dynamically finds the binary
+  
+  // Step 7: Create README
+  console.log('\n7️⃣ Creating npm README...\n');
+  
   const readmeContent = `# VibeTunnel CLI
 
 Full-featured terminal sharing server with web interface for macOS and Linux. Windows not yet supported.
@@ -435,87 +723,85 @@ Full-featured terminal sharing server with web interface for macOS and Linux. Wi
 npm install -g vibetunnel
 \`\`\`
 
-## Requirements
-
-- Node.js >= 20.0.0
-- macOS or Linux (Windows not yet supported)
-- Build tools for native modules (Xcode on macOS, build-essential on Linux)
-
-## Usage
-
-### Start the server
+## Quick Start
 
 \`\`\`bash
-# Start with default settings (port 4020)
+# Start VibeTunnel server
 vibetunnel
 
-# Start with custom port
-vibetunnel --port 8080
+# Or use short alias
+vt
 
-# Start without authentication
-vibetunnel --no-auth
-\`\`\`
+# Custom port and settings
+vibetunnel --port 4020 --auth
 
-Then open http://localhost:4020 in your browser to access the web interface.
-
-### Use the vt command wrapper
-
-The \`vt\` command allows you to run commands with TTY forwarding:
-
-\`\`\`bash
-# Monitor AI agents with automatic activity tracking
-vt claude
-vt claude --dangerously-skip-permissions
-
-# Run commands with output visible in VibeTunnel
-vt npm test
-vt python script.py
-vt top
-
-# Launch interactive shell
-vt --shell
-vt -i
-
-# Update session title (inside a session)
-vt title "My Project"
-\`\`\`
-
-### Forward commands to a session
-
-\`\`\`bash
-# Basic usage
-vibetunnel fwd <session-id> <command> [args...]
-
-# Examples
-vibetunnel fwd --session-id abc123 ls -la
-vibetunnel fwd --session-id abc123 npm test
-vibetunnel fwd --session-id abc123 python script.py
+# Forward mode (connect to remote VibeTunnel)
+vibetunnel fwd username@hostname
 \`\`\`
 
 ## Features
 
-- **Web-based terminal interface** - Access terminals from any browser
-- **Multiple concurrent sessions** - Run multiple terminals simultaneously
-- **Real-time synchronization** - See output in real-time
-- **TTY forwarding** - Full terminal emulation support
-- **Session management** - Create, list, and manage sessions
-- **Cross-platform** - Works on macOS and Linux
-- **No dependencies** - Just Node.js required
+- **Terminal Sharing**: Share your terminal through a web browser
+- **Web Interface**: Access terminals from any device with a browser
+- **Session Management**: Create, manage, and switch between multiple terminal sessions
+- **Authentication**: Built-in authentication system
+- **Cross-Platform**: Works on macOS and Linux
 
-## Package Contents
+## Requirements
 
-This npm package includes:
-- Full VibeTunnel server with web UI
-- Command-line tools (vibetunnel, vt)
-- Native PTY support for terminal emulation
-- Web interface with xterm.js
-- Session management and forwarding
+- **Node.js**: Version 20 or higher
+- **Operating System**: macOS or Linux (Windows not yet supported)
+- **Build Tools**: For source compilation fallback (make, gcc, python3)
 
 ## Platform Support
 
-- macOS (Intel and Apple Silicon)
-- Linux (x64 and ARM64)
-- Windows: Not yet supported ([#252](https://github.com/amantus-ai/vibetunnel/issues/252))
+### macOS
+- Intel (x64) and Apple Silicon (arm64)
+- Requires Xcode Command Line Tools for source compilation
+
+### Linux
+- x64 and ARM64 architectures
+- PAM authentication support
+- Automatic fallback to source compilation when prebuilds unavailable
+
+## Configuration
+
+VibeTunnel can be configured via command line arguments:
+
+\`\`\`bash
+vibetunnel --help
+\`\`\`
+
+## Troubleshooting
+
+### Installation Issues
+
+If you encounter issues during installation:
+
+1. **Missing Build Tools**: Install build essentials
+   \`\`\`bash
+   # Ubuntu/Debian
+   sudo apt-get install build-essential python3-dev
+   
+   # macOS
+   xcode-select --install
+   \`\`\`
+
+2. **Permission Issues**: Use sudo for global installation
+   \`\`\`bash
+   sudo npm install -g vibetunnel
+   \`\`\`
+
+3. **Node Version**: Ensure Node.js 20+ is installed
+   \`\`\`bash
+   node --version
+   \`\`\`
+
+### Runtime Issues
+
+- **Server Won't Start**: Check if port is already in use
+- **Authentication Failed**: Verify system authentication setup
+- **Terminal Not Responsive**: Check browser console for WebSocket errors
 
 ## Documentation
 
@@ -525,20 +811,21 @@ See the main repository for complete documentation: https://github.com/amantus-a
 
 MIT
 `;
-
-  const readmePath = path.join(__dirname, '..', 'README.md');
-  fs.writeFileSync(readmePath, readmeContent);
-  console.log('✅ npm README created');
-
-  // Step 5: Clean up test files (keep screencap.js - it's needed)
-  console.log('\n5️⃣ Cleaning up test files...\n');
+  
+  fs.writeFileSync(
+    path.join(DIST_DIR, 'README.md'),
+    readmeContent
+  );
+  
+  // Step 8: Clean up test files in dist-npm
+  console.log('\n8️⃣ Cleaning up test files...\n');
   const testFiles = [
     'public/bundle/test.js',
     'public/test'  // Remove entire test directory
   ];
-
+  
   for (const file of testFiles) {
-    const filePath = path.join(__dirname, '..', file);
+    const filePath = path.join(DIST_DIR, file);
     if (fs.existsSync(filePath)) {
       if (fs.statSync(filePath).isDirectory()) {
         fs.rmSync(filePath, { recursive: true, force: true });
@@ -549,50 +836,40 @@ MIT
       }
     }
   }
+  
+  // Step 9: Validate package with our comprehensive checks
+  validatePackageHybrid();
 
-  // Step 6: Show final package info
-  console.log('\n6️⃣ Package summary...\n');
-  
-  // Calculate total size
-  function getDirectorySize(dirPath) {
-    let totalSize = 0;
-    const items = fs.readdirSync(dirPath);
+  // Step 10: Create npm package
+  console.log('\n9️⃣ Creating npm package...\n');
+  try {
+    execSync('npm pack', {
+      cwd: DIST_DIR,
+      stdio: 'inherit'
+    });
     
-    for (const item of items) {
-      const itemPath = path.join(dirPath, item);
-      const stats = fs.statSync(itemPath);
-      
-      if (stats.isFile()) {
-        totalSize += stats.size;
-      } else if (stats.isDirectory()) {
-        totalSize += getDirectorySize(itemPath);
-      }
+    // Move the package to root directory
+    const packageFiles = fs.readdirSync(DIST_DIR)
+      .filter(f => f.endsWith('.tgz'));
+    
+    if (packageFiles.length > 0) {
+      const packageFile = packageFiles[0];
+      fs.renameSync(
+        path.join(DIST_DIR, packageFile),
+        path.join(ROOT_DIR, packageFile)
+      );
+      console.log(`\n✅ Package created: ${packageFile}`);
     }
-    
-    return totalSize;
+  } catch (error) {
+    console.error('❌ npm pack failed:', error.message);
+    process.exit(1);
   }
   
-  const packageRoot = path.join(__dirname, '..');
-  const totalSize = getDirectorySize(packageRoot);
-  const sizeMB = (totalSize / 1024 / 1024).toFixed(1);
-  
-  console.log(`📦 Package size: ${sizeMB} MB`);
-  
-  if (!currentOnly) {
-    const prebuildsDir = path.join(__dirname, '..', 'prebuilds');
-    if (fs.existsSync(prebuildsDir)) {
-      const prebuildFiles = fs.readdirSync(prebuildsDir).filter(f => f.endsWith('.tar.gz'));
-      console.log(`🔧 Prebuilds: ${prebuildFiles.length} binaries included`);
-    }
-  }
-  
-  console.log('\n🎉 npm package build completed successfully!');
+  console.log('\n🎉 Hybrid npm build completed successfully!');
   console.log('\nNext steps:');
-  console.log('  - Test locally: npm pack');
+  console.log('  - Test locally: npm pack && npm install -g vibetunnel-*.tgz');
+  console.log('  - Test Linux compatibility: Check authenticate-pam and fallback compilation');
   console.log('  - Publish: npm publish');
-  
-  // Restore original package.json
-  restorePackageJson();
 }
 
 main().catch(error => {

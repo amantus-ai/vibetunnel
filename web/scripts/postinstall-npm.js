@@ -2,12 +2,13 @@
 
 /**
  * Postinstall script for npm package
- * Fallback build script when prebuild-install fails
+ * Handles prebuild extraction and fallback compilation
  */
 
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const os = require('os');
 
 console.log('Setting up native modules for VibeTunnel...');
 
@@ -20,125 +21,264 @@ if (isDevelopment) {
   return;
 }
 
-// Try prebuild-install first for each module
-const tryPrebuildInstall = (name, dir) => {
-  console.log(`Trying prebuild-install for ${name}...`);
+// Create node_modules directory if it doesn't exist
+const nodeModulesDir = path.join(__dirname, '..', 'node_modules');
+if (!fs.existsSync(nodeModulesDir)) {
+  fs.mkdirSync(nodeModulesDir, { recursive: true });
+}
+
+// Create symlink for node-pty so it can be required normally
+const nodePtySource = path.join(__dirname, '..', 'node-pty');
+const nodePtyTarget = path.join(nodeModulesDir, 'node-pty');
+if (!fs.existsSync(nodePtyTarget) && fs.existsSync(nodePtySource)) {
   try {
-    execSync('prebuild-install', {
-      cwd: dir,
+    fs.symlinkSync(nodePtySource, nodePtyTarget, 'dir');
+    console.log('✓ Created node-pty symlink in node_modules');
+  } catch (error) {
+    console.warn('Warning: Could not create node-pty symlink:', error.message);
+  }
+}
+
+// Get Node ABI version
+const nodeABI = process.versions.modules;
+
+// Get platform and architecture
+const platform = process.platform;
+const arch = os.arch();
+
+// Convert architecture names
+const archMap = {
+  'arm64': 'arm64',
+  'aarch64': 'arm64',
+  'x64': 'x64',
+  'x86_64': 'x64'
+};
+const normalizedArch = archMap[arch] || arch;
+
+console.log(`Platform: ${platform}-${normalizedArch}, Node ABI: ${nodeABI}`);
+
+// Function to try prebuild-install first
+const tryPrebuildInstall = (moduleName, moduleDir) => {
+  try {
+    // Check if prebuild-install is available
+    const prebuildInstallPath = require.resolve('prebuild-install/bin.js');
+    console.log(`  Attempting to use prebuild-install for ${moduleName}...`);
+    
+    execSync(`node "${prebuildInstallPath}"`, {
+      cwd: moduleDir,
       stdio: 'inherit',
-      env: { ...process.env, npm_config_cache: path.join(require('os').homedir(), '.npm') }
+      env: { ...process.env, npm_config_build_from_source: 'false' }
     });
-    console.log(`✓ ${name} prebuilt binary installed`);
+    
     return true;
   } catch (error) {
-    console.log(`  No prebuilt binary available for ${name}, will compile from source`);
+    console.log(`  prebuild-install failed for ${moduleName}, will try manual extraction`);
     return false;
   }
 };
 
-// Handle both native modules with prebuild-install fallback
+// Function to manually extract prebuild
+const extractPrebuild = (name, version, targetDir) => {
+  const prebuildFile = path.join(__dirname, '..', 'prebuilds', 
+    `${name}-v${version}-node-v${nodeABI}-${platform}-${normalizedArch}.tar.gz`);
+  
+  if (!fs.existsSync(prebuildFile)) {
+    console.log(`  No prebuild found for ${name} on this platform`);
+    return false;
+  }
+
+  // Create the parent directory
+  const buildParentDir = path.join(targetDir);
+  fs.mkdirSync(buildParentDir, { recursive: true });
+
+  try {
+    // Extract directly into the module directory - the tar already contains build/Release structure
+    execSync(`tar -xzf "${prebuildFile}" -C "${buildParentDir}"`, { stdio: 'inherit' });
+    console.log(`✓ ${name} prebuilt binary extracted`);
+    return true;
+  } catch (error) {
+    console.error(`  Failed to extract ${name} prebuild:`, error.message);
+    return false;
+  }
+};
+
+// Function to compile from source
+const compileFromSource = (moduleName, moduleDir) => {
+  console.log(`  Building ${moduleName} from source...`);
+  try {
+    // First check if node-gyp is available
+    try {
+      execSync('node-gyp --version', { stdio: 'pipe' });
+    } catch (e) {
+      console.log('  Installing node-gyp...');
+      execSync('npm install -g node-gyp', { stdio: 'inherit' });
+    }
+    
+    // For node-pty, ensure node-addon-api is available
+    if (moduleName === 'node-pty') {
+      const nodeAddonApiPath = path.join(moduleDir, 'node_modules', 'node-addon-api');
+      if (!fs.existsSync(nodeAddonApiPath)) {
+        console.log(`  Setting up node-addon-api for ${moduleName}...`);
+        
+        // Create node_modules directory
+        const nodeModulesDir = path.join(moduleDir, 'node_modules');
+        fs.mkdirSync(nodeModulesDir, { recursive: true });
+        
+        // Try multiple locations for node-addon-api
+        const possiblePaths = [
+          path.join(__dirname, '..', 'node_modules', 'node-addon-api'),
+          path.join(__dirname, '..', '..', 'node_modules', 'node-addon-api'),
+          path.join(__dirname, '..', '..', '..', 'node_modules', 'node-addon-api'),
+          '/usr/local/lib/node_modules/vibetunnel/node_modules/node-addon-api',
+          '/usr/lib/node_modules/vibetunnel/node_modules/node-addon-api'
+        ];
+        
+        let found = false;
+        for (const sourcePath of possiblePaths) {
+          if (fs.existsSync(sourcePath)) {
+            console.log(`  Found node-addon-api at: ${sourcePath}`);
+            console.log(`  Copying to ${nodeAddonApiPath}...`);
+            fs.cpSync(sourcePath, nodeAddonApiPath, { recursive: true });
+            found = true;
+            break;
+          }
+        }
+        
+        if (!found) {
+          // As a fallback, install it
+          console.log(`  Installing node-addon-api package...`);
+          try {
+            execSync('npm install node-addon-api@^7.1.0 --no-save --no-package-lock', {
+              cwd: moduleDir,
+              stdio: 'inherit'
+            });
+          } catch (e) {
+            console.error('  Failed to install node-addon-api:', e.message);
+            console.error('  Trying to continue anyway...');
+          }
+        }
+      }
+    }
+    
+    execSync('node-gyp rebuild', {
+      cwd: moduleDir,
+      stdio: 'inherit'
+    });
+    console.log(`✓ ${moduleName} built successfully`);
+    return true;
+  } catch (error) {
+    console.error(`  Failed to build ${moduleName}:`, error.message);
+    return false;
+  }
+};
+
+// Handle both native modules
 const modules = [
   {
     name: 'node-pty',
+    version: '1.0.0',
     dir: path.join(__dirname, '..', 'node-pty'),
     build: path.join(__dirname, '..', 'node-pty', 'build', 'Release', 'pty.node'),
     essential: true
   },
   {
     name: 'authenticate-pam',
+    version: '1.0.5',
     dir: path.join(__dirname, '..', 'node_modules', 'authenticate-pam'),
     build: path.join(__dirname, '..', 'node_modules', 'authenticate-pam', 'build', 'Release', 'authenticate_pam.node'),
-    essential: false
+    essential: true, // PAM is essential for server environments
+    platforms: ['linux', 'darwin'] // Needed on Linux and macOS
   }
 ];
 
 let hasErrors = false;
 
 for (const module of modules) {
-  if (!fs.existsSync(module.build)) {
-    // First try prebuild-install
-    const prebuildSuccess = tryPrebuildInstall(module.name, module.dir);
-    
-    if (!prebuildSuccess) {
-      // Fall back to compilation
-      console.log(`Building ${module.name} from source...`);
-      try {
-        execSync('node-gyp rebuild', {
-          cwd: module.dir,
-          stdio: 'inherit'
-        });
-        console.log(`✓ ${module.name} built successfully`);
-      } catch (error) {
-        console.error(`Failed to build ${module.name}:`, error.message);
-        if (module.essential) {
-          console.error(`${module.name} is required for VibeTunnel to function.`);
-          console.error('You may need to install build tools for your platform:');
-          console.error('- macOS: Install Xcode Command Line Tools');
-          console.error('- Linux: Install build-essential package');
-          hasErrors = true;
-        } else {
-          console.warn(`Warning: ${module.name} build failed. Some features may be limited.`);
-        }
-      }
+  console.log(`\nProcessing ${module.name}...`);
+  
+  // Skip platform-specific modules if not on that platform
+  if (module.platforms && !module.platforms.includes(platform)) {
+    console.log(`  Skipping ${module.name} (not needed on ${platform})`);
+    continue;
+  }
+
+  // Check if module directory exists
+  if (!fs.existsSync(module.dir)) {
+    console.warn(`  Warning: ${module.name} directory not found at ${module.dir}`);
+    if (module.essential) {
+      hasErrors = true;
     }
-  } else {
+    continue;
+  }
+
+  // Check if already built
+  if (fs.existsSync(module.build)) {
     console.log(`✓ ${module.name} already available`);
+    continue;
+  }
+
+  // Try installation methods in order
+  let success = false;
+
+  // Method 1: Try prebuild-install (preferred)
+  success = tryPrebuildInstall(module.name, module.dir);
+
+  // Method 2: Manual prebuild extraction
+  if (!success) {
+    success = extractPrebuild(module.name, module.version, module.dir);
+  }
+
+  // Method 3: Compile from source
+  if (!success && fs.existsSync(path.join(module.dir, 'binding.gyp'))) {
+    success = compileFromSource(module.name, module.dir);
+  }
+
+  // Check final result
+  if (!success) {
+    // Special handling for authenticate-pam on macOS
+    if (module.name === 'authenticate-pam' && process.platform === 'darwin') {
+      console.warn(`⚠️  Warning: ${module.name} installation failed on macOS.`);
+      console.warn('   This is expected - macOS will fall back to environment variable or SSH key authentication.');
+      console.warn('   To enable PAM authentication, install Xcode Command Line Tools and rebuild.');
+    } else if (module.essential) {
+      console.error(`\n❌ ${module.name} is required for VibeTunnel to function.`);
+      console.error('You may need to install build tools for your platform:');
+      console.error('- macOS: Install Xcode Command Line Tools');
+      console.error('- Linux: Install build-essential and libpam0g-dev packages');
+      hasErrors = true;
+    } else {
+      console.warn(`⚠️  Warning: ${module.name} installation failed. Some features may be limited.`);
+    }
+  }
+}
+
+// Install vt symlink/wrapper
+if (!hasErrors && !isDevelopment) {
+  console.log('\nSetting up vt command...');
+  
+  const vtSource = path.join(__dirname, '..', 'bin', 'vt');
+  
+  // Check if vt script exists
+  if (!fs.existsSync(vtSource)) {
+    console.warn('⚠️  vt command script not found in package');
+    console.log('   Use "vibetunnel" command instead');
+  } else {
+    try {
+      // Make vt script executable
+      fs.chmodSync(vtSource, '755');
+      console.log('✓ vt command configured');
+      console.log('  Note: The vt command is available through npm/npx');
+    } catch (error) {
+      console.warn('⚠️  Could not configure vt command:', error.message);
+      console.log('   Use "vibetunnel" command instead');
+    }
   }
 }
 
 if (hasErrors) {
+  console.error('\n❌ Setup failed with errors');
   process.exit(1);
+} else {
+  console.log('\n✅ VibeTunnel is ready to use');
+  console.log('Run "vibetunnel --help" for usage information');
 }
-
-// Conditionally install vt symlink
-if (!isDevelopment) {
-  try {
-    // Find npm's global bin directory
-    const npmBinDir = execSync('npm bin -g', { encoding: 'utf8' }).trim();
-    const vtTarget = path.join(npmBinDir, 'vt');
-    const vtSource = path.join(__dirname, '..', 'bin', 'vt');
-    
-    // Check if vt already exists
-    if (fs.existsSync(vtTarget)) {
-      // Check if it's already our symlink
-      try {
-        const stats = fs.lstatSync(vtTarget);
-        if (stats.isSymbolicLink()) {
-          const linkTarget = fs.readlinkSync(vtTarget);
-          if (linkTarget.includes('vibetunnel')) {
-            console.log('✓ vt command already installed (VibeTunnel)');
-          } else {
-            console.log('⚠️  vt command already exists (different tool)');
-            console.log('   Use "vibetunnel" command or "npx vt" instead');
-          }
-        } else {
-          console.log('⚠️  vt command already exists (not a symlink)');
-          console.log('   Use "vibetunnel" command instead');
-        }
-      } catch (e) {
-        // Ignore errors checking the existing file
-        console.log('⚠️  vt command already exists');
-        console.log('   Use "vibetunnel" command instead');
-      }
-    } else {
-      // Create the symlink
-      try {
-        fs.symlinkSync(vtSource, vtTarget);
-        // Make it executable
-        fs.chmodSync(vtTarget, '755');
-        console.log('✓ vt command installed successfully');
-      } catch (error) {
-        console.warn('⚠️  Could not install vt command:', error.message);
-        console.log('   Use "vibetunnel" command instead');
-      }
-    }
-  } catch (error) {
-    // If we can't determine npm bin dir or create symlink, just warn
-    console.warn('⚠️  Could not install vt command:', error.message);
-    console.log('   Use "vibetunnel" command instead');
-  }
-}
-
-console.log('✓ VibeTunnel is ready to use');
-console.log('Run "vibetunnel --help" for usage information');
