@@ -16,13 +16,14 @@ permissions:
   contents: read
   pull-requests: write
 
+defaults:
+  run:
+    working-directory: web
+
 jobs:
   test-npm-package:
     name: Test NPM Package
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
     
     steps:
       - name: Checkout code
