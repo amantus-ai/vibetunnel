@@ -479,5 +479,49 @@ docker run --rm --platform linux/amd64 vibetunnel-test
 
 ### Version History
 
-- **1.0.0-beta.11** (2025-07-16): Current release with full prebuild system
+- **1.0.0-beta.11.1** (2025-07-16): Fixed npm installation issues, latest stable release
+- **1.0.0-beta.11** (2025-07-16): Initial release with full prebuild system
 - **1.0.0-beta.10** (2025-07-14): Previous version (unpublished)
+
+## NPM Distribution Tags
+
+VibeTunnel uses npm dist-tags to manage different release channels:
+
+### Current Tags
+- **latest**: Points to the most stable release (currently 1.0.0-beta.11.1)
+- **beta**: Points to the latest beta release (currently 1.0.0-beta.11.1)
+
+### Managing Tags
+
+```bash
+# View current tags
+npm dist-tag ls vibetunnel
+
+# Set a version as latest
+npm dist-tag add vibetunnel@1.0.0-beta.11.1 latest
+
+# Add a new tag
+npm dist-tag add vibetunnel@1.0.0-beta.12 next
+
+# Remove a tag
+npm dist-tag rm vibetunnel next
+```
+
+### Installation by Tag
+
+```bash
+# Install latest stable (default)
+npm install -g vibetunnel
+
+# Install specific tag
+npm install -g vibetunnel@beta
+npm install -g vibetunnel@latest
+
+# Install specific version
+npm install -g vibetunnel@1.0.0-beta.11.1
+```
+
+### Best Practices
+- Always tag beta releases with `beta` tag
+- Only promote to `latest` after testing confirms stability
+- Use semantic versioning for beta iterations (e.g., 1.0.0-beta.11.1, 1.0.0-beta.11.2)

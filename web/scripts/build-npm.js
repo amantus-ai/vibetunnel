@@ -380,17 +380,50 @@ function bundleNodePty() {
   console.log('📦 Bundling node-pty with dependencies...\n');
   
   const nodePtyDir = path.join(DIST_DIR, 'node-pty');
-  
-  // Ensure node-pty has node-addon-api bundled for source compilation
-  const nodeAddonApiSrc = path.join(ROOT_DIR, 'node_modules', '.pnpm', 'node-addon-api@7.1.1', 'node_modules', 'node-addon-api');
   const nodeAddonApiDest = path.join(nodePtyDir, 'node_modules', 'node-addon-api');
   
-  if (fs.existsSync(nodeAddonApiSrc)) {
+  // Try multiple strategies to find node-addon-api
+  const possiblePaths = [];
+  
+  // Strategy 1: Direct dependency in node_modules
+  const directPath = path.join(ROOT_DIR, 'node_modules', 'node-addon-api');
+  if (fs.existsSync(directPath)) {
+    possiblePaths.push(directPath);
+  }
+  
+  // Strategy 2: pnpm structure (any version)
+  const pnpmDir = path.join(ROOT_DIR, 'node_modules', '.pnpm');
+  if (fs.existsSync(pnpmDir)) {
+    const pnpmEntries = fs.readdirSync(pnpmDir)
+      .filter(dir => dir.startsWith('node-addon-api@'))
+      .map(dir => path.join(pnpmDir, dir, 'node_modules', 'node-addon-api'))
+      .filter(fs.existsSync);
+    possiblePaths.push(...pnpmEntries);
+  }
+  
+  // Strategy 3: Check if it's a dependency of node-pty
+  const nodePtyModules = path.join(ROOT_DIR, 'node-pty', 'node_modules', 'node-addon-api');
+  if (fs.existsSync(nodePtyModules)) {
+    possiblePaths.push(nodePtyModules);
+  }
+  
+  // Strategy 4: Hoisted by npm/yarn (parent directory)
+  const hoistedPath = path.join(ROOT_DIR, '..', 'node_modules', 'node-addon-api');
+  if (fs.existsSync(hoistedPath)) {
+    possiblePaths.push(hoistedPath);
+  }
+  
+  if (possiblePaths.length > 0) {
+    const nodeAddonApiSrc = possiblePaths[0];
     fs.mkdirSync(path.dirname(nodeAddonApiDest), { recursive: true });
     fs.cpSync(nodeAddonApiSrc, nodeAddonApiDest, { recursive: true });
-    console.log('  ✅ Bundled node-addon-api for source compilation fallback');
+    console.log(`  ✅ Bundled node-addon-api from: ${path.relative(ROOT_DIR, nodeAddonApiSrc)}`);
   } else {
-    console.warn('  ⚠️  node-addon-api not found, source compilation may fail');
+    console.error('  ❌ CRITICAL: node-addon-api not found - source compilation will fail!');
+    console.error('     Please ensure node-addon-api is installed as a dependency.');
+    console.error('     Run: pnpm add -D node-addon-api');
+    // Don't exit during build - let the developer decide
+    console.warn('  ⚠️  Continuing build, but npm package may have issues if prebuilds are missing.');
   }
   
   console.log('✅ node-pty bundled with dependencies\n');
