@@ -37,10 +37,7 @@ struct ProjectFolderPageView: View {
             }
 
             // Folder picker section
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Project Folder")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.secondary)
+            VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Text(selectedPath.isEmpty ? "~/" : selectedPath)
                         .font(.system(size: 13))
@@ -59,12 +56,7 @@ struct ProjectFolderPageView: View {
 
                 // Repository preview
                 if !selectedPath.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Discovered Repositories")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
-
-                        HStack {
+                    HStack {
                             Image(systemName: "folder.badge.gearshape")
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary)
@@ -84,12 +76,11 @@ struct ProjectFolderPageView: View {
                             }
                             
                             Spacer()
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-                        .cornerRadius(6)
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                    .cornerRadius(6)
                 }
             }
             .frame(maxWidth: 400)
