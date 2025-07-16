@@ -75,7 +75,7 @@ export class NotificationStatus extends LitElement {
       };
     }
 
-    // Red for all other cases (not supported, denied, or no subscription)
+    // Default color for all other cases (not red anymore)
     let tooltip = 'Settings (Notifications disabled)';
     if (!this.isSupported) {
       tooltip = 'Settings (Notifications not supported)';
@@ -86,7 +86,7 @@ export class NotificationStatus extends LitElement {
     }
 
     return {
-      color: 'text-status-error',
+      color: 'text-muted',
       tooltip,
     };
   }
