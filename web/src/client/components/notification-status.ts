@@ -71,35 +71,30 @@ export class NotificationStatus extends LitElement {
     if (this.permission === 'granted' && this.subscription) {
       return {
         color: 'text-status-success',
-        tooltip: 'Notifications enabled',
+        tooltip: 'Settings (Notifications enabled)',
       };
     }
 
-    // Red for all other cases (not supported, denied, or no subscription)
-    let tooltip = 'Notifications disabled';
+    // Default color for all other cases (not red anymore)
+    let tooltip = 'Settings (Notifications disabled)';
     if (!this.isSupported) {
-      tooltip = 'Notifications not supported';
+      tooltip = 'Settings (Notifications not supported)';
     } else if (this.permission === 'denied') {
-      tooltip = 'Notifications blocked';
+      tooltip = 'Settings (Notifications blocked)';
     } else if (!this.subscription) {
-      tooltip = 'Notifications not subscribed';
+      tooltip = 'Settings (Notifications not subscribed)';
     }
 
     return {
-      color: 'text-status-error',
+      color: 'text-muted',
       tooltip,
     };
   }
 
   private renderIcon() {
     return html`
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M15 17h5l-3.5-3.5A7 7 0 0 1 17 10a7 7 0 0 0-14 0 7 7 0 0 1 .5 3.5L0 17h5m10 0v1a3 3 0 0 1-6 0v-1m6 0H9"
-        />
+      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
       </svg>
     `;
   }
