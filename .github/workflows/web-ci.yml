@@ -53,7 +53,7 @@ jobs:
 
       - name: Build node-pty for TypeScript
         run: |
-          cd node-pty && pnpm install --no-frozen-lockfile
+          cd node-pty && npm run build
 
       - name: Run type checking
         run: pnpm run typecheck
@@ -90,7 +90,7 @@ jobs:
 
       - name: Build node-pty
         run: |
-          cd node-pty && pnpm install --no-frozen-lockfile
+          cd node-pty && npm run build
 
       - name: Build project
         run: pnpm run build

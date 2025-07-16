@@ -51,7 +51,7 @@ jobs:
 
       - name: Build node-pty
         run: |
-          cd node-pty && pnpm install --no-frozen-lockfile
+          cd node-pty && npm run build
 
       - name: Build npm package
         run: pnpm run build:npm -- --current-only
