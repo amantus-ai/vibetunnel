@@ -21,6 +21,7 @@ jobs:
     defaults:
       run:
         shell: bash
+        working-directory: web/native-pty
     strategy:
       fail-fast: false
       matrix:
