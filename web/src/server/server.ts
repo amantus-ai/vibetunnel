@@ -561,11 +561,38 @@ export async function createApp(): Promise<AppInstance> {
   // Serve static files with .html extension handling and caching headers
   // In production/bundled mode, use the package directory; in development, use cwd
   const getPublicPath = () => {
-    // Check if we're running from an npm package
-    const isNpmPackage =
-      __filename.includes('node_modules') ||
-      __filename.includes('/lib/') ||
-      __filename.includes('\\lib\\');
+    // More precise npm package detection:
+    // 1. Check if we're explicitly in an npm package structure
+    // 2. The file should be in node_modules/vibetunnel/lib/
+    // 3. Or check for our specific package markers
+    const isNpmPackage = (() => {
+      // Most reliable: check if we're in node_modules/vibetunnel structure
+      if (__filename.includes(path.join('node_modules', 'vibetunnel', 'lib'))) {
+        return true;
+      }
+
+      // Check for Windows path variant
+      if (__filename.includes('node_modules\\vibetunnel\\lib')) {
+        return true;
+      }
+
+      // Secondary check: if we're in a lib directory, verify it's actually an npm package
+      // by checking for the existence of package.json in the parent directory
+      if (path.basename(__dirname) === 'lib') {
+        const parentDir = path.dirname(__dirname);
+        const packageJsonPath = path.join(parentDir, 'package.json');
+        try {
+          const packageJson = require(packageJsonPath);
+          // Verify this is actually our package
+          return packageJson.name === 'vibetunnel';
+        } catch {
+          // Not a valid npm package structure
+          return false;
+        }
+      }
+
+      return false;
+    })();
 
     if (process.env.VIBETUNNEL_BUNDLED === 'true' || process.env.BUILD_DATE || isNpmPackage) {
       // In bundled/production/npm mode, find package root
