@@ -1236,12 +1236,15 @@ final class WebRTCManager: NSObject {
                 Error
             >) in
                 peerConnection.offer(for: constraints) { offer, error in
-                    if let error {
-                        continuation.resume(throwing: error)
-                    } else if let offer {
-                        continuation.resume(returning: offer)
-                    } else {
-                        continuation.resume(throwing: WebRTCError.failedToCreatePeerConnection)
+                    // WebRTC calls this on its signaling thread, dispatch to main
+                    Task { @MainActor in
+                        if let error {
+                            continuation.resume(throwing: error)
+                        } else if let offer {
+                            continuation.resume(returning: offer)
+                        } else {
+                            continuation.resume(throwing: WebRTCError.failedToCreatePeerConnection)
+                        }
                     }
                 }
             }
@@ -1254,10 +1257,13 @@ final class WebRTCManager: NSObject {
             // Set local description
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 peerConnection.setLocalDescription(modifiedOffer) { error in
-                    if let error {
-                        continuation.resume(throwing: error)
-                    } else {
-                        continuation.resume()
+                    // WebRTC calls this on its signaling thread, dispatch to main
+                    Task { @MainActor in
+                        if let error {
+                            continuation.resume(throwing: error)
+                        } else {
+                            continuation.resume()
+                        }
                     }
                 }
             }
@@ -1283,10 +1289,13 @@ final class WebRTCManager: NSObject {
         do {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 peerConnection.setRemoteDescription(description) { error in
-                    if let error {
-                        continuation.resume(throwing: error)
-                    } else {
-                        continuation.resume()
+                    // WebRTC calls this on its signaling thread, dispatch to main
+                    Task { @MainActor in
+                        if let error {
+                            continuation.resume(throwing: error)
+                        } else {
+                            continuation.resume()
+                        }
                     }
                 }
             }
