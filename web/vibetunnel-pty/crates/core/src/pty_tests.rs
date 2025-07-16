@@ -227,14 +227,26 @@ mod tests {
         assert!(initial_status.is_ok());
         assert!(initial_status.unwrap().is_none()); // Still running
 
-        // Wait for process to complete
-        thread::sleep(Duration::from_millis(200));
-
-        // Check final status
-        let final_status = pty.child.try_wait();
-        assert!(final_status.is_ok());
-        let status = final_status.unwrap();
-        assert!(status.is_some()); // Process has exited
+        // Wait for process to complete with a timeout
+        let timeout = Duration::from_secs(5);
+        let start = std::time::Instant::now();
+        let mut status = None;
+        
+        while start.elapsed() < timeout {
+            match pty.child.try_wait() {
+                Ok(Some(s)) => {
+                    status = Some(s);
+                    break;
+                }
+                Ok(None) => {
+                    // Process still running, wait a bit more
+                    thread::sleep(Duration::from_millis(50));
+                }
+                Err(e) => panic!("Failed to check process status: {}", e),
+            }
+        }
+        
+        assert!(status.is_some(), "Process did not exit within timeout"); // Process has exited
 
         #[cfg(unix)]
         {
