@@ -91,7 +91,15 @@ async function main() {
     
     // Ensure native modules are built (in case postinstall didn't run)
     const vibetunnelPtyPath = path.join(__dirname, 'vibetunnel-pty');
-    const vibetunnelPtyNode = path.join(vibetunnelPtyPath, `vibetunnel-pty.${process.platform}-${process.arch}.node`);
+    
+    // Determine the correct platform-specific filename
+    let platformSuffix = `${process.platform}-${process.arch}`;
+    if (process.platform === 'linux') {
+      // Linux builds have additional -gnu or -musl suffix
+      // For now, assume glibc (gnu) systems which is most common
+      platformSuffix = `${process.platform}-${process.arch}-gnu`;
+    }
+    const vibetunnelPtyNode = path.join(vibetunnelPtyPath, `vibetunnel-pty.${platformSuffix}.node`);
     const nativeAuthDir = 'node_modules/authenticate-pam/build/Release';
     
     // Build VibeTunnel PTY addon if needed
