@@ -330,7 +330,7 @@ export class ScreencapSidebar extends LitElement {
     }
   `;
 
-  @property({ type: String }) captureMode: 'desktop' | 'window' = 'desktop';
+  @property({ type: String }) captureMode: 'desktop' | 'window' | 'browser' = 'desktop';
   @property({ type: Array }) processGroups: ProcessGroup[] = [];
   @property({ type: Array }) displays: DisplayInfo[] = [];
   @property({ type: Object }) selectedWindow: WindowInfo | null = null;
@@ -390,6 +390,58 @@ export class ScreencapSidebar extends LitElement {
 
   render() {
     const sortedProcessGroups = this.getSortedProcessGroups();
+
+    // Show browser capture info for browser mode
+    if (this.captureMode === 'browser') {
+      return html`
+        <div class="sidebar-header">
+          <h3>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/>
+            </svg>
+            Browser Capture
+          </h3>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="section-title">
+            <span>Screen Sharing</span>
+          </div>
+          <div class="display-list">
+            <div class="display-item">
+              <div class="display-info">
+                <div class="display-icon">
+                  <svg width="24" height="18" viewBox="0 0 24 18" fill="currentColor">
+                    <rect x="2" y="2" width="20" height="12" rx="1" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <line x1="7" y1="17" x2="17" y2="17" stroke="currentColor" stroke-width="2"/>
+                    <line x1="12" y1="14" x2="12" y2="17" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="12" cy="8" r="2" fill="currentColor"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="display-name">Browser Screen Share</div>
+                  <div class="display-size">Your browser will prompt for screen selection</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="section-title">
+            <span>Instructions</span>
+          </div>
+          <div style="padding: 0.75rem; background: rgb(var(--color-bg-elevated)); border-radius: 0.5rem; font-size: 0.875rem; line-height: 1.5; color: rgb(var(--color-text-muted));">
+            <p style="margin: 0 0 0.5rem 0;">When you click Start:</p>
+            <ol style="margin: 0; padding-left: 1.25rem;">
+              <li>Your browser will ask permission to share your screen</li>
+              <li>Choose to share your entire screen, a specific window, or a browser tab</li>
+              <li>Click "Share" to begin streaming</li>
+            </ol>
+          </div>
+        </div>
+      `;
+    }
 
     return html`
       <div class="sidebar-header">

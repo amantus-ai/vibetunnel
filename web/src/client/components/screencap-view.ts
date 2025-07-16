@@ -1,6 +1,10 @@
 import { css, html, LitElement } from 'lit';
 import { customElement, query, state } from 'lit/decorators.js';
 import { isScreencapError, ScreencapErrorCode } from '../../shared/screencap-errors.js';
+import {
+  type CaptureCapabilities,
+  ScreenCaptureService,
+} from '../services/screen-capture-service.js';
 import { ScreencapWebSocketClient } from '../services/screencap-websocket-client.js';
 import { type StreamStats, WebRTCHandler } from '../services/webrtc-handler.js';
 import type { DisplayInfo, ProcessGroup, WindowInfo } from '../types/screencap.js';
@@ -439,7 +443,9 @@ export class ScreencapView extends LitElement {
   @state() private selectedDisplay: DisplayInfo | null = null;
   @state() private allDisplaysSelected = false;
   @state() private isCapturing = false;
-  @state() private captureMode: 'desktop' | 'window' = 'desktop';
+  @state() private captureMode: 'desktop' | 'window' | 'browser' = 'desktop';
+  @state() private captureCapabilities: CaptureCapabilities | null = null;
+  @state() private useBrowserCapture = false;
   @state() private frameUrl = '';
   @state() private status: 'idle' | 'ready' | 'loading' | 'starting' | 'capturing' | 'error' =
     'idle';
@@ -470,6 +476,7 @@ export class ScreencapView extends LitElement {
 
   private wsClient: ScreencapWebSocketClient | null = null;
   private webrtcHandler: WebRTCHandler | null = null;
+  private screenCaptureService: ScreenCaptureService | null = null;
   private frameUpdateInterval: number | null = null;
   private localAuthToken?: string;
   private boundHandleKeyDown: ((event: KeyboardEvent) => void) | null = null;
@@ -478,7 +485,25 @@ export class ScreencapView extends LitElement {
     super.connectedCallback();
     this.loadSidebarState();
     this.localAuthToken = this.getAttribute('local-auth-token') || undefined;
-    this.initializeWebSocketClient();
+
+    // Initialize screen capture service
+    this.screenCaptureService = new ScreenCaptureService();
+    this.captureCapabilities = this.screenCaptureService.getCapabilities();
+
+    // Set default capture mode based on capabilities
+    if (!this.captureCapabilities.hasNativeApp && this.captureCapabilities.hasBrowserAPI) {
+      this.useBrowserCapture = true;
+      this.captureMode = 'browser';
+    }
+
+    // Only initialize WebSocket client if not using browser capture
+    if (!this.useBrowserCapture) {
+      this.initializeWebSocketClient();
+    } else {
+      // For browser capture, skip Mac app connection and go directly to ready state
+      this.status = 'ready';
+      logger.log('✅ Browser capture mode initialized - skipping Mac app connection');
+    }
 
     // Add keyboard listener to the whole component
     this.boundHandleKeyDown = this.handleKeyDown.bind(this);
@@ -816,12 +841,6 @@ export class ScreencapView extends LitElement {
   }
 
   private async startCapture() {
-    if (!this.wsClient) {
-      this.error = 'WebSocket not connected';
-      this.logStatus('error', 'Cannot start capture: WebSocket not connected');
-      return;
-    }
-
     this.status = 'starting';
     this.error = '';
     this.frameCounter = 0;
@@ -831,12 +850,23 @@ export class ScreencapView extends LitElement {
     this.logStatus('info', 'Starting capture process...');
 
     try {
-      if (this.useWebRTC) {
-        this.logStatus('info', 'Using WebRTC mode for high-quality streaming');
-        await this.startWebRTCCapture();
+      if (this.useBrowserCapture) {
+        this.logStatus('info', 'Using browser-based screen capture');
+        await this.startBrowserCapture();
       } else {
-        this.logStatus('info', 'Using JPEG mode for compatibility');
-        await this.startJPEGCapture();
+        if (!this.wsClient) {
+          this.error = 'WebSocket not connected';
+          this.logStatus('error', 'Cannot start capture: WebSocket not connected');
+          return;
+        }
+
+        if (this.useWebRTC) {
+          this.logStatus('info', 'Using WebRTC mode for high-quality streaming');
+          await this.startWebRTCCapture();
+        } else {
+          this.logStatus('info', 'Using JPEG mode for compatibility');
+          await this.startJPEGCapture();
+        }
       }
 
       this.isCapturing = true;
@@ -1100,6 +1130,66 @@ export class ScreencapView extends LitElement {
     }
   }
 
+  private async startBrowserCapture() {
+    if (!this.screenCaptureService) {
+      throw new Error('Screen capture service not initialized');
+    }
+
+    this.logStatus('info', 'Starting browser-based screen capture...');
+
+    try {
+      // Get screen capture from browser
+      const stream = await this.screenCaptureService.startCapture({
+        frameRate: 30,
+        width: 1920,
+        height: 1080,
+        includeAudio: false,
+        captureMode: 'screen',
+      });
+
+      this.logStatus('success', 'Screen capture stream obtained');
+
+      // For browser capture, directly set the stream to the video element
+      // No need for WebRTC complexity since this is a local stream
+      this.logStatus('success', 'Video stream ready');
+      if (this.videoElement) {
+        this.videoElement.srcObject = stream;
+        this.logStatus('success', 'Video element configured');
+      }
+
+      // Start simple stats monitoring for browser capture
+      if (this.frameUpdateInterval) {
+        clearInterval(this.frameUpdateInterval);
+      }
+      this.frameUpdateInterval = window.setInterval(() => {
+        // Simple stats for browser capture
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+          const settings = videoTrack.getSettings();
+          this.streamStats = {
+            codec: 'Browser',
+            codecImplementation: 'Native',
+            resolution: `${settings.width}x${settings.height}`,
+            fps: settings.frameRate || 30,
+            bitrate: 0,
+            latency: 0,
+            packetsLost: 0,
+            packetLossRate: 0,
+            jitter: 0,
+            timestamp: Date.now(),
+          };
+          this.fps = settings.frameRate || 30;
+        }
+      }, 1000);
+
+      this.logStatus('success', 'Browser capture started successfully');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logStatus('error', `Failed to start browser capture: ${errorMessage}`);
+      throw error;
+    }
+  }
+
   render() {
     return html`
       <div style="display: flex; flex-direction: column; height: 100%; width: 100%;">
@@ -1202,7 +1292,7 @@ export class ScreencapView extends LitElement {
             <button 
               class="btn primary" 
               @click=${this.startCapture}
-              ?disabled=${this.status !== 'ready' || (!this.selectedDisplay && !this.selectedWindow && !this.allDisplaysSelected)}
+              ?disabled=${this.status !== 'ready' || (this.captureMode !== 'browser' && !this.selectedDisplay && !this.selectedWindow && !this.allDisplaysSelected)}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3"/>
@@ -1360,13 +1450,15 @@ export class ScreencapView extends LitElement {
                 : this.status === 'error'
                   ? this.error
                   : this.status === 'ready'
-                    ? this.captureMode === 'desktop'
-                      ? this.selectedDisplay || this.allDisplaysSelected
-                        ? 'Click Start to begin screen capture'
-                        : 'Select a display to capture'
-                      : this.selectedWindow
-                        ? 'Click Start to begin window capture'
-                        : 'Select a window to capture'
+                    ? this.captureMode === 'browser'
+                      ? 'Click Start to begin browser-based screen capture'
+                      : this.captureMode === 'desktop'
+                        ? this.selectedDisplay || this.allDisplaysSelected
+                          ? 'Click Start to begin screen capture'
+                          : 'Select a display to capture'
+                        : this.selectedWindow
+                          ? 'Click Start to begin window capture'
+                          : 'Select a window to capture'
                     : 'Initializing...'
           }
         </div>

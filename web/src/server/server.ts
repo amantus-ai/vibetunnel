@@ -598,7 +598,6 @@ export async function createApp(): Promise<AppInstance> {
 
       return false;
     })();
-
     if (process.env.VIBETUNNEL_BUNDLED === 'true' || process.env.BUILD_DATE || isNpmPackage) {
       // In bundled/production/npm mode, find package root
       // When bundled, __dirname is /path/to/package/dist, so go up one level

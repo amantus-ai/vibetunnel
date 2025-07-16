@@ -113,6 +113,65 @@ export class WebRTCHandler {
     await this.setupWebRTCSignaling();
   }
 
+  /**
+   * Start capture with browser-provided MediaStream (no Mac app required)
+   */
+  async startBrowserCapture(
+    stream: MediaStream,
+    callbacks?: {
+      onStreamReady?: (stream: MediaStream) => void;
+      onStatsUpdate?: (stats: StreamStats) => void;
+      onError?: (error: Error) => void;
+      onStatusUpdate?: (type: 'info' | 'success' | 'warning' | 'error', message: string) => void;
+    }
+  ): Promise<void> {
+    logger.log('Starting browser-based WebRTC capture...');
+
+    if (callbacks) {
+      this.onStreamReady = callbacks.onStreamReady;
+      this.onStatsUpdate = callbacks.onStatsUpdate;
+      this.onError = callbacks.onError;
+      this.onStatusUpdate = callbacks.onStatusUpdate;
+    }
+
+    // Generate session ID if not already present
+    if (!this.wsClient.sessionId) {
+      this.wsClient.sessionId = crypto.randomUUID();
+      logger.log(`Generated session ID: ${this.wsClient.sessionId}`);
+      this.onStatusUpdate?.(
+        'info',
+        `Created session: ${this.wsClient.sessionId.substring(0, 8)}...`
+      );
+    }
+
+    // Set the stream directly without Mac app signaling
+    this.remoteStream = stream;
+    this.onStreamReady?.(stream);
+    this.onStatusUpdate?.('success', 'Browser capture started successfully');
+
+    // Start stats monitoring if available
+    if (this.statsInterval) {
+      clearInterval(this.statsInterval);
+    }
+    this.statsInterval = window.setInterval(() => {
+      // Simple stats monitoring for browser capture
+      this.onStatsUpdate?.({
+        codec: 'Browser',
+        codecImplementation: 'Native',
+        resolution: `${stream.getVideoTracks()[0]?.getSettings().width}x${stream.getVideoTracks()[0]?.getSettings().height}`,
+        fps: 30,
+        bitrate: 0,
+        latency: 0,
+        packetsLost: 0,
+        packetLossRate: 0,
+        jitter: 0,
+        timestamp: Date.now(),
+      });
+    }, 1000);
+
+    logger.log('✅ Browser capture ready');
+  }
+
   async stopCapture(): Promise<void> {
     // Commenting out log to reduce test noise
     // logger.log('Stopping WebRTC capture...');
