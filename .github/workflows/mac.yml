@@ -154,12 +154,8 @@ jobs:
       timeout-minutes: 10
       id: build
       run: |
-        # Use Release config for PRs (faster), Debug for main branch
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          BUILD_CONFIG="Release"
-        else
-          BUILD_CONFIG="Debug"
-        fi
+        # Always use Debug for now to match test expectations
+        BUILD_CONFIG="Debug"
         
         set -o pipefail && xcodebuild build \
           -workspace VibeTunnel.xcworkspace \
@@ -220,12 +216,8 @@ jobs:
           ENABLE_COVERAGE="NO"
         fi
         
-        # Use same config as build for consistency
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          TEST_CONFIG="Release"
-        else
-          TEST_CONFIG="Debug"
-        fi
+        # Always use Debug for tests
+        TEST_CONFIG="Debug"
         
         set -o pipefail && \
         xcodebuild test \
