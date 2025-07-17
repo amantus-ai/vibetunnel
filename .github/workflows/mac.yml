@@ -129,10 +129,30 @@ jobs:
         # Move artifacts to correct locations
         if [ -d "web-artifacts-temp/dist" ]; then
           cp -r web-artifacts-temp/dist/* web/dist/
+          echo "Copied dist files"
         fi
         if [ -d "web-artifacts-temp/public/bundle" ]; then
           cp -r web-artifacts-temp/public/bundle/* web/public/bundle/
+          echo "Copied bundle files"
         fi
+        
+        # Also check if files are in the root of the temp directory
+        if [ -d "web-artifacts-temp/web/dist" ]; then
+          cp -r web-artifacts-temp/web/dist/* web/dist/
+          echo "Copied dist files from web subdirectory"
+        fi
+        if [ -d "web-artifacts-temp/web/public/bundle" ]; then
+          cp -r web-artifacts-temp/web/public/bundle/* web/public/bundle/
+          echo "Copied bundle files from web subdirectory"
+        fi
+        
+        # Debug: Show what we have
+        echo "=== Web directory structure ==="
+        ls -la web/ || true
+        echo "=== Dist contents ==="
+        ls -la web/dist/ | head -10 || true
+        echo "=== Bundle contents ==="
+        ls -la web/public/bundle/ | head -10 || true
         
         # Clean up temp directory
         rm -rf web-artifacts-temp
