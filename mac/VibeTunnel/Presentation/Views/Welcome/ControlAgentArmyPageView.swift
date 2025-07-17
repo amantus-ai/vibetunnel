@@ -62,13 +62,14 @@ struct ControlAgentArmyPageView: View {
                         .frame(maxWidth: 420)
                         .fixedSize(horizontal: false, vertical: true)
 
-                        Link(
-                            "Learn more",
-                            destination: URL(string: "https://steipete.me/posts/command-your-claude-code-army-reloaded"
-                            )!
-                        )
-                        .font(.caption)
-                        .foregroundColor(.accentColor)
+                        if let url = URL(string: "https://steipete.me/posts/command-your-claude-code-army-reloaded") {
+                            Link(
+                                "Learn more",
+                                destination: url
+                            )
+                            .font(.caption)
+                            .foregroundColor(.accentColor)
+                        }
                     }
                 }
                 .padding(.vertical, 12)

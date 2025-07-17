@@ -153,11 +153,11 @@ struct EnhancedConnectionView: View {
 
                 Spacer()
 
-                Button(action: {
+                Button {
                     withAnimation {
                         showingNewServerForm.toggle()
                     }
-                }) {
+                } label: {
                     Image(systemName: showingNewServerForm ? "minus.circle" : "plus.circle")
                         .font(.system(size: 20))
                         .foregroundColor(Theme.Colors.primaryAccent)
@@ -207,11 +207,11 @@ struct EnhancedConnectionView: View {
             )
 
             if !profilesViewModel.profiles.isEmpty {
-                Button(action: {
+                Button {
                     withAnimation {
                         showingNewServerForm = false
                     }
-                }) {
+                } label: {
                     Text("Cancel")
                         .font(Theme.Typography.terminalSystem(size: 16))
                         .foregroundColor(Theme.Colors.secondaryText)
@@ -318,9 +318,9 @@ struct ServerProfileEditView: View {
                 }
 
                 Section {
-                    Button(role: .destructive, action: {
+                    Button(role: .destructive) {
                         showingDeleteConfirmation = true
-                    }) {
+                    } label: {
                         Label("Delete Server", systemImage: "trash")
                             .foregroundColor(.red)
                     }

@@ -52,7 +52,7 @@ final class CloudflareService {
 
     /// Path to the cloudflared binary if found
     private(set) var cloudflaredPath: String?
-    
+
     /// Flag to disable URL opening in tests
     static var isTestMode = false
 
@@ -525,7 +525,8 @@ final class CloudflareService {
     /// Opens the setup guide
     func openSetupGuide() {
         if !Self.isTestMode,
-           let url = URL(string: "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/")
+           let url =
+           URL(string: "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/")
         {
             NSWorkspace.shared.open(url)
         }

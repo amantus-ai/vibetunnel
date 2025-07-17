@@ -165,7 +165,9 @@ struct CloudflareServiceTests {
 
         for error in errors {
             #expect(error.errorDescription != nil)
-            #expect(!error.errorDescription!.isEmpty)
+            if let description = error.errorDescription {
+                #expect(!description.isEmpty)
+            }
         }
     }
 
@@ -183,7 +185,7 @@ struct CloudflareServiceTests {
     @MainActor
     func installationMethodUrls() {
         let service = CloudflareService.shared
-        
+
         // Enable test mode to prevent opening URLs
         CloudflareService.isTestMode = true
         defer { CloudflareService.isTestMode = false }
@@ -193,7 +195,7 @@ struct CloudflareServiceTests {
         service.openHomebrewInstall()
         service.openDownloadPage()
         service.openSetupGuide()
-        
+
         // Verify clipboard was populated for homebrew install
         let pasteboard = NSPasteboard.general
         let copiedString = pasteboard.string(forType: .string)

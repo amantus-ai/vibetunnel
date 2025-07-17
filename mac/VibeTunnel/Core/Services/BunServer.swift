@@ -204,11 +204,13 @@ final class BunServer {
         let parentPid = ProcessInfo.processInfo.processIdentifier
 
         // Properly escape arguments for shell
-        let escapedArgs = vibetunnelArgs.map { arg in
-            // Escape single quotes by replacing ' with '\''
-            let escaped = arg.replacingOccurrences(of: "'", with: "'\\''")
-            return "'\(escaped)'"
-        }.joined(separator: " ")
+        let escapedArgs = vibetunnelArgs
+            .map { arg in
+                // Escape single quotes by replacing ' with '\''
+                let escaped = arg.replacingOccurrences(of: "'", with: "'\\''")
+                return "'\(escaped)'"
+            }
+            .joined(separator: " ")
 
         let vibetunnelCommand = """
         # Start vibetunnel in background
@@ -307,9 +309,9 @@ final class BunServer {
                 if let stderrPipe = self.stderrPipe {
                     do {
                         if let errorData = try stderrPipe.fileHandleForReading.readToEnd(),
-                           !errorData.isEmpty,
-                           let errorOutput = String(data: errorData, encoding: .utf8)
+                           !errorData.isEmpty
                         {
+                            let errorOutput = String(bytes: errorData, encoding: .utf8) ?? "<Invalid UTF-8>"
                             errorDetails += "\nError: \(errorOutput.trimmingCharacters(in: .whitespacesAndNewlines))"
                         }
                     } catch {
@@ -513,9 +515,9 @@ final class BunServer {
                 if let stderrPipe = self.stderrPipe {
                     do {
                         if let errorData = try stderrPipe.fileHandleForReading.readToEnd(),
-                           !errorData.isEmpty,
-                           let errorOutput = String(data: errorData, encoding: .utf8)
+                           !errorData.isEmpty
                         {
+                            let errorOutput = String(bytes: errorData, encoding: .utf8) ?? "<Invalid UTF-8>"
                             errorDetails += "\nError: \(errorOutput.trimmingCharacters(in: .whitespacesAndNewlines))"
                         }
                     } catch {
@@ -719,7 +721,7 @@ final class BunServer {
                 // Process accumulated data
                 if !buffer.isEmpty {
                     // Simply use the built-in lossy conversion instead of manual filtering
-                    let output = String(decoding: buffer, as: UTF8.self)
+                    let output = String(bytes: buffer, encoding: .utf8) ?? "<Invalid UTF-8>"
                     Self.processOutputStatic(output, logHandler: logHandler, isError: false)
                 }
             }
@@ -798,7 +800,7 @@ final class BunServer {
                 // Process accumulated data
                 if !buffer.isEmpty {
                     // Simply use the built-in lossy conversion instead of manual filtering
-                    let output = String(decoding: buffer, as: UTF8.self)
+                    let output = String(bytes: buffer, encoding: .utf8) ?? "<Invalid UTF-8>"
                     Self.processOutputStatic(output, logHandler: logHandler, isError: true)
                 }
             }

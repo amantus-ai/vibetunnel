@@ -79,7 +79,7 @@ const tryPrebuildInstall = (moduleName, moduleDir) => {
 };
 
 // Function to manually extract prebuild
-const extractPrebuild = (name, version, targetDir) => {
+const extractPrebuild = (name, version, targetDir, skipDirCheck = false) => {
   const prebuildFile = path.join(__dirname, '..', 'prebuilds', 
     `${name}-v${version}-node-v${nodeABI}-${platform}-${normalizedArch}.tar.gz`);
   
@@ -88,13 +88,20 @@ const extractPrebuild = (name, version, targetDir) => {
     return false;
   }
 
+  // For optional dependencies like authenticate-pam, check if the module exists
+  // If not, extract to a different location
+  let extractDir = targetDir;
+  if (skipDirCheck && name === 'authenticate-pam' && !fs.existsSync(targetDir)) {
+    // Extract to a controlled location since node_modules/authenticate-pam doesn't exist
+    extractDir = path.join(__dirname, '..', 'optional-modules', name);
+  }
+
   // Create the parent directory
-  const buildParentDir = path.join(targetDir);
-  fs.mkdirSync(buildParentDir, { recursive: true });
+  fs.mkdirSync(extractDir, { recursive: true });
 
   try {
     // Extract directly into the module directory - the tar already contains build/Release structure
-    execSync(`tar -xzf "${prebuildFile}" -C "${buildParentDir}"`, { stdio: 'inherit' });
+    execSync(`tar -xzf "${prebuildFile}" -C "${extractDir}"`, { stdio: 'inherit' });
     console.log(`✓ ${name} prebuilt binary extracted`);
     return true;
   } catch (error) {
@@ -145,7 +152,8 @@ const modules = [
     dir: path.join(__dirname, '..', 'node_modules', 'authenticate-pam'),
     build: path.join(__dirname, '..', 'node_modules', 'authenticate-pam', 'build', 'Release', 'authenticate_pam.node'),
     essential: false, // Optional - falls back to other auth methods
-    platforms: ['linux', 'darwin'] // Needed on Linux and macOS
+    platforms: ['linux', 'darwin'], // Needed on Linux and macOS
+    skipDirCheck: true // Don't check if dir exists since it's optional
   }
 ];
 
@@ -162,15 +170,27 @@ for (const module of modules) {
 
   // Check if module directory exists
   if (!fs.existsSync(module.dir)) {
-    console.warn(`  Warning: ${module.name} directory not found at ${module.dir}`);
-    if (module.essential) {
-      hasErrors = true;
+    if (module.skipDirCheck) {
+      // For optional modules, we'll try to extract the prebuild anyway
+      console.log(`  ${module.name} not installed via npm (optional dependency), will extract prebuild`);
+    } else {
+      console.warn(`  Warning: ${module.name} directory not found at ${module.dir}`);
+      if (module.essential) {
+        hasErrors = true;
+      }
+      continue;
     }
-    continue;
   }
 
   // Check if already built
-  if (fs.existsSync(module.build)) {
+  // For optional modules, also check the alternative location
+  let buildPath = module.build;
+  if (module.skipDirCheck && module.name === 'authenticate-pam' && !fs.existsSync(module.dir)) {
+    // Check the optional-modules location instead
+    buildPath = path.join(__dirname, '..', 'optional-modules', module.name, 'build', 'Release', 'authenticate_pam.node');
+  }
+  
+  if (fs.existsSync(buildPath)) {
     console.log(`✓ ${module.name} already available`);
     continue;
   }
@@ -178,16 +198,18 @@ for (const module of modules) {
   // Try installation methods in order
   let success = false;
 
-  // Method 1: Try prebuild-install (preferred)
-  success = tryPrebuildInstall(module.name, module.dir);
+  // Method 1: Try prebuild-install (preferred) - skip if directory doesn't exist
+  if (fs.existsSync(module.dir)) {
+    success = tryPrebuildInstall(module.name, module.dir);
+  }
 
   // Method 2: Manual prebuild extraction
   if (!success) {
-    success = extractPrebuild(module.name, module.version, module.dir);
+    success = extractPrebuild(module.name, module.version, module.dir, module.skipDirCheck);
   }
 
-  // Method 3: Compile from source
-  if (!success && fs.existsSync(path.join(module.dir, 'binding.gyp'))) {
+  // Method 3: Compile from source (skip if directory doesn't exist)
+  if (!success && fs.existsSync(module.dir) && fs.existsSync(path.join(module.dir, 'binding.gyp'))) {
     success = compileFromSource(module.name, module.dir);
   }
 

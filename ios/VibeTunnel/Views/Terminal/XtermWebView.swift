@@ -269,7 +269,7 @@ struct XtermWebView: UIViewRepresentable {
             }
         }
 
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation?) {
             logger.info("Page loaded")
         }
 
