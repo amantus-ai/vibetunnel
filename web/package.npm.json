@@ -5,10 +5,6 @@
   "main": "lib/cli.js",
   "bin": {
     "vibetunnel": "./bin/vibetunnel"
-    // IMPORTANT: DO NOT add "vt": "./bin/vt" here!
-    // The vt command must NOT be registered as a global binary in package.json
-    // because it conflicts with other tools that use 'vt' (there are many).
-    // Instead, vt is conditionally installed via postinstall script only if available.
   },
   "files": [
     "lib/",
