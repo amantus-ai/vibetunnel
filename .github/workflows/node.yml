@@ -33,19 +33,8 @@ jobs:
         version: 9
         run_install: false
 
-    - name: Get pnpm store directory
-      shell: bash
-      run: |
-        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-    - name: Setup pnpm cache
-      uses: useblacksmith/cache@v5
-      continue-on-error: true
-      with:
-        path: ${{ env.STORE_PATH }}
-        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-pnpm-store-
+    # Skip pnpm cache - testing if fresh installs are faster
+    # The cache was extremely large and might be slower than fresh install
 
     - name: Install system dependencies
       run: |
@@ -54,7 +43,10 @@ jobs:
 
     - name: Install dependencies
       working-directory: web
-      run: pnpm install --frozen-lockfile
+      run: |
+        pnpm config set network-concurrency 4
+        pnpm config set child-concurrency 2
+        pnpm install --frozen-lockfile --prefer-offline
 
     - name: Check formatting with Biome
       id: biome-format
@@ -137,19 +129,8 @@ jobs:
         version: 9
         run_install: false
 
-    - name: Get pnpm store directory
-      shell: bash
-      run: |
-        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-    - name: Setup pnpm cache
-      uses: useblacksmith/cache@v5
-      continue-on-error: true
-      with:
-        path: ${{ env.STORE_PATH }}
-        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-pnpm-store-
+    # Skip pnpm cache - testing if fresh installs are faster
+    # The cache was extremely large and might be slower than fresh install
 
     - name: Install system dependencies
       run: |
@@ -170,7 +151,10 @@ jobs:
 
     - name: Install dependencies
       working-directory: web
-      run: pnpm install --frozen-lockfile
+      run: |
+        pnpm config set network-concurrency 4
+        pnpm config set child-concurrency 2
+        pnpm install --frozen-lockfile --prefer-offline
 
     - name: Build node-pty
       working-directory: web
@@ -309,19 +293,8 @@ jobs:
         version: 9
         run_install: false
 
-    - name: Get pnpm store directory
-      shell: bash
-      run: |
-        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-    - name: Setup pnpm cache
-      uses: useblacksmith/cache@v5
-      continue-on-error: true
-      with:
-        path: ${{ env.STORE_PATH }}
-        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-pnpm-store-
+    # Skip pnpm cache - testing if fresh installs are faster
+    # The cache was extremely large and might be slower than fresh install
 
     - name: Install system dependencies
       run: |
@@ -330,7 +303,10 @@ jobs:
 
     - name: Install dependencies
       working-directory: web
-      run: pnpm install --frozen-lockfile
+      run: |
+        pnpm config set network-concurrency 4
+        pnpm config set child-concurrency 2
+        pnpm install --frozen-lockfile --prefer-offline
 
     - name: Build node-pty for TypeScript
       working-directory: web

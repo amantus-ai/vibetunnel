@@ -70,6 +70,9 @@ jobs:
     - name: Install all tools
       shell: bash
       run: |
+        # Skip Homebrew update for faster CI
+        export HOMEBREW_NO_AUTO_UPDATE=1
+        
         # Retry logic for brew commands to handle concurrent access
         MAX_ATTEMPTS=5
         WAIT_TIME=5
@@ -85,9 +88,9 @@ jobs:
             continue
           fi
           
-          # Update Homebrew and install all tools in one command
+          # Install tools without updating Homebrew
           # brew install automatically upgrades if already installed
-          if brew update && brew install swiftlint swiftformat xcbeautify; then
+          if brew install swiftlint swiftformat xcbeautify; then
             echo "Successfully installed/upgraded all tools"
             break
           else
@@ -107,37 +110,8 @@ jobs:
         echo "xcbeautify: $(xcbeautify --version || echo 'not found')"
         echo "PATH: $PATH"
     
-    - name: Cache pnpm store
-      uses: actions/cache@v4
-      continue-on-error: true
-      with:
-        path: ~/.local/share/pnpm/store
-        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-pnpm-store-
-
-    - name: Install web dependencies
-      run: |
-        cd web
-        # Clean any stale lock files
-        rm -f .pnpm-store.lock .pnpm-debug.log || true
-        # Set pnpm to use fewer workers to avoid crashes on self-hosted runners
-        export NODE_OPTIONS="--max-old-space-size=4096"
-        pnpm config set store-dir ~/.local/share/pnpm/store
-        pnpm config set package-import-method copy
-        pnpm config set node-linker hoisted
-        # Install with retries
-        for i in 1 2 3; do
-          echo "Install attempt $i"
-          if pnpm install --frozen-lockfile; then
-            echo "pnpm install succeeded"
-            break
-          else
-            echo "pnpm install failed, cleaning and retrying..."
-            rm -rf node_modules .pnpm-store.lock || true
-            sleep 5
-          fi
-        done
+    # Skip pnpm cache - testing if fresh installs are faster
+    # The cache was extremely large and might be slower than fresh install
     - name: Resolve Dependencies (once)
       run: |
         cd ios

@@ -61,15 +61,29 @@ jobs:
       continue-on-error: true
       with:
         path: |
-          ~/Library/Developer/Xcode/DerivedData
           ~/.swiftpm
         key: ${{ runner.os }}-spm-${{ hashFiles('mac/Package.resolved') }}
         restore-keys: |
           ${{ runner.os }}-spm-
     
+    - name: Cache Xcode derived data
+      uses: actions/cache@v4
+      continue-on-error: true
+      with:
+        path: |
+          ~/Library/Developer/Xcode/DerivedData/**/Build/Products
+          ~/Library/Developer/Xcode/DerivedData/**/Build/Intermediates.noindex
+          ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+        key: ${{ runner.os }}-xcode-build-${{ hashFiles('mac/**/*.swift', 'mac/**/*.h', 'mac/**/*.m') }}
+        restore-keys: |
+          ${{ runner.os }}-xcode-build-
+    
     - name: Install all tools
       shell: bash
       run: |
+        # Skip Homebrew update for faster CI
+        export HOMEBREW_NO_AUTO_UPDATE=1
+        
         # Retry logic for brew commands to handle concurrent access
         MAX_ATTEMPTS=5
         WAIT_TIME=5
@@ -85,9 +99,9 @@ jobs:
             continue
           fi
           
-          # Update Homebrew and install all tools in one command
+          # Install tools without updating Homebrew
           # brew install automatically upgrades if already installed
-          if brew update && brew install swiftlint swiftformat xcbeautify; then
+          if brew install swiftlint swiftformat xcbeautify; then
             echo "Successfully installed/upgraded all tools"
             break
           else
@@ -107,48 +121,32 @@ jobs:
         echo "xcbeautify: $(xcbeautify --version || echo 'not found')"
         echo "jq: $(which jq || echo 'not found')"
     
-    - name: Cache pnpm store
-      uses: actions/cache@v4
-      continue-on-error: true
-      with:
-        path: ~/.local/share/pnpm/store
-        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-pnpm-store-
-
-    - name: Install web dependencies
-      run: |
-        cd web
-        # Clean any stale lock files
-        rm -f .pnpm-store.lock .pnpm-debug.log || true
-        # Set pnpm to use fewer workers to avoid crashes on self-hosted runners
-        export NODE_OPTIONS="--max-old-space-size=4096"
-        pnpm config set store-dir ~/.local/share/pnpm/store
-        pnpm config set package-import-method hardlink
-        # Install with retries
-        for i in 1 2 3; do
-          echo "Install attempt $i"
-          if pnpm install --frozen-lockfile; then
-            echo "pnpm install succeeded"
-            # Force rebuild of native modules
-            echo "Rebuilding native modules..."
-            pnpm rebuild || true
-            break
-          else
-            echo "pnpm install failed, cleaning and retrying..."
-            rm -rf node_modules .pnpm-store.lock || true
-            sleep 5
-          fi
-        done
+    # Skip pnpm cache - testing if fresh installs are faster
+    # The cache was extremely large and might be slower than fresh install
     
-    - name: Build web artifacts
+    - name: Download web artifacts from Node.js CI
+      uses: actions/download-artifact@v4
+      with:
+        name: web-build-${{ github.sha }}
+        path: web-artifacts-temp/
+    
+    - name: Move web artifacts to correct location
       run: |
-        echo "Building web artifacts locally..."
-        cd web
-        # Skip custom Node.js build in CI to avoid timeout
-        export CI=true
-        pnpm run build
-        echo "Web artifacts built successfully"
+        # Ensure web directory structure exists
+        mkdir -p web/dist web/public/bundle
+        
+        # Move artifacts to correct locations
+        if [ -d "web-artifacts-temp/dist" ]; then
+          cp -r web-artifacts-temp/dist/* web/dist/
+        fi
+        if [ -d "web-artifacts-temp/public/bundle" ]; then
+          cp -r web-artifacts-temp/public/bundle/* web/public/bundle/
+        fi
+        
+        # Clean up temp directory
+        rm -rf web-artifacts-temp
+        
+        echo "Web artifacts successfully downloaded and positioned"
     
     - name: Resolve Dependencies (once)
       run: |
@@ -160,41 +158,68 @@ jobs:
         echo "=== Available schemes ==="
         xcodebuild -list -workspace VibeTunnel.xcworkspace | grep -A 20 "Schemes:" || true
     
-    # BUILD PHASE
-    - name: Build Debug (Native Architecture)
+    # BUILD AND LINT PHASE (in parallel)
+    - name: Build and Lint in Parallel
       timeout-minutes: 15
+      id: build-lint
       run: |
-        set -o pipefail && xcodebuild build \
-          -workspace VibeTunnel.xcworkspace \
-          -scheme VibeTunnel-Mac \
-          -configuration Debug \
-          -destination "platform=macOS" \
-          -showBuildTimingSummary \
-          CODE_SIGN_IDENTITY="" \
-          CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGNING_ALLOWED=NO \
-          CODE_SIGN_ENTITLEMENTS="" \
-          ENABLE_HARDENED_RUNTIME=NO \
-          PROVISIONING_PROFILE_SPECIFIER="" \
-          DEVELOPMENT_TEAM="" \
-          COMPILER_INDEX_STORE_ENABLE=NO
-    
-    # LINT PHASE
-    - name: Run SwiftFormat (check mode)
-      id: swiftformat
-      continue-on-error: true
-      run: |
-        cd mac
-        swiftformat . --lint 2>&1 | tee ../swiftformat-output.txt
-        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
-    
-    - name: Run SwiftLint
-      id: swiftlint
-      continue-on-error: true
-      run: |
-        cd mac
-        swiftlint 2>&1 | tee ../swiftlint-output.txt
-        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+        # Start build in background
+        echo "Starting Xcode build..."
+        (
+          set -o pipefail && xcodebuild build \
+            -workspace VibeTunnel.xcworkspace \
+            -scheme VibeTunnel-Mac \
+            -configuration Debug \
+            -destination "platform=macOS" \
+            -showBuildTimingSummary \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_ENTITLEMENTS="" \
+            ENABLE_HARDENED_RUNTIME=NO \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            DEVELOPMENT_TEAM="" \
+            COMPILER_INDEX_STORE_ENABLE=NO
+          echo $? > build-exit-code.txt
+        ) &
+        BUILD_PID=$!
+        
+        # Start SwiftFormat in background
+        echo "Starting SwiftFormat check..."
+        (
+          cd mac
+          swiftformat . --lint 2>&1 | tee ../swiftformat-output.txt
+          echo $? > ../swiftformat-exit-code.txt
+        ) &
+        FORMAT_PID=$!
+        
+        # Start SwiftLint in background
+        echo "Starting SwiftLint check..."
+        (
+          cd mac
+          swiftlint 2>&1 | tee ../swiftlint-output.txt
+          echo $? > ../swiftlint-exit-code.txt
+        ) &
+        LINT_PID=$!
+        
+        # Wait for all processes to complete
+        echo "Waiting for parallel tasks to complete..."
+        wait $BUILD_PID $FORMAT_PID $LINT_PID
+        
+        # Check results and save to outputs
+        BUILD_RESULT=$(cat build-exit-code.txt || echo 1)
+        FORMAT_RESULT=$(cat swiftformat-exit-code.txt || echo 1)
+        LINT_RESULT=$(cat swiftlint-exit-code.txt || echo 1)
+        
+        echo "build_result=$BUILD_RESULT" >> $GITHUB_OUTPUT
+        echo "swiftformat_result=$FORMAT_RESULT" >> $GITHUB_OUTPUT
+        echo "swiftlint_result=$LINT_RESULT" >> $GITHUB_OUTPUT
+        
+        # Fail if build failed (but not if only lint/format failed)
+        if [ "$BUILD_RESULT" != "0" ]; then
+          echo "::error::Build failed"
+          exit 1
+        fi
     
     # TEST PHASE
     - name: Run tests with coverage
@@ -355,7 +380,7 @@ jobs:
       uses: ./.github/actions/lint-reporter
       with:
         title: 'Mac Formatting (SwiftFormat)'
-        lint-result: ${{ steps.swiftformat.outputs.result == '0' && 'success' || 'failure' }}
+        lint-result: ${{ steps.build-lint.outputs.swiftformat_result == '0' && 'success' || 'failure' }}
         lint-output: ${{ steps.swiftformat-output.outputs.content }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
     
@@ -364,7 +389,7 @@ jobs:
       uses: ./.github/actions/lint-reporter
       with:
         title: 'Mac Linting (SwiftLint)'
-        lint-result: ${{ steps.swiftlint.outputs.result == '0' && 'success' || 'failure' }}
+        lint-result: ${{ steps.build-lint.outputs.swiftlint_result == '0' && 'success' || 'failure' }}
         lint-output: ${{ steps.swiftlint-output.outputs.content }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
 
