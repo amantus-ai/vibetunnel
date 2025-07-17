@@ -317,8 +317,8 @@ Modern browsers block the Web Crypto API (required for SSH key operations) when 
    - Enable the flag and restart Chrome
    - ⚠️ This reduces security - use only for development
 
-4. **Firefox Alternative**
-   Firefox may be less restrictive with local network addresses - try it if Chrome doesn't work.
+4. **Note on Firefox**
+   Since Firefox 75, it also requires secure contexts for Web Crypto API. The same restrictions apply as in Chrome.
 
 #### Why This Happens
 The Web Crypto API is restricted to secure contexts (HTTPS or localhost) to prevent man-in-the-middle attacks on cryptographic operations. This is a browser security feature, not a VibeTunnel limitation.

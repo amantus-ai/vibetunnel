@@ -234,6 +234,39 @@ If you encounter issues during installation:
 - **Authentication Failed**: Verify system authentication setup
 - **Terminal Not Responsive**: Check browser console for WebSocket errors
 
+### SSH Key Authentication Issues
+
+If you encounter errors when generating or importing SSH keys (e.g., "Cannot read properties of undefined"), this is due to browser security restrictions on the Web Crypto API.
+
+#### The Issue
+Modern browsers (Chrome 60+, Firefox 75+) block the Web Crypto API when accessing web applications over HTTP from non-localhost addresses. This affects:
+- Local network IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+- Any non-localhost hostname over HTTP
+
+#### Solutions
+
+1. **Use localhost (Recommended)**
+   ```bash
+   # Access VibeTunnel via localhost
+   http://localhost:4020
+   
+   # If running on a remote server, use SSH tunneling:
+   ssh -L 4020:localhost:4020 user@your-server
+   # Then access http://localhost:4020 in your browser
+   ```
+
+2. **Enable HTTPS**
+   Set up a reverse proxy with HTTPS using nginx or Caddy (recommended for production).
+
+3. **Chrome Flag Workaround** (Development only)
+   - Navigate to `chrome://flags/#unsafely-treat-insecure-origin-as-secure`
+   - Add your server URL (e.g., `http://192.168.1.100:4020`)
+   - Enable the flag and restart Chrome
+   - ⚠️ This reduces security - use only for development
+
+#### Why This Happens
+The Web Crypto API is restricted to secure contexts (HTTPS or localhost) to prevent man-in-the-middle attacks on cryptographic operations. This is a browser security feature, not a VibeTunnel limitation.
+
 ### Development Setup
 
 For source installations:
