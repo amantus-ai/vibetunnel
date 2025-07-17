@@ -28,7 +28,8 @@ pnpm run build
 **npm package**:
 - Pre-built binaries for common platforms (macOS x64/arm64, Linux x64/arm64)
 - Automatic fallback to source compilation if pre-built binaries unavailable
-- Global installation makes `vibetunnel` and `vt` commands available system-wide
+- Global installation makes `vibetunnel` command available system-wide
+- Conditional `vt` command installation (see [VT Installation Guide](docs/VT_INSTALLATION.md))
 - Includes production dependencies only
 
 **Source installation**:

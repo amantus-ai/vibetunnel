@@ -33,9 +33,10 @@ const getNpmBinDir = () => {
 // Helper function to install vt globally
 const installGlobalVt = (vtSource, npmBinDir) => {
   const vtTarget = path.join(npmBinDir, 'vt');
+  const isWindows = process.platform === 'win32';
   
   // Check if vt already exists
-  if (fs.existsSync(vtTarget)) {
+  if (fs.existsSync(vtTarget) || (isWindows && fs.existsSync(vtTarget + '.cmd'))) {
     console.log('⚠️  A "vt" command already exists in your system');
     console.log('   VibeTunnel\'s vt wrapper was not installed to avoid conflicts');
     console.log('   You can still use "npx vt" or the full path to run VibeTunnel\'s vt');
@@ -43,21 +44,36 @@ const installGlobalVt = (vtSource, npmBinDir) => {
   }
   
   try {
-    // Create symlink to our vt script
-    fs.symlinkSync(vtSource, vtTarget);
-    console.log('✓ vt command installed globally');
+    if (isWindows) {
+      // On Windows, create a .cmd wrapper
+      const cmdContent = `@echo off\r\nnode "%~dp0\\vt" %*\r\n`;
+      fs.writeFileSync(vtTarget + '.cmd', cmdContent);
+      // Also copy the actual script
+      fs.copyFileSync(vtSource, vtTarget);
+      console.log('✓ vt command installed globally (Windows)');
+    } else {
+      // On Unix-like systems, create symlink
+      fs.symlinkSync(vtSource, vtTarget);
+      console.log('✓ vt command installed globally');
+    }
     console.log('  You can now use "vt" to wrap commands with VibeTunnel');
     return true;
   } catch (symlinkError) {
-    // If symlink fails, try copying the file
-    try {
-      fs.copyFileSync(vtSource, vtTarget);
-      fs.chmodSync(vtTarget, '755');
-      console.log('✓ vt command installed globally (copied)');
-      console.log('  You can now use "vt" to wrap commands with VibeTunnel');
-      return true;
-    } catch (copyError) {
-      console.warn('⚠️  Could not install vt command globally:', copyError.message);
+    // If symlink fails on Unix, try copying the file
+    if (!isWindows) {
+      try {
+        fs.copyFileSync(vtSource, vtTarget);
+        fs.chmodSync(vtTarget, '755');
+        console.log('✓ vt command installed globally (copied)');
+        console.log('  You can now use "vt" to wrap commands with VibeTunnel');
+        return true;
+      } catch (copyError) {
+        console.warn('⚠️  Could not install vt command globally:', copyError.message);
+        console.log('   Use "npx vt" or "vibetunnel fwd" instead');
+        return false;
+      }
+    } else {
+      console.warn('⚠️  Could not install vt command on Windows:', symlinkError.message);
       console.log('   Use "npx vt" or "vibetunnel fwd" instead');
       return false;
     }
@@ -73,8 +89,10 @@ const installVtCommand = (vtSource, isGlobalInstall) => {
   }
   
   try {
-    // Make vt script executable
-    fs.chmodSync(vtSource, '755');
+    // Make vt script executable (Unix-like systems only)
+    if (process.platform !== 'win32') {
+      fs.chmodSync(vtSource, '755');
+    }
     
     if (!isGlobalInstall) {
       console.log('✓ vt command configured for local use');
