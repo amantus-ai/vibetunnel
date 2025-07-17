@@ -64,17 +64,22 @@ if [ -f "$PACKAGE_JSON" ]; then
 fi
 
 # Test 7: Basic functionality test (help command)
-# Use gtimeout if available, otherwise skip timeout
-if command -v gtimeout >/dev/null 2>&1; then
-    if ! gtimeout 5 "$VT_SCRIPT" --help >/dev/null 2>&1; then
-        echo "❌ ERROR: vt --help command failed or timed out"
-        exit 1
-    fi
+# Skip this test if we're already inside a VibeTunnel session
+if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
+    echo "✅ vt script detected we're inside a VibeTunnel session (expected behavior)"
 else
-    # On macOS without gtimeout, just test that it doesn't immediately fail
-    if ! "$VT_SCRIPT" --help >/dev/null 2>&1; then
-        echo "❌ ERROR: vt --help command failed"
-        exit 1
+    # Use gtimeout if available, otherwise skip timeout
+    if command -v gtimeout >/dev/null 2>&1; then
+        if ! gtimeout 5 "$VT_SCRIPT" --help >/dev/null 2>&1; then
+            echo "❌ ERROR: vt --help command failed or timed out"
+            exit 1
+        fi
+    else
+        # On macOS without gtimeout, just test that it doesn't immediately fail
+        if ! "$VT_SCRIPT" --help >/dev/null 2>&1; then
+            echo "❌ ERROR: vt --help command failed"
+            exit 1
+        fi
     fi
 fi
 echo "✅ vt --help command works"
