@@ -85,11 +85,11 @@ describe('postinstall vt installation', () => {
     it('should check for existing vt command', () => {
       const mockBinDir = path.join(testDir, 'bin');
       fs.mkdirSync(mockBinDir);
-      
+
       // Test when vt doesn't exist
       const vtPath = path.join(mockBinDir, 'vt');
       expect(fs.existsSync(vtPath)).toBe(false);
-      
+
       // Create vt and test it exists
       fs.writeFileSync(vtPath, '#!/bin/bash\necho "test"');
       expect(fs.existsSync(vtPath)).toBe(true);
@@ -103,12 +103,12 @@ describe('postinstall vt installation', () => {
 
       const mockBinDir = path.join(testDir, 'bin');
       fs.mkdirSync(mockBinDir);
-      
+
       const cmdPath = path.join(mockBinDir, 'vt.cmd');
       const cmdContent = '@echo off\r\nnode "%~dp0\\vt" %*\r\n';
-      
+
       fs.writeFileSync(cmdPath, cmdContent);
-      
+
       const content = fs.readFileSync(cmdPath, 'utf8');
       expect(content).toContain('@echo off');
       expect(content).toContain('node "%~dp0\\vt" %*');
@@ -122,12 +122,12 @@ describe('postinstall vt installation', () => {
 
       const sourceFile = path.join(testDir, 'source');
       const targetLink = path.join(testDir, 'target');
-      
+
       fs.writeFileSync(sourceFile, '#!/bin/bash\necho "test"');
-      
+
       // Create symlink
       fs.symlinkSync(sourceFile, targetLink);
-      
+
       // Verify symlink exists and points to correct file
       expect(fs.existsSync(targetLink)).toBe(true);
       expect(fs.lstatSync(targetLink).isSymbolicLink()).toBe(true);
@@ -137,22 +137,22 @@ describe('postinstall vt installation', () => {
     it('should handle file copying as fallback', () => {
       const sourceFile = path.join(testDir, 'source');
       const targetFile = path.join(testDir, 'target');
-      
+
       const content = '#!/bin/bash\necho "test"';
       fs.writeFileSync(sourceFile, content);
-      
+
       // Copy file
       fs.copyFileSync(sourceFile, targetFile);
-      
+
       // Make executable on Unix
       if (process.platform !== 'win32') {
         fs.chmodSync(targetFile, '755');
       }
-      
+
       // Verify copy
       expect(fs.existsSync(targetFile)).toBe(true);
       expect(fs.readFileSync(targetFile, 'utf8')).toBe(content);
-      
+
       if (process.platform !== 'win32') {
         const stats = fs.statSync(targetFile);
         expect(stats.mode & 0o111).toBeTruthy(); // Check execute bit
@@ -168,7 +168,7 @@ describe('postinstall vt installation', () => {
       // Create a read-only directory to trigger permission error
       const readOnlyDir = path.join(testDir, 'readonly');
       fs.mkdirSync(readOnlyDir);
-      
+
       // This would normally fail with permission denied if we made it truly read-only
       // but that's hard to test cross-platform, so we just verify the setup
       expect(fs.existsSync(readOnlyDir)).toBe(true);
@@ -177,10 +177,10 @@ describe('postinstall vt installation', () => {
     it('should handle path with spaces', () => {
       const dirWithSpaces = path.join(testDir, 'dir with spaces');
       fs.mkdirSync(dirWithSpaces);
-      
+
       const vtSource = path.join(dirWithSpaces, 'vt');
       fs.writeFileSync(vtSource, '#!/bin/bash\necho "test vt"');
-      
+
       expect(fs.existsSync(vtSource)).toBe(true);
       expect(fs.readFileSync(vtSource, 'utf8')).toContain('test vt');
     });
