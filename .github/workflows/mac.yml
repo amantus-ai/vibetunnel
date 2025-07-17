@@ -149,68 +149,54 @@ jobs:
         echo "=== Available schemes ==="
         xcodebuild -list -workspace VibeTunnel.xcworkspace | grep -A 20 "Schemes:" || true
     
-    # BUILD AND LINT PHASE (in parallel)
-    - name: Build and Lint in Parallel
-      timeout-minutes: 15
-      id: build-lint
+    # BUILD PHASE
+    - name: Build Debug
+      timeout-minutes: 10
+      id: build
       run: |
-        # Start build in background
-        echo "Starting Xcode build..."
-        (
-          set -o pipefail && xcodebuild build \
-            -workspace VibeTunnel.xcworkspace \
-            -scheme VibeTunnel-Mac \
-            -configuration Debug \
-            -destination "platform=macOS" \
-            -showBuildTimingSummary \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGN_ENTITLEMENTS="" \
-            ENABLE_HARDENED_RUNTIME=NO \
-            PROVISIONING_PROFILE_SPECIFIER="" \
-            DEVELOPMENT_TEAM="" \
-            COMPILER_INDEX_STORE_ENABLE=NO
-          echo $? > build-exit-code.txt
-        ) &
-        BUILD_PID=$!
+        # Use Release config for PRs (faster), Debug for main branch
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          BUILD_CONFIG="Release"
+        else
+          BUILD_CONFIG="Debug"
+        fi
         
-        # Start SwiftFormat in background
-        echo "Starting SwiftFormat check..."
-        (
-          cd mac
-          swiftformat . --lint 2>&1 | tee ../swiftformat-output.txt
-          echo $? > ../swiftformat-exit-code.txt
-        ) &
-        FORMAT_PID=$!
-        
-        # Start SwiftLint in background
-        echo "Starting SwiftLint check..."
-        (
-          cd mac
-          swiftlint 2>&1 | tee ../swiftlint-output.txt
-          echo $? > ../swiftlint-exit-code.txt
-        ) &
-        LINT_PID=$!
-        
-        # Wait for all processes to complete
-        echo "Waiting for parallel tasks to complete..."
-        wait $BUILD_PID $FORMAT_PID $LINT_PID
-        
-        # Check results and save to outputs
-        BUILD_RESULT=$(cat build-exit-code.txt || echo 1)
-        FORMAT_RESULT=$(cat swiftformat-exit-code.txt || echo 1)
-        LINT_RESULT=$(cat swiftlint-exit-code.txt || echo 1)
-        
-        echo "build_result=$BUILD_RESULT" >> $GITHUB_OUTPUT
-        echo "swiftformat_result=$FORMAT_RESULT" >> $GITHUB_OUTPUT
-        echo "swiftlint_result=$LINT_RESULT" >> $GITHUB_OUTPUT
-        
-        # Fail if build failed (but not if only lint/format failed)
-        if [ "$BUILD_RESULT" != "0" ]; then
+        set -o pipefail && xcodebuild build \
+          -workspace VibeTunnel.xcworkspace \
+          -scheme VibeTunnel-Mac \
+          -configuration $BUILD_CONFIG \
+          -destination "platform=macOS" \
+          -showBuildTimingSummary \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
+          CODE_SIGN_ENTITLEMENTS="" \
+          ENABLE_HARDENED_RUNTIME=NO \
+          PROVISIONING_PROFILE_SPECIFIER="" \
+          DEVELOPMENT_TEAM="" \
+          COMPILER_INDEX_STORE_ENABLE=NO \
+          OTHER_SWIFT_FLAGS="-Xfrontend -warn-long-expression-type-checking=100" \
+          SWIFT_OPTIMIZATION_LEVEL="-Osize" || {
           echo "::error::Build failed"
           exit 1
-        fi
+        }
+    
+    # LINT PHASE (after build to avoid conflicts)
+    - name: Run SwiftFormat (check mode)
+      id: swiftformat
+      continue-on-error: true
+      run: |
+        cd mac
+        swiftformat . --lint 2>&1 | tee ../swiftformat-output.txt
+        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+    
+    - name: Run SwiftLint
+      id: swiftlint
+      continue-on-error: true
+      run: |
+        cd mac
+        swiftlint 2>&1 | tee ../swiftlint-output.txt
+        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
     
     # TEST PHASE
     - name: Run tests with coverage
@@ -234,14 +220,22 @@ jobs:
           ENABLE_COVERAGE="NO"
         fi
         
+        # Use same config as build for consistency
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          TEST_CONFIG="Release"
+        else
+          TEST_CONFIG="Debug"
+        fi
+        
         set -o pipefail && \
         xcodebuild test \
           -workspace VibeTunnel.xcworkspace \
           -scheme VibeTunnel-Mac \
-          -configuration Debug \
+          -configuration $TEST_CONFIG \
           -destination "platform=macOS" \
           -enableCodeCoverage $ENABLE_COVERAGE \
           -resultBundlePath TestResults.xcresult \
+          -quiet \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
@@ -331,13 +325,16 @@ jobs:
         echo "Searching for build products..."
         find ~/Library/Developer/Xcode/DerivedData -name "VibeTunnel.app" -type d 2>/dev/null || echo "No build products found"
     
+    # Skip build artifact upload for PR builds to save time
     - name: Upload build artifacts
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: actions/upload-artifact@v4
       with:
         name: mac-build-artifacts
         path: |
           ~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug/VibeTunnel.app
           ~/Library/Developer/Xcode/DerivedData/*/Build/Products/Release/VibeTunnel.app
+        retention-days: 3
     
     - name: Upload coverage artifacts
       if: always()
@@ -378,7 +375,7 @@ jobs:
       uses: ./.github/actions/lint-reporter
       with:
         title: 'Mac Formatting (SwiftFormat)'
-        lint-result: ${{ steps.build-lint.outputs.swiftformat_result == '0' && 'success' || 'failure' }}
+        lint-result: ${{ steps.swiftformat.outputs.result == '0' && 'success' || 'failure' }}
         lint-output: ${{ steps.swiftformat-output.outputs.content }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
     
@@ -387,7 +384,7 @@ jobs:
       uses: ./.github/actions/lint-reporter
       with:
         title: 'Mac Linting (SwiftLint)'
-        lint-result: ${{ steps.build-lint.outputs.swiftlint_result == '0' && 'success' || 'failure' }}
+        lint-result: ${{ steps.swiftlint.outputs.result == '0' && 'success' || 'failure' }}
         lint-output: ${{ steps.swiftlint-output.outputs.content }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
 

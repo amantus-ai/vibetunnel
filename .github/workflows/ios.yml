@@ -103,6 +103,32 @@ jobs:
     
     # iOS doesn't need web dependencies - skip pnpm entirely
     
+    # Start simulator creation early in background
+    - name: Pre-create iOS Simulator
+      id: pre-simulator
+      run: |
+        echo "Pre-creating iOS simulator in background..."
+        
+        # Generate unique simulator name
+        SIMULATOR_NAME="VibeTunnel-iOS-${GITHUB_RUN_ID}-${GITHUB_JOB}-${RANDOM}"
+        echo "simulator_name=$SIMULATOR_NAME" >> $GITHUB_OUTPUT
+        
+        # Get the latest iOS runtime
+        RUNTIME=$(xcrun simctl list runtimes | grep "iOS" | tail -1 | awk '{print $NF}')
+        echo "Using runtime: $RUNTIME"
+        
+        # Create simulator in background
+        (
+          SIMULATOR_ID=$(xcrun simctl create "$SIMULATOR_NAME" "iPhone 15" "$RUNTIME" 2>/dev/null || \
+                        xcrun simctl create "$SIMULATOR_NAME" "com.apple.CoreSimulator.SimDeviceType.iPhone-15" "$RUNTIME")
+          echo "$SIMULATOR_ID" > simulator_id.txt
+          
+          # Boot it in background
+          xcrun simctl boot "$SIMULATOR_ID" 2>/dev/null || true
+        ) &
+        
+        echo "Simulator creation started in background"
+    
     - name: Resolve Dependencies (once)
       run: |
         cd ios
@@ -116,6 +142,7 @@ jobs:
         # Ensure xcbeautify is in PATH
         export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
         
+        # Use Release config for faster builds
         set -o pipefail
         xcodebuild build \
           -workspace ../VibeTunnel.xcworkspace \
@@ -123,14 +150,15 @@ jobs:
           -destination "generic/platform=iOS" \
           -configuration Release \
           -showBuildTimingSummary \
+          -quiet \
           CODE_SIGNING_ALLOWED=NO \
           CODE_SIGNING_REQUIRED=NO \
           ONLY_ACTIVE_ARCH=NO \
           -derivedDataPath build/DerivedData \
           COMPILER_INDEX_STORE_ENABLE=NO \
-          2>&1 | tee build.log || {
-            echo "Build failed. Last 100 lines of output:"
-            tail -100 build.log
+          OTHER_SWIFT_FLAGS="-Xfrontend -warn-long-expression-type-checking=100" \
+          SWIFT_OPTIMIZATION_LEVEL="-Osize" || {
+            echo "::error::Build failed"
             exit 1
           }
     
@@ -159,14 +187,19 @@ jobs:
         echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
     
     # TEST PHASE
-    - name: Create and boot simulator
+    - name: Finalize simulator setup
       id: simulator
       run: |
-        echo "Creating iOS simulator for tests..."
+        echo "Finalizing iOS simulator for tests..."
         
-        # Generate unique simulator name to avoid conflicts
-        SIMULATOR_NAME="VibeTunnel-iOS-${GITHUB_RUN_ID}-${GITHUB_JOB}-${RANDOM}"
-        echo "Simulator name: $SIMULATOR_NAME"
+        # Get the simulator ID from background creation
+        if [ -f simulator_id.txt ]; then
+          SIMULATOR_ID=$(cat simulator_id.txt)
+          echo "Using pre-created simulator: $SIMULATOR_ID"
+        else
+          # Fallback: create on demand if background creation failed
+          SIMULATOR_NAME="${{ steps.pre-simulator.outputs.simulator_name }}"
+          echo "Background creation may have failed, creating simulator now..."
         
         # Cleanup function
         cleanup_simulator() {
@@ -391,13 +424,14 @@ jobs:
         fi
     
     # ARTIFACT UPLOADS
+    # Skip build artifact upload for PR builds to save time
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
-      if: success()
+      if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
       with:
         name: ios-build-artifacts
         path: ios/build/DerivedData/Build/Products/Release-iphoneos/
-        retention-days: 7
+        retention-days: 3
     
     - name: Upload coverage artifacts
       if: always()
