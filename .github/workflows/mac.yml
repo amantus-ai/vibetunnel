@@ -123,27 +123,28 @@ jobs:
     
     - name: Move web artifacts to correct location
       run: |
+        # Debug: Show what was downloaded
+        echo "=== Contents of web-artifacts-temp ==="
+        find web-artifacts-temp -type f | head -20 || echo "No files found"
+        
         # Ensure web directory structure exists
         mkdir -p web/dist web/public/bundle
         
-        # Move artifacts to correct locations
-        if [ -d "web-artifacts-temp/dist" ]; then
-          cp -r web-artifacts-temp/dist/* web/dist/
-          echo "Copied dist files"
-        fi
-        if [ -d "web-artifacts-temp/public/bundle" ]; then
-          cp -r web-artifacts-temp/public/bundle/* web/public/bundle/
-          echo "Copied bundle files"
-        fi
-        
-        # Also check if files are in the root of the temp directory
-        if [ -d "web-artifacts-temp/web/dist" ]; then
-          cp -r web-artifacts-temp/web/dist/* web/dist/
-          echo "Copied dist files from web subdirectory"
-        fi
-        if [ -d "web-artifacts-temp/web/public/bundle" ]; then
-          cp -r web-artifacts-temp/web/public/bundle/* web/public/bundle/
-          echo "Copied bundle files from web subdirectory"
+        # The artifacts are uploaded with the full path structure preserved
+        # So they're at web-artifacts-temp/web/dist and web-artifacts-temp/web/public/bundle
+        if [ -d "web-artifacts-temp/web" ]; then
+          # Copy from the nested web directory
+          if [ -d "web-artifacts-temp/web/dist" ]; then
+            cp -r web-artifacts-temp/web/dist/* web/dist/ 2>/dev/null || true
+            echo "Copied dist files"
+          fi
+          if [ -d "web-artifacts-temp/web/public/bundle" ]; then
+            cp -r web-artifacts-temp/web/public/bundle/* web/public/bundle/ 2>/dev/null || true
+            echo "Copied bundle files"
+          fi
+        else
+          echo "ERROR: Expected web artifacts structure not found!"
+          find web-artifacts-temp -type d | head -20
         fi
         
         # Debug: Show what we have
@@ -156,6 +157,12 @@ jobs:
         
         # Clean up temp directory
         rm -rf web-artifacts-temp
+        
+        # Verify we have the required files
+        if [ ! -f "web/dist/server.js" ]; then
+          echo "ERROR: web/dist/server.js not found after artifact extraction!"
+          exit 1
+        fi
         
         echo "Web artifacts successfully downloaded and positioned"
     
