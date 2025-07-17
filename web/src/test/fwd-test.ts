@@ -5,11 +5,11 @@
  * Tests PTY spawning, terminal raw mode, stdin/stdout forwarding
  */
 
+import * as fs from 'fs';
 import * as pty from 'node-pty';
 import { which } from 'node-pty/lib/utils';
-import * as fs from 'fs';
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
 
 // Terminal state restoration
 let originalStdinRawMode = false;
@@ -27,7 +27,7 @@ function cleanup() {
       // Ignore errors
     }
   }
-  
+
   // Kill PTY process
   if (ptyProcess) {
     try {
@@ -37,7 +37,7 @@ function cleanup() {
     }
     ptyProcess = null;
   }
-  
+
   // Clear line and show cursor
   process.stdout.write('\r\n\x1b[?25h');
 }
@@ -72,9 +72,9 @@ function resolveCommand(args: string[]): { command: string; args: string[] } {
 
   // Check common shell aliases
   const shellAliases: Record<string, string[]> = {
-    'll': ['ls', '-la'],
-    'la': ['ls', '-la'],
-    'l': ['ls', '-l'],
+    ll: ['ls', '-la'],
+    la: ['ls', '-la'],
+    l: ['ls', '-l'],
   };
 
   if (shellAliases[cmd]) {
@@ -92,7 +92,7 @@ function resolveCommand(args: string[]): { command: string; args: string[] } {
 async function main() {
   // Parse command line arguments
   const args = process.argv.slice(2);
-  
+
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
     console.log('Usage: ./fwd-test.ts <command> [args...]');
     console.log('');
@@ -166,7 +166,7 @@ async function main() {
 
     // Handle signals for cleanup
     const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGQUIT'];
-    signals.forEach(signal => {
+    signals.forEach((signal) => {
       process.on(signal, () => {
         console.log(`\nReceived ${signal}, cleaning up...`);
         cleanup();
@@ -186,7 +186,6 @@ async function main() {
       cleanup();
       process.exit(1);
     });
-
   } catch (error) {
     console.error('Error:', error);
     cleanup();
