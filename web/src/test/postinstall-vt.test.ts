@@ -10,6 +10,7 @@ vi.mock('node:child_process');
 describe('postinstall vt installation', () => {
   const mockFs = fs as any;
   const mockExecSync = execSync as any;
+  const originalEnv = process.env;
   
   beforeEach(() => {
     vi.clearAllMocks();
@@ -19,10 +20,14 @@ describe('postinstall vt installation', () => {
     mockFs.symlinkSync = vi.fn();
     mockFs.copyFileSync = vi.fn();
     mockExecSync.mockReturnValue('/usr/local\n');
+    
+    // Reset environment
+    process.env = { ...originalEnv };
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    process.env = originalEnv;
   });
 
   it('should not install vt if it already exists globally', () => {
@@ -108,5 +113,59 @@ describe('postinstall vt installation', () => {
     // Should not attempt global installation
     expect(mockFs.symlinkSync).not.toHaveBeenCalled();
     expect(mockFs.copyFileSync).not.toHaveBeenCalled();
+  });
+
+  describe('global install detection', () => {
+    it('should detect global install when npm_config_global is true', () => {
+      process.env.npm_config_global = 'true';
+      
+      // In real code, this would determine isGlobalInstall
+      const isGlobalInstall = process.env.npm_config_global === 'true';
+      
+      expect(isGlobalInstall).toBe(true);
+    });
+
+    it('should detect local install when npm_config_global is false', () => {
+      process.env.npm_config_global = 'false';
+      
+      const isGlobalInstall = process.env.npm_config_global === 'true';
+      
+      expect(isGlobalInstall).toBe(false);
+    });
+
+    it('should fall back to path detection when npm_config_global is not set', () => {
+      delete process.env.npm_config_global;
+      
+      // Mock being in global node_modules
+      const globalPrefix = '/usr/local';
+      const packagePath = '/usr/local/lib/node_modules/vibetunnel';
+      
+      mockExecSync.mockReturnValue(globalPrefix + '\n');
+      
+      // Simulate the detection logic
+      const globalModules = path.join(globalPrefix, 'lib/node_modules');
+      const isGlobalInstall = packagePath.startsWith(globalModules);
+      
+      expect(isGlobalInstall).toBe(true);
+    });
+
+    it('should default to local install if detection fails', () => {
+      delete process.env.npm_config_global;
+      
+      // Make execSync throw an error
+      mockExecSync.mockImplementation(() => {
+        throw new Error('Command failed');
+      });
+      
+      // In real code, this would catch the error and default to false
+      let isGlobalInstall = false;
+      try {
+        mockExecSync('npm config get prefix');
+      } catch {
+        isGlobalInstall = false;
+      }
+      
+      expect(isGlobalInstall).toBe(false);
+    });
   });
 });

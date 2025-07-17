@@ -314,9 +314,37 @@ if (!hasErrors && !isDevelopment) {
   console.log('\nSetting up vt command...');
   
   const vtSource = path.join(__dirname, '..', 'bin', 'vt');
-  const isGlobalInstall = process.env.npm_config_global === 'true' || 
-                        (process.env.npm_config_prefix && !process.cwd().includes('node_modules'));
   
+  // More reliable global install detection
+  // 1. npm_config_global is the most reliable indicator when present
+  // 2. Check if we're in the global node_modules path
+  // 3. Avoid unreliable heuristics like checking for 'node_modules' in cwd
+  let isGlobalInstall = false;
+  
+  if (process.env.npm_config_global === 'true') {
+    // Explicitly set by npm for global installs
+    isGlobalInstall = true;
+  } else if (process.env.npm_config_global === 'false') {
+    // Explicitly set by npm for local installs
+    isGlobalInstall = false;
+  } else {
+    // npm_config_global not set (older npm versions), try to detect
+    try {
+      // Get the global node_modules path
+      const globalPrefix = execSync('npm config get prefix', { encoding: 'utf8' }).trim();
+      const globalModules = path.join(globalPrefix, process.platform === 'win32' ? 'node_modules' : 'lib/node_modules');
+      
+      // Check if our package is being installed in the global location
+      const packagePath = path.resolve(__dirname, '..');
+      isGlobalInstall = packagePath.startsWith(globalModules);
+    } catch (e) {
+      // If detection fails, assume local install (safer default)
+      console.log('  Could not reliably detect install type, assuming local install');
+      isGlobalInstall = false;
+    }
+  }
+  
+  console.log(`  Detected ${isGlobalInstall ? 'global' : 'local'} installation`);
   installVtCommand(vtSource, isGlobalInstall);
 }
 
