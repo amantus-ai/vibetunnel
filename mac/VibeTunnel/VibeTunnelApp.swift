@@ -8,6 +8,8 @@ import UserNotifications
 /// Manages the app's lifecycle and window hierarchy including the menu bar interface,
 /// settings window, welcome screen, and session detail views. Coordinates shared services
 /// across all windows and handles deep linking for terminal session URLs.
+///
+/// This application runs on macOS 14.0+ and requires Swift 6.
 @main
 struct VibeTunnelApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self)
