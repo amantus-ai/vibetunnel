@@ -25,7 +25,19 @@ execSync('esbuild src/client/sw.ts --bundle --outfile=public/sw.js --format=iife
 
 // Build server TypeScript
 console.log('Building server...');
-execSync('tsc', { stdio: 'inherit' });
+execSync('tsc --build tsconfig.server.json', { stdio: 'inherit' });
+
+// Verify dist directory exists
+if (fs.existsSync(path.join(__dirname, '../dist'))) {
+  const files = fs.readdirSync(path.join(__dirname, '../dist'));
+  console.log(`Server build created ${files.length} files in dist/`);
+  if (files.length === 0) {
+    console.error('WARNING: dist directory is empty after tsc build!');
+  }
+} else {
+  console.error('ERROR: dist directory does not exist after tsc build!');
+  process.exit(1);
+}
 
 // Skip native executable build in CI
 console.log('Skipping native executable build in CI environment...');
