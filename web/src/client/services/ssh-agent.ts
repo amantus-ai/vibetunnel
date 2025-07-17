@@ -1,3 +1,56 @@
+// Check if Web Crypto API is available
+if (!globalThis.crypto?.subtle) {
+  // Detect if we're on a local network IP
+  const hostname = window.location.hostname;
+  const isLocalNetwork = hostname.match(/^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/);
+  const isNonLocalhost = hostname !== 'localhost' && hostname !== '127.0.0.1';
+
+  let errorMessage =
+    'SSH key operations are unavailable because the Web Crypto API is not accessible.\n\n';
+
+  if (isLocalNetwork || (isNonLocalhost && window.location.protocol === 'http:')) {
+    errorMessage +=
+      'This happens when accessing VibeTunnel over HTTP from non-localhost addresses.\n\n';
+    errorMessage += 'To fix this, use one of these methods:\n';
+    errorMessage += '1. Access via http://localhost:4020 instead\n';
+    errorMessage += '   - Use SSH tunnel: ssh -L 4020:localhost:4020 user@server\n';
+    errorMessage += '2. Enable HTTPS on the server (recommended for production)\n';
+    errorMessage +=
+      '3. For Chrome: Enable insecure origins at chrome://flags/#unsafely-treat-insecure-origin-as-secure\n';
+    errorMessage += '   - Add your server URL (e.g., http://192.168.1.100:4020)\n';
+    errorMessage += '   - Restart Chrome after changing the flag';
+  } else {
+    errorMessage += 'Your browser may not support the Web Crypto API or it may be disabled.\n';
+    errorMessage += 'Please use a modern browser (Chrome 37+, Firefox 34+, Safari 11+).';
+  }
+
+  // Display user-friendly error in the UI
+  const style = document.createElement('style');
+  style.textContent = `
+    .crypto-error-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #dc2626;
+      color: white;
+      padding: 16px;
+      z-index: 9999;
+      font-family: monospace;
+      white-space: pre-wrap;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+  `;
+  document.head.appendChild(style);
+
+  const banner = document.createElement('div');
+  banner.className = 'crypto-error-banner';
+  banner.textContent = errorMessage;
+  document.body.appendChild(banner);
+
+  throw new Error(errorMessage);
+}
+
 // Use Web Crypto API available in browsers and Node.js (via globalThis)
 const { subtle } = globalThis.crypto;
 
