@@ -25,6 +25,13 @@ function superDebug(message: string, ...args: unknown[]): void {
 const ANSI_REGEX = /\x1b\[[0-9;]*[a-zA-Z]/g;
 
 /**
+ * Escape special regex characters in a string
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Activity status returned by app-specific parsers
  */
 export interface ActivityStatus {
@@ -169,7 +176,10 @@ function parseClaudeStatus(data: string): ActivityStatus | null {
       originalPos + fullMatch.length + 50
     );
     // Look for the status pattern in the middle section
-    const statusPattern = new RegExp(`[^\n]*${indicator}[^\n]*to\\s+interrupt[^\n]*`, 'gi');
+    const statusPattern = new RegExp(
+      `[^\n]*${escapeRegex(indicator)}[^\n]*to\\s+interrupt[^\n]*`,
+      'gi'
+    );
     const cleanedMiddle = middle.replace(statusPattern, '');
     filteredData = before + cleanedMiddle + after;
   }
@@ -271,23 +281,28 @@ export class ActivityDetector {
 
     // Try app-specific detection first
     if (this.detector) {
-      const status = this.detector.parseStatus(data);
-      if (status) {
-        this.currentStatus = status;
-        this.lastStatusTime = Date.now();
-        // Always update activity time for app-specific status
-        this.lastActivityTime = Date.now();
-        return {
-          filteredData: status.filteredData,
-          activity: {
-            isActive: true,
-            lastActivityTime: this.lastActivityTime,
-            specificStatus: {
-              app: this.detector.name,
-              status: status.displayText,
+      try {
+        const status = this.detector.parseStatus(data);
+        if (status) {
+          this.currentStatus = status;
+          this.lastStatusTime = Date.now();
+          // Always update activity time for app-specific status
+          this.lastActivityTime = Date.now();
+          return {
+            filteredData: status.filteredData,
+            activity: {
+              isActive: true,
+              lastActivityTime: this.lastActivityTime,
+              specificStatus: {
+                app: this.detector.name,
+                status: status.displayText,
+              },
             },
-          },
-        };
+          };
+        }
+      } catch (error) {
+        logger.error(`Error in ${this.detector.name} status parser:`, error);
+        // Continue with unfiltered data if parsing fails
       }
     }
 

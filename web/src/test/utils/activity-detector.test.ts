@@ -130,6 +130,37 @@ describe('Activity Detector', () => {
       expect(result.filteredData).toBe(claudeOutput);
       expect(result.activity.specificStatus).toBeUndefined();
     });
+
+    it('should handle regex special characters in status indicators', () => {
+      const detector = new ActivityDetector(['claude']);
+
+      // Test with * which is a regex special character that was causing crashes
+      const statusWithStar = '* Processing… (42s · ↑ 1.2k tokens · esc to interrupt)\n';
+      const result1 = detector.processOutput(statusWithStar);
+      expect(result1.activity.specificStatus?.status).toBe('Processing (42s, ↑1.2k)');
+      expect(result1.filteredData).toBe('\n');
+
+      // Test with other regex special characters
+      const specialChars = ['*', '+', '?', '.', '^', '$', '|', '(', ')', '[', ']', '{', '}', '\\'];
+      for (const char of specialChars) {
+        const statusWithSpecialChar = `${char} Testing… (10s · ↑ 1.0k tokens · esc to interrupt)\n`;
+        const result = detector.processOutput(statusWithSpecialChar);
+        expect(result.activity.specificStatus?.status).toBe('Testing (10s, ↑1.0k)');
+        expect(result.filteredData).toBe('\n');
+      }
+    });
+
+    it('should not crash when parsing fails', () => {
+      const detector = new ActivityDetector(['claude']);
+
+      // Even if something unexpected happens, it should not crash
+      const malformedOutput = 'Some output that might cause issues\n';
+      expect(() => {
+        const result = detector.processOutput(malformedOutput);
+        expect(result.filteredData).toBe(malformedOutput);
+        expect(result.activity.specificStatus).toBeUndefined();
+      }).not.toThrow();
+    });
   });
 
   describe('registerDetector', () => {
