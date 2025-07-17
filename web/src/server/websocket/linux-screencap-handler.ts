@@ -3,8 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import type { WebSocket } from 'ws';
 import type { CaptureSession } from '../capture/desktop-capture-service.js';
 import { desktopCaptureService } from '../capture/desktop-capture-service.js';
-import { streamHandler } from '../capture/stream-handler.js';
 import { createLogger } from '../utils/logger.js';
+import { LinuxWebRTCHandler } from './linux-webrtc-handler.js';
 
 const logger = createLogger('linux-screencap-handler');
 
@@ -20,22 +20,13 @@ interface ControlMessage {
   error?: string;
 }
 
-interface StreamMessage {
-  type: 'frame' | 'error' | 'end' | 'stats';
-  sessionId: string;
-  data?: ArrayBuffer;
-  error?: string;
-  stats?: {
-    fps: number;
-    bitrate: number;
-    frameCount: number;
-  };
-}
+// Removed unused StreamMessage interface
 
 export class LinuxScreencapHandler extends EventEmitter {
   private clients = new Map<string, WebSocket>();
   private sessions = new Map<string, CaptureSession>();
   private streamSubscriptions = new Map<string, () => void>();
+  private webrtcHandlers = new Map<string, LinuxWebRTCHandler>();
 
   constructor() {
     super();
@@ -87,7 +78,7 @@ export class LinuxScreencapHandler extends EventEmitter {
       payload: {
         message: 'Linux screencap ready',
         capabilities: {
-          supportsWebRTC: false, // Linux version uses direct WebSocket streaming
+          supportsWebRTC: true, // Linux version now supports WebRTC via stream conversion
           supportsH264: true,
           supportsVP8: true,
           supportsVP9: true,
@@ -112,6 +103,12 @@ export class LinuxScreencapHandler extends EventEmitter {
 
       case 'start-capture':
         await this.handleStartCapture(ws, clientId, message);
+        break;
+
+      case 'offer':
+      case 'answer':
+      case 'ice-candidate':
+        await this.handleWebRTCSignaling(ws, clientId, message);
         break;
 
       case 'stop-capture':
@@ -155,10 +152,10 @@ export class LinuxScreencapHandler extends EventEmitter {
   }
 
   private async handleApiRequest(ws: WebSocket, message: ControlMessage): Promise<void> {
-    const { endpoint, method = 'GET', body } = message.payload as any;
+    const { endpoint } = message.payload as { endpoint: string };
 
     try {
-      let result: any;
+      let result: unknown;
 
       switch (endpoint) {
         case '/displays': {
@@ -203,7 +200,16 @@ export class LinuxScreencapHandler extends EventEmitter {
     message: ControlMessage
   ): Promise<void> {
     try {
-      const { mode = 'desktop', displayIndex = 0, quality = 'high' } = message.payload as any;
+      const {
+        displayIndex = 0,
+        quality = 'high',
+        sessionId,
+      } = message.payload as {
+        mode?: string;
+        displayIndex?: number;
+        quality?: 'low' | 'medium' | 'high' | 'ultra';
+        sessionId?: string;
+      };
 
       // Start capture session
       const session = await desktopCaptureService.startCapture({
@@ -216,15 +222,36 @@ export class LinuxScreencapHandler extends EventEmitter {
       logger.log(`Started capture session ${session.id} for client ${clientId}`);
       this.sessions.set(clientId, session);
 
-      // Start streaming to session
-      streamHandler.streamToSession(session.id, session);
+      // Create WebRTC handler for this session
+      const webrtcHandler = new LinuxWebRTCHandler(session, sessionId || session.id);
+      this.webrtcHandlers.set(clientId, webrtcHandler);
 
-      // Subscribe to stream updates for forwarding frames
-      const unsubscribe = streamHandler.subscribe(session.id, (frame: ArrayBuffer) => {
-        this.sendStreamFrame(ws, session.id, frame);
+      // Set up WebRTC event handlers
+      webrtcHandler.on('offer', (offer) => {
+        this.sendMessage(ws, {
+          id: uuidv4(),
+          type: 'event',
+          category: 'screencap',
+          action: 'offer',
+          payload: Buffer.from(JSON.stringify({ data: offer })).toString('base64'),
+          sessionId: sessionId || session.id,
+        });
       });
 
-      this.streamSubscriptions.set(clientId, unsubscribe);
+      webrtcHandler.on('ice-candidate', (candidate) => {
+        this.sendMessage(ws, {
+          id: uuidv4(),
+          type: 'event',
+          category: 'screencap',
+          action: 'ice-candidate',
+          payload: Buffer.from(JSON.stringify({ data: candidate })).toString('base64'),
+          sessionId: sessionId || session.id,
+        });
+      });
+
+      // Initialize WebRTC and create offer
+      await webrtcHandler.initialize();
+      await webrtcHandler.createOffer();
 
       // Send success response
       this.sendMessage(ws, {
@@ -274,6 +301,13 @@ export class LinuxScreencapHandler extends EventEmitter {
         throw new Error('No active capture session');
       }
 
+      // Clean up WebRTC handler
+      const webrtcHandler = this.webrtcHandlers.get(clientId);
+      if (webrtcHandler) {
+        webrtcHandler.close();
+        this.webrtcHandlers.delete(clientId);
+      }
+
       // Unsubscribe from stream
       const unsubscribe = this.streamSubscriptions.get(clientId);
       if (unsubscribe) {
@@ -321,6 +355,13 @@ export class LinuxScreencapHandler extends EventEmitter {
     // Clean up client
     this.clients.delete(clientId);
 
+    // Clean up WebRTC handler
+    const webrtcHandler = this.webrtcHandlers.get(clientId);
+    if (webrtcHandler) {
+      webrtcHandler.close();
+      this.webrtcHandlers.delete(clientId);
+    }
+
     // Clean up any active session
     const session = this.sessions.get(clientId);
     if (session) {
@@ -342,25 +383,39 @@ export class LinuxScreencapHandler extends EventEmitter {
     }
   }
 
-  private sendStreamFrame(ws: WebSocket, sessionId: string, frame: ArrayBuffer): void {
-    if (ws.readyState === ws.OPEN) {
-      const message: StreamMessage = {
-        type: 'frame',
-        sessionId,
-        data: frame,
-      };
+  private async handleWebRTCSignaling(
+    _ws: WebSocket,
+    clientId: string,
+    message: ControlMessage
+  ): Promise<void> {
+    const webrtcHandler = this.webrtcHandlers.get(clientId);
+    if (!webrtcHandler) {
+      logger.error('No WebRTC handler found for client', clientId);
+      return;
+    }
 
-      // Send as binary message
-      ws.send(
-        Buffer.from(
-          JSON.stringify({
-            type: 'stream-data',
-            sessionId,
-          })
-        ),
-        { binary: false }
-      );
-      ws.send(frame, { binary: true });
+    try {
+      // Decode base64 payload
+      const decodedPayload =
+        typeof message.payload === 'string'
+          ? JSON.parse(Buffer.from(message.payload, 'base64').toString())
+          : message.payload;
+
+      switch (message.action) {
+        case 'answer':
+          if (decodedPayload?.data) {
+            await webrtcHandler.handleAnswer(decodedPayload.data);
+          }
+          break;
+
+        case 'ice-candidate':
+          if (decodedPayload?.data) {
+            await webrtcHandler.handleIceCandidate(decodedPayload.data);
+          }
+          break;
+      }
+    } catch (error) {
+      logger.error(`Failed to handle WebRTC ${message.action}:`, error);
     }
   }
 
