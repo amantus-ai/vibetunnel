@@ -32,16 +32,7 @@ jobs:
         xcodebuild -version
         swift --version
     
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24'
-    
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 9
-        run_install: false
+    # Node.js/pnpm not needed for iOS builds
     
     - name: Cache Homebrew packages
       uses: actions/cache@v4
@@ -110,8 +101,8 @@ jobs:
         echo "xcbeautify: $(xcbeautify --version || echo 'not found')"
         echo "PATH: $PATH"
     
-    # Skip pnpm cache - testing if fresh installs are faster
-    # The cache was extremely large and might be slower than fresh install
+    # iOS doesn't need web dependencies - skip pnpm entirely
+    
     - name: Resolve Dependencies (once)
       run: |
         cd ios
@@ -291,7 +282,7 @@ jobs:
           -scheme VibeTunnel-iOS \
           -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
           -resultBundlePath TestResults.xcresult \
-          -enableCodeCoverage YES \
+          -enableCodeCoverage ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'YES' || 'NO' }} \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \

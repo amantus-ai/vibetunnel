@@ -163,7 +163,10 @@ jobs:
 
     - name: Build frontend and backend
       working-directory: web
-      run: pnpm run build:ci
+      run: |
+        # Use all available cores for esbuild
+        export ESBUILD_MAX_WORKERS=$(nproc)
+        pnpm run build:ci
 
     - name: Run client tests with coverage
       id: test-client-coverage
@@ -271,6 +274,7 @@ jobs:
           web/dist/
           web/public/bundle/
         retention-days: 1
+        if-no-files-found: error
 
   type-check:
     name: TypeScript Type Checking

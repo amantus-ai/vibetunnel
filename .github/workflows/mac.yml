@@ -32,16 +32,7 @@ jobs:
         xcodebuild -version
         swift --version
     
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24'
-    
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 9
-        dest: ~/pnpm-${{ github.run_id }}
+    # Node.js/pnpm not needed - web artifacts are downloaded
     
     - name: Cache Homebrew packages
       uses: actions/cache@v4
@@ -242,7 +233,7 @@ jobs:
           -scheme VibeTunnel-Mac \
           -configuration Debug \
           -destination "platform=macOS" \
-          -enableCodeCoverage YES \
+          -enableCodeCoverage ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'YES' || 'NO' }} \
           -resultBundlePath TestResults.xcresult \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
