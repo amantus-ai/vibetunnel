@@ -119,6 +119,8 @@ struct ProjectFolderPageView: View {
             } else {
                 // Page is no longer visible, cancel any ongoing scan
                 scanTask?.cancel()
+                // Ensure UI is reset if scan was in progress
+                isScanning = false
             }
         }
         .onChange(of: selectedPath) { _, newValue in
@@ -172,63 +174,66 @@ struct ProjectFolderPageView: View {
             let expandedPath = (selectedPath as NSString).expandingTildeInPath
             let repos = await findGitRepositories(in: expandedPath, maxDepth: 3)
 
-            // Check if task was cancelled before updating UI
-            if !Task.isCancelled {
-                await MainActor.run {
+            await MainActor.run {
+                // Always update isScanning to false when done, regardless of cancellation
+                if !Task.isCancelled {
                     discoveredRepos = repos.map { path in
                         RepositoryInfo(name: URL(fileURLWithPath: path).lastPathComponent, path: path)
                     }
-                    isScanning = false
                 }
+                isScanning = false
             }
         }
     }
 
     private func findGitRepositories(in path: String, maxDepth: Int) async -> [String] {
-        // Run the file system scanning on a background thread to avoid blocking UI
-        return await withCheckedContinuation { continuation in
-            Task(priority: .background) {
-                var repositories: [String] = []
+        var repositories: [String] = []
+        
+        // Use a recursive async function that properly checks for cancellation
+        func scanDirectory(_ dirPath: String, depth: Int) async {
+            // Check for cancellation at each level
+            guard !Task.isCancelled else { return }
+            guard depth <= maxDepth else { return }
+            
+            do {
+                let contents = try FileManager.default.contentsOfDirectory(atPath: dirPath)
                 
-                func scanDirectory(_ dirPath: String, depth: Int) {
-                    // Check for cancellation
-                    guard !Task.isCancelled else { return }
-                    guard depth <= maxDepth else { return }
-
-                    do {
-                        let contents = try FileManager.default.contentsOfDirectory(atPath: dirPath)
-
-                        for item in contents {
-                            // Check for cancellation in inner loop
-                            guard !Task.isCancelled else { break }
-                            
-                            let fullPath = (dirPath as NSString).appendingPathComponent(item)
-                            var isDirectory: ObjCBool = false
-
-                            guard FileManager.default.fileExists(atPath: fullPath, isDirectory: &isDirectory),
-                                  isDirectory.boolValue else { continue }
-
-                            // Skip hidden directories except .git
-                            if item.hasPrefix(".") && item != ".git" { continue }
-
-                            // Check if this directory contains .git
-                            let gitPath = (fullPath as NSString).appendingPathComponent(".git")
-                            if FileManager.default.fileExists(atPath: gitPath) {
-                                repositories.append(fullPath)
-                            } else {
-                                // Recursively scan subdirectories
-                                scanDirectory(fullPath, depth: depth + 1)
-                            }
-                        }
-                    } catch {
-                        // Ignore directories we can't read
+                for item in contents {
+                    // Check for cancellation in the loop
+                    try Task.checkCancellation()
+                    
+                    let fullPath = (dirPath as NSString).appendingPathComponent(item)
+                    var isDirectory: ObjCBool = false
+                    
+                    guard FileManager.default.fileExists(atPath: fullPath, isDirectory: &isDirectory),
+                          isDirectory.boolValue else { continue }
+                    
+                    // Skip hidden directories except .git
+                    if item.hasPrefix(".") && item != ".git" { continue }
+                    
+                    // Check if this directory contains .git
+                    let gitPath = (fullPath as NSString).appendingPathComponent(".git")
+                    if FileManager.default.fileExists(atPath: gitPath) {
+                        repositories.append(fullPath)
+                    } else {
+                        // Recursively scan subdirectories
+                        await scanDirectory(fullPath, depth: depth + 1)
                     }
                 }
-
-                scanDirectory(path, depth: 0)
-                continuation.resume(returning: repositories)
+            } catch is CancellationError {
+                // Task was cancelled, stop scanning
+                return
+            } catch {
+                // Ignore directories we can't read
             }
         }
+        
+        // Run the scanning on a lower priority
+        await Task(priority: .background) {
+            await scanDirectory(path, depth: 0)
+        }.value
+        
+        return repositories
     }
 }
 
