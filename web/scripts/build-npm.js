@@ -600,7 +600,8 @@ async function main() {
     
     // Scripts
     { src: 'scripts/postinstall-npm.js', dest: 'scripts/postinstall.js' },
-    { src: 'scripts/node-pty-plugin.js', dest: 'scripts/node-pty-plugin.js' }
+    { src: 'scripts/node-pty-plugin.js', dest: 'scripts/node-pty-plugin.js' },
+    { src: 'scripts/install-vt-command.js', dest: 'scripts/install-vt-command.js' }
   ];
   
   function copyRecursive(src, dest) {
