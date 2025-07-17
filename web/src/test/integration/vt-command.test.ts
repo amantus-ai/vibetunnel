@@ -89,14 +89,14 @@ describe('vt command', () => {
     });
 
     let stdout = '';
-    let stderr = '';
+    let _stderr = '';
 
     child.stdout.on('data', (data) => {
       stdout += data.toString();
     });
 
     child.stderr.on('data', (data) => {
-      stderr += data.toString();
+      _stderr += data.toString();
     });
 
     child.on('close', (code) => {
@@ -126,11 +126,11 @@ describe('vt command', () => {
       env: { ...process.env, VIBETUNNEL_SESSION_ID: '' }, // Ensure no session ID
     });
 
-    let stdout = '';
+    let _stdout = '';
     let stderr = '';
 
     child.stdout.on('data', (data) => {
-      stdout += data.toString();
+      _stdout += data.toString();
     });
 
     child.stderr.on('data', (data) => {

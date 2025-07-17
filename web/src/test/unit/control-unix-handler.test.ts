@@ -107,7 +107,11 @@ describe('Control Unix Handler', () => {
       };
 
       // Process the message through the system handler
-      const systemHandler = (controlUnixHandler as unknown as { handlers: Map<string, { handleMessage: (msg: typeof message) => Promise<unknown> }> }).handlers.get('system');
+      const systemHandler = (
+        controlUnixHandler as unknown as {
+          handlers: Map<string, { handleMessage: (msg: typeof message) => Promise<unknown> }>;
+        }
+      ).handlers.get('system');
       const response = await systemHandler?.handleMessage(message);
 
       // Verify the update was processed
@@ -142,7 +146,11 @@ describe('Control Unix Handler', () => {
       };
 
       // Process the message
-      const systemHandler = (controlUnixHandler as unknown as { handlers: Map<string, { handleMessage: (msg: typeof message) => Promise<unknown> }> }).handlers.get('system');
+      const systemHandler = (
+        controlUnixHandler as unknown as {
+          handlers: Map<string, { handleMessage: (msg: typeof message) => Promise<unknown> }>;
+        }
+      ).handlers.get('system');
       const response = await systemHandler?.handleMessage(message);
 
       // Verify callback was not called
@@ -172,7 +180,9 @@ describe('Control Unix Handler', () => {
       };
 
       // Simulate handleMacMessage behavior - response messages without pending requests are ignored
-      const pendingRequests = (controlUnixHandler as unknown as { pendingRequests: Map<string, unknown> }).pendingRequests;
+      const pendingRequests = (
+        controlUnixHandler as unknown as { pendingRequests: Map<string, unknown> }
+      ).pendingRequests;
       const hasPendingRequest = pendingRequests.has(message.id);
 
       // Since this is a response without a pending request, it should be ignored
@@ -199,8 +209,12 @@ describe('Control Unix Handler', () => {
       };
 
       // Set up the handler
-      (controlUnixHandler as unknown as { screenCaptureHandler: typeof mockScreenCaptureHandler }).screenCaptureHandler = mockScreenCaptureHandler;
-      (controlUnixHandler as unknown as { handlers: Map<string, typeof mockScreenCaptureHandler> }).handlers.set('screencap', mockScreenCaptureHandler);
+      (
+        controlUnixHandler as unknown as { screenCaptureHandler: typeof mockScreenCaptureHandler }
+      ).screenCaptureHandler = mockScreenCaptureHandler;
+      (
+        controlUnixHandler as unknown as { handlers: Map<string, typeof mockScreenCaptureHandler> }
+      ).handlers.set('screencap', mockScreenCaptureHandler);
       mockScreenCaptureHandler.browserSocket = mockBrowserSocket;
 
       // Create a screencap API response message (simulating response from Mac app)
@@ -220,7 +234,11 @@ describe('Control Unix Handler', () => {
       };
 
       // Call handleMacMessage directly
-      await (controlUnixHandler as any).handleMacMessage(screencapResponse);
+      await (
+        controlUnixHandler as unknown as {
+          handleMacMessage: (msg: typeof screencapResponse) => Promise<void>;
+        }
+      ).handleMacMessage(screencapResponse);
 
       // Verify the handler was called with the message
       expect(mockScreenCaptureHandler.handleMessage).toHaveBeenCalledWith(screencapResponse);
@@ -231,7 +249,9 @@ describe('Control Unix Handler', () => {
       const mockSystemHandler = {
         handleMessage: vi.fn().mockResolvedValue(null),
       };
-      (controlUnixHandler as any).handlers.set('system', mockSystemHandler);
+      (
+        controlUnixHandler as unknown as { handlers: Map<string, typeof mockSystemHandler> }
+      ).handlers.set('system', mockSystemHandler);
 
       // Create a system response message without a pending request
       const systemResponse = {
@@ -243,7 +263,11 @@ describe('Control Unix Handler', () => {
       };
 
       // Call handleMacMessage directly
-      await (controlUnixHandler as any).handleMacMessage(systemResponse);
+      await (
+        controlUnixHandler as unknown as {
+          handleMacMessage: (msg: typeof systemResponse) => Promise<void>;
+        }
+      ).handleMacMessage(systemResponse);
 
       // Verify the handler was NOT called (message should be ignored)
       expect(mockSystemHandler.handleMessage).not.toHaveBeenCalled();
@@ -261,7 +285,9 @@ describe('Control Unix Handler', () => {
         }),
       };
 
-      (controlUnixHandler as any).handlers.set('screencap', mockScreenCaptureHandler);
+      (
+        controlUnixHandler as unknown as { handlers: Map<string, typeof mockScreenCaptureHandler> }
+      ).handlers.set('screencap', mockScreenCaptureHandler);
 
       // Create a screencap request message
       const screencapRequest = {
@@ -277,11 +303,15 @@ describe('Control Unix Handler', () => {
 
       // Mock sendToMac to capture the response
       const sendToMacSpy = vi
-        .spyOn(controlUnixHandler as any, 'sendToMac')
+        .spyOn(controlUnixHandler as unknown as { sendToMac: (msg: unknown) => void }, 'sendToMac')
         .mockImplementation(() => {});
 
       // Call handleMacMessage
-      await (controlUnixHandler as any).handleMacMessage(screencapRequest);
+      await (
+        controlUnixHandler as unknown as {
+          handleMacMessage: (msg: typeof screencapRequest) => Promise<void>;
+        }
+      ).handleMacMessage(screencapRequest);
 
       // Verify the handler was called
       expect(mockScreenCaptureHandler.handleMessage).toHaveBeenCalledWith(screencapRequest);

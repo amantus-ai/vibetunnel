@@ -561,6 +561,11 @@ export async function createApp(): Promise<AppInstance> {
   // Serve static files with .html extension handling and caching headers
   // In production/bundled mode, use the package directory; in development, use cwd
   const getPublicPath = () => {
+    // First check if BUILD_PUBLIC_PATH is set (used by Mac app bundle)
+    if (process.env.BUILD_PUBLIC_PATH) {
+      logger.info(`Using BUILD_PUBLIC_PATH: ${process.env.BUILD_PUBLIC_PATH}`);
+      return process.env.BUILD_PUBLIC_PATH;
+    }
     // More precise npm package detection:
     // 1. Check if we're explicitly in an npm package structure
     // 2. The file should be in node_modules/vibetunnel/lib/

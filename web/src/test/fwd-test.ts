@@ -8,7 +8,6 @@
 import * as fs from 'fs';
 import * as pty from 'node-pty';
 import { which } from 'node-pty/lib/utils';
-import * as os from 'os';
 import * as path from 'path';
 
 // Terminal state restoration
@@ -23,7 +22,7 @@ function cleanup() {
   if (process.stdin.isTTY && originalStdinRawMode) {
     try {
       process.stdin.setRawMode(false);
-    } catch (e) {
+    } catch (_e) {
       // Ignore errors
     }
   }
@@ -32,7 +31,7 @@ function cleanup() {
   if (ptyProcess) {
     try {
       ptyProcess.kill();
-    } catch (e) {
+    } catch (_e) {
       // Process might already be dead
     }
     ptyProcess = null;
@@ -58,7 +57,7 @@ function resolveCommand(args: string[]): { command: string; args: string[] } {
     if (resolved) {
       return { command: resolved, args: cmdArgs };
     }
-  } catch (e) {
+  } catch (_e) {
     // Command not found in PATH
   }
 

@@ -268,6 +268,10 @@ final class BunServer {
 
         // Add Node.js memory settings as command line arguments instead of NODE_OPTIONS
         // NODE_OPTIONS can interfere with SEA binaries
+        
+        // Set BUILD_PUBLIC_PATH to help the server find static files in the app bundle
+        environment["BUILD_PUBLIC_PATH"] = staticPath
+        logger.info("Setting BUILD_PUBLIC_PATH=\(staticPath)")
 
         process.environment = environment
 

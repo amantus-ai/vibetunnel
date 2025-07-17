@@ -75,7 +75,17 @@ describe('sessions routes', () => {
       });
 
       // Find the /server/status route handler
-      const routes = (router as unknown as { stack: Array<{ route?: { path: string; methods: { get?: boolean }; stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }> } }> }).stack;
+      const routes = (
+        router as unknown as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { get?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
       const statusRoute = routes.find(
         (r) => r.route && r.route.path === '/server/status' && r.route.methods.get
       );
@@ -114,7 +124,17 @@ describe('sessions routes', () => {
       });
 
       // Find the /server/status route handler
-      const routes = (router as unknown as { stack: Array<{ route?: { path: string; methods: { get?: boolean }; stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }> } }> }).stack;
+      const routes = (
+        router as unknown as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { get?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
       const statusRoute = routes.find(
         (r) => r.route && r.route.path === '/server/status' && r.route.methods.get
       );
@@ -149,7 +169,17 @@ describe('sessions routes', () => {
         activityMonitor: mockActivityMonitor,
       });
 
-      const routes = (router as unknown as { stack: Array<{ route?: { path: string; methods: { get?: boolean }; stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }> } }> }).stack;
+      const routes = (
+        router as unknown as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { get?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
       const statusRoute = routes.find(
         (r) => r.route && r.route.path === '/server/status' && r.route.methods.get
       );
