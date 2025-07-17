@@ -19,6 +19,12 @@ struct ProjectFolderPageView: View {
         let path: String
     }
 
+    @State private var scanTask: Task<Void, Never>?
+    @Binding var currentPage: Int
+    
+    // Page index for ProjectFolderPageView in the welcome flow
+    private let pageIndex = 4
+
     var body: some View {
         VStack(spacing: 30) {
             VStack(spacing: 16) {
@@ -103,13 +109,22 @@ struct ProjectFolderPageView: View {
         .padding()
         .onAppear {
             selectedPath = repositoryBasePath
-            if !selectedPath.isEmpty {
-                scanForRepositories()
+        }
+        .onChange(of: currentPage) { _, newPage in
+            if newPage == pageIndex {
+                // Page just became visible
+                if !selectedPath.isEmpty {
+                    scanForRepositories()
+                }
+            } else {
+                // Page is no longer visible, cancel any ongoing scan
+                scanTask?.cancel()
             }
         }
         .onChange(of: selectedPath) { _, newValue in
             repositoryBasePath = newValue
-            if !newValue.isEmpty {
+            // Only scan if we're the current page
+            if currentPage == pageIndex && !newValue.isEmpty {
                 scanForRepositories()
             }
         }
@@ -147,61 +162,77 @@ struct ProjectFolderPageView: View {
     }
 
     private func scanForRepositories() {
+        // Cancel any existing scan
+        scanTask?.cancel()
+        
         isScanning = true
         discoveredRepos = []
 
-        Task {
+        scanTask = Task {
             let expandedPath = (selectedPath as NSString).expandingTildeInPath
             let repos = await findGitRepositories(in: expandedPath, maxDepth: 3)
 
-            await MainActor.run {
-                discoveredRepos = repos.map { path in
-                    RepositoryInfo(name: URL(fileURLWithPath: path).lastPathComponent, path: path)
+            // Check if task was cancelled before updating UI
+            if !Task.isCancelled {
+                await MainActor.run {
+                    discoveredRepos = repos.map { path in
+                        RepositoryInfo(name: URL(fileURLWithPath: path).lastPathComponent, path: path)
+                    }
+                    isScanning = false
                 }
-                isScanning = false
             }
         }
     }
 
     private func findGitRepositories(in path: String, maxDepth: Int) async -> [String] {
-        var repositories: [String] = []
+        // Run the file system scanning on a background thread to avoid blocking UI
+        return await withCheckedContinuation { continuation in
+            Task(priority: .background) {
+                var repositories: [String] = []
+                
+                func scanDirectory(_ dirPath: String, depth: Int) {
+                    // Check for cancellation
+                    guard !Task.isCancelled else { return }
+                    guard depth <= maxDepth else { return }
 
-        func scanDirectory(_ dirPath: String, depth: Int) {
-            guard depth <= maxDepth else { return }
+                    do {
+                        let contents = try FileManager.default.contentsOfDirectory(atPath: dirPath)
 
-            do {
-                let contents = try FileManager.default.contentsOfDirectory(atPath: dirPath)
+                        for item in contents {
+                            // Check for cancellation in inner loop
+                            guard !Task.isCancelled else { break }
+                            
+                            let fullPath = (dirPath as NSString).appendingPathComponent(item)
+                            var isDirectory: ObjCBool = false
 
-                for item in contents {
-                    let fullPath = (dirPath as NSString).appendingPathComponent(item)
-                    var isDirectory: ObjCBool = false
+                            guard FileManager.default.fileExists(atPath: fullPath, isDirectory: &isDirectory),
+                                  isDirectory.boolValue else { continue }
 
-                    guard FileManager.default.fileExists(atPath: fullPath, isDirectory: &isDirectory),
-                          isDirectory.boolValue else { continue }
+                            // Skip hidden directories except .git
+                            if item.hasPrefix(".") && item != ".git" { continue }
 
-                    // Skip hidden directories except .git
-                    if item.hasPrefix(".") && item != ".git" { continue }
-
-                    // Check if this directory contains .git
-                    let gitPath = (fullPath as NSString).appendingPathComponent(".git")
-                    if FileManager.default.fileExists(atPath: gitPath) {
-                        repositories.append(fullPath)
-                    } else {
-                        // Recursively scan subdirectories
-                        scanDirectory(fullPath, depth: depth + 1)
+                            // Check if this directory contains .git
+                            let gitPath = (fullPath as NSString).appendingPathComponent(".git")
+                            if FileManager.default.fileExists(atPath: gitPath) {
+                                repositories.append(fullPath)
+                            } else {
+                                // Recursively scan subdirectories
+                                scanDirectory(fullPath, depth: depth + 1)
+                            }
+                        }
+                    } catch {
+                        // Ignore directories we can't read
                     }
                 }
-            } catch {
-                // Ignore directories we can't read
+
+                scanDirectory(path, depth: 0)
+                continuation.resume(returning: repositories)
             }
         }
-
-        scanDirectory(path, depth: 0)
-        return repositories
     }
 }
 
 #Preview {
-    ProjectFolderPageView()
+    ProjectFolderPageView(currentPage: .constant(4))
         .frame(width: 640, height: 300)
 }
