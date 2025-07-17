@@ -1,22 +1,8 @@
 import { type Request, type Response, Router } from 'express';
-import type { WebSocket } from 'ws';
 import { desktopCaptureService } from '../capture/desktop-capture-service.js';
-import { streamHandler } from '../capture/stream-handler.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('server-screencap-routes');
-
-// Control message types to match Mac implementation
-interface ControlMessage {
-  id: string;
-  type: 'request' | 'response' | 'event';
-  category: 'screencap';
-  action: string;
-  payload?: unknown;
-  sessionId?: string;
-  userId?: string;
-  error?: string;
-}
 
 export function createServerScreencapRoutes(): Router {
   const router = Router();

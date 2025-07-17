@@ -193,7 +193,7 @@ function parseWlrRandrOutput(output: string): ScreenInfo[] {
   for (const line of lines) {
     if (line.match(/^\S+/)) {
       // New output device
-      if (currentScreen && currentScreen.width && currentScreen.height) {
+      if (currentScreen?.width && currentScreen.height) {
         screens.push({
           id: screenId++,
           width: currentScreen.width,
@@ -222,7 +222,7 @@ function parseWlrRandrOutput(output: string): ScreenInfo[] {
   }
 
   // Add last screen
-  if (currentScreen && currentScreen.width && currentScreen.height) {
+  if (currentScreen?.width && currentScreen.height) {
     screens.push({
       id: screenId,
       width: currentScreen.width,

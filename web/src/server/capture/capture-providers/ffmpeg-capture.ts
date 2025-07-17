@@ -2,7 +2,7 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import type { Readable } from 'node:stream';
 import { createLogger } from '../../utils/logger.js';
-import type { DisplayServerInfo, ScreenInfo } from '../display-detection.js';
+import type { DisplayServerInfo } from '../display-detection.js';
 
 const logger = createLogger('ffmpeg-capture');
 
@@ -292,7 +292,7 @@ export class FFmpegCapture extends EventEmitter {
 
   private getHardwareEncoderArgs(
     bitrate: number,
-    quality: (typeof QUALITY_PRESETS)[keyof typeof QUALITY_PRESETS]
+    _quality: (typeof QUALITY_PRESETS)[keyof typeof QUALITY_PRESETS]
   ): string[] {
     // Try VAAPI first (Intel/AMD on Linux)
     // This is simplified - real implementation would detect available encoders
@@ -356,7 +356,7 @@ export class FFmpegCapture extends EventEmitter {
           resolve();
         }, 2000);
 
-        this.ffmpegProcess!.once('exit', () => {
+        this.ffmpegProcess?.once('exit', () => {
           clearTimeout(timeout);
           resolve();
         });

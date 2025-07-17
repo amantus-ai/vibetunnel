@@ -71,7 +71,7 @@ export class StreamConverter {
    */
   static createProcessingPipeline(): Transform {
     return new Transform({
-      transform(chunk, encoding, callback) {
+      transform(chunk, _encoding, callback) {
         // Pass through for now - could add processing here
         callback(null, chunk);
       },
@@ -231,7 +231,7 @@ function generateTrackId(): string {
 export class WebMParser extends Transform {
   private buffer = Buffer.alloc(0);
 
-  _transform(chunk: Buffer, encoding: string, callback: () => void): void {
+  _transform(chunk: Buffer, _encoding: string, callback: () => void): void {
     this.buffer = Buffer.concat([this.buffer, chunk]);
 
     // Simple passthrough for now
