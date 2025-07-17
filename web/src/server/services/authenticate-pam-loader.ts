@@ -27,6 +27,8 @@ if (fs.existsSync(seaPamPath) || fs.existsSync(seaNativePamPath)) {
   const possiblePaths = [
     seaPamPath,
     seaNativePamPath,
+    path.join(__dirname, '..', 'native', 'authenticate_pam.node'),
+    path.join(__dirname, '..', '..', 'native', 'authenticate_pam.node'),
     path.join(__dirname, '..', '..', '..', 'native', 'authenticate_pam.node'),
   ];
 
@@ -77,27 +79,31 @@ if (fs.existsSync(seaPamPath) || fs.existsSync(seaNativePamPath)) {
 
   // If normal require failed, try the optional-modules location
   if (!loaded) {
-    const optionalModulePath = path.join(
-      __dirname,
-      '..',
-      '..',
-      '..',
-      'optional-modules',
-      'authenticate-pam',
-      'build',
-      'Release',
-      'authenticate_pam.node'
-    );
-    if (fs.existsSync(optionalModulePath)) {
-      try {
-        const nativeModule = loadNativeModule(optionalModulePath);
-        if (nativeModule.authenticate) {
-          authenticate = nativeModule.authenticate;
-          loaded = true;
-          console.log('Loaded authenticate-pam from optional-modules location');
+    // In bundled context (dist-npm/lib/), we need to go up only 1 directory
+    // In development context (src/server/services/), we need to go up 3 directories
+    // Check if we're in a bundled context by looking for a marker file
+    const possibleOptionalModulePaths = [
+      // Bundled context: dist-npm/lib/../optional-modules
+      path.join(__dirname, '..', 'optional-modules', 'authenticate-pam', 'build', 'Release', 'authenticate_pam.node'),
+      // Development context: src/server/services/../../../optional-modules
+      path.join(__dirname, '..', '..', '..', 'optional-modules', 'authenticate-pam', 'build', 'Release', 'authenticate_pam.node'),
+      // Alternative bundled location (if lib is nested)
+      path.join(__dirname, '..', '..', 'optional-modules', 'authenticate-pam', 'build', 'Release', 'authenticate_pam.node'),
+    ];
+
+    for (const optionalModulePath of possibleOptionalModulePaths) {
+      if (fs.existsSync(optionalModulePath)) {
+        try {
+          const nativeModule = loadNativeModule(optionalModulePath);
+          if (nativeModule.authenticate) {
+            authenticate = nativeModule.authenticate;
+            loaded = true;
+            console.log('Loaded authenticate-pam from optional-modules location:', optionalModulePath);
+            break;
+          }
+        } catch (_loadError) {
+          // Continue to next path
         }
-      } catch (_loadError) {
-        // Continue to stub
       }
     }
   }
