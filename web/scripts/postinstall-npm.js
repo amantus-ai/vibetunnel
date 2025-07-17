@@ -183,7 +183,14 @@ for (const module of modules) {
   }
 
   // Check if already built
-  if (fs.existsSync(module.build)) {
+  // For optional modules, also check the alternative location
+  let buildPath = module.build;
+  if (module.skipDirCheck && module.name === 'authenticate-pam' && !fs.existsSync(module.dir)) {
+    // Check the optional-modules location instead
+    buildPath = path.join(__dirname, '..', 'optional-modules', module.name, 'build', 'Release', 'authenticate_pam.node');
+  }
+  
+  if (fs.existsSync(buildPath)) {
     console.log(`✓ ${module.name} already available`);
     continue;
   }

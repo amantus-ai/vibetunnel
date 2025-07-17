@@ -64,7 +64,7 @@ if (fs.existsSync(seaPamPath) || fs.existsSync(seaNativePamPath)) {
 } else {
   // Development mode - use regular require
   let loaded = false;
-  
+
   // First, try the normal require path
   try {
     const pamModule = require('authenticate-pam');
@@ -74,10 +74,20 @@ if (fs.existsSync(seaPamPath) || fs.existsSync(seaNativePamPath)) {
   } catch (_error) {
     // Module not found via normal require
   }
-  
+
   // If normal require failed, try the optional-modules location
   if (!loaded) {
-    const optionalModulePath = path.join(__dirname, '..', '..', '..', 'optional-modules', 'authenticate-pam', 'build', 'Release', 'authenticate_pam.node');
+    const optionalModulePath = path.join(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      'optional-modules',
+      'authenticate-pam',
+      'build',
+      'Release',
+      'authenticate_pam.node'
+    );
     if (fs.existsSync(optionalModulePath)) {
       try {
         const nativeModule = loadNativeModule(optionalModulePath);
@@ -91,7 +101,7 @@ if (fs.existsSync(seaPamPath) || fs.existsSync(seaNativePamPath)) {
       }
     }
   }
-  
+
   if (!loaded) {
     console.warn(
       'Warning: authenticate-pam native module not found. PAM authentication will not work.'
