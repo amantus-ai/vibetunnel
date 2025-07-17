@@ -346,9 +346,10 @@ jobs:
       # || true to not fail the build on vulnerabilities, but still report them
 
   report-coverage:
-    name: Report Coverage Results
+    name: Report Coverage Results  
     runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     needs: [build-and-test]
+    # Keep Node.js coverage reporting for PRs since it's fast
     if: always() && github.event_name == 'pull_request'
 
     steps:

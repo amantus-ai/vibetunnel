@@ -226,14 +226,21 @@ jobs:
           echo "web/dist does not exist"
         fi
         
-        # Use xcodebuild test for workspace testing with coverage enabled
+        # Use xcodebuild test for workspace testing
+        # Only enable coverage on main branch
+        if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+          ENABLE_COVERAGE="YES"
+        else
+          ENABLE_COVERAGE="NO"
+        fi
+        
         set -o pipefail && \
         xcodebuild test \
           -workspace VibeTunnel.xcworkspace \
           -scheme VibeTunnel-Mac \
           -configuration Debug \
           -destination "platform=macOS" \
-          -enableCodeCoverage ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'YES' || 'NO' }} \
+          -enableCodeCoverage $ENABLE_COVERAGE \
           -resultBundlePath TestResults.xcresult \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
@@ -388,7 +395,8 @@ jobs:
     name: Report Coverage Results
     runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     needs: [build-lint-test]
-    if: always() && github.event_name == 'pull_request'
+    # Only run coverage reporting on main branch where we actually collect coverage
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
     - name: Clean workspace

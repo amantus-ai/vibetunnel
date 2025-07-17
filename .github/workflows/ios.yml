@@ -276,13 +276,20 @@ jobs:
           exit 1
         fi
         
+        # Only enable coverage on main branch
+        if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+          ENABLE_COVERAGE="YES"
+        else
+          ENABLE_COVERAGE="NO"
+        fi
+        
         set -o pipefail
         xcodebuild test \
           -workspace ../VibeTunnel.xcworkspace \
           -scheme VibeTunnel-iOS \
           -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
           -resultBundlePath TestResults.xcresult \
-          -enableCodeCoverage ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'YES' || 'NO' }} \
+          -enableCodeCoverage $ENABLE_COVERAGE \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
@@ -449,7 +456,8 @@ jobs:
     name: Report iOS Coverage
     runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     needs: [build-lint-test]
-    if: always() && github.event_name == 'pull_request'
+    # Only run coverage reporting on main branch where we actually collect coverage
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
     - name: Clean workspace
