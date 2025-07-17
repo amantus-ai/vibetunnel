@@ -379,6 +379,41 @@ The npm package works seamlessly alongside the Mac app:
 **Cause**: Network issues or unsupported platform/Node version
 **Result**: Automatic fallback to source compilation
 
+#### npm_config_prefix Conflict with NVM
+**Error**: Global npm installs fail or install to wrong location when using NVM
+**Symptoms**: 
+- `npm install -g` installs packages to system location instead of NVM directory
+- Command not found errors after global install
+- Permission errors during global installation
+
+**Cause**: The `npm_config_prefix` environment variable overrides NVM's per-version npm configuration
+
+**Detection**: VibeTunnel's postinstall script will warn if this conflict is detected:
+```
+⚠️  Detected npm_config_prefix conflict with NVM
+   npm_config_prefix: /usr/local
+   NVM Node path: /home/user/.nvm/versions/node/v20.19.4/bin/node
+   This may cause npm global installs to fail or install in wrong location.
+```
+
+**Solution**: Unset the conflicting environment variable:
+```bash
+unset npm_config_prefix
+```
+
+**Permanent fix**: Remove or comment out `npm_config_prefix` settings in:
+- `~/.bashrc`
+- `~/.bash_profile` 
+- `~/.profile`
+- `/etc/profile`
+- CI/CD environment configurations
+
+**Common sources of this issue**:
+- Previous system-wide npm installations
+- Docker containers with npm pre-installed
+- CI/CD environments with global npm configuration
+- Package managers that set global npm prefix
+
 ### Debugging Installation
 ```bash
 # Verbose npm install
