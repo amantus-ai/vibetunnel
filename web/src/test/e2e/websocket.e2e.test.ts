@@ -4,7 +4,7 @@ import { type ServerInstance, startTestServer, stopServer } from '../utils/serve
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-describe.skip('WebSocket Buffer Tests', () => {
+describe('WebSocket Buffer Tests', () => {
   let server: ServerInstance | null = null;
   let sessionId: string;
 

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type ServerInstance, startTestServer, stopServer } from '../utils/server-utils';
 
-describe.skip('Server Smoke Test', () => {
+describe('Server Smoke Test', () => {
   let server: ServerInstance | null = null;
 
   beforeAll(async () => {

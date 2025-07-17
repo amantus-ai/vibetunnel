@@ -5,7 +5,7 @@ import { testLogger } from '../utils/test-logger';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-describe.skip('Sessions API Tests', () => {
+describe('Sessions API Tests', () => {
   let server: ServerInstance | null = null;
 
   beforeAll(async () => {
@@ -209,7 +209,7 @@ describe.skip('Sessions API Tests', () => {
       expect(result.rows).toBe(40);
     });
 
-    it.skip('should get session text', async () => {
+    it('should get session text', async () => {
       // Wait a bit for output to accumulate
       await sleep(1500);
 
@@ -332,7 +332,7 @@ describe.skip('Sessions API Tests', () => {
       }
     });
 
-    it.skip('should kill session', async () => {
+    it('should kill session', async () => {
       const response = await fetch(`http://localhost:${server?.port}/api/sessions/${sessionId}`, {
         method: 'DELETE',
       });
