@@ -190,7 +190,7 @@ export class WebRTCHandler {
     if (this.remoteStream) {
       this.remoteStream.getTracks().forEach((track) => {
         track.stop();
-        track.dispatchEvent(new Event('ended'));
+        // Note: track.stop() automatically triggers the 'ended' event
       });
     }
 

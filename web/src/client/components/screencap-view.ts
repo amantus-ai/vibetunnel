@@ -528,7 +528,7 @@ export class ScreencapView extends LitElement {
       if (stream) {
         stream.getTracks().forEach((track) => {
           track.stop();
-          track.dispatchEvent(new Event('ended'));
+          // Note: track.stop() automatically triggers the 'ended' event
         });
       }
       this.videoElement.srcObject = null;
