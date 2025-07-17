@@ -13,7 +13,7 @@ import {
 } from '../utils/server-utils';
 
 // HQ Mode tests for distributed terminal management
-describe.skip('HQ Mode E2E Tests', () => {
+describe('HQ Mode E2E Tests', () => {
   let hqServer: ServerInstance | null = null;
   const remoteServers: ServerInstance[] = [];
   const testDirs: string[] = [];
@@ -224,7 +224,7 @@ describe.skip('HQ Mode E2E Tests', () => {
     expect(killResponse.ok).toBe(true);
   });
 
-  it.skip('should aggregate buffer updates through WebSocket', async () => {
+  it('should aggregate buffer updates through WebSocket', async () => {
     const sessionIds: string[] = [];
 
     // Create sessions for WebSocket test
