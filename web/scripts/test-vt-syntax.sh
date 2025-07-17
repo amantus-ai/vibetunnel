@@ -53,20 +53,22 @@ if awk '/if.*then/{start=NR; in_if=1; has_content=0} in_if && !/^[[:space:]]*#/ 
 fi
 echo "✅ vt script has no empty if statements"
 
-# Test 6: Check if package.json includes vt in bin section
+# Test 6: Check that package.json does NOT include vt in bin section
+# (vt is installed conditionally via postinstall script to avoid conflicts)
 PACKAGE_JSON="$PROJECT_ROOT/package.json"
 if [ -f "$PACKAGE_JSON" ]; then
-    if ! grep -q '"vt".*:.*"./bin/vt"' "$PACKAGE_JSON"; then
-        echo "❌ ERROR: package.json missing vt in bin section"
+    if grep -q '"vt".*:.*"./bin/vt"' "$PACKAGE_JSON"; then
+        echo "❌ ERROR: package.json should NOT include vt in bin section"
+        echo "   vt must be installed conditionally via postinstall to avoid conflicts"
         exit 1
     fi
-    echo "✅ package.json includes vt in bin section"
+    echo "✅ package.json correctly omits vt from bin section (installed conditionally)"
 fi
 
 # Test 7: Basic functionality test (help command)
-# Skip this test if we're already inside a VibeTunnel session
+# Skip if already inside a VibeTunnel session (recursive sessions not supported)
 if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
-    echo "✅ vt script detected we're inside a VibeTunnel session (expected behavior)"
+    echo "⚠️  Skipping vt --help test (already inside VibeTunnel session)"
 else
     # Use gtimeout if available, otherwise skip timeout
     if command -v gtimeout >/dev/null 2>&1; then
@@ -81,7 +83,7 @@ else
             exit 1
         fi
     fi
+    echo "✅ vt --help command works"
 fi
-echo "✅ vt --help command works"
 
 echo "🎉 All vt command tests passed!"
