@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, Mock, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ServerCaptureService } from '../../../client/services/server-capture-service.js';
 import { createLogger } from '../../../client/utils/logger.js';
 
@@ -167,9 +167,6 @@ describe('ServerCaptureService', () => {
     beforeEach(() => {
       // Mock MediaStream for browser mode
       global.MediaStream = class MediaStream extends EventTarget {
-        constructor() {
-          super();
-        }
         getTracks() {
           return [];
         }
@@ -189,10 +186,10 @@ describe('ServerCaptureService', () => {
       } as any;
 
       // Mock getAuthToken method
-      service['getAuthToken'] = vi.fn().mockReturnValue('test-token');
+      service.getAuthToken = vi.fn().mockReturnValue('test-token');
 
       // Mock supportsWebSocketStreaming
-      service['supportsWebSocketStreaming'] = vi.fn().mockReturnValue(true);
+      service.supportsWebSocketStreaming = vi.fn().mockReturnValue(true);
     });
 
     it('should start server capture successfully', async () => {
@@ -207,7 +204,7 @@ describe('ServerCaptureService', () => {
 
       // Mock createStreamFromServer
       const mockStream = new MediaStream();
-      service['createStreamFromServer'] = vi.fn().mockResolvedValue(mockStream);
+      service.createStreamFromServer = vi.fn().mockResolvedValue(mockStream);
 
       const options: ServerCaptureOptions = {
         mode: 'server',
@@ -239,7 +236,7 @@ describe('ServerCaptureService', () => {
         }),
       });
 
-      service['createStreamFromServer'] = vi.fn().mockResolvedValue(new MediaStream());
+      service.createStreamFromServer = vi.fn().mockResolvedValue(new MediaStream());
 
       const options: ServerCaptureOptions = {
         mode: 'server',
@@ -324,12 +321,12 @@ describe('ServerCaptureService', () => {
 
   describe('createWebSocketStream', () => {
     beforeEach(() => {
-      service['currentSession'] = {
+      service.currentSession = {
         sessionId: 'session-123',
         mode: 'server',
         streamUrl: '/api/server-screencap/stream/session-123',
       };
-      service['videoElement'] = mockVideoElement;
+      service.videoElement = mockVideoElement;
 
       // Mock captureStream on video element
       const mockStream = new MediaStream();
@@ -337,8 +334,8 @@ describe('ServerCaptureService', () => {
     });
 
     it('should create MediaStream from WebSocket', async () => {
-      service['supportsWebSocketStreaming'] = vi.fn().mockReturnValue(true);
-      const streamPromise = service['createStreamFromServer']();
+      service.supportsWebSocketStreaming = vi.fn().mockReturnValue(true);
+      const streamPromise = service.createStreamFromServer();
 
       // Simulate WebSocket connection
       mockWs.readyState = WebSocket.OPEN;
@@ -372,7 +369,7 @@ describe('ServerCaptureService', () => {
     });
 
     it('should handle video data chunks', () => {
-      service['createWebSocketStream']();
+      service.createWebSocketStream();
 
       // Setup WebSocket and MediaSource
       mockWs.readyState = WebSocket.OPEN;
@@ -399,7 +396,7 @@ describe('ServerCaptureService', () => {
     });
 
     it('should handle WebSocket errors', async () => {
-      const streamPromise = service['createWebSocketStream']();
+      const streamPromise = service.createWebSocketStream();
 
       const errorHandler = mockWs.addEventListener.mock.calls.find(
         (call: any) => call[0] === 'error'
@@ -410,7 +407,7 @@ describe('ServerCaptureService', () => {
     });
 
     it('should handle stream error messages', async () => {
-      const streamPromise = service['createWebSocketStream']();
+      const streamPromise = service.createWebSocketStream();
 
       const messageHandler = mockWs.addEventListener.mock.calls.find(
         (call: any) => call[0] === 'message'
@@ -425,47 +422,47 @@ describe('ServerCaptureService', () => {
 
   describe('stopCapture', () => {
     it('should stop server capture session', async () => {
-      service['currentSession'] = {
+      service.currentSession = {
         sessionId: 'session-123',
         mode: 'server',
       };
-      service['webSocket'] = mockWs;
-      service['mediaSource'] = mockMediaSourceInstance;
-      service['videoElement'] = mockVideoElement;
+      service.webSocket = mockWs;
+      service.mediaSource = mockMediaSourceInstance;
+      service.videoElement = mockVideoElement;
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
       });
 
       // Mock cleanup
-      service['cleanup'] = vi.fn();
+      service.cleanup = vi.fn();
 
       await service.stopCapture();
 
       expect(mockFetch).toHaveBeenCalledWith('/api/server-screencap/stop/session-123', {
         method: 'POST',
       });
-      expect(service['cleanup']).toHaveBeenCalled();
+      expect(service.cleanup).toHaveBeenCalled();
     });
 
     it('should handle stop errors gracefully', async () => {
-      service['currentSession'] = {
+      service.currentSession = {
         sessionId: 'session-123',
         mode: 'server',
       };
 
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
-      service['cleanup'] = vi.fn();
+      service.cleanup = vi.fn();
 
       // Should not throw
       await service.stopCapture();
 
       expect(mockLogger.error).toHaveBeenCalledWith('Failed to stop capture:', expect.any(Error));
-      expect(service['cleanup']).toHaveBeenCalled();
+      expect(service.cleanup).toHaveBeenCalled();
     });
 
     it('should do nothing if no active session', async () => {
-      service['currentSession'] = undefined;
+      service.currentSession = undefined;
 
       await service.stopCapture();
 
@@ -475,10 +472,10 @@ describe('ServerCaptureService', () => {
 
   describe('cleanup', () => {
     it('should cleanup all resources', async () => {
-      service['webSocket'] = mockWs;
-      service['mediaSource'] = mockMediaSourceInstance;
-      service['videoElement'] = mockVideoElement;
-      service['currentSession'] = {
+      service.webSocket = mockWs;
+      service.mediaSource = mockMediaSourceInstance;
+      service.videoElement = mockVideoElement;
+      service.currentSession = {
         mode: 'server',
         sessionId: 'session-123',
         streamUrl: '/stream/123',
@@ -487,9 +484,9 @@ describe('ServerCaptureService', () => {
       const mockStream = {
         getTracks: vi.fn().mockReturnValue([{ stop: vi.fn(), kind: 'video' }]),
       };
-      service['mediaStream'] = mockStream as any;
+      service.mediaStream = mockStream as any;
 
-      await service['cleanup']();
+      await service.cleanup();
 
       expect(mockWs.close).toHaveBeenCalled();
       expect(mockMediaSourceInstance.endOfStream).toHaveBeenCalled();

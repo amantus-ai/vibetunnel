@@ -1,10 +1,5 @@
 import { Readable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  convertToMediaStream,
-  WebRTCMediaStream,
-  WebRTCMediaStreamTrack,
-} from '../../../server/capture/stream-converter.js';
 import type { CaptureStream } from '../../../server/capture/types.js';
 import { createLogger } from '../../../server/utils/logger.js';
 

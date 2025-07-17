@@ -6,7 +6,7 @@ import {
   FFmpegCapture,
 } from './capture-providers/ffmpeg-capture.js';
 import { type DisplayServerInfo, detectDisplayServer, startXvfb } from './display-detection.js';
-import { type ServerMediaStream, StreamConverter } from './stream-converter.js';
+import { convertToWebRTC, type ServerMediaStream } from './stream-converter.js';
 
 const logger = createLogger('desktop-capture');
 
@@ -122,7 +122,7 @@ export class DesktopCaptureService extends EventEmitter {
         session.captureStream = captureStream;
 
         // Convert to WebRTC format
-        const mediaStream = await StreamConverter.convertToWebRTC(captureStream);
+        const mediaStream = await convertToWebRTC(captureStream);
         session.mediaStream = mediaStream;
 
         // Update stats periodically

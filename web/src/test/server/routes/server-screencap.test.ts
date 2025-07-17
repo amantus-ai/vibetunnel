@@ -62,7 +62,7 @@ describe('Server Screencap Routes', () => {
     app.use(express.json());
 
     // Mock authentication middleware
-    app.use((req, res, next) => {
+    app.use((req, _res, next) => {
       req.session = { userId: 'user-123' } as any;
       next();
     });

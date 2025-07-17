@@ -34,49 +34,44 @@ export interface ServerMediaStream {
 }
 
 /**
- * Converts FFmpeg output stream to a format suitable for WebRTC
+ * Convert FFmpeg capture stream to WebRTC-compatible format
  * This creates a virtual MediaStream that can be added to RTCPeerConnection
  */
-export class StreamConverter {
-  /**
-   * Convert FFmpeg capture stream to WebRTC-compatible format
-   */
-  static async convertToWebRTC(captureStream: CaptureStream): Promise<ServerMediaStream> {
-    logger.log('Converting capture stream to WebRTC format');
+export async function convertToWebRTC(captureStream: CaptureStream): Promise<ServerMediaStream> {
+  logger.log('Converting capture stream to WebRTC format');
 
-    // Create virtual MediaStream
-    const mediaStream = new ServerMediaStreamImpl();
+  // Create virtual MediaStream
+  const mediaStream = new ServerMediaStreamImpl();
 
-    // Create video track from FFmpeg stream
-    const videoTrack = new ServerVideoTrack(captureStream.stream);
-    mediaStream.addTrack(videoTrack);
+  // Create video track from FFmpeg stream
+  const videoTrack = new ServerVideoTrack(captureStream.stream);
+  mediaStream.addTrack(videoTrack);
 
-    // Handle capture stream events
-    // Since CaptureStream doesn't extend EventEmitter anymore,
-    // we'll need to handle cleanup differently
-    // TODO: Consider adding event handling back to CaptureStream interface
+  // Handle capture stream events
+  // Since CaptureStream doesn't extend EventEmitter anymore,
+  // we'll need to handle cleanup differently
+  // TODO: Consider adding event handling back to CaptureStream interface
 
-    return {
-      stream: mediaStream,
-      stop: () => {
-        captureStream.stop();
-        mediaStream.stop();
-      },
-    };
-  }
+  return {
+    stream: mediaStream,
+    stop: () => {
+      captureStream.stop();
+      mediaStream.stop();
+    },
+  };
+}
 
-  /**
-   * Create a transform stream that can process video data
-   * This can be used to add overlays, timestamps, etc.
-   */
-  static createProcessingPipeline(): Transform {
-    return new Transform({
-      transform(chunk, _encoding, callback) {
-        // Pass through for now - could add processing here
-        callback(null, chunk);
-      },
-    });
-  }
+/**
+ * Create a transform stream that can process video data
+ * This can be used to add overlays, timestamps, etc.
+ */
+export function createProcessingPipeline(): Transform {
+  return new Transform({
+    transform(chunk, _encoding, callback) {
+      // Pass through for now - could add processing here
+      callback(null, chunk);
+    },
+  });
 }
 
 /**

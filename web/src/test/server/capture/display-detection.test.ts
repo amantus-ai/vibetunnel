@@ -13,7 +13,7 @@ const { mockLogger } = vi.hoisted(() => {
 
 // Mock the entire child_process module
 vi.mock('node:child_process', () => ({
-  exec: vi.fn((cmd, callback) => {
+  exec: vi.fn((_cmd, callback) => {
     // Default to immediate callback to avoid hanging tests
     if (callback) {
       process.nextTick(() => callback(new Error('Not mocked'), '', ''));
@@ -224,12 +224,12 @@ describe('Display Detection', () => {
       process.env.DISPLAY = ':0';
 
       // Mock xdpyinfo success
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
+      mockExec.mockImplementationOnce((_cmd: string, callback: any) => {
         process.nextTick(() => callback(null, 'xdpyinfo output', ''));
       });
 
       // Mock xrandr with full output
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
+      mockExec.mockImplementationOnce((_cmd: string, callback: any) => {
         const xrandrOutput = `
 Screen 0: minimum 8 x 8, current 1920 x 1080, maximum 32767 x 32767
 HDMI-1 connected primary 1920x1080+0+0 (normal left inverted right x axis y axis) 510mm x 287mm
@@ -258,12 +258,12 @@ VGA-1 disconnected (normal left inverted right x axis y axis)
       process.env.DISPLAY = ':0';
 
       // Mock xdpyinfo success
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
+      mockExec.mockImplementationOnce((_cmd: string, callback: any) => {
         process.nextTick(() => callback(null, 'xdpyinfo output', ''));
       });
 
       // Mock xrandr failure
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
+      mockExec.mockImplementationOnce((_cmd: string, callback: any) => {
         process.nextTick(() => callback(new Error('xrandr not found'), '', ''));
       });
 

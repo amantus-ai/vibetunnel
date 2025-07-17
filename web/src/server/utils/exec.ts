@@ -1,4 +1,4 @@
-import { type ChildProcess, exec, spawn } from 'node:child_process';
+import { type ChildProcess, exec, type SpawnOptions, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 
 export const execAsync = promisify(exec);
@@ -10,7 +10,7 @@ export interface ChildProcessPromise extends ChildProcess {
 export function spawnAsync(
   command: string,
   args: string[] = [],
-  options: any = {}
+  options: SpawnOptions = {}
 ): ChildProcessPromise {
   const child = spawn(command, args, options) as ChildProcessPromise;
 

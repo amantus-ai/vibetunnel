@@ -179,11 +179,7 @@ global.MediaSource = class MediaSource extends EventTarget {
   sourceBuffers: any[] = [];
   activeSourceBuffers: any[] = [];
 
-  constructor() {
-    super();
-  }
-
-  addSourceBuffer(mimeType: string) {
+  addSourceBuffer(_mimeType: string) {
     const buffer = {
       mode: 'segments',
       updating: false,
@@ -196,8 +192,8 @@ global.MediaSource = class MediaSource extends EventTarget {
     return buffer;
   }
 
-  endOfStream(error?: string) {}
-  setLiveSeekableRange(start: number, end: number) {}
+  endOfStream(_error?: string) {}
+  setLiveSeekableRange(_start: number, _end: number) {}
   clearLiveSeekableRange() {}
 } as unknown as typeof MediaSource;
 

@@ -50,7 +50,7 @@ describe('FFmpegCapture', () => {
   describe('checkFFmpegAvailable', () => {
     it('should return true when ffmpeg is installed', async () => {
       const mockExec = vi.mocked(childProcess.exec);
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
+      mockExec.mockImplementationOnce((_cmd: string, callback: any) => {
         process.nextTick(() => callback(null, 'ffmpeg version 4.4.0', ''));
       });
 
@@ -61,7 +61,7 @@ describe('FFmpegCapture', () => {
 
     it('should return false when ffmpeg is not installed', async () => {
       const mockExec = vi.mocked(childProcess.exec);
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
+      mockExec.mockImplementationOnce((_cmd: string, callback: any) => {
         process.nextTick(() => callback(new Error('Command not found'), '', ''));
       });
 
@@ -74,7 +74,7 @@ describe('FFmpegCapture', () => {
   describe('getFFmpegCodecs', () => {
     it('should return available codecs', async () => {
       const mockExec = vi.mocked(childProcess.exec);
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
+      mockExec.mockImplementationOnce((_cmd: string, callback: any) => {
         const codecOutput = `
 Codecs:
  DEV.LS h264                 H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10

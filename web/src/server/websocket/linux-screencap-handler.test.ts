@@ -56,8 +56,8 @@ describe('LinuxScreencapHandler', () => {
       OPEN: 1,
     } as unknown as WebSocket;
 
-    mockDesktopCaptureService = desktopCaptureService as any;
-    _mockStreamHandler = streamHandler as any;
+    mockDesktopCaptureService = desktopCaptureService;
+    _mockStreamHandler = streamHandler;
   });
 
   describe('handleBrowserConnection', () => {
@@ -82,8 +82,9 @@ describe('LinuxScreencapHandler', () => {
       linuxScreencapHandler.handleBrowserConnection(mockWs, 'test-user-123');
 
       // Get the message handler
-      const onCall = (mockWs.on as any).mock.calls.find((call: any[]) => call[0] === 'message');
-      messageHandler = onCall[1];
+      const onMock = vi.mocked(mockWs.on);
+      const onCall = onMock.mock.calls.find((call) => call[0] === 'message');
+      messageHandler = onCall?.[1] as (data: Buffer) => void;
     });
 
     it('should handle get-initial-data request', async () => {
@@ -219,7 +220,8 @@ describe('LinuxScreencapHandler', () => {
       await messageHandler(Buffer.from(JSON.stringify(answerMessage)));
 
       // Verify WebRTC handler was called
-      const webrtcHandler = (LinuxWebRTCHandler as any).mock.results[0].value;
+      const mockHandler = vi.mocked(LinuxWebRTCHandler);
+      const webrtcHandler = mockHandler.mock.results[0]?.value;
       expect(webrtcHandler.handleAnswer).toHaveBeenCalledWith({
         type: 'answer',
         sdp: 'test-sdp',
@@ -244,9 +246,9 @@ describe('LinuxScreencapHandler', () => {
     it('should handle missing payload gracefully', async () => {
       linuxScreencapHandler.handleBrowserConnection(mockWs, 'test-user-123');
 
-      const messageHandler = (mockWs.on as any).mock.calls.find(
-        (call: any[]) => call[0] === 'message'
-      )[1];
+      const onMock = vi.mocked(mockWs.on);
+      const messageCall = onMock.mock.calls.find((call) => call[0] === 'message');
+      const messageHandler = messageCall?.[1] as (data: Buffer) => void;
 
       // Send message without payload
       const message = {
@@ -276,9 +278,9 @@ describe('LinuxScreencapHandler', () => {
     it('should handle malformed messages', async () => {
       linuxScreencapHandler.handleBrowserConnection(mockWs, 'test-user-123');
 
-      const messageHandler = (mockWs.on as any).mock.calls.find(
-        (call: any[]) => call[0] === 'message'
-      )[1];
+      const onMock = vi.mocked(mockWs.on);
+      const messageCall = onMock.mock.calls.find((call) => call[0] === 'message');
+      const messageHandler = messageCall?.[1] as (data: Buffer) => void;
 
       // Send malformed JSON
       await messageHandler(Buffer.from('invalid json'));
@@ -302,12 +304,13 @@ describe('LinuxScreencapHandler', () => {
       linuxScreencapHandler.handleBrowserConnection(mockWs, 'user1');
       linuxScreencapHandler.handleBrowserConnection(mockWs2, 'user2');
 
-      const messageHandler1 = (mockWs.on as any).mock.calls.find(
-        (call: any[]) => call[0] === 'message'
-      )[1];
-      const messageHandler2 = (mockWs2.on as any).mock.calls.find(
-        (call: any[]) => call[0] === 'message'
-      )[1];
+      const onMock1 = vi.mocked(mockWs.on);
+      const messageCall1 = onMock1.mock.calls.find((call) => call[0] === 'message');
+      const messageHandler1 = messageCall1?.[1] as (data: Buffer) => void;
+
+      const onMock2 = vi.mocked(mockWs2.on);
+      const messageCall2 = onMock2.mock.calls.find((call) => call[0] === 'message');
+      const messageHandler2 = messageCall2?.[1] as (data: Buffer) => void;
 
       // Start captures for both
       mockDesktopCaptureService.startCapture
@@ -349,12 +352,11 @@ describe('LinuxScreencapHandler', () => {
       linuxScreencapHandler.handleBrowserConnection(mockWs, 'test-user-123');
 
       // Get handlers
-      const messageHandler = (mockWs.on as any).mock.calls.find(
-        (call: any[]) => call[0] === 'message'
-      )[1];
-      const closeHandler = (mockWs.on as any).mock.calls.find(
-        (call: any[]) => call[0] === 'close'
-      )[1];
+      const onMock = vi.mocked(mockWs.on);
+      const messageCall = onMock.mock.calls.find((call) => call[0] === 'message');
+      const messageHandler = messageCall?.[1] as (data: Buffer) => void;
+      const closeCall = vi.mocked(mockWs.on).mock.calls.find((call) => call[0] === 'close');
+      const closeHandler = closeCall?.[1] as () => void;
 
       // Start a capture session
       const mockSession = { id: 'session-123', mode: 'server' };
@@ -377,7 +379,8 @@ describe('LinuxScreencapHandler', () => {
 
       // Verify cleanup
       expect(mockDesktopCaptureService.stopCapture).toHaveBeenCalledWith('session-123');
-      const webrtcHandler = (LinuxWebRTCHandler as any).mock.results[0].value;
+      const mockHandler = vi.mocked(LinuxWebRTCHandler);
+      const webrtcHandler = mockHandler.mock.results[0]?.value;
       expect(webrtcHandler.close).toHaveBeenCalled();
     });
   });
