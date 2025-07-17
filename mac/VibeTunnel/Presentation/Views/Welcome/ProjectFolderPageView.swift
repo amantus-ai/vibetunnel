@@ -1,4 +1,5 @@
 import SwiftUI
+import OSLog
 
 /// Project folder configuration page in the welcome flow.
 ///
@@ -125,9 +126,20 @@ struct ProjectFolderPageView: View {
         }
         .onChange(of: selectedPath) { _, newValue in
             repositoryBasePath = newValue
-            // Only scan if we're the current page
-            if currentPage == pageIndex && !newValue.isEmpty {
-                scanForRepositories()
+            
+            // Cancel any existing scan
+            scanTask?.cancel()
+            
+            // Debounce path changes to prevent rapid successive scans
+            scanTask = Task {
+                // Add small delay to debounce rapid changes
+                try? await Task.sleep(for: .milliseconds(300))
+                guard !Task.isCancelled else { return }
+                
+                // Only scan if we're the current page
+                if currentPage == pageIndex && !newValue.isEmpty {
+                    await performScan()
+                }
             }
         }
     }
@@ -167,22 +179,26 @@ struct ProjectFolderPageView: View {
         // Cancel any existing scan
         scanTask?.cancel()
         
+        scanTask = Task {
+            await performScan()
+        }
+    }
+    
+    private func performScan() async {
         isScanning = true
         discoveredRepos = []
+        
+        let expandedPath = (selectedPath as NSString).expandingTildeInPath
+        let repos = await findGitRepositories(in: expandedPath, maxDepth: 3)
 
-        scanTask = Task {
-            let expandedPath = (selectedPath as NSString).expandingTildeInPath
-            let repos = await findGitRepositories(in: expandedPath, maxDepth: 3)
-
-            await MainActor.run {
-                // Always update isScanning to false when done, regardless of cancellation
-                if !Task.isCancelled {
-                    discoveredRepos = repos.map { path in
-                        RepositoryInfo(name: URL(fileURLWithPath: path).lastPathComponent, path: path)
-                    }
+        await MainActor.run {
+            // Always update isScanning to false when done, regardless of cancellation
+            if !Task.isCancelled {
+                discoveredRepos = repos.map { path in
+                    RepositoryInfo(name: URL(fileURLWithPath: path).lastPathComponent, path: path)
                 }
-                isScanning = false
             }
+            isScanning = false
         }
     }
 
@@ -223,8 +239,14 @@ struct ProjectFolderPageView: View {
             } catch is CancellationError {
                 // Task was cancelled, stop scanning
                 return
+            } catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoPermissionError {
+                // Silently ignore permission errors - common for system directories
+            } catch let error as NSError where error.domain == NSPOSIXErrorDomain && error.code == 1 {
+                // Operation not permitted - another common permission error
             } catch {
-                // Ignore directories we can't read
+                // Log unexpected errors for debugging
+                Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "ProjectFolderPageView")
+                    .debug("Unexpected error scanning \(dirPath): \(error)")
             }
         }
         
