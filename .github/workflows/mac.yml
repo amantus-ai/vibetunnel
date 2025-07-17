@@ -170,9 +170,7 @@ jobs:
           ENABLE_HARDENED_RUNTIME=NO \
           PROVISIONING_PROFILE_SPECIFIER="" \
           DEVELOPMENT_TEAM="" \
-          COMPILER_INDEX_STORE_ENABLE=NO \
-          OTHER_SWIFT_FLAGS="-Xfrontend -warn-long-expression-type-checking=100" \
-          SWIFT_OPTIMIZATION_LEVEL="-Osize" || {
+          COMPILER_INDEX_STORE_ENABLE=NO || {
           echo "::error::Build failed"
           exit 1
         }
