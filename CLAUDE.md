@@ -249,7 +249,7 @@ For tasks requiring massive context windows (up to 2M tokens) or full codebase a
 
 - Architecture Details: `docs/ARCHITECTURE.md`
 - API Specifications: `docs/spec.md`
-- Server Implementation Guide: `web/spec.md`
+- Server Implementation Guide: `web/docs/spec.md`
 - Build Configuration: `web/package.json`, `mac/Package.swift`
 - External Device Testing: `docs/TESTING_EXTERNAL_DEVICES.md`
 - Gemini CLI Instructions: `docs/gemini.md`

@@ -109,6 +109,7 @@ Thumbs.db
 # Temporary folders
 tmp/
 temp/
+release-check/
 
 # Terminal session data (don't commit user sessions)
 ~/.vibetunnel/
