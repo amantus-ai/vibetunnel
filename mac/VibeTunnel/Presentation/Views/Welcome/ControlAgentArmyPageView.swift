@@ -67,9 +67,9 @@ struct ControlAgentArmyPageView: View {
                                 "Learn more",
                                 destination: url
                             )
+                            .font(.caption)
+                            .foregroundColor(.accentColor)
                         }
-                        .font(.caption)
-                        .foregroundColor(.accentColor)
                     }
                 }
                 .padding(.vertical, 12)

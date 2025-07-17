@@ -165,7 +165,9 @@ struct CloudflareServiceTests {
 
         for error in errors {
             #expect(error.errorDescription != nil)
-            #expect(!error.errorDescription!.isEmpty)
+            if let description = error.errorDescription {
+                #expect(!description.isEmpty)
+            }
         }
     }
 
