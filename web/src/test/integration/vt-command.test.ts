@@ -29,10 +29,10 @@ describe.skip('vt command', () => {
     expect(stats.mode & 0o111).toBeTruthy(); // Check execute permissions
   });
 
-  it('should be included in package.json bin section', () => {
+  it('should NOT be included in package.json bin section', () => {
     const packageJson = JSON.parse(require('fs').readFileSync(packageJsonPath, 'utf8'));
     expect(packageJson.bin).toBeDefined();
-    expect(packageJson.bin.vt).toBe('./bin/vt');
+    expect(packageJson.bin.vt).toBeUndefined(); // vt is installed conditionally via postinstall
     expect(packageJson.bin.vibetunnel).toBe('./bin/vibetunnel');
   });
 
@@ -40,17 +40,18 @@ describe.skip('vt command', () => {
     const child = spawn('bash', [vtScriptPath, '--help'], {
       cwd: projectRoot,
       stdio: 'pipe',
+      env: { ...process.env, VIBETUNNEL_SESSION_ID: '' }, // Clear session ID for test
     });
 
     let stdout = '';
-    let stderr = '';
+    let _stderr = '';
 
     child.stdout.on('data', (data) => {
       stdout += data.toString();
     });
 
     child.stderr.on('data', (data) => {
-      stderr += data.toString();
+      _stderr += data.toString();
     });
 
     child.on('close', (code) => {
@@ -69,7 +70,7 @@ describe.skip('vt command', () => {
         expect(stdout).toContain('Path:');
 
         // Should not have errors
-        expect(stderr).toBe('');
+        expect(_stderr).toBe('');
 
         done();
       } catch (error) {
@@ -86,6 +87,7 @@ describe.skip('vt command', () => {
     const child = spawn('bash', [vtScriptPath], {
       cwd: projectRoot,
       stdio: 'pipe',
+      env: { ...process.env, VIBETUNNEL_SESSION_ID: '' }, // Clear session ID for test
     });
 
     let stdout = '';
@@ -127,14 +129,14 @@ describe.skip('vt command', () => {
     });
 
     let _stdout = '';
-    let stderr = '';
+    let _stderr = '';
 
     child.stdout.on('data', (data) => {
       _stdout += data.toString();
     });
 
     child.stderr.on('data', (data) => {
-      stderr += data.toString();
+      _stderr += data.toString();
     });
 
     child.on('close', (code) => {
@@ -143,7 +145,7 @@ describe.skip('vt command', () => {
         expect(code).toBe(1);
 
         // Should show error message
-        expect(stderr).toContain("vt title' can only be used inside a VibeTunnel session");
+        expect(_stderr).toContain("vt title' can only be used inside a VibeTunnel session");
 
         done();
       } catch (error) {
