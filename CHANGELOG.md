@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.0.0-beta.12] - 2025-01-17
+
+### 🚀 Major Improvements
+
+#### **NPM Package Fixes**
+- Fixed critical npm installation issues on Linux systems
+- `authenticate-pam` is now correctly an optional dependency
+- Linux users can install without PAM development headers
+- Proper package.npm.json configuration is now used for npm releases
+
+### 🐛 Bug Fixes
+
+- Fixed PAM module and npm_config_prefix issues on Ubuntu (#380)
+- Fixed SSH key generation errors on non-localhost HTTP connections (#384)
+- Fixed npm package documentation and unified READMEs (#381)
+- Removed verbose output from vt script (#383)
+
+### 📚 Documentation
+
+- Added comprehensive npm publishing guide (npm.md) with installation instructions
+- Added Discord member count badge with correct server ID
+- Added Node.js version, Discord, and Homebrew installation badges
+- Improved npm package installation documentation
+- Added Docker test script for npm package validation
+
+### 🧹 Maintenance
+
+- Cleaned up old npm package versions (11.2, 11.3) due to installation issues
+- Added test-npm-docker.sh script for automated npm package testing
+
 ## [1.0.0-beta.11] - 2025-01-16
 
 #### **Better Settings Organization**

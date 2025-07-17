@@ -1,0 +1,343 @@
+#!/bin/bash
+# Unified VibeTunnel CLI wrapper - compatible with both Mac app and npm installations
+
+# Only check for Mac app on macOS
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS symlink resolution function using BSD readlink
+    resolve_symlink_macos() {
+        local target="$1"
+        local current="$target"
+        while [ -L "$current" ]; do
+            current="$(readlink "$current")"
+            # Handle relative symlinks
+            if [[ "$current" != /* ]]; then
+                current="$(dirname "$target")/$current"
+            fi
+        done
+        echo "$current"
+    }
+
+    # Get the real path of this script to avoid infinite recursion
+    SCRIPT_REAL_PATH="$(resolve_symlink_macos "${BASH_SOURCE[0]}")"
+
+    # Comprehensive Mac app search - try standard locations first, then development locations
+    APP_PATH=""
+    
+    # First try standard locations with valid binary check
+    for TRY_PATH in "/Applications/VibeTunnel.app" "$HOME/Applications/VibeTunnel.app"; do
+        if [ -d "$TRY_PATH" ] && [ -f "$TRY_PATH/Contents/Resources/vibetunnel" ]; then
+            VT_SCRIPT="$TRY_PATH/Contents/Resources/vt"
+            if [ -f "$VT_SCRIPT" ] && [ -x "$VT_SCRIPT" ]; then
+                # Avoid infinite recursion by checking if this is the same script
+                VT_REAL_PATH="$(resolve_symlink_macos "$VT_SCRIPT")"
+                if [ "$SCRIPT_REAL_PATH" != "$VT_REAL_PATH" ]; then
+                    exec "$VT_SCRIPT" "$@"
+                fi
+            fi
+            APP_PATH="$TRY_PATH"
+            break
+        fi
+    done
+    
+    # If not found in standard locations, search for development builds
+    if [ -z "$APP_PATH" ]; then
+        # First try DerivedData (for development)
+        for CANDIDATE in $(find ~/Library/Developer/Xcode/DerivedData -name "VibeTunnel.app" -type d 2>/dev/null | grep -v "\.dSYM" | grep -v "Index\.noindex"); do
+            if [ -f "$CANDIDATE/Contents/Resources/vibetunnel" ]; then
+                VT_SCRIPT="$CANDIDATE/Contents/Resources/vt"
+                if [ -f "$VT_SCRIPT" ] && [ -x "$VT_SCRIPT" ]; then
+                    VT_REAL_PATH="$(resolve_symlink_macos "$VT_SCRIPT")"
+                    if [ "$SCRIPT_REAL_PATH" != "$VT_REAL_PATH" ]; then
+                        exec "$VT_SCRIPT" "$@"
+                    fi
+                fi
+                APP_PATH="$CANDIDATE"
+                break
+            fi
+        done
+        
+        # If still not found, use mdfind as last resort
+        if [ -z "$APP_PATH" ]; then
+            for CANDIDATE in $(mdfind -name "VibeTunnel.app" 2>/dev/null | grep -v "\.dSYM"); do
+                if [ -f "$CANDIDATE/Contents/Resources/vibetunnel" ]; then
+                    VT_SCRIPT="$CANDIDATE/Contents/Resources/vt"
+                    if [ -f "$VT_SCRIPT" ] && [ -x "$VT_SCRIPT" ]; then
+                        VT_REAL_PATH="$(resolve_symlink_macos "$VT_SCRIPT")"
+                        if [ "$SCRIPT_REAL_PATH" != "$VT_REAL_PATH" ]; then
+                            exec "$VT_SCRIPT" "$@"
+                        fi
+                    fi
+                    APP_PATH="$CANDIDATE"
+                    break
+                fi
+            done
+        fi
+    fi
+    
+    # If we found a Mac app but couldn't use its vt script, use its binary directly
+    if [ -n "$APP_PATH" ]; then
+        VIBETUNNEL_BIN="$APP_PATH/Contents/Resources/vibetunnel"
+        if [ -f "$VIBETUNNEL_BIN" ]; then
+            # Found Mac app bundle - will use this binary
+            # Silent operation - no message printed
+        fi
+    fi
+fi
+
+# If we get here without a Mac app, use the npm-installed vibetunnel
+if [ -z "$VIBETUNNEL_BIN" ]; then
+    # First, try to find vibetunnel in the same directory as this script
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ -f "$SCRIPT_DIR/vibetunnel" ]; then
+        VIBETUNNEL_BIN="$SCRIPT_DIR/vibetunnel"
+    else
+        # Try to find vibetunnel in PATH
+        if command -v vibetunnel >/dev/null 2>&1; then
+            VIBETUNNEL_BIN="$(command -v vibetunnel)"
+        fi
+    fi
+
+    if [ -z "$VIBETUNNEL_BIN" ] || [ ! -f "$VIBETUNNEL_BIN" ]; then
+        echo "Error: vibetunnel binary not found. Please ensure vibetunnel is installed." >&2
+        echo "Install with: npm install -g vibetunnel" >&2
+        exit 1
+    fi
+fi
+
+# Check if we're already inside a VibeTunnel session
+if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
+    # Special case: handle 'vt title' command inside a session
+    if [[ "$1" == "title" ]]; then
+        if [[ $# -lt 2 ]]; then
+            echo "Error: 'vt title' requires a title argument" >&2
+            echo "Usage: vt title <new title>" >&2
+            exit 1
+        fi
+        shift # Remove 'title' from arguments
+        TITLE="$*" # Get all remaining arguments as the title
+        
+        # Use the vibetunnel binary's new --update-title flag
+        exec "$VIBETUNNEL_BIN" fwd --update-title "$TITLE" --session-id "$VIBETUNNEL_SESSION_ID"
+        # If exec fails, exit with error
+        exit 1
+    fi
+    
+    echo "Error: Already inside a VibeTunnel session (ID: $VIBETUNNEL_SESSION_ID). Recursive VibeTunnel sessions are not supported." >&2
+    echo "If you need to run commands, use them directly without the 'vt' prefix." >&2
+    exit 1
+fi
+
+# Function to show help
+show_help() {
+    cat << 'EOF'
+vt - VibeTunnel TTY Forward Wrapper
+
+USAGE:
+    vt [command] [args...]
+    vt --shell [args...]
+    vt -i [args...]
+    vt --no-shell-wrap [command] [args...]
+    vt -S [command] [args...]
+    vt title <new title>    # Inside a VibeTunnel session only
+    vt --help
+
+QUICK VERBOSITY:
+    -q (quiet), -v (verbose), -vv (extra), -vvv (debug)
+
+DESCRIPTION:
+    This wrapper script allows VibeTunnel to see the output of commands by
+    forwarding TTY data through the vibetunnel utility. When you run commands
+    through 'vt', VibeTunnel can monitor and display the command's output
+    in real-time.
+
+    By default, commands are executed through your shell to resolve aliases,
+    functions, and builtins. Use --no-shell-wrap to execute commands directly.
+
+    Inside a VibeTunnel session, use 'vt title' to update the session name.
+
+EXAMPLES:
+    vt top                  # Watch top with VibeTunnel monitoring
+    vt python script.py     # Run Python script with output forwarding
+    vt npm test             # Run tests with VibeTunnel visibility
+    vt --shell              # Launch current shell (equivalent to vt $SHELL)
+    vt -i                   # Launch current shell (short form)
+    vt -S ls -la            # List files without shell alias resolution
+    vt title "My Project"   # Update session title (inside session only)
+    vt -q npm test          # Run with minimal output (errors only)
+    vt -vv npm run dev      # Run with verbose output
+
+OPTIONS:
+    --shell, -i            Launch current shell (equivalent to vt $SHELL)
+    --no-shell-wrap, -S    Execute command directly without shell wrapper
+    --title-mode <mode>    Terminal title mode (none, filter, static, dynamic)
+                          Default: none (dynamic for claude)
+    --quiet, -q            Quiet mode - only show errors
+    --verbose, -v          Verbose mode - show more information
+    -vv                    Extra verbose - show all except debug
+    -vvv                   Debug mode - show all messages
+    --help, -h             Show this help message and exit
+    
+TITLE MODES:
+    none       No title management - apps control their own titles
+    filter     Block all title changes from applications  
+    static     Show working directory and command in title
+    dynamic    Show directory, command, and live activity status (default for web UI)
+
+VERBOSITY:
+    By default, only errors are shown. Use verbosity flags to control output:
+    -q/--quiet    Suppress all output except critical errors
+    -v/--verbose  Show errors, warnings, and informational messages
+    -vv           Show everything except debug messages
+    -vvv          Show all messages including debug
+
+    You can also set VIBETUNNEL_LOG_LEVEL environment variable:
+    export VIBETUNNEL_LOG_LEVEL=error    # Default
+    export VIBETUNNEL_LOG_LEVEL=warn     # Show errors and warnings
+    export VIBETUNNEL_LOG_LEVEL=info     # Show errors, warnings, and info
+    export VIBETUNNEL_LOG_LEVEL=verbose  # All except debug
+    export VIBETUNNEL_LOG_LEVEL=debug    # Everything
+
+NOTE:
+    This script automatically detects and uses the best available VibeTunnel installation:
+    - Mac app bundle (preferred on macOS)
+    - npm package installation (fallback)
+EOF
+    
+    # Show path and version info
+    echo
+    echo "VIBETUNNEL BINARY:"
+    echo "    Path: $VIBETUNNEL_BIN"
+    if [ -f "$VIBETUNNEL_BIN" ]; then
+        # Try to get version from binary output first (works for both Mac app and npm)
+        VERSION_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^VibeTunnel Server" | head -n 1)
+        BUILD_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^Built:" | head -n 1)
+        PLATFORM_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^Platform:" | head -n 1)
+        
+        if [ -n "$VERSION_INFO" ]; then
+            echo "    Version: ${VERSION_INFO#VibeTunnel Server }"
+        else
+            # Fallback to package.json for npm installations
+            PACKAGE_JSON="$(dirname "$(dirname "$VIBETUNNEL_BIN")")/package.json"
+            if [ -f "$PACKAGE_JSON" ]; then
+                VERSION=$(grep '"version"' "$PACKAGE_JSON" | head -1 | sed 's/.*"version".*:.*"\(.*\)".*/\1/')
+                echo "    Version: $VERSION"
+            fi
+        fi
+        
+        if [ -n "$BUILD_INFO" ]; then
+            echo "    ${BUILD_INFO}"
+        fi
+        if [ -n "$PLATFORM_INFO" ]; then
+            echo "    ${PLATFORM_INFO}"
+        fi
+        
+        # Determine installation type
+        if [[ "$VIBETUNNEL_BIN" == */Applications/VibeTunnel.app/* ]]; then
+            echo "    Status: Mac app bundle"
+        elif [[ "$VIBETUNNEL_BIN" == */DerivedData/* ]]; then
+            echo "    Status: Development build"
+        elif [[ "$VIBETUNNEL_BIN" == *npm* ]] || [[ "$VIBETUNNEL_BIN" == */bin/vibetunnel ]]; then
+            echo "    Status: Installed via npm"
+        else
+            echo "    Status: Unknown installation"
+        fi
+    else
+        echo "    Status: Not found"
+    fi
+}
+
+# Function to resolve command through user's shell
+resolve_command() {
+    local user_shell="${SHELL:-/bin/bash}"
+    local cmd="$1"
+    shift
+
+    local shell_name=$(basename "$user_shell")
+
+    # Always try through shell first to handle aliases, functions, and builtins
+    # The shell will fall back to PATH lookup if no alias/function exists
+    case "$shell_name" in
+        zsh)
+            # For zsh, we need interactive mode to get aliases
+            exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
+            ;;
+        bash)
+            # For bash, expand aliases in non-interactive mode
+            exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
+            ;;
+        *)
+            # Generic shell handling
+            exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
+            ;;
+    esac
+}
+
+# Handle --help or -h option, or no arguments (show help)
+if [[ $# -eq 0 || "$1" == "--help" || "$1" == "-h" ]]; then
+    show_help
+    exit 0
+fi
+
+# Handle 'vt title' command when not inside a session
+if [[ "$1" == "title" ]]; then
+    echo "Error: 'vt title' can only be used inside a VibeTunnel session." >&2
+    echo "Start a session first with 'vt' or 'vt <command>'" >&2
+    exit 1
+fi
+
+# Handle verbosity flags
+VERBOSITY_ARGS=""
+if [[ "$1" == "--quiet" || "$1" == "-q" ]]; then
+    VERBOSITY_ARGS="--verbosity silent"
+    shift
+elif [[ "$1" == "--verbose" || "$1" == "-v" ]]; then
+    VERBOSITY_ARGS="--verbosity info"
+    shift
+elif [[ "$1" == "-vv" ]]; then
+    VERBOSITY_ARGS="--verbosity verbose"
+    shift
+elif [[ "$1" == "-vvv" ]]; then
+    VERBOSITY_ARGS="--verbosity debug"
+    shift
+fi
+
+# Handle --shell or -i option (launch current shell)
+if [[ "$1" == "--shell" || "$1" == "-i" ]]; then
+    shift
+    # Execute current shell through vibetunnel
+    exec "$0" ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} "${SHELL:-/bin/bash}" "$@"
+fi
+
+# Handle --no-shell-wrap or -S option
+NO_SHELL_WRAP=false
+if [[ "$1" == "--no-shell-wrap" || "$1" == "-S" ]]; then
+    NO_SHELL_WRAP=true
+    shift
+fi
+
+# Handle --title-mode option
+TITLE_MODE_ARGS=""
+if [[ "$1" == "--title-mode" && $# -gt 1 ]]; then
+    TITLE_MODE_ARGS="--title-mode $2"
+    shift 2
+fi
+
+# Check if we have arguments and if the first argument is not an option
+if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
+    if [[ "$NO_SHELL_WRAP" == "true" ]]; then
+        # Execute directly without shell wrapper
+        exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
+    else
+        # Check if the first argument is a real binary
+        if which "$1" >/dev/null 2>&1; then
+            # It's a real binary, execute directly
+            exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
+        else
+            # Not a real binary, try alias resolution
+            resolve_command "$@"
+        fi
+    fi
+else
+    # Run with fwd command (original behavior for options)
+    exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
+fi
