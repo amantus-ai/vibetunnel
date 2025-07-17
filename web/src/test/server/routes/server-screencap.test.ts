@@ -94,7 +94,7 @@ describe('Server Screencap Routes', () => {
       // Override auth middleware
       app = express();
       app.use(express.json());
-      const router = createServerScreencapRouter();
+      const router = createServerScreencapRoutes();
       app.use('/api/server-screencap', router);
 
       const response = await request(app).get('/api/server-screencap/capabilities');
@@ -106,7 +106,9 @@ describe('Server Screencap Routes', () => {
     });
 
     it('should handle service errors', async () => {
-      mockDesktopCaptureService.getCapabilities.mockRejectedValueOnce(new Error('Service error'));
+      vi.mocked(desktopCaptureService).getCapabilities.mockRejectedValueOnce(
+        new Error('Service error')
+      );
 
       const response = await request(app).get('/api/server-screencap/capabilities');
 

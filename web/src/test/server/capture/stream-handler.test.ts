@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, Mock, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WebSocket } from 'ws';
 import { StreamHandler } from '../../../server/capture/stream-handler.js';
 import { createLogger } from '../../../server/utils/logger.js';
@@ -33,7 +33,7 @@ describe('StreamHandler', () => {
     mockWebSocket = {
       id: 'test-client-id',
       readyState: WebSocket.OPEN,
-      send: vi.fn((data, callback) => {
+      send: vi.fn((_data, callback) => {
         if (callback) callback();
       }),
       on: vi.fn(),
@@ -124,7 +124,7 @@ describe('StreamHandler', () => {
     it('should handle send errors gracefully', () => {
       const errorClient = {
         ...mockWebSocket,
-        send: vi.fn((data, callback) => {
+        send: vi.fn((_data, callback) => {
           callback?.(new Error('Send failed'));
         }),
       };
@@ -240,13 +240,13 @@ describe('StreamHandler', () => {
     });
 
     it('should handle client disconnect during broadcast', () => {
-      let disconnectCallback: Function | undefined;
+      const callbacks: { disconnect?: () => void } = {};
       const disconnectingClient = {
         ...mockWebSocket,
-        send: vi.fn((data, callback) => {
+        send: vi.fn((_data, callback) => {
           // Simulate disconnect during send
-          if (disconnectCallback) {
-            disconnectCallback();
+          if (callbacks.disconnect) {
+            callbacks.disconnect();
           }
           callback?.();
         }),
@@ -255,9 +255,10 @@ describe('StreamHandler', () => {
       streamHandler.addClient(disconnectingClient);
 
       // Get the close callback
-      disconnectCallback = mockWebSocket.on.mock.calls.find(
+      const disconnectCallback = mockWebSocket.on.mock.calls.find(
         (call: any) => call[0] === 'close'
       )?.[1];
+      callbacks.disconnect = disconnectCallback;
 
       const frameData = Buffer.from('test frame');
       streamHandler.broadcastFrame(frameData);

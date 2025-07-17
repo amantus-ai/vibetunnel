@@ -1,4 +1,3 @@
-import type { ChildProcess } from 'node:child_process';
 import * as childProcess from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { Readable } from 'node:stream';
@@ -125,7 +124,7 @@ Codecs:
         captureMethod: 'pipewire',
       };
 
-      const captureStream = await ffmpegCapture.startCapture(displayServer, {
+      await ffmpegCapture.startCapture(displayServer, {
         width: 1920,
         height: 1080,
         framerate: 60,
@@ -164,7 +163,7 @@ Codecs:
         captureMethod: 'x11grab',
       };
 
-      const captureStream = await ffmpegCapture.startCapture(displayServer);
+      await ffmpegCapture.startCapture(displayServer);
 
       // Simulate stderr error
       mockProcess.stderr.emit('data', Buffer.from('Error: Device not found'));
@@ -248,7 +247,7 @@ Codecs:
       await ffmpegCapture.startCapture(displayServer);
 
       // Don't emit exit event, let it timeout
-      const stopPromise = ffmpegCapture.stop();
+      ffmpegCapture.stop();
 
       // Fast-forward to force kill
       await vi.advanceTimersByTimeAsync(6000);
