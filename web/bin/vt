@@ -80,6 +80,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         if [ -f "$VIBETUNNEL_BIN" ]; then
             # Found Mac app bundle - will use this binary
             # Silent operation - no message printed
+            true
         fi
     fi
 fi

@@ -4,7 +4,8 @@
   "description": "Terminal sharing server with web interface - supports macOS, Linux, and headless environments",
   "main": "dist/server/server.js",
   "bin": {
-    "vibetunnel": "./bin/vibetunnel"
+    "vibetunnel": "./bin/vibetunnel",
+    "vt": "./bin/vt"
   },
   "files": [
     "dist/",
