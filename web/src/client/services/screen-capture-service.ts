@@ -82,7 +82,10 @@ export class ScreenCaptureService {
   private hasNativeAppSupport(): boolean {
     // Check if we're running in the context of the native Mac app
     // This would be detected by the presence of certain global objects or APIs
-    return typeof (window as any).vibeTunnelNative !== 'undefined';
+    interface WindowWithVibeTunnel extends Window {
+      vibeTunnelNative?: unknown;
+    }
+    return typeof (window as WindowWithVibeTunnel).vibeTunnelNative !== 'undefined';
   }
 
   private getPlatform(): string {
@@ -165,23 +168,27 @@ class BrowserScreenCapture {
     return this.isSupported();
   }
 
-  private handleCaptureError(error: any): Error {
-    if (error.name === 'NotAllowedError') {
-      return new Error('Permission denied. Please allow screen sharing and try again.');
+  private handleCaptureError(error: unknown): Error {
+    if (error instanceof Error) {
+      if (error.name === 'NotAllowedError') {
+        return new Error('Permission denied. Please allow screen sharing and try again.');
+      }
+
+      if (error.name === 'NotFoundError') {
+        return new Error('No screen sharing source available.');
+      }
+
+      if (error.name === 'NotSupportedError') {
+        return new Error('Screen sharing is not supported in this browser.');
+      }
+
+      if (error.name === 'AbortError') {
+        return new Error('Screen sharing was cancelled.');
+      }
+
+      return new Error(`Screen capture failed: ${error.message}`);
     }
 
-    if (error.name === 'NotFoundError') {
-      return new Error('No screen sharing source available.');
-    }
-
-    if (error.name === 'NotSupportedError') {
-      return new Error('Screen sharing is not supported in this browser.');
-    }
-
-    if (error.name === 'AbortError') {
-      return new Error('Screen sharing was cancelled.');
-    }
-
-    return new Error(`Screen capture failed: ${error.message}`);
+    return new Error('Screen capture failed: Unknown error');
   }
 }

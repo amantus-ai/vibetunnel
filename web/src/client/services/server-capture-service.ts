@@ -11,17 +11,23 @@ export interface ServerCaptureOptions {
   framerate?: number;
 }
 
-export interface ServerCaptureSession {
+export interface DisplayServerInfo {
+  type?: string;
+  display?: string;
+  captureMethod?: string;
+}
+
+interface ServerCaptureSession {
   sessionId: string;
   mode: 'server' | 'browser';
   streamUrl?: string;
-  displayServer?: any;
+  displayServer?: DisplayServerInfo;
 }
 
 export interface ServerCaptureCapabilities {
   serverCapture: {
     available: boolean;
-    displayServer?: any;
+    displayServer?: DisplayServerInfo;
     codecs: string[];
     screens: Array<{
       id: number;
@@ -148,7 +154,11 @@ export class ServerCaptureService {
    */
   private async createWebSocketStream(): Promise<MediaStream> {
     return new Promise((resolve, reject) => {
-      const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/server-capture?sessionId=${this.currentSession!.sessionId}`;
+      if (!this.currentSession) {
+        reject(new Error('No active capture session'));
+        return;
+      }
+      const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/server-capture?sessionId=${this.currentSession.sessionId}`;
 
       logger.log('Connecting to WebSocket:', wsUrl);
       this.webSocket = new WebSocket(wsUrl);
@@ -165,7 +175,10 @@ export class ServerCaptureService {
 
         // Add source buffer for VP8 video
         try {
-          this.sourceBuffer = this.mediaSource!.addSourceBuffer('video/webm; codecs="vp8"');
+          if (!this.mediaSource) {
+            throw new Error('MediaSource not initialized');
+          }
+          this.sourceBuffer = this.mediaSource.addSourceBuffer('video/webm; codecs="vp8"');
           this.sourceBuffer.mode = 'sequence';
 
           this.sourceBuffer.addEventListener('error', (e) => {
@@ -204,13 +217,21 @@ export class ServerCaptureService {
                 _streamStarted = true;
 
                 // Play video once we have data
-                this.videoElement!.play()
-                  .then(() => {
-                    // Capture stream from video element
-                    const stream = (this.videoElement as any).captureStream();
-                    resolve(stream);
-                  })
-                  .catch(reject);
+                if (this.videoElement) {
+                  this.videoElement
+                    .play()
+                    .then(() => {
+                      // Capture stream from video element
+                      const videoElem = this.videoElement as HTMLVideoElement & {
+                        captureStream(): MediaStream;
+                      };
+                      const stream = videoElem.captureStream();
+                      resolve(stream);
+                    })
+                    .catch(reject);
+                } else {
+                  reject(new Error('Video element not initialized'));
+                }
                 break;
 
               case 'stream-end':
@@ -257,13 +278,21 @@ export class ServerCaptureService {
 
     // Wait for video to load
     await new Promise<void>((resolve, reject) => {
-      this.videoElement!.onloadedmetadata = () => resolve();
-      this.videoElement!.onerror = () => reject(new Error('Failed to load video stream'));
+      if (this.videoElement) {
+        this.videoElement.onloadedmetadata = () => resolve();
+        this.videoElement.onerror = () => reject(new Error('Failed to load video stream'));
+      } else {
+        reject(new Error('Video element not initialized'));
+      }
     });
 
     // Play and capture stream
+    if (!this.videoElement) {
+      throw new Error('Video element not initialized');
+    }
     await this.videoElement.play();
-    const stream = (this.videoElement as any).captureStream();
+    const videoElem = this.videoElement as HTMLVideoElement & { captureStream(): MediaStream };
+    const stream = videoElem.captureStream();
 
     return stream;
   }

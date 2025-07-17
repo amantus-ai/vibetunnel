@@ -92,67 +92,6 @@ describe('screencap routes', () => {
       );
     });
 
-    it('should return error on non-macOS platforms', async () => {
-      setPlatform('linux');
-      const newRouter = createScreencapRoutes();
-
-      // Mock request/response
-      const mockReq = {} as Request;
-      const mockRes = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as unknown as Response;
-      const mockNext = vi.fn();
-
-      // Get the first middleware (requireMacOS) from the route
-      const screencapRoute = (
-        newRouter as unknown as {
-          stack: Array<{ route?: { path: string; stack: Array<{ handle: unknown }> } }>;
-        }
-      ).stack.find((layer) => layer.route?.path === '/screencap');
-      const middlewares = screencapRoute?.route?.stack || [];
-      const requireMacOS = middlewares[0].handle;
-
-      // Call the middleware
-      requireMacOS(mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(503);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        error: 'Screencap is only available on macOS',
-        platform: 'linux',
-      });
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-
-    it('should pass through on macOS platform', async () => {
-      setPlatform('darwin');
-      const newRouter = createScreencapRoutes();
-
-      // Mock request/response
-      const mockReq = {} as Request;
-      const mockRes = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as unknown as Response;
-      const mockNext = vi.fn();
-
-      // Get the requireMacOS middleware
-      const screencapRoute = (
-        newRouter as unknown as {
-          stack: Array<{ route?: { path: string; stack: Array<{ handle: unknown }> } }>;
-        }
-      ).stack.find((layer) => layer.route?.path === '/screencap');
-      const middlewares = screencapRoute?.route?.stack || [];
-      const requireMacOS = middlewares[0].handle;
-
-      // Call the middleware
-      requireMacOS(mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).not.toHaveBeenCalled();
-      expect(mockRes.json).not.toHaveBeenCalled();
-      expect(mockNext).toHaveBeenCalled();
-    });
-
     it('should have all expected routes', () => {
       const expectedRoutes = [{ path: '/screencap', method: 'get' }];
 
@@ -161,12 +100,12 @@ describe('screencap routes', () => {
       }
     });
 
-    it('should serve HTML page for /screencap route', () => {
-      setPlatform('darwin');
+    it('should serve HTML page for /screencap route on all platforms', () => {
+      // Test on Linux (non-macOS platform)
+      setPlatform('linux');
       const mockReq = {} as Request;
       const mockRes = {
         send: vi.fn(),
-        sendFile: vi.fn(),
       } as unknown as Response;
       const mockNext = vi.fn();
 
@@ -186,8 +125,9 @@ describe('screencap routes', () => {
       // Call the handler
       pageHandler(mockReq, mockRes, mockNext);
 
-      expect(mockRes.sendFile).toHaveBeenCalledWith(
-        expect.stringContaining('public/screencap.html')
+      expect(mockRes.send).toHaveBeenCalledWith(expect.stringContaining('<!DOCTYPE html>'));
+      expect(mockRes.send).toHaveBeenCalledWith(
+        expect.stringContaining('<screencap-view></screencap-view>')
       );
     });
   });
