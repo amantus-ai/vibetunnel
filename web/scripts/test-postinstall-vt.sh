@@ -50,8 +50,18 @@ chmod +x "$TEST_DIR/bin/vt"
       return originalExecSync(cmd, opts);
     };
     
-    // Load and run the vt installation functions
-    $(sed -n '/^\/\/ Helper function to get npm global bin directory$/,/^\/\/ Install vt symlink\/wrapper$/p' "$POSTINSTALL_SCRIPT" | sed 's/console\./\/\/console./g')
+    // Load the vt installation functions by extracting them from postinstall script
+    // Extract all helper functions and the installVtCommand function
+    const functionCode = \`
+$(sed -n '/^const getNpmBinDir = /,/^};$/p' "$POSTINSTALL_SCRIPT")
+
+$(sed -n '/^const installGlobalVt = /,/^};$/p' "$POSTINSTALL_SCRIPT")
+
+$(sed -n '/^const installVtCommand = /,/^};$/p' "$POSTINSTALL_SCRIPT")
+\`.replace(/console\./g, '//console.');
+    
+    // Execute the extracted functions
+    eval(functionCode);
     
     const vtSource = path.join('$PROJECT_ROOT', 'bin', 'vt');
     const result = installVtCommand(vtSource, true);
@@ -100,8 +110,18 @@ rm -f "$TEST_DIR/bin/vt"
       return originalExecSync(cmd, opts);
     };
     
-    // Load and run the vt installation functions
-    $(sed -n '/^\/\/ Helper function to get npm global bin directory$/,/^\/\/ Install vt symlink\/wrapper$/p' "$POSTINSTALL_SCRIPT" | sed 's/console\./\/\/console./g')
+    // Load the vt installation functions by extracting them from postinstall script
+    // Extract all helper functions and the installVtCommand function
+    const functionCode = \`
+$(sed -n '/^const getNpmBinDir = /,/^};$/p' "$POSTINSTALL_SCRIPT")
+
+$(sed -n '/^const installGlobalVt = /,/^};$/p' "$POSTINSTALL_SCRIPT")
+
+$(sed -n '/^const installVtCommand = /,/^};$/p' "$POSTINSTALL_SCRIPT")
+\`.replace(/console\./g, '//console.');
+    
+    // Execute the extracted functions
+    eval(functionCode);
     
     const vtSource = path.join('$PROJECT_ROOT', 'bin', 'vt');
     const result = installVtCommand(vtSource, true);

@@ -66,9 +66,12 @@ final class CLIInstaller {
                 // Check if it contains the correct app path reference
                 if let content = try? String(contentsOfFile: path, encoding: .utf8) {
                     // Verify it's our wrapper script with all expected components
+                    // Check for the exec command with flexible quoting and optional arguments
+                    let hasValidExecCommand = content.range(of: #"exec\s+["']?\$VIBETUNNEL_BIN["']?\s+fwd"#, options: .regularExpression) != nil
+                    
                     if content.contains("VibeTunnel CLI wrapper") &&
                         content.contains("$TRY_PATH/Contents/Resources/vibetunnel") &&
-                        content.contains("exec") && content.contains("$VIBETUNNEL_BIN") && content.contains("fwd")
+                        hasValidExecCommand
                     {
                         isCorrectlyInstalled = true
                         logger.info("CLIInstaller: Found valid vt script at \(path)")
