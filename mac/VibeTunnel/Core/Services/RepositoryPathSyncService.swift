@@ -57,12 +57,14 @@ final class RepositoryPathSyncService {
         logger.info("✅ Notification observers configured")
     }
 
-    @objc private func disableSync() {
+    @objc
+    private func disableSync() {
         syncEnabled = false
         logger.debug("🔒 Path sync temporarily disabled")
     }
 
-    @objc private func enableSync() {
+    @objc
+    private func enableSync() {
         syncEnabled = true
         logger.debug("🔓 Path sync re-enabled")
     }

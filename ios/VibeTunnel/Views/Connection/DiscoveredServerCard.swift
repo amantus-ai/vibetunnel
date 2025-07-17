@@ -83,7 +83,9 @@ struct DiscoveredServerCard: View {
 struct DiscoveryDetailSheet: View {
     let discoveredServers: [DiscoveredServer]
     let onConnect: (DiscoveredServer) -> Void
-    @Environment(\.dismiss) private var dismiss
+
+    @Environment(\.dismiss)
+    private var dismiss
 
     var body: some View {
         NavigationStack {

@@ -87,18 +87,22 @@ struct ServerListView: View {
                     }
                 )
             }
-            .sheet(isPresented: $showingAddServer, onDismiss: {
-                // Clear the selected discovered server when sheet is dismissed
-                selectedDiscoveredServer = nil
-            }) {
-                AddServerView(
-                    initialHost: selectedDiscoveredServer?.host,
-                    initialPort: selectedDiscoveredServer != nil ? String(selectedDiscoveredServer!.port) : nil,
-                    initialName: selectedDiscoveredServer?.displayName
-                ) { _ in
-                    viewModel.loadProfiles()
+            .sheet(
+                isPresented: $showingAddServer,
+                onDismiss: {
+                    // Clear the selected discovered server when sheet is dismissed
+                    selectedDiscoveredServer = nil
+                },
+                content: {
+                    AddServerView(
+                        initialHost: selectedDiscoveredServer?.host,
+                        initialPort: selectedDiscoveredServer.map { String($0.port) },
+                        initialName: selectedDiscoveredServer?.displayName
+                    ) { _ in
+                        viewModel.loadProfiles()
+                    }
                 }
-            }
+            )
             .sheet(item: $serverToAdd) { server in
                 AddServerView(
                     initialHost: server.host,
@@ -202,10 +206,10 @@ struct ServerListView: View {
 
                 Spacer()
 
-                Button(action: {
+                Button {
                     selectedDiscoveredServer = nil // Clear any discovered server
                     showingAddServer = true
-                }) {
+                } label: {
                     Image(systemName: "plus.circle")
                         .font(.system(size: 20))
                         .foregroundColor(Theme.Colors.primaryAccent)
@@ -249,10 +253,10 @@ struct ServerListView: View {
                     .multilineTextAlignment(.center)
             }
 
-            Button(action: {
+            Button {
                 selectedDiscoveredServer = nil // Clear any discovered server
                 showingAddServer = true
-            }) {
+            } label: {
                 HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: "plus.circle.fill")
                     Text("Add Server")
@@ -306,8 +310,7 @@ struct ServerListView: View {
         return filtered
     }
 
-    @ViewBuilder
-    private var discoveredServersSection: some View {
+    @ViewBuilder private var discoveredServersSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             // Header
             discoveryHeader
