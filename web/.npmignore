@@ -26,6 +26,7 @@ build/
 *.tmp
 .DS_Store
 node_modules/
+!node_modules/authenticate-pam/
 pnpm-lock.yaml
 
 # Native build scripts - not needed for npm package

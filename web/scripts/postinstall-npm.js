@@ -12,6 +12,22 @@ const os = require('os');
 
 console.log('Setting up native modules for VibeTunnel...');
 
+// Check for npm_config_prefix conflict with NVM
+if (process.env.npm_config_prefix && process.env.NVM_DIR) {
+  const nvmNodeVersion = process.execPath;
+  const npmPrefix = process.env.npm_config_prefix;
+  
+  // Check if npm_config_prefix conflicts with NVM path
+  if (!nvmNodeVersion.includes(npmPrefix) && nvmNodeVersion.includes('.nvm')) {
+    console.warn('⚠️  Detected npm_config_prefix conflict with NVM');
+    console.warn(`   npm_config_prefix: ${npmPrefix}`);
+    console.warn(`   NVM Node path: ${nvmNodeVersion}`);
+    console.warn('   This may cause npm global installs to fail or install in wrong location.');
+    console.warn('   Run: unset npm_config_prefix');
+    console.warn('   Then reinstall VibeTunnel for proper NVM compatibility.');
+  }
+}
+
 // Check if we're in development (has src directory) or npm install
 const isDevelopment = fs.existsSync(path.join(__dirname, '..', 'src'));
 
