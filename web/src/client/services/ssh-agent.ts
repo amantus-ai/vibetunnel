@@ -18,10 +18,11 @@ if (!globalThis.crypto?.subtle) {
     errorMessage +=
       '3. For Chrome: Enable insecure origins at chrome://flags/#unsafely-treat-insecure-origin-as-secure\n';
     errorMessage += '   - Add your server URL (e.g., http://192.168.1.100:4020)\n';
-    errorMessage += '   - Restart Chrome after changing the flag';
+    errorMessage += '   - Restart Chrome after changing the flag\n';
+    errorMessage += '   - Note: Firefox also enforces these restrictions since v75';
   } else {
     errorMessage += 'Your browser may not support the Web Crypto API or it may be disabled.\n';
-    errorMessage += 'Please use a modern browser (Chrome 37+, Firefox 34+, Safari 11+).';
+    errorMessage += 'Please use a modern browser (Chrome 60+, Firefox 75+, Safari 11+).';
   }
 
   // Display user-friendly error in the UI
