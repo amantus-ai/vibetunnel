@@ -12,7 +12,7 @@
     "dark": "/docs/images/vibetunnel-logo-dark.svg",
     "href": "https://vibetunnel.com"
   },
-  "favicon": "/favicon.ico",
+  "favicon": "/docs/images/favicon.ico",
   "navbar": {
     "links": [
       {
@@ -195,7 +195,7 @@
             "group": "File Structure",
             "pages": [
               "docs/files",
-              ".github/workflows/README"
+              ".github/workflows/README.md"
             ]
           },
           {
