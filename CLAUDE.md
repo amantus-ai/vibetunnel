@@ -51,6 +51,7 @@ When the user says "release" or asks to create a release, ALWAYS read and follow
    - The Mintlify configuration file is called `docs.json` in this project
    - Do NOT rename it to mint.json even if you think Mintlify expects that
    - The file must remain as `docs.json`
+   - For Mintlify documentation reference, see: https://mintlify.com/docs/llms.txt
 
 ### Git Workflow Reminders
 - Our workflow: start from main → create branch → make PR → merge → return to main
