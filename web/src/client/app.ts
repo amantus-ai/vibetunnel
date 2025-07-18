@@ -37,7 +37,6 @@ import './components/notification-status.js';
 import './components/auth-login.js';
 import './components/ssh-key-manager.js';
 
-import type { SessionCard } from './components/session-card.js';
 import { authClient } from './services/auth-client.js';
 import { bufferSubscriptionService } from './services/buffer-subscription-service.js';
 import { pushNotificationService } from './services/push-notification-service.js';
@@ -951,21 +950,35 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private async handleKillAll() {
-    // Find all session cards and call their kill method
-    const sessionCards = this.querySelectorAll<SessionCard>('session-card');
-    const killPromises: Promise<boolean>[] = [];
+    // Get all running sessions from data instead of DOM elements
+    const runningSessions = this.sessions.filter((session) => session.status === 'running');
 
-    sessionCards.forEach((card: SessionCard) => {
-      // Check if this session is running
-      if (card.session && card.session.status === 'running') {
-        // Call the public kill method which handles animation and API call
-        killPromises.push(card.kill());
-      }
-    });
-
-    if (killPromises.length === 0) {
+    if (runningSessions.length === 0) {
       return;
     }
+
+    // Kill all running sessions directly via API
+    const killPromises = runningSessions.map(async (session) => {
+      try {
+        const response = await fetch(`/api/sessions/${session.id}`, {
+          method: 'DELETE',
+          headers: {
+            ...authClient.getAuthHeader(),
+          },
+        });
+
+        if (!response.ok) {
+          logger.error(`Failed to kill session ${session.id}:`, response.status);
+          return false;
+        }
+
+        logger.debug(`Successfully killed session ${session.id}`);
+        return true;
+      } catch (error) {
+        logger.error(`Error killing session ${session.id}:`, error);
+        return false;
+      }
+    });
 
     // Wait for all kill operations to complete
     const results = await Promise.all(killPromises);
@@ -979,10 +992,8 @@ export class VibeTunnelApp extends LitElement {
       this.showError('Failed to kill sessions');
     }
 
-    // Refresh the session list after a short delay to allow animations to complete
-    window.setTimeout(() => {
-      this.loadSessions();
-    }, TIMING.KILL_ALL_ANIMATION_DELAY);
+    // Refresh the session list immediately
+    await this.loadSessions();
   }
 
   private handleCleanExited() {
