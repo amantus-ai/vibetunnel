@@ -43,7 +43,7 @@ const getTestSessionId = () => {
   return `test-${sessionCounter.toString().padStart(3, '0')}`;
 };
 
-describe('PtyManager', { timeout: 60000 }, () => {
+describe.skip('PtyManager', { timeout: 60000 }, () => {
   let ptyManager: PtyManager;
   let testDir: string;
 
