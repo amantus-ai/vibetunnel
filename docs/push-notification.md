@@ -16,6 +16,15 @@ VibeTunnel supports several types of notifications:
 - **Session Errors**: Informed about session failures or errors
 - **System Alerts**: Receive server status and system-wide notifications
 
+## Local (macOS) Notifications
+
+The macOS menu bar app can deliver native local notifications when terminal sessions complete or encounter errors. To enable this feature:
+
+1. Open the General Settings tab in the macOS app.
+2. Toggle **Show Session Notifications** on.
+
+The app uses the UserNotifications framework to dispatch system notifications even when the interface is not in focus.
+
 Access notification settings by clicking the notification status indicator:
 
 - **Enable/Disable**: Toggle notifications on or off entirely
@@ -47,6 +56,7 @@ VibeTunnel's push notification system uses rather modern web standards:
 - **Web Push API**: For delivering notifications to browsers
 - **Service Workers**: Handle notifications when the app isn't active
 - **VAPID Protocol**: Secure authentication between server and browser
+- **UserNotifications (macOS)**: System framework for local notifications when sessions complete
 - **Terminal Integration**: Smart detection of bell characters and session events
 
 ### Bell Detection

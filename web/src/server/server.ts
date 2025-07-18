@@ -15,9 +15,11 @@ import { createAuthMiddleware } from './middleware/auth.js';
 import { PtyManager } from './pty/index.js';
 import { createAuthRoutes } from './routes/auth.js';
 import { createConfigRoutes } from './routes/config.js';
+import { createEventsRouter } from './routes/events.js';
 import { createFileRoutes } from './routes/files.js';
 import { createFilesystemRoutes } from './routes/filesystem.js';
 import { createLogRoutes } from './routes/logs.js';
+import { createPreferencesRouter } from './routes/preferences.js';
 import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createRepositoryRoutes } from './routes/repositories.js';
@@ -690,6 +692,113 @@ export async function createApp(): Promise<AppInstance> {
     logger.debug('Connected bell event handler to PTY manager');
   }
 
+  // Connect session exit notifications if push notifications are enabled
+  if (pushNotificationService) {
+    ptyManager.on('sessionExited', (sessionId: string) => {
+      // Load session info to get details
+      const sessionInfo = sessionManager.loadSessionInfo(sessionId);
+      const exitCode = sessionInfo?.exitCode ?? 0;
+      const sessionName = sessionInfo?.name || `Session ${sessionId}`;
+
+      // Determine notification type based on exit code
+      const notificationType = exitCode === 0 ? 'session-exit' : 'session-error';
+      const title = exitCode === 0 ? 'Session Ended' : 'Session Ended with Errors';
+      const body =
+        exitCode === 0
+          ? `${sessionName} has finished.`
+          : `${sessionName} exited with code ${exitCode}.`;
+
+      pushNotificationService
+        .sendNotification({
+          type: notificationType,
+          title,
+          body,
+          icon: '/apple-touch-icon.png',
+          badge: '/favicon-32.png',
+          tag: `vibetunnel-${notificationType}-${sessionId}`,
+          requireInteraction: false,
+          data: {
+            type: notificationType,
+            sessionId,
+            sessionName,
+            exitCode,
+            timestamp: new Date().toISOString(),
+          },
+          actions: [
+            { action: 'view-logs', title: 'View Logs' },
+            { action: 'dismiss', title: 'Dismiss' },
+          ],
+        })
+        .catch((error) => {
+          logger.error('Failed to send session exit notification:', error);
+        });
+    });
+    logger.debug('Connected session exit notifications to PTY manager');
+
+    // Connect command finished notifications
+    ptyManager.on('commandFinished', ({ sessionId, command, exitCode, duration, timestamp }) => {
+      const isClaudeCommand = command.toLowerCase().includes('claude');
+
+      // Enhanced logging for Claude commands
+      if (isClaudeCommand) {
+        logger.log(
+          chalk.magenta(
+            `📬 Server received Claude commandFinished event: sessionId=${sessionId}, command="${command}", exitCode=${exitCode}, duration=${duration}ms`
+          )
+        );
+      } else {
+        logger.debug(
+          `Server received commandFinished event for session ${sessionId}: "${command}"`
+        );
+      }
+
+      // Determine notification type based on exit code
+      const notificationType = exitCode === 0 ? 'command-finished' : 'command-error';
+      const title = exitCode === 0 ? 'Command Completed' : 'Command Failed';
+      const body =
+        exitCode === 0
+          ? `${command} completed successfully`
+          : `${command} failed with exit code ${exitCode}`;
+
+      // Format duration for display
+      const durationStr =
+        duration > 60000
+          ? `${Math.round(duration / 60000)}m ${Math.round((duration % 60000) / 1000)}s`
+          : `${Math.round(duration / 1000)}s`;
+
+      logger.debug(
+        `Sending push notification: type=${notificationType}, title="${title}", body="${body} (${durationStr})"`
+      );
+
+      pushNotificationService
+        .sendNotification({
+          type: notificationType,
+          title,
+          body: `${body} (${durationStr})`,
+          icon: '/apple-touch-icon.png',
+          badge: '/favicon-32.png',
+          tag: `vibetunnel-command-${sessionId}-${Date.now()}`,
+          requireInteraction: false,
+          data: {
+            type: notificationType,
+            sessionId,
+            command,
+            exitCode,
+            duration,
+            timestamp,
+          },
+          actions: [
+            { action: 'view-session', title: 'View Session' },
+            { action: 'dismiss', title: 'Dismiss' },
+          ],
+        })
+        .catch((error) => {
+          logger.error('Failed to send command finished notification:', error);
+        });
+    });
+    logger.debug('Connected command finished notifications to PTY manager');
+  }
+
   // Mount authentication routes (no auth required)
   app.use(
     '/api/auth',
@@ -741,6 +850,10 @@ export async function createApp(): Promise<AppInstance> {
   app.use('/api', createFileRoutes());
   logger.debug('Mounted file routes');
 
+  // Mount preferences routes
+  app.use('/api', createPreferencesRouter());
+  logger.debug('Mounted preferences routes');
+
   // Mount repository routes
   app.use('/api', createRepositoryRoutes());
   logger.debug('Mounted repository routes');
@@ -774,6 +887,10 @@ export async function createApp(): Promise<AppInstance> {
   // WebRTC configuration route
   app.use('/api', createWebRTCConfigRouter());
   logger.debug('Mounted WebRTC config routes');
+
+  // Mount events router for SSE streaming
+  app.use('/api', createEventsRouter(ptyManager));
+  logger.debug('Mounted events routes');
 
   // Initialize screencap service and control socket
   try {
@@ -1204,6 +1321,7 @@ export async function createApp(): Promise<AppInstance> {
         isHQMode: config.isHQMode,
         hqClient,
         ptyManager,
+        pushNotificationService: pushNotificationService || undefined,
       });
       controlDirWatcher.start();
       logger.debug('Started control directory watcher');

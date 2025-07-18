@@ -2,12 +2,18 @@
   "permissions": {
     "allow": [
       "Bash(pnpm test:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(pnpm run:*)",
+      "Bash(ls:*)",
+      "Bash(./scripts/clean.sh:*)",
+      "Bash(./scripts/build.sh:*)",
+      "Bash(pkill:*)",
+      "Bash(open:*)"
     ],
     "deny": []
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "playwright"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }

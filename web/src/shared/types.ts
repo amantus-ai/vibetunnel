@@ -160,6 +160,7 @@ export interface PushNotificationPreferences {
   sessionExit: boolean;
   sessionStart: boolean;
   sessionError: boolean;
+  commandNotifications: boolean;
   systemAlerts: boolean;
   soundEnabled: boolean;
   vibrationEnabled: boolean;
