@@ -12,7 +12,7 @@ VibeTunnel is a macOS application that allows users to access their terminal ses
 ## Critical Development Rules
 
 ### Release Process
-When the user says "release" or asks to create a release, ALWAYS read and follow `mac/docs/release.md` for the complete release process.
+When the user says "release" or asks to create a release, ALWAYS read and follow `docs/RELEASE.md` for the complete release process.
 
 ### ABSOLUTE CARDINAL RULES - VIOLATION MEANS IMMEDIATE FAILURE
 
@@ -46,6 +46,12 @@ When the user says "release" or asks to create a release, ALWAYS read and follow
      - Restart VibeTunnel server (not full rebuild) to pick up web changes
 6. **Never kill all sessions**
    - You are running inside a session yourself; killing all sessions would terminate your own process
+
+7. **NEVER rename docs.json to mint.json**
+   - The Mintlify configuration file is called `docs.json` in this project
+   - Do NOT rename it to mint.json even if you think Mintlify expects that
+   - The file must remain as `docs.json`
+   - For Mintlify documentation reference, see: https://mintlify.com/docs/llms.txt
 
 ### Git Workflow Reminders
 - Our workflow: start from main → create branch → make PR → merge → return to main

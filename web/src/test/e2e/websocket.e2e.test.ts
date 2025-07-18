@@ -4,7 +4,7 @@ import { type ServerInstance, startTestServer, stopServer } from '../utils/serve
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-describe.skip('WebSocket Buffer Tests', () => {
+describe('WebSocket Buffer Tests', () => {
   let server: ServerInstance | null = null;
   let sessionId: string;
 
@@ -80,6 +80,15 @@ describe.skip('WebSocket Buffer Tests', () => {
         ws.on('open', resolve);
       });
 
+      // Wait for welcome message
+      await new Promise((resolve) => {
+        ws.once('message', (data) => {
+          const msg = JSON.parse(data.toString());
+          expect(msg.type).toBe('connected');
+          resolve(undefined);
+        });
+      });
+
       // Subscribe to session
       ws.send(
         JSON.stringify({
@@ -114,7 +123,7 @@ describe.skip('WebSocket Buffer Tests', () => {
       // Check terminal buffer format after session ID
       const terminalBufferStart = 5 + sessionIdLength;
       const terminalView = new DataView(buffer.buffer, buffer.byteOffset + terminalBufferStart);
-      expect(terminalView.getUint16(0)).toBe(0x5654); // "VT"
+      expect(terminalView.getUint16(0, true)).toBe(0x5654); // "VT" in little-endian
       expect(terminalView.getUint8(2)).toBe(1); // Version
 
       ws.close();
@@ -125,6 +134,15 @@ describe.skip('WebSocket Buffer Tests', () => {
 
       await new Promise<void>((resolve) => {
         ws.on('open', resolve);
+      });
+
+      // Wait for welcome message
+      await new Promise((resolve) => {
+        ws.once('message', (data) => {
+          const msg = JSON.parse(data.toString());
+          expect(msg.type).toBe('connected');
+          resolve(undefined);
+        });
       });
 
       // Subscribe first
@@ -183,6 +201,15 @@ describe.skip('WebSocket Buffer Tests', () => {
 
       await new Promise<void>((resolve) => {
         ws.on('open', resolve);
+      });
+
+      // Wait for welcome message
+      await new Promise((resolve) => {
+        ws.once('message', (data) => {
+          const msg = JSON.parse(data.toString());
+          expect(msg.type).toBe('connected');
+          resolve(undefined);
+        });
       });
 
       // Subscribe to both sessions
@@ -251,6 +278,15 @@ describe.skip('WebSocket Buffer Tests', () => {
         ws.on('open', resolve);
       });
 
+      // Wait for welcome message
+      await new Promise((resolve) => {
+        ws.once('message', (data) => {
+          const msg = JSON.parse(data.toString());
+          expect(msg.type).toBe('connected');
+          resolve(undefined);
+        });
+      });
+
       // Subscribe to non-existent session
       ws.send(
         JSON.stringify({
@@ -259,17 +295,21 @@ describe.skip('WebSocket Buffer Tests', () => {
         })
       );
 
-      // Should not receive any binary buffer messages (but may receive JSON responses)
-      let receivedBufferMessage = false;
-      ws.on('message', (data: Buffer) => {
-        // Only count binary messages (not JSON control messages)
-        if (data.length > 0 && data.readUInt8(0) === 0xbf) {
-          receivedBufferMessage = true;
-        }
+      // The server creates a new terminal for non-existent sessions,
+      // so we should receive a binary buffer with an empty terminal
+      const response = await new Promise<Buffer>((resolve) => {
+        ws.once('message', (data: Buffer) => {
+          resolve(data);
+        });
       });
 
-      await sleep(1000);
-      expect(receivedBufferMessage).toBe(false);
+      // Should be a binary buffer for the newly created terminal
+      expect(response.readUInt8(0)).toBe(0xbf);
+
+      // Verify it's a valid buffer
+      const sessionIdLength = response.readUInt32LE(1);
+      const extractedSessionId = response.slice(5, 5 + sessionIdLength).toString('utf8');
+      expect(extractedSessionId).toBe('nonexistent');
 
       ws.close();
     });
@@ -325,6 +365,15 @@ describe.skip('WebSocket Buffer Tests', () => {
         ws.on('open', resolve);
       });
 
+      // Wait for welcome message
+      await new Promise((resolve) => {
+        ws.once('message', (data) => {
+          const msg = JSON.parse(data.toString());
+          expect(msg.type).toBe('connected');
+          resolve(undefined);
+        });
+      });
+
       // Subscribe to session
       ws.send(
         JSON.stringify({
@@ -351,18 +400,18 @@ describe.skip('WebSocket Buffer Tests', () => {
       );
 
       // Verify header
-      expect(view.getUint16(0)).toBe(0x5654); // Magic "VT"
+      expect(view.getUint16(0, true)).toBe(0x5654); // Magic "VT" in little-endian
       expect(view.getUint8(2)).toBe(1); // Version
 
       // Read dimensions
-      const cols = view.getUint32(4);
-      const rows = view.getUint32(8);
+      const cols = view.getUint32(4, true);
+      const rows = view.getUint32(8, true);
       expect(cols).toBeGreaterThan(0);
       expect(rows).toBeGreaterThan(0);
 
       // Read cursor position
-      const cursorX = view.getUint32(12);
-      const cursorY = view.getUint32(16);
+      const cursorX = view.getUint32(12, true);
+      const cursorY = view.getUint32(16, true);
       expect(cursorX).toBeGreaterThanOrEqual(0);
       expect(cursorY).toBeGreaterThanOrEqual(0);
 

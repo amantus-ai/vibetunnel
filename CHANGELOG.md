@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.0-beta.12] - 2025-01-17
+## [1.0.0-beta.12] - 2024-12-17
 
 #### **Welcome Screen Performance**
 - Background folder scanning eliminates UI freeze when opening the welcome screen (#394)
@@ -32,7 +32,7 @@
 - Fixed lint and type errors across the codebase
 - Cleaned up duplicate and stray files from web directory
 
-## [1.0.0-beta.11] - 2025-01-16
+## [1.0.0-beta.11] - 2024-12-16
 
 #### **Better Settings Organization**
 - Reorganized settings into logical tabs for easier navigation (#359)
@@ -70,7 +70,7 @@
 - Resolved Tailwind CSS performance warning
 - Fixed repeated screen recording permission dialogs
 
-## [1.0.0-beta.10] - 2025-01-15
+## [1.0.0-beta.10] - 2024-12-15
 
 #### **Repository Discovery**
 - Automatic Git repository detection when creating new sessions (#301)
@@ -104,7 +104,7 @@
 - Updated all dependencies to latest stable versions
 - Enhanced TypeScript configuration with better type safety
 
-## [1.0.0-beta.9] - 2025-01-11
+## [1.0.0-beta.9] - 2024-12-11
 
 #### **Terminal Crash Fix**
 - Replaced Microsoft's node-pty with custom fork to resolve random terminal crashes (#304)
@@ -139,7 +139,7 @@
 - Enhanced event handling for better cross-platform compatibility
 - Improved file browser functionality with better click handling
 
-## [1.0.0-beta.8] - 2025-07-08
+## [1.0.0-beta.8] - 2024-07-08
 
 ### 🐛 Bug Fixes
 
@@ -148,7 +148,7 @@
 - Fixed file browser going dark due to event bubbling issues with modal handling
 - Updated build scripts to handle dynamic library dependencies properly
 
-## [1.0.0-beta.7] - 2025-07-08
+## [1.0.0-beta.7] - 2024-07-08
 
 #### **Remote Screen Sharing (Beta)**
 - Share Mac screen remotely through web browsers
@@ -206,7 +206,7 @@
 - Unified control protocol for terminal and screen sharing (#239)
 - Improved Unix socket handling with better error recovery
 
-## [1.0.0-beta.6] - 2025-07-03
+## [1.0.0-beta.6] - 2024-07-03
 
 #### **Git Repository Monitoring**
 - Real-time Git status in session rows with branch name and change counts (#200)
@@ -245,7 +245,7 @@
 - Removed manual token management requirements
 - Streamlined connection UI
 
-## [1.0.0-beta.5] - 2025-01-29
+## [1.0.0-beta.5] - 2024-06-29
 
 #### **UI Improvements**
 - Web interface now shows full version including beta suffix
@@ -267,7 +267,7 @@
 - Better test fixtures, helpers, and debugging capabilities (#73)
 - Cleaner logs when running in development mode
 
-## [1.0.0-beta.4] - 2025-06-25
+## [1.0.0-beta.4] - 2024-06-25
 
 - We replaced HTTP Basic auth with System Login or SSH Keys for better security (#43).
 - Sessions now show exited terminals by default - no more hunting for terminated sessions
@@ -278,7 +278,7 @@
 - Leverages View Transitions API for smoother animations with CSS fallbacks
 - More intuitive default settings for better out-of-box experience
 
-## [1.0.0-beta.3] - 2025-06-23
+## [1.0.0-beta.3] - 2024-06-23
 
 There's too much to list! This is the version you've been waiting for. 
 
@@ -298,7 +298,7 @@ There's too much to list! This is the version you've been waiting for.
 - More resilient vt command-line tool with better error handling
 - Ensured vibetunnel server properly terminates when Mac app is killed
 
-## [1.0.0-beta.2] - 2025-06-19
+## [1.0.0-beta.2] - 2024-06-19
 
 ### 🎨 Improvements
 - Redesigned slick new web frontend
@@ -314,7 +314,7 @@ There's too much to list! This is the version you've been waiting for.
 - Fixed PTY service enhancements with proper async operations
 - Fixed race condition in session creation that caused frontend to open previous session
 
-## [1.0.0-beta.1] - 2025-06-17
+## [1.0.0-beta.1] - 2024-06-17
 
 ### 🎉 First Public Beta Release
 
@@ -357,7 +357,7 @@ This is the first public beta release of VibeTunnel, ready for testing by early 
 - Auto-update functionality is fully enabled
 - All core features are stable and ready for daily use
 
-## [1.0.0] - 2025-06-16
+## [1.0.0] - 2024-06-16
 
 ### 🎉 Initial Release
 

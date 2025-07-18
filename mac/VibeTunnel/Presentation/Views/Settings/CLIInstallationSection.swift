@@ -40,37 +40,67 @@ struct CLIInstallationSection: View {
                         HStack {
                             ProgressView()
                                 .scaleEffect(0.7)
-                            Text("Installing...")
+                            Text(cliInstaller.isUninstalling ? "Uninstalling..." : "Installing...")
                                 .font(.caption)
                         }
                     } else {
                         if cliInstaller.isInstalled {
                             // Updated status
                             if cliInstaller.isOutdated {
-                                Button("Update 'vt' Command") {
-                                    Task {
-                                        await cliInstaller.install()
+                                HStack(spacing: 8) {
+                                    Button("Update 'vt' Command") {
+                                        Task {
+                                            await cliInstaller.install()
+                                        }
                                     }
-                                }
-                                .buttonStyle(.bordered)
-                                .disabled(cliInstaller.isInstalling)
-                            } else {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
-                                Text("VT installed")
-                                    .foregroundColor(.secondary)
-
-                                // Show reinstall button in debug mode
-                                if debugMode {
+                                    .buttonStyle(.bordered)
+                                    .disabled(cliInstaller.isInstalling)
+                                    
                                     Button(action: {
-                                        cliInstaller.installCLITool()
+                                        Task {
+                                            await cliInstaller.uninstall()
+                                        }
                                     }, label: {
-                                        Image(systemName: "arrow.clockwise.circle")
+                                        Image(systemName: "trash")
                                             .font(.system(size: 14))
                                     })
                                     .buttonStyle(.plain)
-                                    .foregroundColor(.accentColor)
-                                    .help("Reinstall CLI tool")
+                                    .foregroundColor(.red)
+                                    .disabled(cliInstaller.isInstalling)
+                                    .help("Uninstall CLI tool")
+                                }
+                            } else {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.green)
+                                    Text("VT installed")
+                                        .foregroundColor(.secondary)
+
+                                    // Show reinstall button in debug mode
+                                    if debugMode {
+                                        Button(action: {
+                                            cliInstaller.installCLITool()
+                                        }, label: {
+                                            Image(systemName: "arrow.clockwise.circle")
+                                                .font(.system(size: 14))
+                                        })
+                                        .buttonStyle(.plain)
+                                        .foregroundColor(.accentColor)
+                                        .help("Reinstall CLI tool")
+                                    }
+                                    
+                                    Button(action: {
+                                        Task {
+                                            await cliInstaller.uninstall()
+                                        }
+                                    }, label: {
+                                        Image(systemName: "trash")
+                                            .font(.system(size: 14))
+                                    })
+                                    .buttonStyle(.plain)
+                                    .foregroundColor(.red)
+                                    .disabled(cliInstaller.isInstalling)
+                                    .help("Uninstall CLI tool")
                                 }
                             }
                         } else {

@@ -1,0 +1,178 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "VibeTunnel",
+  "theme": "maple",
+  "logo": {
+    "dark": "/docs/images/vibetunnel-logo-dark.svg",
+    "light": "/docs/images/vibetunnel-logo-light.svg"
+  },
+  "favicon": "/docs/images/favicon.svg",
+  "colors": {
+    "primary": "#0066FF",
+    "light": "#3B82F6",
+    "dark": "#1E40AF"
+  },
+  "topbarLinks": [
+    {
+      "name": "Support",
+      "url": "https://discord.gg/vibetunnel"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Download",
+    "url": "https://vibetunnel.com/download"
+  },
+  "tabs": [
+    {
+      "name": "Documentation",
+      "url": "docs"
+    },
+    {
+      "name": "GitHub",
+      "url": "https://github.com/amantus-ai/vibetunnel"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/amantus-ai/vibetunnel"
+    },
+    {
+      "name": "Discord",
+      "icon": "discord",
+      "url": "https://discord.gg/vibetunnel"
+    }
+  ],
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting Started",
+        "pages": [
+          "introduction",
+          "docs/INDEX",
+          "docs/project-overview",
+          "docs/keyboard-shortcuts",
+          "docs/CONTRIBUTING"
+        ]
+      },
+      {
+        "group": "Installation",
+        "pages": [
+          "mac/README",
+          "ios/README",
+          "web/docs/VT_INSTALLATION"
+        ]
+      },
+      {
+        "group": "Architecture",
+        "pages": [
+          "docs/ARCHITECTURE",
+          "docs/architecture-mario",
+          "docs/spec",
+          "docs/ios-spec",
+          "web/docs/spec",
+          "mac/docs/BuildArchitectures",
+          "web/docs/socket-protocol",
+          "docs/authentication"
+        ]
+      },
+      {
+        "group": "Security",
+        "pages": [
+          "docs/security",
+          "docs/push-notification",
+          "docs/WEBRTC_CONFIG"
+        ]
+      },
+      {
+        "group": "Development",
+        "pages": [
+          "docs/development",
+          "docs/build-system",
+          "docs/testing",
+          "docs/logging-style-guide"
+        ]
+      },
+      {
+        "group": "macOS Development",
+        "pages": [
+          "mac/docs/BuildRequirements",
+          "mac/docs/code-signing",
+          "mac/docs/screencap",
+          "mac/docs/screencapturekit"
+        ]
+      },
+      {
+        "group": "iOS Development",
+        "pages": [
+          "apple/docs/modern-swift",
+          "apple/docs/swift-concurrency",
+          "apple/docs/swiftui",
+          "apple/docs/swift-testing-playbook"
+        ]
+      },
+      {
+        "group": "Web Development",
+        "pages": [
+          "web/docs/performance",
+          "web/docs/terminal-titles",
+          "docs/TESTING_EXTERNAL_DEVICES"
+        ]
+      },
+      {
+        "group": "Release Process",
+        "pages": [
+          "docs/deployment",
+          "docs/RELEASE"
+        ]
+      },
+      {
+        "group": "Distribution",
+        "pages": [
+          "web/docs/npm",
+          "mac/docs/sparkle-keys",
+          "mac/docs/sparkle-stats-store"
+        ]
+      },
+      {
+        "group": "Configuration",
+        "pages": [
+          "docs/custom-node",
+          "apple/docs/logging-private-fix"
+        ]
+      },
+      {
+        "group": "File Structure",
+        "pages": [
+          "docs/files",
+          ".github/workflows/README.md"
+        ]
+      },
+      {
+        "group": "Tools & Integration",
+        "pages": [
+          "docs/claude",
+          "docs/gemini"
+        ]
+      }
+    ]
+  },
+  "footerSocials": {
+    "twitter": "https://twitter.com/vibetunnel",
+    "github": "https://github.com/amantus-ai/vibetunnel",
+    "discord": "https://discord.gg/vibetunnel"
+  },
+  "metadata": {
+    "og:title": "VibeTunnel Documentation",
+    "og:description": "Access your terminal sessions through any web browser",
+    "og:image": "/docs/images/vibetunnel-logo-light.svg"
+  },
+  "seo": {
+    "indexing": "all"
+  },
+  "search": {
+    "prompt": "Search VibeTunnel docs...",
+    "placeholder": "Search documentation"
+  }
+}

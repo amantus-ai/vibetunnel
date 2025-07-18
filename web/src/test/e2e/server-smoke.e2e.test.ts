@@ -1,16 +1,17 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type ServerInstance, startTestServer, stopServer } from '../utils/server-utils';
 
-describe.skip('Server Smoke Test', () => {
+describe('Server Smoke Test', () => {
   let server: ServerInstance | null = null;
 
   beforeAll(async () => {
     // Start server with no authentication
     server = await startTestServer({
-      args: ['--no-auth'],
+      args: ['--port', '0', '--no-auth'],
       env: {
         NODE_ENV: 'test',
       },
+      waitForHealth: true,
     });
   });
 
@@ -52,11 +53,9 @@ describe.skip('Server Smoke Test', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         command: ['sh', '-c', 'echo "hello world"; sleep 2'],
-        options: {
-          sessionName: 'test-session',
-          cols: 80,
-          rows: 24,
-        },
+        name: 'test-session',
+        cols: 80,
+        rows: 24,
       }),
     });
     expect(createResponse.ok).toBe(true);
