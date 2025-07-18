@@ -42,6 +42,9 @@ while IFS= read -r doc; do
     # Check if it's already a full path with extension
     elif [ -f "$doc" ]; then
         echo "✓ Found: $doc"
+    # Special case for paths starting with .
+    elif [[ "$doc" == ./* ]] && [ -f "$doc" ]; then
+        echo "✓ Found: $doc"
     else
         echo "✗ Missing: $doc"
         missing_files=$((missing_files + 1))
