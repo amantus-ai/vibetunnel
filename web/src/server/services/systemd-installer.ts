@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
 import { execSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync, chmodSync, mkdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 // Colors for output
 const RED = '\x1b[0;31m';
@@ -29,7 +28,7 @@ function printSuccess(message: string): void {
   console.log(`${GREEN}[SUCCESS]${NC} ${message}`);
 }
 
-function printWarning(message: string): void {
+function _printWarning(message: string): void {
   console.log(`${YELLOW}[WARNING]${NC} ${message}`);
 }
 
@@ -51,7 +50,7 @@ function checkVibetunnel(): void {
     execSync('which vibetunnel', { stdio: 'pipe' });
     const version = execSync('vibetunnel version', { encoding: 'utf8', stdio: 'pipe' }).trim();
     printInfo(`Found VibeTunnel: ${version}`);
-  } catch (error) {
+  } catch (_error) {
     printError('VibeTunnel is not installed globally. Please install it first:');
     console.log('  npm install -g vibetunnel');
     process.exit(1);
@@ -63,10 +62,13 @@ function createUser(): void {
   try {
     execSync(`id ${USER_NAME}`, { stdio: 'pipe' });
     printInfo(`User ${USER_NAME} already exists`);
-  } catch (error) {
+  } catch (_error) {
     printInfo(`Creating user ${USER_NAME}...`);
     try {
-      execSync(`useradd --system --shell /bin/false --home-dir ${INSTALL_DIR} --create-home ${USER_NAME}`, { stdio: 'pipe' });
+      execSync(
+        `useradd --system --shell /bin/false --home-dir ${INSTALL_DIR} --create-home ${USER_NAME}`,
+        { stdio: 'pipe' }
+      );
       printSuccess(`User ${USER_NAME} created`);
     } catch (createError) {
       printError(`Failed to create user ${USER_NAME}: ${createError}`);
@@ -134,14 +136,14 @@ WantedBy=multi-user.target`;
 // Install systemd service
 function installService(): void {
   printInfo('Installing systemd service...');
-  
+
   const serviceContent = getServiceTemplate();
   const servicePath = join(SYSTEMD_DIR, SERVICE_FILE);
-  
+
   try {
     writeFileSync(servicePath, serviceContent);
     execSync(`chmod 644 ${servicePath}`, { stdio: 'pipe' });
-    
+
     // Reload systemd
     execSync('systemctl daemon-reload', { stdio: 'pipe' });
     printSuccess('Systemd service installed');
@@ -154,7 +156,7 @@ function installService(): void {
 // Configure service
 function configureService(): void {
   printInfo('Configuring service...');
-  
+
   try {
     // Enable the service
     execSync(`systemctl enable ${SERVICE_NAME}`, { stdio: 'pipe' });
@@ -194,41 +196,41 @@ function showUsage(): void {
 // Uninstall function
 function uninstallService(): void {
   printInfo('Uninstalling VibeTunnel systemd service...');
-  
+
   try {
     // Stop and disable service
     try {
       execSync(`systemctl is-active ${SERVICE_NAME}`, { stdio: 'pipe' });
       execSync(`systemctl stop ${SERVICE_NAME}`, { stdio: 'pipe' });
       printInfo('Service stopped');
-    } catch (error) {
+    } catch (_error) {
       // Service not running
     }
-    
+
     try {
       execSync(`systemctl is-enabled ${SERVICE_NAME}`, { stdio: 'pipe' });
       execSync(`systemctl disable ${SERVICE_NAME}`, { stdio: 'pipe' });
       printInfo('Service disabled');
-    } catch (error) {
+    } catch (_error) {
       // Service not enabled
     }
-    
+
     // Remove service file
     const servicePath = join(SYSTEMD_DIR, SERVICE_FILE);
     if (existsSync(servicePath)) {
       execSync(`rm ${servicePath}`, { stdio: 'pipe' });
       printInfo('Service file removed');
     }
-    
+
     // Reload systemd
     execSync('systemctl daemon-reload', { stdio: 'pipe' });
-    
+
     // Ask about removing user and directories
     console.log('');
     console.log(`To completely remove the ${USER_NAME} user and ${INSTALL_DIR} directory, run:`);
     console.log(`  sudo userdel ${USER_NAME}`);
     console.log(`  sudo rm -rf ${INSTALL_DIR}`);
-    
+
     printSuccess('VibeTunnel systemd service uninstalled');
   } catch (error) {
     printError(`Failed to uninstall service: ${error}`);
@@ -264,16 +266,16 @@ export function installSystemdService(action: string = 'install'): void {
       configureService();
       showUsage();
       break;
-      
+
     case 'uninstall':
       checkRoot();
       uninstallService();
       break;
-      
+
     case 'status':
       checkServiceStatus();
       break;
-      
+
     default:
       console.log('Usage: vibetunnel install-service [install|uninstall|status]');
       console.log('  install   - Install VibeTunnel systemd service (default)');
