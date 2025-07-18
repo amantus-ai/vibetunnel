@@ -70,10 +70,28 @@ export class ScreencapWebSocketClient {
           resolve();
         };
 
+        // Add WebSocket to window for debugging
+        (window as any).debugWebSocket = this.ws;
+        
+        // Track frame statistics
+        let frameCount = 0;
+        let totalBytes = 0;
+        
         this.ws.onmessage = async (event) => {
           // Check if this is a binary message
           if (event.data instanceof Blob) {
             const arrayBuffer = await event.data.arrayBuffer();
+            frameCount++;
+            totalBytes += arrayBuffer.byteLength;
+            
+            // Log every 10th frame
+            if (frameCount % 10 === 1) {
+              logger.log(`🎬 Binary frame ${frameCount}: ${arrayBuffer.byteLength} bytes, total: ${totalBytes} bytes`);
+            }
+            
+            // Store stats on window for debugging
+            (window as any).videoFrameStats = { count: frameCount, totalBytes };
+            
             if (this.onBinaryMessage) {
               this.onBinaryMessage(arrayBuffer);
             }

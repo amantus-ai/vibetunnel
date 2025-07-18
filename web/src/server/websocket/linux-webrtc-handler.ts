@@ -51,8 +51,16 @@ export class LinuxWebRTCHandler extends EventEmitter {
   private setupStreamBuffering(): void {
     if (!this.ffmpegStream) return;
 
+    let frameCount = 0;
+    let totalBytes = 0;
+
     // Buffer incoming video data
     this.ffmpegStream.on('data', (chunk: Buffer) => {
+      frameCount++;
+      totalBytes += chunk.length;
+      if (frameCount % 100 === 1) {
+        logger.log(`FFmpeg data: frame ${frameCount}, chunk size: ${chunk.length}, total: ${totalBytes} bytes`);
+      }
       // For WebSocket streaming, we'll emit video frames directly
       this.emit('video-frame', chunk);
     });
@@ -63,7 +71,7 @@ export class LinuxWebRTCHandler extends EventEmitter {
     });
 
     this.ffmpegStream.on('end', () => {
-      logger.log('FFmpeg stream ended');
+      logger.log(`FFmpeg stream ended. Total frames: ${frameCount}, bytes: ${totalBytes}`);
       this.emit('stream-ended');
     });
   }

@@ -4,12 +4,12 @@ import OSLog
 /// Manages a shared Unix socket connection for control communication
 /// This handles all control messages between the Mac app and the server
 @MainActor
-final class SharedUnixSocketManager {
+public final class SharedUnixSocketManager {
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SharedUnixSocket")
 
     // MARK: - Singleton
 
-    static let shared = SharedUnixSocketManager()
+    public static let shared = SharedUnixSocketManager()
 
     // MARK: - Properties
 
@@ -162,7 +162,7 @@ final class SharedUnixSocketManager {
     }
 
     /// Register a control message handler for a specific category
-    func registerControlHandler(
+    public func registerControlHandler(
         for category: ControlProtocol.Category,
         handler: @escaping @Sendable (Data) async -> Data?
     ) {

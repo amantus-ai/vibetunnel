@@ -33,10 +33,14 @@ export class WebSocketVideoHandler {
 
         this.mediaSource.addEventListener('sourceopen', async () => {
           try {
+            logger.log('MediaSource opened, ready state:', this.mediaSource!.readyState);
+            
             // Create source buffer for WebM/VP8
             this.sourceBuffer = this.mediaSource!.addSourceBuffer('video/webm; codecs="vp8"');
+            logger.log('Created SourceBuffer for video/webm; codecs="vp8"');
 
             this.sourceBuffer.addEventListener('updateend', () => {
+              logger.log('SourceBuffer updateend event, queue length:', this.frameQueue.length);
               this.processFrameQueue();
             });
 
@@ -82,9 +86,12 @@ export class WebSocketVideoHandler {
   handleVideoFrame(data: ArrayBuffer): void {
     // Skip the 'VF' header (first 2 bytes)
     const frameData = data.slice(2);
+    
+    logger.log(`Received video frame: ${frameData.byteLength} bytes after header removal`);
 
     if (this.sourceBuffer && !this.sourceBuffer.updating) {
       try {
+        logger.log(`Appending ${frameData.byteLength} bytes to source buffer`);
         this.sourceBuffer.appendBuffer(frameData);
       } catch (error) {
         logger.error('Error appending buffer:', error);
@@ -93,6 +100,7 @@ export class WebSocketVideoHandler {
       }
     } else {
       // Queue frames if source buffer is busy
+      logger.log(`Queueing frame, sourceBuffer exists: ${!!this.sourceBuffer}, updating: ${this.sourceBuffer?.updating}`);
       this.frameQueue.push(frameData);
       if (this.frameQueue.length > 100) {
         // Drop old frames if queue is too large

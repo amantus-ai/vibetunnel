@@ -4,7 +4,7 @@ import OSLog
 
 /// Manages UNIX socket connection for screen capture communication with automatic reconnection
 @MainActor
-final class UnixSocketConnection {
+public final class UnixSocketConnection {
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "UnixSocket")
 
     // MARK: - Properties
@@ -308,7 +308,7 @@ final class UnixSocketConnection {
     }
 
     /// Send raw data with error handling
-    func sendRawData(_ data: Data) async throws {
+    public func sendRawData(_ data: Data) async throws {
         try await sendData(data)
     }
 

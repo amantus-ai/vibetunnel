@@ -70,9 +70,22 @@ export class FFmpegCapture extends EventEmitter {
         const output = data.toString();
         this.parseFFmpegOutput(output);
 
-        // Log errors but not progress
+        // Log errors and important info
         if (output.includes('error') || output.includes('Error')) {
           logger.error('FFmpeg error:', output);
+        } else if (output.includes('Input #') || output.includes('Output #') || output.includes('Stream #')) {
+          logger.log('FFmpeg info:', output.trim());
+        }
+      });
+    }
+
+    // Monitor stdout
+    if (this.ffmpegProcess.stdout) {
+      let bytesReceived = 0;
+      this.ffmpegProcess.stdout.on('data', (chunk) => {
+        bytesReceived += chunk.length;
+        if (bytesReceived < 1000 || bytesReceived % 100000 < chunk.length) {
+          logger.log(`FFmpeg stdout: received ${bytesReceived} bytes`);
         }
       });
     }

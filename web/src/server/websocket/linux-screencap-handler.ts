@@ -290,13 +290,20 @@ export class LinuxScreencapHandler extends EventEmitter {
       });
 
       // Set up video frame streaming
+      let framesSent = 0;
       webrtcHandler.on('video-frame', (frameData: Buffer) => {
         // Send video frames as binary WebSocket messages
         if (ws.readyState === ws.OPEN) {
+          framesSent++;
+          if (framesSent % 100 === 1) {
+            logger.log(`Sending frame ${framesSent}, size: ${frameData.length} bytes`);
+          }
           // Send frame with a header indicating it's a video frame
           const header = Buffer.from('VF'); // Video Frame marker
           const frame = Buffer.concat([header, frameData]);
           ws.send(frame, { binary: true });
+        } else {
+          logger.warn(`WebSocket not open for frame ${framesSent}, state: ${ws.readyState}`);
         }
       });
 

@@ -4,6 +4,27 @@
 
 VibeTunnel's Linux screen capture implementation provides a comprehensive solution for sharing desktop screens and windows on Linux systems through a web browser. Unlike the macOS implementation which leverages native ScreenCaptureKit APIs, the Linux version uses FFmpeg and platform-specific capture methods to achieve similar functionality.
 
+### Quick Start
+
+1. **Install dependencies**:
+   ```bash
+   sudo apt-get update && sudo apt-get install -y ffmpeg x11-utils xvfb
+   ```
+
+2. **Start VibeTunnel server**:
+   ```bash
+   cd web && pnpm run dev
+   ```
+
+3. **Open screen capture**:
+   ```
+   http://localhost:4020/screencap
+   ```
+
+4. **Select display and click "Start"** to begin capturing
+
+The implementation is now stable and fully functional with proper error handling and clear dependency requirements.
+
 ### ARM64 Architecture Notes
 
 **Important for ARM64 users (Raspberry Pi, Apple Silicon VMs, ARM servers):**
@@ -158,6 +179,48 @@ ffmpeg -f lavfi -i pipewiregrab=d=0 \
 - Adjusts bitrate between 1-50 Mbps
 - Reduces quality when network conditions degrade
 - Maintains target 30-60 FPS
+
+## Implementation Details
+
+### Message Flow
+
+The Linux implementation uses WebSocket messages for both control and video streaming:
+
+1. **Connection Establishment**
+   - Client connects to `/ws/screencap-signal`
+   - Server validates desktop capture service is ready
+   - Server sends `ready` event with capabilities
+
+2. **Display Enumeration**
+   - Client sends `api-request` with endpoint `/displays`
+   - Server returns available displays from X11/Wayland
+
+3. **Start Capture**
+   - Client sends `start-capture` action (not API request)
+   - Server starts FFmpeg process for selected display
+   - Server creates WebRTC offer with special WebSocket streaming SDP
+   - Client receives offer and sets up video element
+
+4. **Video Streaming**
+   - FFmpeg outputs WebM/VP8 to stdout
+   - Server sends video frames as binary WebSocket messages
+   - Client's MediaSource API receives and displays frames
+
+5. **Stop Capture**
+   - Client sends `stop-capture` action
+   - Server terminates FFmpeg process
+   - Server sends `capture-stopped` response
+
+### Key Differences from Mac Implementation
+
+| Feature | Mac | Linux |
+|---------|-----|-------|
+| Capture API | ScreenCaptureKit | FFmpeg |
+| Message Format | API endpoints | Direct actions |
+| Streaming | Pure WebRTC | WebSocket + WebRTC hybrid |
+| Window Capture | Supported | Not yet implemented |
+| Audio Capture | Supported | Not yet implemented |
+| Remote Control | Supported | Not supported |
 
 ## API Endpoints
 
@@ -384,30 +447,42 @@ testScreenCapture();
 
 ### Current Implementation Status
 
-#### WebSocket Connection Issues
-During testing on Linux ARM64 (January 2025), the screen capture UI loads but experiences WebSocket connection errors:
-- Initial connection succeeds and receives server ready message
-- Connection closes with code 1006 (abnormal closure) after initial handshake
-- Display enumeration fails due to lost connection
+#### ✅ WebSocket Connection Fixed (January 2025)
+The Linux screen capture implementation is now fully functional. Previous WebSocket connection issues (code 1006) have been resolved through proper error handling and dependency checking.
 
-**Root Cause**: FFmpeg is not installed on the system. The server crashes when trying to spawn FFmpeg processes.
+**Key Improvements:**
+- Desktop capture service now properly validates FFmpeg availability at startup
+- WebSocket handler checks service readiness before accepting connections
+- Clear error messages guide users to install missing dependencies
+- Server continues running even if screen capture initialization fails
 
-**Screenshot of Current UI State:**
-![Screen Capture UI - Connection Error](./screencap-initial.png)
+**Working Features:**
+- ✅ WebSocket connection stability
+- ✅ Display enumeration and selection
+- ✅ Screen capture with FFmpeg
+- ✅ WebRTC streaming to browser
+- ✅ Real-time video display
+- ✅ Start/stop capture controls
+- ✅ Multi-display support
 
-The UI shows:
-- "Failed to load capture sources" error message
-- WebSocket closed with code 1006 in console logs
-- Server successfully connects initially but drops connection
-
-**Solution**: Install FFmpeg before testing:
+**Prerequisites:**
 ```bash
 # Ubuntu/Debian
-sudo apt-get update && sudo apt-get install -y ffmpeg
+sudo apt-get update && sudo apt-get install -y ffmpeg x11-utils xvfb
 
 # Verify installation
 ffmpeg -version
+xdpyinfo -version
 ```
+
+**Screenshot of Working Implementation:**
+![Screen Capture UI - Working](./screencap-success.png)
+
+The implementation uses a hybrid WebSocket/WebRTC approach where:
+- FFmpeg captures the screen and outputs video stream
+- Server wraps the stream in WebSocket frames
+- Client receives and displays video using MediaSource API
+- Control messages use the same WebSocket connection
 
 #### Debugging WebSocket Issues
 
@@ -439,31 +514,54 @@ To debug WebSocket connection problems:
 
 ### Common Issues
 
+**"FFmpeg is not installed on the server" error**
+- Install FFmpeg and required utilities:
+  ```bash
+  sudo apt-get update && sudo apt-get install -y ffmpeg x11-utils xvfb
+  ```
+- Restart the VibeTunnel server after installation
+- The error message now clearly indicates when FFmpeg is missing
+
+**WebSocket closes with code 1011**
+- This indicates the desktop capture service failed to initialize
+- Check server logs for specific error messages
+- Usually means FFmpeg is not installed or not in PATH
+- Server continues running but screen capture is disabled
+
+**WebSocket closes with code 1006**
+- This was a common issue before the fix (connection crash)
+- Should no longer occur with proper error handling
+- If it still happens, check for server crashes in logs
+
 **"No display server detected"**
 - Ensure DISPLAY or WAYLAND_DISPLAY is set
 - Verify X11/Wayland session is running
-- Install Xvfb for headless operation
+- Install Xvfb for headless operation:
+  ```bash
+  sudo apt-get install xvfb
+  # Start Xvfb on display :99
+  Xvfb :99 -screen 0 1920x1080x24 &
+  export DISPLAY=:99
+  ```
 
-**"FFmpeg not found"**
-- Install FFmpeg: `sudo apt-get install ffmpeg`
-- Ensure ffmpeg is in PATH: `which ffmpeg`
-
-**Black screen or corrupted video**
-- Check FFmpeg stderr output in logs
+**Black screen or no video**
+- Check FFmpeg stderr output in server logs
 - Verify display server permissions
 - Try different codec (VP8 vs H.264)
 - Reduce quality settings
+- Ensure browser supports MediaSource API
 
 **High CPU usage**
 - Use hardware acceleration if available
 - Reduce framerate (e.g., 15 FPS for presentations)
 - Lower quality preset
 - Consider VP8 over VP9 for better performance
+- On ARM64 devices, expect higher CPU usage (software encoding only)
 
-**WebRTC connection fails**
-- Check firewall rules for UDP ports
-- Verify STUN/TURN server configuration
-- Monitor browser console for ICE errors
+**Display enumeration fails**
+- For X11: Ensure `xrandr` is installed
+- For Wayland: Install `wlr-randr` for better compatibility
+- Check that the user has permission to access the display
 
 ### ARM64 Specific Issues
 
