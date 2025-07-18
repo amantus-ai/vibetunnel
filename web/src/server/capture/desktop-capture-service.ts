@@ -135,18 +135,57 @@ export class DesktopCaptureService extends EventEmitter {
       // Start server-side capture
       const captureStream = await this.startServerCapture(options);
       session.captureStream = captureStream;
+      
+      logger.log(`Capture stream created for session ${sessionId}`);
+      logger.log(`Stream readable: ${captureStream.stream.readable}, isPaused: ${captureStream.stream.isPaused?.() ?? 'N/A'}`);
+      
+      // Stats interval will be created after stream setup
+      let statsInterval: NodeJS.Timeout;
+      
+      // Monitor stream lifecycle
+      captureStream.stream.once('data', () => {
+        logger.log(`First data received from capture stream for session ${sessionId}`);
+      });
+      
+      captureStream.stream.on('end', () => {
+        logger.log(`Capture stream ended for session ${sessionId}`);
+        if (statsInterval) clearInterval(statsInterval);
+      });
+      
+      captureStream.stream.on('close', () => {
+        logger.log(`Capture stream closed for session ${sessionId}`);
+      });
+      
+      captureStream.stream.on('error', (error) => {
+        logger.error(`Capture stream error for session ${sessionId}:`, error);
+      });
 
       // Only convert to WebRTC format for Mac/Windows
       // Linux uses direct WebSocket streaming
-      let statsInterval: NodeJS.Timeout;
       if (process.platform !== 'linux') {
         const mediaStream = await convertToWebRTC(captureStream);
         session.mediaStream = mediaStream;
-
-        // Clean up on stop
-        mediaStream.stream.once('inactive', () => {
-          clearInterval(statsInterval);
-        });
+      } else {
+        // For Linux, ensure the stream starts flowing to prevent FFmpeg from exiting
+        // Buffer the stream data temporarily until WebRTC handler takes over
+        logger.log('Linux platform detected - buffering stream to keep FFmpeg alive');
+        
+        const tempBuffer: Buffer[] = [];
+        let bufferSize = 0;
+        const maxBufferSize = 10 * 1024 * 1024; // 10MB max buffer
+        
+        const dataHandler = (chunk: Buffer) => {
+          if (bufferSize < maxBufferSize) {
+            tempBuffer.push(chunk);
+            bufferSize += chunk.length;
+          }
+        };
+        
+        captureStream.stream.on('data', dataHandler);
+        
+        // Store reference to clean up later
+        (session as any)._tempDataHandler = dataHandler;
+        (session as any)._tempBuffer = tempBuffer;
       }
 
       // Update stats periodically
@@ -196,7 +235,18 @@ export class DesktopCaptureService extends EventEmitter {
       cursor: options.cursor !== false,
     };
 
-    return await this.ffmpegCapture.startCapture(this.displayServer, captureOptions);
+    const captureStream = await this.ffmpegCapture.startCapture(this.displayServer, captureOptions);
+    
+    // Listen for FFmpeg exit events to debug early termination
+    this.ffmpegCapture.once('exit', ({ code, signal }) => {
+      logger.error(`FFmpeg exited during capture: code=${code}, signal=${signal}`);
+    });
+    
+    this.ffmpegCapture.once('error', (error) => {
+      logger.error('FFmpeg error during capture:', error);
+    });
+
+    return captureStream;
   }
 
   async stopCapture(sessionId: string): Promise<void> {

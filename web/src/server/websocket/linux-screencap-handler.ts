@@ -266,6 +266,14 @@ export class LinuxScreencapHandler extends EventEmitter {
       const webrtcHandler = new LinuxWebRTCHandler(session, sessionId || session.id);
       this.webrtcHandlers.set(clientId, webrtcHandler);
 
+      // Initialize the WebRTC handler to set up the FFmpeg stream
+      await webrtcHandler.initialize();
+      logger.log('WebRTC handler initialized');
+
+      // Create the offer immediately for WebSocket streaming
+      await webrtcHandler.createOffer();
+      logger.log('Created initial offer for WebSocket streaming');
+
       // Set up WebRTC event handlers
       webrtcHandler.on('offer', (offer) => {
         this.sendMessage(ws, {
@@ -329,10 +337,6 @@ export class LinuxScreencapHandler extends EventEmitter {
           payload: {},
         });
       });
-
-      // Initialize WebRTC and create offer
-      await webrtcHandler.initialize();
-      await webrtcHandler.createOffer();
 
       // Send success response
       this.sendMessage(ws, {

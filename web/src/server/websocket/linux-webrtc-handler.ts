@@ -34,6 +34,8 @@ export class LinuxWebRTCHandler extends EventEmitter {
 
   async initialize(): Promise<void> {
     logger.log('Initializing Linux WebRTC handler for WebSocket streaming');
+    logger.log(`Capture session ID: ${this.captureSession.id}`);
+    logger.log(`Capture stream available: ${!!this.captureSession.captureStream}`);
 
     // Get the FFmpeg stream from capture session
     if (this.captureSession.captureStream) {
@@ -43,6 +45,12 @@ export class LinuxWebRTCHandler extends EventEmitter {
       logger.log(
         `FFmpeg stream available: ${!!this.ffmpegStream}, readable: ${this.ffmpegStream?.readable}`
       );
+      
+      // Check if stream is already ended
+      if (this.ffmpegStream.readableEnded) {
+        logger.error('FFmpeg stream is already ended!');
+        return;
+      }
 
       // IMPORTANT: Resume the stream to ensure data flows
       // Node.js streams might be paused by default
@@ -53,8 +61,32 @@ export class LinuxWebRTCHandler extends EventEmitter {
 
       // Set up stream buffering
       this.setupStreamBuffering();
+      
+      // Check if there's buffered data from the capture service
+      const tempHandler = (this.captureSession as any)._tempDataHandler;
+      const tempBuffer = (this.captureSession as any)._tempBuffer;
+      
+      if (tempHandler) {
+        logger.log('Removing temporary data handler from capture service');
+        this.ffmpegStream.removeListener('data', tempHandler);
+        delete (this.captureSession as any)._tempDataHandler;
+      }
+      
+      if (tempBuffer && tempBuffer.length > 0) {
+        logger.log(`Replaying ${tempBuffer.length} buffered chunks`);
+        // Replay buffered data
+        for (const chunk of tempBuffer) {
+          this.emit('video-frame', chunk);
+        }
+        delete (this.captureSession as any)._tempBuffer;
+      }
     } else {
       logger.error('No capture stream available from session');
+      logger.error('Session details:', {
+        id: this.captureSession.id,
+        hasStream: !!this.captureSession.captureStream,
+        startTime: this.captureSession.startTime
+      });
     }
   }
 

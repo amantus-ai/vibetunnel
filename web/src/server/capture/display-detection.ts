@@ -34,7 +34,7 @@ export async function detectDisplayServer(): Promise<DisplayServerInfo> {
 
     return {
       type: 'wayland',
-      display: process.env.WAYLAND_DISPLAY,
+      display: ffmpegSupport ? process.env.WAYLAND_DISPLAY : (process.env.DISPLAY || ':0'),
       captureMethod: ffmpegSupport ? 'pipewire' : 'x11grab', // Fallback to XWayland
       availableScreens: await getWaylandScreens(),
     };
