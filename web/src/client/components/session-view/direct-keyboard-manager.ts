@@ -58,6 +58,10 @@ export class DirectKeyboardManager {
   private keyboardActivationTimeout: number | null = null;
   private captureClickHandler: ((e: Event) => void) | null = null;
   private globalPasteHandler: ((e: Event) => void) | null = null;
+  private instanceId: string;
+  private hiddenInputFocused = false;
+  private keyboardModeTimestamp = 0;
+  private compositionBuffer = '';
 
   // IME composition state tracking for Japanese/CJK input
   private isComposing = false;

@@ -63,6 +63,7 @@ export class SessionCreateForm extends LitElement {
   }> = [];
   @state() private isDiscovering = false;
   @state() private macAppConnected = false;
+  @state() private selectedQuickStart = '';
 
   quickStartCommands = [
     { label: 'claude', command: 'claude' },

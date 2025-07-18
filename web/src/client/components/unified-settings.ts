@@ -62,6 +62,8 @@ export class UnifiedSettings extends LitElement {
   private subscriptionChangeUnsubscribe?: () => void;
   private unsubscribeResponsive?: () => void;
   private configWebSocket?: WebSocket;
+  private serverConfig?: ServerConfig;
+  private hasNotificationChanges = false;
 
   connectedCallback() {
     super.connectedCallback();

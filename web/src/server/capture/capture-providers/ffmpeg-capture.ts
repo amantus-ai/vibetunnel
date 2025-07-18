@@ -207,7 +207,7 @@ export class FFmpegCapture extends EventEmitter {
 
         const inputDisplay = `${displayServer.display}+${screenInfo.x},${screenInfo.y}`;
         logger.log(`X11 capture input: ${inputDisplay} (display type: ${displayServer.type})`);
-        
+
         args.push(
           '-f',
           'x11grab',

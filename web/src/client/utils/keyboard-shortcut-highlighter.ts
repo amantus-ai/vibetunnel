@@ -116,6 +116,7 @@ export function processKeyboardShortcuts(
  * ShortcutProcessor class encapsulates the shortcut detection and highlighting logic
  */
 class ShortcutProcessor {
+  private container: HTMLElement;
   private lines: NodeListOf<Element>;
   private processedRanges: Map<number, ProcessedRange[]> = new Map();
   private onShortcutClick: (keySequence: string) => void;

@@ -36,13 +36,16 @@ export class WebSocketVideoHandler {
             logger.log('MediaSource opened, ready state:', this.mediaSource?.readyState);
 
             // Create source buffer for WebM/VP8
-            this.sourceBuffer = this.mediaSource?.addSourceBuffer('video/webm; codecs="vp8"');
+            this.sourceBuffer =
+              this.mediaSource?.addSourceBuffer('video/webm; codecs="vp8"') || null;
             logger.log('Created SourceBuffer for video/webm; codecs="vp8"');
 
-            this.sourceBuffer.addEventListener('updateend', () => {
-              logger.log('SourceBuffer updateend event, queue length:', this.frameQueue.length);
-              this.processFrameQueue();
-            });
+            if (this.sourceBuffer) {
+              this.sourceBuffer.addEventListener('updateend', () => {
+                logger.log('SourceBuffer updateend event, queue length:', this.frameQueue.length);
+                this.processFrameQueue();
+              });
+            }
 
             // Create a MediaStream from the video element
             // @ts-ignore - captureStream might not be in TypeScript definitions

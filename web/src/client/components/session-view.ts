@@ -81,6 +81,8 @@ export class SessionView extends LitElement {
   @state() private touchStartY = 0;
   @state() private showCtrlAlpha = false;
   @state() private terminalMaxCols = 0;
+  @state() private terminalCols = 0;
+  @state() private terminalRows = 0;
   @state() private showWidthSelector = false;
   @state() private customWidth = '';
   @state() private showFileBrowser = false;

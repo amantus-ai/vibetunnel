@@ -45,7 +45,7 @@ export class LinuxWebRTCHandler extends EventEmitter {
       logger.log(
         `FFmpeg stream available: ${!!this.ffmpegStream}, readable: ${this.ffmpegStream?.readable}`
       );
-      
+
       // Check if stream is already ended
       if (this.ffmpegStream.readableEnded) {
         logger.error('FFmpeg stream is already ended!');
@@ -61,17 +61,17 @@ export class LinuxWebRTCHandler extends EventEmitter {
 
       // Set up stream buffering
       this.setupStreamBuffering();
-      
+
       // Check if there's buffered data from the capture service
       const tempHandler = (this.captureSession as any)._tempDataHandler;
       const tempBuffer = (this.captureSession as any)._tempBuffer;
-      
+
       if (tempHandler) {
         logger.log('Removing temporary data handler from capture service');
         this.ffmpegStream.removeListener('data', tempHandler);
         delete (this.captureSession as any)._tempDataHandler;
       }
-      
+
       if (tempBuffer && tempBuffer.length > 0) {
         logger.log(`Replaying ${tempBuffer.length} buffered chunks`);
         // Replay buffered data
@@ -85,7 +85,7 @@ export class LinuxWebRTCHandler extends EventEmitter {
       logger.error('Session details:', {
         id: this.captureSession.id,
         hasStream: !!this.captureSession.captureStream,
-        startTime: this.captureSession.startTime
+        startTime: this.captureSession.startTime,
       });
     }
   }

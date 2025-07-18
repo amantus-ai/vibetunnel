@@ -20,6 +20,7 @@ export class WebSocketInputClient {
   private session: Session | null = null;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private connectionPromise: Promise<void> | null = null;
+  private isConnecting = false;
 
   // Configuration
   private readonly RECONNECT_DELAY = 1000;

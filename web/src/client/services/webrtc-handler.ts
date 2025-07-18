@@ -55,6 +55,7 @@ export class WebRTCHandler {
   private hasTriggeredVP8Upgrade = false;
   private vp8UpgradeTimeout?: number;
   private websocketVideoHandler: WebSocketVideoHandler | null = null;
+  private isWebSocketStreaming = false;
 
   constructor(wsClient: ScreencapWebSocketClient) {
     this.wsClient = wsClient;
