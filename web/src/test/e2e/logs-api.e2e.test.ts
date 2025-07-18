@@ -3,7 +3,7 @@ import { type ServerInstance, startTestServer, stopServer } from '../utils/serve
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-describe.sequential.skip('Logs API Tests', () => {
+describe.sequential('Logs API Tests', () => {
   let server: ServerInstance | null = null;
 
   beforeAll(async () => {
