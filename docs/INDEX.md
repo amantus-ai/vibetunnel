@@ -7,7 +7,7 @@ This index provides a comprehensive overview of all documentation in the VibeTun
 ### Getting Started
 - [**README.md**](../README.md) - Project overview, quick start guide, and basic usage
 - [**introduction.mdx**](introduction.mdx) - Mintlify documentation landing page
-- [**mint.json**](../mint.json) - Mintlify documentation configuration
+- [**docs.json**](../docs.json) - Mintlify documentation configuration
 
 ### Architecture & Design
 - [**ARCHITECTURE.md**](ARCHITECTURE.md) - System architecture, component relationships, data flow

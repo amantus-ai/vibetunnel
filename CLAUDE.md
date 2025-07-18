@@ -47,6 +47,11 @@ When the user says "release" or asks to create a release, ALWAYS read and follow
 6. **Never kill all sessions**
    - You are running inside a session yourself; killing all sessions would terminate your own process
 
+7. **NEVER rename docs.json to mint.json**
+   - The Mintlify configuration file is called `docs.json` in this project
+   - Do NOT rename it to mint.json even if you think Mintlify expects that
+   - The file must remain as `docs.json`
+
 ### Git Workflow Reminders
 - Our workflow: start from main → create branch → make PR → merge → return to main
 - PRs sometimes contain multiple different features and that's okay
