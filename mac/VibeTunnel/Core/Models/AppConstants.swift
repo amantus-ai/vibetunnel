@@ -53,7 +53,7 @@ enum AppConstants {
 
         // Server Configuration
         static let serverPort = 4_020
-        static let dashboardAccessMode = "localhost"
+        static let dashboardAccessMode = DashboardAccessMode.network.rawValue
         static let cleanupOnStartup = true
         static let authenticationMode = "os"
 
