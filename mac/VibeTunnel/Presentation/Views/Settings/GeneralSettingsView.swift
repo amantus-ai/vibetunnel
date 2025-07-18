@@ -37,12 +37,6 @@ struct GeneralSettingsView: View {
     var updateChannel: UpdateChannel {
         UpdateChannel(rawValue: updateChannelRaw) ?? .stable
     }
-    
-    private func updateNotificationPreferences() {
-        // Load current preferences and notify the service
-        let prefs = NotificationService.NotificationPreferences()
-        NotificationService.shared.updatePreferences(prefs)
-    }
 
     var body: some View {
         NavigationStack {
@@ -71,57 +65,6 @@ struct GeneralSettingsView: View {
                         Text("Automatically start VibeTunnel when you log into your Mac.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                    }
-
-                    // Show Session Notifications
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle("Show Session Notifications", isOn: $showNotifications)
-                        Text("Display native macOS notifications for session and command events.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        if showNotifications {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Notify me for:")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.leading, 20)
-                                    .padding(.top, 4)
-                                
-                                VStack(alignment: .leading, spacing: 4) {
-                                    NotificationCheckbox(
-                                        title: "Session starts",
-                                        key: "notifications.sessionStart",
-                                        updateAction: updateNotificationPreferences
-                                    )
-                                    
-                                    NotificationCheckbox(
-                                        title: "Session ends",
-                                        key: "notifications.sessionExit",
-                                        updateAction: updateNotificationPreferences
-                                    )
-                                    
-                                    NotificationCheckbox(
-                                        title: "Commands complete (> 3 seconds)",
-                                        key: "notifications.commandCompletion",
-                                        updateAction: updateNotificationPreferences
-                                    )
-                                    
-                                    NotificationCheckbox(
-                                        title: "Commands fail",
-                                        key: "notifications.commandError",
-                                        updateAction: updateNotificationPreferences
-                                    )
-                                    
-                                    NotificationCheckbox(
-                                        title: "Terminal bell (\u{0007})",
-                                        key: "notifications.bell",
-                                        updateAction: updateNotificationPreferences
-                                    )
-                                }
-                                .padding(.leading, 20)
-                            }
-                        }
                     }
 
                     // Show in Dock
@@ -231,51 +174,5 @@ struct GeneralSettingsView: View {
         Task {
             localIPAddress = await ServerConfigurationHelpers.updateLocalIPAddress(accessMode: accessMode)
         }
-    }
-}
-
-// MARK: - Notification Checkbox Component
-
-private struct NotificationCheckbox: View {
-    let title: String
-    let key: String
-    let updateAction: () -> Void
-    
-    @State private var isChecked: Bool
-    
-    init(title: String, key: String, updateAction: @escaping () -> Void) {
-        self.title = title
-        self.key = key
-        self.updateAction = updateAction
-        self._isChecked = State(initialValue: UserDefaults.standard.bool(forKey: key))
-    }
-    
-    var body: some View {
-        Button(action: toggleCheck) {
-            HStack(spacing: 6) {
-                Image(systemName: isChecked ? "checkmark.square.fill" : "square")
-                    .foregroundStyle(isChecked ? Color.accentColor : Color.secondary)
-                    .font(.system(size: 14))
-                    .animation(.easeInOut(duration: 0.15), value: isChecked)
-                
-                Text(title)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.primary)
-                
-                Spacer()
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onAppear {
-            // Sync with UserDefaults on appear
-            isChecked = UserDefaults.standard.bool(forKey: key)
-        }
-    }
-    
-    private func toggleCheck() {
-        isChecked.toggle()
-        UserDefaults.standard.set(isChecked, forKey: key)
-        updateAction()
     }
 }

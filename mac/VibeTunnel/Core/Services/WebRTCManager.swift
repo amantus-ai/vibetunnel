@@ -254,7 +254,7 @@ final class WebRTCManager: NSObject {
         let height = CVPixelBufferGetHeight(pixelBuffer)
 
         // Use nonisolated async variant with sending parameter
-        Task { @MainActor in
+        Task.detached {
             await self.sendVideoFrame(
                 videoFrame,
                 width: Int32(width),

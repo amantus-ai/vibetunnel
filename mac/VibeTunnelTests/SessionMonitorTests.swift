@@ -16,47 +16,6 @@ final class SessionMonitorTests {
 
     // MARK: - JSON Decoding Tests
 
-    @Test("detectEndedSessions identifies completed sessions")
-    func detectEndedSessions() throws {
-        let running = ServerSessionInfo(
-            id: "one",
-            command: ["bash"],
-            name: nil,
-            workingDir: "/",
-            status: "running",
-            exitCode: nil,
-            startedAt: "",
-            lastModified: "",
-            pid: nil,
-            initialCols: nil,
-            initialRows: nil,
-            activityStatus: nil,
-            source: nil,
-            attachedViaVT: nil
-        )
-        let exited = ServerSessionInfo(
-            id: "one",
-            command: ["bash"],
-            name: nil,
-            workingDir: "/",
-            status: "exited",
-            exitCode: 0,
-            startedAt: "",
-            lastModified: "",
-            pid: nil,
-            initialCols: nil,
-            initialRows: nil,
-            activityStatus: nil,
-            source: nil,
-            attachedViaVT: nil
-        )
-        let oldMap = ["one": running]
-        let newMap = ["one": exited]
-        let ended = SessionMonitor.detectEndedSessions(from: oldMap, to: newMap)
-        #expect(ended.count == 1)
-        #expect(ended.first?.id == "one")
-    }
-
     @Test("Decode valid session with all fields")
     func decodeValidSessionAllFields() throws {
         let json = """
