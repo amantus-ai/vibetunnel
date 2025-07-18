@@ -81,7 +81,6 @@ export abstract class HeaderBase extends LitElement {
     this.dispatchEvent(new CustomEvent('logout'));
   }
 
-
   protected toggleUserMenu() {
     this.showUserMenu = !this.showUserMenu;
   }
