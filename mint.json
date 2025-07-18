@@ -103,7 +103,9 @@
               "docs/development",
               "docs/build-system",
               "mac/docs/BuildRequirements",
-              "web/docs/custom-node"
+              "web/docs/custom-node",
+              "docs/custom-node-build-flags",
+              "docs/vite-plan"
             ]
           },
           {
@@ -112,6 +114,8 @@
               "mac/docs/DEVELOPMENT-SIGNING",
               "mac/docs/CODE_SIGNING_SETUP",
               "mac/docs/SIGNING-AND-NOTARIZATION",
+              "mac/docs/screencap",
+              "mac/docs/screencapturekit",
               "apple/docs/modern-swift",
               "apple/docs/swift-concurrency",
               "apple/docs/swiftui"
@@ -123,7 +127,9 @@
               "ios/docs/ios-plan",
               "ios/docs/modern-swift",
               "docs/ios-enhancements",
-              "docs/ios-web-parity-plan"
+              "docs/ios-web-parity-plan",
+              "docs/ios-update-progress",
+              "web/docs/ios-safari-paste"
             ]
           },
           {
@@ -141,6 +147,8 @@
               "docs/testing",
               "apple/docs/swift-testing-playbook",
               "web/docs/playwright-testing",
+              "web/docs/playwright-plan",
+              "web/docs/playwright-test-design",
               "docs/TESTING_EXTERNAL_DEVICES"
             ]
           }
@@ -156,6 +164,7 @@
             "pages": [
               "docs/deployment",
               "docs/RELEASE_PROCESS",
+              "docs/RELEASE_IMPROVEMENTS",
               "mac/docs/RELEASE",
               "mac/docs/release-guide"
             ]
@@ -193,7 +202,6 @@
             "group": "Terminal Features",
             "pages": [
               "web/docs/terminal-titles",
-              "web/docs/ios-safari-paste",
               "web/docs/large-paste-investigation"
             ]
           },
