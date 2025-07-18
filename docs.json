@@ -44,148 +44,118 @@
       "url": "https://discord.gg/vibetunnel"
     }
   ],
-  "navigation": {
-    "dropdowns": [
-      {
-        "dropdown": "Documentation",
-        "icon": "book",
-        "description": "Learn about VibeTunnel",
-        "groups": [
-          {
-            "group": "Getting Started",
-            "pages": [
-              "introduction",
-              "docs/INDEX",
-              "docs/project-overview",
-              "docs/keyboard-shortcuts",
-              "docs/CONTRIBUTING"
-            ]
-          },
-          {
-            "group": "Installation",
-            "pages": [
-              "mac/README",
-              "ios/README",
-              "web/docs/VT_INSTALLATION"
-            ]
-          },
-          {
-            "group": "Architecture",
-            "pages": [
-              "docs/ARCHITECTURE",
-              "docs/architecture-mario",
-              "docs/spec",
-              "docs/ios-spec",
-              "web/docs/spec",
-              "mac/docs/BuildArchitectures",
-              "web/docs/socket-protocol",
-              "docs/authentication"
-            ]
-          },
-          {
-            "group": "Security",
-            "pages": [
-              "docs/security",
-              "docs/push-notification",
-              "docs/WEBRTC_CONFIG"
-            ]
-          }
-        ]
-      },
-      {
-        "dropdown": "Development",
-        "icon": "code",
-        "description": "Build and contribute",
-        "groups": [
-          {
-            "group": "Getting Started",
-            "pages": [
-              "docs/development",
-              "docs/build-system",
-              "docs/testing",
-              "docs/logging-style-guide"
-            ]
-          },
-          {
-            "group": "macOS Development",
-            "pages": [
-              "mac/docs/BuildRequirements",
-              "mac/docs/code-signing",
-              "mac/docs/screencap",
-              "mac/docs/screencapturekit"
-            ]
-          },
-          {
-            "group": "iOS Development",
-            "pages": [
-              "apple/docs/modern-swift",
-              "apple/docs/swift-concurrency",
-              "apple/docs/swiftui",
-              "apple/docs/swift-testing-playbook"
-            ]
-          },
-          {
-            "group": "Web Development",
-            "pages": [
-              "web/docs/performance",
-              "web/docs/terminal-titles",
-              "docs/TESTING_EXTERNAL_DEVICES"
-            ]
-          }
-        ]
-      },
-      {
-        "dropdown": "Operations",
-        "icon": "ship",
-        "description": "Deploy and maintain",
-        "groups": [
-          {
-            "group": "Release Process",
-            "pages": [
-              "docs/deployment",
-              "docs/RELEASE"
-            ]
-          },
-          {
-            "group": "Distribution",
-            "pages": [
-              "web/docs/npm",
-              "mac/docs/sparkle-keys",
-              "mac/docs/sparkle-stats-store"
-            ]
-          },
-          {
-            "group": "Configuration",
-            "pages": [
-              "docs/custom-node",
-              "apple/docs/logging-private-fix"
-            ]
-          }
-        ]
-      },
-      {
-        "dropdown": "Reference",
-        "icon": "book-open",
-        "description": "API and technical reference",
-        "groups": [
-          {
-            "group": "File Structure",
-            "pages": [
-              "docs/files",
-              ".github/workflows/README.md"
-            ]
-          },
-          {
-            "group": "Tools & Integration",
-            "pages": [
-              "docs/claude",
-              "docs/gemini"
-            ]
-          }
-        ]
-      }
-    ]
-  },
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "introduction",
+        "docs/INDEX",
+        "docs/project-overview",
+        "docs/keyboard-shortcuts",
+        "docs/CONTRIBUTING"
+      ]
+    },
+    {
+      "group": "Installation",
+      "pages": [
+        "mac/README",
+        "ios/README",
+        "web/docs/VT_INSTALLATION"
+      ]
+    },
+    {
+      "group": "Architecture",
+      "pages": [
+        "docs/ARCHITECTURE",
+        "docs/architecture-mario",
+        "docs/spec",
+        "docs/ios-spec",
+        "web/docs/spec",
+        "mac/docs/BuildArchitectures",
+        "web/docs/socket-protocol",
+        "docs/authentication"
+      ]
+    },
+    {
+      "group": "Security",
+      "pages": [
+        "docs/security",
+        "docs/push-notification",
+        "docs/WEBRTC_CONFIG"
+      ]
+    },
+    {
+      "group": "Development",
+      "pages": [
+        "docs/development",
+        "docs/build-system",
+        "docs/testing",
+        "docs/logging-style-guide"
+      ]
+    },
+    {
+      "group": "macOS Development",
+      "pages": [
+        "mac/docs/BuildRequirements",
+        "mac/docs/code-signing",
+        "mac/docs/screencap",
+        "mac/docs/screencapturekit"
+      ]
+    },
+    {
+      "group": "iOS Development",
+      "pages": [
+        "apple/docs/modern-swift",
+        "apple/docs/swift-concurrency",
+        "apple/docs/swiftui",
+        "apple/docs/swift-testing-playbook"
+      ]
+    },
+    {
+      "group": "Web Development",
+      "pages": [
+        "web/docs/performance",
+        "web/docs/terminal-titles",
+        "docs/TESTING_EXTERNAL_DEVICES"
+      ]
+    },
+    {
+      "group": "Release Process",
+      "pages": [
+        "docs/deployment",
+        "docs/RELEASE"
+      ]
+    },
+    {
+      "group": "Distribution",
+      "pages": [
+        "web/docs/npm",
+        "mac/docs/sparkle-keys",
+        "mac/docs/sparkle-stats-store"
+      ]
+    },
+    {
+      "group": "Configuration",
+      "pages": [
+        "docs/custom-node",
+        "apple/docs/logging-private-fix"
+      ]
+    },
+    {
+      "group": "File Structure",
+      "pages": [
+        "docs/files",
+        ".github/workflows/README.md"
+      ]
+    },
+    {
+      "group": "Tools & Integration",
+      "pages": [
+        "docs/claude",
+        "docs/gemini"
+      ]
+    }
+  ],
   "footerSocials": {
     "twitter": "https://twitter.com/vibetunnel",
     "github": "https://github.com/amantus-ai/vibetunnel",
