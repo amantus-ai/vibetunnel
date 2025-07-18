@@ -1302,19 +1302,6 @@ export class VibeTunnelApp extends LitElement {
 
   private setupNotificationHandlers() {
     // Listen for notification settings events
-
-    // Listen for screenshare events
-    window.addEventListener('start-screenshare', (_e: Event) => {
-      logger.log('🔥 Starting screenshare session...');
-
-      // Navigate to screencap in same window instead of opening new window
-      const screencapUrl = '/screencap';
-
-      // Navigate to screencap (no need for pushState when using location.href)
-      window.location.href = screencapUrl;
-
-      logger.log('✅ Navigating to screencap in same window');
-    });
   }
 
   private setupPreferences() {

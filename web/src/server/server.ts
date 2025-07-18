@@ -21,9 +21,7 @@ import { createLogRoutes } from './routes/logs.js';
 import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createRepositoryRoutes } from './routes/repositories.js';
-import { createScreencapRoutes, initializeScreencap } from './routes/screencap.js';
 import { createSessionRoutes } from './routes/sessions.js';
-import { createWebRTCConfigRouter } from './routes/webrtc-config.js';
 import { WebSocketInputHandler } from './routes/websocket-input.js';
 import { ActivityMonitor } from './services/activity-monitor.js';
 import { AuthService } from './services/auth-service.js';
@@ -767,18 +765,8 @@ export async function createApp(): Promise<AppInstance> {
     logger.debug('Mounted push notification routes');
   }
 
-  // Mount screencap routes
-  app.use('/', createScreencapRoutes());
-  logger.debug('Mounted screencap routes');
-
-  // WebRTC configuration route
-  app.use('/api', createWebRTCConfigRouter());
-  logger.debug('Mounted WebRTC config routes');
-
-  // Initialize screencap service and control socket
+  // Initialize control socket
   try {
-    await initializeScreencap();
-
     // Set up configuration update callback
     controlUnixHandler.setConfigUpdateCallback((updatedConfig) => {
       // Update server configuration
@@ -805,8 +793,8 @@ export async function createApp(): Promise<AppInstance> {
     await controlUnixHandler.start();
     logger.log(chalk.green('Control UNIX socket: READY'));
   } catch (error) {
-    logger.error('Failed to initialize screencap or control socket:', error);
-    logger.warn('Screen capture and Mac control features will not be available.');
+    logger.error('Failed to initialize control socket:', error);
+    logger.warn('Mac control features will not be available.');
     // Depending on the desired behavior, you might want to exit here
     // For now, we'll let the server continue without these features.
   }
@@ -820,7 +808,6 @@ export async function createApp(): Promise<AppInstance> {
     if (
       parsedUrl.pathname !== '/buffers' &&
       parsedUrl.pathname !== '/ws/input' &&
-      parsedUrl.pathname !== '/ws/screencap-signal' &&
       parsedUrl.pathname !== '/ws/config'
     ) {
       socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
@@ -978,20 +965,6 @@ export async function createApp(): Promise<AppInstance> {
       const userId = wsReq.userId || 'unknown';
 
       websocketInputHandler.handleConnection(ws, sessionId, userId);
-    } else if (pathname === '/ws/screencap-signal') {
-      logger.log('🖥️ Handling screencap WebSocket connection');
-      // Handle screencap WebRTC signaling from browser
-      const userId = wsReq.userId || 'unknown';
-      logger.log(`🖥️ Screencap WebSocket user: ${userId}`);
-
-      if (!controlUnixHandler) {
-        logger.error('❌ controlUnixHandler not initialized!');
-        ws.close();
-        return;
-      }
-
-      logger.log('✅ Passing connection to controlUnixHandler with userId:', userId);
-      controlUnixHandler.handleBrowserConnection(ws, userId);
     } else if (pathname === '/ws/config') {
       logger.log('⚙️ Handling config WebSocket connection');
       // Add client to the set

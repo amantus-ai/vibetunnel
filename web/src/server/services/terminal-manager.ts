@@ -7,6 +7,12 @@ import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('terminal-manager');
 
+// Helper function to truncate long strings for logging
+function truncateForLog(str: string, maxLength: number = 50): string {
+  if (str.length <= maxLength) return str;
+  return `${str.substring(0, maxLength)}...(${str.length} chars total)`;
+}
+
 // Flow control configuration
 const FLOW_CONTROL_CONFIG = {
   // When buffer exceeds this percentage of max lines, pause reading
@@ -148,7 +154,9 @@ export class TerminalManager {
 
     // Check if the file exists
     if (!fs.existsSync(streamPath)) {
-      logger.error(`Stream file does not exist for session ${sessionId}: ${streamPath}`);
+      logger.error(
+        `Stream file does not exist for session ${truncateForLog(sessionId)}: ${truncateForLog(streamPath, 100)}`
+      );
       return;
     }
 
@@ -197,14 +205,17 @@ export class TerminalManager {
               }
             }
           } catch (error) {
-            logger.error(`Error reading stream file for session ${sessionId}:`, error);
+            logger.error(
+              `Error reading stream file for session ${truncateForLog(sessionId)}:`,
+              error
+            );
           }
         }
       });
 
-      logger.log(chalk.green(`Watching stream file for session ${sessionId}`));
+      logger.log(chalk.green(`Watching stream file for session ${truncateForLog(sessionId)}`));
     } catch (error) {
-      logger.error(`Failed to watch stream file for session ${sessionId}:`, error);
+      logger.error(`Failed to watch stream file for session ${truncateForLog(sessionId)}:`, error);
       throw error;
     }
   }
@@ -333,7 +344,10 @@ export class TerminalManager {
 
           // Resume file watching after processing pending lines
           this.resumeFileWatcher(sessionId).catch((error) => {
-            logger.error(`Failed to resume file watcher for session ${sessionId}:`, error);
+            logger.error(
+              `Failed to resume file watcher for session ${truncateForLog(sessionId)}:`,
+              error
+            );
           });
         });
       } else if (!sessionTerminal.pendingLines || sessionTerminal.pendingLines.length === 0) {
@@ -343,7 +357,10 @@ export class TerminalManager {
 
         // Resume file watching
         this.resumeFileWatcher(sessionId).catch((error) => {
-          logger.error(`Failed to resume file watcher for session ${sessionId}:`, error);
+          logger.error(
+            `Failed to resume file watcher for session ${truncateForLog(sessionId)}:`,
+            error
+          );
         });
 
         logger.log(
@@ -421,7 +438,9 @@ export class TerminalManager {
 
         if (timestamp === 'exit') {
           // Session exited
-          logger.log(chalk.yellow(`Session ${sessionId} exited with code ${data[1]}`));
+          logger.log(
+            chalk.yellow(`Session ${truncateForLog(sessionId)} exited with code ${data[1]}`)
+          );
           if (sessionTerminal.watcher) {
             sessionTerminal.watcher.close();
           }
@@ -454,11 +473,13 @@ export class TerminalManager {
 
         if (stats && stats.count > 1) {
           // Log summary for repeated errors
-          logger.warn(formatErrorSummary(error, stats, `session ${sessionId}`));
+          logger.warn(formatErrorSummary(error, stats, `session ${truncateForLog(sessionId)}`));
         } else {
           // First occurrence - log the error with details
           const truncatedLine = line.length > 100 ? `${line.substring(0, 100)}...` : line;
-          logger.error(`Failed to parse stream line for session ${sessionId}: ${truncatedLine}`);
+          logger.error(
+            `Failed to parse stream line for session ${truncateForLog(sessionId)}: ${truncatedLine}`
+          );
           if (error instanceof Error && error.stack) {
             logger.debug(`Parse error details: ${error.message}`);
           }
@@ -474,7 +495,9 @@ export class TerminalManager {
     const terminal = await this.getTerminal(sessionId);
     const buffer = terminal.buffer.active;
     const sessionTerminal = this.terminals.get(sessionId);
-    logger.debug(`Getting buffer stats for session ${sessionId}: ${buffer.length} total rows`);
+    logger.debug(
+      `Getting buffer stats for session ${truncateForLog(sessionId)}: ${buffer.length} total rows`
+    );
 
     const maxLines = terminal.options.scrollback || 10000;
     const bufferUtilization = buffer.length / maxLines;
@@ -881,7 +904,7 @@ export class TerminalManager {
       // Clear write queue
       this.writeQueues.delete(sessionId);
 
-      logger.log(chalk.yellow(`Terminal closed for session ${sessionId}`));
+      logger.log(chalk.yellow(`Terminal closed for session ${truncateForLog(sessionId)}`));
     }
   }
 
@@ -899,7 +922,9 @@ export class TerminalManager {
     }
 
     for (const sessionId of toRemove) {
-      logger.log(chalk.yellow(`Cleaning up stale terminal for session ${sessionId}`));
+      logger.log(
+        chalk.yellow(`Cleaning up stale terminal for session ${truncateForLog(sessionId)}`)
+      );
       this.closeTerminal(sessionId);
     }
 
@@ -954,11 +979,19 @@ export class TerminalManager {
 
         if (stats && stats.count > 1) {
           // Log summary for repeated errors
-          logger.warn(formatErrorSummary(error, stats, `terminal write for session ${sessionId}`));
+          logger.warn(
+            formatErrorSummary(
+              error,
+              stats,
+              `terminal write for session ${truncateForLog(sessionId)}`
+            )
+          );
         } else {
           // First occurrence - log with more detail
           const errorMessage = error instanceof Error ? error.message : String(error);
-          logger.warn(`Terminal write error for session ${sessionId}: ${errorMessage}`);
+          logger.warn(
+            `Terminal write error for session ${truncateForLog(sessionId)}: ${errorMessage}`
+          );
           if (error instanceof Error && error.stack) {
             logger.debug(`Write error stack: ${error.stack}`);
           }
@@ -1049,7 +1082,9 @@ export class TerminalManager {
     const listeners = this.bufferListeners.get(sessionId);
     if (!listeners || listeners.size === 0) return;
 
-    logger.debug(`Notifying ${listeners.size} buffer change listeners for session ${sessionId}`);
+    logger.debug(
+      `Notifying ${listeners.size} buffer change listeners for session ${truncateForLog(sessionId)}`
+    );
 
     try {
       // Get full buffer snapshot
@@ -1060,11 +1095,17 @@ export class TerminalManager {
         try {
           listener(sessionId, snapshot);
         } catch (error) {
-          logger.error(`Error notifying buffer change listener for ${sessionId}:`, error);
+          logger.error(
+            `Error notifying buffer change listener for ${truncateForLog(sessionId)}:`,
+            error
+          );
         }
       });
     } catch (error) {
-      logger.error(`Error getting buffer snapshot for notification ${sessionId}:`, error);
+      logger.error(
+        `Error getting buffer snapshot for notification ${truncateForLog(sessionId)}:`,
+        error
+      );
     }
   }
 

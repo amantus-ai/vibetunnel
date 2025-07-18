@@ -41,10 +41,6 @@ struct RequestPermissionsPageView: View {
         return permissionManager.hasPermission(.accessibility)
     }
 
-    private var hasScreenRecordingPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.screenRecording)
-    }
 
     var body: some View {
         VStack(spacing: 30) {
@@ -54,7 +50,7 @@ struct RequestPermissionsPageView: View {
                     .fontWeight(.semibold)
 
                 Text(
-                    "VibeTunnel needs permissions for automation to start terminal sessions, accessibility to send commands, and screen recording for screen capture."
+                    "VibeTunnel needs permissions for automation to start terminal sessions and accessibility to send commands."
                 )
                 .font(.body)
                 .foregroundColor(.secondary)
@@ -98,26 +94,6 @@ struct RequestPermissionsPageView: View {
                     } else {
                         Button("Grant Accessibility Permission") {
                             permissionManager.requestPermission(.accessibility)
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.regular)
-                        .frame(width: 250, height: 32)
-                    }
-
-                    // Screen Recording permission
-                    if hasScreenRecordingPermission {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                            Text("Screen Recording granted")
-                                .foregroundColor(.secondary)
-                        }
-                        .font(.body)
-                        .frame(maxWidth: 250, alignment: .leading)
-                        .frame(height: 32)
-                    } else {
-                        Button("Grant Screen Recording Permission") {
-                            permissionManager.requestPermission(.screenRecording)
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.regular)

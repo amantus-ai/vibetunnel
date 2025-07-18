@@ -61,7 +61,5 @@
 	<string>VibeTunnel needs to control terminal applications to create new terminal sessions from the dashboard.</string>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>VibeTunnel will notify you about important events such as new terminal connections, session status changes, and available updates.</string>
-	<key>NSScreenCaptureUsageDescription</key>
-	<string>VibeTunnel needs screen recording permission to share your screen with connected browsers. This allows you to view your desktop and applications remotely.</string>
 </dict>
 </plist>
