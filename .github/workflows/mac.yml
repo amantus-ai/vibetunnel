@@ -175,6 +175,8 @@ jobs:
     - name: Build Debug
       timeout-minutes: 10
       id: build
+      env:
+        SKIP_NODE_CHECK: "true"  # Skip Node.js check in CI since we download pre-built artifacts
       run: |
         # Always use Debug for now to match test expectations
         BUILD_CONFIG="Debug"

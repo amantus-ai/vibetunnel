@@ -16,6 +16,12 @@ fi
 
 echo "Checking for Node.js..."
 
+# Skip Node.js check in CI when web artifacts are pre-built
+if [ "${CI}" = "true" ] && [ "${SKIP_NODE_CHECK}" = "true" ]; then
+    echo "✓ Skipping Node.js check in CI (web artifacts are pre-built)"
+    exit 0
+fi
+
 # Load Node.js environment managers (Homebrew, nvm, Volta, fnm)
 source "${SCRIPT_DIR}/node-path-setup.sh"
 
