@@ -165,6 +165,31 @@ vibetunnel fwd --session-id abc123 npm test
 vibetunnel fwd --session-id abc123 python script.py
 ```
 
+### Linux Systemd Service
+
+For production Linux deployments, install VibeTunnel as a systemd service:
+
+```bash
+# Install and start service
+sudo vibetunnel install-service
+sudo systemctl start vibetunnel
+
+# Standard systemctl commands
+sudo systemctl stop|restart|status vibetunnel
+sudo journalctl -u vibetunnel -f
+
+# Uninstall
+sudo vibetunnel install-service uninstall
+```
+
+**Service details:**
+- Runs on port 4020 by default
+- Dedicated `vibetunnel` user with security hardening
+- Auto-restart on failure, memory limits (1GB max)
+- Auto-start enabled on boot
+
+**Customization:** Edit `/etc/systemd/system/vibetunnel.service` to change port, add options, or modify environment variables. Run `sudo systemctl daemon-reload && sudo systemctl restart vibetunnel` after changes.
+
 ### Environment Variables
 
 VibeTunnel respects the following environment variables:
@@ -197,6 +222,7 @@ This npm package includes:
 - Native PTY support for terminal emulation
 - Web interface with xterm.js
 - Session management and forwarding
+- Built-in systemd service management for Linux
 
 ## Platform Support
 
