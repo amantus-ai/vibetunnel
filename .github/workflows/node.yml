@@ -266,6 +266,14 @@ jobs:
           web/coverage/client/lcov.info
           web/coverage/server/lcov.info
 
+    - name: List build artifacts before upload
+      working-directory: web
+      run: |
+        echo "=== Contents of dist directory ==="
+        find dist -type f | head -20 || echo "No files in dist"
+        echo "=== Contents of public/bundle directory ==="
+        find public/bundle -type f | head -20 || echo "No files in public/bundle"
+        
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:

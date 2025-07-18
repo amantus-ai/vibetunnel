@@ -31,8 +31,14 @@ execSync('npx tsc --build', { stdio: 'inherit' });
 if (fs.existsSync(path.join(__dirname, '../dist'))) {
   const files = fs.readdirSync(path.join(__dirname, '../dist'));
   console.log(`Server build created ${files.length} files in dist/`);
-  if (files.length === 0) {
-    console.error('WARNING: dist directory is empty after tsc build!');
+  console.log('Files in dist:', files.join(', '));
+  
+  // Check for the essential server.js file
+  if (!fs.existsSync(path.join(__dirname, '../dist/server/server.js'))) {
+    console.error('ERROR: dist/server/server.js not found after tsc build!');
+    console.log('Contents of dist directory:');
+    execSync('find dist -type f | head -20', { stdio: 'inherit', cwd: path.join(__dirname, '..') });
+    process.exit(1);
   }
 } else {
   console.error('ERROR: dist directory does not exist after tsc build!');
