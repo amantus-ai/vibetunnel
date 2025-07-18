@@ -298,13 +298,28 @@ If you accidentally published with wrong configuration:
 - `authenticate-pam` correctly optional
 - Linux installations work properly
 
-### Version 11.5 (Good - Latest)
+### Version 11.5 (Good)
 - Published December 2024
 - Built with explicit `pnpm run build:npm`
 - Published pre-built tarball: `vibetunnel-1.0.0-beta.11.5.tgz`
 - Verified `authenticate-pam` as optional dependency before publishing
 - Tagged as both `beta` and `latest`
 - **Process followed correctly**: All three version files updated, tarball verified, published with explicit filename
+
+### Version 12.1 (Good)
+- Published July 2025
+- Built with explicit `pnpm run build:npm`
+- Published pre-built tarball
+- `authenticate-pam` correctly optional
+- Linux installations work properly
+
+### Version 12.2 (Good - Latest)
+- Published July 17, 2025
+- Built with explicit `pnpm run build:npm`
+- Published pre-built tarball: `vibetunnel-1.0.0-beta.12.2.tgz`
+- Verified `authenticate-pam` as optional dependency before publishing
+- Tagged with `beta` tag
+- **Process followed correctly**: All three version files updated (from beta.13 to beta.12.2), tarball verified, published with explicit filename
 
 ## Summary
 
