@@ -1,148 +1,27 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
+  "$schema": "https://mintlify.com/schema.json",
   "name": "VibeTunnel",
   "theme": "maple",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/favicon.svg",
   "colors": {
     "primary": "#0066FF",
     "light": "#3B82F6",
     "dark": "#1E40AF"
   },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg",
-    "href": "https://vibetunnel.com"
-  },
-  "favicon": "/favicon.svg",
-  "navbar": {
-    "links": [
-      {
-        "label": "GitHub",
-        "href": "https://github.com/amantus-ai/vibetunnel"
-      },
-      {
-        "label": "Discord",
-        "href": "https://discord.gg/vibetunnel"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Download",
-      "href": "https://vibetunnel.com/download"
-    }
-  },
-  "navigation": [
+  "topbarLinks": [
     {
-      "group": "Getting Started",
-      "pages": [
-        "introduction",
-        "docs/project-overview",
-        "docs/keyboard-shortcuts-quick-reference",
-        "docs/CONTRIBUTING"
-      ]
-    },
-    {
-      "group": "Installation",
-      "pages": [
-        "mac/README",
-        "ios/README",
-        "web/docs/VT_INSTALLATION"
-      ]
-    },
-    {
-      "group": "Architecture",
-      "pages": [
-        "docs/ARCHITECTURE",
-        "docs/architecture-mario",
-        "docs/spec",
-        "web/docs/spec",
-        "ios/docs/spec",
-        "mac/docs/BuildArchitectures",
-        "web/docs/socket-protocol",
-        "docs/authentication"
-      ]
-    },
-    {
-      "group": "macOS Development",
-      "pages": [
-        "mac/docs/BuildRequirements",
-        "mac/docs/DEVELOPMENT-SIGNING",
-        "mac/docs/CODE_SIGNING_SETUP",
-        "mac/docs/SIGNING-AND-NOTARIZATION",
-        "mac/docs/screencap",
-        "mac/docs/screencapturekit"
-      ]
-    },
-    {
-      "group": "iOS Development",
-      "pages": [
-        "ios/docs/ios-plan",
-        "ios/docs/modern-swift",
-        "docs/ios-enhancements",
-        "docs/ios-web-parity-plan",
-        "docs/ios-update-progress",
-        "web/docs/ios-safari-paste"
-      ]
-    },
-    {
-      "group": "Web Development",
-      "pages": [
-        "web/docs/frontend-testing-plan",
-        "web/docs/performance",
-        "docs/keyboard-shortcuts",
-        "web/docs/keyboard-shortcuts",
-        "web/docs/terminal-titles",
-        "web/docs/large-paste-investigation"
-      ]
-    },
-    {
-      "group": "Testing",
-      "pages": [
-        "docs/testing",
-        "apple/docs/swift-testing-playbook",
-        "web/docs/playwright-testing",
-        "web/docs/playwright-plan",
-        "web/docs/playwright-test-design",
-        "docs/TESTING_EXTERNAL_DEVICES"
-      ]
-    },
-    {
-      "group": "Build & Deployment",
-      "pages": [
-        "docs/development",
-        "docs/build-system",
-        "docs/deployment",
-        "docs/RELEASE_PROCESS",
-        "docs/RELEASE_IMPROVEMENTS",
-        "mac/docs/RELEASE",
-        "mac/docs/release-guide",
-        "web/docs/npm"
-      ]
-    },
-    {
-      "group": "Configuration",
-      "pages": [
-        "web/docs/custom-node",
-        "docs/custom-node-build-flags",
-        "mac/docs/sparkle-keys",
-        "mac/docs/sparkle-stats-store",
-        "docs/push-notification",
-        "docs/WEBRTC_CONFIG"
-      ]
-    },
-    {
-      "group": "Reference",
-      "pages": [
-        "docs/files",
-        "docs/claude",
-        "docs/gemini",
-        "docs/homebrew-issue",
-        "apple/docs/logging-private-fix",
-        "apple/docs/modern-swift",
-        "apple/docs/swift-concurrency",
-        "apple/docs/swiftui"
-      ]
+      "name": "Support",
+      "url": "https://discord.gg/vibetunnel"
     }
   ],
+  "topbarCtaButton": {
+    "name": "Download",
+    "url": "https://vibetunnel.com/download"
+  },
   "tabs": [
     {
       "name": "API Reference",
@@ -155,18 +34,151 @@
   ],
   "anchors": [
     {
-      "name": "Support",
-      "icon": "headset",
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/amantus-ai/vibetunnel"
+    },
+    {
+      "name": "Discord",
+      "icon": "discord", 
       "url": "https://discord.gg/vibetunnel"
     }
   ],
-  "feedback": {
-    "thumbsRating": true,
-    "suggestEdit": true,
-    "raiseIssue": true
-  },
-  "search": {
-    "prompt": "Search documentation..."
+  "navigation": {
+    "dropdowns": [
+      {
+        "dropdown": "Documentation",
+        "icon": "book",
+        "description": "Learn about VibeTunnel",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "docs/project-overview",
+              "docs/keyboard-shortcuts-quick-reference",
+              "docs/CONTRIBUTING"
+            ]
+          },
+          {
+            "group": "Installation",
+            "pages": [
+              "mac/README",
+              "ios/README",
+              "web/docs/VT_INSTALLATION"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "docs/ARCHITECTURE",
+              "docs/architecture-mario",
+              "docs/spec",
+              "web/docs/spec",
+              "ios/docs/spec",
+              "mac/docs/BuildArchitectures",
+              "web/docs/socket-protocol",
+              "docs/authentication"
+            ]
+          }
+        ]
+      },
+      {
+        "dropdown": "Development",
+        "icon": "code",
+        "description": "Build and contribute",
+        "groups": [
+          {
+            "group": "macOS Development",
+            "pages": [
+              "mac/docs/BuildRequirements",
+              "mac/docs/DEVELOPMENT-SIGNING",
+              "mac/docs/CODE_SIGNING_SETUP",
+              "mac/docs/SIGNING-AND-NOTARIZATION",
+              "mac/docs/screencap",
+              "mac/docs/screencapturekit"
+            ]
+          },
+          {
+            "group": "iOS Development",
+            "pages": [
+              "ios/docs/ios-plan",
+              "ios/docs/modern-swift",
+              "docs/ios-enhancements",
+              "docs/ios-web-parity-plan",
+              "docs/ios-update-progress",
+              "web/docs/ios-safari-paste"
+            ]
+          },
+          {
+            "group": "Web Development",
+            "pages": [
+              "web/docs/frontend-testing-plan",
+              "web/docs/performance",
+              "docs/keyboard-shortcuts",
+              "web/docs/keyboard-shortcuts",
+              "web/docs/terminal-titles",
+              "web/docs/large-paste-investigation"
+            ]
+          },
+          {
+            "group": "Testing",
+            "pages": [
+              "docs/testing",
+              "apple/docs/swift-testing-playbook",
+              "web/docs/playwright-testing",
+              "web/docs/playwright-plan",
+              "web/docs/playwright-test-design",
+              "docs/TESTING_EXTERNAL_DEVICES"
+            ]
+          }
+        ]
+      },
+      {
+        "dropdown": "Operations",
+        "icon": "ship",
+        "description": "Deploy and maintain",
+        "groups": [
+          {
+            "group": "Build & Deployment",
+            "pages": [
+              "docs/development",
+              "docs/build-system",
+              "docs/deployment",
+              "docs/RELEASE_PROCESS",
+              "docs/RELEASE_IMPROVEMENTS",
+              "mac/docs/RELEASE",
+              "mac/docs/release-guide",
+              "web/docs/npm"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "web/docs/custom-node",
+              "docs/custom-node-build-flags",
+              "mac/docs/sparkle-keys",
+              "mac/docs/sparkle-stats-store",
+              "docs/push-notification",
+              "docs/WEBRTC_CONFIG"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "docs/files",
+              "docs/claude",
+              "docs/gemini",
+              "docs/homebrew-issue",
+              "apple/docs/logging-private-fix",
+              "apple/docs/modern-swift",
+              "apple/docs/swift-concurrency",
+              "apple/docs/swiftui"
+            ]
+          }
+        ]
+      }
+    ]
   },
   "footerSocials": {
     "twitter": "https://twitter.com/vibetunnel",
