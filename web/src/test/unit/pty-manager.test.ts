@@ -7,7 +7,7 @@ import { PtyManager } from '../../server/pty/pty-manager';
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Helper function to parse Asciinema format output
-const _parseAsciinemaOutput = (castContent: string): string => {
+const parseAsciinemaOutput = (castContent: string): string => {
   if (!castContent) return '';
 
   const lines = castContent.trim().split('\n');
@@ -132,17 +132,34 @@ describe('PtyManager', { timeout: 60000 }, () => {
       expect(result.sessionId).toBeDefined();
       expect(result.sessionInfo.name).toBe('PWD Test');
 
-      // Wait for output
-      await sleep(500);
+      // Wait for process to complete
+      let retries = 0;
+      const maxRetries = 20;
+      let sessionExited = false;
 
-      // Skip output verification due to test environment issues
-      // Just verify the session completed
-      {
+      while (!sessionExited && retries < maxRetries) {
+        await sleep(100);
         const sessionJsonPath = path.join(testDir, result.sessionId, 'session.json');
         if (fs.existsSync(sessionJsonPath)) {
           const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
-          expect(sessionInfo.status).toBe('exited');
+          if (sessionInfo.status === 'exited') {
+            sessionExited = true;
+          }
         }
+        retries++;
+      }
+
+      // Verify the session completed
+      {
+        const sessionJsonPath = path.join(testDir, result.sessionId, 'session.json');
+        const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
+        expect(sessionInfo.status).toBe('exited');
+        
+        // Read output from stdout file
+        const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
+        const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
+        const parsedOutput = parseAsciinemaOutput(outputData);
+        expect(parsedOutput.trim()).toContain('custom');
       }
     });
 
@@ -161,17 +178,34 @@ describe('PtyManager', { timeout: 60000 }, () => {
       expect(result).toBeDefined();
       expect(result.sessionId).toBeDefined();
 
-      // Wait for output
-      await sleep(500);
+      // Wait for process to complete
+      let retries = 0;
+      const maxRetries = 20;
+      let sessionExited = false;
 
-      // Skip output verification due to test environment issues
-      // Just verify the session completed
-      {
+      while (!sessionExited && retries < maxRetries) {
+        await sleep(100);
         const sessionJsonPath = path.join(testDir, result.sessionId, 'session.json');
         if (fs.existsSync(sessionJsonPath)) {
           const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
-          expect(sessionInfo.status).toBe('exited');
+          if (sessionInfo.status === 'exited') {
+            sessionExited = true;
+          }
         }
+        retries++;
+      }
+
+      // Verify the session completed
+      {
+        const sessionJsonPath = path.join(testDir, result.sessionId, 'session.json');
+        const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
+        expect(sessionInfo.status).toBe('exited');
+        
+        // Read output from stdout file
+        const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
+        const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
+        const parsedOutput = parseAsciinemaOutput(outputData);
+        expect(parsedOutput).toContain('test_value_123');
       }
     });
 
@@ -232,11 +266,12 @@ describe('PtyManager', { timeout: 60000 }, () => {
       // Wait for echo
       await sleep(200);
 
-      // Skip output verification due to test environment issues
-      // Just verify the session is running and stdin file was created
+      // Read output from stdout file
       {
-        const stdinPath = path.join(testDir, result.sessionId, 'stdin');
-        expect(fs.existsSync(stdinPath)).toBe(true);
+        const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
+        const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
+        const parsedOutput = parseAsciinemaOutput(outputData);
+        expect(parsedOutput).toContain('test input');
       }
 
       // Clean up - send EOF
@@ -256,11 +291,18 @@ describe('PtyManager', { timeout: 60000 }, () => {
       // Wait for echo
       await sleep(200);
 
-      // Skip output verification due to test environment issues
-      // Just verify the session is running
+      // Read output from stdout file
       {
-        const sessionInfo = ptyManager.getInternalSession(result.sessionId);
-        expect(sessionInfo).toBeDefined();
+        const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
+        const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
+        const parsedOutput = parseAsciinemaOutput(outputData);
+
+        // Check that binary data was echoed back
+        expect(parsedOutput.length).toBeGreaterThan(0);
+        // The parsed output should contain the binary characters
+        expect(parsedOutput).toContain('\x01');
+        expect(parsedOutput).toContain('\x02');
+        expect(parsedOutput).toContain('\x03');
       }
 
       // Clean up
@@ -480,11 +522,12 @@ describe('PtyManager', { timeout: 60000 }, () => {
       // Wait for file watcher
       await sleep(500);
 
-      // Skip output verification due to test environment issues
-      // Just verify the stdin file exists
+      // Read output from stdout file
       {
-        const stdinPath = path.join(testDir, result.sessionId, 'stdin');
-        expect(fs.existsSync(stdinPath)).toBe(true);
+        const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
+        const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
+        const parsedOutput = parseAsciinemaOutput(outputData);
+        expect(parsedOutput).toContain('test via stdin');
       }
 
       // Clean up
