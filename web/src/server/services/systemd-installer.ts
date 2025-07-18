@@ -36,19 +36,21 @@ function printError(message: string): void {
   console.log(`${RED}[ERROR]${NC} ${message}`);
 }
 
-// Check if running as root
-function checkRoot(): void {
-  if (process.getuid && process.getuid() !== 0) {
-    printError('This command must be run as root (use sudo)');
-    process.exit(1);
-  }
-}
 
 // Check if vibetunnel is installed
 function checkVibetunnel(): void {
   try {
-    execSync('which vibetunnel', { stdio: 'pipe' });
-    const version = execSync('vibetunnel version', { encoding: 'utf8', stdio: 'pipe' }).trim();
+    let whichCommand = 'which vibetunnel';
+    let versionCommand = 'vibetunnel version';
+    
+    // If running with sudo, check as the original user
+    if (process.env.SUDO_USER) {
+      whichCommand = `sudo -u ${process.env.SUDO_USER} -i which vibetunnel`;
+      versionCommand = `sudo -u ${process.env.SUDO_USER} -i vibetunnel version`;
+    }
+    
+    execSync(whichCommand, { stdio: 'pipe' });
+    const version = execSync(versionCommand, { encoding: 'utf8', stdio: 'pipe' }).trim();
     printInfo(`Found VibeTunnel: ${version}`);
   } catch (_error) {
     printError('VibeTunnel is not installed globally. Please install it first:');
@@ -258,7 +260,18 @@ export function installSystemdService(action: string = 'install'): void {
   switch (action) {
     case 'install':
       printInfo('Installing VibeTunnel systemd service...');
-      checkRoot();
+      // Check if we need to re-run with sudo
+      if (process.getuid && process.getuid() !== 0) {
+        printInfo('Root privileges required. Re-running with sudo...');
+        try {
+          const args = process.argv.slice(1); // Skip 'node' but keep script path and args
+          execSync(`sudo -E ${args.join(' ')}`, { stdio: 'inherit' });
+          process.exit(0);
+        } catch (error) {
+          printError('Failed to run with sudo');
+          process.exit(1);
+        }
+      }
       checkVibetunnel();
       createUser();
       createDirectories();
@@ -268,7 +281,18 @@ export function installSystemdService(action: string = 'install'): void {
       break;
 
     case 'uninstall':
-      checkRoot();
+      // Check if we need to re-run with sudo
+      if (process.getuid && process.getuid() !== 0) {
+        printInfo('Root privileges required. Re-running with sudo...');
+        try {
+          const args = process.argv.slice(1); // Skip 'node' but keep script path and args
+          execSync(`sudo -E ${args.join(' ')}`, { stdio: 'inherit' });
+          process.exit(0);
+        } catch (error) {
+          printError('Failed to run with sudo');
+          process.exit(1);
+        }
+      }
       uninstallService();
       break;
 
