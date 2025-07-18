@@ -265,7 +265,7 @@ jobs:
           -destination "platform=macOS" \
           -enableCodeCoverage $ENABLE_COVERAGE \
           -resultBundlePath TestResults.xcresult \
-          -quiet \
+\
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
@@ -285,7 +285,7 @@ jobs:
       if: always()
       run: |
         echo "=== Checking TestResults.xcresult ==="
-        if [ -f TestResults.xcresult ]; then
+        if [ -d TestResults.xcresult ]; then
           echo "TestResults.xcresult exists"
           ls -la TestResults.xcresult
           
@@ -303,7 +303,7 @@ jobs:
       if: always()
       id: coverage
       run: |
-        if [ -f TestResults.xcresult ]; then
+        if [ -d TestResults.xcresult ]; then
           # Try multiple extraction methods
           echo "=== Method 1: Standard extraction ==="
           COVERAGE_PCT=$(xcrun xccov view --report TestResults.xcresult --json 2>/dev/null | jq -r '.lineCoverage // 0' | awk '{printf "%.1f", $1 * 100}') || COVERAGE_PCT="0"
