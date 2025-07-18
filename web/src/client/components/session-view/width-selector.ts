@@ -341,30 +341,29 @@ export class TerminalSettingsModal extends LitElement {
             </div>
             
             <!-- Binary Mode setting -->
-            <div class="grid grid-cols-[120px_1fr] gap-4 items-center">
-              <label class="text-sm font-medium text-text-bright text-right">Binary Mode</label>
-              <div class="flex items-center justify-between bg-bg-secondary border border-border rounded-md px-4 py-3">
-                <div class="flex-1">
-                  <p class="text-sm text-text">Use WebSocket binary protocol</p>
-                  <p class="text-xs text-text-muted mt-1">More efficient for high-throughput sessions</p>
-                </div>
-                <button
-                  role="switch"
-                  aria-checked="${this.useBinaryMode}"
-                  @click=${() => {
-                    this.useBinaryMode = !this.useBinaryMode;
-                    this.saveBinaryModePreference(this.useBinaryMode);
-                  }}
-                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base ${
-                    this.useBinaryMode ? 'bg-primary' : 'bg-border'
-                  }"
-                >
-                  <span
-                    class="inline-block h-5 w-5 transform rounded-full bg-bg-elevated transition-transform ${
-                      this.useBinaryMode ? 'translate-x-5' : 'translate-x-0.5'
+            <div class="grid grid-cols-[120px_1fr] gap-4 items-start">
+              <label class="text-sm font-medium text-text-bright text-right pt-3">Binary Mode</label>
+              <div>
+                <div class="flex items-center justify-between bg-bg-secondary border border-border rounded-md px-4 py-3">
+                  <button
+                    role="switch"
+                    aria-checked="${this.useBinaryMode}"
+                    @click=${() => {
+                      this.useBinaryMode = !this.useBinaryMode;
+                      this.saveBinaryModePreference(this.useBinaryMode);
+                    }}
+                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base ${
+                      this.useBinaryMode ? 'bg-primary' : 'bg-border'
                     }"
-                  ></span>
-                </button>
+                  >
+                    <span
+                      class="inline-block h-5 w-5 transform rounded-full bg-bg-elevated transition-transform ${
+                        this.useBinaryMode ? 'translate-x-5' : 'translate-x-0.5'
+                      }"
+                    ></span>
+                  </button>
+                </div>
+                <p class="text-xs text-text-muted mt-2">Experimental: More efficient for high-throughput sessions</p>
               </div>
             </div>
           </div>

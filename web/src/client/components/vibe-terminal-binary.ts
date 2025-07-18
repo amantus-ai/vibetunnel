@@ -94,6 +94,7 @@ export class VibeTerminalBinary extends VibeTerminalBuffer {
   }
 
   firstUpdated() {
+    // CRITICAL: Call parent's firstUpdated to enable WebSocket subscription
     super.firstUpdated();
 
     // Initialize input handling
@@ -109,6 +110,9 @@ export class VibeTerminalBinary extends VibeTerminalBuffer {
 
     // Dispatch terminal-ready event
     this.dispatchEvent(new CustomEvent('terminal-ready'));
+
+    // Update terminal size after initialization
+    this.updateTerminalSize();
   }
 
   updated(changedProperties: PropertyValues) {
@@ -125,14 +129,36 @@ export class VibeTerminalBinary extends VibeTerminalBuffer {
       this.currentRows = this.rows;
       this.updateTerminalSize();
     }
-
-    // Handle session ID changes - no need to update input manager
   }
 
   render() {
     const baseTheme = this.theme === 'auto' ? getCurrentTheme() : this.theme;
+    const lineHeight = this.fontSize * 1.2;
 
     return html`
+      <style>
+        /* Override parent's dynamic font sizing with fixed font size */
+        vibe-terminal-binary .terminal-container {
+          font-size: ${this.fontSize}px !important;
+          line-height: ${lineHeight}px !important;
+        }
+
+        vibe-terminal-binary .terminal-line {
+          height: ${lineHeight}px !important;
+          line-height: ${lineHeight}px !important;
+        }
+        
+        /* Hide parent's font size styles */
+        vibe-terminal-buffer .terminal-container {
+          font-size: ${this.fontSize}px !important;
+          line-height: ${lineHeight}px !important;
+        }
+
+        vibe-terminal-buffer .terminal-line {
+          height: ${lineHeight}px !important;
+          line-height: ${lineHeight}px !important;
+        }
+      </style>
       <div class="relative h-full flex flex-col">
         <!-- Terminal container -->
         <div 
@@ -140,6 +166,7 @@ export class VibeTerminalBinary extends VibeTerminalBuffer {
           class="terminal-scroll-container flex-1 overflow-auto ${baseTheme}"
           style="font-size: ${this.fontSize}px;"
         >
+          <!-- Use parent's render for buffer content -->
           ${super.render()}
         </div>
         
