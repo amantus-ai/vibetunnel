@@ -181,7 +181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         // Register default values
         UserDefaults.standard.register(defaults: [
             "showInDock": true, // Default to showing in dock
-            "dashboardAccessMode": DashboardAccessMode.network.rawValue // Default to network access
+            "dashboardAccessMode": AppConstants.Defaults.dashboardAccessMode
         ])
 
         // Initialize Sparkle updater manager

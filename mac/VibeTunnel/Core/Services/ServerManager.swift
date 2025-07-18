@@ -61,9 +61,9 @@ class ServerManager {
 
     var bindAddress: String {
         get {
-            // Get the raw value from UserDefaults, defaulting to localhost if not set
-            let rawValue = UserDefaults.standard.string(forKey: "dashboardAccessMode") ?? DashboardAccessMode.network
-                .rawValue
+            // Get the raw value from UserDefaults, defaulting to the app default
+            let rawValue = UserDefaults.standard.string(forKey: "dashboardAccessMode") ?? AppConstants.Defaults
+                .dashboardAccessMode
             let mode = DashboardAccessMode(rawValue: rawValue) ?? .network
 
             // Log for debugging
