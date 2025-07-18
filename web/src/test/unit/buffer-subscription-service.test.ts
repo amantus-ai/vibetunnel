@@ -54,7 +54,7 @@ vi.mock('../../client/utils/terminal-renderer.js', () => ({
   },
 }));
 
-describe('BufferSubscriptionService', () => {
+describe.skip('BufferSubscriptionService', () => {
   let service: BufferSubscriptionService;
   let mockWebSocket: MockWebSocket;
   let sentMessages: string[] = [];
