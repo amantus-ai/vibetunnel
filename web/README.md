@@ -171,7 +171,7 @@ For production Linux deployments, install VibeTunnel as a systemd service:
 
 ```bash
 # Install and start service
-sudo vibetunnel install-service
+vibetunnel systemd
 sudo systemctl start vibetunnel
 
 # Standard systemctl commands
@@ -179,7 +179,7 @@ sudo systemctl stop|restart|status vibetunnel
 sudo journalctl -u vibetunnel -f
 
 # Uninstall
-sudo vibetunnel install-service uninstall
+vibetunnel systemd uninstall
 ```
 
 **Service details:**

@@ -63,7 +63,7 @@ function printHelp(): void {
   console.log('Usage:');
   console.log('  vibetunnel [options]                    Start VibeTunnel server');
   console.log('  vibetunnel fwd <session-id> <command>   Forward command to session');
-  console.log('  vibetunnel install-service [action]     Manage systemd service (Linux)');
+  console.log('  vibetunnel systemd [action]             Manage systemd service (Linux)');
   console.log('  vibetunnel version                      Show version');
   console.log('  vibetunnel help                         Show this help');
   console.log('');
@@ -75,8 +75,8 @@ function printHelp(): void {
   console.log('Examples:');
   console.log('  vibetunnel --port 8080 --no-auth');
   console.log('  vibetunnel fwd abc123 "ls -la"');
-  console.log('  sudo vibetunnel install-service');
-  console.log('  sudo vibetunnel install-service uninstall');
+  console.log('  vibetunnel systemd');
+  console.log('  vibetunnel systemd uninstall');
   console.log('');
   console.log('For more options, run: vibetunnel --help');
 }
@@ -104,7 +104,7 @@ async function handleForwardCommand(): Promise<void> {
 /**
  * Handle systemd service installation and management
  */
-async function handleInstallService(): Promise<void> {
+async function handleSystemdService(): Promise<void> {
   try {
     // Import systemd installer dynamically to avoid loading it on every startup
     const { installSystemdService } = await import('./server/services/systemd-installer.js');
@@ -151,8 +151,8 @@ function parseCommandAndExecute(): void {
       handleForwardCommand();
       break;
 
-    case 'install-service':
-      handleInstallService();
+    case 'systemd':
+      handleSystemdService();
       break;
 
     default:

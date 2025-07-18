@@ -36,24 +36,23 @@ function printError(message: string): void {
   console.log(`${RED}[ERROR]${NC} ${message}`);
 }
 
-
 // Check if vibetunnel is installed
 function checkVibetunnel(): void {
   try {
     let whichCommand = 'which vibetunnel';
     let versionCommand = 'vibetunnel version';
-    
+
     // If running with sudo, check as the original user
     if (process.env.SUDO_USER) {
       whichCommand = `sudo -u ${process.env.SUDO_USER} -i which vibetunnel`;
       versionCommand = `sudo -u ${process.env.SUDO_USER} -i vibetunnel version`;
     }
-    
+
     execSync(whichCommand, { stdio: 'pipe' });
     const version = execSync(versionCommand, { encoding: 'utf8', stdio: 'pipe' }).trim();
     printInfo(`Found VibeTunnel: ${version}`);
-  } catch (_error) {
-    printError('VibeTunnel is not installed globally. Please install it first:');
+  } catch (error) {
+    printError(`VibeTunnel is not installed globally. Please install it first: ${error}`);
     console.log('  npm install -g vibetunnel');
     process.exit(1);
   }
@@ -268,7 +267,7 @@ export function installSystemdService(action: string = 'install'): void {
           execSync(`sudo -E ${args.join(' ')}`, { stdio: 'inherit' });
           process.exit(0);
         } catch (error) {
-          printError('Failed to run with sudo');
+          printError(`Failed to run with sudo: ${error}`);
           process.exit(1);
         }
       }
@@ -289,7 +288,7 @@ export function installSystemdService(action: string = 'install'): void {
           execSync(`sudo -E ${args.join(' ')}`, { stdio: 'inherit' });
           process.exit(0);
         } catch (error) {
-          printError('Failed to run with sudo');
+          printError(`Failed to run with sudo: ${error}`);
           process.exit(1);
         }
       }
@@ -301,7 +300,7 @@ export function installSystemdService(action: string = 'install'): void {
       break;
 
     default:
-      console.log('Usage: vibetunnel install-service [install|uninstall|status]');
+      console.log('Usage: vibetunnel systemd [install|uninstall|status]');
       console.log('  install   - Install VibeTunnel systemd service (default)');
       console.log('  uninstall - Remove VibeTunnel systemd service');
       console.log('  status    - Check service status');
