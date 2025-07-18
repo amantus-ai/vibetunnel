@@ -3,10 +3,10 @@
   "name": "VibeTunnel",
   "theme": "maple",
   "logo": {
-    "dark": "/logo/dark.svg",
-    "light": "/logo/light.svg"
+    "dark": "/docs/images/vibetunnel-logo-dark.svg",
+    "light": "/docs/images/vibetunnel-logo-light.svg"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/docs/images/favicon.svg",
   "colors": {
     "primary": "#0066FF",
     "light": "#3B82F6",
@@ -24,12 +24,12 @@
   },
   "tabs": [
     {
-      "name": "API Reference",
-      "url": "api"
+      "name": "Documentation",
+      "url": "docs"
     },
     {
-      "name": "Changelog",
-      "url": "changelog"
+      "name": "GitHub",
+      "url": "https://github.com/amantus-ai/vibetunnel"
     }
   ],
   "anchors": [
@@ -190,5 +190,17 @@
     "twitter": "https://twitter.com/vibetunnel",
     "github": "https://github.com/amantus-ai/vibetunnel",
     "discord": "https://discord.gg/vibetunnel"
+  },
+  "metadata": {
+    "og:title": "VibeTunnel Documentation",
+    "og:description": "Access your terminal sessions through any web browser",
+    "og:image": "/docs/images/og-image.png"
+  },
+  "seo": {
+    "indexing": true
+  },
+  "search": {
+    "prompt": "Search VibeTunnel docs...",
+    "placeholder": "Search documentation"
   }
 }
