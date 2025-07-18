@@ -283,8 +283,5 @@ export function installSystemdService(action: string = 'install'): void {
   }
 }
 
-// CLI entry point when run directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const action = process.argv[2] || 'install';
-  installSystemdService(action);
-}
+// This module is only meant to be imported by the CLI
+// Direct execution is handled by src/cli.ts
