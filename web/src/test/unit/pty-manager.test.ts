@@ -7,13 +7,23 @@ import { PtyManager } from '../../server/pty/pty-manager';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-describe.skip('PtyManager', () => {
+// Generate short session IDs for tests to avoid socket path length limits
+let sessionCounter = 0;
+const getTestSessionId = () => {
+  sessionCounter++;
+  return `test-${sessionCounter.toString().padStart(3, '0')}`;
+};
+
+describe('PtyManager', { timeout: 60000 }, () => {
   let ptyManager: PtyManager;
   let testDir: string;
 
   beforeAll(() => {
     // Create a test directory for control files
-    testDir = path.join(os.tmpdir(), 'pty-manager-test', Date.now().toString());
+    // Use very short path to avoid Unix socket path length limit (103 chars on macOS)
+    // On macOS, /tmp is symlinked to /private/tmp which is much shorter than /var/folders/...
+    const shortId = randomBytes(2).toString('hex'); // 4 chars
+    testDir = path.join('/tmp', 'pt', shortId);
     fs.mkdirSync(testDir, { recursive: true });
   });
 
@@ -35,11 +45,12 @@ describe.skip('PtyManager', () => {
     await ptyManager.shutdown();
   });
 
-  describe('Session Creation', () => {
+  describe('Session Creation', { timeout: 10000 }, () => {
     it('should create a simple echo session', async () => {
       const result = await ptyManager.createSession(['echo', 'Hello, World!'], {
         workingDir: testDir,
         name: 'Test Echo',
+        sessionId: getTestSessionId(),
       });
 
       expect(result).toBeDefined();
@@ -65,6 +76,7 @@ describe.skip('PtyManager', () => {
       const result = await ptyManager.createSession(['pwd'], {
         workingDir: customDir,
         name: 'PWD Test',
+        sessionId: getTestSessionId(),
       });
 
       expect(result).toBeDefined();
@@ -89,6 +101,7 @@ describe.skip('PtyManager', () => {
           : ['sh', '-c', 'echo $TEST_VAR'],
         {
           workingDir: testDir,
+          sessionId: getTestSessionId(),
           env: { TEST_VAR: 'test_value_123' },
         }
       );
@@ -130,6 +143,7 @@ describe.skip('PtyManager', () => {
     it('should handle non-existent command gracefully', async () => {
       const result = await ptyManager.createSession(['nonexistentcommand12345'], {
         workingDir: testDir,
+        sessionId: getTestSessionId(),
       });
 
       expect(result).toBeDefined();
@@ -150,10 +164,11 @@ describe.skip('PtyManager', () => {
     });
   });
 
-  describe('Session Input/Output', () => {
+  describe('Session Input/Output', { timeout: 10000 }, () => {
     it('should send input to session', async () => {
       const result = await ptyManager.createSession(['cat'], {
         workingDir: testDir,
+        sessionId: getTestSessionId(),
       });
 
       // Send input
@@ -176,6 +191,7 @@ describe.skip('PtyManager', () => {
     it('should handle binary data in input', async () => {
       const result = await ptyManager.createSession(['cat'], {
         workingDir: testDir,
+        sessionId: getTestSessionId(),
       });
 
       // Send binary data
@@ -206,12 +222,13 @@ describe.skip('PtyManager', () => {
     });
   });
 
-  describe('Session Resize', () => {
+  describe('Session Resize', { timeout: 10000 }, () => {
     it('should resize terminal dimensions', async () => {
       const result = await ptyManager.createSession(
         process.platform === 'win32' ? ['cmd'] : ['bash'],
         {
           workingDir: testDir,
+          sessionId: getTestSessionId(),
           cols: 80,
           rows: 24,
         }
@@ -229,6 +246,7 @@ describe.skip('PtyManager', () => {
     it('should reject invalid dimensions', async () => {
       const result = await ptyManager.createSession(['cat'], {
         workingDir: testDir,
+        sessionId: getTestSessionId(),
       });
 
       // Try negative dimensions - the implementation actually throws an error
@@ -244,10 +262,11 @@ describe.skip('PtyManager', () => {
     });
   });
 
-  describe('Session Termination', () => {
+  describe('Session Termination', { timeout: 10000 }, () => {
     it('should kill session with SIGTERM', async () => {
       const result = await ptyManager.createSession(['sleep', '60'], {
         workingDir: testDir,
+        sessionId: getTestSessionId(),
       });
 
       // Kill session - returns Promise<void>
@@ -275,6 +294,7 @@ describe.skip('PtyManager', () => {
           : ['sh', '-c', 'trap "" TERM; sleep 60'],
         {
           workingDir: testDir,
+          sessionId: getTestSessionId(),
         }
       );
 
@@ -298,6 +318,7 @@ describe.skip('PtyManager', () => {
     it('should clean up session files on exit', async () => {
       const result = await ptyManager.createSession(['echo', 'test'], {
         workingDir: testDir,
+        sessionId: getTestSessionId(),
       });
 
       const sessionDir = path.join(testDir, result.sessionId);
@@ -313,11 +334,12 @@ describe.skip('PtyManager', () => {
     });
   });
 
-  describe('Session Information', () => {
+  describe('Session Information', { timeout: 10000 }, () => {
     it('should get session info', async () => {
       const result = await ptyManager.createSession(['sleep', '10'], {
         workingDir: testDir,
         name: 'Info Test',
+        sessionId: getTestSessionId(),
         cols: 100,
         rows: 30,
       });
@@ -340,7 +362,7 @@ describe.skip('PtyManager', () => {
     });
   });
 
-  describe('Shutdown', () => {
+  describe('Shutdown', { timeout: 15000 }, () => {
     it('should kill all sessions on shutdown', async () => {
       const sessionIds: string[] = [];
 
@@ -348,6 +370,7 @@ describe.skip('PtyManager', () => {
       for (let i = 0; i < 3; i++) {
         const result = await ptyManager.createSession(['sleep', '60'], {
           workingDir: testDir,
+          sessionId: getTestSessionId(),
         });
         sessionIds.push(result.sessionId);
       }
@@ -371,10 +394,11 @@ describe.skip('PtyManager', () => {
     });
   });
 
-  describe('Control Pipe', () => {
+  describe('Control Pipe', { timeout: 10000 }, () => {
     it('should handle resize via control pipe', async () => {
       const result = await ptyManager.createSession(['sleep', '10'], {
         workingDir: testDir,
+        sessionId: getTestSessionId(),
         cols: 80,
         rows: 24,
       });
@@ -395,6 +419,7 @@ describe.skip('PtyManager', () => {
     it('should handle input via stdin file', async () => {
       const result = await ptyManager.createSession(['cat'], {
         workingDir: testDir,
+        sessionId: getTestSessionId(),
       });
 
       // Write to stdin file
