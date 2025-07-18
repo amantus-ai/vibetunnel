@@ -1,7 +1,7 @@
 import * as childProcess from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { Readable } from 'node:stream';
-import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import type { DisplayServerInfo } from '../../../../server/capture/display-detection.js';
 
 // Hoist mocks to ensure they're set up before module imports
@@ -26,6 +26,13 @@ const { FFmpegCapture } = await import(
 );
 
 describe('FFmpegCapture', () => {
+  beforeAll(() => {
+    vi.useFakeTimers();
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+  });
   let mockSpawn: Mock;
   let ffmpegCapture: FFmpegCapture;
   let mockProcess: childProcess.ChildProcess & {
@@ -56,7 +63,8 @@ describe('FFmpegCapture', () => {
       const mockExec = vi.mocked(childProcess.exec);
       mockExec.mockImplementationOnce(
         (_cmd: string, callback: Parameters<typeof childProcess.exec>[1]) => {
-          process.nextTick(() => callback(null, 'ffmpeg version 4.4.0', ''));
+          process.nextTick(() => callback?.(null, 'ffmpeg version 4.4.0', ''));
+          return {} as childProcess.ChildProcess;
         }
       );
 
@@ -66,16 +74,22 @@ describe('FFmpegCapture', () => {
     });
 
     it('should return false when ffmpeg is not installed', async () => {
-      const mockExec = vi.mocked(childProcess.exec);
-      mockExec.mockImplementationOnce(
-        (_cmd: string, callback: Parameters<typeof childProcess.exec>[1]) => {
-          process.nextTick(() => callback(new Error('Command not found'), '', ''));
-        }
-      );
+      // Create a new instance with mocked promisify that rejects
+      const mockExecAsync = vi.fn().mockRejectedValue(new Error('Command not found'));
+      vi.doMock('node:util', () => ({
+        promisify: () => mockExecAsync,
+      }));
 
-      const result = await ffmpegCapture.checkFFmpegAvailable();
+      // Create new instance to use mocked import
+      const FFmpegCaptureClass = (
+        await import('../../../../server/capture/capture-providers/ffmpeg-capture.js')
+      ).FFmpegCapture;
+      const ffmpegCaptureInstance = new FFmpegCaptureClass();
+
+      const result = await ffmpegCaptureInstance.checkFFmpegAvailable();
 
       expect(result).toBe(false);
+      vi.doUnmock('node:util');
     });
   });
 
@@ -90,7 +104,8 @@ Codecs:
  DEV.L. vp8                  On2 VP8
  DEV.L. vp9                  Google VP9
 `;
-          process.nextTick(() => callback(null, codecOutput, ''));
+          process.nextTick(() => callback?.(null, codecOutput, ''));
+          return {} as childProcess.ChildProcess;
         }
       );
 
@@ -113,14 +128,14 @@ Codecs:
       const captureStream = await ffmpegCapture.startCapture(displayServer);
 
       expect(mockSpawn).toHaveBeenCalledWith('ffmpeg', expect.any(Array), {
-        stdio: ['ignore', 'pipe', 'pipe'],
+        stdio: ['pipe', 'pipe', 'pipe'],
       });
 
       const args = mockSpawn.mock.calls[0][1];
       expect(args).toContain('-f');
       expect(args).toContain('x11grab');
       expect(args).toContain('-i');
-      expect(args).toContain(':0');
+      expect(args).toContain(':0+0,0');
       expect(args).toContain('-c:v');
       expect(args).toContain('libvpx');
 
@@ -145,7 +160,7 @@ Codecs:
       expect(args).toContain('lavfi');
       expect(args).toContain('-i');
       expect(args).toContain('pipewiregrab');
-      expect(args).toContain('-r');
+      expect(args).toContain('-framerate');
       expect(args).toContain('60');
     });
 
@@ -163,7 +178,7 @@ Codecs:
 
       const args = mockSpawn.mock.calls[0][1];
       expect(args).toContain('-c:v');
-      expect(args).toContain('libx264');
+      expect(args).toContain('h264_vaapi');
     });
 
     it('should handle FFmpeg process errors', async () => {
@@ -244,7 +259,7 @@ Codecs:
 
       await exitPromise;
 
-      expect(mockProcess.kill).toHaveBeenCalledWith('SIGTERM');
+      expect(mockProcess.stdin.write).toHaveBeenCalledWith('q');
     });
 
     it('should force kill if graceful shutdown fails', async () => {
@@ -257,10 +272,12 @@ Codecs:
       await ffmpegCapture.startCapture(displayServer);
 
       // Don't emit exit event, let it timeout
-      ffmpegCapture.stop();
+      const stopPromise = ffmpegCapture.stop();
 
       // Fast-forward to force kill
       await vi.advanceTimersByTimeAsync(6000);
+
+      await stopPromise;
 
       expect(mockProcess.kill).toHaveBeenCalledWith('SIGKILL');
     });

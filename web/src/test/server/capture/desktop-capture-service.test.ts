@@ -7,7 +7,9 @@ import { detectDisplayServer } from '../../../server/capture/display-detection.j
 import { StreamHandler } from '../../../server/capture/stream-handler.js';
 import { createLogger } from '../../../server/utils/logger.js';
 
-vi.mock('../../../server/capture/capture-providers/ffmpeg-capture.js');
+vi.mock('../../../server/capture/capture-providers/ffmpeg-capture.js', () => ({
+  FFmpegCapture: vi.fn(),
+}));
 vi.mock('../../../server/capture/display-detection.js');
 vi.mock('../../../server/capture/stream-handler.js');
 vi.mock('../../../server/utils/logger.js', () => ({
@@ -38,18 +40,27 @@ describe('DesktopCaptureService', () => {
     vi.mocked(createLogger).mockReturnValue(mockLogger);
 
     mockFFmpegCapture = {
-      isAvailable: vi.fn().mockResolvedValue(true),
-      getCapabilities: vi.fn().mockResolvedValue({
-        formats: ['webm', 'mp4'],
-        codecs: ['vp8', 'h264'],
-        hardwareAcceleration: { vaapi: true, nvenc: false, qsv: false },
-        maxResolution: { width: 3840, height: 2160 },
-        features: { audio: true, cursor: true, region: true },
-      }),
+      checkFFmpegAvailable: vi.fn().mockResolvedValue(true),
+      getFFmpegCodecs: vi.fn().mockResolvedValue(['vp8', 'vp9', 'h264']),
       startCapture: vi.fn(),
-      stopCapture: vi.fn().mockResolvedValue(undefined),
+      stop: vi.fn().mockResolvedValue(undefined),
+      // EventEmitter methods
+      on: vi.fn().mockReturnThis(),
+      once: vi.fn().mockReturnThis(),
+      emit: vi.fn().mockReturnThis(),
+      removeListener: vi.fn().mockReturnThis(),
+      removeAllListeners: vi.fn().mockReturnThis(),
+      setMaxListeners: vi.fn().mockReturnThis(),
+      getMaxListeners: vi.fn().mockReturnValue(10),
+      listeners: vi.fn().mockReturnValue([]),
+      listenerCount: vi.fn().mockReturnValue(0),
+      prependListener: vi.fn().mockReturnThis(),
+      prependOnceListener: vi.fn().mockReturnThis(),
+      eventNames: vi.fn().mockReturnValue([]),
+      addListener: vi.fn().mockReturnThis(),
+      off: vi.fn().mockReturnThis(),
+      rawListeners: vi.fn().mockReturnValue([]),
     };
-    (FFmpegCapture as any).mockImplementation(() => mockFFmpegCapture);
 
     mockStreamHandler = {
       addClient: vi.fn(),
@@ -68,6 +79,8 @@ describe('DesktopCaptureService', () => {
       availableScreens: [],
     });
 
+    // Set up mock before creating service
+    vi.mocked(FFmpegCapture).mockImplementation(() => mockFFmpegCapture);
     service = new DesktopCaptureService();
   });
 
@@ -104,20 +117,23 @@ describe('DesktopCaptureService', () => {
       });
     });
 
-    it('should return unavailable when FFmpeg is not available', async () => {
-      mockFFmpegCapture.isAvailable.mockResolvedValue(false);
+    it('should throw error when FFmpeg is not available during initialization', async () => {
+      // Create a new service instance with FFmpeg unavailable
+      const localMockFFmpegCapture = {
+        ...mockFFmpegCapture,
+        checkFFmpegAvailable: vi.fn().mockResolvedValue(false),
+      };
+      vi.mocked(FFmpegCapture).mockImplementation(() => localMockFFmpegCapture);
+      const localService = new DesktopCaptureService();
 
-      const capabilities = await service.getCapabilities();
-
-      expect(capabilities).toEqual({
-        available: false,
-        error: 'FFmpeg not available',
-      });
+      await expect(localService.getCapabilities()).rejects.toThrow(
+        'FFmpeg is not available! Please install FFmpeg: sudo apt-get install ffmpeg'
+      );
     });
   });
 
-  describe('startCaptureSession', () => {
-    const mockStream = new Readable({ read() {} });
+  describe('startCapture', () => {
+    let mockStream: Readable & { on?: any; once?: any };
     const displayServer: DisplayServer = {
       type: 'x11',
       display: ':0',
@@ -126,18 +142,23 @@ describe('DesktopCaptureService', () => {
     };
 
     beforeEach(() => {
+      mockStream = new Readable({ read() {} });
+      mockStream.on = vi.fn().mockReturnThis();
+      mockStream.once = vi.fn().mockReturnThis();
+
       mockFFmpegCapture.startCapture.mockResolvedValue({
         stream: mockStream,
-        process: { pid: 12345 },
+        getStats: vi.fn().mockReturnValue({}),
         stop: vi.fn(),
       });
     });
 
     it('should start a new capture session', async () => {
-      const session = await service.startCaptureSession('user123', {
+      const session = await service.startCapture({
         codec: 'vp8',
-        fps: 30,
-        resolution: { width: 1920, height: 1080 },
+        framerate: 30,
+        width: 1920,
+        height: 1080,
       });
 
       expect(session).toEqual({
@@ -160,29 +181,35 @@ describe('DesktopCaptureService', () => {
     it('should throw when no display server is available', async () => {
       mockDetectDisplayServer.mockResolvedValue(null);
 
-      await expect(service.startCaptureSession('user123', {})).rejects.toThrow(
-        'No display server available'
+      await expect(service.startCapture({})).rejects.toThrow(
+        'Server capture not available - no display server detected'
       );
     });
 
     it('should throw when FFmpeg is not available', async () => {
-      mockFFmpegCapture.isAvailable.mockResolvedValue(false);
+      // Create a new service instance with FFmpeg unavailable
+      const localMockFFmpegCapture = {
+        ...mockFFmpegCapture,
+        checkFFmpegAvailable: vi.fn().mockResolvedValue(false),
+      };
+      vi.mocked(FFmpegCapture).mockImplementation(() => localMockFFmpegCapture);
+      const localService = new DesktopCaptureService();
 
-      await expect(service.startCaptureSession('user123', {})).rejects.toThrow(
-        'FFmpeg not available'
+      await expect(localService.startCapture({})).rejects.toThrow(
+        'FFmpeg is not available! Please install FFmpeg: sudo apt-get install ffmpeg'
       );
     });
 
     it('should handle multiple sessions from same user', async () => {
-      const session1 = await service.startCaptureSession('user123', {});
-      const session2 = await service.startCaptureSession('user123', {});
+      const session1 = await service.startCapture({});
+      const session2 = await service.startCapture({});
 
       expect(session1.id).not.toBe(session2.id);
       expect(mockFFmpegCapture.startCapture).toHaveBeenCalledTimes(2);
     });
 
     it('should pipe capture stream to stream handler', async () => {
-      await service.startCaptureSession('user123', {});
+      await service.startCapture({});
 
       // Verify stream data is piped to handler
       const dataCallback = mockStream.on.mock.calls.find((call: any) => call[0] === 'data')?.[1];
@@ -194,149 +221,139 @@ describe('DesktopCaptureService', () => {
     });
   });
 
-  describe('stopCaptureSession', () => {
+  describe('stopCapture', () => {
     it('should stop an active capture session', async () => {
       const mockStream = new Readable({ read() {} });
+      mockStream.on = vi.fn().mockReturnThis();
+      mockStream.once = vi.fn().mockReturnThis();
       const mockCaptureStream = {
         stream: mockStream,
-        process: { pid: 12345 },
+        getStats: vi.fn().mockReturnValue({}),
         stop: vi.fn().mockResolvedValue(undefined),
       };
       mockFFmpegCapture.startCapture.mockResolvedValue(mockCaptureStream);
 
-      const session = await service.startCaptureSession('user123', {});
-      await service.stopCaptureSession(session.id);
+      const session = await service.startCapture({});
+      await service.stopCapture(session.id);
 
       expect(mockFFmpegCapture.stopCapture).toHaveBeenCalledWith(mockCaptureStream);
       expect(mockStreamHandler.stop).toHaveBeenCalled();
     });
 
     it('should throw when session not found', async () => {
-      await expect(service.stopCaptureSession('invalid-id')).rejects.toThrow(
-        'Capture session not found'
+      await expect(service.stopCapture('invalid-id')).rejects.toThrow(
+        'Session invalid-id not found'
       );
     });
 
     it('should not throw when stopping already stopped session', async () => {
+      const mockStream = new Readable({ read() {} });
+      mockStream.on = vi.fn().mockReturnThis();
+      mockStream.once = vi.fn().mockReturnThis();
       const mockCaptureStream = {
-        stream: new Readable({ read() {} }),
-        process: { pid: 12345 },
+        stream: mockStream,
+        getStats: vi.fn().mockReturnValue({}),
         stop: vi.fn().mockResolvedValue(undefined),
       };
       mockFFmpegCapture.startCapture.mockResolvedValue(mockCaptureStream);
 
-      const session = await service.startCaptureSession('user123', {});
-      await service.stopCaptureSession(session.id);
+      const session = await service.startCapture({});
+      await service.stopCapture(session.id);
 
       // Second stop should not throw
-      await service.stopCaptureSession(session.id);
+      await service.stopCapture(session.id);
 
       expect(mockFFmpegCapture.stopCapture).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('getSession', () => {
-    it('should return active session', async () => {
-      const mockCaptureStream = {
-        stream: new Readable({ read() {} }),
-        process: { pid: 12345 },
-        stop: vi.fn(),
-      };
-      mockFFmpegCapture.startCapture.mockResolvedValue(mockCaptureStream);
-
-      const session = await service.startCaptureSession('user123', {});
-      const retrieved = service.getSession(session.id);
-
-      expect(retrieved).toEqual(session);
-    });
-
-    it('should return undefined for non-existent session', () => {
-      const session = service.getSession('invalid-id');
-      expect(session).toBeUndefined();
-    });
-  });
-
-  describe('getUserSessions', () => {
+  describe('getAllSessions', () => {
     it('should return all sessions for a user', async () => {
+      const mockStream = new Readable({ read() {} });
+      mockStream.on = vi.fn().mockReturnThis();
+      mockStream.once = vi.fn().mockReturnThis();
       const mockCaptureStream = {
-        stream: new Readable({ read() {} }),
-        process: { pid: 12345 },
+        stream: mockStream,
+        getStats: vi.fn().mockReturnValue({}),
         stop: vi.fn(),
       };
       mockFFmpegCapture.startCapture.mockResolvedValue(mockCaptureStream);
 
-      const session1 = await service.startCaptureSession('user123', {});
-      const session2 = await service.startCaptureSession('user123', {});
-      await service.startCaptureSession('user456', {}); // Different user
+      const session1 = await service.startCapture({});
+      const session2 = await service.startCapture({});
+      await service.startCapture({}); // Different user
 
-      const userSessions = service.getUserSessions('user123');
+      const userSessions = service.getAllSessions('user123');
 
       expect(userSessions).toHaveLength(2);
       expect(userSessions).toContainEqual(session1);
       expect(userSessions).toContainEqual(session2);
     });
 
-    it('should return empty array for user with no sessions', () => {
-      const sessions = service.getUserSessions('user123');
+    it('should return empty array for user with no sessions', async () => {
+      const sessions = await service.getAllSessions();
       expect(sessions).toEqual([]);
     });
   });
 
-  describe('getStreamHandler', () => {
-    it('should return stream handler for active session', async () => {
+  describe('getSession', () => {
+    it('should return session for active session', async () => {
+      const mockStream = new Readable({ read() {} });
+      mockStream.on = vi.fn().mockReturnThis();
+      mockStream.once = vi.fn().mockReturnThis();
       const mockCaptureStream = {
-        stream: new Readable({ read() {} }),
-        process: { pid: 12345 },
+        stream: mockStream,
+        getStats: vi.fn().mockReturnValue({}),
         stop: vi.fn(),
       };
       mockFFmpegCapture.startCapture.mockResolvedValue(mockCaptureStream);
 
-      const session = await service.startCaptureSession('user123', {});
-      const handler = service.getStreamHandler(session.id);
+      const session = await service.startCapture({});
+      const sessionResult = await service.getSession(session.id);
 
-      expect(handler).toBe(mockStreamHandler);
+      expect(sessionResult).toBeDefined();
+      expect(sessionResult?.id).toBe(session.id);
     });
 
-    it('should return undefined for non-existent session', () => {
-      const handler = service.getStreamHandler('invalid-id');
-      expect(handler).toBeUndefined();
+    it('should return undefined for non-existent session', async () => {
+      const result = await service.getSession('invalid-id');
+      expect(result).toBeUndefined();
     });
   });
 
-  describe('cleanup', () => {
+  describe('shutdown', () => {
     it('should stop all active sessions on cleanup', async () => {
       const mockCaptureStream = {
         stream: new Readable({ read() {} }),
-        process: { pid: 12345 },
+        getStats: vi.fn().mockReturnValue({}),
         stop: vi.fn().mockResolvedValue(undefined),
       };
       mockFFmpegCapture.startCapture.mockResolvedValue(mockCaptureStream);
 
-      await service.startCaptureSession('user123', {});
-      await service.startCaptureSession('user456', {});
+      await service.startCapture({});
+      await service.startCapture({});
 
-      await service.cleanup();
+      await service.shutdown();
 
-      expect(mockFFmpegCapture.stopCapture).toHaveBeenCalledTimes(2);
-      expect(mockStreamHandler.stop).toHaveBeenCalledTimes(2);
+      expect(mockCaptureStream.stop).toHaveBeenCalledTimes(2);
     });
 
     it('should handle errors during cleanup gracefully', async () => {
       const mockCaptureStream = {
         stream: new Readable({ read() {} }),
-        process: { pid: 12345 },
+        getStats: vi.fn().mockReturnValue({}),
         stop: vi.fn().mockRejectedValue(new Error('Stop failed')),
       };
       mockFFmpegCapture.startCapture.mockResolvedValue(mockCaptureStream);
-      mockFFmpegCapture.stopCapture.mockRejectedValue(new Error('Stop failed'));
+      // The error is already handled by mockCaptureStream.stop rejecting
 
-      await service.startCaptureSession('user123', {});
+      await service.startCapture({});
 
       // Should not throw
-      await service.cleanup();
+      await service.shutdown();
 
       expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to stop capture'),
+        expect.stringContaining('Error stopping session'),
         expect.any(Error)
       );
     });
