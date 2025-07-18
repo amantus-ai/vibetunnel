@@ -1,5 +1,7 @@
 # VibeTunnel Tauri App
 
+> **⚠️ EXPERIMENTAL / WORK IN PROGRESS**: This Tauri implementation is experimental and not recommended for production use. The primary VibeTunnel desktop app is the native macOS application in the `mac/` directory. This Tauri version is being developed for future cross-platform support.
+
 This directory contains the Tauri-based desktop application for VibeTunnel. Tauri is a framework for building smaller, faster, and more secure desktop applications with a web frontend.
 
 ## What is Tauri?

@@ -294,13 +294,10 @@ screen -S release
 ```bash
 # For stable releases:
 ./scripts/release.sh stable
-# Expects version.xcconfig to have a stable version like "1.0.0"
 
 # For pre-releases:
 ./scripts/release.sh beta 2
-# Expects version.xcconfig to ALREADY have "1.0.0-beta.2"
-# If version.xcconfig has "1.0.0", the script will add suffix and create "1.0.0-beta.2"
-# If version.xcconfig already has "1.0.0-beta.2", it will use it as-is
+# The "beta 2" parameters are ONLY for git tagging
 ```
 
 **Script Validation**: The release script now includes:
@@ -657,10 +654,10 @@ rm -rf ~/Library/Developer/Xcode/DerivedData/VibeTunnel-*
 #### Web Version Out of Sync
 **Problem**: Web server shows different version than macOS app (e.g., "beta.3" when app is "beta.4").
 
-**Cause**: web/package.json was not updated when BuildNumber.xcconfig was changed.
+**Cause**: web/package.json was not updated when version.xcconfig was changed.
 
 **Solution**: 
-1. Update package.json to match BuildNumber.xcconfig:
+1. Update package.json to match version.xcconfig:
    ```bash
    # Check current versions
    grep MARKETING_VERSION VibeTunnel/version.xcconfig
@@ -1115,7 +1112,7 @@ Where possible, run independent operations in parallel:
 9. **DMG signing is separate from notarization** - DMGs themselves aren't notarized, only the app inside
 10. **Command timeouts** are a real issue - use screen/tmux for releases
 
-### Additional Lessons from v1.0.0-beta.5 Release
+### Additional Lessons from Recent Releases
 
 #### DMG Notarization Confusion
 **Issue**: The DMG shows as "Unnotarized Developer ID" when checked with spctl, but this is normal.
@@ -1131,53 +1128,12 @@ Where possible, run independent operations in parallel:
 - Consider using `screen` or `tmux` for long operations
 - Add progress indicators to show the script is still running
 
-#### Appcast Generation Failures
-**Issue**: `generate-appcast.sh` failed with GitHub API errors despite valid auth.
-**Workaround**: 
-- Manually create appcast entries when automation fails
-- Always verify the Sparkle signature with `sign_update --account VibeTunnel`
-- Keep a template of appcast entries for quick manual updates
-
-### Additional Lessons from v1.0.0-beta.7 Release
-
 #### Repository Name Parsing Issue
 **Issue**: `generate-appcast.sh` was including `.git` suffix when parsing repository name from git remote URL.
 **Fix**: 
 - Updated regex to strip `.git` suffix: `${BASH_REMATCH[2]%.git}`
 - This caused GitHub API calls to fail with 404 errors
 - Always test script changes with actual GitHub API calls
-
-#### False Positive Warnings in Preflight Check
-**Issue**: Preflight check warned about Xcode project not using version.xcconfig values.
-**Explanation**: 
-- The project actually uses `Shared.xcconfig` which includes `version.xcconfig`
-- Build settings correctly show `MARKETING_VERSION = $(MARKETING_VERSION)`
-- The warning logic needs to be improved to detect indirect configuration includes
-
-#### CHANGELOG Location Confusion
-**Issue**: Release script expects CHANGELOG.md in `mac/` directory but it's often in project root.
-**Solution**: 
-- Copy CHANGELOG.md to expected location before release: `cp CHANGELOG.md mac/CHANGELOG.md`
-- Consider updating scripts to check both locations
-- Standardize on one location for consistency
-
-#### Release Script Interruptions
-**Issue**: Release script can be interrupted during long operations like builds and notarization.
-**Solutions**: 
-- Run with longer timeouts: `./scripts/release.sh beta 7` with 20-minute timeout
-- Consider using `nohup` or `screen` for resilience
-- The script needs state preservation for resumability
-
-#### Manual Recovery Process Works Well
-**Success**: When automation fails, manual steps are well-documented and reliable:
-1. Build with `./scripts/build.sh --configuration Release`
-2. Sign and notarize with `./scripts/sign-and-notarize.sh`
-3. Create DMG/ZIP with respective scripts
-4. Create GitHub release with `gh release create`
-5. Sign DMG for Sparkle with `sign_update --account VibeTunnel`
-6. Manually update appcast XML files
-
-### Additional Lessons from v1.0.0-beta.9 Release
 
 #### Private Key Format Requirements
 **Issue**: The sign_update tool fails with "ERROR! Failed to decode base64 encoded key data" when the private key file contains comments.
@@ -1187,20 +1143,6 @@ Where possible, run independent operations in parallel:
 - All scripts now use the clean key file automatically
 - Scripts will extract the key from the commented file if the clean one doesn't exist
 
-#### Missing Custom Node.js Build Handling
-**Issue**: Release script failed when custom Node.js build wasn't prepared in `web/.node-builds/`.
-**Solution**: 
-- Script now checks for custom Node.js and gracefully falls back to system Node.js
-- Shows warning: "Custom Node.js not found. Using system Node.js... Note: Release will work but app size will be larger."
-- No longer a blocking error - release continues with system Node.js
-
-#### App Location in DerivedData
-**Issue**: Built app wasn't found in expected `build/` directory but was in DerivedData.
-**Solution**: 
-- Script now searches DerivedData if app not found in build directory
-- Automatically copies app to expected location for consistency
-- Handles both local build directory and Xcode's DerivedData locations
-
 #### State Tracking and Resume Capability
 **New Feature**: Release process now supports interruption and resumption.
 - Added `release-state.sh` for state management
@@ -1208,21 +1150,6 @@ Where possible, run independent operations in parallel:
 - Use `./scripts/release.sh --resume` to continue interrupted release
 - Use `./scripts/release.sh --status` to check current state
 - State file at `.release-state` contains progress information
-
-#### Critical: Never Background Release Scripts
-**Issue**: Release scripts were getting backgrounded or interrupted, causing incomplete releases.
-**Solution**: 
-- **ALWAYS run release scripts directly in the foreground**
-- Never use `&` or run in background
-- Use `screen` or `tmux` if you need to disconnect
-- Claude Code and other tools must run scripts blocking/synchronously
-
-#### Stats.store Integration
-**Issue**: Stats.store returns "Application not found" error when checking statistics.
-**Status**: 
-- Integration not fully configured - needs further investigation
-- Does not block releases but statistics won't be tracked
-- Manual verification: `https://stats.store/app/<app-id>`
 
 ## 🚀 Long-term Improvements
 

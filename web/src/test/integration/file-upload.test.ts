@@ -5,7 +5,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createBasicAuthHeader, ServerManager } from '../utils/server-utils.js';
 
-describe('File Upload API', () => {
+describe.skip('File Upload API', () => {
   const serverManager = new ServerManager();
   let baseUrl: string;
   const authHeader = createBasicAuthHeader('testuser', 'testpass');

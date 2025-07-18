@@ -224,7 +224,7 @@ describe.skip('HQ Mode E2E Tests', () => {
     expect(killResponse.ok).toBe(true);
   });
 
-  it.skip('should aggregate buffer updates through WebSocket', async () => {
+  it('should aggregate buffer updates through WebSocket', async () => {
     const sessionIds: string[] = [];
 
     // Create sessions for WebSocket test
