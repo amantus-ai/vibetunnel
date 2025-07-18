@@ -51,7 +51,7 @@ const waitForSessionExit = async (
 ): Promise<boolean> => {
   const startTime = Date.now();
   const sessionJsonPath = path.join(testDir, sessionId, 'session.json');
-  
+
   while (Date.now() - startTime < timeout) {
     try {
       if (fs.existsSync(sessionJsonPath)) {
@@ -65,7 +65,7 @@ const waitForSessionExit = async (
     }
     await sleep(50); // Reduced polling interval
   }
-  
+
   return false;
 };
 
@@ -87,7 +87,7 @@ describe('PtyManager', { timeout: 30000 }, () => {
     if (ptyManager) {
       await ptyManager.shutdown();
     }
-    
+
     // Clean up test directory
     try {
       fs.rmSync(testDir, { recursive: true, force: true });
@@ -124,6 +124,7 @@ describe('PtyManager', { timeout: 30000 }, () => {
 
       // Wait for process to complete
       const sessionExited = await waitForSessionExit(testDir, result.sessionId);
+      expect(sessionExited).toBe(true);
 
       // For now, just verify the session was created and exited successfully
       // The output capture seems to have issues in the test environment
