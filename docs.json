@@ -40,7 +40,7 @@
     },
     {
       "name": "Discord",
-      "icon": "discord", 
+      "icon": "discord",
       "url": "https://discord.gg/vibetunnel"
     }
   ],
@@ -56,7 +56,7 @@
             "pages": [
               "introduction",
               "docs/project-overview",
-              "docs/keyboard-shortcuts-quick-reference",
+              "docs/keyboard-shortcuts",
               "docs/CONTRIBUTING"
             ]
           },
@@ -75,10 +75,17 @@
               "docs/architecture-mario",
               "docs/spec",
               "web/docs/spec",
-              "ios/docs/spec",
               "mac/docs/BuildArchitectures",
               "web/docs/socket-protocol",
               "docs/authentication"
+            ]
+          },
+          {
+            "group": "Security",
+            "pages": [
+              "docs/security",
+              "docs/push-notification",
+              "docs/WEBRTC_CONFIG"
             ]
           }
         ]
@@ -88,6 +95,15 @@
         "icon": "code",
         "description": "Build and contribute",
         "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "docs/development",
+              "docs/build-system",
+              "docs/testing",
+              "docs/logging-style-guide"
+            ]
+          },
           {
             "group": "macOS Development",
             "pages": [
@@ -102,33 +118,17 @@
           {
             "group": "iOS Development",
             "pages": [
-              "ios/docs/ios-plan",
-              "ios/docs/modern-swift",
-              "docs/ios-enhancements",
-              "docs/ios-web-parity-plan",
-              "docs/ios-update-progress",
-              "web/docs/ios-safari-paste"
+              "apple/docs/modern-swift",
+              "apple/docs/swift-concurrency",
+              "apple/docs/swiftui",
+              "apple/docs/swift-testing-playbook"
             ]
           },
           {
             "group": "Web Development",
             "pages": [
-              "web/docs/frontend-testing-plan",
               "web/docs/performance",
-              "docs/keyboard-shortcuts",
-              "web/docs/keyboard-shortcuts",
               "web/docs/terminal-titles",
-              "web/docs/large-paste-investigation"
-            ]
-          },
-          {
-            "group": "Testing",
-            "pages": [
-              "docs/testing",
-              "apple/docs/swift-testing-playbook",
-              "web/docs/playwright-testing",
-              "web/docs/playwright-plan",
-              "web/docs/playwright-test-design",
               "docs/TESTING_EXTERNAL_DEVICES"
             ]
           }
@@ -140,40 +140,47 @@
         "description": "Deploy and maintain",
         "groups": [
           {
-            "group": "Build & Deployment",
+            "group": "Release Process",
             "pages": [
-              "docs/development",
-              "docs/build-system",
               "docs/deployment",
               "docs/RELEASE_PROCESS",
-              "docs/RELEASE_IMPROVEMENTS",
-              "mac/docs/RELEASE",
-              "mac/docs/release-guide",
-              "web/docs/npm"
+              "mac/docs/RELEASE"
+            ]
+          },
+          {
+            "group": "Distribution",
+            "pages": [
+              "web/docs/npm",
+              "mac/docs/sparkle-keys",
+              "mac/docs/sparkle-stats-store"
             ]
           },
           {
             "group": "Configuration",
             "pages": [
-              "web/docs/custom-node",
-              "docs/custom-node-build-flags",
-              "mac/docs/sparkle-keys",
-              "mac/docs/sparkle-stats-store",
-              "docs/push-notification",
-              "docs/WEBRTC_CONFIG"
+              "docs/custom-node",
+              "apple/docs/logging-private-fix"
+            ]
+          }
+        ]
+      },
+      {
+        "dropdown": "Reference",
+        "icon": "book-open",
+        "description": "API and technical reference",
+        "groups": [
+          {
+            "group": "File Structure",
+            "pages": [
+              "docs/files",
+              ".github/workflows/README.md"
             ]
           },
           {
-            "group": "Reference",
+            "group": "Tools & Integration",
             "pages": [
-              "docs/files",
               "docs/claude",
-              "docs/gemini",
-              "docs/homebrew-issue",
-              "apple/docs/logging-private-fix",
-              "apple/docs/modern-swift",
-              "apple/docs/swift-concurrency",
-              "apple/docs/swiftui"
+              "docs/gemini"
             ]
           }
         ]

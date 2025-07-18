@@ -138,6 +138,26 @@ The release script automates:
 
 Build numbers must always increment, even across different release types.
 
+## Recent Improvements
+
+### Enhanced Error Messages
+```bash
+# Before: Confusing error
+❌ Error: Pre-release number required for beta
+
+# After: Clear guidance
+❌ Error: Pre-release number required for beta releases
+Usage: ./scripts/release.sh beta <number>
+Example: ./scripts/release.sh beta 7
+```
+
+### Fixed Issues
+1. **Dry-Run Mode** - Now actually prevents ALL file modifications
+2. **Clear Parameters** - Added `--help` flag with comprehensive usage examples
+3. **CHANGELOG Location** - Script now looks in project root first
+4. **iOS Info.plist** - Now uses `$(MARKETING_VERSION)` and `$(CURRENT_PROJECT_VERSION)`
+5. **Version Management** - Clarified that version.xcconfig is the source of truth
+
 ## Troubleshooting
 
 ### "Version already contains pre-release suffix"
@@ -163,3 +183,22 @@ If a release fails partway through:
 ```
 
 This will pick up where the release left off, skipping completed steps.
+
+## Quick Reference
+
+```bash
+# Get help
+./scripts/release.sh --help
+
+# Test without making changes
+./scripts/release.sh beta 7 --dry-run
+
+# Create stable release
+./scripts/release.sh stable
+
+# Create beta release
+./scripts/release.sh beta 7
+
+# Resume failed release
+./scripts/release-resume.sh
+```
