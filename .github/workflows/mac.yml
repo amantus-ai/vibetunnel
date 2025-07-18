@@ -128,10 +128,10 @@ jobs:
         find web-artifacts-temp -type f | head -20 || echo "No files found"
         
         # Ensure web directory structure exists
-        mkdir -p web/dist web/public/bundle
+        mkdir -p web/dist web/public/bundle web/native web/bin
         
         # The artifacts are uploaded without the web/ prefix
-        # So they're at web-artifacts-temp/dist and web-artifacts-temp/public/bundle
+        # So they're at web-artifacts-temp/dist, web-artifacts-temp/public/bundle, etc.
         if [ -d "web-artifacts-temp/dist" ]; then
           # Copy from the root of artifacts
           cp -r web-artifacts-temp/dist/* web/dist/ 2>/dev/null || true
@@ -141,6 +141,14 @@ jobs:
           cp -r web-artifacts-temp/public/bundle/* web/public/bundle/ 2>/dev/null || true
           echo "Copied bundle files"
         fi
+        if [ -d "web-artifacts-temp/native" ]; then
+          cp -r web-artifacts-temp/native/* web/native/ 2>/dev/null || true
+          echo "Copied native binaries"
+        fi
+        if [ -d "web-artifacts-temp/bin" ]; then
+          cp -r web-artifacts-temp/bin/* web/bin/ 2>/dev/null || true
+          echo "Copied bin scripts"
+        fi
         
         # Debug: Show what we have
         echo "=== Web directory structure ==="
@@ -149,6 +157,8 @@ jobs:
         ls -la web/dist/ | head -10 || true
         echo "=== Bundle contents ==="
         ls -la web/public/bundle/ | head -10 || true
+        echo "=== Native contents ==="
+        ls -la web/native/ | head -10 || true
         
         # Clean up temp directory
         rm -rf web-artifacts-temp
@@ -162,6 +172,9 @@ jobs:
         echo "Web artifacts successfully downloaded and positioned"
     
     - name: Resolve Dependencies (once)
+      env:
+        CI: "true"  # Ensure CI environment variable is set
+        SKIP_NODE_CHECK: "true"  # Skip Node.js check in CI since we download pre-built artifacts
       run: |
         echo "Resolving Swift package dependencies..."
         # Workspace is at root level
@@ -175,6 +188,9 @@ jobs:
     - name: Build Debug
       timeout-minutes: 10
       id: build
+      env:
+        CI: "true"  # Ensure CI environment variable is set for build scripts
+        SKIP_NODE_CHECK: "true"  # Skip Node.js check in CI since we download pre-built artifacts
       run: |
         # Always use Debug for now to match test expectations
         BUILD_CONFIG="Debug"
@@ -218,6 +234,8 @@ jobs:
     - name: Run tests with coverage
       id: test-coverage
       timeout-minutes: 15
+      env:
+        SKIP_NODE_CHECK: "true"  # Skip Node.js check in CI since we download pre-built artifacts
       run: |
         # Debug: Check if web build artifacts were downloaded
         echo "=== Checking web build artifacts ==="

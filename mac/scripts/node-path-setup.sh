@@ -22,7 +22,12 @@ else
     export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.volta/bin:$HOME/Library/pnpm:$HOME/.bun/bin:$PATH"
 fi
 
-# Verify Node.js is available
+# Verify Node.js is available (skip in CI when using pre-built artifacts)
+if [ "${SKIP_NODE_CHECK}" = "true" ] && [ "${CI}" = "true" ]; then
+    # In CI with pre-built artifacts, Node.js is not required
+    return 0 2>/dev/null || exit 0
+fi
+
 if ! command -v node >/dev/null 2>&1; then
     echo "error: Node.js not found. Install via: brew install node" >&2
     return 1 2>/dev/null || exit 1

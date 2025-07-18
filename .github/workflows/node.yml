@@ -281,6 +281,8 @@ jobs:
         path: |
           web/dist/
           web/public/bundle/
+          web/native/
+          web/bin/vt
         retention-days: 1
         if-no-files-found: error
 
