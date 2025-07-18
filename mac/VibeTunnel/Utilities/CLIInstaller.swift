@@ -38,6 +38,7 @@ final class CLIInstaller {
     var isInstalling = false
     var lastError: String?
     var isOutdated = false
+    var isUninstalling = false
 
     // MARK: - Initialization
 
@@ -140,6 +141,43 @@ final class CLIInstaller {
 
         // Perform the installation
         performInstallation()
+    }
+
+    /// Uninstalls the vt CLI tool (async version)
+    func uninstall() async {
+        await MainActor.run {
+            uninstallCLITool()
+        }
+    }
+
+    /// Uninstalls the vt CLI tool from /usr/local/bin and /opt/homebrew/bin
+    func uninstallCLITool() {
+        logger.info("CLIInstaller: Starting CLI tool uninstallation...")
+        isInstalling = true
+        isUninstalling = true
+        lastError = nil
+
+        // Show confirmation dialog
+        let confirmAlert = NSAlert()
+        confirmAlert.messageText = "Uninstall VT Command Line Tool"
+        confirmAlert
+            .informativeText =
+            "This will remove the 'vt' command from your system. Administrator privileges are required."
+        confirmAlert.addButton(withTitle: "Uninstall")
+        confirmAlert.addButton(withTitle: "Cancel")
+        confirmAlert.alertStyle = .informational
+        confirmAlert.icon = NSApp.applicationIconImage
+
+        let response = confirmAlert.runModal()
+        if response != .alertFirstButtonReturn {
+            logger.info("CLIInstaller: User cancelled uninstallation")
+            isInstalling = false
+            isUninstalling = false
+            return
+        }
+
+        // Perform the uninstallation
+        performUninstallation()
     }
 
     // MARK: - Private Implementation
@@ -250,6 +288,102 @@ final class CLIInstaller {
         }
     }
 
+    /// Performs the actual uninstallation with sudo privileges
+    private func performUninstallation() {
+        logger.info("CLIInstaller: Uninstalling vt script")
+
+        // Create the uninstallation script
+        let script = """
+        #!/bin/bash
+        set -e
+
+        # Remove vt script from /usr/local/bin
+        if [ -L "/usr/local/bin/vt" ] || [ -f "/usr/local/bin/vt" ]; then
+            rm -f "/usr/local/bin/vt"
+            echo "Removed vt from /usr/local/bin"
+        fi
+
+        # Remove vt script from /opt/homebrew/bin (Apple Silicon Homebrew path)
+        if [ -L "/opt/homebrew/bin/vt" ] || [ -f "/opt/homebrew/bin/vt" ]; then
+            rm -f "/opt/homebrew/bin/vt"
+            echo "Removed vt from /opt/homebrew/bin"
+        fi
+
+        # Clean up old vibetunnel binary if it exists
+        if [ -f "/usr/local/bin/vibetunnel" ]; then
+            rm -f "/usr/local/bin/vibetunnel"
+            echo "Removed old vibetunnel binary"
+        fi
+        """
+
+        // Write the script to a temporary file
+        let tempDir = FileManager.default.temporaryDirectory
+        let scriptURL = tempDir.appendingPathComponent("uninstall_vt_cli.sh")
+
+        do {
+            try script.write(to: scriptURL, atomically: true, encoding: .utf8)
+
+            // Make the script executable
+            let attributes: [FileAttributeKey: Any] = [.posixPermissions: 0o755]
+            try FileManager.default.setAttributes(attributes, ofItemAtPath: scriptURL.path)
+
+            logger.info("CLIInstaller: Created uninstallation script at \(scriptURL.path)")
+
+            // Execute with osascript to get sudo dialog
+            let appleScript = """
+            do shell script "bash '\(scriptURL.path)'" with administrator privileges
+            """
+
+            let task = Process()
+            task.launchPath = "/usr/bin/osascript"
+            task.arguments = ["-e", appleScript]
+
+            let pipe = Pipe()
+            let errorPipe = Pipe()
+            task.standardOutput = pipe
+            task.standardError = errorPipe
+
+            try task.run()
+            task.waitUntilExit()
+
+            // Clean up the temporary script
+            try? FileManager.default.removeItem(at: scriptURL)
+
+            if task.terminationStatus == 0 {
+                logger.info("CLIInstaller: Uninstallation completed successfully")
+                isInstalled = false
+                isInstalling = false
+                isUninstalling = false
+                showUninstallSuccess()
+                // Refresh installation status
+                checkInstallationStatus()
+            } else {
+                let errorString: String
+                do {
+                    if let errorData = try errorPipe.fileHandleForReading.readToEnd() {
+                        errorString = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+                    } else {
+                        errorString = "Unknown error"
+                    }
+                } catch {
+                    logger.debug("Could not read error output: \(error.localizedDescription)")
+                    errorString = "Unknown error (could not read stderr)"
+                }
+                logger.error("CLIInstaller: Uninstallation failed with status \(task.terminationStatus): \(errorString)")
+                lastError = "Uninstallation failed: \(errorString)"
+                isInstalling = false
+                isUninstalling = false
+                showError("Uninstallation failed: \(errorString)")
+            }
+        } catch {
+            logger.error("CLIInstaller: Uninstallation failed with error: \(error)")
+            lastError = "Uninstallation failed: \(error.localizedDescription)"
+            isInstalling = false
+            isUninstalling = false
+            showError("Uninstallation failed: \(error.localizedDescription)")
+        }
+    }
+
     /// Shows success message after installation
     private func showSuccess() {
         let alert = NSAlert()
@@ -257,6 +391,17 @@ final class CLIInstaller {
         alert
             .informativeText =
             "The 'vt' command has been installed. You can now use 'vt' from the terminal to run VibeTunnel."
+        alert.addButton(withTitle: "OK")
+        alert.alertStyle = .informational
+        alert.icon = NSApp.applicationIconImage
+        alert.runModal()
+    }
+
+    /// Shows success message after uninstallation
+    private func showUninstallSuccess() {
+        let alert = NSAlert()
+        alert.messageText = "CLI Tools Uninstalled Successfully"
+        alert.informativeText = "The 'vt' command has been removed from your system."
         alert.addButton(withTitle: "OK")
         alert.alertStyle = .informational
         alert.icon = NSApp.applicationIconImage
