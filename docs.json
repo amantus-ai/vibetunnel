@@ -8,11 +8,11 @@
     "dark": "#1E40AF"
   },
   "logo": {
-    "light": "/docs/images/vibetunnel-logo-light.svg",
-    "dark": "/docs/images/vibetunnel-logo-dark.svg",
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
     "href": "https://vibetunnel.com"
   },
-  "favicon": "/docs/images/favicon.ico",
+  "favicon": "/favicon.svg",
   "navbar": {
     "links": [
       {
@@ -30,201 +30,119 @@
       "href": "https://vibetunnel.com/download"
     }
   },
-  "navigation": {
-    "dropdowns": [
-      {
-        "dropdown": "Getting Started",
-        "icon": "rocket",
-        "description": "Installation and quick start guides",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": [
-              "docs/project-overview",
-              "README"
-            ]
-          },
-          {
-            "group": "Installation",
-            "pages": [
-              "mac/README",
-              "ios/README",
-              "web/docs/VT_INSTALLATION"
-            ]
-          },
-          {
-            "group": "Quick Start",
-            "pages": [
-              "docs/keyboard-shortcuts-quick-reference",
-              "docs/CONTRIBUTING"
-            ]
-          }
-        ]
-      },
-      {
-        "dropdown": "Architecture",
-        "icon": "building",
-        "description": "System design and technical details",
-        "groups": [
-          {
-            "group": "Core Architecture",
-            "pages": [
-              "docs/ARCHITECTURE",
-              "docs/architecture-mario",
-              "docs/tauri-nodejs-architecture"
-            ]
-          },
-          {
-            "group": "Platform-Specific",
-            "pages": [
-              "mac/docs/BuildArchitectures",
-              "ios/docs/spec",
-              "web/docs/spec"
-            ]
-          },
-          {
-            "group": "Protocols",
-            "pages": [
-              "docs/spec",
-              "web/docs/socket-protocol",
-              "docs/authentication"
-            ]
-          }
-        ]
-      },
-      {
-        "dropdown": "Development",
-        "icon": "code",
-        "description": "Build, test, and contribute",
-        "groups": [
-          {
-            "group": "Setup & Build",
-            "pages": [
-              "docs/development",
-              "docs/build-system",
-              "mac/docs/BuildRequirements",
-              "web/docs/custom-node",
-              "docs/custom-node-build-flags",
-              "docs/vite-plan"
-            ]
-          },
-          {
-            "group": "macOS Development",
-            "pages": [
-              "mac/docs/DEVELOPMENT-SIGNING",
-              "mac/docs/CODE_SIGNING_SETUP",
-              "mac/docs/SIGNING-AND-NOTARIZATION",
-              "mac/docs/screencap",
-              "mac/docs/screencapturekit",
-              "apple/docs/modern-swift",
-              "apple/docs/swift-concurrency",
-              "apple/docs/swiftui"
-            ]
-          },
-          {
-            "group": "iOS Development",
-            "pages": [
-              "ios/docs/ios-plan",
-              "ios/docs/modern-swift",
-              "docs/ios-enhancements",
-              "docs/ios-web-parity-plan",
-              "docs/ios-update-progress",
-              "web/docs/ios-safari-paste"
-            ]
-          },
-          {
-            "group": "Web Development",
-            "pages": [
-              "web/docs/frontend-testing-plan",
-              "web/docs/performance",
-              "docs/keyboard-shortcuts",
-              "web/docs/keyboard-shortcuts"
-            ]
-          },
-          {
-            "group": "Testing",
-            "pages": [
-              "docs/testing",
-              "apple/docs/swift-testing-playbook",
-              "web/docs/playwright-testing",
-              "web/docs/playwright-plan",
-              "web/docs/playwright-test-design",
-              "docs/TESTING_EXTERNAL_DEVICES"
-            ]
-          }
-        ]
-      },
-      {
-        "dropdown": "Deployment",
-        "icon": "ship",
-        "description": "Release and distribution",
-        "groups": [
-          {
-            "group": "Release Process",
-            "pages": [
-              "docs/deployment",
-              "docs/RELEASE_PROCESS",
-              "docs/RELEASE_IMPROVEMENTS",
-              "mac/docs/RELEASE",
-              "mac/docs/release-guide"
-            ]
-          },
-          {
-            "group": "Distribution",
-            "pages": [
-              "web/docs/npm",
-              "mac/docs/sparkle-keys",
-              "mac/docs/sparkle-stats-store"
-            ]
-          },
-          {
-            "group": "Monitoring",
-            "pages": [
-              "docs/push-notification",
-              "docs/WEBRTC_CONFIG"
-            ]
-          }
-        ]
-      },
-      {
-        "dropdown": "Reference",
-        "icon": "book",
-        "description": "API docs and specifications",
-        "groups": [
-          {
-            "group": "File Structure",
-            "pages": [
-              "docs/files",
-              ".github/workflows/README.md"
-            ]
-          },
-          {
-            "group": "Terminal Features",
-            "pages": [
-              "web/docs/terminal-titles",
-              "web/docs/large-paste-investigation"
-            ]
-          },
-          {
-            "group": "Tools & Integration",
-            "pages": [
-              "docs/claude",
-              "docs/gemini",
-              "tauri/README"
-            ]
-          },
-          {
-            "group": "Troubleshooting",
-            "pages": [
-              "docs/homebrew-issue",
-              "apple/docs/logging-private-fix",
-              "docs/custom-node-build-flags"
-            ]
-          }
-        ]
-      }
-    ]
-  },
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "introduction",
+        "docs/project-overview",
+        "docs/keyboard-shortcuts-quick-reference",
+        "docs/CONTRIBUTING"
+      ]
+    },
+    {
+      "group": "Installation",
+      "pages": [
+        "mac/README",
+        "ios/README",
+        "web/docs/VT_INSTALLATION"
+      ]
+    },
+    {
+      "group": "Architecture",
+      "pages": [
+        "docs/ARCHITECTURE",
+        "docs/architecture-mario",
+        "docs/spec",
+        "web/docs/spec",
+        "ios/docs/spec",
+        "mac/docs/BuildArchitectures",
+        "web/docs/socket-protocol",
+        "docs/authentication"
+      ]
+    },
+    {
+      "group": "macOS Development",
+      "pages": [
+        "mac/docs/BuildRequirements",
+        "mac/docs/DEVELOPMENT-SIGNING",
+        "mac/docs/CODE_SIGNING_SETUP",
+        "mac/docs/SIGNING-AND-NOTARIZATION",
+        "mac/docs/screencap",
+        "mac/docs/screencapturekit"
+      ]
+    },
+    {
+      "group": "iOS Development",
+      "pages": [
+        "ios/docs/ios-plan",
+        "ios/docs/modern-swift",
+        "docs/ios-enhancements",
+        "docs/ios-web-parity-plan",
+        "docs/ios-update-progress",
+        "web/docs/ios-safari-paste"
+      ]
+    },
+    {
+      "group": "Web Development",
+      "pages": [
+        "web/docs/frontend-testing-plan",
+        "web/docs/performance",
+        "docs/keyboard-shortcuts",
+        "web/docs/keyboard-shortcuts",
+        "web/docs/terminal-titles",
+        "web/docs/large-paste-investigation"
+      ]
+    },
+    {
+      "group": "Testing",
+      "pages": [
+        "docs/testing",
+        "apple/docs/swift-testing-playbook",
+        "web/docs/playwright-testing",
+        "web/docs/playwright-plan",
+        "web/docs/playwright-test-design",
+        "docs/TESTING_EXTERNAL_DEVICES"
+      ]
+    },
+    {
+      "group": "Build & Deployment",
+      "pages": [
+        "docs/development",
+        "docs/build-system",
+        "docs/deployment",
+        "docs/RELEASE_PROCESS",
+        "docs/RELEASE_IMPROVEMENTS",
+        "mac/docs/RELEASE",
+        "mac/docs/release-guide",
+        "web/docs/npm"
+      ]
+    },
+    {
+      "group": "Configuration",
+      "pages": [
+        "web/docs/custom-node",
+        "docs/custom-node-build-flags",
+        "mac/docs/sparkle-keys",
+        "mac/docs/sparkle-stats-store",
+        "docs/push-notification",
+        "docs/WEBRTC_CONFIG"
+      ]
+    },
+    {
+      "group": "Reference",
+      "pages": [
+        "docs/files",
+        "docs/claude",
+        "docs/gemini",
+        "docs/homebrew-issue",
+        "apple/docs/logging-private-fix",
+        "apple/docs/modern-swift",
+        "apple/docs/swift-concurrency",
+        "apple/docs/swiftui"
+      ]
+    }
+  ],
   "tabs": [
     {
       "name": "API Reference",
