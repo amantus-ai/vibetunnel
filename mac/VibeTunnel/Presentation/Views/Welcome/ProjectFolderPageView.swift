@@ -1,5 +1,5 @@
-import SwiftUI
 import OSLog
+import SwiftUI
 
 /// Project folder configuration page in the welcome flow.
 ///
@@ -22,8 +22,8 @@ struct ProjectFolderPageView: View {
 
     @State private var scanTask: Task<Void, Never>?
     @Binding var currentPage: Int
-    
-    // Page index for ProjectFolderPageView in the welcome flow
+
+    /// Page index for ProjectFolderPageView in the welcome flow
     private let pageIndex = 4
 
     var body: some View {
@@ -126,16 +126,16 @@ struct ProjectFolderPageView: View {
         }
         .onChange(of: selectedPath) { _, newValue in
             repositoryBasePath = newValue
-            
+
             // Cancel any existing scan
             scanTask?.cancel()
-            
+
             // Debounce path changes to prevent rapid successive scans
             scanTask = Task {
                 // Add small delay to debounce rapid changes
                 try? await Task.sleep(for: .milliseconds(300))
                 guard !Task.isCancelled else { return }
-                
+
                 // Only scan if we're the current page
                 if currentPage == pageIndex && !newValue.isEmpty {
                     await performScan()
@@ -178,16 +178,16 @@ struct ProjectFolderPageView: View {
     private func scanForRepositories() {
         // Cancel any existing scan
         scanTask?.cancel()
-        
+
         scanTask = Task {
             await performScan()
         }
     }
-    
+
     private func performScan() async {
         isScanning = true
         discoveredRepos = []
-        
+
         let expandedPath = (selectedPath as NSString).expandingTildeInPath
         let repos = await findGitRepositories(in: expandedPath, maxDepth: 3)
 
@@ -204,29 +204,29 @@ struct ProjectFolderPageView: View {
 
     private func findGitRepositories(in path: String, maxDepth: Int) async -> [String] {
         var repositories: [String] = []
-        
+
         // Use a recursive async function that properly checks for cancellation
         func scanDirectory(_ dirPath: String, depth: Int) async {
             // Check for cancellation at each level
             guard !Task.isCancelled else { return }
             guard depth <= maxDepth else { return }
-            
+
             do {
                 let contents = try FileManager.default.contentsOfDirectory(atPath: dirPath)
-                
+
                 for item in contents {
                     // Check for cancellation in the loop
                     try Task.checkCancellation()
-                    
+
                     let fullPath = (dirPath as NSString).appendingPathComponent(item)
                     var isDirectory: ObjCBool = false
-                    
+
                     guard FileManager.default.fileExists(atPath: fullPath, isDirectory: &isDirectory),
                           isDirectory.boolValue else { continue }
-                    
+
                     // Skip hidden directories except .git
                     if item.hasPrefix(".") && item != ".git" { continue }
-                    
+
                     // Check if this directory contains .git
                     let gitPath = (fullPath as NSString).appendingPathComponent(".git")
                     if FileManager.default.fileExists(atPath: gitPath) {
@@ -239,7 +239,9 @@ struct ProjectFolderPageView: View {
             } catch is CancellationError {
                 // Task was cancelled, stop scanning
                 return
-            } catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoPermissionError {
+            } catch let error as NSError
+                where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoPermissionError
+            {
                 // Silently ignore permission errors - common for system directories
             } catch let error as NSError where error.domain == NSPOSIXErrorDomain && error.code == 1 {
                 // Operation not permitted - another common permission error
@@ -249,12 +251,12 @@ struct ProjectFolderPageView: View {
                     .debug("Unexpected error scanning \(dirPath): \(error)")
             }
         }
-        
+
         // Run the scanning on a lower priority
         await Task(priority: .background) {
             await scanDirectory(path, depth: 0)
         }.value
-        
+
         return repositories
     }
 }

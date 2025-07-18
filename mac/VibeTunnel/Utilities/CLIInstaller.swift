@@ -68,8 +68,11 @@ final class CLIInstaller {
                     // Verify it's our wrapper script with all expected components
                     // Check for the exec command with flexible quoting and optional arguments
                     // Allow for optional variables or arguments between $VIBETUNNEL_BIN and fwd
-                    let hasValidExecCommand = content.range(of: #"exec\s+["']?\$VIBETUNNEL_BIN["']?\s+fwd"#, options: .regularExpression) != nil
-                    
+                    let hasValidExecCommand = content.range(
+                        of: #"exec\s+["']?\$VIBETUNNEL_BIN["']?\s+fwd"#,
+                        options: .regularExpression
+                    ) != nil
+
                     if content.contains("VibeTunnel CLI wrapper") &&
                         content.contains("$TRY_PATH/Contents/Resources/vibetunnel") &&
                         hasValidExecCommand

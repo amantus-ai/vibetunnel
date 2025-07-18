@@ -6,7 +6,7 @@ struct DashboardSettingsView: View {
     @AppStorage(AppConstants.UserDefaultsKeys.serverPort)
     private var serverPort = "4020"
     @AppStorage(AppConstants.UserDefaultsKeys.dashboardAccessMode)
-    private var accessModeString = DashboardAccessMode.network.rawValue
+    private var accessModeString = AppConstants.Defaults.dashboardAccessMode
 
     @Environment(ServerManager.self)
     private var serverManager

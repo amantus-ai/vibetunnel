@@ -72,12 +72,12 @@ struct SystemControlHandlerTests {
     func ignoresNonWebPathUpdates() async throws {
         // Use a unique key for this test to avoid interference from other processes
         let testKey = "TestRepositoryBasePath_\(UUID().uuidString)"
-        
+
         // Given - Set test value
         let initialPath = "~/Projects"
         UserDefaults.standard.set(initialPath, forKey: testKey)
         UserDefaults.standard.synchronize()
-        
+
         defer {
             // Clean up test key
             UserDefaults.standard.removeObject(forKey: testKey)
@@ -86,7 +86,7 @@ struct SystemControlHandlerTests {
 
         // Temporarily override the key used by SystemControlHandler
         let originalKey = AppConstants.UserDefaultsKeys.repositoryBasePath
-        
+
         // Create a custom handler that uses our test key
         // Note: Since we can't easily mock UserDefaults key in SystemControlHandler,
         // we'll test the core logic by verifying the handler's response behavior
@@ -108,16 +108,17 @@ struct SystemControlHandlerTests {
 
         // Then - Should respond with success but indicate source was not web
         #expect(response != nil)
-        
+
         if let responseData = response,
            let responseJson = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
-           let payload = responseJson["payload"] as? [String: Any] {
+           let payload = responseJson["payload"] as? [String: Any]
+        {
             // The handler should return success but the actual UserDefaults update
             // should only happen for source="web"
             #expect(payload["success"] as? Bool == true)
             #expect(payload["path"] as? String == testPath)
         }
-        
+
         // The real test is that the handler's logic correctly ignores non-web sources
         // We can't reliably test UserDefaults in CI due to potential interference
     }

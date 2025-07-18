@@ -25,7 +25,26 @@ execSync('esbuild src/client/sw.ts --bundle --outfile=public/sw.js --format=iife
 
 // Build server TypeScript
 console.log('Building server...');
-execSync('tsc', { stdio: 'inherit' });
+// Force a clean build in CI to avoid incremental build issues
+execSync('npx tsc --build --force', { stdio: 'inherit' });
+
+// Verify dist directory exists
+if (fs.existsSync(path.join(__dirname, '../dist'))) {
+  const files = fs.readdirSync(path.join(__dirname, '../dist'));
+  console.log(`Server build created ${files.length} files in dist/`);
+  console.log('Files in dist:', files.join(', '));
+  
+  // Check for the essential server.js file
+  if (!fs.existsSync(path.join(__dirname, '../dist/server/server.js'))) {
+    console.error('ERROR: dist/server/server.js not found after tsc build!');
+    console.log('Contents of dist directory:');
+    execSync('find dist -type f | head -20', { stdio: 'inherit', cwd: path.join(__dirname, '..') });
+    process.exit(1);
+  }
+} else {
+  console.error('ERROR: dist directory does not exist after tsc build!');
+  process.exit(1);
+}
 
 // Skip native executable build in CI
 console.log('Skipping native executable build in CI environment...');

@@ -61,16 +61,24 @@ class ServerManager {
 
     var bindAddress: String {
         get {
-            let mode = DashboardAccessMode(
-                rawValue: UserDefaults.standard.string(forKey: "dashboardAccessMode") ?? ""
-            ) ??
-                .localhost
+            // Get the raw value from UserDefaults, defaulting to the app default
+            let rawValue = UserDefaults.standard.string(forKey: "dashboardAccessMode") ?? AppConstants.Defaults
+                .dashboardAccessMode
+            let mode = DashboardAccessMode(rawValue: rawValue) ?? .network
+
+            // Log for debugging
+            logger
+                .debug(
+                    "bindAddress getter: rawValue='\(rawValue)', mode=\(mode.rawValue), bindAddress=\(mode.bindAddress)"
+                )
+
             return mode.bindAddress
         }
         set {
             // Find the mode that matches this bind address
             if let mode = DashboardAccessMode.allCases.first(where: { $0.bindAddress == newValue }) {
                 UserDefaults.standard.set(mode.rawValue, forKey: "dashboardAccessMode")
+                logger.debug("bindAddress setter: set mode=\(mode.rawValue) for bindAddress=\(newValue)")
             }
         }
     }
@@ -209,7 +217,9 @@ class ServerManager {
         do {
             let server = BunServer()
             server.port = port
-            server.bindAddress = bindAddress
+            let currentBindAddress = bindAddress
+            server.bindAddress = currentBindAddress
+            logger.info("Starting server with port=\(self.port), bindAddress=\(currentBindAddress)")
 
             // Set up crash handler
             server.onCrash = { [weak self] exitCode in
