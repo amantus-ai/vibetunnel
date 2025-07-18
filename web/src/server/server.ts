@@ -814,8 +814,23 @@ export async function createApp(): Promise<AppInstance> {
       logger.log(chalk.green('Control UNIX socket: READY'));
     } else {
       // Initialize desktop capture service for Linux
-      await desktopCaptureService.initialize();
-      logger.log(chalk.green('Linux screencap handler: READY'));
+      try {
+        await desktopCaptureService.initialize();
+        logger.log(chalk.green('Linux screencap handler: READY'));
+      } catch (initError) {
+        logger.error('Desktop capture service initialization failed:', initError);
+        if (initError instanceof Error && initError.message.includes('FFmpeg')) {
+          logger.error(chalk.red('FFmpeg is not installed!'));
+          logger.error(
+            chalk.yellow('To install FFmpeg on Ubuntu/Debian: sudo apt-get install ffmpeg')
+          );
+          logger.error(chalk.yellow('To install FFmpeg on Fedora: sudo dnf install ffmpeg'));
+          logger.error(chalk.yellow('To install FFmpeg on Arch: sudo pacman -S ffmpeg'));
+        }
+        logger.warn(
+          chalk.yellow('Screen capture features will not be available until FFmpeg is installed.')
+        );
+      }
     }
   } catch (error) {
     logger.error('Failed to initialize screencap or control socket:', error);

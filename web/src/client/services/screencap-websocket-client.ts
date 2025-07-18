@@ -30,6 +30,8 @@ export class ScreencapWebSocketClient {
   public onIceCandidate?: (data: RTCIceCandidateInit) => void;
   public onError?: (error: string) => void;
   public onReady?: () => void;
+  public onBinaryMessage?: (data: ArrayBuffer) => void;
+  public onClose?: (code: number, reason: string) => void;
 
   constructor(private wsUrl: string) {
     // Generate session ID immediately for all requests
@@ -68,7 +70,17 @@ export class ScreencapWebSocketClient {
           resolve();
         };
 
-        this.ws.onmessage = (event) => {
+        this.ws.onmessage = async (event) => {
+          // Check if this is a binary message
+          if (event.data instanceof Blob) {
+            const arrayBuffer = await event.data.arrayBuffer();
+            if (this.onBinaryMessage) {
+              this.onBinaryMessage(arrayBuffer);
+            }
+            return;
+          }
+
+          // Handle text messages
           logger.log(`📨 WebSocket message received, data length: ${event.data.length}`);
           try {
             const message = JSON.parse(event.data) as ControlMessage;
@@ -91,10 +103,18 @@ export class ScreencapWebSocketClient {
           logger.log(
             `🔒 WebSocket closed - code: ${event.code}, reason: ${event.reason || '(no reason)'}`
           );
-          logger.log('📊 Close codes: 1000=Normal, 1001=Going Away, 1006=Abnormal');
+          logger.log(
+            '📊 Close codes: 1000=Normal, 1001=Going Away, 1006=Abnormal, 1011=Server Error'
+          );
           logger.log(`📊 WebSocket readyState on close: ${this.ws?.readyState}`);
           this.isConnected = false;
           this.connectionPromise = null;
+
+          // Notify the close handler if set
+          if (this.onClose) {
+            this.onClose(event.code, event.reason || '');
+          }
+
           // Reject all pending requests
           logger.log(`🗑️ Clearing ${this.pendingRequests.size} pending requests`);
           this.pendingRequests.forEach((pending) => {
@@ -192,6 +212,13 @@ export class ScreencapWebSocketClient {
           if (this.onError && message.payload) {
             this.onError(String(message.payload));
           }
+          break;
+          
+        case 'capture-started':
+        case 'capture-stopped':
+        case 'state-change':
+          // Handle capture state changes
+          logger.log(`State change: ${message.action}`, message.payload);
           break;
       }
     }
@@ -328,17 +355,88 @@ export class ScreencapWebSocketClient {
     return this.request('POST', '/capture-window', params);
   }
 
+  /**
+   * Start desktop capture
+   */
+  async startCapture(params: {
+    type: 'desktop' | 'window';
+    index?: number;
+    webrtc?: boolean;
+    use8k?: boolean;
+  }) {
+    logger.log('Starting capture with params:', params);
+    
+    // For Linux, we send a direct start-capture message instead of API request
+    const message: ControlMessage = {
+      id: crypto.randomUUID(),
+      type: 'request',
+      category: 'screencap',
+      action: 'start-capture',
+      payload: {
+        displayIndex: params.index || 0,
+        quality: params.use8k ? 'ultra' : 'high',
+        sessionId: this.sessionId
+      },
+      sessionId: this.sessionId
+    };
+
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(message.id, { resolve, reject });
+      
+      this.connect()
+        .then(() => {
+          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify(message));
+            logger.log('Sent start-capture message:', message);
+          } else {
+            reject(new Error('WebSocket not connected'));
+          }
+        })
+        .catch(reject);
+    });
+  }
+
+  /**
+   * Capture a specific window (not supported on Linux yet)
+   */
+  async captureWindow(params: {
+    cgWindowID: number;
+    webrtc?: boolean;
+    use8k?: boolean;
+  }) {
+    // Window capture not supported on Linux
+    throw new Error('Window capture is not supported on Linux yet');
+  }
+
   async stopCapture() {
     try {
-      const result = await this.request('POST', '/stop');
-      // Generate new session ID after successful stop
-      this.sessionId = crypto.randomUUID();
-      logger.log(`Generated new session ID after stop: ${this.sessionId}`);
-      return result;
+      // For Linux, send stop-capture message
+      const message: ControlMessage = {
+        id: crypto.randomUUID(),
+        type: 'request',
+        category: 'screencap',
+        action: 'stop-capture',
+        sessionId: this.sessionId
+      };
+
+      return new Promise((resolve, reject) => {
+        this.pendingRequests.set(message.id, { resolve, reject });
+        
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          this.ws.send(JSON.stringify(message));
+          logger.log('Sent stop-capture message:', message);
+        } else {
+          reject(new Error('WebSocket not connected'));
+        }
+      });
     } catch (error) {
       // If stop fails, don't clear the session ID
       logger.error('Failed to stop capture, preserving session ID:', error);
       throw error;
+    } finally {
+      // Generate new session ID after stop
+      this.sessionId = crypto.randomUUID();
+      logger.log(`Generated new session ID after stop: ${this.sessionId}`);
     }
   }
 

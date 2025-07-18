@@ -597,7 +597,40 @@ export class ScreencapView extends LitElement {
       this.wsClient.onError = (error: string) => {
         logger.error('❌ WebSocket error callback fired:', error);
         this.logStatus('error', `WebSocket error: ${error}`);
-        this.error = error;
+
+        // Check for specific error messages and provide helpful guidance
+        if (error.includes('FFmpeg') || error.includes('service-not-ready')) {
+          this.error =
+            'FFmpeg is not installed on the server. Please install FFmpeg: sudo apt-get install ffmpeg';
+        } else if (error.includes('Desktop capture service not initialized')) {
+          this.error =
+            'Screen capture service is not available. Please check server logs for initialization errors.';
+        } else {
+          this.error = error;
+        }
+
+        this.status = 'error';
+      };
+
+      this.wsClient.onClose = (code: number, reason: string) => {
+        logger.error(`❌ WebSocket closed with code ${code}: ${reason}`);
+
+        if (code === 1011 && reason.includes('FFmpeg')) {
+          this.error =
+            'FFmpeg is not installed on the server. Please install FFmpeg: sudo apt-get install ffmpeg';
+          this.logStatus('error', 'FFmpeg not installed on server');
+        } else if (code === 1011) {
+          this.error = `Server error: ${reason}`;
+          this.logStatus('error', `Server error: ${reason}`);
+        } else if (code === 1006) {
+          this.error =
+            'Connection lost. The server may have crashed. Check server logs for details.';
+          this.logStatus('error', 'Connection lost unexpectedly');
+        } else {
+          this.error = `WebSocket closed: ${reason || 'Unknown reason'}`;
+          this.logStatus('error', `WebSocket closed with code ${code}`);
+        }
+
         this.status = 'error';
       };
 

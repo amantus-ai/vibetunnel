@@ -1,6 +1,7 @@
 import { getWebRTCConfig } from '../../shared/webrtc-config.js';
 import { createLogger } from '../utils/logger.js';
 import type { ScreencapWebSocketClient } from './screencap-websocket-client.js';
+import { WebSocketVideoHandler } from './websocket-video-handler.js';
 
 // Type definitions for WebRTC stats that TypeScript doesn't have
 interface CodecStats extends RTCStats {
@@ -53,6 +54,8 @@ export class WebRTCHandler {
   private customConfig?: RTCConfiguration;
   private hasTriggeredVP8Upgrade = false;
   private vp8UpgradeTimeout?: number;
+  private websocketVideoHandler: WebSocketVideoHandler | null = null;
+  private isWebSocketStreaming = false;
 
   constructor(wsClient: ScreencapWebSocketClient) {
     this.wsClient = wsClient;
@@ -127,6 +130,12 @@ export class WebRTCHandler {
       this.vp8UpgradeTimeout = undefined;
     }
 
+    // Clean up WebSocket video handler if using WebSocket streaming
+    if (this.websocketVideoHandler) {
+      this.websocketVideoHandler.dispose();
+      this.websocketVideoHandler = null;
+    }
+
     // Clean up MediaStream tracks before closing peer connection
     if (this.remoteStream) {
       this.remoteStream.getTracks().forEach((track) => {
@@ -142,6 +151,7 @@ export class WebRTCHandler {
 
     this.remoteStream = null;
     this.hasTriggeredVP8Upgrade = false;
+    this.isWebSocketStreaming = false;
   }
 
   private async setupWebRTCSignaling(): Promise<void> {
@@ -414,8 +424,30 @@ export class WebRTCHandler {
   private async handleOffer(offer: RTCSessionDescriptionInit) {
     if (!this.peerConnection) return;
 
-    logger.log('Received offer from Mac');
+    logger.log('Received offer');
     logger.log('Original offer SDP:', offer.sdp);
+
+    // Check if this is a WebSocket streaming offer (Linux)
+    if (offer.sdp && offer.sdp.includes('x-stream-type:websocket')) {
+      logger.log('Detected WebSocket streaming mode (Linux)');
+      this.isWebSocketStreaming = true;
+      this.onStatusUpdate?.('info', 'Initializing WebSocket video streaming...');
+
+      // Initialize WebSocket video handler
+      await this.initializeWebSocketStreaming();
+
+      // Send a modified answer that accepts WebSocket streaming
+      const answer = {
+        type: 'answer' as RTCSdpType,
+        sdp: this.generateWebSocketStreamingAnswer(),
+      };
+
+      await this.wsClient.sendSignal('answer', answer);
+      this.onStatusUpdate?.('success', 'WebSocket streaming initialized');
+      return;
+    }
+
+    // Regular WebRTC flow for macOS
     this.onStatusUpdate?.('info', 'Received connection offer from Mac app');
     try {
       // Modify offer SDP to prefer VP8 for better quality
@@ -756,5 +788,45 @@ export class WebRTCHandler {
         },
       });
     }
+  }
+
+  private async initializeWebSocketStreaming(): Promise<void> {
+    // Create a video element for WebSocket streaming
+    const videoElement = document.createElement('video');
+    videoElement.autoplay = true;
+    videoElement.muted = true;
+
+    // Initialize WebSocket video handler
+    this.websocketVideoHandler = new WebSocketVideoHandler();
+    const stream = await this.websocketVideoHandler.initialize(videoElement);
+
+    // Set up WebSocket binary message handler
+    this.wsClient.onBinaryMessage = (data: ArrayBuffer) => {
+      const header = new TextDecoder().decode(data.slice(0, 2));
+      if (header === 'VF' && this.websocketVideoHandler) {
+        this.websocketVideoHandler.handleVideoFrame(data);
+      }
+    };
+
+    // Notify that stream is ready
+    this.remoteStream = stream;
+    this.onStreamReady?.(stream);
+  }
+
+  private generateWebSocketStreamingAnswer(): string {
+    // Generate answer SDP that accepts WebSocket streaming
+    const sessionId = Date.now();
+    const sdp =
+      `v=0\r\n` +
+      `o=- ${sessionId} 2 IN IP4 127.0.0.1\r\n` +
+      `s=WebSocket Video Stream\r\n` +
+      `t=0 0\r\n` +
+      `m=video 0 RTP/AVP 96\r\n` +
+      `c=IN IP4 0.0.0.0\r\n` +
+      `a=inactive\r\n` +
+      `a=rtpmap:96 VP8/90000\r\n` +
+      `a=x-stream-type:websocket\r\n`;
+
+    return sdp;
   }
 }

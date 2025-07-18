@@ -69,6 +69,19 @@ export class LinuxScreencapHandler extends EventEmitter {
       this.handleDisconnect(clientId);
     });
 
+    // Check if desktop capture service is ready
+    if (!desktopCaptureService.isReady()) {
+      const error = desktopCaptureService.getInitializationError();
+      logger.error('Desktop capture service not ready:', error?.message);
+      this.sendError(
+        ws,
+        'service-not-ready',
+        error?.message || 'Desktop capture service not initialized'
+      );
+      ws.close(1011, error?.message || 'Service not available');
+      return;
+    }
+
     // Send ready event
     this.sendMessage(ws, {
       id: uuidv4(),
@@ -133,6 +146,12 @@ export class LinuxScreencapHandler extends EventEmitter {
 
   private async handleGetInitialData(ws: WebSocket, message: ControlMessage): Promise<void> {
     try {
+      // Check if service is ready
+      if (!desktopCaptureService.isReady()) {
+        const error = desktopCaptureService.getInitializationError();
+        throw new Error(error?.message || 'Desktop capture service not initialized');
+      }
+
       const capabilities = await desktopCaptureService.getCapabilities();
 
       this.sendMessage(ws, {
@@ -147,7 +166,11 @@ export class LinuxScreencapHandler extends EventEmitter {
       });
     } catch (error) {
       logger.error('Failed to get initial data:', error);
-      this.sendError(ws, message.id, 'Failed to get initial data');
+      this.sendError(
+        ws,
+        message.id,
+        error instanceof Error ? error.message : 'Failed to get initial data'
+      );
     }
   }
 
@@ -155,6 +178,14 @@ export class LinuxScreencapHandler extends EventEmitter {
     const { endpoint } = message.payload as { endpoint: string };
 
     try {
+      // Check if service is ready for capture-related endpoints
+      if (endpoint === '/displays' || endpoint === '/capture/start') {
+        if (!desktopCaptureService.isReady()) {
+          const error = desktopCaptureService.getInitializationError();
+          throw new Error(error?.message || 'Desktop capture service not initialized');
+        }
+      }
+
       let result: unknown;
 
       switch (endpoint) {
@@ -255,6 +286,39 @@ export class LinuxScreencapHandler extends EventEmitter {
           action: 'ice-candidate',
           payload: Buffer.from(JSON.stringify({ data: candidate })).toString('base64'),
           sessionId: sessionId || session.id,
+        });
+      });
+
+      // Set up video frame streaming
+      webrtcHandler.on('video-frame', (frameData: Buffer) => {
+        // Send video frames as binary WebSocket messages
+        if (ws.readyState === ws.OPEN) {
+          // Send frame with a header indicating it's a video frame
+          const header = Buffer.from('VF'); // Video Frame marker
+          const frame = Buffer.concat([header, frameData]);
+          ws.send(frame, { binary: true });
+        }
+      });
+
+      webrtcHandler.on('stream-error', (error) => {
+        logger.error('Stream error:', error);
+        this.sendMessage(ws, {
+          id: uuidv4(),
+          type: 'event',
+          category: 'screencap',
+          action: 'stream-error',
+          payload: { error: error.message },
+        });
+      });
+
+      webrtcHandler.on('stream-ended', () => {
+        logger.log('Stream ended');
+        this.sendMessage(ws, {
+          id: uuidv4(),
+          type: 'event',
+          category: 'screencap',
+          action: 'stream-ended',
+          payload: {},
         });
       });
 

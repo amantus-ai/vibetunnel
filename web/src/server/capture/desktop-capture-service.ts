@@ -38,44 +38,58 @@ export class DesktopCaptureService extends EventEmitter {
   private ffmpegCapture = new FFmpegCapture();
   private displayServer?: DisplayServerInfo;
   private initialized = false;
+  private initializationError?: Error;
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
+    if (this.initializationError) throw this.initializationError;
 
-    logger.log('Initializing desktop capture service...');
+    try {
+      logger.log('Initializing desktop capture service...');
 
-    // Detect display server
-    this.displayServer = await detectDisplayServer();
-    logger.log('Display server detected:', JSON.stringify(this.displayServer, null, 2));
+      // Detect display server
+      this.displayServer = await detectDisplayServer();
+      logger.log('Display server detected:', JSON.stringify(this.displayServer, null, 2));
 
-    // Check FFmpeg availability
-    const ffmpegAvailable = await this.ffmpegCapture.checkFFmpegAvailable();
-    if (!ffmpegAvailable) {
-      logger.error('FFmpeg is not available! Server capture will not work.');
-      this.emit('error', new Error('FFmpeg not found'));
-    }
-
-    // Start Xvfb if needed
-    if (this.displayServer.requiresXvfb) {
-      logger.log('Starting Xvfb for headless capture...');
-      try {
-        await startXvfb(this.displayServer.display);
-      } catch (error) {
-        logger.error('Failed to start Xvfb:', error);
+      // Check FFmpeg availability
+      const ffmpegAvailable = await this.ffmpegCapture.checkFFmpegAvailable();
+      if (!ffmpegAvailable) {
+        const error = new Error(
+          'FFmpeg is not available! Please install FFmpeg: sudo apt-get install ffmpeg'
+        );
+        logger.error(error.message);
+        this.initializationError = error;
         this.emit('error', error);
+        throw error;
       }
+
+      // Start Xvfb if needed
+      if (this.displayServer.requiresXvfb) {
+        logger.log('Starting Xvfb for headless capture...');
+        try {
+          await startXvfb(this.displayServer.display);
+        } catch (error) {
+          logger.error('Failed to start Xvfb:', error);
+          this.initializationError = error as Error;
+          this.emit('error', error);
+          throw error;
+        }
+      }
+
+      // Get available codecs
+      const codecs = await this.ffmpegCapture.getFFmpegCodecs();
+      logger.log('Available codecs:', codecs);
+
+      this.initialized = true;
+      this.emit('initialized', {
+        displayServer: this.displayServer,
+        codecs,
+        ffmpegAvailable,
+      });
+    } catch (error) {
+      this.initializationError = error as Error;
+      throw error;
     }
-
-    // Get available codecs
-    const codecs = await this.ffmpegCapture.getFFmpegCodecs();
-    logger.log('Available codecs:', codecs);
-
-    this.initialized = true;
-    this.emit('initialized', {
-      displayServer: this.displayServer,
-      codecs,
-      ffmpegAvailable,
-    });
   }
 
   async startCapture(options: DesktopCaptureOptions): Promise<CaptureSession> {
@@ -233,6 +247,20 @@ export class DesktopCaptureService extends EventEmitter {
   }
 
   /**
+   * Check if the service is ready to use
+   */
+  isReady(): boolean {
+    return this.initialized && !this.initializationError;
+  }
+
+  /**
+   * Get initialization error if any
+   */
+  getInitializationError(): Error | undefined {
+    return this.initializationError;
+  }
+
+  /**
    * Clean up resources on service shutdown
    */
   async shutdown(): Promise<void> {
@@ -249,6 +277,7 @@ export class DesktopCaptureService extends EventEmitter {
     );
 
     this.initialized = false;
+    this.initializationError = undefined;
   }
 }
 

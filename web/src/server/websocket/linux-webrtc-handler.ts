@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import type { Readable } from 'node:stream';
 import type { CaptureSession } from '../capture/desktop-capture-service.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -18,10 +19,10 @@ interface RTCIceCandidate {
 
 export class LinuxWebRTCHandler extends EventEmitter {
   private streamUrl: string | null = null;
-  private iceServers = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-  ];
+  private isStreaming = false;
+  private frameInterval?: NodeJS.Timeout;
+  private streamBuffer: Buffer[] = [];
+  private ffmpegStream: Readable | null = null;
 
   constructor(
     private captureSession: CaptureSession,
@@ -32,71 +33,88 @@ export class LinuxWebRTCHandler extends EventEmitter {
   }
 
   async initialize(): Promise<void> {
-    // For Linux, we'll generate a simplified SDP that points to our stream
-    // The client will handle the WebRTC connection
-    logger.log('Initializing Linux WebRTC handler in compatibility mode');
+    logger.log('Initializing Linux WebRTC handler for WebSocket streaming');
 
-    // Get stream URL from capture session if available
+    // Get the FFmpeg stream from capture session
     if (this.captureSession.captureStream) {
-      // In a real implementation, this would be the URL to the video stream
+      this.ffmpegStream = this.captureSession.captureStream.stream;
       this.streamUrl = `/api/screencap/stream/${this.sessionId}`;
       logger.log(`Stream URL: ${this.streamUrl}`);
+
+      // Set up stream buffering
+      this.setupStreamBuffering();
+    } else {
+      logger.error('No capture stream available from session');
     }
   }
 
+  private setupStreamBuffering(): void {
+    if (!this.ffmpegStream) return;
+
+    // Buffer incoming video data
+    this.ffmpegStream.on('data', (chunk: Buffer) => {
+      // For WebSocket streaming, we'll emit video frames directly
+      this.emit('video-frame', chunk);
+    });
+
+    this.ffmpegStream.on('error', (error) => {
+      logger.error('FFmpeg stream error:', error);
+      this.emit('stream-error', error);
+    });
+
+    this.ffmpegStream.on('end', () => {
+      logger.log('FFmpeg stream ended');
+      this.emit('stream-ended');
+    });
+  }
+
   async createOffer(): Promise<void> {
-    // Create a simplified SDP offer for Linux
-    // This is a minimal SDP that indicates we have a video stream
+    // For Linux, we create a simplified offer that indicates WebSocket streaming
+    // The actual video data will be sent as binary frames over the WebSocket
     const offer: RTCSessionDescription = {
       type: 'offer',
-      sdp: this.generateSimplifiedSDP(),
+      sdp: this.generateWebSocketStreamingSDP(),
     };
 
-    logger.log('Created simplified offer for Linux');
+    logger.log('Created WebSocket streaming offer for Linux');
     this.emit('offer', offer);
   }
 
-  private generateSimplifiedSDP(): string {
-    // Generate a minimal SDP that indicates video streaming capability
-    // The actual streaming will happen through WebSocket or HTTP
+  private generateWebSocketStreamingSDP(): string {
+    // Generate SDP that indicates WebSocket-based streaming
+    // This tells the client to expect video frames over WebSocket instead of WebRTC
     const sessionId = Date.now();
     const sdp =
-      `v=0
-` +
+      `v=0\r\n` +
       `o=- ${sessionId} 2 IN IP4 127.0.0.1\r\n` +
-      `s=-\r\n` +
+      `s=WebSocket Video Stream\r\n` +
       `t=0 0\r\n` +
-      `a=group:BUNDLE 0\r\n` +
-      `a=msid-semantic: WMS stream\r\n` +
-      `m=video 9 UDP/TLS/RTP/SAVPF 96\r\n` +
+      `a=x-websocket-stream:${this.streamUrl}\r\n` +
+      `m=video 0 RTP/AVP 96\r\n` +
       `c=IN IP4 0.0.0.0\r\n` +
-      `a=rtcp:9 IN IP4 0.0.0.0\r\n` +
-      `a=ice-ufrag:4cXi\r\n` +
-      `a=ice-pwd:by5GZGG1lw+040DWA6hXM5Bz\r\n` +
-      `a=ice-options:trickle\r\n` +
-      `a=fingerprint:sha-256 1B:09:0D:FF:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00\r\n` +
-      `a=setup:actpass\r\n` +
-      `a=mid:0\r\n` +
-      `a=sendonly\r\n` +
-      `a=rtcp-mux\r\n` +
-      `a=rtpmap:96 VP8/90000\r\n`;
+      `a=inactive\r\n` +
+      `a=rtpmap:96 VP8/90000\r\n` +
+      `a=x-stream-type:websocket\r\n`;
 
     return sdp;
   }
 
-  async handleAnswer(_answer: RTCSessionDescription): Promise<void> {
-    // In our simplified implementation, we just log the answer
-    // The actual streaming happens through WebSocket
-    logger.log('Received answer from client, streaming can begin');
+  async handleAnswer(answer: RTCSessionDescription): Promise<void> {
+    logger.log('Received answer from client, starting WebSocket streaming');
 
-    // Emit event to indicate connection is established
-    this.emit('connected');
+    // Parse the answer to check if client accepts WebSocket streaming
+    if (answer.sdp.includes('x-stream-type:websocket')) {
+      this.isStreaming = true;
+      this.emit('connected');
+      logger.log('Client accepted WebSocket streaming mode');
+    } else {
+      logger.warn('Client did not accept WebSocket streaming mode');
+    }
   }
 
   async handleIceCandidate(_candidate: RTCIceCandidate): Promise<void> {
-    // In our simplified implementation, we don't need to handle ICE candidates
-    // as we're not establishing a real peer connection
-    logger.log('Received ICE candidate (ignored in compatibility mode)');
+    // For WebSocket streaming, we don't need ICE candidates
+    logger.log('Received ICE candidate (ignored for WebSocket streaming)');
   }
 
   getStreamInfo(): { url: string; protocol: 'websocket' | 'http' } | null {
@@ -108,7 +126,17 @@ export class LinuxWebRTCHandler extends EventEmitter {
     };
   }
 
+  isStreamingActive(): boolean {
+    return this.isStreaming;
+  }
+
   close(): void {
+    this.isStreaming = false;
+    if (this.frameInterval) {
+      clearInterval(this.frameInterval);
+      this.frameInterval = undefined;
+    }
+    this.streamBuffer = [];
     this.streamUrl = null;
     this.removeAllListeners();
     logger.log('WebRTC handler closed');
