@@ -21,7 +21,6 @@ import type {
   SpecialKey,
 } from '../../shared/types.js';
 import { TitleMode } from '../../shared/types.js';
-import { ProcessTreeAnalyzer } from '../services/process-tree-analyzer.js';
 import { ActivityDetector, type ActivityState } from '../utils/activity-detector.js';
 import { TitleSequenceFilter } from '../utils/ansi-title-filter.js';
 import { createLogger } from '../utils/logger.js';
@@ -74,7 +73,6 @@ export class PtyManager extends EventEmitter {
   private sessionEventListeners = new Map<string, Set<(...args: unknown[]) => void>>();
   private lastBellTime = new Map<string, number>(); // Track last bell time per session
   private sessionExitTimes = new Map<string, number>(); // Track session exit times to avoid false bells
-  private processTreeAnalyzer = new ProcessTreeAnalyzer(); // Process tree analysis for bell source identification
   private activityFileWarningsLogged = new Set<string>(); // Track which sessions we've logged warnings for
   private lastWrittenActivityState = new Map<string, string>(); // Track last written activity state to avoid unnecessary writes
 
@@ -1688,56 +1686,6 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
-   * Capture process information for bell source identification
-   */
-  private async captureProcessInfoForBell(session: PtySession, bellCount: number): Promise<void> {
-    try {
-      const sessionPid = session.ptyProcess?.pid;
-      if (!sessionPid) {
-        logger.warn(`Cannot capture process info for session ${session.id}: no PID available`);
-        // Emit basic bell event without process info
-        this.emit('bell', {
-          sessionInfo: session.sessionInfo,
-          timestamp: new Date(),
-          bellCount,
-        });
-        return;
-      }
-
-      logger.log(
-        `Capturing process snapshot for bell in session ${session.id} (PID: ${sessionPid})`
-      );
-
-      // Capture process information asynchronously
-      const processSnapshot = await this.processTreeAnalyzer.captureProcessSnapshot(sessionPid);
-
-      // Emit enhanced bell event with process information
-      this.emit('bell', {
-        sessionInfo: session.sessionInfo,
-        timestamp: new Date(),
-        bellCount,
-        processSnapshot,
-        suspectedSource: processSnapshot.suspectedBellSource,
-      });
-
-      logger.log(
-        `Bell event emitted for session ${session.id} with suspected source: ${
-          processSnapshot.suspectedBellSource?.command || 'unknown'
-        } (PID: ${processSnapshot.suspectedBellSource?.pid || 'unknown'})`
-      );
-    } catch (error) {
-      logger.warn(`Failed to capture process info for bell in session ${session.id}:`, error);
-
-      // Fallback: emit basic bell event without process info
-      this.emit('bell', {
-        sessionInfo: session.sessionInfo,
-        timestamp: new Date(),
-        bellCount,
-      });
-    }
-  }
-
-  /**
    * Shutdown all active sessions and clean up resources
    */
   async shutdown(): Promise<void> {
@@ -1796,20 +1744,6 @@ export class PtyManager extends EventEmitter {
    */
   getSessionManager(): SessionManager {
     return this.sessionManager;
-  }
-
-  /**
-   * Setup stdin forwarding for fwd mode
-   */
-  private setupStdinForwarding(session: PtySession): void {
-    if (!session.ptyProcess) return;
-
-    // IMPORTANT: stdin forwarding is now handled via IPC socket in fwd.ts
-    // This method is kept for backward compatibility but should not be used
-    // as it would cause stdin duplication if multiple sessions are created
-    logger.warn(
-      `setupStdinForwarding called for session ${session.id} - stdin should be handled via IPC socket`
-    );
   }
 
   /**

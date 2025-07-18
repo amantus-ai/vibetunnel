@@ -55,7 +55,6 @@ export class WebRTCHandler {
   private hasTriggeredVP8Upgrade = false;
   private vp8UpgradeTimeout?: number;
   private websocketVideoHandler: WebSocketVideoHandler | null = null;
-  private isWebSocketStreaming = false;
 
   constructor(wsClient: ScreencapWebSocketClient) {
     this.wsClient = wsClient;
@@ -98,19 +97,26 @@ export class WebRTCHandler {
       );
     }
 
-    // Send start-capture message to Mac app
-    if (captureMode === 'desktop') {
-      await this.wsClient.sendSignal('start-capture', {
-        mode: 'desktop',
-        displayIndex: displayIndex ?? 0,
-        sessionId: this.wsClient.sessionId,
-      });
-    } else if (captureMode === 'window' && windowId !== undefined) {
-      await this.wsClient.sendSignal('start-capture', {
-        mode: 'window',
-        windowId: windowId,
-        sessionId: this.wsClient.sessionId,
-      });
+    // Don't send start-capture signal if it's already been sent
+    // This avoids duplicate capture sessions on Linux where the capture
+    // is already started by wsClient.startCapture()
+    // The Mac app expects this signal, but on Linux it's handled differently
+    const isLinux = navigator.userAgent.toLowerCase().includes('linux');
+    if (!isLinux) {
+      // Send start-capture message to Mac app
+      if (captureMode === 'desktop') {
+        await this.wsClient.sendSignal('start-capture', {
+          mode: 'desktop',
+          displayIndex: displayIndex ?? 0,
+          sessionId: this.wsClient.sessionId,
+        });
+      } else if (captureMode === 'window' && windowId !== undefined) {
+        await this.wsClient.sendSignal('start-capture', {
+          mode: 'window',
+          windowId: windowId,
+          sessionId: this.wsClient.sessionId,
+        });
+      }
     }
 
     await this.setupWebRTCSignaling();
@@ -428,7 +434,7 @@ export class WebRTCHandler {
     logger.log('Original offer SDP:', offer.sdp);
 
     // Check if this is a WebSocket streaming offer (Linux)
-    if (offer.sdp && offer.sdp.includes('x-stream-type:websocket')) {
+    if (offer.sdp?.includes('x-stream-type:websocket')) {
       logger.log('Detected WebSocket streaming mode (Linux)');
       this.isWebSocketStreaming = true;
       this.onStatusUpdate?.('info', 'Initializing WebSocket video streaming...');

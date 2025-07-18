@@ -79,10 +79,7 @@ export class SessionView extends LitElement {
   @state() private isMobile = false;
   @state() private touchStartX = 0;
   @state() private touchStartY = 0;
-  @state() private terminalCols = 0;
-  @state() private terminalRows = 0;
   @state() private showCtrlAlpha = false;
-  @state() private terminalFitHorizontally = false;
   @state() private terminalMaxCols = 0;
   @state() private showWidthSelector = false;
   @state() private customWidth = '';
@@ -835,18 +832,6 @@ export class SessionView extends LitElement {
 
     // Request update after all synchronous operations
     this.requestUpdate();
-  }
-
-  private handleTerminalFitToggle() {
-    this.terminalFitHorizontally = !this.terminalFitHorizontally;
-    // Find the terminal component and call its handleFitToggle method
-    const terminal = this.querySelector('vibe-terminal') as HTMLElement & {
-      handleFitToggle?: () => void;
-    };
-    if (terminal?.handleFitToggle) {
-      // Use the terminal's own toggle method which handles scroll position correctly
-      terminal.handleFitToggle();
-    }
   }
 
   private handleMaxWidthToggle() {

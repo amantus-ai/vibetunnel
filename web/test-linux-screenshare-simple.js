@@ -31,14 +31,34 @@ async function testLinuxScreenshare() {
     await page.waitForSelector('screencap-view', { timeout: 10000 });
     console.log('✅ Screencap view loaded');
     
-    // Click on Display 1 to start capture
+    // Click on Display 1
     console.log('🖱️ Clicking on Display 1...');
     const display1 = await page.waitForSelector('text=Display 1', { timeout: 5000 });
     await display1.click();
     
+    // Wait for selection to register
+    await page.waitForTimeout(500);
+    
+    // Click Start button
+    console.log('🖱️ Clicking Start button...');
+    const startButton = await page.waitForSelector('button:has-text("Start")', { timeout: 5000 });
+    await startButton.click();
+    
     // Wait for capture to start
     console.log('⏳ Waiting for capture to start...');
     await page.waitForTimeout(3000);
+    
+    // Check if isCapturing is true
+    const captureState = await page.evaluate(() => {
+      const screencapView = document.querySelector('screencap-view');
+      return {
+        isCapturing: screencapView?.isCapturing,
+        useWebRTC: screencapView?.useWebRTC,
+        hasVideoElement: !!screencapView?.videoElement
+      };
+    });
+    
+    console.log('📊 Capture state:', captureState);
     
     // Check if video element exists and has stream
     const videoExists = await page.evaluate(() => {
@@ -101,8 +121,8 @@ async function testLinuxScreenshare() {
     console.log('📊 Final frame statistics:', finalFrameStats);
     
     // Keep browser open for manual inspection
-    console.log('✅ Test complete. Press Ctrl+C to close browser.');
-    await page.waitForTimeout(60000);
+    console.log('✅ Test complete.');
+    await page.waitForTimeout(5000);
     
   } catch (error) {
     console.error('❌ Test failed:', error);

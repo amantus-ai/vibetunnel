@@ -52,12 +52,10 @@ export class UnifiedSettings extends LitElement {
   @state() private subscription: PushSubscription | null = null;
   @state() private isLoading = false;
   @state() private testingNotification = false;
-  @state() private hasNotificationChanges = false;
 
   // App settings state
   @state() private appPreferences: AppPreferences = DEFAULT_APP_PREFERENCES;
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
-  @state() private serverConfig: ServerConfig | null = null;
   @state() private isServerConfigured = false;
 
   private permissionChangeUnsubscribe?: () => void;

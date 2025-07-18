@@ -53,7 +53,6 @@ export class SessionCreateForm extends LitElement {
 
   @state() private isCreating = false;
   @state() private showFileBrowser = false;
-  @state() private selectedQuickStart = 'zsh';
   @state() private showRepositoryDropdown = false;
   @state() private repositories: Array<{
     id: string;

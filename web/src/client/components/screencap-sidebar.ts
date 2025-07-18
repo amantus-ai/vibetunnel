@@ -375,10 +375,6 @@ export class ScreencapSidebar extends LitElement {
     );
   }
 
-  private handleAllDisplaysSelect() {
-    this.dispatchEvent(new CustomEvent('all-displays-select'));
-  }
-
   private getSortedProcessGroups(): ProcessGroup[] {
     // Sort process groups by the size of their largest window (width * height)
     return [...this.processGroups].sort((a, b) => {

@@ -54,13 +54,25 @@ export class FFmpegCapture extends EventEmitter {
     options: CaptureOptions = {}
   ): Promise<CaptureStream> {
     logger.log('Starting FFmpeg capture with options:', options);
+    logger.log('Display server info:', displayServer);
 
     const args = await this.buildFFmpegArgs(displayServer, options);
     logger.log('FFmpeg command:', 'ffmpeg', args.join(' '));
 
     this.ffmpegProcess = spawn('ffmpeg', args, {
-      stdio: ['ignore', 'pipe', 'pipe'], // stdin, stdout, stderr
+      stdio: ['pipe', 'pipe', 'pipe'], // stdin, stdout, stderr - changed to allow stdin for graceful quit
     });
+
+    logger.log('FFmpeg process spawned, PID:', this.ffmpegProcess.pid);
+
+    // Keep track of when stdout starts emitting
+    let firstDataTime: number | null = null;
+    if (this.ffmpegProcess.stdout) {
+      this.ffmpegProcess.stdout.once('data', () => {
+        firstDataTime = Date.now();
+        logger.log(`FFmpeg stdout first data after ${firstDataTime - this.stats.startTime}ms`);
+      });
+    }
 
     this.stats.startTime = Date.now();
 
@@ -70,11 +82,28 @@ export class FFmpegCapture extends EventEmitter {
         const output = data.toString();
         this.parseFFmpegOutput(output);
 
-        // Log errors and important info
-        if (output.includes('error') || output.includes('Error')) {
-          logger.error('FFmpeg error:', output);
-        } else if (output.includes('Input #') || output.includes('Output #') || output.includes('Stream #')) {
-          logger.log('FFmpeg info:', output.trim());
+        // Log all FFmpeg output for debugging
+        const lines = output.trim().split('\n');
+        for (const line of lines) {
+          if (line.trim()) {
+            if (line.includes('error') || line.includes('Error')) {
+              logger.error('FFmpeg error:', line);
+            } else if (
+              line.includes('Input #') ||
+              line.includes('Output #') ||
+              line.includes('Stream #')
+            ) {
+              logger.log('FFmpeg info:', line);
+            } else if (line.includes('frame=')) {
+              // Log frame info periodically
+              if (this.stats.framesEncoded % 30 === 0) {
+                logger.log('FFmpeg progress:', line);
+              }
+            } else {
+              // Log all other output for debugging
+              logger.log('FFmpeg:', line);
+            }
+          }
         }
       });
     }
@@ -92,14 +121,25 @@ export class FFmpegCapture extends EventEmitter {
 
     // Handle process exit
     this.ffmpegProcess.on('exit', (code, signal) => {
-      logger.log(`FFmpeg process exited with code ${code}, signal ${signal}`);
+      logger.error(`FFmpeg process exited unexpectedly with code ${code}, signal ${signal}`);
+      logger.error(`FFmpeg was running for ${(Date.now() - this.stats.startTime) / 1000} seconds`);
       this.emit('exit', { code, signal });
     });
 
     this.ffmpegProcess.on('error', (error) => {
       logger.error('FFmpeg process error:', error);
+      logger.error('Error details:', error.message, error.stack);
       this.emit('error', error);
     });
+
+    // Log process state after a short delay
+    setTimeout(() => {
+      if (this.ffmpegProcess) {
+        logger.log(
+          `FFmpeg process check after 500ms: PID ${this.ffmpegProcess.pid}, killed: ${this.ffmpegProcess.killed}, exitCode: ${this.ffmpegProcess.exitCode}`
+        );
+      }
+    }, 500);
 
     return {
       stream: this.ffmpegProcess.stdout as Readable,

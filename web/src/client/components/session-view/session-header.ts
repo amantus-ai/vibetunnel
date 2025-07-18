@@ -68,29 +68,12 @@ export class SessionHeader extends LitElement {
     return this.session.status;
   }
 
-  private getStatusColor(): string {
-    if (!this.session) return 'text-muted';
-    if ('active' in this.session && this.session.active === false) {
-      return 'text-muted';
-    }
-    return this.session.status === 'running' ? 'text-status-success' : 'text-status-warning';
-  }
-
   private getStatusDotColor(): string {
     if (!this.session) return 'bg-muted';
     if ('active' in this.session && this.session.active === false) {
       return 'bg-muted';
     }
     return this.session.status === 'running' ? 'bg-status-success' : 'bg-status-warning';
-  }
-
-  private handleCloseWidthSelector() {
-    this.dispatchEvent(
-      new CustomEvent('close-width-selector', {
-        bubbles: true,
-        composed: true,
-      })
-    );
   }
 
   render() {

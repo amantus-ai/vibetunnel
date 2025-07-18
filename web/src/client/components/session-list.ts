@@ -24,7 +24,6 @@ import type { AuthClient } from '../services/auth-client.js';
 import './session-card.js';
 import './inline-edit.js';
 import { formatSessionDuration } from '../../shared/utils/time.js';
-import { sendAIPrompt } from '../utils/ai-sessions.js';
 import { Z_INDEX } from '../utils/constants.js';
 import { createLogger } from '../utils/logger.js';
 import { formatPathForDisplay } from '../utils/path-utils.js';
@@ -49,7 +48,6 @@ export class SessionList extends LitElement {
   @property({ type: Boolean }) compactMode = false;
 
   @state() private cleaningExited = false;
-  private previousRunningCount = 0;
 
   connectedCallback() {
     super.connectedCallback();
@@ -166,9 +164,6 @@ export class SessionList extends LitElement {
       }
     }, 0);
   };
-  private handleRefresh() {
-    this.dispatchEvent(new CustomEvent('refresh'));
-  }
 
   private handleSessionSelect(e: CustomEvent) {
     const session = e.detail as Session;
@@ -290,19 +285,6 @@ export class SessionList extends LitElement {
           error: error instanceof Error ? error.message : 'Unknown error',
         },
       } as CustomEvent);
-    }
-  }
-
-  private async handleSendAIPrompt(sessionId: string) {
-    try {
-      await sendAIPrompt(sessionId, this.authClient);
-    } catch (error) {
-      logger.error('Failed to send AI prompt', error);
-      this.dispatchEvent(
-        new CustomEvent('error', {
-          detail: `Failed to send AI prompt: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        })
-      );
     }
   }
 

@@ -72,26 +72,28 @@ export class ScreencapWebSocketClient {
 
         // Add WebSocket to window for debugging
         (window as any).debugWebSocket = this.ws;
-        
+
         // Track frame statistics
         let frameCount = 0;
         let totalBytes = 0;
-        
+
         this.ws.onmessage = async (event) => {
           // Check if this is a binary message
           if (event.data instanceof Blob) {
             const arrayBuffer = await event.data.arrayBuffer();
             frameCount++;
             totalBytes += arrayBuffer.byteLength;
-            
+
             // Log every 10th frame
             if (frameCount % 10 === 1) {
-              logger.log(`🎬 Binary frame ${frameCount}: ${arrayBuffer.byteLength} bytes, total: ${totalBytes} bytes`);
+              logger.log(
+                `🎬 Binary frame ${frameCount}: ${arrayBuffer.byteLength} bytes, total: ${totalBytes} bytes`
+              );
             }
-            
+
             // Store stats on window for debugging
             (window as any).videoFrameStats = { count: frameCount, totalBytes };
-            
+
             if (this.onBinaryMessage) {
               this.onBinaryMessage(arrayBuffer);
             }
@@ -231,7 +233,7 @@ export class ScreencapWebSocketClient {
             this.onError(String(message.payload));
           }
           break;
-          
+
         case 'capture-started':
         case 'capture-stopped':
         case 'state-change':
@@ -361,18 +363,6 @@ export class ScreencapWebSocketClient {
     return this.request('GET', '/displays');
   }
 
-  async startCapture(params: { type: string; index: number; webrtc?: boolean; use8k?: boolean }) {
-    // Session ID is already generated in constructor
-    logger.log(`Starting capture with session ID: ${this.sessionId}`);
-    return this.request('POST', '/capture', params);
-  }
-
-  async captureWindow(params: { cgWindowID: number; webrtc?: boolean; use8k?: boolean }) {
-    // Session ID is already generated in constructor
-    logger.log(`Capturing window with session ID: ${this.sessionId}`);
-    return this.request('POST', '/capture-window', params);
-  }
-
   /**
    * Start desktop capture
    */
@@ -381,9 +371,9 @@ export class ScreencapWebSocketClient {
     index?: number;
     webrtc?: boolean;
     use8k?: boolean;
-  }) {
+  }): Promise<unknown> {
     logger.log('Starting capture with params:', params);
-    
+
     // For Linux, we send a direct start-capture message instead of API request
     const message: ControlMessage = {
       id: crypto.randomUUID(),
@@ -393,14 +383,14 @@ export class ScreencapWebSocketClient {
       payload: {
         displayIndex: params.index || 0,
         quality: params.use8k ? 'ultra' : 'high',
-        sessionId: this.sessionId
+        sessionId: this.sessionId,
       },
-      sessionId: this.sessionId
+      sessionId: this.sessionId,
     };
 
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(message.id, { resolve, reject });
-      
+
       this.connect()
         .then(() => {
           if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -417,11 +407,11 @@ export class ScreencapWebSocketClient {
   /**
    * Capture a specific window (not supported on Linux yet)
    */
-  async captureWindow(params: {
+  async captureWindow(_params: {
     cgWindowID: number;
     webrtc?: boolean;
     use8k?: boolean;
-  }) {
+  }): Promise<unknown> {
     // Window capture not supported on Linux
     throw new Error('Window capture is not supported on Linux yet');
   }
@@ -434,12 +424,12 @@ export class ScreencapWebSocketClient {
         type: 'request',
         category: 'screencap',
         action: 'stop-capture',
-        sessionId: this.sessionId
+        sessionId: this.sessionId,
       };
 
       return new Promise((resolve, reject) => {
         this.pendingRequests.set(message.id, { resolve, reject });
-        
+
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
           this.ws.send(JSON.stringify(message));
           logger.log('Sent stop-capture message:', message);

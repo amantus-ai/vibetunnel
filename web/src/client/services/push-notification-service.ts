@@ -21,7 +21,6 @@ export class PushNotificationService {
   private subscriptionChangeCallbacks: Set<SubscriptionChangeCallback> = new Set();
   private initialized = false;
   private vapidPublicKey: string | null = null;
-  private pushNotificationsAvailable = false;
   private initializationPromise: Promise<void> | null = null;
 
   // biome-ignore lint/complexity/noUselessConstructor: This constructor documents the intentional design decision to not auto-initialize

@@ -40,6 +40,14 @@ export class DesktopCaptureService extends EventEmitter {
   private initialized = false;
   private initializationError?: Error;
 
+  isReady(): boolean {
+    return this.initialized && !this.initializationError;
+  }
+
+  getInitializationError(): Error | undefined {
+    return this.initializationError;
+  }
+
   async initialize(): Promise<void> {
     if (this.initialized) return;
     if (this.initializationError) throw this.initializationError;
@@ -128,12 +136,21 @@ export class DesktopCaptureService extends EventEmitter {
       const captureStream = await this.startServerCapture(options);
       session.captureStream = captureStream;
 
-      // Convert to WebRTC format
-      const mediaStream = await convertToWebRTC(captureStream);
-      session.mediaStream = mediaStream;
+      // Only convert to WebRTC format for Mac/Windows
+      // Linux uses direct WebSocket streaming
+      let statsInterval: NodeJS.Timeout;
+      if (process.platform !== 'linux') {
+        const mediaStream = await convertToWebRTC(captureStream);
+        session.mediaStream = mediaStream;
+
+        // Clean up on stop
+        mediaStream.stream.once('inactive', () => {
+          clearInterval(statsInterval);
+        });
+      }
 
       // Update stats periodically
-      const statsInterval = setInterval(() => {
+      statsInterval = setInterval(() => {
         if (session.captureStream) {
           const stats = session.captureStream.getStats();
           session.stats = {
@@ -142,11 +159,6 @@ export class DesktopCaptureService extends EventEmitter {
           };
         }
       }, 1000);
-
-      // Clean up on stop
-      mediaStream.stream.once('inactive', () => {
-        clearInterval(statsInterval);
-      });
 
       this.sessions.set(sessionId, session);
       this.emit('capture-started', session);
@@ -196,7 +208,7 @@ export class DesktopCaptureService extends EventEmitter {
     logger.log(`Stopping capture session ${sessionId}`);
 
     try {
-      // Stop media stream
+      // Stop media stream (not used on Linux)
       if (session.mediaStream) {
         session.mediaStream.stop();
       }
@@ -244,20 +256,6 @@ export class DesktopCaptureService extends EventEmitter {
     // TODO: Implement proper authentication
     // For now, accept any non-empty token
     return token.length > 0;
-  }
-
-  /**
-   * Check if the service is ready to use
-   */
-  isReady(): boolean {
-    return this.initialized && !this.initializationError;
-  }
-
-  /**
-   * Get initialization error if any
-   */
-  getInitializationError(): Error | undefined {
-    return this.initializationError;
   }
 
   /**

@@ -21,8 +21,8 @@ export class LinuxWebRTCHandler extends EventEmitter {
   private streamUrl: string | null = null;
   private isStreaming = false;
   private frameInterval?: NodeJS.Timeout;
-  private streamBuffer: Buffer[] = [];
   private ffmpegStream: Readable | null = null;
+  private streamBuffer: Buffer[] = [];
 
   constructor(
     private captureSession: CaptureSession,
@@ -40,6 +40,16 @@ export class LinuxWebRTCHandler extends EventEmitter {
       this.ffmpegStream = this.captureSession.captureStream.stream;
       this.streamUrl = `/api/screencap/stream/${this.sessionId}`;
       logger.log(`Stream URL: ${this.streamUrl}`);
+      logger.log(
+        `FFmpeg stream available: ${!!this.ffmpegStream}, readable: ${this.ffmpegStream?.readable}`
+      );
+
+      // IMPORTANT: Resume the stream to ensure data flows
+      // Node.js streams might be paused by default
+      if (typeof this.ffmpegStream.pause === 'function') {
+        logger.log('Stream appears to be pausable, resuming...');
+        this.ffmpegStream.resume();
+      }
 
       // Set up stream buffering
       this.setupStreamBuffering();
@@ -58,11 +68,18 @@ export class LinuxWebRTCHandler extends EventEmitter {
     this.ffmpegStream.on('data', (chunk: Buffer) => {
       frameCount++;
       totalBytes += chunk.length;
-      if (frameCount % 100 === 1) {
-        logger.log(`FFmpeg data: frame ${frameCount}, chunk size: ${chunk.length}, total: ${totalBytes} bytes`);
+      if (frameCount <= 5 || frameCount % 100 === 1) {
+        logger.log(
+          `FFmpeg data: frame ${frameCount}, chunk size: ${chunk.length}, total: ${totalBytes} bytes`
+        );
       }
       // For WebSocket streaming, we'll emit video frames directly
       this.emit('video-frame', chunk);
+
+      // Log if we have any listeners
+      if (frameCount === 1) {
+        logger.log(`video-frame event listeners: ${this.listenerCount('video-frame')}`);
+      }
     });
 
     this.ffmpegStream.on('error', (error) => {

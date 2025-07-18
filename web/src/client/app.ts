@@ -490,15 +490,6 @@ export class VibeTunnelApp extends LitElement {
     }
   }
 
-  private clearSuccess() {
-    // Clear the timeout if active
-    if (this.successTimeoutId !== null) {
-      clearTimeout(this.successTimeoutId);
-      this.successTimeoutId = null;
-    }
-    this.successMessage = '';
-  }
-
   private async loadSessions() {
     // Only show loading state on initial load, not on refreshes
     if (!this.initialLoadComplete) {
@@ -1346,15 +1337,6 @@ export class VibeTunnelApp extends LitElement {
 
   private handleOpenFileBrowser = () => {
     this.handleNavigateToFileBrowser();
-  };
-
-  private handleNotificationEnabled = (e: CustomEvent) => {
-    const { success, reason } = e.detail;
-    if (success) {
-      this.showSuccess('Notifications enabled successfully');
-    } else {
-      this.showError(`Failed to enable notifications: ${reason || 'Unknown error'}`);
-    }
   };
 
   private handleCaptureToggled = (e: CustomEvent) => {

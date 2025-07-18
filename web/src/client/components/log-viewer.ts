@@ -19,7 +19,6 @@ export class LogViewer extends LitElement {
 
   @state() private logs: LogEntry[] = [];
   @state() private loading = true;
-  @state() private error = '';
   @state() private filter = '';
   @state() private levelFilter: Set<string> = new Set(['error', 'warn', 'log', 'debug']);
   @state() private autoScroll = true;

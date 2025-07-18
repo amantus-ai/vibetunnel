@@ -89,7 +89,6 @@ export class TerminalQuickKeys extends LitElement {
 
   // Chord system state
   private activeModifiers = new Set<string>();
-  private touchIdentifiers = new Map<string, number>(); // Track which touch is on which key
 
   connectedCallback() {
     super.connectedCallback();

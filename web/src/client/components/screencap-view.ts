@@ -435,7 +435,6 @@ export class ScreencapView extends LitElement {
   @state() private processGroups: ProcessGroup[] = [];
   @state() private displays: DisplayInfo[] = [];
   @state() private selectedWindow: WindowInfo | null = null;
-  @state() private selectedWindowProcess: ProcessGroup | null = null;
   @state() private selectedDisplay: DisplayInfo | null = null;
   @state() private allDisplaysSelected = false;
   @state() private isCapturing = false;
@@ -453,7 +452,6 @@ export class ScreencapView extends LitElement {
   @state() private sidebarCollapsed = false;
   @state() private fitMode: 'contain' | 'cover' = 'contain';
   @state() private frameCounter = 0;
-  @state() private showMobileKeyboard = false;
   @state() private isMobile = false;
   @state() private isDragging = false;
   @state() private dragStartCoords: { x: number; y: number } | null = null;
@@ -471,7 +469,6 @@ export class ScreencapView extends LitElement {
   private wsClient: ScreencapWebSocketClient | null = null;
   private webrtcHandler: WebRTCHandler | null = null;
   private frameUpdateInterval: number | null = null;
-  private localAuthToken?: string;
   private boundHandleKeyDown: ((event: KeyboardEvent) => void) | null = null;
 
   connectedCallback() {
@@ -694,7 +691,7 @@ export class ScreencapView extends LitElement {
       }
       // Linux format: just a number as string
       const parsed = Number.parseInt(id);
-      return isNaN(parsed) ? 0 : parsed;
+      return Number.isNaN(parsed) ? 0 : parsed;
     }
     return 0;
   }
@@ -1031,11 +1028,17 @@ export class ScreencapView extends LitElement {
       );
 
       this.logStatus('info', 'Sending window capture request to Mac app...');
-      captureResponse = (await this.wsClient.captureWindow({
-        cgWindowID: this.selectedWindow.cgWindowID,
-        webrtc: true,
-        use8k: this.use8k,
-      })) as CaptureResponse;
+      try {
+        captureResponse = (await this.wsClient.captureWindow({
+          cgWindowID: this.selectedWindow.cgWindowID,
+          webrtc: true,
+          use8k: this.use8k,
+        })) as CaptureResponse;
+      } catch (_error) {
+        // Window capture not supported on Linux
+        this.logStatus('error', 'Window capture is not supported on Linux yet');
+        return;
+      }
 
       if (captureResponse?.sessionId) {
         this.logStatus(
@@ -1084,10 +1087,16 @@ export class ScreencapView extends LitElement {
         'info',
         `Requesting capture of window: ${this.selectedWindow.title || 'Untitled'} (JPEG mode)`
       );
-      response = (await this.wsClient.captureWindow({
-        cgWindowID: this.selectedWindow.cgWindowID,
-        webrtc: false, // Explicitly set to false for JPEG
-      })) as CaptureResponse;
+      try {
+        response = (await this.wsClient.captureWindow({
+          cgWindowID: this.selectedWindow.cgWindowID,
+          webrtc: false, // Explicitly set to false for JPEG
+        })) as CaptureResponse;
+      } catch (_error) {
+        // Window capture not supported on Linux
+        this.logStatus('error', 'Window capture is not supported on Linux yet');
+        return;
+      }
     }
 
     if (response?.sessionId) {
