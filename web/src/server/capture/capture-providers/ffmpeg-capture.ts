@@ -178,11 +178,14 @@ export class FFmpegCapture extends EventEmitter {
     // Codec configuration
     args.push(...this.getCodecArgs(codec, quality, options));
 
-    // Output format
+    // Output format and streaming flags
     if (codec === 'h264') {
       args.push('-f', 'mpegts'); // MPEG-TS for H.264 streaming
     } else {
-      args.push('-f', 'webm'); // WebM for VP8/VP9
+      args.push(
+        '-f', 'webm', // WebM for VP8/VP9
+        '-flags', '+global_header' // Ensure headers are included
+      );
     }
 
     // Output to stdout
@@ -224,8 +227,17 @@ export class FFmpegCapture extends EventEmitter {
       }
 
       case 'pipewire':
-        // Modern FFmpeg with PipeWire support
-        args.push('-f', 'lavfi', '-i', 'pipewiregrab', '-framerate', framerate.toString());
+        // Modern FFmpeg with PipeWire support for Wayland
+        // First try screen casting with PipeWire
+        args.push(
+          '-f',
+          'lavfi',
+          '-i',
+          'lavfi:pipewiregrab=draw_mouse=1',
+          '-framerate',
+          framerate.toString()
+        );
+        logger.log('Using PipeWire screen capture for Wayland');
         break;
 
       case 'xvfb':
@@ -274,7 +286,9 @@ export class FFmpegCapture extends EventEmitter {
           '-crf',
           quality.crf.toString(),
           '-g',
-          '60', // Keyframe interval
+          '30', // Keyframe interval - reduced for better streaming
+          '-keyint_min',
+          '30', // Minimum keyframe interval
           '-deadline',
           'realtime',
           '-cpu-used',

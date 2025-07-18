@@ -100,7 +100,7 @@ export class LinuxWebRTCHandler extends EventEmitter {
     let frameCount = 0;
     let totalBytes = 0;
 
-    // Buffer incoming video data
+    // Buffer incoming video data and send directly
     this.ffmpegStream.on('data', (chunk: Buffer) => {
       frameCount++;
       totalBytes += chunk.length;

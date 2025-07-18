@@ -31,12 +31,25 @@ export async function detectDisplayServer(): Promise<DisplayServerInfo> {
 
     // Check if FFmpeg supports PipeWire
     const ffmpegSupport = await checkFFmpegPipeWireSupport();
+    
+    // If running under Xwayland, prefer x11grab with proper display
+    const hasXwayland = process.env.DISPLAY && await checkXwaylandRunning();
+    
+    if (!ffmpegSupport && hasXwayland) {
+      logger.log('Wayland detected but PipeWire not available, using Xwayland');
+      return {
+        type: 'wayland',
+        display: process.env.DISPLAY || ':0',
+        captureMethod: 'x11grab',
+        availableScreens: await getX11Screens(),
+      };
+    }
 
     return {
       type: 'wayland',
       display: ffmpegSupport ? process.env.WAYLAND_DISPLAY : process.env.DISPLAY || ':0',
-      captureMethod: ffmpegSupport ? 'pipewire' : 'x11grab', // Fallback to XWayland
-      availableScreens: await getWaylandScreens(),
+      captureMethod: ffmpegSupport ? 'pipewire' : 'x11grab',
+      availableScreens: ffmpegSupport ? await getWaylandScreens() : await getX11Screens(),
     };
   }
 
@@ -83,6 +96,15 @@ async function checkFFmpegPipeWireSupport(): Promise<boolean> {
   try {
     const { stdout } = await execAsync('ffmpeg -hide_banner -sources lavfi 2>&1');
     return stdout.includes('pipewiregrab');
+  } catch {
+    return false;
+  }
+}
+
+async function checkXwaylandRunning(): Promise<boolean> {
+  try {
+    const { stdout } = await execAsync('ps aux | grep -i xwayland | grep -v grep');
+    return stdout.includes('Xwayland');
   } catch {
     return false;
   }

@@ -220,19 +220,82 @@ function generateTrackId(): string {
 }
 
 /**
- * Parse WebM/Matroska container to extract frames
- * This would be used for more advanced processing
+ * Parse WebM/Matroska container to extract initialization and media segments
+ * This is required for proper MediaSource API streaming
  */
 export class WebMParser extends Transform {
   private buffer = Buffer.alloc(0);
+  private initSegmentSent = false;
+  private readonly WEBM_SIGNATURE = Buffer.from([0x1a, 0x45, 0xdf, 0xa3]); // WebM file signature
+  private readonly CLUSTER_ID = Buffer.from([0x1f, 0x43, 0xb6, 0x75]); // Cluster element ID
 
   _transform(chunk: Buffer, _encoding: string, callback: () => void): void {
     this.buffer = Buffer.concat([this.buffer, chunk]);
 
-    // Simple passthrough for now
-    // Real implementation would parse WebM structure
-    this.push(chunk);
+    // Process buffer to find WebM segments
+    while (this.buffer.length > 0) {
+      if (!this.initSegmentSent) {
+        // Look for the first cluster to determine where init segment ends
+        const clusterIndex = this.findPattern(this.buffer, this.CLUSTER_ID);
 
+        if (clusterIndex !== -1) {
+          // Everything before the first cluster is the initialization segment
+          const initSegment = this.buffer.slice(0, clusterIndex);
+
+          // Send initialization segment with special marker
+          const header = Buffer.from('IS'); // Init Segment marker
+          const frame = Buffer.concat([header, initSegment]);
+          this.push(frame);
+
+          this.initSegmentSent = true;
+          this.buffer = this.buffer.slice(clusterIndex);
+          logger.log(`WebM init segment sent: ${initSegment.length} bytes`);
+        } else if (this.buffer.length > 10000) {
+          // If buffer is too large and no cluster found, something's wrong
+          logger.error('WebM init segment too large or malformed');
+          this.push(chunk); // Fallback to passthrough
+          this.buffer = Buffer.alloc(0);
+          break;
+        } else {
+          // Need more data to find the cluster
+          break;
+        }
+      } else {
+        // After init segment, pass through media data
+        // For simplicity, we'll send chunks as they come
+        // In a production implementation, we'd parse cluster boundaries
+        const header = Buffer.from('MS'); // Media Segment marker
+        const frame = Buffer.concat([header, this.buffer]);
+        this.push(frame);
+        this.buffer = Buffer.alloc(0);
+        break;
+      }
+    }
+
+    callback();
+  }
+
+  private findPattern(buffer: Buffer, pattern: Buffer): number {
+    for (let i = 0; i <= buffer.length - pattern.length; i++) {
+      let found = true;
+      for (let j = 0; j < pattern.length; j++) {
+        if (buffer[i + j] !== pattern[j]) {
+          found = false;
+          break;
+        }
+      }
+      if (found) return i;
+    }
+    return -1;
+  }
+
+  _flush(callback: () => void): void {
+    // Send any remaining data
+    if (this.buffer.length > 0) {
+      const header = this.initSegmentSent ? Buffer.from('MS') : Buffer.from('IS');
+      const frame = Buffer.concat([header, this.buffer]);
+      this.push(frame);
+    }
     callback();
   }
 }
