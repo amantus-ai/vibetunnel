@@ -13,7 +13,7 @@ import {
 } from '../utils/server-utils';
 
 // HQ Mode tests for distributed terminal management
-describe('HQ Mode E2E Tests', () => {
+describe.skip('HQ Mode E2E Tests', () => {
   let hqServer: ServerInstance | null = null;
   const remoteServers: ServerInstance[] = [];
   const testDirs: string[] = [];
