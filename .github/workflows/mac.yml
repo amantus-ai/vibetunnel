@@ -154,8 +154,8 @@ jobs:
         rm -rf web-artifacts-temp
         
         # Verify we have the required files
-        if [ ! -f "web/dist/server.js" ]; then
-          echo "ERROR: web/dist/server.js not found after artifact extraction!"
+        if [ ! -f "web/dist/server/server.js" ]; then
+          echo "ERROR: web/dist/server/server.js not found after artifact extraction!"
           exit 1
         fi
         
