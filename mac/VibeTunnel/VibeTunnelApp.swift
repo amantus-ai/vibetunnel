@@ -126,7 +126,7 @@ struct VibeTunnelApp: App {
 /// coordinator for application-wide events and services.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
-    // Needed for some gross menu item highlight hack
+    // Needed for menu item highlight hack
     static weak var shared: AppDelegate?
     override init() {
         super.init()
