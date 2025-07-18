@@ -130,21 +130,16 @@ jobs:
         # Ensure web directory structure exists
         mkdir -p web/dist web/public/bundle
         
-        # The artifacts are uploaded with the full path structure preserved
-        # So they're at web-artifacts-temp/web/dist and web-artifacts-temp/web/public/bundle
-        if [ -d "web-artifacts-temp/web" ]; then
-          # Copy from the nested web directory
-          if [ -d "web-artifacts-temp/web/dist" ]; then
-            cp -r web-artifacts-temp/web/dist/* web/dist/ 2>/dev/null || true
-            echo "Copied dist files"
-          fi
-          if [ -d "web-artifacts-temp/web/public/bundle" ]; then
-            cp -r web-artifacts-temp/web/public/bundle/* web/public/bundle/ 2>/dev/null || true
-            echo "Copied bundle files"
-          fi
-        else
-          echo "ERROR: Expected web artifacts structure not found!"
-          find web-artifacts-temp -type d | head -20
+        # The artifacts are uploaded without the web/ prefix
+        # So they're at web-artifacts-temp/dist and web-artifacts-temp/public/bundle
+        if [ -d "web-artifacts-temp/dist" ]; then
+          # Copy from the root of artifacts
+          cp -r web-artifacts-temp/dist/* web/dist/ 2>/dev/null || true
+          echo "Copied dist files"
+        fi
+        if [ -d "web-artifacts-temp/public/bundle" ]; then
+          cp -r web-artifacts-temp/public/bundle/* web/public/bundle/ 2>/dev/null || true
+          echo "Copied bundle files"
         fi
         
         # Debug: Show what we have
