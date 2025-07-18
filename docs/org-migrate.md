@@ -1,13 +1,13 @@
 # GitHub Organization Migration Plan
 
-This document outlines the migration process for moving the VibeTunnel repository from `amantus-ai/vibetunnel` to `vibetower/vibetower`.
+This document outlines the migration process for moving the VibeTunnel repository from `amantus-ai/vibetunnel` to `vibetunnel/vibetunnel`.
 
 ## 1. Fast-lane Transfer (GitHub Built-in Method)
 
 The simplest approach using GitHub's native transfer feature:
 
 1. Navigate to **Settings → General → Danger Zone → Transfer**
-2. Enter the new owner: `vibetower`
+2. Enter the new owner: `vibetunnel`
 3. Type the repository name to confirm
 4. Accept the invite from the destination org
 5. Done! ✅
@@ -56,7 +56,7 @@ The simplest approach using GitHub's native transfer feature:
 ### Pre-Migration (1-2 days before)
 
 - [ ] **Prepare Target Organization**
-  - Create `vibetower` organization if not exists
+  - Create `vibetunnel` organization if not exists
   - Set up teams and permissions structure
   - Configure organization-level settings
   - Review default branch protection rules
@@ -94,7 +94,7 @@ The simplest approach using GitHub's native transfer feature:
 - [ ] **Update Git Remotes**
   ```bash
   # For all local clones
-  git remote set-url origin git@github.com:vibetower/vibetower.git
+  git remote set-url origin git@github.com:vibetunnel/vibetunnel.git
   
   # Verify the change
   git remote -v
@@ -118,19 +118,19 @@ The simplest approach using GitHub's native transfer feature:
   {
     "repository": {
       "type": "git",
-      "url": "git+https://github.com/vibetower/vibetower.git"
+      "url": "git+https://github.com/vibetunnel/vibetunnel.git"
     },
     "bugs": {
-      "url": "https://github.com/vibetower/vibetower/issues"
+      "url": "https://github.com/vibetunnel/vibetunnel/issues"
     },
-    "homepage": "https://github.com/vibetower/vibetower#readme"
+    "homepage": "https://github.com/vibetunnel/vibetunnel#readme"
   }
   ```
 
 ## 3. Redirect Behavior
 
 GitHub automatically sets up redirects:
-- `https://github.com/amantus-ai/vibetunnel` → `https://github.com/vibetower/vibetower`
+- `https://github.com/amantus-ai/vibetunnel` → `https://github.com/vibetunnel/vibetunnel`
 - Git operations: `git clone git@github.com:amantus-ai/vibetunnel.git` still works
 - API calls to old URL redirect automatically
 
