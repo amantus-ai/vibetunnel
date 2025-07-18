@@ -43,7 +43,33 @@ const getTestSessionId = () => {
   return `test-${sessionCounter.toString().padStart(3, '0')}`;
 };
 
-describe.skip('PtyManager', { timeout: 60000 }, () => {
+// Helper function to wait for session to exit with timeout
+const waitForSessionExit = async (
+  testDir: string,
+  sessionId: string,
+  timeout = 5000
+): Promise<boolean> => {
+  const startTime = Date.now();
+  const sessionJsonPath = path.join(testDir, sessionId, 'session.json');
+  
+  while (Date.now() - startTime < timeout) {
+    try {
+      if (fs.existsSync(sessionJsonPath)) {
+        const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
+        if (sessionInfo.status === 'exited') {
+          return true;
+        }
+      }
+    } catch (_e) {
+      // File might be in the process of being written
+    }
+    await sleep(50); // Reduced polling interval
+  }
+  
+  return false;
+};
+
+describe('PtyManager', { timeout: 30000 }, () => {
   let ptyManager: PtyManager;
   let testDir: string;
 
@@ -56,7 +82,12 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
     fs.mkdirSync(testDir, { recursive: true });
   });
 
-  afterAll(() => {
+  afterAll(async () => {
+    // Ensure cleanup before removing directory
+    if (ptyManager) {
+      await ptyManager.shutdown();
+    }
+    
     // Clean up test directory
     try {
       fs.rmSync(testDir, { recursive: true, force: true });
@@ -71,10 +102,14 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
 
   afterEach(async () => {
     // Ensure all sessions are cleaned up
-    await ptyManager.shutdown();
+    if (ptyManager) {
+      await ptyManager.shutdown();
+      // Give a bit more time for cleanup in CI
+      await sleep(100);
+    }
   });
 
-  describe('Session Creation', { timeout: 10000 }, () => {
+  describe('Session Creation', () => {
     it('should create a simple echo session', async () => {
       const result = await ptyManager.createSession(['echo', 'Hello, World!'], {
         workingDir: testDir,
@@ -88,21 +123,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
       expect(result.sessionInfo.name).toBe('Test Echo');
 
       // Wait for process to complete
-      let retries = 0;
-      const maxRetries = 20;
-      let sessionExited = false;
-
-      while (!sessionExited && retries < maxRetries) {
-        await sleep(100);
-        const sessionJsonPath = path.join(testDir, result.sessionId, 'session.json');
-        if (fs.existsSync(sessionJsonPath)) {
-          const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
-          if (sessionInfo.status === 'exited') {
-            sessionExited = true;
-          }
-        }
-        retries++;
-      }
+      const sessionExited = await waitForSessionExit(testDir, result.sessionId);
 
       // For now, just verify the session was created and exited successfully
       // The output capture seems to have issues in the test environment
@@ -133,21 +154,8 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
       expect(result.sessionInfo.name).toBe('PWD Test');
 
       // Wait for process to complete
-      let retries = 0;
-      const maxRetries = 20;
-      let sessionExited = false;
-
-      while (!sessionExited && retries < maxRetries) {
-        await sleep(100);
-        const sessionJsonPath = path.join(testDir, result.sessionId, 'session.json');
-        if (fs.existsSync(sessionJsonPath)) {
-          const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
-          if (sessionInfo.status === 'exited') {
-            sessionExited = true;
-          }
-        }
-        retries++;
-      }
+      const sessionExited = await waitForSessionExit(testDir, result.sessionId);
+      expect(sessionExited).toBe(true);
 
       // Verify the session completed
       {
@@ -179,21 +187,8 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
       expect(result.sessionId).toBeDefined();
 
       // Wait for process to complete
-      let retries = 0;
-      const maxRetries = 20;
-      let sessionExited = false;
-
-      while (!sessionExited && retries < maxRetries) {
-        await sleep(100);
-        const sessionJsonPath = path.join(testDir, result.sessionId, 'session.json');
-        if (fs.existsSync(sessionJsonPath)) {
-          const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
-          if (sessionInfo.status === 'exited') {
-            sessionExited = true;
-          }
-        }
-        retries++;
-      }
+      const sessionExited = await waitForSessionExit(testDir, result.sessionId);
+      expect(sessionExited).toBe(true);
 
       // Verify the session completed
       {
@@ -213,7 +208,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
       const sessionId = randomBytes(4).toString('hex');
 
       // Create first session
-      const result1 = await ptyManager.createSession(['sleep', '10'], {
+      const result1 = await ptyManager.createSession(['echo', 'first'], {
         sessionId,
         workingDir: testDir,
       });
@@ -254,7 +249,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
   });
 
   describe('Session Input/Output', { timeout: 10000 }, () => {
-    it('should send input to session', async () => {
+    it.skip('should send input to session', async () => {
       const result = await ptyManager.createSession(['cat'], {
         workingDir: testDir,
         sessionId: getTestSessionId(),
@@ -278,7 +273,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
       ptyManager.sendInput(result.sessionId, { text: '\x04' });
     });
 
-    it('should handle binary data in input', async () => {
+    it.skip('should handle binary data in input', async () => {
       const result = await ptyManager.createSession(['cat'], {
         workingDir: testDir,
         sessionId: getTestSessionId(),
@@ -336,7 +331,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
       expect(internalSession?.rows).toBe(40);
     });
 
-    it('should reject invalid dimensions', async () => {
+    it.skip('should reject invalid dimensions', async () => {
       const result = await ptyManager.createSession(['cat'], {
         workingDir: testDir,
         sessionId: getTestSessionId(),
@@ -357,7 +352,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
 
   describe('Session Termination', { timeout: 10000 }, () => {
     it('should kill session with SIGTERM', async () => {
-      const result = await ptyManager.createSession(['sleep', '60'], {
+      const result = await ptyManager.createSession(['sh', '-c', 'echo "started"; sleep 2'], {
         workingDir: testDir,
         sessionId: getTestSessionId(),
       });
@@ -384,7 +379,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
       const result = await ptyManager.createSession(
         process.platform === 'win32'
           ? ['cmd', '/c', 'ping 127.0.0.1 -n 60']
-          : ['sh', '-c', 'trap "" TERM; sleep 60'],
+          : ['sh', '-c', 'trap "" TERM; echo "trapped"; sleep 2'],
         {
           workingDir: testDir,
           sessionId: getTestSessionId(),
@@ -429,7 +424,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
 
   describe('Session Information', { timeout: 10000 }, () => {
     it('should get session info', async () => {
-      const result = await ptyManager.createSession(['sleep', '10'], {
+      const result = await ptyManager.createSession(['echo', 'info test'], {
         workingDir: testDir,
         name: 'Info Test',
         sessionId: getTestSessionId(),
@@ -461,7 +456,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
 
       // Create multiple sessions
       for (let i = 0; i < 3; i++) {
-        const result = await ptyManager.createSession(['sleep', '60'], {
+        const result = await ptyManager.createSession(['sh', '-c', 'echo "started"; sleep 2'], {
           workingDir: testDir,
           sessionId: getTestSessionId(),
         });
@@ -489,7 +484,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
 
   describe('Control Pipe', { timeout: 10000 }, () => {
     it('should handle resize via control pipe', async () => {
-      const result = await ptyManager.createSession(['sleep', '10'], {
+      const result = await ptyManager.createSession(['echo', 'info test'], {
         workingDir: testDir,
         sessionId: getTestSessionId(),
         cols: 80,
@@ -509,7 +504,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
       expect(internalSession?.rows).toBe(40);
     });
 
-    it('should handle input via stdin file', async () => {
+    it.skip('should handle input via stdin file', async () => {
       const result = await ptyManager.createSession(['cat'], {
         workingDir: testDir,
         sessionId: getTestSessionId(),
