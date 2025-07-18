@@ -209,8 +209,12 @@ describe('Control Unix Handler', () => {
       };
 
       // Set up the handler
-      (controlUnixHandler as unknown as { screenCaptureHandler: typeof mockScreenCaptureHandler }).screenCaptureHandler = mockScreenCaptureHandler;
-      (controlUnixHandler as unknown as { handlers: Map<string, typeof mockScreenCaptureHandler> }).handlers.set('screencap', mockScreenCaptureHandler);
+      (
+        controlUnixHandler as unknown as { screenCaptureHandler: typeof mockScreenCaptureHandler }
+      ).screenCaptureHandler = mockScreenCaptureHandler;
+      (
+        controlUnixHandler as unknown as { handlers: Map<string, typeof mockScreenCaptureHandler> }
+      ).handlers.set('screencap', mockScreenCaptureHandler);
       mockScreenCaptureHandler.browserSocket = mockBrowserSocket;
 
       // Create a screencap API response message (simulating response from Mac app)
@@ -305,7 +309,6 @@ describe('Control Unix Handler', () => {
       );
     });
   });
-=======
 
   describe('Screencap Response Forwarding', () => {
     it('should forward screencap response messages even without pending requests', async () => {
@@ -452,8 +455,12 @@ describe('Control Unix Handler', () => {
       };
 
       // Set up the handler
-      (controlUnixHandler as unknown as { screenCaptureHandler: typeof mockScreenCaptureHandler }).screenCaptureHandler = mockScreenCaptureHandler;
-      (controlUnixHandler as unknown as { handlers: Map<string, typeof mockScreenCaptureHandler> }).handlers.set('screencap', mockScreenCaptureHandler);
+      (
+        controlUnixHandler as unknown as { screenCaptureHandler: typeof mockScreenCaptureHandler }
+      ).screenCaptureHandler = mockScreenCaptureHandler;
+      (
+        controlUnixHandler as unknown as { handlers: Map<string, typeof mockScreenCaptureHandler> }
+      ).handlers.set('screencap', mockScreenCaptureHandler);
       mockScreenCaptureHandler.browserSocket = mockBrowserSocket;
 
       // Create a screencap API response message (simulating response from Mac app)
