@@ -162,6 +162,9 @@ jobs:
         echo "Web artifacts successfully downloaded and positioned"
     
     - name: Resolve Dependencies (once)
+      env:
+        CI: "true"  # Ensure CI environment variable is set
+        SKIP_NODE_CHECK: "true"  # Skip Node.js check in CI since we download pre-built artifacts
       run: |
         echo "Resolving Swift package dependencies..."
         # Workspace is at root level
@@ -176,6 +179,7 @@ jobs:
       timeout-minutes: 10
       id: build
       env:
+        CI: "true"  # Ensure CI environment variable is set for build scripts
         SKIP_NODE_CHECK: "true"  # Skip Node.js check in CI since we download pre-built artifacts
       run: |
         # Always use Debug for now to match test expectations
@@ -220,6 +224,8 @@ jobs:
     - name: Run tests with coverage
       id: test-coverage
       timeout-minutes: 15
+      env:
+        SKIP_NODE_CHECK: "true"  # Skip Node.js check in CI since we download pre-built artifacts
       run: |
         # Debug: Check if web build artifacts were downloaded
         echo "=== Checking web build artifacts ==="
