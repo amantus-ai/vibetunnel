@@ -6,6 +6,8 @@ import Foundation
 /// Controls whether the web interface is accessible only locally or
 /// from other devices on the network.
 enum DashboardAccessMode: String, CaseIterable {
+    // Raw values are automatically inferred as "localhost" and "network"
+    // These must match AppConstants.DashboardAccessModeRawValues
     case localhost
     case network
 
