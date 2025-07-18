@@ -26,7 +26,7 @@ struct GitRepositoryMonitorRaceConditionTests {
         let testRepoPath = "/test/repo/path"
 
         // Create a mock repository
-        let mockRepo = GitRepository(
+        _ = GitRepository(
             path: testRepoPath,
             modifiedCount: 0,
             addedCount: 0,

@@ -206,7 +206,7 @@ struct NetworkUtilityTests {
         """, named: "Performance Test Configuration")
 
         // Measure individual timings
-        for i in 0..<iterations {
+        for _ in 0..<iterations {
             let start = CFAbsoluteTimeGetCurrent()
             _ = NetworkUtility.getLocalIPAddress()
             let end = CFAbsoluteTimeGetCurrent()
