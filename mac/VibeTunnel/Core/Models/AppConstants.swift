@@ -14,7 +14,6 @@ enum AppConstants {
     enum UserDefaultsKeys {
         static let welcomeVersion = "welcomeVersion"
         static let preventSleepWhenRunning = "preventSleepWhenRunning"
-        static let enableScreencapService = "enableScreencapService"
         static let repositoryBasePath = "repositoryBasePath"
 
         // Server Configuration
@@ -52,8 +51,6 @@ enum AppConstants {
     enum Defaults {
         /// Sleep prevention is enabled by default for better user experience
         static let preventSleepWhenRunning = true
-        /// Screencap service is enabled by default for screen sharing
-        static let enableScreencapService = true
         /// Default repository base path for auto-discovery
         static let repositoryBasePath = "~/"
 
@@ -81,8 +78,6 @@ enum AppConstants {
             switch key {
             case UserDefaultsKeys.preventSleepWhenRunning:
                 return Defaults.preventSleepWhenRunning
-            case UserDefaultsKeys.enableScreencapService:
-                return Defaults.enableScreencapService
             case UserDefaultsKeys.cleanupOnStartup:
                 return Defaults.cleanupOnStartup
             case UserDefaultsKeys.debugMode:

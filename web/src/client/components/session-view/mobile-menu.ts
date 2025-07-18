@@ -2,7 +2,7 @@
  * Mobile Menu Component
  *
  * Consolidates session header actions into a single dropdown menu for mobile devices.
- * Includes file browser, screenshare, width settings, and other controls.
+ * Includes file browser, width settings, and other controls.
  */
 import { html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
@@ -22,7 +22,6 @@ export class MobileMenu extends LitElement {
   @property({ type: String }) widthTooltip = '';
   @property({ type: Function }) onCreateSession?: () => void;
   @property({ type: Function }) onOpenFileBrowser?: () => void;
-  @property({ type: Function }) onScreenshare?: () => void;
   @property({ type: Function }) onMaxWidthToggle?: () => void;
   @property({ type: Function }) onOpenSettings?: () => void;
   @property({ type: String }) currentTheme: Theme = 'system';
@@ -260,28 +259,6 @@ export class MobileMenu extends LitElement {
           </svg>
           Browse Files
         </button>
-        
-        <!-- Screenshare - only show if Mac app is connected -->
-        ${
-          this.macAppConnected
-            ? html`
-              <button
-                class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
-                @click=${() => this.handleAction(this.onScreenshare)}
-                data-testid="mobile-screenshare"
-                tabindex="${this.showMenu ? '0' : '-1'}"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="2" y="3" width="20" height="14" rx="2"/>
-                  <line x1="8" y1="21" x2="16" y2="21"/>
-                  <line x1="12" y1="17" x2="12" y2="21"/>
-                  <circle cx="12" cy="10" r="3" fill="currentColor" stroke="none"/>
-                </svg>
-                Screenshare
-              </button>
-            `
-            : ''
-        }
         
         <!-- Width Settings -->
         <button

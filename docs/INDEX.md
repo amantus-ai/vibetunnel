@@ -27,7 +27,6 @@ This index provides a comprehensive overview of all documentation in the VibeTun
 - [**push-notification.md**](push-notification.md) - Push notification implementation
 - [**security.md**](security.md) - Security configuration and best practices
 - [**keyboard-shortcuts.md**](keyboard-shortcuts.md) - Keyboard shortcut reference
-- [**WEBRTC_CONFIG.md**](WEBRTC_CONFIG.md) - WebRTC configuration for screen sharing
 
 ### Testing
 - [**testing.md**](testing.md) - Testing strategy and test suite documentation
@@ -51,8 +50,6 @@ This index provides a comprehensive overview of all documentation in the VibeTun
 - [**mac/docs/code-signing.md**](../mac/docs/code-signing.md) - Comprehensive code signing guide
 - [**mac/docs/BuildArchitectures.md**](../mac/docs/BuildArchitectures.md) - Build architecture details
 - [**mac/docs/BuildRequirements.md**](../mac/docs/BuildRequirements.md) - Build requirements
-- [**mac/docs/screencap.md**](../mac/docs/screencap.md) - Screen capture implementation
-- [**mac/docs/screencapturekit.md**](../mac/docs/screencapturekit.md) - ScreenCaptureKit usage
 - [**mac/docs/sparkle-keys.md**](../mac/docs/sparkle-keys.md) - Sparkle update framework keys
 - [**mac/docs/sparkle-stats-store.md**](../mac/docs/sparkle-stats-store.md) - Update statistics
 
