@@ -219,7 +219,7 @@ class ServerManager {
             server.port = port
             let currentBindAddress = bindAddress
             server.bindAddress = currentBindAddress
-            logger.info("Starting server with port=\(port), bindAddress=\(currentBindAddress)")
+            logger.info("Starting server with port=\(self.port), bindAddress=\(currentBindAddress)")
 
             // Set up crash handler
             server.onCrash = { [weak self] exitCode in
