@@ -1,0 +1,250 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "VibeTunnel",
+  "theme": "maple",
+  "colors": {
+    "primary": "#0066FF",
+    "light": "#3B82F6",
+    "dark": "#1E40AF"
+  },
+  "logo": {
+    "light": "/docs/images/vibetunnel-logo-light.svg",
+    "dark": "/docs/images/vibetunnel-logo-dark.svg",
+    "href": "https://vibetunnel.com"
+  },
+  "favicon": "/favicon.ico",
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/amantus-ai/vibetunnel"
+      },
+      {
+        "label": "Discord",
+        "href": "https://discord.gg/vibetunnel"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Download",
+      "href": "https://vibetunnel.com/download"
+    }
+  },
+  "navigation": {
+    "dropdowns": [
+      {
+        "dropdown": "Getting Started",
+        "icon": "rocket",
+        "description": "Installation and quick start guides",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "docs/project-overview",
+              "README"
+            ]
+          },
+          {
+            "group": "Installation",
+            "pages": [
+              "mac/README",
+              "ios/README",
+              "web/docs/VT_INSTALLATION"
+            ]
+          },
+          {
+            "group": "Quick Start",
+            "pages": [
+              "docs/keyboard-shortcuts-quick-reference",
+              "docs/CONTRIBUTING"
+            ]
+          }
+        ]
+      },
+      {
+        "dropdown": "Architecture",
+        "icon": "building",
+        "description": "System design and technical details",
+        "groups": [
+          {
+            "group": "Core Architecture",
+            "pages": [
+              "docs/ARCHITECTURE",
+              "docs/architecture-mario",
+              "docs/tauri-nodejs-architecture"
+            ]
+          },
+          {
+            "group": "Platform-Specific",
+            "pages": [
+              "mac/docs/BuildArchitectures",
+              "ios/docs/spec",
+              "web/docs/spec"
+            ]
+          },
+          {
+            "group": "Protocols",
+            "pages": [
+              "docs/spec",
+              "web/docs/socket-protocol",
+              "docs/authentication"
+            ]
+          }
+        ]
+      },
+      {
+        "dropdown": "Development",
+        "icon": "code",
+        "description": "Build, test, and contribute",
+        "groups": [
+          {
+            "group": "Setup & Build",
+            "pages": [
+              "docs/development",
+              "docs/build-system",
+              "mac/docs/BuildRequirements",
+              "web/docs/custom-node"
+            ]
+          },
+          {
+            "group": "macOS Development",
+            "pages": [
+              "mac/docs/DEVELOPMENT-SIGNING",
+              "mac/docs/CODE_SIGNING_SETUP",
+              "mac/docs/SIGNING-AND-NOTARIZATION",
+              "apple/docs/modern-swift",
+              "apple/docs/swift-concurrency",
+              "apple/docs/swiftui"
+            ]
+          },
+          {
+            "group": "iOS Development",
+            "pages": [
+              "ios/docs/ios-plan",
+              "ios/docs/modern-swift",
+              "docs/ios-enhancements",
+              "docs/ios-web-parity-plan"
+            ]
+          },
+          {
+            "group": "Web Development",
+            "pages": [
+              "web/docs/frontend-testing-plan",
+              "web/docs/performance",
+              "docs/keyboard-shortcuts",
+              "web/docs/keyboard-shortcuts"
+            ]
+          },
+          {
+            "group": "Testing",
+            "pages": [
+              "docs/testing",
+              "apple/docs/swift-testing-playbook",
+              "web/docs/playwright-testing",
+              "docs/TESTING_EXTERNAL_DEVICES"
+            ]
+          }
+        ]
+      },
+      {
+        "dropdown": "Deployment",
+        "icon": "ship",
+        "description": "Release and distribution",
+        "groups": [
+          {
+            "group": "Release Process",
+            "pages": [
+              "docs/deployment",
+              "docs/RELEASE_PROCESS",
+              "mac/docs/RELEASE",
+              "mac/docs/release-guide"
+            ]
+          },
+          {
+            "group": "Distribution",
+            "pages": [
+              "web/docs/npm",
+              "mac/docs/sparkle-keys",
+              "mac/docs/sparkle-stats-store"
+            ]
+          },
+          {
+            "group": "Monitoring",
+            "pages": [
+              "docs/push-notification",
+              "docs/WEBRTC_CONFIG"
+            ]
+          }
+        ]
+      },
+      {
+        "dropdown": "Reference",
+        "icon": "book",
+        "description": "API docs and specifications",
+        "groups": [
+          {
+            "group": "File Structure",
+            "pages": [
+              "docs/files",
+              ".github/workflows/README"
+            ]
+          },
+          {
+            "group": "Terminal Features",
+            "pages": [
+              "web/docs/terminal-titles",
+              "web/docs/ios-safari-paste",
+              "web/docs/large-paste-investigation"
+            ]
+          },
+          {
+            "group": "Tools & Integration",
+            "pages": [
+              "docs/claude",
+              "docs/gemini",
+              "tauri/README"
+            ]
+          },
+          {
+            "group": "Troubleshooting",
+            "pages": [
+              "docs/homebrew-issue",
+              "apple/docs/logging-private-fix",
+              "docs/custom-node-build-flags"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "tabs": [
+    {
+      "name": "API Reference",
+      "url": "api"
+    },
+    {
+      "name": "Changelog",
+      "url": "changelog"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "Support",
+      "icon": "headset",
+      "url": "https://discord.gg/vibetunnel"
+    }
+  ],
+  "feedback": {
+    "thumbsRating": true,
+    "suggestEdit": true,
+    "raiseIssue": true
+  },
+  "search": {
+    "prompt": "Search documentation..."
+  },
+  "footerSocials": {
+    "twitter": "https://twitter.com/vibetunnel",
+    "github": "https://github.com/amantus-ai/vibetunnel",
+    "discord": "https://discord.gg/vibetunnel"
+  }
+}
