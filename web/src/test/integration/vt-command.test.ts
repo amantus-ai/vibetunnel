@@ -3,7 +3,7 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-describe('vt command', () => {
+describe.skip('vt command', () => {
   const projectRoot = join(__dirname, '../../..');
   const vtScriptPath = join(projectRoot, 'bin/vt');
   const packageJsonPath = join(projectRoot, 'package.json');

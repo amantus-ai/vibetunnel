@@ -91,7 +91,7 @@ describe.skip('Resource Limits and Concurrent Sessions', () => {
 
     // Skipped: This test takes ~11.7 seconds due to sequential operations with 50ms delays
     // Re-enable when performance optimizations are implemented or for comprehensive testing
-    it.skip('should handle rapid session creation and deletion', async () => {
+    it('should handle rapid session creation and deletion', async () => {
       const operations = 20;
       let successCount = 0;
 
@@ -160,7 +160,7 @@ describe.skip('Resource Limits and Concurrent Sessions', () => {
       }
     });
 
-    it.skip('should handle WebSocket subscription stress', async () => {
+    it('should handle WebSocket subscription stress', async () => {
       // Create several sessions
       const sessionCount = 5;
       const sessionIds: string[] = [];
@@ -230,7 +230,7 @@ describe.skip('Resource Limits and Concurrent Sessions', () => {
   });
 
   describe('Memory Usage', () => {
-    it.skip('should handle large output gracefully', async () => {
+    it('should handle large output gracefully', async () => {
       // Create session that generates large output
       const createResponse = await fetch(`http://localhost:${server?.port}/api/sessions`, {
         method: 'POST',
@@ -269,7 +269,7 @@ describe.skip('Resource Limits and Concurrent Sessions', () => {
       });
     });
 
-    it.skip('should handle sessions with continuous output', async () => {
+    it('should handle sessions with continuous output', async () => {
       const sessionIds: string[] = [];
       const sessionCount = 3;
 
@@ -319,7 +319,7 @@ describe.skip('Resource Limits and Concurrent Sessions', () => {
   });
 
   describe('Error Recovery', () => {
-    it.skip('should recover from session crashes', async () => {
+    it('should recover from session crashes', async () => {
       // Create a session that will crash
       const createResponse = await fetch(`http://localhost:${server?.port}/api/sessions`, {
         method: 'POST',
