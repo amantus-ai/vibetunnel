@@ -369,7 +369,8 @@ final class CLIInstaller {
                     logger.debug("Could not read error output: \(error.localizedDescription)")
                     errorString = "Unknown error (could not read stderr)"
                 }
-                logger.error("CLIInstaller: Uninstallation failed with status \(task.terminationStatus): \(errorString)")
+                logger
+                    .error("CLIInstaller: Uninstallation failed with status \(task.terminationStatus): \(errorString)")
                 lastError = "Uninstallation failed: \(errorString)"
                 isInstalling = false
                 isUninstalling = false

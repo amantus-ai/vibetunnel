@@ -145,6 +145,12 @@ enum Terminal: String, CaseIterable {
         allCases.filter(\.isInstalled)
     }
 
+    /// Check if a specific terminal application is currently running
+    static func isTerminalRunning(_ terminal: Self) -> Bool {
+        let runningApps = NSWorkspace.shared.runningApplications
+        return runningApps.contains { $0.bundleIdentifier == terminal.bundleIdentifier }
+    }
+
     /// Generate unified AppleScript for all terminals
     func unifiedAppleScript(for config: TerminalLaunchConfig) -> String {
         // Terminal.app supports 'do script' which handles complex commands better
@@ -196,6 +202,40 @@ enum Terminal: String, CaseIterable {
                     delay 0.5
                     -- Warp requires ASCII character 13 instead of key code 36
                     keystroke (ASCII character 13)
+                end tell
+            end tell
+            """
+        }
+
+        // Special handling for Ghostty with dynamic delays based on running state
+        if self == .ghostty {
+            let isRunning = Self.isTerminalRunning(.ghostty)
+            let startupDelay = isRunning ? "0.5" : "2.0" // Longer delay for cold start
+
+            return """
+            tell application "\(processName)"
+                activate
+                -- Wait longer if Ghostty wasn't already running
+                delay 0.2
+                set windowCount to 0
+                try
+                    set windowCount to count of windows
+                end try
+                if windowCount = 0 then
+                    -- No windows open, need extra time for UI initialization
+                    delay \(startupDelay)
+                end if
+                tell application "System Events"
+                    tell process "\(processName)"
+                        -- Create new window
+                        keystroke "n" using {command down}
+                        delay 0.5
+                        -- Paste command from clipboard
+                        keystroke "v" using {command down}
+                        delay 0.1
+                        -- Execute the command
+                        key code 36
+                    end tell
                 end tell
             end tell
             """
