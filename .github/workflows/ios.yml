@@ -32,16 +32,7 @@ jobs:
         xcodebuild -version
         swift --version
     
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24'
-    
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 9
-        run_install: false
+    # Node.js/pnpm not needed for iOS builds
     
     - name: Cache Homebrew packages
       uses: actions/cache@v4
@@ -70,6 +61,9 @@ jobs:
     - name: Install all tools
       shell: bash
       run: |
+        # Skip Homebrew update for faster CI
+        export HOMEBREW_NO_AUTO_UPDATE=1
+        
         # Retry logic for brew commands to handle concurrent access
         MAX_ATTEMPTS=5
         WAIT_TIME=5
@@ -85,9 +79,9 @@ jobs:
             continue
           fi
           
-          # Update Homebrew and install all tools in one command
+          # Install tools without updating Homebrew
           # brew install automatically upgrades if already installed
-          if brew update && brew install swiftlint swiftformat xcbeautify; then
+          if brew install swiftlint swiftformat xcbeautify; then
             echo "Successfully installed/upgraded all tools"
             break
           else
@@ -107,37 +101,8 @@ jobs:
         echo "xcbeautify: $(xcbeautify --version || echo 'not found')"
         echo "PATH: $PATH"
     
-    - name: Cache pnpm store
-      uses: actions/cache@v4
-      continue-on-error: true
-      with:
-        path: ~/.local/share/pnpm/store
-        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-pnpm-store-
-
-    - name: Install web dependencies
-      run: |
-        cd web
-        # Clean any stale lock files
-        rm -f .pnpm-store.lock .pnpm-debug.log || true
-        # Set pnpm to use fewer workers to avoid crashes on self-hosted runners
-        export NODE_OPTIONS="--max-old-space-size=4096"
-        pnpm config set store-dir ~/.local/share/pnpm/store
-        pnpm config set package-import-method copy
-        pnpm config set node-linker hoisted
-        # Install with retries
-        for i in 1 2 3; do
-          echo "Install attempt $i"
-          if pnpm install --frozen-lockfile; then
-            echo "pnpm install succeeded"
-            break
-          else
-            echo "pnpm install failed, cleaning and retrying..."
-            rm -rf node_modules .pnpm-store.lock || true
-            sleep 5
-          fi
-        done
+    # iOS doesn't need web dependencies - skip pnpm entirely
+    
     - name: Resolve Dependencies (once)
       run: |
         cd ios
@@ -151,6 +116,7 @@ jobs:
         # Ensure xcbeautify is in PATH
         export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
         
+        # Use Release config for faster builds
         set -o pipefail
         xcodebuild build \
           -workspace ../VibeTunnel.xcworkspace \
@@ -158,14 +124,13 @@ jobs:
           -destination "generic/platform=iOS" \
           -configuration Release \
           -showBuildTimingSummary \
+          -quiet \
           CODE_SIGNING_ALLOWED=NO \
           CODE_SIGNING_REQUIRED=NO \
           ONLY_ACTIVE_ARCH=NO \
           -derivedDataPath build/DerivedData \
-          COMPILER_INDEX_STORE_ENABLE=NO \
-          2>&1 | tee build.log || {
-            echo "Build failed. Last 100 lines of output:"
-            tail -100 build.log
+          COMPILER_INDEX_STORE_ENABLE=NO || {
+            echo "::error::Build failed"
             exit 1
           }
     
@@ -311,13 +276,20 @@ jobs:
           exit 1
         fi
         
+        # Only enable coverage on main branch
+        if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+          ENABLE_COVERAGE="YES"
+        else
+          ENABLE_COVERAGE="NO"
+        fi
+        
         set -o pipefail
         xcodebuild test \
           -workspace ../VibeTunnel.xcworkspace \
           -scheme VibeTunnel-iOS \
           -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
           -resultBundlePath TestResults.xcresult \
-          -enableCodeCoverage YES \
+          -enableCodeCoverage $ENABLE_COVERAGE \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
@@ -419,13 +391,14 @@ jobs:
         fi
     
     # ARTIFACT UPLOADS
+    # Skip build artifact upload for PR builds to save time
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
-      if: success()
+      if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
       with:
         name: ios-build-artifacts
         path: ios/build/DerivedData/Build/Products/Release-iphoneos/
-        retention-days: 7
+        retention-days: 3
     
     - name: Upload coverage artifacts
       if: always()
@@ -484,7 +457,8 @@ jobs:
     name: Report iOS Coverage
     runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     needs: [build-lint-test]
-    if: always() && github.event_name == 'pull_request'
+    # Only run coverage reporting on main branch where we actually collect coverage
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
     - name: Clean workspace

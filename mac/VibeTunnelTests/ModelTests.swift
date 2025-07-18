@@ -138,14 +138,34 @@ struct ModelTests {
 
         @Test("DashboardAccessMode raw values")
         func rawValues() throws {
-            #expect(DashboardAccessMode.localhost.rawValue == "localhost")
-            #expect(DashboardAccessMode.network.rawValue == "network")
+            #expect(DashboardAccessMode.localhost.rawValue == AppConstants.DashboardAccessModeRawValues.localhost)
+            #expect(DashboardAccessMode.network.rawValue == AppConstants.DashboardAccessModeRawValues.network)
         }
 
         @Test("DashboardAccessMode descriptions")
         func descriptions() throws {
             #expect(DashboardAccessMode.localhost.description.contains("this Mac"))
             #expect(DashboardAccessMode.network.description.contains("other devices"))
+        }
+
+        @Test("DashboardAccessMode default value")
+        func defaultValue() throws {
+            // Verify the default is network mode
+            #expect(AppConstants.Defaults.dashboardAccessMode == DashboardAccessMode.network.rawValue)
+
+            // Verify we can create a mode from the default
+            let mode = DashboardAccessMode(rawValue: AppConstants.Defaults.dashboardAccessMode)
+            #expect(mode == .network)
+            #expect(mode?.bindAddress == "0.0.0.0")
+        }
+
+        @Test("DashboardAccessMode from invalid raw value")
+        func invalidRawValue() throws {
+            let mode = DashboardAccessMode(rawValue: "invalid")
+            #expect(mode == nil)
+
+            let emptyMode = DashboardAccessMode(rawValue: "")
+            #expect(emptyMode == nil)
         }
     }
 
@@ -246,6 +266,58 @@ struct ModelTests {
         @Test("UserDefaults keys")
         func userDefaultsKeys() throws {
             #expect(AppConstants.UserDefaultsKeys.welcomeVersion == "welcomeVersion")
+            #expect(AppConstants.UserDefaultsKeys.dashboardAccessMode == "dashboardAccessMode")
+            #expect(AppConstants.UserDefaultsKeys.serverPort == "serverPort")
+        }
+
+        @Test("AppConstants default values")
+        func defaultValues() throws {
+            // Verify dashboard access mode default
+            #expect(AppConstants.Defaults.dashboardAccessMode == DashboardAccessMode.network.rawValue)
+
+            // Verify server port default
+            #expect(AppConstants.Defaults.serverPort == 4_020)
+
+            // Verify other defaults
+            #expect(AppConstants.Defaults.cleanupOnStartup == true)
+            #expect(AppConstants.Defaults.showInDock == false)
+        }
+
+        @Test("AppConstants stringValue helper with dashboardAccessMode")
+        func stringValueHelper() throws {
+            // Store original value
+            let originalValue = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.dashboardAccessMode)
+
+            defer {
+                // Restore original value
+                if let originalValue {
+                    UserDefaults.standard.set(originalValue, forKey: AppConstants.UserDefaultsKeys.dashboardAccessMode)
+                } else {
+                    UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.dashboardAccessMode)
+                }
+            }
+
+            // When key doesn't exist, should return default
+            UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.dashboardAccessMode)
+            let defaultValue = AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.dashboardAccessMode)
+            #expect(defaultValue == AppConstants.Defaults.dashboardAccessMode)
+            #expect(defaultValue == AppConstants.DashboardAccessModeRawValues.network) // Our default is network
+
+            // When key exists with localhost, should return localhost
+            UserDefaults.standard.set(
+                AppConstants.DashboardAccessModeRawValues.localhost,
+                forKey: AppConstants.UserDefaultsKeys.dashboardAccessMode
+            )
+            let localhostValue = AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.dashboardAccessMode)
+            #expect(localhostValue == AppConstants.DashboardAccessModeRawValues.localhost)
+
+            // When key exists with network, should return network
+            UserDefaults.standard.set(
+                AppConstants.DashboardAccessModeRawValues.network,
+                forKey: AppConstants.UserDefaultsKeys.dashboardAccessMode
+            )
+            let networkValue = AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.dashboardAccessMode)
+            #expect(networkValue == AppConstants.DashboardAccessModeRawValues.network)
         }
     }
 }

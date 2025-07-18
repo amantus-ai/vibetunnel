@@ -136,6 +136,101 @@ final class ServerManagerTests {
         UserDefaults.standard.set(originalMode, forKey: "dashboardAccessMode")
     }
 
+    @Test("Bind address default value")
+    func bindAddressDefaultValue() async throws {
+        // Store original value
+        let originalMode = UserDefaults.standard.string(forKey: "dashboardAccessMode")
+
+        // Remove the key to test default behavior
+        UserDefaults.standard.removeObject(forKey: "dashboardAccessMode")
+        UserDefaults.standard.synchronize()
+
+        // Should default to network mode (0.0.0.0)
+        #expect(manager.bindAddress == "0.0.0.0")
+
+        // Restore original value
+        if let originalMode {
+            UserDefaults.standard.set(originalMode, forKey: "dashboardAccessMode")
+        }
+    }
+
+    @Test("Bind address setter")
+    func bindAddressSetter() async throws {
+        // Store original value
+        let originalMode = UserDefaults.standard.string(forKey: "dashboardAccessMode")
+
+        // Test setting via bind address
+        manager.bindAddress = "127.0.0.1"
+        #expect(UserDefaults.standard.string(forKey: "dashboardAccessMode") == AppConstants.DashboardAccessModeRawValues
+            .localhost
+        )
+        #expect(manager.bindAddress == "127.0.0.1")
+
+        manager.bindAddress = "0.0.0.0"
+        #expect(UserDefaults.standard.string(forKey: "dashboardAccessMode") == AppConstants.DashboardAccessModeRawValues
+            .network
+        )
+        #expect(manager.bindAddress == "0.0.0.0")
+
+        // Test invalid bind address (should not change UserDefaults)
+        manager.bindAddress = "192.168.1.1"
+        #expect(manager.bindAddress == "0.0.0.0") // Should still be the last valid value
+
+        // Restore original value
+        if let originalMode {
+            UserDefaults.standard.set(originalMode, forKey: "dashboardAccessMode")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "dashboardAccessMode")
+        }
+    }
+
+    @Test("Bind address persistence across server restarts")
+    func bindAddressPersistence() async throws {
+        // Store original values
+        let originalMode = UserDefaults.standard.string(forKey: "dashboardAccessMode")
+        let originalPort = manager.port
+
+        // Set to localhost mode
+        UserDefaults.standard.set(AppConstants.DashboardAccessModeRawValues.localhost, forKey: "dashboardAccessMode")
+        manager.port = "4021"
+
+        // Start server
+        await manager.start()
+        try await Task.sleep(for: .milliseconds(500))
+
+        // Verify bind address
+        #expect(manager.bindAddress == "127.0.0.1")
+
+        // Restart server
+        await manager.restart()
+        try await Task.sleep(for: .milliseconds(500))
+
+        // Bind address should persist
+        #expect(manager.bindAddress == "127.0.0.1")
+        #expect(UserDefaults.standard.string(forKey: "dashboardAccessMode") == AppConstants.DashboardAccessModeRawValues
+            .localhost
+        )
+
+        // Change to network mode
+        UserDefaults.standard.set(AppConstants.DashboardAccessModeRawValues.network, forKey: "dashboardAccessMode")
+
+        // Restart again
+        await manager.restart()
+        try await Task.sleep(for: .milliseconds(500))
+
+        // Should now be network mode
+        #expect(manager.bindAddress == "0.0.0.0")
+
+        // Cleanup
+        await manager.stop()
+        manager.port = originalPort
+        if let originalMode {
+            UserDefaults.standard.set(originalMode, forKey: "dashboardAccessMode")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "dashboardAccessMode")
+        }
+    }
+
     // MARK: - Concurrent Operations Tests
 
     @Test("Concurrent server operations are serialized", .tags(.concurrency))

@@ -42,6 +42,12 @@ enum AppConstants {
         static let newSessionTitleMode = "NewSession.titleMode"
     }
 
+    /// Raw string values for DashboardAccessMode
+    enum DashboardAccessModeRawValues {
+        static let localhost = "localhost"
+        static let network = "network"
+    }
+
     /// Default values for UserDefaults
     enum Defaults {
         /// Sleep prevention is enabled by default for better user experience
@@ -53,7 +59,7 @@ enum AppConstants {
 
         // Server Configuration
         static let serverPort = 4_020
-        static let dashboardAccessMode = "localhost"
+        static let dashboardAccessMode = DashboardAccessModeRawValues.network
         static let cleanupOnStartup = true
         static let authenticationMode = "os"
 

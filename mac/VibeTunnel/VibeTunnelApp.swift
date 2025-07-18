@@ -126,8 +126,8 @@ struct VibeTunnelApp: App {
 /// coordinator for application-wide events and services.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
-    // Needed for some gross menu item highlight hack
-    weak static var shared: AppDelegate?
+    // Needed for menu item highlight hack
+    static weak var shared: AppDelegate?
     override init() {
         super.init()
         Self.shared = self
@@ -180,7 +180,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
 
         // Register default values
         UserDefaults.standard.register(defaults: [
-            "showInDock": true // Default to showing in dock
+            "showInDock": true, // Default to showing in dock
+            "dashboardAccessMode": AppConstants.Defaults.dashboardAccessMode
         ])
 
         // Initialize Sparkle updater manager
