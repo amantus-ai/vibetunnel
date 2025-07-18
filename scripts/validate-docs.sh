@@ -7,9 +7,9 @@ set -e
 # Change to the repository root
 cd "$(dirname "$0")/.."
 
-echo "Validating documentation references in docs.json..."
+echo "Validating documentation references in mint.json..."
 
-# Extract all page references from docs.json
+# Extract all page references from mint.json
 missing_files=0
 
 # Check if jq is installed
@@ -19,10 +19,10 @@ if ! command -v jq &> /dev/null; then
 fi
 
 # Extract all pages from the navigation structure
-pages=$(jq -r '.. | objects | select(has("pages")) | .pages[]?' docs.json 2>/dev/null || true)
+pages=$(jq -r '.. | objects | select(has("pages")) | .pages[]?' mint.json 2>/dev/null || true)
 
 if [ -z "$pages" ]; then
-    echo "No pages found in docs.json"
+    echo "No pages found in mint.json"
     exit 0
 fi
 
