@@ -31,10 +31,10 @@ export async function detectDisplayServer(): Promise<DisplayServerInfo> {
 
     // Check if FFmpeg supports PipeWire
     const ffmpegSupport = await checkFFmpegPipeWireSupport();
-    
+
     // If running under Xwayland, prefer x11grab with proper display
-    const hasXwayland = process.env.DISPLAY && await checkXwaylandRunning();
-    
+    const hasXwayland = process.env.DISPLAY && (await checkXwaylandRunning());
+
     if (!ffmpegSupport && hasXwayland) {
       logger.log('Wayland detected but PipeWire not available, using Xwayland');
       return {

@@ -87,6 +87,40 @@ sudo usermod -a -G input $USER
 # Log out and back in for changes to take effect
 ```
 
+### 3.1 Mouse and Keyboard Control Requirements
+
+For remote mouse and keyboard control functionality:
+
+**Required packages:**
+```bash
+# X11 systems - Install xdotool
+sudo apt-get install xdotool      # Ubuntu/Debian
+sudo dnf install xdotool           # Fedora
+sudo pacman -S xdotool             # Arch
+
+# Also install xdpyinfo for display detection
+sudo apt-get install x11-utils    # Ubuntu/Debian
+sudo dnf install xorg-x11-utils   # Fedora
+```
+
+**Wayland systems:**
+Mouse control on Wayland is more restricted. Options:
+- Use XWayland compatibility layer
+- Switch to X11 session for full functionality
+- Use Wayland-specific tools (limited support)
+
+**Test mouse control:**
+```bash
+# Test if xdotool works
+xdotool mousemove 100 100
+xdotool click 1
+
+# If permission denied, check:
+# 1. You're in the 'input' group
+# 2. X11 access is allowed (xhost +local:)
+# 3. DISPLAY is set correctly
+```
+
 ### 4. File System Permissions
 
 **Check key permissions:**

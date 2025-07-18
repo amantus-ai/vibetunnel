@@ -183,8 +183,10 @@ export class FFmpegCapture extends EventEmitter {
       args.push('-f', 'mpegts'); // MPEG-TS for H.264 streaming
     } else {
       args.push(
-        '-f', 'webm', // WebM for VP8/VP9
-        '-flags', '+global_header' // Ensure headers are included
+        '-f',
+        'webm', // WebM for VP8/VP9
+        '-flags',
+        '+global_header' // Ensure headers are included
       );
     }
 

@@ -3,10 +3,147 @@ import { v4 as uuidv4 } from 'uuid';
 import type { WebSocket } from 'ws';
 import type { CaptureSession } from '../capture/desktop-capture-service.js';
 import { desktopCaptureService } from '../capture/desktop-capture-service.js';
+import { execAsync } from '../utils/exec.js';
 import { createLogger } from '../utils/logger.js';
 import { LinuxWebRTCHandler } from './linux-webrtc-handler.js';
 
 const logger = createLogger('linux-screencap-handler');
+
+// Mouse control helper for Linux
+class LinuxMouseController {
+  private currentDisplay = 0;
+  private displayDimensions: { width: number; height: number } | null = null;
+  private xdotoolAvailable: boolean | null = null;
+
+  async checkXdotool(): Promise<boolean> {
+    if (this.xdotoolAvailable !== null) {
+      return this.xdotoolAvailable;
+    }
+
+    try {
+      await execAsync('which xdotool');
+      this.xdotoolAvailable = true;
+      return true;
+    } catch {
+      this.xdotoolAvailable = false;
+      logger.error(
+        'xdotool is not installed. Mouse control will not work. ' +
+          'Install with: sudo apt-get install xdotool (Ubuntu/Debian) or equivalent for your distro.'
+      );
+      return false;
+    }
+  }
+
+  async setDisplay(displayIndex: number): Promise<void> {
+    this.currentDisplay = displayIndex;
+    // Get display dimensions
+    try {
+      const output = await execAsync('xdpyinfo | grep dimensions');
+      const match = output.stdout.match(/dimensions:\s+(\d+)x(\d+)/);
+      if (match) {
+        this.displayDimensions = {
+          width: Number.parseInt(match[1], 10),
+          height: Number.parseInt(match[2], 10),
+        };
+      }
+    } catch (error) {
+      logger.warn('Failed to get display dimensions, using defaults', error);
+      this.displayDimensions = { width: 1920, height: 1080 };
+    }
+  }
+
+  // Convert normalized coordinates (0-1000) to screen coordinates
+  private convertCoordinates(x: number, y: number): { x: number; y: number } {
+    if (!this.displayDimensions) {
+      this.displayDimensions = { width: 1920, height: 1080 };
+    }
+    return {
+      x: Math.round((x / 1000) * this.displayDimensions.width),
+      y: Math.round((y / 1000) * this.displayDimensions.height),
+    };
+  }
+
+  async click(x: number, y: number): Promise<void> {
+    if (!(await this.checkXdotool())) {
+      throw new Error('xdotool is not installed. Please install it for mouse control support.');
+    }
+    const coords = this.convertCoordinates(x, y);
+    await execAsync(`xdotool mousemove ${coords.x} ${coords.y} click 1`);
+  }
+
+  async mouseDown(x: number, y: number): Promise<void> {
+    if (!(await this.checkXdotool())) {
+      throw new Error('xdotool is not installed. Please install it for mouse control support.');
+    }
+    const coords = this.convertCoordinates(x, y);
+    await execAsync(`xdotool mousemove ${coords.x} ${coords.y} mousedown 1`);
+  }
+
+  async mouseUp(x: number, y: number): Promise<void> {
+    if (!(await this.checkXdotool())) {
+      throw new Error('xdotool is not installed. Please install it for mouse control support.');
+    }
+    const coords = this.convertCoordinates(x, y);
+    await execAsync(`xdotool mousemove ${coords.x} ${coords.y} mouseup 1`);
+  }
+
+  async mouseMove(x: number, y: number): Promise<void> {
+    if (!(await this.checkXdotool())) {
+      throw new Error('xdotool is not installed. Please install it for mouse control support.');
+    }
+    const coords = this.convertCoordinates(x, y);
+    await execAsync(`xdotool mousemove ${coords.x} ${coords.y}`);
+  }
+
+  async sendKey(key: string, modifiers: string[] = []): Promise<void> {
+    if (!(await this.checkXdotool())) {
+      throw new Error('xdotool is not installed. Please install it for keyboard control support.');
+    }
+    let keyCommand = 'xdotool key ';
+
+    // Add modifiers
+    if (modifiers.length > 0) {
+      const modifierMap: Record<string, string> = {
+        cmd: 'super',
+        command: 'super',
+        meta: 'super',
+        ctrl: 'ctrl',
+        control: 'ctrl',
+        alt: 'alt',
+        shift: 'shift',
+      };
+
+      const xdoModifiers = modifiers.map((mod) => modifierMap[mod.toLowerCase()] || mod).join('+');
+
+      keyCommand += xdoModifiers + '+';
+    }
+
+    // Map special keys
+    const keyMap: Record<string, string> = {
+      enter: 'Return',
+      return: 'Return',
+      tab: 'Tab',
+      escape: 'Escape',
+      esc: 'Escape',
+      backspace: 'BackSpace',
+      delete: 'Delete',
+      up: 'Up',
+      down: 'Down',
+      left: 'Left',
+      right: 'Right',
+      home: 'Home',
+      end: 'End',
+      pageup: 'Page_Up',
+      pagedown: 'Page_Down',
+      space: 'space',
+    };
+
+    const xdoKey = keyMap[key.toLowerCase()] || key;
+    keyCommand += xdoKey;
+
+    await execAsync(keyCommand);
+  }
+}
 
 // Control message types to match Mac implementation
 interface ControlMessage {
@@ -27,6 +164,7 @@ export class LinuxScreencapHandler extends EventEmitter {
   private sessions = new Map<string, CaptureSession>();
   private streamSubscriptions = new Map<string, () => void>();
   private webrtcHandlers = new Map<string, LinuxWebRTCHandler>();
+  private mouseController = new LinuxMouseController();
 
   constructor() {
     super();
@@ -218,6 +356,41 @@ export class LinuxScreencapHandler extends EventEmitter {
           result = { message: 'Use stop-capture action instead' };
           break;
 
+        case '/click': {
+          const { x, y } = message.payload as { x: number; y: number };
+          await this.mouseController.click(x, y);
+          result = { success: true };
+          break;
+        }
+
+        case '/mousedown': {
+          const { x, y } = message.payload as { x: number; y: number };
+          await this.mouseController.mouseDown(x, y);
+          result = { success: true };
+          break;
+        }
+
+        case '/mouseup': {
+          const { x, y } = message.payload as { x: number; y: number };
+          await this.mouseController.mouseUp(x, y);
+          result = { success: true };
+          break;
+        }
+
+        case '/mousemove': {
+          const { x, y } = message.payload as { x: number; y: number };
+          await this.mouseController.mouseMove(x, y);
+          result = { success: true };
+          break;
+        }
+
+        case '/key': {
+          const { key, modifiers = [] } = message.payload as { key: string; modifiers?: string[] };
+          await this.mouseController.sendKey(key, modifiers);
+          result = { success: true };
+          break;
+        }
+
         default:
           throw new Error(`Unknown endpoint: ${endpoint}`);
       }
@@ -261,6 +434,9 @@ export class LinuxScreencapHandler extends EventEmitter {
 
       logger.log(`Started capture session ${session.id} for client ${clientId}`);
       this.sessions.set(clientId, session);
+
+      // Update mouse controller with display information
+      await this.mouseController.setDisplay(displayIndex);
 
       // Create WebRTC handler for this session
       const webrtcHandler = new LinuxWebRTCHandler(session, sessionId || session.id);

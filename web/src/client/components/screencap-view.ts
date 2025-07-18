@@ -1499,12 +1499,24 @@ export class ScreencapView extends LitElement {
 
   // Mouse and keyboard event handling
   private getNormalizedCoordinates(event: MouseEvent | Touch): { x: number; y: number } | null {
-    const element = (event instanceof Touch ? event.target : event.target) as HTMLElement;
+    let clientX: number;
+    let clientY: number;
+    let element: HTMLElement | null;
+
+    if ('clientX' in event && 'clientY' in event) {
+      // MouseEvent or Touch object
+      clientX = event.clientX;
+      clientY = event.clientY;
+      element = event.target as HTMLElement;
+    } else {
+      return null;
+    }
+
     if (!element) return null;
 
     const rect = element.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
 
     // Normalize to 0-1000 range
     const normalizedX = Math.round((x / rect.width) * 1000);
