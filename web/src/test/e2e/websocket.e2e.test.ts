@@ -305,7 +305,7 @@ describe('WebSocket Buffer Tests', () => {
 
       // Should be a binary buffer for the newly created terminal
       expect(response.readUInt8(0)).toBe(0xbf);
-      
+
       // Verify it's a valid buffer
       const sessionIdLength = response.readUInt32LE(1);
       const extractedSessionId = response.slice(5, 5 + sessionIdLength).toString('utf8');
