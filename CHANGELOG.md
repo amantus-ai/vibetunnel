@@ -39,13 +39,7 @@
 - Repository base path now syncs automatically between Mac app and web UI (#358)
 - Simplified welcome screen repository display (#372)
 
-#### **Improved WebRTC Support**
-- Fixed threading issues in WebRTC screen capture (#375, #378)
-- Resolved screen capture authentication problems (#264, #374)
-- More stable screen sharing with proper main thread dispatch
-
 #### **UI Context Awareness**
-- Screen sharing button only appears when Mac app is connected (#367)
 - Spawn window toggle shows only when relevant (#357)
 
 #### **NPM Package Now Available**
@@ -68,7 +62,6 @@
 - Fixed file browser constant refresh issue (#354)
 - Replaced bell icon with settings icon for better clarity (#366)
 - Resolved Tailwind CSS performance warning
-- Fixed repeated screen recording permission dialogs
 
 ## [1.0.0-beta.10] - 2024-12-15
 
@@ -150,13 +143,6 @@
 
 ## [1.0.0-beta.7] - 2024-07-08
 
-#### **Remote Screen Sharing (Beta)**
-- Share Mac screen remotely through web browsers
-- WebRTC technology with automatic quality adjustment
-- Deferred permission requests (only asks when starting sharing)
-- Automatic 4K resolution capping for 5K+ displays
-- Visual indicators when screen sharing is active
-
 #### **AI Session Context Injection**
 - Inject project context into Claude.ai sessions with a single click (#210, #218)
 - Automatically detects Claude browser windows
@@ -203,7 +189,7 @@
 - Fixed various UI glitches and visual artifacts
 - Resolved sidebar animation issues
 - Fixed file browser problems
-- Unified control protocol for terminal and screen sharing (#239)
+- Unified control protocol for terminal sessions (#239)
 - Improved Unix socket handling with better error recovery
 
 ## [1.0.0-beta.6] - 2024-07-03

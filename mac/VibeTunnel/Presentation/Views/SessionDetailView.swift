@@ -1,6 +1,5 @@
 import ApplicationServices
 import os
-@preconcurrency import ScreenCaptureKit
 import SwiftUI
 
 /// View displaying detailed information about a specific terminal session.
@@ -12,8 +11,6 @@ struct SessionDetailView: View {
     let session: ServerSessionInfo
     @State private var windowTitle = ""
     @State private var windowInfo: WindowEnumerator.WindowInfo?
-    @State private var windowScreenshot: NSImage?
-    @State private var isCapturingScreenshot = false
     @State private var isFindingWindow = false
     @State private var windowSearchAttempted = false
     @Environment(SystemPermissionManager.self)
@@ -118,55 +115,9 @@ struct SessionDetailView: View {
                                 focusWindow()
                             }
                             .controlSize(.regular)
-
-                            Button("Capture Screenshot") {
-                                Task {
-                                    await captureWindowScreenshot()
-                                }
-                            }
-                            .controlSize(.regular)
-                            .disabled(isCapturingScreenshot)
                         }
                     }
 
-                    // Window Screenshot
-                    if let screenshot = windowScreenshot {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Window Preview")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-
-                            Image(nsImage: screenshot)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(maxWidth: 400, maxHeight: 300)
-                                .background(Color.gray.opacity(0.1))
-                                .cornerRadius(8)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                                )
-                        }
-                    } else if !permissionManager.hasPermission(.screenRecording) {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Screen Recording Permission Required")
-                                .font(.headline)
-                                .foregroundColor(.orange)
-
-                            Text("VibeTunnel needs Screen Recording permission to capture window screenshots.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            Button("Grant Permission") {
-                                permissionManager.requestPermission(.screenRecording)
-                            }
-                            .controlSize(.small)
-                        }
-                        .padding()
-                        .background(Color.orange.opacity(0.1))
-                        .cornerRadius(8)
-                    }
                 } else {
                     VStack(alignment: .leading, spacing: 12) {
                         if windowSearchAttempted {
@@ -356,71 +307,6 @@ struct SessionDetailView: View {
         }
     }
 
-    private func captureWindowScreenshot() async {
-        guard let windowInfo else {
-            logger.warning("No window info available for screenshot")
-            return
-        }
-
-        await MainActor.run {
-            isCapturingScreenshot = true
-        }
-
-        defer {
-            Task { @MainActor in
-                isCapturingScreenshot = false
-            }
-        }
-
-        // Check for screen recording permission using SystemPermissionManager
-        guard permissionManager.hasPermission(.screenRecording) else {
-            logger.warning("No screen capture permission")
-            // Prompt user to grant permission
-            await MainActor.run {
-                permissionManager.requestPermission(.screenRecording)
-            }
-            return
-        }
-
-        do {
-            // Get available content
-            let availableContent = try await SCShareableContent.current
-
-            // Find the window
-            guard let window = availableContent.windows.first(where: { $0.windowID == windowInfo.windowID }) else {
-                logger.warning("Window not found in shareable content")
-                return
-            }
-
-            // Create content filter for this specific window
-            let filter = SCContentFilter(desktopIndependentWindow: window)
-
-            // Configure the capture
-            let config = SCStreamConfiguration()
-            config.width = Int(window.frame.width * 2) // Retina resolution
-            config.height = Int(window.frame.height * 2)
-            config.scalesToFit = true
-            config.showsCursor = false
-            config.captureResolution = .best
-
-            // Capture the screenshot
-            let screenshot = try await SCScreenshotManager.captureImage(
-                contentFilter: filter,
-                configuration: config
-            )
-
-            // Convert CGImage to NSImage
-            let nsImage = NSImage(cgImage: screenshot, size: NSSize(width: screenshot.width, height: screenshot.height))
-
-            await MainActor.run {
-                self.windowScreenshot = nsImage
-            }
-
-            logger.info("Successfully captured window screenshot")
-        } catch {
-            logger.error("Failed to capture screenshot: \(error)")
-        }
-    }
 }
 
 // MARK: - Supporting Views

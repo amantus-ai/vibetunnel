@@ -38,10 +38,6 @@ struct SecurityPermissionsSettingsView: View {
         return permissionManager.hasPermission(.accessibility)
     }
 
-    private var hasScreenRecordingPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.screenRecording)
-    }
 
     var body: some View {
         NavigationStack {
@@ -53,30 +49,9 @@ struct SecurityPermissionsSettingsView: View {
                     serverManager: serverManager
                 )
 
-                // Screen Sharing section
-                Section {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle("Enable screen sharing service", isOn: .init(
-                            get: { AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.enableScreencapService) },
-                            set: { UserDefaults.standard.set(
-                                $0,
-                                forKey: AppConstants.UserDefaultsKeys.enableScreencapService
-                            )
-                            }
-                        ))
-                        Text("Allow screen sharing feature in the web interface.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("Screen Sharing")
-                        .font(.headline)
-                }
-
                 PermissionsSection(
                     hasAppleScriptPermission: hasAppleScriptPermission,
                     hasAccessibilityPermission: hasAccessibilityPermission,
-                    hasScreenRecordingPermission: hasScreenRecordingPermission,
                     permissionManager: permissionManager
                 )
             }
@@ -247,7 +222,6 @@ private struct SecuritySection: View {
 private struct PermissionsSection: View {
     let hasAppleScriptPermission: Bool
     let hasAccessibilityPermission: Bool
-    let hasScreenRecordingPermission: Bool
     let permissionManager: SystemPermissionManager
 
     var body: some View {
@@ -332,50 +306,11 @@ private struct PermissionsSection: View {
                 }
             }
 
-            // Screen Recording permission
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Screen Recording")
-                        .font(.body)
-                    Text("Required for screen sharing and remote viewing.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                if hasScreenRecordingPermission {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Granted")
-                            .foregroundColor(.secondary)
-                    }
-                    .font(.caption)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 2)
-                    .frame(height: 22) // Match small button height
-                    .contextMenu {
-                        Button("Refresh Status") {
-                            permissionManager.forcePermissionRecheck()
-                        }
-                        Button("Open System Settings...") {
-                            permissionManager.requestPermission(.screenRecording)
-                        }
-                    }
-                } else {
-                    Button("Grant Permission") {
-                        permissionManager.requestPermission(.screenRecording)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-            }
         } header: {
             Text("System Permissions")
                 .font(.headline)
         } footer: {
-            if hasAppleScriptPermission && hasAccessibilityPermission && hasScreenRecordingPermission {
+            if hasAppleScriptPermission && hasAccessibilityPermission {
                 Text(
                     "All permissions granted. VibeTunnel has full functionality."
                 )

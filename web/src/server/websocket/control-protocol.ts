@@ -3,7 +3,7 @@
  */
 
 export type ControlMessageType = 'request' | 'response' | 'event';
-export type ControlCategory = 'terminal' | 'screencap' | 'git' | 'system';
+export type ControlCategory = 'terminal' | 'git' | 'system';
 
 export interface ControlMessage {
   id: string;
@@ -28,19 +28,6 @@ export interface TerminalSpawnResponse {
   success: boolean;
   pid?: number;
   error?: string;
-}
-
-// Screen capture control actions
-export interface ScreenCaptureApiRequest {
-  sessionId: string;
-  method: string;
-  endpoint: string;
-  data?: unknown;
-}
-
-export interface ScreenCaptureWebRTCSignal {
-  sessionId: string;
-  data: string; // JSON string for WebRTC data
 }
 
 // System control payloads

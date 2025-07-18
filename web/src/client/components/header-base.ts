@@ -81,16 +81,6 @@ export abstract class HeaderBase extends LitElement {
     this.dispatchEvent(new CustomEvent('logout'));
   }
 
-  protected handleScreenshare() {
-    // Dispatch event to start screenshare
-    this.dispatchEvent(
-      new CustomEvent('start-screenshare', {
-        bubbles: true,
-        composed: true,
-      })
-    );
-  }
-
   protected toggleUserMenu() {
     this.showUserMenu = !this.showUserMenu;
   }

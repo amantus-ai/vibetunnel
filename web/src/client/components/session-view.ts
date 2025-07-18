@@ -614,21 +614,6 @@ export class SessionView extends LitElement {
     );
   }
 
-  private handleScreenshare() {
-    // Only allow screenshare if Mac app is connected
-    if (!this.macAppConnected) {
-      logger.warn('Screenshare requested but Mac app is not connected');
-      return;
-    }
-    // Dispatch event to start screenshare
-    this.dispatchEvent(
-      new CustomEvent('start-screenshare', {
-        bubbles: true,
-        composed: true,
-      })
-    );
-  }
-
   private async checkServerStatus() {
     try {
       const response = await fetch('/api/server/status', {
@@ -1317,7 +1302,6 @@ export class SessionView extends LitElement {
           .onMaxWidthToggle=${() => this.handleMaxWidthToggle()}
           .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
           .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
-          .onScreenshare=${() => this.handleScreenshare()}
           .onOpenSettings=${() => this.handleOpenSettings()}
           .macAppConnected=${this.macAppConnected}
           @close-width-selector=${() => {
