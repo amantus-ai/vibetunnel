@@ -387,16 +387,18 @@ export class ServerManager {
       testLogger.info('ServerManager', `Stopping server on port ${server.port}`);
       return stopServer(server.process, true);
     });
-    
+
     // Wait for all to stop with a timeout
     await Promise.race([
       Promise.all(stopPromises),
-      new Promise<void>((resolve) => setTimeout(() => {
-        testLogger.warn('ServerManager', 'Server stop timeout - forcing cleanup');
-        resolve();
-      }, 10000)) // 10 second timeout for all servers
+      new Promise<void>((resolve) =>
+        setTimeout(() => {
+          testLogger.warn('ServerManager', 'Server stop timeout - forcing cleanup');
+          resolve();
+        }, 10000)
+      ), // 10 second timeout for all servers
     ]);
-    
+
     this.servers = [];
   }
 

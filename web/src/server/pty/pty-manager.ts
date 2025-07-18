@@ -1742,13 +1742,13 @@ export class PtyManager extends EventEmitter {
    */
   async shutdown(): Promise<void> {
     logger.debug(`Starting PtyManager shutdown with ${this.sessions.size} active sessions`);
-    
+
     // First, prevent new sessions from being created
     const sessionsToCleanup = Array.from(this.sessions.entries());
-    
+
     // Kill all processes and collect cleanup promises
     const cleanupPromises: Promise<void>[] = [];
-    
+
     for (const [sessionId, session] of sessionsToCleanup) {
       cleanupPromises.push(this.shutdownSession(sessionId, session));
     }
@@ -1756,10 +1756,12 @@ export class PtyManager extends EventEmitter {
     // Wait for all sessions to be cleaned up with a timeout
     await Promise.race([
       Promise.all(cleanupPromises),
-      new Promise<void>((resolve) => setTimeout(() => {
-        logger.warn('PtyManager shutdown timeout - forcing cleanup');
-        resolve();
-      }, 5000)) // 5 second timeout
+      new Promise<void>((resolve) =>
+        setTimeout(() => {
+          logger.warn('PtyManager shutdown timeout - forcing cleanup');
+          resolve();
+        }, 5000)
+      ), // 5 second timeout
     ]);
 
     // Clear the sessions map
@@ -1784,17 +1786,17 @@ export class PtyManager extends EventEmitter {
       }
     }
     this.resizeEventListeners.length = 0;
-    
+
     logger.debug('PtyManager shutdown complete');
   }
-  
+
   /**
    * Shutdown a single session with proper cleanup
    */
   private async shutdownSession(sessionId: string, session: PtySession): Promise<void> {
     return new Promise<void>((resolve) => {
       let sessionCleaned = false;
-      
+
       const cleanup = () => {
         if (!sessionCleaned) {
           sessionCleaned = true;
@@ -1812,16 +1814,16 @@ export class PtyManager extends EventEmitter {
       try {
         if (session.ptyProcess) {
           const pid = session.ptyProcess.pid;
-          
+
           // Set up exit handler
           const exitHandler = () => {
             logger.debug(`Session ${sessionId} process exited`);
             cleanup();
           };
-          
+
           // Listen for exit event
           session.ptyProcess.once('exit', exitHandler);
-          
+
           // Kill the process
           session.ptyProcess.kill();
 
@@ -1835,7 +1837,7 @@ export class PtyManager extends EventEmitter {
               logger.debug(`Failed to kill process group during shutdown:`, groupKillError);
             }
           }
-          
+
           // Set a timeout to force cleanup if process doesn't exit
           setTimeout(() => {
             if (!sessionCleaned) {
@@ -1856,7 +1858,7 @@ export class PtyManager extends EventEmitter {
           // No process, just cleanup
           cleanup();
         }
-        
+
         // Close asciinema writer if open
         if (session.asciinemaWriter?.isOpen()) {
           session.asciinemaWriter.close().catch((error) => {
@@ -2007,14 +2009,14 @@ export class PtyManager extends EventEmitter {
       } catch (error) {
         logger.error(`Error closing input socket server for session ${session.id}:`, error);
       }
-      
+
       // Remove socket file
       try {
         fs.unlinkSync(path.join(session.controlDir, 'ipc.sock'));
       } catch (_e) {
         // Socket already removed
       }
-      
+
       session.inputSocketServer = undefined;
     }
 
@@ -2039,16 +2041,9 @@ export class PtyManager extends EventEmitter {
       clearInterval(session.titleInjectionTimer);
       session.titleInjectionTimer = undefined;
     }
-    
+
     // Clean up any other potential timers or intervals
-    // Force the PTY process to be unreferenced if it still exists
-    if (session.ptyProcess && typeof session.ptyProcess.unref === 'function') {
-      try {
-        session.ptyProcess.unref();
-      } catch (_e) {
-        // May not be supported or already unreferenced
-      }
-    }
+    // Note: node-pty IPty doesn't have unref method, but the underlying process might
   }
 
   /**
