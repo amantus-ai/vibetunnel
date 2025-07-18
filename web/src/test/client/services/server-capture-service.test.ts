@@ -17,10 +17,10 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 const mockWebSocket = vi.fn();
-global.WebSocket = mockWebSocket as any;
+global.WebSocket = mockWebSocket as unknown as typeof WebSocket;
 
 const mockMediaSource = vi.fn();
-global.MediaSource = mockMediaSource as any;
+global.MediaSource = mockMediaSource as unknown as typeof MediaSource;
 global.URL = {
   ...global.URL,
   createObjectURL: vi.fn().mockReturnValue('blob:mock-url'),
@@ -29,10 +29,29 @@ global.URL = {
 
 describe('ServerCaptureService', () => {
   let service: ServerCaptureService;
-  let mockLogger: any;
-  let mockWs: any;
-  let mockMediaSourceInstance: any;
-  let mockSourceBuffer: any;
+  let mockLogger: ReturnType<typeof createLogger>;
+  let mockWs: Partial<WebSocket> & {
+    send: ReturnType<typeof vi.fn>;
+    close: ReturnType<typeof vi.fn>;
+    addEventListener: ReturnType<typeof vi.fn>;
+    removeEventListener: ReturnType<typeof vi.fn>;
+  };
+  let mockMediaSourceInstance: Partial<MediaSource> & {
+    addEventListener: ReturnType<typeof vi.fn>;
+    removeEventListener: ReturnType<typeof vi.fn>;
+    addSourceBuffer: ReturnType<typeof vi.fn>;
+    duration: number;
+  };
+  let mockSourceBuffer: Partial<SourceBuffer> & {
+    appendBuffer: ReturnType<typeof vi.fn>;
+    addEventListener: ReturnType<typeof vi.fn>;
+    removeEventListener: ReturnType<typeof vi.fn>;
+    updating: boolean;
+    mode: AppendMode;
+    timestampOffset: number;
+    remove: ReturnType<typeof vi.fn>;
+    abort: ReturnType<typeof vi.fn>;
+  };
   let mockVideoElement: HTMLVideoElement;
 
   beforeEach(() => {
@@ -95,7 +114,7 @@ describe('ServerCaptureService', () => {
         start: vi.fn(),
         end: vi.fn(),
       },
-    } as any;
+    } as unknown as HTMLVideoElement;
 
     service = new ServerCaptureService();
   });
@@ -176,14 +195,14 @@ describe('ServerCaptureService', () => {
         getAudioTracks() {
           return [];
         }
-      } as any;
+      } as unknown as HTMLVideoElement;
 
       // Mock navigator.mediaDevices.getDisplayMedia
       global.navigator = {
         mediaDevices: {
           getDisplayMedia: vi.fn().mockResolvedValue(new MediaStream()),
         },
-      } as any;
+      } as unknown as HTMLVideoElement;
 
       // Mock getAuthToken method
       service.getAuthToken = vi.fn().mockReturnValue('test-token');
@@ -340,20 +359,20 @@ describe('ServerCaptureService', () => {
       // Simulate WebSocket connection
       mockWs.readyState = WebSocket.OPEN;
       const openHandler = mockWs.addEventListener.mock.calls.find(
-        (call: any) => call[0] === 'open'
+        (call) => call[0] === 'open'
       )?.[1];
       openHandler?.();
 
       // Simulate MediaSource open
       mockMediaSourceInstance.readyState = 'open';
       const sourceOpenHandler = mockMediaSourceInstance.addEventListener.mock.calls.find(
-        (call: any) => call[0] === 'sourceopen'
+        (call) => call[0] === 'sourceopen'
       )?.[1];
       sourceOpenHandler?.();
 
       // Simulate stream start message
       const messageHandler = mockWs.addEventListener.mock.calls.find(
-        (call: any) => call[0] === 'message'
+        (call) => call[0] === 'message'
       )?.[1];
       messageHandler?.({
         data: JSON.stringify({ type: 'stream-start' }),
@@ -374,19 +393,19 @@ describe('ServerCaptureService', () => {
       // Setup WebSocket and MediaSource
       mockWs.readyState = WebSocket.OPEN;
       const openHandler = mockWs.addEventListener.mock.calls.find(
-        (call: any) => call[0] === 'open'
+        (call) => call[0] === 'open'
       )?.[1];
       openHandler?.();
 
       mockMediaSourceInstance.readyState = 'open';
       const sourceOpenHandler = mockMediaSourceInstance.addEventListener.mock.calls.find(
-        (call: any) => call[0] === 'sourceopen'
+        (call) => call[0] === 'sourceopen'
       )?.[1];
       sourceOpenHandler?.();
 
       // Send video data
       const messageHandler = mockWs.addEventListener.mock.calls.find(
-        (call: any) => call[0] === 'message'
+        (call) => call[0] === 'message'
       )?.[1];
 
       const videoData = new ArrayBuffer(100);
@@ -399,7 +418,7 @@ describe('ServerCaptureService', () => {
       const streamPromise = service.createWebSocketStream();
 
       const errorHandler = mockWs.addEventListener.mock.calls.find(
-        (call: any) => call[0] === 'error'
+        (call) => call[0] === 'error'
       )?.[1];
       errorHandler?.(new Event('error'));
 
@@ -410,7 +429,7 @@ describe('ServerCaptureService', () => {
       const streamPromise = service.createWebSocketStream();
 
       const messageHandler = mockWs.addEventListener.mock.calls.find(
-        (call: any) => call[0] === 'message'
+        (call) => call[0] === 'message'
       )?.[1];
       messageHandler?.({
         data: JSON.stringify({ type: 'stream-error', error: 'FFmpeg crashed' }),
@@ -483,8 +502,8 @@ describe('ServerCaptureService', () => {
 
       const mockStream = {
         getTracks: vi.fn().mockReturnValue([{ stop: vi.fn(), kind: 'video' }]),
-      };
-      service.mediaStream = mockStream as any;
+      } as unknown as MediaStream;
+      service.mediaStream = mockStream;
 
       await service.cleanup();
 

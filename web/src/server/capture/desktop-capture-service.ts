@@ -142,7 +142,8 @@ export class DesktopCaptureService extends EventEmitter {
       );
 
       // Stats interval will be created after stream setup
-      let statsInterval: NodeJS.Timeout;
+      // biome-ignore lint/style/useConst: statsInterval is used in event handler closures
+      let statsInterval: NodeJS.Timeout | undefined;
 
       // Monitor stream lifecycle
       captureStream.stream.once('data', () => {
@@ -186,8 +187,12 @@ export class DesktopCaptureService extends EventEmitter {
         captureStream.stream.on('data', dataHandler);
 
         // Store reference to clean up later
-        (session as any)._tempDataHandler = dataHandler;
-        (session as any)._tempBuffer = tempBuffer;
+        const extendedSession = session as CaptureSession & {
+          _tempDataHandler?: (chunk: Buffer) => void;
+          _tempBuffer?: Buffer[];
+        };
+        extendedSession._tempDataHandler = dataHandler;
+        extendedSession._tempBuffer = tempBuffer;
       }
 
       // Update stats periodically

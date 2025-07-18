@@ -28,16 +28,20 @@ const { FFmpegCapture } = await import(
 describe('FFmpegCapture', () => {
   let mockSpawn: Mock;
   let ffmpegCapture: FFmpegCapture;
-  let mockProcess: any;
+  let mockProcess: childProcess.ChildProcess & {
+    stdout: Readable;
+    stderr: Readable;
+    stdin: { end: ReturnType<typeof vi.fn>; write: ReturnType<typeof vi.fn> };
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
 
     // Create mock process
-    mockProcess = new EventEmitter() as any;
+    mockProcess = new EventEmitter() as unknown as typeof mockProcess;
     mockProcess.stdout = new Readable({ read() {} });
     mockProcess.stderr = new Readable({ read() {} });
-    mockProcess.stdin = { end: vi.fn() };
+    mockProcess.stdin = { end: vi.fn(), write: vi.fn() };
     mockProcess.kill = vi.fn().mockReturnValue(true);
     mockProcess.pid = 12345;
 
@@ -50,9 +54,11 @@ describe('FFmpegCapture', () => {
   describe('checkFFmpegAvailable', () => {
     it('should return true when ffmpeg is installed', async () => {
       const mockExec = vi.mocked(childProcess.exec);
-      mockExec.mockImplementationOnce((_cmd: string, callback: any) => {
-        process.nextTick(() => callback(null, 'ffmpeg version 4.4.0', ''));
-      });
+      mockExec.mockImplementationOnce(
+        (_cmd: string, callback: Parameters<typeof childProcess.exec>[1]) => {
+          process.nextTick(() => callback(null, 'ffmpeg version 4.4.0', ''));
+        }
+      );
 
       const result = await ffmpegCapture.checkFFmpegAvailable();
 
@@ -61,9 +67,11 @@ describe('FFmpegCapture', () => {
 
     it('should return false when ffmpeg is not installed', async () => {
       const mockExec = vi.mocked(childProcess.exec);
-      mockExec.mockImplementationOnce((_cmd: string, callback: any) => {
-        process.nextTick(() => callback(new Error('Command not found'), '', ''));
-      });
+      mockExec.mockImplementationOnce(
+        (_cmd: string, callback: Parameters<typeof childProcess.exec>[1]) => {
+          process.nextTick(() => callback(new Error('Command not found'), '', ''));
+        }
+      );
 
       const result = await ffmpegCapture.checkFFmpegAvailable();
 
@@ -74,15 +82,17 @@ describe('FFmpegCapture', () => {
   describe('getFFmpegCodecs', () => {
     it('should return available codecs', async () => {
       const mockExec = vi.mocked(childProcess.exec);
-      mockExec.mockImplementationOnce((_cmd: string, callback: any) => {
-        const codecOutput = `
+      mockExec.mockImplementationOnce(
+        (_cmd: string, callback: Parameters<typeof childProcess.exec>[1]) => {
+          const codecOutput = `
 Codecs:
  DEV.LS h264                 H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10
  DEV.L. vp8                  On2 VP8
  DEV.L. vp9                  Google VP9
 `;
-        process.nextTick(() => callback(null, codecOutput, ''));
-      });
+          process.nextTick(() => callback(null, codecOutput, ''));
+        }
+      );
 
       const codecs = await ffmpegCapture.getFFmpegCodecs();
 

@@ -56,7 +56,7 @@ const { detectDisplayServer } = await import('../../../server/capture/display-de
 import * as childProcess from 'node:child_process';
 
 describe('Display Detection', () => {
-  let mockExec: any;
+  let mockExec: vi.MockedFunction<typeof childProcess.exec>;
   let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {
@@ -82,18 +82,22 @@ describe('Display Detection', () => {
       process.env.DISPLAY = ':0';
 
       // Mock xdpyinfo success
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
-        expect(cmd).toBe('xdpyinfo -display :0');
-        process.nextTick(() => callback(null, 'xdpyinfo output', ''));
-      });
+      mockExec.mockImplementationOnce(
+        (cmd: string, callback: Parameters<typeof childProcess.exec>[1]) => {
+          expect(cmd).toBe('xdpyinfo -display :0');
+          process.nextTick(() => callback(null, 'xdpyinfo output', ''));
+        }
+      );
 
       // Mock xrandr success
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
-        expect(cmd).toBe('xrandr --query');
-        const xrandrOutput =
-          'HDMI-1 connected primary 1920x1080+0+0 (normal left inverted right x axis y axis) 510mm x 287mm';
-        process.nextTick(() => callback(null, xrandrOutput, ''));
-      });
+      mockExec.mockImplementationOnce(
+        (cmd: string, callback: Parameters<typeof childProcess.exec>[1]) => {
+          expect(cmd).toBe('xrandr --query');
+          const xrandrOutput =
+            'HDMI-1 connected primary 1920x1080+0+0 (normal left inverted right x axis y axis) 510mm x 287mm';
+          process.nextTick(() => callback(null, xrandrOutput, ''));
+        }
+      );
 
       const result = await detectDisplayServer();
 
@@ -109,16 +113,20 @@ describe('Display Detection', () => {
       process.env.WAYLAND_DISPLAY = 'wayland-0';
 
       // Mock FFmpeg pipewire support check
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
-        expect(cmd).toContain('ffmpeg');
-        process.nextTick(() => callback(null, 'lavfi\npipewiregrab\nother sources', ''));
-      });
+      mockExec.mockImplementationOnce(
+        (cmd: string, callback: Parameters<typeof childProcess.exec>[1]) => {
+          expect(cmd).toContain('ffmpeg');
+          process.nextTick(() => callback(null, 'lavfi\npipewiregrab\nother sources', ''));
+        }
+      );
 
       // Mock wlr-randr failure (fallback to default screens)
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
-        expect(cmd).toContain('wlr-randr');
-        process.nextTick(() => callback(new Error('wlr-randr not found'), '', ''));
-      });
+      mockExec.mockImplementationOnce(
+        (cmd: string, callback: Parameters<typeof childProcess.exec>[1]) => {
+          expect(cmd).toContain('wlr-randr');
+          process.nextTick(() => callback(new Error('wlr-randr not found'), '', ''));
+        }
+      );
 
       const result = await detectDisplayServer();
 
@@ -133,16 +141,20 @@ describe('Display Detection', () => {
       process.env.WAYLAND_DISPLAY = 'wayland-0';
 
       // Mock FFmpeg pipewire support check - no pipewire
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
-        expect(cmd).toContain('ffmpeg');
-        process.nextTick(() => callback(null, 'no pipewire here', ''));
-      });
+      mockExec.mockImplementationOnce(
+        (cmd: string, callback: Parameters<typeof childProcess.exec>[1]) => {
+          expect(cmd).toContain('ffmpeg');
+          process.nextTick(() => callback(null, 'no pipewire here', ''));
+        }
+      );
 
       // Mock wlr-randr failure
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
-        expect(cmd).toContain('wlr-randr');
-        process.nextTick(() => callback(new Error('wlr-randr not found'), '', ''));
-      });
+      mockExec.mockImplementationOnce(
+        (cmd: string, callback: Parameters<typeof childProcess.exec>[1]) => {
+          expect(cmd).toContain('wlr-randr');
+          process.nextTick(() => callback(new Error('wlr-randr not found'), '', ''));
+        }
+      );
 
       const result = await detectDisplayServer();
 
@@ -157,10 +169,12 @@ describe('Display Detection', () => {
       delete process.env.WAYLAND_DISPLAY;
 
       // Mock which Xvfb success
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
-        expect(cmd).toBe('which Xvfb');
-        process.nextTick(() => callback(null, '/usr/bin/Xvfb', ''));
-      });
+      mockExec.mockImplementationOnce(
+        (cmd: string, callback: Parameters<typeof childProcess.exec>[1]) => {
+          expect(cmd).toBe('which Xvfb');
+          process.nextTick(() => callback(null, '/usr/bin/Xvfb', ''));
+        }
+      );
 
       const result = await detectDisplayServer();
 
@@ -175,16 +189,20 @@ describe('Display Detection', () => {
     it('should handle X11 not being accessible despite DISPLAY', async () => {
       process.env.DISPLAY = ':0';
       // Mock xdpyinfo failure
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
-        expect(cmd).toBe('xdpyinfo -display :0');
-        process.nextTick(() => callback(new Error('Cannot open display'), '', ''));
-      });
+      mockExec.mockImplementationOnce(
+        (cmd: string, callback: Parameters<typeof childProcess.exec>[1]) => {
+          expect(cmd).toBe('xdpyinfo -display :0');
+          process.nextTick(() => callback(new Error('Cannot open display'), '', ''));
+        }
+      );
 
       // Mock which Xvfb failure
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
-        expect(cmd).toBe('which Xvfb');
-        process.nextTick(() => callback(new Error('Command not found'), '', ''));
-      });
+      mockExec.mockImplementationOnce(
+        (cmd: string, callback: Parameters<typeof childProcess.exec>[1]) => {
+          expect(cmd).toBe('which Xvfb');
+          process.nextTick(() => callback(new Error('Command not found'), '', ''));
+        }
+      );
 
       const result = await detectDisplayServer();
 
@@ -203,10 +221,12 @@ describe('Display Detection', () => {
       delete process.env.DISPLAY;
       delete process.env.WAYLAND_DISPLAY;
       // Mock which Xvfb failure
-      mockExec.mockImplementationOnce((cmd: string, callback: any) => {
-        expect(cmd).toBe('which Xvfb');
-        process.nextTick(() => callback(new Error('Command not found'), '', ''));
-      });
+      mockExec.mockImplementationOnce(
+        (cmd: string, callback: Parameters<typeof childProcess.exec>[1]) => {
+          expect(cmd).toBe('which Xvfb');
+          process.nextTick(() => callback(new Error('Command not found'), '', ''));
+        }
+      );
 
       const result = await detectDisplayServer();
 

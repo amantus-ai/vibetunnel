@@ -63,13 +63,17 @@ export class LinuxWebRTCHandler extends EventEmitter {
       this.setupStreamBuffering();
 
       // Check if there's buffered data from the capture service
-      const tempHandler = (this.captureSession as any)._tempDataHandler;
-      const tempBuffer = (this.captureSession as any)._tempBuffer;
+      const extendedSession = this.captureSession as CaptureSession & {
+        _tempDataHandler?: (chunk: Buffer) => void;
+        _tempBuffer?: Buffer[];
+      };
+      const tempHandler = extendedSession._tempDataHandler;
+      const tempBuffer = extendedSession._tempBuffer;
 
       if (tempHandler) {
         logger.log('Removing temporary data handler from capture service');
         this.ffmpegStream.removeListener('data', tempHandler);
-        delete (this.captureSession as any)._tempDataHandler;
+        delete extendedSession._tempDataHandler;
       }
 
       if (tempBuffer && tempBuffer.length > 0) {
@@ -78,7 +82,7 @@ export class LinuxWebRTCHandler extends EventEmitter {
         for (const chunk of tempBuffer) {
           this.emit('video-frame', chunk);
         }
-        delete (this.captureSession as any)._tempBuffer;
+        delete extendedSession._tempBuffer;
       }
     } else {
       logger.error('No capture stream available from session');

@@ -71,7 +71,8 @@ export class ScreencapWebSocketClient {
         };
 
         // Add WebSocket to window for debugging
-        (window as any).debugWebSocket = this.ws;
+        const debugWindow = window as Window & { debugWebSocket?: WebSocket };
+        debugWindow.debugWebSocket = this.ws;
 
         // Track frame statistics
         let frameCount = 0;
@@ -92,7 +93,10 @@ export class ScreencapWebSocketClient {
             }
 
             // Store stats on window for debugging
-            (window as any).videoFrameStats = { count: frameCount, totalBytes };
+            const statsWindow = window as Window & {
+              videoFrameStats?: { count: number; totalBytes: number };
+            };
+            statsWindow.videoFrameStats = { count: frameCount, totalBytes };
 
             if (this.onBinaryMessage) {
               this.onBinaryMessage(arrayBuffer);

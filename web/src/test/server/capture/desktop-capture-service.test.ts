@@ -21,10 +21,10 @@ vi.mock('../../../server/utils/logger.js', () => ({
 
 describe('DesktopCaptureService', () => {
   let service: DesktopCaptureService;
-  let mockFFmpegCapture: any;
-  let mockStreamHandler: any;
+  let mockFFmpegCapture: vi.Mocked<FFmpegCapture>;
+  let mockStreamHandler: vi.Mocked<StreamHandler>;
   let mockDetectDisplayServer: Mock;
-  let mockLogger: any;
+  let mockLogger: ReturnType<typeof createLogger>;
 
   beforeEach(() => {
     vi.clearAllMocks();
