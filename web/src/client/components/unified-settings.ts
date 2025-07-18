@@ -12,6 +12,7 @@ const logger = createLogger('unified-settings');
 
 export interface AppPreferences {
   useDirectKeyboard: boolean;
+  useBinaryMode: boolean;
   showLogLink: boolean;
   repositoryBasePath: string;
 }
@@ -23,6 +24,7 @@ interface ServerConfig {
 
 const DEFAULT_APP_PREFERENCES: AppPreferences = {
   useDirectKeyboard: true, // Default to modern direct keyboard for new users
+  useBinaryMode: false, // Default to SSE/RSC mode for compatibility
   showLogLink: false,
   repositoryBasePath: '~/',
 };
