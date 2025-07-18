@@ -8,3 +8,4 @@ enum RemoteAccessConstants {
     static let cloudflareCheckInterval: TimeInterval = 10.0
     static let startTimeoutInterval: TimeInterval = 15.0
 }
+
