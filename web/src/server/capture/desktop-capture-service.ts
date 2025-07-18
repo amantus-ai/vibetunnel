@@ -11,14 +11,12 @@ import { convertToWebRTC, type ServerMediaStream } from './stream-converter.js';
 const logger = createLogger('desktop-capture');
 
 export interface DesktopCaptureOptions extends CaptureOptions {
-  mode?: 'server' | 'browser'; // Allow fallback to browser capture
   displayIndex?: number;
   auth?: string; // Authentication token
 }
 
 export interface CaptureSession {
   id: string;
-  mode: 'server' | 'browser';
   displayServer?: DisplayServerInfo;
   mediaStream?: ServerMediaStream;
   captureStream?: CaptureStream;
@@ -48,7 +46,7 @@ export class DesktopCaptureService extends EventEmitter {
 
     // Detect display server
     this.displayServer = await detectDisplayServer();
-    logger.log('Display server detected:', this.displayServer);
+    logger.log('Display server detected:', JSON.stringify(this.displayServer, null, 2));
 
     // Check FFmpeg availability
     const ffmpegAvailable = await this.ffmpegCapture.checkFFmpegAvailable();
@@ -87,10 +85,7 @@ export class DesktopCaptureService extends EventEmitter {
     logger.log(`Starting capture session ${sessionId} with options:`, options);
 
     // Check if server capture is available
-    if (
-      options.mode === 'server' &&
-      (!this.displayServer || this.displayServer.type === 'unknown')
-    ) {
+    if (!this.displayServer || this.displayServer.type === 'unknown') {
       logger.warn('Server capture requested but no display server available');
       throw new Error('Server capture not available - no display server detected');
     }
@@ -103,7 +98,6 @@ export class DesktopCaptureService extends EventEmitter {
     // Create session
     const session: CaptureSession = {
       id: sessionId,
-      mode: options.mode || 'server',
       displayServer: this.displayServer,
       startTime: Date.now(),
       stats: {
@@ -116,34 +110,29 @@ export class DesktopCaptureService extends EventEmitter {
     };
 
     try {
-      if (session.mode === 'server') {
-        // Start server-side capture
-        const captureStream = await this.startServerCapture(options);
-        session.captureStream = captureStream;
+      // Start server-side capture
+      const captureStream = await this.startServerCapture(options);
+      session.captureStream = captureStream;
 
-        // Convert to WebRTC format
-        const mediaStream = await convertToWebRTC(captureStream);
-        session.mediaStream = mediaStream;
+      // Convert to WebRTC format
+      const mediaStream = await convertToWebRTC(captureStream);
+      session.mediaStream = mediaStream;
 
-        // Update stats periodically
-        const statsInterval = setInterval(() => {
-          if (session.captureStream) {
-            const stats = session.captureStream.getStats();
-            session.stats = {
-              ...stats,
-              duration: Date.now() - session.startTime,
-            };
-          }
-        }, 1000);
+      // Update stats periodically
+      const statsInterval = setInterval(() => {
+        if (session.captureStream) {
+          const stats = session.captureStream.getStats();
+          session.stats = {
+            ...stats,
+            duration: Date.now() - session.startTime,
+          };
+        }
+      }, 1000);
 
-        // Clean up on stop
-        mediaStream.stream.once('inactive', () => {
-          clearInterval(statsInterval);
-        });
-      } else {
-        // Browser capture mode - just create session placeholder
-        logger.log('Browser capture mode - client will handle capture');
-      }
+      // Clean up on stop
+      mediaStream.stream.once('inactive', () => {
+        clearInterval(statsInterval);
+      });
 
       this.sessions.set(sessionId, session);
       this.emit('capture-started', session);
@@ -230,10 +219,6 @@ export class DesktopCaptureService extends EventEmitter {
         screens: this.displayServer?.availableScreens || [],
         requiresAuth: true,
       },
-      browserCapture: {
-        available: true,
-        requiresAuth: false,
-      },
     };
   }
 
@@ -278,10 +263,6 @@ export interface CaptureCapabilities {
       height: number;
       isPrimary?: boolean;
     }>;
-    requiresAuth: boolean;
-  };
-  browserCapture: {
-    available: boolean;
     requiresAuth: boolean;
   };
 }

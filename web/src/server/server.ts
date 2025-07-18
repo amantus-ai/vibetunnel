@@ -813,6 +813,8 @@ export async function createApp(): Promise<AppInstance> {
       await controlUnixHandler.start();
       logger.log(chalk.green('Control UNIX socket: READY'));
     } else {
+      // Initialize desktop capture service for Linux
+      await desktopCaptureService.initialize();
       logger.log(chalk.green('Linux screencap handler: READY'));
     }
   } catch (error) {

@@ -21,15 +21,14 @@ export function createServerScreencapRoutes(): Router {
   // Start server capture session
   router.post('/start', async (req: Request, res: Response) => {
     try {
-      const { mode, displayIndex, quality, auth, width, height, framerate } = req.body;
+      const { displayIndex, quality, auth, width, height, framerate } = req.body;
 
       // Validate request
-      if (mode === 'server' && !auth) {
+      if (!auth) {
         return res.status(401).json({ error: 'Authentication required for server capture' });
       }
 
       const session = await desktopCaptureService.startCapture({
-        mode: mode || 'server',
         displayIndex,
         quality,
         auth,
@@ -40,7 +39,6 @@ export function createServerScreencapRoutes(): Router {
 
       res.json({
         sessionId: session.id,
-        mode: session.mode,
         displayServer: session.displayServer,
         // Streaming is handled via WebSocket at /ws/server-capture?sessionId=...
       });
@@ -80,7 +78,6 @@ export function createServerScreencapRoutes(): Router {
 
       res.json({
         id: session.id,
-        mode: session.mode,
         stats: session.stats,
         displayServer: session.displayServer,
       });
@@ -97,7 +94,6 @@ export function createServerScreencapRoutes(): Router {
       res.json(
         sessions.map((s) => ({
           id: s.id,
-          mode: s.mode,
           startTime: s.startTime,
           stats: s.stats,
         }))

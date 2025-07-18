@@ -8,8 +8,10 @@ export async function initializeScreencap(): Promise<void> {
   // Log platform support
   if (process.platform === 'darwin') {
     logger.log('✅ Screencap ready via native Mac app and WebSocket API');
+  } else if (process.platform === 'linux') {
+    logger.log('✅ Screencap ready via Linux native capture (FFmpeg)');
   } else {
-    logger.log('✅ Screencap ready via browser API on', process.platform);
+    logger.log('❌ Screen capture not supported on', process.platform);
   }
 }
 

@@ -3,7 +3,6 @@ import { createLogger } from '../utils/logger.js';
 const logger = createLogger('server-capture-service');
 
 export interface ServerCaptureOptions {
-  mode: 'server' | 'browser';
   displayIndex?: number;
   quality?: 'low' | 'medium' | 'high' | 'ultra';
   width?: number;
@@ -19,7 +18,6 @@ export interface DisplayServerInfo {
 
 interface ServerCaptureSession {
   sessionId: string;
-  mode: 'server' | 'browser';
   streamUrl?: string;
   displayServer?: DisplayServerInfo;
 }
@@ -35,10 +33,6 @@ export interface ServerCaptureCapabilities {
       height: number;
       isPrimary?: boolean;
     }>;
-    requiresAuth: boolean;
-  };
-  browserCapture: {
-    available: boolean;
     requiresAuth: boolean;
   };
 }
@@ -113,19 +107,7 @@ export class ServerCaptureService {
       logger.log('Started capture session:', this.currentSession);
 
       // Create MediaStream from server capture
-      if (this.currentSession?.mode === 'server') {
-        return await this.createStreamFromServer();
-      } else {
-        // Browser mode - use regular getDisplayMedia
-        return await navigator.mediaDevices.getDisplayMedia({
-          video: {
-            frameRate: options.framerate,
-            width: options.width,
-            height: options.height,
-          },
-          audio: false,
-        });
-      }
+      return await this.createStreamFromServer();
     } catch (error) {
       logger.error('Failed to start server capture:', error);
       throw error;

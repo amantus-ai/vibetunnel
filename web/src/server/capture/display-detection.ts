@@ -170,6 +170,14 @@ async function getWaylandScreens(): Promise<ScreenInfo[]> {
     // Ignore errors
   }
 
+  // Try xrandr as fallback (works through XWayland)
+  try {
+    logger.log('Trying xrandr for Wayland screen detection (via XWayland)');
+    return await getX11Screens();
+  } catch {
+    // Ignore errors
+  }
+
   // Fallback to default
   logger.warn('Cannot detect Wayland screens, using defaults');
   return [

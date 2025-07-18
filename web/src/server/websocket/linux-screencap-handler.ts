@@ -160,9 +160,19 @@ export class LinuxScreencapHandler extends EventEmitter {
       switch (endpoint) {
         case '/displays': {
           const capabilities = await desktopCaptureService.getCapabilities();
+          const screens = capabilities.serverCapture.screens || [];
+          logger.log(`Returning ${screens.length} displays:`, screens);
           result = {
-            displays: capabilities.serverCapture.screens || [],
+            displays: screens,
             currentDisplayIndex: 0,
+          };
+          break;
+        }
+
+        case '/processes': {
+          // Linux doesn't support window capture yet, return empty process list
+          result = {
+            processes: [],
           };
           break;
         }
@@ -213,7 +223,6 @@ export class LinuxScreencapHandler extends EventEmitter {
 
       // Start capture session
       const session = await desktopCaptureService.startCapture({
-        mode: 'server',
         displayIndex,
         quality,
         auth: message.userId,
@@ -263,7 +272,6 @@ export class LinuxScreencapHandler extends EventEmitter {
           sessionId: session.id,
           displayServer: session.displayServer,
           resolution: {
-            mode: session.mode,
             displayServer: session.displayServer,
           },
         },
