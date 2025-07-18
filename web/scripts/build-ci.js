@@ -25,7 +25,8 @@ execSync('esbuild src/client/sw.ts --bundle --outfile=public/sw.js --format=iife
 
 // Build server TypeScript
 console.log('Building server...');
-execSync('npx tsc --build', { stdio: 'inherit' });
+// Force a clean build in CI to avoid incremental build issues
+execSync('npx tsc --build --force', { stdio: 'inherit' });
 
 // Verify dist directory exists
 if (fs.existsSync(path.join(__dirname, '../dist'))) {
