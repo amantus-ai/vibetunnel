@@ -154,7 +154,7 @@ describe('PtyManager', { timeout: 60000 }, () => {
         const sessionJsonPath = path.join(testDir, result.sessionId, 'session.json');
         const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
         expect(sessionInfo.status).toBe('exited');
-        
+
         // Read output from stdout file
         const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
         const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
@@ -200,7 +200,7 @@ describe('PtyManager', { timeout: 60000 }, () => {
         const sessionJsonPath = path.join(testDir, result.sessionId, 'session.json');
         const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
         expect(sessionInfo.status).toBe('exited');
-        
+
         // Read output from stdout file
         const stdoutPath = path.join(testDir, result.sessionId, 'stdout');
         const outputData = fs.existsSync(stdoutPath) ? fs.readFileSync(stdoutPath, 'utf8') : '';
