@@ -79,7 +79,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         VIBETUNNEL_BIN="$APP_PATH/Contents/Resources/vibetunnel"
         if [ -f "$VIBETUNNEL_BIN" ]; then
             # Found Mac app bundle - will use this binary
-            echo "# Using VibeTunnel from Mac app bundle" >&2
+            # Silent operation - no message printed
+            true  # No-op command to fix syntax error
         fi
     fi
 fi

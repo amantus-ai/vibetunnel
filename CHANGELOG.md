@@ -1,305 +1,275 @@
 # Changelog
 
-## [1.0.0-beta.11] - 2025-01-16
+## [1.0.0-beta.12] - 2025-01-17
 
-### 🎨 UI Improvements
+#### **Welcome Screen Performance**
+- Background folder scanning eliminates UI freeze when opening the welcome screen (#394)
+- Improved startup performance with optimized web directory structure
+- Much smoother experience when working with large project directories
 
-#### **Settings Organization**
-- Reorganized Mac settings into logical tabs for better usability
-- Cleaner, more intuitive settings interface with grouped related options
+#### **SSH Agent Reliability**
+- Fixed SSH key generation errors on non-localhost HTTP connections (#392)
+- SSH agent now works correctly when accessing VibeTunnel via ngrok or from another device
+- Improved security and reliability for remote access scenarios
 
-#### **File Browser Polish**
-- **FIXED**: File browser no longer constantly refreshes, improving performance
-- **FIXED**: File browser now appears correctly above modal backdrops
-
-### 🚀 Features & Improvements
+#### **npm Package Stability**
+- Fixed critical installation issues on Linux systems (#393)
+- `authenticate-pam` now properly handled as optional dependency
+- Enhanced cross-platform compatibility for Ubuntu and other distributions
+- Comprehensive vt command tests ensure reliability across environments
 
 #### **Developer Experience**
-- Added verbosity control to `vt` command for better debugging capabilities
-- Spawn window toggle now only appears when Mac app is connected
-- Release process improvements with normalized titles and per-version changelogs
+- Fixed missing public directory in Mac app bundle (#392)
+- Resolved TypeScript type annotations throughout codebase
+- Improved lint compliance and code quality
+- Streamlined CI/CD workflow for more reliable builds
 
-### 🛡️ Privacy & Permissions
-- **FIXED**: Prevented repeated screen recording permission dialogs
-- Better handling of system permission requests
+### 🐛 Bug Fixes
 
-### 🔧 Under the Hood
-- **FIXED**: Resolved Tailwind CSS content pattern performance warning
-- Improved release process with better changelog generation
-- Various documentation improvements including Discord server link
+- Fixed vt command syntax errors on Linux systems (#393)
+- Fixed welcome screen lag during folder scanning (#394)
+- Resolved missing icons and resources in Mac app
+- Fixed lint and type errors across the codebase
+- Cleaned up duplicate and stray files from web directory
+
+## [1.0.0-beta.11] - 2025-01-16
+
+#### **Better Settings Organization**
+- Reorganized settings into logical tabs for easier navigation (#359)
+- Repository base path now syncs automatically between Mac app and web UI (#358)
+- Simplified welcome screen repository display (#372)
+
+#### **Improved WebRTC Support**
+- Fixed threading issues in WebRTC screen capture (#375, #378)
+- Resolved screen capture authentication problems (#264, #374)
+- More stable screen sharing with proper main thread dispatch
+
+#### **UI Context Awareness**
+- Screen sharing button only appears when Mac app is connected (#367)
+- Spawn window toggle shows only when relevant (#357)
+
+#### **NPM Package Now Available**
+- vibetunnel (server) is now available as an npm package for easy installation on macOS and Linux (#360, #377)
+- Install with `npm install -g vibetunnel` - no build tools required!
+- Includes prebuilt binaries for Node.js 20, 22, 23, and 24
+- Supports macOS (Intel and Apple Silicon) and Linux (x64 and arm64) (#344)
+
+#### **Enhanced Git Diff Tool Support**
+- Added JuxtaCode to the list of supported Git diff tools with automatic detection
+
+#### **Improved `vt` Command**
+- Added verbosity control with `-q` (quiet), `-v` (verbose), `-vv` (extra verbose) flags (#356)
+- New `vt title` command to update session names from within a VibeTunnel session
+
+### 🐛 Bug Fixes
+
+- Fixed npm package installation issues (#360, #377)
+- Fixed control message processing loop (#372)
+- Fixed file browser constant refresh issue (#354)
+- Replaced bell icon with settings icon for better clarity (#366)
+- Resolved Tailwind CSS performance warning
+- Fixed repeated screen recording permission dialogs
 
 ## [1.0.0-beta.10] - 2025-01-15
 
-### 🎯 Major Features
-
 #### **Repository Discovery**
-- Automatic Git repository detection when creating new sessions
-- Recently modified repositories are displayed in the new session dialog
+- Automatic Git repository detection when creating new sessions (#301)
+- Recently modified repositories displayed in new session dialog
 - Quick project access with one-click repository selection
 
 #### **Keyboard Shortcut Handling**
-- Redesigned keyboard capture system with intelligent priority handling
-- Browser shortcuts now work naturally: Cmd+Shift+A (tab search), Cmd+1-9 (tab switching), Alt+Arrow keys (browser navigation)
+- Redesigned keyboard capture system with intelligent priority handling (#298)
+- Browser shortcuts work naturally: Cmd+Shift+A (tab search), Cmd+1-9 (tab switching), Alt+Arrow keys
 - Visual keyboard capture indicator with detailed tooltips
 - Double-Escape toggle for switching between browser and terminal keyboard modes
 
 #### **Theme System**
-- Dracula theme is now the default for new users
-- Professional light mode with improved contrast and modern styling
+- Dracula theme is now the default for new users (#349)
+- Professional light mode with improved contrast (#314)
 - Easy theme switching between light and dark modes
-- Enhanced terminal color schemes and theme management
-
-### 🚀 Performance & Developer Experience
+- Enhanced terminal color schemes (#332)
 
 #### **Development Server Mode**
-- New "Development Server" mode in Debug Settings enables hot reload for web changes
+- New "Development Server" mode in Debug Settings enables hot reload (#316)
 - Significantly faster iteration when developing the web interface
 - Hot reload works with full VibeTunnel functionality
 
-### 🛠️ Bug Fixes & Improvements
+### 🐛 Bug Fixes
 
-#### **Cross-Platform Compatibility**
-- **FIXED**: Safari clipboard paste now works reliably on iOS and macOS
-- Improved mobile experience with better responsive behavior
-- Enhanced cross-browser compatibility
-
-#### **Session Management**
-- **FIXED**: Prevented duplicate session creation with intelligent detection
-- Added keyboard navigation in session grid (arrow keys, Enter, etc.)
-- Improved session organization and list management
-
-#### **Network & SSH**
-- **FIXED**: Race conditions in network access mode that caused connection failures
-- More robust network configuration handling and error recovery
-- Improved SSH key manager with better modal layout and responsive design
-
-### 🔧 Under the Hood
-
+- Fixed Safari clipboard paste on iOS and macOS (#336)
+- Fixed duplicate session creation with intelligent detection (#345)
+- Added keyboard navigation in session grid (arrow keys, Enter, etc.) (#322)
+- Fixed race conditions in network access mode (#347)
+- Improved SSH key manager modal layout (#325)
 - Updated all dependencies to latest stable versions
 - Enhanced TypeScript configuration with better type safety
-- Simplified CI workflow and improved build reliability
-- More comprehensive test suite with better coverage
 
 ## [1.0.0-beta.9] - 2025-01-11
 
-### 🛡️ Stability & Reliability
-
 #### **Terminal Crash Fix**
-- **FIXED**: Replaced Microsoft's node-pty with a custom fork to resolve random terminal crashes
+- Replaced Microsoft's node-pty with custom fork to resolve random terminal crashes (#304)
 - Improved thread-safe operations and resource management
 - Addresses stability issues affecting VS Code and other Electron applications
 
 #### **Server Crash Detection**
-- Added crash detection and recovery system for server failures
+- Added crash detection and recovery system for server failures (#308)
 - Provides immediate feedback with specific error codes
 - Improved troubleshooting and error reporting
 
-### 📱 Mobile Experience
-
-#### **Terminal Stability on Mobile**
-- **FIXED**: Resolved continuous resize loop on mobile devices
-- Improved mobile terminal width management and user preference handling
-- Added support for smaller grid sizes on compact mobile devices
-
-#### **Mobile Keyboard Support**
-- Added Alt+Delete/Left/Right keyboard shortcuts for mobile users
-- **FIXED**: Mobile header overflow when using dropdown menus
-
-### 🚀 Features & Improvements
+#### **Mobile Experience**
+- Fixed continuous resize loop on mobile devices (#305)
+- Improved mobile terminal width management
+- Added support for smaller grid sizes on compact devices
+- Added Alt+Delete/Left/Right keyboard shortcuts for mobile users (#290)
+- Fixed mobile header overflow when using dropdown menus (#295)
 
 #### **Cloudflare Integration**
-- Improved Cloudflare tunnel setup with stream-based monitoring instead of polling
+- Improved tunnel setup with stream-based monitoring (#306)
 - Enhanced error handling and more reliable setup process
 
 #### **Git Repository Discovery**
-- Enhanced folder selection when creating new sessions
+- Enhanced folder selection when creating new sessions (#274)
 - Added intelligent Git repository discovery in selected folders
-- **FIXED**: Multiple bugs in repository discovery causing incorrect folder detection
+- Fixed multiple bugs in repository discovery (#282)
 
-### 🎨 UI Polish
+### 🐛 Bug Fixes
 
-#### **Visual Stability**
-- **FIXED**: Terminal titles no longer jump due to activity indicators
-- Consolidated z-index management to prevent UI layer conflicts
-
-### 🔧 Under the Hood
-
+- Fixed terminal titles jumping due to activity indicators (#309)
+- Consolidated z-index management to prevent UI layer conflicts (#291)
 - Enhanced event handling for better cross-platform compatibility
 - Improved file browser functionality with better click handling
-- Updated documentation with expanded specifications and data flow diagrams
-- Various test improvements for better code quality
 
 ## [1.0.0-beta.8] - 2025-07-08
 
-#### **Homebrew Library Dependencies**
-- **FIXED**: Release builds now correctly bundle all Homebrew library dependencies
-- **FIXED**: App launches reliably on systems without developer tools installed
-- Updated build scripts to handle dynamic library dependencies properly
+### 🐛 Bug Fixes
 
-#### **File Browser Enhancements**
-- **FIXED**: File browser going dark due to event bubbling issues with modal handling
+- Fixed release builds to correctly bundle all Homebrew library dependencies (#269)
+- Fixed app launch on systems without developer tools installed
+- Fixed file browser going dark due to event bubbling issues with modal handling
+- Updated build scripts to handle dynamic library dependencies properly
 
 ## [1.0.0-beta.7] - 2025-07-08
 
-### 🎯 Major Features
-
 #### **Remote Screen Sharing (Beta)**
 - Share Mac screen remotely through web browsers
-- WebRTC technology with automatic quality adjustment based on network conditions
-- Deferred permission requests (only asks for screen recording when starting sharing)
-- Automatic 4K resolution capping for 5K+ displays to prevent web interface clipping
+- WebRTC technology with automatic quality adjustment
+- Deferred permission requests (only asks when starting sharing)
+- Automatic 4K resolution capping for 5K+ displays
 - Visual indicators when screen sharing is active
 
 #### **AI Session Context Injection**
-- Inject project context into Claude.ai sessions with a single click
-- Automatically detects Claude browser windows and adds project information
-- Includes git repository details, current branch, and recent commit history
+- Inject project context into Claude.ai sessions with a single click (#210, #218)
+- Automatically detects Claude browser windows
+- Includes git repository details, current branch, and recent commits
 - Configurable prompts to match workflow
-- Enhanced prompt injection to prevent AI from using the injected title directly
-
-### 🚀 Performance & Stability Improvements
 
 #### **Terminal Performance**
-- **FIXED**: Critical flow control issue that caused xterm.js buffer overflow and terminal freezing
-- **FIXED**: Infinite scroll loop in terminal output that could freeze the browser
-- **FIXED**: Race conditions in terminal output handling causing corrupted or out-of-order text
+- Fixed critical flow control issue causing xterm.js buffer overflow (#223)
+- Fixed infinite scroll loop that could freeze the browser
+- Fixed race conditions in terminal output handling
 - Improved memory management for long-running sessions
 - Better handling of high-volume terminal output
 
 #### **UI Performance**
-- Removed all UI animations that were causing 1-2 second delays when reopening sessions
+- Removed UI animations causing 1-2 second delays
 - Disabled View Transitions API for instant session navigation
-- Fixed modal backdrop pointer-events issues preventing interaction
-- Smoother menu bar UI without jumping when copy icon appears
+- Fixed modal backdrop pointer-events issues (#195)
+- Smoother menu bar UI without jumping
 
-### 📱 Touch Device & Mobile Improvements
-
-#### **iPad/Tablet Support**
-- Unified keyboard layout for all mobile devices (removed separate iPad layout)
-- Universal touch device detection for better keyboard mode handling
-- Inline-edit pencil now always visible on touch devices
-- Reorganized touch device layout with better button placement
-- Fixed touch interaction issues with modals and overlays
-
-#### **Mobile Keyboard**
+#### **Touch Device & Mobile**
+- Unified keyboard layout for all mobile devices
+- Universal touch device detection
+- Inline-edit pencil always visible on touch devices
 - New compact keyboard layout optimized for tablets
-- Better handling of keyboard shortcuts on touch devices
-- Improved responsiveness for mobile web browsers
-
-### 🐚 Shell Support Enhancements
+- Fixed touch interaction issues with modals
 
 #### **Fish Shell Integration**
-- Full support for Fish shell command expansion and completions
-- Proper handling of Fish-specific syntax and features
-- Fixed shell configuration files not being loaded correctly
+- Full support for Fish shell command expansion and completions (#228, #242)
+- Proper handling of Fish-specific syntax
+- Fixed shell configuration files not being loaded
 
-### 🔧 Developer Experience
-
-#### **Build System Improvements**
-- Preserve Swift package resolution in build.sh for faster builds
-- Better Node.js detection that handles fnm/homebrew conflicts
-
-#### **Version Management**
-- Implemented hash-based vt script version detection
-- Delete old sessions automatically when VibeTunnel version changes
-- Better handling of version mismatches between components
+#### **Developer Experience**
+- Preserve Swift package resolution for faster builds
+- Better Node.js detection handling fnm/homebrew conflicts (#246, #253)
+- Hash-based vt script version detection
+- Delete old sessions when VibeTunnel version changes (#254)
 
 ### 🐛 Bug Fixes
 
-#### **Session Management**
 - Fixed session state synchronization between web and native clients
 - Resolved memory leaks in long-running sessions
 - Fixed connection timeout issues on slower networks
 - Better cleanup of terminal processes and resources
-
-#### **UI/UX Fixes**
 - Fixed various UI glitches and visual artifacts
 - Resolved sidebar animation issues
 - Fixed file browser problems
-- Corrected ngrok documentation about free static domains
-
-### 🔍 Other Improvements
-
-#### **Control Protocol**
-- Unified control protocol for better terminal and screen sharing integration
+- Unified control protocol for terminal and screen sharing (#239)
 - Improved Unix socket handling with better error recovery
-- Enhanced WebRTC connection management
-
-#### **Documentation**
-- Updated ngrok docs to clarify one free static domain per user
-- Added comprehensive ScreenCaptureKit documentation
-- Removed outdated debug documentation
 
 ## [1.0.0-beta.6] - 2025-07-03
 
-### ✨ New Features
-
-#### **Git Repository Monitoring** 🆕
-- **Real-time Git Status** - Session rows now display git information including branch name and change counts
-- **Visual Indicators** - Color-coded status: orange for branches, yellow for uncommitted changes
-- **Quick Navigation** - Click folder icons to open repositories in Finder
-- **GitHub Integration** - Context menu option to open repositories directly on GitHub
-- **Smart Caching** - 5-second cache prevents excessive git commands while keeping info fresh
-- **Repository Detection** - Automatically finds git repositories in parent directories
+#### **Git Repository Monitoring**
+- Real-time Git status in session rows with branch name and change counts (#200)
+- Color-coded status: orange for branches, yellow for uncommitted changes
+- Click folder icons to open repositories in Finder
+- Context menu option to open repositories on GitHub
+- 5-second cache prevents excessive git commands
+- Automatically finds git repositories in parent directories
 
 #### **Enhanced Command-Line Tool**
-- **Terminal Title Management** - `vt title` can set the title of your Terminal. Even Claude can use it!
-- **Version Information** - `vt help` now displays binary path, version, build date, and platform information for easier troubleshooting
-- **Apple Silicon Support** - Automatic detection of Homebrew installations on ARM Macs (/opt/homebrew path)
+- `vt title` can set terminal title - even Claude can use it! (#153)
+- `vt help` displays binary path, version, build date, and platform info
+- Automatic detection of Homebrew installations on ARM Macs
 
 #### **Menu Bar Enhancements**
-- **Rich Session Interface** - Powerful new menu bar with visual activity indicators and real-time status tracking
-- **Native Session Overview** - See all open terminal sessions and even Claude Code status right from the menu bar.
-- **Sleep Prevention** - Mac stays awake when running terminal sessions
+- Powerful menu bar with visual activity indicators (#176)
+- See all terminal sessions and Claude Code status (#160)
+- Mac stays awake when running terminal sessions
 
 #### **Web Interface Improvements**
-- **Modern Visual Design** - Complete UI overhaul with improved color scheme, animations, and visual hierarchy
-- **Collapsible Sidebar** - New toggle button to maximize terminal viewing space (preference is remembered)
-- **Better Session Loading** - Fixed race conditions that caused sessions to appear as "missing"
-- **Responsive Enhancements** - Improved adaptation to different screen sizes with better touch targets
+- Complete UI overhaul with improved color scheme and animations (#179)
+- Collapsible sidebar to maximize terminal viewing space (#175)
+- Fixed race conditions causing sessions to appear as "missing"
+- Improved responsive design with better touch targets
 
-### 🚀 Performance & Stability
+### 🐛 Bug Fixes
 
-#### **Terminal Output Reliability**
-- **Fixed Output Corruption** - Resolved race conditions causing out-of-order or corrupted terminal output
-- **Stable Title Updates** - Terminal titles now update smoothly without flickering or getting stuck
-
-#### **Server Improvements**
-- **Logger Fix** - Fixed double initialization that was deleting log files
-- **Better Resource Cleanup** - Improved PTY manager cleanup and timer management
-- **Enhanced Error Handling** - More robust error handling throughout the server stack
+- Fixed terminal output corruption from race conditions
+- Fixed terminal titles jumping or getting stuck
+- Fixed double logger initialization deleting log files
+- Improved PTY manager cleanup and timer management
+- Enhanced error handling throughout server stack
 
 #### **Simplified Tailscale Setup**
-- Switched to Tailscale's local API for easier configuration
+- Switched to Tailscale's local API for easier configuration (#184)
 - Removed manual token management requirements
-- Streamlined connection UI for minimal setup
+- Streamlined connection UI
 
 ## [1.0.0-beta.5] - 2025-01-29
 
-### 🎨 UI Improvements
-- **Version Display** - Web interface now shows full version including beta suffix (e.g., v1.0.0-beta.5)
-- **Build Filtering** - Cleaner build output by filtering non-actionable Xcode warnings
-- **Mobile Scrolling** - Fixed scrolling issues on mobile web browsers
+#### **UI Improvements**
+- Web interface now shows full version including beta suffix
+- Cleaner build output by filtering non-actionable Xcode warnings
+- Fixed scrolling issues on mobile web browsers
 
-### 🔧 Infrastructure
-- **Single Source of Truth** - Web version now automatically reads from package.json at build time
-- **Version Sync Validation** - Build process validates version consistency between macOS and web
-- **CI Optimization** - Tests only run when relevant files change (iOS/Mac/Web)
-- **E2E Test Suite** - Comprehensive Playwright tests for web frontend reliability
+#### **Infrastructure**
+- Web version automatically reads from package.json at build time
+- Build process validates version consistency between macOS and web
+- Tests only run when relevant files change (iOS/Mac/Web)
+- Comprehensive Playwright tests for web frontend reliability (#120)
 
 ### 🐛 Bug Fixes
-- **No-Auth Mode** - Fixed authentication-related error messages when running with `--no-auth`
-- **Log Streaming** - Fixed frontend log streaming in no-auth mode
-- **Test Reliability** - Resolved flaky tests and improved test infrastructure
 
-### 📝 Developer Experience
-- **Release Documentation** - Enhanced release process documentation with version sync requirements
-- **Test Improvements** - Better test fixtures, helpers, and debugging capabilities
-- **Error Suppression** - Cleaner logs when running in development mode
+- Fixed authentication-related error messages when running with `--no-auth`
+- Fixed frontend log streaming in no-auth mode
+- Resolved flaky tests and improved test infrastructure (#205)
+- Enhanced release process documentation with version sync requirements
+- Better test fixtures, helpers, and debugging capabilities (#73)
+- Cleaner logs when running in development mode
 
 ## [1.0.0-beta.4] - 2025-06-25
 
-- We replaced HTTP Basic auth with System Login or SSH Keys for better security.
+- We replaced HTTP Basic auth with System Login or SSH Keys for better security (#43).
 - Sessions now show exited terminals by default - no more hunting for terminated sessions
 - Reorganized sidebar with cleaner, more compact header and better button placement
 - Added user menu in sidebar for quick access to settings and logout

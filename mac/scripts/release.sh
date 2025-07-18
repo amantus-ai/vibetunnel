@@ -707,6 +707,63 @@ fi
 echo ""
 echo -e "${GREEN}✅ DMG notarized and verified${NC}"
 
+# Size validation
+echo ""
+echo -e "${BLUE}📏 Validating release size...${NC}"
+DMG_SIZE=$(stat -f %z "$DMG_PATH" 2>/dev/null || stat -c %s "$DMG_PATH" 2>/dev/null)
+DMG_SIZE_MB=$((DMG_SIZE / 1024 / 1024))
+echo "DMG size: ${DMG_SIZE_MB} MB"
+
+# Expected size range (42-50 MB based on recent releases)
+MIN_SIZE_MB=40
+MAX_SIZE_MB=50
+
+if [[ $DMG_SIZE_MB -lt $MIN_SIZE_MB ]]; then
+    echo -e "${RED}❌ DMG size is unexpectedly small (${DMG_SIZE_MB} MB < ${MIN_SIZE_MB} MB)${NC}"
+    echo "This might indicate missing components."
+    exit 1
+elif [[ $DMG_SIZE_MB -gt $MAX_SIZE_MB ]]; then
+    echo -e "${YELLOW}⚠️  DMG size is larger than expected (${DMG_SIZE_MB} MB > ${MAX_SIZE_MB} MB)${NC}"
+    echo "Checking for development files in app bundle..."
+    
+    # Mount DMG and check for common issues
+    DMG_MOUNT_CHECK=$(mktemp -d)
+    if hdiutil attach "$DMG_PATH" -mountpoint "$DMG_MOUNT_CHECK" -nobrowse -quiet; then
+        APP_IN_DMG="$DMG_MOUNT_CHECK/VibeTunnel.app"
+        
+        # Check for node_modules
+        if find "$APP_IN_DMG" -name "node_modules" -type d | grep -q .; then
+            echo -e "${RED}❌ Found node_modules in app bundle!${NC}"
+            find "$APP_IN_DMG" -name "node_modules" -type d
+            hdiutil detach "$DMG_MOUNT_CHECK" -quiet
+            exit 1
+        fi
+        
+        # Check for JAR files
+        if find "$APP_IN_DMG" -name "*.jar" -type f | grep -q .; then
+            echo -e "${RED}❌ Found JAR files in app bundle!${NC}"
+            find "$APP_IN_DMG" -name "*.jar" -type f
+            hdiutil detach "$DMG_MOUNT_CHECK" -quiet
+            exit 1
+        fi
+        
+        # List large files
+        echo "Large files in app bundle (>1MB):"
+        find "$APP_IN_DMG" -type f -size +1M -exec ls -lh {} \; | awk '{print $5 " " $9}'
+        
+        hdiutil detach "$DMG_MOUNT_CHECK" -quiet
+    fi
+    
+    echo "Consider investigating the size increase before proceeding."
+    read -p "Continue anyway? (y/n): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "${RED}❌ Release cancelled due to size concerns${NC}"
+        exit 1
+    fi
+else
+    echo -e "${GREEN}✅ DMG size is within expected range${NC}"
+fi
 
 # Step 6: Create GitHub release
 echo ""
@@ -773,26 +830,32 @@ echo "📤 Creating GitHub release..."
 
 # Generate release notes from changelog
 echo "📝 Generating release notes from changelog..."
-CHANGELOG_HTML=""
-if [[ -x "$SCRIPT_DIR/changelog-to-html.sh" ]] && [[ -n "$CHANGELOG_PATH" ]] && [[ -f "$CHANGELOG_PATH" ]]; then
-    # Extract version for changelog (remove any pre-release suffixes for lookup)
-    CHANGELOG_VERSION="$RELEASE_VERSION"
-    if [[ "$CHANGELOG_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+) ]]; then
-        CHANGELOG_BASE="${BASH_REMATCH[1]}"
-        # Try full version first, then base version
-        CHANGELOG_HTML=$("$SCRIPT_DIR/changelog-to-html.sh" "$CHANGELOG_VERSION" "$CHANGELOG_PATH" 2>/dev/null || \
-                        "$SCRIPT_DIR/changelog-to-html.sh" "$CHANGELOG_BASE" "$CHANGELOG_PATH" 2>/dev/null || \
-                        echo "")
+RELEASE_NOTES=""
+
+# Use generate-release-notes.sh for better markdown output
+if [[ -x "$SCRIPT_DIR/generate-release-notes.sh" ]]; then
+    echo "   Using generate-release-notes.sh for version $RELEASE_VERSION"
+    RELEASE_NOTES=$("$SCRIPT_DIR/generate-release-notes.sh" "$RELEASE_VERSION" 2>/dev/null || echo "")
+    
+    # Check if we got valid content
+    if [[ -n "$RELEASE_NOTES" ]] && [[ "$RELEASE_NOTES" != *"This release includes various improvements and bug fixes"* ]]; then
+        echo "✅ Generated release notes from changelog"
+    else
+        echo "⚠️  Could not extract specific changelog for version $RELEASE_VERSION"
+        RELEASE_NOTES=""
     fi
 fi
 
 # Fallback to basic release notes if changelog extraction fails
-if [[ -z "$CHANGELOG_HTML" ]]; then
-    echo "⚠️  Could not extract changelog, using basic release notes"
-    RELEASE_NOTES="Release $RELEASE_VERSION (build $BUILD_NUMBER)"
-else
-    echo "✅ Generated release notes from changelog"
-    RELEASE_NOTES="$CHANGELOG_HTML"
+if [[ -z "$RELEASE_NOTES" ]]; then
+    echo "   Generating fallback release notes..."
+    RELEASE_NOTES="## VibeTunnel $RELEASE_VERSION
+
+This release includes various improvements and bug fixes.
+
+For details, please see the [CHANGELOG](https://github.com/amantus-ai/vibetunnel/blob/main/CHANGELOG.md).
+
+**Build**: $BUILD_NUMBER"
 fi
 
 # Format the release title properly

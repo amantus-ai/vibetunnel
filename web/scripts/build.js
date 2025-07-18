@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const esbuild = require('esbuild');
 const { prodOptions } = require('./esbuild-config.js');
+const { nodePtyPlugin } = require('./node-pty-plugin.js');
 
 async function build() {
   console.log('Starting build process...');
@@ -76,9 +77,22 @@ async function build() {
       target: 'node18',
       format: 'cjs',
       outfile: 'dist/vibetunnel-cli',
+      plugins: [nodePtyPlugin],
       external: [
-        'node-pty',
+        // 'node-pty', // Removed - handled by plugin
         'authenticate-pam',
+        'compression',
+        'helmet',
+        'express',
+        'ws',
+        'jsonwebtoken',
+        'web-push',
+        'bonjour-service',
+        'signal-exit',
+        'http-proxy-middleware',
+        'multer',
+        'mime-types',
+        '@xterm/headless',
       ],
       minify: true,
       sourcemap: false,

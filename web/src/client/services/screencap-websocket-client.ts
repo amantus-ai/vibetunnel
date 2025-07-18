@@ -10,6 +10,7 @@ interface ControlMessage {
   action: string;
   payload?: unknown;
   sessionId?: string;
+  userId?: string;
   error?: string;
 }
 
@@ -21,7 +22,7 @@ export class ScreencapWebSocketClient {
   >();
   private isConnected = false;
   private connectionPromise: Promise<void> | null = null;
-  public sessionId: string | null = null;
+  public sessionId: string;
 
   // Event handlers for WebRTC signaling
   public onOffer?: (data: RTCSessionDescriptionInit) => void;
@@ -31,7 +32,11 @@ export class ScreencapWebSocketClient {
   public onReady?: () => void;
 
   constructor(private wsUrl: string) {
-    logger.log(`📡 ScreencapWebSocketClient created with URL: ${wsUrl}`);
+    // Generate session ID immediately for all requests
+    this.sessionId = crypto.randomUUID();
+    logger.log(
+      `📡 ScreencapWebSocketClient created with URL: ${wsUrl}, sessionId: ${this.sessionId}`
+    );
   }
 
   private async connect(): Promise<void> {
@@ -258,8 +263,9 @@ export class ScreencapWebSocketClient {
         endpoint,
         params,
         requestId, // Include original requestId in payload for mac-side compatibility
+        sessionId: this.sessionId, // Include sessionId in payload as expected by ScreenCaptureApiRequest
       },
-      sessionId: this.sessionId || undefined,
+      sessionId: this.sessionId,
     };
 
     return new Promise((resolve, reject) => {
@@ -294,7 +300,7 @@ export class ScreencapWebSocketClient {
       category: 'screencap',
       action,
       payload: data,
-      sessionId: this.sessionId || undefined,
+      sessionId: this.sessionId,
     };
 
     logger.log(`📤 Sending signal:`, message);
@@ -311,28 +317,23 @@ export class ScreencapWebSocketClient {
   }
 
   async startCapture(params: { type: string; index: number; webrtc?: boolean; use8k?: boolean }) {
-    // Generate a session ID for this capture session if not present
-    if (!this.sessionId) {
-      this.sessionId = crypto.randomUUID();
-      logger.log(`Generated session ID: ${this.sessionId}`);
-    }
+    // Session ID is already generated in constructor
+    logger.log(`Starting capture with session ID: ${this.sessionId}`);
     return this.request('POST', '/capture', params);
   }
 
   async captureWindow(params: { cgWindowID: number; webrtc?: boolean; use8k?: boolean }) {
-    // Generate a session ID for this capture session if not present
-    if (!this.sessionId) {
-      this.sessionId = crypto.randomUUID();
-      logger.log(`Generated session ID: ${this.sessionId}`);
-    }
+    // Session ID is already generated in constructor
+    logger.log(`Capturing window with session ID: ${this.sessionId}`);
     return this.request('POST', '/capture-window', params);
   }
 
   async stopCapture() {
     try {
       const result = await this.request('POST', '/stop');
-      // Clear session ID only after successful stop
-      this.sessionId = null;
+      // Generate new session ID after successful stop
+      this.sessionId = crypto.randomUUID();
+      logger.log(`Generated new session ID after stop: ${this.sessionId}`);
       return result;
     } catch (error) {
       // If stop fails, don't clear the session ID

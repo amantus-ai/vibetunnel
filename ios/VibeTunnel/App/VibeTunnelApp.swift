@@ -8,7 +8,9 @@ struct VibeTunnelApp: App {
     @State private var connectionManager = ConnectionManager.shared
     @State private var navigationManager = NavigationManager()
     @State private var networkMonitor = NetworkMonitor.shared
-    @AppStorage("colorSchemePreference") private var colorSchemePreferenceRaw = "system"
+
+    @AppStorage("colorSchemePreference")
+    private var colorSchemePreferenceRaw = "system"
 
     init() {
         // Configure app logging level

@@ -6,6 +6,11 @@
 **Turn any browser into your Mac terminal.** VibeTunnel proxies your terminals right into the browser, so you can vibe-code anywhere.
 
 [![Download](https://img.shields.io/badge/Download-macOS-blue)](https://github.com/amantus-ai/vibetunnel/releases/latest)
+[![npm version](https://img.shields.io/npm/v/vibetunnel.svg)](https://www.npmjs.com/package/vibetunnel)
+[![Homebrew](https://img.shields.io/homebrew/cask/v/vibetunnel)](https://formulae.brew.sh/cask/vibetunnel)
+[![Node.js 20+](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js)](https://nodejs.org)
+[![Discord](https://img.shields.io/discord/1394471066990280875?label=Discord&logo=discord)](https://discord.gg/3Ub3EUwrcR)
+[![Linux Support](https://img.shields.io/badge/Linux-Supported-brightgreen)](https://www.npmjs.com/package/vibetunnel)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![macOS 14.0+](https://img.shields.io/badge/macOS-14.0+-red)](https://www.apple.com/macos/)
 [![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-Required-orange)](https://support.apple.com/en-us/HT211814)
@@ -281,6 +286,10 @@ The macOS menu bar app supports these authentication modes:
 5. **Never use local bypass without tokens** in production environments
 6. **Monitor access logs** for suspicious authentication patterns
 7. **Default to secure** - explicitly enable less secure options only when needed
+
+### SSH Key Authentication Troubleshooting
+
+If SSH key generation fails with crypto errors, see the [detailed troubleshooting guide](web/README.md#ssh-key-authentication-issues) for solutions.
 
 
 ## npm Package
@@ -674,6 +683,19 @@ When developing the web interface, you often need to test changes on external de
 - **Same network**: Ensure both devices are on the same Wi-Fi network
 - **Firewall**: macOS may prompt to allow incoming connections - click "Allow"
 - **Auto-rebuild**: Changes to the web code are automatically rebuilt, but you need to manually refresh the browser
+
+##### Pasting on Mobile Devices
+
+When using VibeTunnel on mobile browsers (Safari, Chrome), pasting works differently than on desktop:
+
+**To paste on mobile:**
+1. Press the paste button on the keyboard toolbar
+2. A white input box will appear
+3. Long-press inside the white box to bring up the paste menu
+4. Select "Paste" from the menu
+5. The text will be pasted into your terminal session
+
+**Note**: Due to browser security restrictions on non-HTTPS connections, the paste API is limited on mobile devices. The white input box is a workaround that allows clipboard access through the browser's native paste functionality.
 
 #### Future: Hot Module Replacement
 

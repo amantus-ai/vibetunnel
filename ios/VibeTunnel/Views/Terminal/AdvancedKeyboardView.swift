@@ -120,11 +120,11 @@ struct AdvancedKeyboardView: View {
 
                             Spacer()
 
-                            Button(action: {
+                            Button {
                                 withAnimation(Theme.Animation.smooth) {
                                     showCtrlGrid.toggle()
                                 }
-                            }) {
+                            } label: {
                                 Image(systemName: showCtrlGrid ? "chevron.up" : "chevron.down")
                                     .font(.system(size: 12))
                                     .foregroundColor(Theme.Colors.primaryAccent)

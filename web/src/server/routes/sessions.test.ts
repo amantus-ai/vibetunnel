@@ -20,10 +20,19 @@ vi.mock('../utils/logger', () => ({
 }));
 
 describe('sessions routes', () => {
-  let mockPtyManager: any;
-  let mockTerminalManager: any;
-  let mockStreamWatcher: any;
-  let mockActivityMonitor: any;
+  let mockPtyManager: {
+    getSessions: ReturnType<typeof vi.fn>;
+  };
+  let mockTerminalManager: {
+    getTerminal: ReturnType<typeof vi.fn>;
+  };
+  let mockStreamWatcher: {
+    addListener: ReturnType<typeof vi.fn>;
+    removeListener: ReturnType<typeof vi.fn>;
+  };
+  let mockActivityMonitor: {
+    getSessionActivity: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -66,9 +75,19 @@ describe('sessions routes', () => {
       });
 
       // Find the /server/status route handler
-      const routes = (router as any).stack;
+      const routes = (
+        router as unknown as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { get?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
       const statusRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/server/status' && r.route.methods.get
+        (r) => r.route && r.route.path === '/server/status' && r.route.methods.get
       );
 
       expect(statusRoute).toBeTruthy();
@@ -105,9 +124,19 @@ describe('sessions routes', () => {
       });
 
       // Find the /server/status route handler
-      const routes = (router as any).stack;
+      const routes = (
+        router as unknown as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { get?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
       const statusRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/server/status' && r.route.methods.get
+        (r) => r.route && r.route.path === '/server/status' && r.route.methods.get
       );
 
       const mockReq = {} as Request;
@@ -140,9 +169,19 @@ describe('sessions routes', () => {
         activityMonitor: mockActivityMonitor,
       });
 
-      const routes = (router as any).stack;
+      const routes = (
+        router as unknown as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { get?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
       const statusRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/server/status' && r.route.methods.get
+        (r) => r.route && r.route.path === '/server/status' && r.route.methods.get
       );
 
       const mockReq = {} as Request;

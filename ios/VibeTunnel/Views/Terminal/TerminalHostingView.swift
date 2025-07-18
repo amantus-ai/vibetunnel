@@ -294,7 +294,7 @@ struct TerminalHostingView: UIViewRepresentable {
 
                 // Only render up to the last non-space character
                 var currentCol = 0
-                for (_, cell) in row.enumerated() {
+                for cell in row {
                     if currentCol > lastNonSpaceIndex && lastNonSpaceIndex >= 0 {
                         break
                     }
@@ -453,10 +453,8 @@ struct TerminalHostingView: UIViewRepresentable {
                 for segment in segments {
                     // Move cursor to start of segment
                     var colPosition = 0
-                    for i in 0..<segment.start {
-                        if i < newRow.count {
-                            colPosition += newRow[i].width
-                        }
+                    for i in 0..<segment.start where i < newRow.count {
+                        colPosition += newRow[i].width
                     }
                     output += "\u{001B}[\(rowIndex + 1);\(colPosition + 1)H"
 
@@ -531,10 +529,8 @@ struct TerminalHostingView: UIViewRepresentable {
         private func rowsAreIdentical(_ row1: [BufferCell], _ row2: [BufferCell]) -> Bool {
             guard row1.count == row2.count else { return false }
 
-            for i in 0..<row1.count {
-                if !cellsAreIdentical(row1[i], row2[i]) {
-                    return false
-                }
+            for i in 0..<row1.count where !cellsAreIdentical(row1[i], row2[i]) {
+                return false
             }
             return true
         }
@@ -612,11 +608,9 @@ struct TerminalHostingView: UIViewRepresentable {
             for row in 0..<terminalInstance.rows {
                 if let line = terminalInstance.getLine(row: row) {
                     var lineText = ""
-                    for col in 0..<terminalInstance.cols {
-                        if col < line.count {
-                            let char = line[col]
-                            lineText += String(char.getCharacter())
-                        }
+                    for col in 0..<terminalInstance.cols where col < line.count {
+                        let char = line[col]
+                        lineText += String(char.getCharacter())
                     }
                     // Trim trailing spaces
                     content += lineText.trimmingCharacters(in: .whitespaces) + "\n"

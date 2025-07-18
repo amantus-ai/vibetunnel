@@ -314,7 +314,7 @@ extension ServerListViewModel {
 
         // Validate URL
         guard let url = URL(string: cleanURL),
-              let _ = url.host
+              url.host != nil
         else {
             return nil
         }

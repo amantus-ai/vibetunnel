@@ -27,12 +27,40 @@
 set -euo pipefail
 
 VERSION="${1:-}"
-CHANGELOG_FILE="${2:-CHANGELOG.md}"
+CHANGELOG_FILE="${2:-}"
 
 if [ -z "$VERSION" ]; then
     echo "Usage: $0 <version> [changelog_file]"
     echo "Example: $0 0.1 CHANGELOG.md"
     exit 1
+fi
+
+# If no changelog file specified, try to find it
+if [ -z "$CHANGELOG_FILE" ]; then
+    # Get script directory
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    
+    # Try multiple locations in order of preference
+    if [ -f "$SCRIPT_DIR/../../CHANGELOG.md" ]; then
+        CHANGELOG_FILE="$SCRIPT_DIR/../../CHANGELOG.md"
+    elif [ -f "$SCRIPT_DIR/../CHANGELOG.md" ]; then
+        CHANGELOG_FILE="$SCRIPT_DIR/../CHANGELOG.md"
+    elif [ -f "CHANGELOG.md" ]; then
+        CHANGELOG_FILE="CHANGELOG.md"
+    elif [ -f "../CHANGELOG.md" ]; then
+        CHANGELOG_FILE="../CHANGELOG.md"
+    elif [ -f "../../CHANGELOG.md" ]; then
+        CHANGELOG_FILE="../../CHANGELOG.md"
+    else
+        echo "Error: Could not find CHANGELOG.md in any expected location"
+        echo "Searched in:"
+        echo "  - $SCRIPT_DIR/../../CHANGELOG.md (project root from mac/scripts)"
+        echo "  - $SCRIPT_DIR/../CHANGELOG.md (mac directory)"
+        echo "  - ./CHANGELOG.md (current directory)"
+        echo "  - ../CHANGELOG.md (parent directory)"
+        echo "  - ../../CHANGELOG.md (grandparent directory)"
+        exit 1
+    fi
 fi
 
 if [ ! -f "$CHANGELOG_FILE" ]; then

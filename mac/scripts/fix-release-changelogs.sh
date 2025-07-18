@@ -34,13 +34,23 @@ if [[ "${1:-}" == "--dry-run" ]]; then
     echo -e "${YELLOW}DRY RUN MODE - No changes will be made${NC}"
 fi
 
-# Find changelog file
+# Find changelog file - try multiple locations
+CHANGELOG_PATH=""
 if [[ -f "$PROJECT_ROOT/../CHANGELOG.md" ]]; then
     CHANGELOG_PATH="$PROJECT_ROOT/../CHANGELOG.md"
 elif [[ -f "$PROJECT_ROOT/CHANGELOG.md" ]]; then
     CHANGELOG_PATH="$PROJECT_ROOT/CHANGELOG.md"
+elif [[ -f "$SCRIPT_DIR/../../CHANGELOG.md" ]]; then
+    CHANGELOG_PATH="$SCRIPT_DIR/../../CHANGELOG.md"
+elif [[ -f "CHANGELOG.md" ]]; then
+    CHANGELOG_PATH="$(pwd)/CHANGELOG.md"
 else
     echo -e "${RED}❌ Error: CHANGELOG.md not found${NC}"
+    echo "Searched in:"
+    echo "  - $PROJECT_ROOT/../CHANGELOG.md"
+    echo "  - $PROJECT_ROOT/CHANGELOG.md"
+    echo "  - $SCRIPT_DIR/../../CHANGELOG.md"
+    echo "  - $(pwd)/CHANGELOG.md"
     exit 1
 fi
 

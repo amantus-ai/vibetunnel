@@ -166,6 +166,7 @@ describe('screencap routes', () => {
       const mockReq = {} as Request;
       const mockRes = {
         send: vi.fn(),
+        sendFile: vi.fn(),
       } as unknown as Response;
       const mockNext = vi.fn();
 
@@ -185,8 +186,9 @@ describe('screencap routes', () => {
       // Call the handler
       pageHandler(mockReq, mockRes, mockNext);
 
-      expect(mockRes.send).toHaveBeenCalledWith(expect.stringContaining('<!DOCTYPE html>'));
-      expect(mockRes.send).toHaveBeenCalledWith(expect.stringContaining('<screencap-view>'));
+      expect(mockRes.sendFile).toHaveBeenCalledWith(
+        expect.stringContaining('public/screencap.html')
+      );
     });
   });
 

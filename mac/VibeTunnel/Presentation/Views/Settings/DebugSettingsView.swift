@@ -139,7 +139,7 @@ private struct DebugOptionsSection: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Toggle("Verbose Status Check Logging", isOn: $verboseStatusCheckLogging)
                 Text("Log detailed information about remote service status checks.")

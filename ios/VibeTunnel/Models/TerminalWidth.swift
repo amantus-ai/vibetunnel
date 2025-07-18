@@ -119,10 +119,8 @@ class TerminalWidthManager {
     /// Get all available widths including custom ones
     func allWidths() -> [TerminalWidth] {
         var widths = TerminalWidth.allCases
-        for customWidth in customWidths {
-            if !TerminalWidth.allCases.contains(where: { $0.value == customWidth }) {
-                widths.append(.custom(customWidth))
-            }
+        for customWidth in customWidths where !TerminalWidth.allCases.contains(where: { $0.value == customWidth }) {
+            widths.append(.custom(customWidth))
         }
         return widths
     }

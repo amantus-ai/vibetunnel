@@ -41,11 +41,12 @@ VibeTunnel requires two native modules:
 - **Dependencies**: None (vendored implementation)
 
 ### 2. authenticate-pam (Authentication)
-- **Purpose**: PAM (Pluggable Authentication Modules) integration
+- **Purpose**: PAM (Pluggable Authentication Modules) integration for system authentication
 - **Components**:
   - `authenticate_pam.node`: Node.js addon for system authentication
-- **Platforms**: Linux primarily, macOS for compatibility
+- **Platforms**: Both macOS and Linux
 - **Dependencies**: System PAM libraries
+- **Note**: While macOS uses different authentication mechanisms internally (OpenDirectory), VibeTunnel attempts PAM authentication on both platforms as a fallback after SSH key authentication
 
 ## Prebuild System
 
@@ -55,7 +56,9 @@ We use `prebuild` and `prebuild-install` to provide precompiled native modules, 
 ### Coverage
 - **Node.js versions**: 20, 22, 23, 24
 - **Platforms**: macOS (x64, arm64), Linux (x64, arm64)
-- **Total prebuilds**: 32 binaries (16 per native module)
+- **Total prebuilds**: 24 binaries
+  - node-pty: 16 binaries (macOS and Linux, all architectures)
+  - authenticate-pam: 8 binaries (Linux only - macOS builds may fail due to PAM differences)
 
 ### Prebuild Files
 ```
@@ -64,16 +67,22 @@ prebuilds/
 ├── node-pty-v1.0.0-node-v115-darwin-x64.tar.gz
 ├── node-pty-v1.0.0-node-v115-linux-arm64.tar.gz
 ├── node-pty-v1.0.0-node-v115-linux-x64.tar.gz
-├── authenticate-pam-v1.0.5-node-v115-darwin-arm64.tar.gz
-├── authenticate-pam-v1.0.5-node-v115-darwin-x64.tar.gz
 ├── authenticate-pam-v1.0.5-node-v115-linux-arm64.tar.gz
 ├── authenticate-pam-v1.0.5-node-v115-linux-x64.tar.gz
-└── ... (similar for node versions 22, 23, 24)
+└── ... (similar for node versions 22, 23, 24, Linux only)
 ```
 
 Note: Node version numbers map to internal versions (v115=Node 20, v127=Node 22, v131=Node 23, v134=Node 24)
 
 ## Build Process
+
+### Clean Build Approach
+The npm build process uses a clean distribution directory approach that follows npm best practices:
+
+1. **Creates dist-npm/ directory** - Separate from source files
+2. **Generates clean package.json** - Only production fields, no dev dependencies
+3. **Bundles dependencies** - node-pty is bundled directly, no symlinks needed
+4. **Preserves source integrity** - Never modifies source package.json
 
 ### Unified Build (Multi-Platform by Default)
 ```bash
@@ -83,6 +92,7 @@ npm run build:npm
 - Builds native modules for all supported platforms (macOS x64/arm64, Linux x64/arm64)
 - Creates comprehensive prebuilds for zero-dependency installation
 - Generates npm README optimized for package distribution
+- Creates clean dist-npm/ directory for packaging
 
 ### Build Options
 The unified build script supports flexible targeting:
@@ -113,44 +123,45 @@ The build will fail with helpful error messages if Docker is not available.
 
 ### For End Users
 1. **Install package**: `npm install -g vibetunnel`
-2. **Prebuild-install runs**: Attempts to download prebuilt binaries
-3. **Fallback compilation**: If prebuilds fail, compiles from source
-4. **Result**: Working VibeTunnel installation
+2. **Postinstall script runs**: Extracts appropriate prebuilt binaries
+3. **No compilation needed**: Prebuilds included for all supported platforms
+4. **Result**: Working VibeTunnel installation without build tools
+
+### Key Improvements
+- **No symlinks**: node-pty is bundled directly, avoiding postinstall symlink issues
+- **Clean package structure**: Only production files in the npm package
+- **Reliable installation**: Works in restricted environments (Docker, CI)
 
 ### Installation Scripts
-The package uses a multi-stage installation approach:
+The package uses a simplified postinstall approach:
 
 ```json
 {
   "scripts": {
-    "install": "prebuild-install || node scripts/postinstall-npm.js"
+    "postinstall": "node scripts/postinstall.js"
   }
 }
 ```
 
-#### Stage 1: prebuild-install
-- Downloads appropriate prebuilt binary for current platform/Node version
-- Installs to standard locations
-- **Success**: Installation complete, no compilation needed
-- **Failure**: Proceeds to Stage 2
-
-#### Stage 2: postinstall-npm.js
-- **node-pty**: Essential module, installation fails if build fails
-- **authenticate-pam**: Optional module, warns if build fails
-- Provides helpful error messages about required build tools
+#### Postinstall Process
+- **Prebuild extraction**: Extracts the appropriate prebuild for the current platform
+- **No downloads**: All prebuilds are included in the package
+- **No compilation**: Everything is pre-built, no build tools required
+- **Platform detection**: Automatically selects correct binary based on OS and architecture
 
 ## Platform-Specific Details
 
 ### macOS
-- **spawn-helper**: Additional C binary needed for proper PTY operations
-- **Built during install**: spawn-helper compiles via node-gyp when needed
+- **spawn-helper**: Additional C binary needed for proper PTY operations (now prebuilt as universal binary)
+- **Authentication**: Attempts PAM authentication but may fall back to environment variables or SSH keys
 - **Architecture**: Supports both Intel (x64) and Apple Silicon (arm64)
-- **Build tools**: Requires Xcode Command Line Tools for source compilation
+- **Build tools**: Not required with prebuilds; Xcode Command Line Tools only needed for source compilation fallback
 
 ### Linux
-- **PAM libraries**: Requires `libpam0g-dev` for authenticate-pam compilation
+- **PAM authentication**: Full support via authenticate-pam module
+- **PAM libraries**: Requires `libpam0g-dev` for authenticate-pam compilation from source
 - **spawn-helper**: Not used on Linux (macOS-only)
-- **Build tools**: Requires `build-essential` package for source compilation
+- **Build tools**: Not required with prebuilds; `build-essential` only needed for source compilation fallback
 
 ### Docker Build Environment
 Linux prebuilds are created using Docker with:
@@ -368,6 +379,41 @@ The npm package works seamlessly alongside the Mac app:
 **Cause**: Network issues or unsupported platform/Node version
 **Result**: Automatic fallback to source compilation
 
+#### npm_config_prefix Conflict with NVM
+**Error**: Global npm installs fail or install to wrong location when using NVM
+**Symptoms**: 
+- `npm install -g` installs packages to system location instead of NVM directory
+- Command not found errors after global install
+- Permission errors during global installation
+
+**Cause**: The `npm_config_prefix` environment variable overrides NVM's per-version npm configuration
+
+**Detection**: VibeTunnel's postinstall script will warn if this conflict is detected:
+```
+⚠️  Detected npm_config_prefix conflict with NVM
+   npm_config_prefix: /usr/local
+   NVM Node path: /home/user/.nvm/versions/node/v20.19.4/bin/node
+   This may cause npm global installs to fail or install in wrong location.
+```
+
+**Solution**: Unset the conflicting environment variable:
+```bash
+unset npm_config_prefix
+```
+
+**Permanent fix**: Remove or comment out `npm_config_prefix` settings in:
+- `~/.bashrc`
+- `~/.bash_profile` 
+- `~/.profile`
+- `/etc/profile`
+- CI/CD environment configurations
+
+**Common sources of this issue**:
+- Previous system-wide npm installations
+- Docker containers with npm pre-installed
+- CI/CD environments with global npm configuration
+- Package managers that set global npm prefix
+
 ### Debugging Installation
 ```bash
 # Verbose npm install
@@ -404,3 +450,113 @@ npm install -g vibetunnel --build-from-source
 - `scripts/postinstall-npm.js` - Fallback compilation logic
 - `.prebuildrc` - Prebuild configuration for target platforms
 - `package.json` - Package configuration and file inclusions
+
+## Release Notes
+
+### Version 1.0.0-beta.11 (2025-07-16)
+
+**Published to npm**: Successfully published as `vibetunnel@beta`
+
+**Key Features**:
+- Cross-platform support for macOS (x64, arm64) and Linux (x64, arm64)
+- Pre-built native binaries for Node.js versions 20, 22, 23, and 24
+- Zero-dependency installation experience (no build tools required)
+- Comprehensive prebuild system with 24 total binaries included
+
+**Release Process Learnings**:
+
+1. **Version Synchronization**:
+   - Must update version in both `web/package.json` and `mac/VibeTunnel/version.xcconfig`
+   - Build process validates version sync to prevent mismatches
+   - Version mismatch will cause build failure with clear error message
+
+2. **NPM Publishing Requirements**:
+   - Beta versions require `--tag beta` flag when publishing
+   - Previously published versions cannot be overwritten (must increment version)
+   - Use `--access public` flag for public package publishing
+
+3. **Package Build Process**:
+   - `pnpm run build:npm` creates the complete package with all prebuilds
+   - Build output filename may show older version in logs but creates correct package
+   - Always verify package version in `dist-npm/package.json` before publishing
+
+4. **Docker Testing Verification**:
+   - Successfully tested on Ubuntu 22.04 (both ARM64 and x64 architectures)
+   - Installation works without any build tools installed
+   - Server starts correctly with all expected functionality
+   - HTTP endpoints respond properly
+
+5. **Package Structure**:
+   - Final package size: 8.3 MB (24.9 MB unpacked)
+   - Contains 198 files including all prebuilds and web assets
+   - Proper postinstall script ensures seamless installation
+
+**Installation**:
+```bash
+npm install -g vibetunnel@beta
+```
+
+**Testing Commands Used**:
+```bash
+# Build the package
+cd web && pnpm run build:npm
+
+# Verify package contents
+tar -tzf vibetunnel-1.0.0-beta.11.tgz | head -50
+
+# Test with Docker
+docker build -t vibetunnel-test .
+docker run --rm vibetunnel-test
+
+# Test cross-platform
+docker run --rm --platform linux/amd64 vibetunnel-test
+```
+
+### Version History
+
+- **1.0.0-beta.11.1** (2025-07-16): Fixed npm installation issues, latest stable release
+- **1.0.0-beta.11** (2025-07-16): Initial release with full prebuild system
+- **1.0.0-beta.10** (2025-07-14): Previous version (unpublished)
+
+## NPM Distribution Tags
+
+VibeTunnel uses npm dist-tags to manage different release channels:
+
+### Current Tags
+- **latest**: Points to the most stable release (currently 1.0.0-beta.11.1)
+- **beta**: Points to the latest beta release (currently 1.0.0-beta.11.1)
+
+### Managing Tags
+
+```bash
+# View current tags
+npm dist-tag ls vibetunnel
+
+# Set a version as latest
+npm dist-tag add vibetunnel@1.0.0-beta.11.1 latest
+
+# Add a new tag
+npm dist-tag add vibetunnel@1.0.0-beta.12 next
+
+# Remove a tag
+npm dist-tag rm vibetunnel next
+```
+
+### Installation by Tag
+
+```bash
+# Install latest stable (default)
+npm install -g vibetunnel
+
+# Install specific tag
+npm install -g vibetunnel@beta
+npm install -g vibetunnel@latest
+
+# Install specific version
+npm install -g vibetunnel@1.0.0-beta.11.1
+```
+
+### Best Practices
+- Always tag beta releases with `beta` tag
+- Only promote to `latest` after testing confirms stability
+- Use semantic versioning for beta iterations (e.g., 1.0.0-beta.11.1, 1.0.0-beta.11.2)

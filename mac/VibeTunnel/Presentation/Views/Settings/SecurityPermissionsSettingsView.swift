@@ -168,7 +168,10 @@ private struct SecuritySection: View {
                         .frame(alignment: .trailing)
                         .onChange(of: authMode) { _, newValue in
                             // Save the authentication mode
-                            UserDefaults.standard.set(newValue.rawValue, forKey: AppConstants.UserDefaultsKeys.authenticationMode)
+                            UserDefaults.standard.set(
+                                newValue.rawValue,
+                                forKey: AppConstants.UserDefaultsKeys.authenticationMode
+                            )
 
                             Task {
                                 logger.info("Authentication mode changed to: \(newValue.rawValue)")

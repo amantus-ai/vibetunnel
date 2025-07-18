@@ -1,0 +1,130 @@
+name: NPM Package Test
+
+on:
+  push:
+    branches: [ main, npm-build ]
+    paths:
+      - 'web/**'
+      - '.github/workflows/npm-test.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'web/**'
+      - '.github/workflows/npm-test.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+defaults:
+  run:
+    working-directory: web
+
+jobs:
+  test-npm-package:
+    name: Test NPM Package
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          cache-dependency-path: 'web/pnpm-lock.yaml'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpam0g-dev build-essential python3 make g++
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build node-pty
+        run: |
+          cd node-pty && npm install && npm run build
+
+      - name: Build npm package
+        run: pnpm run build:npm -- --current-only
+
+      - name: Test npm package installation
+        run: |
+          # Create a test directory
+          mkdir -p /tmp/npm-test
+          cd /tmp/npm-test
+          
+          # Copy the built package
+          cp ${{ github.workspace }}/web/vibetunnel-*.tgz .
+          
+          # Install the package globally
+          npm install -g vibetunnel-*.tgz
+          
+          # Verify installation
+          echo "=== Verifying installation ==="
+          which vibetunnel || (echo "vibetunnel not found" && exit 1)
+          which vt || echo "vt command not installed (expected on Linux)"
+          
+          # Check if node-pty was extracted correctly
+          echo "=== Checking node-pty extraction ==="
+          # With the new build, node-pty is bundled directly in the package
+          ls -la $(npm root -g)/vibetunnel/node-pty/ || echo "Checking node-pty structure..."
+          ls -la $(npm root -g)/vibetunnel/node-pty/build/Release/pty.node || echo "node-pty prebuild will be extracted on postinstall"
+          
+          # Check package structure
+          echo "=== Checking package structure ==="
+          ls -la $(npm root -g)/vibetunnel/
+          ls -la $(npm root -g)/vibetunnel/lib/
+          
+          # Note: authenticate-pam is installed as a regular dependency now
+          # It's not bundled in the new clean build approach
+          
+          # Test server startup
+          echo "=== Testing server startup ==="
+          vibetunnel --port 4020 --no-auth &
+          SERVER_PID=$!
+          
+          # Wait for server to start
+          sleep 5
+          
+          # Check if server is running
+          if ps -p $SERVER_PID > /dev/null; then
+            echo "✅ Server process is running"
+          else
+            echo "❌ Server process died"
+            exit 1
+          fi
+          
+          # Test HTTP endpoint
+          if curl -s -f http://localhost:4020 > /dev/null; then
+            echo "✅ HTTP server is responding"
+          else
+            echo "❌ HTTP server not responding"
+            kill $SERVER_PID 2>/dev/null
+            exit 1
+          fi
+          
+          # Test API endpoint
+          RESPONSE=$(curl -s http://localhost:4020/api/sessions)
+          # Check if response is an array (either empty [] or with sessions)
+          if echo "$RESPONSE" | grep -E '^\[.*\]$' > /dev/null; then
+            echo "✅ API is responding correctly"
+            echo "Response: $RESPONSE"
+          else
+            echo "❌ API not responding correctly"
+            echo "Response: $RESPONSE"
+            kill $SERVER_PID 2>/dev/null
+            exit 1
+          fi
+          
+          # Clean up
+          kill $SERVER_PID
+          echo "✅ All tests passed!"

@@ -2,7 +2,9 @@ import SwiftUI
 
 /// Login view for authenticating with the VibeTunnel server
 struct LoginView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss)
+    private var dismiss
+
     @Binding var isPresented: Bool
 
     let serverConfig: ServerConfig

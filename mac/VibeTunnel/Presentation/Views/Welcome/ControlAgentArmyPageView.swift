@@ -52,14 +52,25 @@ struct ControlAgentArmyPageView: View {
                             .cornerRadius(6)
                     }
 
-                    Text(
-                        "Session titles appear in the menu bar and terminal windows.\nUse the dashboard to rename sessions manually, or use the magic wand with Claude/Gemini."
-                    )
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 420)
-                    .fixedSize(horizontal: false, vertical: true)
+                    VStack(spacing: 8) {
+                        Text(
+                            "Session titles appear in the menu bar and terminal windows.\nUse the dashboard to rename sessions manually, or use the magic wand with Claude/Gemini."
+                        )
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 420)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                        if let url = URL(string: "https://steipete.me/posts/command-your-claude-code-army-reloaded") {
+                            Link(
+                                "Learn more",
+                                destination: url
+                            )
+                            .font(.caption)
+                            .foregroundColor(.accentColor)
+                        }
+                    }
                 }
                 .padding(.vertical, 12)
             }

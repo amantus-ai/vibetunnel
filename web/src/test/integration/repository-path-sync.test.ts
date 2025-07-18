@@ -112,7 +112,7 @@ describe('Repository Path Bidirectional Sync Integration', () => {
     });
 
     // Track received messages
-    const receivedMessages: any[] = [];
+    const receivedMessages: Array<{ type: string; data?: unknown }> = [];
     client.on('message', (data) => {
       receivedMessages.push(JSON.parse(data.toString()));
     });
@@ -168,7 +168,7 @@ describe('Repository Path Bidirectional Sync Integration', () => {
       client.on('open', resolve);
     });
 
-    const receivedMessages: any[] = [];
+    const receivedMessages: Array<{ type: string; data?: unknown }> = [];
     client.on('message', (data) => {
       receivedMessages.push(JSON.parse(data.toString()));
     });
@@ -211,7 +211,7 @@ describe('Repository Path Bidirectional Sync Integration', () => {
       client1.on('open', resolve);
     });
 
-    const client1Messages: any[] = [];
+    const client1Messages: Array<{ type: string; data?: unknown }> = [];
     client1.on('message', (data) => {
       client1Messages.push(JSON.parse(data.toString()));
     });
@@ -222,7 +222,7 @@ describe('Repository Path Bidirectional Sync Integration', () => {
       client2.on('open', resolve);
     });
 
-    const client2Messages: any[] = [];
+    const client2Messages: Array<{ type: string; data?: unknown }> = [];
     client2.on('message', (data) => {
       client2Messages.push(JSON.parse(data.toString()));
     });

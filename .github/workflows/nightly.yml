@@ -1,0 +1,236 @@
+name: Nightly Release Build
+
+on:
+  schedule:
+    # Run at 2 AM UTC every day (10 PM EST / 7 PM PST)
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  release-build-test:
+    name: Build and Test Release Configuration
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 60
+    
+    steps:
+    - name: Clean workspace
+      run: |
+        # Clean workspace for self-hosted runner
+        rm -rf * || true
+        rm -rf .* || true
+        
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Verify Xcode
+      run: |
+        xcodebuild -version
+        swift --version
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 9
+        dest: ~/pnpm-${{ github.run_id }}
+    
+    - name: Cache Homebrew packages
+      uses: actions/cache@v4
+      continue-on-error: true
+      with:
+        path: |
+          ~/Library/Caches/Homebrew
+          /opt/homebrew/Cellar/swiftlint
+          /opt/homebrew/Cellar/swiftformat
+          /opt/homebrew/Cellar/xcbeautify
+        key: ${{ runner.os }}-brew-${{ hashFiles('.github/workflows/mac.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-brew-
+    
+    - name: Install tools
+      run: |
+        # Install or update required tools
+        MAX_ATTEMPTS=3
+        WAIT_TIME=5
+        
+        for attempt in $(seq 1 $MAX_ATTEMPTS); do
+          echo "Tool installation attempt $attempt of $MAX_ATTEMPTS"
+          
+          # Check if another brew process is running
+          if pgrep -x "brew" > /dev/null; then
+            echo "Another brew process detected, waiting ${WAIT_TIME}s..."
+            sleep $WAIT_TIME
+            WAIT_TIME=$((WAIT_TIME * 2))  # Exponential backoff
+            continue
+          fi
+          
+          # Update Homebrew and install all tools in one command
+          if brew update && brew install swiftlint swiftformat xcbeautify; then
+            echo "Successfully installed/upgraded all tools"
+            break
+          else
+            if [ $attempt -eq $MAX_ATTEMPTS ]; then
+              echo "Failed to install tools after $MAX_ATTEMPTS attempts"
+              exit 1
+            fi
+            echo "Command failed, waiting ${WAIT_TIME}s before retry..."
+            sleep $WAIT_TIME
+            WAIT_TIME=$((WAIT_TIME * 2))  # Exponential backoff
+          fi
+        done
+        
+        # Show versions
+        echo "SwiftLint: $(swiftlint --version || echo 'not found')"
+        echo "SwiftFormat: $(swiftformat --version || echo 'not found')"
+        echo "xcbeautify: $(xcbeautify --version || echo 'not found')"
+    
+    - name: Cache pnpm store
+      uses: actions/cache@v4
+      continue-on-error: true
+      with:
+        path: ~/.local/share/pnpm/store
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('web/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
+
+    - name: Install web dependencies
+      run: |
+        cd web
+        # Clean any stale lock files
+        rm -f .pnpm-store.lock .pnpm-debug.log || true
+        # Set pnpm to use fewer workers to avoid crashes on self-hosted runners
+        export NODE_OPTIONS="--max-old-space-size=4096"
+        pnpm config set store-dir ~/.local/share/pnpm/store
+        pnpm config set package-import-method hardlink
+        # Install with retries
+        for i in 1 2 3; do
+          echo "Install attempt $i"
+          if pnpm install --frozen-lockfile; then
+            echo "pnpm install succeeded"
+            # Force rebuild of native modules
+            echo "Rebuilding native modules..."
+            pnpm rebuild || true
+            break
+          else
+            echo "pnpm install failed, cleaning and retrying..."
+            rm -rf node_modules .pnpm-store.lock || true
+            sleep 5
+          fi
+        done
+    
+    - name: Build web artifacts
+      run: |
+        echo "Building web artifacts..."
+        cd web
+        export CI=true
+        pnpm run build
+        echo "Web artifacts built successfully"
+    
+    - name: Resolve Dependencies
+      run: |
+        echo "Resolving Swift package dependencies..."
+        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace || echo "Dependency resolution completed"
+    
+    # BUILD RELEASE CONFIGURATION
+    - name: Build Release (Universal Binary)
+      timeout-minutes: 20
+      run: |
+        echo "Building Release configuration with universal binary..."
+        set -o pipefail && \
+        xcodebuild build \
+          -workspace VibeTunnel.xcworkspace \
+          -scheme VibeTunnel-Mac \
+          -configuration Release \
+          -destination "generic/platform=macOS" \
+          -archivePath build/VibeTunnel.xcarchive \
+          -showBuildTimingSummary \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
+          CODE_SIGN_ENTITLEMENTS="" \
+          ENABLE_HARDENED_RUNTIME=NO \
+          PROVISIONING_PROFILE_SPECIFIER="" \
+          DEVELOPMENT_TEAM="" \
+          ONLY_ACTIVE_ARCH=NO \
+          archive | xcbeautify
+        
+        echo "Release build completed successfully"
+    
+    # TEST RELEASE BUILD
+    - name: Test Release Configuration
+      timeout-minutes: 20
+      run: |
+        echo "Running tests on Release configuration..."
+        set -o pipefail && \
+        xcodebuild test \
+          -workspace VibeTunnel.xcworkspace \
+          -scheme VibeTunnel-Mac \
+          -configuration Release \
+          -destination "platform=macOS" \
+          -enableCodeCoverage YES \
+          -resultBundlePath TestResults-Release.xcresult \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
+          COMPILER_INDEX_STORE_ENABLE=NO | xcbeautify || {
+          echo "::error::Release configuration tests failed"
+          # Try to get more detailed error information
+          echo "=== Attempting to get test failure details ==="
+          xcrun xcresulttool get --path TestResults-Release.xcresult --format json 2>/dev/null | jq '.issues._values[]? | select(.severity == "error")' 2>/dev/null || true
+          exit 1
+        }
+        echo "Release tests completed successfully"
+    
+    # PERFORMANCE VALIDATION
+    - name: Validate Release Binary
+      run: |
+        echo "=== Validating Release Binary ==="
+        ARCHIVE_PATH="build/VibeTunnel.xcarchive"
+        APP_PATH="$ARCHIVE_PATH/Products/Applications/VibeTunnel.app"
+        
+        if [ -d "$APP_PATH" ]; then
+          echo "Found VibeTunnel.app at: $APP_PATH"
+          
+          # Check binary architectures
+          echo -e "\n=== Binary Architecture ==="
+          lipo -info "$APP_PATH/Contents/MacOS/VibeTunnel" || echo "Binary not found"
+          
+          # Check binary size
+          echo -e "\n=== Binary Size ==="
+          du -sh "$APP_PATH" || echo "Could not determine app size"
+          
+          # Check if optimizations were applied (Release should be smaller than Debug)
+          echo -e "\n=== Optimization Check ==="
+          # Look for debug symbols - Release builds should have minimal symbols
+          nm "$APP_PATH/Contents/MacOS/VibeTunnel" 2>/dev/null | grep -c "debug" || echo "No debug symbols found (good for Release)"
+          
+          # Verify entitlements
+          echo -e "\n=== Entitlements ==="
+          codesign -d --entitlements - "$APP_PATH" 2>&1 || echo "No code signing (expected in CI)"
+        else
+          echo "::warning::Release archive not found at expected location"
+        fi
+    
+    # NOTIFY ON FAILURE
+    - name: Notify on Failure
+      if: failure()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const issue = await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `Nightly Release Build Failed - ${new Date().toISOString().split('T')[0]}`,
+            body: `The nightly release build failed. Please check the [workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) for details.`,
+            labels: ['ci', 'nightly-build']
+          });
+          console.log(`Created issue #${issue.data.number}`);

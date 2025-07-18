@@ -9,7 +9,8 @@ const _logger = createLogger('screencap-sidebar');
 export class ScreencapSidebar extends LitElement {
   static styles = css`
     :host {
-      display: block;
+      display: flex;
+      flex-direction: column;
       height: 100%;
       background: rgb(var(--color-bg));
       border-right: 1px solid rgb(var(--color-border));

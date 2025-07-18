@@ -297,22 +297,22 @@ create_appcast_item() {
     
     # Try to get changelog from root CHANGELOG.md using changelog-to-html.sh
     local changelog_html=""
-    local changelog_script="$(dirname "$SCRIPT_DIR")/scripts/changelog-to-html.sh"
-    local changelog_file="$(dirname "$(dirname "$SCRIPT_DIR")")/CHANGELOG.md"
+    local changelog_script="$SCRIPT_DIR/changelog-to-html.sh"
     
-    if [ -x "$changelog_script" ] && [ -f "$changelog_file" ]; then
+    if [ -x "$changelog_script" ]; then
         # Extract version number from tag (remove 'v' prefix)
         local version_for_changelog="${version_string}"
         
         # Try multiple version formats
         # First try as-is (e.g., "1.0-beta.2")
-        changelog_html=$("$changelog_script" "$version_for_changelog" "$changelog_file" 2>/dev/null || echo "")
+        # The changelog-to-html.sh script will find CHANGELOG.md automatically
+        changelog_html=$("$changelog_script" "$version_for_changelog" 2>/dev/null || echo "")
         
         # If that fails and it's a pre-release, try with .0 added (e.g., "1.0.0-beta.2")
         if [ -z "$changelog_html" ] || [[ "$changelog_html" == *"Latest version of VibeTunnel"* ]]; then
             if [[ "$version_for_changelog" =~ ^([0-9]+\.[0-9]+)(-.*)?$ ]]; then
                 local expanded_version="${BASH_REMATCH[1]}.0${BASH_REMATCH[2]}"
-                local temp_html=$("$changelog_script" "$expanded_version" "$changelog_file" 2>/dev/null || echo "")
+                local temp_html=$("$changelog_script" "$expanded_version" 2>/dev/null || echo "")
                 if [ -n "$temp_html" ] && [[ "$temp_html" != *"Latest version of VibeTunnel"* ]]; then
                     changelog_html="$temp_html"
                 fi
@@ -323,7 +323,7 @@ create_appcast_item() {
         if [ -z "$changelog_html" ] || [[ "$changelog_html" == *"Latest version of VibeTunnel"* ]]; then
             if [[ "$version_for_changelog" =~ ^([0-9]+\.[0-9]+\.[0-9]+) ]]; then
                 local base_version="${BASH_REMATCH[1]}"
-                changelog_html=$("$changelog_script" "$base_version" "$changelog_file" 2>/dev/null || echo "")
+                changelog_html=$("$changelog_script" "$base_version" 2>/dev/null || echo "")
             fi
         fi
     fi

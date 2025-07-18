@@ -97,13 +97,13 @@ struct TerminalWidthSheet: View {
                     // Width presets
                     VStack(spacing: Theme.Spacing.medium) {
                         ForEach(widthPresets, id: \.columns) { preset in
-                            Button(action: {
+                            Button {
                                 if !isResizeBlockedByServer {
                                     selectedWidth = preset.columns
                                     HapticFeedback.impact(.light)
                                     dismiss()
                                 }
-                            }) {
+                            } label: {
                                 HStack(spacing: Theme.Spacing.medium) {
                                     // Icon
                                     Image(systemName: preset.icon)
@@ -220,13 +220,13 @@ struct TerminalWidthSheet: View {
                             }
                         } else {
                             // Show custom button
-                            Button(action: {
+                            Button {
                                 if !isResizeBlockedByServer {
                                     withAnimation(Theme.Animation.smooth) {
                                         showCustomInput = true
                                     }
                                 }
-                            }) {
+                            } label: {
                                 HStack {
                                     Image(systemName: "textformat.123")
                                         .font(.system(size: 20))

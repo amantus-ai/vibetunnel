@@ -30,12 +30,19 @@ const logger = createLogger('screencap-view');
 export class ScreencapView extends LitElement {
   static styles = css`
     :host {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
       background: rgb(var(--color-bg));
       color: rgb(var(--color-text));
       font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+      overflow: hidden;
       
       /* Honor safe areas on mobile devices */
       padding-top: env(safe-area-inset-top);
@@ -118,14 +125,18 @@ export class ScreencapView extends LitElement {
       display: flex;
       flex: 1;
       overflow: hidden;
+      min-height: 0; /* Critical for flexbox children to shrink */
     }
 
     .sidebar {
       width: 320px;
       transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), margin-left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-      overflow: hidden;
+      overflow-y: auto;
+      overflow-x: hidden;
       flex-shrink: 0;
       position: relative;
+      display: flex;
+      flex-direction: column;
     }
 
     .sidebar.collapsed {
@@ -139,6 +150,7 @@ export class ScreencapView extends LitElement {
       flex-direction: column;
       overflow: hidden;
       min-width: 0; /* Allow content to shrink below its minimum content size */
+      min-height: 0; /* Allow content to shrink below its minimum content size */
     }
 
     .capture-area {
@@ -1090,7 +1102,8 @@ export class ScreencapView extends LitElement {
 
   render() {
     return html`
-      <div class="header">
+      <div style="display: flex; flex-direction: column; height: 100%; width: 100%;">
+        <div class="header">
         <button 
           class="back-btn"
           @click=${() => {
@@ -1223,6 +1236,7 @@ export class ScreencapView extends LitElement {
           </div>
         </div>
       </div>
+      </div>
     `;
   }
 
@@ -1336,7 +1350,7 @@ export class ScreencapView extends LitElement {
 
     // Show overlay when not capturing or waiting to start
     return html`
-      <div class.capture-overlay>
+      <div class="capture-overlay">
         <div class="status-message ${this.status}">
           ${
             this.status === 'loading'

@@ -210,6 +210,13 @@ Before running ANY release commands, verify these items:
       hdiutil detach "$volume" -force
   done
   ```
+- [ ] **Check for unexpected files in the app bundle**
+  ```bash
+  # Check for node_modules or other development files
+  find build/Build/Products/Release/VibeTunnel.app -name "node_modules" -type d
+  find build/Build/Products/Release/VibeTunnel.app -name "*.jar" -type f
+  # Should return empty - no development files in release build
+  ```
 
 ## 🚀 Creating a Release
 
@@ -238,7 +245,7 @@ These scripts validate your environment is ready for release.
 it will create `1.0.0-beta.2-beta.2` which is wrong!
 
 ### Step 3: Create/Update CHANGELOG.md
-Before creating any release, ensure the CHANGELOG.md file exists and contains a proper section for the version being released. If this is your first release, create a CHANGELOG.md file in the project root:
+Before creating any release, ensure the CHANGELOG.md file exists in the project root (`/vibetunnel/CHANGELOG.md`) and contains a proper section for the version being released:
 
 ```markdown
 # Changelog
@@ -252,14 +259,19 @@ All notable changes to VibeTunnel will be documented in this file.
 ...
 ```
 
-**CRITICAL**: The appcast generation relies on the local CHANGELOG.md file, NOT the GitHub release description. The changelog must be added to CHANGELOG.md BEFORE running the release script.
+**CRITICAL**: The release process uses the CHANGELOG.md file in the project root as the single source of truth for release notes. The changelog must be updated with the new version section BEFORE running the release script.
 
-**IMPORTANT - Per-Release Changelog**: The release script automatically extracts ONLY the changelog section for the specific version being released. For example:
-- When releasing beta.10, only the `## [1.0.0-beta.10]` section is used
-- When releasing beta.11, only the `## [1.0.0-beta.11]` section is used
-- This keeps GitHub release pages focused and prevents endless scrolling to find download links
+**Key Points**:
+- **Location**: CHANGELOG.md must be at `/vibetunnel/CHANGELOG.md` (project root, NOT in `mac/`)
+- **No RELEASE_NOTES.md files**: The release process does NOT use RELEASE_NOTES.md files
+- **Per-Version Extraction**: The release script automatically extracts ONLY the changelog section for the specific version being released
+- **GitHub Release**: Uses the extracted markdown content directly (via `generate-release-notes.sh`)
+- **Sparkle Appcast**: Converts the markdown to HTML for update dialogs
 
-The script uses `changelog-to-html.sh` to extract the specific version's changes, not the entire changelog history.
+The release script uses these helper scripts:
+- `generate-release-notes.sh` - Extracts markdown release notes for GitHub
+- `changelog-to-html.sh` - Converts markdown to HTML for Sparkle appcast
+- `find-changelog.sh` - Reliably locates CHANGELOG.md from any directory
 
 ### Step 4: Create the Release
 
@@ -314,6 +326,19 @@ The script will:
 - **IMPORTANT**: Verify the GitHub release shows ONLY the current version's changelog, not the entire history
   - If it shows the full changelog, the release notes were not generated correctly
   - The release should only show changes for that specific version (e.g., beta.10 shows only beta.10 changes)
+- **Monitor app size**: Verify the DMG size is reasonable (expected: ~42-44 MB)
+  ```bash
+  # Check DMG size
+  ls -lh build/VibeTunnel-*.dmg
+  # Compare with previous releases
+  gh release list --limit 5 | grep -E "beta|stable"
+  # Download and check sizes
+  for tag in $(gh release list --limit 5 | awk '{print $3}'); do
+      echo "=== $tag ==="
+      gh release view "$tag" --json assets --jq '.assets[] | "\(.name): \(.size) bytes (\(.size/1024/1024 | floor) MB)"'
+  done
+  ```
+  - If size increased significantly (>5MB), investigate for bundled development files
 - Verify the appcast was updated correctly with proper changelog content
 - **Critical**: Verify the Sparkle signature is correct:
   ```bash
@@ -592,6 +617,40 @@ VibeTunnel supports two update channels:
 # If version.xcconfig has "1.0.0-beta.2"
 ./scripts/release.sh beta 2  # Correct - matches the suffix
 ```
+
+### App Size Issues
+
+#### Unexpected Size Increase
+**Problem**: DMG size increased significantly (>5MB) between releases.
+
+**Common Causes**:
+1. **Development dependencies bundled**: node_modules, JAR files, or other dev files
+2. **Build cache not cleaned**: Old artifacts included
+3. **New frameworks added**: Legitimate size increase from new dependencies
+
+**Solution**:
+```bash
+# 1. Check app bundle contents
+find build/Build/Products/Release/VibeTunnel.app -name "node_modules" -type d
+find build/Build/Products/Release/VibeTunnel.app -name "*.jar" -type f
+find build/Build/Products/Release/VibeTunnel.app -type f -size +1M -ls
+
+# 2. Compare with previous release
+# Extract previous DMG
+hdiutil attach VibeTunnel-previous.dmg
+du -sh /Volumes/VibeTunnel/VibeTunnel.app/Contents/*
+hdiutil detach /Volumes/VibeTunnel
+
+# 3. Clean and rebuild
+./scripts/clean.sh
+rm -rf ~/Library/Developer/Xcode/DerivedData/VibeTunnel-*
+./scripts/build.sh --configuration Release
+```
+
+**Prevention**:
+- Add size checks to release script
+- Ensure .gitignore includes all development paths
+- Regular audits of app bundle contents
 
 ### Common Version Sync Issues
 
@@ -876,6 +935,41 @@ sign_update [dmg-url] --account VibeTunnel
   - `mac/CHANGELOG.md` (preferred by release script)
   - Project root `/vibetunnel/CHANGELOG.md` (common location)
 - **Sparkle private key**: Usually in `mac/private/sparkle_private_key`
+
+## 📚 Helper Scripts
+
+### Changelog Management Scripts
+
+#### `generate-release-notes.sh`
+Extracts release notes for a specific version from CHANGELOG.md:
+```bash
+# Get release notes for a specific version
+./scripts/generate-release-notes.sh 1.0.0-beta.11
+
+# Works from any directory
+cd /tmp && /path/to/scripts/generate-release-notes.sh 1.0.0-beta.11
+```
+
+#### `find-changelog.sh`
+Reliably locates CHANGELOG.md from any directory:
+```bash
+# Find the changelog file
+./scripts/find-changelog.sh
+# Output: /path/to/vibetunnel/CHANGELOG.md
+```
+
+#### `fix-release-changelogs.sh`
+Updates existing GitHub releases to use per-version changelogs:
+```bash
+# Dry run to see what would change
+./scripts/fix-release-changelogs.sh --dry-run
+
+# Actually update releases
+./scripts/fix-release-changelogs.sh
+
+# Update a specific release
+./scripts/fix-release-changelogs.sh v1.0.0-beta.11
+```
 
 ## 📚 Common Commands
 

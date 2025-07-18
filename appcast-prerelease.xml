@@ -6,6 +6,128 @@
         <description>VibeTunnel pre-release and beta updates feed</description>
         <language>en</language>
         <item>
+            <title>VibeTunnel 1.0.0-beta.12</title>
+            <link>https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.12/VibeTunnel-1.0.0-beta.12.dmg</link>
+            <sparkle:version>201</sparkle:version>
+            <sparkle:shortVersionString>1.0.0-beta.12</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>VibeTunnel 1.0.0-beta.12</h2>
+                <p><strong>Pre-release version</strong></p>
+                
+                <h4>Welcome Screen Performance</h4>
+                <ul>
+                <li>Background folder scanning eliminates UI freeze when opening the welcome screen (#394)</li>
+                <li>Improved startup performance with optimized web directory structure</li>
+                <li>Much smoother experience when working with large project directories</li>
+                </ul>
+                
+                <h4>SSH Agent Reliability</h4>
+                <ul>
+                <li>Fixed SSH key generation errors on non-localhost HTTP connections (#392)</li>
+                <li>SSH agent now works correctly when accessing VibeTunnel via ngrok or from another device</li>
+                <li>Improved security and reliability for remote access scenarios</li>
+                </ul>
+                
+                <h4>npm Package Stability</h4>
+                <ul>
+                <li>Fixed critical installation issues on Linux systems (#393)</li>
+                <li><code>authenticate-pam</code> now properly handled as optional dependency</li>
+                <li>Enhanced cross-platform compatibility for Ubuntu and other distributions</li>
+                <li>Comprehensive vt command tests ensure reliability across environments</li>
+                </ul>
+                
+                <h4>Developer Experience</h4>
+                <ul>
+                <li>Fixed missing public directory in Mac app bundle (#392)</li>
+                <li>Resolved TypeScript type annotations throughout codebase</li>
+                <li>Improved lint compliance and code quality</li>
+                <li>Streamlined CI/CD workflow for more reliable builds</li>
+                </ul>
+                
+                <h3>🐛 Bug Fixes</h3>
+                <ul>
+                <li>Fixed vt command syntax errors on Linux systems (#393)</li>
+                <li>Fixed welcome screen lag during folder scanning (#394)</li>
+                <li>Resolved missing icons and resources in Mac app</li>
+                <li>Fixed lint and type errors across the codebase</li>
+                <li>Cleaned up duplicate and stray files from web directory</li>
+                </ul>
+            ]]></description>
+            <pubDate>Thu, 17 Jul 2025 19:35:43 +0200</pubDate>
+            <enclosure url="https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.12/VibeTunnel-1.0.0-beta.12.dmg" 
+                       sparkle:version="201" 
+                       sparkle:shortVersionString="1.0.0-beta.12" 
+                       length="51126870" 
+                       type="application/x-apple-diskimage" 
+                       sparkle:edSignature="anyeSJmQ36B3lPaQmsWbVPKZMbn9Fk+hBXHK1/ghHzOoEWGLO32DsreDdr5tmBBEwRIlI7019byHkcmAFYSxBg=="/>
+        </item>
+        <item>
+            <title>VibeTunnel 1.0.0-beta.11</title>
+            <link>https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.11/VibeTunnel-1.0.0-beta.11.dmg</link>
+            <sparkle:version>200</sparkle:version>
+            <sparkle:shortVersionString>1.0.0-beta.11</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>VibeTunnel 1.0.0-beta.11</h2>
+                <p><strong>Pre-release version</strong></p>
+                
+                <h4><strong>Better Settings Organization</strong></h4>
+                <ul>
+                <li>Reorganized settings into logical tabs for easier navigation (#359)</li>
+                <li>Repository base path now syncs automatically between Mac app and web UI (#358)</li>
+                <li>Simplified welcome screen repository display (#372)</li>
+                </ul>
+                
+                <h4><strong>Improved WebRTC Support</strong></h4>
+                <ul>
+                <li>Fixed threading issues in WebRTC screen capture (#375, #378)</li>
+                <li>Resolved screen capture authentication problems (#264, #374)</li>
+                <li>More stable screen sharing with proper main thread dispatch</li>
+                </ul>
+                
+                <h4><strong>UI Context Awareness</strong></h4>
+                <ul>
+                <li>Screen sharing button only appears when Mac app is connected (#367)</li>
+                <li>Spawn window toggle shows only when relevant (#357)</li>
+                </ul>
+                
+                <h4><strong>NPM Package Now Available</strong></h4>
+                <ul>
+                <li>vibetunnel (server) is now available as an npm package for easy installation on macOS and Linux (#360, #377)</li>
+                <li>Install with <code>npm install -g vibetunnel</code> - no build tools required!</li>
+                <li>Includes prebuilt binaries for Node.js 20, 22, 23, and 24</li>
+                <li>Supports macOS (Intel and Apple Silicon) and Linux (x64 and arm64) (#344)</li>
+                </ul>
+                
+                <h4><strong>Enhanced Git Diff Tool Support</strong></h4>
+                <ul>
+                <li>Added JuxtaCode to the list of supported Git diff tools with automatic detection</li>
+                </ul>
+                
+                <h4><strong>Improved <code>vt</code> Command</strong></h4>
+                <ul>
+                <li>Added verbosity control with <code>-q</code> (quiet), <code>-v</code> (verbose), <code>-vv</code> (extra verbose) flags (#356)</li>
+                <li>New <code>vt title</code> command to update session names from within a VibeTunnel session</li>
+                </ul>
+                
+                <h3>🐛 Bug Fixes</h3>
+                <ul>
+                <li>Fixed npm package installation issues (#360, #377)</li>
+                <li>Fixed control message processing loop (#372)</li>
+                <li>Fixed file browser constant refresh issue (#354)</li>
+                <li>Replaced bell icon with settings icon for better clarity (#366)</li>
+                <li>Resolved Tailwind CSS performance warning</li>
+                <li>Fixed repeated screen recording permission dialogs</li>
+                </ul>
+            ]]></description>
+            <pubDate>Thu, 16 Jan 2025 23:30:00 +0000</pubDate>
+            <enclosure url="https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.11/VibeTunnel-1.0.0-beta.11.dmg" 
+                       sparkle:version="200" 
+                       sparkle:shortVersionString="1.0.0-beta.11" 
+                       length="51131803" 
+                       type="application/x-apple-diskimage" 
+                       sparkle:edSignature="JqMb4XkC55rQ0mLmvCGbVmH8HuGrRPhm2eAyYyEgtF7iPqWGpSd5gscYKEE9im+yRt8CN1jijauuBpy+Pw+dAw=="/>
+        </item>
+        <item>
             <title>VibeTunnel 1.0.0-beta.10</title>
             <link>https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.10/VibeTunnel-1.0.0-beta.10.dmg</link>
             <sparkle:version>190</sparkle:version>

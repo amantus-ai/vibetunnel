@@ -2,8 +2,12 @@ import SwiftUI
 
 /// View for adding a new server connection
 struct AddServerView: View {
-    @Environment(ConnectionManager.self) var connectionManager
-    @Environment(\.dismiss) private var dismiss
+    @Environment(ConnectionManager.self)
+    var connectionManager
+
+    @Environment(\.dismiss)
+    private var dismiss
+
     @State private var networkMonitor = NetworkMonitor.shared
     @State private var viewModel: ConnectionViewModel
 

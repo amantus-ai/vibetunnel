@@ -1,6 +1,6 @@
 {
   "name": "vibetunnel",
-  "version": "1.0.0-beta.11",
+  "version": "1.0.0-beta.13",
   "description": "Terminal sharing server with web interface - supports macOS, Linux, and headless environments",
   "main": "dist/server/server.js",
   "bin": {
@@ -10,8 +10,12 @@
     "dist/",
     "public/",
     "bin/",
+    "scripts/ensure-native-modules.js",
+    "scripts/postinstall-npm.js",
     "node-pty/lib/",
     "node-pty/package.json",
+    "node-pty/binding.gyp",
+    "node-pty/src/",
     "prebuilds/",
     "README.md"
   ],
@@ -40,7 +44,7 @@
     "build:ci": "node scripts/build-ci.js",
     "build:npm": "node scripts/build-npm.js",
     "prepublishOnly": "npm run build:npm",
-    "postinstall": "node scripts/ensure-native-modules.js",
+    "postinstall": "node scripts/postinstall-npm.js",
     "prebuild": "echo 'Skipping prebuild - handled by build-npm.js'",
     "prebuild:upload": "echo 'Skipping prebuild:upload - not used'",
     "lint": "concurrently -n biome,tsc-server,tsc-client,tsc-sw \"biome check src\" \"tsc --noEmit --project tsconfig.server.json\" \"tsc --noEmit --project tsconfig.client.json\" \"tsc --noEmit --project tsconfig.sw.json\"",
@@ -62,6 +66,7 @@
     "prettier:fast": "PRETTIER_EXPERIMENTAL_CLI=1 prettier --write src",
     "check": "./scripts/check-all.sh",
     "check:fix": "./scripts/check-fix-sequential.sh",
+    "test:vt": "./scripts/test-vt-syntax.sh",
     "precommit": "pnpm run format && pnpm run lint:fix && pnpm run typecheck",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",

@@ -73,7 +73,7 @@ struct RequestPermissionsPageView: View {
                                 .foregroundColor(.secondary)
                         }
                         .font(.body)
-                        .frame(maxWidth: 250)
+                        .frame(maxWidth: 250, alignment: .leading)
                         .frame(height: 32)
                     } else {
                         Button("Grant Automation Permission") {
@@ -93,7 +93,7 @@ struct RequestPermissionsPageView: View {
                                 .foregroundColor(.secondary)
                         }
                         .font(.body)
-                        .frame(maxWidth: 250)
+                        .frame(maxWidth: 250, alignment: .leading)
                         .frame(height: 32)
                     } else {
                         Button("Grant Accessibility Permission") {
@@ -113,7 +113,7 @@ struct RequestPermissionsPageView: View {
                                 .foregroundColor(.secondary)
                         }
                         .font(.body)
-                        .frame(maxWidth: 250)
+                        .frame(maxWidth: 250, alignment: .leading)
                         .frame(height: 32)
                     } else {
                         Button("Grant Screen Recording Permission") {

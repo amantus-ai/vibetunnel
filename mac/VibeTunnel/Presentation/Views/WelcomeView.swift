@@ -65,7 +65,7 @@ struct WelcomeView: View {
                         .frame(width: pageWidth)
 
                     // Page 5: Project Folder
-                    ProjectFolderPageView()
+                    ProjectFolderPageView(currentPage: $currentPage)
                         .frame(width: pageWidth)
 
                     // Page 6: Protect Your Dashboard

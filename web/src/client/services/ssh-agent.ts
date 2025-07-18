@@ -1,5 +1,10 @@
-// Use Web Crypto API available in browsers and Node.js (via globalThis)
-const { subtle } = globalThis.crypto;
+// Module-level variable to track if crypto is available
+let cryptoSubtle: SubtleCrypto | undefined;
+
+// Try to get subtle crypto if available, but don't throw at module load
+if (globalThis.crypto?.subtle) {
+  cryptoSubtle = globalThis.crypto.subtle;
+}
 
 interface SSHKey {
   id: string;
@@ -21,10 +26,96 @@ export class BrowserSSHAgent {
   private static readonly DEFAULT_STORAGE_KEY = 'vibetunnel_ssh_keys';
   private keys: Map<string, SSHKey> = new Map();
   private storageKey: string;
+  private cryptoErrorShown = false;
 
   constructor(customStorageKey?: string) {
     this.storageKey = customStorageKey || BrowserSSHAgent.DEFAULT_STORAGE_KEY;
     this.loadKeysFromStorage();
+  }
+
+  /**
+   * Check if Web Crypto API is available and show error if not
+   */
+  private ensureCryptoAvailable(): void {
+    if (!cryptoSubtle) {
+      if (!this.cryptoErrorShown) {
+        this.showCryptoError();
+        this.cryptoErrorShown = true;
+      }
+      throw new Error('Web Crypto API is not available');
+    }
+  }
+
+  /**
+   * Show user-friendly error banner for crypto unavailability
+   */
+  private showCryptoError(): void {
+    // Check if DOM is ready
+    if (!document.body) {
+      console.error('Web Crypto API not available and DOM not ready to show error');
+      return;
+    }
+
+    // Detect if we're on a local network IP
+    const hostname = window.location.hostname;
+    const isLocalNetwork = hostname.match(/^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/);
+    const isNonLocalhost = hostname !== 'localhost' && hostname !== '127.0.0.1';
+
+    let errorMessage =
+      'SSH key operations are unavailable because the Web Crypto API is not accessible.\n\n';
+
+    if (isLocalNetwork || (isNonLocalhost && window.location.protocol === 'http:')) {
+      // Differentiate between HTTP and HTTPS on local IPs
+      if (isLocalNetwork && window.location.protocol === 'https:') {
+        errorMessage +=
+          "Even though you're using HTTPS, browsers block the Web Crypto API on local network IPs.\n\n";
+      } else {
+        errorMessage +=
+          'This happens when accessing VibeTunnel over HTTP from non-localhost addresses.\n\n';
+      }
+      errorMessage += 'To fix this, use one of these methods:\n';
+      errorMessage += '1. Access via http://localhost:4020 instead\n';
+      errorMessage += '   - Use SSH tunnel: ssh -L 4020:localhost:4020 user@server\n';
+      errorMessage += '2. Enable HTTPS on the server (recommended for production)\n';
+      errorMessage +=
+        '3. For Chrome: Enable insecure origins at chrome://flags/#unsafely-treat-insecure-origin-as-secure\n';
+      errorMessage += '   - Add your server URL (e.g., http://192.168.1.100:4020)\n';
+      errorMessage += '   - Restart Chrome after changing the flag\n';
+      errorMessage += '   - Note: Firefox also enforces these restrictions since v75';
+    } else {
+      errorMessage += 'Your browser may not support the Web Crypto API or it may be disabled.\n';
+      errorMessage += 'Please use a modern browser (Chrome 60+, Firefox 75+, Safari 11+).';
+    }
+
+    // Create and append style if not already exists
+    if (!document.querySelector('#crypto-error-style')) {
+      const style = document.createElement('style');
+      style.id = 'crypto-error-style';
+      style.textContent = `
+        .crypto-error-banner {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          background: #dc2626;
+          color: white;
+          padding: 16px;
+          z-index: 9999;
+          font-family: monospace;
+          white-space: pre-wrap;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // Create and append banner if not already exists
+    if (!document.querySelector('.crypto-error-banner')) {
+      const banner = document.createElement('div');
+      banner.className = 'crypto-error-banner';
+      banner.textContent = errorMessage;
+      document.body.appendChild(banner);
+    }
   }
 
   /**
@@ -38,6 +129,13 @@ export class BrowserSSHAgent {
    * Add SSH private key to the agent
    */
   async addKey(name: string, privateKeyPEM: string): Promise<string> {
+    this.ensureCryptoAvailable();
+
+    // After ensureCryptoAvailable, we know cryptoSubtle is defined
+    if (!cryptoSubtle) {
+      throw new Error('Crypto not available');
+    }
+
     try {
       // Parse and validate the private key (detect encryption without decrypting)
       const keyData = await this.parsePrivateKey(privateKeyPEM);
@@ -90,6 +188,13 @@ export class BrowserSSHAgent {
    * Sign data with a specific SSH key
    */
   async sign(keyId: string, data: string): Promise<SignatureResult> {
+    this.ensureCryptoAvailable();
+
+    // After ensureCryptoAvailable, we know cryptoSubtle is defined
+    if (!cryptoSubtle) {
+      throw new Error('Crypto not available');
+    }
+
     const key = this.keys.get(keyId);
     if (!key) {
       throw new Error('SSH key not found');
@@ -118,7 +223,7 @@ export class BrowserSSHAgent {
       const dataBuffer = this.base64ToArrayBuffer(data);
 
       // Sign the data
-      const signature = await subtle.sign({ name: 'Ed25519' }, privateKey, dataBuffer);
+      const signature = await cryptoSubtle.sign({ name: 'Ed25519' }, privateKey, dataBuffer);
 
       // Return base64 encoded signature
       return {
@@ -137,10 +242,17 @@ export class BrowserSSHAgent {
     name: string,
     password?: string
   ): Promise<{ keyId: string; privateKeyPEM: string }> {
+    this.ensureCryptoAvailable();
+
+    // After ensureCryptoAvailable, we know cryptoSubtle is defined
+    if (!cryptoSubtle) {
+      throw new Error('Crypto not available');
+    }
+
     console.log(`🔑 SSH Agent: Starting Ed25519 key generation for "${name}"`);
 
     try {
-      const keyPair = await subtle.generateKey(
+      const keyPair = await cryptoSubtle.generateKey(
         {
           name: 'Ed25519',
         } as AlgorithmIdentifier,
@@ -150,8 +262,8 @@ export class BrowserSSHAgent {
 
       // Export keys
       const cryptoKeyPair = keyPair as CryptoKeyPair;
-      const privateKeyBuffer = await subtle.exportKey('pkcs8', cryptoKeyPair.privateKey);
-      const publicKeyBuffer = await subtle.exportKey('raw', cryptoKeyPair.publicKey);
+      const privateKeyBuffer = await cryptoSubtle.exportKey('pkcs8', cryptoKeyPair.privateKey);
+      const publicKeyBuffer = await cryptoSubtle.exportKey('raw', cryptoKeyPair.publicKey);
 
       // Convert to proper formats
       let privateKeyPEM = this.arrayBufferToPEM(privateKeyBuffer, 'PRIVATE KEY');
@@ -235,6 +347,10 @@ export class BrowserSSHAgent {
   }
 
   private async importPrivateKey(privateKeyPEM: string, _algorithm: 'Ed25519'): Promise<CryptoKey> {
+    if (!cryptoSubtle) {
+      throw new Error('Crypto not available');
+    }
+
     // Remove PEM headers and decode
     const pemContents = privateKeyPEM
       .replace('-----BEGIN PRIVATE KEY-----', '')
@@ -243,7 +359,7 @@ export class BrowserSSHAgent {
 
     const keyData = this.base64ToArrayBuffer(pemContents);
 
-    return subtle.importKey(
+    return cryptoSubtle.importKey(
       'pkcs8',
       keyData,
       {
@@ -286,8 +402,12 @@ export class BrowserSSHAgent {
   }
 
   private async generateFingerprint(publicKey: string): Promise<string> {
+    if (!cryptoSubtle) {
+      throw new Error('Crypto not available');
+    }
+
     const encoder = new TextEncoder();
-    const hash = await subtle.digest('SHA-256', encoder.encode(publicKey));
+    const hash = await cryptoSubtle.digest('SHA-256', encoder.encode(publicKey));
     return this.arrayBufferToBase64(hash).substring(0, 16);
   }
 
@@ -347,11 +467,15 @@ export class BrowserSSHAgent {
    * Encrypt private key with password using Web Crypto API
    */
   private async encryptPrivateKey(privateKeyPEM: string, password: string): Promise<string> {
+    if (!cryptoSubtle) {
+      throw new Error('Crypto not available');
+    }
+
     const encoder = new TextEncoder();
     const data = encoder.encode(privateKeyPEM);
 
     // Derive key from password using PBKDF2
-    const passwordKey = await subtle.importKey(
+    const passwordKey = await cryptoSubtle.importKey(
       'raw',
       encoder.encode(password),
       { name: 'PBKDF2' },
@@ -363,7 +487,7 @@ export class BrowserSSHAgent {
     const salt = crypto.getRandomValues(new Uint8Array(16));
 
     // Derive encryption key
-    const encryptionKey = await subtle.deriveKey(
+    const encryptionKey = await cryptoSubtle.deriveKey(
       {
         name: 'PBKDF2',
         salt,
@@ -380,7 +504,7 @@ export class BrowserSSHAgent {
     const iv = crypto.getRandomValues(new Uint8Array(12));
 
     // Encrypt the data
-    const encryptedData = await subtle.encrypt({ name: 'AES-GCM', iv }, encryptionKey, data);
+    const encryptedData = await cryptoSubtle.encrypt({ name: 'AES-GCM', iv }, encryptionKey, data);
 
     // Combine salt + iv + encrypted data and base64 encode
     const combined = new Uint8Array(salt.length + iv.length + encryptedData.byteLength);
@@ -398,6 +522,10 @@ export class BrowserSSHAgent {
     encryptedPrivateKeyPEM: string,
     password: string
   ): Promise<string> {
+    if (!cryptoSubtle) {
+      throw new Error('Crypto not available');
+    }
+
     // Extract base64 data
     const base64Data = encryptedPrivateKeyPEM
       .replace('-----BEGIN ENCRYPTED PRIVATE KEY-----', '')
@@ -415,7 +543,7 @@ export class BrowserSSHAgent {
     const encoder = new TextEncoder();
 
     // Derive key from password
-    const passwordKey = await subtle.importKey(
+    const passwordKey = await cryptoSubtle.importKey(
       'raw',
       encoder.encode(password),
       { name: 'PBKDF2' },
@@ -423,7 +551,7 @@ export class BrowserSSHAgent {
       ['deriveKey']
     );
 
-    const encryptionKey = await subtle.deriveKey(
+    const encryptionKey = await cryptoSubtle.deriveKey(
       {
         name: 'PBKDF2',
         salt,
@@ -437,7 +565,7 @@ export class BrowserSSHAgent {
     );
 
     // Decrypt the data
-    const decryptedData = await subtle.decrypt(
+    const decryptedData = await cryptoSubtle.decrypt(
       { name: 'AES-GCM', iv },
       encryptionKey,
       encryptedData

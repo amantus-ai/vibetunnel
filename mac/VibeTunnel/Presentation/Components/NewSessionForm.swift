@@ -161,14 +161,14 @@ struct NewSessionForm: View {
                                 .buttonStyle(.borderless)
                                 .help("Choose directory")
 
-                                Button(action: { showingRepositoryDropdown.toggle() }) {
+                                Button(action: { showingRepositoryDropdown.toggle() }, label: {
                                     Image(systemName: "arrow.trianglehead.pull")
                                         .font(.system(size: 12))
                                         .foregroundColor(.secondary)
                                         .animation(.easeInOut(duration: 0.2), value: showingRepositoryDropdown)
                                         .frame(width: 20, height: 20)
                                         .contentShape(Rectangle())
-                                }
+                                })
                                 .buttonStyle(.borderless)
                                 .help("Choose from repositories")
                                 .disabled(repositoryDiscovery.repositories.isEmpty || repositoryDiscovery.isDiscovering)
@@ -526,7 +526,7 @@ private struct RepositoryDropdownList: View {
                         Button(action: {
                             selectedPath = repository.path
                             isShowing = false
-                        }) {
+                        }, label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(repository.displayName)
@@ -551,7 +551,7 @@ private struct RepositoryDropdownList: View {
                                     .fill(Color.clear)
                             )
                             .contentShape(Rectangle())
-                        }
+                        })
                         .buttonStyle(.plain)
                         .onHover { hovering in
                             if hovering {

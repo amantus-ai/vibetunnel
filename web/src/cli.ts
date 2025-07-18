@@ -54,8 +54,16 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
-// Only execute if this is the main module (or in SEA where require.main is undefined)
-if (!module.parent && (require.main === module || require.main === undefined)) {
+// Only execute if this is the main module (or in SEA/bundled context where require.main is undefined)
+// In bundled builds, both module.parent and require.main are undefined
+// In npm package context, check if we're the actual CLI entry point
+const isMainModule =
+  !module.parent &&
+  (require.main === module ||
+    require.main === undefined ||
+    (require.main?.filename?.endsWith('/vibetunnel-cli') ?? false));
+
+if (isMainModule) {
   if (process.argv[2] === 'version') {
     console.log(`VibeTunnel Server v${VERSION}`);
     process.exit(0);
