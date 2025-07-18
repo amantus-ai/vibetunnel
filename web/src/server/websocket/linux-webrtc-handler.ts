@@ -134,7 +134,9 @@ export class LinuxWebRTCHandler extends EventEmitter {
     };
 
     logger.log('Created WebSocket streaming offer for Linux');
+    logger.log(`Emitting offer, listeners: ${this.listenerCount('offer')}`);
     this.emit('offer', offer);
+    logger.log('Offer emitted');
   }
 
   private generateWebSocketStreamingSDP(): string {

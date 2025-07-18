@@ -3,6 +3,7 @@ import { customElement, query, state } from 'lit/decorators.js';
 import { isScreencapError, ScreencapErrorCode } from '../../shared/screencap-errors.js';
 import { ScreencapWebSocketClient } from '../services/screencap-websocket-client.js';
 import { type StreamStats, WebRTCHandler } from '../services/webrtc-handler.js';
+import { WebSocketVideoHandler } from '../services/websocket-video-handler.js';
 import type { DisplayInfo, ProcessGroup, WindowInfo } from '../types/screencap.js';
 import { createLogger } from '../utils/logger.js';
 import './screencap-sidebar.js';
@@ -960,6 +961,14 @@ export class ScreencapView extends LitElement {
   private async startWebRTCCapture() {
     if (!this.webrtcHandler || !this.wsClient) return;
 
+    // Check if we're on Linux - use direct WebSocket streaming
+    const isLinux = navigator.userAgent.toLowerCase().includes('linux');
+    if (isLinux) {
+      this.logStatus('info', 'Using direct WebSocket video streaming for Linux');
+      await this.startLinuxWebSocketStreaming();
+      return;
+    }
+
     const callbacks = {
       onStreamReady: async (stream: MediaStream) => {
         this.logStatus('success', 'WebRTC stream ready, connecting to video element...');
@@ -1146,6 +1155,12 @@ export class ScreencapView extends LitElement {
     this.frameUrl = '';
     this.fps = 0;
     this.streamStats = null;
+    
+    // Clean up WebSocket video handler
+    if (this.websocketVideoHandler) {
+      this.websocketVideoHandler.dispose();
+      this.websocketVideoHandler = null;
+    }
   }
 
   private startFrameUpdates() {
@@ -1584,6 +1599,58 @@ export class ScreencapView extends LitElement {
   }
 
   private mouseMoveThrottleTimeout: number | null = null;
+  private websocketVideoHandler: WebSocketVideoHandler | null = null;
+
+  private async startLinuxWebSocketStreaming(): Promise<void> {
+    this.logStatus('info', 'Starting Linux WebSocket video streaming...');
+    
+    try {
+      // First start the capture to trigger rendering
+      const result = await this.wsClient.startCapture({
+        type: 'desktop',
+        index: this.selectedDisplay?.id || 0,
+        webrtc: true,
+        use8k: this.use8k,
+      });
+      
+      this.isCapturing = true;
+      this.status = 'streaming';
+      
+      // Wait for render to complete
+      await this.updateComplete;
+      
+      // Now the video element should be available
+      if (!this.videoElement) {
+        logger.error('Video element not found after render');
+        throw new Error('Video element not found');
+      }
+      
+      // Create video handler
+      this.websocketVideoHandler = new WebSocketVideoHandler();
+      
+      // Initialize with our video element
+      const stream = await this.websocketVideoHandler.initialize(this.videoElement);
+      this.logStatus('success', 'WebSocket video handler initialized');
+      
+      // Set up binary message handler
+      this.wsClient.onBinaryMessage = (data: ArrayBuffer) => {
+        const header = new TextDecoder().decode(data.slice(0, 2));
+        if (header === 'VF' && this.websocketVideoHandler) {
+          this.websocketVideoHandler.handleVideoFrame(data);
+          this.frameCounter++;
+        }
+      };
+      
+      this.logStatus('success', 'Linux video capture started');
+      
+    } catch (error) {
+      logger.error('Failed to start Linux WebSocket streaming:', error);
+      this.logStatus('error', `Failed to start video streaming: ${error}`);
+      this.error = error instanceof Error ? error.message : 'Failed to start video streaming';
+      this.status = 'error';
+      this.isCapturing = false;
+    }
+  }
 
   private getPlatformPermissionError(): string {
     // Check if we're on Mac based on user agent

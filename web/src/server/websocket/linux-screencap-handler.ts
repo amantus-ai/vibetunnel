@@ -266,16 +266,9 @@ export class LinuxScreencapHandler extends EventEmitter {
       const webrtcHandler = new LinuxWebRTCHandler(session, sessionId || session.id);
       this.webrtcHandlers.set(clientId, webrtcHandler);
 
-      // Initialize the WebRTC handler to set up the FFmpeg stream
-      await webrtcHandler.initialize();
-      logger.log('WebRTC handler initialized');
-
-      // Create the offer immediately for WebSocket streaming
-      await webrtcHandler.createOffer();
-      logger.log('Created initial offer for WebSocket streaming');
-
-      // Set up WebRTC event handlers
+      // Set up WebRTC event handlers BEFORE initializing
       webrtcHandler.on('offer', (offer) => {
+        logger.log('Sending offer to client');
         this.sendMessage(ws, {
           id: uuidv4(),
           type: 'event',
@@ -285,6 +278,19 @@ export class LinuxScreencapHandler extends EventEmitter {
           sessionId: sessionId || session.id,
         });
       });
+
+      // Initialize the WebRTC handler to set up the FFmpeg stream
+      await webrtcHandler.initialize();
+      logger.log('WebRTC handler initialized');
+
+      // Create the offer immediately for WebSocket streaming
+      logger.log('About to call createOffer()');
+      try {
+        await webrtcHandler.createOffer();
+        logger.log('Created initial offer for WebSocket streaming');
+      } catch (error) {
+        logger.error('Failed to create offer:', error);
+      }
 
       webrtcHandler.on('ice-candidate', (candidate) => {
         this.sendMessage(ws, {
