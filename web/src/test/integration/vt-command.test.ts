@@ -29,10 +29,12 @@ describe('vt command', () => {
     expect(stats.mode & 0o111).toBeTruthy(); // Check execute permissions
   });
 
-  it('should be included in package.json bin section', () => {
+  it('should NOT be included in package.json bin section', () => {
+    // Per CLAUDE.md: vt command must NOT be registered as a global binary in package.json
+    // This is because it conflicts with other tools that use 'vt' (there are many)
     const packageJson = JSON.parse(require('fs').readFileSync(packageJsonPath, 'utf8'));
     expect(packageJson.bin).toBeDefined();
-    expect(packageJson.bin.vt).toBe('./bin/vt');
+    expect(packageJson.bin.vt).toBeUndefined(); // Should NOT be in bin section
     expect(packageJson.bin.vibetunnel).toBe('./bin/vibetunnel');
   });
 

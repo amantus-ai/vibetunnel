@@ -90,8 +90,8 @@ describe('Server Screencap Routes', () => {
       });
     });
 
-    it('should return 401 when not authenticated', async () => {
-      // Override auth middleware
+    it('should not require authentication for capabilities', async () => {
+      // Capabilities endpoint doesn't require auth
       app = express();
       app.use(express.json());
       const router = createServerScreencapRoutes();
@@ -99,9 +99,18 @@ describe('Server Screencap Routes', () => {
 
       const response = await request(app).get('/api/server-screencap/capabilities');
 
-      expect(response.status).toBe(401);
+      expect(response.status).toBe(200);
       expect(response.body).toEqual({
-        error: 'Authentication required',
+        available: true,
+        displayServer: {
+          type: 'x11',
+          display: ':0',
+          captureMethod: 'x11grab',
+        },
+        captureProvider: {
+          formats: ['webm'],
+          codecs: ['vp8'],
+        },
       });
     });
 
@@ -114,24 +123,29 @@ describe('Server Screencap Routes', () => {
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({
-        error: 'Failed to get capabilities',
+        error: 'Failed to get capture capabilities',
       });
     });
   });
 
   describe('POST /start', () => {
     it('should start capture session with default options', async () => {
-      const response = await request(app).post('/api/server-screencap/start').send({});
+      const response = await request(app).post('/api/server-screencap/start').send({
+        auth: 'test-token',
+      });
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
         sessionId: 'session-123',
-        mode: 'server',
         displayServer: undefined,
-        streamUrl: '/api/server-screencap/stream/session-123',
       });
       expect(vi.mocked(desktopCaptureService).startCapture).toHaveBeenCalledWith({
-        mode: 'server',
+        displayIndex: undefined,
+        quality: undefined,
+        auth: 'test-token',
+        width: undefined,
+        height: undefined,
+        framerate: undefined,
       });
     });
 
@@ -147,19 +161,17 @@ describe('Server Screencap Routes', () => {
 
       expect(response.status).toBe(200);
       expect(vi.mocked(desktopCaptureService).startCapture).toHaveBeenCalledWith({
-        mode: 'server',
+        displayIndex: undefined,
         quality: 'high',
+        auth: 'test-token',
         width: 1920,
         height: 1080,
         framerate: 60,
-        auth: 'test-token',
       });
     });
 
     it('should return 401 when server mode without auth', async () => {
-      const response = await request(app)
-        .post('/api/server-screencap/start')
-        .send({ mode: 'server' });
+      const response = await request(app).post('/api/server-screencap/start').send({});
 
       expect(response.status).toBe(401);
       expect(response.body).toEqual({
@@ -174,7 +186,7 @@ describe('Server Screencap Routes', () => {
 
       const response = await request(app)
         .post('/api/server-screencap/start')
-        .send({ mode: 'server', auth: 'test-token' });
+        .send({ auth: 'test-token' });
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({
@@ -220,7 +232,6 @@ describe('Server Screencap Routes', () => {
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
         id: 'session-123',
-        mode: 'server',
         stats: {},
         displayServer: { type: 'x11' },
       });

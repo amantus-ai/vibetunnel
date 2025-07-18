@@ -1,8 +1,10 @@
+import { EventEmitter, Readable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { WebSocket } from 'ws';
+import type { WebSocket } from 'ws';
 import { StreamHandler } from '../../../server/capture/stream-handler.js';
 import { createLogger } from '../../../server/utils/logger.js';
 
+// Mock dependencies
 vi.mock('../../../server/utils/logger.js', () => ({
   createLogger: vi.fn(() => ({
     log: vi.fn(),
@@ -11,15 +13,15 @@ vi.mock('../../../server/utils/logger.js', () => ({
     debug: vi.fn(),
   })),
 }));
-vi.mock('ws');
 
 describe('StreamHandler', () => {
   let streamHandler: StreamHandler;
-  let mockLogger: any;
-  let mockWebSocket: any;
+  let mockLogger: ReturnType<typeof createLogger>;
+  let mockWebSocket: WebSocket & EventEmitter;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.clearAllTimers();
 
     mockLogger = {
       log: vi.fn(),
@@ -29,67 +31,76 @@ describe('StreamHandler', () => {
     };
     vi.mocked(createLogger).mockReturnValue(mockLogger);
 
-    // Create mock WebSocket
-    mockWebSocket = {
-      id: 'test-client-id',
-      readyState: WebSocket.OPEN,
-      send: vi.fn((_data, callback) => {
-        if (callback) callback();
-      }),
-      on: vi.fn(),
-      once: vi.fn(),
-      removeListener: vi.fn(),
-      close: vi.fn(),
-      terminate: vi.fn(),
-    };
+    streamHandler = new StreamHandler();
 
-    streamHandler = new StreamHandler('session-123');
+    // Create mock WebSocket with EventEmitter capabilities
+    mockWebSocket = Object.assign(new EventEmitter(), {
+      readyState: 1, // OPEN
+      OPEN: 1,
+      CONNECTING: 0,
+      CLOSING: 2,
+      CLOSED: 3,
+      send: vi.fn(),
+      close: vi.fn(),
+      on: vi.fn(function (this: EventEmitter, event: string, listener: (...args: any[]) => void) {
+        EventEmitter.prototype.on.call(this, event, listener);
+        return this;
+      }),
+      removeEventListener: vi.fn(),
+    }) as WebSocket & EventEmitter;
   });
 
   describe('addClient', () => {
     it('should add a new WebSocket client', () => {
       streamHandler.addClient('client-1', mockWebSocket, 'session-123');
 
-      expect(streamHandler.getClientCount()).toBe(1);
       expect(mockWebSocket.on).toHaveBeenCalledWith('close', expect.any(Function));
       expect(mockWebSocket.on).toHaveBeenCalledWith('error', expect.any(Function));
       expect(mockWebSocket.on).toHaveBeenCalledWith('message', expect.any(Function));
+      expect(mockLogger.log).toHaveBeenCalledWith(
+        'Adding stream client client-1 for session session-123'
+      );
     });
 
     it('should handle client close event', () => {
       streamHandler.addClient('client-1', mockWebSocket, 'session-123');
 
-      // Simulate close event
-      const closeCallback = mockWebSocket.on.mock.calls.find(
-        (call: any) => call[0] === 'close'
-      )?.[1];
-      closeCallback?.();
+      // Emit close event
+      mockWebSocket.emit('close');
 
-      expect(streamHandler.getClientCount()).toBe(0);
-      expect(mockLogger.log).toHaveBeenCalledWith(expect.stringContaining('Client disconnected'));
+      expect(mockLogger.log).toHaveBeenCalledWith('Removing stream client client-1');
     });
 
     it('should handle client error event', () => {
       streamHandler.addClient('client-1', mockWebSocket, 'session-123');
 
-      // Simulate error event
-      const errorCallback = mockWebSocket.on.mock.calls.find(
-        (call: any) => call[0] === 'error'
-      )?.[1];
-      const testError = new Error('WebSocket error');
-      errorCallback?.(testError);
+      const testError = new Error('Connection error');
+      mockWebSocket.emit('error', testError);
 
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Client client-1 error'),
-        testError
-      );
+      expect(mockLogger.error).toHaveBeenCalledWith('Client client-1 error:', testError);
+      expect(mockLogger.log).toHaveBeenCalledWith('Removing stream client client-1');
     });
 
-    it('should not add duplicate clients', () => {
+    it('should handle client messages', () => {
       streamHandler.addClient('client-1', mockWebSocket, 'session-123');
-      streamHandler.addClient('client-1', mockWebSocket, 'session-123'); // Add same client again
 
-      expect(streamHandler.getClientCount()).toBe(1);
+      // Send a ping message
+      const messageData = JSON.stringify({ type: 'ping' });
+      mockWebSocket.emit('message', Buffer.from(messageData));
+
+      expect(mockWebSocket.send).toHaveBeenCalledWith(expect.stringContaining('"type":"pong"'));
+    });
+
+    it('should handle invalid client messages', () => {
+      streamHandler.addClient('client-1', mockWebSocket, 'session-123');
+
+      // Send invalid JSON
+      mockWebSocket.emit('message', Buffer.from('invalid json'));
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Invalid message from client client-1:',
+        expect.any(Error)
+      );
     });
   });
 
@@ -98,176 +109,244 @@ describe('StreamHandler', () => {
       streamHandler.addClient('client-1', mockWebSocket, 'session-123');
       streamHandler.removeClient('client-1');
 
-      expect(streamHandler.getClientCount()).toBe(0);
+      expect(mockLogger.log).toHaveBeenCalledWith('Removing stream client client-1');
+      expect(mockWebSocket.close).toHaveBeenCalled();
     });
 
     it('should handle removing non-existent client', () => {
-      streamHandler.removeClient('non-existent');
-      expect(streamHandler.getClientCount()).toBe(0);
-    });
-  });
-
-  describe('broadcastFrame', () => {
-    it('should broadcast frame to all connected clients', () => {
-      const mockClient1 = { ...mockWebSocket, id: 'client-1' };
-      const mockClient2 = { ...mockWebSocket, id: 'client-2', send: vi.fn((_data, cb) => cb?.()) };
-
-      streamHandler.addClient('client-1', mockClient1, 'session-123');
-      streamHandler.addClient('client-2', mockClient2, 'session-123');
-
-      const frameData = Buffer.from('video frame data');
-      streamHandler.broadcastFrame(frameData);
-
-      expect(mockClient1.send).toHaveBeenCalledWith(frameData, expect.any(Function));
-      expect(mockClient2.send).toHaveBeenCalledWith(frameData, expect.any(Function));
-    });
-
-    it('should handle send errors gracefully', () => {
-      const errorClient = {
-        ...mockWebSocket,
-        send: vi.fn((_data, callback) => {
-          callback?.(new Error('Send failed'));
-        }),
-      };
-
-      streamHandler.addClient('client-1', errorClient, 'session-123');
-
-      const frameData = Buffer.from('video frame data');
-      streamHandler.broadcastFrame(frameData);
-
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to send frame'),
-        expect.any(Error)
-      );
-    });
-
-    it('should skip clients not in OPEN state', () => {
-      const closedClient = {
-        ...mockWebSocket,
-        readyState: WebSocket.CLOSED,
-      };
-
-      streamHandler.addClient('client-1', closedClient, 'session-123');
-
-      const frameData = Buffer.from('video frame data');
-      streamHandler.broadcastFrame(frameData);
-
-      expect(closedClient.send).not.toHaveBeenCalled();
-    });
-
-    it('should handle empty frame data', () => {
-      streamHandler.addClient('client-1', mockWebSocket, 'session-123');
-
-      const emptyFrame = Buffer.alloc(0);
-      streamHandler.broadcastFrame(emptyFrame);
-
-      expect(mockWebSocket.send).toHaveBeenCalledWith(emptyFrame, expect.any(Function));
-    });
-  });
-
-  describe('stop', () => {
-    it('should close all client connections', () => {
-      const mockClient1 = { ...mockWebSocket, id: 'client-1' };
-      const mockClient2 = { ...mockWebSocket, id: 'client-2', close: vi.fn() };
-
-      streamHandler.addClient('client-1', mockClient1, 'session-123');
-      streamHandler.addClient('client-2', mockClient2, 'session-123');
-
-      streamHandler.stop();
-
-      expect(mockClient1.close).toHaveBeenCalled();
-      expect(mockClient2.close).toHaveBeenCalled();
-      expect(streamHandler.getClientCount()).toBe(0);
-    });
-
-    it('should handle errors during client closure', () => {
-      const errorClient = {
-        ...mockWebSocket,
-        close: vi.fn(() => {
-          throw new Error('Close failed');
-        }),
-      };
-
-      streamHandler.addClient('client-1', errorClient, 'session-123');
-
       // Should not throw
-      streamHandler.stop();
+      expect(() => streamHandler.removeClient('non-existent')).not.toThrow();
+    });
+
+    it('should emit session-clients-empty when last client is removed', () => {
+      const emitSpy = vi.spyOn(streamHandler, 'emit');
+
+      streamHandler.addClient('client-1', mockWebSocket, 'session-123');
+      streamHandler.removeClient('client-1');
+
+      expect(emitSpy).toHaveBeenCalledWith('session-clients-empty', 'session-123');
+    });
+  });
+
+  describe('subscribe/distributeFrame', () => {
+    it('should add and call subscribers', () => {
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+
+      const unsubscribe1 = streamHandler.subscribe('session-123', callback1);
+      streamHandler.subscribe('session-123', callback2);
+
+      const testFrame = new ArrayBuffer(100);
+      streamHandler.distributeFrame('session-123', testFrame);
+
+      expect(callback1).toHaveBeenCalledWith(testFrame);
+      expect(callback2).toHaveBeenCalledWith(testFrame);
+
+      // Test unsubscribe
+      unsubscribe1();
+      streamHandler.distributeFrame('session-123', testFrame);
+      expect(callback1).toHaveBeenCalledTimes(1); // Not called again
+      expect(callback2).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle subscriber errors gracefully', () => {
+      const errorCallback = vi.fn(() => {
+        throw new Error('Subscriber error');
+      });
+      const goodCallback = vi.fn();
+
+      streamHandler.subscribe('session-123', errorCallback);
+      streamHandler.subscribe('session-123', goodCallback);
+
+      const testFrame = new ArrayBuffer(100);
+      streamHandler.distributeFrame('session-123', testFrame);
 
       expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Error closing client'),
+        'Error in stream subscriber callback:',
         expect.any(Error)
+      );
+      expect(goodCallback).toHaveBeenCalled(); // Other subscribers still called
+    });
+  });
+
+  describe('streamToSession', () => {
+    it('should stream data to session clients', () => {
+      const mockStream = new Readable({ read() {} });
+      const captureSession = {
+        id: 'session-123',
+        captureStream: {
+          stream: mockStream,
+        },
+        displayServer: { type: 'x11' },
+      };
+
+      streamHandler.addClient('client-1', mockWebSocket, 'session-123');
+      streamHandler.streamToSession('session-123', captureSession as any);
+
+      // Should send stream-start message
+      expect(mockWebSocket.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"stream-start"')
+      );
+
+      // Emit data
+      const testData = Buffer.from('test video data');
+      mockStream.emit('data', testData);
+
+      expect(mockWebSocket.send).toHaveBeenCalledWith(testData, { binary: true });
+    });
+
+    it('should handle stream end', () => {
+      const mockStream = new Readable({ read() {} });
+      const captureSession = {
+        id: 'session-123',
+        captureStream: {
+          stream: mockStream,
+        },
+        displayServer: { type: 'x11' },
+      };
+
+      streamHandler.addClient('client-1', mockWebSocket, 'session-123');
+      streamHandler.streamToSession('session-123', captureSession as any);
+
+      mockStream.emit('end');
+
+      expect(mockWebSocket.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"stream-end"')
+      );
+    });
+
+    it('should handle stream errors', () => {
+      const mockStream = new Readable({ read() {} });
+      const captureSession = {
+        id: 'session-123',
+        captureStream: {
+          stream: mockStream,
+        },
+        displayServer: { type: 'x11' },
+      };
+
+      streamHandler.addClient('client-1', mockWebSocket, 'session-123');
+      streamHandler.streamToSession('session-123', captureSession as any);
+
+      const testError = new Error('Stream error');
+      mockStream.emit('error', testError);
+
+      expect(mockWebSocket.send).toHaveBeenCalledWith(
+        expect.stringContaining('"type":"stream-error"')
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Stream error for session session-123:',
+        testError
       );
     });
   });
 
-  describe('getClientCount', () => {
-    it('should return correct client count', () => {
-      expect(streamHandler.getClientCount()).toBe(0);
+  describe('broadcastToSession', () => {
+    it('should broadcast message to all session clients', () => {
+      const mockWebSocket2 = Object.assign(new EventEmitter(), {
+        readyState: 1,
+        OPEN: 1,
+        send: vi.fn(),
+        close: vi.fn(),
+        on: vi.fn(function (this: EventEmitter, event: string, listener: (...args: any[]) => void) {
+          EventEmitter.prototype.on.call(this, event, listener);
+          return this;
+        }),
+      }) as WebSocket & EventEmitter;
 
       streamHandler.addClient('client-1', mockWebSocket, 'session-123');
-      expect(streamHandler.getClientCount()).toBe(1);
+      streamHandler.addClient('client-2', mockWebSocket2, 'session-123');
 
-      const anotherClient = { ...mockWebSocket, id: 'another-client' };
-      streamHandler.addClient('another-client', anotherClient, 'session-123');
-      expect(streamHandler.getClientCount()).toBe(2);
+      const testMessage = { type: 'test', data: 'hello' };
+      streamHandler.broadcastToSession('session-123', testMessage);
+
+      expect(mockWebSocket.send).toHaveBeenCalledWith(JSON.stringify(testMessage));
+      expect(mockWebSocket2.send).toHaveBeenCalledWith(JSON.stringify(testMessage));
+    });
+  });
+
+  describe('getSessionClientCount', () => {
+    it('should return correct client count', () => {
+      expect(streamHandler.getSessionClientCount('session-123')).toBe(0);
+
+      streamHandler.addClient('client-1', mockWebSocket, 'session-123');
+      expect(streamHandler.getSessionClientCount('session-123')).toBe(1);
+
+      const mockWebSocket2 = Object.assign(new EventEmitter(), {
+        readyState: 1,
+        OPEN: 1,
+        send: vi.fn(),
+        close: vi.fn(),
+        on: vi.fn(function (this: EventEmitter, event: string, listener: (...args: any[]) => void) {
+          EventEmitter.prototype.on.call(this, event, listener);
+          return this;
+        }),
+      }) as WebSocket & EventEmitter;
+
+      streamHandler.addClient('client-2', mockWebSocket2, 'session-123');
+      expect(streamHandler.getSessionClientCount('session-123')).toBe(2);
 
       streamHandler.removeClient('client-1');
-      expect(streamHandler.getClientCount()).toBe(1);
+      expect(streamHandler.getSessionClientCount('session-123')).toBe(1);
     });
   });
 
-  describe('concurrent operations', () => {
-    it('should handle concurrent client operations safely', () => {
-      const clients = Array.from({ length: 10 }, (_, i) => ({
-        ...mockWebSocket,
-        id: `client-${i}`,
-        send: vi.fn((_data, cb) => cb?.()),
-      }));
+  describe('cleanupInactiveClients', () => {
+    it('should remove inactive clients', () => {
+      vi.useFakeTimers();
+      const now = Date.now();
+      vi.setSystemTime(now);
 
-      // Add all clients
-      clients.forEach((client, i) => streamHandler.addClient(`client-${i}`, client, 'session-123'));
-      expect(streamHandler.getClientCount()).toBe(10);
+      streamHandler.addClient('client-1', mockWebSocket, 'session-123');
 
-      // Broadcast to all
-      const frameData = Buffer.from('concurrent test');
-      streamHandler.broadcastFrame(frameData);
+      // Advance time beyond inactivity threshold
+      vi.setSystemTime(now + 70000); // 70 seconds later
 
-      clients.forEach((client) => {
-        expect(client.send).toHaveBeenCalledWith(frameData, expect.any(Function));
-      });
+      streamHandler.cleanupInactiveClients(60000);
 
-      // Remove half the clients
-      clients.slice(0, 5).forEach((_, i) => streamHandler.removeClient(`client-${i}`));
-      expect(streamHandler.getClientCount()).toBe(5);
+      expect(mockLogger.log).toHaveBeenCalledWith('Removing inactive client client-1');
+      expect(mockWebSocket.close).toHaveBeenCalled();
+
+      vi.useRealTimers();
     });
 
-    it('should handle client disconnect during broadcast', () => {
-      const callbacks: { disconnect?: () => void } = {};
-      const disconnectingClient = {
-        ...mockWebSocket,
-        send: vi.fn((_data, callback) => {
-          // Simulate disconnect during send
-          if (callbacks.disconnect) {
-            callbacks.disconnect();
-          }
-          callback?.();
-        }),
-      };
+    it('should keep active clients', () => {
+      vi.useFakeTimers();
+      const now = Date.now();
+      vi.setSystemTime(now);
 
-      streamHandler.addClient('client-1', disconnectingClient, 'session-123');
+      streamHandler.addClient('client-1', mockWebSocket, 'session-123');
 
-      // Get the close callback
-      const disconnectCallback = disconnectingClient.on.mock.calls.find(
-        (call: any) => call[0] === 'close'
-      )?.[1];
+      // Send a ping to update activity
+      vi.setSystemTime(now + 30000); // 30 seconds later
+      mockWebSocket.emit('message', Buffer.from(JSON.stringify({ type: 'ping' })));
 
-      callbacks.disconnect = disconnectCallback;
+      // Advance time but not enough to exceed threshold from last activity
+      vi.setSystemTime(now + 70000); // 70 seconds from start, 40 seconds from last activity
 
-      const frameData = Buffer.from('test data');
-      streamHandler.broadcastFrame(frameData);
+      streamHandler.cleanupInactiveClients(60000);
 
-      // Client should have been removed during broadcast
-      expect(streamHandler.getClientCount()).toBe(0);
+      // Client should not be removed
+      expect(mockLogger.log).not.toHaveBeenCalledWith('Removing inactive client client-1');
+
+      vi.useRealTimers();
+    });
+  });
+
+  describe('quality requests', () => {
+    it('should emit quality request events', () => {
+      const emitSpy = vi.spyOn(streamHandler, 'emit');
+
+      streamHandler.addClient('client-1', mockWebSocket, 'session-123');
+
+      const qualityMessage = JSON.stringify({ type: 'quality', quality: 'high' });
+      mockWebSocket.emit('message', Buffer.from(qualityMessage));
+
+      expect(emitSpy).toHaveBeenCalledWith('quality-request', {
+        sessionId: 'session-123',
+        clientId: 'client-1',
+        quality: 'high',
+      });
     });
   });
 });

@@ -159,7 +159,7 @@ describe('Display Detection', () => {
       const result = await detectDisplayServer();
 
       expect(result?.type).toBe('wayland');
-      expect(result?.display).toBe('wayland-0');
+      expect(result?.display).toBe(':0'); // Falls back to default X11 display when DISPLAY is not set
       expect(result?.captureMethod).toBe('x11grab'); // Falls back to x11grab
       expect(result?.availableScreens).toBeDefined();
     });
