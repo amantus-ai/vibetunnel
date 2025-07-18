@@ -46,7 +46,8 @@ if (fs.existsSync(path.join(__dirname, '../dist'))) {
   process.exit(1);
 }
 
-// Skip native executable build in CI
-console.log('Skipping native executable build in CI environment...');
+// Build native executable in CI
+console.log('Building native executable for CI...');
+execSync('node build-native.js', { stdio: 'inherit' });
 
 console.log('CI build completed successfully!');
