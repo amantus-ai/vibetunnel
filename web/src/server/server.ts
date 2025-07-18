@@ -767,7 +767,6 @@ export async function createApp(): Promise<AppInstance> {
 
   // Initialize control socket
   try {
-
     // Set up configuration update callback
     controlUnixHandler.setConfigUpdateCallback((updatedConfig) => {
       // Update server configuration

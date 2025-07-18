@@ -3,7 +3,6 @@ import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
 import type { WebSocket } from 'ws';
-import { WebSocket as WS } from 'ws';
 import { createLogger } from '../utils/logger.js';
 import type {
   ControlCategory,
@@ -11,11 +10,7 @@ import type {
   TerminalSpawnRequest,
   TerminalSpawnResponse,
 } from './control-protocol.js';
-import {
-  createControlEvent,
-  createControlMessage,
-  createControlResponse,
-} from './control-protocol.js';
+import { createControlEvent, createControlResponse } from './control-protocol.js';
 
 const logger = createLogger('control-unix');
 
@@ -131,121 +126,12 @@ class SystemHandler implements MessageHandler {
   }
 }
 
-class ScreenCaptureHandler implements MessageHandler {
-  private browserSocket: WebSocket | null = null;
-  private userId: string | null = null;
-
-  constructor(private controlUnixHandler: ControlUnixHandler) {}
-
-  setBrowserSocket(ws: WebSocket | null, userId?: string) {
-    this.browserSocket = ws;
-    this.userId = userId || null;
-    logger.log(`🔐 ScreenCaptureHandler userId set to: ${this.userId || 'unknown'}`);
-  }
-
-  isBrowserConnected(): boolean {
-    return this.browserSocket !== null && this.browserSocket.readyState === WS.OPEN;
-  }
-
-  getUserId(): string | null {
-    return this.userId;
-  }
-
-  async handleMessage(message: ControlMessage): Promise<ControlMessage | null> {
-    logger.log(`Screen capture handler: ${message.action}`);
-
-    // If message has a sessionId and we have a userId, associate them
-    if (message.sessionId && this.userId) {
-      logger.log(`🔐 Associating sessionId ${message.sessionId} with userId ${this.userId}`);
-      // The Mac app should handle this association
-    }
-
-    switch (message.action) {
-      case 'mac-ready':
-        // Mac app connected and ready
-        if (this.browserSocket) {
-          this.sendToBrowser(createControlEvent('screencap', 'ready', 'Mac peer connected'));
-          // Request initial data with a small delay to ensure Mac is ready
-          logger.log('⏱️ Scheduling initial data request with 100ms delay');
-          setTimeout(() => {
-            logger.log('⏰ Delay complete, now requesting initial data');
-            this.requestInitialData();
-          }, 100);
-        }
-        return null; // No response needed
-
-      case 'api-request':
-        // Request from browser - forward to Mac
-        logger.log(`Forwarding API request from browser to Mac: ${message.id}`);
-        return null; // The request will be forwarded by the parent handler
-
-      case 'api-response':
-        // Response from Mac app - forward to browser
-        if (this.browserSocket) {
-          logger.log(`Forwarding API response to browser: ${message.id}`);
-          this.sendToBrowser(message);
-        }
-        return null;
-
-      case 'offer':
-      case 'answer':
-      case 'ice-candidate':
-      case 'bitrate-adjustment':
-        // WebRTC signaling - forward to browser
-        if (this.browserSocket) {
-          logger.log(`Forwarding ${message.action} to browser`);
-          this.sendToBrowser(message);
-        }
-        return null;
-
-      case 'start-capture':
-        // Forward start-capture from browser to Mac app
-        logger.log(`Forwarding start-capture request to Mac app`);
-        return null; // The request will be forwarded by the parent handler
-
-      case 'ping':
-        // Respond to keep-alive ping
-        logger.debug('Received ping from Mac, sending pong');
-        return createControlResponse(message, { timestamp: Date.now() / 1000 });
-
-      case 'state-change':
-      case 'display-disconnected':
-      case 'window-disconnected':
-        // Forward these events to browser
-        if (this.browserSocket) {
-          logger.log(`Forwarding ${message.action} event to browser`);
-          this.sendToBrowser(message);
-        }
-        return null;
-
-      default:
-        logger.warn(`Unknown screen capture action: ${message.action}`);
-        return createControlResponse(message, null, `Unknown action: ${message.action}`);
-    }
-  }
-
-  private sendToBrowser(message: ControlMessage): void {
-    if (this.browserSocket && this.browserSocket.readyState === WS.OPEN) {
-      this.browserSocket.send(JSON.stringify(message));
-    }
-  }
-
-  private requestInitialData(): void {
-    logger.log('📤 Requesting initial data from Mac...');
-    const request = createControlMessage('screencap', 'get-initial-data', {});
-    logger.log(`📝 Initial data request: ${JSON.stringify(request)}`);
-    this.controlUnixHandler.sendToMac(request);
-    logger.log('✅ Initial data request sent');
-  }
-}
-
 export class ControlUnixHandler {
   private pendingRequests = new Map<string, (response: ControlMessage) => void>();
   private macSocket: net.Socket | null = null;
   private unixServer: net.Server | null = null;
   private readonly socketPath: string;
   private handlers = new Map<ControlCategory, MessageHandler>();
-  private screenCaptureHandler: ScreenCaptureHandler;
   private messageBuffer = Buffer.alloc(0);
   private configUpdateCallback: ((config: { repositoryBasePath: string }) => void) | null = null;
   private currentRepositoryPath: string | null = null;
@@ -268,8 +154,6 @@ export class ControlUnixHandler {
     // Initialize handlers
     this.handlers.set('terminal', new TerminalHandler());
     this.handlers.set('system', new SystemHandler(this));
-    this.screenCaptureHandler = new ScreenCaptureHandler(this);
-    this.handlers.set('screencap', this.screenCaptureHandler);
   }
 
   async start(): Promise<void> {
@@ -352,12 +236,6 @@ export class ControlUnixHandler {
 
     this.macSocket = socket;
     logger.log('✅ Mac socket stored');
-
-    // If a browser is already connected, we can now trigger the ready sequence
-    if (this.screenCaptureHandler.isBrowserConnected()) {
-      logger.log('🌐 Browser is already connected, sending mac-ready event.');
-      this.screenCaptureHandler.handleMessage(createControlEvent('screencap', 'mac-ready'));
-    }
 
     // Set socket options for better handling of large messages
     socket.setNoDelay(true); // Disable Nagle's algorithm for lower latency
@@ -478,9 +356,6 @@ export class ControlUnixHandler {
       if (socket === this.macSocket) {
         this.macSocket = null;
         logger.log('🧹 Cleared Mac socket reference');
-
-        // Notify browser if connected for screencap
-        this.screenCaptureHandler.setBrowserSocket(null);
       }
     });
 
@@ -506,25 +381,7 @@ export class ControlUnixHandler {
     logger.log(
       `🔌 Mac socket status on browser connect: ${this.macSocket ? 'CONNECTED' : 'NOT CONNECTED'}`
     );
-    logger.log(`🖥️ Screen capture handler exists: ${!!this.screenCaptureHandler}`);
-
-    // Set browser socket in screen capture handler with user ID
-    this.screenCaptureHandler.setBrowserSocket(ws, userId);
-    this.handlers.set('screencap', this.screenCaptureHandler);
-    logger.log('✅ Browser socket set in screen capture handler with userId:', userId);
-
-    // If the Mac app is already connected, we can trigger the ready sequence
-    if (this.macSocket) {
-      logger.log('✅ Mac is already connected, sending mac-ready event to trigger initialization');
-      this.screenCaptureHandler
-        .handleMessage(createControlEvent('screencap', 'mac-ready'))
-        .catch((error) => {
-          logger.error('❌ Failed to handle mac-ready event:', error);
-        });
-    } else {
-      logger.log('⏳ Mac app not connected yet, waiting for Mac connection...');
-      logger.log('💡 Make sure the Mac app is running and the Unix socket is connected');
-    }
+    // The browser connection is established but screencap functionality has been removed
 
     ws.on('message', async (data) => {
       try {
@@ -538,42 +395,7 @@ export class ControlUnixHandler {
         );
 
         // Handle browser -> Mac messages
-        if (message.category === 'screencap') {
-          logger.log(`🖥️ Processing screencap message: ${message.action}`);
-          logger.log(`📋 Message ID: ${message.id}`);
-          logger.log(`📋 Message type: ${message.type}`);
-          logger.log(`📋 Full message:`, JSON.stringify(message));
-
-          // Add authentication context to the message
-          const authenticatedMessage = {
-            ...message,
-            userId: this.screenCaptureHandler.getUserId() || 'unknown',
-          };
-          logger.log(`🔐 Adding userId ${authenticatedMessage.userId} to message`);
-
-          // Forward screen capture messages to Mac
-          if (this.macSocket) {
-            logger.log(
-              `📤 Forwarding ${message.action} to Mac app via Unix socket with auth context`
-            );
-            logger.log(`🔌 Mac socket state: ${this.macSocket.destroyed ? 'DESTROYED' : 'ACTIVE'}`);
-            this.sendToMac(authenticatedMessage);
-          } else {
-            logger.warn('❌ No Mac connected to handle screen capture request');
-            logger.warn('💡 The Mac app needs to be running and connected via Unix socket');
-            if (message.type === 'request') {
-              const errorResponse = createControlResponse(
-                message,
-                null,
-                'Mac app not connected - ensure VibeTunnel Mac app is running'
-              );
-              logger.log('📤 Sending error response to browser:', errorResponse);
-              ws.send(JSON.stringify(errorResponse));
-            }
-          }
-        } else {
-          logger.warn(`⚠️ Browser sent message for unsupported category: ${message.category}`);
-        }
+        logger.warn(`⚠️ Browser sent message for category: ${message.category}`);
       } catch (error) {
         logger.error('❌ Failed to parse browser message:', error);
         ws.send(
@@ -588,7 +410,6 @@ export class ControlUnixHandler {
 
     ws.on('close', () => {
       logger.log('Browser disconnected');
-      this.screenCaptureHandler.setBrowserSocket(null);
     });
 
     ws.on('error', (error) => {
@@ -626,19 +447,11 @@ export class ControlUnixHandler {
 
     // Skip processing for response messages that aren't pending requests
     // This prevents response loops where error responses get processed again
-    // EXCEPT for screencap messages which need to be forwarded to the browser
-    if (message.type === 'response' && message.category !== 'screencap') {
+    if (message.type === 'response') {
       logger.debug(
         `Ignoring response message that has no pending request: ${message.id}, action: ${message.action}`
       );
       return;
-    }
-
-    // Log screencap responses that will be forwarded
-    if (message.type === 'response' && message.category === 'screencap') {
-      logger.log(
-        `📡 Forwarding screencap response to handler: ${message.id}, action: ${message.action}`
-      );
     }
 
     const handler = this.handlers.get(message.category);

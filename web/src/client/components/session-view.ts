@@ -614,7 +614,6 @@ export class SessionView extends LitElement {
     );
   }
 
-
   private async checkServerStatus() {
     try {
       const response = await fetch('/api/server/status', {

@@ -42,12 +42,6 @@ async function build() {
       outfile: 'public/bundle/test.js',
     });
 
-    // Build screencap bundle
-    await esbuild.build({
-      ...prodOptions,
-      entryPoints: ['src/client/screencap-entry.ts'],
-      outfile: 'public/bundle/screencap.js',
-    });
 
     // Build service worker
     await esbuild.build({
