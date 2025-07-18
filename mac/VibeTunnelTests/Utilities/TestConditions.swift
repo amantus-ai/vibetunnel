@@ -7,8 +7,11 @@ import Testing
 /// Condition that checks if the server binary is available for testing
 enum ServerBinaryAvailableCondition {
     static func isAvailable() -> Bool {
-        // Check for the embedded vibetunnel binary (same logic as the actual server)
-        if let embeddedBinaryPath = Bundle.main.path(forResource: "vibetunnel", ofType: nil),
+        // Check for the embedded vibetunnel binary in the host app bundle
+        // When running tests, Bundle.main is the test bundle, not the app bundle
+        let hostBundle = Bundle(for: BunServer.self) // Get the app bundle, not test bundle
+        
+        if let embeddedBinaryPath = hostBundle.path(forResource: "vibetunnel", ofType: nil),
            FileManager.default.fileExists(atPath: embeddedBinaryPath)
         {
             return true
