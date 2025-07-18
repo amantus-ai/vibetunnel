@@ -69,14 +69,7 @@ const waitForSessionExit = async (
   return false;
 };
 
-// TODO: These tests hang in CI during 'Run server tests with coverage'
-// They work locally but something about the CI environment causes them to not terminate properly
-// Possible causes:
-// 1. PTY processes not being cleaned up properly in CI
-// 2. File watchers or intervals not being cleared
-// 3. Mock vs real node-pty behavior differences
-// Need to investigate further with CI-specific debugging
-describe.skip('PtyManager', { timeout: 30000 }, () => {
+describe('PtyManager', { timeout: 30000 }, () => {
   let ptyManager: PtyManager;
   let testDir: string;
 

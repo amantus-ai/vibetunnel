@@ -5,13 +5,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createBasicAuthHeader, ServerManager } from '../utils/server-utils.js';
 
-// TODO: This test hangs in CI during 'Run server tests with coverage'
-// The ServerManager properly starts the server but something prevents proper cleanup
-// Possible causes:
-// 1. Server process not terminating in CI environment
-// 2. Open connections keeping the process alive
-// 3. File handles or watchers not being released
-describe.skip('File Upload API', () => {
+describe('File Upload API', () => {
   const serverManager = new ServerManager();
   let baseUrl: string;
   const authHeader = createBasicAuthHeader('testuser', 'testpass');

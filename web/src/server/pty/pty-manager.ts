@@ -1741,33 +1741,28 @@ export class PtyManager extends EventEmitter {
    * Shutdown all active sessions and clean up resources
    */
   async shutdown(): Promise<void> {
-    for (const [sessionId, session] of Array.from(this.sessions.entries())) {
-      try {
-        if (session.ptyProcess) {
-          const pid = session.ptyProcess.pid;
-          session.ptyProcess.kill();
-
-          // Also kill the entire process group if on Unix
-          if (process.platform !== 'win32' && pid) {
-            try {
-              process.kill(-pid, 'SIGTERM');
-              logger.debug(`Sent SIGTERM to process group -${pid} during shutdown`);
-            } catch (groupKillError) {
-              // Process group might not exist
-              logger.debug(`Failed to kill process group during shutdown:`, groupKillError);
-            }
-          }
-        }
-        if (session.asciinemaWriter?.isOpen()) {
-          await session.asciinemaWriter.close();
-        }
-        // Clean up all session resources
-        this.cleanupSessionResources(session);
-      } catch (error) {
-        logger.error(`Failed to cleanup session ${sessionId} during shutdown:`, error);
-      }
+    logger.debug(`Starting PtyManager shutdown with ${this.sessions.size} active sessions`);
+    
+    // First, prevent new sessions from being created
+    const sessionsToCleanup = Array.from(this.sessions.entries());
+    
+    // Kill all processes and collect cleanup promises
+    const cleanupPromises: Promise<void>[] = [];
+    
+    for (const [sessionId, session] of sessionsToCleanup) {
+      cleanupPromises.push(this.shutdownSession(sessionId, session));
     }
 
+    // Wait for all sessions to be cleaned up with a timeout
+    await Promise.race([
+      Promise.all(cleanupPromises),
+      new Promise<void>((resolve) => setTimeout(() => {
+        logger.warn('PtyManager shutdown timeout - forcing cleanup');
+        resolve();
+      }, 5000)) // 5 second timeout
+    ]);
+
+    // Clear the sessions map
     this.sessions.clear();
 
     // Clean up all socket clients
@@ -1789,6 +1784,90 @@ export class PtyManager extends EventEmitter {
       }
     }
     this.resizeEventListeners.length = 0;
+    
+    logger.debug('PtyManager shutdown complete');
+  }
+  
+  /**
+   * Shutdown a single session with proper cleanup
+   */
+  private async shutdownSession(sessionId: string, session: PtySession): Promise<void> {
+    return new Promise<void>((resolve) => {
+      let sessionCleaned = false;
+      
+      const cleanup = () => {
+        if (!sessionCleaned) {
+          sessionCleaned = true;
+          try {
+            // Clean up all session resources
+            this.cleanupSessionResources(session);
+            logger.debug(`Session ${sessionId} cleaned up`);
+          } catch (error) {
+            logger.error(`Failed to cleanup session ${sessionId} resources:`, error);
+          }
+          resolve();
+        }
+      };
+
+      try {
+        if (session.ptyProcess) {
+          const pid = session.ptyProcess.pid;
+          
+          // Set up exit handler
+          const exitHandler = () => {
+            logger.debug(`Session ${sessionId} process exited`);
+            cleanup();
+          };
+          
+          // Listen for exit event
+          session.ptyProcess.once('exit', exitHandler);
+          
+          // Kill the process
+          session.ptyProcess.kill();
+
+          // Also kill the entire process group if on Unix
+          if (process.platform !== 'win32' && pid) {
+            try {
+              process.kill(-pid, 'SIGTERM');
+              logger.debug(`Sent SIGTERM to process group -${pid} during shutdown`);
+            } catch (groupKillError) {
+              // Process group might not exist
+              logger.debug(`Failed to kill process group during shutdown:`, groupKillError);
+            }
+          }
+          
+          // Set a timeout to force cleanup if process doesn't exit
+          setTimeout(() => {
+            if (!sessionCleaned) {
+              logger.warn(`Session ${sessionId} did not exit cleanly, forcing cleanup`);
+              // Try SIGKILL
+              try {
+                session.ptyProcess?.kill('SIGKILL');
+                if (process.platform !== 'win32' && pid) {
+                  process.kill(-pid, 'SIGKILL');
+                }
+              } catch (_e) {
+                // Process may already be dead
+              }
+              cleanup();
+            }
+          }, 2000); // 2 second timeout per session
+        } else {
+          // No process, just cleanup
+          cleanup();
+        }
+        
+        // Close asciinema writer if open
+        if (session.asciinemaWriter?.isOpen()) {
+          session.asciinemaWriter.close().catch((error) => {
+            logger.error(`Failed to close asciinema writer for session ${sessionId}:`, error);
+          });
+        }
+      } catch (error) {
+        logger.error(`Failed to shutdown session ${sessionId}:`, error);
+        cleanup();
+      }
+    });
   }
 
   /**
@@ -1910,15 +1989,33 @@ export class PtyManager extends EventEmitter {
 
     // Clean up input socket server
     if (session.inputSocketServer) {
-      // Close the server and wait for it to close
-      session.inputSocketServer.close();
-      // Unref the server so it doesn't keep the process alive
-      session.inputSocketServer.unref();
+      try {
+        // Remove all listeners first
+        session.inputSocketServer.removeAllListeners();
+        // Close the server
+        session.inputSocketServer.close(() => {
+          logger.debug(`Input socket server closed for session ${session.id}`);
+        });
+        // Unref the server so it doesn't keep the process alive
+        session.inputSocketServer.unref();
+        // Force close all connections
+        session.inputSocketServer.getConnections((err, count) => {
+          if (!err && count > 0) {
+            logger.debug(`Force closing ${count} connections for session ${session.id}`);
+          }
+        });
+      } catch (error) {
+        logger.error(`Error closing input socket server for session ${session.id}:`, error);
+      }
+      
+      // Remove socket file
       try {
         fs.unlinkSync(path.join(session.controlDir, 'ipc.sock'));
       } catch (_e) {
         // Socket already removed
       }
+      
+      session.inputSocketServer = undefined;
     }
 
     // Note: stdin handling is done via IPC socket, no global listeners to clean up
@@ -1941,6 +2038,16 @@ export class PtyManager extends EventEmitter {
     if (session.titleInjectionTimer) {
       clearInterval(session.titleInjectionTimer);
       session.titleInjectionTimer = undefined;
+    }
+    
+    // Clean up any other potential timers or intervals
+    // Force the PTY process to be unreferenced if it still exists
+    if (session.ptyProcess && typeof session.ptyProcess.unref === 'function') {
+      try {
+        session.ptyProcess.unref();
+      } catch (_e) {
+        // May not be supported or already unreferenced
+      }
     }
   }
 

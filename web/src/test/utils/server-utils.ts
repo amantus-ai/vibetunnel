@@ -271,26 +271,68 @@ export async function stopServer(
   }
 
   return new Promise<void>((resolve) => {
-    // First try SIGTERM
-    serverProcess.kill('SIGTERM');
+    let processExited = false;
 
+    // Set up exit handler first
+    const exitHandler = () => {
+      if (!processExited) {
+        processExited = true;
+        clearTimeout(timeout);
+        clearInterval(checkInterval);
+        resolve();
+      }
+    };
+
+    serverProcess.once('exit', exitHandler);
+
+    // First try SIGTERM
+    try {
+      serverProcess.kill('SIGTERM');
+    } catch (e) {
+      // Process may already be dead
+      testLogger.debug('Server shutdown', 'Process already dead or cannot be killed', e);
+      serverProcess.removeListener('exit', exitHandler);
+      resolve();
+      return;
+    }
+
+    // Set up forceful kill timeout
     const timeout = setTimeout(() => {
-      if (forceful) {
+      if (!processExited && forceful) {
         testLogger.info('Server shutdown', 'Force killing server process');
         try {
           serverProcess.kill('SIGKILL');
+          // Also try to kill process group on Unix
+          if (process.platform !== 'win32' && serverProcess.pid) {
+            try {
+              process.kill(-serverProcess.pid, 'SIGKILL');
+            } catch (_e) {
+              // Process group might not exist
+            }
+          }
         } catch (_e) {
           // Process may already be dead
         }
       }
-      resolve();
+      // Ensure we resolve even if kill fails
+      setTimeout(() => {
+        if (!processExited) {
+          serverProcess.removeListener('exit', exitHandler);
+          resolve();
+        }
+      }, 500);
     }, PROCESS_KILL_TIMEOUT);
 
+    // Check if process is already dead
     const checkInterval = setInterval(() => {
       if (serverProcess.killed || serverProcess.exitCode !== null) {
-        clearTimeout(timeout);
-        clearInterval(checkInterval);
-        resolve();
+        if (!processExited) {
+          processExited = true;
+          clearTimeout(timeout);
+          clearInterval(checkInterval);
+          serverProcess.removeListener('exit', exitHandler);
+          resolve();
+        }
       }
     }, 100);
   });
@@ -340,7 +382,21 @@ export class ServerManager {
    * Stops all managed servers
    */
   async stopAll(): Promise<void> {
-    await Promise.all(this.servers.map((server) => stopServer(server.process)));
+    // Stop all servers in parallel
+    const stopPromises = this.servers.map((server) => {
+      testLogger.info('ServerManager', `Stopping server on port ${server.port}`);
+      return stopServer(server.process, true);
+    });
+    
+    // Wait for all to stop with a timeout
+    await Promise.race([
+      Promise.all(stopPromises),
+      new Promise<void>((resolve) => setTimeout(() => {
+        testLogger.warn('ServerManager', 'Server stop timeout - forcing cleanup');
+        resolve();
+      }, 10000)) // 10 second timeout for all servers
+    ]);
+    
     this.servers = [];
   }
 
