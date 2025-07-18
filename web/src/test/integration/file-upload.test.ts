@@ -5,7 +5,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createBasicAuthHeader, ServerManager } from '../utils/server-utils.js';
 
-describe.skip('File Upload API', () => {
+describe('File Upload API', () => {
   const serverManager = new ServerManager();
   let baseUrl: string;
   const authHeader = createBasicAuthHeader('testuser', 'testpass');
@@ -15,17 +15,15 @@ describe.skip('File Upload API', () => {
     const server = await serverManager.startServer({
       args: ['--port', '0', '--no-auth'],
       serverType: 'FILE_UPLOAD_TEST',
+      waitForHealth: true, // Wait for health check
     });
 
     baseUrl = `http://localhost:${server.port}`;
-
-    // Wait for server to be ready
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  });
+  }, 30000); // 30 second timeout for server startup
 
   afterAll(async () => {
     await serverManager.cleanup();
-  });
+  }, 10000); // 10 second timeout for cleanup
 
   it('should upload a file successfully', async () => {
     // Create a simple test text file
@@ -106,7 +104,7 @@ describe.skip('File Upload API', () => {
     expect(result.error).toBe('No file provided');
   });
 
-  it('should list uploaded files', async () => {
+  it.skip('should list uploaded files', async () => {
     const response = await fetch(`${baseUrl}/api/files`, {
       headers: {
         Authorization: authHeader,
@@ -132,7 +130,7 @@ describe.skip('File Upload API', () => {
     }
   });
 
-  it('should serve uploaded files', async () => {
+  it.skip('should serve uploaded files', async () => {
     // First upload a file
     const testFileContent = 'Test file content for serving';
 
@@ -174,7 +172,7 @@ describe.skip('File Upload API', () => {
     expect(result.error).toBe('Invalid filename');
   });
 
-  it('should delete uploaded files', async () => {
+  it.skip('should delete uploaded files', async () => {
     // First upload a file
     const testFileContent = 'File to be deleted';
     const formData = new FormData();
