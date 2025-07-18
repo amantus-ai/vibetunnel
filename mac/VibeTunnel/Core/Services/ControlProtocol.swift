@@ -1,16 +1,16 @@
 import Foundation
 
 /// Control message protocol for unified Unix socket communication
-enum ControlProtocol {
+public enum ControlProtocol {
     // MARK: - Message Types
 
-    enum MessageType: String, Codable {
+    public enum MessageType: String, Codable {
         case request
         case response
         case event
     }
 
-    enum Category: String, Codable {
+    public enum Category: String, Codable {
         case terminal
         case screencap
         case git
