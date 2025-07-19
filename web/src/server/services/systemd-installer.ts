@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execSync } from 'node:child_process';
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // Colors for output
@@ -14,14 +14,33 @@ const NC = '\x1b[0m'; // No Color
 // Configuration
 const SERVICE_NAME = 'vibetunnel';
 const SERVICE_FILE = 'vibetunnel.service';
-const SYSTEMD_DIR = '/etc/systemd/system';
+const SYSTEMD_DIR = `${process.env.HOME}/.config/systemd/user`;
 
 // Get the current user (the one who installed vibetunnel)
 function getCurrentUser(): { username: string; home: string } {
   const username = process.env.SUDO_USER || process.env.USER || 'root';
-  const home = process.env.SUDO_USER
-    ? `/home/${process.env.SUDO_USER}`
-    : process.env.HOME || `/home/${username}`;
+
+  let home: string;
+  if (process.env.SUDO_USER) {
+    // For sudo users, get the actual home directory from the system
+    try {
+      const homeOutput = execSync(`getent passwd "${process.env.SUDO_USER}" | cut -d: -f6`, {
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }).trim();
+      home = homeOutput || `/home/${process.env.SUDO_USER}`;
+    } catch {
+      // Fallback to standard home directory if getent fails
+      home = `/home/${process.env.SUDO_USER}`;
+    }
+  } else if (username === 'root') {
+    // Root user's home is /root, not /home/root
+    home = process.env.HOME || '/root';
+  } else {
+    // For regular users, use HOME env var or standard path
+    home = process.env.HOME || `/home/${username}`;
+  }
+
   return { username, home };
 }
 
@@ -45,7 +64,7 @@ function printError(message: string): void {
 // Create a stable wrapper script that can find vibetunnel regardless of node version manager
 function createVibetunnelWrapper(): string {
   const { username, home } = getCurrentUser();
-  const wrapperPath = '/usr/local/bin/vibetunnel-systemd';
+  const wrapperPath = `${process.env.HOME}/.local/bin/vibetunnel-systemd`;
   const wrapperContent = `#!/bin/bash
 # VibeTunnel Systemd Wrapper Script
 # This script finds and executes vibetunnel for user: ${username}
@@ -85,10 +104,15 @@ find_vibetunnel() {
     fi
     
     # Method 3: Check for fnm installations  
-    if [ -d "${home}/.local/share/fnm" ]; then
+    if [ -d "${home}/.local/share/fnm" ] && [ -x "${home}/.local/share/fnm/fnm" ]; then
         log_info "Checking fnm installation for user ${username}"
+        export FNM_DIR="${home}/.local/share/fnm"
         export PATH="${home}/.local/share/fnm:$PATH"
-        eval "$(fnm env --use-on-cd)" 2>/dev/null || true
+        export SHELL="/bin/bash"  # Force shell for fnm
+        # Initialize fnm with explicit shell and use the default node version
+        eval "$("${home}/.local/share/fnm/fnm" env --shell bash)" 2>/dev/null || true
+        # Try to use the default node version or current version
+        "${home}/.local/share/fnm/fnm" use default >/dev/null 2>&1 || "${home}/.local/share/fnm/fnm" use current >/dev/null 2>&1 || true
         if command -v vibetunnel >/dev/null 2>&1; then
             log_info "Found vibetunnel via fnm"
             vibetunnel "$@"
@@ -132,6 +156,13 @@ find_vibetunnel "$@"
 `;
 
   try {
+    // Ensure ~/.local/bin directory exists
+    const localBinDir = `${process.env.HOME}/.local/bin`;
+    if (!existsSync(localBinDir)) {
+      mkdirSync(localBinDir, { recursive: true });
+      printInfo(`Created directory: ${localBinDir}`);
+    }
+
     // Create the wrapper script
     writeFileSync(wrapperPath, wrapperContent);
     execSync(`chmod +x ${wrapperPath}`, { stdio: 'pipe' });
@@ -169,7 +200,7 @@ function checkVibetunnelAndCreateWrapper(): string {
 
 // Remove wrapper script during uninstall
 function removeVibetunnelWrapper(): void {
-  const wrapperPath = '/usr/local/bin/vibetunnel-systemd';
+  const wrapperPath = `${process.env.HOME}/.local/bin/vibetunnel-systemd`;
   try {
     if (existsSync(wrapperPath)) {
       execSync(`rm ${wrapperPath}`, { stdio: 'pipe' });
@@ -184,7 +215,7 @@ function removeVibetunnelWrapper(): void {
 
 // Get the systemd service template
 function getServiceTemplate(vibetunnelPath: string): string {
-  const { username, home } = getCurrentUser();
+  const { home } = getCurrentUser();
 
   return `[Unit]
 Description=VibeTunnel - Terminal sharing server with web interface
@@ -194,8 +225,6 @@ Wants=network.target
 
 [Service]
 Type=simple
-User=${username}
-Group=${username}
 WorkingDirectory=${home}
 ExecStart=${vibetunnelPath} --port 4020 --bind 0.0.0.0
 Restart=always
@@ -204,13 +233,11 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=${SERVICE_NAME}
 
-# Security settings
-NoNewPrivileges=true
-PrivateTmp=true
-
 # Environment - preserve user environment for node version managers
 Environment=NODE_ENV=production
 Environment=VIBETUNNEL_LOG_LEVEL=info
+Environment=HOME=%h
+Environment=USER=%i
 
 # Resource limits
 LimitNOFILE=65536
@@ -218,23 +245,26 @@ MemoryHigh=512M
 MemoryMax=1G
 
 [Install]
-WantedBy=multi-user.target`;
+WantedBy=default.target`;
 }
 
 // Install systemd service
 function installService(vibetunnelPath: string): void {
-  printInfo('Installing systemd service...');
+  printInfo('Installing user systemd service...');
 
   const serviceContent = getServiceTemplate(vibetunnelPath);
   const servicePath = join(SYSTEMD_DIR, SERVICE_FILE);
 
   try {
+    // Create user systemd directory if it doesn't exist
+    execSync(`mkdir -p ${SYSTEMD_DIR}`, { stdio: 'pipe' });
+
     writeFileSync(servicePath, serviceContent);
     execSync(`chmod 644 ${servicePath}`, { stdio: 'pipe' });
 
-    // Reload systemd
-    execSync('systemctl daemon-reload', { stdio: 'pipe' });
-    printSuccess('Systemd service installed');
+    // Reload user systemd
+    execSync('systemctl --user daemon-reload', { stdio: 'pipe' });
+    printSuccess('User systemd service installed');
   } catch (error) {
     printError(`Failed to install service: ${error}`);
     process.exit(1);
@@ -246,9 +276,18 @@ function configureService(): void {
   printInfo('Configuring service...');
 
   try {
-    // Enable the service
-    execSync(`systemctl enable ${SERVICE_NAME}`, { stdio: 'pipe' });
-    printSuccess('Service enabled for automatic startup');
+    // Enable the user service
+    execSync(`systemctl --user enable ${SERVICE_NAME}`, { stdio: 'pipe' });
+    printSuccess('User service enabled for automatic startup');
+
+    // Enable lingering so service starts on boot even when user not logged in
+    try {
+      execSync(`loginctl enable-linger ${process.env.USER}`, { stdio: 'pipe' });
+      printSuccess('User lingering enabled - service will start on boot');
+    } catch (error) {
+      printError(`Failed to enable lingering: ${error}`);
+      printError('Service will only start when user logs in');
+    }
   } catch (error) {
     printError(`Failed to configure service: ${error}`);
     process.exit(1);
@@ -262,46 +301,48 @@ function showUsage(): void {
   printSuccess('VibeTunnel systemd service installation completed!');
   console.log('');
   console.log('Usage:');
-  console.log(`  sudo systemctl start ${SERVICE_NAME}     # Start the service`);
-  console.log(`  sudo systemctl stop ${SERVICE_NAME}      # Stop the service`);
-  console.log(`  sudo systemctl restart ${SERVICE_NAME}   # Restart the service`);
-  console.log(`  sudo systemctl status ${SERVICE_NAME}    # Check service status`);
-  console.log(`  sudo systemctl enable ${SERVICE_NAME}    # Enable auto-start (already done)`);
-  console.log(`  sudo systemctl disable ${SERVICE_NAME}   # Disable auto-start`);
+  console.log(`  systemctl --user start ${SERVICE_NAME}     # Start the service`);
+  console.log(`  systemctl --user stop ${SERVICE_NAME}      # Stop the service`);
+  console.log(`  systemctl --user restart ${SERVICE_NAME}   # Restart the service`);
+  console.log(`  systemctl --user status ${SERVICE_NAME}    # Check service status`);
+  console.log(`  systemctl --user enable ${SERVICE_NAME}    # Enable auto-start (already done)`);
+  console.log(`  systemctl --user disable ${SERVICE_NAME}   # Disable auto-start`);
   console.log('');
   console.log('Logs:');
-  console.log(`  sudo journalctl -u ${SERVICE_NAME} -f    # Follow logs in real-time`);
-  console.log(`  sudo journalctl -u ${SERVICE_NAME}       # View all logs`);
+  console.log(`  journalctl --user -u ${SERVICE_NAME} -f    # Follow logs in real-time`);
+  console.log(`  journalctl --user -u ${SERVICE_NAME}       # View all logs`);
   console.log('');
   console.log('Configuration:');
   console.log('  Service runs on port 4020 by default');
   console.log('  Web interface: http://localhost:4020');
   console.log(`  Service runs as user: ${username}`);
   console.log(`  Working directory: ${home}`);
-  console.log('  Wrapper script: /usr/local/bin/vibetunnel-systemd');
+  console.log(`  Wrapper script: ${process.env.HOME}/.local/bin/vibetunnel-systemd`);
   console.log('');
   console.log(`To customize the service, edit: ${SYSTEMD_DIR}/${SERVICE_FILE}`);
-  console.log(`Then run: sudo systemctl daemon-reload && sudo systemctl restart ${SERVICE_NAME}`);
+  console.log(
+    `Then run: systemctl --user daemon-reload && systemctl --user restart ${SERVICE_NAME}`
+  );
 }
 
 // Uninstall function
 function uninstallService(): void {
-  printInfo('Uninstalling VibeTunnel systemd service...');
+  printInfo('Uninstalling VibeTunnel user systemd service...');
 
   try {
-    // Stop and disable service
+    // Stop and disable user service
     try {
-      execSync(`systemctl is-active ${SERVICE_NAME}`, { stdio: 'pipe' });
-      execSync(`systemctl stop ${SERVICE_NAME}`, { stdio: 'pipe' });
-      printInfo('Service stopped');
+      execSync(`systemctl --user is-active ${SERVICE_NAME}`, { stdio: 'pipe' });
+      execSync(`systemctl --user stop ${SERVICE_NAME}`, { stdio: 'pipe' });
+      printInfo('User service stopped');
     } catch (_error) {
       // Service not running
     }
 
     try {
-      execSync(`systemctl is-enabled ${SERVICE_NAME}`, { stdio: 'pipe' });
-      execSync(`systemctl disable ${SERVICE_NAME}`, { stdio: 'pipe' });
-      printInfo('Service disabled');
+      execSync(`systemctl --user is-enabled ${SERVICE_NAME}`, { stdio: 'pipe' });
+      execSync(`systemctl --user disable ${SERVICE_NAME}`, { stdio: 'pipe' });
+      printInfo('User service disabled');
     } catch (_error) {
       // Service not enabled
     }
@@ -313,13 +354,17 @@ function uninstallService(): void {
       printInfo('Service file removed');
     }
 
-    // Reload systemd
-    execSync('systemctl daemon-reload', { stdio: 'pipe' });
+    // Reload user systemd
+    execSync('systemctl --user daemon-reload', { stdio: 'pipe' });
 
     // Remove wrapper script
     removeVibetunnelWrapper();
 
-    printSuccess('VibeTunnel systemd service uninstalled');
+    // Optionally disable lingering (ask user)
+    printInfo('Note: User lingering is still enabled. To disable:');
+    console.log(`  loginctl disable-linger ${process.env.USER}`);
+
+    printSuccess('VibeTunnel user systemd service uninstalled');
   } catch (error) {
     printError(`Failed to uninstall service: ${error}`);
     process.exit(1);
@@ -329,7 +374,7 @@ function uninstallService(): void {
 // Check service status
 function checkServiceStatus(): void {
   try {
-    const status = execSync(`systemctl status ${SERVICE_NAME}`, { encoding: 'utf8' });
+    const status = execSync(`systemctl --user status ${SERVICE_NAME}`, { encoding: 'utf8' });
     console.log(status);
   } catch (error) {
     // systemctl status returns non-zero for inactive services, which is normal
@@ -341,59 +386,11 @@ function checkServiceStatus(): void {
   }
 }
 
-// Check if we're running on a platform that supports getuid (Unix-like systems)
-function isUnixLike(): boolean {
-  return typeof process.getuid === 'function';
-}
-
-// Check if running as root (only on Unix-like systems)
-function isRunningAsRoot(): boolean {
-  if (!isUnixLike()) {
-    return false; // On Windows, assume no root privileges
-  }
-  return process.getuid?.() === 0;
-}
-
-// Safely re-execute with sudo using proper escaping and the global vibetunnel command
-function reExecuteWithSudo(action: string): void {
-  if (!isUnixLike()) {
-    printError('Systemd services are only supported on Unix-like systems (Linux/macOS)');
-    printError('Windows is not supported for systemd service installation');
-    process.exit(1);
-  }
-
-  printInfo('Root privileges required. Re-running with sudo...');
-  try {
-    // Validate action to prevent command injection
-    const validActions = ['install', 'uninstall', 'status'];
-    if (!validActions.includes(action)) {
-      printError(`Invalid action: ${action}`);
-      process.exit(1);
-    }
-
-    // Use the global vibetunnel command instead of internal script paths
-    // This avoids path injection issues and works correctly with npm installations
-    // Preserve environment variables with -E flag
-    const command = `sudo -E vibetunnel systemd ${action}`;
-    execSync(command, { stdio: 'inherit' });
-    process.exit(0);
-  } catch (error) {
-    printError(`Failed to run with sudo: ${error}`);
-    process.exit(1);
-  }
-}
-
 // Main installation function
 export function installSystemdService(action: string = 'install'): void {
   switch (action) {
     case 'install': {
-      printInfo('Installing VibeTunnel systemd service...');
-
-      // Check if we need to re-run with sudo
-      if (!isRunningAsRoot()) {
-        reExecuteWithSudo(action);
-        return; // This line won't be reached due to process.exit in reExecuteWithSudo
-      }
+      printInfo('Installing VibeTunnel user systemd service...');
 
       const wrapperPath = checkVibetunnelAndCreateWrapper();
       installService(wrapperPath);
@@ -403,12 +400,6 @@ export function installSystemdService(action: string = 'install'): void {
     }
 
     case 'uninstall': {
-      // Check if we need to re-run with sudo
-      if (!isRunningAsRoot()) {
-        reExecuteWithSudo(action);
-        return; // This line won't be reached due to process.exit in reExecuteWithSudo
-      }
-
       uninstallService();
       break;
     }
@@ -419,12 +410,9 @@ export function installSystemdService(action: string = 'install'): void {
 
     default:
       console.log('Usage: vibetunnel systemd [install|uninstall|status]');
-      console.log('  install   - Install VibeTunnel systemd service (default)');
-      console.log('  uninstall - Remove VibeTunnel systemd service');
+      console.log('  install   - Install VibeTunnel user systemd service (default)');
+      console.log('  uninstall - Remove VibeTunnel user systemd service');
       console.log('  status    - Check service status');
       process.exit(1);
   }
 }
-
-// This module is only meant to be imported by the CLI
-// Direct execution is handled by src/cli.ts
