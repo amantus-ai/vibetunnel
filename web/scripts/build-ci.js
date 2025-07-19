@@ -20,7 +20,6 @@ execSync('pnpm exec tailwindcss -i ./src/client/styles.css -o ./public/bundle/st
 console.log('Bundling client JavaScript...');
 execSync('esbuild src/client/app-entry.ts --bundle --outfile=public/bundle/client-bundle.js --format=esm --minify --define:process.env.NODE_ENV=\'"test"\'', { stdio: 'inherit' });
 execSync('esbuild src/client/test-entry.ts --bundle --outfile=public/bundle/test.js --format=esm --minify --define:process.env.NODE_ENV=\'"test"\'', { stdio: 'inherit' });
-execSync('esbuild src/client/screencap-entry.ts --bundle --outfile=public/bundle/screencap.js --format=esm --minify --define:process.env.NODE_ENV=\'"test"\'', { stdio: 'inherit' });
 execSync('esbuild src/client/sw.ts --bundle --outfile=public/sw.js --format=iife --minify --define:process.env.NODE_ENV=\'"test"\'', { stdio: 'inherit' });
 
 // Build server TypeScript
@@ -46,7 +45,8 @@ if (fs.existsSync(path.join(__dirname, '../dist'))) {
   process.exit(1);
 }
 
-// Skip native executable build in CI
-console.log('Skipping native executable build in CI environment...');
+// Build native executable in CI
+console.log('Building native executable for CI...');
+execSync('node build-native.js', { stdio: 'inherit' });
 
 console.log('CI build completed successfully!');

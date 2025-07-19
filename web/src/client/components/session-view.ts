@@ -17,6 +17,7 @@ import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Session } from './session-list.js';
 import './terminal.js';
+import './vibe-terminal-binary.js';
 import './file-browser.js';
 import './file-picker.js';
 import type { FilePicker } from './file-picker.js';
@@ -50,6 +51,8 @@ import {
   type TerminalStateCallbacks,
 } from './session-view/terminal-lifecycle-manager.js';
 import type { Terminal } from './terminal.js';
+import { type AppPreferences, STORAGE_KEY } from './unified-settings.js';
+import type { VibeTerminalBinary } from './vibe-terminal-binary.js';
 
 // Extend Window interface to include our custom property
 declare global {
@@ -93,6 +96,7 @@ export class SessionView extends LitElement {
   @state() private terminalTheme: TerminalThemeId = 'auto';
   @state() private terminalContainerHeight = '100%';
   @state() private isLandscape = false;
+  @state() private useBinaryMode = false;
   @state() private macAppConnected = false;
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
@@ -206,12 +210,18 @@ export class SessionView extends LitElement {
     // Check initial orientation
     this.checkOrientation();
 
+    // Load binary mode preference
+    this.loadBinaryModePreference();
+
     // Create bound orientation handler
     this.boundHandleOrientationChange = () => this.handleOrientationChange();
 
     // Listen for orientation changes
     window.addEventListener('orientationchange', this.boundHandleOrientationChange);
     window.addEventListener('resize', this.boundHandleOrientationChange);
+
+    // Listen for binary mode changes
+    window.addEventListener('terminal-binary-mode-changed', this.handleBinaryModeChange);
 
     // Initialize connection manager
     this.connectionManager = new ConnectionManager(
@@ -424,6 +434,9 @@ export class SessionView extends LitElement {
       window.removeEventListener('resize', this.boundHandleOrientationChange);
     }
 
+    // Remove binary mode listener
+    window.removeEventListener('terminal-binary-mode-changed', this.handleBinaryModeChange);
+
     // Remove drag & drop and paste event listeners
     this.removeEventListener('dragover', this.boundHandleDragOver);
     this.removeEventListener('dragleave', this.boundHandleDragLeave);
@@ -462,6 +475,48 @@ export class SessionView extends LitElement {
     this.checkOrientation();
     // Request update to re-render with new safe area classes
     this.requestUpdate();
+  }
+
+  private loadBinaryModePreference() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const preferences = JSON.parse(stored) as AppPreferences;
+        this.useBinaryMode = preferences.useBinaryMode ?? false;
+      }
+    } catch (error) {
+      logger.warn('Failed to load binary mode preference', error);
+    }
+  }
+
+  private handleBinaryModeChange = (event: Event) => {
+    const customEvent = event as CustomEvent<boolean>;
+    const newValue = customEvent.detail;
+
+    // Only update if value actually changed
+    if (this.useBinaryMode !== newValue) {
+      this.useBinaryMode = newValue;
+
+      // If we have an active session, reconnect with new mode
+      if (this.session && this.connected) {
+        // Disconnect current terminal
+        this.connectionManager.cleanupStreamConnection();
+
+        // Force a re-render to switch terminal components
+        this.requestUpdate();
+
+        // Re-establish connection after component switch
+        requestAnimationFrame(() => {
+          this.ensureTerminalInitialized();
+        });
+      }
+    }
+  };
+
+  private getTerminalElement(): Terminal | VibeTerminalBinary | null {
+    return this.useBinaryMode
+      ? (this.querySelector('vibe-terminal-binary') as VibeTerminalBinary | null)
+      : (this.querySelector('vibe-terminal') as Terminal | null);
   }
 
   firstUpdated(changedProperties: PropertyValues) {
@@ -552,7 +607,7 @@ export class SessionView extends LitElement {
     }
 
     // Check if terminal element exists in DOM
-    const terminalElement = this.querySelector('vibe-terminal') as Terminal;
+    const terminalElement = this.getTerminalElement();
     if (!terminalElement) {
       logger.log('Terminal element not found in DOM, deferring initialization');
       // Retry after next render cycle
@@ -608,21 +663,6 @@ export class SessionView extends LitElement {
     // Dispatch event to create a new session
     this.dispatchEvent(
       new CustomEvent('create-session', {
-        bubbles: true,
-        composed: true,
-      })
-    );
-  }
-
-  private handleScreenshare() {
-    // Only allow screenshare if Mac app is connected
-    if (!this.macAppConnected) {
-      logger.warn('Screenshare requested but Mac app is not connected');
-      return;
-    }
-    // Dispatch event to start screenshare
-    this.dispatchEvent(
-      new CustomEvent('start-screenshare', {
         bubbles: true,
         composed: true,
       })
@@ -840,7 +880,7 @@ export class SessionView extends LitElement {
   private handleTerminalFitToggle() {
     this.terminalFitHorizontally = !this.terminalFitHorizontally;
     // Find the terminal component and call its handleFitToggle method
-    const terminal = this.querySelector('vibe-terminal') as HTMLElement & {
+    const terminal = this.getTerminalElement() as HTMLElement & {
       handleFitToggle?: () => void;
     };
     if (terminal?.handleFitToggle) {
@@ -862,7 +902,7 @@ export class SessionView extends LitElement {
     this.terminalLifecycleManager.setTerminalMaxCols(newMaxCols);
 
     // Update the terminal component
-    const terminal = this.querySelector('vibe-terminal') as Terminal;
+    const terminal = this.getTerminalElement();
     if (terminal) {
       terminal.maxCols = newMaxCols;
       // Mark that user has manually selected a width
@@ -875,7 +915,7 @@ export class SessionView extends LitElement {
   }
 
   getCurrentWidthLabel(): string {
-    const terminal = this.querySelector('vibe-terminal') as Terminal;
+    const terminal = this.getTerminalElement();
     const userOverrideWidth = terminal?.userOverrideWidth || false;
     const initialCols = terminal?.initialCols || 0;
 
@@ -894,7 +934,7 @@ export class SessionView extends LitElement {
   }
 
   getWidthTooltip(): string {
-    const terminal = this.querySelector('vibe-terminal') as Terminal;
+    const terminal = this.getTerminalElement();
     const userOverrideWidth = terminal?.userOverrideWidth || false;
     const initialCols = terminal?.initialCols || 0;
 
@@ -919,7 +959,7 @@ export class SessionView extends LitElement {
     this.terminalLifecycleManager.setTerminalFontSize(clampedSize);
 
     // Update the terminal component
-    const terminal = this.querySelector('vibe-terminal') as Terminal;
+    const terminal = this.getTerminalElement();
     if (terminal) {
       terminal.fontSize = clampedSize;
       terminal.requestUpdate();
@@ -933,7 +973,7 @@ export class SessionView extends LitElement {
     this.preferencesManager.setTheme(newTheme);
     this.terminalLifecycleManager.setTerminalTheme(newTheme);
 
-    const terminal = this.querySelector('vibe-terminal') as Terminal;
+    const terminal = this.getTerminalElement();
     if (terminal) {
       terminal.theme = newTheme;
       terminal.requestUpdate();
@@ -1180,6 +1220,17 @@ export class SessionView extends LitElement {
     }
   }
 
+  private handleTerminalResize(event: CustomEvent<{ cols: number; rows: number }>) {
+    logger.log('Terminal resized:', event.detail);
+    this.terminalLifecycleManager.handleTerminalResize(event);
+  }
+
+  private handleTerminalReady() {
+    logger.log('Terminal ready event received');
+    // Terminal is ready, ensure it's properly initialized
+    this.ensureTerminalInitialized();
+  }
+
   private _updateTerminalTransformTimeout: ReturnType<typeof setTimeout> | null = null;
 
   private updateTerminalTransform(): void {
@@ -1223,7 +1274,7 @@ export class SessionView extends LitElement {
       // Always notify terminal to resize when there's a change
       // Use requestAnimationFrame to ensure DOM has updated
       requestAnimationFrame(() => {
-        const terminal = this.querySelector('vibe-terminal') as Terminal;
+        const terminal = this.getTerminalElement();
         if (terminal) {
           // Notify terminal of size change
           const terminalElement = terminal as unknown as { fitTerminal?: () => void };
@@ -1235,7 +1286,9 @@ export class SessionView extends LitElement {
           if (heightReduction > 0) {
             // Small delay then scroll to bottom to keep cursor visible
             setTimeout(() => {
-              terminal.scrollToBottom();
+              if ('scrollToBottom' in terminal) {
+                terminal.scrollToBottom();
+              }
             }, 50);
           }
         }
@@ -1317,7 +1370,6 @@ export class SessionView extends LitElement {
           .onMaxWidthToggle=${() => this.handleMaxWidthToggle()}
           .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
           .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
-          .onScreenshare=${() => this.handleScreenshare()}
           .onOpenSettings=${() => this.handleOpenSettings()}
           .macAppConnected=${this.macAppConnected}
           @close-width-selector=${() => {
@@ -1364,23 +1416,49 @@ export class SessionView extends LitElement {
               : ''
           }
           <!-- Enhanced Terminal Component -->
-          <vibe-terminal
-            .sessionId=${this.session?.id || ''}
-            .sessionStatus=${this.session?.status || 'running'}
-            .cols=${80}
-            .rows=${24}
-            .fontSize=${this.terminalFontSize}
-            .fitHorizontally=${false}
-            .maxCols=${this.terminalMaxCols}
-            .theme=${this.terminalTheme}
-            .initialCols=${this.session?.initialCols || 0}
-            .initialRows=${this.session?.initialRows || 0}
-            .disableClick=${this.isMobile && this.useDirectKeyboard}
-            .hideScrollButton=${this.showQuickKeys}
-            class="w-full h-full p-0 m-0 terminal-container"
-            @click=${this.handleTerminalClick}
-            @terminal-input=${this.handleTerminalInput}
-          ></vibe-terminal>
+          ${
+            this.useBinaryMode
+              ? html`
+              <vibe-terminal-binary
+                .sessionId=${this.session?.id || ''}
+                .sessionStatus=${this.session?.status || 'running'}
+                .cols=${80}
+                .rows=${24}
+                .fontSize=${this.terminalFontSize}
+                .fitHorizontally=${false}
+                .maxCols=${this.terminalMaxCols}
+                .theme=${this.terminalTheme}
+                .initialCols=${this.session?.initialCols || 0}
+                .initialRows=${this.session?.initialRows || 0}
+                .disableClick=${this.isMobile && this.useDirectKeyboard}
+                .hideScrollButton=${this.showQuickKeys}
+                class="w-full h-full p-0 m-0 terminal-container"
+                @click=${this.handleTerminalClick}
+                @terminal-input=${this.handleTerminalInput}
+                @terminal-resize=${this.handleTerminalResize}
+                @terminal-ready=${this.handleTerminalReady}
+              ></vibe-terminal-binary>
+            `
+              : html`
+              <vibe-terminal
+                .sessionId=${this.session?.id || ''}
+                .sessionStatus=${this.session?.status || 'running'}
+                .cols=${80}
+                .rows=${24}
+                .fontSize=${this.terminalFontSize}
+                .fitHorizontally=${false}
+                .maxCols=${this.terminalMaxCols}
+                .theme=${this.terminalTheme}
+                .initialCols=${this.session?.initialCols || 0}
+                .initialRows=${this.session?.initialRows || 0}
+                .disableClick=${this.isMobile && this.useDirectKeyboard}
+                .hideScrollButton=${this.showQuickKeys}
+                class="w-full h-full p-0 m-0 terminal-container"
+                @click=${this.handleTerminalClick}
+                @terminal-input=${this.handleTerminalInput}
+              ></vibe-terminal>
+            `
+          }
         </div>
 
         <!-- Floating Session Exited Banner (outside terminal container to avoid filter effects) -->

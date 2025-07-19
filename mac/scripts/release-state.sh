@@ -93,6 +93,23 @@ update_step() {
     
     # Add timestamp
     jq ".steps.\"$step\".${status}_at = \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\"" "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+    
+    # Also update last_updated timestamp
+    jq ".last_updated = \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\"" "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+}
+
+# Update step progress (for long-running operations)
+update_step_progress() {
+    local step=$1
+    local progress_message=$2
+    
+    if [[ ! -f "$STATE_FILE" ]]; then
+        return 1
+    fi
+    
+    local tmp=$(mktemp)
+    jq ".steps.\"$step\".progress = \"$progress_message\"" "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
+    jq ".last_updated = \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\"" "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
 }
 
 # Save artifact path

@@ -1,0 +1,113 @@
+#!/bin/bash
+# Release Script Improvements Patch
+# Apply with: patch -p0 < release-improvements.patch
+
+--- release.sh.orig	2025-01-01 00:00:00
++++ release.sh	2025-01-01 00:00:01
+@@ -77,6 +77,7 @@
+ set -euo pipefail
+ 
+ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ 
+ # Source state management functions
+ source "$SCRIPT_DIR/release-state.sh"
++source "$SCRIPT_DIR/release-progress.sh"
+ 
+@@ -496,10 +497,15 @@
+     echo -e "${GREEN}✅ Build would be performed${NC}"
+ else
++    start_step "Building application" "2-5 minutes"
++    
+     # Check for custom Node.js build
+     echo ""
+     echo "🔍 Checking for custom Node.js build..."
+     WEB_DIR="$PROJECT_ROOT/../web"
+     
++    # Update state to in_progress
++    update_step 4 "in_progress"
++    
+     # Check if .node-builds directory exists
+     if [[ -d "$WEB_DIR/.node-builds" ]]; then
+         CUSTOM_NODE_PATH=$(find "$WEB_DIR/.node-builds" -name "node-v*-minimal" -type d 2>/dev/null | sort -V | tail -n1)/out/Release/node
+@@ -570,6 +576,9 @@
+         fi
+     fi
+     
++    update_step 4 "completed"
++    complete_step "Building application"
++    
+     echo -e "${GREEN}✅ Build complete${NC}"
+ fi
+ 
+@@ -603,7 +612,15 @@
+     exit 0
+ fi
+ 
++"$SCRIPT_DIR/sign-and-notarize.sh" --sign-and-notarize
++start_step "Signing and notarizing" "10-15 minutes"
++update_step 5 "in_progress"
++
++# Start timeout warning in background
++timeout_warning "Notarization" 600 $$ &
++TIMEOUT_PID=$!
++
++"$SCRIPT_DIR/sign-and-notarize.sh" --sign-and-notarize
++
++# Kill timeout warning
++kill $TIMEOUT_PID 2>/dev/null || true
++
++update_step 5 "completed"
++complete_step "Signing and notarizing"
+ 
+ # Verify Sparkle component signing
+ echo ""
+@@ -655,10 +672,17 @@
+ # Step 6.5: Notarize DMG
+ echo ""
+ echo -e "${BLUE}📋 Notarizing DMG...${NC}"
++start_step "Notarizing DMG" "5-10 minutes"
++update_step_progress 6 "Notarizing DMG..."
++
++# Start timeout warning in background
++timeout_warning "DMG notarization" 300 $$ &
++TIMEOUT_PID=$!
++
+ "$SCRIPT_DIR/notarize-dmg.sh" "$DMG_PATH"
++
++# Kill timeout warning
++kill $TIMEOUT_PID 2>/dev/null || true
++
++complete_step "Notarizing DMG"
+ echo -e "${GREEN}✅ DMG notarized${NC}"
+ 
+ # Verify DMG notarization
+@@ -826,6 +850,9 @@
+ git tag -a "$TAG_NAME" -m "Release $RELEASE_VERSION (build $BUILD_NUMBER)"
+ git push origin "$TAG_NAME"
+ 
++update_step 7 "in_progress"
++update_step_progress 7 "Creating GitHub release..."
++
+ # Create release
+ echo "📤 Creating GitHub release..."
+ 
+@@ -891,6 +918,7 @@
+         "$ZIP_PATH"
+ fi
+ 
++update_step 7 "completed"
+ echo -e "${GREEN}✅ GitHub release created${NC}"
+ 
+ # Step 7: Update appcast
+@@ -962,6 +990,9 @@
+     echo -e "${YELLOW}⚠️  Some appcast issues detected. Please review the output above.${NC}"
+ fi
+ 
++# Clean up state file on success
++cleanup_state
++
++show_total_time
+ echo ""
+ echo -e "${GREEN}🎉 Release Complete!${NC}"
+ echo "=================="

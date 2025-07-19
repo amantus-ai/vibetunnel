@@ -23,7 +23,6 @@ struct VibeTunnelApp: App {
     @State var terminalLauncher = TerminalLauncher.shared
     @State var gitRepositoryMonitor = GitRepositoryMonitor()
     @State var repositoryDiscoveryService = RepositoryDiscoveryService()
-    @State var screencapService: ScreencapService?
     @State var sessionService: SessionService?
 
     init() {
@@ -240,18 +239,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
             name: Notification.Name("checkForUpdates"),
             object: nil
         )
-
-        // Initialize ScreencapService if enabled (must happen before socket connection)
-        let screencapEnabled = AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.enableScreencapService)
-        logger.info("🎥 Screencap service enabled: \(screencapEnabled)")
-        if screencapEnabled {
-            logger.info("🎥 Initializing ScreencapService...")
-            let service = ScreencapService.shared
-            app?.screencapService = service
-            logger.info("🎥 ScreencapService initialized and retained")
-        } else {
-            logger.warning("🎥 Screencap service is disabled in settings")
-        }
 
         // Initialize SessionService
         if let serverManager = app?.serverManager, let sessionMonitor = app?.sessionMonitor {

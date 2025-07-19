@@ -6,6 +6,62 @@
         <description>VibeTunnel pre-release and beta updates feed</description>
         <language>en</language>
         <item>
+            <title>VibeTunnel 1.0.0-beta.13</title>
+            <link>https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.13/VibeTunnel-1.0.0-beta.13.dmg</link>
+            <sparkle:version>202</sparkle:version>
+            <sparkle:shortVersionString>1.0.0-beta.13</sparkle:shortVersionString>
+            <description><![CDATA[
+                <h2>VibeTunnel 1.0.0-beta.13</h2>
+                <p><strong>Pre-release version</strong></p>
+                
+                <h3><strong>Terminal Performance Mode (Experimental) </strong></h3>
+                <ul>
+                <li>New binary WebSocket mode for terminal sessions dramatically improves performance for high-throughput operations (#412)</li>
+                <li>Toggle between standard SSE mode and high-performance binary mode in terminal settings</li>
+                <li>Binary mode significantly reduces latency and CPU usage when running commands with heavy output</li>
+                <li>Seamless switching between modes without losing your session</li>
+                </ul>
+                
+                <h3><strong>Enhanced Terminal Control</strong> </h3>
+                <ul>
+                <li>Uninstall option for the <code>vt</code> command line tool now available in settings (#407)</li>
+                <li>Simple trash icon button to cleanly remove the CLI tool when needed</li>
+                <li>Proper cleanup of both standard and Homebrew installation paths</li>
+                </ul>
+                
+                <h3><strong>Screen Sharing Removed</strong></h3>
+                <ul>
+                <li>Removed screen sharing feature to focus on core terminal functionality (#415)</li>
+                <li>Eliminated ~17,000 lines of WebRTC and screen capture code</li>
+                <li>No longer requests screen recording permissions</li>
+                <li>Screen Sharing is out of scope for the 1.0 release</li>
+                </ul>
+                
+                <h3>🐛 Bug Fixes</h3>
+                <ul>
+                <li>Fixed server crashes when using special characters (like <code>*</code>) in terminal status messages (#398)</li>
+                <li>Resolved "Kill All Sessions" button failing silently in compact/sidebar view (#418)</li>
+                <li>Fixed network bind address reverting to localhost after server restarts (#404)</li>
+                <li>Ghostty terminal now properly spawns and executes commands if there are no windows (#408)</li>
+                </ul>
+                
+                <h3>📚 Documentation</h3>
+                <ul>
+                <li>Added complete HQ mode documentation covering distributed deployments</li>
+                <li>Organized all documentation into logical categories with Mintlify</li>
+                </ul>
+                
+                <p><a href="https://github.com/amantus-ai/vibetunnel/blob/main/CHANGELOG.md#100-beta13-20250719">View full changelog</a></p>
+            ]]></description>
+            <pubDate>Sat, 19 Jul 2025 02:00:00 +0200</pubDate>
+            <enclosure url="https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.13/VibeTunnel-1.0.0-beta.13.dmg" 
+                       sparkle:version="202" 
+                       sparkle:shortVersionString="1.0.0-beta.13" 
+                       length="41475580" 
+                       type="application/x-apple-diskimage" 
+                       sparkle:edSignature="/2SJK3K5kG9NEVz3iOtQAVgmPESH5HV8DGVc828/wViunW2V7SZQYdBMvcHnZThJdGNu5DBho2F0Gd4mfwb0Cw=="/>
+        </item>
+        <item>
             <title>VibeTunnel 1.0.0-beta.12</title>
             <link>https://github.com/amantus-ai/vibetunnel/releases/download/v1.0.0-beta.12/VibeTunnel-1.0.0-beta.12.dmg</link>
             <sparkle:version>201</sparkle:version>

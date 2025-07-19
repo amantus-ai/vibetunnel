@@ -26,6 +26,54 @@ fi
 
 APP_RESOURCES="${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
 
+# In CI with pre-built artifacts, skip the entire build process
+if [ "${CI}" = "true" ] && [ -f "${WEB_DIR}/dist/server/server.js" ]; then
+    echo "✓ CI environment detected with pre-built web artifacts"
+    echo "✓ Skipping web frontend build entirely"
+    
+    # Still need to copy the pre-built files to the app bundle
+    # Clean and create destination directory
+    echo "Cleaning destination directory..."
+    rm -rf "${DEST_DIR}"
+    mkdir -p "${DEST_DIR}"
+    
+    # Copy built files to Resources
+    echo "Copying pre-built web files to app bundle..."
+    if [ -d "${PUBLIC_DIR}" ]; then
+        cp -R "${PUBLIC_DIR}/"* "${DEST_DIR}/"
+    fi
+    
+    # Copy native executable and modules to app bundle if they exist
+    NATIVE_DIR="${WEB_DIR}/native"
+    
+    if [ -f "${NATIVE_DIR}/vibetunnel" ]; then
+        echo "Copying native executable to app bundle..."
+        cp "${NATIVE_DIR}/vibetunnel" "${APP_RESOURCES}/"
+        chmod +x "${APP_RESOURCES}/vibetunnel"
+    fi
+    
+    if [ -f "${NATIVE_DIR}/pty.node" ]; then
+        cp "${NATIVE_DIR}/pty.node" "${APP_RESOURCES}/"
+    fi
+    
+    if [ -f "${NATIVE_DIR}/spawn-helper" ]; then
+        cp "${NATIVE_DIR}/spawn-helper" "${APP_RESOURCES}/"
+        chmod +x "${APP_RESOURCES}/spawn-helper"
+    fi
+    
+    if [ -f "${NATIVE_DIR}/authenticate_pam.node" ]; then
+        cp "${NATIVE_DIR}/authenticate_pam.node" "${APP_RESOURCES}/"
+    fi
+    
+    if [ -f "${WEB_DIR}/bin/vt" ]; then
+        cp "${WEB_DIR}/bin/vt" "${APP_RESOURCES}/"
+        chmod +x "${APP_RESOURCES}/vt"
+    fi
+    
+    echo "✓ Pre-built web artifacts copied successfully"
+    exit 0
+fi
+
 # Read the current hash
 if [ -f "${HASH_FILE}" ]; then
     CURRENT_HASH=$(cat "${HASH_FILE}")
@@ -71,7 +119,13 @@ source "${SCRIPT_DIR}/node-path-setup.sh"
 # Export CI to prevent interactive prompts
 export CI=true
 
-# Check if pnpm is available
+# Check if pnpm is available (skip in CI when web artifacts are pre-built)
+if [ "${SKIP_NODE_CHECK}" = "true" ] && [ "${CI}" = "true" ]; then
+    echo "✓ Skipping pnpm check in CI (web artifacts are pre-built)"
+    echo "✓ This script should not be running in CI - web build should already be complete"
+    exit 0
+fi
+
 if ! command -v pnpm &> /dev/null; then
     echo "error: pnpm not found. Please install pnpm"
     exit 1

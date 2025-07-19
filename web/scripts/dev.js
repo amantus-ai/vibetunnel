@@ -74,11 +74,6 @@ async function startBuilding() {
       outfile: 'public/bundle/test.js',
     });
 
-    const screencapContext = await esbuild.context({
-      ...devOptions,
-      entryPoints: ['src/client/screencap-entry.ts'],
-      outfile: 'public/bundle/screencap.js',
-    });
 
     const swContext = await esbuild.context({
       ...devOptions,
@@ -90,7 +85,6 @@ async function startBuilding() {
     // Start watching
     await clientContext.watch();
     await testContext.watch();
-    await screencapContext.watch();
     await swContext.watch();
     console.log('ESBuild watching client bundles...');
 
@@ -113,7 +107,6 @@ async function startBuilding() {
       console.log('\nStopping all processes...');
       await clientContext.dispose();
       await testContext.dispose();
-      await screencapContext.dispose();
       await swContext.dispose();
       processes.forEach(proc => proc.kill());
       process.exit(0);

@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		788D7C212E17701E00664395 /* WebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = 788D7C202E17701E00664395 /* WebRTC */; };
 		78AD8B952E051ED40009725C /* Logging in Frameworks */ = {isa = PBXBuildFile; productRef = 78AD8B942E051ED40009725C /* Logging */; };
 		89D01D862CB5D7DC0075D8BD /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 89D01D852CB5D7DC0075D8BD /* Sparkle */; };
 /* End PBXBuildFile section */
@@ -61,7 +60,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				78AD8B952E051ED40009725C /* Logging in Frameworks */,
-				788D7C212E17701E00664395 /* WebRTC in Frameworks */,
 				89D01D862CB5D7DC0075D8BD /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -127,7 +125,6 @@
 			packageProductDependencies = (
 				89D01D852CB5D7DC0075D8BD /* Sparkle */,
 				78AD8B942E051ED40009725C /* Logging */,
-				788D7C202E17701E00664395 /* WebRTC */,
 			);
 			productName = VibeTunnel;
 			productReference = 788687F12DFF4FCB00B22C15 /* VibeTunnel.app */;
@@ -185,7 +182,6 @@
 			packageReferences = (
 				89D01D842CB5D7DC0075D8BD /* XCRemoteSwiftPackageReference "Sparkle" */,
 				78AD8B8E2E051EB50009725C /* XCRemoteSwiftPackageReference "swift-log" */,
-				788D7C1F2E17700900664395 /* XCRemoteSwiftPackageReference "WebRTC" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 788687F22DFF4FCB00B22C15 /* Products */;
@@ -573,14 +569,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		788D7C1F2E17700900664395 /* XCRemoteSwiftPackageReference "WebRTC" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/stasel/WebRTC";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 137.0.0;
-			};
-		};
 		78AD8B8E2E051EB50009725C /* XCRemoteSwiftPackageReference "swift-log" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-log.git";
@@ -600,11 +588,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		788D7C202E17701E00664395 /* WebRTC */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 788D7C1F2E17700900664395 /* XCRemoteSwiftPackageReference "WebRTC" */;
-			productName = WebRTC;
-		};
 		78AD8B942E051ED40009725C /* Logging */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 78AD8B8E2E051EB50009725C /* XCRemoteSwiftPackageReference "swift-log" */;

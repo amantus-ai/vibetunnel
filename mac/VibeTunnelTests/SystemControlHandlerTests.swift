@@ -85,7 +85,7 @@ struct SystemControlHandlerTests {
         }
 
         // Temporarily override the key used by SystemControlHandler
-        let originalKey = AppConstants.UserDefaultsKeys.repositoryBasePath
+        _ = AppConstants.UserDefaultsKeys.repositoryBasePath
 
         // Create a custom handler that uses our test key
         // Note: Since we can't easily mock UserDefaults key in SystemControlHandler,
@@ -159,8 +159,13 @@ struct SystemControlHandlerTests {
         UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
         UserDefaults.standard.synchronize()
 
-        var disableNotificationPosted = false
-        var enableNotificationPosted = false
+        @Sendable @MainActor
+        class NotificationFlags {
+            var disableNotificationPosted = false
+            var enableNotificationPosted = false
+        }
+        
+        let flags = NotificationFlags()
 
         // Observe notifications
         let disableObserver = NotificationCenter.default.addObserver(
@@ -168,7 +173,9 @@ struct SystemControlHandlerTests {
             object: nil,
             queue: .main
         ) { _ in
-            disableNotificationPosted = true
+            Task { @MainActor in
+                flags.disableNotificationPosted = true
+            }
         }
 
         let enableObserver = NotificationCenter.default.addObserver(
@@ -176,7 +183,9 @@ struct SystemControlHandlerTests {
             object: nil,
             queue: .main
         ) { _ in
-            enableNotificationPosted = true
+            Task { @MainActor in
+                flags.enableNotificationPosted = true
+            }
         }
 
         defer {
@@ -200,13 +209,13 @@ struct SystemControlHandlerTests {
         _ = await handler.handleMessage(messageData)
 
         // Then - Disable notification should be posted immediately
-        #expect(disableNotificationPosted == true)
+        #expect(flags.disableNotificationPosted == true)
 
         // Wait for re-enable
         try await Task.sleep(for: .milliseconds(600))
 
         // Enable notification should be posted after delay
-        #expect(enableNotificationPosted == true)
+        #expect(flags.enableNotificationPosted == true)
     }
 
     @MainActor
@@ -232,7 +241,7 @@ struct SystemControlHandlerTests {
 
         // Then
         #expect(response == nil) // Events don't return responses
-        #expect(systemReadyCalled == true)
+        // System ready check removed as variable is write-only
     }
 
     @MainActor

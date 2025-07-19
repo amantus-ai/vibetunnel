@@ -5,7 +5,7 @@
  * Features a grid-based layout with conditional custom width input.
  */
 import { html, LitElement } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { Z_INDEX } from '../../utils/constants.js';
 import { createLogger } from '../../utils/logger.js';
 import {
@@ -14,6 +14,7 @@ import {
 } from '../../utils/terminal-preferences.js';
 import { TERMINAL_THEMES, type TerminalThemeId } from '../../utils/terminal-themes.js';
 import { getTextColorEncoded } from '../../utils/theme-utils.js';
+import { type AppPreferences, STORAGE_KEY } from '../unified-settings.js';
 
 const logger = createLogger('terminal-settings-modal');
 
@@ -42,6 +43,9 @@ export class TerminalSettingsModal extends LitElement {
 
     // Load theme from TerminalPreferencesManager
     this.terminalTheme = this.preferencesManager.getTheme();
+
+    // Load binary mode preference
+    this.loadBinaryModePreference();
   }
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
@@ -67,6 +71,8 @@ export class TerminalSettingsModal extends LitElement {
   @property({ type: Function }) onThemeChange?: (theme: TerminalThemeId) => void;
   @property({ type: Function }) onClose?: () => void;
   @property({ type: Boolean }) isMobile = false;
+
+  @state() private useBinaryMode = false;
 
   private handleCustomWidthInput(e: Event) {
     const input = e.target as HTMLInputElement;
@@ -100,6 +106,39 @@ export class TerminalSettingsModal extends LitElement {
   private getArrowColor(): string {
     // Return URL-encoded text color from CSS custom properties
     return getTextColorEncoded();
+  }
+
+  private loadBinaryModePreference() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const preferences = JSON.parse(stored) as AppPreferences;
+        this.useBinaryMode = preferences.useBinaryMode ?? false;
+      }
+    } catch (error) {
+      logger.warn('Failed to load binary mode preference', error);
+    }
+  }
+
+  private saveBinaryModePreference(value: boolean) {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      const preferences = stored ? JSON.parse(stored) : {};
+      preferences.useBinaryMode = value;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+
+      // Dispatch event to notify other components
+      window.dispatchEvent(
+        new CustomEvent('app-preferences-changed', {
+          detail: preferences,
+        })
+      );
+
+      // Dispatch specific event for binary mode change
+      window.dispatchEvent(new CustomEvent('terminal-binary-mode-changed', { detail: value }));
+    } catch (error) {
+      logger.error('Failed to save binary mode preference', error);
+    }
   }
 
   updated(changedProperties: Map<string | number | symbol, unknown>) {
@@ -299,6 +338,33 @@ export class TerminalSettingsModal extends LitElement {
               >
                 ${TERMINAL_THEMES.map((t) => html`<option value=${t.id}>${t.name}</option>`)}
               </select>
+            </div>
+            
+            <!-- Binary Mode setting -->
+            <div class="grid grid-cols-[120px_1fr] gap-4 items-start">
+              <label class="text-sm font-medium text-text-bright text-right pt-3">Binary Mode</label>
+              <div>
+                <div class="flex items-center justify-between bg-bg-secondary border border-border rounded-md px-4 py-3">
+                  <button
+                    role="switch"
+                    aria-checked="${this.useBinaryMode}"
+                    @click=${() => {
+                      this.useBinaryMode = !this.useBinaryMode;
+                      this.saveBinaryModePreference(this.useBinaryMode);
+                    }}
+                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base ${
+                      this.useBinaryMode ? 'bg-primary' : 'bg-border'
+                    }"
+                  >
+                    <span
+                      class="inline-block h-5 w-5 transform rounded-full bg-bg-elevated transition-transform ${
+                        this.useBinaryMode ? 'translate-x-5' : 'translate-x-0.5'
+                      }"
+                    ></span>
+                  </button>
+                </div>
+                <p class="text-xs text-text-muted mt-2">Experimental: More efficient for high-throughput sessions</p>
+              </div>
             </div>
           </div>
         </div>

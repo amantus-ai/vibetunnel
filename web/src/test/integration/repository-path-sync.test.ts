@@ -1,6 +1,6 @@
 import type { Server } from 'http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import WebSocket from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 
 // Mock the control Unix handler
 const mockControlUnixHandler = {
@@ -18,7 +18,7 @@ vi.mock('../../server/server', () => ({
 }));
 
 describe('Repository Path Bidirectional Sync Integration', () => {
-  let wsServer: WebSocket.Server;
+  let wsServer: WebSocketServer;
   let httpServer: Server;
   let client: WebSocket;
   const port = 4321;
@@ -26,7 +26,7 @@ describe('Repository Path Bidirectional Sync Integration', () => {
   beforeEach(async () => {
     // Create a simple WebSocket server to simulate the config endpoint
     httpServer = require('http').createServer();
-    wsServer = new WebSocket.Server({ server: httpServer, path: '/ws/config' });
+    wsServer = new WebSocketServer({ server: httpServer, path: '/ws/config' });
 
     // Handle WebSocket connections
     wsServer.on('connection', (ws) => {

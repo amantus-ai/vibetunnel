@@ -61,7 +61,7 @@ final class RemoteServicesStatusManager {
         // Check services in parallel
         async let ngrokCheck = ngrokService.getStatus()
         async let tailscaleCheck = checkTailscaleStatus()
-        async let cloudflareCheck = cloudflareService.checkCloudflaredStatus()
+        async let cloudflareCheck: Void = cloudflareService.checkCloudflaredStatus()
 
         // Update status
         ngrokStatus = await ngrokCheck

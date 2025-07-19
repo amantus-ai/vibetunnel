@@ -354,7 +354,7 @@ final class ServerManagerTests {
         if ServerBinaryAvailableCondition.isAvailable() {
             // In CI with working binary, server behavior may vary
             // Just ensure we don't crash and can clean up
-            Bool(true) // Always pass - this test is about ensuring no crashes
+            // Always pass - this test is about ensuring no crashes
         } else {
             // In test environment without binary, server won't actually start
             #expect(!manager.isRunning)

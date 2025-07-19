@@ -242,8 +242,6 @@ Development artifacts are excluded from the final package:
 - Recording files (`*.cast` prevented by .gitignore)
 - Build artifacts (`dist/` selectively included via package.json `files` field)
 
-**Note**: `screencap.js` is kept as it provides screen capture functionality for the web interface.
-
 ### Size Optimization
 - **Final size**: ~8.5 MB
 - **File count**: ~275 files
@@ -453,6 +451,30 @@ npm install -g vibetunnel --build-from-source
 
 ## Release Notes
 
+### Version 1.0.0-beta.13 (2025-07-19)
+
+**Published to npm**: Successfully published as both `vibetunnel@beta` and `vibetunnel@latest`
+
+**Key Features**:
+- All features from previous releases maintained
+- Updated to match macOS app version 1.0.0-beta.13
+- Full cross-platform support with prebuilt binaries
+- Zero-dependency installation experience
+
+**Package Details**:
+- Package size: 15.5 MB (37.1 MB unpacked)
+- Contains 235 files including all prebuilds and web assets
+- Includes prebuilds for Node.js 20, 22, 23, and 24
+
+**Installation**:
+```bash
+# Install latest (now 1.0.0-beta.13)
+npm install -g vibetunnel
+
+# Or install beta specifically
+npm install -g vibetunnel@beta
+```
+
 ### Version 1.0.0-beta.11 (2025-07-16)
 
 **Published to npm**: Successfully published as `vibetunnel@beta`
@@ -514,7 +536,10 @@ docker run --rm --platform linux/amd64 vibetunnel-test
 
 ### Version History
 
-- **1.0.0-beta.11.1** (2025-07-16): Fixed npm installation issues, latest stable release
+- **1.0.0-beta.13** (2025-07-19): Latest release, synchronized with macOS app version
+- **1.0.0-beta.12.1** (2025-07-17): Minor updates and fixes
+- **1.0.0-beta.12** (2025-07-17): Package structure improvements
+- **1.0.0-beta.11.1** (2025-07-16): Fixed npm installation issues
 - **1.0.0-beta.11** (2025-07-16): Initial release with full prebuild system
 - **1.0.0-beta.10** (2025-07-14): Previous version (unpublished)
 
@@ -523,8 +548,8 @@ docker run --rm --platform linux/amd64 vibetunnel-test
 VibeTunnel uses npm dist-tags to manage different release channels:
 
 ### Current Tags
-- **latest**: Points to the most stable release (currently 1.0.0-beta.11.1)
-- **beta**: Points to the latest beta release (currently 1.0.0-beta.11.1)
+- **latest**: Points to the most stable release (currently 1.0.0-beta.13)
+- **beta**: Points to the latest beta release (currently 1.0.0-beta.13)
 
 ### Managing Tags
 
@@ -533,10 +558,10 @@ VibeTunnel uses npm dist-tags to manage different release channels:
 npm dist-tag ls vibetunnel
 
 # Set a version as latest
-npm dist-tag add vibetunnel@1.0.0-beta.11.1 latest
+npm dist-tag add vibetunnel@1.0.0-beta.13 latest
 
 # Add a new tag
-npm dist-tag add vibetunnel@1.0.0-beta.12 next
+npm dist-tag add vibetunnel@1.0.0-beta.14 next
 
 # Remove a tag
 npm dist-tag rm vibetunnel next

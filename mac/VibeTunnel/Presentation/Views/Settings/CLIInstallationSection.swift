@@ -55,7 +55,7 @@ struct CLIInstallationSection: View {
                                     }
                                     .buttonStyle(.bordered)
                                     .disabled(cliInstaller.isInstalling)
-                                    
+
                                     Button(action: {
                                         Task {
                                             await cliInstaller.uninstall()
@@ -88,7 +88,7 @@ struct CLIInstallationSection: View {
                                         .foregroundColor(.accentColor)
                                         .help("Reinstall CLI tool")
                                     }
-                                    
+
                                     Button(action: {
                                         Task {
                                             await cliInstaller.uninstall()

@@ -19,7 +19,7 @@ struct RepositoryPathSyncServiceTests {
         cleanUserDefaults()
 
         // Given
-        let service = RepositoryPathSyncService()
+        _ = RepositoryPathSyncService()
 
         // Set initial path
         let initialPath = "~/Projects"
@@ -44,7 +44,7 @@ struct RepositoryPathSyncServiceTests {
         // Then - Since sync is disabled, no Unix socket message should be sent
         // In a real test with dependency injection, we'd verify no message was sent
         // For now, we verify the service handles the notification without crashing
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @MainActor
@@ -54,7 +54,7 @@ struct RepositoryPathSyncServiceTests {
         cleanUserDefaults()
 
         // Given
-        let service = RepositoryPathSyncService()
+        _ = RepositoryPathSyncService()
 
         // Disable sync first
         NotificationCenter.default.post(name: .disablePathSync, object: nil)
@@ -72,7 +72,7 @@ struct RepositoryPathSyncServiceTests {
         try await Task.sleep(for: .milliseconds(200))
 
         // Service should process the change without issues
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @MainActor
@@ -82,10 +82,10 @@ struct RepositoryPathSyncServiceTests {
         cleanUserDefaults()
 
         // Given
-        let service = RepositoryPathSyncService()
+        _ = RepositoryPathSyncService()
 
         // Create expectation for path change handling
-        var pathChangeHandled = false
+        // Path change handled flag removed as it was unused
 
         // Temporarily replace the service's internal handling
         // Since we can't easily mock the private methods, we'll test the behavior
@@ -102,15 +102,20 @@ struct RepositoryPathSyncServiceTests {
 
         // Then - The change should be processed but not synced
         // In production code with proper DI, we'd verify no Unix socket message was sent
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @MainActor
     @Test("Notification observers are properly set up")
     func notificationObserversSetup() async throws {
         // Given
-        var disableReceived = false
-        var enableReceived = false
+        @Sendable @MainActor
+        class NotificationFlags {
+            var disableReceived = false
+            var enableReceived = false
+        }
+        
+        let flags = NotificationFlags()
 
         // Set up our own observers to verify notifications work
         let disableObserver = NotificationCenter.default.addObserver(
@@ -118,7 +123,9 @@ struct RepositoryPathSyncServiceTests {
             object: nil,
             queue: .main
         ) { _ in
-            disableReceived = true
+            Task { @MainActor in
+                flags.disableReceived = true
+            }
         }
 
         let enableObserver = NotificationCenter.default.addObserver(
@@ -126,7 +133,9 @@ struct RepositoryPathSyncServiceTests {
             object: nil,
             queue: .main
         ) { _ in
-            enableReceived = true
+            Task { @MainActor in
+                flags.enableReceived = true
+            }
         }
 
         defer {
@@ -145,8 +154,8 @@ struct RepositoryPathSyncServiceTests {
         try await Task.sleep(for: .milliseconds(100))
 
         // Then - Both notifications should be received
-        #expect(disableReceived == true)
-        #expect(enableReceived == true)
+        #expect(flags.disableReceived == true)
+        #expect(flags.enableReceived == true)
     }
 
     @MainActor
@@ -159,11 +168,11 @@ struct RepositoryPathSyncServiceTests {
         let mockConnection = MockUnixSocketConnection()
 
         // Replace the shared manager's connection with our mock
-        let originalConnection = SharedUnixSocketManager.shared.getConnection()
-        await mockConnection.setConnected(true)
+        _ = SharedUnixSocketManager.shared.getConnection()
+        mockConnection.setConnected(true)
 
         // Create service
-        let service = RepositoryPathSyncService()
+        _ = RepositoryPathSyncService()
 
         // Store initial path
         let initialPath = "~/Projects"
@@ -179,7 +188,7 @@ struct RepositoryPathSyncServiceTests {
         // Then - Since we can't easily mock the singleton's internal connection,
         // we'll verify the behavior through integration testing
         // The actual unit test would require dependency injection
-        #expect(true) // Test passes if no crash occurs
+        #expect(Bool(true)) // Test passes if no crash occurs
     }
 
     @MainActor
@@ -189,7 +198,7 @@ struct RepositoryPathSyncServiceTests {
         cleanUserDefaults()
 
         // Given
-        let service = RepositoryPathSyncService()
+        _ = RepositoryPathSyncService()
 
         // Set a known path
         let testPath = "~/TestProjects"
@@ -203,7 +212,7 @@ struct RepositoryPathSyncServiceTests {
 
         // Then - Since we can't easily mock the singleton's internal connection,
         // we'll verify the behavior through integration testing
-        #expect(true) // Test passes if no crash occurs
+        #expect(Bool(true)) // Test passes if no crash occurs
     }
 
     @MainActor
@@ -213,7 +222,7 @@ struct RepositoryPathSyncServiceTests {
         cleanUserDefaults()
 
         // Given - Service with no connection
-        let service = RepositoryPathSyncService()
+        _ = RepositoryPathSyncService()
 
         // When - Trigger a path update when socket is not connected
         UserDefaults.standard.set("~/NewPath", forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
@@ -222,7 +231,7 @@ struct RepositoryPathSyncServiceTests {
         try await Task.sleep(for: .milliseconds(100))
 
         // Then - Service should handle gracefully (no crash)
-        #expect(true) // If we reach here, no crash occurred
+        #expect(Bool(true)) // If we reach here, no crash occurred
     }
 
     @MainActor
@@ -232,7 +241,7 @@ struct RepositoryPathSyncServiceTests {
         cleanUserDefaults()
 
         // Given
-        let service = RepositoryPathSyncService()
+        _ = RepositoryPathSyncService()
         let testPath = "~/SamePath"
 
         // When - Set the same path multiple times
@@ -243,7 +252,7 @@ struct RepositoryPathSyncServiceTests {
         try await Task.sleep(for: .milliseconds(100))
 
         // Then - The service should handle this gracefully
-        #expect(true) // Test passes if no errors occur
+        #expect(Bool(true)) // Test passes if no errors occur
     }
 }
 
