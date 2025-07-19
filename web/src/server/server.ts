@@ -1230,6 +1230,9 @@ export async function startVibeTunnelServer() {
   }
   serverStarted = true;
 
+  // Native PTY addon is required
+  logger.log(chalk.green('✓ Using native PTY addon implementation'));
+
   logger.debug('Creating VibeTunnel application instance');
   // Create and configure the app
   const appInstance = await createApp();

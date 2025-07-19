@@ -46,6 +46,17 @@ echo "Copying executable..."
 cp "$NATIVE_DIR/vibetunnel" "$DEST_RESOURCES/"
 chmod +x "$DEST_RESOURCES/vibetunnel"
 
+# Copy vt-pipe if it exists
+VT_PIPE_PATH="$WEB_DIR/vt-pipe/target/release/vt-pipe"
+if [ -f "$VT_PIPE_PATH" ]; then
+    echo "Copying vt-pipe..."
+    cp "$VT_PIPE_PATH" "$DEST_RESOURCES/"
+    chmod +x "$DEST_RESOURCES/vt-pipe"
+else
+    echo -e "${YELLOW}Warning: vt-pipe not found at $VT_PIPE_PATH${NC}"
+    echo -e "${YELLOW}Build vt-pipe with 'cd web/vt-pipe && cargo build --release'${NC}"
+fi
+
 # Copy native modules
 if [ -f "$NATIVE_DIR/pty.node" ]; then
     echo "Copying pty.node..."
@@ -62,4 +73,4 @@ echo -e "${GREEN}✓ Executable and native modules copied successfully${NC}"
 
 # Verify the files
 echo "Verifying copied files:"
-ls -la "$DEST_RESOURCES/vibetunnel" "$DEST_RESOURCES/pty.node" "$DEST_RESOURCES/spawn-helper" 2>/dev/null || true
+ls -la "$DEST_RESOURCES/vibetunnel" "$DEST_RESOURCES/vt-pipe" "$DEST_RESOURCES/pty.node" "$DEST_RESOURCES/spawn-helper" 2>/dev/null || true

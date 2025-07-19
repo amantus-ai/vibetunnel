@@ -119,6 +119,21 @@ lint_output.txt
 
 # Native build output
 native/
+*.node
+
+# Rust target directories
+native-pty/target/
+vt-pipe/target/
+
+# vibetunnel-pty build artifacts (unified Rust PTY workspace)
+vibetunnel-pty/target/
+vibetunnel-pty/*.node
+vibetunnel-pty/Cargo.lock
+vibetunnel-pty/index.js
+vibetunnel-pty/index.d.ts
+vibetunnel-pty/.cargo/
+vibetunnel-pty/crates/*/target/
+vibetunnel-pty/crates/*/Cargo.lock
 
 # Custom Node.js builds
 .node-builds/

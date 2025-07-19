@@ -16,9 +16,10 @@ export enum MessageType {
   STDIN_DATA = 0x01, // Raw stdin data (keyboard input)
   CONTROL_CMD = 0x02, // Control commands (resize, kill, etc)
   STATUS_UPDATE = 0x03, // Status updates (Claude status, etc)
-  HEARTBEAT = 0x04, // Keep-alive ping/pong
+  STDOUT_DATA = 0x04, // Raw stdout data from the PTY
   ERROR = 0x05, // Error messages
   // Reserved for future use
+  HEARTBEAT = 0x06, // Keep-alive ping/pong
   STDOUT_SUBSCRIBE = 0x10,
   METRICS = 0x11,
 }
@@ -178,6 +179,7 @@ export const MessageBuilder = {
 export function parsePayload(type: MessageType, payload: Buffer): unknown {
   switch (type) {
     case MessageType.STDIN_DATA:
+    case MessageType.STDOUT_DATA:
       return payload.toString('utf8');
 
     case MessageType.CONTROL_CMD:
