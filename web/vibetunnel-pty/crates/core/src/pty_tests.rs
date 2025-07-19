@@ -231,7 +231,7 @@ mod tests {
         let timeout = Duration::from_secs(5);
         let start = std::time::Instant::now();
         let mut status = None;
-        
+
         while start.elapsed() < timeout {
             match pty.child.try_wait() {
                 Ok(Some(s)) => {
@@ -245,7 +245,7 @@ mod tests {
                 Err(e) => panic!("Failed to check process status: {}", e),
             }
         }
-        
+
         assert!(status.is_some(), "Process did not exit within timeout"); // Process has exited
 
         #[cfg(unix)]
