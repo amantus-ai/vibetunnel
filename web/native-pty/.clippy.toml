@@ -1,3 +1,3 @@
 # Clippy configuration
 avoid-breaking-exported-api = true
-msrv = "1.86.0"
+msrv = "1.80.0"
