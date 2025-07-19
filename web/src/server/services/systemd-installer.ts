@@ -272,23 +272,60 @@ function checkServiceStatus(): void {
   }
 }
 
+// Check if we're running on a platform that supports getuid (Unix-like systems)
+function isUnixLike(): boolean {
+  return typeof process.getuid === 'function';
+}
+
+// Check if running as root (only on Unix-like systems)
+function isRunningAsRoot(): boolean {
+  if (!isUnixLike()) {
+    return false; // On Windows, assume no root privileges
+  }
+  return process.getuid?.() === 0;
+}
+
+// Safely re-execute with sudo using proper escaping and the global vibetunnel command
+function reExecuteWithSudo(action: string): void {
+  if (!isUnixLike()) {
+    printError('Systemd services are only supported on Unix-like systems (Linux/macOS)');
+    printError('Windows is not supported for systemd service installation');
+    process.exit(1);
+  }
+
+  printInfo('Root privileges required. Re-running with sudo...');
+  try {
+    // Validate action to prevent command injection
+    const validActions = ['install', 'uninstall', 'status'];
+    if (!validActions.includes(action)) {
+      printError(`Invalid action: ${action}`);
+      process.exit(1);
+    }
+
+    // Use the global vibetunnel command instead of internal script paths
+    // This avoids path injection issues and works correctly with npm installations
+    // Preserve environment variables with -E flag
+    const command = `sudo -E vibetunnel systemd ${action}`;
+    execSync(command, { stdio: 'inherit' });
+    process.exit(0);
+  } catch (error) {
+    printError(`Failed to run with sudo: ${error}`);
+    process.exit(1);
+  }
+}
+
 // Main installation function
 export function installSystemdService(action: string = 'install'): void {
   switch (action) {
     case 'install': {
       printInfo('Installing VibeTunnel systemd service...');
+
       // Check if we need to re-run with sudo
-      if (process.getuid && process.getuid() !== 0) {
-        printInfo('Root privileges required. Re-running with sudo...');
-        try {
-          const args = process.argv.slice(1); // Skip 'node' but keep script path and args
-          execSync(`sudo -E ${args.join(' ')}`, { stdio: 'inherit' });
-          process.exit(0);
-        } catch (error) {
-          printError(`Failed to run with sudo: ${error}`);
-          process.exit(1);
-        }
+      if (!isRunningAsRoot()) {
+        reExecuteWithSudo(action);
+        return; // This line won't be reached due to process.exit in reExecuteWithSudo
       }
+
       const vibetunnelPath = checkVibetunnel();
       createUser();
       createDirectories();
@@ -298,21 +335,16 @@ export function installSystemdService(action: string = 'install'): void {
       break;
     }
 
-    case 'uninstall':
+    case 'uninstall': {
       // Check if we need to re-run with sudo
-      if (process.getuid && process.getuid() !== 0) {
-        printInfo('Root privileges required. Re-running with sudo...');
-        try {
-          const args = process.argv.slice(1); // Skip 'node' but keep script path and args
-          execSync(`sudo -E ${args.join(' ')}`, { stdio: 'inherit' });
-          process.exit(0);
-        } catch (error) {
-          printError(`Failed to run with sudo: ${error}`);
-          process.exit(1);
-        }
+      if (!isRunningAsRoot()) {
+        reExecuteWithSudo(action);
+        return; // This line won't be reached due to process.exit in reExecuteWithSudo
       }
+
       uninstallService();
       break;
+    }
 
     case 'status':
       checkServiceStatus();
