@@ -131,7 +131,7 @@ function handleStartServer(): void {
 /**
  * Parse command line arguments and execute appropriate action
  */
-function parseCommandAndExecute(): void {
+async function parseCommandAndExecute(): Promise<void> {
   const command = process.argv[2];
 
   switch (command) {
@@ -148,11 +148,11 @@ function parseCommandAndExecute(): void {
       break;
 
     case 'fwd':
-      handleForwardCommand();
+      await handleForwardCommand();
       break;
 
     case 'systemd':
-      handleSystemdService();
+      await handleSystemdService();
       break;
 
     default:
@@ -176,5 +176,12 @@ function isMainModule(): boolean {
 
 // Main execution
 if (isMainModule()) {
-  parseCommandAndExecute();
+  parseCommandAndExecute().catch((error) => {
+    logger.error('Unhandled error in main execution:', error);
+    if (error instanceof Error) {
+      logger.error('Stack trace:', error.stack);
+    }
+    closeLogger();
+    process.exit(1);
+  });
 }
