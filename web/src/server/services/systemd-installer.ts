@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // Colors for output
@@ -15,9 +15,15 @@ const NC = '\x1b[0m'; // No Color
 const SERVICE_NAME = 'vibetunnel';
 const SERVICE_FILE = 'vibetunnel.service';
 const SYSTEMD_DIR = '/etc/systemd/system';
-const USER_NAME = 'vibetunnel';
-const GROUP_NAME = 'vibetunnel';
-const INSTALL_DIR = '/opt/vibetunnel';
+
+// Get the current user (the one who installed vibetunnel)
+function getCurrentUser(): { username: string; home: string } {
+  const username = process.env.SUDO_USER || process.env.USER || 'root';
+  const home = process.env.SUDO_USER
+    ? `/home/${process.env.SUDO_USER}`
+    : process.env.HOME || `/home/${username}`;
+  return { username, home };
+}
 
 // Print colored output
 function printInfo(message: string): void {
@@ -38,10 +44,11 @@ function printError(message: string): void {
 
 // Create a stable wrapper script that can find vibetunnel regardless of node version manager
 function createVibetunnelWrapper(): string {
+  const { username, home } = getCurrentUser();
   const wrapperPath = '/usr/local/bin/vibetunnel-systemd';
   const wrapperContent = `#!/bin/bash
 # VibeTunnel Systemd Wrapper Script
-# This script finds and executes vibetunnel regardless of how it was installed
+# This script finds and executes vibetunnel for user: ${username}
 
 # Function to log messages
 log_info() {
@@ -52,6 +59,10 @@ log_error() {
     echo "[ERROR] $1" >&2
 }
 
+# Set up environment for user ${username}
+export HOME="${home}"
+export USER="${username}"
+
 # Try to find vibetunnel in various ways
 find_vibetunnel() {
     # Method 1: Check if vibetunnel is in PATH
@@ -61,7 +72,31 @@ find_vibetunnel() {
         return $?
     fi
     
-    # Method 2: Check common global npm locations
+    # Method 2: Check for nvm installations
+    if [ -d "${home}/.nvm" ]; then
+        log_info "Checking nvm installation for user ${username}"
+        export NVM_DIR="${home}/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+        if command -v vibetunnel >/dev/null 2>&1; then
+            log_info "Found vibetunnel via nvm"
+            vibetunnel "$@"
+            return $?
+        fi
+    fi
+    
+    # Method 3: Check for fnm installations  
+    if [ -d "${home}/.local/share/fnm" ]; then
+        log_info "Checking fnm installation for user ${username}"
+        export PATH="${home}/.local/share/fnm:$PATH"
+        eval "$(fnm env --use-on-cd)" 2>/dev/null || true
+        if command -v vibetunnel >/dev/null 2>&1; then
+            log_info "Found vibetunnel via fnm"
+            vibetunnel "$@"
+            return $?
+        fi
+    fi
+    
+    # Method 4: Check common global npm locations
     for npm_bin in "/usr/local/bin/npm" "/usr/bin/npm" "/opt/homebrew/bin/npm"; do
         if [ -x "$npm_bin" ]; then
             log_info "Trying npm global with $npm_bin"
@@ -73,30 +108,6 @@ find_vibetunnel() {
             fi
         fi
     done
-    
-    # Method 3: Check for nvm installations
-    if [ -d "/home/vibetunnel/.nvm" ]; then
-        log_info "Checking nvm installation"
-        export NVM_DIR="/home/vibetunnel/.nvm"
-        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-        if command -v vibetunnel >/dev/null 2>&1; then
-            log_info "Found vibetunnel via nvm"
-            vibetunnel "$@"
-            return $?
-        fi
-    fi
-    
-    # Method 4: Check for fnm installations  
-    if [ -d "/home/vibetunnel/.local/share/fnm" ]; then
-        log_info "Checking fnm installation"
-        export PATH="/home/vibetunnel/.local/share/fnm:$PATH"
-        eval "$(fnm env --use-on-cd)" 2>/dev/null || true
-        if command -v vibetunnel >/dev/null 2>&1; then
-            log_info "Found vibetunnel via fnm"
-            vibetunnel "$@"
-            return $?
-        fi
-    fi
     
     # Method 5: Try to run with node directly using global npm package
     for node_bin in "/usr/local/bin/node" "/usr/bin/node" "/opt/homebrew/bin/node"; do
@@ -111,7 +122,7 @@ find_vibetunnel() {
         fi
     done
     
-    log_error "Could not find vibetunnel installation"
+    log_error "Could not find vibetunnel installation for user ${username}"
     log_error "Please ensure vibetunnel is installed globally: npm install -g vibetunnel"
     return 1
 }
@@ -169,42 +180,12 @@ function removeVibetunnelWrapper(): void {
   }
 }
 
-// Create vibetunnel user and group
-function createUser(): void {
-  try {
-    execSync(`id ${USER_NAME}`, { stdio: 'pipe' });
-    printInfo(`User ${USER_NAME} already exists`);
-  } catch (_error) {
-    printInfo(`Creating user ${USER_NAME}...`);
-    try {
-      execSync(
-        `useradd --system --shell /bin/false --home-dir ${INSTALL_DIR} --create-home ${USER_NAME}`,
-        { stdio: 'pipe' }
-      );
-      printSuccess(`User ${USER_NAME} created`);
-    } catch (createError) {
-      printError(`Failed to create user ${USER_NAME}: ${createError}`);
-      process.exit(1);
-    }
-  }
-}
-
-// Create directories
-function createDirectories(): void {
-  printInfo('Creating directories...');
-  try {
-    mkdirSync(INSTALL_DIR, { recursive: true });
-    execSync(`chown ${USER_NAME}:${GROUP_NAME} ${INSTALL_DIR}`, { stdio: 'pipe' });
-    execSync(`chmod 755 ${INSTALL_DIR}`, { stdio: 'pipe' });
-    printSuccess('Directories created');
-  } catch (error) {
-    printError(`Failed to create directories: ${error}`);
-    process.exit(1);
-  }
-}
+// No need to create users or directories - using current user
 
 // Get the systemd service template
 function getServiceTemplate(vibetunnelPath: string): string {
+  const { username, home } = getCurrentUser();
+
   return `[Unit]
 Description=VibeTunnel - Terminal sharing server with web interface
 Documentation=https://github.com/amantus-ai/vibetunnel
@@ -213,9 +194,9 @@ Wants=network.target
 
 [Service]
 Type=simple
-User=${USER_NAME}
-Group=${GROUP_NAME}
-WorkingDirectory=${INSTALL_DIR}
+User=${username}
+Group=${username}
+WorkingDirectory=${home}
 ExecStart=${vibetunnelPath} --port 4020 --bind 0.0.0.0
 Restart=always
 RestartSec=10
@@ -226,13 +207,8 @@ SyslogIdentifier=${SERVICE_NAME}
 # Security settings
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectHome=true
-ProtectSystem=strict
-ReadWritePaths=${INSTALL_DIR}
-CapabilityBoundingSet=CAP_NET_BIND_SERVICE
-AmbientCapabilities=CAP_NET_BIND_SERVICE
 
-# Environment
+# Environment - preserve user environment for node version managers
 Environment=NODE_ENV=production
 Environment=VIBETUNNEL_LOG_LEVEL=info
 
@@ -281,6 +257,8 @@ function configureService(): void {
 
 // Display usage instructions
 function showUsage(): void {
+  const { username, home } = getCurrentUser();
+
   printSuccess('VibeTunnel systemd service installation completed!');
   console.log('');
   console.log('Usage:');
@@ -298,8 +276,9 @@ function showUsage(): void {
   console.log('Configuration:');
   console.log('  Service runs on port 4020 by default');
   console.log('  Web interface: http://localhost:4020');
-  console.log(`  Service runs as user: ${USER_NAME}`);
-  console.log(`  Working directory: ${INSTALL_DIR}`);
+  console.log(`  Service runs as user: ${username}`);
+  console.log(`  Working directory: ${home}`);
+  console.log('  Wrapper script: /usr/local/bin/vibetunnel-systemd');
   console.log('');
   console.log(`To customize the service, edit: ${SYSTEMD_DIR}/${SERVICE_FILE}`);
   console.log(`Then run: sudo systemctl daemon-reload && sudo systemctl restart ${SERVICE_NAME}`);
@@ -339,12 +318,6 @@ function uninstallService(): void {
 
     // Remove wrapper script
     removeVibetunnelWrapper();
-
-    // Ask about removing user and directories
-    console.log('');
-    console.log(`To completely remove the ${USER_NAME} user and ${INSTALL_DIR} directory, run:`);
-    console.log(`  sudo userdel ${USER_NAME}`);
-    console.log(`  sudo rm -rf ${INSTALL_DIR}`);
 
     printSuccess('VibeTunnel systemd service uninstalled');
   } catch (error) {
@@ -423,8 +396,6 @@ export function installSystemdService(action: string = 'install'): void {
       }
 
       const wrapperPath = checkVibetunnelAndCreateWrapper();
-      createUser();
-      createDirectories();
       installService(wrapperPath);
       configureService();
       showUsage();
