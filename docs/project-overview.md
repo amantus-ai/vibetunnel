@@ -53,6 +53,13 @@ The project provides a native macOS menu bar application that runs a local HTTP 
 - Xcode 15+ for building from source
 - Code signing for proper terminal permissions
 
+**Linux & Headless Support**
+- Any Linux distribution with Node.js 20+
+- Runs as standalone server via npm package
+- No GUI required - perfect for VPS/cloud deployments
+- Install: `npm install -g vibetunnel`
+- Run: `vibetunnel-server`
+
 **iOS Requirements**  
 - iOS 17.0+
 - iPhone or iPad
@@ -66,9 +73,11 @@ The project provides a native macOS menu bar application that runs a local HTTP 
 **Server Platforms**
 - Primary: Bun runtime (Node.js compatible)
 - Build requirements: Node.js 20+, npm/bun
+- Supports macOS, Linux, and headless environments
 
 **Key Platform Files**
 - macOS app bundle: `mac/VibeTunnel.xcodeproj`
 - iOS app: `ios/VibeTunnel.xcodeproj`  
 - Web server: `web/` directory with TypeScript source
-- CLI tool: Installed to `/usr/local/bin/vt`
+- CLI tool: Installed to `/usr/local/bin/vt` (macOS only)
+- npm package: `vibetunnel` on npm registry
