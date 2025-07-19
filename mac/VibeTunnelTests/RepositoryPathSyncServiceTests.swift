@@ -109,7 +109,7 @@ struct RepositoryPathSyncServiceTests {
     @Test("Notification observers are properly set up")
     func notificationObserversSetup() async throws {
         // Given
-        @Sendable @MainActor
+        @MainActor
         class NotificationFlags {
             var disableReceived = false
             var enableReceived = false
@@ -198,7 +198,7 @@ struct RepositoryPathSyncServiceTests {
         cleanUserDefaults()
 
         // Given
-        _ = RepositoryPathSyncService()
+        let service = RepositoryPathSyncService()
 
         // Set a known path
         let testPath = "~/TestProjects"
