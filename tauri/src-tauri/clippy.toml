@@ -1,8 +1,0 @@
-# Clippy configuration
-cognitive-complexity-threshold = 30
-too-many-arguments-threshold = 8
-type-complexity-threshold = 250
-single-char-binding-names-threshold = 4
-too-many-lines-threshold = 400
-array-size-threshold = 512
-enum-variant-name-threshold = 3

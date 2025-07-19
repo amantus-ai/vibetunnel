@@ -74,12 +74,6 @@ This index provides a comprehensive overview of all documentation in the VibeTun
 - [**apple/docs/swiftui.md**](../apple/docs/swiftui.md) - SwiftUI guidelines
 - [**apple/docs/logging-private-fix.md**](../apple/docs/logging-private-fix.md) - Logging configuration
 
-### Tauri (Experimental)
-- [**tauri/README.md**](../tauri/README.md) - Tauri cross-platform app (⚠️ EXPERIMENTAL)
-- [**tauri/IMPROVEMENTS.md**](../tauri/IMPROVEMENTS.md) - Planned improvements
-- [**tauri/TYPESCRIPT_MIGRATION.md**](../tauri/TYPESCRIPT_MIGRATION.md) - TypeScript migration guide
-- [**tauri/ENHANCEMENTS_COMPLETE.md**](../tauri/ENHANCEMENTS_COMPLETE.md) - Completed enhancements
-
 ## 🤖 AI Assistant Guidelines
 
 ### CLAUDE.md Files
