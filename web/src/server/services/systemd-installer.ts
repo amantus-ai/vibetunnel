@@ -36,24 +36,42 @@ function printError(message: string): void {
   console.log(`${RED}[ERROR]${NC} ${message}`);
 }
 
-// Check if vibetunnel is installed
-function checkVibetunnel(): void {
+// Find the actual vibetunnel executable path
+function findVibetunnelPath(): string {
   try {
     let whichCommand = 'which vibetunnel';
-    let versionCommand = 'vibetunnel version';
 
     // If running with sudo, check as the original user
     if (process.env.SUDO_USER) {
       whichCommand = `sudo -u ${process.env.SUDO_USER} -i which vibetunnel`;
+    }
+
+    const vibetunnelPath = execSync(whichCommand, { encoding: 'utf8', stdio: 'pipe' }).trim();
+    return vibetunnelPath;
+  } catch (_error) {
+    printError('VibeTunnel is not installed globally. Please install it first:');
+    console.log('  npm install -g vibetunnel');
+    process.exit(1);
+  }
+}
+
+// Check if vibetunnel is installed and return path
+function checkVibetunnel(): string {
+  const vibetunnelPath = findVibetunnelPath();
+
+  try {
+    let versionCommand = `${vibetunnelPath} version`;
+
+    // If running with sudo, check as the original user
+    if (process.env.SUDO_USER) {
       versionCommand = `sudo -u ${process.env.SUDO_USER} -i vibetunnel version`;
     }
 
-    execSync(whichCommand, { stdio: 'pipe' });
     const version = execSync(versionCommand, { encoding: 'utf8', stdio: 'pipe' }).trim();
-    printInfo(`Found VibeTunnel: ${version}`);
-  } catch (error) {
-    printError(`VibeTunnel is not installed globally. Please install it first: ${error}`);
-    console.log('  npm install -g vibetunnel');
+    printInfo(`Found VibeTunnel: ${version} at ${vibetunnelPath}`);
+    return vibetunnelPath;
+  } catch (_error) {
+    printError(`VibeTunnel found at ${vibetunnelPath} but version check failed`);
     process.exit(1);
   }
 }
@@ -93,7 +111,7 @@ function createDirectories(): void {
 }
 
 // Get the systemd service template
-function getServiceTemplate(): string {
+function getServiceTemplate(vibetunnelPath: string): string {
   return `[Unit]
 Description=VibeTunnel - Terminal sharing server with web interface
 Documentation=https://github.com/amantus-ai/vibetunnel
@@ -105,7 +123,7 @@ Type=simple
 User=${USER_NAME}
 Group=${GROUP_NAME}
 WorkingDirectory=${INSTALL_DIR}
-ExecStart=/usr/bin/vibetunnel --port 4020 --bind 0.0.0.0
+ExecStart=${vibetunnelPath} --port 4020 --bind 0.0.0.0
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -135,10 +153,10 @@ WantedBy=multi-user.target`;
 }
 
 // Install systemd service
-function installService(): void {
+function installService(vibetunnelPath: string): void {
   printInfo('Installing systemd service...');
 
-  const serviceContent = getServiceTemplate();
+  const serviceContent = getServiceTemplate(vibetunnelPath);
   const servicePath = join(SYSTEMD_DIR, SERVICE_FILE);
 
   try {
@@ -257,7 +275,7 @@ function checkServiceStatus(): void {
 // Main installation function
 export function installSystemdService(action: string = 'install'): void {
   switch (action) {
-    case 'install':
+    case 'install': {
       printInfo('Installing VibeTunnel systemd service...');
       // Check if we need to re-run with sudo
       if (process.getuid && process.getuid() !== 0) {
@@ -271,13 +289,14 @@ export function installSystemdService(action: string = 'install'): void {
           process.exit(1);
         }
       }
-      checkVibetunnel();
+      const vibetunnelPath = checkVibetunnel();
       createUser();
       createDirectories();
-      installService();
+      installService(vibetunnelPath);
       configureService();
       showUsage();
       break;
+    }
 
     case 'uninstall':
       // Check if we need to re-run with sudo
