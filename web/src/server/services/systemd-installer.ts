@@ -7,39 +7,17 @@ import { join } from 'node:path';
 // Colors for output
 const RED = '\x1b[0;31m';
 const GREEN = '\x1b[0;32m';
-const YELLOW = '\x1b[1;33m';
 const BLUE = '\x1b[0;34m';
 const NC = '\x1b[0m'; // No Color
 
 // Configuration
 const SERVICE_NAME = 'vibetunnel';
 const SERVICE_FILE = 'vibetunnel.service';
-const SYSTEMD_DIR = `${process.env.HOME}/.config/systemd/user`;
 
-// Get the current user (the one who installed vibetunnel)
+// Get the current user (regular user only, no sudo/root)
 function getCurrentUser(): { username: string; home: string } {
-  const username = process.env.SUDO_USER || process.env.USER || 'root';
-
-  let home: string;
-  if (process.env.SUDO_USER) {
-    // For sudo users, get the actual home directory from the system
-    try {
-      const homeOutput = execSync(`getent passwd "${process.env.SUDO_USER}" | cut -d: -f6`, {
-        encoding: 'utf8',
-        stdio: 'pipe',
-      }).trim();
-      home = homeOutput || `/home/${process.env.SUDO_USER}`;
-    } catch {
-      // Fallback to standard home directory if getent fails
-      home = `/home/${process.env.SUDO_USER}`;
-    }
-  } else if (username === 'root') {
-    // Root user's home is /root, not /home/root
-    home = process.env.HOME || '/root';
-  } else {
-    // For regular users, use HOME env var or standard path
-    home = process.env.HOME || `/home/${username}`;
-  }
+  const username = process.env.USER || 'unknown';
+  const home = process.env.HOME || `/home/${username}`;
 
   return { username, home };
 }
@@ -53,10 +31,6 @@ function printSuccess(message: string): void {
   console.log(`${GREEN}[SUCCESS]${NC} ${message}`);
 }
 
-function _printWarning(message: string): void {
-  console.log(`${YELLOW}[WARNING]${NC} ${message}`);
-}
-
 function printError(message: string): void {
   console.log(`${RED}[ERROR]${NC} ${message}`);
 }
@@ -64,7 +38,7 @@ function printError(message: string): void {
 // Create a stable wrapper script that can find vibetunnel regardless of node version manager
 function createVibetunnelWrapper(): string {
   const { username, home } = getCurrentUser();
-  const wrapperPath = `${process.env.HOME}/.local/bin/vibetunnel-systemd`;
+  const wrapperPath = `${home}/.local/bin/vibetunnel-systemd`;
   const wrapperContent = `#!/bin/bash
 # VibeTunnel Systemd Wrapper Script
 # This script finds and executes vibetunnel for user: ${username}
@@ -157,7 +131,7 @@ find_vibetunnel "$@"
 
   try {
     // Ensure ~/.local/bin directory exists
-    const localBinDir = `${process.env.HOME}/.local/bin`;
+    const localBinDir = `${home}/.local/bin`;
     if (!existsSync(localBinDir)) {
       mkdirSync(localBinDir, { recursive: true });
       printInfo(`Created directory: ${localBinDir}`);
@@ -179,14 +153,7 @@ find_vibetunnel "$@"
 function checkVibetunnelAndCreateWrapper(): string {
   // First, verify that vibetunnel is actually installed somewhere
   try {
-    let whichCommand = 'which vibetunnel';
-
-    // If running with sudo, check as the original user
-    if (process.env.SUDO_USER) {
-      whichCommand = `sudo -u ${process.env.SUDO_USER} -i which vibetunnel`;
-    }
-
-    const vibetunnelPath = execSync(whichCommand, { encoding: 'utf8', stdio: 'pipe' }).trim();
+    const vibetunnelPath = execSync('which vibetunnel', { encoding: 'utf8', stdio: 'pipe' }).trim();
     printInfo(`Found VibeTunnel at: ${vibetunnelPath}`);
   } catch (_error) {
     printError('VibeTunnel is not installed or not accessible. Please install it first:');
@@ -200,7 +167,8 @@ function checkVibetunnelAndCreateWrapper(): string {
 
 // Remove wrapper script during uninstall
 function removeVibetunnelWrapper(): void {
-  const wrapperPath = `${process.env.HOME}/.local/bin/vibetunnel-systemd`;
+  const { home } = getCurrentUser();
+  const wrapperPath = `${home}/.local/bin/vibetunnel-systemd`;
   try {
     if (existsSync(wrapperPath)) {
       execSync(`rm ${wrapperPath}`, { stdio: 'pipe' });
@@ -252,12 +220,14 @@ WantedBy=default.target`;
 function installService(vibetunnelPath: string): void {
   printInfo('Installing user systemd service...');
 
+  const { home } = getCurrentUser();
+  const systemdDir = `${home}/.config/systemd/user`;
   const serviceContent = getServiceTemplate(vibetunnelPath);
-  const servicePath = join(SYSTEMD_DIR, SERVICE_FILE);
+  const servicePath = join(systemdDir, SERVICE_FILE);
 
   try {
     // Create user systemd directory if it doesn't exist
-    execSync(`mkdir -p ${SYSTEMD_DIR}`, { stdio: 'pipe' });
+    execSync(`mkdir -p ${systemdDir}`, { stdio: 'pipe' });
 
     writeFileSync(servicePath, serviceContent);
     execSync(`chmod 644 ${servicePath}`, { stdio: 'pipe' });
@@ -282,7 +252,8 @@ function configureService(): void {
 
     // Enable lingering so service starts on boot even when user not logged in
     try {
-      execSync(`loginctl enable-linger ${process.env.USER}`, { stdio: 'pipe' });
+      const { username } = getCurrentUser();
+      execSync(`loginctl enable-linger ${username}`, { stdio: 'pipe' });
       printSuccess('User lingering enabled - service will start on boot');
     } catch (error) {
       printError(`Failed to enable lingering: ${error}`);
@@ -317,9 +288,9 @@ function showUsage(): void {
   console.log('  Web interface: http://localhost:4020');
   console.log(`  Service runs as user: ${username}`);
   console.log(`  Working directory: ${home}`);
-  console.log(`  Wrapper script: ${process.env.HOME}/.local/bin/vibetunnel-systemd`);
+  console.log(`  Wrapper script: ${home}/.local/bin/vibetunnel-systemd`);
   console.log('');
-  console.log(`To customize the service, edit: ${SYSTEMD_DIR}/${SERVICE_FILE}`);
+  console.log(`To customize the service, edit: ${home}/.config/systemd/user/${SERVICE_FILE}`);
   console.log(
     `Then run: systemctl --user daemon-reload && systemctl --user restart ${SERVICE_NAME}`
   );
@@ -348,7 +319,9 @@ function uninstallService(): void {
     }
 
     // Remove service file
-    const servicePath = join(SYSTEMD_DIR, SERVICE_FILE);
+    const { home } = getCurrentUser();
+    const systemdDir = `${home}/.config/systemd/user`;
+    const servicePath = join(systemdDir, SERVICE_FILE);
     if (existsSync(servicePath)) {
       execSync(`rm ${servicePath}`, { stdio: 'pipe' });
       printInfo('Service file removed');
@@ -361,8 +334,9 @@ function uninstallService(): void {
     removeVibetunnelWrapper();
 
     // Optionally disable lingering (ask user)
+    const { username } = getCurrentUser();
     printInfo('Note: User lingering is still enabled. To disable:');
-    console.log(`  loginctl disable-linger ${process.env.USER}`);
+    console.log(`  loginctl disable-linger ${username}`);
 
     printSuccess('VibeTunnel user systemd service uninstalled');
   } catch (error) {
