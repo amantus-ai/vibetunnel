@@ -441,10 +441,20 @@ private struct RemoteAccessStatusSection: View {
                             .font(.system(size: 10))
                         Text("ngrok")
                             .font(.callout)
-                        Text("(\(status.publicUrl.replacingOccurrences(of: "https://", with: "")))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
+                        
+                        if let url = URL(string: status.publicUrl) {
+                            Link(status.publicUrl, destination: url)
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                                .lineLimit(1)
+                        } else {
+                            Text(status.publicUrl)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+                        
+                        NgrokURLCopyButton(url: status.publicUrl)
                     } else {
                         Image(systemName: "circle")
                             .foregroundColor(.gray)
@@ -492,6 +502,43 @@ private struct RemoteAccessStatusSection: View {
                 .frame(maxWidth: .infinity)
                 .multilineTextAlignment(.center)
         }
+    }
+}
+
+// MARK: - Ngrok URL Copy Button
+
+private struct NgrokURLCopyButton: View {
+    let url: String
+    @State private var showCopiedFeedback = false
+    @State private var feedbackTask: DispatchWorkItem?
+    
+    var body: some View {
+        Button(action: {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(url, forType: .string)
+            
+            // Cancel previous timer if exists
+            feedbackTask?.cancel()
+            
+            withAnimation {
+                showCopiedFeedback = true
+            }
+            
+            // Create new timer
+            let task = DispatchWorkItem {
+                withAnimation {
+                    showCopiedFeedback = false
+                }
+            }
+            feedbackTask = task
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: task)
+        }, label: {
+            Image(systemName: showCopiedFeedback ? "checkmark" : "doc.on.doc")
+                .foregroundColor(showCopiedFeedback ? .green : .accentColor)
+        })
+        .buttonStyle(.borderless)
+        .help("Copy URL")
+        .font(.caption)
     }
 }
 
