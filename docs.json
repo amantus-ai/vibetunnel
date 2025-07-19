@@ -53,7 +53,8 @@
           "docs/INDEX",
           "docs/project-overview",
           "docs/keyboard-shortcuts",
-          "docs/CONTRIBUTING"
+          "docs/CONTRIBUTING",
+          "CHANGELOG"
         ]
       },
       {
@@ -61,7 +62,8 @@
         "pages": [
           "mac/README",
           "ios/README",
-          "web/docs/VT_INSTALLATION"
+          "web/docs/VT_INSTALLATION",
+          "docs/custom-node"
         ]
       },
       {
@@ -74,15 +76,17 @@
           "web/docs/spec",
           "mac/docs/BuildArchitectures",
           "web/docs/socket-protocol",
-          "docs/authentication"
+          "docs/authentication",
+          "docs/security"
         ]
       },
       {
-        "group": "Security",
+        "group": "Advanced Features",
         "pages": [
-          "docs/security",
+          "docs/hq",
           "docs/push-notification",
-          "docs/WEBRTC_CONFIG"
+          "web/docs/terminal-titles",
+          "docs/TESTING_EXTERNAL_DEVICES"
         ]
       },
       {
@@ -91,7 +95,8 @@
           "docs/development",
           "docs/build-system",
           "docs/testing",
-          "docs/logging-style-guide"
+          "docs/logging-style-guide",
+          "docs/files"
         ]
       },
       {
@@ -99,61 +104,68 @@
         "pages": [
           "mac/docs/BuildRequirements",
           "mac/docs/code-signing",
-          "mac/docs/screencap",
-          "mac/docs/screencapturekit"
+          "mac/docs/RELEASE_GUIDE",
+          "mac/docs/sparkle-keys",
+          "mac/docs/sparkle-stats-store"
         ]
       },
       {
         "group": "iOS Development",
         "pages": [
+          "ios/conversion",
           "apple/docs/modern-swift",
           "apple/docs/swift-concurrency",
           "apple/docs/swiftui",
-          "apple/docs/swift-testing-playbook"
+          "apple/docs/swift-testing-playbook",
+          "apple/docs/logging-private-fix"
+        ]
+      },
+      {
+        "group": "iOS Testing",
+        "pages": [
+          "ios/VibeTunnelTests/README",
+          "ios/VibeTunnelTests/TestCoverage",
+          "ios/VibeTunnelTests/TestingApproach"
         ]
       },
       {
         "group": "Web Development",
         "pages": [
+          "web/README",
           "web/docs/performance",
-          "web/docs/terminal-titles",
-          "docs/TESTING_EXTERNAL_DEVICES"
+          "web/docs/playwright-testing",
+          "web/src/test/playwright/SEQUENTIAL_OPTIMIZATIONS",
+          "web/docs/npm"
         ]
       },
       {
-        "group": "Release Process",
+        "group": "Release & Deployment",
         "pages": [
           "docs/deployment",
           "docs/RELEASE"
         ]
       },
       {
-        "group": "Distribution",
+        "group": "Experimental",
         "pages": [
-          "web/docs/npm",
-          "mac/docs/sparkle-keys",
-          "mac/docs/sparkle-stats-store"
-        ]
-      },
-      {
-        "group": "Configuration",
-        "pages": [
-          "docs/custom-node",
-          "apple/docs/logging-private-fix"
-        ]
-      },
-      {
-        "group": "File Structure",
-        "pages": [
-          "docs/files",
-          ".github/workflows/README.md"
+          "tauri/README",
+          "tauri/IMPROVEMENTS"
         ]
       },
       {
         "group": "Tools & Integration",
         "pages": [
           "docs/claude",
-          "docs/gemini"
+          "CLAUDE",
+          "docs/gemini",
+          "GEMINI",
+          ".github/workflows/README"
+        ]
+      },
+      {
+        "group": "Maintenance",
+        "pages": [
+          "docs/org-migrate"
         ]
       }
     ]
