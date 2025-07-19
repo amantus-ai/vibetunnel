@@ -30,7 +30,7 @@ jobs:
         include:
           # Test on MSRV (Minimum Supported Rust Version)
           - os: ubuntu-latest
-            rust: "1.80.0"
+            rust: "1.87.0"
     
     steps:
       - uses: actions/checkout@v4

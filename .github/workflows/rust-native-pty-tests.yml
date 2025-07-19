@@ -32,7 +32,7 @@ jobs:
           # Test on older Rust version for MSRV
           - os: ubuntu-latest
             node: 20
-            rust: "1.80.0"
+            rust: "1.87.0"
     
     steps:
       - uses: actions/checkout@v4
