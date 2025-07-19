@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // Colors for output
@@ -139,7 +139,7 @@ find_vibetunnel "$@"
 
     // Create the wrapper script
     writeFileSync(wrapperPath, wrapperContent);
-    execSync(`chmod +x ${wrapperPath}`, { stdio: 'pipe' });
+    chmodSync(wrapperPath, 0o755);
 
     printSuccess(`Created wrapper script at ${wrapperPath}`);
     return wrapperPath;
@@ -171,7 +171,7 @@ function removeVibetunnelWrapper(): void {
   const wrapperPath = `${home}/.local/bin/vibetunnel-systemd`;
   try {
     if (existsSync(wrapperPath)) {
-      execSync(`rm ${wrapperPath}`, { stdio: 'pipe' });
+      unlinkSync(wrapperPath);
       printInfo('Removed wrapper script');
     }
   } catch (_error) {
@@ -227,10 +227,10 @@ function installService(vibetunnelPath: string): void {
 
   try {
     // Create user systemd directory if it doesn't exist
-    execSync(`mkdir -p ${systemdDir}`, { stdio: 'pipe' });
+    mkdirSync(systemdDir, { recursive: true });
 
     writeFileSync(servicePath, serviceContent);
-    execSync(`chmod 644 ${servicePath}`, { stdio: 'pipe' });
+    chmodSync(servicePath, 0o644);
 
     // Reload user systemd
     execSync('systemctl --user daemon-reload', { stdio: 'pipe' });
@@ -323,7 +323,7 @@ function uninstallService(): void {
     const systemdDir = `${home}/.config/systemd/user`;
     const servicePath = join(systemdDir, SERVICE_FILE);
     if (existsSync(servicePath)) {
-      execSync(`rm ${servicePath}`, { stdio: 'pipe' });
+      unlinkSync(servicePath);
       printInfo('Service file removed');
     }
 
