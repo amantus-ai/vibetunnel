@@ -36,8 +36,106 @@ function printError(message: string): void {
   console.log(`${RED}[ERROR]${NC} ${message}`);
 }
 
-// Find the actual vibetunnel executable path
-function findVibetunnelPath(): string {
+// Create a stable wrapper script that can find vibetunnel regardless of node version manager
+function createVibetunnelWrapper(): string {
+  const wrapperPath = '/usr/local/bin/vibetunnel-systemd';
+  const wrapperContent = `#!/bin/bash
+# VibeTunnel Systemd Wrapper Script
+# This script finds and executes vibetunnel regardless of how it was installed
+
+# Function to log messages
+log_info() {
+    echo "[INFO] $1" >&2
+}
+
+log_error() {
+    echo "[ERROR] $1" >&2
+}
+
+# Try to find vibetunnel in various ways
+find_vibetunnel() {
+    # Method 1: Check if vibetunnel is in PATH
+    if command -v vibetunnel >/dev/null 2>&1; then
+        log_info "Found vibetunnel in PATH"
+        vibetunnel "$@"
+        return $?
+    fi
+    
+    # Method 2: Check common global npm locations
+    for npm_bin in "/usr/local/bin/npm" "/usr/bin/npm" "/opt/homebrew/bin/npm"; do
+        if [ -x "$npm_bin" ]; then
+            log_info "Trying npm global with $npm_bin"
+            NPM_PREFIX=$("$npm_bin" config get prefix 2>/dev/null)
+            if [ -n "$NPM_PREFIX" ] && [ -x "$NPM_PREFIX/bin/vibetunnel" ]; then
+                log_info "Found vibetunnel via npm global: $NPM_PREFIX/bin/vibetunnel"
+                "$NPM_PREFIX/bin/vibetunnel" "$@"
+                return $?
+            fi
+        fi
+    done
+    
+    # Method 3: Check for nvm installations
+    if [ -d "/home/vibetunnel/.nvm" ]; then
+        log_info "Checking nvm installation"
+        export NVM_DIR="/home/vibetunnel/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+        if command -v vibetunnel >/dev/null 2>&1; then
+            log_info "Found vibetunnel via nvm"
+            vibetunnel "$@"
+            return $?
+        fi
+    fi
+    
+    # Method 4: Check for fnm installations  
+    if [ -d "/home/vibetunnel/.local/share/fnm" ]; then
+        log_info "Checking fnm installation"
+        export PATH="/home/vibetunnel/.local/share/fnm:$PATH"
+        eval "$(fnm env --use-on-cd)" 2>/dev/null || true
+        if command -v vibetunnel >/dev/null 2>&1; then
+            log_info "Found vibetunnel via fnm"
+            vibetunnel "$@"
+            return $?
+        fi
+    fi
+    
+    # Method 5: Try to run with node directly using global npm package
+    for node_bin in "/usr/local/bin/node" "/usr/bin/node" "/opt/homebrew/bin/node"; do
+        if [ -x "$node_bin" ]; then
+            for script_path in "/usr/local/lib/node_modules/vibetunnel/dist/cli.js" "/usr/lib/node_modules/vibetunnel/dist/cli.js"; do
+                if [ -f "$script_path" ]; then
+                    log_info "Running vibetunnel via node: $node_bin $script_path"
+                    "$node_bin" "$script_path" "$@"
+                    return $?
+                fi
+            done
+        fi
+    done
+    
+    log_error "Could not find vibetunnel installation"
+    log_error "Please ensure vibetunnel is installed globally: npm install -g vibetunnel"
+    return 1
+}
+
+# Execute the function with all arguments
+find_vibetunnel "$@"
+`;
+
+  try {
+    // Create the wrapper script
+    writeFileSync(wrapperPath, wrapperContent);
+    execSync(`chmod +x ${wrapperPath}`, { stdio: 'pipe' });
+
+    printSuccess(`Created wrapper script at ${wrapperPath}`);
+    return wrapperPath;
+  } catch (error) {
+    printError(`Failed to create wrapper script: ${error}`);
+    process.exit(1);
+  }
+}
+
+// Verify that vibetunnel is accessible and return wrapper path
+function checkVibetunnelAndCreateWrapper(): string {
+  // First, verify that vibetunnel is actually installed somewhere
   try {
     let whichCommand = 'which vibetunnel';
 
@@ -47,32 +145,27 @@ function findVibetunnelPath(): string {
     }
 
     const vibetunnelPath = execSync(whichCommand, { encoding: 'utf8', stdio: 'pipe' }).trim();
-    return vibetunnelPath;
+    printInfo(`Found VibeTunnel at: ${vibetunnelPath}`);
   } catch (_error) {
-    printError('VibeTunnel is not installed globally. Please install it first:');
+    printError('VibeTunnel is not installed or not accessible. Please install it first:');
     console.log('  npm install -g vibetunnel');
     process.exit(1);
   }
+
+  // Create and return the wrapper script path
+  return createVibetunnelWrapper();
 }
 
-// Check if vibetunnel is installed and return path
-function checkVibetunnel(): string {
-  const vibetunnelPath = findVibetunnelPath();
-
+// Remove wrapper script during uninstall
+function removeVibetunnelWrapper(): void {
+  const wrapperPath = '/usr/local/bin/vibetunnel-systemd';
   try {
-    let versionCommand = `${vibetunnelPath} version`;
-
-    // If running with sudo, check as the original user
-    if (process.env.SUDO_USER) {
-      versionCommand = `sudo -u ${process.env.SUDO_USER} -i vibetunnel version`;
+    if (existsSync(wrapperPath)) {
+      execSync(`rm ${wrapperPath}`, { stdio: 'pipe' });
+      printInfo('Removed wrapper script');
     }
-
-    const version = execSync(versionCommand, { encoding: 'utf8', stdio: 'pipe' }).trim();
-    printInfo(`Found VibeTunnel: ${version} at ${vibetunnelPath}`);
-    return vibetunnelPath;
   } catch (_error) {
-    printError(`VibeTunnel found at ${vibetunnelPath} but version check failed`);
-    process.exit(1);
+    // Ignore errors when removing wrapper
   }
 }
 
@@ -244,6 +337,9 @@ function uninstallService(): void {
     // Reload systemd
     execSync('systemctl daemon-reload', { stdio: 'pipe' });
 
+    // Remove wrapper script
+    removeVibetunnelWrapper();
+
     // Ask about removing user and directories
     console.log('');
     console.log(`To completely remove the ${USER_NAME} user and ${INSTALL_DIR} directory, run:`);
@@ -326,10 +422,10 @@ export function installSystemdService(action: string = 'install'): void {
         return; // This line won't be reached due to process.exit in reExecuteWithSudo
       }
 
-      const vibetunnelPath = checkVibetunnel();
+      const wrapperPath = checkVibetunnelAndCreateWrapper();
       createUser();
       createDirectories();
-      installService(vibetunnelPath);
+      installService(wrapperPath);
       configureService();
       showUsage();
       break;
