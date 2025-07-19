@@ -386,8 +386,21 @@ function checkServiceStatus(): void {
   }
 }
 
+// Check if running as root and prevent execution
+function checkNotRoot(): void {
+  if (process.getuid && process.getuid() === 0) {
+    printError('This installer must NOT be run as root!');
+    printError('VibeTunnel systemd service should run as a regular user for security.');
+    printError('Please run this command as a regular user (without sudo).');
+    process.exit(1);
+  }
+}
+
 // Main installation function
 export function installSystemdService(action: string = 'install'): void {
+  // Prevent running as root for security
+  checkNotRoot();
+
   switch (action) {
     case 'install': {
       printInfo('Installing VibeTunnel user systemd service...');
