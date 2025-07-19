@@ -156,10 +156,11 @@ jobs:
         pnpm config set child-concurrency 2
         pnpm install --frozen-lockfile --prefer-offline
 
-    - name: Build node-pty
+    - name: Build native modules
       working-directory: web
       run: |
-        cd node-pty && npm install && npm run build
+        # Build vibetunnel-pty native addon
+        cd vibetunnel-pty && npm install && npm run build
 
     - name: Build frontend and backend
       working-directory: web
@@ -172,6 +173,8 @@ jobs:
       id: test-client-coverage
       working-directory: web
       run: |
+        # Ensure native modules are built before tests
+        pnpm run pretest
         pnpm run test:client:coverage 2>&1 | tee test-client-output.txt
         echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
 
@@ -179,6 +182,8 @@ jobs:
       id: test-server-coverage
       working-directory: web
       run: |
+        # Ensure native modules are built before tests (if not already)
+        pnpm run pretest
         pnpm run test:server:coverage 2>&1 | tee test-server-output.txt
         echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
       env:
