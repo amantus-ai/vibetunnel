@@ -859,9 +859,9 @@ export class SessionCreateForm extends LitElement {
                 aria-expanded="${this.showOptions}"
               >
                 <svg 
-                  width="10" 
-                  height="10" 
-                  class="sm:w-2.5 sm:h-2.5 lg:w-3 lg:h-3 transition-transform duration-200 flex-shrink-0" 
+                  width="8" 
+                  height="8" 
+                  class="sm:w-2 sm:h-2 lg:w-2.5 lg:h-2.5 transition-transform duration-200 flex-shrink-0" 
                   viewBox="0 0 16 16" 
                   fill="currentColor"
                   style="transform: ${this.showOptions ? 'rotate(90deg)' : 'rotate(0deg)'}"
@@ -870,7 +870,7 @@ export class SessionCreateForm extends LitElement {
                     d="M5.22 1.22a.75.75 0 011.06 0l6.25 6.25a.75.75 0 010 1.06l-6.25 6.25a.75.75 0 01-1.06-1.06L10.94 8 5.22 2.28a.75.75 0 010-1.06z"
                   />
                 </svg>
-                <span class="form-label text-text-muted uppercase text-[9px] sm:text-[10px] lg:text-xs tracking-wider leading-none">Options</span>
+                <span class="form-label text-text-muted uppercase text-[9px] sm:text-[10px] lg:text-xs tracking-wider">Options</span>
               </button>
 
               ${
