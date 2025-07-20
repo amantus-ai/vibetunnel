@@ -2,6 +2,55 @@
 
 ## [1.0.0-beta.14] - 2025-07-20
 
+### **Quick Start Configuration System** (#229, #250, #436)
+- Added comprehensive Quick Start command management for faster session creation
+- Configure frequently used commands with custom display names
+- One-click session creation from predefined commands
+- Full command customization with add, edit, delete, and reorder functionality
+- Sync configurations between web UI and native macOS app
+
+### **Native macOS Settings Interface**
+- Beautiful SwiftUI settings view for managing Quick Start commands
+- Inline editing with immediate feedback and smooth animations
+- Default commands for common workflows (dev server, test runner, shell)
+- Toggle option to use current directory as default for commands
+- Drag-and-drop reordering of commands with visual feedback
+
+### **Enhanced Session Creation**
+- Integrated Quick Start buttons in session creation form
+- Directory picker with intelligent autocomplete and path expansion
+- Support for home directory expansion (~/)
+- System file browser integration for easy folder selection
+- Improved layout and user experience
+
+### **Session Management Improvements**
+- New session status dropdown for managing session state
+- Session termination capabilities with proper cleanup
+- Enhanced session list UI with better status indicators
+- Improved terminal binary detection and display
+
+### **Infrastructure Improvements**
+- New REST API endpoints for Quick Start configuration (`/api/config/quick-start`)
+- File-based persistence system for storing user configurations
+- Replaced WebSocket-based config sync with RESTful design
+- Added 200+ tests for new components and functionality
+- TypeScript types for all configuration structures
+
+### 🐛 Bug Fixes
+- Fixed import paths for command quick start functionality
+- Improved UI consistency across web and native interfaces
+- Enhanced error handling for configuration operations
+- Fixed notification status display issues
+- Fixed incorrect systemd documentation (#426)
+- Resolved release script Node.js detection issues
+- Fixed Mintlify deployment configuration
+- Fixed timer continuing to run for exited sessions (#427)
+- Fixed Claude Chinese input issues (#431)
+
+### Breaking Changes
+- Removed WebSocket-based configuration synchronization in favor of REST API
+- Configuration storage moved from in-memory to file-based system
+
 ### **Linux Systemd Support**
 - Added systemd service management for Linux deployments (#426)
 - Simple installation with `vibetunnel systemd` command
