@@ -32,10 +32,12 @@
 - Comprehensive systemd commands for status, logs, start/stop
 
 #### **UI Improvements**
+- New image upload menu with paste, select from library, camera, and browse options (#432)
 - Improves experimental binary terminal mode (no more long scrolling - see Terminal Settings)
 - Clickable ngrok URLs in Settings with copy button (#422)
 - Cleaner session headers with better-positioned controls
 - Fixed magic wand icon alignment for AI sessions
+- Improved theme toggle with better icon and tooltips (#438)
 
 ### 🐛 Bug Fixes
 
