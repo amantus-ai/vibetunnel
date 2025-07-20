@@ -685,12 +685,7 @@ export class SessionCreateForm extends LitElement {
 
             <!-- Working Directory -->
             <div class="mb-2 sm:mb-3 lg:mb-5">
-              <div class="flex items-center justify-between mb-1">
-                <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm mb-0">Working Directory:</label>
-                <span class="text-text-muted text-[9px] sm:text-[10px]">
-                  ${this.isDiscovering ? 'Scanning...' : `${this.repositories.length} repositories`}
-                </span>
-              </div>
+              <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Working Directory:</label>
               <div class="relative">
                 <div class="flex gap-1.5 sm:gap-2">
                 <input
