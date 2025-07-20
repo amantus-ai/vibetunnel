@@ -2,88 +2,96 @@
 
 ## [1.0.0-beta.14] - 2025-07-20
 
-### **Quick Start Configuration System** (#229, #250, #436)
-- Added comprehensive Quick Start command management for faster session creation
-- Configure frequently used commands with custom display names
-- One-click session creation from predefined commands
-- Full command customization with add, edit, delete, and reorder functionality
-- Sync configurations between web UI and native macOS app
+### ✨ **New Features**
 
-### **Native macOS Settings Interface**
-- Beautiful SwiftUI settings view for managing Quick Start commands
-- Inline editing with immediate feedback and smooth animations
-- Default commands for common workflows (dev server, test runner, shell)
-- Toggle option to use current directory as default for commands
-- Drag-and-drop reordering of commands with visual feedback
-- Added ConfigManager for synchronized configuration with web UI
-- New ClickableURLView component for consistent URL handling
+#### **Quick Start Commands - Launch Sessions Instantly** (#229, #250, #436)
+- **One-Click Session Creation**: Start your favorite commands with a single click! No more typing the same commands repeatedly
+- **Customizable Command Shortcuts**: Create shortcuts for your most-used commands like "pnpm run dev", "claude", or "python3"
+- **Visual Command Names**: Add emoji and custom names to your commands (e.g., "✨ claude" or "▶️ dev server")
+- **Smart Defaults**: Comes pre-configured with popular development commands - just click and go!
+- **Drag & Drop Reordering**: Organize your commands in the order that makes sense for your workflow
 
-### **Enhanced Session Creation**
-- Integrated Quick Start buttons in session creation form
-- Directory picker with intelligent autocomplete and path expansion
-- Support for home directory expansion (~/)
-- System file browser integration for easy folder selection
-- Improved layout and user experience
-- AutocompleteService for intelligent directory suggestions on macOS
-- Reset to defaults option in Quick Start editor
+#### **Enhanced Directory Navigation**
+- **Intelligent Autocomplete**: Start typing a path and get instant suggestions based on your file system
+- **Home Directory Expansion**: Use `~/` shortcuts that automatically expand to your home directory
+- **Recent Directories**: Quick access to recently used directories
+- **Visual File Browser**: Click the folder icon to browse and select directories visually
+- **Repository Discovery**: Automatically finds Git repositories in your selected folders for quick navigation
 
-### **Session Management Improvements**
-- New session status dropdown for managing session state
-- Session termination capabilities with proper cleanup
-- Enhanced session list UI with better status indicators
-- Improved terminal binary detection and display
+#### **Session Management Power-Ups**
+- **Session Status Control**: New dropdown menu in session headers lets you manage running sessions
+- **Terminate Sessions**: Properly stop running processes without closing the tab
+- **Clear Exited Sessions**: Clean up terminated sessions with one click
+- **Visual Status Indicators**: Clearly see which sessions are running, exited, or ready
 
-### **Infrastructure Improvements**
-- New REST API endpoints for Quick Start configuration (`/api/config/quick-start`)
-- File-based persistence system for storing user configurations
-- Replaced WebSocket-based config sync with RESTful design
-- Added 200+ tests for new components and functionality
-- TypeScript types for all configuration structures
+#### **Linux Systemd Support** (#426)
+- **Automatic Service Management**: Simple installation with `vibetunnel systemd` command
+- **Boot Startup**: VibeTunnel starts automatically when your system boots
+- **Smart Node.js Detection**: Works seamlessly with nvm/fnm installations
+- **User-Level Service**: Runs securely under your user account
 
-### 🐛 Bug Fixes
-- Fixed import paths for command quick start functionality
-- Improved UI consistency across web and native interfaces
-- Enhanced error handling for configuration operations
-- Fixed notification status display issues
-- Fixed incorrect systemd documentation (#426)
-- Resolved release script Node.js detection issues
-- Fixed Mintlify deployment configuration
-- Fixed timer continuing to run for exited sessions (#427)
-- Fixed Claude Chinese input issues (#431)
-- Fixed ConfigManager threading crash due to main actor violations
-- Fixed edit icon positioning in session headers
-- Improved magic wand icon design to match macOS
-- Fixed OPTIONS label alignment in session create form
-- Updated terminal padding and session termination handling
+### 🎨 **UI/UX Improvements**
 
-### Breaking Changes
-- Removed WebSocket-based configuration synchronization in favor of REST API
-- Configuration storage moved from in-memory to file-based system
+#### **Beautiful macOS Settings**
+- **Native SwiftUI Interface**: Settings that feel right at home on your Mac
+- **Inline Editing**: Edit commands directly in the settings - no popup dialogs needed
+- **Smooth Animations**: Delightful transitions when adding, removing, or reordering commands
+- **Reset to Defaults**: One-click restore of the default command set if you want to start fresh
+- **Clickable URLs**: Enhanced URL handling throughout the Mac app
 
-### **Linux Systemd Support**
-- Added systemd service management for Linux deployments (#426)
-- Simple installation with `vibetunnel systemd` command
-- User-level service with automatic startup on boot
-- Smart wrapper script handles nvm/fnm Node.js installations
-- Comprehensive documentation at `web/docs/systemd.md`
+#### **Refined Web Interface**
+- **Improved Session Headers**: Cleaner layout with better-positioned controls
+- **Enhanced Edit Icons**: More intuitive placement of the magic wand icon for AI sessions
+- **Better Terminal Padding**: Improved spacing for a more comfortable terminal experience
+- **Responsive Design**: UI elements adapt better to different screen sizes
+- **Clickable ngrok URLs**: Terminal URLs are now clickable for easy access (#422)
 
-### **Enhanced Terminal Experience**
-- ngrok URLs are now clickable in terminal output (#422)
+### 🛡️ **Reliability & Performance**
 
-### **Infrastructure Improvements**
-- Major codebase cleanup and simplification (#419)
-- Improved release scripts and Node.js detection
-- Enhanced CI/CD pipeline reliability
+#### **Configuration Validation**
+- **Smart Config Checking**: Your settings are now validated with Zod to prevent invalid configurations
+- **Error Prevention**: Empty commands and malformed settings are caught before they can cause issues
+- **Automatic Repair**: Invalid configurations are safely handled without data loss
 
-### 📚 Documentation
-- Added systemd documentation for Linux users
-- Created release guide with troubleshooting steps
-- Updated README with clearer Linux instructions
+#### **Stability Improvements**
+- **Fixed Threading Crashes**: Resolved crashes when reordering Quick Start commands on macOS
+- **Timer Management**: Fixed issue where session timers continued running after sessions ended (#427)
+- **Chinese Input Support**: Fixed input method issues for Claude sessions (#431)
+- **WebSocket Cleanup**: Removed legacy WebSocket handlers for cleaner, more reliable connections
+- **OPTIONS Alignment**: Fixed label positioning in session creation form
+- **Magic Wand Icon**: Updated design to match macOS style guidelines
 
-### 🐛 Bug Fixes
-- Fixed incorrect systemd documentation
-- Resolved release script Node.js detection issues
-- Fixed Mintlify deployment configuration
+### 🚀 **Developer Experience**
+
+#### **REST API Design**
+- **New Config Endpoints**: Clean REST API at `/api/config/quick-start` for configuration management
+- **File-Based Persistence**: Your settings are saved to disk and persist across restarts
+- **Synchronized Settings**: Changes in the web UI instantly reflect in the Mac app and vice versa
+- **Comprehensive Testing**: Added 200+ tests ensuring reliability of new features
+
+#### **Better Error Handling**
+- **Descriptive Error Messages**: Clear explanations when something goes wrong
+- **Graceful Fallbacks**: If custom commands fail to load, defaults are always available
+- **Validation Feedback**: Immediate feedback when entering invalid configurations
+
+### 📝 **Documentation**
+- **Quick Start Guide**: New comprehensive guide for setting up and using Quick Start commands
+- **Implementation Details**: Technical documentation for developers wanting to understand the system
+- **Systemd Documentation**: Complete guide for Linux service management
+- **Release Guide**: Improved release process documentation with troubleshooting
+- **Updated Examples**: All documentation updated with new features and capabilities
+
+### ⚠️ **Breaking Changes**
+- **Configuration Storage**: Settings now stored in files instead of memory - existing in-memory configs will need to be re-entered
+- **WebSocket Config Sync Removed**: Configuration synchronization now uses REST API - more reliable but requires app update
+
+### 🔧 **Under the Hood**
+- **Zod Validation**: Runtime type checking ensures configuration integrity
+- **ConfigManager Service**: New macOS service for managing Quick Start settings
+- **AutocompleteService**: Intelligent path completion system for directory navigation
+- **Unified Settings Architecture**: Consistent settings experience across web and native apps
+- **Major Codebase Cleanup**: Simplified architecture and improved maintainability (#419)
+- **Enhanced CI/CD**: More reliable build and deployment pipeline
 
 ### 👥 Contributors
 First-time contributors to VibeTunnel:
