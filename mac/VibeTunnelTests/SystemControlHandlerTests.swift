@@ -171,21 +171,17 @@ struct SystemControlHandlerTests {
         let disableObserver = NotificationCenter.default.addObserver(
             forName: .disablePathSync,
             object: nil,
-            queue: .main
+            queue: nil
         ) { _ in
-            Task { @MainActor in
-                flags.disableNotificationPosted = true
-            }
+            flags.disableNotificationPosted = true
         }
 
         let enableObserver = NotificationCenter.default.addObserver(
             forName: .enablePathSync,
             object: nil,
-            queue: .main
+            queue: nil
         ) { _ in
-            Task { @MainActor in
-                flags.enableNotificationPosted = true
-            }
+            flags.enableNotificationPosted = true
         }
 
         defer {
@@ -207,6 +203,9 @@ struct SystemControlHandlerTests {
 
         // When
         _ = await handler.handleMessage(messageData)
+
+        // Give a small delay to ensure notification is processed
+        try await Task.sleep(for: .milliseconds(50))
 
         // Then - Disable notification should be posted immediately
         #expect(flags.disableNotificationPosted == true)
