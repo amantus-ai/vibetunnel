@@ -59,6 +59,7 @@ When the user says "release" or asks to create a release, ALWAYS read and follow
 - Always check current branch with `git branch` before making changes
 - If unsure about branching, ASK THE USER FIRST
 - **"Adopt" means REVIEW, not merge!** When asked to "adopt" a PR, switch to its branch and review the changes. NEVER merge without explicit permission.
+- **"Rebase main" means rebase CURRENT branch with main!** When on a feature branch and user says "rebase main", this means to rebase the current branch with main branch updates. NEVER switch to main branch. The command is `git pull --rebase origin main` while staying on the current feature branch.
 
 ### Terminal Title Management with VT
 

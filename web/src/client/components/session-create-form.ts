@@ -17,6 +17,11 @@ import './file-browser.js';
 import { TitleMode } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { createLogger } from '../utils/logger.js';
+import {
+  type AutocompleteItem,
+  AutocompleteManager,
+  type Repository,
+} from './autocomplete-manager.js';
 import type { Session } from './session-list.js';
 import {
   STORAGE_KEY as APP_PREFERENCES_STORAGE_KEY,
@@ -55,23 +60,11 @@ export class SessionCreateForm extends LitElement {
   @state() private showFileBrowser = false;
   @state() private selectedQuickStart = 'zsh';
   @state() private showRepositoryDropdown = false;
-  @state() private repositories: Array<{
-    id: string;
-    path: string;
-    folderName: string;
-    lastModified: string;
-    relativePath: string;
-  }> = [];
+  @state() private repositories: Repository[] = [];
   @state() private isDiscovering = false;
   @state() private macAppConnected = false;
   @state() private showCompletions = false;
-  @state() private completions: Array<{
-    name: string;
-    path: string;
-    type: 'directory' | 'file';
-    suggestion: string;
-    isRepository?: boolean;
-  }> = [];
+  @state() private completions: AutocompleteItem[] = [];
   @state() private selectedCompletionIndex = -1;
   @state() private isLoadingCompletions = false;
 
@@ -90,9 +83,12 @@ export class SessionCreateForm extends LitElement {
   private readonly STORAGE_KEY_TITLE_MODE = 'vibetunnel_title_mode';
 
   private completionsDebounceTimer?: NodeJS.Timeout;
+  private autocompleteManager!: AutocompleteManager;
 
   connectedCallback() {
     super.connectedCallback();
+    // Initialize autocomplete manager
+    this.autocompleteManager = new AutocompleteManager(this.authClient);
     // Load from localStorage when component is first created
     this.loadFromLocalStorage();
     // Check server status
@@ -523,6 +519,8 @@ export class SessionCreateForm extends LitElement {
       if (response.ok) {
         this.repositories = await response.json();
         logger.debug(`Discovered ${this.repositories.length} repositories`);
+        // Update autocomplete manager with discovered repositories
+        this.autocompleteManager.setRepositories(this.repositories);
       } else {
         logger.error('Failed to discover repositories');
       }
@@ -568,77 +566,8 @@ export class SessionCreateForm extends LitElement {
     this.isLoadingCompletions = true;
 
     try {
-      // Fetch filesystem completions
-      const fsResponse = await fetch(`/api/fs/completions?path=${encodeURIComponent(path)}`, {
-        headers: this.authClient.getAuthHeader(),
-      });
-
-      let completions: Array<{
-        name: string;
-        path: string;
-        type: 'directory' | 'file';
-        suggestion: string;
-        isRepository?: boolean;
-      }> = [];
-
-      if (fsResponse.ok) {
-        const data = await fsResponse.json();
-        completions = data.completions || [];
-      }
-
-      // Also search through discovered repositories if user is typing a partial name
-      // Check if the path doesn't contain '/' or if it's just a name without path separators
-      const isSearchingByName =
-        !path.includes('/') ||
-        ((path.match(/\//g) || []).length === 1 && path.endsWith('/') === false);
-
-      if (isSearchingByName && this.repositories.length > 0) {
-        const searchTerm = path.toLowerCase().replace('~/', '');
-
-        // Filter repositories that match the search term
-        const matchingRepos = this.repositories
-          .filter((repo) => repo.folderName.toLowerCase().includes(searchTerm))
-          .map((repo) => ({
-            name: repo.folderName,
-            path: repo.relativePath,
-            type: 'directory' as const,
-            suggestion: repo.path,
-            isRepository: true,
-          }));
-
-        // Merge with filesystem completions, avoiding duplicates
-        const existingPaths = new Set(completions.map((c) => c.suggestion));
-        matchingRepos.forEach((repo) => {
-          if (!existingPaths.has(repo.suggestion)) {
-            completions.push(repo);
-          }
-        });
-      }
-
-      // Enhanced sorting with better match prioritization
-      completions.sort((a, b) => {
-        // First priority: exact name matches for directories
-        const searchName = path.split('/').pop()?.toLowerCase() || '';
-        const aIsExactMatch = a.name.toLowerCase() === searchName && a.type === 'directory';
-        const bIsExactMatch = b.name.toLowerCase() === searchName && b.type === 'directory';
-
-        if (aIsExactMatch && !bIsExactMatch) return -1;
-        if (!aIsExactMatch && bIsExactMatch) return 1;
-
-        // Second priority: git repositories
-        if (a.isRepository && !b.isRepository) return -1;
-        if (!a.isRepository && b.isRepository) return 1;
-
-        // Third priority: directories before files
-        if (a.type !== b.type) {
-          return a.type === 'directory' ? -1 : 1;
-        }
-
-        // Finally: alphabetical order
-        return a.name.localeCompare(b.name);
-      });
-
-      this.completions = completions.slice(0, 20); // Limit total suggestions
+      // Use the autocomplete manager to fetch completions
+      this.completions = await this.autocompleteManager.fetchCompletions(path);
       this.showCompletions = this.completions.length > 0;
       this.selectedCompletionIndex = -1;
     } catch (error) {
