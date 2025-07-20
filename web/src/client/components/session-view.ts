@@ -1027,12 +1027,18 @@ export class SessionView extends LitElement {
 
       // No image found in clipboard
       logger.log('No image found in clipboard');
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: 'No image found in clipboard',
+          bubbles: true,
+          composed: true,
+        })
+      );
     } catch (error) {
       logger.error('Failed to paste image from clipboard:', error);
-      // Fallback to showing a message
       this.dispatchEvent(
-        new CustomEvent('show-notification', {
-          detail: { message: 'No image found in clipboard or clipboard access denied' },
+        new CustomEvent('error', {
+          detail: 'Failed to access clipboard. Please check permissions.',
           bubbles: true,
           composed: true,
         })
@@ -1041,42 +1047,23 @@ export class SessionView extends LitElement {
   }
 
   private handleSelectImage() {
-    // Create hidden input for image selection
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.style.display = 'none';
-
-    input.addEventListener('change', async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        await this.uploadFile(file);
-      }
-      input.remove();
-    });
-
-    document.body.appendChild(input);
-    input.click();
+    // Use the file picker component to open image picker
+    const filePicker = this.querySelector('file-picker') as FilePicker | null;
+    if (filePicker && typeof filePicker.openImagePicker === 'function') {
+      filePicker.openImagePicker();
+    } else {
+      logger.error('File picker component not found or openImagePicker method not available');
+    }
   }
 
   private handleOpenCamera() {
-    // Create hidden input for camera capture
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = 'environment'; // Prefer rear camera
-    input.style.display = 'none';
-
-    input.addEventListener('change', async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        await this.uploadFile(file);
-      }
-      input.remove();
-    });
-
-    document.body.appendChild(input);
-    input.click();
+    // Use the file picker component to open camera
+    const filePicker = this.querySelector('file-picker') as FilePicker | null;
+    if (filePicker && typeof filePicker.openCamera === 'function') {
+      filePicker.openCamera();
+    } else {
+      logger.error('File picker component not found or openCamera method not available');
+    }
   }
 
   private handleShowImageUploadOptions() {

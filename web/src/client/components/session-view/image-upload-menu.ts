@@ -8,6 +8,9 @@ import { html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { Z_INDEX } from '../../utils/constants.js';
 
+// Delay to ensure menu close animation completes before action
+const MENU_CLOSE_ANIMATION_DELAY = 50;
+
 @customElement('image-upload-menu')
 export class ImageUploadMenu extends LitElement {
   // Disable shadow DOM to use Tailwind
@@ -45,7 +48,7 @@ export class ImageUploadMenu extends LitElement {
       // Call the callback after a brief delay to ensure menu is closed
       setTimeout(() => {
         callback();
-      }, 50);
+      }, MENU_CLOSE_ANIMATION_DELAY);
     }
   }
 
@@ -61,8 +64,14 @@ export class ImageUploadMenu extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    // Always clean up event listeners
     document.removeEventListener('click', this.handleOutsideClick);
     document.removeEventListener('keydown', this.handleKeyDown);
+    // Close menu if it's open when component is disconnected
+    if (this.showMenu) {
+      this.showMenu = false;
+      this.focusedIndex = -1;
+    }
   }
 
   private async checkCameraAvailability() {
@@ -168,6 +177,57 @@ export class ImageUploadMenu extends LitElement {
     }
   }
 
+  private getAvailableMenuItems() {
+    const items = [];
+    if (this.hasClipboardImage) {
+      items.push({
+        id: 'paste',
+        label: 'Paste from Clipboard',
+        ariaLabel: 'Paste image from clipboard',
+        action: () => this.handleAction(this.onPasteImage),
+        icon: html`<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M5.75 1a.75.75 0 00-.75.75v3c0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75v-3a.75.75 0 00-.75-.75h-4.5zM6.5 4V2.5h3V4h-3z"/>
+          <path d="M1.75 5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h12.5a.75.75 0 00.75-.75v-8.5a.75.75 0 00-.75-.75H11v1.5h2.5v6.5h-11v-6.5H5V5H1.75z"/>
+          <path d="M8.5 9.5a.5.5 0 10-1 0V11H6a.5.5 0 000 1h1.5v1.5a.5.5 0 001 0V12H10a.5.5 0 000-1H8.5V9.5z"/>
+        </svg>`,
+      });
+    }
+    items.push({
+      id: 'select',
+      label: 'Select Image',
+      ariaLabel: 'Select image from device',
+      action: () => this.handleAction(this.onSelectImage),
+      icon: html`<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M14.5 2h-13C.67 2 0 2.67 0 3.5v9c0 .83.67 1.5 1.5 1.5h13c.83 0 1.5-.67 1.5-1.5v-9c0-.83-.67-1.5-1.5-1.5zM5.5 5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM13 11H3l2.5-3L7 10l2.5-3L13 11z"/>
+      </svg>`,
+    });
+    if (this.isMobile) {
+      items.push({
+        id: 'camera',
+        label: 'Camera',
+        ariaLabel: 'Take photo with camera',
+        action: () => this.handleAction(this.onOpenCamera),
+        icon: html`<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M10.5 2.5a.5.5 0 00-.5-.5H6a.5.5 0 00-.5.5V3H3a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2h-2.5v-.5zM6.5 3h3v.5h-3V3zM13 4a1 1 0 011 1v6a1 1 0 01-1 1H3a1 1 0 01-1-1V5a1 1 0 011-1h10z"/>
+          <path d="M8 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM6 8a2 2 0 114 0 2 2 0 01-4 0z"/>
+        </svg>`,
+      });
+    }
+    if (this.hasClipboardImage || this.isMobile) {
+      items.push({ id: 'divider', isDivider: true });
+    }
+    items.push({
+      id: 'browse',
+      label: 'Browse Files',
+      ariaLabel: 'Browse files on device',
+      action: () => this.handleAction(this.onBrowseFiles),
+      icon: html`<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z"/>
+      </svg>`,
+    });
+    return items;
+  }
+
   private handleMenuButtonKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'ArrowDown' && this.showMenu) {
       e.preventDefault();
@@ -209,87 +269,35 @@ export class ImageUploadMenu extends LitElement {
   }
 
   private renderDropdown() {
-    let menuItemIndex = 0;
+    // Use immutable index tracking for menu items
+    const menuItems = this.getAvailableMenuItems();
+    let buttonIndex = 0;
+
     return html`
       <div 
         class="absolute right-0 top-full mt-2 bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[240px]"
         style="z-index: ${Z_INDEX.WIDTH_SELECTOR_DROPDOWN};"
       >
-        
-        <!-- Paste from Clipboard (only if image available) -->
-        ${
-          this.hasClipboardImage
-            ? html`
-          <button
-            class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
-            @click=${() => this.handleAction(this.onPasteImage)}
-            data-action="paste"
-            tabindex="${this.showMenu ? '0' : '-1'}"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M5.75 1a.75.75 0 00-.75.75v3c0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75v-3a.75.75 0 00-.75-.75h-4.5zM6.5 4V2.5h3V4h-3z"/>
-              <path d="M1.75 5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h12.5a.75.75 0 00.75-.75v-8.5a.75.75 0 00-.75-.75H11v1.5h2.5v6.5h-11v-6.5H5V5H1.75z"/>
-              <path d="M8.5 9.5a.5.5 0 10-1 0V11H6a.5.5 0 000 1h1.5v1.5a.5.5 0 001 0V12H10a.5.5 0 000-1H8.5V9.5z"/>
-            </svg>
-            Paste from Clipboard
-          </button>
-        `
-            : nothing
-        }
-        
-        <!-- Select Image -->
-        <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
-          @click=${() => this.handleAction(this.onSelectImage)}
-          data-action="select"
-          tabindex="${this.showMenu ? '0' : '-1'}"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M14.5 2h-13C.67 2 0 2.67 0 3.5v9c0 .83.67 1.5 1.5 1.5h13c.83 0 1.5-.67 1.5-1.5v-9c0-.83-.67-1.5-1.5-1.5zM5.5 5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM13 11H3l2.5-3L7 10l2.5-3L13 11z"/>
-          </svg>
-          Select Image
-        </button>
-        
-        <!-- Camera (only on mobile) -->
-        ${
-          this.isMobile
-            ? html`
-          <button
-            class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
-            @click=${() => this.handleAction(this.onOpenCamera)}
-            data-action="camera"
-            tabindex="${this.showMenu ? '0' : '-1'}"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M10.5 2.5a.5.5 0 00-.5-.5H6a.5.5 0 00-.5.5V3H3a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2h-2.5v-.5zM6.5 3h3v.5h-3V3zM13 4a1 1 0 011 1v6a1 1 0 01-1 1H3a1 1 0 01-1-1V5a1 1 0 011-1h10z"/>
-              <path d="M8 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM6 8a2 2 0 114 0 2 2 0 01-4 0z"/>
-            </svg>
-            Camera
-          </button>
-        `
-            : nothing
-        }
-        
-        ${
-          this.hasClipboardImage || this.isMobile
-            ? html`
-          <div class="border-t border-border my-1"></div>
-        `
-            : nothing
-        }
-        
-        <!-- Browse Files -->
-        <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
-          @click=${() => this.handleAction(this.onBrowseFiles)}
-          data-action="browse"
-          tabindex="${this.showMenu ? '0' : '-1'}"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z"/>
-          </svg>
-          Browse Files
-        </button>
+        ${menuItems.map((item) => {
+          if (item.isDivider) {
+            return html`<div class="border-t border-border my-1"></div>`;
+          }
+          const currentIndex = buttonIndex++;
+          return html`
+            <button
+              class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${
+                this.focusedIndex === currentIndex ? 'bg-secondary text-primary' : ''
+              }"
+              @click=${item.action}
+              data-action=${item.id}
+              tabindex="${this.showMenu ? '0' : '-1'}"
+              aria-label=${item.ariaLabel}
+            >
+              ${item.icon}
+              ${item.label}
+            </button>
+          `;
+        })}
       </div>
     `;
   }

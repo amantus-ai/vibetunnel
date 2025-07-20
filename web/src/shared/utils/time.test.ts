@@ -56,13 +56,12 @@ describe('formatSessionDuration', () => {
     expect(formatSessionDuration('')).toBe('0s');
   });
 
-  it('should ignore end time if it is before start time', () => {
+  it('should return "0s" when end time is before start time', () => {
     const startTime = new Date('2024-01-01T10:00:00Z');
     const endTime = new Date('2024-01-01T09:00:00Z'); // 1 hour before start
 
-    // Should calculate from start to now instead
+    // Should return "0s" for invalid duration
     const result = formatSessionDuration(startTime.toISOString(), endTime.toISOString());
-    // Result will be based on current time, so we just check it's not negative
-    expect(result).toMatch(/^\d+[dhms]/);
+    expect(result).toBe('0s');
   });
 });
