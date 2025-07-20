@@ -9,7 +9,7 @@
  */
 import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { QuickStartCommand } from '../../types/config.js';
+import { DEFAULT_QUICK_START_COMMANDS, type QuickStartCommand } from '../../types/config.js';
 import { createLogger } from '../utils/logger.js';
 
 const _logger = createLogger('quick-start-editor');
@@ -115,6 +115,11 @@ export class QuickStartEditor extends LitElement {
     }, 0);
   }
 
+  private handleResetToDefaults() {
+    this.editableCommands = [...DEFAULT_QUICK_START_COMMANDS];
+    this.requestUpdate();
+  }
+
   private handleRemoveCommand(index: number) {
     this.editableCommands = this.editableCommands.filter((_, i) => i !== index);
     this.requestUpdate();
@@ -186,6 +191,13 @@ export class QuickStartEditor extends LitElement {
         <div class="flex items-center justify-between mb-2">
           <h3 class="text-xs font-medium text-text">Edit Quick Start Commands</h3>
           <div class="flex gap-2">
+            <button
+              @click=${this.handleResetToDefaults}
+              class="text-text-muted hover:text-text text-[10px] transition-colors duration-200"
+              title="Reset to default commands"
+            >
+              Reset to Defaults
+            </button>
             <button
               @click=${this.handleCancel}
               class="text-text-muted hover:text-text text-[10px] transition-colors duration-200"
