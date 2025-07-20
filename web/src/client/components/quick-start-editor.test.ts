@@ -480,8 +480,8 @@ describe('QuickStartEditor', () => {
       expect(resetIndex).to.be.lessThan(addIndex);
 
       // Check button styling
-      expect(resetButton.classList.contains('text-secondary')).to.be.true;
-      expect(resetButton.classList.contains('hover:text-primary')).to.be.true;
+      expect(resetButton.classList.contains('text-text-muted')).to.be.true;
+      expect(resetButton.classList.contains('hover:text-text')).to.be.true;
     });
 
     it('should emit quick-start-changed event when saving after reset', async () => {

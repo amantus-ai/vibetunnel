@@ -614,8 +614,8 @@ export class UnifiedSettings extends LitElement {
               <div class="flex items-center gap-2">
                 ${
                   this.isDiscoveringRepositories
-                    ? html`<span class="text-muted text-xs">Scanning...</span>`
-                    : html`<span class="text-muted text-xs">${this.repositoryCount} repositories found</span>`
+                    ? html`<span id="repository-status" class="text-muted text-xs">Scanning...</span>`
+                    : html`<span id="repository-status" class="text-muted text-xs">${this.repositoryCount} repositories found</span>`
                 }
                 <button
                   @click=${() => this.discoverRepositories()}
