@@ -612,13 +612,40 @@ export class SessionCreateForm extends LitElement {
           index === self.findIndex((c) => c.suggestion === completion.suggestion)
       );
 
-      // Sort: repositories first, then directories, then files
+      // Enhanced sorting with better match prioritization
       uniqueCompletions.sort((a, b) => {
+        // First priority: exact name matches for directories
+        const searchName = path.split('/').pop()?.toLowerCase() || '';
+        const aIsExactMatch = a.name.toLowerCase() === searchName && a.type === 'directory';
+        const bIsExactMatch = b.name.toLowerCase() === searchName && b.type === 'directory';
+
+        if (aIsExactMatch && !bIsExactMatch) return -1;
+        if (!aIsExactMatch && bIsExactMatch) return 1;
+
+        // Second priority: direct subdirectory matches (filesystem paths that are immediate children)
+        const currentDir = path.endsWith('/') ? path : path.substring(0, path.lastIndexOf('/') + 1);
+        const aIsDirectChild =
+          !a.isRepository &&
+          a.suggestion.startsWith(currentDir) &&
+          a.suggestion.slice(currentDir.length).split('/').length <= 2;
+        const bIsDirectChild =
+          !b.isRepository &&
+          b.suggestion.startsWith(currentDir) &&
+          b.suggestion.slice(currentDir.length).split('/').length <= 2;
+
+        if (aIsDirectChild && !bIsDirectChild) return -1;
+        if (!aIsDirectChild && bIsDirectChild) return 1;
+
+        // Third priority: repositories
         if (a.isRepository && !b.isRepository) return -1;
         if (!a.isRepository && b.isRepository) return 1;
+
+        // Fourth priority: directories before files
         if (a.type !== b.type) {
           return a.type === 'directory' ? -1 : 1;
         }
+
+        // Finally: alphabetical order
         return a.name.localeCompare(b.name);
       });
 
@@ -773,7 +800,7 @@ export class SessionCreateForm extends LitElement {
                                     height="12" 
                                     viewBox="0 0 16 16" 
                                     fill="currentColor"
-                                    class="text-text-muted flex-shrink-0"
+                                    class="${completion.isRepository ? 'text-primary' : 'text-text-muted'} flex-shrink-0"
                                   >
                                     ${
                                       completion.isRepository
@@ -785,11 +812,6 @@ export class SessionCreateForm extends LitElement {
                                   </svg>
                                   <span class="text-text text-xs sm:text-sm truncate flex-1">
                                     ${completion.name}
-                                    ${
-                                      completion.isRepository
-                                        ? html`<span class="text-primary ml-1">(git)</span>`
-                                        : ''
-                                    }
                                   </span>
                                   <span class="text-text-muted text-[9px] sm:text-[10px] truncate max-w-[40%]">${completion.path}</span>
                                 </button>
