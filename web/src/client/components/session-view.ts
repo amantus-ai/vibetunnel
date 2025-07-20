@@ -1066,10 +1066,6 @@ export class SessionView extends LitElement {
     }
   }
 
-  private handleShowImageUploadOptions() {
-    // This is no longer used, directly trigger the file picker instead
-    this.handleSelectImage();
-  }
 
   private async handleFileSelected(event: CustomEvent) {
     const { path } = event.detail;
@@ -1446,7 +1442,7 @@ export class SessionView extends LitElement {
           @paste-image=${() => this.handlePasteImage()}
           @select-image=${() => this.handleSelectImage()}
           @open-camera=${() => this.handleOpenCamera()}
-          @show-image-upload-options=${() => this.handleShowImageUploadOptions()}
+          @show-image-upload-options=${() => this.handleSelectImage()}
           @capture-toggled=${(e: CustomEvent) => {
             this.dispatchEvent(
               new CustomEvent('capture-toggled', {
