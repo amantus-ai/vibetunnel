@@ -15,6 +15,8 @@
 - Default commands for common workflows (dev server, test runner, shell)
 - Toggle option to use current directory as default for commands
 - Drag-and-drop reordering of commands with visual feedback
+- Added ConfigManager for synchronized configuration with web UI
+- New ClickableURLView component for consistent URL handling
 
 ### **Enhanced Session Creation**
 - Integrated Quick Start buttons in session creation form
@@ -22,6 +24,8 @@
 - Support for home directory expansion (~/)
 - System file browser integration for easy folder selection
 - Improved layout and user experience
+- AutocompleteService for intelligent directory suggestions on macOS
+- Reset to defaults option in Quick Start editor
 
 ### **Session Management Improvements**
 - New session status dropdown for managing session state
@@ -46,6 +50,11 @@
 - Fixed Mintlify deployment configuration
 - Fixed timer continuing to run for exited sessions (#427)
 - Fixed Claude Chinese input issues (#431)
+- Fixed ConfigManager threading crash due to main actor violations
+- Fixed edit icon positioning in session headers
+- Improved magic wand icon design to match macOS
+- Fixed OPTIONS label alignment in session create form
+- Updated terminal padding and session termination handling
 
 ### Breaking Changes
 - Removed WebSocket-based configuration synchronization in favor of REST API
