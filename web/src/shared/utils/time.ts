@@ -49,10 +49,22 @@ export function getDurationBetween(startTime: string, endTime: string): number {
  * Formats session duration for display
  * For running sessions, calculates from startedAt to now
  * For exited sessions, calculates from startedAt to endedAt
+ * If endedAt is invalid or before startedAt, shows "0s"
  */
 export function formatSessionDuration(startedAt: string, endedAt?: string): string {
-  const duration = endedAt
-    ? getDurationBetween(startedAt, endedAt)
-    : getDurationFromStart(startedAt);
-  return formatDuration(duration);
+  // If no endedAt provided, it's a running session
+  if (!endedAt) {
+    return formatDuration(getDurationFromStart(startedAt));
+  }
+
+  // For exited sessions, validate the endedAt time
+  const startTime = new Date(startedAt).getTime();
+  const endTime = new Date(endedAt).getTime();
+
+  // Check if dates are valid and endTime is after startTime
+  if (Number.isNaN(startTime) || Number.isNaN(endTime) || endTime < startTime) {
+    return formatDuration(0); // Show "0s" for invalid durations
+  }
+
+  return formatDuration(endTime - startTime);
 }
