@@ -621,7 +621,8 @@ export function createFilesystemRoutes(): Router {
   // Path completions endpoint for autocomplete
   router.get('/fs/completions', async (req: Request, res: Response) => {
     try {
-      let partialPath = (req.query.path as string) || '';
+      const originalPath = (req.query.path as string) || '';
+      let partialPath = originalPath;
 
       // Handle tilde expansion for home directory
       if (partialPath === '~' || partialPath.startsWith('~/')) {
@@ -672,40 +673,59 @@ export function createFilesystemRoutes(): Router {
       const entries = await fs.readdir(fullDirPath, { withFileTypes: true });
 
       // Filter and map entries
-      const completions = entries
-        .filter((entry) => {
-          // Filter by partial name (case-insensitive)
-          if (partialName && !entry.name.toLowerCase().startsWith(partialName.toLowerCase())) {
-            return false;
-          }
-          // Optionally hide hidden files unless the partial name starts with '.'
-          if (!partialName.startsWith('.') && entry.name.startsWith('.')) {
-            return false;
-          }
-          return true;
-        })
-        .map((entry) => {
-          const isDirectory = entry.isDirectory();
-          const _entryPath = path.join(fullDirPath, entry.name);
-          const relativePath = partialPath.endsWith('/')
-            ? path.join(partialPath, entry.name)
-            : path.join(dirPath, entry.name);
+      const mappedEntries = await Promise.all(
+        entries
+          .filter((entry) => {
+            // Filter by partial name (case-insensitive)
+            if (partialName && !entry.name.toLowerCase().startsWith(partialName.toLowerCase())) {
+              return false;
+            }
+            // Optionally hide hidden files unless the partial name starts with '.'
+            if (!partialName.startsWith('.') && entry.name.startsWith('.')) {
+              return false;
+            }
+            return true;
+          })
+          .map(async (entry) => {
+            const isDirectory = entry.isDirectory();
+            const entryPath = path.join(fullDirPath, entry.name);
 
-          // Convert back to tilde notation if applicable
-          const homeDir = process.env.HOME || process.env.USERPROFILE;
-          let displayPath = relativePath;
-          if (homeDir && relativePath.startsWith(homeDir)) {
-            displayPath = `~${relativePath.slice(homeDir.length)}`;
-          }
+            // Build the suggestion path based on the original input
+            let displayPath: string;
+            if (originalPath.endsWith('/')) {
+              displayPath = originalPath + entry.name;
+            } else {
+              const lastSlash = originalPath.lastIndexOf('/');
+              if (lastSlash >= 0) {
+                displayPath = originalPath.substring(0, lastSlash + 1) + entry.name;
+              } else {
+                displayPath = entry.name;
+              }
+            }
 
-          return {
-            name: entry.name,
-            path: displayPath,
-            type: isDirectory ? 'directory' : 'file',
-            // Add trailing slash for directories
-            suggestion: isDirectory ? `${displayPath}/` : displayPath,
-          };
-        })
+            // Check if this directory is a git repository
+            let isGitRepo = false;
+            if (isDirectory) {
+              try {
+                await fs.stat(path.join(entryPath, '.git'));
+                isGitRepo = true;
+              } catch {
+                // Not a git repository
+              }
+            }
+
+            return {
+              name: entry.name,
+              path: displayPath,
+              type: isDirectory ? 'directory' : 'file',
+              // Add trailing slash for directories
+              suggestion: isDirectory ? `${displayPath}/` : displayPath,
+              isRepository: isGitRepo,
+            };
+          })
+      );
+
+      const completions = mappedEntries
         .sort((a, b) => {
           // Sort directories first, then by name
           if (a.type !== b.type) {
@@ -715,11 +735,11 @@ export function createFilesystemRoutes(): Router {
         })
         .slice(0, 20); // Limit to 20 suggestions
 
-      logger.debug(`path completions for "${partialPath}": ${completions.length} results`);
+      logger.debug(`path completions for "${originalPath}": ${completions.length} results`);
 
       res.json({
         completions,
-        partialPath: req.query.path as string,
+        partialPath: originalPath,
       });
     } catch (error) {
       logger.error(`failed to get path completions for ${req.query.path}:`, error);

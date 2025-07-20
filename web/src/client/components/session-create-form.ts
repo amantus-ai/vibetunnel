@@ -123,6 +123,9 @@ export class SessionCreateForm extends LitElement {
       // Don't interfere with Enter in textarea elements
       if (e.target instanceof HTMLTextAreaElement) return;
 
+      // Don't submit if autocomplete is active and an item is selected
+      if (this.showCompletions && this.selectedCompletionIndex >= 0) return;
+
       // Check if form is valid (same conditions as Create button)
       const canCreate =
         !this.disabled && !this.isCreating && this.workingDir?.trim() && this.command?.trim();
@@ -570,7 +573,7 @@ export class SessionCreateForm extends LitElement {
         headers: this.authClient.getAuthHeader(),
       });
 
-      let fsCompletions: Array<{
+      let completions: Array<{
         name: string;
         path: string;
         type: 'directory' | 'file';
@@ -580,44 +583,11 @@ export class SessionCreateForm extends LitElement {
 
       if (fsResponse.ok) {
         const data = await fsResponse.json();
-        fsCompletions = data.completions || [];
+        completions = data.completions || [];
       }
 
-      // Also search repositories if we have them
-      // Extract the last part of the path for searching (e.g., "vib" from "~/Projects/vib")
-      const pathParts = path.split('/');
-      const lastPart = pathParts[pathParts.length - 1].toLowerCase();
-      const searchTerm = lastPart || path.toLowerCase();
-
-      const repoCompletions = this.repositories
-        .filter((repo) => {
-          // Search in folder name primarily with the last part of the path
-          const folderNameMatch = repo.folderName.toLowerCase().includes(searchTerm);
-          // Also check if the full path matches the repository path (for exact matches)
-          const fullPathMatch = repo.path.toLowerCase().startsWith(path.toLowerCase());
-
-          return folderNameMatch || fullPathMatch;
-        })
-        .map((repo) => ({
-          name: repo.folderName,
-          path: repo.relativePath,
-          type: 'directory' as const,
-          suggestion: repo.path,
-          isRepository: true,
-        }))
-        .slice(0, 10); // Limit repository suggestions
-
-      // Combine and deduplicate completions
-      const allCompletions = [...fsCompletions, ...repoCompletions];
-
-      // Remove duplicates based on suggestion
-      const uniqueCompletions = allCompletions.filter(
-        (completion, index, self) =>
-          index === self.findIndex((c) => c.suggestion === completion.suggestion)
-      );
-
       // Enhanced sorting with better match prioritization
-      uniqueCompletions.sort((a, b) => {
+      completions.sort((a, b) => {
         // First priority: exact name matches for directories
         const searchName = path.split('/').pop()?.toLowerCase() || '';
         const aIsExactMatch = a.name.toLowerCase() === searchName && a.type === 'directory';
@@ -626,25 +596,11 @@ export class SessionCreateForm extends LitElement {
         if (aIsExactMatch && !bIsExactMatch) return -1;
         if (!aIsExactMatch && bIsExactMatch) return 1;
 
-        // Second priority: direct subdirectory matches (filesystem paths that are immediate children)
-        const currentDir = path.endsWith('/') ? path : path.substring(0, path.lastIndexOf('/') + 1);
-        const aIsDirectChild =
-          !a.isRepository &&
-          a.suggestion.startsWith(currentDir) &&
-          a.suggestion.slice(currentDir.length).split('/').length <= 2;
-        const bIsDirectChild =
-          !b.isRepository &&
-          b.suggestion.startsWith(currentDir) &&
-          b.suggestion.slice(currentDir.length).split('/').length <= 2;
-
-        if (aIsDirectChild && !bIsDirectChild) return -1;
-        if (!aIsDirectChild && bIsDirectChild) return 1;
-
-        // Third priority: repositories
+        // Second priority: git repositories
         if (a.isRepository && !b.isRepository) return -1;
         if (!a.isRepository && b.isRepository) return 1;
 
-        // Fourth priority: directories before files
+        // Third priority: directories before files
         if (a.type !== b.type) {
           return a.type === 'directory' ? -1 : 1;
         }
@@ -653,7 +609,7 @@ export class SessionCreateForm extends LitElement {
         return a.name.localeCompare(b.name);
       });
 
-      this.completions = uniqueCompletions.slice(0, 20); // Limit total suggestions
+      this.completions = completions.slice(0, 20); // Limit total suggestions
       this.showCompletions = this.completions.length > 0;
       this.selectedCompletionIndex = -1;
     } catch (error) {
@@ -684,8 +640,9 @@ export class SessionCreateForm extends LitElement {
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       this.selectedCompletionIndex = Math.max(this.selectedCompletionIndex - 1, -1);
-    } else if (e.key === 'Tab' && this.selectedCompletionIndex >= 0) {
+    } else if ((e.key === 'Tab' || e.key === 'Enter') && this.selectedCompletionIndex >= 0) {
       e.preventDefault();
+      e.stopPropagation();
       this.handleSelectCompletion(this.completions[this.selectedCompletionIndex].suggestion);
     } else if (e.key === 'Escape') {
       this.showCompletions = false;
@@ -773,19 +730,18 @@ export class SessionCreateForm extends LitElement {
               <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Working Directory:</label>
               <div class="relative">
                 <div class="flex gap-1.5 sm:gap-2">
-                  <input
-                    type="text"
-                    class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm flex-1"
-                    .value=${this.workingDir}
-                    @input=${this.handleWorkingDirChange}
-                    @keydown=${this.handleWorkingDirKeydown}
-                    @blur=${this.handleWorkingDirBlur}
-                    placeholder="~/"
-                    ?disabled=${this.disabled || this.isCreating}
-                    data-testid="working-dir-input"
-                    autocomplete="off"
-                  />
-                </div>
+                <input
+                  type="text"
+                  class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm flex-1"
+                  .value=${this.workingDir}
+                  @input=${this.handleWorkingDirChange}
+                  @keydown=${this.handleWorkingDirKeydown}
+                  @blur=${this.handleWorkingDirBlur}
+                  placeholder="~/"
+                  ?disabled=${this.disabled || this.isCreating}
+                  data-testid="working-dir-input"
+                  autocomplete="off"
+                />
                 <button
                   class="bg-bg-tertiary border border-border/50 rounded-lg p-1.5 sm:p-2 lg:p-3 font-mono text-text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary/50 hover:shadow-sm flex-shrink-0"
                   @click=${this.handleBrowse}
