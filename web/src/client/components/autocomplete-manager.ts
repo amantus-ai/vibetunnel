@@ -79,7 +79,10 @@ export class AutocompleteManager {
       }
 
       // Sort completions with custom logic
-      return this.sortCompletions(completions, path);
+      const sortedCompletions = this.sortCompletions(completions, path);
+
+      // Limit to 20 results for performance
+      return sortedCompletions.slice(0, 20);
     } catch (error) {
       logger.error('Error fetching completions:', error);
       return [];
