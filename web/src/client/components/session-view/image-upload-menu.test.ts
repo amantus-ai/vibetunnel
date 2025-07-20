@@ -198,19 +198,35 @@ describe('ImageUploadMenu', () => {
       expect(browseButton?.getAttribute('aria-label')).toBe('Browse files on device');
     });
 
-    it('should show Camera option only on mobile', async () => {
-      // Test desktop (default)
+    it('should show Camera option only on mobile devices with cameras', async () => {
+      // Test desktop (default) - should not show camera
       let cameraButton = element.querySelector('button[data-action="camera"]');
       expect(cameraButton).toBeNull();
 
-      // Set mobile mode
+      // Set mobile mode but no camera - should still not show
       element.isMobile = true;
+      element.hasCamera = false;
+      await element.updateComplete;
+
+      cameraButton = element.querySelector('button[data-action="camera"]');
+      expect(cameraButton).toBeNull();
+
+      // Set both mobile mode and hasCamera - should now show
+      element.hasCamera = true;
       await element.updateComplete;
 
       cameraButton = element.querySelector('button[data-action="camera"]');
       expect(cameraButton).toBeTruthy();
       expect(cameraButton?.textContent).toContain('Camera');
       expect(cameraButton?.getAttribute('aria-label')).toBe('Take photo with camera');
+
+      // Test desktop with camera - should not show
+      element.isMobile = false;
+      element.hasCamera = true;
+      await element.updateComplete;
+
+      cameraButton = element.querySelector('button[data-action="camera"]');
+      expect(cameraButton).toBeNull();
     });
 
     it('should show divider only when there are items above Browse Files', async () => {
@@ -218,11 +234,18 @@ describe('ImageUploadMenu', () => {
       let divider = element.querySelector('.border-t.border-border');
       expect(divider).toBeNull();
 
-      // Set mobile mode to show camera
+      // Set mobile mode but no camera - still no divider
       element.isMobile = true;
+      element.hasCamera = false;
       await element.updateComplete;
 
-      // Should now have divider
+      divider = element.querySelector('.border-t.border-border');
+      expect(divider).toBeNull();
+
+      // Set both mobile mode and hasCamera - should now have divider
+      element.hasCamera = true;
+      await element.updateComplete;
+
       divider = element.querySelector('.border-t.border-border');
       expect(divider).toBeTruthy();
     });
@@ -272,8 +295,9 @@ describe('ImageUploadMenu', () => {
       expect(dropdown).toBeNull();
     });
 
-    it('should call onOpenCamera callback on mobile', async () => {
+    it('should call onOpenCamera callback on mobile with camera', async () => {
       element.isMobile = true;
+      element.hasCamera = true;
       await element.updateComplete;
 
       const cameraButton = element.querySelector(
@@ -438,6 +462,7 @@ describe('ImageUploadMenu', () => {
 
     it('should have aria-labels on all menu items', async () => {
       element.isMobile = true;
+      element.hasCamera = true;
       await element.updateComplete;
 
       const button = element.querySelector(

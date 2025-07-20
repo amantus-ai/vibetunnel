@@ -201,7 +201,7 @@ export class ImageUploadMenu extends LitElement {
         <path d="M14.5 2h-13C.67 2 0 2.67 0 3.5v9c0 .83.67 1.5 1.5 1.5h13c.83 0 1.5-.67 1.5-1.5v-9c0-.83-.67-1.5-1.5-1.5zM5.5 5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM13 11H3l2.5-3L7 10l2.5-3L13 11z"/>
       </svg>`,
     });
-    if (this.isMobile) {
+    if (this.isMobile && this.hasCamera) {
       items.push({
         id: 'camera',
         label: 'Camera',
@@ -213,7 +213,7 @@ export class ImageUploadMenu extends LitElement {
         </svg>`,
       });
     }
-    if (this.hasClipboardImage || this.isMobile) {
+    if (this.hasClipboardImage || (this.isMobile && this.hasCamera)) {
       items.push({ id: 'divider', isDivider: true });
     }
     items.push({
