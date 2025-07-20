@@ -196,11 +196,14 @@ describe('UnifiedSettings - Repository Path Configuration', () => {
   });
 });
 
+// Mock the RepositoryService import at the module level
+vi.mock('@/client/services/repository-service');
+
 describe('UnifiedSettings - Repository Discovery', () => {
   let mockAuthClient: { getAuthHeader: ReturnType<typeof vi.fn> };
   let mockRepositoryService: { discoverRepositories: ReturnType<typeof vi.fn> };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     localStorage.clear();
 
@@ -214,10 +217,9 @@ describe('UnifiedSettings - Repository Discovery', () => {
       discoverRepositories: vi.fn(),
     };
 
-    // Mock the RepositoryService import
-    vi.mock('@/client/services/repository-service', () => ({
-      RepositoryService: vi.fn().mockImplementation(() => mockRepositoryService),
-    }));
+    // Set up the mocked RepositoryService
+    const { RepositoryService } = await import('@/client/services/repository-service');
+    (RepositoryService as any).mockImplementation(() => mockRepositoryService);
 
     // Mock default fetch response
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
