@@ -248,22 +248,6 @@ export class SessionHeader extends LitElement {
               }}
             ></theme-toggle-icon>
             
-            <button
-              class="bg-bg-tertiary border border-border rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0"
-              @click=${(e: Event) => {
-                e.stopPropagation();
-                this.onOpenFileBrowser?.();
-              }}
-              title="Browse Files (⌘O)"
-              data-testid="file-browser-button"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <path
-                  d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z"
-                />
-              </svg>
-            </button>
-            
             <!-- Image Upload Menu -->
             <image-upload-menu
               .onPasteImage=${() => this.handlePasteImage()}
@@ -289,6 +273,7 @@ export class SessionHeader extends LitElement {
               .widthLabel=${this.widthLabel}
               .widthTooltip=${this.widthTooltip}
               .onOpenFileBrowser=${this.onOpenFileBrowser}
+              .onUploadImage=${() => this.handleMobileUploadImage()}
               .onMaxWidthToggle=${this.onMaxWidthToggle}
               .onOpenSettings=${this.onOpenSettings}
               .onCreateSession=${this.onCreateSession}
@@ -363,19 +348,40 @@ export class SessionHeader extends LitElement {
   }
 
   private handleSelectImage() {
-    // Dispatch event to session-view to open image picker
-    this.dispatchEvent(
-      new CustomEvent('select-image', {
-        bubbles: true,
-        composed: true,
-      })
-    );
+    // For desktop, open file picker directly. For mobile, show the modal
+    if (!this.isMobile) {
+      // Desktop: directly open file picker
+      this.dispatchEvent(
+        new CustomEvent('select-image', {
+          bubbles: true,
+          composed: true,
+        })
+      );
+    } else {
+      // Mobile: show image upload options modal
+      this.dispatchEvent(
+        new CustomEvent('show-image-upload-options', {
+          bubbles: true,
+          composed: true,
+        })
+      );
+    }
   }
 
   private handleOpenCamera() {
     // Dispatch event to session-view to open camera
     this.dispatchEvent(
       new CustomEvent('open-camera', {
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  private handleMobileUploadImage() {
+    // For mobile, dispatch an event to show image upload options
+    this.dispatchEvent(
+      new CustomEvent('show-image-upload-options', {
         bubbles: true,
         composed: true,
       })

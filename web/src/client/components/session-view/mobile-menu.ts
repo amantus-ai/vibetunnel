@@ -22,6 +22,7 @@ export class MobileMenu extends LitElement {
   @property({ type: String }) widthTooltip = '';
   @property({ type: Function }) onCreateSession?: () => void;
   @property({ type: Function }) onOpenFileBrowser?: () => void;
+  @property({ type: Function }) onUploadImage?: () => void;
   @property({ type: Function }) onMaxWidthToggle?: () => void;
   @property({ type: Function }) onOpenSettings?: () => void;
   @property({ type: String }) currentTheme: Theme = 'system';
@@ -258,6 +259,19 @@ export class MobileMenu extends LitElement {
             <path d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z"/>
           </svg>
           Browse Files
+        </button>
+        
+        <!-- Upload Image -->
+        <button
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
+          @click=${() => this.handleAction(this.onUploadImage)}
+          data-testid="mobile-upload-image"
+          tabindex="${this.showMenu ? '0' : '-1'}"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M14.5 2h-13C.67 2 0 2.67 0 3.5v9c0 .83.67 1.5 1.5 1.5h13c.83 0 1.5-.67 1.5-1.5v-9c0-.83-.67-1.5-1.5-1.5zM5.5 5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM13 11H3l2.5-3L7 10l2.5-3L13 11z"/>
+          </svg>
+          Upload Image
         </button>
         
         <!-- Width Settings -->
