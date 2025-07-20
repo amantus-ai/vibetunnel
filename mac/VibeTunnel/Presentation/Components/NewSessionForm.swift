@@ -15,6 +15,7 @@ struct NewSessionForm: View {
     private var sessionService
     @Environment(RepositoryDiscoveryService.self)
     private var repositoryDiscovery
+    @StateObject private var configManager = ConfigManager.shared
 
     // Form fields
     @State private var command = "zsh"
@@ -51,9 +52,6 @@ struct NewSessionForm: View {
             }
         }
     }
-
-    /// Quick commands loaded from settings or defaults
-    @State private var quickCommands: [(String, String?)] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -166,31 +164,25 @@ struct NewSessionForm: View {
                             GridItem(.flexible()),
                             GridItem(.flexible())
                         ], spacing: 8) {
-                            ForEach(quickCommands, id: \.0) { cmd in
+                            ForEach(configManager.quickStartCommands) { cmd in
                                 Button(action: {
-                                    command = cmd.0
+                                    command = cmd.command
                                     sessionName = ""
-                                }, label: {
-                                    HStack(spacing: 4) {
-                                        if let emoji = cmd.1 {
-                                            Text(emoji)
-                                                .font(.system(size: 12))
-                                        }
-                                        Text(cmd.0)
-                                            .font(.system(size: 11))
-                                        Spacer()
-                                    }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .fill(command == cmd.0 ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.05))
-                                    )
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(command == cmd.0 ? Color.accentColor.opacity(0.5) : Color.primary.opacity(0.1), lineWidth: 1)
-                                    )
-                                })
+                                }) {
+                                    Text(cmd.displayName)
+                                        .font(.system(size: 11))
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                }
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(command == cmd.command ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.05))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(command == cmd.command ? Color.accentColor.opacity(0.5) : Color.primary.opacity(0.1), lineWidth: 1)
+                                )
                                 .buttonStyle(.plain)
                             }
                         }
@@ -469,38 +461,6 @@ struct NewSessionForm: View {
             titleMode = mode
         }
         
-        // Load quick start commands
-        loadQuickCommands()
-    }
-    
-    private func loadQuickCommands() {
-        // Default commands
-        let defaultCommands = [
-            ("✨ claude", "claude"),
-            ("✨ gemini", "gemini"),
-            ("zsh", "zsh"),
-            ("python3", "python3"),
-            ("node", "node"),
-            ("▶️ pnpm run dev", "pnpm run dev")
-        ]
-        
-        if let data = UserDefaults.standard.data(forKey: AppConstants.UserDefaultsKeys.quickStartCommands),
-           let commands = try? JSONDecoder().decode([QuickStartSettingsSection.QuickStartCommand].self, from: data) {
-            // Convert from stored format to display format
-            quickCommands = commands.map { cmd in
-                // Extract emoji if present
-                let components = cmd.name.split(separator: " ", maxSplits: 1)
-                if components.count > 1 && components[0].count <= 2 {
-                    // Likely an emoji prefix
-                    return (cmd.command, String(components[0]))
-                } else {
-                    return (cmd.command, nil)
-                }
-            }
-        } else {
-            // Use defaults
-            quickCommands = defaultCommands.map { ($0.1, $0.0.hasPrefix("✨") || $0.0.hasPrefix("▶️") ? String($0.0.prefix(2)) : nil) }
-        }
     }
 
     private func savePreferences() {
