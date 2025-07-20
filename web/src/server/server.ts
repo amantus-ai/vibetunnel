@@ -767,29 +767,6 @@ export async function createApp(): Promise<AppInstance> {
 
   // Initialize control socket
   try {
-    // Set up configuration update callback
-    controlUnixHandler.setConfigUpdateCallback((updatedConfig) => {
-      // Update server configuration
-      config.repositoryBasePath = updatedConfig.repositoryBasePath;
-
-      // Broadcast to all connected config WebSocket clients
-      const message = JSON.stringify({
-        type: 'config',
-        data: {
-          repositoryBasePath: updatedConfig.repositoryBasePath,
-          serverConfigured: true, // Path from Mac app is always server-configured
-        },
-      });
-
-      configWebSocketClients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(message);
-        }
-      });
-
-      logger.log(`Broadcast config update to ${configWebSocketClients.size} clients`);
-    });
-
     await controlUnixHandler.start();
     logger.log(chalk.green('Control UNIX socket: READY'));
   } catch (error) {
@@ -928,9 +905,6 @@ export async function createApp(): Promise<AppInstance> {
     });
   });
 
-  // Store connected config WebSocket clients
-  const configWebSocketClients = new Set<WebSocket>();
-
   // WebSocket connection router
   wss.on('connection', (ws, req) => {
     const wsReq = req as WebSocketRequest;
@@ -965,72 +939,6 @@ export async function createApp(): Promise<AppInstance> {
       const userId = wsReq.userId || 'unknown';
 
       websocketInputHandler.handleConnection(ws, sessionId, userId);
-    } else if (pathname === '/ws/config') {
-      logger.log('⚙️ Handling config WebSocket connection');
-      // Add client to the set
-      configWebSocketClients.add(ws);
-
-      // Send current configuration
-      ws.send(
-        JSON.stringify({
-          type: 'config',
-          data: {
-            repositoryBasePath: config.repositoryBasePath || '~/',
-            serverConfigured: config.repositoryBasePath !== null,
-          },
-        })
-      );
-
-      // Handle incoming messages from web client
-      ws.on('message', async (data) => {
-        try {
-          const message = JSON.parse(data.toString());
-          if (message.type === 'update-repository-path') {
-            const newPath = message.path;
-            logger.log(`Received repository path update from web: ${newPath}`);
-
-            // Forward to Mac app via Unix socket if available
-            if (controlUnixHandler) {
-              const controlMessage = {
-                id: uuidv4(),
-                type: 'request' as const,
-                category: 'system' as const,
-                action: 'repository-path-update',
-                payload: { path: newPath, source: 'web' },
-              };
-
-              // Send to Mac and wait for response
-              const response = await controlUnixHandler.sendControlMessage(controlMessage);
-              if (response && response.type === 'response') {
-                const payload = response.payload as { success?: boolean };
-                if (payload?.success) {
-                  logger.log(`Mac app confirmed repository path update: ${newPath}`);
-                  // The update will be broadcast back via the config update callback
-                } else {
-                  logger.error('Mac app failed to update repository path');
-                }
-              } else {
-                logger.error('No response from Mac app for repository path update');
-              }
-            } else {
-              logger.warn('No control Unix handler available, cannot forward path update to Mac');
-            }
-          }
-        } catch (error) {
-          logger.error('Failed to handle config WebSocket message:', error);
-        }
-      });
-
-      // Handle client disconnection
-      ws.on('close', () => {
-        configWebSocketClients.delete(ws);
-        logger.log('Config WebSocket client disconnected');
-      });
-
-      ws.on('error', (error) => {
-        logger.error('Config WebSocket error:', error);
-        configWebSocketClients.delete(ws);
-      });
     } else {
       logger.error(`❌ Unknown WebSocket path: ${pathname}`);
       ws.close();

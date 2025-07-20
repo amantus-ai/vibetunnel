@@ -65,13 +65,11 @@ export class UnifiedSettings extends LitElement {
   private permissionChangeUnsubscribe?: () => void;
   private subscriptionChangeUnsubscribe?: () => void;
   private unsubscribeResponsive?: () => void;
-  private configWebSocket?: WebSocket;
 
   connectedCallback() {
     super.connectedCallback();
     this.initializeNotifications();
     this.loadAppPreferences();
-    this.connectConfigWebSocket();
 
     // Subscribe to responsive changes
     this.unsubscribeResponsive = responsiveObserver.subscribe((state) => {
@@ -89,10 +87,6 @@ export class UnifiedSettings extends LitElement {
     }
     if (this.unsubscribeResponsive) {
       this.unsubscribeResponsive();
-    }
-    if (this.configWebSocket) {
-      this.configWebSocket.close();
-      this.configWebSocket = undefined;
     }
     // Clean up keyboard listener
     document.removeEventListener('keydown', this.handleKeyDown);
@@ -272,69 +266,6 @@ export class UnifiedSettings extends LitElement {
     }
     this.appPreferences = { ...this.appPreferences, [key]: value };
     this.saveAppPreferences();
-
-    // Send repository path updates to server/Mac app
-    if (key === 'repositoryBasePath' && this.configWebSocket?.readyState === WebSocket.OPEN) {
-      logger.log('Sending repository path update to server:', value);
-      this.configWebSocket.send(
-        JSON.stringify({
-          type: 'update-repository-path',
-          path: value as string,
-        })
-      );
-    }
-  }
-
-  private connectConfigWebSocket() {
-    try {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/config`;
-
-      this.configWebSocket = new WebSocket(wsUrl);
-
-      this.configWebSocket.onopen = () => {
-        logger.log('Config WebSocket connected');
-      };
-
-      this.configWebSocket.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          if (message.type === 'config' && message.data) {
-            const { repositoryBasePath } = message.data;
-
-            // Update server config state
-            this.serverConfig = message.data;
-            this.isServerConfigured = message.data.serverConfigured ?? false;
-
-            // If server-configured, update the app preferences
-            if (this.isServerConfigured && repositoryBasePath) {
-              this.appPreferences.repositoryBasePath = repositoryBasePath;
-              this.saveAppPreferences();
-              logger.log('Repository path updated from server:', repositoryBasePath);
-            }
-          }
-        } catch (error) {
-          logger.error('Failed to parse config WebSocket message:', error);
-        }
-      };
-
-      this.configWebSocket.onerror = (error) => {
-        logger.error('Config WebSocket error:', error);
-      };
-
-      this.configWebSocket.onclose = () => {
-        logger.log('Config WebSocket closed');
-        // Attempt to reconnect after a delay
-        setTimeout(() => {
-          // Check if component is still connected to DOM
-          if (this.isConnected) {
-            this.connectConfigWebSocket();
-          }
-        }, 5000);
-      };
-    } catch (error) {
-      logger.error('Failed to connect config WebSocket:', error);
-    }
   }
 
   private get isNotificationsSupported(): boolean {
