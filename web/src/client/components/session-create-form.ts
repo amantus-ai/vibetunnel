@@ -28,6 +28,7 @@ import {
   saveSessionFormData,
   setSessionFormValue,
 } from '../utils/storage-utils.js';
+import { getTitleModeDescription } from '../utils/title-mode-utils.js';
 import {
   type AutocompleteItem,
   AutocompleteManager,
@@ -283,21 +284,6 @@ export class SessionCreateForm extends LitElement {
   private handleTitleModeChange(e: Event) {
     const select = e.target as HTMLSelectElement;
     this.titleMode = select.value as TitleMode;
-  }
-
-  private getTitleModeDescription(): string {
-    switch (this.titleMode) {
-      case TitleMode.NONE:
-        return 'Apps control their own titles';
-      case TitleMode.FILTER:
-        return 'Blocks all title changes';
-      case TitleMode.STATIC:
-        return 'Shows path and command';
-      case TitleMode.DYNAMIC:
-        return '○ idle ● active ▶ running';
-      default:
-        return '';
-    }
   }
 
   private handleBrowse() {
@@ -740,7 +726,7 @@ export class SessionCreateForm extends LitElement {
               <div class="flex-1 pr-2 sm:pr-3 lg:pr-4">
                 <span class="text-primary text-[10px] sm:text-xs lg:text-sm font-medium">Terminal Title Mode</span>
                 <p class="text-[9px] sm:text-[10px] lg:text-xs text-text-muted mt-0.5 hidden sm:block">
-                  ${this.getTitleModeDescription()}
+                  ${getTitleModeDescription(this.titleMode)}
                 </p>
               </div>
               <div class="relative">
