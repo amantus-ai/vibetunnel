@@ -333,16 +333,18 @@ describe('UnifiedSettings - Repository Discovery', () => {
     await el.updateComplete;
 
     // Should show scanning state
-    const scanningText = el.querySelector('#repository-status');
+    let scanningText = el.querySelector('#repository-status');
     expect(scanningText?.textContent).toContain('Scanning...');
 
     // Button should be disabled
     expect(refreshButton.disabled).toBe(true);
 
     // Wait for discovery to complete
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    await new Promise((resolve) => setTimeout(resolve, 700));
     await el.updateComplete;
 
+    // Re-query the element after updates
+    scanningText = el.querySelector('#repository-status');
     // Should show result
     expect(scanningText?.textContent).toContain('0 repositories found');
     expect(refreshButton.disabled).toBe(false);

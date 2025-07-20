@@ -73,6 +73,7 @@ Do NOT use three separate commands (add, commit, push) as this is slow.
 
 ## Best Practices
 - ALWAYS use `Z_INDEX` constants in `src/client/utils/constants.ts` instead of setting z-index properties using primitives / magic numbers
+- Add ids to web elements whenever needed to make testing simpler. This helps avoid complex selectors that search by text content or traverse the DOM
 
 ## CRITICAL: Package Installation Policy
 **NEVER install packages without explicit user approval!**

@@ -2,96 +2,64 @@
 
 ## [1.0.0-beta.14] - 2025-07-20
 
-### ✨ **New Features**
-
-#### **Quick Start Commands - Launch Sessions Instantly** (#229, #250, #436)
-- **One-Click Session Creation**: Start your favorite commands with a single click! No more typing the same commands repeatedly
-- **Customizable Command Shortcuts**: Create shortcuts for your most-used commands like "pnpm run dev", "claude", or "python3"
-- **Visual Command Names**: Add emoji and custom names to your commands (e.g., "✨ claude" or "▶️ dev server")
-- **Smart Defaults**: Comes pre-configured with popular development commands - just click and go!
-- **Drag & Drop Reordering**: Organize your commands in the order that makes sense for your workflow
+#### **Quick Start Commands**
+- One-click session creation with customizable command shortcuts (#229, #250, #436)
+- Add emoji and custom names to commands (e.g., "✨ claude" or "▶️ dev server")
+- Drag & drop reordering with smooth animations
+- Pre-configured with popular development commands
+- Reset to defaults option when needed
 
 #### **Enhanced Directory Navigation**
-- **Intelligent Autocomplete**: Start typing a path and get instant suggestions based on your file system
-- **Home Directory Expansion**: Use `~/` shortcuts that automatically expand to your home directory
-- **Recent Directories**: Quick access to recently used directories
-- **Visual File Browser**: Click the folder icon to browse and select directories visually
-- **Repository Discovery**: Automatically finds Git repositories in your selected folders for quick navigation
+- Intelligent autocomplete for paths with instant suggestions
+- Home directory expansion (`~/` shortcuts)
+- Visual file browser with folder icon
+- Automatic Git repository discovery in selected folders
+- Recent directories for quick access
 
-#### **Session Management Power-Ups**
-- **Session Status Control**: New dropdown menu in session headers lets you manage running sessions
-- **Terminate Sessions**: Properly stop running processes without closing the tab
-- **Clear Exited Sessions**: Clean up terminated sessions with one click
-- **Visual Status Indicators**: Clearly see which sessions are running, exited, or ready
+#### **Session Management**
+- New dropdown menu in session headers for control
+- Terminate sessions without closing tabs
+- Clear exited sessions with one click
+- Fixed session categorization bug - sessions with undefined activity status now correctly shown as active
 
 #### **Linux Systemd Support** (#426)
-- **Automatic Service Management**: Simple installation with `vibetunnel systemd` command
-- **Boot Startup**: VibeTunnel starts automatically when your system boots
-- **Smart Node.js Detection**: Works seamlessly with nvm/fnm installations
-- **User-Level Service**: Runs securely under your user account
+- Simple installation with `vibetunnel systemd` command
+- Automatic startup on boot
+- Smart Node.js detection (nvm/fnm compatible)
+- User-level service for security
 
-### 🎨 **UI/UX Improvements**
+#### **macOS Settings Improvements**
+- Native SwiftUI interface with inline editing
+- Smooth animations for add/remove/reorder operations
+- Enhanced URL handling and clickable links
+- Fixed threading crashes when reordering commands
 
-#### **Beautiful macOS Settings**
-- **Native SwiftUI Interface**: Settings that feel right at home on your Mac
-- **Inline Editing**: Edit commands directly in the settings - no popup dialogs needed
-- **Smooth Animations**: Delightful transitions when adding, removing, or reordering commands
-- **Reset to Defaults**: One-click restore of the default command set if you want to start fresh
-- **Clickable URLs**: Enhanced URL handling throughout the Mac app
+#### **Web Interface Refinements**
+- Cleaner session headers with better control placement
+- Enhanced magic wand icon positioning for AI sessions
+- Improved terminal padding and responsive design
+- Clickable ngrok URLs in terminal output (#422)
 
-#### **Refined Web Interface**
-- **Improved Session Headers**: Cleaner layout with better-positioned controls
-- **Enhanced Edit Icons**: More intuitive placement of the magic wand icon for AI sessions
-- **Better Terminal Padding**: Improved spacing for a more comfortable terminal experience
-- **Responsive Design**: UI elements adapt better to different screen sizes
-- **Clickable ngrok URLs**: Terminal URLs are now clickable for easy access (#422)
+### 🐛 Bug Fixes
 
-### 🛡️ **Reliability & Performance**
+- Fixed session timers continuing after sessions ended (#427)
+- Fixed Chinese input method issues for Claude sessions (#431)
+- Removed legacy WebSocket handlers for cleaner connections
+- Fixed OPTIONS label alignment in session creation form
+- Updated magic wand icon to match macOS design guidelines
+- Fixed session activity status undefined handling
 
-#### **Configuration Validation**
-- **Smart Config Checking**: Your settings are now validated with Zod to prevent invalid configurations
-- **Error Prevention**: Empty commands and malformed settings are caught before they can cause issues
-- **Automatic Repair**: Invalid configurations are safely handled without data loss
+#### **Developer Experience**
+- New REST API at `/api/config/quick-start` for configuration
+- File-based persistence for settings
+- Zod validation for configuration integrity
+- 200+ tests added for reliability
+- Improved error messages and validation feedback
 
-#### **Stability Improvements**
-- **Fixed Threading Crashes**: Resolved crashes when reordering Quick Start commands on macOS
-- **Timer Management**: Fixed issue where session timers continued running after sessions ended (#427)
-- **Chinese Input Support**: Fixed input method issues for Claude sessions (#431)
-- **WebSocket Cleanup**: Removed legacy WebSocket handlers for cleaner, more reliable connections
-- **OPTIONS Alignment**: Fixed label positioning in session creation form
-- **Magic Wand Icon**: Updated design to match macOS style guidelines
+### ⚠️ Breaking Changes
 
-### 🚀 **Developer Experience**
-
-#### **REST API Design**
-- **New Config Endpoints**: Clean REST API at `/api/config/quick-start` for configuration management
-- **File-Based Persistence**: Your settings are saved to disk and persist across restarts
-- **Synchronized Settings**: Changes in the web UI instantly reflect in the Mac app and vice versa
-- **Comprehensive Testing**: Added 200+ tests ensuring reliability of new features
-
-#### **Better Error Handling**
-- **Descriptive Error Messages**: Clear explanations when something goes wrong
-- **Graceful Fallbacks**: If custom commands fail to load, defaults are always available
-- **Validation Feedback**: Immediate feedback when entering invalid configurations
-
-### 📝 **Documentation**
-- **Quick Start Guide**: New comprehensive guide for setting up and using Quick Start commands
-- **Implementation Details**: Technical documentation for developers wanting to understand the system
-- **Systemd Documentation**: Complete guide for Linux service management
-- **Release Guide**: Improved release process documentation with troubleshooting
-- **Updated Examples**: All documentation updated with new features and capabilities
-
-### ⚠️ **Breaking Changes**
-- **Configuration Storage**: Settings now stored in files instead of memory - existing in-memory configs will need to be re-entered
-- **WebSocket Config Sync Removed**: Configuration synchronization now uses REST API - more reliable but requires app update
-
-### 🔧 **Under the Hood**
-- **Zod Validation**: Runtime type checking ensures configuration integrity
-- **ConfigManager Service**: New macOS service for managing Quick Start settings
-- **AutocompleteService**: Intelligent path completion system for directory navigation
-- **Unified Settings Architecture**: Consistent settings experience across web and native apps
-- **Major Codebase Cleanup**: Simplified architecture and improved maintainability (#419)
-- **Enhanced CI/CD**: More reliable build and deployment pipeline
+- Configuration now stored in files instead of memory - re-enter existing configs
+- WebSocket config sync replaced with REST API - requires app update
 
 ### 👥 Contributors
 First-time contributors to VibeTunnel:

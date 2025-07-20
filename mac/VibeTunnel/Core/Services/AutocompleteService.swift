@@ -167,35 +167,35 @@ class AutocompleteService: ObservableObject {
     private func sortSuggestions(_ suggestions: [PathSuggestion], searchTerm: String) -> [PathSuggestion] {
         let lowercasedTerm = searchTerm.lowercased()
 
-        return suggestions.sorted { a, b in
+        return suggestions.sorted { first, second in
             // Direct name matches come first
-            let aNameMatch = a.name.lowercased() == lowercasedTerm
-            let bNameMatch = b.name.lowercased() == lowercasedTerm
-            if aNameMatch != bNameMatch {
-                return aNameMatch
+            let firstNameMatch = first.name.lowercased() == lowercasedTerm
+            let secondNameMatch = second.name.lowercased() == lowercasedTerm
+            if firstNameMatch != secondNameMatch {
+                return firstNameMatch
             }
 
             // Name starts with search term
-            let aStartsWith = a.name.lowercased().hasPrefix(lowercasedTerm)
-            let bStartsWith = b.name.lowercased().hasPrefix(lowercasedTerm)
-            if aStartsWith != bStartsWith {
-                return aStartsWith
+            let firstStartsWith = first.name.lowercased().hasPrefix(lowercasedTerm)
+            let secondStartsWith = second.name.lowercased().hasPrefix(lowercasedTerm)
+            if firstStartsWith != secondStartsWith {
+                return firstStartsWith
             }
 
             // Directories before files
-            if a.type != b.type {
-                return a.type == .directory
+            if first.type != second.type {
+                return first.type == .directory
             }
 
             // Git repositories before regular directories
-            if a.type == .directory && b.type == .directory {
-                if a.isRepository != b.isRepository {
-                    return a.isRepository
+            if first.type == .directory && second.type == .directory {
+                if first.isRepository != second.isRepository {
+                    return first.isRepository
                 }
             }
 
             // Alphabetical order
-            return a.name.localizedCompare(b.name) == .orderedAscending
+            return first.name.localizedCompare(second.name) == .orderedAscending
         }
     }
 

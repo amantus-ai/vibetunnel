@@ -321,7 +321,7 @@ describe('ConfigService', () => {
       const invalidConfig = {
         version: 'not-a-number', // Should be number
         quickStartCommands: [{ command: 'test' }],
-      } as any;
+      } as unknown as VibeTunnelConfig;
 
       expect(() => {
         configService.updateConfig(invalidConfig);
@@ -338,7 +338,7 @@ describe('ConfigService', () => {
           { command: 'valid' },
           { notACommand: 'invalid' }, // Missing required 'command' field
         ],
-      } as any;
+      } as unknown as VibeTunnelConfig;
 
       expect(() => {
         configService.updateConfig(invalidConfig);
@@ -349,7 +349,7 @@ describe('ConfigService', () => {
       const invalidConfig = {
         version: 1,
         quickStartCommands: 'not-an-array',
-      } as any;
+      } as unknown as VibeTunnelConfig;
 
       expect(() => {
         configService.updateConfig(invalidConfig);
@@ -385,13 +385,13 @@ describe('ConfigService', () => {
     });
 
     it('should handle commands with extra properties', () => {
-      const commandsWithExtras: any[] = [
+      const commandsWithExtras = [
         {
           command: 'valid',
           name: 'Valid Command',
           extraProp: 'ignored', // Should be stripped
         },
-      ];
+      ] as Array<QuickStartCommand & { extraProp: string }>;
 
       configService.updateQuickStartCommands(commandsWithExtras);
       const saved = configService.getConfig().quickStartCommands;

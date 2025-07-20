@@ -27,9 +27,9 @@ struct QuickStartSettingsSection: View {
                     Button(action: {
                         editingCommandId = nil
                         showingNewCommand = true
-                    }) {
+                    }, label: {
                         Label("Add", systemImage: "plus")
-                    }
+                    })
                     .buttonStyle(.bordered)
                     .disabled(showingNewCommand)
                 }

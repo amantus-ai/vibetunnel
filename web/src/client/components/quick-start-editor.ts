@@ -173,6 +173,7 @@ export class QuickStartEditor extends LitElement {
     if (!this.editing) {
       return html`
         <button
+          id="quick-start-edit-button"
           @click=${this.handleStartEdit}
           class="text-primary hover:text-primary-hover text-[10px] sm:text-xs transition-colors duration-200 flex items-center gap-1"
           title="Edit quick start commands"
@@ -192,6 +193,7 @@ export class QuickStartEditor extends LitElement {
           <h3 class="text-xs font-medium text-text">Edit Quick Start Commands</h3>
           <div class="flex gap-2">
             <button
+              id="quick-start-reset-button"
               @click=${this.handleResetToDefaults}
               class="text-text-muted hover:text-text text-[10px] transition-colors duration-200"
               title="Reset to default commands"
@@ -199,12 +201,14 @@ export class QuickStartEditor extends LitElement {
               Reset to Defaults
             </button>
             <button
+              id="quick-start-cancel-button"
               @click=${this.handleCancel}
               class="text-text-muted hover:text-text text-[10px] transition-colors duration-200"
             >
               Cancel
             </button>
             <button
+              id="quick-start-save-button"
               @click=${this.handleSave}
               class="text-primary hover:text-primary-hover text-[10px] font-medium transition-colors duration-200"
             >
@@ -246,6 +250,7 @@ export class QuickStartEditor extends LitElement {
               />
               
               <button
+                id=${`quick-start-remove-command-${index}`}
                 @click=${() => this.handleRemoveCommand(index)}
                 class="text-text-muted hover:text-error transition-colors duration-200 p-1"
                 title="Remove command"
@@ -260,6 +265,7 @@ export class QuickStartEditor extends LitElement {
         </div>
         
         <button
+          id="quick-start-add-command-button"
           @click=${this.handleAddCommand}
           class="w-full p-2 border border-dashed border-border/50 rounded-lg text-text-muted hover:text-primary hover:border-primary/50 transition-colors duration-200 text-[10px] flex items-center justify-center gap-1"
         >

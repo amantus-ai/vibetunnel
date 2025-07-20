@@ -168,13 +168,13 @@ struct NewSessionForm: View {
                                 Button(action: {
                                     command = cmd.command
                                     sessionName = ""
-                                }) {
+                                }, label: {
                                     Text(cmd.displayName)
                                         .font(.system(size: 11))
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 6)
-                                }
+                                })
                                 .background(
                                     RoundedRectangle(cornerRadius: 6)
                                         .fill(command == cmd.command ? Color.accentColor.opacity(0.15) : Color.primary
