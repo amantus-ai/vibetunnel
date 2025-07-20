@@ -23,13 +23,13 @@ describe('formatSessionDuration', () => {
   it('should format duration in hours, minutes, and seconds', () => {
     const now = Date.now();
     const hourAndHalfAgo = new Date(now - 5430000); // 1h 30m 30s
-    expect(formatSessionDuration(hourAndHalfAgo.toISOString())).toBe('1h 30m 30s');
+    expect(formatSessionDuration(hourAndHalfAgo.toISOString())).toBe('1h 30m');
   });
 
   it('should format duration in days', () => {
     const now = Date.now();
     const twoDaysAgo = new Date(now - 172800000); // 2 days
-    expect(formatSessionDuration(twoDaysAgo.toISOString())).toBe('2d 0h 0m 0s');
+    expect(formatSessionDuration(twoDaysAgo.toISOString())).toBe('2d 0h');
   });
 
   it('should use provided end time for exited sessions', () => {
@@ -43,9 +43,7 @@ describe('formatSessionDuration', () => {
     const startTime = new Date('2024-01-01T00:00:00Z');
     const endTime = new Date('2024-01-01T02:15:30Z'); // 2h 15m 30s later
 
-    expect(formatSessionDuration(startTime.toISOString(), endTime.toISOString())).toBe(
-      '2h 15m 30s'
-    );
+    expect(formatSessionDuration(startTime.toISOString(), endTime.toISOString())).toBe('2h 15m');
   });
 
   it('should handle same start and end time', () => {

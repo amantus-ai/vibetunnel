@@ -8,7 +8,8 @@ import type { AuthClient } from '../services/auth-client';
 // Mock AuthClient
 vi.mock('../services/auth-client');
 
-// Import component type
+import type { SessionCard } from './session-card';
+// Import component types
 import type { SessionList } from './session-list';
 
 describe('SessionList', () => {
@@ -377,13 +378,23 @@ describe('SessionList', () => {
 
       // The exited session should show a static duration of ~30s
       // while the running session shows a live duration of ~60s
-      // Note: We can't easily test the exact duration display without
-      // accessing the internal formatSessionDuration function
-      // but we can verify that both sessions are rendered correctly
-      const exitedCard = sessionCards.find((card) =>
-        card.getAttribute('data-testid')?.includes('exited-session')
+      // Verify we have sessions with the correct properties
+      const exitedSessionCard = sessionCards.find(
+        (card: SessionCard) => card.session && card.session.id === 'exited-session'
       );
-      expect(exitedCard).toBeTruthy();
+      const runningSessionCard = sessionCards.find(
+        (card: SessionCard) => card.session && card.session.id === 'running-session'
+      );
+
+      expect(exitedSessionCard).toBeTruthy();
+      expect(runningSessionCard).toBeTruthy();
+
+      // Verify the exited session has the correct properties
+      if (exitedSessionCard) {
+        const exitedSession = exitedSessionCard.session;
+        expect(exitedSession.status).toBe('exited');
+        expect(exitedSession.lastModified).toBe(new Date(exitTime).toISOString());
+      }
     });
 
     it('should pass lastModified to session cards for exited sessions', async () => {
@@ -403,8 +414,7 @@ describe('SessionList', () => {
 
       // Verify the session card received the correct session data
       // The component should pass the full session object including lastModified
-      // @ts-ignore - accessing private property for testing
-      expect(sessionCard?.session).toEqual(exitedSession);
+      expect((sessionCard as SessionCard)?.session).toEqual(exitedSession);
     });
   });
 
