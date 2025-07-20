@@ -28,9 +28,22 @@ export function getDurationFromStart(startTime: string): number {
 }
 
 /**
- * Formats session duration for display
+ * Calculates duration between two times
  */
-export function formatSessionDuration(startedAt: string): string {
-  const duration = getDurationFromStart(startedAt);
+export function getDurationBetween(startTime: string, endTime: string): number {
+  const start = new Date(startTime).getTime();
+  const end = new Date(endTime).getTime();
+  return end - start;
+}
+
+/**
+ * Formats session duration for display
+ * For running sessions, calculates from startedAt to now
+ * For exited sessions, calculates from startedAt to endedAt
+ */
+export function formatSessionDuration(startedAt: string, endedAt?: string): string {
+  const duration = endedAt
+    ? getDurationBetween(startedAt, endedAt)
+    : getDurationFromStart(startedAt);
   return formatDuration(duration);
 }

@@ -593,13 +593,13 @@ export class SessionList extends LitElement {
                                         : ''
                                     }
                                     <div class="text-xs text-text-muted font-mono">
-                                      ${session.startedAt ? formatSessionDuration(session.startedAt) : ''}
+                                      ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
                                     </div>
                                   `
                                   : html`
                                     <!-- Desktop: Time that hides on hover -->
                                     <div class="text-xs text-text-muted font-mono transition-opacity group-hover:opacity-0">
-                                      ${session.startedAt ? formatSessionDuration(session.startedAt) : ''}
+                                      ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
                                     </div>
                                     
                                     <!-- Desktop: Buttons show on hover -->
@@ -722,7 +722,7 @@ export class SessionList extends LitElement {
                                     <div class="relative flex items-center flex-shrink-0 gap-1">
                                       <!-- Session duration -->
                                       <div class="text-xs text-text-dim font-mono">
-                                        ${session.startedAt ? formatSessionDuration(session.startedAt) : ''}
+                                        ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
                                       </div>
                                       
                                       <!-- Clean up button -->
