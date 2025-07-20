@@ -18,6 +18,7 @@ import { createLogger } from '../../utils/logger.js';
 import './mobile-menu.js';
 import '../theme-toggle-icon.js';
 import './image-upload-menu.js';
+import './session-status-dropdown.js';
 
 const logger = createLogger('session-header');
 
@@ -51,6 +52,8 @@ export class SessionHeader extends LitElement {
   @property({ type: Boolean }) keyboardCaptureActive = true;
   @property({ type: Boolean }) isMobile = false;
   @property({ type: Boolean }) macAppConnected = false;
+  @property({ type: Function }) onTerminateSession?: () => void;
+  @property({ type: Function }) onClearSession?: () => void;
   @state() private isHovered = false;
 
   connectedCallback() {
@@ -216,11 +219,13 @@ export class SessionHeader extends LitElement {
           </div>
         </div>
         <div class="flex items-center gap-2 text-xs flex-shrink-0 ml-2">
-          <!-- Notification status - desktop only -->
+          <!-- Status dropdown - desktop only -->
           <div class="hidden sm:block">
-            <notification-status
-              @open-settings=${() => this.onOpenSettings?.()}
-            ></notification-status>
+            <session-status-dropdown
+              .session=${this.session}
+              .onTerminate=${this.onTerminateSession}
+              .onClear=${this.onClearSession}
+            ></session-status-dropdown>
           </div>
           
           <!-- Keyboard capture indicator -->
@@ -240,14 +245,6 @@ export class SessionHeader extends LitElement {
           
           <!-- Desktop buttons - hidden on mobile -->
           <div class="hidden sm:flex items-center gap-2">
-            <!-- Theme toggle -->
-            <theme-toggle-icon
-              .theme=${this.currentTheme}
-              @theme-changed=${(e: CustomEvent) => {
-                this.currentTheme = e.detail.theme;
-              }}
-            ></theme-toggle-icon>
-            
             <!-- Image Upload Menu -->
             <image-upload-menu
               .onPasteImage=${() => this.handlePasteImage()}
@@ -257,6 +254,20 @@ export class SessionHeader extends LitElement {
               .isMobile=${this.isMobile}
             ></image-upload-menu>
             
+            <!-- Theme toggle -->
+            <theme-toggle-icon
+              .theme=${this.currentTheme}
+              @theme-changed=${(e: CustomEvent) => {
+                this.currentTheme = e.detail.theme;
+              }}
+            ></theme-toggle-icon>
+            
+            <!-- Settings button -->
+            <notification-status
+              @open-settings=${() => this.onOpenSettings?.()}
+            ></notification-status>
+            
+            <!-- Terminal size button -->
             <button
               class="bg-bg-tertiary border border-border rounded-lg px-3 py-2 font-mono text-xs text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0 width-selector-button"
               @click=${() => this.onMaxWidthToggle?.()}
@@ -280,23 +291,6 @@ export class SessionHeader extends LitElement {
               .currentTheme=${this.currentTheme}
               .macAppConnected=${this.macAppConnected}
             ></mobile-menu>
-          </div>
-          
-          <!-- Status indicator - desktop only (mobile shows it on the left) -->
-          <div class="hidden sm:flex flex-col items-end gap-0">
-            <span class="text-xs flex items-center gap-2 font-medium ${
-              this.getStatusText() === 'running' ? 'text-status-success' : 'text-status-warning'
-            }">
-              <div class="relative">
-                <div class="w-2.5 h-2.5 rounded-full ${this.getStatusDotColor()}"></div>
-                ${
-                  this.getStatusText() === 'running'
-                    ? html`<div class="absolute inset-0 w-2.5 h-2.5 rounded-full bg-status-success animate-ping opacity-50"></div>`
-                    : ''
-                }
-              </div>
-              ${this.getStatusText().toUpperCase()}
-            </span>
           </div>
         </div>
       </div>
