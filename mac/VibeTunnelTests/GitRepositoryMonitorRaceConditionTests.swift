@@ -59,7 +59,7 @@ struct GitRepositoryMonitorRaceConditionTests {
         }
 
         // Wait a bit to allow tasks to start (increased for CI)
-        let waitTime = TestConditions.isRunningInCI() ? 500_000_000 : 100_000_000 // 0.5s in CI, 0.1s locally
+        let waitTime: UInt64 = TestConditions.isRunningInCI() ? 500_000_000 : 100_000_000 // 0.5s in CI, 0.1s locally
         try await Task.sleep(nanoseconds: waitTime)
 
         // Verify that in-progress tracking is working
