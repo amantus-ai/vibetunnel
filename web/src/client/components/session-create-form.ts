@@ -753,7 +753,9 @@ export class SessionCreateForm extends LitElement {
                             <button
                               @click=${() => this.handleSelectCompletion(completion.suggestion)}
                               class="w-full text-left px-3 py-2 hover:bg-surface-hover transition-colors duration-200 flex items-center gap-2 ${
-                                index === this.selectedCompletionIndex ? 'bg-surface-hover' : ''
+                                index === this.selectedCompletionIndex
+                                  ? 'bg-primary/20 border-l-2 border-primary'
+                                  : ''
                               }"
                               type="button"
                             >
