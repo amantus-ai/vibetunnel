@@ -1757,20 +1757,33 @@ export class SessionView extends LitElement {
   private async handleTerminateSession() {
     if (!this.session || this.session.status !== 'running') return;
 
-    // Send Ctrl+D to the terminal to exit cleanly
     try {
-      // Access the input manager to send the EOF signal
-      if (this.inputManager) {
-        await this.inputManager.handleKeyboardInput(
-          new KeyboardEvent('keydown', {
-            key: 'd',
-            ctrlKey: true,
-            code: 'KeyD',
-          })
-        );
+      // Make a DELETE request to forcefully terminate the session
+      const response = await fetch(`/api/sessions/${this.session.id}`, {
+        method: 'DELETE',
+        headers: {
+          ...authClient.getAuthHeader(),
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        logger.error('Failed to terminate session', { errorData, sessionId: this.session.id });
+        throw new Error(`Terminate failed: ${response.status}`);
       }
+
+      // Session terminated successfully - the session status will be updated via SSE
+      logger.debug('Session terminated successfully', { sessionId: this.session.id });
     } catch (error) {
-      logger.error('Failed to send terminate signal:', error);
+      logger.error('Failed to terminate session:', error);
+      // Show error to user
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: `Failed to terminate session: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          bubbles: true,
+          composed: true,
+        })
+      );
     }
   }
 

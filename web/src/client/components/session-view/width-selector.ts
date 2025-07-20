@@ -345,9 +345,9 @@ export class TerminalSettingsModal extends LitElement {
             </div>
             
             <!-- Binary Mode setting -->
-            <div class="grid grid-cols-[120px_1fr] gap-4 items-start">
-              <label class="text-sm font-medium text-text-bright text-right pt-3">Binary Mode</label>
-              <div>
+            <div>
+              <div class="grid grid-cols-[120px_1fr] gap-4 items-center">
+                <label class="text-sm font-medium text-text-bright text-right">Binary Mode</label>
                 <div class="flex items-center justify-between bg-bg-secondary border border-border rounded-md px-4 py-3">
                   <button
                     role="switch"
@@ -367,8 +367,8 @@ export class TerminalSettingsModal extends LitElement {
                     ></span>
                   </button>
                 </div>
-                <p class="text-xs text-text-muted mt-2">Experimental: More efficient for high-throughput sessions</p>
               </div>
+              <p class="text-xs text-text-muted mt-2 pl-[136px]">Experimental: More efficient for high-throughput sessions</p>
             </div>
           </div>
         </div>
