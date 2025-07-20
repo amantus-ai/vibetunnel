@@ -78,10 +78,7 @@ describe('QuickStartEditor', () => {
     });
 
     it('should add new command when add button is clicked', async () => {
-      const buttons = Array.from(element.querySelectorAll('button'));
-      const addButton = buttons.find((btn) =>
-        btn.textContent?.includes('Add Command')
-      ) as HTMLButtonElement;
+      const addButton = element.querySelector('#quick-start-add-command-button') as HTMLButtonElement;
       expect(addButton).to.exist;
       addButton.click();
       await element.updateComplete;
@@ -301,7 +298,7 @@ describe('QuickStartEditor', () => {
 
   describe('Drag and drop', () => {
     beforeEach(async () => {
-      const editButton = element.querySelector('button') as HTMLButtonElement;
+      const editButton = element.querySelector('#quick-start-edit-button') as HTMLButtonElement;
       editButton.click();
       await element.updateComplete;
     });
@@ -393,16 +390,12 @@ describe('QuickStartEditor', () => {
     });
 
     it('should show Reset to Defaults button in edit mode', () => {
-      const resetButton = Array.from(element.querySelectorAll('button')).find((btn) =>
-        btn.textContent?.includes('Reset to Defaults')
-      );
+      const resetButton = element.querySelector('#quick-start-reset-button');
       expect(resetButton).to.exist;
     });
 
     it('should reset commands to defaults when clicked', async () => {
-      const resetButton = Array.from(element.querySelectorAll('button')).find((btn) =>
-        btn.textContent?.includes('Reset to Defaults')
-      ) as HTMLButtonElement;
+      const resetButton = element.querySelector('#quick-start-reset-button') as HTMLButtonElement;
 
       resetButton.click();
       await element.updateComplete;
