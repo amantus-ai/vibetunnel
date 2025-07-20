@@ -40,14 +40,14 @@ enum CITestConfiguration {
 
 extension Tag {
     /// Test that is slow and might timeout in CI
-    static let slow = Tag("slow")
+    @Tag static var slow: Tag
 
     /// Test that is known to be flaky in CI
-    static let flaky = Tag("flaky")
+    @Tag static var flaky: Tag
 
     /// Test that requires real file system access
-    static let fileSystem = Tag("fileSystem")
+    @Tag static var fileSystem: Tag
 
     /// Test that requires network access
-    static let network = Tag("network")
+    @Tag static var network: Tag
 }
