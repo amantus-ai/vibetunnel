@@ -147,7 +147,8 @@
           "web/docs/performance",
           "web/docs/playwright-testing",
           "web/src/test/playwright/SEQUENTIAL_OPTIMIZATIONS",
-          "web/docs/npm"
+          "web/docs/npm",
+          "web/docs/systemd"
         ]
       },
       {
