@@ -17,6 +17,7 @@ import './file-browser.js';
 import { TitleMode } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { RepositoryService } from '../services/repository-service.js';
+import { type SessionCreateData, SessionService } from '../services/session-service.js';
 import { parseCommand } from '../utils/command-utils.js';
 import { createLogger } from '../utils/logger.js';
 import { formatPathForDisplay } from '../utils/path-utils.js';
@@ -39,16 +40,6 @@ import {
 } from './unified-settings.js';
 
 const logger = createLogger('session-create-form');
-
-export interface SessionCreateData {
-  command: string[];
-  workingDir: string;
-  name?: string;
-  spawn_terminal?: boolean;
-  cols?: number;
-  rows?: number;
-  titleMode?: TitleMode;
-}
 
 @customElement('session-create-form')
 export class SessionCreateForm extends LitElement {
@@ -90,12 +81,14 @@ export class SessionCreateForm extends LitElement {
   private completionsDebounceTimer?: NodeJS.Timeout;
   private autocompleteManager!: AutocompleteManager;
   private repositoryService!: RepositoryService;
+  private sessionService!: SessionService;
 
   connectedCallback() {
     super.connectedCallback();
     // Initialize services
     this.autocompleteManager = new AutocompleteManager(this.authClient);
     this.repositoryService = new RepositoryService(this.authClient);
+    this.sessionService = new SessionService(this.authClient);
     // Load from localStorage when component is first created
     this.loadFromLocalStorage();
     // Check server status
@@ -358,60 +351,41 @@ export class SessionCreateForm extends LitElement {
     }
 
     try {
-      const response = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.authClient.getAuthHeader(),
-        },
-        body: JSON.stringify(sessionData),
-      });
+      const result = await this.sessionService.createSession(sessionData);
 
-      if (response.ok) {
-        const result = await response.json();
+      // Save to localStorage before clearing the fields
+      // In test environments, don't save spawn window to avoid cross-test contamination
+      const isTestEnvironment =
+        window.location.search.includes('test=true') ||
+        navigator.userAgent.includes('HeadlessChrome');
 
-        // Save to localStorage before clearing the fields
-        // In test environments, don't save spawn window to avoid cross-test contamination
-        const isTestEnvironment =
-          window.location.search.includes('test=true') ||
-          navigator.userAgent.includes('HeadlessChrome');
-
-        if (isTestEnvironment) {
-          // Save everything except spawn window in tests
-          const currentSpawnWindow = getSessionFormValue('SPAWN_WINDOW');
-          this.saveToLocalStorage();
-          // Restore the original spawn window value
-          if (currentSpawnWindow !== null) {
-            setSessionFormValue('SPAWN_WINDOW', currentSpawnWindow);
-          } else {
-            removeSessionFormValue('SPAWN_WINDOW');
-          }
+      if (isTestEnvironment) {
+        // Save everything except spawn window in tests
+        const currentSpawnWindow = getSessionFormValue('SPAWN_WINDOW');
+        this.saveToLocalStorage();
+        // Restore the original spawn window value
+        if (currentSpawnWindow !== null) {
+          setSessionFormValue('SPAWN_WINDOW', currentSpawnWindow);
         } else {
-          this.saveToLocalStorage();
+          removeSessionFormValue('SPAWN_WINDOW');
         }
-
-        this.command = ''; // Clear command on success
-        this.sessionName = ''; // Clear session name on success
-        this.dispatchEvent(
-          new CustomEvent('session-created', {
-            detail: result,
-          })
-        );
       } else {
-        const error = await response.json();
-        // Use the detailed error message if available, otherwise fall back to the error field
-        const errorMessage = error.details || error.error || 'Unknown error';
-        this.dispatchEvent(
-          new CustomEvent('error', {
-            detail: errorMessage,
-          })
-        );
+        this.saveToLocalStorage();
       }
+
+      this.command = ''; // Clear command on success
+      this.sessionName = ''; // Clear session name on success
+      this.dispatchEvent(
+        new CustomEvent('session-created', {
+          detail: result,
+        })
+      );
     } catch (error) {
-      logger.error('error creating session:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create session';
+      logger.error('Error creating session:', error);
       this.dispatchEvent(
         new CustomEvent('error', {
-          detail: 'Failed to create session',
+          detail: errorMessage,
         })
       );
     } finally {
