@@ -221,6 +221,7 @@ export class QuickStartEditor extends LitElement {
           ${this.editableCommands.map(
             (cmd, index) => html`
             <div 
+              id=${`quick-start-command-item-${index}`}
               draggable="true"
               @dragstart=${(e: DragEvent) => this.handleDragStart(e, index)}
               @dragend=${this.handleDragEnd}
@@ -233,6 +234,7 @@ export class QuickStartEditor extends LitElement {
               </svg>
               
               <input
+                id=${`quick-start-name-input-${index}`}
                 type="text"
                 .value=${cmd.name || ''}
                 @input=${(e: Event) => this.handleNameChange(index, (e.target as HTMLInputElement).value)}
@@ -241,6 +243,7 @@ export class QuickStartEditor extends LitElement {
               />
               
               <input
+                id=${`quick-start-command-input-${index}`}
                 type="text"
                 .value=${cmd.command}
                 @input=${(e: Event) => this.handleCommandChange(index, (e.target as HTMLInputElement).value)}
