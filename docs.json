@@ -1,5 +1,5 @@
 {
-  "$schema": "https://mintlify.com/schema.json",
+  "$schema": "https://mintlify.com/docs.json",
   "name": "VibeTunnel",
   "theme": "maple",
   "logo": {

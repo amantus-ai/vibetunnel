@@ -71,9 +71,11 @@ struct AppleScriptExecutorTests {
         }
     }
 
-    @Test("Check Terminal application", .disabled("Slow test - 0.44 seconds"))
+    @Test("Check Terminal application", .tags(.slow))
     @MainActor
     func checkTerminalApplication() throws {
+        // Skip in CI to avoid timing issues
+        try #require(!TestConditions.isRunningInCI(), "Skipping AppleScript permission test in CI")
         let script = """
         tell application "System Events"
             return exists application process "Terminal"
@@ -85,8 +87,10 @@ struct AppleScriptExecutorTests {
         #expect(result == "true" || result == "false")
     }
 
-    @Test("Test async execution", .disabled("Slow test - 3.5 seconds"))
+    @Test("Test async execution", .tags(.slow))
     func asyncExecution() async throws {
+        // Skip in CI to avoid timing issues
+        try #require(!TestConditions.isRunningInCI(), "Skipping async AppleScript test in CI")
         // Test the async method
         let hasPermission = await AppleScriptExecutor.shared.checkPermission()
         #expect(hasPermission == true || hasPermission == false)
