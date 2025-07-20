@@ -1,65 +1,62 @@
 # Changelog
 
-## [1.0.0-beta.14] - 2025-07-20
+## [1.0.0-beta.14] - 2025-07-21
 
-#### **Quick Start Commands**
-- One-click session creation with customizable command shortcuts (#229, #250, #436)
-- Add emoji and custom names to commands (e.g., "✨ claude" or "▶️ dev server")
-- Drag & drop reordering with smooth animations
-- Pre-configured with popular development commands
-- Reset to defaults option when needed
+#### **Customizable Quick Start Commands**
+- Quick Start commands are now fully customizable - previously hardcoded buttons can be edited (#436)
+- Add your own commands with custom names and emoji (e.g., "✨ claude" or "▶️ dev server")
+- Drag & drop reordering with smooth animations in macOS settings
+- Inline editing without popup dialogs
+- Reset to defaults button when you want the original set back
+- File-based persistence in `~/.vibetunnel/config.json`
 
-#### **Enhanced Directory Navigation**
-- Intelligent autocomplete for paths with instant suggestions
-- Home directory expansion (`~/` shortcuts)
-- Visual file browser with folder icon
-- Automatic Git repository discovery in selected folders
-- Recent directories for quick access
-
-#### **Session Management**
-- New dropdown menu in session headers for control
-- Terminate sessions without closing tabs
-- Clear exited sessions with one click
-- Fixed session categorization bug - sessions with undefined activity status now correctly shown as active
+#### **Session Status Management**
+- New dropdown menu in session headers for running/exited sessions
+- Terminate running sessions without closing the tab
+- Clear exited sessions individually with one click
+- Visual status indicators - pulsing dot for running, static for exited
+- Keyboard navigation support (Arrow keys, Enter, Escape)
 
 #### **Linux Systemd Support** (#426)
-- Simple installation with `vibetunnel systemd` command
+- Run VibeTunnel as a persistent service with `vibetunnel systemd install`
+- User-level service - no root required
 - Automatic startup on boot
-- Smart Node.js detection (nvm/fnm compatible)
-- User-level service for security
+- Smart Node.js detection works with nvm, fnm, or global npm
+- Comprehensive systemd commands for status, logs, start/stop
 
-#### **macOS Settings Improvements**
-- Native SwiftUI interface with inline editing
-- Smooth animations for add/remove/reorder operations
-- Enhanced URL handling and clickable links
-- Fixed threading crashes when reordering commands
+#### **Enhanced Directory Navigation**
+- Intelligent path autocomplete when creating sessions
+- Home directory expansion (`~/` shortcuts work properly)
+- Visual file browser with folder icon
+- Git repository discovery in selected directories
+- Repository status shown in welcome screen
 
-#### **Web Interface Refinements**
-- Cleaner session headers with better control placement
-- Enhanced magic wand icon positioning for AI sessions
+#### **UI Improvements**
+- Clickable ngrok URLs in Settings with copy button (#422)
+- Cleaner session headers with better-positioned controls
+- Fixed magic wand icon alignment for AI sessions
 - Improved terminal padding and responsive design
-- Clickable ngrok URLs in terminal output (#422)
+- Fixed OPTIONS label chevron positioning
 
 ### 🐛 Bug Fixes
 
-- Fixed session timers continuing after sessions ended (#427)
-- Fixed Chinese input method issues for Claude sessions (#431)
-- Removed legacy WebSocket handlers for cleaner connections
-- Fixed OPTIONS label alignment in session creation form
-- Updated magic wand icon to match macOS design guidelines
-- Fixed session activity status undefined handling
+- Fixed session timers continuing to run after sessions exited (#427)
+- Fixed sessions with undefined activity status showing as idle instead of active
+- Fixed ConfigManager threading crash when reordering Quick Start commands on macOS
+- Improved Chinese input method support (#431)
+- Removed legacy WebSocket config sync code that was causing issues
 
-#### **Developer Experience**
-- New REST API at `/api/config/quick-start` for configuration
-- File-based persistence for settings
-- Zod validation for configuration integrity
-- 200+ tests added for reliability
-- Improved error messages and validation feedback
+#### **Under the Hood**
+- New configuration service with file watching and validation
+- Zod schema validation for all configuration data
+- REST API at `/api/config/quick-start` replacing WebSocket sync
+- Major codebase cleanup - removed Tauri project and 17k lines of unused code (#419)
+- Enhanced release process with better troubleshooting documentation
 
 ### ⚠️ Breaking Changes
 
-- Configuration now stored in files instead of memory - re-enter existing configs
-- WebSocket config sync replaced with REST API - requires app update
+- Quick Start configuration format changed - previous settings won't migrate automatically
+- WebSocket-based config sync removed in favor of REST API
 
 ### 👥 Contributors
 First-time contributors to VibeTunnel:

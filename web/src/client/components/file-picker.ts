@@ -272,6 +272,7 @@ export class FilePicker extends LitElement {
               : html`
             <div class="space-y-4">
               <button
+                id="file-picker-choose-button"
                 @click=${this.handleFileClick}
                 class="w-full bg-primary text-bg font-medium py-4 px-6 rounded-lg flex items-center justify-center gap-3 transition-all duration-200 hover:bg-primary-light hover:shadow-glow active:scale-95"
               >
@@ -286,6 +287,7 @@ export class FilePicker extends LitElement {
           
           <div class="mt-6 pt-6 border-t border-border/50">
             <button
+              id="file-picker-cancel-button"
               @click=${this.handleCancel}
               class="w-full bg-secondary border border-border/50 text-primary font-mono py-3 px-6 rounded-lg transition-all duration-200 hover:bg-surface hover:border-primary active:scale-95"
               ?disabled=${this.uploading}

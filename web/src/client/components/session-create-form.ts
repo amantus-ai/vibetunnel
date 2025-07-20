@@ -676,6 +676,7 @@ export class SessionCreateForm extends LitElement {
                   autocomplete="off"
                 />
                 <button
+                  id="session-browse-button"
                   class="bg-bg-tertiary border border-border/50 rounded-lg p-1.5 sm:p-2 lg:p-3 font-mono text-text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary/50 hover:shadow-sm flex-shrink-0"
                   @click=${this.handleBrowse}
                   ?disabled=${this.disabled || this.isCreating}
