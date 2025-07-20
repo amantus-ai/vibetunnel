@@ -76,7 +76,7 @@ describe('RepositoryService', () => {
       const result = await service.discoverRepositories();
 
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/repositories/discover?path=' + encodeURIComponent('~/'),
+        `/api/repositories/discover?path=${encodeURIComponent('~/')}`,
         {
           headers: { Authorization: 'Bearer test-token' },
         }
@@ -86,7 +86,7 @@ describe('RepositoryService', () => {
 
     it('should use repository base path from preferences', async () => {
       // Set preferences in localStorage - using the correct key from unified-settings.js
-      mockStorage['vibetunnel_app_preferences'] = JSON.stringify({
+      mockStorage.vibetunnel_app_preferences = JSON.stringify({
         repositoryBasePath: '/custom/path',
       });
 
@@ -98,7 +98,7 @@ describe('RepositoryService', () => {
       await service.discoverRepositories();
 
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/repositories/discover?path=' + encodeURIComponent('/custom/path'),
+        `/api/repositories/discover?path=${encodeURIComponent('/custom/path')}`,
         {
           headers: { Authorization: 'Bearer test-token' },
         }
@@ -107,7 +107,7 @@ describe('RepositoryService', () => {
 
     it('should handle invalid preferences JSON', async () => {
       // Set invalid JSON in localStorage
-      mockStorage['vibetunnel_app_preferences'] = 'invalid-json';
+      mockStorage.vibetunnel_app_preferences = 'invalid-json';
 
       fetchMock.mockResolvedValueOnce({
         ok: true,
@@ -118,7 +118,7 @@ describe('RepositoryService', () => {
 
       // Should fall back to default path
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/repositories/discover?path=' + encodeURIComponent('~/'),
+        `/api/repositories/discover?path=${encodeURIComponent('~/')}`,
         {
           headers: { Authorization: 'Bearer test-token' },
         }
@@ -146,7 +146,7 @@ describe('RepositoryService', () => {
     });
 
     it('should handle empty repository base path in preferences', async () => {
-      mockStorage['vibetunnel_app_preferences'] = JSON.stringify({
+      mockStorage.vibetunnel_app_preferences = JSON.stringify({
         repositoryBasePath: '',
       });
 
@@ -159,7 +159,7 @@ describe('RepositoryService', () => {
 
       // Should fall back to default path
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/repositories/discover?path=' + encodeURIComponent('~/'),
+        `/api/repositories/discover?path=${encodeURIComponent('~/')}`,
         {
           headers: { Authorization: 'Bearer test-token' },
         }

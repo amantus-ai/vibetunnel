@@ -81,15 +81,19 @@ export class SessionCreateForm extends LitElement {
 
   private completionsDebounceTimer?: NodeJS.Timeout;
   private autocompleteManager!: AutocompleteManager;
-  private repositoryService!: RepositoryService;
-  private sessionService!: SessionService;
+  private repositoryService?: RepositoryService;
+  private sessionService?: SessionService;
 
   connectedCallback() {
     super.connectedCallback();
-    // Initialize services
+    // Initialize services - AutocompleteManager handles optional authClient
     this.autocompleteManager = new AutocompleteManager(this.authClient);
-    this.repositoryService = new RepositoryService(this.authClient);
-    this.sessionService = new SessionService(this.authClient);
+
+    // Initialize other services only if authClient is available
+    if (this.authClient) {
+      this.repositoryService = new RepositoryService(this.authClient);
+      this.sessionService = new SessionService(this.authClient);
+    }
     // Load from localStorage when component is first created
     this.loadFromLocalStorage();
     // Check server status
@@ -203,6 +207,19 @@ export class SessionCreateForm extends LitElement {
 
   updated(changedProperties: PropertyValues) {
     super.updated(changedProperties);
+
+    // Handle authClient becoming available
+    if (changedProperties.has('authClient') && this.authClient) {
+      // Initialize services if they haven't been created yet
+      if (!this.repositoryService) {
+        this.repositoryService = new RepositoryService(this.authClient);
+      }
+      if (!this.sessionService) {
+        this.sessionService = new SessionService(this.authClient);
+      }
+      // Update autocomplete manager's authClient
+      this.autocompleteManager.setAuthClient(this.authClient);
+    }
 
     // Handle visibility changes
     if (changedProperties.has('visible')) {
@@ -337,6 +354,10 @@ export class SessionCreateForm extends LitElement {
     }
 
     try {
+      // Check if sessionService is initialized
+      if (!this.sessionService) {
+        throw new Error('Session service not initialized');
+      }
       const result = await this.sessionService.createSession(sessionData);
 
       // Save to localStorage before clearing the fields
@@ -402,9 +423,15 @@ export class SessionCreateForm extends LitElement {
   private async discoverRepositories() {
     this.isDiscovering = true;
     try {
-      this.repositories = await this.repositoryService.discoverRepositories();
-      // Update autocomplete manager with discovered repositories
-      this.autocompleteManager.setRepositories(this.repositories);
+      // Only proceed if repositoryService is initialized
+      if (this.repositoryService) {
+        this.repositories = await this.repositoryService.discoverRepositories();
+        // Update autocomplete manager with discovered repositories
+        this.autocompleteManager.setRepositories(this.repositories);
+      } else {
+        logger.warn('Repository service not initialized yet');
+        this.repositories = [];
+      }
     } finally {
       this.isDiscovering = false;
     }
