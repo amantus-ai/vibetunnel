@@ -846,7 +846,7 @@ export class SessionCreateForm extends LitElement {
             }
 
             <!-- Terminal Title Mode -->
-            <div class="mb-2 sm:mb-4 lg:mb-6 flex items-center justify-between bg-bg-elevated border border-border/50 rounded-lg p-2 sm:p-3 lg:p-4">
+            <div class="${this.macAppConnected ? '' : 'mt-2 sm:mt-3 lg:mt-5'} mb-2 sm:mb-4 lg:mb-6 flex items-center justify-between bg-bg-elevated border border-border/50 rounded-lg p-2 sm:p-3 lg:p-4">
               <div class="flex-1 pr-2 sm:pr-3 lg:pr-4">
                 <span class="text-primary text-[10px] sm:text-xs lg:text-sm font-medium">Terminal Title Mode</span>
                 <p class="text-[9px] sm:text-[10px] lg:text-xs text-text-muted mt-0.5 hidden sm:block">
