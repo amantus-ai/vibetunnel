@@ -7,8 +7,8 @@ import {
   getSessionFormValue,
   loadSessionFormData,
   removeSessionFormValue,
-  saveSessionFormData,
   SESSION_FORM_STORAGE_KEYS,
+  saveSessionFormData,
   setSessionFormValue,
 } from './storage-utils';
 
@@ -18,7 +18,7 @@ describe('storage-utils', () => {
   beforeEach(() => {
     // Create a mock localStorage that persists between calls
     mockStorage = {};
-    
+
     Object.defineProperty(window, 'localStorage', {
       value: {
         getItem: vi.fn((key: string) => mockStorage[key] || null),
@@ -53,7 +53,7 @@ describe('storage-utils', () => {
       mockStorage[SESSION_FORM_STORAGE_KEYS.TITLE_MODE] = TitleMode.DYNAMIC;
 
       const result = loadSessionFormData();
-      
+
       expect(result).toEqual({
         workingDir: '/home/user/projects',
         command: 'npm run dev',
@@ -64,14 +64,14 @@ describe('storage-utils', () => {
 
     it('should handle false spawn window value', () => {
       mockStorage[SESSION_FORM_STORAGE_KEYS.SPAWN_WINDOW] = 'false';
-      
+
       const result = loadSessionFormData();
       expect(result.spawnWindow).toBe(false);
     });
 
     it('should return undefined for missing values', () => {
       mockStorage[SESSION_FORM_STORAGE_KEYS.WORKING_DIR] = '/home/user';
-      
+
       const result = loadSessionFormData();
       expect(result.workingDir).toBe('/home/user');
       expect(result.command).toBeUndefined();
@@ -83,7 +83,7 @@ describe('storage-utils', () => {
       window.localStorage.getItem = vi.fn(() => {
         throw new Error('Storage error');
       });
-      
+
       const result = loadSessionFormData();
       expect(result).toEqual({});
     });
@@ -98,10 +98,22 @@ describe('storage-utils', () => {
         titleMode: TitleMode.STATIC,
       });
 
-      expect(window.localStorage.setItem).toHaveBeenCalledWith(SESSION_FORM_STORAGE_KEYS.WORKING_DIR, '/projects');
-      expect(window.localStorage.setItem).toHaveBeenCalledWith(SESSION_FORM_STORAGE_KEYS.COMMAND, 'zsh');
-      expect(window.localStorage.setItem).toHaveBeenCalledWith(SESSION_FORM_STORAGE_KEYS.SPAWN_WINDOW, 'true');
-      expect(window.localStorage.setItem).toHaveBeenCalledWith(SESSION_FORM_STORAGE_KEYS.TITLE_MODE, TitleMode.STATIC);
+      expect(window.localStorage.setItem).toHaveBeenCalledWith(
+        SESSION_FORM_STORAGE_KEYS.WORKING_DIR,
+        '/projects'
+      );
+      expect(window.localStorage.setItem).toHaveBeenCalledWith(
+        SESSION_FORM_STORAGE_KEYS.COMMAND,
+        'zsh'
+      );
+      expect(window.localStorage.setItem).toHaveBeenCalledWith(
+        SESSION_FORM_STORAGE_KEYS.SPAWN_WINDOW,
+        'true'
+      );
+      expect(window.localStorage.setItem).toHaveBeenCalledWith(
+        SESSION_FORM_STORAGE_KEYS.TITLE_MODE,
+        TitleMode.STATIC
+      );
     });
 
     it('should only save non-empty values', () => {
@@ -111,9 +123,18 @@ describe('storage-utils', () => {
         spawnWindow: false,
       });
 
-      expect(window.localStorage.setItem).not.toHaveBeenCalledWith(SESSION_FORM_STORAGE_KEYS.WORKING_DIR, '');
-      expect(window.localStorage.setItem).toHaveBeenCalledWith(SESSION_FORM_STORAGE_KEYS.COMMAND, 'bash');
-      expect(window.localStorage.setItem).toHaveBeenCalledWith(SESSION_FORM_STORAGE_KEYS.SPAWN_WINDOW, 'false');
+      expect(window.localStorage.setItem).not.toHaveBeenCalledWith(
+        SESSION_FORM_STORAGE_KEYS.WORKING_DIR,
+        ''
+      );
+      expect(window.localStorage.setItem).toHaveBeenCalledWith(
+        SESSION_FORM_STORAGE_KEYS.COMMAND,
+        'bash'
+      );
+      expect(window.localStorage.setItem).toHaveBeenCalledWith(
+        SESSION_FORM_STORAGE_KEYS.SPAWN_WINDOW,
+        'false'
+      );
     });
 
     it('should handle undefined values', () => {
@@ -121,7 +142,10 @@ describe('storage-utils', () => {
         workingDir: '/home',
       });
 
-      expect(window.localStorage.setItem).toHaveBeenCalledWith(SESSION_FORM_STORAGE_KEYS.WORKING_DIR, '/home');
+      expect(window.localStorage.setItem).toHaveBeenCalledWith(
+        SESSION_FORM_STORAGE_KEYS.WORKING_DIR,
+        '/home'
+      );
       expect(window.localStorage.setItem).toHaveBeenCalledTimes(1);
     });
 
@@ -129,7 +153,7 @@ describe('storage-utils', () => {
       window.localStorage.setItem = vi.fn(() => {
         throw new Error('Storage error');
       });
-      
+
       // Should not throw
       expect(() => {
         saveSessionFormData({ workingDir: '/test' });
@@ -140,7 +164,7 @@ describe('storage-utils', () => {
   describe('getSessionFormValue', () => {
     it('should get specific values from localStorage', () => {
       mockStorage[SESSION_FORM_STORAGE_KEYS.COMMAND] = 'python3';
-      
+
       const result = getSessionFormValue('COMMAND');
       expect(result).toBe('python3');
     });
@@ -154,7 +178,7 @@ describe('storage-utils', () => {
       window.localStorage.getItem = vi.fn(() => {
         throw new Error('Storage error');
       });
-      
+
       const result = getSessionFormValue('COMMAND');
       expect(result).toBeNull();
     });
@@ -163,8 +187,11 @@ describe('storage-utils', () => {
   describe('setSessionFormValue', () => {
     it('should set specific values in localStorage', () => {
       setSessionFormValue('SPAWN_WINDOW', 'true');
-      
-      expect(window.localStorage.setItem).toHaveBeenCalledWith(SESSION_FORM_STORAGE_KEYS.SPAWN_WINDOW, 'true');
+
+      expect(window.localStorage.setItem).toHaveBeenCalledWith(
+        SESSION_FORM_STORAGE_KEYS.SPAWN_WINDOW,
+        'true'
+      );
       expect(mockStorage[SESSION_FORM_STORAGE_KEYS.SPAWN_WINDOW]).toBe('true');
     });
 
@@ -172,7 +199,7 @@ describe('storage-utils', () => {
       window.localStorage.setItem = vi.fn(() => {
         throw new Error('Storage error');
       });
-      
+
       // Should not throw
       expect(() => {
         setSessionFormValue('TITLE_MODE', TitleMode.FILTER);
@@ -183,10 +210,12 @@ describe('storage-utils', () => {
   describe('removeSessionFormValue', () => {
     it('should remove specific values from localStorage', () => {
       mockStorage[SESSION_FORM_STORAGE_KEYS.SPAWN_WINDOW] = 'true';
-      
+
       removeSessionFormValue('SPAWN_WINDOW');
-      
-      expect(window.localStorage.removeItem).toHaveBeenCalledWith(SESSION_FORM_STORAGE_KEYS.SPAWN_WINDOW);
+
+      expect(window.localStorage.removeItem).toHaveBeenCalledWith(
+        SESSION_FORM_STORAGE_KEYS.SPAWN_WINDOW
+      );
       expect(mockStorage[SESSION_FORM_STORAGE_KEYS.SPAWN_WINDOW]).toBeUndefined();
     });
 
@@ -194,7 +223,7 @@ describe('storage-utils', () => {
       window.localStorage.removeItem = vi.fn(() => {
         throw new Error('Storage error');
       });
-      
+
       // Should not throw
       expect(() => {
         removeSessionFormValue('COMMAND');

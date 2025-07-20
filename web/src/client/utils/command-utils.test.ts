@@ -44,10 +44,7 @@ describe('command-utils', () => {
     });
 
     it('should handle commands with paths', () => {
-      expect(parseCommand('/usr/bin/python3 script.py')).toEqual([
-        '/usr/bin/python3',
-        'script.py',
-      ]);
+      expect(parseCommand('/usr/bin/python3 script.py')).toEqual(['/usr/bin/python3', 'script.py']);
       expect(parseCommand('cd "/Users/john/My Documents"')).toEqual([
         'cd',
         '/Users/john/My Documents',
@@ -55,19 +52,9 @@ describe('command-utils', () => {
     });
 
     it('should handle complex commands', () => {
-      expect(
-        parseCommand('docker run -it --rm -v "/home/user:/app" node:latest npm test')
-      ).toEqual([
-        'docker',
-        'run',
-        '-it',
-        '--rm',
-        '-v',
-        '/home/user:/app',
-        'node:latest',
-        'npm',
-        'test',
-      ]);
+      expect(parseCommand('docker run -it --rm -v "/home/user:/app" node:latest npm test')).toEqual(
+        ['docker', 'run', '-it', '--rm', '-v', '/home/user:/app', 'node:latest', 'npm', 'test']
+      );
     });
 
     it('should handle quotes at the beginning and end', () => {
@@ -104,7 +91,7 @@ describe('command-utils', () => {
 
     it('should escape double quotes in arguments', () => {
       expect(formatCommand(['echo', 'He said "hello"'])).toBe('echo "He said \\"hello\\""');
-      expect(formatCommand(['echo', '"quoted"'])).toBe('echo "quoted"');  // No spaces, no quotes added
+      expect(formatCommand(['echo', '"quoted"'])).toBe('echo "quoted"'); // No spaces, no quotes added
     });
 
     it('should handle empty arrays', () => {

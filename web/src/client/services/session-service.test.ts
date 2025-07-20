@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TitleMode } from '../../shared/types';
 import type { AuthClient } from './auth-client';
-import { SessionService, type SessionCreateData } from './session-service';
+import { type SessionCreateData, SessionService } from './session-service';
 
 describe('SessionService', () => {
   let service: SessionService;
@@ -106,9 +106,7 @@ describe('SessionService', () => {
         }),
       });
 
-      await expect(service.createSession(mockSessionData)).rejects.toThrow(
-        'Internal server error'
-      );
+      await expect(service.createSession(mockSessionData)).rejects.toThrow('Internal server error');
     });
 
     it('should handle error response with unknown format', async () => {

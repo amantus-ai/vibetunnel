@@ -74,7 +74,7 @@ describe('title-mode-utils', () => {
       Object.values(TitleMode).forEach((mode) => {
         const displayName = getTitleModeDisplayName(mode);
         const description = getTitleModeDescription(mode);
-        
+
         // If we have a display name, we should have a description
         if (displayName && displayName !== mode) {
           expect(description).toBeTruthy();
