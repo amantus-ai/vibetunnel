@@ -164,7 +164,7 @@ struct SystemControlHandlerTests {
             var disableNotificationPosted = false
             var enableNotificationPosted = false
         }
-        
+
         let flags = NotificationFlags()
 
         // Observe notifications

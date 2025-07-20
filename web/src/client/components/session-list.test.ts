@@ -357,13 +357,13 @@ describe('SessionList', () => {
         createMockSession({
           id: 'running-session',
           status: 'running',
-          startTime: new Date(startTime).toISOString(),
+          startedAt: new Date(startTime).toISOString(),
           lastModified: new Date().toISOString(),
         }),
         createMockSession({
           id: 'exited-session',
           status: 'exited',
-          startTime: new Date(startTime).toISOString(),
+          startedAt: new Date(startTime).toISOString(),
           lastModified: new Date(exitTime).toISOString(),
         }),
       ];
@@ -390,7 +390,7 @@ describe('SessionList', () => {
       const exitedSession = createMockSession({
         id: 'exited-session',
         status: 'exited',
-        startTime: new Date(Date.now() - 120000).toISOString(),
+        startedAt: new Date(Date.now() - 120000).toISOString(),
         lastModified: new Date(Date.now() - 60000).toISOString(),
       });
 

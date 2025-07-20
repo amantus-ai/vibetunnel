@@ -5,18 +5,18 @@ import Testing
 enum CITestConfiguration {
     /// Multiplier for timeouts when running in CI
     static let timeoutMultiplier: Double = TestConditions.isRunningInCI() ? 2.5 : 1.0
-    
+
     /// Get adjusted timeout for CI
     static func adjustedTimeout(base: TimeInterval) -> TimeInterval {
         base * timeoutMultiplier
     }
-    
+
     /// Get adjusted sleep duration for CI
     static func adjustedSleep(milliseconds: Int) -> Duration {
         let adjustedMs = Double(milliseconds) * timeoutMultiplier
         return .milliseconds(Int(adjustedMs))
     }
-    
+
     /// Check if a slow test should run
     static func shouldRunSlowTest() -> Bool {
         // Skip slow tests in CI unless explicitly enabled
@@ -25,7 +25,7 @@ enum CITestConfiguration {
         }
         return true
     }
-    
+
     /// Check if a flaky test should run
     static func shouldRunFlakyTest() -> Bool {
         // Skip flaky tests in CI unless explicitly enabled
@@ -41,13 +41,13 @@ enum CITestConfiguration {
 extension Tag {
     /// Test that is slow and might timeout in CI
     static let slow = Tag("slow")
-    
+
     /// Test that is known to be flaky in CI
     static let flaky = Tag("flaky")
-    
+
     /// Test that requires real file system access
     static let fileSystem = Tag("fileSystem")
-    
+
     /// Test that requires network access
     static let network = Tag("network")
 }

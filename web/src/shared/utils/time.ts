@@ -23,8 +23,11 @@ export function formatDuration(ms: number): string {
  */
 export function getDurationFromStart(startTime: string): number {
   const start = new Date(startTime).getTime();
+  if (Number.isNaN(start)) {
+    return 0;
+  }
   const now = Date.now();
-  return now - start;
+  return Math.max(0, now - start);
 }
 
 /**
@@ -33,7 +36,13 @@ export function getDurationFromStart(startTime: string): number {
 export function getDurationBetween(startTime: string, endTime: string): number {
   const start = new Date(startTime).getTime();
   const end = new Date(endTime).getTime();
-  return end - start;
+
+  // Handle invalid dates
+  if (Number.isNaN(start) || Number.isNaN(end)) {
+    return 0;
+  }
+
+  return Math.max(0, end - start);
 }
 
 /**

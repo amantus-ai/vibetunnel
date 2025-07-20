@@ -41,7 +41,6 @@ struct RequestPermissionsPageView: View {
         return permissionManager.hasPermission(.accessibility)
     }
 
-
     var body: some View {
         VStack(spacing: 30) {
             VStack(spacing: 16) {

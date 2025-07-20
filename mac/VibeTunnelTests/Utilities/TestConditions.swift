@@ -10,7 +10,7 @@ enum ServerBinaryAvailableCondition {
         // Check for the embedded vibetunnel binary in the host app bundle
         // When running tests, Bundle.main is the test bundle, not the app bundle
         let hostBundle = Bundle(for: BunServer.self) // Get the app bundle, not test bundle
-        
+
         if let embeddedBinaryPath = hostBundle.path(forResource: "vibetunnel", ofType: nil),
            FileManager.default.fileExists(atPath: embeddedBinaryPath)
         {

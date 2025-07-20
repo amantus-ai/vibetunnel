@@ -114,7 +114,7 @@ struct RepositoryPathSyncServiceTests {
             var disableReceived = false
             var enableReceived = false
         }
-        
+
         let flags = NotificationFlags()
 
         // Set up our own observers to verify notifications work
