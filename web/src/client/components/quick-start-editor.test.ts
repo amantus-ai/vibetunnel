@@ -431,8 +431,10 @@ describe('QuickStartEditor', () => {
 
     it('should position Reset to Defaults button correctly', () => {
       const resetButton = element.querySelector('#quick-start-reset-button') as HTMLButtonElement;
-      const addButton = element.querySelector('#quick-start-add-command-button') as HTMLButtonElement;
-      
+      const addButton = element.querySelector(
+        '#quick-start-add-command-button'
+      ) as HTMLButtonElement;
+
       expect(resetButton).to.exist;
       expect(addButton).to.exist;
 

@@ -9,12 +9,12 @@ vi.mock('fs', () => ({
   existsSync: vi.fn().mockReturnValue(false),
   mkdirSync: vi.fn(),
   unlinkSync: vi.fn(),
-  chmod: vi.fn((path, mode, cb) => cb(null)),
+  chmod: vi.fn((_path, _mode, cb) => cb(null)),
 }));
 
 vi.mock('net', () => ({
   createServer: vi.fn(() => ({
-    listen: vi.fn((path, cb) => cb && cb()),
+    listen: vi.fn((_path, cb) => cb?.()),
     close: vi.fn(),
     on: vi.fn(),
   })),
