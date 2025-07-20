@@ -584,15 +584,19 @@ export class SessionCreateForm extends LitElement {
       }
 
       // Also search repositories if we have them
-      const searchTerm = path.toLowerCase();
+      // Extract the last part of the path for searching (e.g., "vib" from "~/Projects/vib")
+      const pathParts = path.split('/');
+      const lastPart = pathParts[pathParts.length - 1].toLowerCase();
+      const searchTerm = lastPart || path.toLowerCase();
+
       const repoCompletions = this.repositories
         .filter((repo) => {
-          // Search in both folder name and path
-          return (
-            repo.folderName.toLowerCase().includes(searchTerm) ||
-            repo.path.toLowerCase().includes(searchTerm) ||
-            repo.relativePath.toLowerCase().includes(searchTerm)
-          );
+          // Search in folder name primarily with the last part of the path
+          const folderNameMatch = repo.folderName.toLowerCase().includes(searchTerm);
+          // Also check if the full path matches the repository path (for exact matches)
+          const fullPathMatch = repo.path.toLowerCase().startsWith(path.toLowerCase());
+
+          return folderNameMatch || fullPathMatch;
         })
         .map((repo) => ({
           name: repo.folderName,
@@ -767,11 +771,11 @@ export class SessionCreateForm extends LitElement {
             <!-- Working Directory -->
             <div class="mb-2 sm:mb-3 lg:mb-5">
               <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Working Directory:</label>
-              <div class="flex gap-1.5 sm:gap-2 relative">
-                <div class="flex-1 relative">
+              <div class="relative">
+                <div class="flex gap-1.5 sm:gap-2">
                   <input
                     type="text"
-                    class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm w-full"
+                    class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm flex-1"
                     .value=${this.workingDir}
                     @input=${this.handleWorkingDirChange}
                     @keydown=${this.handleWorkingDirKeydown}
@@ -781,47 +785,6 @@ export class SessionCreateForm extends LitElement {
                     data-testid="working-dir-input"
                     autocomplete="off"
                   />
-                  ${
-                    this.showCompletions && this.completions.length > 0
-                      ? html`
-                        <div class="absolute top-full left-0 right-0 mt-1 bg-bg-elevated border border-border/50 rounded-lg overflow-hidden shadow-lg z-50">
-                          <div class="max-h-48 sm:max-h-64 lg:max-h-80 overflow-y-auto">
-                            ${this.completions.map(
-                              (completion, index) => html`
-                                <button
-                                  @click=${() => this.handleSelectCompletion(completion.suggestion)}
-                                  class="w-full text-left px-3 py-2 hover:bg-surface-hover transition-colors duration-200 flex items-center gap-2 ${
-                                    index === this.selectedCompletionIndex ? 'bg-surface-hover' : ''
-                                  }"
-                                  type="button"
-                                >
-                                  <svg 
-                                    width="12" 
-                                    height="12" 
-                                    viewBox="0 0 16 16" 
-                                    fill="currentColor"
-                                    class="${completion.isRepository ? 'text-primary' : 'text-text-muted'} flex-shrink-0"
-                                  >
-                                    ${
-                                      completion.isRepository
-                                        ? html`<path d="M4.177 7.823A4.5 4.5 0 118 12.5a4.474 4.474 0 01-1.653-.316.75.75 0 11.557-1.392 2.999 2.999 0 001.096.208 3 3 0 10-2.108-5.134.75.75 0 01.236.662l.428 3.009a.75.75 0 01-1.255.592L2.847 7.677a.75.75 0 01.426-1.27A4.476 4.476 0 014.177 7.823zM8 1a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 1zm3.197 2.197a.75.75 0 01.092.992l-1 1.25a.75.75 0 01-1.17-.938l1-1.25a.75.75 0 01.992-.092.75.75 0 01.086.038zM5.75 8a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 015.75 8zm5.447 2.197a.75.75 0 01.092.992l-1 1.25a.75.75 0 11-1.17-.938l1-1.25a.75.75 0 01.992-.092.75.75 0 01.086.038z" />`
-                                        : completion.type === 'directory'
-                                          ? html`<path d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z" />`
-                                          : html`<path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0113.25 16h-9.5A1.75 1.75 0 012 14.25V1.75zm1.75-.25a.25.25 0 00-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 00.25-.25V6h-2.75A1.75 1.75 0 019 4.25V1.5H3.75zm6.75.062V4.25c0 .138.112.25.25.25h2.688a.252.252 0 00-.011-.013l-2.914-2.914a.272.272 0 00-.013-.011z" />`
-                                    }
-                                  </svg>
-                                  <span class="text-text text-xs sm:text-sm truncate flex-1">
-                                    ${completion.name}
-                                  </span>
-                                  <span class="text-text-muted text-[9px] sm:text-[10px] truncate max-w-[40%]">${completion.path}</span>
-                                </button>
-                              `
-                            )}
-                          </div>
-                        </div>
-                      `
-                      : ''
-                  }
                 </div>
                 <button
                   class="bg-bg-tertiary border border-border/50 rounded-lg p-1.5 sm:p-2 lg:p-3 font-mono text-text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary/50 hover:shadow-sm flex-shrink-0"
@@ -861,6 +824,47 @@ export class SessionCreateForm extends LitElement {
                   </svg>
                 </button>
               </div>
+              ${
+                this.showCompletions && this.completions.length > 0
+                  ? html`
+                    <div class="absolute left-0 right-0 mt-1 bg-bg-elevated border border-border/50 rounded-lg overflow-hidden shadow-lg z-50">
+                      <div class="max-h-48 sm:max-h-64 lg:max-h-80 overflow-y-auto">
+                        ${this.completions.map(
+                          (completion, index) => html`
+                            <button
+                              @click=${() => this.handleSelectCompletion(completion.suggestion)}
+                              class="w-full text-left px-3 py-2 hover:bg-surface-hover transition-colors duration-200 flex items-center gap-2 ${
+                                index === this.selectedCompletionIndex ? 'bg-surface-hover' : ''
+                              }"
+                              type="button"
+                            >
+                              <svg 
+                                width="12" 
+                                height="12" 
+                                viewBox="0 0 16 16" 
+                                fill="currentColor"
+                                class="${completion.isRepository ? 'text-primary' : 'text-text-muted'} flex-shrink-0"
+                              >
+                                ${
+                                  completion.isRepository
+                                    ? html`<path d="M4.177 7.823A4.5 4.5 0 118 12.5a4.474 4.474 0 01-1.653-.316.75.75 0 11.557-1.392 2.999 2.999 0 001.096.208 3 3 0 10-2.108-5.134.75.75 0 01.236.662l.428 3.009a.75.75 0 01-1.255.592L2.847 7.677a.75.75 0 01.426-1.27A4.476 4.476 0 014.177 7.823zM8 1a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 1zm3.197 2.197a.75.75 0 01.092.992l-1 1.25a.75.75 0 01-1.17-.938l1-1.25a.75.75 0 01.992-.092.75.75 0 01.086.038zM5.75 8a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 015.75 8zm5.447 2.197a.75.75 0 01.092.992l-1 1.25a.75.75 0 11-1.17-.938l1-1.25a.75.75 0 01.992-.092.75.75 0 01.086.038z" />`
+                                    : completion.type === 'directory'
+                                      ? html`<path d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z" />`
+                                      : html`<path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0113.25 16h-9.5A1.75 1.75 0 012 14.25V1.75zm1.75-.25a.25.25 0 00-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 00.25-.25V6h-2.75A1.75 1.75 0 019 4.25V1.5H3.75zm6.75.062V4.25c0 .138.112.25.25.25h2.688a.252.252 0 00-.011-.013l-2.914-2.914a.272.272 0 00-.013-.011z" />`
+                                }
+                              </svg>
+                              <span class="text-text text-xs sm:text-sm truncate flex-1">
+                                ${completion.name}
+                              </span>
+                              <span class="text-text-muted text-[9px] sm:text-[10px] truncate max-w-[40%]">${completion.path}</span>
+                            </button>
+                          `
+                        )}
+                      </div>
+                    </div>
+                  `
+                  : ''
+              }
               ${
                 this.showRepositoryDropdown && this.repositories.length > 0
                   ? html`
