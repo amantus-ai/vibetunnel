@@ -334,7 +334,7 @@ export class SessionCreateForm extends LitElement {
   }
 
   private handleDirectorySelected(e: CustomEvent) {
-    this.workingDir = e.detail;
+    this.workingDir = this.simplifyPath(e.detail);
     this.showFileBrowser = false;
   }
 
@@ -551,7 +551,7 @@ export class SessionCreateForm extends LitElement {
   }
 
   private handleSelectRepository(repoPath: string) {
-    this.workingDir = repoPath;
+    this.workingDir = this.simplifyPath(repoPath);
     this.showRepositoryDropdown = false;
   }
 
@@ -579,8 +579,23 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
+  private simplifyPath(path: string): string {
+    // Try to determine the home directory from common patterns
+    // On macOS/Linux, home directories are typically /Users/username or /home/username
+    const homeDirPatterns = [/^(\/Users\/[^/]+)/, /^(\/home\/[^/]+)/];
+
+    for (const pattern of homeDirPatterns) {
+      const match = path.match(pattern);
+      if (match) {
+        return path.replace(match[1], '~');
+      }
+    }
+
+    return path;
+  }
+
   private handleSelectCompletion(suggestion: string) {
-    this.workingDir = suggestion;
+    this.workingDir = this.simplifyPath(suggestion);
     this.showCompletions = false;
     this.completions = [];
     this.selectedCompletionIndex = -1;
