@@ -197,7 +197,9 @@ export class SessionCreateForm extends LitElement {
 
   private async loadServerConfig() {
     try {
-      const response = await fetch('/api/config');
+      const response = await fetch('/api/config', {
+        headers: this.authClient ? this.authClient.getAuthHeader() : {},
+      });
       if (response.ok) {
         const config = await response.json();
         if (config.quickStartCommands && Array.isArray(config.quickStartCommands)) {

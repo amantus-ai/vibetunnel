@@ -31,7 +31,7 @@ const DEFAULT_APP_PREFERENCES: AppPreferences = {
   repositoryBasePath: '~/',
 };
 
-export const STORAGE_KEY = 'vibetunnel_app_preferences';
+export const STORAGE_KEY = 'app_preferences';
 
 @customElement('unified-settings')
 export class UnifiedSettings extends LitElement {
@@ -155,7 +155,9 @@ export class UnifiedSettings extends LitElement {
 
       // Fetch server configuration
       try {
-        const response = await fetch('/api/config');
+        const response = await fetch('/api/config', {
+          headers: this.authClient ? this.authClient.getAuthHeader() : {},
+        });
         if (response.ok) {
           const serverConfig: ServerConfig = await response.json();
           this.serverConfig = serverConfig;

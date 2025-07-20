@@ -3,10 +3,22 @@ import { watch } from 'chokidar';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { z } from 'zod';
 import { DEFAULT_CONFIG, type VibeTunnelConfig } from '../../types/config.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('config-service');
+
+// Zod schema for config validation
+const ConfigSchema = z.object({
+  version: z.number(),
+  quickStartCommands: z.array(
+    z.object({
+      name: z.string().optional(),
+      command: z.string().min(1, 'Command cannot be empty'),
+    })
+  ),
+});
 
 export class ConfigService {
   private configDir: string;
@@ -32,21 +44,34 @@ export class ConfigService {
     }
   }
 
+  private validateConfig(data: unknown): VibeTunnelConfig {
+    try {
+      return ConfigSchema.parse(data);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        logger.error('Config validation failed:', error.issues);
+        throw new Error(`Invalid config: ${error.issues.map((e) => e.message).join(', ')}`);
+      }
+      throw error;
+    }
+  }
+
   private loadConfig(): void {
     try {
       this.ensureConfigDir();
 
       if (fs.existsSync(this.configPath)) {
         const data = fs.readFileSync(this.configPath, 'utf8');
-        const parsedConfig = JSON.parse(data) as VibeTunnelConfig;
+        const parsedData = JSON.parse(data);
 
-        // Validate config structure
-        if (parsedConfig.version && Array.isArray(parsedConfig.quickStartCommands)) {
-          this.config = parsedConfig;
-          logger.info('Loaded configuration from disk');
-        } else {
-          logger.warn('Invalid config structure, using defaults');
-          this.saveConfig(); // Save defaults
+        try {
+          // Validate config using Zod schema
+          this.config = this.validateConfig(parsedData);
+          logger.info('Loaded and validated configuration from disk');
+        } catch (validationError) {
+          logger.warn('Config validation failed, using defaults:', validationError);
+          this.config = DEFAULT_CONFIG;
+          this.saveConfig(); // Save defaults to fix invalid config
         }
       } else {
         logger.info('No config file found, creating with defaults');
@@ -137,13 +162,16 @@ export class ConfigService {
   }
 
   public updateConfig(config: VibeTunnelConfig): void {
-    this.config = config;
+    // Validate the config before updating
+    this.config = this.validateConfig(config);
     this.saveConfig();
     this.notifyConfigChange();
   }
 
   public updateQuickStartCommands(commands: VibeTunnelConfig['quickStartCommands']): void {
-    this.config.quickStartCommands = commands;
+    // Validate the entire config with updated commands
+    const updatedConfig = { ...this.config, quickStartCommands: commands };
+    this.config = this.validateConfig(updatedConfig);
     this.saveConfig();
     this.notifyConfigChange();
   }

@@ -790,11 +790,7 @@ export async function createApp(): Promise<AppInstance> {
     const parsedUrl = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
 
     // Handle WebSocket paths
-    if (
-      parsedUrl.pathname !== '/buffers' &&
-      parsedUrl.pathname !== '/ws/input' &&
-      parsedUrl.pathname !== '/ws/config'
-    ) {
+    if (parsedUrl.pathname !== '/buffers' && parsedUrl.pathname !== '/ws/input') {
       socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
       socket.destroy();
       return;

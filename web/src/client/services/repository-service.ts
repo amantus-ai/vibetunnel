@@ -1,8 +1,5 @@
 import type { Repository } from '../components/autocomplete-manager.js';
-import {
-  STORAGE_KEY as APP_PREFERENCES_STORAGE_KEY,
-  type AppPreferences,
-} from '../components/unified-settings.js';
+import { type AppPreferences, STORAGE_KEY } from '../components/unified-settings.js';
 import { createLogger } from '../utils/logger.js';
 import type { AuthClient } from './auth-client.js';
 
@@ -50,7 +47,7 @@ export class RepositoryService {
    * @returns The base path or default '~/'
    */
   private getRepositoryBasePath(): string {
-    const savedPreferences = localStorage.getItem(APP_PREFERENCES_STORAGE_KEY);
+    const savedPreferences = localStorage.getItem(STORAGE_KEY);
 
     if (savedPreferences) {
       try {

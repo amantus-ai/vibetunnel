@@ -115,7 +115,8 @@
     "postject": "1.0.0-alpha.6",
     "signal-exit": "^4.1.0",
     "web-push": "^3.6.7",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "zod": "^4.0.5"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.1.1",

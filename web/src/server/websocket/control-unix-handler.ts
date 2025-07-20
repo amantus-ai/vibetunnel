@@ -80,37 +80,6 @@ class SystemHandler implements MessageHandler {
     logger.log(`System handler: ${message.action}, type: ${message.type}, id: ${message.id}`);
 
     switch (message.action) {
-      case 'repository-path-update': {
-        const payload = message.payload as { path: string };
-        logger.log(`Repository path update received: ${JSON.stringify(payload)}`);
-
-        if (!payload?.path) {
-          logger.error('Missing path in payload');
-          return createControlResponse(message, null, 'Missing path in payload');
-        }
-
-        try {
-          // Update the server configuration
-          logger.log(`Calling updateRepositoryPath with: ${payload.path}`);
-          const updateSuccess = await this.controlUnixHandler.updateRepositoryPath(payload.path);
-
-          if (updateSuccess) {
-            logger.log(`Successfully updated repository path to: ${payload.path}`);
-            return createControlResponse(message, { success: true, path: payload.path });
-          } else {
-            logger.error('updateRepositoryPath returned false');
-            return createControlResponse(message, null, 'Failed to update repository path');
-          }
-        } catch (error) {
-          logger.error('Failed to update repository path:', error);
-          return createControlResponse(
-            message,
-            null,
-            error instanceof Error ? error.message : 'Failed to update repository path'
-          );
-        }
-      }
-
       case 'ping':
         // Already handled in handleMacMessage
         return null;
@@ -133,7 +102,6 @@ export class ControlUnixHandler {
   private readonly socketPath: string;
   private handlers = new Map<ControlCategory, MessageHandler>();
   private messageBuffer = Buffer.alloc(0);
-  private currentRepositoryPath: string | null = null;
 
   constructor() {
     // Use a unique socket path in user's home directory to avoid /tmp issues
@@ -426,11 +394,6 @@ export class ControlUnixHandler {
       return;
     }
 
-    // Log repository-path-update messages specifically
-    if (message.category === 'system' && message.action === 'repository-path-update') {
-      logger.log(`🔍 Repository path update message details:`, JSON.stringify(message));
-    }
-
     // Check if this is a response to a pending request
     if (message.type === 'response' && this.pendingRequests.has(message.id)) {
       const resolver = this.pendingRequests.get(message.id);
@@ -574,29 +537,6 @@ export class ControlUnixHandler {
       this.macSocket?.destroy();
       this.macSocket = null;
     }
-  }
-
-  /**
-   * Update the repository path
-   */
-  async updateRepositoryPath(path: string): Promise<boolean> {
-    logger.log(`updateRepositoryPath called with path: ${path}`);
-
-    try {
-      this.currentRepositoryPath = path;
-      logger.log(`Set currentRepositoryPath to: ${this.currentRepositoryPath}`);
-      return true;
-    } catch (error) {
-      logger.error('Failed to update repository path:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Get the current repository path
-   */
-  getRepositoryPath(): string | null {
-    return this.currentRepositoryPath;
   }
 }
 
