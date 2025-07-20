@@ -17,6 +17,7 @@ import { isAIAssistantSession, sendAIPrompt } from '../../utils/ai-sessions.js';
 import { createLogger } from '../../utils/logger.js';
 import './mobile-menu.js';
 import '../theme-toggle-icon.js';
+import './image-upload-menu.js';
 
 const logger = createLogger('session-header');
 
@@ -262,6 +263,16 @@ export class SessionHeader extends LitElement {
                 />
               </svg>
             </button>
+            
+            <!-- Image Upload Menu -->
+            <image-upload-menu
+              .onPasteImage=${() => this.handlePasteImage()}
+              .onSelectImage=${() => this.handleSelectImage()}
+              .onOpenCamera=${() => this.handleOpenCamera()}
+              .onBrowseFiles=${() => this.onOpenFileBrowser?.()}
+              .isMobile=${this.isMobile}
+            ></image-upload-menu>
+            
             <button
               class="bg-bg-tertiary border border-border rounded-lg px-3 py-2 font-mono text-xs text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0 width-selector-button"
               @click=${() => this.onMaxWidthToggle?.()}
@@ -340,4 +351,34 @@ export class SessionHeader extends LitElement {
   private handleMouseLeave = () => {
     this.isHovered = false;
   };
+
+  private handlePasteImage() {
+    // Dispatch event to session-view to handle paste
+    this.dispatchEvent(
+      new CustomEvent('paste-image', {
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  private handleSelectImage() {
+    // Dispatch event to session-view to open image picker
+    this.dispatchEvent(
+      new CustomEvent('select-image', {
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  private handleOpenCamera() {
+    // Dispatch event to session-view to open camera
+    this.dispatchEvent(
+      new CustomEvent('open-camera', {
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
 }

@@ -1005,6 +1005,72 @@ export class SessionView extends LitElement {
     this.showImagePicker = false;
   }
 
+  private async handlePasteImage() {
+    // Try to paste image from clipboard
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+
+      for (const clipboardItem of clipboardItems) {
+        const imageTypes = clipboardItem.types.filter((type) => type.startsWith('image/'));
+
+        for (const imageType of imageTypes) {
+          const blob = await clipboardItem.getType(imageType);
+          const file = new File([blob], `pasted-image.${imageType.split('/')[1]}`, {
+            type: imageType,
+          });
+
+          await this.uploadFile(file);
+          logger.log(`Successfully pasted image from clipboard`);
+          return;
+        }
+      }
+
+      // No image found in clipboard
+      logger.log('No image found in clipboard');
+    } catch (error) {
+      logger.error('Failed to paste image from clipboard:', error);
+      // Fallback to showing a message
+      this.dispatchEvent(
+        new CustomEvent('show-notification', {
+          detail: { message: 'No image found in clipboard or clipboard access denied' },
+          bubbles: true,
+          composed: true,
+        })
+      );
+    }
+  }
+
+  private handleSelectImage() {
+    // Show web file picker with image filter
+    this.showImagePicker = true;
+    // Set accept attribute on file picker after it renders
+    setTimeout(() => {
+      const filePicker = this.querySelector('file-picker') as FilePicker;
+      if (filePicker) {
+        const input = filePicker.querySelector('input[type="file"]') as HTMLInputElement;
+        if (input) {
+          input.accept = 'image/*';
+        }
+      }
+    }, 0);
+  }
+
+  private handleOpenCamera() {
+    // Show file picker with camera capture
+    this.showImagePicker = true;
+    // Set capture attribute on file picker after it renders
+    setTimeout(() => {
+      const filePicker = this.querySelector('file-picker') as FilePicker;
+      if (filePicker) {
+        const input = filePicker.querySelector('input[type="file"]') as HTMLInputElement;
+        if (input) {
+          input.accept = 'image/*';
+          input.capture = 'environment'; // or 'user' for front camera
+        }
+      }
+    }, 0);
+  }
+
   private async handleFileSelected(event: CustomEvent) {
     const { path } = event.detail;
     if (!path || !this.session) return;
@@ -1377,6 +1443,9 @@ export class SessionView extends LitElement {
             this.customWidth = '';
           }}
           @session-rename=${(e: CustomEvent) => this.handleRename(e)}
+          @paste-image=${() => this.handlePasteImage()}
+          @select-image=${() => this.handleSelectImage()}
+          @open-camera=${() => this.handleOpenCamera()}
           @capture-toggled=${(e: CustomEvent) => {
             this.dispatchEvent(
               new CustomEvent('capture-toggled', {
