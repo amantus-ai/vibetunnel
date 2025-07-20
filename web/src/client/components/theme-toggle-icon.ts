@@ -103,15 +103,18 @@ export class ThemeToggleIcon extends LitElement {
       case 'system':
         return html`
           <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clip-rule="evenodd"/>
+            <path d="M10 2C5.858 2 2.5 5.358 2.5 9.5S5.858 17 10 17s7.5-3.358 7.5-7.5S14.142 2 10 2zM10 15.5V4.5c3.314 0 6 2.686 6 6s-2.686 6-6 6z"/>
           </svg>
         `;
     }
   }
 
   private getTooltip() {
-    const current = this.theme.charAt(0).toUpperCase() + this.theme.slice(1);
-    const next = this.theme === 'light' ? 'Dark' : this.theme === 'dark' ? 'System' : 'Light';
+    const current =
+      this.theme === 'system'
+        ? 'Auto (System)'
+        : this.theme.charAt(0).toUpperCase() + this.theme.slice(1);
+    const next = this.theme === 'light' ? 'Dark' : this.theme === 'dark' ? 'Auto' : 'Light';
     return `Theme: ${current} (click for ${next})`;
   }
 
