@@ -36,6 +36,7 @@ struct ServerInfoHeader: View {
                         .resizable()
                         .frame(width: 24, height: 24)
                         .cornerRadius(4)
+                        .padding(.leading, -5) // Align with small icons below
 
                     Text(appDisplayName)
                         .font(.system(size: 14, weight: .semibold))
@@ -134,7 +135,7 @@ struct ServerAddressRow: View {
                 Text(computedAddress)
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(AppColors.Fallback.serverRunning(for: colorScheme))
-                    .underline()
+                    .underline(isHovered)
             })
             .buttonStyle(.plain)
             .pointingHandCursor()

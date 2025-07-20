@@ -225,9 +225,15 @@ export class VibeTerminalBinary extends VibeTerminalBuffer {
     let newCols = Math.floor(rect.width / charWidth);
     const newRows = Math.floor(rect.height / lineHeight);
 
-    // Apply max columns constraint if set
-    if (this.maxCols > 0 && newCols > this.maxCols) {
-      newCols = this.maxCols;
+    // Apply fitHorizontally logic (same as ASCII terminal)
+    if (!this.fitHorizontally && !this.userOverrideWidth) {
+      // If not fitting to window and no user override, use initial cols or default
+      newCols = this.initialCols || 80;
+    } else {
+      // Apply max columns constraint if set
+      if (this.maxCols > 0 && newCols > this.maxCols) {
+        newCols = this.maxCols;
+      }
     }
 
     // Only resize if dimensions actually changed

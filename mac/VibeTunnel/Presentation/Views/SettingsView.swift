@@ -14,13 +14,14 @@ struct SettingsView: View {
     // MARK: - Constants
 
     private enum Layout {
-        static let defaultTabSize = CGSize(width: 500, height: 710)
-        static let fallbackTabSize = CGSize(width: 500, height: 450)
+        static let defaultTabSize = CGSize(width: 520, height: 710)
+        static let fallbackTabSize = CGSize(width: 520, height: 450)
     }
 
     /// Define ideal sizes for each tab
     private let tabSizes: [SettingsTab: CGSize] = [
         .general: Layout.defaultTabSize,
+        .quickStart: Layout.defaultTabSize,
         .dashboard: Layout.defaultTabSize,
         .remoteAccess: Layout.defaultTabSize,
         .securityPermissions: Layout.defaultTabSize,
@@ -36,6 +37,12 @@ struct SettingsView: View {
                     Label(SettingsTab.general.displayName, systemImage: SettingsTab.general.icon)
                 }
                 .tag(SettingsTab.general)
+
+            QuickStartSettingsView()
+                .tabItem {
+                    Label(SettingsTab.quickStart.displayName, systemImage: SettingsTab.quickStart.icon)
+                }
+                .tag(SettingsTab.quickStart)
 
             DashboardSettingsView()
                 .tabItem {

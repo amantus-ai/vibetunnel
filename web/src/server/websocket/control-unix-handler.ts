@@ -133,7 +133,6 @@ export class ControlUnixHandler {
   private readonly socketPath: string;
   private handlers = new Map<ControlCategory, MessageHandler>();
   private messageBuffer = Buffer.alloc(0);
-  private configUpdateCallback: ((config: { repositoryBasePath: string }) => void) | null = null;
   private currentRepositoryPath: string | null = null;
 
   constructor() {
@@ -578,14 +577,7 @@ export class ControlUnixHandler {
   }
 
   /**
-   * Set a callback to be called when configuration is updated
-   */
-  setConfigUpdateCallback(callback: (config: { repositoryBasePath: string }) => void): void {
-    this.configUpdateCallback = callback;
-  }
-
-  /**
-   * Update the repository path and notify all connected clients
+   * Update the repository path
    */
   async updateRepositoryPath(path: string): Promise<boolean> {
     logger.log(`updateRepositoryPath called with path: ${path}`);
@@ -593,17 +585,7 @@ export class ControlUnixHandler {
     try {
       this.currentRepositoryPath = path;
       logger.log(`Set currentRepositoryPath to: ${this.currentRepositoryPath}`);
-
-      // Call the callback to update server configuration and broadcast to web clients
-      if (this.configUpdateCallback) {
-        logger.log('Calling configUpdateCallback...');
-        this.configUpdateCallback({ repositoryBasePath: path });
-        logger.log('configUpdateCallback completed successfully');
-        return true;
-      }
-
-      logger.warn('No config update callback set - is the server initialized?');
-      return false;
+      return true;
     } catch (error) {
       logger.error('Failed to update repository path:', error);
       return false;

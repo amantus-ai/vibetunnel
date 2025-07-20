@@ -1433,6 +1433,8 @@ export class SessionView extends LitElement {
           .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
           .onOpenSettings=${() => this.handleOpenSettings()}
           .macAppConnected=${this.macAppConnected}
+          .onTerminateSession=${() => this.handleTerminateSession()}
+          .onClearSession=${() => this.handleClearSession()}
           @close-width-selector=${() => {
             this.showWidthSelector = false;
             this.customWidth = '';
@@ -1750,5 +1752,33 @@ export class SessionView extends LitElement {
         }
       </div>
     `;
+  }
+
+  private async handleTerminateSession() {
+    if (!this.session || this.session.status !== 'running') return;
+
+    // Send Ctrl+D to the terminal to exit cleanly
+    try {
+      // Access the input manager to send the EOF signal
+      if (this.inputManager) {
+        await this.inputManager.handleKeyboardInput(
+          new KeyboardEvent('keydown', {
+            key: 'd',
+            ctrlKey: true,
+            code: 'KeyD',
+          })
+        );
+      }
+    } catch (error) {
+      logger.error('Failed to send terminate signal:', error);
+    }
+  }
+
+  private async handleClearSession() {
+    if (!this.session || this.session.status !== 'exited') return;
+
+    // Navigate back to the list view
+    // The session list will handle removing exited sessions
+    this.handleBack();
   }
 }

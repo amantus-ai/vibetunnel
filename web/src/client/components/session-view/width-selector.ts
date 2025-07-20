@@ -207,7 +207,10 @@ export class TerminalSettingsModal extends LitElement {
                 class="w-full bg-bg-secondary border border-border rounded-md pl-4 pr-10 py-3 text-sm font-mono text-text focus:border-primary focus:shadow-glow-sm cursor-pointer appearance-none"
                 style="background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22${this.getArrowColor()}%22%3e%3cpath fill-rule=%22evenodd%22 d=%22M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z%22 clip-rule=%22evenodd%22/%3e%3c/svg%3e'); background-position: right 0.75rem center; background-repeat: no-repeat; background-size: 1.25em 1.25em;"
                 .value=${isCustomValue || this.showCustomInput ? 'custom' : String(this.terminalMaxCols)}
+                @click=${(e: Event) => e.stopPropagation()}
+                @mousedown=${(e: Event) => e.stopPropagation()}
                 @change=${(e: Event) => {
+                  e.stopPropagation();
                   const value = (e.target as HTMLSelectElement).value;
                   if (value === 'custom') {
                     this.showCustomInput = true;
@@ -322,6 +325,8 @@ export class TerminalSettingsModal extends LitElement {
                 id="theme-select"
                 class="w-full bg-bg-secondary border border-border rounded-md pl-4 pr-10 py-3 text-sm font-mono text-text focus:border-primary focus:shadow-glow-sm cursor-pointer appearance-none"
                 style="background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22${this.getArrowColor()}%22%3e%3cpath fill-rule=%22evenodd%22 d=%22M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z%22 clip-rule=%22evenodd%22/%3e%3c/svg%3e'); background-position: right 0.75rem center; background-repeat: no-repeat; background-size: 1.25em 1.25em;"
+                @click=${(e: Event) => e.stopPropagation()}
+                @mousedown=${(e: Event) => e.stopPropagation()}
                 @change=${(e: Event) => {
                   e.stopPropagation();
                   const value = (e.target as HTMLSelectElement).value as TerminalThemeId;
@@ -334,7 +339,6 @@ export class TerminalSettingsModal extends LitElement {
                   );
                   this.onThemeChange?.(value);
                 }}
-                @click=${(e: Event) => e.stopPropagation()}
               >
                 ${TERMINAL_THEMES.map((t) => html`<option value=${t.id}>${t.name}</option>`)}
               </select>
