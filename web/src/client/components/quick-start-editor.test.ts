@@ -446,16 +446,12 @@ describe('QuickStartEditor', () => {
       element.addEventListener('quick-start-changed', changedListener);
 
       // Reset to defaults
-      const resetButton = Array.from(element.querySelectorAll('button')).find((btn) =>
-        btn.textContent?.includes('Reset to Defaults')
-      ) as HTMLButtonElement;
+      const resetButton = element.querySelector('#quick-start-reset-button') as HTMLButtonElement;
       resetButton.click();
       await element.updateComplete;
 
       // Save
-      const saveButton = Array.from(element.querySelectorAll('button')).find((btn) =>
-        btn.textContent?.includes('Save')
-      ) as HTMLButtonElement;
+      const saveButton = element.querySelector('#quick-start-save-button') as HTMLButtonElement;
       saveButton.click();
       await element.updateComplete;
 
@@ -466,21 +462,17 @@ describe('QuickStartEditor', () => {
 
     it('should cancel reset changes when cancel is clicked', async () => {
       // Reset to defaults
-      const resetButton = Array.from(element.querySelectorAll('button')).find((btn) =>
-        btn.textContent?.includes('Reset to Defaults')
-      ) as HTMLButtonElement;
+      const resetButton = element.querySelector('#quick-start-reset-button') as HTMLButtonElement;
       resetButton.click();
       await element.updateComplete;
 
       // Cancel
-      const cancelButton = Array.from(element.querySelectorAll('button')).find((btn) =>
-        btn.textContent?.includes('Cancel')
-      ) as HTMLButtonElement;
+      const cancelButton = element.querySelector('#quick-start-cancel-button') as HTMLButtonElement;
       cancelButton.click();
       await element.updateComplete;
 
       // Re-enter edit mode to check
-      const editButton = element.querySelector('button') as HTMLButtonElement;
+      const editButton = element.querySelector('#quick-start-edit-button') as HTMLButtonElement;
       editButton.click();
       await element.updateComplete;
 

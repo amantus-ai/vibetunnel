@@ -10,7 +10,7 @@
 - Reset to defaults button when you want the original set back
 - File-based persistence in `~/.vibetunnel/config.json`
 
-#### **Enhanced Directory Autocomplete**
+#### **New Session Path Autocomplete**
 - Intelligent path autocomplete when creating sessions
 - Home directory expansion (`~/` shortcuts work properly)
 - Visual file browser with folder icon
@@ -32,11 +32,10 @@
 - Comprehensive systemd commands for status, logs, start/stop
 
 #### **UI Improvements**
+- Improves experimental binary terminal mode (no more long scrolling - see Terminal Settings)
 - Clickable ngrok URLs in Settings with copy button (#422)
 - Cleaner session headers with better-positioned controls
 - Fixed magic wand icon alignment for AI sessions
-- Improved terminal padding and responsive design
-- Fixed OPTIONS label chevron positioning
 
 ### 🐛 Bug Fixes
 
@@ -53,7 +52,11 @@
 
 ### 👥 Contributors
 First-time contributors to VibeTunnel:
-- [@hewigovens](https://github.com/hewigovens) - Added systemd service management for Linux deployments (#426)
+- [@gopi-kori](https://github.com/gopi-kori) - Made ngrok URLs clickable with copy button in Settings (#422)
+
+Additional contributors:
+- [@hewigovens](https://github.com/hewigovens) - Co-authored systemd service management for Linux deployments (#426)
+- Claude (AI assistant) - Co-authored systemd service implementation (#426)
 
 ## [1.0.0-beta.13] - 2025-07-19
 
