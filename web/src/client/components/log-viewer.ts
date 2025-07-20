@@ -284,7 +284,7 @@ export class LogViewer extends LitElement {
         <div class="flex items-center justify-center h-screen bg-base text-primary">
           <div class="text-center">
             <div
-              class="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mb-4"
+              class="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mb-4 mx-auto"
             ></div>
             <div>Loading logs...</div>
           </div>
@@ -298,14 +298,14 @@ export class LogViewer extends LitElement {
       ${scrollbarStyles}
       <div class="flex flex-col h-full bg-base text-primary font-mono">
         <!-- Header - single row on desktop, two rows on mobile -->
-        <div class="bg-secondary border-b border-base p-3 sm:p-4">
+        <div class="bg-secondary border-b border-border/50 p-3 sm:p-4">
           <!-- Mobile layout (two rows) -->
           <div class="sm:hidden">
             <!-- Top row with back button and title -->
             <div class="flex items-center gap-2 mb-3">
               <!-- Back button -->
               <button
-                class="p-2 bg-base border border-base rounded text-sm text-primary hover:border-primary hover:text-primary transition-colors flex items-center gap-1 flex-shrink-0"
+                class="p-2 bg-base border border-border/50 rounded text-sm text-primary hover:border-primary hover:text-primary transition-colors flex items-center gap-1 flex-shrink-0"
                 @click=${() => {
                   window.location.href = '/';
                 }}
@@ -335,7 +335,7 @@ export class LogViewer extends LitElement {
                   class="p-2 text-xs uppercase font-bold rounded transition-colors ${
                     this.autoScroll
                       ? 'bg-primary text-base'
-                      : 'bg-tertiary text-muted border border-base'
+                      : 'bg-tertiary text-muted border border-border/50'
                   }"
                   @click=${() => {
                     this.autoScroll = !this.autoScroll;
@@ -361,7 +361,7 @@ export class LogViewer extends LitElement {
               <!-- Search input -->
               <input
                 type="text"
-                class="px-3 py-1.5 bg-base border border-base rounded text-sm text-primary placeholder-muted focus:outline-none focus:border-primary transition-colors w-full"
+                class="px-3 py-1.5 bg-base border border-border/50 rounded text-sm text-primary placeholder-muted focus:outline-none focus:border-primary transition-colors w-full"
                 placeholder="Filter logs..."
                 .value=${this.filter}
                 @input=${(e: Event) => {

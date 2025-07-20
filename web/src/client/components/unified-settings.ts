@@ -209,9 +209,14 @@ export class UnifiedSettings extends LitElement {
 
     this.isDiscoveringRepositories = true;
     try {
+      // Add a small delay to ensure preferences are loaded
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       const repositories = await this.repositoryService.discoverRepositories();
       this.repositoryCount = repositories.length;
-      logger.log(`Discovered ${this.repositoryCount} repositories`);
+      logger.log(
+        `Discovered ${this.repositoryCount} repositories in ${this.appPreferences.repositoryBasePath}`
+      );
     } catch (error) {
       logger.error('Failed to discover repositories', error);
       this.repositoryCount = 0;
@@ -379,7 +384,7 @@ export class UnifiedSettings extends LitElement {
           style="view-transition-name: settings-modal"
         >
           <!-- Header -->
-          <div class="p-4 pb-4 border-b border-base relative flex-shrink-0">
+          <div class="p-4 pb-4 border-b border-border/50 relative flex-shrink-0">
             <h2 class="text-primary text-lg font-bold">Settings</h2>
             <button
               class="absolute top-4 right-4 text-muted hover:text-primary transition-colors p-1"
@@ -439,7 +444,7 @@ export class UnifiedSettings extends LitElement {
             `
             : html`
               <!-- Main toggle -->
-              <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-base">
+              <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-border/50">
                 <div class="flex-1">
                   <label class="text-primary font-medium">Enable Notifications</label>
                   <p class="text-muted text-xs mt-1">
@@ -489,7 +494,7 @@ export class UnifiedSettings extends LitElement {
                     </div>
 
                     <!-- Test button -->
-                    <div class="flex items-center justify-between pt-3 mt-3 border-t border-base">
+                    <div class="flex items-center justify-between pt-3 mt-3 border-t border-border/50">
                       <p class="text-xs text-muted">Test your notification settings</p>
                       <button
                         class="btn-secondary text-xs px-3 py-1.5"
@@ -547,7 +552,7 @@ export class UnifiedSettings extends LitElement {
         ${
           this.mediaState.isMobile
             ? html`
-              <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-base">
+              <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-border/50">
                 <div class="flex-1">
                   <label class="text-primary font-medium">
                     Use Direct Keyboard
@@ -576,7 +581,7 @@ export class UnifiedSettings extends LitElement {
         }
 
         <!-- Show log link -->
-        <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-base">
+        <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-border/50">
           <div class="flex-1">
             <label class="text-primary font-medium">Show Log Link</label>
             <p class="text-muted text-xs mt-1">
@@ -600,15 +605,28 @@ export class UnifiedSettings extends LitElement {
         </div>
 
         <!-- Repository Base Path -->
-        <div class="p-4 bg-tertiary rounded-lg border border-base">
+        <div class="p-4 bg-tertiary rounded-lg border border-border/50">
           <div class="mb-3">
             <div class="flex items-center justify-between">
               <label class="text-primary font-medium">Repository Base Path</label>
-              ${
-                this.isDiscoveringRepositories
-                  ? html`<span class="text-muted text-xs">Scanning...</span>`
-                  : html`<span class="text-muted text-xs">${this.repositoryCount} repositories found</span>`
-              }
+              <div class="flex items-center gap-2">
+                ${
+                  this.isDiscoveringRepositories
+                    ? html`<span class="text-muted text-xs">Scanning...</span>`
+                    : html`<span class="text-muted text-xs">${this.repositoryCount} repositories found</span>`
+                }
+                <button
+                  @click=${() => this.discoverRepositories()}
+                  ?disabled=${this.isDiscoveringRepositories}
+                  class="text-primary hover:text-primary-hover text-xs transition-colors duration-200"
+                  title="Refresh repository list"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <p class="text-muted text-xs mt-1">
               ${

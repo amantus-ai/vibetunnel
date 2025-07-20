@@ -12,7 +12,6 @@ class ConfigManager: ObservableObject {
     private let configDir: URL
     private let configPath: URL
     private var fileMonitor: DispatchSourceFileSystemObject?
-    private let fileMonitorQueue = DispatchQueue(label: "sh.vibetunnel.config-monitor")
     
     @Published private(set) var quickStartCommands: [QuickStartCommand] = []
     
@@ -142,30 +141,27 @@ class ConfigManager: ObservableObject {
             return
         }
         
-        // Keep a reference to the queue for the closure
-        let monitorQueue = fileMonitorQueue
-        
-        // Create dispatch source
+        // Create dispatch source on main queue since ConfigManager is @MainActor
         let source = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: fileDescriptor,
             eventMask: [.write, .delete, .rename],
-            queue: monitorQueue
+            queue: .main
         )
         
         source.setEventHandler { [weak self] in
+            guard let self = self else { return }
+            
             // Debounce rapid changes
-            monitorQueue.asyncAfter(deadline: .now() + 0.5) {
-                Task { @MainActor [weak self] in
-                    guard let self = self else { return }
-                    
-                    self.logger.info("Configuration file changed, reloading...")
-                    let oldCommands = self.quickStartCommands
-                    self.loadConfiguration()
-                    
-                    // Only log if commands actually changed
-                    if oldCommands != self.quickStartCommands {
-                        self.logger.info("Quick start commands updated")
-                    }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                guard let self = self else { return }
+                
+                self.logger.info("Configuration file changed, reloading...")
+                let oldCommands = self.quickStartCommands
+                self.loadConfiguration()
+                
+                // Only log if commands actually changed
+                if oldCommands != self.quickStartCommands {
+                    self.logger.info("Quick start commands updated")
                 }
             }
         }

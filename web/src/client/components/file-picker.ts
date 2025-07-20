@@ -248,7 +248,7 @@ export class FilePicker extends LitElement {
 
     return html`
       <div class="fixed inset-0 bg-bg bg-opacity-80 backdrop-blur-sm flex items-center justify-center animate-fade-in" style="z-index: ${Z_INDEX.FILE_PICKER};" @click=${this.handleCancel}>
-        <div class="bg-elevated border border-base rounded-xl shadow-2xl p-8 m-4 max-w-sm w-full animate-scale-in" @click=${(e: Event) => e.stopPropagation()}>
+        <div class="bg-elevated border border-border/50 rounded-xl shadow-2xl p-8 m-4 max-w-sm w-full animate-scale-in" @click=${(e: Event) => e.stopPropagation()}>
           <h3 class="text-xl font-bold text-primary mb-6">
             Select File
           </h3>
@@ -284,10 +284,10 @@ export class FilePicker extends LitElement {
           `
           }
           
-          <div class="mt-6 pt-6 border-t border-base">
+          <div class="mt-6 pt-6 border-t border-border/50">
             <button
               @click=${this.handleCancel}
-              class="w-full bg-secondary border border-base text-primary font-mono py-3 px-6 rounded-lg transition-all duration-200 hover:bg-surface hover:border-primary active:scale-95"
+              class="w-full bg-secondary border border-border/50 text-primary font-mono py-3 px-6 rounded-lg transition-all duration-200 hover:bg-surface hover:border-primary active:scale-95"
               ?disabled=${this.uploading}
             >
               Cancel

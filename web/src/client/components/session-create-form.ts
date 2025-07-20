@@ -854,7 +854,7 @@ export class SessionCreateForm extends LitElement {
             <div class="mb-2 sm:mb-4 lg:mb-6">
               <button
                 @click=${this.handleToggleOptions}
-                class="flex items-center gap-1.5 sm:gap-2 text-text-muted hover:text-primary transition-colors duration-200 mb-2 sm:mb-3"
+                class="flex items-center gap-1.5 sm:gap-2 text-text-muted hover:text-primary transition-colors duration-200"
                 type="button"
                 aria-expanded="${this.showOptions}"
               >

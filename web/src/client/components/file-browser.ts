@@ -534,7 +534,7 @@ export class FileBrowser extends LitElement {
         >
           <!-- Compact Header (like session-view) -->
           <div
-            class="flex items-center justify-between px-3 py-2 border-b border-base text-sm min-w-0 bg-secondary"
+            class="flex items-center justify-between px-3 py-2 border-b border-border/50 text-sm min-w-0 bg-secondary"
             style="padding-top: max(0.5rem, env(safe-area-inset-top)); padding-left: max(0.75rem, env(safe-area-inset-left)); padding-right: max(0.75rem, env(safe-area-inset-right));"
           >
             <div class="flex items-center gap-3 min-w-0 flex-1">
@@ -563,7 +563,7 @@ export class FileBrowser extends LitElement {
                         @input=${this.handlePathInput}
                         @keydown=${this.handlePathKeyDown}
                         @blur=${this.handlePathBlur}
-                        class="bg-bg border border-base rounded px-2 py-1 text-status-info text-xs sm:text-sm font-mono w-full min-w-0 focus:outline-none focus:border-primary"
+                        class="bg-bg border border-border/50 rounded px-2 py-1 text-status-info text-xs sm:text-sm font-mono w-full min-w-0 focus:outline-none focus:border-primary"
                         placeholder="Enter path and press Enter"
                       />
                     `
@@ -602,11 +602,11 @@ export class FileBrowser extends LitElement {
             <div
               class="${this.isMobile && this.mobileView === 'preview' ? 'hidden' : ''} ${
                 this.isMobile ? 'w-full' : 'w-80'
-              } bg-secondary border-r border-base flex flex-col"
+              } bg-secondary border-r border-border/50 flex flex-col"
             >
               <!-- File list header with toggles -->
               <div
-                class="bg-secondary border-b border-base p-3 flex items-center justify-between"
+                class="bg-secondary border-b border-border/50 p-3 flex items-center justify-between"
               >
                 <div class="flex gap-2">
                   <button
@@ -655,7 +655,7 @@ export class FileBrowser extends LitElement {
                         this.currentFullPath !== '/'
                           ? html`
                             <div
-                              class="p-3 hover:bg-light cursor-pointer transition-colors flex items-center gap-2 border-b border-base"
+                              class="p-3 hover:bg-light cursor-pointer transition-colors flex items-center gap-2 border-b border-border/50"
                               @click=${this.handleParentClick}
                             >
                               ${getParentDirectoryIcon()}
@@ -723,7 +723,7 @@ export class FileBrowser extends LitElement {
                 this.selectedFile
                   ? html`
                     <div
-                      class="bg-secondary border-b border-base p-3 ${
+                      class="bg-secondary border-b border-border/50 p-3 ${
                         this.isMobile ? 'space-y-2' : 'flex items-center justify-between'
                       }"
                     >
@@ -845,7 +845,7 @@ export class FileBrowser extends LitElement {
           ${
             this.mode === 'select'
               ? html`
-                <div class="p-4 border-t border-base flex gap-4">
+                <div class="p-4 border-t border-border/50 flex gap-4">
                   <button class="btn-ghost font-mono flex-1" @click=${this.handleCancel}>
                     Cancel
                   </button>

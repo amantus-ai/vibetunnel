@@ -35,7 +35,7 @@ struct QuickStartSettingsSection: View {
                 }
                 
                 // Commands list
-                VStack(spacing: 4) {
+                List {
                     ForEach(configManager.quickStartCommands) { command in
                         QuickStartCommandRow(
                             command: command,
@@ -45,6 +45,9 @@ struct QuickStartSettingsSection: View {
                             onDelete: { deleteCommand(command) },
                             onStopEditing: { editingCommandId = nil }
                         )
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+                        .listRowBackground(Color.clear)
                     }
                     .onMove(perform: moveQuickStartItems)
                     
@@ -82,10 +85,16 @@ struct QuickStartSettingsSection: View {
                         .padding(.vertical, 8)
                         .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
                         .cornerRadius(4)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+                        .listRowBackground(Color.clear)
                     }
                 }
+                .listStyle(.plain)
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(6)
+                .frame(minHeight: 100)
+                .scrollContentBackground(.hidden)
                 
                 // Action buttons
                 HStack {
