@@ -690,6 +690,7 @@ export class SessionCreateForm extends LitElement {
                   </svg>
                 </button>
                 <button
+                  id="session-autocomplete-button"
                   class="bg-bg-tertiary border border-border/50 rounded-lg p-1.5 sm:p-2 lg:p-3 font-mono text-text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary/50 hover:shadow-sm flex-shrink-0 ${
                     this.showRepositoryDropdown || this.showCompletions
                       ? 'text-primary border-primary/50'
@@ -948,6 +949,7 @@ export class SessionCreateForm extends LitElement {
 
             <div class="flex gap-1.5 sm:gap-2 lg:gap-3 mt-2 sm:mt-3 lg:mt-4 xl:mt-6">
               <button
+                id="session-cancel-button"
                 class="flex-1 bg-bg-elevated border border-border/50 text-text px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 xl:px-6 xl:py-3 rounded-lg font-mono text-[10px] sm:text-xs lg:text-sm transition-all duration-200 hover:bg-hover hover:border-border"
                 @click=${this.handleCancel}
                 ?disabled=${this.isCreating}
@@ -955,6 +957,7 @@ export class SessionCreateForm extends LitElement {
                 Cancel
               </button>
               <button
+                id="session-create-button"
                 class="flex-1 bg-primary text-text-bright px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 xl:px-6 xl:py-3 rounded-lg font-mono text-[10px] sm:text-xs lg:text-sm font-medium transition-all duration-200 hover:bg-primary-hover hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
                 @click=${this.handleCreate}
                 ?disabled=${

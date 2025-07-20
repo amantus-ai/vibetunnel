@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { controlUnixHandler } from '../../server/websocket/control-unix-handler';
 
 // Mock dependencies
 vi.mock('fs', () => ({
@@ -38,8 +37,13 @@ vi.mock('../../server/utils/logger', () => ({
 }));
 
 describe('Control Unix Handler', () => {
-  beforeEach(() => {
+  let controlUnixHandler: any;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
+    // Import after mocks are set up
+    const module = await import('../../server/websocket/control-unix-handler');
+    controlUnixHandler = module.controlUnixHandler;
   });
 
   afterEach(() => {
@@ -49,8 +53,8 @@ describe('Control Unix Handler', () => {
   describe('Basic Functionality', () => {
     it('should start the Unix socket server', async () => {
       await controlUnixHandler.start();
-      
-      const net = require('net');
+
+      const net = (await vi.importMock('net')) as any;
       expect(net.createServer).toHaveBeenCalled();
     });
 
@@ -74,7 +78,7 @@ describe('Control Unix Handler', () => {
 
       // Should not throw
       controlUnixHandler.handleBrowserConnection(mockWs as any, 'test-user');
-      
+
       expect(mockWs.on).toHaveBeenCalledWith('message', expect.any(Function));
       expect(mockWs.on).toHaveBeenCalledWith('close', expect.any(Function));
       expect(mockWs.on).toHaveBeenCalledWith('error', expect.any(Function));

@@ -10,6 +10,13 @@
 - Reset to defaults button when you want the original set back
 - File-based persistence in `~/.vibetunnel/config.json`
 
+#### **Enhanced Directory Autocomplete**
+- Intelligent path autocomplete when creating sessions
+- Home directory expansion (`~/` shortcuts work properly)
+- Visual file browser with folder icon
+- Git repository discovery in selected directories
+- Repository status shown in welcome screen
+
 #### **Session Status Management**
 - New dropdown menu in session headers for running/exited sessions
 - Terminate running sessions without closing the tab
@@ -24,13 +31,6 @@
 - Smart Node.js detection works with nvm, fnm, or global npm
 - Comprehensive systemd commands for status, logs, start/stop
 
-#### **Enhanced Directory Navigation**
-- Intelligent path autocomplete when creating sessions
-- Home directory expansion (`~/` shortcuts work properly)
-- Visual file browser with folder icon
-- Git repository discovery in selected directories
-- Repository status shown in welcome screen
-
 #### **UI Improvements**
 - Clickable ngrok URLs in Settings with copy button (#422)
 - Cleaner session headers with better-positioned controls
@@ -42,9 +42,7 @@
 
 - Fixed session timers continuing to run after sessions exited (#427)
 - Fixed sessions with undefined activity status showing as idle instead of active
-- Fixed ConfigManager threading crash when reordering Quick Start commands on macOS
-- Improved Chinese input method support (#431)
-- Removed legacy WebSocket config sync code that was causing issues
+- Removed legacy WebSocket config sync code and simplify logic
 
 #### **Under the Hood**
 - New configuration service with file watching and validation
@@ -52,11 +50,6 @@
 - REST API at `/api/config/quick-start` replacing WebSocket sync
 - Major codebase cleanup - removed Tauri project and 17k lines of unused code (#419)
 - Enhanced release process with better troubleshooting documentation
-
-### ⚠️ Breaking Changes
-
-- Quick Start configuration format changed - previous settings won't migrate automatically
-- WebSocket-based config sync removed in favor of REST API
 
 ### 👥 Contributors
 First-time contributors to VibeTunnel:

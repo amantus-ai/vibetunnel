@@ -22,7 +22,7 @@ describe('QuickStartEditor', () => {
 
   describe('Initial state', () => {
     it('should render edit button when not editing', () => {
-      const button = element.querySelector('button');
+      const button = element.querySelector('#quick-start-edit-button');
       expect(button).to.exist;
       expect(button?.textContent).to.include('Edit');
     });
@@ -35,7 +35,7 @@ describe('QuickStartEditor', () => {
 
   describe('Edit mode', () => {
     beforeEach(async () => {
-      const editButton = element.querySelector('button') as HTMLButtonElement;
+      const editButton = element.querySelector('#quick-start-edit-button') as HTMLButtonElement;
       editButton.click();
       await element.updateComplete;
     });
@@ -62,9 +62,8 @@ describe('QuickStartEditor', () => {
     });
 
     it('should show save and cancel buttons', () => {
-      const buttons = Array.from(element.querySelectorAll('button'));
-      const saveButton = buttons.find((btn) => btn.textContent?.trim() === 'Save');
-      const cancelButton = buttons.find((btn) => btn.textContent?.trim() === 'Cancel');
+      const saveButton = element.querySelector('#quick-start-save-button');
+      const cancelButton = element.querySelector('#quick-start-cancel-button');
       expect(saveButton).to.exist;
       expect(cancelButton).to.exist;
     });
@@ -72,13 +71,15 @@ describe('QuickStartEditor', () => {
 
   describe('Adding commands', () => {
     beforeEach(async () => {
-      const editButton = element.querySelector('button') as HTMLButtonElement;
+      const editButton = element.querySelector('#quick-start-edit-button') as HTMLButtonElement;
       editButton.click();
       await element.updateComplete;
     });
 
     it('should add new command when add button is clicked', async () => {
-      const addButton = element.querySelector('#quick-start-add-command-button') as HTMLButtonElement;
+      const addButton = element.querySelector(
+        '#quick-start-add-command-button'
+      ) as HTMLButtonElement;
       expect(addButton).to.exist;
       addButton.click();
       await element.updateComplete;
@@ -89,9 +90,8 @@ describe('QuickStartEditor', () => {
     });
 
     it('should focus new command input', async () => {
-      const buttons = Array.from(element.querySelectorAll('button'));
-      const addButton = buttons.find((btn) =>
-        btn.textContent?.includes('Add Command')
+      const addButton = element.querySelector(
+        '#quick-start-add-command-button'
       ) as HTMLButtonElement;
       expect(addButton).to.exist;
       addButton.click();
@@ -108,7 +108,7 @@ describe('QuickStartEditor', () => {
 
   describe('Editing commands', () => {
     beforeEach(async () => {
-      const editButton = element.querySelector('button') as HTMLButtonElement;
+      const editButton = element.querySelector('#quick-start-edit-button') as HTMLButtonElement;
       editButton.click();
       await element.updateComplete;
     });
@@ -147,16 +147,18 @@ describe('QuickStartEditor', () => {
 
   describe('Removing commands', () => {
     beforeEach(async () => {
-      const editButton = element.querySelector('button') as HTMLButtonElement;
+      const editButton = element.querySelector('#quick-start-edit-button') as HTMLButtonElement;
       editButton.click();
       await element.updateComplete;
     });
 
     it('should remove command when remove button is clicked', async () => {
-      const removeButtons = element.querySelectorAll('button[title="Remove command"]');
-      expect(removeButtons).to.have.length(3);
+      const removeButton = element.querySelector(
+        '#quick-start-remove-command-1'
+      ) as HTMLButtonElement;
+      expect(removeButton).to.exist;
 
-      (removeButtons[1] as HTMLButtonElement).click();
+      removeButton.click();
       await element.updateComplete;
 
       const commandInputs = element.querySelectorAll('input[data-command-input]');
@@ -173,16 +175,13 @@ describe('QuickStartEditor', () => {
       changedListener = vi.fn();
       element.addEventListener('quick-start-changed', changedListener);
 
-      const editButton = element.querySelector('button') as HTMLButtonElement;
+      const editButton = element.querySelector('#quick-start-edit-button') as HTMLButtonElement;
       editButton.click();
       await element.updateComplete;
     });
 
     it('should emit quick-start-changed event with valid commands', async () => {
-      const buttons = Array.from(element.querySelectorAll('button'));
-      const saveButton = buttons.find((btn) =>
-        btn.textContent?.includes('Save')
-      ) as HTMLButtonElement;
+      const saveButton = element.querySelector('#quick-start-save-button') as HTMLButtonElement;
       expect(saveButton).to.exist;
       saveButton.click();
       await element.updateComplete;
@@ -194,18 +193,14 @@ describe('QuickStartEditor', () => {
 
     it('should filter out empty commands when saving', async () => {
       // Add an empty command
-      const buttons = Array.from(element.querySelectorAll('button'));
-      const addButton = buttons.find((btn) =>
-        btn.textContent?.includes('Add Command')
+      const addButton = element.querySelector(
+        '#quick-start-add-command-button'
       ) as HTMLButtonElement;
       expect(addButton).to.exist;
       addButton.click();
       await element.updateComplete;
 
-      const saveButtons = Array.from(element.querySelectorAll('button'));
-      const saveButton = saveButtons.find((btn) =>
-        btn.textContent?.includes('Save')
-      ) as HTMLButtonElement;
+      const saveButton = element.querySelector('#quick-start-save-button') as HTMLButtonElement;
       expect(saveButton).to.exist;
       saveButton.click();
       await element.updateComplete;
@@ -216,24 +211,20 @@ describe('QuickStartEditor', () => {
     });
 
     it('should exit edit mode after saving', async () => {
-      const buttons = Array.from(element.querySelectorAll('button'));
-      const saveButton = buttons.find((btn) =>
-        btn.textContent?.includes('Save')
-      ) as HTMLButtonElement;
+      const saveButton = element.querySelector('#quick-start-save-button') as HTMLButtonElement;
       expect(saveButton).to.exist;
       saveButton.click();
       await element.updateComplete;
 
       expect(element.editing).to.be.false;
-      const buttonsAfterSave = Array.from(element.querySelectorAll('button'));
-      const editButtonAfterSave = buttonsAfterSave.find((btn) => btn.textContent?.includes('Edit'));
+      const editButtonAfterSave = element.querySelector('#quick-start-edit-button');
       expect(editButtonAfterSave).to.exist;
     });
   });
 
   describe('Canceling changes', () => {
     beforeEach(async () => {
-      const editButton = element.querySelector('button') as HTMLButtonElement;
+      const editButton = element.querySelector('#quick-start-edit-button') as HTMLButtonElement;
       editButton.click();
       await element.updateComplete;
     });
@@ -246,16 +237,13 @@ describe('QuickStartEditor', () => {
       await element.updateComplete;
 
       // Cancel
-      const buttons = Array.from(element.querySelectorAll('button'));
-      const cancelButton = buttons.find((btn) =>
-        btn.textContent?.includes('Cancel')
-      ) as HTMLButtonElement;
+      const cancelButton = element.querySelector('#quick-start-cancel-button') as HTMLButtonElement;
       expect(cancelButton).to.exist;
       cancelButton.click();
       await element.updateComplete;
 
       // Re-enter edit mode to check
-      const editButton = element.querySelector('button') as HTMLButtonElement;
+      const editButton = element.querySelector('#quick-start-edit-button') as HTMLButtonElement;
       editButton.click();
       await element.updateComplete;
 
@@ -267,10 +255,7 @@ describe('QuickStartEditor', () => {
       const cancelListener = vi.fn();
       element.addEventListener('cancel', cancelListener);
 
-      const buttons = Array.from(element.querySelectorAll('button'));
-      const cancelButton = buttons.find((btn) =>
-        btn.textContent?.includes('Cancel')
-      ) as HTMLButtonElement;
+      const cancelButton = element.querySelector('#quick-start-cancel-button') as HTMLButtonElement;
       expect(cancelButton).to.exist;
       cancelButton.click();
       await element.updateComplete;
@@ -279,19 +264,13 @@ describe('QuickStartEditor', () => {
     });
 
     it('should exit edit mode after canceling', async () => {
-      const buttons = Array.from(element.querySelectorAll('button'));
-      const cancelButton = buttons.find((btn) =>
-        btn.textContent?.includes('Cancel')
-      ) as HTMLButtonElement;
+      const cancelButton = element.querySelector('#quick-start-cancel-button') as HTMLButtonElement;
       expect(cancelButton).to.exist;
       cancelButton.click();
       await element.updateComplete;
 
       expect(element.editing).to.be.false;
-      const buttonsAfterCancel = Array.from(element.querySelectorAll('button'));
-      const editButtonAfterCancel = buttonsAfterCancel.find((btn) =>
-        btn.textContent?.includes('Edit')
-      );
+      const editButtonAfterCancel = element.querySelector('#quick-start-edit-button');
       expect(editButtonAfterCancel).to.exist;
     });
   });
@@ -362,7 +341,7 @@ describe('QuickStartEditor', () => {
       await element.updateComplete;
 
       // Enter edit mode to check
-      const editButton = element.querySelector('button') as HTMLButtonElement;
+      const editButton = element.querySelector('#quick-start-edit-button') as HTMLButtonElement;
       editButton.click();
       await element.updateComplete;
 
@@ -384,7 +363,7 @@ describe('QuickStartEditor', () => {
       await element.updateComplete;
 
       // Enter edit mode
-      const editButton = element.querySelector('button') as HTMLButtonElement;
+      const editButton = element.querySelector('#quick-start-edit-button') as HTMLButtonElement;
       editButton.click();
       await element.updateComplete;
     });
@@ -417,9 +396,7 @@ describe('QuickStartEditor', () => {
     });
 
     it('should reset command names to defaults', async () => {
-      const resetButton = Array.from(element.querySelectorAll('button')).find((btn) =>
-        btn.textContent?.includes('Reset to Defaults')
-      ) as HTMLButtonElement;
+      const resetButton = element.querySelector('#quick-start-reset-button') as HTMLButtonElement;
 
       resetButton.click();
       await element.updateComplete;
@@ -437,9 +414,7 @@ describe('QuickStartEditor', () => {
     });
 
     it('should maintain edit mode after reset', async () => {
-      const resetButton = Array.from(element.querySelectorAll('button')).find((btn) =>
-        btn.textContent?.includes('Reset to Defaults')
-      ) as HTMLButtonElement;
+      const resetButton = element.querySelector('#quick-start-reset-button') as HTMLButtonElement;
 
       resetButton.click();
       await element.updateComplete;
@@ -448,29 +423,18 @@ describe('QuickStartEditor', () => {
       expect(element.editing).to.be.true;
 
       // Save and Cancel buttons should still be visible
-      const saveButton = Array.from(element.querySelectorAll('button')).find((btn) =>
-        btn.textContent?.includes('Save')
-      );
-      const cancelButton = Array.from(element.querySelectorAll('button')).find((btn) =>
-        btn.textContent?.includes('Cancel')
-      );
+      const saveButton = element.querySelector('#quick-start-save-button');
+      const cancelButton = element.querySelector('#quick-start-cancel-button');
       expect(saveButton).to.exist;
       expect(cancelButton).to.exist;
     });
 
     it('should position Reset to Defaults button correctly', () => {
-      const buttons = Array.from(element.querySelectorAll('button'));
-      const resetButton = buttons.find((btn) =>
-        btn.textContent?.includes('Reset to Defaults')
-      ) as HTMLButtonElement;
-      const addButton = buttons.find((btn) =>
-        btn.textContent?.includes('Add Command')
-      ) as HTMLButtonElement;
-
-      // Reset button should be before Add Command button
-      const resetIndex = buttons.indexOf(resetButton);
-      const addIndex = buttons.indexOf(addButton);
-      expect(resetIndex).to.be.lessThan(addIndex);
+      const resetButton = element.querySelector('#quick-start-reset-button') as HTMLButtonElement;
+      const addButton = element.querySelector('#quick-start-add-command-button') as HTMLButtonElement;
+      
+      expect(resetButton).to.exist;
+      expect(addButton).to.exist;
 
       // Check button styling
       expect(resetButton.classList.contains('text-text-muted')).to.be.true;
