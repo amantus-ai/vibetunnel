@@ -586,6 +586,35 @@ export class SessionCreateForm extends LitElement {
         completions = data.completions || [];
       }
 
+      // Also search through discovered repositories if user is typing a partial name
+      // Check if the path doesn't contain '/' or if it's just a name without path separators
+      const isSearchingByName =
+        !path.includes('/') ||
+        ((path.match(/\//g) || []).length === 1 && path.endsWith('/') === false);
+
+      if (isSearchingByName && this.repositories.length > 0) {
+        const searchTerm = path.toLowerCase().replace('~/', '');
+
+        // Filter repositories that match the search term
+        const matchingRepos = this.repositories
+          .filter((repo) => repo.folderName.toLowerCase().includes(searchTerm))
+          .map((repo) => ({
+            name: repo.folderName,
+            path: repo.relativePath,
+            type: 'directory' as const,
+            suggestion: repo.path,
+            isRepository: true,
+          }));
+
+        // Merge with filesystem completions, avoiding duplicates
+        const existingPaths = new Set(completions.map((c) => c.suggestion));
+        matchingRepos.forEach((repo) => {
+          if (!existingPaths.has(repo.suggestion)) {
+            completions.push(repo);
+          }
+        });
+      }
+
       // Enhanced sorting with better match prioritization
       completions.sort((a, b) => {
         // First priority: exact name matches for directories
@@ -727,7 +756,12 @@ export class SessionCreateForm extends LitElement {
 
             <!-- Working Directory -->
             <div class="mb-2 sm:mb-3 lg:mb-5">
-              <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Working Directory:</label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm mb-0">Working Directory:</label>
+                <span class="text-text-muted text-[9px] sm:text-[10px]">
+                  ${this.isDiscovering ? 'Scanning...' : `${this.repositories.length} repositories`}
+                </span>
+              </div>
               <div class="relative">
                 <div class="flex gap-1.5 sm:gap-2">
                 <input

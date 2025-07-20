@@ -1,5 +1,6 @@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import type { AuthClient } from '../services/auth-client.js';
 import {
   type NotificationPreferences,
   type PushSubscription,
@@ -39,6 +40,7 @@ export class UnifiedSettings extends LitElement {
   }
 
   @property({ type: Boolean }) visible = false;
+  @property({ type: Object }) authClient?: AuthClient;
 
   // Notification settings state
   @state() private notificationPreferences: NotificationPreferences = {
@@ -61,6 +63,8 @@ export class UnifiedSettings extends LitElement {
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
   @state() private serverConfig: ServerConfig | null = null;
   @state() private isServerConfigured = false;
+  @state() private repositoryCount = 0;
+  @state() private isDiscoveringRepositories = false;
 
   private permissionChangeUnsubscribe?: () => void;
   private subscriptionChangeUnsubscribe?: () => void;
@@ -72,6 +76,7 @@ export class UnifiedSettings extends LitElement {
     this.initializeNotifications();
     this.loadAppPreferences();
     this.connectConfigWebSocket();
+    this.discoverRepositories();
 
     // Subscribe to responsive changes
     this.unsubscribeResponsive = responsiveObserver.subscribe((state) => {
@@ -282,6 +287,36 @@ export class UnifiedSettings extends LitElement {
           path: value as string,
         })
       );
+      // Re-discover repositories when path changes
+      this.discoverRepositories();
+    }
+  }
+
+  private async discoverRepositories() {
+    this.isDiscoveringRepositories = true;
+
+    try {
+      const basePath = this.appPreferences.repositoryBasePath || '~/';
+      const response = await fetch(
+        `/api/repositories/discover?path=${encodeURIComponent(basePath)}`,
+        {
+          headers: this.authClient?.getAuthHeader() || {},
+        }
+      );
+
+      if (response.ok) {
+        const repositories = await response.json();
+        this.repositoryCount = repositories.length;
+        logger.debug(`Discovered ${this.repositoryCount} repositories in ${basePath}`);
+      } else {
+        logger.error('Failed to discover repositories');
+        this.repositoryCount = 0;
+      }
+    } catch (error) {
+      logger.error('Error discovering repositories:', error);
+      this.repositoryCount = 0;
+    } finally {
+      this.isDiscoveringRepositories = false;
     }
   }
 
@@ -621,7 +656,14 @@ export class UnifiedSettings extends LitElement {
         <!-- Repository Base Path -->
         <div class="p-4 bg-tertiary rounded-lg border border-base">
           <div class="mb-3">
-            <label class="text-primary font-medium">Repository Base Path</label>
+            <div class="flex items-center justify-between">
+              <label class="text-primary font-medium">Repository Base Path</label>
+              ${
+                this.isDiscoveringRepositories
+                  ? html`<span class="text-muted text-xs">Scanning...</span>`
+                  : html`<span class="text-muted text-xs">${this.repositoryCount} repositories found</span>`
+              }
+            </div>
             <p class="text-muted text-xs mt-1">
               ${
                 this.isServerConfigured
