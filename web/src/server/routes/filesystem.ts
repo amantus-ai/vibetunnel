@@ -618,6 +618,115 @@ export function createFilesystemRoutes(): Router {
     }
   });
 
+  // Path completions endpoint for autocomplete
+  router.get('/fs/completions', async (req: Request, res: Response) => {
+    try {
+      let partialPath = (req.query.path as string) || '';
+
+      // Handle tilde expansion for home directory
+      if (partialPath === '~' || partialPath.startsWith('~/')) {
+        const homeDir = process.env.HOME || process.env.USERPROFILE;
+        if (!homeDir) {
+          logger.error('unable to determine home directory for completions');
+          return res.status(500).json({ error: 'Unable to determine home directory' });
+        }
+        partialPath = partialPath === '~' ? homeDir : path.join(homeDir, partialPath.slice(2));
+      }
+
+      // Separate directory and partial name
+      let dirPath: string;
+      let partialName: string;
+
+      if (partialPath.endsWith('/')) {
+        // If path ends with slash, list contents of that directory
+        dirPath = partialPath;
+        partialName = '';
+      } else {
+        // Otherwise, get the directory and partial filename
+        dirPath = path.dirname(partialPath);
+        partialName = path.basename(partialPath);
+      }
+
+      // Resolve the directory path
+      const fullDirPath = path.resolve(dirPath);
+
+      // Security check
+      if (!isPathSafe(fullDirPath, '/')) {
+        logger.warn(`access denied for path completions: ${fullDirPath}`);
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Check if directory exists
+      let dirStats: Awaited<ReturnType<typeof fs.stat>>;
+      try {
+        dirStats = await fs.stat(fullDirPath);
+        if (!dirStats.isDirectory()) {
+          return res.json({ completions: [] });
+        }
+      } catch {
+        // Directory doesn't exist, return empty completions
+        return res.json({ completions: [] });
+      }
+
+      // Read directory contents
+      const entries = await fs.readdir(fullDirPath, { withFileTypes: true });
+
+      // Filter and map entries
+      const completions = entries
+        .filter((entry) => {
+          // Filter by partial name (case-insensitive)
+          if (partialName && !entry.name.toLowerCase().startsWith(partialName.toLowerCase())) {
+            return false;
+          }
+          // Optionally hide hidden files unless the partial name starts with '.'
+          if (!partialName.startsWith('.') && entry.name.startsWith('.')) {
+            return false;
+          }
+          return true;
+        })
+        .map((entry) => {
+          const isDirectory = entry.isDirectory();
+          const _entryPath = path.join(fullDirPath, entry.name);
+          const relativePath = partialPath.endsWith('/')
+            ? path.join(partialPath, entry.name)
+            : path.join(dirPath, entry.name);
+
+          // Convert back to tilde notation if applicable
+          const homeDir = process.env.HOME || process.env.USERPROFILE;
+          let displayPath = relativePath;
+          if (homeDir && relativePath.startsWith(homeDir)) {
+            displayPath = `~${relativePath.slice(homeDir.length)}`;
+          }
+
+          return {
+            name: entry.name,
+            path: displayPath,
+            type: isDirectory ? 'directory' : 'file',
+            // Add trailing slash for directories
+            suggestion: isDirectory ? `${displayPath}/` : displayPath,
+          };
+        })
+        .sort((a, b) => {
+          // Sort directories first, then by name
+          if (a.type !== b.type) {
+            return a.type === 'directory' ? -1 : 1;
+          }
+          return a.name.localeCompare(b.name);
+        })
+        .slice(0, 20); // Limit to 20 suggestions
+
+      logger.debug(`path completions for "${partialPath}": ${completions.length} results`);
+
+      res.json({
+        completions,
+        partialPath: req.query.path as string,
+      });
+    } catch (error) {
+      logger.error(`failed to get path completions for ${req.query.path}:`, error);
+      res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
   return router;
 }
 
