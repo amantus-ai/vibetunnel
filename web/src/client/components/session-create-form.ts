@@ -17,8 +17,16 @@ import './file-browser.js';
 import { TitleMode } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { RepositoryService } from '../services/repository-service.js';
+import { parseCommand } from '../utils/command-utils.js';
 import { createLogger } from '../utils/logger.js';
 import { formatPathForDisplay } from '../utils/path-utils.js';
+import {
+  getSessionFormValue,
+  loadSessionFormData,
+  removeSessionFormValue,
+  saveSessionFormData,
+  setSessionFormValue,
+} from '../utils/storage-utils.js';
 import {
   type AutocompleteItem,
   AutocompleteManager,
@@ -79,11 +87,6 @@ export class SessionCreateForm extends LitElement {
     { label: 'pnpm run dev', command: 'pnpm run dev' },
   ];
 
-  private readonly STORAGE_KEY_WORKING_DIR = 'vibetunnel_last_working_dir';
-  private readonly STORAGE_KEY_COMMAND = 'vibetunnel_last_command';
-  private readonly STORAGE_KEY_SPAWN_WINDOW = 'vibetunnel_spawn_window';
-  private readonly STORAGE_KEY_TITLE_MODE = 'vibetunnel_title_mode';
-
   private completionsDebounceTimer?: NodeJS.Timeout;
   private autocompleteManager!: AutocompleteManager;
   private repositoryService!: RepositoryService;
@@ -139,72 +142,45 @@ export class SessionCreateForm extends LitElement {
   };
 
   private loadFromLocalStorage() {
-    try {
-      const savedWorkingDir = localStorage.getItem(this.STORAGE_KEY_WORKING_DIR);
-      const savedCommand = localStorage.getItem(this.STORAGE_KEY_COMMAND);
-      const savedSpawnWindow = localStorage.getItem(this.STORAGE_KEY_SPAWN_WINDOW);
-      const savedTitleMode = localStorage.getItem(this.STORAGE_KEY_TITLE_MODE);
+    const formData = loadSessionFormData();
 
-      // Get app preferences for repository base path to use as default working dir
-      let appRepoBasePath = '~/';
-      const savedPreferences = localStorage.getItem(APP_PREFERENCES_STORAGE_KEY);
-      if (savedPreferences) {
-        try {
-          const preferences: AppPreferences = JSON.parse(savedPreferences);
-          appRepoBasePath = preferences.repositoryBasePath || '~/';
-        } catch (error) {
-          logger.error('Failed to parse app preferences:', error);
-        }
+    // Get app preferences for repository base path to use as default working dir
+    let appRepoBasePath = '~/';
+    const savedPreferences = localStorage.getItem(APP_PREFERENCES_STORAGE_KEY);
+    if (savedPreferences) {
+      try {
+        const preferences: AppPreferences = JSON.parse(savedPreferences);
+        appRepoBasePath = preferences.repositoryBasePath || '~/';
+      } catch (error) {
+        logger.error('Failed to parse app preferences:', error);
       }
-
-      // Always set values, using saved values or defaults
-      // Priority: savedWorkingDir > appRepoBasePath > default
-      this.workingDir = savedWorkingDir || appRepoBasePath || '~/';
-      this.command = savedCommand || 'zsh';
-
-      // For spawn window, only use saved value if it exists and is valid
-      // This ensures we respect the default (false) when nothing is saved
-      if (savedSpawnWindow !== null && savedSpawnWindow !== '') {
-        this.spawnWindow = savedSpawnWindow === 'true';
-      }
-
-      if (savedTitleMode !== null) {
-        // Validate the saved mode is a valid enum value
-        if (Object.values(TitleMode).includes(savedTitleMode as TitleMode)) {
-          this.titleMode = savedTitleMode as TitleMode;
-        } else {
-          // If invalid value in localStorage, default to DYNAMIC
-          this.titleMode = TitleMode.DYNAMIC;
-        }
-      } else {
-        // If no value in localStorage, ensure DYNAMIC is set
-        this.titleMode = TitleMode.DYNAMIC;
-      }
-
-      // Force re-render to update the input values
-      this.requestUpdate();
-    } catch (_error) {
-      logger.warn('failed to load from localStorage');
     }
+
+    // Always set values, using saved values or defaults
+    // Priority: savedWorkingDir > appRepoBasePath > default
+    this.workingDir = formData.workingDir || appRepoBasePath || '~/';
+    this.command = formData.command || 'zsh';
+
+    // For spawn window, use saved value or default to false
+    this.spawnWindow = formData.spawnWindow ?? false;
+
+    // For title mode, use saved value or default to DYNAMIC
+    this.titleMode = formData.titleMode || TitleMode.DYNAMIC;
+
+    // Force re-render to update the input values
+    this.requestUpdate();
   }
 
   private saveToLocalStorage() {
-    try {
-      const workingDir = this.workingDir?.trim() || '';
-      const command = this.command?.trim() || '';
+    const workingDir = this.workingDir?.trim() || '';
+    const command = this.command?.trim() || '';
 
-      // Only save non-empty values
-      if (workingDir) {
-        localStorage.setItem(this.STORAGE_KEY_WORKING_DIR, workingDir);
-      }
-      if (command) {
-        localStorage.setItem(this.STORAGE_KEY_COMMAND, command);
-      }
-      localStorage.setItem(this.STORAGE_KEY_SPAWN_WINDOW, String(this.spawnWindow));
-      localStorage.setItem(this.STORAGE_KEY_TITLE_MODE, this.titleMode);
-    } catch (_error) {
-      logger.warn('failed to save to localStorage');
-    }
+    saveSessionFormData({
+      workingDir,
+      command,
+      spawnWindow: this.spawnWindow,
+      titleMode: this.titleMode,
+    });
   }
 
   private async checkServerStatus() {
@@ -362,7 +338,7 @@ export class SessionCreateForm extends LitElement {
     const effectiveSpawnTerminal = this.spawnWindow && this.macAppConnected;
 
     const sessionData: SessionCreateData = {
-      command: this.parseCommand(this.command?.trim() || ''),
+      command: parseCommand(this.command?.trim() || ''),
       workingDir: this.workingDir?.trim() || '',
       spawn_terminal: effectiveSpawnTerminal,
       titleMode: this.titleMode,
@@ -402,13 +378,13 @@ export class SessionCreateForm extends LitElement {
 
         if (isTestEnvironment) {
           // Save everything except spawn window in tests
-          const currentSpawnWindow = localStorage.getItem(this.STORAGE_KEY_SPAWN_WINDOW);
+          const currentSpawnWindow = getSessionFormValue('SPAWN_WINDOW');
           this.saveToLocalStorage();
           // Restore the original spawn window value
           if (currentSpawnWindow !== null) {
-            localStorage.setItem(this.STORAGE_KEY_SPAWN_WINDOW, currentSpawnWindow);
+            setSessionFormValue('SPAWN_WINDOW', currentSpawnWindow);
           } else {
-            localStorage.removeItem(this.STORAGE_KEY_SPAWN_WINDOW);
+            removeSessionFormValue('SPAWN_WINDOW');
           }
         } else {
           this.saveToLocalStorage();
@@ -441,39 +417,6 @@ export class SessionCreateForm extends LitElement {
     } finally {
       this.isCreating = false;
     }
-  }
-
-  private parseCommand(commandStr: string): string[] {
-    // Simple command parsing - split by spaces but respect quotes
-    const args: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    let quoteChar = '';
-
-    for (let i = 0; i < commandStr.length; i++) {
-      const char = commandStr[i];
-
-      if ((char === '"' || char === "'") && !inQuotes) {
-        inQuotes = true;
-        quoteChar = char;
-      } else if (char === quoteChar && inQuotes) {
-        inQuotes = false;
-        quoteChar = '';
-      } else if (char === ' ' && !inQuotes) {
-        if (current) {
-          args.push(current);
-          current = '';
-        }
-      } else {
-        current += char;
-      }
-    }
-
-    if (current) {
-      args.push(current);
-    }
-
-    return args;
   }
 
   private handleCancel() {
