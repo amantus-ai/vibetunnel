@@ -22,16 +22,6 @@
     "name": "Download",
     "url": "https://vibetunnel.com/download"
   },
-  "tabs": [
-    {
-      "name": "Documentation",
-      "url": "docs"
-    },
-    {
-      "name": "GitHub",
-      "url": "https://github.com/amantus-ai/vibetunnel"
-    }
-  ],
   "anchors": [
     {
       "name": "GitHub",
@@ -45,136 +35,126 @@
     }
   ],
   "navigation": {
-    "groups": [
+    "tabs": [
       {
-        "group": "Getting Started",
-        "pages": [
-          "introduction",
-          "docs/INDEX",
-          "docs/project-overview",
-          "docs/keyboard-shortcuts",
-          "docs/CONTRIBUTING",
-          "CHANGELOG"
-        ]
-      },
-      {
-        "group": "Installation",
-        "pages": [
+        "tab": "Documentation",
+        "groups": [
           {
-            "title": "macOS Installation",
-            "href": "mac/README"
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "docs/INDEX",
+              "docs/project-overview",
+              "docs/keyboard-shortcuts",
+              "docs/CONTRIBUTING",
+              "CHANGELOG"
+            ]
           },
           {
-            "title": "iOS Installation", 
-            "href": "ios/README"
+            "group": "Installation",
+            "pages": [
+              "mac/README",
+              "ios/README",
+              "web/docs/VT_INSTALLATION",
+              "docs/custom-node"
+            ]
           },
-          "web/docs/VT_INSTALLATION",
-          "docs/custom-node"
-        ]
-      },
-      {
-        "group": "Architecture",
-        "pages": [
-          "docs/ARCHITECTURE",
-          "docs/architecture-mario",
-          "docs/spec",
-          "docs/ios-spec",
-          "web/docs/spec",
-          "mac/docs/BuildArchitectures",
-          "web/docs/socket-protocol",
-          "docs/authentication",
-          "docs/security"
-        ]
-      },
-      {
-        "group": "Advanced Features",
-        "pages": [
-          "docs/hq",
-          "docs/push-notification",
-          "web/docs/terminal-titles",
-          "docs/TESTING_EXTERNAL_DEVICES"
-        ]
-      },
-      {
-        "group": "Development",
-        "pages": [
-          "docs/development",
-          "docs/build-system",
-          "docs/testing",
-          "docs/logging-style-guide",
-          "docs/files"
-        ]
-      },
-      {
-        "group": "macOS Development",
-        "pages": [
-          "mac/docs/BuildRequirements",
-          "mac/docs/code-signing",
-          "mac/docs/RELEASE_GUIDE",
-          "mac/docs/sparkle-keys",
-          "mac/docs/sparkle-stats-store"
-        ]
-      },
-      {
-        "group": "iOS Development",
-        "pages": [
-          "ios/conversion",
-          "apple/docs/modern-swift",
-          "apple/docs/swift-concurrency",
-          "apple/docs/swiftui",
-          "apple/docs/swift-testing-playbook",
-          "apple/docs/logging-private-fix"
-        ]
-      },
-      {
-        "group": "iOS Testing",
-        "pages": [
           {
-            "title": "Test Suite Overview",
-            "href": "ios/VibeTunnelTests/README"
+            "group": "Architecture",
+            "pages": [
+              "docs/ARCHITECTURE",
+              "docs/architecture-mario",
+              "docs/spec",
+              "docs/ios-spec",
+              "web/docs/spec",
+              "mac/docs/BuildArchitectures",
+              "web/docs/socket-protocol",
+              "docs/authentication",
+              "docs/security"
+            ]
           },
-          "ios/VibeTunnelTests/TestCoverage",
-          "ios/VibeTunnelTests/TestingApproach"
-        ]
-      },
-      {
-        "group": "Web Development",
-        "pages": [
           {
-            "title": "Web Frontend Guide",
-            "href": "web/README"
+            "group": "Advanced Features",
+            "pages": [
+              "docs/hq",
+              "docs/push-notification",
+              "web/docs/terminal-titles",
+              "docs/TESTING_EXTERNAL_DEVICES"
+            ]
           },
-          "web/docs/performance",
-          "web/docs/playwright-testing",
-          "web/src/test/playwright/SEQUENTIAL_OPTIMIZATIONS",
-          "web/docs/npm",
-          "web/docs/systemd"
-        ]
-      },
-      {
-        "group": "Release & Deployment",
-        "pages": [
-          "docs/deployment",
-          "docs/RELEASE"
-        ]
-      },
-      {
-        "group": "Tools & Integration",
-        "pages": [
-          "docs/claude",
-          "CLAUDE",
-          "docs/gemini",
-          "GEMINI",
           {
-            "title": "GitHub Actions Guide",
-            "href": ".github/workflows/README"
+            "group": "Development",
+            "pages": [
+              "docs/development",
+              "docs/build-system",
+              "docs/testing",
+              "docs/logging-style-guide",
+              "docs/files"
+            ]
+          },
+          {
+            "group": "macOS Development",
+            "pages": [
+              "mac/docs/BuildRequirements",
+              "mac/docs/code-signing",
+              "mac/docs/RELEASE_GUIDE",
+              "mac/docs/sparkle-keys",
+              "mac/docs/sparkle-stats-store"
+            ]
+          },
+          {
+            "group": "iOS Development",
+            "pages": [
+              "ios/conversion",
+              "apple/docs/modern-swift",
+              "apple/docs/swift-concurrency",
+              "apple/docs/swiftui",
+              "apple/docs/swift-testing-playbook",
+              "apple/docs/logging-private-fix"
+            ]
+          },
+          {
+            "group": "iOS Testing",
+            "pages": [
+              "ios/VibeTunnelTests/README",
+              "ios/VibeTunnelTests/TestCoverage",
+              "ios/VibeTunnelTests/TestingApproach"
+            ]
+          },
+          {
+            "group": "Web Development",
+            "pages": [
+              "web/README",
+              "web/docs/performance",
+              "web/docs/playwright-testing",
+              "web/src/test/playwright/SEQUENTIAL_OPTIMIZATIONS",
+              "web/docs/npm",
+              "web/docs/systemd"
+            ]
+          },
+          {
+            "group": "Release & Deployment",
+            "pages": [
+              "docs/deployment",
+              "docs/RELEASE"
+            ]
+          },
+          {
+            "group": "Tools & Integration",
+            "pages": [
+              "docs/claude",
+              "CLAUDE",
+              "docs/gemini",
+              "GEMINI",
+              ".github/workflows/README.md"
+            ]
+          },
+          {
+            "group": "Maintenance",
+            "pages": [
+              "docs/org-migrate"
+            ]
           }
-        ]
-      },
-      {
-        "group": "Maintenance",
-        "pages": [
-          "docs/org-migrate"
         ]
       }
     ]
