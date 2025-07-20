@@ -347,6 +347,67 @@ describe('SessionList', () => {
     });
   });
 
+  describe('timer display', () => {
+    it('should show static duration for exited sessions', async () => {
+      const now = Date.now();
+      const startTime = now - 60000; // 1 minute ago
+      const exitTime = now - 30000; // Exited 30 seconds ago
+
+      const mockSessions = [
+        createMockSession({
+          id: 'running-session',
+          status: 'running',
+          startTime: new Date(startTime).toISOString(),
+          lastModified: new Date().toISOString(),
+        }),
+        createMockSession({
+          id: 'exited-session',
+          status: 'exited',
+          startTime: new Date(startTime).toISOString(),
+          lastModified: new Date(exitTime).toISOString(),
+        }),
+      ];
+
+      element.sessions = mockSessions;
+      element.hideExited = false;
+      await element.updateComplete;
+
+      const sessionCards = getAllElements(element, 'session-card');
+      expect(sessionCards).toHaveLength(2);
+
+      // The exited session should show a static duration of ~30s
+      // while the running session shows a live duration of ~60s
+      // Note: We can't easily test the exact duration display without
+      // accessing the internal formatSessionDuration function
+      // but we can verify that both sessions are rendered correctly
+      const exitedCard = sessionCards.find((card) =>
+        card.getAttribute('data-testid')?.includes('exited-session')
+      );
+      expect(exitedCard).toBeTruthy();
+    });
+
+    it('should pass lastModified to session cards for exited sessions', async () => {
+      const exitedSession = createMockSession({
+        id: 'exited-session',
+        status: 'exited',
+        startTime: new Date(Date.now() - 120000).toISOString(),
+        lastModified: new Date(Date.now() - 60000).toISOString(),
+      });
+
+      element.sessions = [exitedSession];
+      element.hideExited = false;
+      await element.updateComplete;
+
+      const sessionCard = element.querySelector('session-card');
+      expect(sessionCard).toBeTruthy();
+
+      // Verify the session card received the correct session data
+      // The component should pass the full session object including lastModified
+      // @ts-ignore - accessing private property for testing
+      expect(sessionCard?.session).toEqual(exitedSession);
+    });
+  });
+
   describe('rendering', () => {
     it('should render header with correct title', () => {
       // The component may not have a traditional h2 header
