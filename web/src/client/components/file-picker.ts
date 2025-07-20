@@ -121,6 +121,10 @@ export class FilePicker extends LitElement {
    * Public method to open file picker for images only
    */
   openImagePicker(): void {
+    if (!this.fileInput) {
+      this.createFileInput();
+    }
+
     if (this.fileInput) {
       this.fileInput.accept = 'image/*';
       this.fileInput.removeAttribute('capture');
@@ -132,6 +136,10 @@ export class FilePicker extends LitElement {
    * Public method to open camera for image capture
    */
   openCamera(): void {
+    if (!this.fileInput) {
+      this.createFileInput();
+    }
+
     if (this.fileInput) {
       this.fileInput.accept = 'image/*';
       this.fileInput.capture = 'environment';
@@ -221,7 +229,8 @@ export class FilePicker extends LitElement {
     }
 
     if (this.fileInput) {
-      // Remove capture attribute for general file selection
+      // Reset to allow all files and remove capture attribute for general file selection
+      this.fileInput.accept = '*/*';
       this.fileInput.removeAttribute('capture');
       this.fileInput.click();
     }

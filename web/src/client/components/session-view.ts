@@ -1066,7 +1066,6 @@ export class SessionView extends LitElement {
     }
   }
 
-
   private async handleFileSelected(event: CustomEvent) {
     const { path } = event.detail;
     if (!path || !this.session) return;
