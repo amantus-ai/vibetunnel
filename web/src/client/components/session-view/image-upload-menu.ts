@@ -208,7 +208,7 @@ export class ImageUploadMenu extends LitElement {
     let menuItemIndex = 0;
     return html`
       <div 
-        class="absolute right-0 top-full mt-2 bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[200px]"
+        class="absolute right-0 top-full mt-2 bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[240px]"
         style="z-index: ${Z_INDEX.WIDTH_SELECTOR_DROPDOWN};"
       >
         
