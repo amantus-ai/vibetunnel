@@ -37,7 +37,7 @@
 - Clickable ngrok URLs in Settings with copy button (#422)
 - Cleaner session headers with better-positioned controls
 - Fixed magic wand icon alignment for AI sessions
-- Improved theme toggle with better icon and tooltips (#438)
+- Improved theme toggle with better icon and tooltips (#438, fixes #368)
 
 ### 🐛 Bug Fixes
 
@@ -46,6 +46,7 @@
 - Fixed new session dialog styling for dark mode (#433)
 - Fixed Mintlify documentation generation (#434)
 - Fixed ConfigManager threading crash when moving quick start items in macOS
+- Improved Chinese input method support (#431, duplicate of #421)
 - Removed legacy WebSocket config sync code and simplify logic
 
 #### **Under the Hood**
@@ -59,7 +60,7 @@
 ### 👥 Contributors
 First-time contributors to VibeTunnel:
 - [@gopi-kori](https://github.com/gopi-kori) - Made ngrok URLs clickable with copy button in Settings (#422)
-- [@claudemini](https://github.com/claudemini) - Improved theme toggle UI with better icon and tooltips (cherry-picked from #429 into #438)
+- [@claudemini](https://github.com/claudemini) - Improved theme toggle UI with better icon and tooltips (cherry-picked from #429 into #438, fixes #368)
 
 Additional contributors:
 - [@hewigovens](https://github.com/hewigovens) - Co-authored systemd service management for Linux deployments (#426)
