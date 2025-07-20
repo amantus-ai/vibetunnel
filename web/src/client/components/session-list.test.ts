@@ -316,18 +316,19 @@ describe('SessionList', () => {
       ];
       await element.updateComplete;
 
-      // Find toggle button
-      const toggleButton =
-        element.querySelector('#show-exited-button') ||
-        element.querySelector('#hide-exited-button');
+      // Find toggle button - when hideExited is true (default), button shows "Show Exited"
+      const toggleButton = element.querySelector('#show-exited-button');
+      expect(toggleButton).toBeTruthy();
 
       if (toggleButton) {
         (toggleButton as HTMLElement).click();
 
-        expect(element.hideExited).toBe(false);
+        // The component doesn't directly change hideExited - it emits an event
+        // The parent should handle the event and update the property
+        expect(element.hideExited).toBe(true); // Still true because parent hasn't updated it
         expect(changeHandler).toHaveBeenCalledWith(
           expect.objectContaining({
-            detail: false,
+            detail: false, // Requesting to change to false
           })
         );
       }

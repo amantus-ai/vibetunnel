@@ -3,7 +3,7 @@
 ## [1.0.0-beta.14] - 2025-07-21
 
 #### **Customizable Quick Start Commands**
-- Quick Start commands are now fully customizable - previously hardcoded buttons can be edited (#436)
+- Quick Start commands are now fully customizable - previously hardcoded buttons can be edited
 - Add your own commands with custom names and emoji (e.g., "✨ claude" or "▶️ dev server")
 - Drag & drop reordering with smooth animations in macOS settings
 - Inline editing without popup dialogs
@@ -11,7 +11,7 @@
 - File-based persistence in `~/.vibetunnel/config.json`
 
 #### **New Session Path Autocomplete**
-- Intelligent path autocomplete when creating sessions
+- Intelligent path autocomplete when creating sessions (#435)
 - Home directory expansion (`~/` shortcuts work properly)
 - Visual file browser with folder icon
 - Git repository discovery in selected directories
@@ -41,8 +41,11 @@
 
 ### 🐛 Bug Fixes
 
-- Fixed session timers continuing to run after sessions exited (#427)
+- Fixed session timers continuing to run after sessions exited (#428)
 - Fixed sessions with undefined activity status showing as idle instead of active
+- Fixed new session dialog styling for dark mode (#433)
+- Fixed Mintlify documentation generation (#434)
+- Fixed ConfigManager threading crash when moving quick start items in macOS
 - Removed legacy WebSocket config sync code and simplify logic
 
 #### **Under the Hood**
