@@ -246,9 +246,9 @@ export class ImageUploadMenu extends LitElement {
           Select Image
         </button>
         
-        <!-- Camera (only if available) -->
+        <!-- Camera (only on mobile) -->
         ${
-          this.hasCamera || this.isMobile
+          this.isMobile
             ? html`
           <button
             class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
@@ -267,7 +267,7 @@ export class ImageUploadMenu extends LitElement {
         }
         
         ${
-          this.hasClipboardImage || this.hasCamera || this.isMobile
+          this.hasClipboardImage || this.isMobile
             ? html`
           <div class="border-t border-border my-1"></div>
         `
