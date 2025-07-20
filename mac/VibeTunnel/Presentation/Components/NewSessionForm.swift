@@ -177,11 +177,17 @@ struct NewSessionForm: View {
                                 }
                                 .background(
                                     RoundedRectangle(cornerRadius: 6)
-                                        .fill(command == cmd.command ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.05))
+                                        .fill(command == cmd.command ? Color.accentColor.opacity(0.15) : Color.primary
+                                            .opacity(0.05)
+                                        )
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 6)
-                                        .stroke(command == cmd.command ? Color.accentColor.opacity(0.5) : Color.primary.opacity(0.1), lineWidth: 1)
+                                        .stroke(
+                                            command == cmd.command ? Color.accentColor.opacity(0.5) : Color.primary
+                                                .opacity(0.1),
+                                            lineWidth: 1
+                                        )
                                 )
                                 .buttonStyle(.plain)
                             }

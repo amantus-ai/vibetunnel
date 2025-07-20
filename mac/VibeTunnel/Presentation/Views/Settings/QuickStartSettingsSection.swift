@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 /// Settings section for managing quick start commands
 struct QuickStartSettingsSection: View {
@@ -8,7 +8,7 @@ struct QuickStartSettingsSection: View {
     @State private var newCommandName = ""
     @State private var newCommandCommand = ""
     @State private var showingNewCommand = false
-    
+
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
@@ -21,9 +21,9 @@ struct QuickStartSettingsSection: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    
+
                     Spacer()
-                    
+
                     Button(action: {
                         editingCommandId = nil
                         showingNewCommand = true
@@ -33,7 +33,7 @@ struct QuickStartSettingsSection: View {
                     .buttonStyle(.bordered)
                     .disabled(showingNewCommand)
                 }
-                
+
                 // Commands list
                 List {
                     ForEach(configManager.quickStartCommands) { command in
@@ -50,7 +50,7 @@ struct QuickStartSettingsSection: View {
                         .listRowBackground(Color.clear)
                     }
                     .onMove(perform: moveQuickStartItems)
-                    
+
                     // New command inline form
                     if showingNewCommand {
                         HStack(spacing: 12) {
@@ -58,12 +58,12 @@ struct QuickStartSettingsSection: View {
                                 TextField("Display name", text: $newCommandName)
                                     .textFieldStyle(.roundedBorder)
                                     .font(.system(size: 12))
-                                
+
                                 TextField("Command", text: $newCommandCommand)
                                     .textFieldStyle(.roundedBorder)
                                     .font(.system(size: 11))
                             }
-                            
+
                             HStack(spacing: 8) {
                                 Button(action: saveNewCommand) {
                                     Image(systemName: "checkmark")
@@ -72,7 +72,7 @@ struct QuickStartSettingsSection: View {
                                 }
                                 .buttonStyle(.plain)
                                 .disabled(newCommandName.isEmpty || newCommandCommand.isEmpty)
-                                
+
                                 Button(action: cancelNewCommand) {
                                     Image(systemName: "xmark")
                                         .font(.system(size: 11))
@@ -95,14 +95,14 @@ struct QuickStartSettingsSection: View {
                 .cornerRadius(6)
                 .frame(minHeight: 100)
                 .scrollContentBackground(.hidden)
-                
+
                 // Action buttons
                 HStack {
                     Button("Reset to Defaults") {
                         resetToDefaults()
                     }
                     .buttonStyle(.link)
-                    
+
                     if !configManager.quickStartCommands.isEmpty {
                         Button("Delete All") {
                             deleteAllCommands()
@@ -110,7 +110,7 @@ struct QuickStartSettingsSection: View {
                         .buttonStyle(.link)
                         .foregroundColor(.red)
                     }
-                    
+
                     Spacer()
                 }
             }
@@ -119,7 +119,7 @@ struct QuickStartSettingsSection: View {
                 .font(.headline)
         }
     }
-    
+
     private func updateCommand(_ updated: ConfigManager.QuickStartCommand) {
         configManager.updateCommand(
             id: updated.id,
@@ -127,44 +127,44 @@ struct QuickStartSettingsSection: View {
             command: updated.command
         )
     }
-    
+
     private func deleteCommand(_ command: ConfigManager.QuickStartCommand) {
         configManager.deleteCommand(id: command.id)
     }
-    
+
     private func resetToDefaults() {
         configManager.resetToDefaults()
         editingCommandId = nil
         showingNewCommand = false
     }
-    
+
     private func deleteAllCommands() {
         configManager.deleteAllCommands()
         editingCommandId = nil
         showingNewCommand = false
     }
-    
+
     private func saveNewCommand() {
         let name = newCommandName.trimmingCharacters(in: .whitespacesAndNewlines)
         let command = newCommandCommand.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         configManager.addCommand(
             name: name.isEmpty ? nil : name,
             command: command
         )
-        
+
         // Reset state
         newCommandName = ""
         newCommandCommand = ""
         showingNewCommand = false
     }
-    
+
     private func cancelNewCommand() {
         newCommandName = ""
         newCommandCommand = ""
         showingNewCommand = false
     }
-    
+
     private func moveQuickStartItems(from source: IndexSet, to destination: Int) {
         configManager.moveCommands(from: source, to: destination)
     }
@@ -179,11 +179,11 @@ private struct QuickStartCommandRow: View {
     let onSave: (ConfigManager.QuickStartCommand) -> Void
     let onDelete: () -> Void
     let onStopEditing: () -> Void
-    
+
     @State private var isHovering = false
     @State private var editingName: String = ""
     @State private var editingCommand: String = ""
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // Drag handle
@@ -192,7 +192,7 @@ private struct QuickStartCommandRow: View {
                 .foregroundColor(.secondary.opacity(0.6))
                 .opacity(isHovering ? 1 : 0.4)
                 .animation(.easeInOut(duration: 0.2), value: isHovering)
-            
+
             if isEditing {
                 // Inline editing mode
                 VStack(alignment: .leading, spacing: 4) {
@@ -200,13 +200,13 @@ private struct QuickStartCommandRow: View {
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 12))
                         .onSubmit { saveChanges() }
-                    
+
                     TextField("Command", text: $editingCommand)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 11))
                         .onSubmit { saveChanges() }
                 }
-                
+
                 HStack(spacing: 8) {
                     Button(action: saveChanges) {
                         Image(systemName: "checkmark")
@@ -215,7 +215,7 @@ private struct QuickStartCommandRow: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(editingName.isEmpty || editingCommand.isEmpty)
-                    
+
                     Button(action: cancelEditing) {
                         Image(systemName: "xmark")
                             .font(.system(size: 11))
@@ -229,7 +229,7 @@ private struct QuickStartCommandRow: View {
                     Text(command.displayName)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.primary)
-                    
+
                     if command.name != nil {
                         Text(command.command)
                             .font(.system(size: 11))
@@ -238,9 +238,9 @@ private struct QuickStartCommandRow: View {
                             .truncationMode(.tail)
                     }
                 }
-                
+
                 Spacer()
-                
+
                 HStack(spacing: 8) {
                     Button(action: startEditing) {
                         Image(systemName: "pencil")
@@ -250,7 +250,7 @@ private struct QuickStartCommandRow: View {
                     .buttonStyle(.plain)
                     .opacity(isHovering ? 1 : 0)
                     .animation(.easeInOut(duration: 0.2), value: isHovering)
-                    
+
                     Button(action: onDelete) {
                         Image(systemName: "trash")
                             .font(.system(size: 11))
@@ -272,24 +272,24 @@ private struct QuickStartCommandRow: View {
             isHovering = hovering
         }
     }
-    
+
     private func startEditing() {
         editingName = command.name ?? ""
         editingCommand = command.command
         onEdit()
     }
-    
+
     private func saveChanges() {
         let trimmedName = editingName.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedCommand = editingCommand.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         var updatedCommand = command
         updatedCommand.name = trimmedName.isEmpty ? nil : trimmedName
         updatedCommand.command = trimmedCommand
         onSave(updatedCommand)
         onStopEditing()
     }
-    
+
     private func cancelEditing() {
         editingName = ""
         editingCommand = ""

@@ -5,7 +5,7 @@ struct AutocompleteView: View {
     let suggestions: [AutocompleteService.PathSuggestion]
     @Binding var selectedIndex: Int
     let onSelect: (String) -> Void
-    
+
     var body: some View {
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
@@ -15,14 +15,14 @@ struct AutocompleteView: View {
                             AutocompleteRow(
                                 suggestion: suggestion,
                                 isSelected: index == selectedIndex
-                            )                                { onSelect(suggestion.suggestion) }
-                            .id(index)
-                            .onHover { hovering in
-                                if hovering {
-                                    selectedIndex = index
+                            ) { onSelect(suggestion.suggestion) }
+                                .id(index)
+                                .onHover { hovering in
+                                    if hovering {
+                                        selectedIndex = index
+                                    }
                                 }
-                            }
-                            
+
                             if index < suggestions.count - 1 {
                                 Divider()
                                     .padding(.horizontal, 8)
@@ -54,7 +54,7 @@ private struct AutocompleteRow: View {
     let suggestion: AutocompleteService.PathSuggestion
     let isSelected: Bool
     let onTap: () -> Void
-    
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 8) {
@@ -63,15 +63,15 @@ private struct AutocompleteRow: View {
                     .font(.system(size: 12))
                     .foregroundColor(iconColor)
                     .frame(width: 16)
-                
+
                 // Name
                 Text(suggestion.name)
                     .font(.system(size: 12))
                     .foregroundColor(.primary)
                     .lineLimit(1)
-                
+
                 Spacer()
-                
+
                 // Path hint
                 Text(suggestion.path)
                     .font(.system(size: 10))
@@ -100,22 +100,22 @@ private struct AutocompleteRow: View {
             }
         )
     }
-    
+
     private var iconName: String {
         if suggestion.isRepository {
-            return "folder.badge.gearshape"
+            "folder.badge.gearshape"
         } else if suggestion.type == .directory {
-            return "folder"
+            "folder"
         } else {
-            return "doc"
+            "doc"
         }
     }
-    
+
     private var iconColor: Color {
         if suggestion.isRepository {
-            return .accentColor
+            .accentColor
         } else {
-            return .secondary
+            .secondary
         }
     }
 }
@@ -130,7 +130,7 @@ struct AutocompleteTextField: View {
     @FocusState private var isFocused: Bool
     @State private var debounceTask: Task<Void, Never>?
     @State private var justSelectedCompletion = false
-    
+
     var body: some View {
         VStack(spacing: 4) {
             TextField(placeholder, text: $text)
@@ -151,38 +151,38 @@ struct AutocompleteTextField: View {
                         }
                     }
                 }
-            
+
             if showSuggestions && !autocompleteService.suggestions.isEmpty {
                 AutocompleteView(
                     suggestions: autocompleteService.suggestions,
                     selectedIndex: $selectedIndex
-                )                    { suggestion in
-                        justSelectedCompletion = true
-                        text = suggestion
-                        showSuggestions = false
-                        selectedIndex = -1
-                        autocompleteService.clearSuggestions()
-                    }
+                ) { suggestion in
+                    justSelectedCompletion = true
+                    text = suggestion
+                    showSuggestions = false
+                    selectedIndex = -1
+                    autocompleteService.clearSuggestions()
+                }
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
             }
         }
         .animation(.easeInOut(duration: 0.2), value: showSuggestions)
     }
-    
+
     private func handleKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {
         guard showSuggestions && !autocompleteService.suggestions.isEmpty else {
             return .ignored
         }
-        
+
         switch keyPress.key {
         case .downArrow:
             selectedIndex = min(selectedIndex + 1, autocompleteService.suggestions.count - 1)
             return .handled
-            
+
         case .upArrow:
             selectedIndex = max(selectedIndex - 1, -1)
             return .handled
-            
+
         case .tab, .return:
             if selectedIndex >= 0 && selectedIndex < autocompleteService.suggestions.count {
                 justSelectedCompletion = true
@@ -193,7 +193,7 @@ struct AutocompleteTextField: View {
                 return .handled
             }
             return .ignored
-            
+
         case .escape:
             if showSuggestions {
                 showSuggestions = false
@@ -201,38 +201,38 @@ struct AutocompleteTextField: View {
                 return .handled
             }
             return .ignored
-            
+
         default:
             return .ignored
         }
     }
-    
+
     private func handleTextChange(_ newValue: String) {
         // If we just selected a completion, don't trigger a new search
         if justSelectedCompletion {
             justSelectedCompletion = false
             return
         }
-        
+
         // Cancel previous debounce
         debounceTask?.cancel()
-        
+
         // Reset selection when text changes
         selectedIndex = -1
-        
+
         guard !newValue.isEmpty else {
             showSuggestions = false
             autocompleteService.clearSuggestions()
             return
         }
-        
+
         // Debounce the autocomplete request
         debounceTask = Task {
             try? await Task.sleep(nanoseconds: 300_000_000) // 300ms
-            
+
             if !Task.isCancelled {
                 await autocompleteService.fetchSuggestions(for: newValue)
-                
+
                 await MainActor.run {
                     if !autocompleteService.suggestions.isEmpty {
                         showSuggestions = true
@@ -240,7 +240,8 @@ struct AutocompleteTextField: View {
                         if let first = autocompleteService.suggestions.first,
                            first.name.lowercased().hasPrefix(
                                newValue.split(separator: "/").last?.lowercased() ?? ""
-                           ) {
+                           )
+                        {
                             selectedIndex = 0
                         }
                     } else {

@@ -260,6 +260,7 @@ describe('VibeTerminalBinary', () => {
 
   it('should apply max columns constraint', () => {
     element.maxCols = 120;
+    element.fitHorizontally = true; // Enable horizontal fitting to apply maxCols constraint
 
     // Mock terminal container dimensions
     const container = element.querySelector('#terminal-container') as HTMLElement;

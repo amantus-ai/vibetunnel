@@ -39,8 +39,8 @@ enum AppConstants {
         static let newSessionWorkingDirectory = "NewSession.workingDirectory"
         static let newSessionSpawnWindow = "NewSession.spawnWindow"
         static let newSessionTitleMode = "NewSession.titleMode"
-        
-        // Quick Start Commands
+
+        /// Quick Start Commands
         static let quickStartCommands = "quickStartCommands"
     }
 
