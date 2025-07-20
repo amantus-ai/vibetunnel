@@ -57,7 +57,6 @@ First-time contributors to VibeTunnel:
 
 Additional contributors:
 - [@hewigovens](https://github.com/hewigovens) - Co-authored systemd service management for Linux deployments (#426)
-- Claude (AI assistant) - Co-authored systemd service implementation (#426)
 
 ## [1.0.0-beta.13] - 2025-07-19
 
