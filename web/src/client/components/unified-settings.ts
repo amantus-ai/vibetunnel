@@ -6,6 +6,7 @@ import {
   type PushSubscription,
   pushNotificationService,
 } from '../services/push-notification-service.js';
+import { RepositoryService } from '../services/repository-service.js';
 import { createLogger } from '../utils/logger.js';
 import { type MediaQueryState, responsiveObserver } from '../utils/responsive-utils.js';
 
@@ -69,14 +70,17 @@ export class UnifiedSettings extends LitElement {
   private permissionChangeUnsubscribe?: () => void;
   private subscriptionChangeUnsubscribe?: () => void;
   private unsubscribeResponsive?: () => void;
-  private configWebSocket?: WebSocket;
+  private repositoryService?: RepositoryService;
 
   connectedCallback() {
     super.connectedCallback();
     this.initializeNotifications();
     this.loadAppPreferences();
-    this.connectConfigWebSocket();
-    this.discoverRepositories();
+
+    // Initialize repository service if authClient is available
+    if (this.authClient) {
+      this.repositoryService = new RepositoryService(this.authClient);
+    }
 
     // Subscribe to responsive changes
     this.unsubscribeResponsive = responsiveObserver.subscribe((state) => {
@@ -95,10 +99,6 @@ export class UnifiedSettings extends LitElement {
     if (this.unsubscribeResponsive) {
       this.unsubscribeResponsive();
     }
-    if (this.configWebSocket) {
-      this.configWebSocket.close();
-      this.configWebSocket = undefined;
-    }
     // Clean up keyboard listener
     document.removeEventListener('keydown', this.handleKeyDown);
   }
@@ -110,8 +110,19 @@ export class UnifiedSettings extends LitElement {
         document.startViewTransition?.(() => {
           this.requestUpdate();
         });
+        // Discover repositories when settings are opened
+        this.discoverRepositories();
       } else {
         document.removeEventListener('keydown', this.handleKeyDown);
+      }
+    }
+
+    // Initialize repository service when authClient becomes available
+    if (changedProperties.has('authClient') && this.authClient && !this.repositoryService) {
+      this.repositoryService = new RepositoryService(this.authClient);
+      // Discover repositories if settings are already visible
+      if (this.visible) {
+        this.discoverRepositories();
       }
     }
   }
@@ -166,6 +177,11 @@ export class UnifiedSettings extends LitElement {
       } catch (error) {
         logger.warn('Failed to fetch server config', error);
       }
+
+      // Discover repositories after preferences are loaded if visible
+      if (this.visible && this.repositoryService) {
+        this.discoverRepositories();
+      }
     } catch (error) {
       logger.error('Failed to load app preferences', error);
     }
@@ -183,6 +199,24 @@ export class UnifiedSettings extends LitElement {
       );
     } catch (error) {
       logger.error('Failed to save app preferences', error);
+    }
+  }
+
+  private async discoverRepositories() {
+    if (!this.repositoryService || this.isDiscoveringRepositories) {
+      return;
+    }
+
+    this.isDiscoveringRepositories = true;
+    try {
+      const repositories = await this.repositoryService.discoverRepositories();
+      this.repositoryCount = repositories.length;
+      logger.log(`Discovered ${this.repositoryCount} repositories`);
+    } catch (error) {
+      logger.error('Failed to discover repositories', error);
+      this.repositoryCount = 0;
+    } finally {
+      this.isDiscoveringRepositories = false;
     }
   }
 
@@ -278,97 +312,9 @@ export class UnifiedSettings extends LitElement {
     this.appPreferences = { ...this.appPreferences, [key]: value };
     this.saveAppPreferences();
 
-    // Send repository path updates to server/Mac app
-    if (key === 'repositoryBasePath' && this.configWebSocket?.readyState === WebSocket.OPEN) {
-      logger.log('Sending repository path update to server:', value);
-      this.configWebSocket.send(
-        JSON.stringify({
-          type: 'update-repository-path',
-          path: value as string,
-        })
-      );
-      // Re-discover repositories when path changes
+    // Rediscover repositories when repository path changes
+    if (key === 'repositoryBasePath') {
       this.discoverRepositories();
-    }
-  }
-
-  private async discoverRepositories() {
-    this.isDiscoveringRepositories = true;
-
-    try {
-      const basePath = this.appPreferences.repositoryBasePath || '~/';
-      const response = await fetch(
-        `/api/repositories/discover?path=${encodeURIComponent(basePath)}`,
-        {
-          headers: this.authClient?.getAuthHeader() || {},
-        }
-      );
-
-      if (response.ok) {
-        const repositories = await response.json();
-        this.repositoryCount = repositories.length;
-        logger.debug(`Discovered ${this.repositoryCount} repositories in ${basePath}`);
-      } else {
-        logger.error('Failed to discover repositories');
-        this.repositoryCount = 0;
-      }
-    } catch (error) {
-      logger.error('Error discovering repositories:', error);
-      this.repositoryCount = 0;
-    } finally {
-      this.isDiscoveringRepositories = false;
-    }
-  }
-
-  private connectConfigWebSocket() {
-    try {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/config`;
-
-      this.configWebSocket = new WebSocket(wsUrl);
-
-      this.configWebSocket.onopen = () => {
-        logger.log('Config WebSocket connected');
-      };
-
-      this.configWebSocket.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          if (message.type === 'config' && message.data) {
-            const { repositoryBasePath } = message.data;
-
-            // Update server config state
-            this.serverConfig = message.data;
-            this.isServerConfigured = message.data.serverConfigured ?? false;
-
-            // If server-configured, update the app preferences
-            if (this.isServerConfigured && repositoryBasePath) {
-              this.appPreferences.repositoryBasePath = repositoryBasePath;
-              this.saveAppPreferences();
-              logger.log('Repository path updated from server:', repositoryBasePath);
-            }
-          }
-        } catch (error) {
-          logger.error('Failed to parse config WebSocket message:', error);
-        }
-      };
-
-      this.configWebSocket.onerror = (error) => {
-        logger.error('Config WebSocket error:', error);
-      };
-
-      this.configWebSocket.onclose = () => {
-        logger.log('Config WebSocket closed');
-        // Attempt to reconnect after a delay
-        setTimeout(() => {
-          // Check if component is still connected to DOM
-          if (this.isConnected) {
-            this.connectConfigWebSocket();
-          }
-        }, 5000);
-      };
-    } catch (error) {
-      logger.error('Failed to connect config WebSocket:', error);
     }
   }
 
