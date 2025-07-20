@@ -142,19 +142,22 @@ class ConfigManager: ObservableObject {
             return
         }
         
+        // Keep a reference to the queue for the closure
+        let monitorQueue = fileMonitorQueue
+        
         // Create dispatch source
         let source = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: fileDescriptor,
             eventMask: [.write, .delete, .rename],
-            queue: fileMonitorQueue
+            queue: monitorQueue
         )
         
         source.setEventHandler { [weak self] in
-            guard let self = self else { return }
-            
             // Debounce rapid changes
-            self.fileMonitorQueue.asyncAfter(deadline: .now() + 0.5) {
-                Task { @MainActor in
+            monitorQueue.asyncAfter(deadline: .now() + 0.5) {
+                Task { @MainActor [weak self] in
+                    guard let self = self else { return }
+                    
                     self.logger.info("Configuration file changed, reloading...")
                     let oldCommands = self.quickStartCommands
                     self.loadConfiguration()
