@@ -16,7 +16,9 @@ import { customElement, property, state } from 'lit/decorators.js';
 import './file-browser.js';
 import { TitleMode } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
+import { RepositoryService } from '../services/repository-service.js';
 import { createLogger } from '../utils/logger.js';
+import { formatPathForDisplay } from '../utils/path-utils.js';
 import {
   type AutocompleteItem,
   AutocompleteManager,
@@ -84,11 +86,13 @@ export class SessionCreateForm extends LitElement {
 
   private completionsDebounceTimer?: NodeJS.Timeout;
   private autocompleteManager!: AutocompleteManager;
+  private repositoryService!: RepositoryService;
 
   connectedCallback() {
     super.connectedCallback();
-    // Initialize autocomplete manager
+    // Initialize services
     this.autocompleteManager = new AutocompleteManager(this.authClient);
+    this.repositoryService = new RepositoryService(this.authClient);
     // Load from localStorage when component is first created
     this.loadFromLocalStorage();
     // Check server status
@@ -334,7 +338,7 @@ export class SessionCreateForm extends LitElement {
   }
 
   private handleDirectorySelected(e: CustomEvent) {
-    this.workingDir = this.simplifyPath(e.detail);
+    this.workingDir = formatPathForDisplay(e.detail);
     this.showFileBrowser = false;
   }
 
@@ -493,39 +497,11 @@ export class SessionCreateForm extends LitElement {
   }
 
   private async discoverRepositories() {
-    // Get app preferences to read repositoryBasePath
-    const savedPreferences = localStorage.getItem(APP_PREFERENCES_STORAGE_KEY);
-    let basePath = '~/';
-
-    if (savedPreferences) {
-      try {
-        const preferences: AppPreferences = JSON.parse(savedPreferences);
-        basePath = preferences.repositoryBasePath || '~/';
-      } catch (error) {
-        logger.error('Failed to parse app preferences:', error);
-      }
-    }
-
     this.isDiscovering = true;
-
     try {
-      const response = await fetch(
-        `/api/repositories/discover?path=${encodeURIComponent(basePath)}`,
-        {
-          headers: this.authClient.getAuthHeader(),
-        }
-      );
-
-      if (response.ok) {
-        this.repositories = await response.json();
-        logger.debug(`Discovered ${this.repositories.length} repositories`);
-        // Update autocomplete manager with discovered repositories
-        this.autocompleteManager.setRepositories(this.repositories);
-      } else {
-        logger.error('Failed to discover repositories');
-      }
-    } catch (error) {
-      logger.error('Error discovering repositories:', error);
+      this.repositories = await this.repositoryService.discoverRepositories();
+      // Update autocomplete manager with discovered repositories
+      this.autocompleteManager.setRepositories(this.repositories);
     } finally {
       this.isDiscovering = false;
     }
@@ -551,7 +527,7 @@ export class SessionCreateForm extends LitElement {
   }
 
   private handleSelectRepository(repoPath: string) {
-    this.workingDir = this.simplifyPath(repoPath);
+    this.workingDir = formatPathForDisplay(repoPath);
     this.showRepositoryDropdown = false;
   }
 
@@ -579,23 +555,8 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
-  private simplifyPath(path: string): string {
-    // Try to determine the home directory from common patterns
-    // On macOS/Linux, home directories are typically /Users/username or /home/username
-    const homeDirPatterns = [/^(\/Users\/[^/]+)/, /^(\/home\/[^/]+)/];
-
-    for (const pattern of homeDirPatterns) {
-      const match = path.match(pattern);
-      if (match) {
-        return path.replace(match[1], '~');
-      }
-    }
-
-    return path;
-  }
-
   private handleSelectCompletion(suggestion: string) {
-    this.workingDir = this.simplifyPath(suggestion);
+    this.workingDir = formatPathForDisplay(suggestion);
     this.showCompletions = false;
     this.completions = [];
     this.selectedCompletionIndex = -1;
