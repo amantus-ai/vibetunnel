@@ -46,6 +46,20 @@ final class TerminalControlHandler {
                         return createErrorResponse(for: data, error: "Invalid spawn request format")
                     }
 
+                case "focus":
+                    // Try to decode as terminal focus request
+                    if let focusRequest = try? ControlProtocol.decodeTerminalFocusRequest(data) {
+                        logger
+                            .info(
+                                "📥 Terminal focus request for session: \(focusRequest.payload?.sessionId ?? "unknown")"
+                            )
+                        let response = await handleFocusRequest(focusRequest)
+                        return try ControlProtocol.encode(response)
+                    } else {
+                        logger.error("Failed to decode terminal focus request")
+                        return createErrorResponse(for: data, error: "Invalid focus request format")
+                    }
+
                 default:
                     logger.error("Unknown terminal action: \(action)")
                     return createErrorResponse(for: data, error: "Unknown terminal action: \(action)")
@@ -104,6 +118,50 @@ final class TerminalControlHandler {
         } catch {
             logger.error("Failed to spawn terminal: \(error)")
             return ControlProtocol.terminalSpawnResponse(
+                to: message,
+                success: false,
+                error: error.localizedDescription
+            )
+        }
+    }
+
+    private func handleFocusRequest(_ message: ControlProtocol.TerminalFocusRequestMessage) async -> ControlProtocol
+        .TerminalFocusResponseMessage
+    {
+        guard let payload = message.payload else {
+            return ControlProtocol.terminalFocusResponse(
+                to: message,
+                success: false,
+                error: "Missing payload"
+            )
+        }
+
+        logger.info("Focusing terminal for session \(payload.sessionId)")
+
+        do {
+            // Use WindowTracker to find and focus the terminal window/tab for this session
+            let windowInfo = await WindowTracker.shared.findWindowInfo(for: payload.sessionId)
+            
+            if let windowInfo = windowInfo {
+                // Use WindowFocuser to focus the window
+                await WindowFocuser().focusWindow(windowInfo)
+                
+                logger.info("Successfully focused terminal for session \(payload.sessionId)")
+                return ControlProtocol.terminalFocusResponse(
+                    to: message,
+                    success: true
+                )
+            } else {
+                logger.warning("No terminal window found for session \(payload.sessionId)")
+                return ControlProtocol.terminalFocusResponse(
+                    to: message,
+                    success: false,
+                    error: "Terminal window not found for session"
+                )
+            }
+        } catch {
+            logger.error("Failed to focus terminal for session \(payload.sessionId): \(error)")
+            return ControlProtocol.terminalFocusResponse(
                 to: message,
                 success: false,
                 error: error.localizedDescription

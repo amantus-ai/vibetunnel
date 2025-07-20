@@ -12,7 +12,11 @@ import type { StreamWatcher } from '../services/stream-watcher.js';
 import type { TerminalManager } from '../services/terminal-manager.js';
 import { createLogger } from '../utils/logger.js';
 import { generateSessionName } from '../utils/session-naming.js';
-import { createControlMessage, type TerminalSpawnResponse } from '../websocket/control-protocol.js';
+import {
+  createControlMessage,
+  type TerminalFocusResponse,
+  type TerminalSpawnResponse,
+} from '../websocket/control-protocol.js';
 import { controlUnixHandler } from '../websocket/control-unix-handler.js';
 
 const logger = createLogger('sessions');
@@ -1049,6 +1053,68 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
     }
   });
 
+  // Focus terminal window/tab for session
+  router.post('/sessions/:sessionId/focus', async (req, res) => {
+    const sessionId = req.params.sessionId;
+    logger.debug(`requesting terminal focus for session ${sessionId}`);
+
+    try {
+      // Check if Mac app is connected
+      if (!controlUnixHandler.isMacAppConnected()) {
+        logger.warn(`Mac app not connected, cannot focus terminal for session ${sessionId}`);
+        return res.status(503).json({ error: 'Mac app not connected' });
+      }
+
+      // If in HQ mode, check if this is a remote session
+      if (isHQMode && remoteRegistry) {
+        const remote = remoteRegistry.getRemoteBySessionId(sessionId);
+        if (remote) {
+          // Forward focus request to remote server
+          try {
+            const response = await fetch(`${remote.url}/api/sessions/${sessionId}/focus`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${remote.token}`,
+              },
+              signal: AbortSignal.timeout(5000),
+            });
+
+            if (!response.ok) {
+              return res.status(response.status).json(await response.json());
+            }
+
+            return res.json(await response.json());
+          } catch (error) {
+            logger.error(`failed to focus session on remote ${remote.name}:`, error);
+            return res.status(503).json({ error: 'Failed to reach remote server' });
+          }
+        }
+      }
+
+      // Local session handling - check if session exists
+      const session = ptyManager.getSession(sessionId);
+      if (!session) {
+        logger.warn(`session ${sessionId} not found for focus`);
+        return res.status(404).json({ error: 'Session not found' });
+      }
+
+      // Request terminal focus from Mac app
+      const focusResult = await requestTerminalFocus(sessionId);
+
+      if (focusResult.success) {
+        logger.log(chalk.green(`successfully requested focus for session ${sessionId}`));
+        res.json({ success: true, message: 'Terminal focus requested' });
+      } else {
+        logger.warn(`terminal focus failed for session ${sessionId}: ${focusResult.error}`);
+        res.status(500).json({ error: focusResult.error || 'Terminal focus failed' });
+      }
+    } catch (error) {
+      logger.error('error focusing terminal:', error);
+      res.status(500).json({ error: 'Failed to focus terminal' });
+    }
+  });
+
   // Update session name
   router.patch('/sessions/:sessionId', async (req, res) => {
     const sessionId = req.params.sessionId;
@@ -1253,6 +1319,47 @@ export async function requestTerminalSpawn(params: {
     };
   } catch (error) {
     logger.error('failed to spawn terminal:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+// Request terminal focus from Mac app via control socket
+export async function requestTerminalFocus(
+  sessionId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Create control message for terminal focus
+    const message = createControlMessage('terminal', 'focus', { sessionId }, sessionId);
+
+    logger.debug(`requesting terminal focus via control socket for session ${sessionId}`);
+
+    // Send the message and wait for response
+    const response = await controlUnixHandler.sendControlMessage(message);
+
+    if (!response) {
+      return {
+        success: false,
+        error: 'No response from Mac app',
+      };
+    }
+
+    if (response.error) {
+      return {
+        success: false,
+        error: response.error,
+      };
+    }
+
+    const success = (response.payload as TerminalFocusResponse)?.success === true;
+    return {
+      success,
+      error: success ? undefined : 'Terminal focus failed',
+    };
+  } catch (error) {
+    logger.error('failed to focus terminal:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

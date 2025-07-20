@@ -30,6 +30,15 @@ export interface TerminalSpawnResponse {
   error?: string;
 }
 
+export interface TerminalFocusRequest {
+  sessionId: string;
+}
+
+export interface TerminalFocusResponse {
+  success: boolean;
+  error?: string;
+}
+
 // System control payloads
 export interface SystemReadyEvent {
   timestamp: number;

@@ -24,7 +24,7 @@ import type { AuthClient } from '../services/auth-client.js';
 import './session-card.js';
 import './inline-edit.js';
 import { formatSessionDuration } from '../../shared/utils/time.js';
-import { sendAIPrompt } from '../utils/ai-sessions.js';
+import { isAIAssistantSession, sendAIPrompt } from '../utils/ai-sessions.js';
 import { Z_INDEX } from '../utils/constants.js';
 import { createLogger } from '../utils/logger.js';
 import { formatPathForDisplay } from '../utils/path-utils.js';
@@ -170,8 +170,33 @@ export class SessionList extends LitElement {
     this.dispatchEvent(new CustomEvent('refresh'));
   }
 
-  private handleSessionSelect(e: CustomEvent) {
+  private async handleSessionSelect(e: CustomEvent) {
     const session = e.detail as Session;
+
+    // For Claude and other AI assistant sessions, also request terminal focus
+    if (isAIAssistantSession(session)) {
+      try {
+        logger.debug(`Requesting terminal focus for AI session ${session.id}`);
+        const response = await fetch(`/api/sessions/${session.id}/focus`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...this.authClient.getAuthHeader(),
+          },
+        });
+
+        if (response.ok) {
+          logger.debug(`Successfully requested terminal focus for session ${session.id}`);
+        } else {
+          // Don't show an error to user - this is a quality-of-life feature
+          // Just log for debugging
+          logger.warn(`Failed to focus terminal for session ${session.id}: ${response.status}`);
+        }
+      } catch (error) {
+        // Don't show an error to user - this is a quality-of-life feature
+        logger.warn(`Error requesting terminal focus for session ${session.id}:`, error);
+      }
+    }
 
     // Dispatch a custom event that the app can handle with view transitions
     this.dispatchEvent(
