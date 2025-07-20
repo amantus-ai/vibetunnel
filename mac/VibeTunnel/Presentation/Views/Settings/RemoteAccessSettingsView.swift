@@ -284,18 +284,11 @@ private struct TailscaleIntegrationSection: View {
                 } else if tailscaleService.isRunning {
                     // Show dashboard URL when running
                     if let hostname = tailscaleService.tailscaleHostname {
-                        HStack(spacing: 5) {
-                            Text("Access VibeTunnel at:")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-
-                            let urlString = "http://\(hostname):\(serverPort)"
-                            if let url = URL(string: urlString) {
-                                Link(urlString, destination: url)
-                                    .font(.caption)
-                                    .foregroundStyle(.blue)
-                            }
-                        }
+                        let urlString = "http://\(hostname):\(serverPort)"
+                        InlineClickableURLView(
+                            label: "Access VibeTunnel at:",
+                            url: urlString
+                        )
 
                         // Show warning if in localhost-only mode
                         if accessMode == .localhost {
@@ -407,7 +400,10 @@ private struct NgrokIntegrationSection: View {
 
                 // Public URL display
                 if let status = ngrokStatus {
-                    PublicURLView(url: status.publicUrl)
+                    InlineClickableURLView(
+                        label: "Public URL:",
+                        url: status.publicUrl
+                    )
                 }
 
                 // Error display
@@ -512,42 +508,6 @@ private struct AuthTokenField: View {
     }
 }
 
-// MARK: - Public URL View
-
-private struct PublicURLView: View {
-    let url: String
-
-    @State private var showCopiedFeedback = false
-
-    var body: some View {
-        HStack {
-            Text("Public URL:")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            Text(url)
-                .font(.caption)
-                .textSelection(.enabled)
-
-            Button(action: {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(url, forType: .string)
-                withAnimation {
-                    showCopiedFeedback = true
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    withAnimation {
-                        showCopiedFeedback = false
-                    }
-                }
-            }, label: {
-                Image(systemName: showCopiedFeedback ? "checkmark" : "doc.on.doc")
-                    .foregroundColor(showCopiedFeedback ? .green : .accentColor)
-            })
-            .buttonStyle(.borderless)
-            .help("Copy URL")
-        }
-    }
-}
 
 // MARK: - Error View
 

@@ -111,7 +111,10 @@ struct CloudflareIntegrationSection: View {
 
                         // Public URL display
                         if let publicUrl = cloudflareService.publicUrl, !publicUrl.isEmpty {
-                            PublicURLView(url: publicUrl)
+                            ClickableURLView(
+                                label: "Public URL:",
+                                url: publicUrl
+                            )
                         }
 
                         // Error display - only show when tunnel is enabled or being toggled
@@ -297,69 +300,6 @@ struct CloudflareIntegrationSection: View {
 }
 
 // MARK: - Reusable Components
-
-/// Displays a public URL with copy functionality
-private struct PublicURLView: View {
-    let url: String
-
-    @State private var showCopiedFeedback = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text("Public URL:")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                Spacer()
-
-                Button(action: {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(url, forType: .string)
-                    withAnimation {
-                        showCopiedFeedback = true
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        withAnimation {
-                            showCopiedFeedback = false
-                        }
-                    }
-                }, label: {
-                    Image(systemName: showCopiedFeedback ? "checkmark" : "doc.on.doc")
-                        .foregroundColor(showCopiedFeedback ? .green : .accentColor)
-                })
-                .buttonStyle(.borderless)
-                .help("Copy URL")
-            }
-
-            HStack {
-                Text(url)
-                    .font(.caption)
-                    .foregroundColor(.blue)
-                    .textSelection(.enabled)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-
-                Spacer()
-
-                Button(action: {
-                    if let nsUrl = URL(string: url) {
-                        NSWorkspace.shared.open(nsUrl)
-                    }
-                }, label: {
-                    Image(systemName: "arrow.up.right.square")
-                        .foregroundColor(.accentColor)
-                })
-                .buttonStyle(.borderless)
-                .help("Open in Browser")
-            }
-        }
-        .padding(.vertical, 4)
-        .padding(.horizontal, 8)
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(6)
-    }
-}
 
 /// Displays error messages with warning icon
 private struct ErrorView: View {
