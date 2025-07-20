@@ -13,7 +13,7 @@
  * @listens file-selected - From file browser when file is selected
  * @listens browser-cancel - From file browser when cancelled
  */
-import { html, LitElement, nothing, type PropertyValues } from 'lit';
+import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Session } from './session-list.js';
 import './terminal.js';
@@ -29,7 +29,6 @@ import './session-view/ctrl-alpha-overlay.js';
 import './session-view/width-selector.js';
 import './session-view/session-header.js';
 import { authClient } from '../services/auth-client.js';
-import { Z_INDEX } from '../utils/constants.js';
 import { createLogger } from '../utils/logger.js';
 import {
   COMMON_TERMINAL_WIDTHS,
@@ -92,7 +91,6 @@ export class SessionView extends LitElement {
   @state() private customWidth = '';
   @state() private showFileBrowser = false;
   @state() private showImagePicker = false;
-  @state() private showMobileImageOptions = false;
   @state() private isDragOver = false;
   @state() private terminalFontSize = 14;
   @state() private terminalTheme: TerminalThemeId = 'auto';
@@ -1043,39 +1041,47 @@ export class SessionView extends LitElement {
   }
 
   private handleSelectImage() {
-    // Show web file picker with image filter
-    this.showImagePicker = true;
-    // Set accept attribute on file picker after it renders
-    setTimeout(() => {
-      const filePicker = this.querySelector('file-picker') as FilePicker;
-      if (filePicker) {
-        const input = filePicker.querySelector('input[type="file"]') as HTMLInputElement;
-        if (input) {
-          input.accept = 'image/*';
-        }
+    // Create hidden input for image selection
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+
+    input.addEventListener('change', async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        await this.uploadFile(file);
       }
-    }, 0);
+      input.remove();
+    });
+
+    document.body.appendChild(input);
+    input.click();
   }
 
   private handleOpenCamera() {
-    // Show file picker with camera capture
-    this.showImagePicker = true;
-    // Set capture attribute on file picker after it renders
-    setTimeout(() => {
-      const filePicker = this.querySelector('file-picker') as FilePicker;
-      if (filePicker) {
-        const input = filePicker.querySelector('input[type="file"]') as HTMLInputElement;
-        if (input) {
-          input.accept = 'image/*';
-          input.capture = 'environment'; // or 'user' for front camera
-        }
+    // Create hidden input for camera capture
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment'; // Prefer rear camera
+    input.style.display = 'none';
+
+    input.addEventListener('change', async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        await this.uploadFile(file);
       }
-    }, 0);
+      input.remove();
+    });
+
+    document.body.appendChild(input);
+    input.click();
   }
 
   private handleShowImageUploadOptions() {
-    // Show mobile image upload options modal
-    this.showMobileImageOptions = true;
+    // This is no longer used, directly trigger the file picker instead
+    this.handleSelectImage();
   }
 
   private async handleFileSelected(event: CustomEvent) {
@@ -1390,103 +1396,6 @@ export class SessionView extends LitElement {
         currentTerminal.scrollToBottom();
       }
     }, 300); // Wait for viewport to settle
-  }
-
-  private renderMobileImageOptions() {
-    return html`
-      <div 
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center" 
-        style="z-index: ${Z_INDEX.MODAL_BACKDROP};"
-        @click=${() => {
-          this.showMobileImageOptions = false;
-        }}
-      >
-        <div 
-          class="bg-surface w-full max-w-lg rounded-t-lg p-4"
-          @click=${(e: Event) => e.stopPropagation()}
-        >
-          <h3 class="text-lg font-semibold mb-4">Upload Image</h3>
-          
-          <div class="space-y-2">
-            <button
-              class="w-full p-3 bg-bg-secondary hover:bg-bg-tertiary rounded-lg flex items-center gap-3 text-left"
-              @click=${() => {
-                this.showMobileImageOptions = false;
-                this.handlePasteImage();
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" class="flex-shrink-0">
-                <path d="M5.75 1a.75.75 0 00-.75.75v3c0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75v-3a.75.75 0 00-.75-.75h-4.5zM6.5 4V2.5h3V4h-3z"/>
-                <path d="M1.75 5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h12.5a.75.75 0 00.75-.75v-8.5a.75.75 0 00-.75-.75H11v1.5h2.5v6.5h-11v-6.5H5V5H1.75z"/>
-                <path d="M8.5 9.5a.5.5 0 10-1 0V11H6a.5.5 0 000 1h1.5v1.5a.5.5 0 001 0V12H10a.5.5 0 000-1H8.5V9.5z"/>
-              </svg>
-              <div>
-                <div class="font-medium">Paste from Clipboard</div>
-                <div class="text-sm text-muted">Paste an image from your clipboard</div>
-              </div>
-            </button>
-            
-            <button
-              class="w-full p-3 bg-bg-secondary hover:bg-bg-tertiary rounded-lg flex items-center gap-3 text-left"
-              @click=${() => {
-                this.showMobileImageOptions = false;
-                this.handleSelectImage();
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" class="flex-shrink-0">
-                <path d="M14.5 2h-13C.67 2 0 2.67 0 3.5v9c0 .83.67 1.5 1.5 1.5h13c.83 0 1.5-.67 1.5-1.5v-9c0-.83-.67-1.5-1.5-1.5zM5.5 5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM13 11H3l2.5-3L7 10l2.5-3L13 11z"/>
-              </svg>
-              <div>
-                <div class="font-medium">Choose from Gallery</div>
-                <div class="text-sm text-muted">Select an image from your device</div>
-              </div>
-            </button>
-            
-            <button
-              class="w-full p-3 bg-bg-secondary hover:bg-bg-tertiary rounded-lg flex items-center gap-3 text-left"
-              @click=${() => {
-                this.showMobileImageOptions = false;
-                this.handleOpenCamera();
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" class="flex-shrink-0">
-                <path d="M10.5 2.5a.5.5 0 00-.5-.5H6a.5.5 0 00-.5.5V3H3a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2h-2.5v-.5zM6.5 3h3v.5h-3V3zM13 4a1 1 0 011 1v6a1 1 0 01-1 1H3a1 1 0 01-1-1V5a1 1 0 011-1h10z"/>
-                <path d="M8 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM6 8a2 2 0 114 0 2 2 0 01-4 0z"/>
-              </svg>
-              <div>
-                <div class="font-medium">Take a Photo</div>
-                <div class="text-sm text-muted">Use your camera to take a new photo</div>
-              </div>
-            </button>
-            
-            <button
-              class="w-full p-3 bg-bg-secondary hover:bg-bg-tertiary rounded-lg flex items-center gap-3 text-left"
-              @click=${() => {
-                this.showMobileImageOptions = false;
-                this.handleOpenFileBrowser();
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" class="flex-shrink-0">
-                <path d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z"/>
-              </svg>
-              <div>
-                <div class="font-medium">Browse Files</div>
-                <div class="text-sm text-muted">Browse all files on your device</div>
-              </div>
-            </button>
-          </div>
-          
-          <button
-            class="w-full mt-4 p-3 bg-bg-secondary hover:bg-bg-tertiary rounded-lg font-medium"
-            @click=${() => {
-              this.showMobileImageOptions = false;
-            }}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    `;
   }
 
   render() {
@@ -1813,8 +1722,6 @@ export class SessionView extends LitElement {
           @file-cancel=${this.handleCloseFilePicker}
         ></file-picker>
 
-        <!-- Mobile Image Upload Options Modal -->
-        ${this.showMobileImageOptions ? this.renderMobileImageOptions() : nothing}
         
         <!-- Width Selector Modal (moved here for proper positioning) -->
         <terminal-settings-modal

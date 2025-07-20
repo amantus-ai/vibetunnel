@@ -348,24 +348,13 @@ export class SessionHeader extends LitElement {
   }
 
   private handleSelectImage() {
-    // For desktop, open file picker directly. For mobile, show the modal
-    if (!this.isMobile) {
-      // Desktop: directly open file picker
-      this.dispatchEvent(
-        new CustomEvent('select-image', {
-          bubbles: true,
-          composed: true,
-        })
-      );
-    } else {
-      // Mobile: show image upload options modal
-      this.dispatchEvent(
-        new CustomEvent('show-image-upload-options', {
-          bubbles: true,
-          composed: true,
-        })
-      );
-    }
+    // Always dispatch select-image event to trigger the OS picker directly
+    this.dispatchEvent(
+      new CustomEvent('select-image', {
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 
   private handleOpenCamera() {
@@ -379,9 +368,9 @@ export class SessionHeader extends LitElement {
   }
 
   private handleMobileUploadImage() {
-    // For mobile, dispatch an event to show image upload options
+    // Directly trigger the OS image picker
     this.dispatchEvent(
-      new CustomEvent('show-image-upload-options', {
+      new CustomEvent('select-image', {
         bubbles: true,
         composed: true,
       })
