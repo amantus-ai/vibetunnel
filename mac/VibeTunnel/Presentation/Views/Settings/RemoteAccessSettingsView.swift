@@ -508,7 +508,6 @@ private struct AuthTokenField: View {
     }
 }
 
-
 // MARK: - Error View
 
 private struct ErrorView: View {

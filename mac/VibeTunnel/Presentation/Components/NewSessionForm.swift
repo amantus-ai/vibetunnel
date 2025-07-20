@@ -460,7 +460,6 @@ struct NewSessionForm: View {
         {
             titleMode = mode
         }
-        
     }
 
     private func savePreferences() {

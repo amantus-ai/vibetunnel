@@ -72,7 +72,7 @@ class AutocompleteService: ObservableObject {
         if Task.isCancelled { return }
         
         // Also get git repository suggestions if searching by name
-        let isSearchingByName = !originalPath.contains("/") || 
+        let isSearchingByName = !originalPath.contains("/") ||
             (originalPath.split(separator: "/").count == 1 && !originalPath.hasSuffix("/"))
         
         var allSuggestions = fsSuggestions
@@ -119,7 +119,7 @@ class AutocompleteService: ObservableObject {
             
             return contents.compactMap { filename in
                 // Filter by partial name (case-insensitive)
-                if !partialName.isEmpty && 
+                if !partialName.isEmpty &&
                    !filename.lowercased().hasPrefix(partialName.lowercased()) {
                     return nil
                 }
@@ -146,7 +146,7 @@ class AutocompleteService: ObservableObject {
                 }
                 
                 // Check if it's a git repository
-                let isGitRepo = isDirectory.boolValue && 
+                let isGitRepo = isDirectory.boolValue &&
                     fileManager.fileExists(atPath: (fullPath as NSString).appendingPathComponent(".git"))
                 
                 return PathSuggestion(
@@ -212,7 +212,7 @@ class AutocompleteService: ObservableObject {
         let homeDir = NSHomeDirectory()
         let commonPaths = [
             homeDir + "/Developer",
-            homeDir + "/Projects", 
+            homeDir + "/Projects",
             homeDir + "/Documents",
             homeDir + "/Desktop",
             homeDir + "/Code",
@@ -242,7 +242,7 @@ class AutocompleteService: ObservableObject {
                     guard item.lowercased().contains(searchLower) else { continue }
                     
                     // Convert to tilde path if in home directory
-                    let displayPath = fullPath.hasPrefix(homeDir) ? 
+                    let displayPath = fullPath.hasPrefix(homeDir) ?
                         "~" + fullPath.dropFirst(homeDir.count) : fullPath
                     
                     repositories.append(PathSuggestion(

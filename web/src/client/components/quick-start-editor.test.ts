@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { expect, fixture, html } from '@open-wc/testing';
 import { vi } from 'vitest';
-import type { QuickStartCommand } from '../../types/config.js';
+import { DEFAULT_QUICK_START_COMMANDS, type QuickStartCommand } from '../../types/config.js';
 import './quick-start-editor.js';
 import type { QuickStartEditor } from './quick-start-editor.js';
 
@@ -369,6 +369,165 @@ describe('QuickStartEditor', () => {
       editButton.click();
       await element.updateComplete;
 
+      const commandInputs = element.querySelectorAll('input[data-command-input]');
+      expect(commandInputs).to.have.length(2);
+      expect((commandInputs[0] as HTMLInputElement).value).to.equal('python3');
+      expect((commandInputs[1] as HTMLInputElement).value).to.equal('node');
+    });
+  });
+
+  describe('Reset to Defaults', () => {
+    beforeEach(async () => {
+      // Set up with modified commands
+      const modifiedCommands: QuickStartCommand[] = [
+        { command: 'python3' },
+        { name: 'Node', command: 'node' },
+      ];
+      element.commands = modifiedCommands;
+      await element.updateComplete;
+
+      // Enter edit mode
+      const editButton = element.querySelector('button') as HTMLButtonElement;
+      editButton.click();
+      await element.updateComplete;
+    });
+
+    it('should show Reset to Defaults button in edit mode', () => {
+      const resetButton = Array.from(element.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Reset to Defaults')
+      );
+      expect(resetButton).to.exist;
+    });
+
+    it('should reset commands to defaults when clicked', async () => {
+      const resetButton = Array.from(element.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Reset to Defaults')
+      ) as HTMLButtonElement;
+
+      resetButton.click();
+      await element.updateComplete;
+
+      // Check that commands are reset
+      const commandInputs = element.querySelectorAll('input[data-command-input]');
+      expect(commandInputs).to.have.length(DEFAULT_QUICK_START_COMMANDS.length);
+
+      // Verify default values
+      expect((commandInputs[0] as HTMLInputElement).value).to.equal(
+        DEFAULT_QUICK_START_COMMANDS[0].command
+      );
+      expect((commandInputs[1] as HTMLInputElement).value).to.equal(
+        DEFAULT_QUICK_START_COMMANDS[1].command
+      );
+      expect((commandInputs[2] as HTMLInputElement).value).to.equal(
+        DEFAULT_QUICK_START_COMMANDS[2].command
+      );
+    });
+
+    it('should reset command names to defaults', async () => {
+      const resetButton = Array.from(element.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Reset to Defaults')
+      ) as HTMLButtonElement;
+
+      resetButton.click();
+      await element.updateComplete;
+
+      const nameInputs = element.querySelectorAll('input[placeholder="Display name (optional)"]');
+      expect((nameInputs[0] as HTMLInputElement).value).to.equal(
+        DEFAULT_QUICK_START_COMMANDS[0].name || ''
+      );
+      expect((nameInputs[1] as HTMLInputElement).value).to.equal(
+        DEFAULT_QUICK_START_COMMANDS[1].name || ''
+      );
+      expect((nameInputs[2] as HTMLInputElement).value).to.equal(
+        DEFAULT_QUICK_START_COMMANDS[2].name || ''
+      );
+    });
+
+    it('should maintain edit mode after reset', async () => {
+      const resetButton = Array.from(element.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Reset to Defaults')
+      ) as HTMLButtonElement;
+
+      resetButton.click();
+      await element.updateComplete;
+
+      // Should still be in edit mode
+      expect(element.editing).to.be.true;
+
+      // Save and Cancel buttons should still be visible
+      const saveButton = Array.from(element.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Save')
+      );
+      const cancelButton = Array.from(element.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Cancel')
+      );
+      expect(saveButton).to.exist;
+      expect(cancelButton).to.exist;
+    });
+
+    it('should position Reset to Defaults button correctly', () => {
+      const buttons = Array.from(element.querySelectorAll('button'));
+      const resetButton = buttons.find((btn) =>
+        btn.textContent?.includes('Reset to Defaults')
+      ) as HTMLButtonElement;
+      const addButton = buttons.find((btn) =>
+        btn.textContent?.includes('Add Command')
+      ) as HTMLButtonElement;
+
+      // Reset button should be before Add Command button
+      const resetIndex = buttons.indexOf(resetButton);
+      const addIndex = buttons.indexOf(addButton);
+      expect(resetIndex).to.be.lessThan(addIndex);
+
+      // Check button styling
+      expect(resetButton.classList.contains('text-secondary')).to.be.true;
+      expect(resetButton.classList.contains('hover:text-primary')).to.be.true;
+    });
+
+    it('should emit quick-start-changed event when saving after reset', async () => {
+      const changedListener = vi.fn();
+      element.addEventListener('quick-start-changed', changedListener);
+
+      // Reset to defaults
+      const resetButton = Array.from(element.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Reset to Defaults')
+      ) as HTMLButtonElement;
+      resetButton.click();
+      await element.updateComplete;
+
+      // Save
+      const saveButton = Array.from(element.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Save')
+      ) as HTMLButtonElement;
+      saveButton.click();
+      await element.updateComplete;
+
+      expect(changedListener.mock.calls.length).to.equal(1);
+      const event = changedListener.mock.calls[0][0] as CustomEvent<QuickStartCommand[]>;
+      expect(event.detail).to.deep.equal(DEFAULT_QUICK_START_COMMANDS);
+    });
+
+    it('should cancel reset changes when cancel is clicked', async () => {
+      // Reset to defaults
+      const resetButton = Array.from(element.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Reset to Defaults')
+      ) as HTMLButtonElement;
+      resetButton.click();
+      await element.updateComplete;
+
+      // Cancel
+      const cancelButton = Array.from(element.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Cancel')
+      ) as HTMLButtonElement;
+      cancelButton.click();
+      await element.updateComplete;
+
+      // Re-enter edit mode to check
+      const editButton = element.querySelector('button') as HTMLButtonElement;
+      editButton.click();
+      await element.updateComplete;
+
+      // Should have original modified commands, not defaults
       const commandInputs = element.querySelectorAll('input[data-command-input]');
       expect(commandInputs).to.have.length(2);
       expect((commandInputs[0] as HTMLInputElement).value).to.equal('python3');

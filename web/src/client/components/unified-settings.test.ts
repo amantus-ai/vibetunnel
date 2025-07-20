@@ -195,3 +195,224 @@ describe('UnifiedSettings - Repository Path Configuration', () => {
     expect(path).toBe(localPath);
   });
 });
+
+describe('UnifiedSettings - Repository Discovery', () => {
+  let mockAuthClient: { getAuthHeader: ReturnType<typeof vi.fn> };
+  let mockRepositoryService: { discoverRepositories: ReturnType<typeof vi.fn> };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+
+    // Mock auth client
+    mockAuthClient = {
+      getAuthHeader: vi.fn().mockReturnValue({ Authorization: 'Bearer test-token' }),
+    };
+
+    // Mock repository service response
+    mockRepositoryService = {
+      discoverRepositories: vi.fn(),
+    };
+
+    // Mock the RepositoryService import
+    vi.mock('@/client/services/repository-service', () => ({
+      RepositoryService: vi.fn().mockImplementation(() => mockRepositoryService),
+    }));
+
+    // Mock default fetch response
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        repositoryBasePath: '~/',
+        serverConfigured: false,
+      }),
+    });
+  });
+
+  it('should trigger repository discovery when settings are opened', async () => {
+    // Mock repository discovery to return some repositories
+    mockRepositoryService.discoverRepositories.mockResolvedValue([
+      { name: 'repo1', path: '/path/to/repo1' },
+      { name: 'repo2', path: '/path/to/repo2' },
+    ]);
+
+    const el = await fixture<UnifiedSettings>(html`
+      <unified-settings .authClient=${mockAuthClient}></unified-settings>
+    `);
+
+    // Initially not visible
+    expect(el.visible).toBe(false);
+
+    // Make component visible
+    el.visible = true;
+    await el.updateComplete;
+
+    // Wait for discovery to complete
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await el.updateComplete;
+
+    // Check that repository count is displayed
+    const repositoryCountElement = el.querySelector('.text-muted.text-xs');
+    expect(repositoryCountElement?.textContent).toContain('2 repositories found');
+  });
+
+  it('should show refresh button for repository discovery', async () => {
+    const el = await fixture<UnifiedSettings>(html`
+      <unified-settings .authClient=${mockAuthClient}></unified-settings>
+    `);
+
+    el.visible = true;
+    await el.updateComplete;
+
+    // Find refresh button
+    const refreshButton = el.querySelector('button[title="Refresh repository list"]');
+    expect(refreshButton).toBeTruthy();
+    expect(refreshButton?.querySelector('svg')).toBeTruthy();
+  });
+
+  it('should refresh repositories when refresh button is clicked', async () => {
+    // Mock initial discovery returns 2 repos
+    mockRepositoryService.discoverRepositories
+      .mockResolvedValueOnce([
+        { name: 'repo1', path: '/path/to/repo1' },
+        { name: 'repo2', path: '/path/to/repo2' },
+      ])
+      .mockResolvedValueOnce([
+        { name: 'repo1', path: '/path/to/repo1' },
+        { name: 'repo2', path: '/path/to/repo2' },
+        { name: 'repo3', path: '/path/to/repo3' },
+      ]);
+
+    const el = await fixture<UnifiedSettings>(html`
+      <unified-settings .authClient=${mockAuthClient}></unified-settings>
+    `);
+
+    el.visible = true;
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await el.updateComplete;
+
+    // Initial count should be 2
+    let repositoryCountElement = el.querySelector('.text-muted.text-xs');
+    expect(repositoryCountElement?.textContent).toContain('2 repositories found');
+
+    // Click refresh button
+    const refreshButton = el.querySelector(
+      'button[title="Refresh repository list"]'
+    ) as HTMLButtonElement;
+    refreshButton.click();
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await el.updateComplete;
+
+    // Count should now be 3
+    repositoryCountElement = el.querySelector('.text-muted.text-xs');
+    expect(repositoryCountElement?.textContent).toContain('3 repositories found');
+  });
+
+  it('should show scanning state during discovery', async () => {
+    // Mock slow discovery
+    mockRepositoryService.discoverRepositories.mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve([]), 500))
+    );
+
+    const el = await fixture<UnifiedSettings>(html`
+      <unified-settings .authClient=${mockAuthClient}></unified-settings>
+    `);
+
+    el.visible = true;
+    await el.updateComplete;
+
+    // Click refresh button
+    const refreshButton = el.querySelector(
+      'button[title="Refresh repository list"]'
+    ) as HTMLButtonElement;
+    refreshButton.click();
+    await el.updateComplete;
+
+    // Should show scanning state
+    const scanningText = el.querySelector('.text-muted.text-xs');
+    expect(scanningText?.textContent).toContain('Scanning...');
+
+    // Button should be disabled
+    expect(refreshButton.disabled).toBe(true);
+
+    // Wait for discovery to complete
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await el.updateComplete;
+
+    // Should show result
+    expect(scanningText?.textContent).toContain('0 repositories found');
+    expect(refreshButton.disabled).toBe(false);
+  });
+
+  it('should trigger repository discovery when repository path changes', async () => {
+    mockRepositoryService.discoverRepositories
+      .mockResolvedValueOnce([{ name: 'repo1', path: '/path/to/repo1' }])
+      .mockResolvedValueOnce([
+        { name: 'other-repo1', path: '/other/path/repo1' },
+        { name: 'other-repo2', path: '/other/path/repo2' },
+      ]);
+
+    const el = await fixture<UnifiedSettings>(html`
+      <unified-settings .authClient=${mockAuthClient}></unified-settings>
+    `);
+
+    el.visible = true;
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await el.updateComplete;
+
+    // Initial count
+    let repositoryCountElement = el.querySelector('.text-muted.text-xs');
+    expect(repositoryCountElement?.textContent).toContain('1 repositories found');
+
+    // Change repository path
+    const input = el.querySelector('input[placeholder="~/"]') as HTMLInputElement;
+    input.value = '/other/path';
+    input.dispatchEvent(new Event('input'));
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await el.updateComplete;
+
+    // Should show new count
+    repositoryCountElement = el.querySelector('.text-muted.text-xs');
+    expect(repositoryCountElement?.textContent).toContain('2 repositories found');
+  });
+
+  it('should handle repository discovery errors gracefully', async () => {
+    // Mock discovery to fail
+    mockRepositoryService.discoverRepositories.mockRejectedValue(new Error('Discovery failed'));
+
+    const el = await fixture<UnifiedSettings>(html`
+      <unified-settings .authClient=${mockAuthClient}></unified-settings>
+    `);
+
+    el.visible = true;
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await el.updateComplete;
+
+    // Should show 0 repositories
+    const repositoryCountElement = el.querySelector('.text-muted.text-xs');
+    expect(repositoryCountElement?.textContent).toContain('0 repositories found');
+  });
+
+  it('should not trigger discovery if authClient is not available', async () => {
+    const el = await fixture<UnifiedSettings>(html`
+      <unified-settings></unified-settings>
+    `);
+
+    el.visible = true;
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await el.updateComplete;
+
+    // Should not call discovery without authClient
+    expect(mockRepositoryService.discoverRepositories).not.toHaveBeenCalled();
+
+    // Should still show repository count as 0
+    const repositoryCountElement = el.querySelector('.text-muted.text-xs');
+    expect(repositoryCountElement?.textContent).toContain('0 repositories found');
+  });
+});

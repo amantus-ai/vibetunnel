@@ -91,6 +91,50 @@ describe('ConfigService', () => {
         'utf8'
       );
     });
+
+    it('should validate config and use defaults on invalid structure', () => {
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        if (p === mockConfigDir) return true;
+        if (p === mockConfigPath) return true;
+        return false;
+      });
+
+      // Invalid config - missing version
+      const invalidConfig = {
+        quickStartCommands: [{ command: 'test' }],
+      };
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(invalidConfig));
+
+      const service = new ConfigService();
+
+      // Should fall back to defaults and save them
+      expect(service.getConfig()).toEqual(DEFAULT_CONFIG);
+      expect(vi.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        mockConfigPath,
+        JSON.stringify(DEFAULT_CONFIG, null, 2),
+        'utf8'
+      );
+    });
+
+    it('should validate config and reject empty commands', () => {
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        if (p === mockConfigDir) return true;
+        if (p === mockConfigPath) return true;
+        return false;
+      });
+
+      // Invalid config - empty command
+      const invalidConfig: VibeTunnelConfig = {
+        version: 1,
+        quickStartCommands: [{ command: '' }],
+      };
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(invalidConfig));
+
+      const service = new ConfigService();
+
+      // Should fall back to defaults
+      expect(service.getConfig()).toEqual(DEFAULT_CONFIG);
+    });
   });
 
   describe('updateQuickStartCommands', () => {
@@ -139,6 +183,31 @@ describe('ConfigService', () => {
       const updatedConfig = configService.getConfig();
       expect(updatedConfig.version).toEqual(initialConfig.version);
       expect(updatedConfig.quickStartCommands).toEqual(newCommands);
+    });
+
+    it('should reject commands with empty strings', () => {
+      const invalidCommands: QuickStartCommand[] = [
+        { command: 'valid' },
+        { command: '' }, // Invalid empty command
+      ];
+
+      expect(() => {
+        configService.updateQuickStartCommands(invalidCommands);
+      }).toThrow('Invalid config');
+
+      // Config should remain unchanged
+      expect(configService.getConfig()).toEqual(DEFAULT_CONFIG);
+    });
+
+    it('should accept commands with optional names', () => {
+      const commandsWithNames: QuickStartCommand[] = [
+        { name: '✨ Special', command: 'special-cmd' },
+        { command: 'no-name-cmd' }, // No name is valid
+        { name: '', command: 'empty-name-cmd' }, // Empty name is valid
+      ];
+
+      configService.updateQuickStartCommands(commandsWithNames);
+      expect(configService.getConfig().quickStartCommands).toEqual(commandsWithNames);
     });
   });
 
@@ -228,6 +297,126 @@ describe('ConfigService', () => {
   describe('getConfigPath', () => {
     it('should return the correct config path', () => {
       expect(configService.getConfigPath()).toBe(mockConfigPath);
+    });
+  });
+
+  describe('updateConfig', () => {
+    it('should update entire config and validate', () => {
+      const newConfig: VibeTunnelConfig = {
+        version: 2,
+        quickStartCommands: [{ command: 'python3' }, { name: 'Node.js', command: 'node' }],
+      };
+
+      configService.updateConfig(newConfig);
+
+      expect(configService.getConfig()).toEqual(newConfig);
+      expect(vi.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+        mockConfigPath,
+        JSON.stringify(newConfig, null, 2),
+        'utf8'
+      );
+    });
+
+    it('should reject invalid config structure', () => {
+      const invalidConfig = {
+        version: 'not-a-number', // Should be number
+        quickStartCommands: [{ command: 'test' }],
+      } as any;
+
+      expect(() => {
+        configService.updateConfig(invalidConfig);
+      }).toThrow('Invalid config');
+
+      // Config should remain unchanged
+      expect(configService.getConfig()).toEqual(DEFAULT_CONFIG);
+    });
+
+    it('should reject config with invalid command structure', () => {
+      const invalidConfig = {
+        version: 1,
+        quickStartCommands: [
+          { command: 'valid' },
+          { notACommand: 'invalid' }, // Missing required 'command' field
+        ],
+      } as any;
+
+      expect(() => {
+        configService.updateConfig(invalidConfig);
+      }).toThrow('Invalid config');
+    });
+
+    it('should reject config with non-array quickStartCommands', () => {
+      const invalidConfig = {
+        version: 1,
+        quickStartCommands: 'not-an-array',
+      } as any;
+
+      expect(() => {
+        configService.updateConfig(invalidConfig);
+      }).toThrow('Invalid config');
+    });
+  });
+
+  describe('validation edge cases', () => {
+    it('should handle config with extra properties', () => {
+      vi.mocked(fs.existsSync).mockImplementation((p) => {
+        if (p === mockConfigDir) return true;
+        if (p === mockConfigPath) return true;
+        return false;
+      });
+
+      // Config with extra properties (should be stripped)
+      const configWithExtras = {
+        version: 1,
+        quickStartCommands: [{ command: 'test' }],
+        extraProperty: 'should be ignored',
+      };
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(configWithExtras));
+
+      const service = new ConfigService();
+      const config = service.getConfig();
+
+      // Should only have valid properties
+      expect(config).toEqual({
+        version: 1,
+        quickStartCommands: [{ command: 'test' }],
+      });
+      expect('extraProperty' in config).toBe(false);
+    });
+
+    it('should handle commands with extra properties', () => {
+      const commandsWithExtras: any[] = [
+        {
+          command: 'valid',
+          name: 'Valid Command',
+          extraProp: 'ignored', // Should be stripped
+        },
+      ];
+
+      configService.updateQuickStartCommands(commandsWithExtras);
+      const saved = configService.getConfig().quickStartCommands;
+
+      // Extra properties should be stripped
+      expect(saved).toEqual([{ command: 'valid', name: 'Valid Command' }]);
+    });
+
+    it('should handle very long command strings', () => {
+      const longCommand = 'a'.repeat(1000); // 1000 character command
+      const commands: QuickStartCommand[] = [{ command: longCommand }];
+
+      // Should accept long commands (no max length)
+      configService.updateQuickStartCommands(commands);
+      expect(configService.getConfig().quickStartCommands[0].command).toBe(longCommand);
+    });
+
+    it('should handle unicode in commands and names', () => {
+      const unicodeCommands: QuickStartCommand[] = [
+        { name: '🚀 火箭', command: 'echo "Hello 世界"' },
+        { name: 'émojis 😀', command: 'café' },
+      ];
+
+      configService.updateQuickStartCommands(unicodeCommands);
+      expect(configService.getConfig().quickStartCommands).toEqual(unicodeCommands);
     });
   });
 });

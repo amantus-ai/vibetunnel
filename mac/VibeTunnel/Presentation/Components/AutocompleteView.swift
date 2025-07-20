@@ -14,9 +14,8 @@ struct AutocompleteView: View {
                         ForEach(Array(suggestions.enumerated()), id: \.element.id) { index, suggestion in
                             AutocompleteRow(
                                 suggestion: suggestion,
-                                isSelected: index == selectedIndex,
-                                onTap: { onSelect(suggestion.suggestion) }
-                            )
+                                isSelected: index == selectedIndex
+                            )                                { onSelect(suggestion.suggestion) }
                             .id(index)
                             .onHover { hovering in
                                 if hovering {
@@ -156,15 +155,14 @@ struct AutocompleteTextField: View {
             if showSuggestions && !autocompleteService.suggestions.isEmpty {
                 AutocompleteView(
                     suggestions: autocompleteService.suggestions,
-                    selectedIndex: $selectedIndex,
-                    onSelect: { suggestion in
+                    selectedIndex: $selectedIndex
+                )                    { suggestion in
                         justSelectedCompletion = true
                         text = suggestion
                         showSuggestions = false
                         selectedIndex = -1
                         autocompleteService.clearSuggestions()
                     }
-                )
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
             }
         }

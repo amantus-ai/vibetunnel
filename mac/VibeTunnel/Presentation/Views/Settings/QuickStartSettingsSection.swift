@@ -24,9 +24,9 @@ struct QuickStartSettingsSection: View {
                     
                     Spacer()
                     
-                    Button(action: { 
+                    Button(action: {
                         editingCommandId = nil
-                        showingNewCommand = true 
+                        showingNewCommand = true
                     }) {
                         Label("Add", systemImage: "plus")
                     }

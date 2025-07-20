@@ -368,10 +368,10 @@ export class SessionList extends LitElement {
   render() {
     // Group sessions by status and activity
     const activeSessions = this.sessions.filter(
-      (session) => session.status === 'running' && session.activityStatus?.isActive
+      (session) => session.status === 'running' && session.activityStatus?.isActive !== false
     );
     const idleSessions = this.sessions.filter(
-      (session) => session.status === 'running' && !session.activityStatus?.isActive
+      (session) => session.status === 'running' && session.activityStatus?.isActive === false
     );
     const exitedSessions = this.sessions.filter((session) => session.status === 'exited');
 
