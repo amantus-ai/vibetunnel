@@ -53,10 +53,11 @@
 ### 👥 Contributors
 First-time contributors to VibeTunnel:
 - [@gopi-kori](https://github.com/gopi-kori) - Made ngrok URLs clickable with copy button in Settings (#422)
+- [@claudemini](https://github.com/claudemini) - Improved theme toggle UI with better icon and tooltips (cherry-picked from #429 into #438)
 
 Additional contributors:
 - [@hewigovens](https://github.com/hewigovens) - Co-authored systemd service management for Linux deployments (#426)
-- [@claudemini](https://github.com/claudemini) - Co-authored systemd service implementation (#426)
+- Claude (AI assistant) - Co-authored systemd service implementation (#426)
 
 ## [1.0.0-beta.13] - 2025-07-19
 
