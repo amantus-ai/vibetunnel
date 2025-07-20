@@ -414,11 +414,7 @@ describe('UnifiedSettings - Repository Discovery', () => {
     await el.updateComplete;
 
     // Should still show repository count as 0
-    // Find the repository count span by looking for text containing "repositories found"
-    const repositoryElements = Array.from(el.querySelectorAll('.text-muted.text-xs'));
-    const repositoryCountElement = repositoryElements.find((elem) =>
-      elem.textContent?.includes('repositories found')
-    );
+    const repositoryCountElement = el.querySelector('#repository-status');
     expect(repositoryCountElement?.textContent).toContain('0 repositories found');
   });
 });

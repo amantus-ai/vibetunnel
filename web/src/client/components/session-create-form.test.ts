@@ -540,9 +540,7 @@ describe('SessionCreateForm', () => {
       await newElement.updateComplete;
 
       // First check if Options section is expanded
-      const optionsButton = Array.from(newElement.querySelectorAll('button')).find((btn) =>
-        btn.textContent?.includes('Options')
-      );
+      const optionsButton = newElement.querySelector('#session-options-button');
 
       if (optionsButton) {
         optionsButton.click();

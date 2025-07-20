@@ -857,6 +857,7 @@ export class SessionCreateForm extends LitElement {
             <!-- Options Section (collapsible) -->
             <div class="mb-2 sm:mb-4 lg:mb-6">
               <button
+                id="session-options-button"
                 @click=${this.handleToggleOptions}
                 class="flex items-center gap-1.5 sm:gap-2 text-text-muted hover:text-primary transition-colors duration-200"
                 type="button"
