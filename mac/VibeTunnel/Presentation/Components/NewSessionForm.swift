@@ -28,7 +28,6 @@ struct NewSessionForm: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var isHoveringCreate = false
-    @State private var showingRepositoryDropdown = false
     @FocusState private var focusedField: Field?
 
     enum Field: Hashable {
@@ -53,15 +52,8 @@ struct NewSessionForm: View {
         }
     }
 
-    /// Quick commands synced with frontend
-    private let quickCommands = [
-        ("claude", "✨"),
-        ("gemini", "✨"),
-        ("zsh", nil),
-        ("python3", nil),
-        ("node", nil),
-        ("pnpm run dev", nil)
-    ]
+    /// Quick commands loaded from settings or defaults
+    @State private var quickCommands: [(String, String?)] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -147,8 +139,7 @@ struct NewSessionForm: View {
 
                         VStack(alignment: .leading, spacing: 0) {
                             HStack(spacing: 8) {
-                                TextField("~/", text: $workingDirectory)
-                                    .textFieldStyle(.roundedBorder)
+                                AutocompleteTextField(text: $workingDirectory, placeholder: "~/")
                                     .focused($focusedField, equals: .directory)
 
                                 Button(action: selectDirectory) {
@@ -160,29 +151,6 @@ struct NewSessionForm: View {
                                 }
                                 .buttonStyle(.borderless)
                                 .help("Choose directory")
-
-                                Button(action: { showingRepositoryDropdown.toggle() }, label: {
-                                    Image(systemName: "arrow.trianglehead.pull")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.secondary)
-                                        .animation(.easeInOut(duration: 0.2), value: showingRepositoryDropdown)
-                                        .frame(width: 20, height: 20)
-                                        .contentShape(Rectangle())
-                                })
-                                .buttonStyle(.borderless)
-                                .help("Choose from repositories")
-                                .disabled(repositoryDiscovery.repositories.isEmpty || repositoryDiscovery.isDiscovering)
-                            }
-
-                            // Repository dropdown
-                            if showingRepositoryDropdown && !repositoryDiscovery.repositories.isEmpty {
-                                RepositoryDropdownList(
-                                    repositories: repositoryDiscovery.repositories,
-                                    isDiscovering: repositoryDiscovery.isDiscovering,
-                                    selectedPath: $workingDirectory,
-                                    isShowing: $showingRepositoryDropdown
-                                )
-                                .padding(.top, 4)
                             }
                         }
                     }
@@ -216,11 +184,11 @@ struct NewSessionForm: View {
                                     .padding(.vertical, 6)
                                     .background(
                                         RoundedRectangle(cornerRadius: 6)
-                                            .fill(Color.primary.opacity(0.05))
+                                            .fill(command == cmd.0 ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.05))
                                     )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 6)
-                                            .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                                            .stroke(command == cmd.0 ? Color.accentColor.opacity(0.5) : Color.primary.opacity(0.1), lineWidth: 1)
                                     )
                                 })
                                 .buttonStyle(.plain)
@@ -499,6 +467,39 @@ struct NewSessionForm: View {
            let mode = TitleMode(rawValue: savedMode)
         {
             titleMode = mode
+        }
+        
+        // Load quick start commands
+        loadQuickCommands()
+    }
+    
+    private func loadQuickCommands() {
+        // Default commands
+        let defaultCommands = [
+            ("✨ claude", "claude"),
+            ("✨ gemini", "gemini"),
+            ("zsh", "zsh"),
+            ("python3", "python3"),
+            ("node", "node"),
+            ("▶️ pnpm run dev", "pnpm run dev")
+        ]
+        
+        if let data = UserDefaults.standard.data(forKey: AppConstants.UserDefaultsKeys.quickStartCommands),
+           let commands = try? JSONDecoder().decode([QuickStartSettingsSection.QuickStartCommand].self, from: data) {
+            // Convert from stored format to display format
+            quickCommands = commands.map { cmd in
+                // Extract emoji if present
+                let components = cmd.name.split(separator: " ", maxSplits: 1)
+                if components.count > 1 && components[0].count <= 2 {
+                    // Likely an emoji prefix
+                    return (cmd.command, String(components[0]))
+                } else {
+                    return (cmd.command, nil)
+                }
+            }
+        } else {
+            // Use defaults
+            quickCommands = defaultCommands.map { ($0.1, $0.0.hasPrefix("✨") || $0.0.hasPrefix("▶️") ? String($0.0.prefix(2)) : nil) }
         }
     }
 
