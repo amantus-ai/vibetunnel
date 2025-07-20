@@ -441,7 +441,7 @@ private struct RemoteAccessStatusSection: View {
                             .font(.system(size: 10))
                         Text("ngrok")
                             .font(.callout)
-                        
+
                         if let url = URL(string: status.publicUrl) {
                             Link(status.publicUrl, destination: url)
                                 .font(.caption)
@@ -453,7 +453,7 @@ private struct RemoteAccessStatusSection: View {
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
                         }
-                        
+
                         NgrokURLCopyButton(url: status.publicUrl)
                     } else {
                         Image(systemName: "circle")
@@ -511,19 +511,19 @@ private struct NgrokURLCopyButton: View {
     let url: String
     @State private var showCopiedFeedback = false
     @State private var feedbackTask: DispatchWorkItem?
-    
+
     var body: some View {
         Button(action: {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(url, forType: .string)
-            
+
             // Cancel previous timer if exists
             feedbackTask?.cancel()
-            
+
             withAnimation {
                 showCopiedFeedback = true
             }
-            
+
             // Create new timer
             let task = DispatchWorkItem {
                 withAnimation {

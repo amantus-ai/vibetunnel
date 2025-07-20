@@ -159,12 +159,12 @@ struct SystemControlHandlerTests {
         UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
         UserDefaults.standard.synchronize()
 
-        @Sendable @MainActor
+        @MainActor
         class NotificationFlags {
             var disableNotificationPosted = false
             var enableNotificationPosted = false
         }
-        
+
         let flags = NotificationFlags()
 
         // Observe notifications

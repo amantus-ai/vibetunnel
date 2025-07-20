@@ -21,7 +21,6 @@ struct TerminalSpawnResponse: Codable {
     }
 }
 
-
 // MARK: - System Control Payloads
 
 struct SystemReadyEvent: Codable {

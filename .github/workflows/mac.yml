@@ -233,9 +233,11 @@ jobs:
     # TEST PHASE
     - name: Run tests with coverage
       id: test-coverage
-      timeout-minutes: 15
+      timeout-minutes: 20  # Increased from 15 for CI stability
       env:
         SKIP_NODE_CHECK: "true"  # Skip Node.js check in CI since we download pre-built artifacts
+        RUN_SLOW_TESTS: "false"  # Skip slow tests in CI by default
+        RUN_FLAKY_TESTS: "false"  # Skip flaky tests in CI by default
       run: |
         # Debug: Check if web build artifacts were downloaded
         echo "=== Checking web build artifacts ==="

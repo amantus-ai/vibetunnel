@@ -117,7 +117,6 @@ struct SessionDetailView: View {
                             .controlSize(.regular)
                         }
                     }
-
                 } else {
                     VStack(alignment: .leading, spacing: 12) {
                         if windowSearchAttempted {
@@ -306,7 +305,6 @@ struct SessionDetailView: View {
             logger.error("Cannot focus window - no window found for session \(session.id)")
         }
     }
-
 }
 
 // MARK: - Supporting Views

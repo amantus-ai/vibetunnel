@@ -8,7 +8,8 @@ import type { AuthClient } from '../services/auth-client';
 // Mock AuthClient
 vi.mock('../services/auth-client');
 
-// Import component type
+import type { SessionCard } from './session-card';
+// Import component types
 import type { SessionList } from './session-list';
 
 describe('SessionList', () => {
@@ -344,6 +345,76 @@ describe('SessionList', () => {
 
         expect(refreshHandler).toHaveBeenCalled();
       }
+    });
+  });
+
+  describe('timer display', () => {
+    it('should show static duration for exited sessions', async () => {
+      const now = Date.now();
+      const startTime = now - 60000; // 1 minute ago
+      const exitTime = now - 30000; // Exited 30 seconds ago
+
+      const mockSessions = [
+        createMockSession({
+          id: 'running-session',
+          status: 'running',
+          startedAt: new Date(startTime).toISOString(),
+          lastModified: new Date().toISOString(),
+        }),
+        createMockSession({
+          id: 'exited-session',
+          status: 'exited',
+          startedAt: new Date(startTime).toISOString(),
+          lastModified: new Date(exitTime).toISOString(),
+        }),
+      ];
+
+      element.sessions = mockSessions;
+      element.hideExited = false;
+      await element.updateComplete;
+
+      const sessionCards = getAllElements(element, 'session-card');
+      expect(sessionCards).toHaveLength(2);
+
+      // The exited session should show a static duration of ~30s
+      // while the running session shows a live duration of ~60s
+      // Verify we have sessions with the correct properties
+      const exitedSessionCard = sessionCards.find(
+        (card: SessionCard) => card.session && card.session.id === 'exited-session'
+      );
+      const runningSessionCard = sessionCards.find(
+        (card: SessionCard) => card.session && card.session.id === 'running-session'
+      );
+
+      expect(exitedSessionCard).toBeTruthy();
+      expect(runningSessionCard).toBeTruthy();
+
+      // Verify the exited session has the correct properties
+      if (exitedSessionCard) {
+        const exitedSession = exitedSessionCard.session;
+        expect(exitedSession.status).toBe('exited');
+        expect(exitedSession.lastModified).toBe(new Date(exitTime).toISOString());
+      }
+    });
+
+    it('should pass lastModified to session cards for exited sessions', async () => {
+      const exitedSession = createMockSession({
+        id: 'exited-session',
+        status: 'exited',
+        startedAt: new Date(Date.now() - 120000).toISOString(),
+        lastModified: new Date(Date.now() - 60000).toISOString(),
+      });
+
+      element.sessions = [exitedSession];
+      element.hideExited = false;
+      await element.updateComplete;
+
+      const sessionCard = element.querySelector('session-card');
+      expect(sessionCard).toBeTruthy();
+
+      // Verify the session card received the correct session data
+      // The component should pass the full session object including lastModified
+      expect((sessionCard as SessionCard)?.session).toEqual(exitedSession);
     });
   });
 

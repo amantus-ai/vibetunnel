@@ -259,7 +259,6 @@ class ServerManager {
             // Note: SystemControlHandler is initialized in AppDelegate via
             // SharedUnixSocketManager.initializeSystemHandler()
 
-
             // Pass the local auth token to SessionMonitor
             SessionMonitor.shared.setLocalAuthToken(server.localToken)
 

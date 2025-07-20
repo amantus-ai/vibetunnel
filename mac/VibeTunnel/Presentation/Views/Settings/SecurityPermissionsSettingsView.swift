@@ -38,7 +38,6 @@ struct SecurityPermissionsSettingsView: View {
         return permissionManager.hasPermission(.accessibility)
     }
 
-
     var body: some View {
         NavigationStack {
             Form {
@@ -305,7 +304,6 @@ private struct PermissionsSection: View {
                     .controlSize(.small)
                 }
             }
-
         } header: {
             Text("System Permissions")
                 .font(.headline)

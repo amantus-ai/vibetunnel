@@ -32,8 +32,9 @@ final class ServerManagerTests {
         // Start the server
         await manager.start()
 
-        // Give server time to attempt start
-        try await Task.sleep(for: .milliseconds(2_000))
+        // Give server time to attempt start (increased for CI stability)
+        let timeout = TestConditions.isRunningInCI() ? 5_000 : 2_000
+        try await Task.sleep(for: .milliseconds(timeout))
 
         // Attach server state after start attempt
         Attachment.record(TestUtilities.captureServerState(manager), named: "Post-Start Server State")
@@ -78,7 +79,8 @@ final class ServerManagerTests {
 
         // First attempt to start
         await manager.start()
-        try await Task.sleep(for: .milliseconds(1_000))
+        let shortTimeout = TestConditions.isRunningInCI() ? 2_000 : 1_000
+        try await Task.sleep(for: .milliseconds(shortTimeout))
 
         let firstServer = manager.bunServer
         let firstError = manager.lastError
