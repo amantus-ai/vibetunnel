@@ -185,7 +185,7 @@ describe('SessionCard', () => {
       element.session = createMockSession({ pid: mockPid });
       await element.updateComplete;
 
-      const pidElement = element.querySelector('[title="Click to copy PID"]');
+      const pidElement = element.querySelector('#session-pid-copy');
       if (pidElement) {
         (pidElement as HTMLElement).click();
 
@@ -197,7 +197,7 @@ describe('SessionCard', () => {
       const selectHandler = vi.fn();
       element.addEventListener('session-select', selectHandler);
 
-      const killButton = element.querySelector('[title="Kill session"]');
+      const killButton = element.querySelector('#session-kill-button');
       if (killButton) {
         (killButton as HTMLElement).click();
 
@@ -212,7 +212,7 @@ describe('SessionCard', () => {
       element.session = createMockSession({ status: 'running' });
       await element.updateComplete;
 
-      const killButton = element.querySelector('[title="Kill session"]');
+      const killButton = element.querySelector('#session-kill-button');
       expect(killButton).toBeTruthy();
     });
 
@@ -220,7 +220,7 @@ describe('SessionCard', () => {
       element.session = createMockSession({ status: 'exited' });
       await element.updateComplete;
 
-      const cleanupButton = element.querySelector('[title="Clean up session"]');
+      const cleanupButton = element.querySelector('#session-kill-button');
       expect(cleanupButton).toBeTruthy();
     });
 
@@ -228,7 +228,7 @@ describe('SessionCard', () => {
       element.session = createMockSession({ status: 'unknown' as 'running' | 'exited' });
       await element.updateComplete;
 
-      const killButton = element.querySelector('button[title*="session"]');
+      const killButton = element.querySelector('#session-kill-button');
       expect(killButton).toBeFalsy();
     });
 

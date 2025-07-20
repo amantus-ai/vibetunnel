@@ -436,6 +436,7 @@ export class SessionCard extends LitElement {
                       e.stopPropagation();
                       this.handleMagicButton();
                     }}
+                    id="session-magic-button"
                     title="Send prompt to update terminal title"
                     aria-label="Send magic prompt to AI assistant"
                     ?disabled=${this.isSendingPrompt}
@@ -460,6 +461,7 @@ export class SessionCard extends LitElement {
                     }"
                     @click=${this.handleKillClick}
                     ?disabled=${this.killing}
+                    id="session-kill-button"
                     title="${this.session.status === 'running' ? 'Kill session' : 'Clean up session'}"
                     data-testid="kill-session-button"
                   >
@@ -547,6 +549,7 @@ export class SessionCard extends LitElement {
                 ? html`
                   <span
                     class="cursor-pointer hover:text-primary transition-colors text-xs flex-shrink-0 ml-2 inline-flex items-center gap-1"
+                    id="session-pid-copy"
                     @click=${this.handlePidClick}
                     title="Click to copy PID"
                   >

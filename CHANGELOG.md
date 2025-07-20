@@ -48,6 +48,7 @@
 #### **Under the Hood**
 - New configuration service with file watching and validation
 - Zod schema validation for all configuration data
+- Improved test maintainability by adding element IDs to web components
 - REST API at `/api/config/quick-start` replacing WebSocket sync
 - Major codebase cleanup - removed Tauri project and 17k lines of unused code (#419)
 - Enhanced release process with better troubleshooting documentation

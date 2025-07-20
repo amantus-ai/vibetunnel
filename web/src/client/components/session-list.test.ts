@@ -318,8 +318,8 @@ describe('SessionList', () => {
 
       // Find toggle button
       const toggleButton =
-        element.querySelector('[title*="Hide exited"]') ||
-        element.querySelector('[title*="Show exited"]');
+        element.querySelector('#show-exited-button') ||
+        element.querySelector('#hide-exited-button');
 
       if (toggleButton) {
         (toggleButton as HTMLElement).click();
@@ -449,7 +449,7 @@ describe('SessionList', () => {
       element.hideExited = false;
       await element.updateComplete;
 
-      const cleanupButton = element.querySelector('[title*="Clean"]');
+      const cleanupButton = element.querySelector('#clean-exited-button');
       expect(cleanupButton).toBeTruthy();
     });
   });
