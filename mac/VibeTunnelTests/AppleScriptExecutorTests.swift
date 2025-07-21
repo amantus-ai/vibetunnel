@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import VibeTunnel
 
-@Suite("AppleScript Executor Tests", .tags(.integration))
+@Suite("AppleScript Executor Tests", .tags(.integration), .disabled(if: TestConditions.isRunningInCI(), "AppleScript not available in CI"))
 struct AppleScriptExecutorTests {
     @Test("Execute simple AppleScript")
     @MainActor

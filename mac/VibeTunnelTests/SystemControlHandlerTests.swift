@@ -59,15 +59,16 @@ struct SystemControlHandlerTests {
             }
         }
 
-        // Allow time for async UserDefaults update
-        try await Task.sleep(for: .milliseconds(200))
+        // Allow time for async UserDefaults update and sync
+        try await Task.sleep(for: .milliseconds(300))
+        UserDefaults.standard.synchronize()
 
         // Verify UserDefaults was updated
         let updatedPath = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
         
         // The SystemControlHandler stores the path as-is without conversion
         // The conversion to ~ notation only happens in the UI components
-        #expect(updatedPath == testPath)
+        #expect(updatedPath == testPath, "Expected path to be updated to \(testPath) but got \(updatedPath ?? "nil")")
     }
 
     @MainActor
