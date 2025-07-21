@@ -419,7 +419,7 @@ extension AXElement {
 // MARK: - Application Window Enumeration
 
 extension AXElement {
-    /// Information about an application window
+    /// Information about an application window retrieved via Accessibility APIs.
     public struct WindowInfo {
         public let window: AXElement
         public let windowID: CGWindowID
@@ -440,12 +440,36 @@ extension AXElement {
         }
     }
     
-    /// Enumerates all windows from running applications, optionally filtering by a predicate
+    /// Enumerates all windows from running applications using Accessibility APIs.
+    ///
+    /// This method provides a way to discover windows without requiring screen recording
+    /// permissions. It uses the Accessibility API to enumerate windows from running
+    /// applications, making it suitable for window tracking and management tasks.
+    ///
+    /// Example usage:
+    /// ```swift
+    /// // Get all terminal windows
+    /// let terminalBundleIDs = ["com.apple.Terminal", "com.googlecode.iterm2"]
+    /// let terminalWindows = AXElement.enumerateWindows(
+    ///     bundleIdentifiers: terminalBundleIDs,
+    ///     includeMinimized: false
+    /// )
+    ///
+    /// // Get all windows with custom filtering
+    /// let largeWindows = AXElement.enumerateWindows { windowInfo in
+    ///     guard let bounds = windowInfo.bounds else { return false }
+    ///     return bounds.width > 800 && bounds.height > 600
+    /// }
+    /// ```
+    ///
     /// - Parameters:
-    ///   - bundleIdentifiers: Optional array of bundle identifiers to filter applications. If nil, all applications are enumerated.
+    ///   - bundleIdentifiers: Optional array of bundle identifiers to filter applications. 
+    ///                        If nil, all applications are enumerated.
     ///   - includeMinimized: Whether to include minimized windows in the results (default: false)
-    ///   - filter: Optional filter closure to determine which windows to include
+    ///   - filter: Optional filter closure to determine which windows to include.
+    ///             The closure receives a WindowInfo and should return true to include the window.
     /// - Returns: Array of WindowInfo for windows that match the criteria
+    /// - Note: This method requires Accessibility permission to function properly
     public static func enumerateWindows(
         bundleIdentifiers: [String]? = nil,
         includeMinimized: Bool = false,
@@ -500,7 +524,11 @@ extension AXElement {
         return allWindows
     }
     
-    /// Convenience method to enumerate windows for specific bundle identifiers
+    /// Convenience method to enumerate windows for specific bundle identifiers.
+    ///
+    /// This is a simplified version of `enumerateWindows` for the common case
+    /// of finding windows from specific applications.
+    ///
     /// - Parameters:
     ///   - bundleIdentifiers: Array of bundle identifiers to search
     ///   - includeMinimized: Whether to include minimized windows
