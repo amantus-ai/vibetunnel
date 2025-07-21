@@ -268,18 +268,21 @@ export class FileBrowser extends LitElement {
       // Use the absolute path provided by the server
       this.loadDirectory(file.path);
     } else {
+      // Clear previous state when selecting a new file
+      if (this.selectedFile?.path !== file.path) {
+        this.preview = null;
+        this.diff = null;
+        this.diffContent = null;
+        this.showDiff = false;
+      }
       // Set the selected file
       this.selectedFile = file;
       // On mobile, switch to preview view
       if (this.isMobile) {
         this.mobileView = 'preview';
       }
-      // If git changes filter is active and file has changes, show diff by default
-      if (this.gitFilter === 'changed' && file.gitStatus && file.gitStatus !== 'unchanged') {
-        this.loadDiff(file);
-      } else {
-        this.loadPreview(file);
-      }
+      // Always show file content by default, regardless of git filter
+      this.loadPreview(file);
     }
   }
 
@@ -408,7 +411,7 @@ export class FileBrowser extends LitElement {
       `;
     }
 
-    if (this.showDiff && this.diff) {
+    if (this.showDiff && (this.diff || this.diffContent)) {
       return this.renderDiff();
     }
 
