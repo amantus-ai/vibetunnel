@@ -121,6 +121,21 @@ final class BunServer {
         guard let binaryPath = Bundle.main.path(forResource: "vibetunnel", ofType: nil) else {
             let error = BunServerError.binaryNotFound
             logger.error("vibetunnel binary not found in bundle")
+            
+            // Additional diagnostics for CI debugging
+            logger.error("Bundle path: \(Bundle.main.bundlePath)")
+            logger.error("Resources path: \(Bundle.main.resourcePath ?? "nil")")
+            
+            // List contents of Resources directory
+            if let resourcesPath = Bundle.main.resourcePath {
+                do {
+                    let contents = try FileManager.default.contentsOfDirectory(atPath: resourcesPath)
+                    logger.error("Resources directory contents: \(contents.joined(separator: ", "))")
+                } catch {
+                    logger.error("Failed to list Resources directory: \(error)")
+                }
+            }
+            
             throw error
         }
 

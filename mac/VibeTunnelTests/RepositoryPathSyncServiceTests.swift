@@ -5,25 +5,24 @@ import Testing
 
 @Suite("Repository Path Sync Service Tests", .serialized)
 struct RepositoryPathSyncServiceTests {
-    /// Helper to clean UserDefaults state
+    /// Helper to reset repository path to default
     @MainActor
-    private func cleanUserDefaults() {
-        UserDefaults.standard.removeObject(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
-        UserDefaults.standard.synchronize()
+    private func resetRepositoryPath() {
+        ConfigManager.shared.updateRepositoryBasePath("~/")
     }
 
     @MainActor
     @Test("Loop prevention disables sync when notification posted")
     func loopPreventionDisablesSync() async throws {
-        // Clean state first
-        cleanUserDefaults()
+        // Reset state first
+        resetRepositoryPath()
 
         // Given
         _ = RepositoryPathSyncService()
 
         // Set initial path
         let initialPath = "~/Projects"
-        UserDefaults.standard.set(initialPath, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        ConfigManager.shared.updateRepositoryBasePath(initialPath)
 
         // Allow service to initialize
         try await Task.sleep(for: .milliseconds(100))
@@ -36,7 +35,7 @@ struct RepositoryPathSyncServiceTests {
 
         // Change the path
         let newPath = "~/Documents/Code"
-        UserDefaults.standard.set(newPath, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        ConfigManager.shared.updateRepositoryBasePath(newPath)
 
         // Allow time for potential sync
         try await Task.sleep(for: .milliseconds(200))
@@ -51,7 +50,7 @@ struct RepositoryPathSyncServiceTests {
     @Test("Loop prevention re-enables sync after enable notification")
     func loopPreventionReenablesSync() async throws {
         // Clean state first
-        cleanUserDefaults()
+        resetRepositoryPath()
 
         // Given
         _ = RepositoryPathSyncService()
@@ -66,7 +65,7 @@ struct RepositoryPathSyncServiceTests {
 
         // Then - Future path changes should sync normally
         let newPath = "~/EnabledPath"
-        UserDefaults.standard.set(newPath, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        ConfigManager.shared.updateRepositoryBasePath(newPath)
 
         // Allow time for sync
         try await Task.sleep(for: .milliseconds(200))
@@ -79,7 +78,7 @@ struct RepositoryPathSyncServiceTests {
     @Test("Sync skips when disabled during path change")
     func syncSkipsWhenDisabled() async throws {
         // Clean state first
-        cleanUserDefaults()
+        resetRepositoryPath()
 
         // Given
         _ = RepositoryPathSyncService()
@@ -95,7 +94,7 @@ struct RepositoryPathSyncServiceTests {
         try await Task.sleep(for: .milliseconds(50))
 
         // When - Change path while sync is disabled
-        UserDefaults.standard.set("~/DisabledPath", forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        ConfigManager.shared.updateRepositoryBasePath("~/DisabledPath")
 
         // Allow time for the observer to trigger
         try await Task.sleep(for: .milliseconds(200))
@@ -162,7 +161,7 @@ struct RepositoryPathSyncServiceTests {
     @Test("Service observes repository path changes and sends updates via Unix socket")
     func repositoryPathSync() async throws {
         // Clean state first
-        cleanUserDefaults()
+        resetRepositoryPath()
 
         // Given - Mock Unix socket connection
         let mockConnection = MockUnixSocketConnection()
@@ -176,11 +175,11 @@ struct RepositoryPathSyncServiceTests {
 
         // Store initial path
         let initialPath = "~/Projects"
-        UserDefaults.standard.set(initialPath, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        ConfigManager.shared.updateRepositoryBasePath(initialPath)
 
         // When - Change the repository path
         let newPath = "~/Documents/Code"
-        UserDefaults.standard.set(newPath, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        ConfigManager.shared.updateRepositoryBasePath(newPath)
 
         // Allow time for the observer to trigger
         try await Task.sleep(for: .milliseconds(200))
@@ -195,14 +194,14 @@ struct RepositoryPathSyncServiceTests {
     @Test("Service sends current path on syncCurrentPath call")
     func testSyncCurrentPath() async throws {
         // Clean state first
-        cleanUserDefaults()
+        resetRepositoryPath()
 
         // Given
         let service = RepositoryPathSyncService()
 
         // Set a known path
         let testPath = "~/TestProjects"
-        UserDefaults.standard.set(testPath, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        ConfigManager.shared.updateRepositoryBasePath(testPath)
 
         // When - Call sync current path
         await service.syncCurrentPath()
@@ -219,13 +218,13 @@ struct RepositoryPathSyncServiceTests {
     @Test("Service handles disconnected socket gracefully")
     func handleDisconnectedSocket() async throws {
         // Clean state first
-        cleanUserDefaults()
+        resetRepositoryPath()
 
         // Given - Service with no connection
         _ = RepositoryPathSyncService()
 
         // When - Trigger a path update when socket is not connected
-        UserDefaults.standard.set("~/NewPath", forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        ConfigManager.shared.updateRepositoryBasePath("~/NewPath")
 
         // Allow time for processing
         try await Task.sleep(for: .milliseconds(100))
@@ -238,17 +237,17 @@ struct RepositoryPathSyncServiceTests {
     @Test("Service skips duplicate path updates")
     func skipDuplicatePaths() async throws {
         // Clean state first
-        cleanUserDefaults()
+        resetRepositoryPath()
 
         // Given
         _ = RepositoryPathSyncService()
         let testPath = "~/SamePath"
 
         // When - Set the same path multiple times
-        UserDefaults.standard.set(testPath, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        ConfigManager.shared.updateRepositoryBasePath(testPath)
         try await Task.sleep(for: .milliseconds(100))
 
-        UserDefaults.standard.set(testPath, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        ConfigManager.shared.updateRepositoryBasePath(testPath)
         try await Task.sleep(for: .milliseconds(100))
 
         // Then - The service should handle this gracefully

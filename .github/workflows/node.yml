@@ -273,16 +273,33 @@ jobs:
         find dist -type f | head -20 || echo "No files in dist"
         echo "=== Contents of public/bundle directory ==="
         find public/bundle -type f | head -20 || echo "No files in public/bundle"
+        echo "=== Contents of native directory ==="
+        find native -type f 2>/dev/null | head -20 || echo "No files in native"
+        echo "=== Checking vibetunnel binary permissions ==="
+        ls -la native/vibetunnel 2>/dev/null || echo "No vibetunnel binary found"
+        
+    - name: Package build artifacts with preserved permissions
+      working-directory: web
+      run: |
+        # Create a tarball that preserves file permissions
+        echo "Creating tarball with preserved permissions..."
+        tar -czf web-build.tar.gz \
+          --preserve-permissions \
+          --no-xattrs \
+          dist/ \
+          public/bundle/ \
+          native/ \
+          bin/vt || true
+        
+        # List what's in the tarball
+        echo "=== Contents of tarball ==="
+        tar -tzf web-build.tar.gz | head -20
         
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: web-build
-        path: |
-          web/dist/
-          web/public/bundle/
-          web/native/
-          web/bin/vt
+        path: web/web-build.tar.gz
         retention-days: 1
         if-no-files-found: error
 
