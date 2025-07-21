@@ -34,6 +34,16 @@ export function createRepositoryRoutes(): Router {
       logger.debug(`[GET /repositories/discover] Discovering repositories in: ${basePath}`);
 
       const expandedPath = resolvePath(basePath);
+      logger.debug(`[GET /repositories/discover] Expanded path: ${expandedPath}`);
+
+      // Check if the path exists
+      try {
+        await fs.access(expandedPath, fs.constants.R_OK);
+        logger.debug(`[GET /repositories/discover] Path exists and is readable: ${expandedPath}`);
+      } catch (error) {
+        logger.error(`[GET /repositories/discover] Cannot access path: ${expandedPath}`, error);
+      }
+
       const repositories = await discoverRepositories({
         basePath: expandedPath,
         maxDepth,
@@ -69,6 +79,8 @@ async function discoverRepositories(
   const { basePath, maxDepth = 3 } = options;
   const repositories: DiscoveredRepository[] = [];
 
+  logger.debug(`Starting repository discovery in ${basePath} with maxDepth=${maxDepth}`);
+
   async function scanDirectory(dirPath: string, depth: number): Promise<void> {
     if (depth > maxDepth) {
       return;
@@ -77,6 +89,23 @@ async function discoverRepositories(
     try {
       // Check if directory is accessible
       await fs.access(dirPath, fs.constants.R_OK);
+
+      // First check if the current directory itself is a git repository
+      // Only check at depth 0 to match Mac app behavior
+      if (depth === 0) {
+        const currentGitPath = path.join(dirPath, '.git');
+        try {
+          await fs.access(currentGitPath, fs.constants.F_OK);
+          // Current directory is a git repository
+          const repository = await createDiscoveredRepository(dirPath);
+          repositories.push(repository);
+          logger.debug(`Found git repository at base path: ${dirPath}`);
+          // Don't scan subdirectories of a git repository
+          return;
+        } catch {
+          // Current directory is not a git repository, continue scanning
+        }
+      }
 
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
@@ -88,20 +117,22 @@ async function discoverRepositories(
 
         const fullPath = path.join(dirPath, entry.name);
 
-        // Check if this is a git repository
+        // Check if this subdirectory is a git repository
         const gitPath = path.join(fullPath, '.git');
         try {
-          await fs.stat(gitPath);
+          await fs.access(gitPath, fs.constants.F_OK);
           // If .git exists (either as a file or directory), this is a git repository
           const repository = await createDiscoveredRepository(fullPath);
           repositories.push(repository);
+          logger.debug(`Found git repository: ${fullPath}`);
+          // Don't scan subdirectories of a git repository
         } catch {
           // .git doesn't exist, scan subdirectories
           await scanDirectory(fullPath, depth + 1);
         }
       }
     } catch (error) {
-      logger.debug(`Cannot access directory ${dirPath}: ${error}`);
+      logger.debug(`Cannot access directory ${dirPath}:`, error);
     }
   }
 

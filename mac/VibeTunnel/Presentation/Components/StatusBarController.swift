@@ -129,7 +129,7 @@ final class StatusBarController: NSObject {
     private func setupNetworkMonitoring() {
         // Start the network monitor
         NetworkMonitor.shared.startMonitoring()
-        
+
         // Listen for network status changes
         NotificationCenter.default.addObserver(
             self,
@@ -137,11 +137,11 @@ final class StatusBarController: NSObject {
             name: .networkStatusChanged,
             object: nil
         )
-        
+
         // Set initial state
         hasNetworkAccess = NetworkMonitor.shared.isConnected
     }
-    
+
     @objc
     private func networkStatusChanged(_ notification: Notification) {
         hasNetworkAccess = NetworkMonitor.shared.isConnected
