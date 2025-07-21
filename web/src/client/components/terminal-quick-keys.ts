@@ -346,7 +346,7 @@ export class TerminalQuickKeys extends LitElement {
         
         /* Medium font for short character buttons */
         .quick-key-btn-medium {
-          font-size: 13px;
+          font-size: 12px;
         }
         
         /* Small font for mobile keyboard buttons */
