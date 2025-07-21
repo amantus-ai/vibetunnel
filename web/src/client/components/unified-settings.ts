@@ -58,7 +58,6 @@ export class UnifiedSettings extends LitElement {
   @state() private appPreferences: AppPreferences = DEFAULT_APP_PREFERENCES;
   @state() private repositoryBasePath = DEFAULT_REPOSITORY_BASE_PATH;
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
-  @state() private isServerConfigured = false;
   @state() private repositoryCount = 0;
   @state() private isDiscoveringRepositories = false;
 
@@ -171,7 +170,6 @@ export class UnifiedSettings extends LitElement {
       if (this.serverConfigService) {
         try {
           const serverConfig = await this.serverConfigService.loadConfig(this.visible);
-          this.isServerConfigured = serverConfig.serverConfigured ?? false;
           // Always use server's repository base path
           this.repositoryBasePath = serverConfig.repositoryBasePath || DEFAULT_REPOSITORY_BASE_PATH;
           logger.debug('Loaded repository base path:', this.repositoryBasePath);
@@ -640,11 +638,7 @@ export class UnifiedSettings extends LitElement {
               </div>
             </div>
             <p class="text-muted text-xs mt-1">
-              ${
-                this.isServerConfigured
-                  ? 'This path is synced with the VibeTunnel Mac app'
-                  : 'Default directory for new sessions and repository discovery'
-              }
+              Default directory for new sessions and repository discovery. Changes are automatically synced with the VibeTunnel Mac app.
             </p>
           </div>
           <div class="flex gap-2">
@@ -656,33 +650,8 @@ export class UnifiedSettings extends LitElement {
                 this.handleRepositoryBasePathChange(input.value);
               }}
               placeholder="~/"
-              class="input-field py-2 text-sm flex-1 ${
-                this.isServerConfigured ? 'opacity-60 cursor-not-allowed' : ''
-              }"
-              ?disabled=${this.isServerConfigured}
-              ?readonly=${this.isServerConfigured}
+              class="input-field py-2 text-sm flex-1"
             />
-            ${
-              this.isServerConfigured
-                ? html`
-                  <div class="flex items-center text-muted" title="Synced with Mac app">
-                    <svg
-                      class="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                      />
-                    </svg>
-                  </div>
-                `
-                : ''
-            }
           </div>
         </div>
       </div>
