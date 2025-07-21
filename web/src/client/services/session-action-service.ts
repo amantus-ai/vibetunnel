@@ -52,10 +52,10 @@ export interface SessionActionCallbacks {
 
   /**
    * Called when a session action completes successfully
-   * @param action - The action that was performed ('terminate' or 'clear')
+   * @param action - The action that was performed ('terminate', 'clear', or 'delete')
    * @param sessionId - The ID of the affected session
    */
-  onSuccess?: (action: 'terminate' | 'clear', sessionId: string) => void;
+  onSuccess?: (action: 'terminate' | 'clear' | 'delete', sessionId: string) => void;
 }
 
 /**
@@ -340,14 +340,14 @@ class SessionActionService {
       }
 
       logger.log('Session deleted successfully', { sessionId });
-      options.callbacks?.onSuccess?.('terminate', sessionId);
+      options.callbacks?.onSuccess?.('delete', sessionId);
 
       // Emit global event (only in browser environment)
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
           new CustomEvent('session-action', {
             detail: {
-              action: 'terminate',
+              action: 'delete',
               sessionId,
             },
           })

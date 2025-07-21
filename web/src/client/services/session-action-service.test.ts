@@ -332,7 +332,7 @@ describe('SessionActionService', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(onSuccess).toHaveBeenCalledWith('terminate', 'test-id');
+      expect(onSuccess).toHaveBeenCalledWith('delete', 'test-id');
       expect(fetch).toHaveBeenCalledWith('/api/sessions/test-id', {
         method: 'DELETE',
         headers: { Authorization: 'Bearer test-token' },
