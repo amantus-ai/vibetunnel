@@ -395,102 +395,108 @@ private struct RemoteAccessStatusSection: View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
                 // Tailscale status
-                HStack {
-                    if let status = tailscaleStatus {
-                        if status.isRunning {
+                if let status = tailscaleStatus {
+                    if status.isRunning, let hostname = status.hostname {
+                        HStack {
                             Image(systemName: "circle.fill")
                                 .foregroundColor(.green)
                                 .font(.system(size: 10))
                             Text("Tailscale")
                                 .font(.callout)
-                            if let hostname = status.hostname {
-                                Text("(\(hostname))")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        } else if status.isInstalled {
+                            InlineClickableURLView(
+                                label: "",
+                                url: "http://\(hostname):\(serverPort)"
+                            )
+                        }
+                    } else if status.isRunning {
+                        HStack {
+                            Image(systemName: "circle.fill")
+                                .foregroundColor(.green)
+                                .font(.system(size: 10))
+                            Text("Tailscale")
+                                .font(.callout)
+                            Spacer()
+                        }
+                    } else if status.isInstalled {
+                        HStack {
                             Image(systemName: "circle.fill")
                                 .foregroundColor(.orange)
                                 .font(.system(size: 10))
                             Text("Tailscale (not running)")
                                 .font(.callout)
-                        } else {
+                            Spacer()
+                        }
+                    } else {
+                        HStack {
                             Image(systemName: "circle")
                                 .foregroundColor(.gray)
                                 .font(.system(size: 10))
                             Text("Tailscale (not installed)")
                                 .font(.callout)
                                 .foregroundColor(.secondary)
+                            Spacer()
                         }
-                    } else {
+                    }
+                } else {
+                    HStack {
                         Image(systemName: "circle")
                             .foregroundColor(.gray)
                             .font(.system(size: 10))
                         Text("Tailscale")
                             .font(.callout)
                             .foregroundColor(.secondary)
+                        Spacer()
                     }
-                    Spacer()
                 }
 
                 // ngrok status
-                HStack {
-                    if let status = ngrokStatus {
+                if let status = ngrokStatus {
+                    HStack {
                         Image(systemName: "circle.fill")
                             .foregroundColor(.green)
                             .font(.system(size: 10))
                         Text("ngrok")
                             .font(.callout)
-
-                        if let url = URL(string: status.publicUrl) {
-                            Link(status.publicUrl, destination: url)
-                                .font(.caption)
-                                .foregroundStyle(.blue)
-                                .lineLimit(1)
-                        } else {
-                            Text(status.publicUrl)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-                        }
-
-                        NgrokURLCopyButton(url: status.publicUrl)
-                    } else {
+                        InlineClickableURLView(
+                            label: "",
+                            url: status.publicUrl
+                        )
+                    }
+                } else {
+                    HStack {
                         Image(systemName: "circle")
                             .foregroundColor(.gray)
                             .font(.system(size: 10))
                         Text("ngrok (not connected)")
                             .font(.callout)
                             .foregroundColor(.secondary)
+                        Spacer()
                     }
-                    Spacer()
                 }
 
                 // Cloudflare status
-                HStack {
-                    if cloudflareService.isRunning {
+                if cloudflareService.isRunning, let url = cloudflareService.publicUrl {
+                    HStack {
                         Image(systemName: "circle.fill")
                             .foregroundColor(.green)
                             .font(.system(size: 10))
                         Text("Cloudflare")
                             .font(.callout)
-                        if let url = cloudflareService.publicUrl {
-                            Text(
-                                "(\(url.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: ".trycloudflare.com", with: "")))"
-                            )
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                        }
-                    } else {
+                        InlineClickableURLView(
+                            label: "",
+                            url: url
+                        )
+                    }
+                } else {
+                    HStack {
                         Image(systemName: "circle")
                             .foregroundColor(.gray)
                             .font(.system(size: 10))
                         Text("Cloudflare (not connected)")
                             .font(.callout)
                             .foregroundColor(.secondary)
+                        Spacer()
                     }
-                    Spacer()
                 }
             }
         } header: {
@@ -502,43 +508,6 @@ private struct RemoteAccessStatusSection: View {
                 .frame(maxWidth: .infinity)
                 .multilineTextAlignment(.center)
         }
-    }
-}
-
-// MARK: - Ngrok URL Copy Button
-
-private struct NgrokURLCopyButton: View {
-    let url: String
-    @State private var showCopiedFeedback = false
-    @State private var feedbackTask: DispatchWorkItem?
-
-    var body: some View {
-        Button(action: {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(url, forType: .string)
-
-            // Cancel previous timer if exists
-            feedbackTask?.cancel()
-
-            withAnimation {
-                showCopiedFeedback = true
-            }
-
-            // Create new timer
-            let task = DispatchWorkItem {
-                withAnimation {
-                    showCopiedFeedback = false
-                }
-            }
-            feedbackTask = task
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: task)
-        }, label: {
-            Image(systemName: showCopiedFeedback ? "checkmark" : "doc.on.doc")
-                .foregroundColor(showCopiedFeedback ? .green : .accentColor)
-        })
-        .buttonStyle(.borderless)
-        .help("Copy URL")
-        .font(.caption)
     }
 }
 

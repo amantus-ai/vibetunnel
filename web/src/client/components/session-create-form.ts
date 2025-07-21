@@ -19,6 +19,7 @@ import { TitleMode } from '../../shared/types.js';
 import type { QuickStartCommand } from '../../types/config.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { RepositoryService } from '../services/repository-service.js';
+import { ServerConfigService } from '../services/server-config-service.js';
 import { type SessionCreateData, SessionService } from '../services/session-service.js';
 import { parseCommand } from '../utils/command-utils.js';
 import { createLogger } from '../utils/logger.js';
@@ -87,11 +88,13 @@ export class SessionCreateForm extends LitElement {
   private autocompleteManager!: AutocompleteManager;
   private repositoryService?: RepositoryService;
   private sessionService?: SessionService;
+  private serverConfigService?: ServerConfigService;
 
   connectedCallback() {
     super.connectedCallback();
     // Initialize services - AutocompleteManager handles optional authClient
     this.autocompleteManager = new AutocompleteManager(this.authClient);
+    this.serverConfigService = new ServerConfigService(this.authClient);
 
     // Initialize other services only if authClient is available
     if (this.authClient) {
@@ -196,20 +199,19 @@ export class SessionCreateForm extends LitElement {
   }
 
   private async loadServerConfig() {
+    if (!this.serverConfigService) {
+      return;
+    }
+
     try {
-      const response = await fetch('/api/config', {
-        headers: this.authClient ? this.authClient.getAuthHeader() : {},
-      });
-      if (response.ok) {
-        const config = await response.json();
-        if (config.quickStartCommands && Array.isArray(config.quickStartCommands)) {
-          // Map server config to our format
-          this.quickStartCommands = config.quickStartCommands.map((cmd: QuickStartCommand) => ({
-            label: cmd.name || cmd.command,
-            command: cmd.command,
-          }));
-          logger.debug('Loaded quick start commands from server:', this.quickStartCommands);
-        }
+      const quickStartCommands = await this.serverConfigService.getQuickStartCommands();
+      if (quickStartCommands && quickStartCommands.length > 0) {
+        // Map server config to our format
+        this.quickStartCommands = quickStartCommands.map((cmd: QuickStartCommand) => ({
+          label: cmd.name || cmd.command,
+          command: cmd.command,
+        }));
+        logger.debug('Loaded quick start commands from server:', this.quickStartCommands);
       }
     } catch (error) {
       logger.error('Failed to load server config:', error);
@@ -220,26 +222,20 @@ export class SessionCreateForm extends LitElement {
   private async handleQuickStartChanged(e: CustomEvent<QuickStartCommand[]>) {
     const commands = e.detail;
 
-    try {
-      const response = await fetch('/api/config', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(this.authClient ? this.authClient.getAuthHeader() : {}),
-        },
-        body: JSON.stringify({ quickStartCommands: commands }),
-      });
+    if (!this.serverConfigService) {
+      logger.error('Server config service not initialized');
+      return;
+    }
 
-      if (response.ok) {
-        // Update local state
-        this.quickStartCommands = commands.map((cmd: QuickStartCommand) => ({
-          label: cmd.name || cmd.command,
-          command: cmd.command,
-        }));
-        logger.debug('Updated quick start commands:', this.quickStartCommands);
-      } else {
-        logger.error('Failed to save quick start commands:', response.statusText);
-      }
+    try {
+      await this.serverConfigService.updateQuickStartCommands(commands);
+
+      // Update local state
+      this.quickStartCommands = commands.map((cmd: QuickStartCommand) => ({
+        label: cmd.name || cmd.command,
+        command: cmd.command,
+      }));
+      logger.debug('Updated quick start commands:', this.quickStartCommands);
     } catch (error) {
       logger.error('Failed to save quick start commands:', error);
     }
@@ -283,6 +279,10 @@ export class SessionCreateForm extends LitElement {
       }
       // Update autocomplete manager's authClient
       this.autocompleteManager.setAuthClient(this.authClient);
+      // Update server config service's authClient
+      if (this.serverConfigService) {
+        this.serverConfigService.setAuthClient(this.authClient);
+      }
     }
 
     // Handle visibility changes

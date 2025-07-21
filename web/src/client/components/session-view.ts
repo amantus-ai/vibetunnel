@@ -30,6 +30,7 @@ import './session-view/width-selector.js';
 import './session-view/session-header.js';
 import { authClient } from '../services/auth-client.js';
 import { createLogger } from '../utils/logger.js';
+import { terminateSession } from '../utils/session-actions.js';
 import {
   COMMON_TERMINAL_WIDTHS,
   TerminalPreferencesManager,
@@ -1757,41 +1758,38 @@ export class SessionView extends LitElement {
   private async handleTerminateSession() {
     if (!this.session || this.session.status !== 'running') return;
 
-    try {
-      // Make a DELETE request to forcefully terminate the session
-      const response = await fetch(`/api/sessions/${this.session.id}`, {
-        method: 'DELETE',
-        headers: {
-          ...authClient.getAuthHeader(),
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        logger.error('Failed to terminate session', { errorData, sessionId: this.session.id });
-        throw new Error(`Terminate failed: ${response.status}`);
-      }
-
-      // Session terminated successfully - the session status will be updated via SSE
-      logger.debug('Session terminated successfully', { sessionId: this.session.id });
-    } catch (error) {
-      logger.error('Failed to terminate session:', error);
+    const result = await terminateSession(this.session.id, authClient, 'running');
+    
+    if (!result.success) {
       // Show error to user
       this.dispatchEvent(
         new CustomEvent('error', {
-          detail: `Failed to terminate session: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          detail: `Failed to terminate session: ${result.error}`,
           bubbles: true,
           composed: true,
         })
       );
     }
+    // Session terminated successfully - the session status will be updated via SSE
   }
 
   private async handleClearSession() {
     if (!this.session || this.session.status !== 'exited') return;
 
-    // Navigate back to the list view
-    // The session list will handle removing exited sessions
-    this.handleBack();
+    const result = await terminateSession(this.session.id, authClient, 'exited');
+    
+    if (!result.success) {
+      // Show error to user
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: `Failed to clear session: ${result.error}`,
+          bubbles: true,
+          composed: true,
+        })
+      );
+    } else {
+      // Session cleared successfully - navigate back to list
+      this.handleBack();
+    }
   }
 }

@@ -7,6 +7,7 @@ import {
   pushNotificationService,
 } from '../services/push-notification-service.js';
 import { RepositoryService } from '../services/repository-service.js';
+import { ServerConfigService } from '../services/server-config-service.js';
 import { createLogger } from '../utils/logger.js';
 import { type MediaQueryState, responsiveObserver } from '../utils/responsive-utils.js';
 
@@ -17,11 +18,6 @@ export interface AppPreferences {
   useBinaryMode: boolean;
   showLogLink: boolean;
   repositoryBasePath: string;
-}
-
-interface ServerConfig {
-  repositoryBasePath: string;
-  serverConfigured?: boolean;
 }
 
 const DEFAULT_APP_PREFERENCES: AppPreferences = {
@@ -62,7 +58,6 @@ export class UnifiedSettings extends LitElement {
   // App settings state
   @state() private appPreferences: AppPreferences = DEFAULT_APP_PREFERENCES;
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
-  @state() private serverConfig: ServerConfig | null = null;
   @state() private isServerConfigured = false;
   @state() private repositoryCount = 0;
   @state() private isDiscoveringRepositories = false;
@@ -71,11 +66,15 @@ export class UnifiedSettings extends LitElement {
   private subscriptionChangeUnsubscribe?: () => void;
   private unsubscribeResponsive?: () => void;
   private repositoryService?: RepositoryService;
+  private serverConfigService?: ServerConfigService;
 
   connectedCallback() {
     super.connectedCallback();
     this.initializeNotifications();
     this.loadAppPreferences();
+
+    // Initialize services
+    this.serverConfigService = new ServerConfigService(this.authClient);
 
     // Initialize repository service if authClient is available
     if (this.authClient) {
@@ -118,8 +117,14 @@ export class UnifiedSettings extends LitElement {
     }
 
     // Initialize repository service when authClient becomes available
-    if (changedProperties.has('authClient') && this.authClient && !this.repositoryService) {
-      this.repositoryService = new RepositoryService(this.authClient);
+    if (changedProperties.has('authClient') && this.authClient) {
+      if (!this.repositoryService) {
+        this.repositoryService = new RepositoryService(this.authClient);
+      }
+      // Update server config service's authClient
+      if (this.serverConfigService) {
+        this.serverConfigService.setAuthClient(this.authClient);
+      }
       // Discover repositories if settings are already visible
       if (this.visible) {
         this.discoverRepositories();
@@ -154,13 +159,9 @@ export class UnifiedSettings extends LitElement {
       }
 
       // Fetch server configuration
-      try {
-        const response = await fetch('/api/config', {
-          headers: this.authClient ? this.authClient.getAuthHeader() : {},
-        });
-        if (response.ok) {
-          const serverConfig: ServerConfig = await response.json();
-          this.serverConfig = serverConfig;
+      if (this.serverConfigService) {
+        try {
+          const serverConfig = await this.serverConfigService.loadConfig();
           this.isServerConfigured = serverConfig.serverConfigured ?? false;
 
           // If server-configured, always use server's path
@@ -175,9 +176,9 @@ export class UnifiedSettings extends LitElement {
             // Save the updated preferences
             this.saveAppPreferences();
           }
+        } catch (error) {
+          logger.warn('Failed to fetch server config', error);
         }
-      } catch (error) {
-        logger.warn('Failed to fetch server config', error);
       }
 
       // Discover repositories after preferences are loaded if visible
