@@ -37,21 +37,6 @@ struct NewSessionForm: View {
         case directory
     }
 
-    enum TitleMode: String, CaseIterable {
-        case none = "none"
-        case filter = "filter"
-        case `static` = "static"
-        case dynamic = "dynamic"
-
-        var displayName: String {
-            switch self {
-            case .none: "None"
-            case .filter: "Filter"
-            case .static: "Static"
-            case .dynamic: "Dynamic"
-            }
-        }
-    }
 
     var body: some View {
         VStack(spacing: 0) {

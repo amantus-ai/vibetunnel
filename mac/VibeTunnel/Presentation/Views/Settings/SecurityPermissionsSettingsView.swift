@@ -87,32 +87,6 @@ struct SecurityPermissionsSettingsView: View {
     }
 }
 
-// MARK: - Authentication Mode
-
-private enum AuthenticationMode: String, CaseIterable {
-    case none = "none"
-    case osAuth = "os"
-    case sshKeys = "ssh"
-    case both = "both"
-
-    var displayName: String {
-        switch self {
-        case .none: "None"
-        case .osAuth: "macOS"
-        case .sshKeys: "SSH Keys"
-        case .both: "Both"
-        }
-    }
-
-    var description: String {
-        switch self {
-        case .none: "Anyone can access the dashboard (not recommended)"
-        case .osAuth: "Use your macOS username and password"
-        case .sshKeys: "Use SSH keys from ~/.ssh/authorized_keys"
-        case .both: "Allow both authentication methods"
-        }
-    }
-}
 
 // MARK: - Security Section
 

@@ -21,7 +21,7 @@ class ConfigManager: ObservableObject {
     @Published var serverPort: Int = 4020
     @Published var dashboardAccessMode: DashboardAccessMode = .network
     @Published var cleanupOnStartup: Bool = true
-    @Published var authenticationMode: AuthenticationMode = .os
+    @Published var authenticationMode: AuthenticationMode = .osAuth
     
     // Development settings
     @Published var debugMode: Bool = false
@@ -170,7 +170,7 @@ class ConfigManager: ObservableObject {
                     self.serverPort = server.port
                     self.dashboardAccessMode = DashboardAccessMode(rawValue: server.dashboardAccessMode) ?? .network
                     self.cleanupOnStartup = server.cleanupOnStartup
-                    self.authenticationMode = AuthenticationMode(rawValue: server.authenticationMode) ?? .os
+                    self.authenticationMode = AuthenticationMode(rawValue: server.authenticationMode) ?? .osAuth
                 }
                 
                 // Development settings
