@@ -39,27 +39,29 @@ final class ServerManagerTests {
         // Attach server state after start attempt
         Attachment.record(TestUtilities.captureServerState(manager), named: "Post-Start Server State")
 
-        // Handle both scenarios: binary not found vs binary working
-        if ServerBinaryAvailableCondition.isAvailable() {
-            // In CI with working binary, server should start successfully or fail gracefully
-            #expect(manager.isRunning || manager.lastError != nil)
-            Attachment.record("""
-            Binary Available: Server should start or fail gracefully
-            Is Running: \(manager.isRunning)
-            Server Instance: \(manager.bunServer != nil ? "Present" : "Nil")
-            Last Error: \(manager.lastError?.localizedDescription ?? "None")
-            """, named: "Server Status With Binary")
-        } else {
-            // In test environment without binary, server should fail to start
+        // The server binary must be available for tests
+        #expect(ServerBinaryAvailableCondition.isAvailable(), "Server binary must be available for tests to run")
+        
+        // Server should either be running or have a specific error
+        if !manager.isRunning {
+            // If not running, we expect a specific error
+            #expect(manager.lastError != nil, "Server failed to start but no error was reported")
+            
             if let error = manager.lastError as? BunServerError {
-                #expect(error == .binaryNotFound)
-                Attachment.record("""
-                Error Type: \(error)
-                Error Description: \(error.localizedDescription)
-                """, named: "Server Error Details")
+                // Only acceptable error is binaryNotFound if the binary truly doesn't exist
+                if error == .binaryNotFound {
+                    #expect(false, "Server binary not found - tests cannot continue")
+                }
             }
-            #expect(!manager.isRunning)
-            #expect(manager.bunServer == nil)
+            
+            Attachment.record("""
+            Server failed to start
+            Error: \(manager.lastError?.localizedDescription ?? "Unknown")
+            """, named: "Server Startup Failure")
+        } else {
+            // Server is running as expected
+            #expect(manager.bunServer != nil)
+            Attachment.record("Server started successfully", named: "Server Status")
         }
 
         // Stop should work regardless of state

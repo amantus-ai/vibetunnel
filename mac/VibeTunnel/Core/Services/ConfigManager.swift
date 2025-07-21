@@ -3,7 +3,7 @@ import Foundation
 import OSLog
 
 /// Manager for VibeTunnel configuration stored in ~/.vibetunnel/config.json
-/// This ensures quick start commands are synchronized between Mac app and web UI
+/// Provides centralized configuration management for all app settings
 @MainActor
 class ConfigManager: ObservableObject {
     static let shared = ConfigManager()
@@ -13,8 +13,38 @@ class ConfigManager: ObservableObject {
     private let configPath: URL
     private var fileMonitor: DispatchSourceFileSystemObject?
 
+    // Core configuration
     @Published private(set) var quickStartCommands: [QuickStartCommand] = []
     @Published var repositoryBasePath: String = "~/"
+    
+    // Server settings
+    @Published var serverPort: Int = 4020
+    @Published var dashboardAccessMode: DashboardAccessMode = .network
+    @Published var cleanupOnStartup: Bool = true
+    @Published var authenticationMode: AuthenticationMode = .os
+    
+    // Development settings
+    @Published var debugMode: Bool = false
+    @Published var useDevServer: Bool = false
+    @Published var devServerPath: String = ""
+    @Published var logLevel: String = "info"
+    
+    // Application preferences
+    @Published var preferredGitApp: String?
+    @Published var preferredTerminal: String?
+    @Published var updateChannel: UpdateChannel = .stable
+    @Published var showInDock: Bool = false
+    @Published var preventSleepWhenRunning: Bool = true
+    
+    // Remote access
+    @Published var ngrokEnabled: Bool = false
+    @Published var ngrokTokenPresent: Bool = false
+    
+    // Session defaults
+    @Published var sessionCommand: String = "zsh"
+    @Published var sessionWorkingDirectory: String = "~/"
+    @Published var sessionSpawnWindow: Bool = true
+    @Published var sessionTitleMode: TitleMode = .dynamic
 
     /// Quick start command structure matching the web interface
     struct QuickStartCommand: Identifiable, Codable, Equatable {
@@ -48,11 +78,54 @@ class ConfigManager: ObservableObject {
         }
     }
 
-    /// Configuration structure matching web/src/types/config.ts
+    /// Comprehensive configuration structure
     private struct VibeTunnelConfig: Codable {
         let version: Int
         var quickStartCommands: [QuickStartCommand]
         var repositoryBasePath: String?
+        
+        // Extended configuration sections
+        var server: ServerConfig?
+        var development: DevelopmentConfig?
+        var preferences: PreferencesConfig?
+        var remoteAccess: RemoteAccessConfig?
+        var sessionDefaults: SessionDefaultsConfig?
+    }
+    
+    // MARK: - Configuration Sub-structures
+    
+    private struct ServerConfig: Codable {
+        var port: Int
+        var dashboardAccessMode: String
+        var cleanupOnStartup: Bool
+        var authenticationMode: String
+    }
+    
+    private struct DevelopmentConfig: Codable {
+        var debugMode: Bool
+        var useDevServer: Bool
+        var devServerPath: String
+        var logLevel: String
+    }
+    
+    private struct PreferencesConfig: Codable {
+        var preferredGitApp: String?
+        var preferredTerminal: String?
+        var updateChannel: String
+        var showInDock: Bool
+        var preventSleepWhenRunning: Bool
+    }
+    
+    private struct RemoteAccessConfig: Codable {
+        var ngrokEnabled: Bool
+        var ngrokTokenPresent: Bool
+    }
+    
+    private struct SessionDefaultsConfig: Codable {
+        var command: String
+        var workingDirectory: String
+        var spawnWindow: Bool
+        var titleMode: String
     }
 
     /// Default commands matching web/src/types/config.ts
@@ -87,16 +160,51 @@ class ConfigManager: ObservableObject {
             do {
                 let data = try Data(contentsOf: configPath)
                 let config = try JSONDecoder().decode(VibeTunnelConfig.self, from: data)
-
-                // Validate config structure
-                if config.version > 0 && !config.quickStartCommands.isEmpty {
-                    self.quickStartCommands = config.quickStartCommands
-                    self.repositoryBasePath = config.repositoryBasePath ?? "~/"
-                    logger.info("Loaded configuration from disk with \(config.quickStartCommands.count) commands")
-                } else {
-                    logger.warning("Invalid config structure, using defaults")
-                    useDefaults()
+                
+                // Load all configuration values
+                self.quickStartCommands = config.quickStartCommands
+                self.repositoryBasePath = config.repositoryBasePath ?? "~/"
+                
+                // Server settings
+                if let server = config.server {
+                    self.serverPort = server.port
+                    self.dashboardAccessMode = DashboardAccessMode(rawValue: server.dashboardAccessMode) ?? .network
+                    self.cleanupOnStartup = server.cleanupOnStartup
+                    self.authenticationMode = AuthenticationMode(rawValue: server.authenticationMode) ?? .os
                 }
+                
+                // Development settings
+                if let dev = config.development {
+                    self.debugMode = dev.debugMode
+                    self.useDevServer = dev.useDevServer
+                    self.devServerPath = dev.devServerPath
+                    self.logLevel = dev.logLevel
+                }
+                
+                // Preferences
+                if let prefs = config.preferences {
+                    self.preferredGitApp = prefs.preferredGitApp
+                    self.preferredTerminal = prefs.preferredTerminal
+                    self.updateChannel = UpdateChannel(rawValue: prefs.updateChannel) ?? .stable
+                    self.showInDock = prefs.showInDock
+                    self.preventSleepWhenRunning = prefs.preventSleepWhenRunning
+                }
+                
+                // Remote access
+                if let remote = config.remoteAccess {
+                    self.ngrokEnabled = remote.ngrokEnabled
+                    self.ngrokTokenPresent = remote.ngrokTokenPresent
+                }
+                
+                // Session defaults
+                if let session = config.sessionDefaults {
+                    self.sessionCommand = session.command
+                    self.sessionWorkingDirectory = session.workingDirectory
+                    self.sessionSpawnWindow = session.spawnWindow
+                    self.sessionTitleMode = TitleMode(rawValue: session.titleMode) ?? .dynamic
+                }
+                
+                logger.info("Loaded configuration from disk")
             } catch {
                 logger.error("Failed to load config: \(error.localizedDescription)")
                 useDefaults()
@@ -116,7 +224,50 @@ class ConfigManager: ObservableObject {
     // MARK: - Configuration Saving
 
     private func saveConfiguration() {
-        let config = VibeTunnelConfig(version: 1, quickStartCommands: quickStartCommands, repositoryBasePath: repositoryBasePath)
+        var config = VibeTunnelConfig(
+            version: 2,
+            quickStartCommands: quickStartCommands,
+            repositoryBasePath: repositoryBasePath
+        )
+        
+        // Server configuration
+        config.server = ServerConfig(
+            port: serverPort,
+            dashboardAccessMode: dashboardAccessMode.rawValue,
+            cleanupOnStartup: cleanupOnStartup,
+            authenticationMode: authenticationMode.rawValue
+        )
+        
+        // Development configuration
+        config.development = DevelopmentConfig(
+            debugMode: debugMode,
+            useDevServer: useDevServer,
+            devServerPath: devServerPath,
+            logLevel: logLevel
+        )
+        
+        // Preferences
+        config.preferences = PreferencesConfig(
+            preferredGitApp: preferredGitApp,
+            preferredTerminal: preferredTerminal,
+            updateChannel: updateChannel.rawValue,
+            showInDock: showInDock,
+            preventSleepWhenRunning: preventSleepWhenRunning
+        )
+        
+        // Remote access
+        config.remoteAccess = RemoteAccessConfig(
+            ngrokEnabled: ngrokEnabled,
+            ngrokTokenPresent: ngrokTokenPresent
+        )
+        
+        // Session defaults
+        config.sessionDefaults = SessionDefaultsConfig(
+            command: sessionCommand,
+            workingDirectory: sessionWorkingDirectory,
+            spawnWindow: sessionSpawnWindow,
+            titleMode: sessionTitleMode.rawValue
+        )
 
         do {
             let encoder = JSONEncoder()

@@ -8,24 +8,18 @@ import Testing
 enum ServerBinaryAvailableCondition {
     static func isAvailable() -> Bool {
         // Check for the embedded vibetunnel binary in the host app bundle
-        // When running tests, Bundle.main is the test bundle, not the app bundle
-        let hostBundle = Bundle(for: BunServer.self) // Get the app bundle, not test bundle
-
+        // When running tests with swift test, Bundle(for:) won't find the app bundle
+        // So tests should fail if the binary is not properly embedded
+        let hostBundle = Bundle(for: BunServer.self)
+        
         if let embeddedBinaryPath = hostBundle.path(forResource: "vibetunnel", ofType: nil),
-           FileManager.default.fileExists(atPath: embeddedBinaryPath)
-        {
+           FileManager.default.fileExists(atPath: embeddedBinaryPath) {
             return true
         }
-
-        // Fallback: Check for Node.js binary paths (we use Node, not Bun!)
-        let nodePaths = [
-            "/usr/local/bin/node",
-            "/opt/homebrew/bin/node",
-            "/usr/bin/node",
-            ProcessInfo.processInfo.environment["NODE_PATH"]
-        ].compactMap(\.self)
-
-        return nodePaths.contains { FileManager.default.fileExists(atPath: $0) }
+        
+        // The binary MUST be embedded in the app's Resources folder
+        // If it's not there, the tests should fail
+        return false
     }
 }
 
