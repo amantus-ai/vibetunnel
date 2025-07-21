@@ -33,7 +33,7 @@ enum FilePathConstants {
     static let tmpDirectory = "/tmp/"
 
     // MARK: - Default Paths
-    
+
     static let defaultRepositoryBasePath = "~/Documents"
 
     // MARK: - Common Repository Base Paths
