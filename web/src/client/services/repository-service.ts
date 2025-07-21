@@ -19,10 +19,10 @@ export class RepositoryService {
    * @returns Promise with discovered repositories
    */
   async discoverRepositories(): Promise<Repository[]> {
-    // Get repository base path from server config
-    const basePath = await this.serverConfigService.getRepositoryBasePath();
-
     try {
+      // Get repository base path from server config
+      const basePath = await this.serverConfigService.getRepositoryBasePath();
+
       const response = await fetch(
         `/api/repositories/discover?path=${encodeURIComponent(basePath)}`,
         {

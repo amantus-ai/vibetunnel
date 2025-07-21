@@ -5,10 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Repository } from '../components/autocomplete-manager';
 import type { AuthClient } from './auth-client';
 import { RepositoryService } from './repository-service';
+import type { ServerConfigService } from './server-config-service';
 
 describe('RepositoryService', () => {
   let service: RepositoryService;
   let mockAuthClient: AuthClient;
+  let mockServerConfigService: ServerConfigService;
   let fetchMock: ReturnType<typeof vi.fn>;
   let mockStorage: { [key: string]: string };
 
@@ -41,8 +43,13 @@ describe('RepositoryService', () => {
       getAuthHeader: vi.fn(() => ({ Authorization: 'Bearer test-token' })),
     } as unknown as AuthClient;
 
+    // Mock server config service
+    mockServerConfigService = {
+      getRepositoryBasePath: vi.fn(async () => '~/'),
+    } as unknown as ServerConfigService;
+
     // Create service instance
-    service = new RepositoryService(mockAuthClient);
+    service = new RepositoryService(mockAuthClient, mockServerConfigService);
   });
 
   afterEach(() => {
@@ -84,11 +91,11 @@ describe('RepositoryService', () => {
       expect(result).toEqual(mockRepositories);
     });
 
-    it('should use repository base path from preferences', async () => {
-      // Set preferences in localStorage - using the correct key from unified-settings.js
-      mockStorage.vibetunnel_app_preferences = JSON.stringify({
-        repositoryBasePath: '/custom/path',
-      });
+    it('should use repository base path from server config', async () => {
+      // Mock the server config service to return a custom path
+      vi.mocked(mockServerConfigService.getRepositoryBasePath).mockResolvedValueOnce(
+        '/custom/path'
+      );
 
       fetchMock.mockResolvedValueOnce({
         ok: true,
@@ -105,24 +112,20 @@ describe('RepositoryService', () => {
       );
     });
 
-    it('should handle invalid preferences JSON', async () => {
-      // Set invalid JSON in localStorage
-      mockStorage.vibetunnel_app_preferences = 'invalid-json';
+    it('should handle error from server config', async () => {
+      // Mock the server config to throw an error
+      vi.mocked(mockServerConfigService.getRepositoryBasePath).mockRejectedValueOnce(
+        new Error('Config error')
+      );
 
       fetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => [],
       });
 
-      await service.discoverRepositories();
-
-      // Should fall back to default path
-      expect(fetchMock).toHaveBeenCalledWith(
-        `/api/repositories/discover?path=${encodeURIComponent('~/')}`,
-        {
-          headers: { Authorization: 'Bearer test-token' },
-        }
-      );
+      // Should handle the error gracefully
+      const result = await service.discoverRepositories();
+      expect(result).toEqual([]);
     });
 
     it('should handle fetch errors', async () => {
@@ -145,10 +148,9 @@ describe('RepositoryService', () => {
       expect(result).toEqual([]);
     });
 
-    it('should handle empty repository base path in preferences', async () => {
-      mockStorage.vibetunnel_app_preferences = JSON.stringify({
-        repositoryBasePath: '',
-      });
+    it('should handle empty repository base path from server config', async () => {
+      // Mock the server config service to return empty string
+      vi.mocked(mockServerConfigService.getRepositoryBasePath).mockResolvedValueOnce('');
 
       fetchMock.mockResolvedValueOnce({
         ok: true,
@@ -157,13 +159,10 @@ describe('RepositoryService', () => {
 
       await service.discoverRepositories();
 
-      // Should fall back to default path
-      expect(fetchMock).toHaveBeenCalledWith(
-        `/api/repositories/discover?path=${encodeURIComponent('~/')}`,
-        {
-          headers: { Authorization: 'Bearer test-token' },
-        }
-      );
+      // Should use empty path in the request
+      expect(fetchMock).toHaveBeenCalledWith(`/api/repositories/discover?path=`, {
+        headers: { Authorization: 'Bearer test-token' },
+      });
     });
 
     it('should include auth header in request', async () => {

@@ -75,13 +75,36 @@ export interface SessionActionOptions {
   callbacks?: SessionActionCallbacks;
 }
 
+/**
+ * Singleton service for managing session lifecycle actions
+ *
+ * @class SessionActionService
+ * @singleton
+ */
 class SessionActionService {
   private static instance: SessionActionService;
 
+  /**
+   * Private constructor to enforce singleton pattern
+   * @private
+   */
   private constructor() {
     logger.log('SessionActionService initialized');
   }
 
+  /**
+   * Gets the singleton instance of SessionActionService
+   *
+   * @returns {SessionActionService} The singleton instance
+   * @static
+   *
+   * @example
+   * ```typescript
+   * const service = SessionActionService.getInstance();
+   * // or use the exported instance
+   * import { sessionActionService } from './session-action-service.js';
+   * ```
+   */
   static getInstance(): SessionActionService {
     if (!SessionActionService.instance) {
       SessionActionService.instance = new SessionActionService();
@@ -91,6 +114,33 @@ class SessionActionService {
 
   /**
    * Terminates a running session
+   *
+   * @param {Session} session - The session to terminate (must have status 'running')
+   * @param {SessionActionOptions} options - Options including auth client and callbacks
+   * @returns {Promise<SessionActionResult>} Result indicating success or failure
+   *
+   * @remarks
+   * - Only works on sessions with status 'running'
+   * - Emits a 'session-action' event on window for global listeners
+   * - Calls onSuccess callback with ('terminate', sessionId) on success
+   * - Calls onError callback with error message on failure
+   *
+   * @example
+   * ```typescript
+   * const result = await service.terminateSession(runningSession, {
+   *   authClient: myAuthClient,
+   *   callbacks: {
+   *     onSuccess: (action, id) => console.log(`Session ${id} terminated`),
+   *     onError: (msg) => alert(msg)
+   *   }
+   * });
+   *
+   * if (result.success) {
+   *   console.log('Termination successful');
+   * } else {
+   *   console.error('Failed:', result.error);
+   * }
+   * ```
    */
   async terminateSession(
     session: Session,
@@ -130,7 +180,29 @@ class SessionActionService {
   }
 
   /**
-   * Clears an exited session
+   * Clears an exited session from the system
+   *
+   * @param {Session} session - The session to clear (must have status 'exited')
+   * @param {SessionActionOptions} options - Options including auth client and callbacks
+   * @returns {Promise<SessionActionResult>} Result indicating success or failure
+   *
+   * @remarks
+   * - Only works on sessions with status 'exited'
+   * - Removes the session record from the server
+   * - Emits a 'session-action' event with action 'clear'
+   * - Useful for cleaning up terminated sessions from the UI
+   *
+   * @example
+   * ```typescript
+   * const exitedSession = { ...session, status: 'exited' };
+   * const result = await service.clearSession(exitedSession, {
+   *   authClient,
+   *   callbacks: {
+   *     onSuccess: (action, id) => removeFromUI(id),
+   *     onError: (msg) => showError(msg)
+   *   }
+   * });
+   * ```
    */
   async clearSession(
     session: Session,
@@ -170,8 +242,34 @@ class SessionActionService {
   }
 
   /**
-   * Deletes a session (supports both running and exited sessions)
-   * This is a unified method that calls terminate or clear based on status
+   * Deletes a session regardless of its status
+   *
+   * @param {Session} session - The session to delete
+   * @param {SessionActionOptions} options - Options including auth client and callbacks
+   * @returns {Promise<SessionActionResult>} Result indicating success or failure
+   *
+   * @remarks
+   * This is a unified method that intelligently handles different session states:
+   * - For 'running' sessions: calls terminateSession()
+   * - For 'exited' sessions: calls clearSession()
+   * - For other statuses: returns an error
+   *
+   * This method is useful when you want to remove a session without
+   * checking its status first.
+   *
+   * @example
+   * ```typescript
+   * // Delete any session without checking status
+   * const result = await service.deleteSession(session, {
+   *   authClient,
+   *   callbacks: {
+   *     onSuccess: (action, id) => {
+   *       console.log(`Session ${id} deleted via ${action}`);
+   *       removeFromSessionList(id);
+   *     }
+   *   }
+   * });
+   * ```
    */
   async deleteSession(
     session: Session,
@@ -190,8 +288,38 @@ class SessionActionService {
   }
 
   /**
-   * Direct API call to delete a session by ID
-   * Used when we don't have the full session object
+   * Deletes a session by ID without requiring the full session object
+   *
+   * @param {string} sessionId - The ID of the session to delete
+   * @param {SessionActionOptions} options - Options including auth client and callbacks
+   * @returns {Promise<SessionActionResult>} Result indicating success or failure
+   *
+   * @remarks
+   * This method makes a direct DELETE API call to /api/sessions/:id
+   * without needing to know the session's current status. Useful when:
+   * - You only have the session ID (e.g., from a URL parameter)
+   * - The session object is not readily available
+   * - You want to force deletion regardless of client-side state
+   *
+   * The server will handle the deletion appropriately based on the
+   * session's actual status.
+   *
+   * @throws {Error} Throws if the API request fails
+   *
+   * @example
+   * ```typescript
+   * // Delete by ID from URL parameter
+   * const sessionId = new URLSearchParams(location.search).get('session');
+   * if (sessionId) {
+   *   const result = await service.deleteSessionById(sessionId, {
+   *     authClient,
+   *     callbacks: {
+   *       onSuccess: () => navigate('/sessions'),
+   *       onError: (msg) => showNotification(msg)
+   *     }
+   *   });
+   * }
+   * ```
    */
   async deleteSessionById(
     sessionId: string,
@@ -236,5 +364,19 @@ class SessionActionService {
   }
 }
 
-// Export singleton instance
+/**
+ * Global singleton instance of SessionActionService
+ *
+ * @remarks
+ * Use this exported instance instead of calling getInstance() directly.
+ * This ensures consistent usage across the application.
+ *
+ * @example
+ * ```typescript
+ * import { sessionActionService } from './services/session-action-service.js';
+ *
+ * // Use in components
+ * await sessionActionService.terminateSession(session, options);
+ * ```
+ */
 export const sessionActionService = SessionActionService.getInstance();

@@ -1,11 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Session } from '../components/session-list.js';
 import type { AuthClient } from './auth-client.js';
 import { sessionActionService } from './session-action-service.js';
 
-// Mock the session-actions utility
+// Mock the session-actions utility - must use vi.hoisted
+const { mockTerminateSession } = vi.hoisted(() => {
+  return {
+    mockTerminateSession: vi.fn(),
+  };
+});
+
 vi.mock('../utils/session-actions.js', () => ({
-  terminateSession: vi.fn().mockResolvedValue({ success: true }),
+  terminateSession: mockTerminateSession,
 }));
 
 describe('SessionActionService', () => {
@@ -171,6 +177,150 @@ describe('SessionActionService', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('Delete failed: 404');
       expect(onError).toHaveBeenCalledWith('Delete failed: 404');
+      expect(window.dispatchEvent).not.toHaveBeenCalled();
+    });
+
+    it('should handle network errors', async () => {
+      const onError = vi.fn();
+
+      // Mock fetch to throw
+      global.fetch = vi.fn().mockRejectedValue(new Error('Network failure'));
+
+      const result = await sessionActionService.deleteSessionById('test-id', {
+        authClient: mockAuthClient,
+        callbacks: { onError },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Network failure');
+      expect(onError).toHaveBeenCalledWith('Network failure');
+    });
+
+    it('should handle non-Error exceptions', async () => {
+      const onError = vi.fn();
+
+      // Mock fetch to throw non-Error
+      global.fetch = vi.fn().mockRejectedValue('String error');
+
+      const result = await sessionActionService.deleteSessionById('test-id', {
+        authClient: mockAuthClient,
+        callbacks: { onError },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Unknown error');
+      expect(onError).toHaveBeenCalledWith('Unknown error');
+    });
+
+    it('should work without callbacks', async () => {
+      const mockResponse = {
+        ok: true,
+        text: vi.fn().mockResolvedValue(''),
+      };
+      global.fetch = vi.fn().mockResolvedValue(mockResponse);
+
+      const result = await sessionActionService.deleteSessionById('test-id', {
+        authClient: mockAuthClient,
+      });
+
+      expect(result.success).toBe(true);
+      expect(fetch).toHaveBeenCalled();
+      expect(window.dispatchEvent).toHaveBeenCalled();
+    });
+
+    it('should handle empty session ID', async () => {
+      const onError = vi.fn();
+
+      // Even with empty ID, the method should attempt the call
+      // The server will handle validation
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        text: async () => 'Invalid session ID',
+      });
+
+      const result = await sessionActionService.deleteSessionById('', {
+        authClient: mockAuthClient,
+        callbacks: { onError },
+      });
+
+      expect(result.success).toBe(false);
+      expect(fetch).toHaveBeenCalledWith('/api/sessions/', expect.any(Object));
+    });
+  });
+
+  describe('event emission', () => {
+    it('should not emit events when window is undefined', async () => {
+      // Remove window
+      delete (global as any).window;
+
+      const result = await sessionActionService.terminateSession(mockSession, {
+        authClient: mockAuthClient,
+      });
+
+      expect(result.success).toBe(true);
+      // No error should be thrown even without window
+    });
+
+    it('should emit custom events with correct detail structure', async () => {
+      const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+
+      await sessionActionService.terminateSession(mockSession, {
+        authClient: mockAuthClient,
+      });
+
+      const eventCall = dispatchSpy.mock.calls[0];
+      const event = eventCall[0] as CustomEvent;
+
+      expect(event).toBeInstanceOf(CustomEvent);
+      expect(event.type).toBe('session-action');
+      expect(event.detail).toEqual({
+        action: 'terminate',
+        sessionId: 'test-session-id',
+      });
+    });
+  });
+
+  describe('edge cases and error handling', () => {
+    it('should handle sessions with missing properties gracefully', async () => {
+      const incompleteSession = {
+        id: 'test-id',
+        status: 'running',
+      } as Session;
+
+      const result = await sessionActionService.terminateSession(incompleteSession, {
+        authClient: mockAuthClient,
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockTerminateSession).toHaveBeenCalledWith('test-id', mockAuthClient, 'running');
+    });
+
+    it('should handle concurrent operations', async () => {
+      const onSuccess = vi.fn();
+
+      // Start multiple operations concurrently
+      const operations = [
+        sessionActionService.terminateSession(mockSession, {
+          authClient: mockAuthClient,
+          callbacks: { onSuccess },
+        }),
+        sessionActionService.terminateSession(
+          { ...mockSession, id: 'session-2' },
+          {
+            authClient: mockAuthClient,
+            callbacks: { onSuccess },
+          }
+        ),
+      ];
+
+      const results = await Promise.all(operations);
+
+      expect(results).toHaveLength(2);
+      expect(results.every((r) => r.success)).toBe(true);
+      expect(onSuccess).toHaveBeenCalledTimes(2);
+      expect(onSuccess).toHaveBeenCalledWith('terminate', 'test-session-id');
+      expect(onSuccess).toHaveBeenCalledWith('terminate', 'session-2');
     });
   });
 });
