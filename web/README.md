@@ -108,9 +108,6 @@ Remote Server Options:
   --name <name>         Unique name for remote server
   --allow-insecure-hq   Allow HTTP URLs for HQ (not recommended)
 
-Repository Options:
-  --repository-base-path <path>  Base path for repository discovery
-
 Debugging:
   --debug               Enable debug logging
 ```
