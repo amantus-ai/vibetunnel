@@ -62,15 +62,12 @@ struct SystemControlHandlerTests {
         // Allow time for async UserDefaults update
         try await Task.sleep(for: .milliseconds(200))
 
-        // Verify UserDefaults was updated - the path might be converted to ~ notation
+        // Verify UserDefaults was updated
         let updatedPath = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
-        if testPath.hasPrefix("/Users/test/") {
-            // The ConfigManager converts paths to ~ notation for paths in home directory
-            let expectedPath = "~" + testPath.dropFirst("/Users/test".count)
-            #expect(updatedPath == expectedPath || updatedPath == testPath)
-        } else {
-            #expect(updatedPath == testPath)
-        }
+        
+        // The SystemControlHandler stores the path as-is without conversion
+        // The conversion to ~ notation only happens in the UI components
+        #expect(updatedPath == testPath)
     }
 
     @MainActor
