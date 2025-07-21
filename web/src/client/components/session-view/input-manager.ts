@@ -30,6 +30,11 @@ export class InputManager {
   private readonly DOUBLE_ESCAPE_THRESHOLD = 500; // ms
 
   setSession(session: Session | null): void {
+    // Clean up IME input when session is null
+    if (!session && this.imeInput) {
+      this.cleanup();
+    }
+
     this.session = session;
 
     // Setup IME input when session is available
@@ -37,7 +42,10 @@ export class InputManager {
       this.setupIMEInput();
       // Focus the IME input after a short delay to ensure it's ready
       setTimeout(() => {
-        this.focusIMEInput();
+        // Validate session still exists and matches before focusing
+        if (this.session === session && this.imeInput) {
+          this.focusIMEInput();
+        }
       }, 100);
     }
 

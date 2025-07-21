@@ -224,16 +224,12 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       ];
       // Allow all Cmd/Ctrl combinations (including Cmd+V)
       if (!allowedKeys.includes(e.key) && !e.metaKey && !e.ctrlKey) {
-        console.log('🌏 Lifecycle: Blocking keyboard event - IME input is focused:', e.key);
         return;
       }
-      // Allow editing keys and shortcuts to pass through to IME input
-      console.log('🌏 Lifecycle: Allowing editing key for IME input:', e.key);
     }
 
     // Check if IME composition is active - InputManager handles this
     if (document.body.getAttribute('data-ime-composing') === 'true') {
-      console.log('🌏 Lifecycle: Blocking keyboard event during IME composition:', e.key);
       return;
     }
 
