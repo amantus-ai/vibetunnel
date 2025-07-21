@@ -24,8 +24,8 @@ final class RepositoryPathSyncService {
     // MARK: - Private Methods
 
     private func setupObserver() {
-        // Monitor UserDefaults changes for repository base path
-        UserDefaults.standard.publisher(for: \.repositoryBasePath)
+        // Monitor ConfigManager changes for repository base path
+        ConfigManager.shared.$repositoryBasePath
             .removeDuplicates()
             .dropFirst() // Skip initial value on startup
             .sink { [weak self] newPath in
@@ -76,7 +76,7 @@ final class RepositoryPathSyncService {
             return
         }
 
-        let path = newPath ?? AppConstants.Defaults.repositoryBasePath
+        let path = newPath ?? "~/"
 
         // Skip if we've already sent this path
         guard path != lastSentPath else {
@@ -111,7 +111,7 @@ final class RepositoryPathSyncService {
 
     /// Manually trigger a path sync (useful after initial connection)
     func syncCurrentPath() async {
-        let path = AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.repositoryBasePath)
+        let path = ConfigManager.shared.repositoryBasePath
 
         logger.info("🔄 Manually syncing repository path: \(path)")
 
@@ -139,19 +139,6 @@ final class RepositoryPathSyncService {
     }
 }
 
-// MARK: - UserDefaults Extension
-
-extension UserDefaults {
-    @objc fileprivate dynamic var repositoryBasePath: String {
-        get {
-            string(forKey: AppConstants.UserDefaultsKeys.repositoryBasePath) ??
-                AppConstants.Defaults.repositoryBasePath
-        }
-        set {
-            set(newValue, forKey: AppConstants.UserDefaultsKeys.repositoryBasePath)
-        }
-    }
-}
 
 // MARK: - Notification Names
 

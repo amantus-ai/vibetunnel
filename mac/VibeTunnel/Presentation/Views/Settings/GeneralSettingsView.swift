@@ -14,8 +14,7 @@ struct GeneralSettingsView: View {
     private var showInDock = true
     @AppStorage(AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
     private var preventSleepWhenRunning = true
-    @AppStorage(AppConstants.UserDefaultsKeys.repositoryBasePath)
-    private var repositoryBasePath = AppConstants.Defaults.repositoryBasePath
+    @StateObject private var configManager = ConfigManager.shared
     @AppStorage(AppConstants.UserDefaultsKeys.serverPort)
     private var serverPort = "4020"
     @AppStorage(AppConstants.UserDefaultsKeys.dashboardAccessMode)
@@ -56,7 +55,10 @@ struct GeneralSettingsView: View {
                 CLIInstallationSection()
 
                 // Repository section
-                RepositorySettingsSection(repositoryBasePath: $repositoryBasePath)
+                RepositorySettingsSection(repositoryBasePath: .init(
+                    get: { configManager.repositoryBasePath },
+                    set: { configManager.updateRepositoryBasePath($0) }
+                ))
 
                 Section {
                     // Launch at Login

@@ -317,8 +317,7 @@ struct NewSessionForm: View {
             focusedField = .name
         }
         .task {
-            let repositoryBasePath = AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.repositoryBasePath)
-            await repositoryDiscovery.discoverRepositories(in: repositoryBasePath)
+            await repositoryDiscovery.discoverRepositories(in: configManager.repositoryBasePath)
         }
         .alert("Error", isPresented: $showError) {
             Button("OK") {}

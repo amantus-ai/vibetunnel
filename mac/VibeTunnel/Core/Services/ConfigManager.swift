@@ -14,6 +14,7 @@ class ConfigManager: ObservableObject {
     private var fileMonitor: DispatchSourceFileSystemObject?
 
     @Published private(set) var quickStartCommands: [QuickStartCommand] = []
+    @Published var repositoryBasePath: String = "~/"
 
     /// Quick start command structure matching the web interface
     struct QuickStartCommand: Identifiable, Codable, Equatable {
@@ -51,6 +52,7 @@ class ConfigManager: ObservableObject {
     private struct VibeTunnelConfig: Codable {
         let version: Int
         var quickStartCommands: [QuickStartCommand]
+        var repositoryBasePath: String?
     }
 
     /// Default commands matching web/src/types/config.ts
@@ -89,6 +91,7 @@ class ConfigManager: ObservableObject {
                 // Validate config structure
                 if config.version > 0 && !config.quickStartCommands.isEmpty {
                     self.quickStartCommands = config.quickStartCommands
+                    self.repositoryBasePath = config.repositoryBasePath ?? "~/"
                     logger.info("Loaded configuration from disk with \(config.quickStartCommands.count) commands")
                 } else {
                     logger.warning("Invalid config structure, using defaults")
@@ -106,13 +109,14 @@ class ConfigManager: ObservableObject {
 
     private func useDefaults() {
         self.quickStartCommands = defaultCommands
+        self.repositoryBasePath = "~/"
         saveConfiguration()
     }
 
     // MARK: - Configuration Saving
 
     private func saveConfiguration() {
-        let config = VibeTunnelConfig(version: 1, quickStartCommands: quickStartCommands)
+        let config = VibeTunnelConfig(version: 1, quickStartCommands: quickStartCommands, repositoryBasePath: repositoryBasePath)
 
         do {
             let encoder = JSONEncoder()
@@ -236,6 +240,15 @@ class ConfigManager: ObservableObject {
         commands.move(fromOffsets: source, toOffset: destination)
         updateQuickStartCommands(commands)
         logger.info("Reordered quick start commands")
+    }
+    
+    /// Update repository base path
+    func updateRepositoryBasePath(_ path: String) {
+        guard path != repositoryBasePath else { return }
+        
+        self.repositoryBasePath = path
+        saveConfiguration()
+        logger.info("Updated repository base path to: \(path)")
     }
 
     /// Get the configuration file path for debugging

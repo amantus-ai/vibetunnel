@@ -6,8 +6,7 @@ import SwiftUI
 /// Allows users to select their primary project directory for repository discovery
 /// and new session defaults. This path will be synced to the web UI settings.
 struct ProjectFolderPageView: View {
-    @AppStorage(AppConstants.UserDefaultsKeys.repositoryBasePath)
-    private var repositoryBasePath = AppConstants.Defaults.repositoryBasePath
+    @StateObject private var configManager = ConfigManager.shared
 
     @State private var selectedPath = ""
     @State private var isShowingPicker = false
@@ -109,7 +108,7 @@ struct ProjectFolderPageView: View {
         }
         .padding()
         .onAppear {
-            selectedPath = repositoryBasePath
+            selectedPath = configManager.repositoryBasePath
         }
         .onChange(of: currentPage) { _, newPage in
             if newPage == pageIndex {
@@ -125,7 +124,7 @@ struct ProjectFolderPageView: View {
             }
         }
         .onChange(of: selectedPath) { _, newValue in
-            repositoryBasePath = newValue
+            configManager.updateRepositoryBasePath(newValue)
 
             // Cancel any existing scan
             scanTask?.cancel()
