@@ -51,7 +51,7 @@ export class ConfigService {
     } catch (error) {
       if (error instanceof z.ZodError) {
         logger.error('Config validation failed:', error.issues);
-        throw new Error(`Invalid config: ${error.issues.map((e) => e.message).join(', ')}`);
+        throw new Error(`Invalid config: ${error.issues.map((issue) => issue.message).join(', ')}`);
       }
       throw error;
     }

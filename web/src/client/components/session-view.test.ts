@@ -3,7 +3,6 @@ import { fixture, html } from '@open-wc/testing';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clickElement,
-  pressKey,
   resetViewport,
   setupFetchMock,
   setViewport,
@@ -14,7 +13,6 @@ import { resetFactoryCounters } from '@/test/utils/test-factories';
 
 // Mock EventSource globally
 global.EventSource = MockEventSource as unknown as typeof EventSource;
-
 
 // Import component type
 import type { SessionView } from './session-view';
@@ -36,6 +34,12 @@ interface SessionViewTestInterface extends SessionView {
   keyboardHeight: number;
   updateTerminalTransform: () => void;
   _updateTerminalTransformTimeout: ReturnType<typeof setTimeout> | null;
+  inputManager: {
+    sendInputText: (text: string) => Promise<void>;
+    sendInput: (input: string) => Promise<void>;
+    session: Session | null;
+  };
+  handleBack: () => void;
 }
 
 // Test interface for Terminal element
@@ -272,11 +276,11 @@ describe('SessionView', () => {
 
       // Check that the component is properly set up
       expect(element.session).toBeTruthy();
-      expect((element as any).inputManager).toBeTruthy();
-      expect((element as any).inputManager.session).toBeTruthy();
+      expect((element as SessionViewTestInterface).inputManager).toBeTruthy();
+      expect((element as SessionViewTestInterface).inputManager.session).toBeTruthy();
 
       // Directly call sendInputText on the input manager to bypass IME complexity
-      const inputManager = (element as any).inputManager;
+      const inputManager = (element as SessionViewTestInterface).inputManager;
       await inputManager.sendInputText('a');
 
       // Wait for async operation
@@ -298,7 +302,7 @@ describe('SessionView', () => {
       );
 
       // Test Enter key - directly call sendInput
-      const inputManager = (element as any).inputManager;
+      const inputManager = (element as SessionViewTestInterface).inputManager;
       await inputManager.sendInput('enter');
       await waitForAsync();
       expect(inputCapture).toHaveBeenCalledWith({ key: 'enter' });
@@ -794,7 +798,7 @@ describe('SessionView', () => {
 
       // For exited sessions, escape key should trigger navigation
       // Call handleBack directly since keyboard event handling has timing issues in tests
-      (element as any).handleBack();
+      (element as SessionViewTestInterface).handleBack();
       await element.updateComplete;
 
       expect(navigateHandler).toHaveBeenCalled();
