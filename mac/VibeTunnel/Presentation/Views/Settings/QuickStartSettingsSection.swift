@@ -83,7 +83,7 @@ struct QuickStartSettingsSection: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                        .background(Color(NSColor.tertiaryLabelColor).opacity(0.1))
                         .cornerRadius(4)
                         .listRowSeparator(.hidden)
                         .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
@@ -91,7 +91,7 @@ struct QuickStartSettingsSection: View {
                     }
                 }
                 .listStyle(.plain)
-                .background(Color(NSColor.controlBackgroundColor))
+                .background(Color(NSColor.tertiaryLabelColor).opacity(0.08))
                 .cornerRadius(6)
                 .frame(minHeight: 100)
                 .scrollContentBackground(.hidden)
@@ -114,9 +114,6 @@ struct QuickStartSettingsSection: View {
                     Spacer()
                 }
             }
-        } header: {
-            Text("Quick Start")
-                .font(.headline)
         }
     }
 
