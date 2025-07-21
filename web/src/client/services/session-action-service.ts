@@ -4,6 +4,30 @@
  * A singleton service that manages session actions like terminate and clear,
  * coordinating with the auth client and handling UI updates through callbacks.
  * Reusable across session-view, session-list, and session-card components.
+ *
+ * @remarks
+ * This service provides a unified interface for session management operations,
+ * emitting global events that other components can listen to for reactive updates.
+ *
+ * @example
+ * ```typescript
+ * // Get the singleton instance
+ * const service = sessionActionService;
+ *
+ * // Terminate a running session
+ * const result = await service.terminateSession(session, {
+ *   authClient,
+ *   callbacks: {
+ *     onSuccess: (action, sessionId) => console.log(`${action} successful`),
+ *     onError: (message) => console.error(message)
+ *   }
+ * });
+ *
+ * // Listen for session actions globally
+ * window.addEventListener('session-action', (event) => {
+ *   console.log(event.detail.action, event.detail.sessionId);
+ * });
+ * ```
  */
 
 import type { Session } from '../components/session-list.js';
@@ -14,13 +38,40 @@ import type { AuthClient } from './auth-client.js';
 
 const logger = createLogger('session-action-service');
 
+/**
+ * Callback functions for session action results
+ *
+ * @interface SessionActionCallbacks
+ */
 export interface SessionActionCallbacks {
+  /**
+   * Called when an error occurs during a session action
+   * @param message - Human-readable error message
+   */
   onError?: (message: string) => void;
+
+  /**
+   * Called when a session action completes successfully
+   * @param action - The action that was performed ('terminate' or 'clear')
+   * @param sessionId - The ID of the affected session
+   */
   onSuccess?: (action: 'terminate' | 'clear', sessionId: string) => void;
 }
 
+/**
+ * Options for session action operations
+ *
+ * @interface SessionActionOptions
+ */
 export interface SessionActionOptions {
+  /**
+   * AuthClient instance for API authentication
+   */
   authClient: AuthClient;
+
+  /**
+   * Optional callbacks for handling action results
+   */
   callbacks?: SessionActionCallbacks;
 }
 
