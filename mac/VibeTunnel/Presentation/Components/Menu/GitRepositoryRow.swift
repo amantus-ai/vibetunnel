@@ -11,14 +11,7 @@ struct GitRepositoryRow: View {
     private var colorScheme
 
     private var gitAppName: String {
-        if let preferredApp = UserDefaults.standard.string(forKey: "preferredGitApp"),
-           !preferredApp.isEmpty,
-           let gitApp = GitApp(rawValue: preferredApp)
-        {
-            return gitApp.displayName
-        }
-        // Return first installed git app or default
-        return GitApp.installed.first?.displayName ?? "Git App"
+        GitAppHelper.getPreferredGitAppName()
     }
 
     private var branchInfo: some View {
