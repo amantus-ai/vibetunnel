@@ -2,6 +2,7 @@ import Foundation
 
 // MARK: - Terminal Control Payloads
 
+/// Request payload for spawning a new terminal window
 struct TerminalSpawnRequest: Codable {
     let sessionId: String
     let workingDirectory: String?
@@ -9,6 +10,7 @@ struct TerminalSpawnRequest: Codable {
     let terminalPreference: String?
 }
 
+/// Response payload for terminal spawn operations
 struct TerminalSpawnResponse: Codable {
     let success: Bool
     let pid: Int?
@@ -23,6 +25,7 @@ struct TerminalSpawnResponse: Codable {
 
 // MARK: - System Control Payloads
 
+/// Event payload indicating the system is ready
 struct SystemReadyEvent: Codable {
     let timestamp: Double
     let version: String?
@@ -33,6 +36,7 @@ struct SystemReadyEvent: Codable {
     }
 }
 
+/// Request payload for system health check ping
 struct SystemPingRequest: Codable {
     let timestamp: Double
 
@@ -41,6 +45,7 @@ struct SystemPingRequest: Codable {
     }
 }
 
+/// Response payload for system health check ping
 struct SystemPingResponse: Codable {
     let status: String
     let timestamp: Double
@@ -51,28 +56,14 @@ struct SystemPingResponse: Codable {
     }
 }
 
-struct RepositoryPathUpdateRequest: Codable {
-    let path: String
-}
-
-struct RepositoryPathUpdateResponse: Codable {
-    let success: Bool
-    let path: String?
-    let error: String?
-
-    init(success: Bool, path: String? = nil, error: String? = nil) {
-        self.success = success
-        self.path = path
-        self.error = error
-    }
-}
-
 // MARK: - Git Control Payloads (placeholder for future use)
 
+/// Request payload for Git repository status
 struct GitStatusRequest: Codable {
     let repositoryPath: String
 }
 
+/// Response payload containing Git repository status information
 struct GitStatusResponse: Codable {
     let status: String
     let branch: String?

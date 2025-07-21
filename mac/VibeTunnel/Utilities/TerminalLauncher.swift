@@ -78,21 +78,21 @@ enum Terminal: String, CaseIterable {
     var bundleIdentifier: String {
         switch self {
         case .terminal:
-            "com.apple.Terminal"
+            BundleIdentifiers.terminal
         case .iTerm2:
-            "com.googlecode.iterm2"
+            BundleIdentifiers.iTerm2
         case .ghostty:
-            "com.mitchellh.ghostty"
+            BundleIdentifiers.ghostty
         case .warp:
-            "dev.warp.Warp-Stable"
+            BundleIdentifiers.warp
         case .alacritty:
-            "org.alacritty"
+            BundleIdentifiers.alacritty
         case .hyper:
-            "co.zeit.hyper"
+            BundleIdentifiers.hyper
         case .wezterm:
-            "com.github.wez.wezterm"
+            BundleIdentifiers.wezterm
         case .kitty:
-            "net.kovidgoyal.kitty"
+            BundleIdentifiers.kitty
         }
     }
 

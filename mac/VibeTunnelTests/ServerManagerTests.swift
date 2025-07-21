@@ -41,19 +41,19 @@ final class ServerManagerTests {
 
         // The server binary must be available for tests
         #expect(ServerBinaryAvailableCondition.isAvailable(), "Server binary must be available for tests to run")
-        
+
         // Server should either be running or have a specific error
         if !manager.isRunning {
             // If not running, we expect a specific error
             #expect(manager.lastError != nil, "Server failed to start but no error was reported")
-            
+
             if let error = manager.lastError as? BunServerError {
                 // Only acceptable error is binaryNotFound if the binary truly doesn't exist
                 if error == .binaryNotFound {
                     #expect(false, "Server binary not found - tests cannot continue")
                 }
             }
-            
+
             Attachment.record("""
             Server failed to start
             Error: \(manager.lastError?.localizedDescription ?? "Unknown")

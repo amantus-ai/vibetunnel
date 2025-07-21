@@ -36,8 +36,8 @@ final class BunServer {
     /// Resource cleanup tracking
     private var isCleaningUp = false
 
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "BunServer")
-    private let serverOutput = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "ServerOutput")
+    private let logger = Logger(subsystem: BundleIdentifiers.main, category: "BunServer")
+    private let serverOutput = Logger(subsystem: BundleIdentifiers.main, category: "ServerOutput")
 
     var isRunning: Bool {
         state == .running
@@ -121,11 +121,11 @@ final class BunServer {
         guard let binaryPath = Bundle.main.path(forResource: "vibetunnel", ofType: nil) else {
             let error = BunServerError.binaryNotFound
             logger.error("vibetunnel binary not found in bundle")
-            
+
             // Additional diagnostics for CI debugging
             logger.error("Bundle path: \(Bundle.main.bundlePath)")
             logger.error("Resources path: \(Bundle.main.resourcePath ?? "nil")")
-            
+
             // List contents of Resources directory
             if let resourcesPath = Bundle.main.resourcePath {
                 do {
@@ -135,7 +135,7 @@ final class BunServer {
                     logger.error("Failed to list Resources directory: \(error)")
                 }
             }
-            
+
             throw error
         }
 
@@ -269,7 +269,16 @@ final class BunServer {
         environment["NODE_OPTIONS"] = "--max-old-space-size=4096 --max-semi-space-size=128"
 
         // Copy only essential environment variables
-        let essentialVars = ["PATH", "HOME", "USER", "SHELL", "LANG", "LC_ALL", "LC_CTYPE", "VIBETUNNEL_DEBUG"]
+        let essentialVars = [
+            EnvironmentKeys.path,
+            "HOME",
+            "USER",
+            "SHELL",
+            EnvironmentKeys.lang,
+            "LC_ALL",
+            "LC_CTYPE",
+            "VIBETUNNEL_DEBUG"
+        ]
         for key in essentialVars {
             if let value = ProcessInfo.processInfo.environment[key] {
                 environment[key] = value
@@ -486,10 +495,10 @@ final class BunServer {
 
         // Add pnpm to PATH so that scripts can use it
         // pnpmDir is already defined above
-        if let existingPath = environment["PATH"] {
-            environment["PATH"] = "\(pnpmDir):\(existingPath)"
+        if let existingPath = environment[EnvironmentKeys.path] {
+            environment[EnvironmentKeys.path] = "\(pnpmDir):\(existingPath)"
         } else {
-            environment["PATH"] = pnpmDir
+            environment[EnvironmentKeys.path] = pnpmDir
         }
         logger.info("Added pnpm directory to PATH: \(pnpmDir)")
 

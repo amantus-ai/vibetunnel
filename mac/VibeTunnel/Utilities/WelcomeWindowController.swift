@@ -22,7 +22,7 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
         let hostingController = NSHostingController(rootView: welcomeView)
 
         let window = NSWindow(contentViewController: hostingController)
-        window.title = "Welcome to VibeTunnel"
+        window.title = UIStrings.welcomeTitle
         window.styleMask = [.titled, .closable, .fullSizeContentView]
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
@@ -98,6 +98,4 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
 
 // MARK: - Notification Extension
 
-extension Notification.Name {
-    static let showWelcomeScreen = Notification.Name("showWelcomeScreen")
-}
+// Notification names are now in NotificationNames.swift

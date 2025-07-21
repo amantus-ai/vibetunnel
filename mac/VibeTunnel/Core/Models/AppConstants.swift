@@ -249,13 +249,13 @@ extension AppConstants {
             UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.preferredTerminal)
         }
     }
-    
+
     /// Get current dashboard access mode
     static func getDashboardAccessMode() -> DashboardAccessMode {
         let rawValue = stringValue(for: UserDefaultsKeys.dashboardAccessMode)
         return DashboardAccessMode(rawValue: rawValue) ?? .network
     }
-    
+
     /// Set dashboard access mode
     static func setDashboardAccessMode(_ mode: DashboardAccessMode) {
         UserDefaults.standard.set(mode.rawValue, forKey: UserDefaultsKeys.dashboardAccessMode)

@@ -2,26 +2,32 @@ import SwiftUI
 
 // MARK: - Environment Keys
 
+/// Environment key for ServerManager dependency injection
 private struct ServerManagerKey: EnvironmentKey {
     static let defaultValue: ServerManager? = nil
 }
 
+/// Environment key for NgrokService dependency injection
 private struct NgrokServiceKey: EnvironmentKey {
     static let defaultValue: NgrokService? = nil
 }
 
+/// Environment key for SystemPermissionManager dependency injection
 private struct SystemPermissionManagerKey: EnvironmentKey {
     static let defaultValue: SystemPermissionManager? = nil
 }
 
+/// Environment key for TerminalLauncher dependency injection
 private struct TerminalLauncherKey: EnvironmentKey {
     static let defaultValue: TerminalLauncher? = nil
 }
 
+/// Environment key for TailscaleService dependency injection
 private struct TailscaleServiceKey: EnvironmentKey {
     static let defaultValue: TailscaleService? = nil
 }
 
+/// Environment key for CloudflareService dependency injection
 private struct CloudflareServiceKey: EnvironmentKey {
     static let defaultValue: CloudflareService? = nil
 }

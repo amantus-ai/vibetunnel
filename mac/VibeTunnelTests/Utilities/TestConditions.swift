@@ -11,12 +11,13 @@ enum ServerBinaryAvailableCondition {
         // When running tests with swift test, Bundle(for:) won't find the app bundle
         // So tests should fail if the binary is not properly embedded
         let hostBundle = Bundle(for: BunServer.self)
-        
+
         if let embeddedBinaryPath = hostBundle.path(forResource: "vibetunnel", ofType: nil),
-           FileManager.default.fileExists(atPath: embeddedBinaryPath) {
+           FileManager.default.fileExists(atPath: embeddedBinaryPath)
+        {
             return true
         }
-        
+
         // The binary MUST be embedded in the app's Resources folder
         // If it's not there, the tests should fail
         return false

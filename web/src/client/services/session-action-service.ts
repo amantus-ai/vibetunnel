@@ -347,7 +347,7 @@ class SessionActionService {
         window.dispatchEvent(
           new CustomEvent('session-action', {
             detail: {
-              action: 'delete',
+              action: 'terminate',
               sessionId,
             },
           })

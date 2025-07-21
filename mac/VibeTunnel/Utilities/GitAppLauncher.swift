@@ -20,25 +20,25 @@ enum GitApp: String, CaseIterable {
     var bundleIdentifier: String {
         switch self {
         case .cursor:
-            "com.todesktop.230313mzl4w4u92"
+            BundleIdentifiers.cursor
         case .fork:
-            "com.DanPristupov.Fork"
+            BundleIdentifiers.fork
         case .githubDesktop:
-            "com.github.GitHubClient"
+            BundleIdentifiers.githubDesktop
         case .gitup:
-            "co.gitup.mac"
+            BundleIdentifiers.gitup
         case .juxtaCode:
-            "com.naiveapps.juxtacode"
+            BundleIdentifiers.juxtaCode
         case .sourcetree:
-            "com.torusknot.SourceTreeNotMAS"
+            BundleIdentifiers.sourcetree
         case .sublimeMerge:
-            "com.sublimemerge"
+            BundleIdentifiers.sublimeMerge
         case .tower:
-            "com.fournova.Tower3"
+            BundleIdentifiers.tower
         case .vscode:
-            "com.microsoft.VSCode"
+            BundleIdentifiers.vscode
         case .windsurf:
-            "com.codeiumapp.windsurf"
+            BundleIdentifiers.windsurf
         }
     }
 
@@ -88,7 +88,7 @@ enum GitApp: String, CaseIterable {
 @Observable
 final class GitAppLauncher {
     static let shared = GitAppLauncher()
-    private let logger = Logger(subsystem: "sh.vibetunnel.VibeTunnel", category: "GitAppLauncher")
+    private let logger = Logger(subsystem: BundleIdentifiers.main, category: "GitAppLauncher")
 
     private init() {
         performFirstRunAutoDetection()

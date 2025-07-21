@@ -16,13 +16,13 @@ enum NgrokError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notInstalled:
-            "ngrok is not installed. Please install it using 'brew install ngrok' or download from ngrok.com"
+            ErrorMessages.ngrokNotInstalled
         case .authTokenMissing:
-            "ngrok auth token is missing. Please add it in Settings"
+            ErrorMessages.ngrokAuthTokenMissing
         case .tunnelCreationFailed(let message):
             "Failed to create tunnel: \(message)"
         case .invalidConfiguration:
-            "Invalid ngrok configuration"
+            ErrorMessages.invalidNgrokConfiguration
         case .networkError(let message):
             "Network error: \(message)"
         }
@@ -107,7 +107,7 @@ final class NgrokService: NgrokTunnelProtocol {
     /// Task for periodic status updates
     private var statusTask: Task<Void, Never>?
 
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "NgrokService")
+    private let logger = Logger(subsystem: BundleIdentifiers.main, category: "NgrokService")
 
     private init() {}
 
@@ -160,14 +160,14 @@ final class NgrokService: NgrokTunnelProtocol {
     private func startWithCLI(port: Int) async throws -> String {
         // Check if ngrok is installed
         let checkProcess = Process()
-        checkProcess.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+        checkProcess.executableURL = URL(fileURLWithPath: FilePathConstants.which)
         checkProcess.arguments = ["ngrok"]
 
         // Add common Homebrew paths to PATH for the check
         var environment = ProcessInfo.processInfo.environment
-        let currentPath = environment["PATH"] ?? "/usr/bin:/bin"
-        let homebrewPaths = "/opt/homebrew/bin:/usr/local/bin"
-        environment["PATH"] = "\(homebrewPaths):\(currentPath)"
+        let currentPath = environment[EnvironmentKeys.path] ?? "\(FilePathConstants.usrBin):\(FilePathConstants.bin)"
+        let homebrewPaths = "\(FilePathConstants.optHomebrewBin):\(FilePathConstants.usrLocalBin)"
+        environment[EnvironmentKeys.path] = "\(homebrewPaths):\(currentPath)"
         checkProcess.environment = environment
 
         let checkPipe = Pipe()
@@ -239,7 +239,7 @@ final class NgrokService: NgrokTunnelProtocol {
                         }
                     }
                 }
-                throw NgrokError.tunnelCreationFailed("Could not find public URL in ngrok output")
+                throw NgrokError.tunnelCreationFailed(ErrorMessages.ngrokPublicURLNotFound)
             }
 
             try process.run()
