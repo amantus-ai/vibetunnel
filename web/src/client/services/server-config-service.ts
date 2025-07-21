@@ -6,6 +6,7 @@
  * - Repository base path
  * - Server configuration status
  */
+import { DEFAULT_REPOSITORY_BASE_PATH } from '../../shared/constants.js';
 import type { QuickStartCommand } from '../../types/config.js';
 import { createLogger } from '../utils/logger.js';
 import type { AuthClient } from './auth-client.js';
@@ -87,7 +88,7 @@ export class ServerConfigService {
       logger.error('Failed to load server config:', error);
       // Return default config on error
       return {
-        repositoryBasePath: '~/',
+        repositoryBasePath: DEFAULT_REPOSITORY_BASE_PATH,
         serverConfigured: false,
         quickStartCommands: [],
       };
@@ -136,7 +137,7 @@ export class ServerConfigService {
    */
   async getRepositoryBasePath(): Promise<string> {
     const config = await this.loadConfig();
-    return config.repositoryBasePath || '~/';
+    return config.repositoryBasePath || DEFAULT_REPOSITORY_BASE_PATH;
   }
 
   /**
