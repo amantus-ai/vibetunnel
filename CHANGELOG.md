@@ -165,7 +165,7 @@ First-time contributors to VibeTunnel:
 - Fixed duplicate session creation with intelligent detection (#345) (via @lukeswitz)
 - Added keyboard navigation in session grid (arrow keys, Enter, etc.) (#322)
 - Fixed race conditions in network access mode (#347)
-- Improved SSH key manager modal layout (#325) (via @taoxugit)
+- Improved SSH key manager modal layout (#325) (via @hewigovens)
 - Updated all dependencies to latest stable versions
 - Enhanced TypeScript configuration with better type safety
 
@@ -173,7 +173,7 @@ First-time contributors to VibeTunnel:
 First-time contributors to VibeTunnel:
 - [@davidgomesdev](https://github.com/davidgomesdev) - Transformed SessionListView to clean MVVM architecture for better maintainability (#217)
 - [@jeffhurray](https://github.com/jeffhurray) - Consolidated z-index management to prevent UI layer conflicts (#291)
-- [@taoxugit](https://github.com/taoxugit) - Fixed SSH key manager modal layout and improved test compatibility (#325)
+- [@hewigovens](https://github.com/hewigovens) - Fixed SSH key manager modal layout and improved test compatibility (#325)
 - [@tarasenko](https://github.com/tarasenko) - Added browser keyboard shortcut support with intelligent priority handling (#298)
 
 ## [1.0.0-beta.9] - 2025-07-11
