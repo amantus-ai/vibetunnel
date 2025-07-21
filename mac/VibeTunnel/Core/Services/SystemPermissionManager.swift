@@ -4,7 +4,6 @@ import CoreGraphics
 import Foundation
 import Observation
 import OSLog
-@preconcurrency import ScreenCaptureKit
 
 extension Notification.Name {
     static let permissionsUpdated = Notification.Name("sh.vibetunnel.permissionsUpdated")
@@ -13,18 +12,15 @@ extension Notification.Name {
 /// Types of system permissions that VibeTunnel requires.
 ///
 /// Represents the various macOS system permissions needed for full functionality,
-/// including automation, screen recording, and accessibility access.
+/// including automation and accessibility access.
 enum SystemPermission {
     case appleScript
-    case screenRecording
     case accessibility
 
     var displayName: String {
         switch self {
         case .appleScript:
             "Automation"
-        case .screenRecording:
-            "Screen Recording"
         case .accessibility:
             "Accessibility"
         }
@@ -34,10 +30,8 @@ enum SystemPermission {
         switch self {
         case .appleScript:
             "Required to launch and control terminal applications"
-        case .screenRecording:
-            "Required for screen capture and tracking terminal windows"
         case .accessibility:
-            "Required to send keystrokes to terminal windows"
+            "Required to track and interact with terminal windows"
         }
     }
 
@@ -45,8 +39,6 @@ enum SystemPermission {
         switch self {
         case .appleScript:
             "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
-        case .screenRecording:
-            "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
         case .accessibility:
             "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
         }
@@ -55,8 +47,8 @@ enum SystemPermission {
 
 /// Unified manager for all system permissions required by VibeTunnel.
 ///
-/// Monitors and manages macOS system permissions including Apple Script automation,
-/// screen recording, and accessibility access. Provides a centralized interface for
+/// Monitors and manages macOS system permissions including Apple Script automation
+/// and accessibility access. Provides a centralized interface for
 /// checking permission status and guiding users through the granting process.
 @MainActor
 @Observable
@@ -66,13 +58,8 @@ final class SystemPermissionManager {
     /// Permission states
     private(set) var permissions: [SystemPermission: Bool] = [
         .appleScript: false,
-        .screenRecording: false,
         .accessibility: false
     ]
-
-    /// Cache for screen recording permission with timestamp
-    private var screenRecordingPermissionCache: (granted: Bool, timestamp: Date)?
-    private let cacheValidityDuration: TimeInterval = 5.0 // 5 seconds cache
 
     private let logger = Logger(
         subsystem: "sh.vibetunnel.vibetunnel",
@@ -115,8 +102,6 @@ final class SystemPermissionManager {
         switch permission {
         case .appleScript:
             requestAppleScriptPermission()
-        case .screenRecording:
-            requestScreenRecordingPermission()
         case .accessibility:
             requestAccessibilityPermission()
         }
@@ -135,11 +120,7 @@ final class SystemPermissionManager {
 
         // Clear any cached values
         permissions[.accessibility] = false
-        permissions[.screenRecording] = false
         permissions[.appleScript] = false
-
-        // Clear screen recording cache
-        screenRecordingPermissionCache = nil
 
         // Immediate check
         Task { @MainActor in
@@ -225,7 +206,6 @@ final class SystemPermissionManager {
 
         // Check each permission type
         permissions[.appleScript] = await checkAppleScriptPermission()
-        permissions[.screenRecording] = await checkScreenRecordingPermission()
         permissions[.accessibility] = checkAccessibilityPermission()
 
         // Post notification if any permissions changed
@@ -267,85 +247,6 @@ final class SystemPermissionManager {
             // Open System Settings after a delay
             try? await Task.sleep(for: .milliseconds(500))
             openSystemSettings(for: .appleScript)
-        }
-    }
-
-    // MARK: - Screen Recording Permission
-
-    private func checkScreenRecordingPermission() async -> Bool {
-        // Check cache first
-        if let cache = screenRecordingPermissionCache {
-            let age = Date().timeIntervalSince(cache.timestamp)
-            if age < cacheValidityDuration {
-                logger.debug("Using cached screen recording permission: \(cache.granted) (age: \(age)s)")
-                return cache.granted
-            }
-        }
-
-        // First try CGPreflightScreenCaptureAccess which doesn't trigger the permission dialog
-        if CGPreflightScreenCaptureAccess() {
-            logger.debug("Screen recording permission confirmed via CGPreflightScreenCaptureAccess")
-            screenRecordingPermissionCache = (granted: true, timestamp: Date())
-            return true
-        }
-
-        // If CGPreflightScreenCaptureAccess returns false, we need to verify
-        // because it might be a false negative on some macOS versions
-        // Try SCShareableContent with a very short timeout to avoid hanging
-        logger.info("CGPreflightScreenCaptureAccess returned false, checking with SCShareableContent...")
-        do {
-            _ = try await SCShareableContent.current
-
-            logger.info("✅ Screen recording permission confirmed via SCShareableContent")
-            screenRecordingPermissionCache = (granted: true, timestamp: Date())
-            return true
-        } catch {
-            logger.error("❌ Screen recording permission check failed: \(error.localizedDescription)")
-            logger.error("Error type: \(type(of: error)), error: \(error)")
-
-            // Don't cache false result if it's a timeout or other non-permission error
-            let errorString = String(describing: error).lowercased()
-            if errorString.contains("timeout") || errorString.contains("cancelled") {
-                logger.warning("⚠️ Permission check timed out, not caching result")
-                return false
-            }
-
-            screenRecordingPermissionCache = (granted: false, timestamp: Date())
-            return false
-        }
-    }
-
-    // MARK: - Screen Recording Permission Request
-
-    private func requestScreenRecordingPermission() {
-        Task {
-            // First check if we already have permission using the non-triggering method
-            let hasPermission = CGPreflightScreenCaptureAccess()
-
-            if hasPermission {
-                logger.info("Screen recording permission already granted")
-                // Update our state
-                permissions[.screenRecording] = true
-                screenRecordingPermissionCache = (granted: true, timestamp: Date())
-                NotificationCenter.default.post(name: .permissionsUpdated, object: nil)
-                return
-            }
-
-            // If no permission, trigger the system dialog by attempting to use SCShareableContent
-            do {
-                _ = try await SCShareableContent.current
-                // If we reach here, permission was granted
-                logger.info("Screen recording permission granted after prompt")
-                permissions[.screenRecording] = true
-                screenRecordingPermissionCache = (granted: true, timestamp: Date())
-                NotificationCenter.default.post(name: .permissionsUpdated, object: nil)
-            } catch {
-                logger.info("Screen recording permission dialog shown or denied")
-                // Also open System Settings as a fallback
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                    self?.openSystemSettings(for: .screenRecording)
-                }
-            }
         }
     }
 

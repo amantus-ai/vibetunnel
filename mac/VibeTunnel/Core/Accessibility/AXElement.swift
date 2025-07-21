@@ -1,4 +1,5 @@
 import ApplicationServices
+import AppKit
 import Foundation
 import OSLog
 
@@ -412,5 +413,105 @@ extension AXElement {
     @discardableResult
     public func setSelected(_ selected: Bool) -> AXError {
         setBool(kAXSelectedAttribute, value: selected)
+    }
+}
+
+// MARK: - Application Window Enumeration
+
+extension AXElement {
+    /// Information about an application window
+    public struct WindowInfo {
+        public let window: AXElement
+        public let windowID: CGWindowID
+        public let pid: pid_t
+        public let title: String?
+        public let bounds: CGRect?
+        public let isMinimized: Bool
+        public let bundleIdentifier: String?
+        
+        public init(window: AXElement, pid: pid_t, bundleIdentifier: String? = nil) {
+            self.window = window
+            self.windowID = CGWindowID(window.windowID ?? 0)
+            self.pid = pid
+            self.title = window.title
+            self.bounds = window.frame()
+            self.isMinimized = window.isMinimized ?? false
+            self.bundleIdentifier = bundleIdentifier
+        }
+    }
+    
+    /// Enumerates all windows from running applications, optionally filtering by a predicate
+    /// - Parameters:
+    ///   - bundleIdentifiers: Optional array of bundle identifiers to filter applications. If nil, all applications are enumerated.
+    ///   - includeMinimized: Whether to include minimized windows in the results (default: false)
+    ///   - filter: Optional filter closure to determine which windows to include
+    /// - Returns: Array of WindowInfo for windows that match the criteria
+    public static func enumerateWindows(
+        bundleIdentifiers: [String]? = nil,
+        includeMinimized: Bool = false,
+        filter: ((WindowInfo) -> Bool)? = nil
+    ) -> [WindowInfo] {
+        var allWindows: [WindowInfo] = []
+        
+        // Get all running applications
+        let runningApps: [NSRunningApplication]
+        if let bundleIDs = bundleIdentifiers {
+            runningApps = bundleIDs.flatMap { bundleID in
+                NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+            }
+        } else {
+            runningApps = NSWorkspace.shared.runningApplications
+        }
+        
+        // Enumerate windows for each application
+        for app in runningApps {
+            // Skip apps without bundle identifier or that are terminated
+            guard let bundleID = app.bundleIdentifier,
+                  !app.isTerminated else { continue }
+            
+            let axApp = AXElement.application(pid: app.processIdentifier)
+            
+            // Get all windows for this application
+            guard let windows = axApp.windows else { continue }
+            
+            for window in windows {
+                // Skip minimized windows if requested
+                if !includeMinimized && (window.isMinimized ?? false) {
+                    continue
+                }
+                
+                let windowInfo = WindowInfo(
+                    window: window,
+                    pid: app.processIdentifier,
+                    bundleIdentifier: bundleID
+                )
+                
+                // Apply filter if provided
+                if let filter = filter {
+                    if filter(windowInfo) {
+                        allWindows.append(windowInfo)
+                    }
+                } else {
+                    allWindows.append(windowInfo)
+                }
+            }
+        }
+        
+        return allWindows
+    }
+    
+    /// Convenience method to enumerate windows for specific bundle identifiers
+    /// - Parameters:
+    ///   - bundleIdentifiers: Array of bundle identifiers to search
+    ///   - includeMinimized: Whether to include minimized windows
+    /// - Returns: Array of WindowInfo for the specified applications
+    public static func windows(
+        for bundleIdentifiers: [String],
+        includeMinimized: Bool = false
+    ) -> [WindowInfo] {
+        enumerateWindows(
+            bundleIdentifiers: bundleIdentifiers,
+            includeMinimized: includeMinimized
+        )
     }
 }
