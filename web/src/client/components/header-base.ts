@@ -3,8 +3,8 @@
  */
 import { LitElement } from 'lit';
 import { property, state } from 'lit/decorators.js';
+import type { Session } from '../../shared/types.js';
 import { TIMING } from '../utils/constants.js';
-import type { Session } from './session-list.js';
 
 export abstract class HeaderBase extends LitElement {
   createRenderRoot() {

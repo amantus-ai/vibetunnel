@@ -4,7 +4,7 @@ import { fixture, waitUntil } from '@open-wc/testing';
 import { html } from 'lit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import './session-view.js';
-import type { Session } from './session-list.js';
+import type { Session } from '../../shared/types.js';
 import type { SessionView } from './session-view.js';
 
 describe('SessionView Binary Mode', () => {

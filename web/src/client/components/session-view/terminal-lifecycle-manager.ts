@@ -5,10 +5,10 @@
  * for session view components.
  */
 
+import type { Session } from '../../../shared/types.js';
 import { authClient } from '../../services/auth-client.js';
 import { createLogger } from '../../utils/logger.js';
 import type { TerminalThemeId } from '../../utils/terminal-themes.js';
-import type { Session } from '../session-list.js';
 import type { Terminal } from '../terminal.js';
 import type { ConnectionManager } from './connection-manager.js';
 import type { InputManager } from './input-manager.js';

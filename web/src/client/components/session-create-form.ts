@@ -15,6 +15,7 @@ import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import './file-browser.js';
 import './quick-start-editor.js';
+import type { Session } from '../../shared/types.js';
 import { TitleMode } from '../../shared/types.js';
 import type { QuickStartCommand } from '../../types/config.js';
 import type { AuthClient } from '../services/auth-client.js';
@@ -37,7 +38,6 @@ import {
   AutocompleteManager,
   type Repository,
 } from './autocomplete-manager.js';
-import type { Session } from './session-list.js';
 
 const logger = createLogger('session-create-form');
 

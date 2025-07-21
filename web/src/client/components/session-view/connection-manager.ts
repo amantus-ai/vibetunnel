@@ -5,10 +5,10 @@
  * for terminal sessions.
  */
 
+import type { Session } from '../../../shared/types.js';
 import { authClient } from '../../services/auth-client.js';
 import { CastConverter } from '../../utils/cast-converter.js';
 import { createLogger } from '../../utils/logger.js';
-import type { Session } from '../session-list.js';
 import type { Terminal } from '../terminal.js';
 
 const logger = createLogger('connection-manager');

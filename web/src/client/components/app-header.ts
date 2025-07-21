@@ -14,7 +14,7 @@
  */
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import type { Session } from './session-list.js';
+import type { Session } from '../../shared/types.js';
 import './terminal-icon.js';
 import './notification-status.js';
 import './sidebar-header.js';

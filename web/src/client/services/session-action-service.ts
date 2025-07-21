@@ -30,7 +30,7 @@
  * ```
  */
 
-import type { Session } from '../components/session-list.js';
+import type { Session } from '../../shared/types.js';
 import { createLogger } from '../utils/logger.js';
 import type { SessionActionResult } from '../utils/session-actions.js';
 import { terminateSession as terminateSessionUtil } from '../utils/session-actions.js';

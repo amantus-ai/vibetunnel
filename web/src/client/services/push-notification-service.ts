@@ -8,9 +8,6 @@ export type NotificationPreferences = PushNotificationPreferences;
 
 const logger = createLogger('push-notification-service');
 
-// VAPID public key will be fetched from server
-let _VAPID_PUBLIC_KEY: string | null = null;
-
 type NotificationPermissionChangeCallback = (permission: NotificationPermission) => void;
 type SubscriptionChangeCallback = (subscription: PushSubscription | null) => void;
 
@@ -544,7 +541,6 @@ export class PushNotificationService {
 
       this.vapidPublicKey = data.publicKey;
       this.pushNotificationsAvailable = true;
-      _VAPID_PUBLIC_KEY = data.publicKey; // For backward compatibility
 
       logger.log('VAPID public key fetched from server');
       logger.debug(`Public key: ${data.publicKey.substring(0, 20)}...`);

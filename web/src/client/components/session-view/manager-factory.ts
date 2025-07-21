@@ -5,7 +5,7 @@
  * to reduce coupling and improve testability
  */
 
-import type { Session } from '../session-list.js';
+import type { Session } from '../../../shared/types.js';
 import type { SessionView } from '../session-view.js';
 import { ConnectionManager } from './connection-manager.js';
 import { DirectKeyboardManager } from './direct-keyboard-manager.js';

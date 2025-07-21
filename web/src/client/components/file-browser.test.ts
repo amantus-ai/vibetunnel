@@ -7,8 +7,8 @@ import {
   setupLocalStorageMock,
   waitForAsync,
 } from '@/test/utils/component-helpers';
+import type { Session } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client';
-import type { Session } from './session-list';
 
 // Mock AuthClient
 vi.mock('../services/auth-client');

@@ -32,9 +32,6 @@ import { formatPathForDisplay } from '../utils/path-utils.js';
 
 const logger = createLogger('session-list');
 
-// Re-export Session type for backward compatibility
-export type { Session };
-
 @customElement('session-list')
 export class SessionList extends LitElement {
   // Disable shadow DOM to use Tailwind

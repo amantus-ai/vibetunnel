@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Session } from '../components/session-list.js';
+import type { Session } from '../../shared/types.js';
 import type { AuthClient } from './auth-client.js';
 import { sessionActionService } from './session-action-service.js';
 
@@ -112,7 +112,7 @@ describe('SessionActionService', () => {
     it('should handle null session', async () => {
       const onError = vi.fn();
 
-      const result = await sessionActionService.terminateSession(null as any, {
+      const result = await sessionActionService.terminateSession(null as unknown as Session, {
         authClient: mockAuthClient,
         callbacks: { onError },
       });
@@ -199,7 +199,7 @@ describe('SessionActionService', () => {
     it('should handle null session', async () => {
       const onError = vi.fn();
 
-      const result = await sessionActionService.clearSession(null as any, {
+      const result = await sessionActionService.clearSession(null as unknown as Session, {
         authClient: mockAuthClient,
         callbacks: { onError },
       });
@@ -281,7 +281,10 @@ describe('SessionActionService', () => {
 
     it('should handle unsupported session status', async () => {
       const onError = vi.fn();
-      const pendingSession = { ...mockSession, status: 'pending' as any };
+      const pendingSession = {
+        ...mockSession,
+        status: 'pending' as unknown as 'running' | 'exited',
+      };
 
       const result = await sessionActionService.deleteSession(pendingSession, {
         authClient: mockAuthClient,

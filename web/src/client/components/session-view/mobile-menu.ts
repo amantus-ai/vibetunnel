@@ -6,8 +6,8 @@
  */
 import { html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import type { Session } from '../../../shared/types.js';
 import { Z_INDEX } from '../../utils/constants.js';
-import type { Session } from '../session-list.js';
 import type { Theme } from '../theme-toggle-icon.js';
 
 @customElement('mobile-menu')

@@ -11,6 +11,7 @@
 import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { createRef, ref } from 'lit/directives/ref.js';
+import type { Session } from '../../shared/types.js';
 import { authClient } from '../services/auth-client.js';
 import { Z_INDEX } from '../utils/constants.js';
 import {
@@ -22,7 +23,6 @@ import {
 } from '../utils/file-icons.js';
 import { createLogger } from '../utils/logger.js';
 import { copyToClipboard, formatPathForDisplay } from '../utils/path-utils.js';
-import type { Session } from './session-list.js';
 import './monaco-editor.js';
 import './modal-wrapper.js';
 

@@ -5,12 +5,12 @@
  * for terminal sessions.
  */
 
+import type { Session } from '../../../shared/types.js';
 import { authClient } from '../../services/auth-client.js';
 import { websocketInputClient } from '../../services/websocket-input-client.js';
 import { isBrowserShortcut, isCopyPasteShortcut } from '../../utils/browser-shortcuts.js';
 import { consumeEvent } from '../../utils/event-utils.js';
 import { createLogger } from '../../utils/logger.js';
-import type { Session } from '../session-list.js';
 
 const logger = createLogger('input-manager');
 

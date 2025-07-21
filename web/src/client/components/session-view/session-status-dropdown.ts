@@ -6,8 +6,8 @@
  */
 import { html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import type { Session } from '../../../shared/types.js';
 import { Z_INDEX } from '../../utils/constants.js';
-import type { Session } from '../session-list.js';
 
 @customElement('session-status-dropdown')
 export class SessionStatusDropdown extends LitElement {

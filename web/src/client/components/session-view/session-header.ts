@@ -6,7 +6,7 @@
  */
 import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { Session } from '../session-list.js';
+import type { Session } from '../../../shared/types.js';
 import '../clickable-path.js';
 import './width-selector.js';
 import '../inline-edit.js';

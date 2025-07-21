@@ -5,9 +5,9 @@
  * overall event coordination for the session view component.
  */
 
+import type { Session } from '../../../shared/types.js';
 import { consumeEvent } from '../../utils/event-utils.js';
 import { createLogger } from '../../utils/logger.js';
-import type { Session } from '../session-list.js';
 import { type LifecycleEventManagerCallbacks, ManagerEventEmitter } from './interfaces.js';
 
 // Extend Window interface to include our custom property
