@@ -209,6 +209,34 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       return;
     }
 
+    // Check if IME input is focused - block keyboard events except for editing keys
+    if (document.body.getAttribute('data-ime-input-focused') === 'true') {
+      const allowedKeys = [
+        'Backspace',
+        'Delete',
+        'ArrowLeft',
+        'ArrowRight',
+        'ArrowUp',
+        'ArrowDown',
+        'Home',
+        'End',
+        'Tab',
+      ];
+      // Allow all Cmd/Ctrl combinations (including Cmd+V)
+      if (!allowedKeys.includes(e.key) && !e.metaKey && !e.ctrlKey) {
+        console.log('🌏 Lifecycle: Blocking keyboard event - IME input is focused:', e.key);
+        return;
+      }
+      // Allow editing keys and shortcuts to pass through to IME input
+      console.log('🌏 Lifecycle: Allowing editing key for IME input:', e.key);
+    }
+
+    // Check if IME composition is active - InputManager handles this
+    if (document.body.getAttribute('data-ime-composing') === 'true') {
+      console.log('🌏 Lifecycle: Blocking keyboard event during IME composition:', e.key);
+      return;
+    }
+
     // Check if this is a browser shortcut we should allow FIRST before any other processing
     const inputManager = this.callbacks.getInputManager();
     if (inputManager?.isKeyboardShortcut(e)) {

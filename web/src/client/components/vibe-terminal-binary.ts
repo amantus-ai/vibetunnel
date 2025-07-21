@@ -401,4 +401,19 @@ export class VibeTerminalBinary extends VibeTerminalBuffer {
       this.scrollContainer.scrollTop = this.scrollContainer.scrollHeight;
     }
   }
+
+  /**
+   * Get current cursor position and terminal dimensions.
+   * @returns Cursor position and terminal dimensions
+   */
+  public getCursorInfo(): { cursorX: number; cursorY: number; cols: number; rows: number } | null {
+    const buffer = this.bufferData;
+    if (!buffer) return null;
+    return {
+      cursorX: buffer.cursorX,
+      cursorY: buffer.cursorY,
+      cols: buffer.cols,
+      rows: buffer.rows,
+    };
+  }
 }

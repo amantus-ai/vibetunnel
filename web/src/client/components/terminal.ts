@@ -1458,6 +1458,21 @@ export class Terminal extends LitElement {
   }
 
   /**
+   * Get current cursor position and terminal dimensions.
+   * @returns Cursor position and terminal dimensions
+   */
+  public getCursorInfo(): { cursorX: number; cursorY: number; cols: number; rows: number } | null {
+    if (!this.terminal) return null;
+    const buffer = this.terminal.buffer.active;
+    return {
+      cursorX: buffer.cursorX,
+      cursorY: buffer.cursorY,
+      cols: this.terminal.cols,
+      rows: this.terminal.rows,
+    };
+  }
+
+  /**
    * Scroll the viewport to follow the cursor position.
    * This ensures the cursor stays visible during text input or playback.
    */
