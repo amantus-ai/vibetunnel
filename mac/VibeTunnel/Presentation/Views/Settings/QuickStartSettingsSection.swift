@@ -12,26 +12,13 @@ struct QuickStartSettingsSection: View {
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
-                // Header with Add button
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Quick Start Commands")
-                            .font(.headline)
-                        Text("Commands shown in the new session form for quick access.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer()
-
-                    Button(action: {
-                        editingCommandId = nil
-                        showingNewCommand = true
-                    }, label: {
-                        Label("Add", systemImage: "plus")
-                    })
-                    .buttonStyle(.bordered)
-                    .disabled(showingNewCommand)
+                // Header without Add button
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Quick Start Commands")
+                        .font(.headline)
+                    Text("Commands shown in the new session form for quick access.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 // Commands list
@@ -103,6 +90,8 @@ struct QuickStartSettingsSection: View {
                     }
                     .buttonStyle(.link)
 
+                    Spacer()
+
                     if !configManager.quickStartCommands.isEmpty {
                         Button("Delete All") {
                             deleteAllCommands()
@@ -111,7 +100,14 @@ struct QuickStartSettingsSection: View {
                         .foregroundColor(.red)
                     }
 
-                    Spacer()
+                    Button(action: {
+                        editingCommandId = nil
+                        showingNewCommand = true
+                    }, label: {
+                        Label("Add", systemImage: "plus")
+                    })
+                    .buttonStyle(.bordered)
+                    .disabled(showingNewCommand)
                 }
             }
         }
