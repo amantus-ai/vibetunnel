@@ -13,6 +13,7 @@ struct TooltipProvider {
     ///   - tailscaleService: The service for managing Tailscale connectivity.
     ///   - sessionMonitor: The monitor for active terminal sessions.
     /// - Returns: A formatted string to be used as the tooltip for the status bar item.
+    @MainActor
     static func generateTooltip(
         serverManager: ServerManager,
         ngrokService: NgrokService,
