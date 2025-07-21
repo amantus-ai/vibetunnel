@@ -1,5 +1,6 @@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { DEFAULT_REPOSITORY_BASE_PATH } from '../../shared/constants.js';
 import type { AuthClient } from '../services/auth-client.js';
 import {
   type NotificationPreferences,
@@ -55,7 +56,7 @@ export class UnifiedSettings extends LitElement {
 
   // App settings state
   @state() private appPreferences: AppPreferences = DEFAULT_APP_PREFERENCES;
-  @state() private repositoryBasePath = '';
+  @state() private repositoryBasePath = DEFAULT_REPOSITORY_BASE_PATH;
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
   @state() private isServerConfigured = false;
   @state() private repositoryCount = 0;
@@ -150,6 +151,15 @@ export class UnifiedSettings extends LitElement {
     );
   }
 
+  updated(changedProperties: PropertyValues) {
+    super.updated(changedProperties);
+
+    // When dialog becomes visible, refresh the config to ensure sync
+    if (changedProperties.has('visible') && this.visible) {
+      this.loadAppPreferences();
+    }
+  }
+
   private async loadAppPreferences() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -157,13 +167,16 @@ export class UnifiedSettings extends LitElement {
         this.appPreferences = { ...DEFAULT_APP_PREFERENCES, ...JSON.parse(stored) };
       }
 
-      // Fetch server configuration
+      // Fetch server configuration - force refresh when dialog opens
       if (this.serverConfigService) {
         try {
-          const serverConfig = await this.serverConfigService.loadConfig();
+          const serverConfig = await this.serverConfigService.loadConfig(this.visible);
           this.isServerConfigured = serverConfig.serverConfigured ?? false;
           // Always use server's repository base path
-          this.repositoryBasePath = serverConfig.repositoryBasePath;
+          this.repositoryBasePath = serverConfig.repositoryBasePath || DEFAULT_REPOSITORY_BASE_PATH;
+          logger.debug('Loaded repository base path:', this.repositoryBasePath);
+          // Force update to ensure UI reflects the loaded value
+          this.requestUpdate();
         } catch (error) {
           logger.warn('Failed to fetch server config', error);
         }

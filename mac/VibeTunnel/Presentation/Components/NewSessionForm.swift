@@ -20,7 +20,7 @@ struct NewSessionForm: View {
     // Form fields
     @State private var command = "zsh"
     @State private var sessionName = ""
-    @State private var workingDirectory = "~/"
+    @State private var workingDirectory = FilePathConstants.defaultRepositoryBasePath
     @State private var spawnWindow = true
     @State private var titleMode: TitleMode = .dynamic
 
@@ -432,8 +432,8 @@ struct NewSessionForm: View {
         {
             workingDirectory = savedDirectory
         } else {
-            // Default to home directory if never set
-            workingDirectory = "~/"
+            // Default to repository base path if never set
+            workingDirectory = configManager.sessionWorkingDirectory
         }
 
         // Check if spawn window preference has been explicitly set
