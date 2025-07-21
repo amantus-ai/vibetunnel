@@ -130,7 +130,7 @@ export class TerminalQuickKeys extends LitElement {
     } else if (label.length === 3) {
       return 'quick-key-btn-small'; // 10px
     } else {
-      return 'quick-key-btn-medium'; // 12px
+      return 'quick-key-btn-medium'; // 13px
     }
   }
 
@@ -346,7 +346,7 @@ export class TerminalQuickKeys extends LitElement {
         
         /* Medium font for short character buttons */
         .quick-key-btn-medium {
-          font-size: 12px;
+          font-size: 13px;
         }
         
         /* Small font for mobile keyboard buttons */
