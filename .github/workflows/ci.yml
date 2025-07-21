@@ -52,7 +52,7 @@ jobs:
 
   mac:
     name: Mac CI
-    needs: [changes, node]
+    needs: [changes]
     if: |
       always() && 
       !contains(needs.*.result, 'failure') && 

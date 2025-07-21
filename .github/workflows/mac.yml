@@ -112,87 +112,11 @@ jobs:
         echo "xcbeautify: $(xcbeautify --version || echo 'not found')"
         echo "jq: $(which jq || echo 'not found')"
     
-    # Skip pnpm cache - testing if fresh installs are faster
-    # The cache was extremely large and might be slower than fresh install
-    
-    - name: Download web artifacts from Node.js CI
-      uses: actions/download-artifact@v4
-      with:
-        name: web-build
-        path: web-artifacts-temp/
-    
-    - name: Extract web artifacts with preserved permissions
-      run: |
-        # Debug: Show what was downloaded
-        echo "=== Contents of web-artifacts-temp ==="
-        find web-artifacts-temp -type f | head -20 || echo "No files found"
-        
-        # The artifact should be a tarball
-        if [ -f "web-artifacts-temp/web-build.tar.gz" ]; then
-          echo "Found web-build.tar.gz, extracting with preserved permissions..."
-          
-          # Extract directly to web directory
-          tar -xzf web-artifacts-temp/web-build.tar.gz -C web/ --preserve-permissions
-          
-          echo "Extraction complete"
-        else
-          echo "ERROR: Expected web-build.tar.gz not found!"
-          echo "Contents of web-artifacts-temp:"
-          ls -la web-artifacts-temp/
-          exit 1
-        fi
-        
-        # Debug: Show what we have
-        echo "=== Web directory structure ==="
-        ls -la web/ || true
-        echo "=== Dist contents ==="
-        ls -la web/dist/ | head -10 || true
-        echo "=== Bundle contents ==="
-        ls -la web/public/bundle/ | head -10 || true
-        echo "=== Native contents ==="
-        ls -la web/native/ | head -10 || true
-        echo "=== Checking vibetunnel binary permissions ==="
-        ls -la web/native/vibetunnel 2>/dev/null || echo "No vibetunnel binary found"
-        
-        # Clean up temp directory
-        rm -rf web-artifacts-temp
-        
-        # Verify we have the required files
-        if [ ! -f "web/dist/server/server.js" ]; then
-          echo "ERROR: web/dist/server/server.js not found after artifact extraction!"
-          exit 1
-        fi
-        
-        # Verify vibetunnel binary exists and is executable
-        if [ -f "web/native/vibetunnel" ]; then
-          echo "vibetunnel binary found, checking permissions..."
-          if [ ! -x "web/native/vibetunnel" ]; then
-            echo "WARNING: vibetunnel binary is not executable, fixing..."
-            chmod +x web/native/vibetunnel
-          fi
-        else
-          echo "WARNING: vibetunnel binary not found in web/native/"
-        fi
-        
-        echo "Web artifacts successfully downloaded and positioned"
-        
-        # Copy vibetunnel binary to Resources if it exists
-        if [ -f "web/native/vibetunnel" ]; then
-          echo "=== Copying vibetunnel binary to expected location ==="
-          # During tests, the binary needs to be in the host app bundle
-          # The test bundle can find it via Bundle(for: BunServer.self).path(forResource:)
-          # For CI, we'll ensure it's in the right place
-          mkdir -p "$PWD/Resources"
-          cp web/native/vibetunnel "$PWD/Resources/"
-          chmod +x "$PWD/Resources/vibetunnel"
-          echo "Copied vibetunnel to Resources directory for tests"
-          ls -la "$PWD/Resources/vibetunnel"
-        fi
+    # No web artifact caching - Mac build will handle web build directly
     
     - name: Resolve Dependencies (once)
       env:
         CI: "true"  # Ensure CI environment variable is set
-        SKIP_NODE_CHECK: "true"  # Skip Node.js check in CI since we download pre-built artifacts
       run: |
         echo "Resolving Swift package dependencies..."
         # Workspace is at root level
@@ -208,7 +132,6 @@ jobs:
       id: build
       env:
         CI: "true"  # Ensure CI environment variable is set for build scripts
-        SKIP_NODE_CHECK: "true"  # Skip Node.js check in CI since we download pre-built artifacts
       run: |
         # Always use Debug for now to match test expectations
         BUILD_CONFIG="Debug"
@@ -253,18 +176,9 @@ jobs:
       id: test-coverage
       timeout-minutes: 20  # Increased from 15 for CI stability
       env:
-        SKIP_NODE_CHECK: "true"  # Skip Node.js check in CI since we download pre-built artifacts
         RUN_SLOW_TESTS: "false"  # Skip slow tests in CI by default
         RUN_FLAKY_TESTS: "false"  # Skip flaky tests in CI by default
       run: |
-        # Debug: Check if web build artifacts were downloaded
-        echo "=== Checking web build artifacts ==="
-        if [ -d "web/dist" ]; then
-          echo "web/dist exists"
-          ls -la web/dist | head -10
-        else
-          echo "web/dist does not exist"
-        fi
         
         # Use xcodebuild test for workspace testing
         # Only enable coverage on main branch
