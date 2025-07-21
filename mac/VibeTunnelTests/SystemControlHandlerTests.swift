@@ -173,7 +173,9 @@ struct SystemControlHandlerTests {
             object: nil,
             queue: nil
         ) { _ in
-            flags.disableNotificationPosted = true
+            Task { @MainActor in
+                flags.disableNotificationPosted = true
+            }
         }
 
         let enableObserver = NotificationCenter.default.addObserver(
@@ -181,7 +183,9 @@ struct SystemControlHandlerTests {
             object: nil,
             queue: nil
         ) { _ in
-            flags.enableNotificationPosted = true
+            Task { @MainActor in
+                flags.enableNotificationPosted = true
+            }
         }
 
         defer {
@@ -208,13 +212,17 @@ struct SystemControlHandlerTests {
         try await Task.sleep(for: .milliseconds(50))
 
         // Then - Disable notification should be posted immediately
-        #expect(flags.disableNotificationPosted == true)
+        await MainActor.run {
+            #expect(flags.disableNotificationPosted == true)
+        }
 
         // Wait for re-enable
         try await Task.sleep(for: .milliseconds(600))
 
         // Enable notification should be posted after delay
-        #expect(flags.enableNotificationPosted == true)
+        await MainActor.run {
+            #expect(flags.enableNotificationPosted == true)
+        }
     }
 
     @MainActor
