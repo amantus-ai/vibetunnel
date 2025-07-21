@@ -501,6 +501,43 @@ npm install -g vibetunnel --build-from-source
 
 ## Release Notes
 
+### Version 1.0.0-beta.14.1 (2025-07-21)
+
+**Published to npm**: Successfully published as both `vibetunnel@beta` and `vibetunnel@latest`
+
+**Critical Fix**:
+- Fixed missing authenticate-pam module that was excluded from the npm package in beta.14
+- The build script now properly detects authenticate-pam in various pnpm directory structures
+
+**Package Details**:
+- Package size: 14.8 MB (34.4 MB unpacked)
+- Contains 234 files including all prebuilds and web assets
+- Includes all 24 prebuilds (16 node-pty + 8 authenticate-pam)
+- authenticate-pam module is now properly bundled in `node_modules/authenticate-pam/`
+
+**Installation**:
+```bash
+# Install latest (now 1.0.0-beta.14.1 with the fix)
+npm install -g vibetunnel
+
+# Or install beta specifically
+npm install -g vibetunnel@beta
+
+# Or install specific version
+npm install -g vibetunnel@1.0.0-beta.14.1
+```
+
+**Build Script Improvements**:
+- Enhanced `copyAuthenticatePam()` function to search multiple pnpm locations
+- Added comprehensive logging to track which paths are searched
+- Properly follows symlinks with `fs.statSync()` for accurate module detection
+
+**Verification**:
+The build now includes clear output confirming authenticate-pam inclusion:
+```
+✅ authenticate-pam module copied to dist-npm for Linux PAM auth
+```
+
 ### Version 1.0.0-beta.13 (2025-07-19)
 
 **Published to npm**: Successfully published as both `vibetunnel@beta` and `vibetunnel@latest`
@@ -586,8 +623,9 @@ docker run --rm --platform linux/amd64 vibetunnel-test
 
 ### Version History
 
-- **1.0.0-beta.14** (2025-07-21): Fixed authenticate-pam module missing from npm package
-- **1.0.0-beta.13** (2025-07-19): Latest release, synchronized with macOS app version
+- **1.0.0-beta.14.1** (2025-07-21): Fixed authenticate-pam module missing from npm package (patch release)
+- **1.0.0-beta.14** (2025-07-21): macOS app release (npm package had missing authenticate-pam module)
+- **1.0.0-beta.13** (2025-07-19): Synchronized with macOS app version
 - **1.0.0-beta.12.1** (2025-07-17): Minor updates and fixes
 - **1.0.0-beta.12** (2025-07-17): Package structure improvements
 - **1.0.0-beta.11.1** (2025-07-16): Fixed npm installation issues
@@ -599,8 +637,8 @@ docker run --rm --platform linux/amd64 vibetunnel-test
 VibeTunnel uses npm dist-tags to manage different release channels:
 
 ### Current Tags
-- **latest**: Points to the most stable release (currently 1.0.0-beta.13)
-- **beta**: Points to the latest beta release (currently 1.0.0-beta.13)
+- **latest**: Points to the most stable release (currently 1.0.0-beta.14.1)
+- **beta**: Points to the latest beta release (currently 1.0.0-beta.14.1)
 
 ### Managing Tags
 
