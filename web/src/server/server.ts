@@ -88,8 +88,6 @@ interface Config {
   noHqAuth: boolean;
   // mDNS advertisement
   enableMDNS: boolean;
-  // Repository configuration
-  repositoryBasePath: string | null;
 }
 
 // Show help message
@@ -109,7 +107,6 @@ Options:
   --no-auth             Disable authentication (auto-login as current user)
   --allow-local-bypass  Allow localhost connections to bypass authentication
   --local-auth-token <token>  Token for localhost authentication bypass
-  --repository-base-path <path>  Base path for repository discovery (default: ~/)
   --debug               Enable debug logging
 
 Push Notification Options:
@@ -184,8 +181,6 @@ function parseArgs(): Config {
     noHqAuth: false,
     // mDNS advertisement
     enableMDNS: true, // Enable mDNS by default
-    // Repository configuration
-    repositoryBasePath: null as string | null,
   };
 
   // Check for help flag first
@@ -251,9 +246,6 @@ function parseArgs(): Config {
       config.noHqAuth = true;
     } else if (args[i] === '--no-mdns') {
       config.enableMDNS = false;
-    } else if (args[i] === '--repository-base-path' && i + 1 < args.length) {
-      config.repositoryBasePath = args[i + 1];
-      i++; // Skip the path value in next iteration
     } else if (args[i].startsWith('--')) {
       // Unknown argument
       logger.error(`Unknown argument: ${args[i]}`);
@@ -754,7 +746,6 @@ export async function createApp(): Promise<AppInstance> {
   app.use(
     '/api',
     createConfigRoutes({
-      getRepositoryBasePath: () => config.repositoryBasePath,
       configService,
     })
   );

@@ -154,6 +154,38 @@ export class ServerConfigService {
     const config = await this.loadConfig();
     return config.quickStartCommands || [];
   }
+
+  /**
+   * Update configuration (supports partial updates)
+   */
+  async updateConfig(updates: Partial<ServerConfig>): Promise<void> {
+    if (!updates || typeof updates !== 'object') {
+      throw new Error('Invalid configuration updates');
+    }
+
+    try {
+      const response = await fetch('/api/config', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.authClient ? this.authClient.getAuthHeader() : {}),
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update config: ${response.statusText}`);
+      }
+
+      // Clear cache to force reload on next access
+      this.clearCache();
+
+      logger.debug('Updated server config:', updates);
+    } catch (error) {
+      logger.error('Failed to update server config:', error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance for easy access

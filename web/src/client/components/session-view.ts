@@ -29,8 +29,8 @@ import './session-view/ctrl-alpha-overlay.js';
 import './session-view/width-selector.js';
 import './session-view/session-header.js';
 import { authClient } from '../services/auth-client.js';
+import { sessionActionService } from '../services/session-action-service.js';
 import { createLogger } from '../utils/logger.js';
-import { terminateSession } from '../utils/session-actions.js';
 import {
   COMMON_TERMINAL_WIDTHS,
   TerminalPreferencesManager,
@@ -401,6 +401,8 @@ export class SessionView extends LitElement {
     this.lifecycleEventManager.setSessionViewElement(this);
     this.lifecycleEventManager.setCallbacks(this.createLifecycleEventManagerCallbacks());
     this.lifecycleEventManager.setSession(this.session);
+
+    // Session action callbacks will be provided per-call to the service
 
     // Load direct keyboard preference (needed before lifecycle setup)
     try {
@@ -1756,40 +1758,45 @@ export class SessionView extends LitElement {
   }
 
   private async handleTerminateSession() {
-    if (!this.session || this.session.status !== 'running') return;
-
-    const result = await terminateSession(this.session.id, authClient, 'running');
-    
-    if (!result.success) {
-      // Show error to user
-      this.dispatchEvent(
-        new CustomEvent('error', {
-          detail: `Failed to terminate session: ${result.error}`,
-          bubbles: true,
-          composed: true,
-        })
-      );
-    }
-    // Session terminated successfully - the session status will be updated via SSE
+    if (!this.session) return;
+    await sessionActionService.terminateSession(this.session, {
+      authClient: authClient,
+      callbacks: {
+        onError: (message: string) => {
+          this.dispatchEvent(
+            new CustomEvent('error', {
+              detail: message,
+              bubbles: true,
+              composed: true,
+            })
+          );
+        },
+        onSuccess: () => {
+          // For terminate, session status will be updated via SSE
+        },
+      },
+    });
   }
 
   private async handleClearSession() {
-    if (!this.session || this.session.status !== 'exited') return;
-
-    const result = await terminateSession(this.session.id, authClient, 'exited');
-    
-    if (!result.success) {
-      // Show error to user
-      this.dispatchEvent(
-        new CustomEvent('error', {
-          detail: `Failed to clear session: ${result.error}`,
-          bubbles: true,
-          composed: true,
-        })
-      );
-    } else {
-      // Session cleared successfully - navigate back to list
-      this.handleBack();
-    }
+    if (!this.session) return;
+    await sessionActionService.clearSession(this.session, {
+      authClient: authClient,
+      callbacks: {
+        onError: (message: string) => {
+          this.dispatchEvent(
+            new CustomEvent('error', {
+              detail: message,
+              bubbles: true,
+              composed: true,
+            })
+          );
+        },
+        onSuccess: () => {
+          // Session cleared successfully - navigate back to list
+          this.handleBack();
+        },
+      },
+    });
   }
 }

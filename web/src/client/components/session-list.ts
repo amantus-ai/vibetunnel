@@ -24,6 +24,7 @@ import type { AuthClient } from '../services/auth-client.js';
 import './session-card.js';
 import './inline-edit.js';
 import { formatSessionDuration } from '../../shared/utils/time.js';
+import { sessionActionService } from '../services/session-action-service.js';
 import { sendAIPrompt } from '../utils/ai-sessions.js';
 import { Z_INDEX } from '../utils/constants.js';
 import { createLogger } from '../utils/logger.js';
@@ -266,31 +267,23 @@ export class SessionList extends LitElement {
   };
 
   private async handleDeleteSession(sessionId: string) {
-    try {
-      const response = await fetch(`/api/sessions/${sessionId}`, {
-        method: 'DELETE',
-        headers: {
-          ...this.authClient.getAuthHeader(),
+    await sessionActionService.deleteSessionById(sessionId, {
+      authClient: this.authClient,
+      callbacks: {
+        onError: (errorMessage) => {
+          this.handleSessionKillError({
+            detail: {
+              sessionId,
+              error: errorMessage,
+            },
+          } as CustomEvent);
         },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        logger.error('Failed to delete session', { errorData, sessionId });
-        throw new Error(`Delete failed: ${response.status}`);
-      }
-
-      // Session killed successfully - update local state and trigger refresh
-      this.handleSessionKilled({ detail: { sessionId } } as CustomEvent);
-    } catch (error) {
-      logger.error('Error deleting session', { error, sessionId });
-      this.handleSessionKillError({
-        detail: {
-          sessionId,
-          error: error instanceof Error ? error.message : 'Unknown error',
+        onSuccess: () => {
+          // Session killed successfully - update local state and trigger refresh
+          this.handleSessionKilled({ detail: { sessionId } } as CustomEvent);
         },
-      } as CustomEvent);
-    }
+      },
+    });
   }
 
   private async handleSendAIPrompt(sessionId: string) {

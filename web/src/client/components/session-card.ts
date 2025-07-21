@@ -14,6 +14,7 @@ import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Session } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
+import { sessionActionService } from '../services/session-action-service.js';
 import { isAIAssistantSession, sendAIPrompt } from '../utils/ai-sessions.js';
 import { createLogger } from '../utils/logger.js';
 import { copyToClipboard } from '../utils/path-utils.js';
@@ -202,66 +203,57 @@ export class SessionCard extends LitElement {
     }
 
     // Send kill or cleanup request based on session status
-    try {
-      // Use different endpoint based on session status
-      const endpoint =
-        this.session.status === 'exited'
-          ? `/api/sessions/${this.session.id}/cleanup`
-          : `/api/sessions/${this.session.id}`;
+    const action = this.session.status === 'exited' ? 'clear' : 'terminate';
 
-      const action = this.session.status === 'exited' ? 'cleanup' : 'kill';
+    const result = await sessionActionService.deleteSession(this.session, {
+      authClient: this.authClient,
+      callbacks: {
+        onError: (errorMessage) => {
+          logger.error('Error killing session', {
+            error: errorMessage,
+            sessionId: this.session.id,
+          });
 
-      const response = await fetch(endpoint, {
-        method: 'DELETE',
-        headers: {
-          ...this.authClient.getAuthHeader(),
+          // Show error to user (keep animation to indicate something went wrong)
+          this.dispatchEvent(
+            new CustomEvent('session-kill-error', {
+              detail: {
+                sessionId: this.session.id,
+                error: errorMessage,
+              },
+              bubbles: true,
+              composed: true,
+            })
+          );
+
+          clearTimeout(killingTimeout);
         },
-      });
+        onSuccess: () => {
+          // Kill/cleanup succeeded - dispatch event to notify parent components
+          this.dispatchEvent(
+            new CustomEvent('session-killed', {
+              detail: {
+                sessionId: this.session.id,
+                session: this.session,
+              },
+              bubbles: true,
+              composed: true,
+            })
+          );
 
-      if (!response.ok) {
-        const errorData = await response.text();
-        logger.error(`Failed to ${action} session`, { errorData, sessionId: this.session.id });
-        throw new Error(`${action} failed: ${response.status}`);
-      }
+          logger.log(
+            `Session ${this.session.id} ${action === 'clear' ? 'cleaned up' : 'killed'} successfully`
+          );
+          clearTimeout(killingTimeout);
+        },
+      },
+    });
 
-      // Kill/cleanup succeeded - dispatch event to notify parent components
-      this.dispatchEvent(
-        new CustomEvent('session-killed', {
-          detail: {
-            sessionId: this.session.id,
-            session: this.session,
-          },
-          bubbles: true,
-          composed: true,
-        })
-      );
+    // Stop animation in all cases
+    this.stopKillingAnimation();
+    clearTimeout(killingTimeout);
 
-      logger.log(
-        `Session ${this.session.id} ${action === 'cleanup' ? 'cleaned up' : 'killed'} successfully`
-      );
-      clearTimeout(killingTimeout);
-      return true;
-    } catch (error) {
-      logger.error('Error killing session', { error, sessionId: this.session.id });
-
-      // Show error to user (keep animation to indicate something went wrong)
-      this.dispatchEvent(
-        new CustomEvent('session-kill-error', {
-          detail: {
-            sessionId: this.session.id,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          },
-          bubbles: true,
-          composed: true,
-        })
-      );
-      clearTimeout(killingTimeout);
-      return false;
-    } finally {
-      // Stop animation in all cases
-      this.stopKillingAnimation();
-      clearTimeout(killingTimeout);
-    }
+    return result.success;
   }
 
   private stopKillingAnimation() {

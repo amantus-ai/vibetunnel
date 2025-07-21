@@ -18,6 +18,7 @@ const ConfigSchema = z.object({
       command: z.string().min(1, 'Command cannot be empty'),
     })
   ),
+  repositoryBasePath: z.string().optional(),
 });
 
 export class ConfigService {
@@ -171,6 +172,14 @@ export class ConfigService {
   public updateQuickStartCommands(commands: VibeTunnelConfig['quickStartCommands']): void {
     // Validate the entire config with updated commands
     const updatedConfig = { ...this.config, quickStartCommands: commands };
+    this.config = this.validateConfig(updatedConfig);
+    this.saveConfig();
+    this.notifyConfigChange();
+  }
+
+  public updateRepositoryBasePath(path: string): void {
+    // Validate the entire config with updated repository base path
+    const updatedConfig = { ...this.config, repositoryBasePath: path };
     this.config = this.validateConfig(updatedConfig);
     this.saveConfig();
     this.notifyConfigChange();

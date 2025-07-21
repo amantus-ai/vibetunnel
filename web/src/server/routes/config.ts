@@ -12,7 +12,6 @@ export interface AppConfig {
 }
 
 interface ConfigRouteOptions {
-  getRepositoryBasePath: () => string | null;
   configService: ConfigService;
 }
 
@@ -21,7 +20,7 @@ interface ConfigRouteOptions {
  */
 export function createConfigRoutes(options: ConfigRouteOptions): Router {
   const router = Router();
-  const { getRepositoryBasePath, configService } = options;
+  const { configService } = options;
 
   /**
    * Get application configuration
@@ -29,12 +28,12 @@ export function createConfigRoutes(options: ConfigRouteOptions): Router {
    */
   router.get('/config', (_req, res) => {
     try {
-      const repositoryBasePath = getRepositoryBasePath();
       const vibeTunnelConfig = configService.getConfig();
+      const repositoryBasePath = vibeTunnelConfig.repositoryBasePath || '~/';
 
       const config: AppConfig = {
-        repositoryBasePath: repositoryBasePath || '~/',
-        serverConfigured: repositoryBasePath !== null,
+        repositoryBasePath: repositoryBasePath,
+        serverConfigured: true, // Always configured when server is running
         quickStartCommands: vibeTunnelConfig.quickStartCommands,
       };
 
@@ -52,7 +51,8 @@ export function createConfigRoutes(options: ConfigRouteOptions): Router {
    */
   router.put('/config', (req, res) => {
     try {
-      const { quickStartCommands } = req.body;
+      const { quickStartCommands, repositoryBasePath } = req.body;
+      const updates: { [key: string]: unknown } = {};
 
       if (quickStartCommands && Array.isArray(quickStartCommands)) {
         // Validate commands
@@ -62,11 +62,21 @@ export function createConfigRoutes(options: ConfigRouteOptions): Router {
 
         // Update config
         configService.updateQuickStartCommands(validCommands);
-
+        updates.quickStartCommands = validCommands;
         logger.debug('[PUT /api/config] Updated quick start commands:', validCommands);
-        res.json({ success: true, quickStartCommands: validCommands });
+      }
+
+      if (repositoryBasePath && typeof repositoryBasePath === 'string') {
+        // Update repository base path
+        configService.updateRepositoryBasePath(repositoryBasePath);
+        updates.repositoryBasePath = repositoryBasePath;
+        logger.debug('[PUT /api/config] Updated repository base path:', repositoryBasePath);
+      }
+
+      if (Object.keys(updates).length > 0) {
+        res.json({ success: true, ...updates });
       } else {
-        res.status(400).json({ error: 'Invalid quick start commands' });
+        res.status(400).json({ error: 'No valid updates provided' });
       }
     } catch (error) {
       logger.error('[PUT /api/config] Error updating config:', error);

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { QuickStartCommand } from '../../types/config.js';
-import { ServerConfigService, type ServerConfig } from './server-config-service.js';
+import { type ServerConfig, ServerConfigService } from './server-config-service.js';
 
 // Mock the logger
 vi.mock('../utils/logger.js', () => ({
@@ -15,10 +15,7 @@ vi.mock('../utils/logger.js', () => ({
 const mockServerConfig: ServerConfig = {
   repositoryBasePath: '/Users/test/repos',
   serverConfigured: true,
-  quickStartCommands: [
-    { name: '✨ claude', command: 'claude' },
-    { command: 'zsh' },
-  ],
+  quickStartCommands: [{ name: '✨ claude', command: 'claude' }, { command: 'zsh' }],
 };
 
 describe('ServerConfigService', () => {
@@ -56,7 +53,7 @@ describe('ServerConfigService', () => {
       } as any;
 
       service.setAuthClient(mockAuthClient);
-      
+
       fetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => mockServerConfig,
@@ -172,10 +169,7 @@ describe('ServerConfigService', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          quickStartCommands: [
-            { name: 'Valid', command: 'valid' },
-            { command: 'valid2' },
-          ],
+          quickStartCommands: [{ name: 'Valid', command: 'valid' }, { command: 'valid2' }],
         }),
       });
     });

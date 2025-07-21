@@ -38,10 +38,6 @@ import {
   type Repository,
 } from './autocomplete-manager.js';
 import type { Session } from './session-list.js';
-import {
-  STORAGE_KEY as APP_PREFERENCES_STORAGE_KEY,
-  type AppPreferences,
-} from './unified-settings.js';
 
 const logger = createLogger('session-create-form');
 
@@ -90,7 +86,7 @@ export class SessionCreateForm extends LitElement {
   private sessionService?: SessionService;
   private serverConfigService?: ServerConfigService;
 
-  connectedCallback() {
+  async connectedCallback() {
     super.connectedCallback();
     // Initialize services - AutocompleteManager handles optional authClient
     this.autocompleteManager = new AutocompleteManager(this.authClient);
@@ -98,11 +94,11 @@ export class SessionCreateForm extends LitElement {
 
     // Initialize other services only if authClient is available
     if (this.authClient) {
-      this.repositoryService = new RepositoryService(this.authClient);
+      this.repositoryService = new RepositoryService(this.authClient, this.serverConfigService);
       this.sessionService = new SessionService(this.authClient);
     }
     // Load from localStorage when component is first created
-    this.loadFromLocalStorage();
+    await this.loadFromLocalStorage();
     // Check server status
     this.checkServerStatus();
     // Load server configuration including quick start commands
@@ -156,18 +152,17 @@ export class SessionCreateForm extends LitElement {
     }
   };
 
-  private loadFromLocalStorage() {
+  private async loadFromLocalStorage() {
     const formData = loadSessionFormData();
 
-    // Get app preferences for repository base path to use as default working dir
+    // Get repository base path from server config to use as default working dir
     let appRepoBasePath = '~/';
-    const savedPreferences = localStorage.getItem(APP_PREFERENCES_STORAGE_KEY);
-    if (savedPreferences) {
+    if (this.serverConfigService) {
       try {
-        const preferences: AppPreferences = JSON.parse(savedPreferences);
-        appRepoBasePath = preferences.repositoryBasePath || '~/';
+        appRepoBasePath = await this.serverConfigService.getRepositoryBasePath();
       } catch (error) {
-        logger.error('Failed to parse app preferences:', error);
+        logger.error('Failed to get repository base path from server:', error);
+        appRepoBasePath = '~/';
       }
     }
 
@@ -271,8 +266,8 @@ export class SessionCreateForm extends LitElement {
     // Handle authClient becoming available
     if (changedProperties.has('authClient') && this.authClient) {
       // Initialize services if they haven't been created yet
-      if (!this.repositoryService) {
-        this.repositoryService = new RepositoryService(this.authClient);
+      if (!this.repositoryService && this.serverConfigService) {
+        this.repositoryService = new RepositoryService(this.authClient, this.serverConfigService);
       }
       if (!this.sessionService) {
         this.sessionService = new SessionService(this.authClient);
@@ -296,7 +291,10 @@ export class SessionCreateForm extends LitElement {
         this.titleMode = TitleMode.DYNAMIC;
 
         // Then load from localStorage which may override the defaults
-        this.loadFromLocalStorage();
+        // Don't await since we're in updated() lifecycle method
+        this.loadFromLocalStorage().catch((error) => {
+          logger.error('Failed to load from localStorage:', error);
+        });
 
         // Re-check server status when form becomes visible
         this.checkServerStatus();

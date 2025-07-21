@@ -1,15 +1,17 @@
 import type { Repository } from '../components/autocomplete-manager.js';
-import { type AppPreferences, STORAGE_KEY } from '../components/unified-settings.js';
 import { createLogger } from '../utils/logger.js';
 import type { AuthClient } from './auth-client.js';
+import type { ServerConfigService } from './server-config-service.js';
 
 const logger = createLogger('repository-service');
 
 export class RepositoryService {
   private authClient: AuthClient;
+  private serverConfigService: ServerConfigService;
 
-  constructor(authClient: AuthClient) {
+  constructor(authClient: AuthClient, serverConfigService: ServerConfigService) {
     this.authClient = authClient;
+    this.serverConfigService = serverConfigService;
   }
 
   /**
@@ -17,8 +19,8 @@ export class RepositoryService {
    * @returns Promise with discovered repositories
    */
   async discoverRepositories(): Promise<Repository[]> {
-    // Get app preferences to read repositoryBasePath
-    const basePath = this.getRepositoryBasePath();
+    // Get repository base path from server config
+    const basePath = await this.serverConfigService.getRepositoryBasePath();
 
     try {
       const response = await fetch(
@@ -40,24 +42,5 @@ export class RepositoryService {
       logger.error('Error discovering repositories:', error);
       return [];
     }
-  }
-
-  /**
-   * Gets the repository base path from app preferences
-   * @returns The base path or default '~/'
-   */
-  private getRepositoryBasePath(): string {
-    const savedPreferences = localStorage.getItem(STORAGE_KEY);
-
-    if (savedPreferences) {
-      try {
-        const preferences: AppPreferences = JSON.parse(savedPreferences);
-        return preferences.repositoryBasePath || '~/';
-      } catch (error) {
-        logger.error('Failed to parse app preferences:', error);
-      }
-    }
-
-    return '~/';
   }
 }

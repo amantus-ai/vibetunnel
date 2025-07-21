@@ -17,14 +17,12 @@ export interface AppPreferences {
   useDirectKeyboard: boolean;
   useBinaryMode: boolean;
   showLogLink: boolean;
-  repositoryBasePath: string;
 }
 
 const DEFAULT_APP_PREFERENCES: AppPreferences = {
   useDirectKeyboard: true, // Default to modern direct keyboard for new users
   useBinaryMode: false, // Default to SSE/RSC mode for compatibility
   showLogLink: false,
-  repositoryBasePath: '~/',
 };
 
 export const STORAGE_KEY = 'vibetunnel_app_preferences';
@@ -57,6 +55,7 @@ export class UnifiedSettings extends LitElement {
 
   // App settings state
   @state() private appPreferences: AppPreferences = DEFAULT_APP_PREFERENCES;
+  @state() private repositoryBasePath = '~/';
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
   @state() private isServerConfigured = false;
   @state() private repositoryCount = 0;
@@ -78,7 +77,7 @@ export class UnifiedSettings extends LitElement {
 
     // Initialize repository service if authClient is available
     if (this.authClient) {
-      this.repositoryService = new RepositoryService(this.authClient);
+      this.repositoryService = new RepositoryService(this.authClient, this.serverConfigService);
     }
 
     // Subscribe to responsive changes
@@ -118,8 +117,8 @@ export class UnifiedSettings extends LitElement {
 
     // Initialize repository service when authClient becomes available
     if (changedProperties.has('authClient') && this.authClient) {
-      if (!this.repositoryService) {
-        this.repositoryService = new RepositoryService(this.authClient);
+      if (!this.repositoryService && this.serverConfigService) {
+        this.repositoryService = new RepositoryService(this.authClient, this.serverConfigService);
       }
       // Update server config service's authClient
       if (this.serverConfigService) {
@@ -163,19 +162,8 @@ export class UnifiedSettings extends LitElement {
         try {
           const serverConfig = await this.serverConfigService.loadConfig();
           this.isServerConfigured = serverConfig.serverConfigured ?? false;
-
-          // If server-configured, always use server's path
-          if (this.isServerConfigured) {
-            this.appPreferences.repositoryBasePath = serverConfig.repositoryBasePath;
-            // Save the updated preferences
-            this.saveAppPreferences();
-          } else if (!stored || !JSON.parse(stored).repositoryBasePath) {
-            // If we don't have a local repository base path and not server-configured, use the server's default
-            this.appPreferences.repositoryBasePath =
-              serverConfig.repositoryBasePath || DEFAULT_APP_PREFERENCES.repositoryBasePath;
-            // Save the updated preferences
-            this.saveAppPreferences();
-          }
+          // Always use server's repository base path
+          this.repositoryBasePath = serverConfig.repositoryBasePath || '~/';
         } catch (error) {
           logger.warn('Failed to fetch server config', error);
         }
@@ -217,9 +205,7 @@ export class UnifiedSettings extends LitElement {
 
       const repositories = await this.repositoryService.discoverRepositories();
       this.repositoryCount = repositories.length;
-      logger.log(
-        `Discovered ${this.repositoryCount} repositories in ${this.appPreferences.repositoryBasePath}`
-      );
+      logger.log(`Discovered ${this.repositoryCount} repositories in ${this.repositoryBasePath}`);
     } catch (error) {
       logger.error('Failed to discover repositories', error);
       this.repositoryCount = 0;
@@ -313,16 +299,25 @@ export class UnifiedSettings extends LitElement {
   }
 
   private handleAppPreferenceChange(key: keyof AppPreferences, value: boolean | string) {
-    // Don't allow changes to repository path if server-configured
-    if (key === 'repositoryBasePath' && this.isServerConfigured) {
-      return;
-    }
+    // Update locally
     this.appPreferences = { ...this.appPreferences, [key]: value };
     this.saveAppPreferences();
+  }
 
-    // Rediscover repositories when repository path changes
-    if (key === 'repositoryBasePath') {
-      this.discoverRepositories();
+  private async handleRepositoryBasePathChange(value: string) {
+    if (this.serverConfigService) {
+      try {
+        // Update server config
+        await this.serverConfigService.updateConfig({ repositoryBasePath: value });
+        // Update local state
+        this.repositoryBasePath = value;
+        // Rediscover repositories
+        this.discoverRepositories();
+      } catch (error) {
+        logger.error('Failed to update repository base path:', error);
+        // Revert the change on error
+        this.requestUpdate();
+      }
     }
   }
 
@@ -642,10 +637,10 @@ export class UnifiedSettings extends LitElement {
           <div class="flex gap-2">
             <input
               type="text"
-              .value=${this.appPreferences.repositoryBasePath}
+              .value=${this.repositoryBasePath}
               @input=${(e: Event) => {
                 const input = e.target as HTMLInputElement;
-                this.handleAppPreferenceChange('repositoryBasePath', input.value);
+                this.handleRepositoryBasePathChange(input.value);
               }}
               placeholder="~/"
               class="input-field py-2 text-sm flex-1 ${

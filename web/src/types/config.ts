@@ -6,6 +6,7 @@ export interface QuickStartCommand {
 export interface VibeTunnelConfig {
   version: number;
   quickStartCommands: QuickStartCommand[];
+  repositoryBasePath?: string;
 }
 
 export const DEFAULT_QUICK_START_COMMANDS: QuickStartCommand[] = [
@@ -20,4 +21,5 @@ export const DEFAULT_QUICK_START_COMMANDS: QuickStartCommand[] = [
 export const DEFAULT_CONFIG: VibeTunnelConfig = {
   version: 1,
   quickStartCommands: DEFAULT_QUICK_START_COMMANDS,
+  repositoryBasePath: '~/',
 };
