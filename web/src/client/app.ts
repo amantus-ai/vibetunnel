@@ -273,9 +273,9 @@ export class VibeTunnelApp extends LitElement {
       }
     }
 
-    // Legacy browser shortcut checking for non-session views
+    // Browser shortcut checking for non-session views
     const shouldAllowBrowserShortcut = (): boolean => {
-      // If we're not in session view or capture is disabled, use the legacy allow list
+      // If we're not in session view or capture is disabled, use the browser shortcut allow list
       if (this.currentView !== 'session' || !this.keyboardCaptureActive) {
         const key = e.key.toLowerCase();
         const hasModifier = e.ctrlKey || e.metaKey;

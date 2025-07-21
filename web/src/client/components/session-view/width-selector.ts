@@ -28,19 +28,6 @@ export class TerminalSettingsModal extends LitElement {
   connectedCallback() {
     super.connectedCallback();
 
-    // Clean up old conflicting localStorage key if it exists
-    if (localStorage.getItem('terminal-theme')) {
-      const oldTheme = localStorage.getItem('terminal-theme') as TerminalThemeId;
-      // Migrate to TerminalPreferencesManager if it's a valid theme
-      if (
-        oldTheme &&
-        ['auto', 'light', 'dark', 'vscode-dark', 'dracula', 'nord'].includes(oldTheme)
-      ) {
-        this.preferencesManager.setTheme(oldTheme);
-      }
-      localStorage.removeItem('terminal-theme');
-    }
-
     // Load theme from TerminalPreferencesManager
     this.terminalTheme = this.preferencesManager.getTheme();
 
