@@ -203,7 +203,7 @@ export class SessionCard extends LitElement {
     }
 
     // Send kill or cleanup request based on session status
-    const action = this.session.status === 'exited' ? 'clear' : 'terminate';
+    const isExited = this.session.status === 'exited';
 
     const result = await sessionActionService.deleteSession(this.session, {
       authClient: this.authClient,
@@ -242,7 +242,7 @@ export class SessionCard extends LitElement {
           );
 
           logger.log(
-            `Session ${this.session.id} ${action === 'clear' ? 'cleaned up' : 'killed'} successfully`
+            `Session ${this.session.id} ${isExited ? 'cleaned up' : 'killed'} successfully`
           );
           clearTimeout(killingTimeout);
         },
