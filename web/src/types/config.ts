@@ -1,3 +1,5 @@
+import { DEFAULT_REPOSITORY_BASE_PATH } from '../shared/constants.js';
+
 export interface QuickStartCommand {
   name?: string; // Optional display name (can include emoji), if empty uses command
   command: string; // The actual command to execute
@@ -21,5 +23,5 @@ export const DEFAULT_QUICK_START_COMMANDS: QuickStartCommand[] = [
 export const DEFAULT_CONFIG: VibeTunnelConfig = {
   version: 1,
   quickStartCommands: DEFAULT_QUICK_START_COMMANDS,
-  repositoryBasePath: '~/',
+  repositoryBasePath: DEFAULT_REPOSITORY_BASE_PATH,
 };

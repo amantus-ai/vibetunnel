@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { DEFAULT_REPOSITORY_BASE_PATH } from '../../shared/constants.js';
 import type { QuickStartCommand } from '../../types/config.js';
 import type { ConfigService } from '../services/config-service.js';
 import { createLogger } from '../utils/logger.js';
@@ -29,7 +30,8 @@ export function createConfigRoutes(options: ConfigRouteOptions): Router {
   router.get('/config', (_req, res) => {
     try {
       const vibeTunnelConfig = configService.getConfig();
-      const repositoryBasePath = vibeTunnelConfig.repositoryBasePath || '~/';
+      const repositoryBasePath =
+        vibeTunnelConfig.repositoryBasePath || DEFAULT_REPOSITORY_BASE_PATH;
 
       const config: AppConfig = {
         repositoryBasePath: repositoryBasePath,

@@ -55,7 +55,7 @@ export class UnifiedSettings extends LitElement {
 
   // App settings state
   @state() private appPreferences: AppPreferences = DEFAULT_APP_PREFERENCES;
-  @state() private repositoryBasePath = '~/';
+  @state() private repositoryBasePath = '';
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
   @state() private isServerConfigured = false;
   @state() private repositoryCount = 0;
@@ -163,7 +163,7 @@ export class UnifiedSettings extends LitElement {
           const serverConfig = await this.serverConfigService.loadConfig();
           this.isServerConfigured = serverConfig.serverConfigured ?? false;
           // Always use server's repository base path
-          this.repositoryBasePath = serverConfig.repositoryBasePath || '~/';
+          this.repositoryBasePath = serverConfig.repositoryBasePath;
         } catch (error) {
           logger.warn('Failed to fetch server config', error);
         }
