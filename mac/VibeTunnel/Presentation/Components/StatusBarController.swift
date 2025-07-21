@@ -15,6 +15,7 @@ final class StatusBarController: NSObject {
 
     private var statusItem: NSStatusItem?
     let menuManager: StatusBarMenuManager
+    private var iconController: StatusBarIconController?
 
     // MARK: - Dependencies
 
@@ -82,6 +83,9 @@ final class StatusBarController: NSObject {
             button.setAccessibilityRole(.button)
             button.setAccessibilityHelp("Shows terminal sessions and server information")
 
+            // Initialize the icon controller
+            iconController = StatusBarIconController(button: button)
+
             updateStatusItemDisplay()
         }
     }
@@ -143,95 +147,16 @@ final class StatusBarController: NSObject {
         // Update accessibility title (might have changed due to debug/dev server state)
         button.setAccessibilityTitle(getAppDisplayName())
 
-        // Update icon based on server status only
-        let iconName = serverManager.isRunning ? "menubar" : "menubar.inactive"
-        if let image = NSImage(named: iconName) {
-            image.isTemplate = true
-            button.image = image
-        } else {
-            // Fallback to regular icon
-            if let image = NSImage(named: "menubar") {
-                image.isTemplate = true
-                button.image = image
-                button.alphaValue = serverManager.isRunning ? 1.0 : 0.5
-            }
-        }
+        // Update icon and title using the dedicated controller
+        iconController?.update(serverManager: serverManager, sessionMonitor: sessionMonitor)
 
-        // Update session count display
-        let sessions = sessionMonitor.sessions.values.filter(\.isRunning)
-        let activeSessions = sessions.filter { session in
-            // Check if session has recent activity (Claude Code or other custom actions)
-            if let activityStatus = session.activityStatus?.specificStatus?.status {
-                return !activityStatus.isEmpty
-            }
-            return false
-        }
-
-        let activeCount = activeSessions.count
-        let totalCount = sessions.count
-        let idleCount = totalCount - activeCount
-
-        // Format the title with minimalist indicator
-        let indicator = formatSessionIndicator(activeCount: activeCount, idleCount: idleCount)
-        button.title = indicator.isEmpty ? "" : " " + indicator
-
-        // Update tooltip
-        updateTooltip()
-    }
-
-    private func updateTooltip() {
-        guard let button = statusItem?.button else { return }
-
-        var tooltipParts: [String] = []
-
-        // Server status
-        if serverManager.isRunning {
-            let bindAddress = serverManager.bindAddress
-            if bindAddress == "127.0.0.1" {
-                tooltipParts.append("Server: 127.0.0.1:\(serverManager.port)")
-            } else if let localIP = NetworkUtility.getLocalIPAddress() {
-                tooltipParts.append("Server: \(localIP):\(serverManager.port)")
-            }
-
-            // ngrok status
-            if ngrokService.isActive, let publicURL = ngrokService.publicUrl {
-                tooltipParts.append("ngrok: \(publicURL)")
-            }
-
-            // Tailscale status
-            if tailscaleService.isRunning, let hostname = tailscaleService.tailscaleHostname {
-                tooltipParts.append("Tailscale: \(hostname)")
-            }
-        } else {
-            tooltipParts.append("Server stopped")
-        }
-
-        // Session info
-        let sessions = sessionMonitor.sessions.values.filter(\.isRunning)
-        if !sessions.isEmpty {
-            let activeSessions = sessions.filter { session in
-                if let activityStatus = session.activityStatus?.specificStatus?.status {
-                    return !activityStatus.isEmpty
-                }
-                return false
-            }
-
-            let idleCount = sessions.count - activeSessions.count
-            if !activeSessions.isEmpty {
-                if idleCount > 0 {
-                    tooltipParts
-                        .append(
-                            "\(activeSessions.count) active, \(idleCount) idle session\(sessions.count == 1 ? "" : "s")"
-                        )
-                } else {
-                    tooltipParts.append("\(activeSessions.count) active session\(activeSessions.count == 1 ? "" : "s")")
-                }
-            } else {
-                tooltipParts.append("\(sessions.count) idle session\(sessions.count == 1 ? "" : "s")")
-            }
-        }
-
-        button.toolTip = tooltipParts.joined(separator: "\n")
+        // Update tooltip using the dedicated provider
+        button.toolTip = TooltipProvider.generateTooltip(
+            serverManager: serverManager,
+            ngrokService: ngrokService,
+            tailscaleService: tailscaleService,
+            sessionMonitor: sessionMonitor
+        )
     }
 
     // MARK: - Click Handling
