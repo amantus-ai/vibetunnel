@@ -302,4 +302,316 @@ describe('InputManager', () => {
       expect(inputManager.isKeyboardShortcut(rightEvent)).toBe(true);
     });
   });
+
+  describe('CJK IME Input', () => {
+    let terminalContainer: HTMLElement;
+    let mockTerminalElement: any;
+
+    beforeEach(() => {
+      // Setup DOM for testing
+      terminalContainer = document.createElement('div');
+      terminalContainer.id = 'terminal-container';
+      document.body.appendChild(terminalContainer);
+
+      // Mock terminal element with cursor info
+      mockTerminalElement = {
+        getCursorInfo: vi.fn().mockReturnValue({
+          cursorX: 10,
+          cursorY: 5, 
+          cols: 80,
+          rows: 24
+        }),
+        getBoundingClientRect: vi.fn().mockReturnValue({
+          left: 100,
+          top: 100,
+          width: 800,
+          height: 480
+        })
+      };
+
+      // Setup input manager with terminal element callback
+      inputManager.setCallbacks({
+        requestUpdate: mockCallbacks.requestUpdate,
+        getTerminalElement: () => mockTerminalElement
+      });
+      
+      inputManager.setSession(mockSession);
+    });
+
+    afterEach(() => {
+      document.body.removeChild(terminalContainer);
+    });
+
+    describe('IME Input Setup', () => {
+      it('should create invisible IME input element', () => {
+        const imeInput = terminalContainer.querySelector('input') as HTMLInputElement;
+        
+        expect(imeInput).toBeTruthy();
+        expect(imeInput.placeholder).toBe('CJK Input');
+        expect(imeInput.style.opacity).toBe('0');
+        expect(imeInput.style.width).toBe('1px');
+        expect(imeInput.style.height).toBe('1px');
+        expect(imeInput.style.pointerEvents).toBe('none');
+      });
+
+      it('should position IME input at cursor location', () => {
+        const imeInput = terminalContainer.querySelector('input') as HTMLInputElement;
+        
+        // Trigger position update
+        const clickEvent = new Event('click');
+        Object.defineProperty(clickEvent, 'target', {
+          value: terminalContainer,
+          configurable: true
+        });
+        document.dispatchEvent(clickEvent);
+
+        // Check if position was calculated (exact values depend on mocked dimensions)
+        expect(imeInput.style.left).toMatch(/^\d+px$/);
+        expect(imeInput.style.top).toMatch(/^\d+px$/);
+        expect(mockTerminalElement.getCursorInfo).toHaveBeenCalled();
+      });
+    });
+
+    describe('IME Composition Events', () => {
+      let imeInput: HTMLInputElement;
+
+      beforeEach(() => {
+        imeInput = terminalContainer.querySelector('input') as HTMLInputElement;
+      });
+
+      it('should handle compositionstart event', () => {
+        const compositionEvent = new CompositionEvent('compositionstart', {
+          data: ''
+        });
+        
+        imeInput.dispatchEvent(compositionEvent);
+        
+        expect(document.body.getAttribute('data-ime-composing')).toBe('true');
+      });
+
+      it('should handle compositionend and send text to terminal', () => {
+        const fetchMock = vi.mocked(fetch);
+        fetchMock.mockResolvedValueOnce(new Response('OK'));
+
+        // Start composition
+        imeInput.dispatchEvent(new CompositionEvent('compositionstart'));
+        
+        // End composition with CJK text
+        const compositionEndEvent = new CompositionEvent('compositionend', {
+          data: '你好'
+        });
+        imeInput.dispatchEvent(compositionEndEvent);
+
+        expect(document.body.getAttribute('data-ime-composing')).toBeNull();
+        expect(fetchMock).toHaveBeenCalledWith(
+          '/api/sessions/test-session-id/input',
+          expect.objectContaining({
+            method: 'POST',
+            body: JSON.stringify({ text: '你好' })
+          })
+        );
+        expect(imeInput.value).toBe('');
+      });
+
+      it('should block keyboard events during composition', async () => {
+        const fetchMock = vi.mocked(fetch);
+        
+        // Start composition
+        imeInput.dispatchEvent(new CompositionEvent('compositionstart'));
+        
+        // Try to send keyboard input during composition
+        const keyboardEvent = new KeyboardEvent('keydown', { key: 'a' });
+        await inputManager.handleKeyboardInput(keyboardEvent);
+        
+        // Should not send any input
+        expect(fetchMock).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('Global Paste Handler', () => {
+      it('should handle paste events globally', () => {
+        const fetchMock = vi.mocked(fetch);
+        fetchMock.mockResolvedValueOnce(new Response('OK'));
+
+        const pasteEvent = new ClipboardEvent('paste', {
+          clipboardData: new DataTransfer()
+        });
+        pasteEvent.clipboardData!.setData('text', 'pasted text');
+        
+        // Set target to document body (not an input)
+        Object.defineProperty(pasteEvent, 'target', {
+          value: document.body,
+          configurable: true
+        });
+
+        document.dispatchEvent(pasteEvent);
+
+        expect(fetchMock).toHaveBeenCalledWith(
+          '/api/sessions/test-session-id/input',
+          expect.objectContaining({
+            method: 'POST',
+            body: JSON.stringify({ text: 'pasted text' })
+          })
+        );
+      });
+
+      it('should not interfere with paste in other input elements', () => {
+        const fetchMock = vi.mocked(fetch);
+        
+        const otherInput = document.createElement('input');
+        document.body.appendChild(otherInput);
+
+        const pasteEvent = new ClipboardEvent('paste', {
+          clipboardData: new DataTransfer()
+        });
+        pasteEvent.clipboardData!.setData('text', 'should not be handled');
+        
+        Object.defineProperty(pasteEvent, 'target', {
+          value: otherInput,
+          configurable: true
+        });
+
+        document.dispatchEvent(pasteEvent);
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        document.body.removeChild(otherInput);
+      });
+    });
+
+    describe('Focus Management', () => {
+      let imeInput: HTMLInputElement;
+
+      beforeEach(() => {
+        imeInput = terminalContainer.querySelector('input') as HTMLInputElement;
+      });
+
+      it('should focus IME input when clicking in terminal area', () => {
+        const focusSpy = vi.spyOn(imeInput, 'focus');
+        
+        const clickEvent = new Event('click');
+        Object.defineProperty(clickEvent, 'target', {
+          value: terminalContainer,
+          configurable: true
+        });
+        
+        document.dispatchEvent(clickEvent);
+        
+        expect(focusSpy).toHaveBeenCalled();
+      });
+
+      it('should not focus IME input when clicking outside terminal area', () => {
+        const focusSpy = vi.spyOn(imeInput, 'focus');
+        
+        const otherElement = document.createElement('div');
+        document.body.appendChild(otherElement);
+        
+        const clickEvent = new Event('click');
+        Object.defineProperty(clickEvent, 'target', {
+          value: otherElement,
+          configurable: true
+        });
+        
+        document.dispatchEvent(clickEvent);
+        
+        expect(focusSpy).not.toHaveBeenCalled();
+        document.body.removeChild(otherElement);
+      });
+
+      it('should set focus state attributes correctly', () => {
+        imeInput.dispatchEvent(new Event('focus'));
+        expect(document.body.getAttribute('data-ime-input-focused')).toBe('true');
+        
+        imeInput.dispatchEvent(new Event('blur'));
+        expect(document.body.getAttribute('data-ime-input-focused')).toBeNull();
+      });
+    });
+
+    describe('Keyboard Shortcut Detection', () => {
+      it('should allow copy/paste shortcuts even when IME input is focused', () => {
+        const imeInput = terminalContainer.querySelector('input') as HTMLInputElement;
+        
+        const cmdVEvent = new KeyboardEvent('keydown', {
+          key: 'v',
+          metaKey: true
+        });
+        Object.defineProperty(cmdVEvent, 'target', {
+          value: imeInput,
+          configurable: true
+        });
+
+        expect(inputManager.isKeyboardShortcut(cmdVEvent)).toBe(true);
+        
+        const cmdCEvent = new KeyboardEvent('keydown', {
+          key: 'c',
+          metaKey: true
+        });
+        Object.defineProperty(cmdCEvent, 'target', {
+          value: imeInput,
+          configurable: true
+        });
+
+        expect(inputManager.isKeyboardShortcut(cmdCEvent)).toBe(true);
+      });
+    });
+
+    describe('Cursor Position Updates', () => {
+      it('should update IME input position when cursor moves', () => {
+        const imeInput = terminalContainer.querySelector('input') as HTMLInputElement;
+        
+        // Change cursor position
+        mockTerminalElement.getCursorInfo.mockReturnValue({
+          cursorX: 20,
+          cursorY: 10,
+          cols: 80,
+          rows: 24
+        });
+
+        // Trigger position update
+        const clickEvent = new Event('click');
+        Object.defineProperty(clickEvent, 'target', {
+          value: terminalContainer,
+          configurable: true
+        });
+        document.dispatchEvent(clickEvent);
+
+        expect(mockTerminalElement.getCursorInfo).toHaveBeenCalled();
+        // Position should be updated (exact values depend on calculations)
+        expect(imeInput.style.left).toMatch(/^\d+px$/);
+        expect(imeInput.style.top).toMatch(/^\d+px$/);
+      });
+
+      it('should fallback to safe positioning when cursor info unavailable', () => {
+        const imeInput = terminalContainer.querySelector('input') as HTMLInputElement;
+        
+        // Mock terminal element to return null
+        mockTerminalElement.getCursorInfo.mockReturnValue(null);
+
+        // Trigger position update
+        const clickEvent = new Event('click');
+        Object.defineProperty(clickEvent, 'target', {
+          value: terminalContainer,
+          configurable: true
+        });
+        document.dispatchEvent(clickEvent);
+
+        // Should fallback to safe positioning
+        expect(imeInput.style.left).toBe('10px');
+        expect(imeInput.style.bottom).toBe('10px');
+      });
+    });
+
+    describe('Cleanup', () => {
+      it('should properly cleanup IME input and event listeners', () => {
+        const imeInput = terminalContainer.querySelector('input') as HTMLInputElement;
+        const removeSpy = vi.spyOn(imeInput, 'remove');
+        
+        inputManager.cleanup();
+
+        expect(removeSpy).toHaveBeenCalled();
+        expect(document.body.getAttribute('data-ime-input-focused')).toBeNull();
+        expect(document.body.getAttribute('data-ime-composing')).toBeNull();
+        expect(terminalContainer.querySelector('input')).toBeNull();
+      });
+    });
+  });
 });
