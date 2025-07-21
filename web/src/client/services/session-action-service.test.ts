@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment happy-dom
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Session } from '../components/session-list.js';
 import type { AuthClient } from './auth-client.js';
@@ -39,6 +42,14 @@ describe('SessionActionService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset mock implementation to default success
+    mockTerminateSession.mockResolvedValue({ success: true });
+    // Mock window.dispatchEvent using happy-dom's window
+    vi.spyOn(window, 'dispatchEvent').mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('singleton pattern', () => {
@@ -65,6 +76,21 @@ describe('SessionActionService', () => {
       expect(result.success).toBe(true);
       expect(onSuccess).toHaveBeenCalledWith('terminate', 'test-session-id');
       expect(onError).not.toHaveBeenCalled();
+      expect(mockTerminateSession).toHaveBeenCalledWith(
+        'test-session-id',
+        mockAuthClient,
+        'running'
+      );
+      // Check global event was dispatched
+      expect(window.dispatchEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'session-action',
+          detail: {
+            action: 'terminate',
+            sessionId: 'test-session-id',
+          },
+        })
+      );
     });
 
     it('should not terminate a non-running session', async () => {
@@ -79,6 +105,51 @@ describe('SessionActionService', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('Invalid session state');
       expect(onError).toHaveBeenCalledWith('Cannot terminate session: invalid state');
+      expect(mockTerminateSession).not.toHaveBeenCalled();
+      expect(window.dispatchEvent).not.toHaveBeenCalled();
+    });
+
+    it('should handle null session', async () => {
+      const onError = vi.fn();
+
+      const result = await sessionActionService.terminateSession(null as any, {
+        authClient: mockAuthClient,
+        callbacks: { onError },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Invalid session state');
+      expect(onError).toHaveBeenCalledWith('Cannot terminate session: invalid state');
+    });
+
+    it('should handle termination failure', async () => {
+      const onError = vi.fn();
+      const onSuccess = vi.fn();
+      mockTerminateSession.mockResolvedValueOnce({
+        success: false,
+        error: 'Network error',
+      });
+
+      const result = await sessionActionService.terminateSession(mockSession, {
+        authClient: mockAuthClient,
+        callbacks: { onError, onSuccess },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Network error');
+      expect(onError).toHaveBeenCalledWith('Failed to terminate session: Network error');
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(window.dispatchEvent).not.toHaveBeenCalled();
+    });
+
+    it('should work without callbacks', async () => {
+      const result = await sessionActionService.terminateSession(mockSession, {
+        authClient: mockAuthClient,
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockTerminateSession).toHaveBeenCalled();
+      expect(window.dispatchEvent).toHaveBeenCalled();
     });
   });
 
@@ -94,6 +165,20 @@ describe('SessionActionService', () => {
 
       expect(result.success).toBe(true);
       expect(onSuccess).toHaveBeenCalledWith('clear', 'test-session-id');
+      expect(mockTerminateSession).toHaveBeenCalledWith(
+        'test-session-id',
+        mockAuthClient,
+        'exited'
+      );
+      expect(window.dispatchEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'session-action',
+          detail: {
+            action: 'clear',
+            sessionId: 'test-session-id',
+          },
+        })
+      );
     });
 
     it('should not clear a running session', async () => {
@@ -107,6 +192,54 @@ describe('SessionActionService', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('Invalid session state');
       expect(onError).toHaveBeenCalledWith('Cannot clear session: invalid state');
+      expect(mockTerminateSession).not.toHaveBeenCalled();
+      expect(window.dispatchEvent).not.toHaveBeenCalled();
+    });
+
+    it('should handle null session', async () => {
+      const onError = vi.fn();
+
+      const result = await sessionActionService.clearSession(null as any, {
+        authClient: mockAuthClient,
+        callbacks: { onError },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Invalid session state');
+      expect(onError).toHaveBeenCalledWith('Cannot clear session: invalid state');
+    });
+
+    it('should handle clear failure', async () => {
+      const onError = vi.fn();
+      const onSuccess = vi.fn();
+      const exitedSession = { ...mockSession, status: 'exited' as const };
+      mockTerminateSession.mockResolvedValueOnce({
+        success: false,
+        error: 'Database error',
+      });
+
+      const result = await sessionActionService.clearSession(exitedSession, {
+        authClient: mockAuthClient,
+        callbacks: { onError, onSuccess },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Database error');
+      expect(onError).toHaveBeenCalledWith('Failed to clear session: Database error');
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(window.dispatchEvent).not.toHaveBeenCalled();
+    });
+
+    it('should work without callbacks', async () => {
+      const exitedSession = { ...mockSession, status: 'exited' as const };
+
+      const result = await sessionActionService.clearSession(exitedSession, {
+        authClient: mockAuthClient,
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockTerminateSession).toHaveBeenCalled();
+      expect(window.dispatchEvent).toHaveBeenCalled();
     });
   });
 
@@ -114,24 +247,68 @@ describe('SessionActionService', () => {
     it('should terminate running sessions', async () => {
       const onSuccess = vi.fn();
 
-      await sessionActionService.deleteSession(mockSession, {
+      const result = await sessionActionService.deleteSession(mockSession, {
         authClient: mockAuthClient,
         callbacks: { onSuccess },
       });
 
+      expect(result.success).toBe(true);
       expect(onSuccess).toHaveBeenCalledWith('terminate', 'test-session-id');
+      expect(mockTerminateSession).toHaveBeenCalledWith(
+        'test-session-id',
+        mockAuthClient,
+        'running'
+      );
     });
 
     it('should clear exited sessions', async () => {
       const onSuccess = vi.fn();
       const exitedSession = { ...mockSession, status: 'exited' as const };
 
-      await sessionActionService.deleteSession(exitedSession, {
+      const result = await sessionActionService.deleteSession(exitedSession, {
         authClient: mockAuthClient,
         callbacks: { onSuccess },
       });
 
+      expect(result.success).toBe(true);
       expect(onSuccess).toHaveBeenCalledWith('clear', 'test-session-id');
+      expect(mockTerminateSession).toHaveBeenCalledWith(
+        'test-session-id',
+        mockAuthClient,
+        'exited'
+      );
+    });
+
+    it('should handle unsupported session status', async () => {
+      const onError = vi.fn();
+      const pendingSession = { ...mockSession, status: 'pending' as any };
+
+      const result = await sessionActionService.deleteSession(pendingSession, {
+        authClient: mockAuthClient,
+        callbacks: { onError },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Cannot delete session with status: pending');
+      expect(onError).toHaveBeenCalledWith('Cannot delete session with status: pending');
+      expect(mockTerminateSession).not.toHaveBeenCalled();
+    });
+
+    it('should propagate errors from underlying methods', async () => {
+      const onError = vi.fn();
+      mockTerminateSession.mockResolvedValueOnce({
+        success: false,
+        error: 'Permission denied',
+      });
+
+      const result = await sessionActionService.deleteSession(mockSession, {
+        authClient: mockAuthClient,
+        callbacks: { onError },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Permission denied');
+      expect(onError).toHaveBeenCalledWith('Failed to terminate session: Permission denied');
     });
   });
 
@@ -157,6 +334,15 @@ describe('SessionActionService', () => {
         method: 'DELETE',
         headers: { Authorization: 'Bearer test-token' },
       });
+      expect(window.dispatchEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'session-action',
+          detail: {
+            action: 'delete',
+            sessionId: 'test-id',
+          },
+        })
+      );
     });
 
     it('should handle deletion errors', async () => {
@@ -251,8 +437,13 @@ describe('SessionActionService', () => {
 
   describe('event emission', () => {
     it('should not emit events when window is undefined', async () => {
-      // Remove window
-      delete (global as any).window;
+      // Remove window.dispatchEvent mock temporarily
+      vi.mocked(window.dispatchEvent).mockRestore();
+
+      // Mock window as undefined temporarily
+      const originalWindow = global.window;
+      // @ts-expect-error - Testing edge case
+      delete global.window;
 
       const result = await sessionActionService.terminateSession(mockSession, {
         authClient: mockAuthClient,
@@ -260,10 +451,13 @@ describe('SessionActionService', () => {
 
       expect(result.success).toBe(true);
       // No error should be thrown even without window
+
+      // Restore window
+      global.window = originalWindow;
     });
 
     it('should emit custom events with correct detail structure', async () => {
-      const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+      const dispatchSpy = vi.mocked(window.dispatchEvent);
 
       await sessionActionService.terminateSession(mockSession, {
         authClient: mockAuthClient,
