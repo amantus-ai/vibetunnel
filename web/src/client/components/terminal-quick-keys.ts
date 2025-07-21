@@ -116,8 +116,8 @@ export class TerminalQuickKeys extends LitElement {
       // Long text: compact with max-width constraint
       return this.isLandscape ? 'px-0.5 py-1 flex-1 max-w-14' : 'px-0.5 py-1.5 flex-1 max-w-16';
     } else if (label.length === 3) {
-      // Medium text: constrained width
-      return this.isLandscape ? 'px-0.5 py-1 flex-1 max-w-14' : 'px-0.5 py-1.5 flex-1 max-w-16';
+      // Medium text: slightly more padding, larger max-width
+      return this.isLandscape ? 'px-1 py-1 flex-1 max-w-16' : 'px-1 py-1.5 flex-1 max-w-18';
     } else {
       // Short text: can grow freely
       return this.isLandscape ? 'px-1 py-1 flex-1' : 'px-1 py-1.5 flex-1';
@@ -366,6 +366,10 @@ export class TerminalQuickKeys extends LitElement {
         
         .max-w-16 {
           max-width: 4rem; /* 64px */
+        }
+        
+        .max-w-18 {
+          max-width: 4.5rem; /* 72px */
         }
         
         
