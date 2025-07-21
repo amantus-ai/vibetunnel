@@ -368,7 +368,7 @@ export class TerminalSettingsModal extends LitElement {
                   </button>
                 </div>
               </div>
-              <p class="text-xs text-text-muted mt-2 pl-[136px]">Experimental: More efficient for high-throughput sessions</p>
+              <p class="text-xs text-text-muted mt-2">Experimental: More efficient for high-throughput sessions</p>
             </div>
           </div>
         </div>

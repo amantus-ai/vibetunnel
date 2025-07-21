@@ -552,7 +552,7 @@ export class FileBrowser extends LitElement {
                 </svg>
                 <span>Back</span>
               </button>
-              <div class="text-primary min-w-0 flex-1 overflow-hidden">
+              <div class="text-primary min-w-0 flex-1 overflow-hidden flex items-center gap-2">
                 ${
                   this.editingPath
                     ? html`
@@ -578,6 +578,15 @@ export class FileBrowser extends LitElement {
                         ${formatPathForDisplay(this.currentFullPath || this.currentPath || 'File Browser')}
                       </div>
                     `
+                }
+                ${
+                  this.gitStatus?.branch
+                    ? html`
+                      <span class="text-muted text-xs flex items-center gap-1 font-mono flex-shrink-0">
+                        ${UIIcons.git} ${this.gitStatus.branch}
+                      </span>
+                    `
+                    : ''
                 }
               </div>
             </div>
@@ -628,15 +637,6 @@ export class FileBrowser extends LitElement {
                     Hidden Files
                   </button>
                 </div>
-                ${
-                  this.gitStatus?.branch
-                    ? html`
-                      <span class="text-muted text-xs flex items-center gap-1 font-mono">
-                        ${UIIcons.git} ${this.gitStatus.branch}
-                      </span>
-                    `
-                    : ''
-                }
               </div>
 
               <!-- File list content -->

@@ -31,7 +31,7 @@ const DEFAULT_APP_PREFERENCES: AppPreferences = {
   repositoryBasePath: '~/',
 };
 
-export const STORAGE_KEY = 'app_preferences';
+export const STORAGE_KEY = 'vibetunnel_app_preferences';
 
 @customElement('unified-settings')
 export class UnifiedSettings extends LitElement {

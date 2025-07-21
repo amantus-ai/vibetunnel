@@ -1677,6 +1677,7 @@ export class VibeTunnelApp extends LitElement {
       <!-- Unified Settings Modal -->
       <unified-settings
         .visible=${this.showSettings}
+        .authClient=${authClient}
         @close=${this.handleCloseSettings}
         @notifications-enabled=${() => this.showSuccess('Notifications enabled')}
         @notifications-disabled=${() => this.showSuccess('Notifications disabled')}

@@ -188,14 +188,14 @@ export class QuickStartEditor extends LitElement {
     }
 
     return html`
-      <div class="w-full px-3 sm:px-4 lg:px-6 bg-bg-secondary py-3 sm:py-4">
+      <div class="w-full px-3 sm:px-4 lg:px-6 bg-bg-elevated py-3 sm:py-4">
         <div class="flex items-center justify-between mb-2">
-          <h3 class="text-xs font-medium text-text">Edit Quick Start Commands</h3>
+          <h3 class="text-xs font-medium text-text-muted">Commands shown in the new session form for quick access.</h3>
           <div class="flex gap-2">
             <button
               id="quick-start-reset-button"
               @click=${this.handleResetToDefaults}
-              class="text-text-muted hover:text-text text-[10px] transition-colors duration-200"
+              class="text-primary hover:text-primary-hover text-[10px] transition-colors duration-200"
               title="Reset to default commands"
             >
               Reset to Defaults
@@ -227,7 +227,7 @@ export class QuickStartEditor extends LitElement {
               @dragend=${this.handleDragEnd}
               @dragover=${this.handleDragOver}
               @drop=${(e: DragEvent) => this.handleDrop(e, index)}
-              class="flex items-center gap-2 p-2 bg-bg-elevated border border-border/50 rounded-lg cursor-move hover:border-border transition-colors duration-200"
+              class="flex items-center gap-2 p-2 bg-bg-secondary/50 border border-border/30 rounded-lg cursor-move hover:border-border/50 transition-colors duration-200"
             >
               <svg class="w-3 h-3 text-text-muted flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
@@ -270,13 +270,27 @@ export class QuickStartEditor extends LitElement {
         <button
           id="quick-start-add-command-button"
           @click=${this.handleAddCommand}
-          class="w-full p-2 border border-dashed border-border/50 rounded-lg text-text-muted hover:text-primary hover:border-primary/50 transition-colors duration-200 text-[10px] flex items-center justify-center gap-1"
+          class="bg-bg-secondary hover:bg-hover text-text-muted hover:text-primary px-3 py-1.5 rounded-md transition-colors duration-200 text-xs font-medium flex items-center gap-1.5 ml-auto"
         >
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6" />
           </svg>
-          Add Command
+          Add
         </button>
+        
+        <!-- Bottom actions -->
+        <div class="flex justify-end gap-4 mt-4 pt-3 border-t border-border/30">
+          <button
+            id="quick-start-delete-all-button"
+            @click=${() => {
+              this.editableCommands = [];
+              this.requestUpdate();
+            }}
+            class="text-error hover:text-error-hover text-[10px] transition-colors duration-200"
+          >
+            Delete All
+          </button>
+        </div>
       </div>
     `;
   }

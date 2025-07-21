@@ -881,7 +881,7 @@ export class SessionCreateForm extends LitElement {
               ${
                 this.showOptions
                   ? html`
-                <div class="space-y-2 sm:space-y-3">
+                <div class="space-y-2 sm:space-y-3 mt-2 sm:mt-4 lg:mt-6">
                   <!-- Spawn Window Toggle - Only show when Mac app is connected -->
                   ${
                     this.macAppConnected
