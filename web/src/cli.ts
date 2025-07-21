@@ -6,7 +6,6 @@ import { suppressXtermErrors } from './shared/suppress-xterm-errors.js';
 
 suppressXtermErrors();
 
-import { startVibeTunnelForward } from './server/fwd.js';
 import { startVibeTunnelServer } from './server/server.js';
 import { closeLogger, createLogger, initLogger, VerbosityLevel } from './server/utils/logger.js';
 import { parseVerbosityFromEnv } from './server/utils/verbosity-parser.js';
@@ -92,13 +91,10 @@ function printVersion(): void {
  * Handle command forwarding to a session
  */
 async function handleForwardCommand(): Promise<void> {
-  try {
-    await startVibeTunnelForward(process.argv.slice(3));
-  } catch (error) {
-    logger.error('Fatal error:', error);
-    closeLogger();
-    process.exit(1);
-  }
+  logger.error('The fwd command has been replaced by the vt-pipe Rust tool.');
+  logger.error('Please use: vt <command> [args...]');
+  closeLogger();
+  process.exit(1);
 }
 
 /**

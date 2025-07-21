@@ -1,0 +1,155 @@
+name: Rust VibeTunnel PTY Tests
+
+on:
+  push:
+    paths:
+      - 'web/vibetunnel-pty/**'
+      - '.github/workflows/rust-vibetunnel-pty-tests.yml'
+  pull_request:
+    paths:
+      - 'web/vibetunnel-pty/**'
+      - '.github/workflows/rust-vibetunnel-pty-tests.yml'
+
+defaults:
+  run:
+    working-directory: web/vibetunnel-pty
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: web/vibetunnel-pty
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust: [stable]
+        include:
+          # Test on MSRV (Minimum Supported Rust Version)
+          - os: ubuntu-latest
+            rust: "1.80.0"
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt, clippy
+      
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-vibetunnel-pty-${{ hashFiles('web/vibetunnel-pty/**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-vibetunnel-pty-
+      
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      
+      - name: Run tests - Core
+        run: cargo test -p vibetunnel-pty-core --all-features
+      
+      - name: Run tests - NAPI Addon
+        run: cargo test -p vibetunnel-pty
+      
+      - name: Run tests - VT-Pipe
+        run: cargo test -p vt-pipe --all-features
+      
+      - name: Run all workspace tests
+        run: cargo test --workspace --all-features
+      
+      - name: Build all crates
+        run: cargo build --workspace --all-features
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: web/vibetunnel-pty
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+      
+      - name: Generate code coverage
+        working-directory: web/vibetunnel-pty
+        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+      
+      - name: Upload to codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: web/vibetunnel-pty/lcov.info
+          flags: rust-vibetunnel-pty
+          name: rust-vibetunnel-pty
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: web/vibetunnel-pty
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      
+      - name: Run cargo audit
+        working-directory: web/vibetunnel-pty
+        run: cargo audit
+
+  check-features:
+    name: Check Feature Combinations
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: web/vibetunnel-pty
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install cargo-hack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hack
+      
+      - name: Check all feature combinations
+        working-directory: web/vibetunnel-pty
+        run: |
+          # Check core crate feature combinations
+          cargo hack check -p vibetunnel-pty-core --feature-powerset --no-dev-deps
+          
+          # Check each crate builds with its features
+          cargo check -p vibetunnel-pty
+          cargo check -p vt-pipe

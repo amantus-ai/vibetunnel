@@ -180,6 +180,12 @@ PUSH_CONTACT_EMAIL=admin@example.com # Contact email for VAPID configuration
 
 ## Features
 
+- Terminal sessions via native Rust addon
+- Real-time streaming (SSE + WebSocket)
+- Binary-optimized buffer updates
+- Multi-session support
+- File browser integration
+
 - **Web-based terminal interface** - Access terminals from any browser
 - **Multiple concurrent sessions** - Run multiple terminals simultaneously
 - **Real-time synchronization** - See output in real-time

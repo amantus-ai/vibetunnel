@@ -1,16 +1,14 @@
 /**
- * PtyManager - Core PTY management using node-pty
+ * PtyManager - Core PTY management using native Rust addon
  *
  * This class handles PTY creation, process management, and I/O operations
- * using the node-pty library while maintaining compatibility with tty-fwd.
+ * using the native Rust addon while maintaining compatibility with tty-fwd.
  */
 
 import chalk from 'chalk';
 import { EventEmitter, once } from 'events';
 import * as fs from 'fs';
 import * as net from 'net';
-import type { IPty } from 'node-pty';
-import * as pty from 'node-pty';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import type {
@@ -22,7 +20,6 @@ import type {
 } from '../../shared/types.js';
 import { TitleMode } from '../../shared/types.js';
 import { ProcessTreeAnalyzer } from '../services/process-tree-analyzer.js';
-import { ActivityDetector, type ActivityState } from '../utils/activity-detector.js';
 import { TitleSequenceFilter } from '../utils/ansi-title-filter.js';
 import { createLogger } from '../utils/logger.js';
 import {
@@ -44,6 +41,7 @@ import {
   MessageType,
   parsePayload,
 } from './socket-protocol.js';
+import type { IPty } from './types.js';
 import {
   type KillControlMessage,
   PtyError,
@@ -54,6 +52,31 @@ import {
 } from './types.js';
 
 const logger = createLogger('pty-manager');
+
+// Use native Rust addon for PTY implementation
+let ptyImplementation: typeof import('./native-addon-adapter.js');
+
+// Load native addon implementation
+async function loadPtyImplementation() {
+  try {
+    ptyImplementation = await import('./native-addon-adapter.js');
+    logger.log(chalk.green('✓ Using native Rust PTY addon (maximum performance)'));
+  } catch (error) {
+    logger.error('Failed to load native PTY addon:', error);
+    throw new Error(
+      'Native PTY addon not available. Please run: cd native-pty && npm install && npm run build'
+    );
+  }
+}
+
+// Initialize PTY implementation
+let ptyInitialized = false;
+const ensurePtyInitialized = async () => {
+  if (!ptyInitialized) {
+    await loadPtyImplementation();
+    ptyInitialized = true;
+  }
+};
 
 // Title injection timing constants
 const TITLE_UPDATE_INTERVAL_MS = 1000; // How often to check if title needs updating
@@ -76,7 +99,6 @@ export class PtyManager extends EventEmitter {
   private sessionExitTimes = new Map<string, number>(); // Track session exit times to avoid false bells
   private processTreeAnalyzer = new ProcessTreeAnalyzer(); // Process tree analysis for bell source identification
   private activityFileWarningsLogged = new Set<string>(); // Track which sessions we've logged warnings for
-  private lastWrittenActivityState = new Map<string, string>(); // Track last written activity state to avoid unnecessary writes
 
   constructor(controlPath?: string) {
     super();
@@ -193,11 +215,14 @@ export class PtyManager extends EventEmitter {
       onExit?: (exitCode: number, signal?: number) => void;
     }
   ): Promise<SessionCreationResult> {
+    // Ensure PTY is initialized
+    await ensurePtyInitialized();
+
     const sessionId = options.sessionId || uuidv4();
     const sessionName = options.name || path.basename(command[0]);
     const workingDir = options.workingDir || process.cwd();
     const term = this.defaultTerm;
-    // For external spawns without dimensions, let node-pty use the terminal's natural size
+    // For external spawns without dimensions, let the PTY use the terminal's natural size
     // For other cases, use reasonable defaults
     const cols = options.cols;
     const rows = options.rows;
@@ -290,14 +315,14 @@ export class PtyManager extends EventEmitter {
         });
 
         // Build spawn options - only include dimensions if provided
-        const spawnOptions: pty.IPtyForkOptions = {
+        const spawnOptions: import('./types.js').IPtyOptions = {
           name: term,
           cwd: workingDir,
           env: ptyEnv,
         };
 
         // Only add dimensions if they're explicitly provided
-        // This allows node-pty to use the terminal's natural size for external spawns
+        // This allows the PTY to use the terminal's natural size for external spawns
         if (cols !== undefined) {
           spawnOptions.cols = cols;
         }
@@ -305,7 +330,7 @@ export class PtyManager extends EventEmitter {
           spawnOptions.rows = rows;
         }
 
-        ptyProcess = pty.spawn(finalCommand, finalArgs, spawnOptions);
+        ptyProcess = ptyImplementation.spawn(finalCommand, finalArgs, spawnOptions);
       } catch (spawnError) {
         // Debug log the raw error first
         logger.debug('Raw spawn error:', {
@@ -453,80 +478,49 @@ export class PtyManager extends EventEmitter {
     const inputQueue = new WriteQueue();
     session.inputQueue = inputQueue;
 
-    // Setup activity detector for dynamic mode
-    if (session.titleMode === TitleMode.DYNAMIC) {
-      session.activityDetector = new ActivityDetector(session.sessionInfo.command);
-    }
-
     // Setup periodic title updates for both static and dynamic modes
     if (
       session.titleMode !== TitleMode.NONE &&
       session.titleMode !== TitleMode.FILTER &&
       forwardToStdout
     ) {
-      // Track last known activity state for change detection
-      let lastKnownActivityState: {
-        isActive: boolean;
-        specificStatus?: string;
-      } | null = null;
-
       session.titleUpdateInterval = setInterval(() => {
-        // For dynamic mode, check for activity state changes
-        if (session.titleMode === TitleMode.DYNAMIC && session.activityDetector) {
-          const activityState = session.activityDetector.getActivityState();
-
-          // Check if activity state has changed
-          const activityChanged =
-            lastKnownActivityState === null ||
-            activityState.isActive !== lastKnownActivityState.isActive ||
-            activityState.specificStatus?.status !== lastKnownActivityState.specificStatus;
-
-          if (activityChanged) {
-            // Update last known state
-            lastKnownActivityState = {
-              isActive: activityState.isActive,
-              specificStatus: activityState.specificStatus?.status,
-            };
-
-            // Mark title for update
-            this.markTitleUpdateNeeded(session);
-
-            logger.debug(
-              `Activity state changed for session ${session.id}: ` +
-                `active=${activityState.isActive}, ` +
-                `status=${activityState.specificStatus?.status || 'none'}`
-            );
-          }
-
-          // Always write activity state for external tools
-          this.writeActivityState(session, activityState);
-        }
-
         // Check and update title if needed
         this.checkAndUpdateTitle(session);
       }, TITLE_UPDATE_INTERVAL_MS);
     }
 
+    // Handle activity detection for dynamic mode
+    if (session.titleMode === TitleMode.DYNAMIC) {
+      ptyProcess.on(
+        'activity',
+        (activity: { timestamp: number; status: string; details?: string }) => {
+          // Update session activity status
+          session.activityStatus = {
+            specificStatus: {
+              app: 'claude',
+              status: `${activity.status}${activity.details ? ` (${activity.details})` : ''}`,
+            },
+          };
+
+          // Mark title for update
+          this.markTitleUpdateNeeded(session);
+
+          logger.debug(
+            `Activity detected for session ${session.id}: ${activity.status} ${activity.details || ''}`
+          );
+        }
+      );
+    }
+
     // Handle PTY data output
-    ptyProcess.onData((data: string) => {
+    ptyProcess.on('data', (data: string) => {
       let processedData = data;
 
       // If title mode is not NONE, filter out any title sequences the process might
       // have written to the stream.
       if (session.titleMode !== undefined && session.titleMode !== TitleMode.NONE) {
         processedData = session.titleFilter ? session.titleFilter.filter(data) : data;
-      }
-
-      // Handle activity detection for dynamic mode
-      if (session.titleMode === TitleMode.DYNAMIC && session.activityDetector) {
-        const { filteredData, activity } = session.activityDetector.processOutput(processedData);
-        processedData = filteredData;
-
-        // Check if activity status changed
-        if (activity.specificStatus?.status !== session.lastActivityStatus) {
-          session.lastActivityStatus = activity.specificStatus?.status;
-          this.markTitleUpdateNeeded(session);
-        }
       }
 
       // Check for title update triggers
@@ -559,7 +553,7 @@ export class PtyManager extends EventEmitter {
     });
 
     // Handle PTY exit
-    ptyProcess.onExit(async ({ exitCode, signal }: { exitCode: number; signal?: number }) => {
+    ptyProcess.on('exit', async (exitCode: number, signal?: number) => {
       try {
         // Mark session as exiting to prevent false bell notifications
         this.sessionExitTimes.set(session.id, Date.now());
@@ -603,7 +597,7 @@ export class PtyManager extends EventEmitter {
         // Emit session exited event
         this.emit('sessionExited', session.id);
 
-        // Call exit callback if provided (for fwd.ts)
+        // Call exit callback if provided
         if (onExit) {
           onExit(exitCode || 0, signal);
         }
@@ -818,6 +812,29 @@ export class PtyManager extends EventEmitter {
             }
             logger.debug(`Broadcasted status update to ${session.connectedClients.size} clients`);
           }
+          break;
+        }
+
+        case MessageType.STDOUT_DATA: {
+          // Handle stdout data from vt-pipe (external terminal)
+          const text = data as string;
+
+          // For external terminals, we need to handle output similar to managed PTY sessions
+          // Apply title filtering if needed
+          let processedData = text;
+          if (session.titleMode !== undefined && session.titleMode !== TitleMode.NONE) {
+            processedData = session.titleFilter ? session.titleFilter.filter(text) : text;
+          }
+
+          // Record output for asciinema
+          session.asciinemaWriter?.writeOutput(Buffer.from(processedData, 'utf8'));
+
+          // For external terminals, stdout is already displayed locally by vt-pipe
+          // We just need to ensure it's available for web clients through SSE/WebSocket
+
+          logger.debug(
+            `Received ${text.length} bytes of stdout data from vt-pipe for session ${session.id}`
+          );
           break;
         }
 
@@ -1523,18 +1540,6 @@ export class PtyManager extends EventEmitter {
         };
       }
 
-      // Then check activity detector for dynamic mode
-      if (activeSession?.activityDetector) {
-        const activityState = activeSession.activityDetector.getActivityState();
-        return {
-          ...session,
-          activityStatus: {
-            isActive: activityState.isActive,
-            specificStatus: activityState.specificStatus,
-          },
-        };
-      }
-
       // Otherwise, try to read from activity file (for external sessions)
       try {
         const sessionPaths = this.sessionManager.getSessionPaths(session.id);
@@ -1804,45 +1809,12 @@ export class PtyManager extends EventEmitter {
   private setupStdinForwarding(session: PtySession): void {
     if (!session.ptyProcess) return;
 
-    // IMPORTANT: stdin forwarding is now handled via IPC socket in fwd.ts
+    // IMPORTANT: stdin forwarding is now handled via IPC socket
     // This method is kept for backward compatibility but should not be used
     // as it would cause stdin duplication if multiple sessions are created
     logger.warn(
       `setupStdinForwarding called for session ${session.id} - stdin should be handled via IPC socket`
     );
-  }
-
-  /**
-   * Write activity state only if it has changed
-   */
-  private writeActivityState(session: PtySession, activityState: ActivityState): void {
-    const activityPath = path.join(session.controlDir, 'claude-activity.json');
-    const activityData = {
-      isActive: activityState.isActive,
-      specificStatus: activityState.specificStatus,
-      timestamp: new Date().toISOString(),
-    };
-
-    const stateJson = JSON.stringify(activityData);
-    const lastState = this.lastWrittenActivityState.get(session.id);
-
-    if (lastState !== stateJson) {
-      try {
-        fs.writeFileSync(activityPath, JSON.stringify(activityData, null, 2));
-        this.lastWrittenActivityState.set(session.id, stateJson);
-
-        // Debug log first write
-        if (!session.activityFileWritten) {
-          session.activityFileWritten = true;
-          logger.debug(`Writing activity state to ${activityPath} for session ${session.id}`, {
-            activityState,
-            timestamp: activityData.timestamp,
-          });
-        }
-      } catch (error) {
-        logger.error(`Failed to write activity state for session ${session.id}:`, error);
-      }
-    }
   }
 
   /**
@@ -1872,12 +1844,6 @@ export class PtyManager extends EventEmitter {
     if (session.titleUpdateInterval) {
       clearInterval(session.titleUpdateInterval);
       session.titleUpdateInterval = undefined;
-    }
-
-    // Clean up activity detector
-    if (session.activityDetector) {
-      session.activityDetector.clearStatus();
-      session.activityDetector = undefined;
     }
 
     // Clean up title filter
@@ -1933,9 +1899,6 @@ export class PtyManager extends EventEmitter {
       });
       this.sessionEventListeners.delete(session.id);
     }
-
-    // Clean up activity state tracking
-    this.lastWrittenActivityState.delete(session.id);
 
     // Clean up title injection timer
     if (session.titleInjectionTimer) {
@@ -2149,7 +2112,7 @@ export class PtyManager extends EventEmitter {
       sessionInfoObjectId: session.sessionInfo,
       currentDir,
       command: session.sessionInfo.command,
-      activityDetectorExists: !!session.activityDetector,
+      activityStatus: session.activityStatus,
     });
 
     if (session.titleMode === TitleMode.STATIC) {
@@ -2158,8 +2121,13 @@ export class PtyManager extends EventEmitter {
         session.sessionInfo.command,
         session.sessionInfo.name
       );
-    } else if (session.titleMode === TitleMode.DYNAMIC && session.activityDetector) {
-      const activity = session.activityDetector.getActivityState();
+    } else if (session.titleMode === TitleMode.DYNAMIC) {
+      // Create ActivityState-compatible object from activityStatus
+      const activity = {
+        isActive: !!session.activityStatus?.specificStatus,
+        lastActivityTime: Date.now(), // Not used in generateDynamicTitle
+        specificStatus: session.activityStatus?.specificStatus,
+      };
       logger.debug(`[generateTerminalTitle] Calling generateDynamicTitle with:`, {
         currentDir,
         command: session.sessionInfo.command,
