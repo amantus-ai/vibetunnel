@@ -305,7 +305,10 @@ describe('InputManager', () => {
 
   describe('CJK IME Input', () => {
     let terminalContainer: HTMLElement;
-    let mockTerminalElement: any;
+    let mockTerminalElement: {
+      getCursorInfo: ReturnType<typeof vi.fn>;
+      getBoundingClientRect: ReturnType<typeof vi.fn>;
+    };
 
     beforeEach(() => {
       // Setup DOM for testing
@@ -317,24 +320,24 @@ describe('InputManager', () => {
       mockTerminalElement = {
         getCursorInfo: vi.fn().mockReturnValue({
           cursorX: 10,
-          cursorY: 5, 
+          cursorY: 5,
           cols: 80,
-          rows: 24
+          rows: 24,
         }),
         getBoundingClientRect: vi.fn().mockReturnValue({
           left: 100,
           top: 100,
           width: 800,
-          height: 480
-        })
+          height: 480,
+        }),
       };
 
       // Setup input manager with terminal element callback
       inputManager.setCallbacks({
         requestUpdate: mockCallbacks.requestUpdate,
-        getTerminalElement: () => mockTerminalElement
+        getTerminalElement: () => mockTerminalElement,
       });
-      
+
       inputManager.setSession(mockSession);
     });
 
@@ -345,7 +348,7 @@ describe('InputManager', () => {
     describe('IME Input Setup', () => {
       it('should create invisible IME input element', () => {
         const imeInput = terminalContainer.querySelector('input') as HTMLInputElement;
-        
+
         expect(imeInput).toBeTruthy();
         expect(imeInput.placeholder).toBe('CJK Input');
         expect(imeInput.style.opacity).toBe('0');
@@ -356,12 +359,12 @@ describe('InputManager', () => {
 
       it('should position IME input at cursor location', () => {
         const imeInput = terminalContainer.querySelector('input') as HTMLInputElement;
-        
+
         // Trigger position update
         const clickEvent = new Event('click');
         Object.defineProperty(clickEvent, 'target', {
           value: terminalContainer,
-          configurable: true
+          configurable: true,
         });
         document.dispatchEvent(clickEvent);
 
@@ -381,11 +384,11 @@ describe('InputManager', () => {
 
       it('should handle compositionstart event', () => {
         const compositionEvent = new CompositionEvent('compositionstart', {
-          data: ''
+          data: '',
         });
-        
+
         imeInput.dispatchEvent(compositionEvent);
-        
+
         expect(document.body.getAttribute('data-ime-composing')).toBe('true');
       });
 
@@ -395,10 +398,10 @@ describe('InputManager', () => {
 
         // Start composition
         imeInput.dispatchEvent(new CompositionEvent('compositionstart'));
-        
+
         // End composition with CJK text
         const compositionEndEvent = new CompositionEvent('compositionend', {
-          data: '你好'
+          data: '你好',
         });
         imeInput.dispatchEvent(compositionEndEvent);
 
@@ -407,7 +410,7 @@ describe('InputManager', () => {
           '/api/sessions/test-session-id/input',
           expect.objectContaining({
             method: 'POST',
-            body: JSON.stringify({ text: '你好' })
+            body: JSON.stringify({ text: '你好' }),
           })
         );
         expect(imeInput.value).toBe('');
@@ -415,14 +418,14 @@ describe('InputManager', () => {
 
       it('should block keyboard events during composition', async () => {
         const fetchMock = vi.mocked(fetch);
-        
+
         // Start composition
         imeInput.dispatchEvent(new CompositionEvent('compositionstart'));
-        
+
         // Try to send keyboard input during composition
         const keyboardEvent = new KeyboardEvent('keydown', { key: 'a' });
         await inputManager.handleKeyboardInput(keyboardEvent);
-        
+
         // Should not send any input
         expect(fetchMock).not.toHaveBeenCalled();
       });
@@ -434,14 +437,14 @@ describe('InputManager', () => {
         fetchMock.mockResolvedValueOnce(new Response('OK'));
 
         const pasteEvent = new ClipboardEvent('paste', {
-          clipboardData: new DataTransfer()
+          clipboardData: new DataTransfer(),
         });
-        pasteEvent.clipboardData!.setData('text', 'pasted text');
-        
+        pasteEvent.clipboardData?.setData('text', 'pasted text');
+
         // Set target to document body (not an input)
         Object.defineProperty(pasteEvent, 'target', {
           value: document.body,
-          configurable: true
+          configurable: true,
         });
 
         document.dispatchEvent(pasteEvent);
@@ -450,25 +453,25 @@ describe('InputManager', () => {
           '/api/sessions/test-session-id/input',
           expect.objectContaining({
             method: 'POST',
-            body: JSON.stringify({ text: 'pasted text' })
+            body: JSON.stringify({ text: 'pasted text' }),
           })
         );
       });
 
       it('should not interfere with paste in other input elements', () => {
         const fetchMock = vi.mocked(fetch);
-        
+
         const otherInput = document.createElement('input');
         document.body.appendChild(otherInput);
 
         const pasteEvent = new ClipboardEvent('paste', {
-          clipboardData: new DataTransfer()
+          clipboardData: new DataTransfer(),
         });
-        pasteEvent.clipboardData!.setData('text', 'should not be handled');
-        
+        pasteEvent.clipboardData?.setData('text', 'should not be handled');
+
         Object.defineProperty(pasteEvent, 'target', {
           value: otherInput,
-          configurable: true
+          configurable: true,
         });
 
         document.dispatchEvent(pasteEvent);
@@ -487,32 +490,32 @@ describe('InputManager', () => {
 
       it('should focus IME input when clicking in terminal area', () => {
         const focusSpy = vi.spyOn(imeInput, 'focus');
-        
+
         const clickEvent = new Event('click');
         Object.defineProperty(clickEvent, 'target', {
           value: terminalContainer,
-          configurable: true
+          configurable: true,
         });
-        
+
         document.dispatchEvent(clickEvent);
-        
+
         expect(focusSpy).toHaveBeenCalled();
       });
 
       it('should not focus IME input when clicking outside terminal area', () => {
         const focusSpy = vi.spyOn(imeInput, 'focus');
-        
+
         const otherElement = document.createElement('div');
         document.body.appendChild(otherElement);
-        
+
         const clickEvent = new Event('click');
         Object.defineProperty(clickEvent, 'target', {
           value: otherElement,
-          configurable: true
+          configurable: true,
         });
-        
+
         document.dispatchEvent(clickEvent);
-        
+
         expect(focusSpy).not.toHaveBeenCalled();
         document.body.removeChild(otherElement);
       });
@@ -520,7 +523,7 @@ describe('InputManager', () => {
       it('should set focus state attributes correctly', () => {
         imeInput.dispatchEvent(new Event('focus'));
         expect(document.body.getAttribute('data-ime-input-focused')).toBe('true');
-        
+
         imeInput.dispatchEvent(new Event('blur'));
         expect(document.body.getAttribute('data-ime-input-focused')).toBeNull();
       });
@@ -529,25 +532,25 @@ describe('InputManager', () => {
     describe('Keyboard Shortcut Detection', () => {
       it('should allow copy/paste shortcuts even when IME input is focused', () => {
         const imeInput = terminalContainer.querySelector('input') as HTMLInputElement;
-        
+
         const cmdVEvent = new KeyboardEvent('keydown', {
           key: 'v',
-          metaKey: true
+          metaKey: true,
         });
         Object.defineProperty(cmdVEvent, 'target', {
           value: imeInput,
-          configurable: true
+          configurable: true,
         });
 
         expect(inputManager.isKeyboardShortcut(cmdVEvent)).toBe(true);
-        
+
         const cmdCEvent = new KeyboardEvent('keydown', {
           key: 'c',
-          metaKey: true
+          metaKey: true,
         });
         Object.defineProperty(cmdCEvent, 'target', {
           value: imeInput,
-          configurable: true
+          configurable: true,
         });
 
         expect(inputManager.isKeyboardShortcut(cmdCEvent)).toBe(true);
@@ -557,20 +560,20 @@ describe('InputManager', () => {
     describe('Cursor Position Updates', () => {
       it('should update IME input position when cursor moves', () => {
         const imeInput = terminalContainer.querySelector('input') as HTMLInputElement;
-        
+
         // Change cursor position
         mockTerminalElement.getCursorInfo.mockReturnValue({
           cursorX: 20,
           cursorY: 10,
           cols: 80,
-          rows: 24
+          rows: 24,
         });
 
         // Trigger position update
         const clickEvent = new Event('click');
         Object.defineProperty(clickEvent, 'target', {
           value: terminalContainer,
-          configurable: true
+          configurable: true,
         });
         document.dispatchEvent(clickEvent);
 
@@ -582,7 +585,7 @@ describe('InputManager', () => {
 
       it('should fallback to safe positioning when cursor info unavailable', () => {
         const imeInput = terminalContainer.querySelector('input') as HTMLInputElement;
-        
+
         // Mock terminal element to return null
         mockTerminalElement.getCursorInfo.mockReturnValue(null);
 
@@ -590,7 +593,7 @@ describe('InputManager', () => {
         const clickEvent = new Event('click');
         Object.defineProperty(clickEvent, 'target', {
           value: terminalContainer,
-          configurable: true
+          configurable: true,
         });
         document.dispatchEvent(clickEvent);
 
@@ -604,7 +607,7 @@ describe('InputManager', () => {
       it('should properly cleanup IME input and event listeners', () => {
         const imeInput = terminalContainer.querySelector('input') as HTMLInputElement;
         const removeSpy = vi.spyOn(imeInput, 'remove');
-        
+
         inputManager.cleanup();
 
         expect(removeSpy).toHaveBeenCalled();
