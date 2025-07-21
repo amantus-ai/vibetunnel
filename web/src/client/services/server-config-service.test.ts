@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { QuickStartCommand } from '../../types/config.js';
+import type { AuthClient } from './auth-client.js';
 import { type ServerConfig, ServerConfigService } from './server-config-service.js';
 
 // Mock the logger
@@ -50,7 +51,7 @@ describe('ServerConfigService', () => {
     it('should include auth header when authClient is set', async () => {
       const mockAuthClient = {
         getAuthHeader: () => ({ Authorization: 'Bearer test-token' }),
-      } as any;
+      } as AuthClient;
 
       service.setAuthClient(mockAuthClient);
 
@@ -175,12 +176,12 @@ describe('ServerConfigService', () => {
     });
 
     it('should throw on invalid input', async () => {
-      await expect(service.updateQuickStartCommands(null as any)).rejects.toThrow(
-        'Invalid quick start commands'
-      );
-      await expect(service.updateQuickStartCommands(undefined as any)).rejects.toThrow(
-        'Invalid quick start commands'
-      );
+      await expect(
+        service.updateQuickStartCommands(null as unknown as QuickStartCommand[])
+      ).rejects.toThrow('Invalid quick start commands');
+      await expect(
+        service.updateQuickStartCommands(undefined as unknown as QuickStartCommand[])
+      ).rejects.toThrow('Invalid quick start commands');
     });
 
     it('should throw on server error', async () => {
@@ -287,7 +288,7 @@ describe('ServerConfigService', () => {
       // Set new auth client
       const mockAuthClient = {
         getAuthHeader: () => ({ Authorization: 'Bearer new-token' }),
-      } as any;
+      } as AuthClient;
       service.setAuthClient(mockAuthClient);
 
       // Next load should fetch from server (cache cleared)

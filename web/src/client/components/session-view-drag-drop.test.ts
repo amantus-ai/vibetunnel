@@ -235,11 +235,11 @@ describe('SessionView Drag & Drop and Paste', () => {
 
       // Mock the currentTarget for the event handler
       const proxyHandler = {
-        get(target: DragEvent, prop: string | symbol): any {
+        get(target: DragEvent, prop: string | symbol): unknown {
           if (prop === 'currentTarget') {
             return element;
           }
-          return (target as any)[prop];
+          return (target as Record<string | symbol, unknown>)[prop];
         },
       };
 

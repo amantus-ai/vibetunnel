@@ -62,15 +62,17 @@ class SessionActionService {
     } else {
       logger.log('Session terminated successfully', { sessionId: session.id });
       options.callbacks?.onSuccess?.('terminate', session.id);
-      // Emit global event for other components to react
-      window.dispatchEvent(
-        new CustomEvent('session-action', {
-          detail: {
-            action: 'terminate',
-            sessionId: session.id,
-          },
-        })
-      );
+      // Emit global event (only in browser environment) for other components to react (only in browser environment)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('session-action', {
+            detail: {
+              action: 'terminate',
+              sessionId: session.id,
+            },
+          })
+        );
+      }
     }
 
     return result;
@@ -100,15 +102,17 @@ class SessionActionService {
     } else {
       logger.log('Session cleared successfully', { sessionId: session.id });
       options.callbacks?.onSuccess?.('clear', session.id);
-      // Emit global event for other components to react
-      window.dispatchEvent(
-        new CustomEvent('session-action', {
-          detail: {
-            action: 'clear',
-            sessionId: session.id,
-          },
-        })
-      );
+      // Emit global event for other components to react (only in browser environment)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('session-action', {
+            detail: {
+              action: 'clear',
+              sessionId: session.id,
+            },
+          })
+        );
+      }
     }
 
     return result;
@@ -159,15 +163,17 @@ class SessionActionService {
       logger.log('Session deleted successfully', { sessionId });
       options.callbacks?.onSuccess?.('terminate', sessionId);
 
-      // Emit global event
-      window.dispatchEvent(
-        new CustomEvent('session-action', {
-          detail: {
-            action: 'delete',
-            sessionId,
-          },
-        })
-      );
+      // Emit global event (only in browser environment)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('session-action', {
+            detail: {
+              action: 'delete',
+              sessionId,
+            },
+          })
+        );
+      }
 
       return { success: true };
     } catch (error) {

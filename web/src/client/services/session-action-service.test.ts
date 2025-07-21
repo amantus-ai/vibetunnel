@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { sessionActionService } from './session-action-service.js';
-import type { AuthClient } from './auth-client.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Session } from '../components/session-list.js';
+import type { AuthClient } from './auth-client.js';
+import { sessionActionService } from './session-action-service.js';
 
 // Mock the session-actions utility
 vi.mock('../utils/session-actions.js', () => ({
@@ -132,12 +132,13 @@ describe('SessionActionService', () => {
   describe('deleteSessionById', () => {
     it('should delete session by ID successfully', async () => {
       const onSuccess = vi.fn();
-      
-      // Mock fetch
-      global.fetch = vi.fn().mockResolvedValue({
+
+      // Mock fetch as Response-like object
+      const mockResponse = {
         ok: true,
-        text: async () => '',
-      });
+        text: vi.fn().mockResolvedValue(''),
+      };
+      global.fetch = vi.fn().mockResolvedValue(mockResponse);
 
       const result = await sessionActionService.deleteSessionById('test-id', {
         authClient: mockAuthClient,
@@ -154,7 +155,7 @@ describe('SessionActionService', () => {
 
     it('should handle deletion errors', async () => {
       const onError = vi.fn();
-      
+
       // Mock fetch to fail
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
