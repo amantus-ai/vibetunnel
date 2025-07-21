@@ -9,10 +9,10 @@ import { createConfigRoutes } from './config.js';
 describe('Config Routes', () => {
   let app: Express;
   let mockConfigService: ConfigService;
-  let mockGetRepositoryBasePath: () => string | null;
 
   const defaultConfig: VibeTunnelConfig = {
     version: 1,
+    repositoryBasePath: '/home/user/repos',
     quickStartCommands: [
       { name: '✨ claude', command: 'claude' },
       { command: 'zsh' },
@@ -28,6 +28,7 @@ describe('Config Routes', () => {
     mockConfigService = {
       getConfig: vi.fn(() => defaultConfig),
       updateQuickStartCommands: vi.fn(),
+      updateRepositoryBasePath: vi.fn(),
       updateConfig: vi.fn(),
       startWatching: vi.fn(),
       stopWatching: vi.fn(),
@@ -35,12 +36,8 @@ describe('Config Routes', () => {
       getConfigPath: vi.fn(() => '/home/user/.vibetunnel/config.json'),
     } as unknown as ConfigService;
 
-    // Mock repository base path getter
-    mockGetRepositoryBasePath = vi.fn(() => '/home/user/repos');
-
     // Create routes
     const configRoutes = createConfigRoutes({
-      getRepositoryBasePath: mockGetRepositoryBasePath,
       configService: mockConfigService,
     });
 
@@ -63,18 +60,20 @@ describe('Config Routes', () => {
       });
 
       expect(mockConfigService.getConfig).toHaveBeenCalledOnce();
-      expect(mockGetRepositoryBasePath).toHaveBeenCalledOnce();
     });
 
     it('should use default repository path when not configured', async () => {
-      mockGetRepositoryBasePath.mockReturnValue(null);
+      mockConfigService.getConfig = vi.fn(() => ({
+        ...defaultConfig,
+        repositoryBasePath: null,
+      }));
 
       const response = await request(app).get('/api/config');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
         repositoryBasePath: '~/',
-        serverConfigured: false,
+        serverConfigured: true,
         quickStartCommands: defaultConfig.quickStartCommands,
       });
     });
@@ -167,7 +166,7 @@ describe('Config Routes', () => {
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
-        error: 'Invalid quick start commands',
+        error: 'No valid updates provided',
       });
 
       expect(mockConfigService.updateQuickStartCommands).not.toHaveBeenCalled();
@@ -180,7 +179,7 @@ describe('Config Routes', () => {
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
-        error: 'Invalid quick start commands',
+        error: 'No valid updates provided',
       });
 
       expect(mockConfigService.updateQuickStartCommands).not.toHaveBeenCalled();
@@ -226,6 +225,51 @@ describe('Config Routes', () => {
 
       expect(response.status).toBe(200);
       expect(mockConfigService.updateQuickStartCommands).toHaveBeenCalledWith(commandsWithNames);
+    });
+
+    it('should update repository base path', async () => {
+      const newPath = '/new/repo/path';
+
+      const response = await request(app).put('/api/config').send({ repositoryBasePath: newPath });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        success: true,
+        repositoryBasePath: newPath,
+      });
+
+      expect(mockConfigService.updateRepositoryBasePath).toHaveBeenCalledWith(newPath);
+    });
+
+    it('should update both repository base path and quick start commands', async () => {
+      const newPath = '/new/repo/path';
+      const newCommands = [{ command: 'test' }];
+
+      const response = await request(app).put('/api/config').send({
+        repositoryBasePath: newPath,
+        quickStartCommands: newCommands,
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        success: true,
+        repositoryBasePath: newPath,
+        quickStartCommands: newCommands,
+      });
+
+      expect(mockConfigService.updateRepositoryBasePath).toHaveBeenCalledWith(newPath);
+      expect(mockConfigService.updateQuickStartCommands).toHaveBeenCalledWith(newCommands);
+    });
+
+    it('should reject invalid repository base path', async () => {
+      const response = await request(app).put('/api/config').send({ repositoryBasePath: 123 }); // Not a string
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({
+        error: 'No valid updates provided',
+      });
+
+      expect(mockConfigService.updateRepositoryBasePath).not.toHaveBeenCalled();
     });
   });
 });
