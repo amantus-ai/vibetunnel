@@ -4,7 +4,7 @@ import Foundation
 ///
 /// This component centralizes the logic for creating the detailed tooltip,
 /// combining information from various services into a single, formatted string.
-struct TooltipProvider {
+enum TooltipProvider {
     /// Generates the tooltip string based on the current state of the application.
     ///
     /// - Parameters:
@@ -29,6 +29,9 @@ struct TooltipProvider {
                 tooltipParts.append("Server: 127.0.0.1:\(serverManager.port)")
             } else if let localIP = NetworkUtility.getLocalIPAddress() {
                 tooltipParts.append("Server: \(localIP):\(serverManager.port)")
+            } else {
+                // Fallback when no local IP is found
+                tooltipParts.append("Server: 0.0.0.0:\(serverManager.port)")
             }
 
             // ngrok status

@@ -1,6 +1,5 @@
 import AppKit
 import Combine
-import Network
 import Observation
 import SwiftUI
 
@@ -31,8 +30,6 @@ final class StatusBarController: NSObject {
 
     private var cancellables = Set<AnyCancellable>()
     private var updateTimer: Timer?
-    private let monitor = NWPathMonitor()
-    private let monitorQueue = DispatchQueue(label: "vibetunnel.network.monitor")
     private var hasNetworkAccess = true
 
     // MARK: - Initialization
@@ -61,7 +58,7 @@ final class StatusBarController: NSObject {
         setupStatusItem()
         setupMenuManager()
         setupObservers()
-        startNetworkMonitoring()
+        setupNetworkMonitoring()
     }
 
     // MARK: - Setup
@@ -129,14 +126,26 @@ final class StatusBarController: NSObject {
         }
     }
 
-    private func startNetworkMonitoring() {
-        monitor.pathUpdateHandler = { [weak self] path in
-            Task { @MainActor in
-                self?.hasNetworkAccess = path.status == .satisfied
-                self?.updateStatusItemDisplay()
-            }
-        }
-        monitor.start(queue: monitorQueue)
+    private func setupNetworkMonitoring() {
+        // Start the network monitor
+        NetworkMonitor.shared.startMonitoring()
+        
+        // Listen for network status changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(networkStatusChanged(_:)),
+            name: .networkStatusChanged,
+            object: nil
+        )
+        
+        // Set initial state
+        hasNetworkAccess = NetworkMonitor.shared.isConnected
+    }
+    
+    @objc
+    private func networkStatusChanged(_ notification: Notification) {
+        hasNetworkAccess = NetworkMonitor.shared.isConnected
+        updateStatusItemDisplay()
     }
 
     // MARK: - Display Updates
@@ -216,7 +225,7 @@ final class StatusBarController: NSObject {
     deinit {
         MainActor.assumeIsolated {
             updateTimer?.invalidate()
+            NotificationCenter.default.removeObserver(self)
         }
-        monitor.cancel()
     }
 }
