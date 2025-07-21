@@ -15,6 +15,7 @@ import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import './file-browser.js';
 import './quick-start-editor.js';
+import { DEFAULT_REPOSITORY_BASE_PATH } from '../../shared/constants.js';
 import type { Session } from '../../shared/types.js';
 import { TitleMode } from '../../shared/types.js';
 import type { QuickStartCommand } from '../../types/config.js';
@@ -48,7 +49,7 @@ export class SessionCreateForm extends LitElement {
     return this;
   }
 
-  @property({ type: String }) workingDir = '~/';
+  @property({ type: String }) workingDir = DEFAULT_REPOSITORY_BASE_PATH;
   @property({ type: String }) command = 'zsh';
   @property({ type: String }) sessionName = '';
   @property({ type: Boolean }) disabled = false;
@@ -156,19 +157,19 @@ export class SessionCreateForm extends LitElement {
     const formData = loadSessionFormData();
 
     // Get repository base path from server config to use as default working dir
-    let appRepoBasePath = '~/';
+    let appRepoBasePath = DEFAULT_REPOSITORY_BASE_PATH;
     if (this.serverConfigService) {
       try {
         appRepoBasePath = await this.serverConfigService.getRepositoryBasePath();
       } catch (error) {
         logger.error('Failed to get repository base path from server:', error);
-        appRepoBasePath = '~/';
+        appRepoBasePath = DEFAULT_REPOSITORY_BASE_PATH;
       }
     }
 
     // Always set values, using saved values or defaults
     // Priority: savedWorkingDir > appRepoBasePath > default
-    this.workingDir = formData.workingDir || appRepoBasePath || '~/';
+    this.workingDir = formData.workingDir || appRepoBasePath || DEFAULT_REPOSITORY_BASE_PATH;
     this.command = formData.command || 'zsh';
 
     // For spawn window, use saved value or default to false
@@ -284,7 +285,7 @@ export class SessionCreateForm extends LitElement {
     if (changedProperties.has('visible')) {
       if (this.visible) {
         // Reset to defaults first to ensure clean state
-        this.workingDir = '~/';
+        this.workingDir = DEFAULT_REPOSITORY_BASE_PATH;
         this.command = 'zsh';
         this.sessionName = '';
         this.spawnWindow = false;
@@ -873,7 +874,7 @@ export class SessionCreateForm extends LitElement {
                     d="M5.22 1.22a.75.75 0 011.06 0l6.25 6.25a.75.75 0 010 1.06l-6.25 6.25a.75.75 0 01-1.06-1.06L10.94 8 5.22 2.28a.75.75 0 010-1.06z"
                   />
                 </svg>
-                <span class="form-label text-text-muted uppercase text-[9px] sm:text-[10px] lg:text-xs tracking-wider">Options</span>
+                <span class="form-label mb-0 text-text-muted uppercase text-[9px] sm:text-[10px] lg:text-xs tracking-wider">Options</span>
               </button>
 
               ${

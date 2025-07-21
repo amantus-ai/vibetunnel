@@ -44,7 +44,13 @@ struct AboutView: View {
         "Sandeep Aggarwal",
         "Tao Xu",
         "Zhiqiang Zhou",
-        "noppe"
+        "noppe",
+        "Gopikrishna Kori",
+        "Claude Mini",
+        "Alex Mazanov",
+        "David Gomes",
+        "Piotr Bosak",
+        "Zhuojie Zhou"
     ]
 
     var body: some View {

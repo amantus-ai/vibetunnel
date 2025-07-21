@@ -104,7 +104,7 @@ describe('ServerConfigService', () => {
       const config = await service.loadConfig();
 
       expect(config).toEqual({
-        repositoryBasePath: '~/',
+        repositoryBasePath: '~/Documents',
         serverConfigured: false,
         quickStartCommands: [],
       });
@@ -119,7 +119,7 @@ describe('ServerConfigService', () => {
       const config = await service.loadConfig();
 
       expect(config).toEqual({
-        repositoryBasePath: '~/',
+        repositoryBasePath: '~/Documents',
         serverConfigured: false,
         quickStartCommands: [],
       });
@@ -241,7 +241,7 @@ describe('ServerConfigService', () => {
       } as Response);
 
       const path = await service.getRepositoryBasePath();
-      expect(path).toBe('~/');
+      expect(path).toBe('~/Documents');
     });
 
     it('isServerConfigured should return server configured status', async () => {

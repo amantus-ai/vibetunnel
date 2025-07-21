@@ -52,6 +52,9 @@ export class AutocompleteManager {
       const data = await response.json();
       const completions: AutocompleteItem[] = data.completions || [];
 
+      // Filter out files - only show directories and git repositories
+      const directoryCompletions = completions.filter((item) => item.type === 'directory');
+
       // Also search through discovered repositories if user is typing a partial name
       const isSearchingByName =
         !path.includes('/') ||
@@ -72,14 +75,14 @@ export class AutocompleteManager {
           }));
 
         // Merge with filesystem completions, avoiding duplicates
-        const existingPaths = new Set(completions.map((c) => c.suggestion));
+        const existingPaths = new Set(directoryCompletions.map((c) => c.suggestion));
         const uniqueRepos = matchingRepos.filter((repo) => !existingPaths.has(repo.suggestion));
 
-        completions.push(...uniqueRepos);
+        directoryCompletions.push(...uniqueRepos);
       }
 
       // Sort completions with custom logic
-      const sortedCompletions = this.sortCompletions(completions, path);
+      const sortedCompletions = this.sortCompletions(directoryCompletions, path);
 
       // Limit to 20 results for performance
       return sortedCompletions.slice(0, 20);
@@ -109,18 +112,11 @@ export class AutocompleteManager {
       if (aStartsWith && !bStartsWith) return -1;
       if (!aStartsWith && bStartsWith) return 1;
 
-      // 3. Directories before files
-      if (a.type !== b.type) {
-        return a.type === 'directory' ? -1 : 1;
-      }
+      // 3. Git repositories before regular directories
+      if (a.isRepository && !b.isRepository) return -1;
+      if (!a.isRepository && b.isRepository) return 1;
 
-      // 4. Git repositories before regular directories
-      if (a.type === 'directory' && b.type === 'directory') {
-        if (a.isRepository && !b.isRepository) return -1;
-        if (!a.isRepository && b.isRepository) return 1;
-      }
-
-      // 5. Alphabetical order
+      // 4. Alphabetical order
       return a.name.localeCompare(b.name);
     });
   }

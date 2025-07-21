@@ -193,14 +193,6 @@ export class QuickStartEditor extends LitElement {
           <h3 class="text-xs font-medium text-text-muted">Commands shown in the new session form for quick access.</h3>
           <div class="flex gap-2">
             <button
-              id="quick-start-reset-button"
-              @click=${this.handleResetToDefaults}
-              class="text-primary hover:text-primary-hover text-[10px] transition-colors duration-200"
-              title="Reset to default commands"
-            >
-              Reset to Defaults
-            </button>
-            <button
               id="quick-start-cancel-button"
               @click=${this.handleCancel}
               class="text-text-muted hover:text-text text-[10px] transition-colors duration-200"
@@ -267,29 +259,40 @@ export class QuickStartEditor extends LitElement {
           )}
         </div>
         
-        <button
-          id="quick-start-add-command-button"
-          @click=${this.handleAddCommand}
-          class="bg-bg-secondary hover:bg-hover text-text-muted hover:text-primary px-3 py-1.5 rounded-md transition-colors duration-200 text-xs font-medium flex items-center gap-1.5 ml-auto"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6" />
-          </svg>
-          Add
-        </button>
-        
         <!-- Bottom actions -->
-        <div class="flex justify-end gap-4 mt-4 pt-3 border-t border-border/30">
+        <div class="flex justify-between items-center mt-4">
           <button
-            id="quick-start-delete-all-button"
-            @click=${() => {
-              this.editableCommands = [];
-              this.requestUpdate();
-            }}
-            class="text-error hover:text-error-hover text-[10px] transition-colors duration-200"
+            id="quick-start-reset-button"
+            @click=${this.handleResetToDefaults}
+            class="text-primary hover:text-primary-hover text-[10px] transition-colors duration-200"
+            title="Reset to default commands"
           >
-            Delete All
+            Reset to Defaults
           </button>
+          
+          <div class="flex gap-4 items-center">
+            <button
+              id="quick-start-delete-all-button"
+              @click=${() => {
+                this.editableCommands = [];
+                this.requestUpdate();
+              }}
+              class="text-error hover:text-error-hover text-xs transition-colors duration-200"
+            >
+              Delete All
+            </button>
+            
+            <button
+              id="quick-start-add-command-button"
+              @click=${this.handleAddCommand}
+              class="bg-bg-secondary hover:bg-hover text-text-muted hover:text-primary px-3 py-1.5 rounded-md transition-colors duration-200 text-xs font-medium flex items-center gap-1.5"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6" />
+              </svg>
+              Add
+            </button>
+          </div>
         </div>
       </div>
     `;

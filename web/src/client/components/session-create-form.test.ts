@@ -65,7 +65,7 @@ describe('SessionCreateForm', () => {
   describe('initialization', () => {
     it('should create component with default state', () => {
       expect(element).toBeDefined();
-      expect(element.workingDir).toBe('~/');
+      expect(element.workingDir).toBe('~/Documents');
       expect(element.command).toBe('zsh');
       expect(element.sessionName).toBe('');
       expect(element.isCreating).toBe(false);

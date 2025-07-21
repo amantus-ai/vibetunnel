@@ -19,7 +19,9 @@ enum TooltipProvider {
         ngrokService: NgrokService,
         tailscaleService: TailscaleService,
         sessionMonitor: SessionMonitor
-    ) -> String {
+    )
+        -> String
+    {
         var tooltipParts: [String] = []
 
         // Server status

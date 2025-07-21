@@ -479,10 +479,16 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         return res.status(404).json({ error: 'Session not found' });
       }
 
-      await ptyManager.killSession(sessionId, 'SIGTERM');
-      logger.log(chalk.yellow(`local session ${sessionId} killed`));
-
-      res.json({ success: true, message: 'Session killed' });
+      // If session is already exited, clean it up instead of trying to kill it
+      if (session.status === 'exited') {
+        ptyManager.cleanupSession(sessionId);
+        logger.log(chalk.yellow(`local session ${sessionId} cleaned up`));
+        res.json({ success: true, message: 'Session cleaned up' });
+      } else {
+        await ptyManager.killSession(sessionId, 'SIGTERM');
+        logger.log(chalk.yellow(`local session ${sessionId} killed`));
+        res.json({ success: true, message: 'Session killed' });
+      }
     } catch (error) {
       logger.error('error killing session:', error);
       if (error instanceof PtyError) {

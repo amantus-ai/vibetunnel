@@ -224,7 +224,7 @@ describe('AutocompleteManager', () => {
       expect(result[1].name).toBe('project');
     });
 
-    it('should prioritize directories over files', async () => {
+    it('should filter out files and only show directories', async () => {
       const mockCompletions = [
         {
           name: 'readme.md',
@@ -238,6 +238,12 @@ describe('AutocompleteManager', () => {
           type: 'directory' as const,
           suggestion: '~/Documents/',
         },
+        {
+          name: 'Projects',
+          path: '~/Projects',
+          type: 'directory' as const,
+          suggestion: '~/Projects/',
+        },
       ];
 
       mockFetch.mockResolvedValueOnce({
@@ -247,8 +253,11 @@ describe('AutocompleteManager', () => {
 
       const result = await manager.fetchCompletions('~/');
 
+      // Should only have directories, no files
+      expect(result).toHaveLength(2);
       expect(result[0].type).toBe('directory');
-      expect(result[1].type).toBe('file');
+      expect(result[1].type).toBe('directory');
+      expect(result.some((item) => item.type === 'file')).toBe(false);
     });
 
     it('should prioritize git repositories over regular directories', async () => {

@@ -15,7 +15,7 @@ class ConfigManager: ObservableObject {
 
     // Core configuration
     @Published private(set) var quickStartCommands: [QuickStartCommand] = []
-    @Published var repositoryBasePath: String = "~/"
+    @Published var repositoryBasePath: String = FilePathConstants.defaultRepositoryBasePath
 
     // Server settings
     @Published var serverPort: Int = 4_020
@@ -42,7 +42,7 @@ class ConfigManager: ObservableObject {
 
     // Session defaults
     @Published var sessionCommand: String = "zsh"
-    @Published var sessionWorkingDirectory: String = "~/"
+    @Published var sessionWorkingDirectory: String = FilePathConstants.defaultRepositoryBasePath
     @Published var sessionSpawnWindow: Bool = true
     @Published var sessionTitleMode: TitleMode = .dynamic
 
@@ -163,7 +163,7 @@ class ConfigManager: ObservableObject {
 
                 // Load all configuration values
                 self.quickStartCommands = config.quickStartCommands
-                self.repositoryBasePath = config.repositoryBasePath ?? "~/"
+                self.repositoryBasePath = config.repositoryBasePath ?? FilePathConstants.defaultRepositoryBasePath
 
                 // Server settings
                 if let server = config.server {
@@ -217,7 +217,7 @@ class ConfigManager: ObservableObject {
 
     private func useDefaults() {
         self.quickStartCommands = defaultCommands
-        self.repositoryBasePath = "~/"
+        self.repositoryBasePath = FilePathConstants.defaultRepositoryBasePath
         saveConfiguration()
     }
 

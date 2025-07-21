@@ -72,7 +72,7 @@ describe('Config Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
-        repositoryBasePath: '~/',
+        repositoryBasePath: '~/Documents',
         serverConfigured: true,
         quickStartCommands: defaultConfig.quickStartCommands,
       });
