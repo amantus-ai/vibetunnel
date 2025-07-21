@@ -2,20 +2,23 @@
 
 ## [1.0.0-beta.14] - 2025-07-21
 
-#### **Customizable Quick Start Commands**
+### ✨ Major Features
+
+#### **Customizable Quick Start Commands** (#436)
 - Quick Start commands are now fully customizable - previously hardcoded buttons can be edited
 - Add your own commands with custom names and emoji (e.g., "✨ claude" or "▶️ dev server")
 - Drag & drop reordering with smooth animations in macOS settings
 - Inline editing without popup dialogs
 - Reset to defaults button when you want the original set back
-- File-based persistence in `~/.vibetunnel/config.json`
+- File-based persistence in `~/.vibetunnel/config.json` shared between web and Mac apps
 
-#### **New Session Path Autocomplete**
-- Intelligent path autocomplete when creating sessions (#435)
+#### **New Session Path Autocomplete** (#435)
+- Intelligent path autocomplete when creating sessions with unified UI
 - Home directory expansion (`~/` shortcuts work properly)
-- Visual file browser with folder icon
-- Git repository discovery in selected directories
-- Repository status shown in welcome screen
+- Visual file browser with folder icons for easy navigation
+- Git repository discovery shows current branch in file browser
+- Repository status displayed in welcome screen
+- Escape key support and auto-select first suggestion
 
 #### **Session Status Management**
 - New dropdown menu in session headers for running/exited sessions
@@ -24,6 +27,15 @@
 - Visual status indicators - pulsing dot for running, static for exited
 - Keyboard navigation support (Arrow keys, Enter, Escape)
 
+#### **Image Upload Menu** (#432)
+- New image upload feature in session headers with multiple input methods:
+  - Paste images from clipboard
+  - Select from photo library (mobile)
+  - Take photo with camera (mobile)
+  - Browse for files
+- Automatically converts images to base64 and inserts at cursor position
+- Mobile-optimized UI with full-screen menu
+
 #### **Linux Systemd Support** (#426)
 - Run VibeTunnel as a persistent service with `vibetunnel systemd install`
 - User-level service - no root required
@@ -31,13 +43,25 @@
 - Smart Node.js detection works with nvm, fnm, or global npm
 - Comprehensive systemd commands for status, logs, start/stop
 
-#### **UI Improvements**
-- New image upload menu with paste, select from library, camera, and browse options (#432)
-- Improves experimental binary terminal mode (no more long scrolling - see Terminal Settings)
-- Clickable ngrok URLs in Settings with copy button (#422)
-- Cleaner session headers with better-positioned controls
-- Fixed magic wand icon alignment for AI sessions
-- Improved theme toggle with better icon and tooltips (#438, fixes #368)
+### 🎨 UI Improvements
+
+- **Mobile Terminal Experience** (#441)
+  - Fixed keyboard layout issues on mobile devices
+  - Improved quick keys bar with better sizing and spacing
+  - Responsive text sizes that scale properly on smaller screens
+  - Tab key now works correctly on mobile keyboards
+
+- **Dark Mode & Theme Improvements**
+  - Improved theme toggle with clearer icon and tooltips (#438, fixes #368)
+  - Fixed new session dialog styling for dark mode (#433)
+  - Better contrast and visibility across all themes
+
+- **General UI Polish**
+  - Clickable ngrok URLs in Settings with copy button (#422)
+  - Cleaner session headers with better-positioned controls
+  - Fixed magic wand icon alignment for AI sessions
+  - Edit icons now positioned directly after text instead of far right
+  - Improved OPTIONS label alignment in session create form
 
 ### 🐛 Bug Fixes
 
@@ -46,24 +70,50 @@
 - Fixed new session dialog styling for dark mode (#433)
 - Fixed Mintlify documentation generation (#434)
 - Fixed ConfigManager threading crash when moving quick start items in macOS
+- Fixed mobile keyboard layout and text sizing issues (#441)
 - Improved Chinese input method support (#431, duplicate of #421)
-- Removed legacy WebSocket config sync code and simplify logic
+- Fixed OpenCode support for better integration with external apps
 
-#### **Under the Hood**
-- New configuration service with file watching and validation
+### 🏗️ Under the Hood
+
+#### **Code Quality & Architecture** (#444)
+- Extracted all magic strings to centralized constants files
+- Created dedicated constant files for:
+  - API endpoints, bundle identifiers, environment keys
+  - Error messages, file paths, keychain constants
+  - Network constants, notification names, UI strings
+  - URL constants and user defaults keys
+- Removed RepositoryPathSyncService and related WebSocket sync code
+- Improved type safety and maintainability across the codebase
+
+#### **Configuration System Overhaul** (#436)
+- New file-based configuration system with `~/.vibetunnel/config.json`
+- ConfigManager for synchronized settings between Mac and web
+- REST API at `/api/config` replacing WebSocket sync
 - Zod schema validation for all configuration data
+- Automatic file watching for real-time config updates
+- Repository base path now stored in config instead of CLI args
+
+#### **Testing & Development**
+- Added comprehensive test coverage for new components
 - Improved test maintainability by adding element IDs to web components
-- REST API at `/api/config/quick-start` replacing WebSocket sync
+- Added AutocompleteService tests and drag & drop tests
+- Enhanced CI workflows with better error diagnostics
+
+#### **Documentation & Cleanup**
 - Major codebase cleanup - removed Tauri project and 17k lines of unused code (#419)
 - Enhanced release process with better troubleshooting documentation
+- Updated README with proper badges and table of contents
+- Removed redundant header text and improved visual hierarchy
 
 ### 👥 Contributors
+
 First-time contributors to VibeTunnel:
 - [@gopi-kori](https://github.com/gopi-kori) - Made ngrok URLs clickable with copy button in Settings (#422)
-- [@claudemini](https://github.com/claudemini) - Improved theme toggle UI with better icon and tooltips (cherry-picked from #429 into #438, fixes #368)
+- [@claudemini](https://github.com/claudemini) - Improved theme toggle UI with better icon and tooltips (#438)
 
 Additional contributors:
-- [@hewigovens](https://github.com/hewigovens) - Co-authored systemd service management for Linux deployments (#426)
+- [@hewigovens](https://github.com/hewigovens) - Fixed mobile keyboard issues and co-authored systemd support (#426, #441)
 
 ## [1.0.0-beta.13] - 2025-07-19
 
