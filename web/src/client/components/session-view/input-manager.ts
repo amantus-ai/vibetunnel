@@ -297,8 +297,8 @@ export class InputManager {
       target.tagName === 'INPUT' ||
       target.tagName === 'TEXTAREA' ||
       target.contentEditable === 'true' ||
-      target.closest('.monaco-editor') ||
-      target.closest('[data-keybinding-context]')
+      (target.closest && target.closest('.monaco-editor')) ||
+      (target.closest && target.closest('[data-keybinding-context]'))
     ) {
       return; // Let other input elements handle their own paste
     }
@@ -617,10 +617,10 @@ export class InputManager {
       target.tagName === 'TEXTAREA' ||
       target.tagName === 'SELECT' ||
       target.contentEditable === 'true' ||
-      target.closest('.monaco-editor') ||
-      target.closest('[data-keybinding-context]') ||
-      target.closest('.editor-container') ||
-      target.closest('inline-edit') // Allow typing in inline-edit component
+      (target.closest && target.closest('.monaco-editor')) ||
+      (target.closest && target.closest('[data-keybinding-context]')) ||
+      (target.closest && target.closest('.editor-container')) ||
+      (target.closest && target.closest('inline-edit')) // Allow typing in inline-edit component
     ) {
       // Special exception: allow copy/paste shortcuts even in input fields (like our IME input)
       if (isCopyPasteShortcut(e)) {
