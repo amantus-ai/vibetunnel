@@ -7,6 +7,7 @@
 
 import type { Session } from '../../../shared/types.js';
 import { consumeEvent } from '../../utils/event-utils.js';
+import { isIMEAllowedKey } from '../../utils/ime-constants.js';
 import { createLogger } from '../../utils/logger.js';
 import { type LifecycleEventManagerCallbacks, ManagerEventEmitter } from './interfaces.js';
 
@@ -211,19 +212,7 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
     // Check if IME input is focused - block keyboard events except for editing keys
     if (document.body.getAttribute('data-ime-input-focused') === 'true') {
-      const allowedKeys = [
-        'Backspace',
-        'Delete',
-        'ArrowLeft',
-        'ArrowRight',
-        'ArrowUp',
-        'ArrowDown',
-        'Home',
-        'End',
-        'Tab',
-      ];
-      // Allow all Cmd/Ctrl combinations (including Cmd+V)
-      if (!allowedKeys.includes(e.key) && !e.metaKey && !e.ctrlKey) {
+      if (!isIMEAllowedKey(e)) {
         return;
       }
     }

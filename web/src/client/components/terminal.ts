@@ -1473,6 +1473,14 @@ export class Terminal extends LitElement {
   }
 
   /**
+   * Get the DOM element for this terminal.
+   * @returns The terminal container DOM element
+   */
+  public getDOMElement(): HTMLElement | null {
+    return this.container || null;
+  }
+
+  /**
    * Scroll the viewport to follow the cursor position.
    * This ensures the cursor stays visible during text input or playback.
    */

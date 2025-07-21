@@ -416,4 +416,12 @@ export class VibeTerminalBinary extends VibeTerminalBuffer {
       rows: buffer.rows,
     };
   }
+
+  /**
+   * Get the DOM element for this terminal.
+   * @returns The terminal container DOM element
+   */
+  public getDOMElement(): HTMLElement | null {
+    return this.terminalContainer || null;
+  }
 }

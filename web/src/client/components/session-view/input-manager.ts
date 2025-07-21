@@ -10,6 +10,7 @@ import { authClient } from '../../services/auth-client.js';
 import { websocketInputClient } from '../../services/websocket-input-client.js';
 import { isBrowserShortcut, isCopyPasteShortcut } from '../../utils/browser-shortcuts.js';
 import { consumeEvent } from '../../utils/event-utils.js';
+import { isIMEAllowedKey } from '../../utils/ime-constants.js';
 import { createLogger } from '../../utils/logger.js';
 import type { Terminal } from '../terminal.js';
 import type { VibeTerminalBinary } from '../vibe-terminal-binary.js';
@@ -40,13 +41,8 @@ export class InputManager {
     // Setup IME input when session is available
     if (session && !this.imeInput) {
       this.setupIMEInput();
-      // Focus the IME input after a short delay to ensure it's ready
-      setTimeout(() => {
-        // Validate session still exists and matches before focusing
-        if (this.session === session && this.imeInput) {
-          this.focusIMEInput();
-        }
-      }, 100);
+      // Focus immediately after setup - no delay needed
+      this.focusIMEInputSafely();
     }
 
     // Check URL parameter for WebSocket input feature flag
@@ -157,19 +153,30 @@ export class InputManager {
     }
   };
 
-  private focusIMEInput(): void {
-    if (this.imeInput) {
-      // Update position before focusing
-      this.updateIMEInputPosition();
+  private focusIMEInputSafely(): void {
+    if (!this.imeInput) return;
 
-      // Focus immediately and also with a small delay to ensure it sticks
-      this.imeInput.focus();
-      setTimeout(() => {
-        if (this.imeInput && document.activeElement !== this.imeInput) {
-          this.imeInput.focus();
+    // Update position before focusing
+    this.updateIMEInputPosition();
+
+    // Use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      if (this.imeInput) {
+        this.imeInput.focus();
+        // If focus didn't work, try once more on next frame
+        if (document.activeElement !== this.imeInput) {
+          requestAnimationFrame(() => {
+            if (this.imeInput && document.activeElement !== this.imeInput) {
+              this.imeInput.focus();
+            }
+          });
         }
-      }, 10);
-    }
+      }
+    });
+  }
+
+  private focusIMEInput(): void {
+    this.focusIMEInputSafely();
   }
 
   private updateIMEInputPosition(): void {
@@ -196,7 +203,20 @@ export class InputManager {
       if (!terminalContainer) return;
 
       const containerRect = terminalContainer.getBoundingClientRect();
-      const terminalRect = terminalElement.getBoundingClientRect();
+
+      // Get the actual DOM element from the terminal component
+      const terminalDOMElement = terminalElement.getDOMElement();
+      if (!terminalDOMElement) {
+        console.warn(
+          '🌏 InputManager: Cannot get terminal DOM element, using fallback positioning'
+        );
+        this.imeInput.style.left = '10px';
+        this.imeInput.style.bottom = '10px';
+        this.imeInput.style.top = 'auto';
+        return;
+      }
+
+      const terminalRect = terminalDOMElement.getBoundingClientRect();
 
       // Calculate character dimensions (approximate)
       const charWidth = terminalRect.width / cols;
@@ -344,19 +364,7 @@ export class InputManager {
 
     // Block keyboard events when IME input is focused, except for editing keys
     if (this.imeInputFocused) {
-      const allowedKeys = [
-        'Backspace',
-        'Delete',
-        'ArrowLeft',
-        'ArrowRight',
-        'ArrowUp',
-        'ArrowDown',
-        'Home',
-        'End',
-        'Tab',
-      ];
-      // Allow all Cmd/Ctrl combinations (including Cmd+V)
-      if (!allowedKeys.includes(e.key) && !e.metaKey && !e.ctrlKey) {
+      if (!isIMEAllowedKey(e)) {
         return;
       }
     }
