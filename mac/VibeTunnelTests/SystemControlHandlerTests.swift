@@ -4,7 +4,6 @@ import Testing
 
 @Suite("System Control Handler Tests", .serialized)
 struct SystemControlHandlerTests {
-
     @MainActor
     @Test("Handles system ready event")
     func systemReadyEvent() async throws {

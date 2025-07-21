@@ -164,7 +164,7 @@ describe('SessionActionService', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(onSuccess).toHaveBeenCalledWith('clear', 'test-session-id');
+      expect(onSuccess).toHaveBeenCalledWith('delete', 'test-session-id');
       expect(mockTerminateSession).toHaveBeenCalledWith(
         'test-session-id',
         mockAuthClient,
@@ -174,7 +174,7 @@ describe('SessionActionService', () => {
         expect.objectContaining({
           type: 'session-action',
           detail: {
-            action: 'clear',
+            action: 'delete',
             sessionId: 'test-session-id',
           },
         })
@@ -271,7 +271,7 @@ describe('SessionActionService', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(onSuccess).toHaveBeenCalledWith('clear', 'test-session-id');
+      expect(onSuccess).toHaveBeenCalledWith('delete', 'test-session-id');
       expect(mockTerminateSession).toHaveBeenCalledWith(
         'test-session-id',
         mockAuthClient,
@@ -332,7 +332,7 @@ describe('SessionActionService', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(onSuccess).toHaveBeenCalledWith('terminate', 'test-id');
+      expect(onSuccess).toHaveBeenCalledWith('delete', 'test-id');
       expect(fetch).toHaveBeenCalledWith('/api/sessions/test-id', {
         method: 'DELETE',
         headers: { Authorization: 'Bearer test-token' },

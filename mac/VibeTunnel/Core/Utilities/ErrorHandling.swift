@@ -18,7 +18,7 @@ struct ErrorAlertModifier: ViewModifier {
                 isPresented: .constant(error != nil),
                 presenting: error
             ) { _ in
-                Button("OK") {
+                Button(UIStrings.ok) {
                     error = nil
                     onDismiss?()
                 }
@@ -31,7 +31,7 @@ struct ErrorAlertModifier: ViewModifier {
 extension View {
     /// Presents an error alert when an error is present
     func errorAlert(
-        _ title: String = "Error",
+        _ title: String = UIStrings.error,
         error: Binding<Error?>,
         onDismiss: (() -> Void)? = nil
     )
@@ -103,7 +103,7 @@ struct ErrorToast: View {
                 .foregroundColor(.red)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Error")
+                Text(UIStrings.error)
                     .font(.headline)
 
                 Text(error.localizedDescription)

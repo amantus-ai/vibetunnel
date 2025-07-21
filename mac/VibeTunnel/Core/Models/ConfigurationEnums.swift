@@ -1,15 +1,16 @@
 import Foundation
 
-/// Shared configuration enums used across the application
+// Shared configuration enums used across the application
 
 // MARK: - Authentication Mode
 
+/// Represents the available authentication modes for dashboard access
 enum AuthenticationMode: String, CaseIterable {
     case none = "none"
     case osAuth = "os"
     case sshKeys = "ssh"
     case both = "both"
-    
+
     var displayName: String {
         switch self {
         case .none: "None"
@@ -18,7 +19,7 @@ enum AuthenticationMode: String, CaseIterable {
         case .both: "macOS + SSH Keys"
         }
     }
-    
+
     var description: String {
         switch self {
         case .none: "Anyone can access the dashboard (not recommended)"
@@ -31,12 +32,13 @@ enum AuthenticationMode: String, CaseIterable {
 
 // MARK: - Title Mode
 
+/// Represents the terminal window title display modes
 enum TitleMode: String, CaseIterable {
     case none = "none"
     case filter = "filter"
     case `static` = "static"
     case dynamic = "dynamic"
-    
+
     var displayName: String {
         switch self {
         case .none: "None"

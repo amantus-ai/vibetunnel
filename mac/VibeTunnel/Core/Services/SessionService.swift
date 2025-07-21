@@ -24,14 +24,16 @@ final class SessionService {
             throw SessionServiceError.invalidName
         }
 
-        guard let url = URL(string: "http://127.0.0.1:\(serverManager.port)/api/sessions/\(sessionId)") else {
+        guard let url =
+            URL(string: "\(URLConstants.localServerBase):\(serverManager.port)\(APIEndpoints.sessions)/\(sessionId)")
+        else {
             throw SessionServiceError.invalidURL
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "PATCH"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("localhost", forHTTPHeaderField: "Host")
+        request.setValue(NetworkConstants.contentTypeJSON, forHTTPHeaderField: NetworkConstants.contentTypeHeader)
+        request.setValue(NetworkConstants.localhost, forHTTPHeaderField: NetworkConstants.hostHeader)
         try serverManager.authenticate(request: &request)
 
         let body = ["name": trimmedName]
@@ -66,13 +68,15 @@ final class SessionService {
     /// - Note: The server implements graceful termination (SIGTERM → SIGKILL)
     ///         with a 3-second timeout before force-killing processes.
     func terminateSession(sessionId: String) async throws {
-        guard let url = URL(string: "http://127.0.0.1:\(serverManager.port)/api/sessions/\(sessionId)") else {
+        guard let url =
+            URL(string: "\(URLConstants.localServerBase):\(serverManager.port)\(APIEndpoints.sessions)/\(sessionId)")
+        else {
             throw SessionServiceError.invalidURL
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
-        request.setValue("localhost", forHTTPHeaderField: "Host")
+        request.setValue(NetworkConstants.localhost, forHTTPHeaderField: NetworkConstants.hostHeader)
         try serverManager.authenticate(request: &request)
 
         let (_, response) = try await URLSession.shared.data(for: request)
@@ -106,14 +110,18 @@ final class SessionService {
             throw SessionServiceError.serverNotRunning
         }
 
-        guard let url = URL(string: "http://127.0.0.1:\(serverManager.port)/api/sessions/\(sessionId)/input") else {
+        guard let url =
+            URL(
+                string: "\(URLConstants.localServerBase):\(serverManager.port)\(APIEndpoints.sessions)/\(sessionId)/input"
+            )
+        else {
             throw SessionServiceError.invalidURL
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("localhost", forHTTPHeaderField: "Host")
+        request.setValue(NetworkConstants.contentTypeJSON, forHTTPHeaderField: NetworkConstants.contentTypeHeader)
+        request.setValue(NetworkConstants.localhost, forHTTPHeaderField: NetworkConstants.hostHeader)
         try serverManager.authenticate(request: &request)
 
         let body = ["text": text]
@@ -134,14 +142,18 @@ final class SessionService {
             throw SessionServiceError.serverNotRunning
         }
 
-        guard let url = URL(string: "http://127.0.0.1:\(serverManager.port)/api/sessions/\(sessionId)/input") else {
+        guard let url =
+            URL(
+                string: "\(URLConstants.localServerBase):\(serverManager.port)\(APIEndpoints.sessions)/\(sessionId)/input"
+            )
+        else {
             throw SessionServiceError.invalidURL
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("localhost", forHTTPHeaderField: "Host")
+        request.setValue(NetworkConstants.contentTypeJSON, forHTTPHeaderField: NetworkConstants.contentTypeHeader)
+        request.setValue(NetworkConstants.localhost, forHTTPHeaderField: NetworkConstants.hostHeader)
         try serverManager.authenticate(request: &request)
 
         let body = ["key": key]
@@ -172,7 +184,8 @@ final class SessionService {
             throw SessionServiceError.serverNotRunning
         }
 
-        guard let url = URL(string: "http://127.0.0.1:\(serverManager.port)/api/sessions") else {
+        guard let url = URL(string: "\(URLConstants.localServerBase):\(serverManager.port)\(APIEndpoints.sessions)")
+        else {
             throw SessionServiceError.invalidURL
         }
 
@@ -196,8 +209,8 @@ final class SessionService {
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("localhost", forHTTPHeaderField: "Host")
+        request.setValue(NetworkConstants.contentTypeJSON, forHTTPHeaderField: NetworkConstants.contentTypeHeader)
+        request.setValue(NetworkConstants.localhost, forHTTPHeaderField: NetworkConstants.hostHeader)
         try serverManager.authenticate(request: &request)
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
@@ -244,17 +257,17 @@ enum SessionServiceError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidName:
-            "Session name cannot be empty"
+            ErrorMessages.sessionNameEmpty
         case .invalidURL:
-            "Invalid server URL"
+            ErrorMessages.invalidServerURL
         case .serverNotRunning:
-            "Server is not running"
+            ErrorMessages.serverNotRunning
         case .requestFailed(let statusCode):
             "Request failed with status code: \(statusCode)"
         case .createFailed(let message):
             message
         case .invalidResponse:
-            "Invalid server response"
+            ErrorMessages.invalidServerResponse
         }
     }
 }

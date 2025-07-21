@@ -11,9 +11,9 @@ import Security
 final class DashboardKeychain {
     static let shared = DashboardKeychain()
 
-    private let service = "sh.vibetunnel.vibetunnel"
-    private let account = "dashboard-password"
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "DashboardKeychain")
+    private let service = KeychainConstants.vibeTunnelService
+    private let account = KeychainConstants.dashboardPassword
+    private let logger = Logger(subsystem: BundleIdentifiers.main, category: "DashboardKeychain")
 
     private init() {}
 

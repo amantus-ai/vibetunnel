@@ -34,7 +34,7 @@ actor TerminalManager {
         let stderrPipe = Pipe()
 
         // Configure the process
-        process.executableURL = URL(fileURLWithPath: request.shell ?? "/bin/zsh")
+        process.executableURL = URL(fileURLWithPath: request.shell ?? FilePathConstants.defaultShell)
         process.standardInput = stdinPipe
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
@@ -168,13 +168,13 @@ enum TunnelError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .sessionNotFound:
-            "Session not found"
+            ErrorMessages.sessionNotFound
         case .commandExecutionFailed(let message):
             "Command execution failed: \(message)"
         case .timeout:
-            "Operation timed out"
+            ErrorMessages.operationTimeout
         case .invalidRequest:
-            "Invalid request"
+            ErrorMessages.invalidRequest
         }
     }
 }

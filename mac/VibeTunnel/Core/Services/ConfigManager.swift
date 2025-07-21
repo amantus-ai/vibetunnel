@@ -16,30 +16,30 @@ class ConfigManager: ObservableObject {
     // Core configuration
     @Published private(set) var quickStartCommands: [QuickStartCommand] = []
     @Published var repositoryBasePath: String = "~/"
-    
+
     // Server settings
-    @Published var serverPort: Int = 4020
+    @Published var serverPort: Int = 4_020
     @Published var dashboardAccessMode: DashboardAccessMode = .network
     @Published var cleanupOnStartup: Bool = true
     @Published var authenticationMode: AuthenticationMode = .osAuth
-    
+
     // Development settings
     @Published var debugMode: Bool = false
     @Published var useDevServer: Bool = false
     @Published var devServerPath: String = ""
     @Published var logLevel: String = "info"
-    
+
     // Application preferences
     @Published var preferredGitApp: String?
     @Published var preferredTerminal: String?
     @Published var updateChannel: UpdateChannel = .stable
     @Published var showInDock: Bool = false
     @Published var preventSleepWhenRunning: Bool = true
-    
+
     // Remote access
     @Published var ngrokEnabled: Bool = false
     @Published var ngrokTokenPresent: Bool = false
-    
+
     // Session defaults
     @Published var sessionCommand: String = "zsh"
     @Published var sessionWorkingDirectory: String = "~/"
@@ -83,7 +83,7 @@ class ConfigManager: ObservableObject {
         let version: Int
         var quickStartCommands: [QuickStartCommand]
         var repositoryBasePath: String?
-        
+
         // Extended configuration sections
         var server: ServerConfig?
         var development: DevelopmentConfig?
@@ -91,23 +91,23 @@ class ConfigManager: ObservableObject {
         var remoteAccess: RemoteAccessConfig?
         var sessionDefaults: SessionDefaultsConfig?
     }
-    
+
     // MARK: - Configuration Sub-structures
-    
+
     private struct ServerConfig: Codable {
         var port: Int
         var dashboardAccessMode: String
         var cleanupOnStartup: Bool
         var authenticationMode: String
     }
-    
+
     private struct DevelopmentConfig: Codable {
         var debugMode: Bool
         var useDevServer: Bool
         var devServerPath: String
         var logLevel: String
     }
-    
+
     private struct PreferencesConfig: Codable {
         var preferredGitApp: String?
         var preferredTerminal: String?
@@ -115,12 +115,12 @@ class ConfigManager: ObservableObject {
         var showInDock: Bool
         var preventSleepWhenRunning: Bool
     }
-    
+
     private struct RemoteAccessConfig: Codable {
         var ngrokEnabled: Bool
         var ngrokTokenPresent: Bool
     }
-    
+
     private struct SessionDefaultsConfig: Codable {
         var command: String
         var workingDirectory: String
@@ -160,11 +160,11 @@ class ConfigManager: ObservableObject {
             do {
                 let data = try Data(contentsOf: configPath)
                 let config = try JSONDecoder().decode(VibeTunnelConfig.self, from: data)
-                
+
                 // Load all configuration values
                 self.quickStartCommands = config.quickStartCommands
                 self.repositoryBasePath = config.repositoryBasePath ?? "~/"
-                
+
                 // Server settings
                 if let server = config.server {
                     self.serverPort = server.port
@@ -172,7 +172,7 @@ class ConfigManager: ObservableObject {
                     self.cleanupOnStartup = server.cleanupOnStartup
                     self.authenticationMode = AuthenticationMode(rawValue: server.authenticationMode) ?? .osAuth
                 }
-                
+
                 // Development settings
                 if let dev = config.development {
                     self.debugMode = dev.debugMode
@@ -180,7 +180,7 @@ class ConfigManager: ObservableObject {
                     self.devServerPath = dev.devServerPath
                     self.logLevel = dev.logLevel
                 }
-                
+
                 // Preferences
                 if let prefs = config.preferences {
                     self.preferredGitApp = prefs.preferredGitApp
@@ -189,13 +189,13 @@ class ConfigManager: ObservableObject {
                     self.showInDock = prefs.showInDock
                     self.preventSleepWhenRunning = prefs.preventSleepWhenRunning
                 }
-                
+
                 // Remote access
                 if let remote = config.remoteAccess {
                     self.ngrokEnabled = remote.ngrokEnabled
                     self.ngrokTokenPresent = remote.ngrokTokenPresent
                 }
-                
+
                 // Session defaults
                 if let session = config.sessionDefaults {
                     self.sessionCommand = session.command
@@ -203,7 +203,7 @@ class ConfigManager: ObservableObject {
                     self.sessionSpawnWindow = session.spawnWindow
                     self.sessionTitleMode = TitleMode(rawValue: session.titleMode) ?? .dynamic
                 }
-                
+
                 logger.info("Loaded configuration from disk")
             } catch {
                 logger.error("Failed to load config: \(error.localizedDescription)")
@@ -229,7 +229,7 @@ class ConfigManager: ObservableObject {
             quickStartCommands: quickStartCommands,
             repositoryBasePath: repositoryBasePath
         )
-        
+
         // Server configuration
         config.server = ServerConfig(
             port: serverPort,
@@ -237,7 +237,7 @@ class ConfigManager: ObservableObject {
             cleanupOnStartup: cleanupOnStartup,
             authenticationMode: authenticationMode.rawValue
         )
-        
+
         // Development configuration
         config.development = DevelopmentConfig(
             debugMode: debugMode,
@@ -245,7 +245,7 @@ class ConfigManager: ObservableObject {
             devServerPath: devServerPath,
             logLevel: logLevel
         )
-        
+
         // Preferences
         config.preferences = PreferencesConfig(
             preferredGitApp: preferredGitApp,
@@ -254,13 +254,13 @@ class ConfigManager: ObservableObject {
             showInDock: showInDock,
             preventSleepWhenRunning: preventSleepWhenRunning
         )
-        
+
         // Remote access
         config.remoteAccess = RemoteAccessConfig(
             ngrokEnabled: ngrokEnabled,
             ngrokTokenPresent: ngrokTokenPresent
         )
-        
+
         // Session defaults
         config.sessionDefaults = SessionDefaultsConfig(
             command: sessionCommand,
@@ -392,11 +392,11 @@ class ConfigManager: ObservableObject {
         updateQuickStartCommands(commands)
         logger.info("Reordered quick start commands")
     }
-    
+
     /// Update repository base path
     func updateRepositoryBasePath(_ path: String) {
         guard path != repositoryBasePath else { return }
-        
+
         self.repositoryBasePath = path
         saveConfiguration()
         logger.info("Updated repository base path to: \(path)")

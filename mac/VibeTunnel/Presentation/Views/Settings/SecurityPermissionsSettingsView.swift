@@ -87,7 +87,6 @@ struct SecurityPermissionsSettingsView: View {
     }
 }
 
-
 // MARK: - Security Section
 
 private struct SecuritySection: View {

@@ -27,7 +27,7 @@ import SwiftUI
 final class CLIInstaller {
     // MARK: - Properties
 
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "CLIInstaller")
+    private let logger = Logger(subsystem: BundleIdentifiers.main, category: "CLIInstaller")
     private let binDirectory: String
 
     private var vtTargetPath: String {
@@ -45,7 +45,7 @@ final class CLIInstaller {
     /// Creates a CLI installer
     /// - Parameters:
     ///   - binDirectory: Directory for installation (defaults to /usr/local/bin)
-    init(binDirectory: String = "/usr/local/bin") {
+    init(binDirectory: String = FilePathConstants.usrLocalBin) {
         self.binDirectory = binDirectory
     }
 
@@ -60,7 +60,7 @@ final class CLIInstaller {
             // Check both /usr/local/bin and Apple Silicon Homebrew path
             let pathsToCheck = [
                 vtTargetPath,
-                "/opt/homebrew/bin/vt"
+                "\(FilePathConstants.optHomebrewBin)/vt"
             ]
 
             for path in pathsToCheck where FileManager.default.fileExists(atPath: path) {
@@ -452,7 +452,7 @@ final class CLIInstaller {
             // Check both possible installation paths
             let pathsToCheck = [
                 vtTargetPath,
-                "/opt/homebrew/bin/vt"
+                "\(FilePathConstants.optHomebrewBin)/vt"
             ]
 
             var installedHash: String?

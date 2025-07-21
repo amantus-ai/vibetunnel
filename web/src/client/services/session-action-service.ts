@@ -1,7 +1,7 @@
 /**
  * Session Action Service
  *
- * A singleton service that manages session actions like terminate and clear,
+ * A singleton service that manages session actions like terminate and delete,
  * coordinating with the auth client and handling UI updates through callbacks.
  * Reusable across session-view, session-list, and session-card components.
  *
@@ -52,10 +52,10 @@ export interface SessionActionCallbacks {
 
   /**
    * Called when a session action completes successfully
-   * @param action - The action that was performed ('terminate' or 'clear')
+   * @param action - The action that was performed ('terminate' or 'delete')
    * @param sessionId - The ID of the affected session
    */
-  onSuccess?: (action: 'terminate' | 'clear', sessionId: string) => void;
+  onSuccess?: (action: 'terminate' | 'delete', sessionId: string) => void;
 }
 
 /**
@@ -189,7 +189,7 @@ class SessionActionService {
    * @remarks
    * - Only works on sessions with status 'exited'
    * - Removes the session record from the server
-   * - Emits a 'session-action' event with action 'clear'
+   * - Emits a 'session-action' event with action 'delete'
    * - Useful for cleaning up terminated sessions from the UI
    *
    * @example
@@ -224,13 +224,13 @@ class SessionActionService {
       options.callbacks?.onError?.(errorMessage);
     } else {
       logger.log('Session cleared successfully', { sessionId: session.id });
-      options.callbacks?.onSuccess?.('clear', session.id);
+      options.callbacks?.onSuccess?.('delete', session.id);
       // Emit global event for other components to react (only in browser environment)
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
           new CustomEvent('session-action', {
             detail: {
-              action: 'clear',
+              action: 'delete',
               sessionId: session.id,
             },
           })
@@ -340,7 +340,7 @@ class SessionActionService {
       }
 
       logger.log('Session deleted successfully', { sessionId });
-      options.callbacks?.onSuccess?.('terminate', sessionId);
+      options.callbacks?.onSuccess?.('delete', sessionId);
 
       // Emit global event (only in browser environment)
       if (typeof window !== 'undefined') {

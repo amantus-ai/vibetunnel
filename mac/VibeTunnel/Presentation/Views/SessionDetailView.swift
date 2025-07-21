@@ -15,6 +15,10 @@ struct SessionDetailView: View {
     @State private var windowSearchAttempted = false
     @Environment(SystemPermissionManager.self)
     private var permissionManager
+    @Environment(SessionService.self)
+    private var sessionService
+    @Environment(ServerManager.self)
+    private var serverManager
 
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SessionDetailView")
 
@@ -186,13 +190,32 @@ struct SessionDetailView: View {
     }
 
     private func openInTerminal() {
-        // TODO: Implement opening session in terminal
-        logger.info("Opening session \(session.id) in terminal")
+        do {
+            let terminalLauncher = TerminalLauncher.shared
+            try terminalLauncher.launchTerminalSession(
+                workingDirectory: session.workingDir,
+                command: session.command.joined(separator: " "),
+                sessionId: session.id
+            )
+            logger.info("Opened session \(session.id) in terminal")
+        } catch {
+            logger.error("Failed to open session in terminal: \(error)")
+            // Could show an alert here if needed
+        }
     }
 
     private func terminateSession() {
-        // TODO: Implement session termination
-        logger.info("Terminating session \(session.id)")
+        Task {
+            do {
+                try await sessionService.terminateSession(sessionId: session.id)
+                logger.info("Terminated session \(session.id)")
+                // The view will automatically update when session is removed from monitor
+                // You could dismiss the window here if desired
+            } catch {
+                logger.error("Failed to terminate session: \(error)")
+                // Could show an alert here if needed
+            }
+        }
     }
 
     private func findWindow() {

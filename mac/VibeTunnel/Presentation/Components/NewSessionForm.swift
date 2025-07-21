@@ -37,7 +37,6 @@ struct NewSessionForm: View {
         case directory
     }
 
-
     var body: some View {
         VStack(spacing: 0) {
             // Header with back button
