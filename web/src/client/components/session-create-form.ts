@@ -663,46 +663,20 @@ export class SessionCreateForm extends LitElement {
         // Trigger re-render after updating gitRepoInfo
         this.requestUpdate();
 
-        try {
-          // Fetch available branches/worktrees
-          const worktrees = await this.gitService.listWorktrees(repoInfo.repoPath);
-          this.availableBranches = worktrees.worktrees.map((w) =>
-            w.branch.startsWith('refs/heads/') ? w.branch.slice(11) : w.branch
-          );
-
-          // Find the worktree that contains the current path
-          // The path might be a subdirectory of the worktree root
-          const currentWorktree = worktrees.worktrees.find((w) => {
-            // Normalize paths for comparison
-            const worktreePath = w.path.endsWith('/') ? w.path : `${w.path}/`;
-            const currentPath = path.endsWith('/') ? path : `${path}/`;
-            // Check if current path starts with worktree path
-            return currentPath.startsWith(worktreePath) || w.path === path;
-          });
-
-          if (currentWorktree) {
-            this.selectedBranch = currentWorktree.branch.startsWith('refs/heads/')
-              ? currentWorktree.branch.slice(11)
-              : currentWorktree.branch;
-          } else {
-            this.selectedBranch = worktrees.baseBranch.startsWith('refs/heads/')
-              ? worktrees.baseBranch.slice(11)
-              : worktrees.baseBranch;
-          }
-          // Trigger re-render after updating branches
-          this.requestUpdate();
-        } catch (worktreeError) {
-          // If worktree listing fails, keep the git repo info but clear branch selection
-          logger.debug('Failed to list worktrees:', worktreeError);
-          this.availableBranches = [];
-          this.selectedBranch = '';
-          // Git repo is still valid, just can't get branch info
-        }
+        // Load branches in parallel with worktrees
+        await Promise.all([
+          this.loadBranches(repoInfo.repoPath),
+          this.loadWorktrees(repoInfo.repoPath, path)
+        ]);
       } else {
         logger.log(`❌ Not a Git repository: ${path}`, repoInfo);
         this.gitRepoInfo = null;
         this.availableBranches = [];
         this.selectedBranch = '';
+        this.currentBranch = '';
+        this.selectedBaseBranch = '';
+        this.availableWorktrees = [];
+        this.selectedWorktree = undefined;
         // Trigger re-render to clear Git UI
         this.requestUpdate();
       }
@@ -711,6 +685,10 @@ export class SessionCreateForm extends LitElement {
       this.gitRepoInfo = null;
       this.availableBranches = [];
       this.selectedBranch = '';
+      this.currentBranch = '';
+      this.selectedBaseBranch = '';
+      this.availableWorktrees = [];
+      this.selectedWorktree = undefined;
     } finally {
       this.isCheckingGit = false;
     }

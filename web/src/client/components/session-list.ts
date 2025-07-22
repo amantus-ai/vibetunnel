@@ -461,7 +461,7 @@ export class SessionList extends LitElement {
 
         // Set the current branch as selected if not already selected
         if (!this.selectedBranches.has(repoPath)) {
-          const currentBranch = branches.find((b: any) => b.current);
+          const currentBranch = branches.find((b: { current: boolean; name: string }) => b.current);
           if (currentBranch) {
             this.selectedBranches.set(repoPath, currentBranch.name);
           }
@@ -810,7 +810,7 @@ export class SessionList extends LitElement {
                       </h3>
                       ${Array.from(this.groupSessionsByRepo(activeSessions)).map(
                         ([repoPath, repoSessions]) => html`
-                          <div class="${repoPath ? 'mb-6' : ''}">
+                          <div class="${repoPath ? 'mb-6 mt-6' : ''}">
                             ${
                               repoPath
                                 ? html`
@@ -1042,7 +1042,7 @@ export class SessionList extends LitElement {
                       </h3>
                       ${Array.from(this.groupSessionsByRepo(idleSessions)).map(
                         ([repoPath, repoSessions]) => html`
-                          <div class="${repoPath ? 'mb-6' : ''}">
+                          <div class="${repoPath ? 'mb-6 mt-6' : ''}">
                             ${
                               repoPath
                                 ? html`
@@ -1202,7 +1202,7 @@ export class SessionList extends LitElement {
                       </h3>
                       ${Array.from(this.groupSessionsByRepo(exitedSessions)).map(
                         ([repoPath, repoSessions]) => html`
-                          <div class="${repoPath ? 'mb-6' : ''}">
+                          <div class="${repoPath ? 'mb-6 mt-6' : ''}">
                             ${
                               repoPath
                                 ? html`
