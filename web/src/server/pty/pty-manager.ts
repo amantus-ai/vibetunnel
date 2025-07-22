@@ -2172,7 +2172,9 @@ export class PtyManager extends EventEmitter {
         currentDir,
         session.sessionInfo.command,
         activity,
-        session.sessionInfo.name
+        session.sessionInfo.name,
+        session.sessionInfo.gitRepoPath,
+        session.sessionInfo.gitBranch
       );
     }
 

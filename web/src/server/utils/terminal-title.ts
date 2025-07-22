@@ -160,13 +160,17 @@ export function injectTitleIfNeeded(data: string, title: string): string {
  * @param command Command being run
  * @param activity Current activity state
  * @param sessionName Optional session name
+ * @param gitRepoPath Optional Git repository path
+ * @param gitBranch Optional Git branch name
  * @returns Terminal title escape sequence
  */
 export function generateDynamicTitle(
   cwd: string,
   command: string[],
   activity: ActivityState,
-  sessionName?: string
+  sessionName?: string,
+  gitRepoPath?: string,
+  gitBranch?: string
 ): string {
   const homeDir = os.homedir();
   const displayPath = cwd.startsWith(homeDir) ? cwd.replace(homeDir, '~') : cwd;
@@ -199,7 +203,17 @@ export function generateDynamicTitle(
   }
 
   // Build base parts for auto-generated or no session name
-  const baseParts = [displayPath, cmdName];
+  const baseParts = [];
+
+  // If in a Git repository, format as repoName-branch instead of full path
+  if (gitRepoPath && gitBranch) {
+    const repoName = path.basename(gitRepoPath);
+    baseParts.push(`${repoName}-${gitBranch}`);
+  } else {
+    baseParts.push(displayPath);
+  }
+
+  baseParts.push(cmdName);
 
   // Add session name if provided and auto-generated
   if (sessionName?.trim()) {
@@ -208,19 +222,19 @@ export function generateDynamicTitle(
 
   // If we have specific status, put it first
   if (activity.specificStatus) {
-    // Format: status · path · command · session name
+    // Format: status · repoName-branch/path · command · session name
     const title = `${activity.specificStatus.status} · ${baseParts.join(' · ')}`;
     return `\x1B]2;${title}\x07`;
   }
 
   // Otherwise use generic activity indicator (only when active)
   if (activity.isActive) {
-    // Format: ● path · command · session name
+    // Format: ● repoName-branch/path · command · session name
     const title = `● ${baseParts.join(' · ')}`;
     return `\x1B]2;${title}\x07`;
   }
 
-  // When idle, no indicator - just path · command · session name
+  // When idle, no indicator - just repoName-branch/path · command · session name
   const title = baseParts.join(' · ');
 
   // OSC 2 sequence: ESC ] 2 ; <title> BEL
