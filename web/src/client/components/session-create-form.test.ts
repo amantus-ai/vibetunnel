@@ -687,19 +687,19 @@ describe('SessionCreateForm', () => {
 
   describe('Git repository integration', () => {
     let fetchCalls: Array<[string, RequestInit | undefined]>;
-    
+
     beforeEach(async () => {
       // Track fetch calls
       fetchCalls = [];
-      
+
       // Override global fetch with a custom mock that handles Git API patterns
       const originalFetch = global.fetch;
       global.fetch = vi.fn(async (url: string, options?: RequestInit) => {
         const urlStr = url.toString();
-        
+
         // Track the call
         fetchCalls.push([urlStr, options]);
-        
+
         // Mock Git repo info endpoint
         if (urlStr.includes('/api/git/repo-info')) {
           return {
@@ -711,7 +711,7 @@ describe('SessionCreateForm', () => {
             }),
           } as Response;
         }
-        
+
         // Mock worktrees endpoint
         if (urlStr.includes('/api/worktrees')) {
           return {
@@ -731,7 +731,7 @@ describe('SessionCreateForm', () => {
             }),
           } as Response;
         }
-        
+
         // For all other URLs, use the original fetchMock
         return originalFetch(url, options);
       });
@@ -765,7 +765,7 @@ describe('SessionCreateForm', () => {
       expect(element.gitRepoInfo).toBeTruthy();
       expect(element.gitRepoInfo?.isGitRepo).toBe(true);
       expect(element.availableBranches).toEqual(['main', 'feature']);
-      
+
       // Check that branch selector is rendered
       const branchSelect = element.querySelector('[data-testid="git-branch-select"]');
       expect(branchSelect).toBeTruthy();
@@ -1000,7 +1000,7 @@ describe('SessionCreateForm', () => {
       `);
 
       // Clear calls
-      fetchMock.clear();
+      fetchCalls = [];
 
       // Make visible
       newElement.visible = true;
@@ -1010,9 +1010,7 @@ describe('SessionCreateForm', () => {
       await waitForAsync(100);
 
       // Verify Git check was made
-      const gitCheckCall = fetchMock
-        .getCalls()
-        .find((call) => call[0].includes('/api/git/repo-info'));
+      const gitCheckCall = fetchCalls.find((call) => call[0].includes('/api/git/repo-info'));
       expect(gitCheckCall).toBeTruthy();
 
       newElement.remove();
