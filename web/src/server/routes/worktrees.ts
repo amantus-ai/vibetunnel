@@ -564,20 +564,23 @@ export function createWorktreeRoutes(): Router {
         });
       }
 
-      if (!branch || typeof branch !== 'string') {
-        return res.status(400).json({
-          error: 'Missing or invalid branch in request body',
-        });
-      }
-
       if (typeof enable !== 'boolean') {
         return res.status(400).json({
           error: 'Missing or invalid enable flag in request body',
         });
       }
 
+      // Branch is only required when enabling follow mode
+      if (enable && (!branch || typeof branch !== 'string')) {
+        return res.status(400).json({
+          error: 'Missing or invalid branch in request body',
+        });
+      }
+
       const absoluteRepoPath = path.resolve(repoPath);
-      logger.debug(`${enable ? 'Enabling' : 'Disabling'} follow mode for branch: ${branch}`);
+      logger.debug(
+        `${enable ? 'Enabling' : 'Disabling'} follow mode${branch ? ` for branch: ${branch}` : ''}`
+      );
 
       if (enable) {
         // Check if Git hooks are already installed

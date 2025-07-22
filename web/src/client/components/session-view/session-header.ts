@@ -300,6 +300,8 @@ export class SessionHeader extends LitElement {
               .onCreateSession=${this.onCreateSession}
               .currentTheme=${this.currentTheme}
               .macAppConnected=${this.macAppConnected}
+              .onTerminateSession=${this.onTerminateSession}
+              .onClearSession=${this.onClearSession}
             ></mobile-menu>
           </div>
         </div>

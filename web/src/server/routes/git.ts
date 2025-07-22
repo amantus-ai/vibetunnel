@@ -30,6 +30,16 @@ interface GitEventNotification {
   sessionsUpdated: string[];
 }
 
+// Store for pending notifications when macOS client is not connected
+const pendingNotifications: Array<{
+  timestamp: number;
+  notification: {
+    level: 'info' | 'error';
+    title: string;
+    message: string;
+  };
+}> = [];
+
 // In-memory lock to prevent race conditions
 interface RepoLock {
   isLocked: boolean;
@@ -311,13 +321,24 @@ export function createGitRoutes(): Router {
             followBranch = undefined;
 
             // Send notification about follow mode being disabled
+            const divergeNotif = {
+              level: 'error' as const,
+              title: 'Follow Mode Disabled',
+              message: `Branches have diverged by ${divergedCommits} commits. Follow mode has been disabled.`,
+            };
+
             if (controlUnixHandler.isMacAppConnected()) {
-              const divergeNotification = createControlEvent('system', 'notification', {
-                level: 'error',
-                title: 'Follow Mode Disabled',
-                message: `Branches have diverged by ${divergedCommits} commits. Follow mode has been disabled.`,
-              });
+              const divergeNotification = createControlEvent(
+                'system',
+                'notification',
+                divergeNotif
+              );
               controlUnixHandler.sendToMac(divergeNotification);
+            } else {
+              pendingNotifications.push({
+                timestamp: Date.now(),
+                notification: divergeNotif,
+              });
             }
           } else {
             // Perform the sync (checkout to the followed branch)
@@ -325,13 +346,20 @@ export function createGitRoutes(): Router {
             await execGit(['checkout', followBranch], { cwd: repoPath });
 
             // Send sync success notification
+            const syncNotif = {
+              level: 'info' as const,
+              title: 'Repository Synced',
+              message: `Successfully synced to branch '${followBranch}'`,
+            };
+
             if (controlUnixHandler.isMacAppConnected()) {
-              const syncNotification = createControlEvent('system', 'notification', {
-                level: 'info',
-                title: 'Repository Synced',
-                message: `Successfully synced to branch '${followBranch}'`,
-              });
+              const syncNotification = createControlEvent('system', 'notification', syncNotif);
               controlUnixHandler.sendToMac(syncNotification);
+            } else {
+              pendingNotifications.push({
+                timestamp: Date.now(),
+                notification: syncNotif,
+              });
             }
           }
         } catch (error) {
@@ -346,13 +374,20 @@ export function createGitRoutes(): Router {
             followBranch = undefined;
 
             // Send error notification
+            const errorNotif = {
+              level: 'error' as const,
+              title: 'Sync Failed',
+              message: `Failed to sync repository: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            };
+
             if (controlUnixHandler.isMacAppConnected()) {
-              const errorNotification = createControlEvent('system', 'notification', {
-                level: 'error',
-                title: 'Sync Failed',
-                message: `Failed to sync repository: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              });
+              const errorNotification = createControlEvent('system', 'notification', errorNotif);
               controlUnixHandler.sendToMac(errorNotification);
+            } else {
+              pendingNotifications.push({
+                timestamp: Date.now(),
+                notification: errorNotif,
+              });
             }
           } catch (configError) {
             logger.error('Failed to disable follow mode:', configError);
@@ -370,23 +405,54 @@ export function createGitRoutes(): Router {
         sessionsUpdated: updatedSessionIds,
       };
 
-      // Send notifications via Unix socket to Mac app
+      // Prepare notifications
+      const notificationsToSend: Array<{
+        level: 'info' | 'error';
+        title: string;
+        message: string;
+      }> = [];
+
+      // Add specific follow mode notifications
+      if (followMode && followBranch) {
+        notificationsToSend.push({
+          level: 'info',
+          title: 'Follow Mode Active',
+          message: `Following branch '${followBranch}' in ${path.basename(repoPath)}`,
+        });
+      }
+
+      // Send notifications via Unix socket to Mac app if connected
       if (controlUnixHandler.isMacAppConnected()) {
         // Send repository changed event
         const controlMessage = createControlEvent('git', 'repository-changed', notification);
         controlUnixHandler.sendToMac(controlMessage);
         logger.debug('Sent git event notification to Mac app');
 
-        // Send specific follow mode notifications
-        if (followMode && followBranch) {
-          // Follow mode is active
-          const followNotification = createControlEvent('system', 'notification', {
-            level: 'info',
-            title: 'Follow Mode Active',
-            message: `Following branch '${followBranch}' in ${path.basename(repoPath)}`,
-          });
-          controlUnixHandler.sendToMac(followNotification);
+        // Send specific notifications
+        for (const notif of notificationsToSend) {
+          const notificationMessage = createControlEvent('system', 'notification', notif);
+          controlUnixHandler.sendToMac(notificationMessage);
         }
+      } else {
+        // Store notifications for web UI when macOS client is not connected
+        const now = Date.now();
+        for (const notif of notificationsToSend) {
+          pendingNotifications.push({
+            timestamp: now,
+            notification: notif,
+          });
+        }
+
+        // Keep only notifications from the last 5 minutes
+        const fiveMinutesAgo = now - 5 * 60 * 1000;
+        while (
+          pendingNotifications.length > 0 &&
+          pendingNotifications[0].timestamp < fiveMinutesAgo
+        ) {
+          pendingNotifications.shift();
+        }
+
+        logger.debug(`Stored ${notificationsToSend.length} notifications for web UI`);
       }
 
       // Return success response
@@ -408,6 +474,36 @@ export function createGitRoutes(): Router {
       if (lockAcquired && repoPath) {
         releaseRepoLock(repoPath);
       }
+    }
+  });
+
+  /**
+   * GET /api/git/notifications
+   * Get pending notifications for the web UI
+   */
+  router.get('/git/notifications', async (_req, res) => {
+    try {
+      // Clean up old notifications (older than 5 minutes)
+      const now = Date.now();
+      const fiveMinutesAgo = now - 5 * 60 * 1000;
+      while (
+        pendingNotifications.length > 0 &&
+        pendingNotifications[0].timestamp < fiveMinutesAgo
+      ) {
+        pendingNotifications.shift();
+      }
+
+      // Return current notifications and clear them
+      const notifications = pendingNotifications.map((n) => n.notification);
+      pendingNotifications.length = 0;
+
+      logger.debug(`Returning ${notifications.length} pending notifications`);
+      res.json({ notifications });
+    } catch (error) {
+      logger.error('Error fetching notifications:', error);
+      return res.status(500).json({
+        error: 'Failed to fetch notifications',
+      });
     }
   });
 

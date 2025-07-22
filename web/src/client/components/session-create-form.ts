@@ -76,6 +76,9 @@ export class SessionCreateForm extends LitElement {
   @state() private isCheckingGit = false;
   @state() private availableBranches: string[] = [];
   @state() private selectedBranch: string = '';
+  @state() private showCreateWorktree = false;
+  @state() private newBranchName = '';
+  @state() private isCreatingWorktree = false;
 
   @state() private quickStartCommands = [
     { label: '✨ claude', command: 'claude' },
@@ -683,6 +686,63 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
+  private async handleCreateWorktree() {
+    if (!this.newBranchName.trim() || !this.gitRepoInfo?.repoPath || !this.gitService) {
+      return;
+    }
+
+    this.isCreatingWorktree = true;
+
+    try {
+      // Generate worktree path based on branch name
+      const branchSlug = this.newBranchName.trim().replace(/[^a-zA-Z0-9-_]/g, '-');
+      const worktreePath = `${this.gitRepoInfo.repoPath}-${branchSlug}`;
+
+      // Create the worktree
+      await this.gitService.createWorktree(
+        this.gitRepoInfo.repoPath,
+        this.newBranchName.trim(),
+        worktreePath,
+        this.selectedBranch || 'main' // Use selected branch as base
+      );
+
+      // Update working directory to the new worktree
+      this.workingDir = worktreePath;
+
+      // Update selected branch to the new branch
+      this.selectedBranch = this.newBranchName.trim();
+
+      // Add new branch to available branches
+      if (!this.availableBranches.includes(this.selectedBranch)) {
+        this.availableBranches = [...this.availableBranches, this.selectedBranch];
+      }
+
+      // Reset UI state
+      this.showCreateWorktree = false;
+      this.newBranchName = '';
+
+      // Show success message
+      this.dispatchEvent(
+        new CustomEvent('success', {
+          detail: `Created worktree for branch '${this.selectedBranch}'`,
+          bubbles: true,
+          composed: true,
+        })
+      );
+    } catch (error) {
+      logger.error('Failed to create worktree:', error);
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: error instanceof Error ? error.message : 'Failed to create worktree',
+          bubbles: true,
+          composed: true,
+        })
+      );
+    } finally {
+      this.isCreatingWorktree = false;
+    }
+  }
+
   render() {
     if (!this.visible) {
       return html``;
@@ -881,49 +941,136 @@ export class SessionCreateForm extends LitElement {
               }
             </div>
 
-            <!-- Git Branch Selection (shown when Git repository detected) -->
+            <!-- Git Branch/Worktree Selection (shown when Git repository detected) -->
             ${
-              this.gitRepoInfo?.isGitRepo && this.availableBranches.length > 0
+              this.gitRepoInfo?.isGitRepo
                 ? html`
                   <div class="mb-2 sm:mb-3 lg:mb-5">
                     <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm flex items-center gap-1.5">
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" class="text-primary">
-                        <path d="M4.177 7.823A4.5 4.5 0 118 12.5a4.474 4.474 0 01-1.653-.316.75.75 0 11.557-1.392 2.999 2.999 0 001.096.208 3 3 0 10-2.108-5.134.75.75 0 01.236.662l.428 3.009a.75.75 0 01-1.255.592L2.847 7.677a.75.75 0 01.426-1.27A4.476 4.476 0 014.177 7.823zM8 1a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 1zm3.197 2.197a.75.75 0 01.092.992l-1 1.25a.75.75 0 01-1.17-.938l1-1.25a.75.75 0 01.992-.092.75.75 0 01.086.038zM5.75 8a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 015.75 8zm5.447 2.197a.75.75 0 01.092.992l-1 1.25a.75.75 0 11-1.17-.938l1-1.25a.75.75 0 01.992-.092.75.75 0 01.086.038z" />
+                        <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      Git Branch:
+                      Git Branch/Worktree:
                     </label>
-                    <div class="relative">
-                      <select
-                        .value=${this.selectedBranch}
-                        @change=${(e: Event) => {
-                          const select = e.target as HTMLSelectElement;
-                          this.selectedBranch = select.value;
-                        }}
-                        class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm appearance-none pr-8"
-                        ?disabled=${this.disabled || this.isCreating}
-                        data-testid="git-branch-select"
-                      >
-                        ${this.availableBranches.map(
-                          (branch) => html`
-                            <option value="${branch}" ?selected=${branch === this.selectedBranch}>
-                              ${branch}
-                            </option>
-                          `
-                        )}
-                      </select>
-                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-text-muted">
-                        <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </div>
+                    
+                    ${
+                      !this.showCreateWorktree
+                        ? html`
+                        <!-- Branch Selection Mode -->
+                        <div class="relative">
+                          <select
+                            .value=${this.selectedBranch}
+                            @change=${(e: Event) => {
+                              const select = e.target as HTMLSelectElement;
+                              this.selectedBranch = select.value;
+                            }}
+                            class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm appearance-none pr-8"
+                            ?disabled=${this.disabled || this.isCreating}
+                            data-testid="git-branch-select"
+                          >
+                            ${this.availableBranches.map(
+                              (branch) => html`
+                                <option value="${branch}" ?selected=${branch === this.selectedBranch}>
+                                  ${branch}
+                                </option>
+                              `
+                            )}
+                          </select>
+                          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-text-muted">
+                            <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
+                          <button
+                            type="button"
+                            @click=${() => {
+                              this.showCreateWorktree = true;
+                              this.newBranchName = '';
+                            }}
+                            class="text-[10px] sm:text-xs text-primary hover:text-primary-dark transition-colors flex items-center gap-1"
+                            ?disabled=${this.disabled || this.isCreating}
+                          >
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Create new worktree
+                          </button>
+                          <span class="text-text-muted">•</span>
+                          <button
+                            type="button"
+                            @click=${() => {
+                              this.dispatchEvent(
+                                new CustomEvent('navigate-to-worktrees', {
+                                  detail: { repoPath: this.gitRepoInfo?.repoPath },
+                                  bubbles: true,
+                                  composed: true,
+                                })
+                              );
+                            }}
+                            class="text-[10px] sm:text-xs text-primary hover:text-primary-dark transition-colors flex items-center gap-1"
+                            ?disabled=${this.disabled || this.isCreating}
+                          >
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Manage worktrees
+                          </button>
+                        </div>
+                      `
+                        : html`
+                        <!-- Create Worktree Mode -->
+                        <div class="space-y-2">
+                          <input
+                            type="text"
+                            .value=${this.newBranchName}
+                            @input=${(e: InputEvent) => {
+                              this.newBranchName = (e.target as HTMLInputElement).value;
+                            }}
+                            placeholder="New branch name"
+                            class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm"
+                            ?disabled=${this.disabled || this.isCreating || this.isCreatingWorktree}
+                            @keydown=${(e: KeyboardEvent) => {
+                              if (e.key === 'Escape') {
+                                this.showCreateWorktree = false;
+                                this.newBranchName = '';
+                              }
+                            }}
+                          />
+                          <div class="flex items-center gap-2">
+                            <button
+                              type="button"
+                              @click=${this.handleCreateWorktree}
+                              class="text-[10px] sm:text-xs px-2 py-1 bg-primary text-bg-elevated rounded hover:bg-primary-dark transition-colors disabled:opacity-50"
+                              ?disabled=${!this.newBranchName.trim() || this.disabled || this.isCreating || this.isCreatingWorktree}
+                            >
+                              ${this.isCreatingWorktree ? 'Creating...' : 'Create'}
+                            </button>
+                            <button
+                              type="button"
+                              @click=${() => {
+                                this.showCreateWorktree = false;
+                                this.newBranchName = '';
+                              }}
+                              class="text-[10px] sm:text-xs text-text-muted hover:text-text transition-colors"
+                              ?disabled=${this.disabled || this.isCreating || this.isCreatingWorktree}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      `
+                    }
+                    
                     ${
                       this.isCheckingGit
                         ? html`
-                          <div class="text-text-muted text-[9px] sm:text-[10px] mt-1">
-                            Checking repository...
-                          </div>
-                        `
+                        <div class="text-text-muted text-[9px] sm:text-[10px] mt-1">
+                          Checking repository...
+                        </div>
+                      `
                         : ''
                     }
                   </div>

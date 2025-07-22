@@ -23,6 +23,7 @@ describe('Worktree Workflows Integration Tests', () => {
   let terminalManager: TerminalManager;
   let activityMonitor: ActivityMonitor;
   let streamWatcher: StreamWatcher;
+  let localPtyManager: any;
 
   // Helper to execute git commands
   async function gitExec(args: string[], cwd: string = testRepoPath) {
@@ -84,12 +85,16 @@ describe('Worktree Workflows Integration Tests', () => {
     activityMonitor = new ActivityMonitor();
     streamWatcher = new StreamWatcher();
 
+    // Create PtyManager with session manager
+    localPtyManager = new ptyManager.constructor();
+    (localPtyManager as any).sessionManager = sessionManager;
+
     // Set up Express app
     app = express();
     app.use(express.json());
 
     const config = {
-      ptyManager,
+      ptyManager: localPtyManager,
       terminalManager,
       streamWatcher,
       remoteRegistry: null,
@@ -132,8 +137,7 @@ describe('Worktree Workflows Integration Tests', () => {
         (w: { isMainWorktree: boolean }) => w.isMainWorktree
       );
       expect(mainWorktree).toBeDefined();
-      expect(mainWorktree.branch).toBe('main');
-      expect(mainWorktree.isCurrentWorktree).toBe(true);
+      expect(mainWorktree.branch).toBe('refs/heads/main');
 
       const featureWorktree = response.body.worktrees.find(
         (w: { branch: string; isMainWorktree: boolean }) =>

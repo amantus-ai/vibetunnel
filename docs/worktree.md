@@ -138,6 +138,14 @@ The macOS client will provide the user interface for this feature.
 
 The web UI provides Git-aware features when the macOS client is not available:
 
+*   **Session Creation with Git Integration:**
+    *   When creating a new session, the UI detects if the selected directory is a Git repository.
+    *   If a Git repository is detected, users can:
+        *   Select an existing branch from a dropdown
+        *   Create a new worktree with a custom branch name
+        *   Navigate to the worktree management UI
+    *   When creating a new worktree, the working directory automatically switches to the new worktree path.
+
 *   **Session Grouping and Branch Labels:**
     *   Sessions are automatically grouped by their `gitRepoPath` property.
     *   Each session displays its current Git branch name in brackets next to the session name.
@@ -145,14 +153,16 @@ The web UI provides Git-aware features when the macOS client is not available:
 
 *   **Worktree Management UI:**
     *   Accessible via a Git icon button on session cards that have a `gitRepoPath`.
+    *   Also accessible from the session creation dialog when a Git repository is detected.
     *   Displays the same worktree management interface as the macOS client.
     *   All worktree operations (list, delete, prune, follow mode) are available.
     *   Success/error notifications are displayed as toast messages in the web UI.
 
 *   **Notification Handling:**
-    *   When the macOS client is not connected, Git event notifications are displayed as temporary toast messages.
-    *   The web UI uses the existing `showSuccess` and `showError` methods for notification display.
-    *   Notifications automatically disappear after a configured timeout.
+    *   Git event notifications are event-driven, not polled.
+    *   When the macOS client is connected, notifications are sent via Unix socket for native display.
+    *   When the macOS client is not connected, notifications are stored server-side and included in API responses.
+    *   The web UI displays these notifications as temporary toast messages using the existing `showSuccess` and `showError` methods.
 
 ### 2.5. CLI Tool (`vt`)
 

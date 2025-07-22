@@ -10,6 +10,7 @@ import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { GitService, Worktree, WorktreeListResponse } from '../services/git-service.js';
 import { createLogger } from '../utils/logger.js';
+import { formatPathForDisplay } from '../utils/path-utils.js';
 import './notification-status.js';
 
 const logger = createLogger('worktree-manager');
@@ -155,6 +156,14 @@ export class WorktreeManager extends LitElement {
           composed: true,
         })
       );
+
+      // Trigger a check for Git notifications after follow mode change
+      this.dispatchEvent(
+        new CustomEvent('check-git-notifications', {
+          bubbles: true,
+          composed: true,
+        })
+      );
     } catch (err) {
       logger.error('Failed to toggle follow mode:', err);
       this.dispatchEvent(
@@ -168,11 +177,7 @@ export class WorktreeManager extends LitElement {
   }
 
   private formatPath(path: string): string {
-    const home = process.env.HOME || '';
-    if (home && path.startsWith(home)) {
-      return `~${path.slice(home.length)}`;
-    }
-    return path;
+    return formatPathForDisplay(path);
   }
 
   render() {

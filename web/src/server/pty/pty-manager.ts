@@ -545,6 +545,49 @@ export class PtyManager extends EventEmitter {
       // Write to asciinema file (it has its own internal queue)
       asciinemaWriter?.writeOutput(Buffer.from(processedData, 'utf8'));
 
+      // Check for clear sequences in the data and update lastClearOffset
+      const CLEAR_SEQUENCE = '\x1b[3J';
+      if (processedData.includes(CLEAR_SEQUENCE) && asciinemaWriter && streamPath) {
+        // Find all occurrences of clear sequences
+        let searchIndex = 0;
+        const clearPositions: number[] = [];
+        
+        while (searchIndex < processedData.length) {
+          const clearIndex = processedData.indexOf(CLEAR_SEQUENCE, searchIndex);
+          if (clearIndex === -1) break;
+          
+          clearPositions.push(clearIndex);
+          searchIndex = clearIndex + CLEAR_SEQUENCE.length;
+        }
+
+        // If we found clear sequences, schedule an update after a short delay
+        // This ensures the asciinema writer has flushed the data to disk
+        if (clearPositions.length > 0) {
+          // Use a short timeout to ensure the write has completed
+          setTimeout(async () => {
+            try {
+              // Get the current file size (which is the position after the write)
+              const stats = await fs.promises.stat(streamPath);
+              const currentFileSize = stats.size;
+              
+              // Update lastClearOffset to the current file position
+              // This is approximate but good enough - when replay happens,
+              // stream-watcher will find the exact position of the last clear
+              session.lastClearOffset = currentFileSize;
+              
+              // Save the updated session info
+              await this.sessionManager.saveSessionInfo(session);
+              
+              logger.debug(
+                `Updated lastClearOffset for session ${session.id} to ${currentFileSize} after detecting ${clearPositions.length} clear sequence(s)`
+              );
+            } catch (error) {
+              logger.error(`Failed to update lastClearOffset for session ${session.id}:`, error);
+            }
+          }, 100); // 100ms delay to ensure write completes
+        }
+      }
+
       // Forward to stdout if requested (using queue for ordering)
       if (forwardToStdout && stdoutQueue) {
         stdoutQueue.enqueue(async () => {

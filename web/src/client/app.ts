@@ -1768,6 +1768,10 @@ export class VibeTunnelApp extends LitElement {
         @session-created=${this.handleSessionCreated}
         @cancel=${this.handleCreateModalClose}
         @error=${this.handleError}
+        @navigate-to-worktrees=${(e: CustomEvent) => {
+          this.handleCreateModalClose();
+          this.handleNavigateToWorktrees(e.detail.repoPath);
+        }}
       ></session-create-form>
 
       <!-- Version and logs link with smart positioning -->
