@@ -22,6 +22,7 @@ import { SessionManager } from './pty/session-manager.js';
 import { VibeTunnelSocketClient } from './pty/socket-client.js';
 import { ActivityDetector } from './utils/activity-detector.js';
 import { checkAndPatchClaude } from './utils/claude-patcher.js';
+import { getMainRepositoryPath } from './utils/git-utils.js';
 import {
   closeLogger,
   createLogger,
@@ -41,6 +42,11 @@ const execFile = promisify(require('child_process').execFile);
 interface GitInfo {
   gitRepoPath?: string;
   gitBranch?: string;
+  gitAheadCount?: number;
+  gitBehindCount?: number;
+  gitHasChanges?: boolean;
+  gitIsWorktree?: boolean;
+  gitMainRepoPath?: string;
 }
 
 /**
@@ -66,9 +72,68 @@ async function detectGitInfo(workingDir: string): Promise<GitInfo> {
       });
 
       const gitBranch = branch.trim();
-      logger.debug(`Detected Git info: repo=${gitRepoPath}, branch=${gitBranch}`);
 
-      return { gitRepoPath, gitBranch };
+      // Get additional Git status information
+      let gitAheadCount: number | undefined;
+      let gitBehindCount: number | undefined;
+      let gitHasChanges = false;
+      let gitIsWorktree = false;
+
+      try {
+        // Check if this is a worktree
+        const gitFile = path.join(workingDir, '.git');
+        const stats = await fs.promises.stat(gitFile).catch(() => null);
+        gitIsWorktree = stats ? !stats.isDirectory() : false;
+
+        // Get ahead/behind status
+        const { stdout: statusOutput } = await execFile(
+          'git',
+          ['status', '--porcelain=v1', '--branch'],
+          {
+            cwd: workingDir,
+            timeout: 5000,
+            env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+          }
+        );
+
+        const lines = statusOutput.trim().split('\n');
+        const branchLine = lines[0];
+
+        // Parse branch line for ahead/behind info
+        if (branchLine?.startsWith('##')) {
+          const aheadMatch = branchLine.match(/\[ahead (\d+)/);
+          const behindMatch = branchLine.match(/behind (\d+)/);
+
+          if (aheadMatch) {
+            gitAheadCount = Number.parseInt(aheadMatch[1], 10);
+          }
+          if (behindMatch) {
+            gitBehindCount = Number.parseInt(behindMatch[1], 10);
+          }
+        }
+
+        // Check for uncommitted changes (any lines after the branch line)
+        gitHasChanges = lines.slice(1).some((line: string) => line.trim().length > 0);
+      } catch (statusError) {
+        logger.debug(`Could not get detailed Git status: ${statusError}`);
+      }
+
+      // Get main repository path
+      const gitMainRepoPath = gitIsWorktree ? await getMainRepositoryPath(workingDir) : gitRepoPath;
+
+      logger.debug(
+        `Detected Git info: repo=${gitRepoPath}, branch=${gitBranch}, ahead=${gitAheadCount}, behind=${gitBehindCount}, changes=${gitHasChanges}, worktree=${gitIsWorktree}`
+      );
+
+      return {
+        gitRepoPath,
+        gitBranch,
+        gitAheadCount,
+        gitBehindCount,
+        gitHasChanges,
+        gitIsWorktree,
+        gitMainRepoPath,
+      };
     } catch (branchError) {
       // Could be in detached HEAD state or other situation where branch name isn't available
       logger.debug(`Could not detect Git branch: ${branchError}`);
@@ -76,7 +141,7 @@ async function detectGitInfo(workingDir: string): Promise<GitInfo> {
     }
   } catch (error) {
     // Not in a Git repository or git command failed
-    logger.debug(`Not a Git repository: ${error}`);
+    logger.debug(`Git detection failed for ${workingDir}: ${error}`);
     return {};
   }
 }
@@ -433,6 +498,11 @@ export async function startVibeTunnelForward(args: string[]) {
       forwardToStdout: true,
       gitRepoPath: gitInfo.gitRepoPath,
       gitBranch: gitInfo.gitBranch,
+      gitAheadCount: gitInfo.gitAheadCount,
+      gitBehindCount: gitInfo.gitBehindCount,
+      gitHasChanges: gitInfo.gitHasChanges,
+      gitIsWorktree: gitInfo.gitIsWorktree,
+      gitMainRepoPath: gitInfo.gitMainRepoPath,
       onExit: async (exitCode: number) => {
         // Show exit message
         logger.log(

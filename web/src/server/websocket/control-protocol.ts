@@ -28,6 +28,7 @@ export interface TerminalSpawnRequest {
   gitBehindCount?: number;
   gitHasChanges?: boolean;
   gitIsWorktree?: boolean;
+  gitMainRepoPath?: string;
 }
 
 export interface TerminalSpawnResponse {

@@ -443,9 +443,23 @@ export class SessionCreateForm extends LitElement {
     // Determine if we're actually spawning a terminal window
     const effectiveSpawnTerminal = this.spawnWindow && this.macAppConnected;
 
+    // Determine the working directory - use worktree path if a worktree is selected
+    let effectiveWorkingDir = this.workingDir?.trim() || '';
+    if (this.selectedWorktree && this.availableWorktrees.length > 0) {
+      const selectedWorktreeInfo = this.availableWorktrees.find(
+        (wt) => wt.branch === this.selectedWorktree
+      );
+      if (selectedWorktreeInfo?.path) {
+        effectiveWorkingDir = selectedWorktreeInfo.path;
+        logger.log(
+          `Using worktree path: ${effectiveWorkingDir} for branch: ${this.selectedWorktree}`
+        );
+      }
+    }
+
     const sessionData: SessionCreateData = {
       command: parseCommand(this.command?.trim() || ''),
-      workingDir: this.workingDir?.trim() || '',
+      workingDir: effectiveWorkingDir,
       spawn_terminal: effectiveSpawnTerminal,
       titleMode: this.titleMode,
     };

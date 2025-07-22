@@ -94,6 +94,75 @@ export function createRepositoryRoutes(): Router {
     }
   });
 
+  // Get follow mode status for a repository
+  router.get('/repositories/follow-mode', async (req, res) => {
+    try {
+      const repoPath = req.query.path as string;
+
+      if (!repoPath || typeof repoPath !== 'string') {
+        return res.status(400).json({
+          error: 'Missing or invalid path parameter',
+        });
+      }
+
+      const expandedPath = resolveAbsolutePath(repoPath);
+      logger.debug(`[GET /repositories/follow-mode] Getting follow mode for: ${expandedPath}`);
+
+      try {
+        const { stdout } = await execAsync('git config vibetunnel.followBranch', {
+          cwd: expandedPath,
+        });
+        const followBranch = stdout.trim();
+        res.json({ followBranch: followBranch || undefined });
+      } catch {
+        // Config not set - follow mode is disabled
+        res.json({ followBranch: undefined });
+      }
+    } catch (error) {
+      logger.error('[GET /repositories/follow-mode] Error getting follow mode:', error);
+      res.status(500).json({ error: 'Failed to get follow mode' });
+    }
+  });
+
+  // Set follow mode for a repository
+  router.post('/repositories/follow-mode', async (req, res) => {
+    try {
+      const { repoPath, followBranch } = req.body;
+
+      if (!repoPath || typeof repoPath !== 'string') {
+        return res.status(400).json({
+          error: 'Missing or invalid repoPath parameter',
+        });
+      }
+
+      const expandedPath = resolveAbsolutePath(repoPath);
+      logger.debug(
+        `[POST /repositories/follow-mode] Setting follow mode for ${expandedPath} to: ${followBranch}`
+      );
+
+      if (followBranch) {
+        // Set follow mode
+        await execAsync(`git config vibetunnel.followBranch "${followBranch}"`, {
+          cwd: expandedPath,
+        });
+      } else {
+        // Clear follow mode
+        try {
+          await execAsync('git config --unset vibetunnel.followBranch', {
+            cwd: expandedPath,
+          });
+        } catch {
+          // Config might not exist, that's okay
+        }
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      logger.error('[POST /repositories/follow-mode] Error setting follow mode:', error);
+      res.status(500).json({ error: 'Failed to set follow mode' });
+    }
+  });
+
   return router;
 }
 
