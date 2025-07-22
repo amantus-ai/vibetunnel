@@ -481,6 +481,83 @@ export function createGitRoutes(): Router {
   });
 
   /**
+   * GET /api/git/follow
+   * Check follow mode status for a repository
+   */
+  router.get('/git/follow', async (req, res) => {
+    try {
+      const { path: queryPath } = req.query;
+
+      if (!queryPath || typeof queryPath !== 'string') {
+        return res.status(400).json({
+          error: 'Missing or invalid path parameter',
+        });
+      }
+
+      // Resolve the path to absolute
+      const absolutePath = resolveAbsolutePath(queryPath);
+      logger.debug(`Checking follow mode for path: ${absolutePath}`);
+
+      // First check if it's a git repository
+      let repoPath: string;
+      try {
+        const { stdout } = await execGit(['rev-parse', '--show-toplevel'], {
+          cwd: absolutePath,
+        });
+        repoPath = stdout.trim();
+      } catch (error) {
+        if (isNotGitRepositoryError(error)) {
+          return res.json({
+            isGitRepo: false,
+            followMode: false,
+          });
+        }
+        throw error;
+      }
+
+      // Get follow mode configuration
+      let followBranch: string | undefined;
+      let followMode = false;
+
+      try {
+        const { stdout } = await execGit(['config', 'vibetunnel.followBranch'], {
+          cwd: repoPath,
+        });
+        followBranch = stdout.trim();
+        followMode = !!followBranch;
+      } catch (_error) {
+        // Config not set - follow mode is disabled
+        logger.debug('Follow branch not configured');
+      }
+
+      // Get current branch
+      let currentBranch: string | undefined;
+      try {
+        const { stdout } = await execGit(['branch', '--show-current'], {
+          cwd: repoPath,
+        });
+        currentBranch = stdout.trim();
+      } catch (_error) {
+        logger.debug('Could not get current branch');
+      }
+
+      return res.json({
+        isGitRepo: true,
+        repoPath,
+        followMode,
+        followBranch: followBranch || null,
+        currentBranch: currentBranch || null,
+      });
+    } catch (error) {
+      logger.error('Error checking follow mode:', error);
+      return res.status(500).json({
+        error: 'Failed to check follow mode',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
+  /**
    * GET /api/git/notifications
    * Get pending notifications for the web UI
    */
