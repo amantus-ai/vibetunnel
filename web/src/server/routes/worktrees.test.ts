@@ -299,7 +299,7 @@ branch refs/heads/feature
       );
       expect(mockExecFile).toHaveBeenCalledWith(
         'git',
-        ['config', '--local', 'vibetunnel.followMode', 'true'],
+        ['config', '--local', 'vibetunnel.followBranch', 'develop'],
         expect.objectContaining({ cwd: '/home/user/project' })
       );
     });
