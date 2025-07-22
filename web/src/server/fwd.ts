@@ -422,9 +422,14 @@ export async function startVibeTunnelForward(args: string[]) {
         // Stop watching the file
         fs.unwatchFile(sessionJsonPath);
 
-        // Shutdown PTY manager and exit
-        logger.debug('Shutting down PTY manager');
-        await ptyManager.shutdown();
+        // Clean up only this session, not all sessions
+        logger.debug(`Cleaning up session ${finalSessionId}`);
+        try {
+          await ptyManager.killSession(finalSessionId);
+        } catch (error) {
+          // Session might already be cleaned up
+          logger.debug(`Session ${finalSessionId} cleanup error (likely already cleaned):`, error);
+        }
 
         // Force exit
         closeLogger();
