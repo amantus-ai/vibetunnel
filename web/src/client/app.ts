@@ -273,7 +273,9 @@ export class VibeTunnelApp extends LitElement {
     }
 
     // In session view with capture active, check if we're capturing this shortcut
-    if (this.currentView === 'session' && this.keyboardCaptureActive) {
+    // But don't capture shortcuts if the session has exited
+    const isSessionExited = this.selectedSession?.status === 'exited';
+    if (this.currentView === 'session' && this.keyboardCaptureActive && !isSessionExited) {
       const { captured, browserAction, terminalAction } = checkCapturedShortcut();
       if (captured) {
         // Dispatch event for indicator animation
