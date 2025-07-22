@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as path from 'path';
 import { promisify } from 'util';
+import { areHooksInstalled, installGitHooks } from '../utils/git-hooks.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('worktree-routes');
@@ -486,8 +487,27 @@ export function createWorktreeRoutes(): Router {
       logger.debug(`${enable ? 'Enabling' : 'Disabling'} follow mode for branch: ${branch}`);
 
       if (enable) {
-        // TODO: Install Git hooks if not already installed
-        // This will be implemented when we add the hook installation logic
+        // Check if Git hooks are already installed
+        const hooksAlreadyInstalled = await areHooksInstalled(absoluteRepoPath);
+        logger.debug(`Git hooks installed: ${hooksAlreadyInstalled}`);
+
+        let hooksInstallResult = null;
+        if (!hooksAlreadyInstalled) {
+          // Install Git hooks
+          logger.info('Installing Git hooks for follow mode');
+          const installResult = await installGitHooks(absoluteRepoPath);
+          hooksInstallResult = installResult;
+
+          if (!installResult.success) {
+            logger.error('Failed to install Git hooks:', installResult.errors);
+            return res.status(500).json({
+              error: 'Failed to install Git hooks',
+              details: installResult.errors,
+            });
+          }
+
+          logger.info('Git hooks installed successfully');
+        }
 
         // Set the follow branch config
         await execGit(['config', '--local', 'vibetunnel.followBranch', branch], {
@@ -498,12 +518,18 @@ export function createWorktreeRoutes(): Router {
         return res.json({
           message: 'Follow mode enabled',
           branch,
+          hooksInstalled: !hooksAlreadyInstalled,
+          hooksInstallResult: hooksInstallResult,
         });
       } else {
         // Unset the follow branch config
         await execGit(['config', '--local', '--unset', 'vibetunnel.followBranch'], {
           cwd: absoluteRepoPath,
         });
+
+        // Note: We intentionally keep Git hooks installed even when disabling follow mode
+        // This avoids the complexity of managing hook installation/uninstallation
+        // and the hooks are harmless when follow mode is disabled (they just check for vt command)
 
         logger.info('Follow mode disabled');
         return res.json({
