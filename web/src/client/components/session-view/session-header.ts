@@ -230,8 +230,8 @@ export class SessionHeader extends LitElement {
               ${
                 this.session.gitBranch
                   ? html`
-                    <span class="flex-shrink-0 px-1.5 py-0.5 bg-surface-2 rounded-sm text-[10px]">
-                      ${this.session.gitBranch}
+                    <span class="flex-shrink-0 text-xs">
+                      [${this.session.gitBranch}]
                     </span>
                   `
                   : ''

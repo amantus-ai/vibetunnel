@@ -962,7 +962,7 @@ export class SessionCreateForm extends LitElement {
                                           `
                                           : nothing
                                       }
-                                      <span class="text-primary text-[9px] sm:text-[10px] px-1">${completion.gitBranch}</span>
+                                      <span class="text-primary text-[9px] sm:text-[10px]">[${completion.gitBranch}]</span>
                                     </div>
                                   `
                                   : nothing
@@ -1044,7 +1044,7 @@ export class SessionCreateForm extends LitElement {
                                                 `
                                                 : nothing
                                             }
-                                            <span class="text-primary text-[9px] sm:text-[10px] px-1">${repo.gitBranch}</span>
+                                            <span class="text-primary text-[9px] sm:text-[10px]">[${repo.gitBranch}]</span>
                                           </div>
                                         `
                                         : nothing

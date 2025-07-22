@@ -104,13 +104,9 @@ private struct AutocompleteRow: View {
                             HStack(spacing: 4) {
                                 // Branch name
                                 if let branch = gitInfo.branch {
-                                    Text(branch)
+                                    Text("[\(branch)]")
                                         .font(.system(size: 10))
-                                        .foregroundColor(.secondary)
-                                        .padding(.horizontal, 4)
-                                        .padding(.vertical, 1)
-                                        .background(Color.secondary.opacity(0.1))
-                                        .cornerRadius(3)
+                                        .foregroundColor(gitInfo.isWorktree ? .purple : .secondary)
                                 }
                                 
                                 // Ahead/behind indicators
@@ -139,17 +135,6 @@ private struct AutocompleteRow: View {
                                     Image(systemName: "circle.fill")
                                         .font(.system(size: 6))
                                         .foregroundColor(.yellow)
-                                }
-                                
-                                // Worktree indicator
-                                if gitInfo.isWorktree {
-                                    Text("worktree")
-                                        .font(.system(size: 9))
-                                        .foregroundColor(.purple)
-                                        .padding(.horizontal, 4)
-                                        .padding(.vertical, 1)
-                                        .background(Color.purple.opacity(0.1))
-                                        .cornerRadius(3)
                                 }
                             }
                         }
