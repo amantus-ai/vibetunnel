@@ -36,9 +36,11 @@ import './components/unified-settings.js';
 import './components/notification-status.js';
 import './components/auth-login.js';
 import './components/ssh-key-manager.js';
+import './components/worktree-manager.js';
 
 import { authClient } from './services/auth-client.js';
 import { bufferSubscriptionService } from './services/buffer-subscription-service.js';
+import { GitService } from './services/git-service.js';
 import { pushNotificationService } from './services/push-notification-service.js';
 
 const logger = createLogger('app');
@@ -61,7 +63,7 @@ export class VibeTunnelApp extends LitElement {
   @state() private successMessage = '';
   @state() private sessions: Session[] = [];
   @state() private loading = false;
-  @state() private currentView: 'list' | 'session' | 'auth' | 'file-browser' = 'auth';
+  @state() private currentView: 'list' | 'session' | 'auth' | 'file-browser' | 'worktrees' = 'auth';
   @state() private selectedSessionId: string | null = null;
   @state() private hideExited = this.loadHideExitedState();
   @state() private showCreateModal = false;
@@ -75,6 +77,8 @@ export class VibeTunnelApp extends LitElement {
   @state() private showLogLink = false;
   @state() private hasActiveOverlay = false;
   @state() private keyboardCaptureActive = true;
+  @state() private worktreeRepoPath = '';
+  private gitService?: GitService;
   private initialLoadComplete = false;
   private responsiveObserverInitialized = false;
   private initialRenderComplete = false;
@@ -331,10 +335,19 @@ export class VibeTunnelApp extends LitElement {
       return;
     }
 
+    // Handle Cmd+W / Ctrl+W to open worktree manager (temporary for testing)
+    if ((e.metaKey || e.ctrlKey) && e.key === 'w' && this.currentView === 'list') {
+      e.preventDefault();
+      this.handleNavigateToWorktrees('/Users/steipete/Projects/vibetunnel'); // Temporary hardcoded path for testing
+      return;
+    }
+
     // Handle Escape to close the session and return to list view
     if (
       e.key === 'Escape' &&
-      (this.currentView === 'session' || this.currentView === 'file-browser') &&
+      (this.currentView === 'session' ||
+        this.currentView === 'file-browser' ||
+        this.currentView === 'worktrees') &&
       !this.showCreateModal
     ) {
       e.preventDefault();
@@ -418,6 +431,9 @@ export class VibeTunnelApp extends LitElement {
   private async initializeServices(noAuthEnabled = false) {
     logger.log('🚀 Initializing services...');
     try {
+      // Initialize Git service
+      this.gitService = new GitService(authClient);
+
       // Initialize buffer subscription service for WebSocket connections
       await bufferSubscriptionService.initialize();
 
@@ -711,7 +727,11 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private handleError(e: CustomEvent) {
-    this.showError(e.detail);
+    this.showError(e.detail.message || e.detail);
+  }
+
+  private handleSuccess(e: CustomEvent) {
+    this.showSuccess(e.detail.message || e.detail);
   }
 
   private async handleHideExitedChange(e: CustomEvent) {
@@ -910,6 +930,16 @@ export class VibeTunnelApp extends LitElement {
 
     // Navigate to file browser view
     this.currentView = 'file-browser';
+    this.updateUrl();
+  }
+
+  private handleNavigateToWorktrees(repoPath: string): void {
+    // Store the repository path for worktree manager
+    this.worktreeRepoPath = repoPath;
+    // Update document title
+    document.title = 'VibeTunnel - Git Worktrees';
+    // Navigate to worktrees view
+    this.currentView = 'worktrees';
     this.updateUrl();
   }
 
@@ -1567,7 +1597,18 @@ export class VibeTunnelApp extends LitElement {
                 @insert-path=${this.handleNavigateToList}
               ></file-browser>
             `
-            : html`
+            : this.currentView === 'worktrees'
+              ? html`
+                <!-- Worktree management view -->
+                <worktree-manager
+                  .gitService=${this.gitService}
+                  .repoPath=${this.worktreeRepoPath}
+                  @navigate-to-list=${this.handleNavigateToList}
+                  @error=${this.handleError}
+                  @success=${this.handleSuccess}
+                ></worktree-manager>
+              `
+              : html`
       <!-- Main content with split view support -->
       <div class="${this.mainContainerClasses}">
         <!-- Mobile overlay when sidebar is open -->
