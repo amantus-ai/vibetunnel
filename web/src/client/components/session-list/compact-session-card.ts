@@ -181,6 +181,8 @@ export class CompactSessionCard extends LitElement {
       'items-center',
       'gap-3',
       'p-3',
+      'mb-3',
+      'last:mb-0',
       'rounded-lg',
       'cursor-pointer',
       this.selected
