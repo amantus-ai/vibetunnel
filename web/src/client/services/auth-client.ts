@@ -283,6 +283,21 @@ export class AuthClient {
   }
 
   /**
+   * Authenticated fetch wrapper that adds authorization header
+   */
+  async fetch(url: string, options?: RequestInit): Promise<Response> {
+    const headers = {
+      ...this.getAuthHeader(),
+      ...(options?.headers || {}),
+    };
+
+    return fetch(url, {
+      ...options,
+      headers,
+    });
+  }
+
+  /**
    * Verify current token with server
    */
   async verifyToken(): Promise<boolean> {

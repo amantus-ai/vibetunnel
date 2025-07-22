@@ -640,16 +640,33 @@ export class SessionCreateForm extends LitElement {
       const repoInfo = await this.gitService.checkGitRepo(path);
       if (repoInfo.isGitRepo && repoInfo.repoPath) {
         this.gitRepoInfo = repoInfo;
-        // Fetch available branches/worktrees
-        const worktrees = await this.gitService.listWorktrees(repoInfo.repoPath);
-        this.availableBranches = worktrees.worktrees.map((w) => w.branch);
 
-        // Select the main branch by default
-        const currentWorktree = worktrees.worktrees.find((w) => w.path === path);
-        if (currentWorktree) {
-          this.selectedBranch = currentWorktree.branch;
-        } else {
-          this.selectedBranch = worktrees.baseBranch;
+        try {
+          // Fetch available branches/worktrees
+          const worktrees = await this.gitService.listWorktrees(repoInfo.repoPath);
+          this.availableBranches = worktrees.worktrees.map((w) => w.branch);
+
+          // Find the worktree that contains the current path
+          // The path might be a subdirectory of the worktree root
+          const currentWorktree = worktrees.worktrees.find((w) => {
+            // Normalize paths for comparison
+            const worktreePath = w.path.endsWith('/') ? w.path : `${w.path}/`;
+            const currentPath = path.endsWith('/') ? path : `${path}/`;
+            // Check if current path starts with worktree path
+            return currentPath.startsWith(worktreePath) || w.path === path;
+          });
+
+          if (currentWorktree) {
+            this.selectedBranch = currentWorktree.branch;
+          } else {
+            this.selectedBranch = worktrees.baseBranch;
+          }
+        } catch (worktreeError) {
+          // If worktree listing fails, keep the git repo info but clear branch selection
+          logger.debug('Failed to list worktrees:', worktreeError);
+          this.availableBranches = [];
+          this.selectedBranch = '';
+          // Git repo is still valid, just can't get branch info
         }
       } else {
         this.gitRepoInfo = null;

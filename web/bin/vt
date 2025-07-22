@@ -133,6 +133,18 @@ get_git_root() {
     git rev-parse --show-toplevel 2>/dev/null
 }
 
+# Function to escape strings for JSON
+json_escape() {
+    local str="$1"
+    # Escape backslashes first, then quotes, then other special characters
+    str="${str//\\/\\\\}"
+    str="${str//\"/\\\"}"
+    str="${str//$'\n'/\\n}"
+    str="${str//$'\r'/\\r}"
+    str="${str//$'\t'/\\t}"
+    printf '%s' "$str"
+}
+
 # Function to make API request to VibeTunnel server
 make_api_request() {
     local endpoint="$1"
@@ -351,13 +363,26 @@ if [[ "$1" == "wtree" ]]; then
             fi
             BRANCH="$2"
             
-            # Switch to the branch using git
-            git checkout "$BRANCH" || exit 1
+            # First, try to enable follow mode via API (to check if it will succeed)
+            ESCAPED_GIT_ROOT=$(json_escape "$GIT_ROOT")
+            ESCAPED_BRANCH=$(json_escape "$BRANCH")
+            JSON_PAYLOAD="{\"repoPath\": \"$ESCAPED_GIT_ROOT\", \"branch\": \"$ESCAPED_BRANCH\", \"enable\": true}"
             
-            # Enable follow mode via API with branch parameter
-            make_api_request "/api/worktrees/follow" "POST" "{\"repoPath\": \"$GIT_ROOT\", \"branch\": \"$BRANCH\", \"enable\": true}"
-            echo "Switched to branch '$BRANCH' and enabled follow mode"
-            exit 0
+            if make_api_request "/api/worktrees/follow" "POST" "$JSON_PAYLOAD" >/dev/null 2>&1; then
+                # API succeeded, now switch the branch
+                if git checkout "$BRANCH"; then
+                    echo "Switched to branch '$BRANCH' and enabled follow mode"
+                    exit 0
+                else
+                    # Git checkout failed, disable follow mode to maintain consistency
+                    make_api_request "/api/worktrees/follow" "POST" "{\"repoPath\": \"$ESCAPED_GIT_ROOT\", \"branch\": \"\", \"enable\": false}" >/dev/null 2>&1
+                    echo "Error: Failed to switch to branch '$BRANCH'" >&2
+                    exit 1
+                fi
+            else
+                echo "Error: Failed to enable follow mode for branch '$BRANCH'" >&2
+                exit 1
+            fi
             ;;
             
         "follow")
@@ -369,14 +394,17 @@ if [[ "$1" == "wtree" ]]; then
             BRANCH="$2"
             
             # Enable follow mode via API with branch parameter
-            make_api_request "/api/worktrees/follow" "POST" "{\"repoPath\": \"$GIT_ROOT\", \"branch\": \"$BRANCH\", \"enable\": true}"
+            ESCAPED_GIT_ROOT=$(json_escape "$GIT_ROOT")
+            ESCAPED_BRANCH=$(json_escape "$BRANCH")
+            make_api_request "/api/worktrees/follow" "POST" "{\"repoPath\": \"$ESCAPED_GIT_ROOT\", \"branch\": \"$ESCAPED_BRANCH\", \"enable\": true}"
             echo "Enabled follow mode for branch '$BRANCH'"
             exit 0
             ;;
             
         "unfollow")
             # Disable follow mode via API (branch is optional when disabling)
-            make_api_request "/api/worktrees/follow" "POST" "{\"repoPath\": \"$GIT_ROOT\", \"branch\": \"\", \"enable\": false}"
+            ESCAPED_GIT_ROOT=$(json_escape "$GIT_ROOT")
+            make_api_request "/api/worktrees/follow" "POST" "{\"repoPath\": \"$ESCAPED_GIT_ROOT\", \"branch\": \"\", \"enable\": false}"
             echo "Disabled follow mode"
             exit 0
             ;;
@@ -398,10 +426,15 @@ if [[ "$1" == "wtree" ]]; then
             BASE_BRANCH="${4:-}"
             
             # Create worktree via API
+            ESCAPED_GIT_ROOT=$(json_escape "$GIT_ROOT")
+            ESCAPED_BRANCH=$(json_escape "$BRANCH")
+            ESCAPED_PATH=$(json_escape "$WORKTREE_PATH")
+            
             if [[ -n "$BASE_BRANCH" ]]; then
-                make_api_request "/api/worktrees" "POST" "{\"repoPath\": \"$GIT_ROOT\", \"branch\": \"$BRANCH\", \"path\": \"$WORKTREE_PATH\", \"baseBranch\": \"$BASE_BRANCH\"}"
+                ESCAPED_BASE=$(json_escape "$BASE_BRANCH")
+                make_api_request "/api/worktrees" "POST" "{\"repoPath\": \"$ESCAPED_GIT_ROOT\", \"branch\": \"$ESCAPED_BRANCH\", \"path\": \"$ESCAPED_PATH\", \"baseBranch\": \"$ESCAPED_BASE\"}"
             else
-                make_api_request "/api/worktrees" "POST" "{\"repoPath\": \"$GIT_ROOT\", \"branch\": \"$BRANCH\", \"path\": \"$WORKTREE_PATH\"}"
+                make_api_request "/api/worktrees" "POST" "{\"repoPath\": \"$ESCAPED_GIT_ROOT\", \"branch\": \"$ESCAPED_BRANCH\", \"path\": \"$ESCAPED_PATH\"}"
             fi
             echo "Created worktree for branch '$BRANCH' at '$WORKTREE_PATH'"
             exit 0
@@ -425,7 +458,8 @@ if [[ "$1" == "git" && "$2" == "event" ]]; then
     fi
     
     # Notify server of git event
-    make_api_request "/api/git/event" "POST" "{\"repoPath\": \"$GIT_ROOT\"}"
+    ESCAPED_GIT_ROOT=$(json_escape "$GIT_ROOT")
+    make_api_request "/api/git/event" "POST" "{\"repoPath\": \"$ESCAPED_GIT_ROOT\"}"
     exit 0
 fi
 

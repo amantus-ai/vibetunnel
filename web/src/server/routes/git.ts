@@ -237,35 +237,38 @@ export function createGitRoutes(): Router {
       }
 
       // Extract repository name from path
-      const repoName = path.basename(repoPath);
+      const _repoName = path.basename(repoPath);
 
       // Update session titles for all sessions in the repository
       for (const session of sessionsInRepo) {
         try {
           // Get the branch for this specific session's working directory
-          let sessionBranch = currentBranch;
+          let _sessionBranch = currentBranch;
           try {
             const { stdout: sessionBranchOutput } = await execGit(['branch', '--show-current'], {
               cwd: session.workingDir,
             });
             if (sessionBranchOutput.trim()) {
-              sessionBranch = sessionBranchOutput.trim();
+              _sessionBranch = sessionBranchOutput.trim();
             }
           } catch (_error) {
             // Use current branch as fallback
             logger.debug(`Could not get branch for session ${session.id}, using repo branch`);
           }
 
-          // Extract base session name (remove any existing git info)
-          const baseSessionName = session.name?.replace(/\s*\[.*\]\s*$/, '') || 'Terminal';
+          // Extract base session name (remove any existing git info in square brackets at the end)
+          // Use a more specific regex to only match git-related content in brackets
+          const baseSessionName =
+            session.name?.replace(
+              /\s*\[(checkout|branch|merge|rebase|commit|push|pull|fetch|stash|reset|cherry-pick):[^\]]+\]\s*$/,
+              ''
+            ) || 'Terminal';
 
-          // Construct new title with format: activity - repoName-branch - sessionName
-          let activity = '';
+          // Construct new title with format: baseSessionName [event: branch]
+          let newTitle = baseSessionName;
           if (event && branch) {
-            activity = `${event}: ${branch} - `;
+            newTitle = `${baseSessionName} [${event}: ${branch}]`;
           }
-
-          const newTitle = `${activity}${repoName}-${sessionBranch || 'detached'} - ${baseSessionName}`;
 
           // Update the session name
           sessionManager.updateSessionName(session.id, newTitle);

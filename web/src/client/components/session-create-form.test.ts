@@ -684,6 +684,297 @@ describe('SessionCreateForm', () => {
     });
   });
 
+  describe('Git repository integration', () => {
+    beforeEach(async () => {
+      // Mock Git service endpoints
+      fetchMock.mockResponse('/api/git/repo-info', {
+        isGitRepo: true,
+        repoPath: '/home/user/project',
+      });
+
+      fetchMock.mockResponse('/api/worktrees', {
+        worktrees: [
+          { path: '/home/user/project', branch: 'main', HEAD: 'abc123', detached: false },
+          {
+            path: '/home/user/project-feature',
+            branch: 'feature',
+            HEAD: 'def456',
+            detached: false,
+          },
+        ],
+        baseBranch: 'main',
+      });
+    });
+
+    it('should check for Git repository when working directory changes', async () => {
+      // Clear existing calls
+      fetchMock.clear();
+
+      // Type in working directory
+      await typeInInput(element, 'input[placeholder="~/"]', '/home/user/project');
+
+      // Wait for debounced Git check
+      await waitForAsync(600);
+
+      // Verify Git repo check was made
+      const gitCheckCall = fetchMock
+        .getCalls()
+        .find((call) => call[0].includes('/api/git/repo-info') && call[0].includes('project'));
+      expect(gitCheckCall).toBeTruthy();
+    });
+
+    it('should show branch selector when Git repository is detected', async () => {
+      // Trigger Git check
+      element.workingDir = '/home/user/project';
+      // @ts-expect-error - accessing private method for testing
+      await element.checkGitRepository();
+      await element.updateComplete;
+
+      // Check that branch selector is rendered
+      const branchSelect = element.querySelector('[data-testid="git-branch-select"]');
+      expect(branchSelect).toBeTruthy();
+
+      // Verify branches are populated
+      const options = branchSelect?.querySelectorAll('option');
+      expect(options?.length).toBe(2);
+      expect(options?.[0]?.textContent?.trim()).toBe('main');
+      expect(options?.[1]?.textContent?.trim()).toBe('feature');
+    });
+
+    it('should not show branch selector for non-Git directories', async () => {
+      // Mock non-Git response
+      fetchMock.mockResponse('/api/git/repo-info', {
+        isGitRepo: false,
+      });
+
+      // Trigger Git check
+      element.workingDir = '/home/user/not-git';
+      // @ts-expect-error - accessing private method for testing
+      await element.checkGitRepository();
+      await element.updateComplete;
+
+      // Check that branch selector is NOT rendered
+      const branchSelect = element.querySelector('[data-testid="git-branch-select"]');
+      expect(branchSelect).toBeFalsy();
+    });
+
+    it('should select current worktree branch by default', async () => {
+      // Mock worktree response with current path matching feature branch
+      fetchMock.mockResponse('/api/worktrees', {
+        worktrees: [
+          { path: '/home/user/project', branch: 'main', HEAD: 'abc123', detached: false },
+          {
+            path: '/home/user/project-feature',
+            branch: 'feature',
+            HEAD: 'def456',
+            detached: false,
+          },
+        ],
+        baseBranch: 'main',
+      });
+
+      // Set working directory to feature worktree
+      element.workingDir = '/home/user/project-feature';
+      // @ts-expect-error - accessing private method for testing
+      await element.checkGitRepository();
+      await element.updateComplete;
+
+      // Verify feature branch is selected
+      expect(element.selectedBranch).toBe('feature');
+    });
+
+    it('should select base branch when not in a worktree', async () => {
+      // Set working directory to a subdirectory
+      element.workingDir = '/home/user/project/src';
+      // @ts-expect-error - accessing private method for testing
+      await element.checkGitRepository();
+      await element.updateComplete;
+
+      // Verify main branch is selected
+      expect(element.selectedBranch).toBe('main');
+    });
+
+    it('should include Git info in session creation request', async () => {
+      fetchMock.mockResponse('/api/sessions', {
+        sessionId: 'git-session-123',
+      });
+
+      // Set up Git repository state
+      element.gitRepoInfo = { isGitRepo: true, repoPath: '/home/user/project' };
+      element.selectedBranch = 'feature';
+      element.command = 'vim';
+      element.workingDir = '/home/user/project';
+      await element.updateComplete;
+
+      // Create session
+      await element.handleCreate();
+      await waitForAsync();
+
+      // Check request includes Git info
+      const sessionCall = fetchMock.getCalls().find((call) => call[0] === '/api/sessions');
+      expect(sessionCall).toBeTruthy();
+
+      const requestBody = JSON.parse((sessionCall?.[1]?.body as string) || '{}');
+      expect(requestBody.gitRepoPath).toBe('/home/user/project');
+      expect(requestBody.gitBranch).toBe('feature');
+    });
+
+    it('should not include Git info for non-Git directories', async () => {
+      fetchMock.mockResponse('/api/sessions', {
+        sessionId: 'non-git-session-123',
+      });
+
+      // Clear Git state
+      element.gitRepoInfo = null;
+      element.selectedBranch = '';
+      element.command = 'bash';
+      element.workingDir = '/home/user/downloads';
+      await element.updateComplete;
+
+      // Create session
+      await element.handleCreate();
+      await waitForAsync();
+
+      // Check request does NOT include Git info
+      const sessionCall = fetchMock.getCalls().find((call) => call[0] === '/api/sessions');
+      expect(sessionCall).toBeTruthy();
+
+      const requestBody = JSON.parse((sessionCall?.[1]?.body as string) || '{}');
+      expect(requestBody.gitRepoPath).toBeUndefined();
+      expect(requestBody.gitBranch).toBeUndefined();
+    });
+
+    it('should handle Git check errors gracefully', async () => {
+      // Mock Git check to fail
+      fetchMock.mockResponse('/api/git/repo-info', { error: 'Permission denied' }, { status: 403 });
+
+      // Trigger Git check
+      element.workingDir = '/home/user/restricted';
+      // @ts-expect-error - accessing private method for testing
+      await element.checkGitRepository();
+      await element.updateComplete;
+
+      // Should handle error without crashing
+      expect(element.gitRepoInfo).toBe(null);
+      expect(element.availableBranches).toEqual([]);
+      expect(element.selectedBranch).toBe('');
+
+      // Branch selector should not be shown
+      const branchSelect = element.querySelector('[data-testid="git-branch-select"]');
+      expect(branchSelect).toBeFalsy();
+    });
+
+    it('should check Git when selecting from repository dropdown', async () => {
+      // Clear calls
+      fetchMock.clear();
+
+      // Simulate repository selection
+      // @ts-expect-error - accessing private method for testing
+      element.handleSelectRepository('/home/user/another-project');
+
+      await waitForAsync(100);
+
+      // Verify Git check was triggered
+      const gitCheckCall = fetchMock
+        .getCalls()
+        .find(
+          (call) => call[0].includes('/api/git/repo-info') && call[0].includes('another-project')
+        );
+      expect(gitCheckCall).toBeTruthy();
+      expect(element.workingDir).toBe('/home/user/another-project');
+    });
+
+    it('should check Git when selecting directory from file browser', async () => {
+      // Clear calls
+      fetchMock.clear();
+
+      // Simulate directory selection event
+      const event = new CustomEvent('directory-selected', {
+        detail: '/home/user/new-project',
+      });
+
+      element.handleDirectorySelected(event);
+
+      await waitForAsync(100);
+
+      // Verify Git check was triggered
+      const gitCheckCall = fetchMock
+        .getCalls()
+        .find((call) => call[0].includes('/api/git/repo-info') && call[0].includes('new-project'));
+      expect(gitCheckCall).toBeTruthy();
+      expect(element.workingDir).toBe('/home/user/new-project');
+    });
+
+    it('should update selected branch when changed in dropdown', async () => {
+      // Set up Git state
+      element.gitRepoInfo = { isGitRepo: true, repoPath: '/home/user/project' };
+      element.availableBranches = ['main', 'develop', 'feature'];
+      element.selectedBranch = 'main';
+      await element.updateComplete;
+
+      // Find and change the select element
+      const branchSelect = element.querySelector(
+        '[data-testid="git-branch-select"]'
+      ) as HTMLSelectElement;
+      expect(branchSelect).toBeTruthy();
+
+      // Change selection
+      branchSelect.value = 'develop';
+      branchSelect.dispatchEvent(new Event('change'));
+
+      await element.updateComplete;
+
+      // Verify branch was updated
+      expect(element.selectedBranch).toBe('develop');
+    });
+
+    it('should show loading state while checking Git', async () => {
+      // Start Git check
+      element.workingDir = '/home/user/project';
+
+      // Start the check without awaiting
+      const checkPromise = element.checkGitRepository();
+
+      // Should be in loading state
+      expect(element.isCheckingGit).toBe(true);
+
+      // Wait for completion
+      await checkPromise;
+
+      // Should no longer be loading
+      expect(element.isCheckingGit).toBe(false);
+    });
+
+    it('should check Git on modal open if working directory is set', async () => {
+      // Create element with initial working directory but not visible
+      const newElement = await fixture<SessionCreateForm>(html`
+        <session-create-form 
+          .authClient=${mockAuthClient} 
+          .visible=${false}
+          .workingDir=${'/home/user/project'}
+        ></session-create-form>
+      `);
+
+      // Clear calls
+      fetchMock.clear();
+
+      // Make visible
+      newElement.visible = true;
+      await newElement.updateComplete;
+
+      // Wait for Git check
+      await waitForAsync(100);
+
+      // Verify Git check was made
+      const gitCheckCall = fetchMock
+        .getCalls()
+        .find((call) => call[0].includes('/api/git/repo-info'));
+      expect(gitCheckCall).toBeTruthy();
+
+      newElement.remove();
+    });
+  });
+
   describe('quick start editor integration', () => {
     beforeEach(async () => {
       // Import quick-start-editor component
