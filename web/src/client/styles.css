@@ -270,6 +270,8 @@
     @apply transition-all duration-200 ease-in-out text-text-muted;
     @apply hover:border-primary hover:text-primary hover:shadow-glow-sm;
     @apply active:scale-95;
+    touch-action: manipulation; /* Eliminates 300ms delay */
+    -webkit-tap-highlight-color: transparent;
   }
 
   .quick-start-btn.active {
@@ -538,6 +540,10 @@
     animation: slideInFromBottom 0.3s ease-out;
   }
   
+  .animate-slide-in-right {
+    animation: slideInFromRight 0.3s ease-out;
+  }
+  
   @keyframes slideInFromRight {
     from {
       transform: translateX(100%);
@@ -603,6 +609,30 @@ body {
   overscroll-behavior: none;
   touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Grid layout touch optimization for session view */
+.session-view-grid {
+  contain: layout style;
+  will-change: contents;
+}
+
+.terminal-area {
+  contain: strict;
+  isolation: isolate;
+  touch-action: pan-y;
+}
+
+.overlay-container {
+  contain: layout style;
+  isolation: isolate;
+}
+
+/* Ensure touch targets in overlay are stable */
+.overlay-container button,
+.overlay-container [role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Prevent pull-to-refresh on mobile */

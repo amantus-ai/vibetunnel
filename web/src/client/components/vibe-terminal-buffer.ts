@@ -44,6 +44,12 @@ export class VibeTerminalBuffer extends LitElement {
   private unsubscribe: (() => void) | null = null;
   private lastTextSnapshot: string | null = null;
 
+  // Adaptive debouncing properties
+  private updateTimeout: ReturnType<typeof setTimeout> | null = null;
+  private pendingBuffer: BufferSnapshot | null = null;
+  private lastTouchTime = 0;
+  private isMobileDevice = 'ontouchstart' in window;
+
   // Moved to render() method above
 
   disconnectedCallback() {
@@ -51,6 +57,13 @@ export class VibeTerminalBuffer extends LitElement {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
+    }
+    if (this.updateTimeout) {
+      clearTimeout(this.updateTimeout);
+      this.updateTimeout = null;
+    }
+    if (this.isMobileDevice) {
+      document.removeEventListener('touchstart', this.handleTouchStart);
     }
     super.disconnectedCallback();
   }
@@ -62,6 +75,11 @@ export class VibeTerminalBuffer extends LitElement {
       if (this.sessionId) {
         this.subscribeToBuffer();
       }
+    }
+
+    // Track touch events for adaptive debouncing
+    if (this.isMobileDevice) {
+      document.addEventListener('touchstart', this.handleTouchStart, { passive: true });
     }
   }
 
@@ -240,7 +258,59 @@ export class VibeTerminalBuffer extends LitElement {
     `;
   }
 
+  private handleTouchStart = () => {
+    this.lastTouchTime = Date.now();
+  };
+
+  private scheduleBufferUpdate() {
+    // Store the latest buffer data
+    this.pendingBuffer = this.buffer;
+
+    // Clear any existing timeout
+    if (this.updateTimeout) {
+      clearTimeout(this.updateTimeout);
+      this.updateTimeout = null;
+    }
+
+    // Calculate adaptive delay based on recent touch activity
+    const now = Date.now();
+    const timeSinceLastTouch = now - this.lastTouchTime;
+
+    let delay: number;
+    if (this.isMobileDevice && timeSinceLastTouch < 1000) {
+      // Very conservative during and shortly after touch interaction
+      delay = 200;
+    } else if (this.isMobileDevice) {
+      // Normal mobile delay
+      delay = 100;
+    } else {
+      // Desktop stays fast
+      delay = 16;
+    }
+
+    // Schedule the update
+    this.updateTimeout = setTimeout(() => {
+      this.updateTimeout = null;
+      if (this.pendingBuffer) {
+        // Use the stored buffer state
+        const bufferToRender = this.pendingBuffer;
+        this.pendingBuffer = null;
+
+        // Temporarily swap buffers for rendering
+        const originalBuffer = this.buffer;
+        this.buffer = bufferToRender;
+        this.updateBufferContentImmediate();
+        this.buffer = originalBuffer;
+      }
+    }, delay);
+  }
+
   private updateBufferContent() {
+    // Use adaptive debouncing to prevent DOM thrashing on mobile
+    this.scheduleBufferUpdate();
+  }
+
+  private updateBufferContentImmediate() {
     if (!this.container || !this.buffer || this.visibleRows === 0) return;
 
     const lineHeight = this.displayedFontSize * 1.2;

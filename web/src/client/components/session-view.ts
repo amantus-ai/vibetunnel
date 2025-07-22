@@ -95,7 +95,6 @@ export class SessionView extends LitElement {
   @state() private isDragOver = false;
   @state() private terminalFontSize = 14;
   @state() private terminalTheme: TerminalThemeId = 'auto';
-  @state() private terminalContainerHeight = '100%';
   @state() private isLandscape = false;
   @state() private useBinaryMode = false;
   @state() private macAppConnected = false;
@@ -1304,35 +1303,12 @@ export class SessionView extends LitElement {
     }
 
     this._updateTerminalTransformTimeout = setTimeout(() => {
-      // Calculate height reduction for keyboard and quick keys
-      let heightReduction = 0;
-
-      if (this.showQuickKeys) {
-        // Quick keys height (approximately 140px based on CSS)
-        // Add 10px buffer to ensure content is visible above quick keys
-        const quickKeysHeight = 150;
-        heightReduction += quickKeysHeight;
-      }
-
-      if (this.keyboardHeight > 0) {
-        // Add small buffer for keyboard too
-        heightReduction += this.keyboardHeight + 10;
-      }
-
-      // Calculate terminal container height
-      if (heightReduction > 0) {
-        // Use calc to subtract from full height (accounting for header)
-        this.terminalContainerHeight = `calc(100% - ${heightReduction}px)`;
-      } else {
-        this.terminalContainerHeight = '100%';
-      }
-
       // Log for debugging
       logger.log(
-        `Terminal height updated: quickKeys=${this.showQuickKeys}, keyboardHeight=${this.keyboardHeight}, reduction=${heightReduction}px`
+        `Terminal transform updated: quickKeys=${this.showQuickKeys}, keyboardHeight=${this.keyboardHeight}px`
       );
 
-      // Force immediate update to apply height change
+      // Force immediate update to apply CSS variable changes
       this.requestUpdate();
 
       // Always notify terminal to resize when there's a change
@@ -1346,8 +1322,8 @@ export class SessionView extends LitElement {
             terminalElement.fitTerminal();
           }
 
-          // If height was reduced, scroll to keep cursor visible
-          if (heightReduction > 0) {
+          // If keyboard is visible, scroll to keep cursor visible
+          if (this.keyboardHeight > 0 || this.showQuickKeys) {
             // Small delay then scroll to bottom to keep cursor visible
             setTimeout(() => {
               if ('scrollToBottom' in terminal) {
@@ -1407,68 +1383,129 @@ export class SessionView extends LitElement {
           outline: 2px solid rgb(var(--color-primary)) !important;
           outline-offset: -2px;
         }
+        
+        /* Grid layout for stable touch handling */
+        .session-view-grid {
+          display: grid;
+          grid-template-areas:
+            "header"
+            "terminal"
+            "quickkeys";
+          grid-template-rows: auto 1fr auto;
+          grid-template-columns: 1fr;
+          height: 100vh;
+          height: 100dvh;
+          position: relative;
+          background-color: rgb(var(--color-bg));
+          font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+        }
+        
+        /* Adjust grid when keyboard is visible */
+        .session-view-grid[data-keyboard-visible="true"] {
+          height: calc(100vh - var(--keyboard-height, 0px) - var(--quickkeys-height, 0px));
+          height: calc(100dvh - var(--keyboard-height, 0px) - var(--quickkeys-height, 0px));
+          transition: height 0.2s ease-out;
+        }
+        
+        .session-header-area {
+          grid-area: header;
+        }
+        
+        .terminal-area {
+          grid-area: terminal;
+          position: relative;
+          overflow: hidden;
+          min-height: 0; /* Critical for grid */
+          contain: layout style paint; /* Isolate terminal updates */
+        }
+        
+        .quickkeys-area {
+          grid-area: quickkeys;
+        }
+        
+        /* Overlay container - spans entire grid */
+        .overlay-container {
+          grid-area: 1 / 1 / -1 / -1;
+          pointer-events: none;
+          z-index: 20;
+          position: relative;
+        }
+        
+        .overlay-container > * {
+          pointer-events: auto;
+          touch-action: manipulation; /* Eliminates 300ms delay */
+          -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Apply touch optimizations to all interactive elements */
+        button, [role="button"], .clickable {
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }
       </style>
       <div
-        class="flex flex-col bg-base font-mono relative"
-        style="height: 100vh; height: 100dvh; outline: none !important; box-shadow: none !important;"
+        class="session-view-grid"
+        style="outline: none !important; box-shadow: none !important; --keyboard-height: ${this.keyboardHeight}px; --quickkeys-height: ${this.showQuickKeys ? '140' : '0'}px;"
+        data-keyboard-visible="${this.keyboardHeight > 0 || this.showQuickKeys ? 'true' : 'false'}"
       >
-        <!-- Session Header -->
-        <session-header
-          .session=${this.session}
-          .showBackButton=${this.showBackButton}
-          .showSidebarToggle=${this.showSidebarToggle}
-          .sidebarCollapsed=${this.sidebarCollapsed}
-          .terminalMaxCols=${this.terminalMaxCols}
-          .terminalFontSize=${this.terminalFontSize}
-          .customWidth=${this.customWidth}
-          .showWidthSelector=${this.showWidthSelector}
-          .keyboardCaptureActive=${this.keyboardCaptureActive}
-          .isMobile=${this.isMobile}
-          .widthLabel=${this.getCurrentWidthLabel()}
-          .widthTooltip=${this.getWidthTooltip()}
-          .onBack=${() => this.handleBack()}
-          .onSidebarToggle=${() => this.handleSidebarToggle()}
-          .onCreateSession=${() => this.handleCreateSession()}
-          .onOpenFileBrowser=${() => this.handleOpenFileBrowser()}
-          .onOpenImagePicker=${() => this.handleOpenFilePicker()}
-          .onMaxWidthToggle=${() => this.handleMaxWidthToggle()}
-          .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
-          .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
-          .onOpenSettings=${() => this.handleOpenSettings()}
-          .macAppConnected=${this.macAppConnected}
-          .onTerminateSession=${() => this.handleTerminateSession()}
-          .onClearSession=${() => this.handleClearSession()}
-          @close-width-selector=${() => {
-            this.showWidthSelector = false;
-            this.customWidth = '';
-          }}
-          @session-rename=${(e: CustomEvent) => this.handleRename(e)}
-          @paste-image=${() => this.handlePasteImage()}
-          @select-image=${() => this.handleSelectImage()}
-          @open-camera=${() => this.handleOpenCamera()}
-          @show-image-upload-options=${() => this.handleSelectImage()}
-          @capture-toggled=${(e: CustomEvent) => {
-            this.dispatchEvent(
-              new CustomEvent('capture-toggled', {
-                detail: e.detail,
-                bubbles: true,
-                composed: true,
-              })
-            );
-          }}
-        >
-        </session-header>
+        <!-- Session Header Area -->
+        <div class="session-header-area">
+          <session-header
+            .session=${this.session}
+            .showBackButton=${this.showBackButton}
+            .showSidebarToggle=${this.showSidebarToggle}
+            .sidebarCollapsed=${this.sidebarCollapsed}
+            .terminalMaxCols=${this.terminalMaxCols}
+            .terminalFontSize=${this.terminalFontSize}
+            .customWidth=${this.customWidth}
+            .showWidthSelector=${this.showWidthSelector}
+            .keyboardCaptureActive=${this.keyboardCaptureActive}
+            .isMobile=${this.isMobile}
+            .widthLabel=${this.getCurrentWidthLabel()}
+            .widthTooltip=${this.getWidthTooltip()}
+            .onBack=${() => this.handleBack()}
+            .onSidebarToggle=${() => this.handleSidebarToggle()}
+            .onCreateSession=${() => this.handleCreateSession()}
+            .onOpenFileBrowser=${() => this.handleOpenFileBrowser()}
+            .onOpenImagePicker=${() => this.handleOpenFilePicker()}
+            .onMaxWidthToggle=${() => this.handleMaxWidthToggle()}
+            .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
+            .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
+            .onOpenSettings=${() => this.handleOpenSettings()}
+            .macAppConnected=${this.macAppConnected}
+            .onTerminateSession=${() => this.handleTerminateSession()}
+            .onClearSession=${() => this.handleClearSession()}
+            @close-width-selector=${() => {
+              this.showWidthSelector = false;
+              this.customWidth = '';
+            }}
+            @session-rename=${(e: CustomEvent) => this.handleRename(e)}
+            @paste-image=${() => this.handlePasteImage()}
+            @select-image=${() => this.handleSelectImage()}
+            @open-camera=${() => this.handleOpenCamera()}
+            @show-image-upload-options=${() => this.handleSelectImage()}
+            @capture-toggled=${(e: CustomEvent) => {
+              this.dispatchEvent(
+                new CustomEvent('capture-toggled', {
+                  detail: e.detail,
+                  bubbles: true,
+                  composed: true,
+                })
+              );
+            }}
+          >
+          </session-header>
+        </div>
 
-        <!-- Enhanced Terminal Container -->
+        <!-- Terminal Area -->
         <div
-          class="${this.terminalContainerHeight === '100%' ? 'flex-1' : ''} bg-bg overflow-hidden min-h-0 relative ${
+          class="terminal-area bg-bg ${
             this.session?.status === 'exited' ? 'session-exited opacity-90' : ''
           } ${
             // Add safe area padding for landscape mode on mobile to handle notch
             this.isMobile && this.isLandscape ? 'safe-area-left safe-area-right' : ''
           }"
           id="terminal-container"
-          style="${this.terminalContainerHeight !== '100%' ? `height: ${this.terminalContainerHeight}; flex: none; max-height: ${this.terminalContainerHeight};` : ''}"
         >
           ${
             this.loadingAnimationManager.isLoading()
@@ -1531,31 +1568,13 @@ export class SessionView extends LitElement {
           }
         </div>
 
-        <!-- Floating Session Exited Banner (outside terminal container to avoid filter effects) -->
-        ${
-          this.session?.status === 'exited'
-            ? html`
-              <div
-                class="fixed inset-0 flex items-center justify-center pointer-events-none z-[25]"
-              >
-                <div
-                  class="bg-elevated border border-status-warning text-status-warning font-medium text-sm tracking-wide px-6 py-3 rounded-lg shadow-elevated animate-scale-in"
-                >
-                  <span class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-status-warning"></span>
-                    SESSION EXITED
-                  </span>
-                </div>
-              </div>
-            `
-            : ''
-        }
-
-        <!-- Mobile Input Controls (only show when direct keyboard is disabled) -->
-        ${
-          this.isMobile && !this.showMobileInput && !this.useDirectKeyboard
-            ? html`
-              <div class="flex-shrink-0 p-4 bg-secondary">
+        <!-- Quick Keys Area -->
+        <div class="quickkeys-area">
+          <!-- Mobile Input Controls (only show when direct keyboard is disabled) -->
+          ${
+            this.isMobile && !this.showMobileInput && !this.useDirectKeyboard
+              ? html`
+                <div class="p-4 bg-secondary">
                 <!-- First row: Arrow keys -->
                 <div class="flex gap-2 mb-2">
                   <button
@@ -1630,14 +1649,37 @@ export class SessionView extends LitElement {
                   >
                     <span class="text-xl">⏎</span>
                   </button>
+                  </div>
                 </div>
-              </div>
-            `
-            : ''
-        }
+              `
+              : ''
+          }
+        </div>
 
-        <!-- Mobile Input Overlay -->
-        <mobile-input-overlay
+        <!-- Overlay Container - All overlays go here for stable positioning -->
+        <div class="overlay-container">
+          <!-- Floating Session Exited Banner -->
+          ${
+            this.session?.status === 'exited'
+              ? html`
+                <div
+                  class="fixed inset-0 flex items-center justify-center pointer-events-none z-[25]"
+                >
+                  <div
+                    class="bg-elevated border border-status-warning text-status-warning font-medium text-sm tracking-wide px-6 py-3 rounded-lg shadow-elevated animate-scale-in"
+                  >
+                    <span class="flex items-center gap-2">
+                      <span class="w-2 h-2 rounded-full bg-status-warning"></span>
+                      SESSION EXITED
+                    </span>
+                  </div>
+                </div>
+              `
+              : ''
+          }
+
+          <!-- Mobile Input Overlay -->
+          <mobile-input-overlay
           .visible=${this.isMobile && this.showMobileInput}
           .mobileInputText=${this.mobileInputText}
           .keyboardHeight=${this.keyboardHeight}
@@ -1650,10 +1692,10 @@ export class SessionView extends LitElement {
             this.mobileInputText = text;
           }}
           .handleBack=${this.handleBack.bind(this)}
-        ></mobile-input-overlay>
+          ></mobile-input-overlay>
 
-        <!-- Ctrl+Alpha Overlay -->
-        <ctrl-alpha-overlay
+          <!-- Ctrl+Alpha Overlay -->
+          <ctrl-alpha-overlay
           .visible=${this.isMobile && this.showCtrlAlpha}
           .ctrlSequence=${this.ctrlSequence}
           .keyboardHeight=${this.keyboardHeight}
@@ -1661,14 +1703,14 @@ export class SessionView extends LitElement {
           .onSendSequence=${() => this.handleSendCtrlSequence()}
           .onClearSequence=${() => this.handleClearCtrlSequence()}
           .onCancel=${() => this.handleCtrlAlphaCancel()}
-        ></ctrl-alpha-overlay>
+          ></ctrl-alpha-overlay>
 
-        <!-- Floating Keyboard Button (for direct keyboard mode on mobile) -->
-        ${
-          this.isMobile && this.useDirectKeyboard && !this.showQuickKeys
-            ? html`
-              <div
-                class="keyboard-button"
+          <!-- Floating Keyboard Button (for direct keyboard mode on mobile) -->
+          ${
+            this.isMobile && this.useDirectKeyboard && !this.showQuickKeys
+              ? html`
+                <div
+                  class="keyboard-button"
                 @pointerdown=${(e: PointerEvent) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -1681,37 +1723,36 @@ export class SessionView extends LitElement {
                 title="Show keyboard"
               >
                 ⌨
-              </div>
-            `
-            : ''
-        }
+                </div>
+              `
+              : ''
+          }
 
-        <!-- Terminal Quick Keys (for direct keyboard mode) -->
-        <terminal-quick-keys
+          <!-- Terminal Quick Keys (for direct keyboard mode) -->
+          <terminal-quick-keys
           .visible=${this.isMobile && this.useDirectKeyboard && this.showQuickKeys}
           .onKeyPress=${this.directKeyboardManager.handleQuickKeyPress}
-        ></terminal-quick-keys>
+          ></terminal-quick-keys>
 
-        <!-- File Browser Modal -->
-        <file-browser
+          <!-- File Browser Modal -->
+          <file-browser
           .visible=${this.showFileBrowser}
           .mode=${'browse'}
           .session=${this.session}
           @browser-cancel=${this.handleCloseFileBrowser}
           @insert-path=${this.handleInsertPath}
-        ></file-browser>
+          ></file-browser>
 
-        <!-- File Picker Modal -->
-        <file-picker
+          <!-- File Picker Modal -->
+          <file-picker
           .visible=${this.showImagePicker}
           @file-selected=${this.handleFileSelected}
           @file-error=${this.handleFileError}
           @file-cancel=${this.handleCloseFilePicker}
-        ></file-picker>
+          ></file-picker>
 
-        
-        <!-- Width Selector Modal (moved here for proper positioning) -->
-        <terminal-settings-modal
+          <!-- Width Selector Modal -->
+          <terminal-settings-modal
           .visible=${this.showWidthSelector}
           .terminalMaxCols=${this.terminalMaxCols}
           .terminalFontSize=${this.terminalFontSize}
@@ -1725,13 +1766,13 @@ export class SessionView extends LitElement {
             this.showWidthSelector = false;
             this.customWidth = '';
           }}
-        ></terminal-settings-modal>
+          ></terminal-settings-modal>
 
-        <!-- Drag & Drop Overlay -->
-        ${
-          this.isDragOver
-            ? html`
-              <div class="fixed inset-0 bg-bg bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none animate-fade-in">
+          <!-- Drag & Drop Overlay -->
+          ${
+            this.isDragOver
+              ? html`
+                <div class="fixed inset-0 bg-bg bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none animate-fade-in">
                 <div class="bg-elevated border-2 border-dashed border-primary rounded-xl p-10 text-center max-w-md mx-4 shadow-2xl animate-scale-in">
                   <div class="relative mb-6">
                     <div class="w-24 h-24 mx-auto bg-gradient-to-br from-primary to-primary-light rounded-full flex items-center justify-center shadow-glow">
@@ -1749,10 +1790,11 @@ export class SessionView extends LitElement {
                     <span class="opacity-75">to paste from clipboard</span>
                   </div>
                 </div>
-              </div>
-            `
-            : ''
-        }
+                </div>
+              `
+              : ''
+          }
+        </div>
       </div>
     `;
   }
