@@ -1288,8 +1288,6 @@ export class VibeTunnelApp extends LitElement {
       sessionId = pathParts[1];
     }
 
-    const view = url.searchParams.get('view');
-
     // Check authentication status first (unless no-auth is enabled)
     try {
       const configResponse = await fetch('/api/auth/config');
@@ -1315,12 +1313,6 @@ export class VibeTunnelApp extends LitElement {
       }
     }
 
-    // Check for file-browser view
-    if (view === 'file-browser') {
-      this.currentView = 'file-browser';
-      return;
-    }
-
     if (sessionId) {
       // Always navigate to the session view if a session ID is provided
       // The session-view component will handle loading and error cases
@@ -1344,14 +1336,12 @@ export class VibeTunnelApp extends LitElement {
   private updateUrl(sessionId?: string) {
     const url = new URL(window.location.href);
 
-    // Clear all params first
-    url.searchParams.delete('session');
-    url.searchParams.delete('view');
+    // Clear all params
+    url.search = '';
 
     if (this.currentView === 'file-browser') {
-      url.searchParams.set('view', 'file-browser');
-      // Reset pathname for file-browser view
-      url.pathname = '/';
+      // Use path-based URL for file-browser view
+      url.pathname = '/file-browser';
     } else if (this.currentView === 'worktrees') {
       // Use path-based URL for worktrees view
       url.pathname = '/worktrees';
