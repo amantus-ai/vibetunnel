@@ -279,6 +279,23 @@ export class WorktreeManager extends LitElement {
                       
                       <div class="flex gap-2 ml-4">
                         ${
+                          !worktree.isMainWorktree
+                            ? html`
+                          <button
+                            @click=${() => this.handleToggleFollow(worktree.branch, this.followBranch !== worktree.branch)}
+                            class="px-3 py-1 text-sm font-medium ${
+                              this.followBranch === worktree.branch
+                                ? 'text-white bg-green-600 hover:bg-green-700'
+                                : 'text-primary-dark bg-primary-lighter hover:bg-primary-lightest'
+                            } rounded transition-colors"
+                            title="${this.followBranch === worktree.branch ? 'Disable follow mode' : 'Enable follow mode'}"
+                          >
+                            ${this.followBranch === worktree.branch ? 'Following' : 'Follow'}
+                          </button>
+                        `
+                            : ''
+                        }
+                        ${
                           !worktree.isCurrentWorktree
                             ? html`
                           <button
