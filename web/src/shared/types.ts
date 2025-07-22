@@ -34,6 +34,7 @@ export interface SessionInfo {
   gitBehindCount?: number; // Commits behind upstream
   gitHasChanges?: boolean; // Has uncommitted changes
   gitIsWorktree?: boolean; // Is a worktree (not main repo)
+  gitMainRepoPath?: string; // Main repository path (same as gitRepoPath if not worktree)
 }
 
 /**
@@ -99,6 +100,7 @@ export interface SessionCreateOptions {
   gitBehindCount?: number;
   gitHasChanges?: boolean;
   gitIsWorktree?: boolean;
+  gitMainRepoPath?: string;
 }
 
 /**

@@ -315,8 +315,7 @@ export class SessionCreateForm extends LitElement {
     if (changedProperties.has('visible')) {
       if (this.visible) {
         // Reset to defaults first to ensure clean state
-        // TEMPORARY: Use VibeTunnel repo path for testing Git detection
-        this.workingDir = '~/Projects/vibetunnel';
+        this.workingDir = DEFAULT_REPOSITORY_BASE_PATH;
         this.command = 'zsh';
         this.sessionName = '';
         this.spawnWindow = false;
@@ -756,17 +755,35 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
-  private async loadBranches(_repoPath: string): Promise<void> {
+  private async loadBranches(repoPath: string): Promise<void> {
+    if (!this.authClient) {
+      return;
+    }
+
     this.isLoadingBranches = true;
     try {
-      // For now, we'll use a simple list of common branches
-      // In a real implementation, this would fetch from the Git API
-      this.availableBranches = ['main', 'master', 'develop', 'staging', 'production'];
+      const response = await fetch(
+        `/api/repositories/branches?${new URLSearchParams({ path: repoPath })}`,
+        {
+          headers: this.authClient.getAuthHeader(),
+        }
+      );
 
-      // Set current branch if not already set
-      if (!this.currentBranch && this.availableBranches.length > 0) {
-        this.currentBranch = this.availableBranches[0];
-        this.selectedBaseBranch = this.currentBranch;
+      if (response.ok) {
+        const branches = await response.json();
+        this.availableBranches = branches.map((b: { name: string; current: boolean }) => b.name);
+
+        // Set the current branch
+        const currentBranchData = branches.find((b: { current: boolean }) => b.current);
+        if (currentBranchData) {
+          this.currentBranch = currentBranchData.name;
+          if (!this.selectedBaseBranch) {
+            this.selectedBaseBranch = this.currentBranch;
+          }
+        }
+      } else {
+        logger.error('Failed to load branches:', response.statusText);
+        this.availableBranches = [];
       }
     } catch (error) {
       logger.error('Failed to load branches:', error);
@@ -785,7 +802,8 @@ export class SessionCreateForm extends LitElement {
     try {
       const response = await this.gitService.listWorktrees(repoPath);
       this.availableWorktrees = response.worktrees.map((wt) => ({
-        branch: wt.branch,
+        // Strip refs/heads/ prefix for display
+        branch: wt.branch.replace(/^refs\/heads\//, ''),
         path: wt.path,
         isMainWorktree: wt.isMainWorktree,
         isCurrentWorktree: wt.path === currentPath,
@@ -796,7 +814,8 @@ export class SessionCreateForm extends LitElement {
         (wt) => wt.isCurrentWorktree || wt.path === currentPath
       );
       if (currentWorktree) {
-        this.currentBranch = currentWorktree.branch;
+        // Strip refs/heads/ prefix from branch name
+        this.currentBranch = currentWorktree.branch.replace(/^refs\/heads\//, '');
         if (!this.selectedBaseBranch) {
           this.selectedBaseBranch = this.currentBranch;
         }
