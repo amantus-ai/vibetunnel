@@ -33,8 +33,8 @@ export class CtrlAlphaOverlay extends LitElement {
     return html`
       <modal-wrapper
         .visible=${this.visible}
-        modalClass="z-50" /* z-50 ensures overlay appears above other UI elements */
-        contentClass="fixed inset-0 flex flex-col z-50" /* z-50 matches modal z-index */
+        modalClass="" /* Use modal-wrapper's default z-index */
+        contentClass="fixed inset-0 flex flex-col" /* Use modal-wrapper's default z-index */
         ariaLabel="Ctrl key sequence builder"
         @close=${() => this.onCancel?.()}
         .closeOnBackdrop=${true}
@@ -44,8 +44,8 @@ export class CtrlAlphaOverlay extends LitElement {
         <div class="flex-1"></div>
         
         <div
-          class="font-mono text-sm mx-4 max-w-sm w-full self-center"
-          style="background: rgb(var(--color-bg)); border: 1px solid rgb(var(--color-primary)); border-radius: 8px; padding: 10px; margin-bottom: ${this.keyboardHeight > 0 ? `${this.keyboardHeight + 180}px` : 'calc(env(keyboard-inset-height, 0px) + 180px)'};/* 180px = estimated quick keyboard height (3 rows) */"
+          class="font-mono text-sm mx-4 max-w-sm w-full self-center bg-bg border border-primary rounded-lg p-2.5"
+          style="margin-bottom: ${this.keyboardHeight > 0 ? `${this.keyboardHeight + 180}px` : 'calc(env(keyboard-inset-height, 0px) + 180px)'};/* 180px = estimated quick keyboard height (3 rows) */"
         >
           <div class="text-primary text-center mb-2 font-bold">Ctrl + Key</div>
 
