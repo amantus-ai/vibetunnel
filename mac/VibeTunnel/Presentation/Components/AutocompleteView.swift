@@ -24,6 +24,7 @@ struct AutocompleteViewWithKeyboard: View {
     let onSelect: (String) -> Void
     
     @State private var lastKeyboardState = false
+    @State private var mouseHoverTriggered = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,6 +39,7 @@ struct AutocompleteViewWithKeyboard: View {
                                 .id(index)
                                 .onHover { hovering in
                                     if hovering {
+                                        mouseHoverTriggered = true
                                         selectedIndex = index
                                     }
                                 }
@@ -51,12 +53,14 @@ struct AutocompleteViewWithKeyboard: View {
                 }
                 .frame(maxHeight: 200)
                 .onChange(of: selectedIndex) { _, newIndex in
-                    // Only animate scroll when using keyboard navigation
-                    if newIndex >= 0 && newIndex < suggestions.count && keyboardNavigating {
+                    // Only animate scroll when using keyboard navigation, not mouse hover
+                    if newIndex >= 0 && newIndex < suggestions.count && keyboardNavigating && !mouseHoverTriggered {
                         withAnimation(.easeInOut(duration: 0.1)) {
                             proxy.scrollTo(newIndex, anchor: .center)
                         }
                     }
+                    // Reset the mouse hover flag after processing
+                    mouseHoverTriggered = false
                 }
                 .onChange(of: keyboardNavigating) { _, newValue in
                     lastKeyboardState = newValue
@@ -147,7 +151,7 @@ private struct AutocompleteRow: View {
 struct AutocompleteTextField: View {
     @Binding var text: String
     let placeholder: String
-    @StateObject private var autocompleteService = AutocompleteService()
+    @State private var autocompleteService = AutocompleteService()
     @State private var showSuggestions = false
     @State private var selectedIndex = -1
     @FocusState private var isFocused: Bool

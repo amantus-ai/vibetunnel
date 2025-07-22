@@ -1,14 +1,18 @@
 import AppKit
 import Foundation
+import Observation
+import OSLog
 
 /// Service for providing path autocompletion suggestions
 @MainActor
-class AutocompleteService: ObservableObject {
-    @Published private(set) var isLoading = false
-    @Published private(set) var suggestions: [PathSuggestion] = []
+@Observable
+class AutocompleteService {
+    private(set) var isLoading = false
+    private(set) var suggestions: [PathSuggestion] = []
 
     private var currentTask: Task<Void, Never>?
     private let fileManager = FileManager.default
+    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AutocompleteService")
 
     struct PathSuggestion: Identifiable, Equatable {
         let id = UUID()
@@ -40,10 +44,12 @@ class AutocompleteService: ObservableObject {
     }
 
     private func performFetch(for originalPath: String) async {
-        isLoading = true
-        defer { isLoading = false }
+        self.isLoading = true
+        defer { self.isLoading = false }
 
         var partialPath = originalPath
+        
+        logger.debug("[AutocompleteService] performFetch - originalPath: '\(originalPath)'")
 
         // Handle tilde expansion
         if partialPath.hasPrefix("~") {
@@ -54,9 +60,13 @@ class AutocompleteService: ObservableObject {
                 partialPath = homeDir + partialPath.dropFirst(1)
             }
         }
+        
+        logger.debug("[AutocompleteService] After expansion - partialPath: '\(partialPath)'")
 
         // Determine directory and partial filename
         let (dirPath, partialName) = splitPath(partialPath)
+        
+        logger.debug("[AutocompleteService] After split - dirPath: '\(dirPath)', partialName: '\(partialName)'")
 
         // Check if task was cancelled
         if Task.isCancelled { return }
@@ -91,7 +101,9 @@ class AutocompleteService: ObservableObject {
         let sortedSuggestions = sortSuggestions(allSuggestions, searchTerm: partialName)
 
         // Limit to 20 results
-        suggestions = Array(sortedSuggestions.prefix(20))
+        self.suggestions = Array(sortedSuggestions.prefix(20))
+        
+        logger.debug("[AutocompleteService] Final suggestions count: \(self.suggestions.count), items: \(self.suggestions.map { $0.name }.joined(separator: ", "))")
     }
 
     private func splitPath(_ path: String) -> (directory: String, partialName: String) {
@@ -118,6 +130,12 @@ class AutocompleteService: ObservableObject {
 
         do {
             let contents = try fileManager.contentsOfDirectory(atPath: expandedDir)
+            
+            // Debug logging
+            let matching = contents.filter { filename in
+                partialName.isEmpty || filename.lowercased().hasPrefix(partialName.lowercased())
+            }
+            logger.debug("[AutocompleteService] Directory: \(expandedDir), PartialName: '\(partialName)', Total items: \(contents.count), Matching: \(matching.count) - \(matching.joined(separator: ", "))")
 
             return contents.compactMap { filename in
                 // Filter by partial name (case-insensitive)
