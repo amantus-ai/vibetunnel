@@ -11,7 +11,7 @@
  * @listens file-selected - From file browser when directory is selected
  * @listens browser-cancel - From file browser when cancelled
  */
-import { html, LitElement, type PropertyValues } from 'lit';
+import { html, LitElement, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import './file-browser.js';
 import './quick-start-editor.js';
@@ -656,7 +656,9 @@ export class SessionCreateForm extends LitElement {
         try {
           // Fetch available branches/worktrees
           const worktrees = await this.gitService.listWorktrees(repoInfo.repoPath);
-          this.availableBranches = worktrees.worktrees.map((w) => w.branch);
+          this.availableBranches = worktrees.worktrees.map((w) =>
+            w.branch.startsWith('refs/heads/') ? w.branch.slice(11) : w.branch
+          );
 
           // Find the worktree that contains the current path
           // The path might be a subdirectory of the worktree root
@@ -669,9 +671,13 @@ export class SessionCreateForm extends LitElement {
           });
 
           if (currentWorktree) {
-            this.selectedBranch = currentWorktree.branch;
+            this.selectedBranch = currentWorktree.branch.startsWith('refs/heads/')
+              ? currentWorktree.branch.slice(11)
+              : currentWorktree.branch;
           } else {
-            this.selectedBranch = worktrees.baseBranch;
+            this.selectedBranch = worktrees.baseBranch.startsWith('refs/heads/')
+              ? worktrees.baseBranch.slice(11)
+              : worktrees.baseBranch;
           }
           // Trigger re-render after updating branches
           this.requestUpdate();
@@ -915,6 +921,9 @@ export class SessionCreateForm extends LitElement {
                               <span class="text-text text-xs sm:text-sm truncate flex-1">
                                 ${completion.name}
                               </span>
+                              ${completion.gitBranch 
+                                ? html`<span class="text-primary text-[9px] sm:text-[10px] px-1">${completion.gitBranch}</span>`
+                                : nothing}
                               <span class="text-text-muted text-[9px] sm:text-[10px] truncate max-w-[40%]">${completion.path}</span>
                             </button>
                           `

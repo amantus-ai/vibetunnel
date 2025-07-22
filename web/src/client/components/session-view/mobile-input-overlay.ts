@@ -224,7 +224,7 @@ export class MobileInputOverlay extends LitElement {
 
           <div
             class="mobile-input-container font-mono text-sm mx-4 flex flex-col"
-            style="background: rgb(var(--color-bg)); border: 1px solid rgb(var(--color-primary)); border-radius: 8px; margin-bottom: ${this.keyboardHeight > 0 ? `${this.keyboardHeight + 180}px` : 'calc(env(keyboard-inset-height, 0px) + 180px)'};/* 180px = estimated quick keyboard height (3 rows) */"
+            style="background: rgb(var(--color-bg)); border: 1px solid rgb(var(--color-primary)); border-radius: 8px; margin-bottom: ${this.keyboardHeight > 0 ? `${this.keyboardHeight}px` : 'env(keyboard-inset-height, 0px)'};"
             @click=${this.handleContainerClick}
           >
           <!-- Input Area -->

@@ -77,7 +77,6 @@ export class TerminalQuickKeys extends LitElement {
     pasteText?: string
   ) => void;
   @property({ type: Boolean }) visible = false;
-  @property({ type: Number }) keyboardHeight = 0;
 
   @state() private showFunctionKeys = false;
   @state() private showCtrlKeys = false;
@@ -136,9 +135,6 @@ export class TerminalQuickKeys extends LitElement {
 
   updated(changedProperties: PropertyValues) {
     super.updated(changedProperties);
-    if (changedProperties.has('keyboardHeight')) {
-      console.log('[QuickKeys] Keyboard height changed:', this.keyboardHeight);
-    }
   }
 
   private handleKeyPress(
@@ -284,9 +280,8 @@ export class TerminalQuickKeys extends LitElement {
           position: fixed;
           left: 0;
           right: 0;
-          /* Chrome: Use env() if supported */
-          bottom: env(keyboard-inset-height, 0px);
-          /* Safari: Will be overridden by inline style */
+          /* Default to bottom of screen */
+          bottom: 0;
           z-index: 999999;
           /* Ensure it stays on top */
           isolation: isolate;
@@ -299,7 +294,7 @@ export class TerminalQuickKeys extends LitElement {
         .quick-keys-bar {
           background: rgb(var(--color-bg-secondary));
           border-top: 1px solid rgb(var(--color-border-base));
-          padding: 0.5rem 0.25rem;
+          padding: 0.25rem 0.25rem;
           /* Prevent iOS from adding its own styling */
           -webkit-appearance: none;
           appearance: none;
@@ -435,7 +430,7 @@ export class TerminalQuickKeys extends LitElement {
         /* Landscape mode adjustments */
         @media (orientation: landscape) and (max-width: 926px) {
           .quick-keys-bar {
-            padding: 0.45rem 0.225rem;
+            padding: 0.2rem 0.2rem;
           }
         }
       </style>
@@ -445,20 +440,16 @@ export class TerminalQuickKeys extends LitElement {
   render() {
     if (!this.visible) return '';
 
-    // For Safari: use JavaScript-calculated position when keyboard is visible
-    const bottomPosition = this.keyboardHeight > 0 ? `${this.keyboardHeight}px` : null;
-
     // Use the same layout for all mobile devices (phones and tablets)
     return html`
       <div 
         class="terminal-quick-keys-container"
-        style=${bottomPosition ? `bottom: ${bottomPosition}` : ''}
         @mousedown=${(e: Event) => e.preventDefault()}
         @touchstart=${(e: Event) => e.preventDefault()}
       >
         <div class="quick-keys-bar">
           <!-- Row 1 -->
-          <div class="flex gap-0.5 justify-center mb-1">
+          <div class="flex gap-0.5 justify-center mb-0.5">
             ${TERMINAL_QUICK_KEYS.filter((k) => k.row === 1).map(
               ({ key, label, modifier, arrow, toggle }) => html`
                 <button
@@ -510,7 +501,7 @@ export class TerminalQuickKeys extends LitElement {
             this.showCtrlKeys
               ? html`
               <!-- Ctrl shortcuts row -->
-              <div class="flex gap-0.5 justify-between flex-wrap mb-1">
+              <div class="flex gap-0.5 justify-between flex-wrap mb-0.5">
                 ${CTRL_SHORTCUTS.map(
                   ({ key, label, combo, special }) => html`
                     <button
@@ -545,7 +536,7 @@ export class TerminalQuickKeys extends LitElement {
               : this.showFunctionKeys
                 ? html`
               <!-- Function keys row -->
-              <div class="flex gap-0.5 justify-between mb-1">
+              <div class="flex gap-0.5 justify-between mb-0.5">
                 ${FUNCTION_KEYS.map(
                   ({ key, label }) => html`
                     <button
@@ -579,7 +570,7 @@ export class TerminalQuickKeys extends LitElement {
             `
                 : html`
               <!-- Regular row 2 -->
-              <div class="flex gap-0.5 justify-center mb-1">
+              <div class="flex gap-0.5 justify-center mb-0.5">
                 ${TERMINAL_QUICK_KEYS.filter((k) => k.row === 2).map(
                   ({ key, label, modifier, combo, special, toggle }) => html`
                     <button

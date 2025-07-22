@@ -383,14 +383,6 @@ export class LifecycleEventManager extends ManagerEventEmitter {
         // Store keyboard height in state
         this.callbacks.setKeyboardHeight(keyboardHeight);
 
-        // Update quick keys component if it exists
-        const quickKeys = this.callbacks.querySelector('terminal-quick-keys') as HTMLElement & {
-          keyboardHeight: number;
-        };
-        if (quickKeys) {
-          quickKeys.keyboardHeight = keyboardHeight;
-        }
-
         logger.log(`Visual Viewport keyboard height: ${keyboardHeight}px`);
 
         // Detect keyboard dismissal (height drops to 0 or near 0)

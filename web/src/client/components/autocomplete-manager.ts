@@ -9,6 +9,7 @@ export interface AutocompleteItem {
   type: 'file' | 'directory';
   suggestion: string;
   isRepository?: boolean;
+  gitBranch?: string;
 }
 
 export interface Repository {

@@ -22,6 +22,12 @@ export interface TerminalSpawnRequest {
   workingDirectory?: string;
   command?: string;
   terminalPreference?: string;
+  gitRepoPath?: string;
+  gitBranch?: string;
+  gitAheadCount?: number;
+  gitBehindCount?: number;
+  gitHasChanges?: boolean;
+  gitIsWorktree?: boolean;
 }
 
 export interface TerminalSpawnResponse {

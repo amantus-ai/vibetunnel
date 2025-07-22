@@ -689,12 +689,23 @@ export function createFilesystemRoutes(): Router {
               }
             }
 
-            // Check if this directory is a git repository
+            // Check if this directory is a git repository and get branch
             let isGitRepo = false;
+            let gitBranch: string | undefined;
             if (isDirectory) {
               try {
                 await fs.stat(path.join(entryPath, '.git'));
                 isGitRepo = true;
+                
+                // Get the current git branch
+                try {
+                  const { stdout: branch } = await execAsync('git branch --show-current', { 
+                    cwd: entryPath 
+                  });
+                  gitBranch = branch.trim();
+                } catch {
+                  // Failed to get branch
+                }
               } catch {
                 // Not a git repository
               }
@@ -707,6 +718,7 @@ export function createFilesystemRoutes(): Router {
               // Add trailing slash for directories
               suggestion: isDirectory ? `${displayPath}/` : displayPath,
               isRepository: isGitRepo,
+              gitBranch,
             };
           })
       );

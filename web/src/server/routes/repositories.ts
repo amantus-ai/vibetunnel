@@ -1,12 +1,15 @@
+import { exec } from 'child_process';
 import { Router } from 'express';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
+import { promisify } from 'util';
 import { DEFAULT_REPOSITORY_BASE_PATH } from '../../shared/constants.js';
 import { createLogger } from '../utils/logger.js';
 import { resolveAbsolutePath } from '../utils/path-utils.js';
 
 const logger = createLogger('repositories');
+const execAsync = promisify(exec);
 
 export interface DiscoveredRepository {
   id: string;
@@ -14,6 +17,7 @@ export interface DiscoveredRepository {
   folderName: string;
   lastModified: string;
   relativePath: string;
+  gitBranch?: string;
 }
 
 interface RepositorySearchOptions {

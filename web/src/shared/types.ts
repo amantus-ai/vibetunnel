@@ -30,6 +30,10 @@ export interface SessionInfo {
   version?: string; // VibeTunnel version that created this session
   gitRepoPath?: string; // Repository root path
   gitBranch?: string; // Current branch name
+  gitAheadCount?: number; // Commits ahead of upstream
+  gitBehindCount?: number; // Commits behind upstream
+  gitHasChanges?: boolean; // Has uncommitted changes
+  gitIsWorktree?: boolean; // Is a worktree (not main repo)
 }
 
 /**
@@ -91,6 +95,10 @@ export interface SessionCreateOptions {
   titleMode?: TitleMode;
   gitRepoPath?: string;
   gitBranch?: string;
+  gitAheadCount?: number;
+  gitBehindCount?: number;
+  gitHasChanges?: boolean;
+  gitIsWorktree?: boolean;
 }
 
 /**

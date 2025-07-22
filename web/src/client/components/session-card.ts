@@ -553,15 +553,71 @@ export class SessionCard extends LitElement {
                 : ''
             }
           </div>
-          <div class="text-xs opacity-75 min-w-0 mt-1 flex justify-between items-center">
+          <div class="text-xs opacity-75 min-w-0 mt-1 flex justify-between items-center gap-2">
             <clickable-path .path=${this.session.workingDir} .iconSize=${12}></clickable-path>
-            ${
-              this.session.gitBranch
-                ? html`<span class="text-text-muted flex-shrink-0">[${this.session.gitBranch}]</span>`
-                : ''
-            }
+            ${this.renderGitStatus()}
           </div>
         </div>
+      </div>
+    `;
+  }
+
+  private renderGitStatus() {
+    if (!this.session.gitBranch) {
+      return '';
+    }
+
+    return html`
+      <div class="flex items-center gap-1 text-[10px] flex-shrink-0">
+        ${
+          this.session.gitBranch
+            ? html`
+          <span class="px-1.5 py-0.5 bg-surface-2 rounded-sm">${this.session.gitBranch}</span>
+        `
+            : ''
+        }
+        
+        ${
+          this.session.gitAheadCount && this.session.gitAheadCount > 0
+            ? html`
+          <span class="text-status-success flex items-center gap-0.5">
+            <svg width="8" height="8" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 4l-4 4h3v4h2v-4h3L8 4z"/>
+            </svg>
+            ${this.session.gitAheadCount}
+          </span>
+        `
+            : ''
+        }
+        
+        ${
+          this.session.gitBehindCount && this.session.gitBehindCount > 0
+            ? html`
+          <span class="text-status-warning flex items-center gap-0.5">
+            <svg width="8" height="8" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 12l4-4h-3V4H7v4H4l4 4z"/>
+            </svg>
+            ${this.session.gitBehindCount}
+          </span>
+        `
+            : ''
+        }
+        
+        ${
+          this.session.gitHasChanges
+            ? html`
+          <span class="text-yellow-500">●</span>
+        `
+            : ''
+        }
+        
+        ${
+          this.session.gitIsWorktree
+            ? html`
+          <span class="px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded-sm text-[9px]">worktree</span>
+        `
+            : ''
+        }
       </div>
     `;
   }

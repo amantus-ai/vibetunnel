@@ -45,7 +45,7 @@ export class CtrlAlphaOverlay extends LitElement {
         
         <div
           class="font-mono text-sm mx-4 max-w-sm w-full self-center bg-bg border border-primary rounded-lg p-2.5"
-          style="margin-bottom: ${this.keyboardHeight > 0 ? `${this.keyboardHeight + 180}px` : 'calc(env(keyboard-inset-height, 0px) + 180px)'};/* 180px = estimated quick keyboard height (3 rows) */"
+          style="margin-bottom: ${this.keyboardHeight > 0 ? `${this.keyboardHeight}px` : 'env(keyboard-inset-height, 0px)'};"
         >
           <div class="text-primary text-center mb-2 font-bold">Ctrl + Key</div>
 

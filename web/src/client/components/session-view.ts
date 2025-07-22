@@ -304,14 +304,6 @@ export class SessionView extends LitElement {
           const keyboardHeight = window.innerHeight - viewport.height;
           this.keyboardHeight = keyboardHeight;
 
-          // Update quick keys component if it exists
-          const quickKeys = this.querySelector('terminal-quick-keys') as HTMLElement & {
-            keyboardHeight: number;
-          };
-          if (quickKeys) {
-            quickKeys.keyboardHeight = keyboardHeight;
-          }
-
           logger.log(`Visual Viewport keyboard height (manual trigger): ${keyboardHeight}px`);
 
           // Return a function that can be called to trigger the calculation
@@ -319,9 +311,6 @@ export class SessionView extends LitElement {
             if (window.visualViewport) {
               const currentHeight = window.innerHeight - window.visualViewport.height;
               this.keyboardHeight = currentHeight;
-              if (quickKeys) {
-                quickKeys.keyboardHeight = currentHeight;
-              }
             }
           };
         }
@@ -1444,6 +1433,13 @@ export class SessionView extends LitElement {
           contain: layout style paint; /* Isolate terminal updates */
         }
         
+        /* Add padding to terminal when quick keys are visible */
+        .terminal-area[data-quickkeys-visible="true"] vibe-terminal,
+        .terminal-area[data-quickkeys-visible="true"] vibe-terminal-binary {
+          padding-bottom: 120px !important;
+          box-sizing: border-box;
+        }
+        
         .quickkeys-area {
           grid-area: quickkeys;
         }
@@ -1468,11 +1464,13 @@ export class SessionView extends LitElement {
           -webkit-tap-highlight-color: transparent;
         }
       </style>
-      <div
-        class="session-view-grid"
-        style="outline: none !important; box-shadow: none !important; --keyboard-height: ${this.keyboardHeight}px; --quickkeys-height: ${this.showQuickKeys ? '140' : '0'}px;"
-        data-keyboard-visible="${this.keyboardHeight > 0 || this.showQuickKeys ? 'true' : 'false'}"
-      >
+      <!-- Background wrapper to extend header color to status bar -->
+      <div class="bg-bg-secondary" style="padding-top: env(safe-area-inset-top);">
+        <div
+          class="session-view-grid"
+          style="outline: none !important; box-shadow: none !important; --keyboard-height: ${this.keyboardHeight}px; --quickkeys-height: 0px;"
+          data-keyboard-visible="${this.keyboardHeight > 0 || this.showQuickKeys ? 'true' : 'false'}"
+        >
         <!-- Session Header Area -->
         <div class="session-header-area">
           <session-header
@@ -1536,6 +1534,7 @@ export class SessionView extends LitElement {
             this.isMobile && this.isLandscape ? 'safe-area-left safe-area-right' : ''
           }"
           id="terminal-container"
+          data-quickkeys-visible="${this.showQuickKeys && this.keyboardHeight > 0}"
         >
           ${
             this.loadingAnimationManager.isLoading()
@@ -1726,38 +1725,6 @@ export class SessionView extends LitElement {
               : ''
           }
 
-          <!-- Git Branch Display (bottom right) -->
-          ${
-            (
-              () => {
-                logger.debug('Session git info:', {
-                  gitBranch: this.session?.gitBranch,
-                  gitRepoPath: this.session?.gitRepoPath,
-                  sessionId: this.session?.id,
-                });
-                return this.session?.gitBranch;
-              }
-            )()
-              ? html`
-                <div
-                  class="fixed bottom-4 right-4"
-                  style="z-index: ${Z_INDEX.TERMINAL_OVERLAY}; pointer-events: none !important;"
-                >
-                  <div
-                    class="bg-elevated/80 backdrop-blur-sm text-muted text-xs font-mono px-3 py-1.5 rounded-md shadow-sm border border-tertiary/50"
-                    style="pointer-events: none !important;"
-                  >
-                    <span class="flex items-center gap-1.5">
-                      <svg class="w-3.5 h-3.5 text-primary opacity-60" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v.5H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2H9V5a1.5 1.5 0 1 1 3 0v.5h1a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3h1V5a2.5 2.5 0 0 1 5 0zm-2 0a1 1 0 1 0 2 0V5a1 1 0 0 0-2 0v.5z"/>
-                      </svg>
-                      <span>${this.session.gitBranch}</span>
-                    </span>
-                  </div>
-                </div>
-              `
-              : ''
-          }
 
           <!-- Mobile Input Overlay -->
           <mobile-input-overlay
@@ -1876,6 +1843,7 @@ export class SessionView extends LitElement {
               : ''
           }
         </div>
+      </div>
       </div>
     `;
   }

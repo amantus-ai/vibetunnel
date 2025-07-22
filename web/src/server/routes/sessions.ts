@@ -22,6 +22,10 @@ const execFile = promisify(require('child_process').execFile);
 interface GitInfo {
   gitRepoPath?: string;
   gitBranch?: string;
+  gitAheadCount?: number;
+  gitBehindCount?: number;
+  gitHasChanges?: boolean;
+  gitIsWorktree?: boolean;
 }
 
 /**
@@ -47,9 +51,64 @@ async function detectGitInfo(workingDir: string): Promise<GitInfo> {
       });
 
       const gitBranch = branch.trim();
-      logger.debug(`Detected Git info: repo=${gitRepoPath}, branch=${gitBranch}`);
 
-      return { gitRepoPath, gitBranch };
+      // Get additional Git status information
+      let gitAheadCount: number | undefined;
+      let gitBehindCount: number | undefined;
+      let gitHasChanges = false;
+      let gitIsWorktree = false;
+
+      try {
+        // Check if this is a worktree
+        const gitFile = path.join(workingDir, '.git');
+        const stats = await fs.promises.stat(gitFile).catch(() => null);
+        gitIsWorktree = stats ? !stats.isDirectory() : false;
+
+        // Get ahead/behind status
+        const { stdout: statusOutput } = await execFile(
+          'git',
+          ['status', '--porcelain=v1', '--branch'],
+          {
+            cwd: workingDir,
+            timeout: 5000,
+            env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+          }
+        );
+
+        const lines = statusOutput.trim().split('\n');
+        const branchLine = lines[0];
+
+        // Parse branch line for ahead/behind info
+        if (branchLine?.startsWith('##')) {
+          const aheadMatch = branchLine.match(/\[ahead (\d+)/);
+          const behindMatch = branchLine.match(/behind (\d+)/);
+
+          if (aheadMatch) {
+            gitAheadCount = Number.parseInt(aheadMatch[1], 10);
+          }
+          if (behindMatch) {
+            gitBehindCount = Number.parseInt(behindMatch[1], 10);
+          }
+        }
+
+        // Check for uncommitted changes (any lines after the branch line)
+        gitHasChanges = lines.slice(1).some((line: string) => line.trim().length > 0);
+      } catch (statusError) {
+        logger.debug(`Could not get detailed Git status: ${statusError}`);
+      }
+
+      logger.debug(
+        `Detected Git info: repo=${gitRepoPath}, branch=${gitBranch}, ahead=${gitAheadCount}, behind=${gitBehindCount}, changes=${gitHasChanges}, worktree=${gitIsWorktree}`
+      );
+
+      return {
+        gitRepoPath,
+        gitBranch,
+        gitAheadCount,
+        gitBehindCount,
+        gitHasChanges,
+        gitIsWorktree,
+      };
     } catch (branchError) {
       // Could be in detached HEAD state or other situation where branch name isn't available
       logger.debug(`Could not detect Git branch: ${branchError}`);
@@ -276,6 +335,10 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
             titleMode,
             gitRepoPath: gitInfo.gitRepoPath,
             gitBranch: gitInfo.gitBranch,
+            gitAheadCount: gitInfo.gitAheadCount,
+            gitBehindCount: gitInfo.gitBehindCount,
+            gitHasChanges: gitInfo.gitHasChanges,
+            gitIsWorktree: gitInfo.gitIsWorktree,
           });
 
           if (!spawnResult.success) {
@@ -328,6 +391,10 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         titleMode,
         gitRepoPath: gitInfo.gitRepoPath,
         gitBranch: gitInfo.gitBranch,
+        gitAheadCount: gitInfo.gitAheadCount,
+        gitBehindCount: gitInfo.gitBehindCount,
+        gitHasChanges: gitInfo.gitHasChanges,
+        gitIsWorktree: gitInfo.gitIsWorktree,
       });
 
       const { sessionId, sessionInfo } = result;
@@ -1275,6 +1342,10 @@ export async function requestTerminalSpawn(params: {
   titleMode?: TitleMode;
   gitRepoPath?: string;
   gitBranch?: string;
+  gitAheadCount?: number;
+  gitBehindCount?: number;
+  gitHasChanges?: boolean;
+  gitIsWorktree?: boolean;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     // Create control message for terminal spawn
@@ -1288,6 +1359,10 @@ export async function requestTerminalSpawn(params: {
         terminalPreference: null, // Let Mac app use default terminal
         gitRepoPath: params.gitRepoPath,
         gitBranch: params.gitBranch,
+        gitAheadCount: params.gitAheadCount,
+        gitBehindCount: params.gitBehindCount,
+        gitHasChanges: params.gitHasChanges,
+        gitIsWorktree: params.gitIsWorktree,
       },
       params.sessionId
     );
