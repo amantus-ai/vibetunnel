@@ -140,13 +140,13 @@ detached
     it('should fallback to main branch when origin HEAD detection fails', async () => {
       // Mock symbolic-ref failure
       mockExecFile.mockRejectedValueOnce(new Error('Not found'));
-      
+
       // Mock git rev-parse to check for main branch (succeeds)
       mockExecFile.mockResolvedValueOnce({ stdout: 'abc123\n', stderr: '' });
-      
+
       // Mock git config for follow branch (not set)
       mockExecFile.mockRejectedValueOnce(new Error('Not found'));
-      
+
       // Mock git worktree list
       mockExecFile.mockResolvedValueOnce({ stdout: mockWorktreeListOutput, stderr: '' });
 

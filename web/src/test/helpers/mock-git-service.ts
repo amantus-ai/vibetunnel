@@ -171,12 +171,12 @@ export class MockGitService implements GitService {
     return mainWorktree?.hasUncommittedChanges || false;
   }
 
-  async getRemoteUrl(repoPath: string, remote: string = 'origin'): Promise<string | null> {
+  async getRemoteUrl(_repoPath: string, _remote: string = 'origin'): Promise<string | null> {
     // Mock implementation
     return `https://github.com/example/repo.git`;
   }
 
-  async addAllAndCommit(repoPath: string, message: string): Promise<void> {
+  async addAllAndCommit(repoPath: string, _message: string): Promise<void> {
     // Mock implementation - clear uncommitted changes
     const worktrees = this.worktrees.get(repoPath) || [];
     const updatedWorktrees = worktrees.map((w) => ({
@@ -186,19 +186,19 @@ export class MockGitService implements GitService {
     this.worktrees.set(repoPath, updatedWorktrees);
   }
 
-  async push(repoPath: string, remote?: string, branch?: string): Promise<void> {
+  async push(_repoPath: string, _remote?: string, _branch?: string): Promise<void> {
     // Mock implementation - no-op
   }
 
-  async fetch(repoPath: string, remote?: string): Promise<void> {
+  async fetch(_repoPath: string, _remote?: string): Promise<void> {
     // Mock implementation - no-op
   }
 
-  async pull(repoPath: string, remote?: string, branch?: string): Promise<void> {
+  async pull(_repoPath: string, _remote?: string, _branch?: string): Promise<void> {
     // Mock implementation - no-op
   }
 
-  async createBranch(repoPath: string, branchName: string, baseBranch?: string): Promise<void> {
+  async createBranch(repoPath: string, branchName: string, _baseBranch?: string): Promise<void> {
     const branches = this.branches.get(repoPath) || [];
     branches.push({
       name: branchName,
@@ -208,7 +208,7 @@ export class MockGitService implements GitService {
     this.branches.set(repoPath, branches);
   }
 
-  async deleteBranch(repoPath: string, branchName: string, force: boolean = false): Promise<void> {
+  async deleteBranch(repoPath: string, branchName: string, _force: boolean = false): Promise<void> {
     const branches = this.branches.get(repoPath) || [];
     const updatedBranches = branches.filter((b) => b.name !== branchName);
     this.branches.set(repoPath, updatedBranches);

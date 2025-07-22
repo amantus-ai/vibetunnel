@@ -6,6 +6,7 @@
 
 import type { Application } from 'express';
 import request from 'supertest';
+import type { Session } from '../../shared/types.js';
 
 export interface TestSession {
   sessionId: string;
@@ -104,14 +105,14 @@ export async function resizeSession(
 /**
  * Get session info
  */
-export async function getSessionInfo(app: Application, sessionId: string): Promise<any> {
+export async function getSessionInfo(app: Application, sessionId: string): Promise<Session> {
   const response = await request(app).get('/api/sessions');
 
   if (response.status !== 200) {
     throw new Error(`Failed to get sessions: ${response.body.error || response.status}`);
   }
 
-  const session = response.body.find((s: { id: string }) => s.id === sessionId);
+  const session = response.body.find((s: Session) => s.id === sessionId);
   if (!session) {
     throw new Error(`Session ${sessionId} not found`);
   }

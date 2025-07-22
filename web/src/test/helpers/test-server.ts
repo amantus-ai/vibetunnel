@@ -99,7 +99,7 @@ export function createTestServer(options: TestServerOptions = {}): TestServerRes
     const sessions = sessionManager.listSessions();
     for (const session of sessions) {
       try {
-        await ptyManager.closeSession(session.id);
+        await ptyManager.killSession(session.id);
       } catch (_error) {
         // Ignore errors during cleanup
       }

@@ -85,9 +85,8 @@ describe('Worktree Workflows Integration Tests', () => {
     activityMonitor = new ActivityMonitor();
     streamWatcher = new StreamWatcher();
 
-    // Create PtyManager with session manager
+    // Create PtyManager
     localPtyManager = new PtyManager();
-    (localPtyManager as any).sessionManager = sessionManager;
 
     // Set up Express app
     app = express();
