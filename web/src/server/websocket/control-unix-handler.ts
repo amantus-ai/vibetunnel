@@ -2,6 +2,7 @@ import * as child_process from 'node:child_process';
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
+import { v4 as uuidv4 } from 'uuid';
 import type { WebSocket } from 'ws';
 import { createLogger } from '../utils/logger.js';
 import type {
@@ -11,7 +12,6 @@ import type {
   TerminalSpawnResponse,
 } from './control-protocol.js';
 import { createControlEvent, createControlResponse } from './control-protocol.js';
-import { v4 as uuidv4 } from 'uuid';
 
 const logger = createLogger('control-unix');
 

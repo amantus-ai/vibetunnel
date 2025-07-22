@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { NotificationPreferences, PushSubscription } from './push-notification-service.js';
+import type { NotificationPreferences } from './push-notification-service.js';
 import { pushNotificationService } from './push-notification-service.js';
 
 // Mock the global objects
@@ -33,10 +33,18 @@ describe('PushNotificationService', () => {
     localStorage.clear();
 
     // Reset service state
-    (pushNotificationService as any).initialized = false;
-    (pushNotificationService as any).registration = null;
-    (pushNotificationService as any).subscription = null;
-    (pushNotificationService as any).preferences = null;
+    // Using a type assertion to access private members for testing
+    interface TestPushNotificationService {
+      initialized: boolean;
+      serviceWorkerRegistration: ServiceWorkerRegistration | null;
+      pushSubscription: globalThis.PushSubscription | null;
+      preferences: NotificationPreferences | null;
+    }
+    const testService = pushNotificationService as unknown as TestPushNotificationService;
+    testService.initialized = false;
+    testService.serviceWorkerRegistration = null;
+    testService.pushSubscription = null;
+    testService.preferences = null;
   });
 
   afterEach(() => {
@@ -233,7 +241,9 @@ describe('PushNotificationService', () => {
 
       const saved = localStorage.getItem('vibetunnel_notification_preferences');
       expect(saved).toBeTruthy();
-      expect(JSON.parse(saved!)).toEqual(preferences);
+      if (saved) {
+        expect(JSON.parse(saved)).toEqual(preferences);
+      }
       expect(fetch).toHaveBeenCalledWith('/api/preferences/notifications', expect.any(Object));
     });
 

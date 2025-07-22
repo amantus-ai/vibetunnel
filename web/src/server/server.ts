@@ -33,7 +33,6 @@ import { ControlDirWatcher } from './services/control-dir-watcher.js';
 import { HQClient } from './services/hq-client.js';
 import { mdnsService } from './services/mdns-service.js';
 import { PushNotificationService } from './services/push-notification-service.js';
-import { PushNotificationStatusService } from './services/push-notification-status-service.js';
 import { RemoteRegistry } from './services/remote-registry.js';
 import { StreamWatcher } from './services/stream-watcher.js';
 import { TerminalManager } from './services/terminal-manager.js';

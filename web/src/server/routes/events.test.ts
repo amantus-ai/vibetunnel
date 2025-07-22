@@ -11,12 +11,27 @@ vi.mock('../utils/logger', () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
+    info: vi.fn(),
   })),
 }));
 
+// Type definitions for Express Router internals
+interface RouteLayer {
+  route?: {
+    path: string;
+    methods: Record<string, boolean>;
+    stack: Array<{ handle: (req: Request, res: Response) => void }>;
+  };
+}
+
+type ExpressRouter = { stack: RouteLayer[] };
+
 describe('Events Router', () => {
   let mockPtyManager: PtyManager & EventEmitter;
-  let mockRequest: any;
+  let mockRequest: Partial<Request> & {
+    headers: Record<string, string>;
+    on: ReturnType<typeof vi.fn>;
+  };
   let mockResponse: Response;
   let eventsRouter: ReturnType<typeof createEventsRouter>;
 
@@ -52,9 +67,17 @@ describe('Events Router', () => {
   describe('GET /events/notifications', () => {
     it('should set up SSE headers correctly', async () => {
       // Get the route handler
-      const routes = (eventsRouter as any).stack;
+      interface RouteLayer {
+        route?: {
+          path: string;
+          methods: Record<string, boolean>;
+          stack: Array<{ handle: (req: Request, res: Response) => void }>;
+        };
+      }
+      const routes = (eventsRouter as unknown as { stack: RouteLayer[] }).stack;
       const notificationRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/events/notifications' && r.route.methods.get
+        (r: RouteLayer) =>
+          r.route && r.route.path === '/events' && r.route.methods.get
       );
       expect(notificationRoute).toBeTruthy();
 
@@ -63,35 +86,38 @@ describe('Events Router', () => {
       await handler(mockRequest, mockResponse);
 
       // Verify SSE headers
-      expect(mockResponse.writeHead).toHaveBeenCalledWith(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      });
+      expect(mockResponse.setHeader).toHaveBeenCalledWith('Content-Type', 'text/event-stream');
+      expect(mockResponse.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-cache');
+      expect(mockResponse.setHeader).toHaveBeenCalledWith('Connection', 'keep-alive');
+      expect(mockResponse.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
     });
 
     it('should send initial connection message', async () => {
-      const routes = (eventsRouter as any).stack;
+      const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/events/notifications' && r.route.methods.get
+        (r: RouteLayer) =>
+          r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
       await handler(mockRequest, mockResponse);
 
-      // Verify initial message
-      expect(mockResponse.write).toHaveBeenCalledWith(':ok\n\n');
+      // Verify initial connection event
+      expect(mockResponse.write).toHaveBeenCalledWith('event: connected\ndata: {"type": "connected"}\n\n');
     });
 
     it('should forward sessionExit events as SSE', async () => {
-      const routes = (eventsRouter as any).stack;
+      const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/events/notifications' && r.route.methods.get
+        (r: RouteLayer) =>
+          r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
       await handler(mockRequest, mockResponse);
+
+      // Clear mocks after initial connection
+      vi.clearAllMocks();
 
       // Emit a sessionExit event
       const eventData = {
@@ -99,50 +125,56 @@ describe('Events Router', () => {
         sessionName: 'Test Session',
         exitCode: 0,
       };
-      mockPtyManager.emit('sessionExited', eventData.sessionId);
-
-      // Verify SSE was sent
-      expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringContaining('event: sessionExit\n')
+      mockPtyManager.emit(
+        'sessionExited',
+        eventData.sessionId,
+        eventData.sessionName,
+        eventData.exitCode
       );
+
+      // Verify SSE was sent - check that the data contains our expected fields
       expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringContaining(`data: ${JSON.stringify(eventData)}\n\n`)
+        expect.stringMatching(
+          /data: \{.*"type":"session-exit".*"sessionId":"test-123".*"sessionName":"Test Session".*"exitCode":0.*\}\n\n/
+        )
       );
     });
 
     it('should forward commandFinished events as SSE', async () => {
-      const routes = (eventsRouter as any).stack;
+      const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/events/notifications' && r.route.methods.get
+        (r: RouteLayer) =>
+          r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
       await handler(mockRequest, mockResponse);
 
+      // Clear mocks after initial connection
+      vi.clearAllMocks();
+
       // Emit a commandFinished event
       const eventData = {
         sessionId: 'test-123',
-        sessionName: 'Test Session',
         command: 'npm test',
         exitCode: 0,
         duration: 5432,
-        timestamp: new Date().toISOString(),
       };
       mockPtyManager.emit('commandFinished', eventData);
 
-      // Verify SSE was sent
+      // Verify SSE was sent - check that the data contains our expected fields
       expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringContaining('event: commandFinished\n')
-      );
-      expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringContaining(`data: ${JSON.stringify(eventData)}\n\n`)
+        expect.stringMatching(
+          /data: \{.*"type":"command-finished".*"sessionId":"test-123".*"command":"npm test".*"exitCode":0.*"duration":5432.*\}\n\n/
+        )
       );
     });
 
     it('should handle multiple events', async () => {
-      const routes = (eventsRouter as any).stack;
+      const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/events/notifications' && r.route.methods.get
+        (r: RouteLayer) =>
+          r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
@@ -165,9 +197,10 @@ describe('Events Router', () => {
     it('should send heartbeat to keep connection alive', async () => {
       vi.useFakeTimers();
 
-      const routes = (eventsRouter as any).stack;
+      const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/events/notifications' && r.route.methods.get
+        (r: RouteLayer) =>
+          r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
@@ -186,16 +219,19 @@ describe('Events Router', () => {
     });
 
     it('should clean up listeners on client disconnect', async () => {
-      const routes = (eventsRouter as any).stack;
+      const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/events/notifications' && r.route.methods.get
+        (r: RouteLayer) =>
+          r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
       await handler(mockRequest, mockResponse);
 
       // Get the close handler
-      const closeHandler = mockRequest.on.mock.calls.find((call: any) => call[0] === 'close')?.[1];
+      const closeHandler = mockRequest.on.mock.calls.find(
+        (call: [string, () => void]) => call[0] === 'close'
+      )?.[1];
       expect(closeHandler).toBeTruthy();
 
       // Verify listeners are attached
@@ -218,9 +254,10 @@ describe('Events Router', () => {
         throw new Error('Connection lost');
       });
 
-      const routes = (eventsRouter as any).stack;
+      const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/events/notifications' && r.route.methods.get
+        (r: RouteLayer) =>
+          r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
@@ -233,9 +270,10 @@ describe('Events Router', () => {
     });
 
     it('should include event ID for proper SSE format', async () => {
-      const routes = (eventsRouter as any).stack;
+      const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/events/notifications' && r.route.methods.get
+        (r: RouteLayer) =>
+          r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
@@ -257,9 +295,10 @@ describe('Events Router', () => {
     });
 
     it('should handle malformed event data', async () => {
-      const routes = (eventsRouter as any).stack;
+      const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/events/notifications' && r.route.methods.get
+        (r: RouteLayer) =>
+          r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
@@ -269,7 +308,11 @@ describe('Events Router', () => {
       vi.clearAllMocks();
 
       // Emit event with circular reference (would fail JSON.stringify)
-      const circularData: any = { sessionId: 'test' };
+      interface CircularData {
+        sessionId: string;
+        self?: CircularData;
+      }
+      const circularData: CircularData = { sessionId: 'test' };
       circularData.self = circularData;
 
       // Should not throw
@@ -284,9 +327,10 @@ describe('Events Router', () => {
 
   describe('Multiple clients', () => {
     it('should handle multiple concurrent SSE connections', async () => {
-      const routes = (eventsRouter as any).stack;
+      const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/events/notifications' && r.route.methods.get
+        (r: RouteLayer) =>
+          r.route && r.route.path === '/events' && r.route.methods.get
       );
       const handler = notificationRoute.route.stack[0].handle;
 

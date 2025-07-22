@@ -108,6 +108,33 @@ global.IntersectionObserver = class IntersectionObserver {
   thresholds = [];
 };
 
+// Mock localStorage for Node environment
+if (typeof window === 'undefined') {
+  const localStorageStore: Record<string, string> = {};
+  
+  global.localStorage = {
+    getItem: vi.fn((key: string) => localStorageStore[key] || null),
+    setItem: vi.fn((key: string, value: string) => {
+      localStorageStore[key] = value;
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete localStorageStore[key];
+    }),
+    clear: vi.fn(() => {
+      Object.keys(localStorageStore).forEach(key => {
+        delete localStorageStore[key];
+      });
+    }),
+    key: vi.fn((index: number) => {
+      const keys = Object.keys(localStorageStore);
+      return keys[index] || null;
+    }),
+    get length() {
+      return Object.keys(localStorageStore).length;
+    }
+  } as Storage;
+}
+
 // Mock matchMedia (only if window exists - for browser tests)
 if (typeof window !== 'undefined') {
   Object.defineProperty(window, 'matchMedia', {

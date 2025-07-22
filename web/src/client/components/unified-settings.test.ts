@@ -715,8 +715,9 @@ describe('UnifiedSettings - Notification Settings', () => {
     const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
 
     // Override the isIOSSafari method
-    (el as any).isIOSSafari = () => true;
-    (el as any).isStandalone = () => false;
+    // Using object bracket notation to access private methods for testing
+    (el as unknown as { isIOSSafari: () => boolean }).isIOSSafari = () => true;
+    (el as unknown as { isStandalone: () => boolean }).isStandalone = () => false;
 
     const { pushNotificationService } = await import('@/client/services/push-notification-service');
     (pushNotificationService.isSupported as ReturnType<typeof vi.fn>).mockReturnValue(false);

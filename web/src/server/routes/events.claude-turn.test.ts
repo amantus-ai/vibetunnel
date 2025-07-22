@@ -11,15 +11,19 @@ vi.mock('../utils/logger', () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
+    info: vi.fn(),
   })),
 }));
 
 describe('Claude Turn Events', () => {
   let mockPtyManager: PtyManager & EventEmitter;
-  let mockRequest: any;
+  let mockRequest: Partial<Request> & {
+    headers: Record<string, string>;
+    on: ReturnType<typeof vi.fn>;
+  };
   let mockResponse: Response;
   let eventsRouter: ReturnType<typeof createEventsRouter>;
-  let eventHandler: any;
+  let eventHandler: (req: Request, res: Response) => void;
 
   beforeEach(() => {
     // Create a mock PtyManager that extends EventEmitter
@@ -42,9 +46,16 @@ describe('Claude Turn Events', () => {
     eventsRouter = createEventsRouter(mockPtyManager);
 
     // Get the /events handler
-    const routes = (eventsRouter as any).stack;
+    interface RouteLayer {
+      route?: {
+        path: string;
+        methods: Record<string, boolean>;
+        stack: Array<{ handle: (req: Request, res: Response) => void }>;
+      };
+    }
+    const routes = (eventsRouter as unknown as { stack: RouteLayer[] }).stack;
     const eventsRoute = routes.find(
-      (r: any) => r.route && r.route.path === '/events' && r.route.methods.get
+      (r: RouteLayer) => r.route && r.route.path === '/events' && r.route.methods.get
     );
     eventHandler = eventsRoute?.route.stack[0].handle;
   });
@@ -118,7 +129,9 @@ describe('Claude Turn Events', () => {
       await eventHandler(mockRequest, mockResponse);
 
       // Get the close handler
-      const closeHandler = mockRequest.on.mock.calls.find((call: any) => call[0] === 'close')?.[1];
+      const closeHandler = mockRequest.on.mock.calls.find(
+        (call: [string, () => void]) => call[0] === 'close'
+      )?.[1];
       expect(closeHandler).toBeTruthy();
 
       // Verify claude-turn listener is attached
@@ -138,9 +151,11 @@ describe('Claude Turn Events', () => {
       // Emit various events including claude-turn
       mockPtyManager.emit('sessionStarted', 'session-1', 'New Session');
       mockPtyManager.emit('claudeTurn', 'session-1', 'New Session');
-      mockPtyManager.emit('bell', {
-        sessionInfo: { id: 'session-1', name: 'New Session', command: ['claude'] },
-        bellCount: 1,
+      mockPtyManager.emit('commandFinished', {
+        sessionId: 'session-1',
+        command: 'echo test',
+        duration: 100,
+        exitCode: 0,
       });
       mockPtyManager.emit('sessionExited', 'session-1', 'New Session', 0);
 
@@ -153,7 +168,7 @@ describe('Claude Turn Events', () => {
         })
         .filter(Boolean);
 
-      expect(eventTypes).toEqual(['session-start', 'claude-turn', 'bell', 'session-exit']);
+      expect(eventTypes).toEqual(['session-start', 'claude-turn', 'command-finished', 'session-exit']);
     });
 
     it('should properly format SSE message for claude-turn', async () => {
