@@ -336,9 +336,11 @@ export function createWorktreeRoutes(): Router {
       });
 
       const worktrees = parseWorktreePorcelain(listOutput);
-      const worktree = worktrees.find(
-        (w) => w.branch === `refs/heads/${branch}` || w.branch === branch
-      );
+      const worktree = worktrees.find((w) => {
+        // Match against both the full ref path and the short branch name
+        const shortBranch = w.branch?.replace(/^refs\/heads\//, '');
+        return w.branch === `refs/heads/${branch}` || shortBranch === branch || w.branch === branch;
+      });
 
       if (!worktree) {
         return res.status(404).json({

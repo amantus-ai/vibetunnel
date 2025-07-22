@@ -223,6 +223,7 @@ export function createGitRoutes(): Router {
           }
         );
         followBranch = followBranchOutput.trim();
+        // Follow mode is active when a branch name is set (not just 'true')
         followMode = !!followBranch;
 
         // Get current branch

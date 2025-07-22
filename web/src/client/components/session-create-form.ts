@@ -20,6 +20,7 @@ import type { Session } from '../../shared/types.js';
 import { TitleMode } from '../../shared/types.js';
 import type { QuickStartCommand } from '../../types/config.js';
 import type { AuthClient } from '../services/auth-client.js';
+import { type GitRepoInfo, GitService } from '../services/git-service.js';
 import { RepositoryService } from '../services/repository-service.js';
 import { ServerConfigService } from '../services/server-config-service.js';
 import { type SessionCreateData, SessionService } from '../services/session-service.js';
@@ -71,6 +72,10 @@ export class SessionCreateForm extends LitElement {
   @state() private isLoadingCompletions = false;
   @state() private showOptions = false;
   @state() private quickStartEditMode = false;
+  @state() private gitRepoInfo: GitRepoInfo | null = null;
+  @state() private isCheckingGit = false;
+  @state() private availableBranches: string[] = [];
+  @state() private selectedBranch: string = '';
 
   @state() private quickStartCommands = [
     { label: '✨ claude', command: 'claude' },
@@ -82,10 +87,12 @@ export class SessionCreateForm extends LitElement {
   ];
 
   private completionsDebounceTimer?: NodeJS.Timeout;
+  private gitCheckDebounceTimer?: NodeJS.Timeout;
   private autocompleteManager!: AutocompleteManager;
   private repositoryService?: RepositoryService;
   private sessionService?: SessionService;
   private serverConfigService?: ServerConfigService;
+  private gitService?: GitService;
 
   async connectedCallback() {
     super.connectedCallback();
@@ -97,6 +104,7 @@ export class SessionCreateForm extends LitElement {
     if (this.authClient) {
       this.repositoryService = new RepositoryService(this.authClient, this.serverConfigService);
       this.sessionService = new SessionService(this.authClient);
+      this.gitService = new GitService(this.authClient);
     }
     // Load from localStorage when component is first created
     await this.loadFromLocalStorage();
@@ -112,9 +120,12 @@ export class SessionCreateForm extends LitElement {
     if (this.visible) {
       document.removeEventListener('keydown', this.handleGlobalKeyDown);
     }
-    // Clean up debounce timer
+    // Clean up debounce timers
     if (this.completionsDebounceTimer) {
       clearTimeout(this.completionsDebounceTimer);
+    }
+    if (this.gitCheckDebounceTimer) {
+      clearTimeout(this.gitCheckDebounceTimer);
     }
   }
 
@@ -273,6 +284,9 @@ export class SessionCreateForm extends LitElement {
       if (!this.sessionService) {
         this.sessionService = new SessionService(this.authClient);
       }
+      if (!this.gitService) {
+        this.gitService = new GitService(this.authClient);
+      }
       // Update autocomplete manager's authClient
       this.autocompleteManager.setAuthClient(this.authClient);
       // Update server config service's authClient
@@ -309,6 +323,9 @@ export class SessionCreateForm extends LitElement {
 
         // Discover repositories
         this.discoverRepositories();
+
+        // Check if the initial working directory is a Git repository
+        this.checkGitRepository();
       } else {
         // Remove global keyboard listener when hidden
         document.removeEventListener('keydown', this.handleGlobalKeyDown);
@@ -340,6 +357,15 @@ export class SessionCreateForm extends LitElement {
     this.completionsDebounceTimer = setTimeout(() => {
       this.fetchCompletions();
     }, 300);
+
+    // Check if directory is a Git repository with debounce
+    if (this.gitCheckDebounceTimer) {
+      clearTimeout(this.gitCheckDebounceTimer);
+    }
+
+    this.gitCheckDebounceTimer = setTimeout(() => {
+      this.checkGitRepository();
+    }, 500);
   }
 
   private handleCommandChange(e: Event) {
@@ -375,6 +401,8 @@ export class SessionCreateForm extends LitElement {
   private handleDirectorySelected(e: CustomEvent) {
     this.workingDir = formatPathForDisplay(e.detail);
     this.showFileBrowser = false;
+    // Check Git repository after directory selection
+    this.checkGitRepository();
   }
 
   private handleBrowserCancel() {
@@ -402,6 +430,12 @@ export class SessionCreateForm extends LitElement {
       spawn_terminal: effectiveSpawnTerminal,
       titleMode: this.titleMode,
     };
+
+    // Add Git information if available
+    if (this.gitRepoInfo?.isGitRepo && this.gitRepoInfo.repoPath && this.selectedBranch) {
+      sessionData.gitRepoPath = this.gitRepoInfo.repoPath;
+      sessionData.gitBranch = this.selectedBranch;
+    }
 
     // Only add dimensions for web sessions (not external terminal spawns)
     if (!effectiveSpawnTerminal) {
@@ -522,6 +556,8 @@ export class SessionCreateForm extends LitElement {
   private handleSelectRepository(repoPath: string) {
     this.workingDir = formatPathForDisplay(repoPath);
     this.showRepositoryDropdown = false;
+    // Check Git repository after selection
+    this.checkGitRepository();
   }
 
   private async fetchCompletions() {
@@ -588,6 +624,46 @@ export class SessionCreateForm extends LitElement {
       this.showCompletions = false;
       this.selectedCompletionIndex = -1;
     }, 200);
+  }
+
+  private async checkGitRepository() {
+    const path = this.workingDir?.trim();
+    if (!path || !this.gitService) {
+      this.gitRepoInfo = null;
+      this.availableBranches = [];
+      this.selectedBranch = '';
+      return;
+    }
+
+    this.isCheckingGit = true;
+    try {
+      const repoInfo = await this.gitService.checkGitRepo(path);
+      if (repoInfo.isGitRepo && repoInfo.repoPath) {
+        this.gitRepoInfo = repoInfo;
+        // Fetch available branches/worktrees
+        const worktrees = await this.gitService.listWorktrees(repoInfo.repoPath);
+        this.availableBranches = worktrees.worktrees.map((w) => w.branch);
+
+        // Select the main branch by default
+        const currentWorktree = worktrees.worktrees.find((w) => w.path === path);
+        if (currentWorktree) {
+          this.selectedBranch = currentWorktree.branch;
+        } else {
+          this.selectedBranch = worktrees.baseBranch;
+        }
+      } else {
+        this.gitRepoInfo = null;
+        this.availableBranches = [];
+        this.selectedBranch = '';
+      }
+    } catch (_error) {
+      logger.debug('Not a git repository:', path);
+      this.gitRepoInfo = null;
+      this.availableBranches = [];
+      this.selectedBranch = '';
+    } finally {
+      this.isCheckingGit = false;
+    }
   }
 
   render() {
@@ -787,6 +863,56 @@ export class SessionCreateForm extends LitElement {
                   : ''
               }
             </div>
+
+            <!-- Git Branch Selection (shown when Git repository detected) -->
+            ${
+              this.gitRepoInfo?.isGitRepo && this.availableBranches.length > 0
+                ? html`
+                  <div class="mb-2 sm:mb-3 lg:mb-5">
+                    <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm flex items-center gap-1.5">
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" class="text-primary">
+                        <path d="M4.177 7.823A4.5 4.5 0 118 12.5a4.474 4.474 0 01-1.653-.316.75.75 0 11.557-1.392 2.999 2.999 0 001.096.208 3 3 0 10-2.108-5.134.75.75 0 01.236.662l.428 3.009a.75.75 0 01-1.255.592L2.847 7.677a.75.75 0 01.426-1.27A4.476 4.476 0 014.177 7.823zM8 1a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 1zm3.197 2.197a.75.75 0 01.092.992l-1 1.25a.75.75 0 01-1.17-.938l1-1.25a.75.75 0 01.992-.092.75.75 0 01.086.038zM5.75 8a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 015.75 8zm5.447 2.197a.75.75 0 01.092.992l-1 1.25a.75.75 0 11-1.17-.938l1-1.25a.75.75 0 01.992-.092.75.75 0 01.086.038z" />
+                      </svg>
+                      Git Branch:
+                    </label>
+                    <div class="relative">
+                      <select
+                        .value=${this.selectedBranch}
+                        @change=${(e: Event) => {
+                          const select = e.target as HTMLSelectElement;
+                          this.selectedBranch = select.value;
+                        }}
+                        class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm appearance-none pr-8"
+                        ?disabled=${this.disabled || this.isCreating}
+                        data-testid="git-branch-select"
+                      >
+                        ${this.availableBranches.map(
+                          (branch) => html`
+                            <option value="${branch}" ?selected=${branch === this.selectedBranch}>
+                              ${branch}
+                            </option>
+                          `
+                        )}
+                      </select>
+                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-text-muted">
+                        <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                    ${
+                      this.isCheckingGit
+                        ? html`
+                          <div class="text-text-muted text-[9px] sm:text-[10px] mt-1">
+                            Checking repository...
+                          </div>
+                        `
+                        : ''
+                    }
+                  </div>
+                `
+                : ''
+            }
 
             <!-- Quick Start Section -->
             <div class="${this.quickStartEditMode ? '' : 'mb-4 sm:mb-5 lg:mb-6'}">

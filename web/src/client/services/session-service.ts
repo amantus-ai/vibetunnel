@@ -12,6 +12,8 @@ export interface SessionCreateData {
   cols?: number;
   rows?: number;
   titleMode?: TitleMode;
+  gitRepoPath?: string;
+  gitBranch?: string;
 }
 
 export interface SessionCreateResult {

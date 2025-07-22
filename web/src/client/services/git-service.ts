@@ -1,10 +1,11 @@
 /**
  * Git Service
- * 
+ *
  * Handles Git-related API calls including repository info, worktrees, and follow mode
  */
-import type { AuthClient } from './auth-client.js';
+
 import { createLogger } from '../utils/logger.js';
+import type { AuthClient } from './auth-client.js';
 
 const logger = createLogger('git-service');
 
@@ -45,7 +46,9 @@ export class GitService {
    */
   async checkGitRepo(path: string): Promise<GitRepoInfo> {
     try {
-      const response = await this.authClient.fetch(`/api/git/repo-info?path=${encodeURIComponent(path)}`);
+      const response = await fetch(`/api/git/repo-info?path=${encodeURIComponent(path)}`, {
+        headers: this.authClient.getAuthHeader(),
+      });
       if (!response.ok) {
         throw new Error(`Failed to check git repo: ${response.statusText}`);
       }
@@ -61,7 +64,9 @@ export class GitService {
    */
   async listWorktrees(repoPath: string): Promise<WorktreeListResponse> {
     try {
-      const response = await this.authClient.fetch(`/api/worktrees?repoPath=${encodeURIComponent(repoPath)}`);
+      const response = await fetch(`/api/worktrees?repoPath=${encodeURIComponent(repoPath)}`, {
+        headers: this.authClient.getAuthHeader(),
+      });
       if (!response.ok) {
         throw new Error(`Failed to list worktrees: ${response.statusText}`);
       }
@@ -75,12 +80,18 @@ export class GitService {
   /**
    * Create a new worktree
    */
-  async createWorktree(repoPath: string, branch: string, path: string, baseBranch?: string): Promise<void> {
+  async createWorktree(
+    repoPath: string,
+    branch: string,
+    path: string,
+    baseBranch?: string
+  ): Promise<void> {
     try {
-      const response = await this.authClient.fetch('/api/worktrees', {
+      const response = await fetch('/api/worktrees', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...this.authClient.getAuthHeader(),
         },
         body: JSON.stringify({ repoPath, branch, path, baseBranch }),
       });
@@ -101,9 +112,10 @@ export class GitService {
     try {
       const params = new URLSearchParams({ repoPath });
       if (force) params.append('force', 'true');
-      
-      const response = await this.authClient.fetch(`/api/worktrees/${encodeURIComponent(branch)}?${params}`, {
+
+      const response = await fetch(`/api/worktrees/${encodeURIComponent(branch)}?${params}`, {
         method: 'DELETE',
+        headers: this.authClient.getAuthHeader(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -120,10 +132,11 @@ export class GitService {
    */
   async pruneWorktrees(repoPath: string): Promise<void> {
     try {
-      const response = await this.authClient.fetch('/api/worktrees/prune', {
+      const response = await fetch('/api/worktrees/prune', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...this.authClient.getAuthHeader(),
         },
         body: JSON.stringify({ repoPath }),
       });
@@ -141,10 +154,11 @@ export class GitService {
    */
   async switchBranch(repoPath: string, branch: string): Promise<void> {
     try {
-      const response = await this.authClient.fetch('/api/worktrees/switch', {
+      const response = await fetch('/api/worktrees/switch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...this.authClient.getAuthHeader(),
         },
         body: JSON.stringify({ repoPath, branch }),
       });
@@ -163,10 +177,11 @@ export class GitService {
    */
   async setFollowMode(repoPath: string, branch: string, enable: boolean): Promise<void> {
     try {
-      const response = await this.authClient.fetch('/api/worktrees/follow', {
+      const response = await fetch('/api/worktrees/follow', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...this.authClient.getAuthHeader(),
         },
         body: JSON.stringify({ repoPath, branch, enable }),
       });
