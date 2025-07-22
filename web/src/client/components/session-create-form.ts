@@ -302,7 +302,8 @@ export class SessionCreateForm extends LitElement {
     if (changedProperties.has('visible')) {
       if (this.visible) {
         // Reset to defaults first to ensure clean state
-        this.workingDir = DEFAULT_REPOSITORY_BASE_PATH;
+        // TEMPORARY: Use VibeTunnel repo path for testing Git detection
+        this.workingDir = '~/Projects/vibetunnel';
         this.command = 'zsh';
         this.sessionName = '';
         this.spawnWindow = false;
@@ -631,7 +632,10 @@ export class SessionCreateForm extends LitElement {
 
   private async checkGitRepository() {
     const path = this.workingDir?.trim();
+    logger.log(`🔍 Checking Git repository for path: ${path}`);
+
     if (!path || !this.gitService) {
+      logger.debug('No path or gitService, clearing Git info');
       this.gitRepoInfo = null;
       this.availableBranches = [];
       this.selectedBranch = '';
@@ -641,8 +645,13 @@ export class SessionCreateForm extends LitElement {
     this.isCheckingGit = true;
     try {
       const repoInfo = await this.gitService.checkGitRepo(path);
+      logger.log(`✅ Git check result:`, repoInfo);
+
       if (repoInfo.isGitRepo && repoInfo.repoPath) {
+        logger.log(`🎉 Git repository detected at: ${repoInfo.repoPath}`);
         this.gitRepoInfo = repoInfo;
+        // Trigger re-render after updating gitRepoInfo
+        this.requestUpdate();
 
         try {
           // Fetch available branches/worktrees
@@ -664,6 +673,8 @@ export class SessionCreateForm extends LitElement {
           } else {
             this.selectedBranch = worktrees.baseBranch;
           }
+          // Trigger re-render after updating branches
+          this.requestUpdate();
         } catch (worktreeError) {
           // If worktree listing fails, keep the git repo info but clear branch selection
           logger.debug('Failed to list worktrees:', worktreeError);
@@ -672,12 +683,15 @@ export class SessionCreateForm extends LitElement {
           // Git repo is still valid, just can't get branch info
         }
       } else {
+        logger.log(`❌ Not a Git repository: ${path}`, repoInfo);
         this.gitRepoInfo = null;
         this.availableBranches = [];
         this.selectedBranch = '';
+        // Trigger re-render to clear Git UI
+        this.requestUpdate();
       }
-    } catch (_error) {
-      logger.debug('Not a git repository:', path);
+    } catch (error) {
+      logger.error('❌ Error checking Git repository:', error);
       this.gitRepoInfo = null;
       this.availableBranches = [];
       this.selectedBranch = '';
@@ -943,9 +957,15 @@ export class SessionCreateForm extends LitElement {
 
             <!-- Git Branch/Worktree Selection (shown when Git repository detected) -->
             ${
-              this.gitRepoInfo?.isGitRepo
+              (
+                () => {
+                  logger.log(`🎨 Render check - gitRepoInfo:`, this.gitRepoInfo);
+                  logger.log(`🎨 Render check - isGitRepo:`, this.gitRepoInfo?.isGitRepo);
+                  return this.gitRepoInfo?.isGitRepo;
+                }
+              )()
                 ? html`
-                  <div class="mb-2 sm:mb-3 lg:mb-5">
+                  <div class="mb-2 sm:mb-3 lg:mb-5 mt-2 sm:mt-3 lg:mt-4">
                     <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm flex items-center gap-1.5">
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" class="text-primary">
                         <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />

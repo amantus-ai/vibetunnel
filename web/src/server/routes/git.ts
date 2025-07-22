@@ -4,6 +4,7 @@ import { promisify } from 'util';
 import { SessionManager } from '../pty/session-manager.js';
 import { createGitError, isGitNotFoundError, isNotGitRepositoryError } from '../utils/git-error.js';
 import { createLogger } from '../utils/logger.js';
+import { resolveAbsolutePath } from '../utils/path-utils.js';
 import { createControlEvent } from '../websocket/control-protocol.js';
 import { controlUnixHandler } from '../websocket/control-unix-handler.js';
 
@@ -129,16 +130,18 @@ export function createGitRoutes(): Router {
   router.get('/git/repo-info', async (req, res) => {
     try {
       const { path: queryPath } = req.query;
+      logger.info(`🔍 [git/repo-info] Received request for path: ${queryPath}`);
 
       if (!queryPath || typeof queryPath !== 'string') {
+        logger.warn('❌ Missing or invalid path parameter');
         return res.status(400).json({
           error: 'Missing or invalid path parameter',
         });
       }
 
-      // Resolve the path to absolute
-      const absolutePath = path.resolve(queryPath);
-      logger.debug(`Checking if path is git repo: ${absolutePath}`);
+      // Resolve the path to absolute, expanding tilde if present
+      const absolutePath = resolveAbsolutePath(queryPath);
+      logger.info(`🔍 [git/repo-info] Resolved ${queryPath} to absolute path: ${absolutePath}`);
 
       try {
         // Use git rev-parse to find the repository root
@@ -153,7 +156,7 @@ export function createGitRoutes(): Router {
           repoPath,
         };
 
-        logger.debug(`Path is in git repo: ${repoPath}`);
+        logger.info(`✅ [git/repo-info] Path is in git repo: ${repoPath}`);
         return res.json(response);
       } catch (error) {
         // If git command fails, it's not a git repo
@@ -164,7 +167,7 @@ export function createGitRoutes(): Router {
 
         // Git returns exit code 128 when not in a git repo
         if (isNotGitRepositoryError(error)) {
-          logger.debug('Path is not in a git repository');
+          logger.info(`❌ [git/repo-info] Path is not in a git repository: ${absolutePath}`);
           return res.json({ isGitRepo: false });
         }
 

@@ -4,6 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { DEFAULT_REPOSITORY_BASE_PATH } from '../../shared/constants.js';
 import { createLogger } from '../utils/logger.js';
+import { resolveAbsolutePath } from '../utils/path-utils.js';
 
 const logger = createLogger('repositories');
 
@@ -34,7 +35,7 @@ export function createRepositoryRoutes(): Router {
 
       logger.debug(`[GET /repositories/discover] Discovering repositories in: ${basePath}`);
 
-      const expandedPath = resolvePath(basePath);
+      const expandedPath = resolveAbsolutePath(basePath);
       logger.debug(`[GET /repositories/discover] Expanded path: ${expandedPath}`);
 
       // Check if the path exists
@@ -59,16 +60,6 @@ export function createRepositoryRoutes(): Router {
   });
 
   return router;
-}
-
-/**
- * Resolve path handling ~ expansion
- */
-function resolvePath(inputPath: string): string {
-  if (inputPath.startsWith('~/')) {
-    return path.join(os.homedir(), inputPath.slice(2));
-  }
-  return path.isAbsolute(inputPath) ? inputPath : path.resolve(inputPath);
 }
 
 /**

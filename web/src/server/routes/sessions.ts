@@ -1,7 +1,6 @@
 import chalk from 'chalk';
 import { Router } from 'express';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { promisify } from 'util';
 import { cellsToText } from '../../shared/terminal-text-formatter.js';
@@ -12,6 +11,7 @@ import type { RemoteRegistry } from '../services/remote-registry.js';
 import type { StreamWatcher } from '../services/stream-watcher.js';
 import type { TerminalManager } from '../services/terminal-manager.js';
 import { createLogger } from '../utils/logger.js';
+import { resolveAbsolutePath } from '../utils/path-utils.js';
 import { generateSessionName } from '../utils/session-naming.js';
 import { createControlMessage, type TerminalSpawnResponse } from '../websocket/control-protocol.js';
 import { controlUnixHandler } from '../websocket/control-unix-handler.js';
@@ -71,21 +71,21 @@ interface SessionRoutesConfig {
   activityMonitor: ActivityMonitor;
 }
 
-// Helper function to resolve path (handles ~)
+// Helper function to resolve path with default fallback
 function resolvePath(inputPath: string, defaultPath: string): string {
   if (!inputPath || inputPath.trim() === '') {
     return defaultPath;
   }
 
-  if (inputPath.startsWith('~/')) {
-    return path.join(os.homedir(), inputPath.slice(2));
-  }
+  // Use our utility function to handle tilde expansion and absolute path resolution
+  const expanded = resolveAbsolutePath(inputPath);
 
-  if (!path.isAbsolute(inputPath)) {
+  // If the input was relative (not starting with / or ~), resolve it relative to defaultPath
+  if (!inputPath.startsWith('/') && !inputPath.startsWith('~')) {
     return path.join(defaultPath, inputPath);
   }
 
-  return inputPath;
+  return expanded;
 }
 
 export function createSessionRoutes(config: SessionRoutesConfig): Router {

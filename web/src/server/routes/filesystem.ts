@@ -7,6 +7,7 @@ import mime from 'mime-types';
 import * as path from 'path';
 import { promisify } from 'util';
 import { createLogger } from '../utils/logger.js';
+import { expandTildePath } from '../utils/path-utils.js';
 
 const logger = createLogger('filesystem');
 
@@ -121,15 +122,7 @@ export function createFilesystemRoutes(): Router {
       const gitFilter = req.query.gitFilter as string; // 'all' | 'changed' | 'none'
 
       // Handle tilde expansion for home directory
-      if (requestedPath === '~' || requestedPath.startsWith('~/')) {
-        const homeDir = process.env.HOME || process.env.USERPROFILE;
-        if (!homeDir) {
-          logger.error('unable to determine home directory');
-          return res.status(500).json({ error: 'Unable to determine home directory' });
-        }
-        requestedPath =
-          requestedPath === '~' ? homeDir : path.join(homeDir, requestedPath.slice(2));
-      }
+      requestedPath = expandTildePath(requestedPath);
 
       logger.debug(
         `browsing directory: ${requestedPath}, showHidden: ${showHidden}, gitFilter: ${gitFilter}`
@@ -625,14 +618,7 @@ export function createFilesystemRoutes(): Router {
       let partialPath = originalPath;
 
       // Handle tilde expansion for home directory
-      if (partialPath === '~' || partialPath.startsWith('~/')) {
-        const homeDir = process.env.HOME || process.env.USERPROFILE;
-        if (!homeDir) {
-          logger.error('unable to determine home directory for completions');
-          return res.status(500).json({ error: 'Unable to determine home directory' });
-        }
-        partialPath = partialPath === '~' ? homeDir : path.join(homeDir, partialPath.slice(2));
-      }
+      partialPath = expandTildePath(partialPath);
 
       // Separate directory and partial name
       let dirPath: string;
