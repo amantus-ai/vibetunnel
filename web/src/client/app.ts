@@ -61,12 +61,11 @@ export class VibeTunnelApp extends LitElement {
   @state() private successMessage = '';
   @state() private sessions: Session[] = [];
   @state() private loading = false;
-  @state() private currentView: 'list' | 'session' | 'auth' | 'file-browser' | 'worktrees' = 'auth';
+  @state() private currentView: 'list' | 'session' | 'auth' | 'file-browser' = 'auth';
   @state() private selectedSessionId: string | null = null;
   @state() private hideExited = this.loadHideExitedState();
   @state() private showCreateModal = false;
   @state() private showSSHKeyManager = false;
-  @state() private worktreeRepoPath = '';
   @state() private showSettings = false;
   @state() private isAuthenticated = false;
   @state() private sidebarCollapsed = this.loadSidebarState();
