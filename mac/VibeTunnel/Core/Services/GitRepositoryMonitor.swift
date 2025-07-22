@@ -64,6 +64,53 @@ public final class GitRepositoryMonitor {
         }
         return cached
     }
+    
+    /// Get list of branches for a repository
+    /// - Parameter repoPath: Path to the Git repository
+    /// - Returns: Array of branch names (without refs/heads/ prefix)
+    public func getBranches(for repoPath: String) async -> [String] {
+        await withCheckedContinuation { continuation in
+            gitOperationQueue.addOperation { [gitPath = self.gitPath] in
+                // Sanitize the path before using it
+                guard let sanitizedPath = self.sanitizePath(repoPath) else {
+                    continuation.resume(returning: [])
+                    return
+                }
+                
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: gitPath)
+                process.arguments = ["branch", "--format=%(refname:short)"]
+                process.currentDirectoryURL = URL(fileURLWithPath: sanitizedPath)
+                
+                let outputPipe = Pipe()
+                process.standardOutput = outputPipe
+                process.standardError = Pipe() // Suppress error output
+                
+                do {
+                    try process.run()
+                    process.waitUntilExit()
+                    
+                    guard process.terminationStatus == 0 else {
+                        continuation.resume(returning: [])
+                        return
+                    }
+                    
+                    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+                    let output = String(data: outputData, encoding: .utf8) ?? ""
+                    
+                    // Parse branch names (one per line)
+                    let branches = output
+                        .split(separator: "\n")
+                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
+                    
+                    continuation.resume(returning: branches)
+                } catch {
+                    continuation.resume(returning: [])
+                }
+            }
+        }
+    }
 
     /// Find Git repository for a given file path and return its status
     /// - Parameter filePath: Path to a file within a potential Git repository
@@ -246,6 +293,10 @@ public final class GitRepositoryMonitor {
                 deletedCount: repository.deletedCount,
                 untrackedCount: repository.untrackedCount,
                 currentBranch: repository.currentBranch,
+                aheadCount: repository.aheadCount,
+                behindCount: repository.behindCount,
+                trackingBranch: repository.trackingBranch,
+                isWorktree: repository.isWorktree,
                 githubURL: cachedURL
             )
         } else {
@@ -298,10 +349,27 @@ public final class GitRepositoryMonitor {
         }
     }
 
+    /// Check if the given path is a Git worktree
+    private nonisolated static func checkIfWorktree(at path: String) -> Bool {
+        let gitPath = URL(fileURLWithPath: path).appendingPathComponent(".git")
+        
+        // In a worktree, .git is a file containing the path to the real .git directory
+        // In a regular repository, .git is a directory
+        var isDirectory: ObjCBool = false
+        if FileManager.default.fileExists(atPath: gitPath.path, isDirectory: &isDirectory) {
+            return !isDirectory.boolValue
+        }
+        
+        return false
+    }
+    
     /// Parse git status --porcelain output
     private nonisolated static func parseGitStatus(output: String, repoPath: String) -> GitRepository {
         let lines = output.split(separator: "\n")
         var currentBranch: String?
+        var aheadCount: Int?
+        var behindCount: Int?
+        var trackingBranch: String?
         var modifiedCount = 0
         var addedCount = 0
         var deletedCount = 0
@@ -313,11 +381,56 @@ public final class GitRepositoryMonitor {
             // Parse branch information (first line with --branch flag)
             if trimmedLine.hasPrefix("##") {
                 let branchInfo = trimmedLine.dropFirst(2).trimmingCharacters(in: .whitespaces)
-                // Extract branch name (format: "branch...tracking" or just "branch")
-                if let branchEndIndex = branchInfo.firstIndex(of: ".") {
-                    currentBranch = String(branchInfo[..<branchEndIndex])
+                
+                // Parse branch line format:
+                // ## branch
+                // ## branch...origin/branch
+                // ## branch...origin/branch [ahead 2]
+                // ## branch...origin/branch [behind 1]
+                // ## branch...origin/branch [ahead 2, behind 1]
+                // ## HEAD (no branch)
+                // ## Initial commit on branch
+                
+                if branchInfo == "HEAD (no branch)" {
+                    currentBranch = "HEAD"
+                } else if branchInfo.hasPrefix("Initial commit on ") {
+                    currentBranch = String(branchInfo.dropFirst("Initial commit on ".count))
+                } else if branchInfo.hasPrefix("No commits yet on ") {
+                    currentBranch = String(branchInfo.dropFirst("No commits yet on ".count))
                 } else {
-                    currentBranch = branchInfo
+                    // Extract branch and tracking info
+                    if let dotsRange = branchInfo.range(of: "...") {
+                        currentBranch = String(branchInfo[..<dotsRange.lowerBound])
+                        
+                        // Extract tracking branch and ahead/behind info
+                        let afterDots = String(branchInfo[dotsRange.upperBound...])
+                        
+                        if let bracketRange = afterDots.range(of: " [") {
+                            // Has ahead/behind info
+                            trackingBranch = String(afterDots[..<bracketRange.lowerBound])
+                            
+                            let trackingInfo = String(afterDots[bracketRange.upperBound...])
+                            if let closeBracket = trackingInfo.firstIndex(of: "]") {
+                                let statusInfo = String(trackingInfo[..<closeBracket])
+                                
+                                // Parse ahead/behind counts
+                                let parts = statusInfo.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                                for part in parts {
+                                    if part.hasPrefix("ahead ") {
+                                        aheadCount = Int(part.dropFirst("ahead ".count))
+                                    } else if part.hasPrefix("behind ") {
+                                        behindCount = Int(part.dropFirst("behind ".count))
+                                    }
+                                }
+                            }
+                        } else {
+                            // No ahead/behind info
+                            trackingBranch = afterDots
+                        }
+                    } else {
+                        // No tracking branch
+                        currentBranch = branchInfo
+                    }
                 }
                 continue
             }
@@ -353,13 +466,20 @@ public final class GitRepositoryMonitor {
             }
         }
 
+        // Check if this is a worktree by looking for .git file instead of directory
+        let isWorktree = checkIfWorktree(at: repoPath)
+        
         return GitRepository(
             path: repoPath,
             modifiedCount: modifiedCount,
             addedCount: addedCount,
             deletedCount: deletedCount,
             untrackedCount: untrackedCount,
-            currentBranch: currentBranch
+            currentBranch: currentBranch,
+            aheadCount: aheadCount,
+            behindCount: behindCount,
+            trackingBranch: trackingBranch,
+            isWorktree: isWorktree
         )
     }
 
@@ -390,6 +510,10 @@ public final class GitRepositoryMonitor {
                                 deletedCount: cachedRepo.deletedCount,
                                 untrackedCount: cachedRepo.untrackedCount,
                                 currentBranch: cachedRepo.currentBranch,
+                                aheadCount: cachedRepo.aheadCount,
+                                behindCount: cachedRepo.behindCount,
+                                trackingBranch: cachedRepo.trackingBranch,
+                                isWorktree: cachedRepo.isWorktree,
                                 githubURL: githubURL
                             )
                             self.repositoryCache[repoPath] = cachedRepo

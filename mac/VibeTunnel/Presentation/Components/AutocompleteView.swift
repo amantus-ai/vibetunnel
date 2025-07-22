@@ -91,21 +91,95 @@ private struct AutocompleteRow: View {
                     .foregroundColor(iconColor)
                     .frame(width: 16)
 
-                // Name
-                Text(suggestion.name)
-                    .font(.system(size: 12))
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
+                // Name and Git info
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Text(suggestion.name)
+                            .font(.system(size: 12))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                        
+                        // Git status badges
+                        if let gitInfo = suggestion.gitInfo {
+                            HStack(spacing: 4) {
+                                // Branch name
+                                if let branch = gitInfo.branch {
+                                    Text(branch)
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 1)
+                                        .background(Color.secondary.opacity(0.1))
+                                        .cornerRadius(3)
+                                }
+                                
+                                // Ahead/behind indicators
+                                if let ahead = gitInfo.aheadCount, ahead > 0 {
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "arrow.up")
+                                            .font(.system(size: 8))
+                                        Text("\(ahead)")
+                                            .font(.system(size: 10))
+                                    }
+                                    .foregroundColor(.green)
+                                }
+                                
+                                if let behind = gitInfo.behindCount, behind > 0 {
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "arrow.down")
+                                            .font(.system(size: 8))
+                                        Text("\(behind)")
+                                            .font(.system(size: 10))
+                                    }
+                                    .foregroundColor(.orange)
+                                }
+                                
+                                // Changes indicator
+                                if gitInfo.hasChanges {
+                                    Image(systemName: "circle.fill")
+                                        .font(.system(size: 6))
+                                        .foregroundColor(.yellow)
+                                }
+                                
+                                // Worktree indicator
+                                if gitInfo.isWorktree {
+                                    Text("worktree")
+                                        .font(.system(size: 9))
+                                        .foregroundColor(.purple)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 1)
+                                        .background(Color.purple.opacity(0.1))
+                                        .cornerRadius(3)
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Path on second line for better visibility
+                    HStack {
+                        Text(suggestion.path)
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.head)
+                        
+                        Spacer()
+                        
+                        // Branch selector for Git repositories
+                        if let gitInfo = suggestion.gitInfo, gitInfo.branch != nil {
+                            BranchSelectorView(
+                                repoPath: suggestion.suggestion.trimmingCharacters(in: CharacterSet(charactersIn: "/")),
+                                currentBranch: gitInfo.branch,
+                                onSelectBranch: { branch in
+                                    // This would need to trigger a worktree switch or checkout
+                                    print("Selected branch: \(branch) for path: \(suggestion.suggestion)")
+                                }
+                            )
+                        }
+                    }
+                }
 
                 Spacer()
-
-                // Path hint
-                Text(suggestion.path)
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.head)
-                    .frame(maxWidth: 120)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
@@ -151,7 +225,8 @@ private struct AutocompleteRow: View {
 struct AutocompleteTextField: View {
     @Binding var text: String
     let placeholder: String
-    @State private var autocompleteService = AutocompleteService()
+    @Environment(GitRepositoryMonitor.self) private var gitMonitor
+    @State private var autocompleteService: AutocompleteService?
     @State private var showSuggestions = false
     @State private var selectedIndex = -1
     @FocusState private var isFocused: Bool
@@ -180,9 +255,9 @@ struct AutocompleteTextField: View {
                     }
                 }
 
-            if showSuggestions && !autocompleteService.suggestions.isEmpty {
+            if showSuggestions && !(autocompleteService?.suggestions.isEmpty ?? true) {
                 AutocompleteViewWithKeyboard(
-                    suggestions: autocompleteService.suggestions,
+                    suggestions: autocompleteService?.suggestions ?? [],
                     selectedIndex: $selectedIndex,
                     keyboardNavigating: keyboardNavigating
                 ) { suggestion in
@@ -190,7 +265,7 @@ struct AutocompleteTextField: View {
                     text = suggestion
                     showSuggestions = false
                     selectedIndex = -1
-                    autocompleteService.clearSuggestions()
+                    autocompleteService?.clearSuggestions()
                 }
                 .transition(.asymmetric(
                     insertion: .opacity.combined(with: .scale(scale: 0.95)).combined(with: .offset(y: -5)),
@@ -199,17 +274,21 @@ struct AutocompleteTextField: View {
             }
         }
         .animation(.easeInOut(duration: 0.15), value: showSuggestions)
+        .onAppear {
+            // Initialize autocompleteService with GitRepositoryMonitor
+            autocompleteService = AutocompleteService(gitMonitor: gitMonitor)
+        }
     }
 
     private func handleKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {
-        guard showSuggestions && !autocompleteService.suggestions.isEmpty else {
+        guard showSuggestions && !(autocompleteService?.suggestions.isEmpty ?? true) else {
             return .ignored
         }
 
         switch keyPress.key {
         case .downArrow:
             keyboardNavigating = true
-            selectedIndex = min(selectedIndex + 1, autocompleteService.suggestions.count - 1)
+            selectedIndex = min(selectedIndex + 1, (autocompleteService?.suggestions.count ?? 0) - 1)
             return .handled
 
         case .upArrow:
@@ -218,12 +297,12 @@ struct AutocompleteTextField: View {
             return .handled
 
         case .tab, .return:
-            if selectedIndex >= 0 && selectedIndex < autocompleteService.suggestions.count {
+            if selectedIndex >= 0 && selectedIndex < (autocompleteService?.suggestions.count ?? 0) {
                 justSelectedCompletion = true
-                text = autocompleteService.suggestions[selectedIndex].suggestion
+                text = autocompleteService?.suggestions[selectedIndex].suggestion ?? ""
                 showSuggestions = false
                 selectedIndex = -1
-                autocompleteService.clearSuggestions()
+                autocompleteService?.clearSuggestions()
                 keyboardNavigating = false
                 return .handled
             }
@@ -260,12 +339,12 @@ struct AutocompleteTextField: View {
         guard !newValue.isEmpty else {
             // Hide suggestions when text is empty
             showSuggestions = false
-            autocompleteService.clearSuggestions()
+            autocompleteService?.clearSuggestions()
             return
         }
         
         // Show suggestions immediately if we already have them, they'll update when new ones arrive
-        if !autocompleteService.suggestions.isEmpty {
+        if !(autocompleteService?.suggestions.isEmpty ?? true) {
             showSuggestions = true
         }
 
@@ -274,22 +353,22 @@ struct AutocompleteTextField: View {
             try? await Task.sleep(nanoseconds: 100_000_000) // 100ms - reduced for better responsiveness
 
             if !Task.isCancelled {
-                await autocompleteService.fetchSuggestions(for: newValue)
+                await autocompleteService?.fetchSuggestions(for: newValue)
 
                 await MainActor.run {
                     // Update suggestion visibility based on results
-                    if !autocompleteService.suggestions.isEmpty {
+                    if !(autocompleteService?.suggestions.isEmpty ?? true) {
                         showSuggestions = true
-                        print("[AutocompleteView] Updated with \(autocompleteService.suggestions.count) suggestions")
+                        print("[AutocompleteView] Updated with \(autocompleteService?.suggestions.count ?? 0) suggestions")
                         
                         // Try to maintain selection if possible
-                        if selectedIndex >= autocompleteService.suggestions.count {
+                        if selectedIndex >= (autocompleteService?.suggestions.count ?? 0) {
                             selectedIndex = -1
                         }
                         
                         // Auto-select first item if it's a good match and nothing is selected
                         if selectedIndex == -1,
-                           let first = autocompleteService.suggestions.first,
+                           let first = autocompleteService?.suggestions.first,
                            first.name.lowercased().hasPrefix(
                                newValue.split(separator: "/").last?.lowercased() ?? ""
                            )

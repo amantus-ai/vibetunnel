@@ -57,7 +57,7 @@ struct WelcomeView: View {
                         .frame(width: pageWidth)
 
                     // Page 3: Request Permissions
-                    RequestPermissionsPageView()
+                    RequestPermissionsPageView(isCurrentPage: currentPage == 2)
                         .frame(width: pageWidth)
 
                     // Page 4: Select Terminal
@@ -155,6 +155,11 @@ struct WelcomeView: View {
         .onAppear {
             // Always start at the first page when the view appears
             currentPage = 0
+        }
+        .onDisappear {
+            // Ensure permission monitoring stops when welcome window closes
+            // This is a safety net in case the page-specific cleanup doesn't happen
+            SystemPermissionManager.shared.unregisterFromMonitoring()
         }
     }
 

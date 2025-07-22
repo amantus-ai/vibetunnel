@@ -14,6 +14,11 @@ class AutocompleteService {
     private var taskCounter = 0
     private let fileManager = FileManager.default
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AutocompleteService")
+    private let gitMonitor: GitRepositoryMonitor
+    
+    init(gitMonitor: GitRepositoryMonitor = GitRepositoryMonitor()) {
+        self.gitMonitor = gitMonitor
+    }
 
     struct PathSuggestion: Identifiable, Equatable {
         let id = UUID()
@@ -22,10 +27,19 @@ class AutocompleteService {
         let type: SuggestionType
         let suggestion: String // The complete path to insert
         let isRepository: Bool
+        let gitInfo: GitInfo?
 
         enum SuggestionType {
             case file
             case directory
+        }
+        
+        struct GitInfo: Equatable {
+            let branch: String?
+            let aheadCount: Int?
+            let behindCount: Int?
+            let hasChanges: Bool
+            let isWorktree: Bool
         }
     }
 
@@ -116,11 +130,16 @@ class AutocompleteService {
 
         // Sort suggestions
         let sortedSuggestions = sortSuggestions(allSuggestions, searchTerm: partialName)
+        
+        // Limit to 20 results before enriching with Git info
+        let limitedSuggestions = Array(sortedSuggestions.prefix(20))
+        
+        // Enrich with Git info
+        let enrichedSuggestions = await enrichSuggestionsWithGitInfo(limitedSuggestions)
 
         // Only update suggestions if this is still the latest task
         if taskId == taskCounter {
-            // Limit to 20 results
-            self.suggestions = Array(sortedSuggestions.prefix(20))
+            self.suggestions = enrichedSuggestions
             
             logger.debug("[AutocompleteService] Task \(taskId) updated suggestions. Final count: \(self.suggestions.count), items: \(self.suggestions.map { $0.name }.joined(separator: ", "))")
         } else {
@@ -169,7 +188,7 @@ class AutocompleteService {
             }
             logger.debug("[AutocompleteService] Directory: \(expandedDir), PartialName: '\(partialName)', Total items: \(contents.count), Matching: \(matching.count) - \(matching.joined(separator: ", "))")
 
-            return contents.compactMap { filename in
+            return contents.compactMap { filename -> PathSuggestion? in
                 // Filter by partial name (case-insensitive)
                 if !partialName.isEmpty &&
                     !filename.lowercased().hasPrefix(partialName.lowercased())
@@ -206,7 +225,8 @@ class AutocompleteService {
                     path: displayPath,
                     type: isDirectory.boolValue ? .directory : .file,
                     suggestion: isDirectory.boolValue ? displayPath + "/" : displayPath,
-                    isRepository: isGitRepo
+                    isRepository: isGitRepo,
+                    gitInfo: nil  // Git info will be fetched later if needed
                 )
             }
             } catch {
@@ -276,7 +296,8 @@ class AutocompleteService {
                                 path: displayPath,
                                 type: .directory,
                                 suggestion: fullPath + "/",
-                                isRepository: true
+                                isRepository: true,
+                                gitInfo: nil  // Git info will be fetched later if needed
                             ))
                         }
                     }
@@ -330,6 +351,49 @@ class AutocompleteService {
         currentTask?.cancel()
         suggestions = []
     }
+    
+    /// Fetch Git info for directory suggestions
+    private func enrichSuggestionsWithGitInfo(_ suggestions: [PathSuggestion]) async -> [PathSuggestion] {
+        await withTaskGroup(of: (Int, PathSuggestion.GitInfo?).self) { group in
+            var enrichedSuggestions = suggestions
+            
+            // Only fetch Git info for directories and repositories
+            for (index, suggestion) in suggestions.enumerated() {
+                if suggestion.type == .directory {
+                    group.addTask { [gitMonitor = self.gitMonitor] in
+                        // Expand path for Git lookup
+                        let expandedPath = NSString(string: suggestion.suggestion.trimmingCharacters(in: CharacterSet(charactersIn: "/"))).expandingTildeInPath
+                        let gitInfo = await gitMonitor.findRepository(for: expandedPath).map { repo in
+                            PathSuggestion.GitInfo(
+                                branch: repo.currentBranch,
+                                aheadCount: repo.aheadCount,
+                                behindCount: repo.behindCount,
+                                hasChanges: repo.hasChanges,
+                                isWorktree: repo.isWorktree
+                            )
+                        }
+                        return (index, gitInfo)
+                    }
+                }
+            }
+            
+            // Collect results
+            for await (index, gitInfo) in group {
+                if let gitInfo = gitInfo {
+                    enrichedSuggestions[index] = PathSuggestion(
+                        name: enrichedSuggestions[index].name,
+                        path: enrichedSuggestions[index].path,
+                        type: enrichedSuggestions[index].type,
+                        suggestion: enrichedSuggestions[index].suggestion,
+                        isRepository: true,  // If we have Git info, it's a repository
+                        gitInfo: gitInfo
+                    )
+                }
+            }
+            
+            return enrichedSuggestions
+        }
+    }
 
     private func getRepositorySuggestions(searchTerm: String) async -> [PathSuggestion] {
         // Since we can't directly access RepositoryDiscoveryService from here,
@@ -380,7 +444,8 @@ class AutocompleteService {
                             path: displayPath,
                             type: .directory,
                             suggestion: displayPath + "/",
-                            isRepository: true
+                            isRepository: true,
+                            gitInfo: nil  // Git info will be fetched later if needed
                         ))
                     }
                 } catch {

@@ -22,6 +22,7 @@ struct RequestPermissionsPageView: View {
     @Environment(SystemPermissionManager.self)
     private var permissionManager
     @State private var permissionUpdateTrigger = 0
+    let isCurrentPage: Bool
 
     // IMPORTANT: These computed properties ensure the UI always shows current permission state.
     // The permissionUpdateTrigger dependency forces SwiftUI to re-evaluate these properties
@@ -107,12 +108,14 @@ struct RequestPermissionsPageView: View {
             // Check permissions before first render to avoid UI flashing
             await permissionManager.checkAllPermissions()
         }
-        .onAppear {
-            // Register for continuous monitoring
-            permissionManager.registerForMonitoring()
-        }
-        .onDisappear {
-            permissionManager.unregisterFromMonitoring()
+        .onChange(of: isCurrentPage) { _, newValue in
+            if newValue {
+                // Page became visible - start monitoring
+                permissionManager.registerForMonitoring()
+            } else {
+                // Page is no longer visible - stop monitoring
+                permissionManager.unregisterFromMonitoring()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .permissionsUpdated)) { _ in
             // Increment trigger to force computed property re-evaluation
@@ -124,7 +127,7 @@ struct RequestPermissionsPageView: View {
 // MARK: - Preview
 
 #Preview("Request Permissions Page") {
-    RequestPermissionsPageView()
+    RequestPermissionsPageView(isCurrentPage: true)
         .frame(width: 640, height: 480)
         .background(Color(NSColor.windowBackgroundColor))
         .environment(SystemPermissionManager.shared)
