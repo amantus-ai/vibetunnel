@@ -594,6 +594,8 @@ export class SessionCreateForm extends LitElement {
     this.showCompletions = false;
     this.completions = [];
     this.selectedCompletionIndex = -1;
+    // Check Git repository after autocomplete selection
+    this.checkGitRepository();
   }
 
   private handleToggleOptions() {
