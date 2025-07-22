@@ -17,13 +17,11 @@ import type { AuthClient } from '../services/auth-client.js';
 import { sessionActionService } from '../services/session-action-service.js';
 import { isAIAssistantSession, sendAIPrompt } from '../utils/ai-sessions.js';
 import { createLogger } from '../utils/logger.js';
-import { copyToClipboard } from '../utils/path-utils.js';
 import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
 import type { TerminalThemeId } from '../utils/terminal-themes.js';
 
 const logger = createLogger('session-card');
 import './vibe-terminal-buffer.js';
-import './copy-icon.js';
 import './clickable-path.js';
 import './inline-edit.js';
 
@@ -319,20 +317,6 @@ export class SessionCard extends LitElement {
     }
   }
 
-  private async handlePidClick(e: Event) {
-    e.stopPropagation();
-    e.preventDefault();
-
-    if (this.session.pid) {
-      const success = await copyToClipboard(this.session.pid.toString());
-      if (success) {
-        logger.log('PID copied to clipboard', { pid: this.session.pid });
-      } else {
-        logger.error('Failed to copy PID to clipboard', { pid: this.session.pid });
-      }
-    }
-  }
-
   private async handleMagicButton() {
     if (!this.session || this.isSendingPrompt) return;
 
@@ -538,24 +522,10 @@ export class SessionCard extends LitElement {
                   : ''
               }
             </span>
-            ${
-              this.session.pid
-                ? html`
-                  <span
-                    class="cursor-pointer hover:text-primary transition-colors text-xs flex-shrink-0 ml-2 inline-flex items-center gap-1"
-                    id="session-pid-copy"
-                    @click=${this.handlePidClick}
-                    title="Click to copy PID"
-                  >
-                    PID: ${this.session.pid} <copy-icon size="14"></copy-icon>
-                  </span>
-                `
-                : ''
-            }
-          </div>
-          <div class="text-xs opacity-75 min-w-0 mt-1 flex justify-between items-center gap-2">
-            <clickable-path .path=${this.session.workingDir} .iconSize=${12}></clickable-path>
             ${this.renderGitStatus()}
+          </div>
+          <div class="text-xs opacity-75 min-w-0 mt-1">
+            <clickable-path .path=${this.session.workingDir} .iconSize=${12}></clickable-path>
           </div>
         </div>
       </div>

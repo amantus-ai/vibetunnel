@@ -696,11 +696,11 @@ export function createFilesystemRoutes(): Router {
               try {
                 await fs.stat(path.join(entryPath, '.git'));
                 isGitRepo = true;
-                
+
                 // Get the current git branch
                 try {
-                  const { stdout: branch } = await execAsync('git branch --show-current', { 
-                    cwd: entryPath 
+                  const { stdout: branch } = await execAsync('git branch --show-current', {
+                    cwd: entryPath,
                   });
                   gitBranch = branch.trim();
                 } catch {

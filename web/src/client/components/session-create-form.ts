@@ -921,9 +921,11 @@ export class SessionCreateForm extends LitElement {
                               <span class="text-text text-xs sm:text-sm truncate flex-1">
                                 ${completion.name}
                               </span>
-                              ${completion.gitBranch 
-                                ? html`<span class="text-primary text-[9px] sm:text-[10px] px-1">${completion.gitBranch}</span>`
-                                : nothing}
+                              ${
+                                completion.gitBranch
+                                  ? html`<span class="text-primary text-[9px] sm:text-[10px] px-1">${completion.gitBranch}</span>`
+                                  : nothing
+                              }
                               <span class="text-text-muted text-[9px] sm:text-[10px] truncate max-w-[40%]">${completion.path}</span>
                             </button>
                           `
@@ -946,8 +948,15 @@ export class SessionCreateForm extends LitElement {
                               type="button"
                             >
                               <div class="flex items-center justify-between">
-                                <div>
-                                  <div class="text-text text-xs sm:text-sm font-medium">${repo.folderName}</div>
+                                <div class="flex-1">
+                                  <div class="flex items-center gap-2">
+                                    <div class="text-text text-xs sm:text-sm font-medium">${repo.folderName}</div>
+                                    ${
+                                      repo.gitBranch
+                                        ? html`<span class="text-primary text-[9px] sm:text-[10px] px-1">${repo.gitBranch}</span>`
+                                        : nothing
+                                    }
+                                  </div>
                                   <div class="text-text-muted text-[9px] sm:text-[10px] mt-0.5">${repo.relativePath}</div>
                                 </div>
                                 <div class="text-text-muted text-[9px] sm:text-[10px]">

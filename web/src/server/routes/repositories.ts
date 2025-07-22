@@ -156,11 +156,24 @@ async function createDiscoveredRepository(repoPath: string): Promise<DiscoveredR
     ? `~${repoPath.slice(homeDir.length)}`
     : repoPath;
 
+  // Get current git branch
+  let gitBranch: string | undefined;
+  try {
+    const { stdout: branch } = await execAsync('git branch --show-current', {
+      cwd: repoPath,
+    });
+    gitBranch = branch.trim();
+  } catch {
+    // Failed to get branch - repository might not have any commits yet
+    logger.debug(`Failed to get git branch for ${repoPath}`);
+  }
+
   return {
     id: `${folderName}-${stats.ino}`,
     path: repoPath,
     folderName,
     lastModified,
     relativePath,
+    gitBranch,
   };
 }

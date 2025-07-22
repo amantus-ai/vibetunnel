@@ -18,6 +18,7 @@ export interface Repository {
   folderName: string;
   lastModified: string;
   relativePath: string;
+  gitBranch?: string;
 }
 
 export class AutocompleteManager {
@@ -73,6 +74,7 @@ export class AutocompleteManager {
             type: 'directory' as const,
             suggestion: repo.path,
             isRepository: true,
+            gitBranch: repo.gitBranch,
           }));
 
         // Merge with filesystem completions, avoiding duplicates
