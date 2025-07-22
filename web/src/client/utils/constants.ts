@@ -45,6 +45,7 @@ export const Z_INDEX = {
 
   // Dropdowns and popovers (50-99)
   WIDTH_SELECTOR_DROPDOWN: 60,
+  BRANCH_SELECTOR_DROPDOWN: 65,
 
   // Modals and overlays (100-199)
   MODAL_BACKDROP: 100,

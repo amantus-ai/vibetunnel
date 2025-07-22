@@ -48,6 +48,20 @@ export class SessionList extends LitElement {
   @property({ type: Boolean }) compactMode = false;
 
   @state() private cleaningExited = false;
+  @state() private repoBranches = new Map<
+    string,
+    Array<{ name: string; current: boolean; remote: boolean; worktree?: string }>
+  >();
+  @state() private loadingBranches = new Set<string>();
+  @state() private selectedBranches = new Map<string, string>();
+  @state() private showBranchDropdown = new Map<string, boolean>();
+  @state() private repoWorktrees = new Map<
+    string,
+    Array<{ path: string; branch: string; HEAD: string; detached: boolean }>
+  >();
+  @state() private loadingWorktrees = new Set<string>();
+  @state() private showWorktreeDropdown = new Map<string, boolean>();
+
   private previousRunningCount = 0;
 
   connectedCallback() {
@@ -56,12 +70,34 @@ export class SessionList extends LitElement {
     this.tabIndex = 0;
     // Add keyboard listener only to this component
     this.addEventListener('keydown', this.handleKeyDown);
+    // Add click outside listener for dropdowns
+    document.addEventListener('click', this.handleClickOutside);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this.removeEventListener('keydown', this.handleKeyDown);
+    document.removeEventListener('click', this.handleClickOutside);
   }
+
+  private handleClickOutside = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+
+    // Check if click is outside any selector
+    const isInsideSelector =
+      target.closest('[id^="branch-selector-"]') ||
+      target.closest('.branch-dropdown') ||
+      target.closest('[id^="worktree-selector-"]') ||
+      target.closest('.worktree-dropdown');
+
+    if (!isInsideSelector) {
+      if (this.showBranchDropdown.size > 0 || this.showWorktreeDropdown.size > 0) {
+        this.showBranchDropdown.clear();
+        this.showWorktreeDropdown.clear();
+        this.requestUpdate();
+      }
+    }
+  };
 
   private getVisibleSessions() {
     const running = this.sessions.filter((s) => s.status === 'running');
@@ -403,6 +439,274 @@ export class SessionList extends LitElement {
     return getBaseRepoName(repoPath);
   }
 
+  private async loadBranchesForRepo(repoPath: string) {
+    if (this.loadingBranches.has(repoPath) || this.repoBranches.has(repoPath)) {
+      return;
+    }
+
+    this.loadingBranches.add(repoPath);
+    this.requestUpdate();
+
+    try {
+      const response = await fetch(
+        `/api/repositories/branches?${new URLSearchParams({ path: repoPath })}`,
+        {
+          headers: this.authClient.getAuthHeader(),
+        }
+      );
+
+      if (response.ok) {
+        const branches = await response.json();
+        this.repoBranches.set(repoPath, branches);
+
+        // Set the current branch as selected if not already selected
+        if (!this.selectedBranches.has(repoPath)) {
+          const currentBranch = branches.find((b: any) => b.current);
+          if (currentBranch) {
+            this.selectedBranches.set(repoPath, currentBranch.name);
+          }
+        }
+      } else {
+        logger.error(`Failed to load branches for ${repoPath}`);
+      }
+    } catch (error) {
+      logger.error('Error loading branches:', error);
+    } finally {
+      this.loadingBranches.delete(repoPath);
+      this.requestUpdate();
+    }
+  }
+
+  private async handleBranchChange(repoPath: string, branchName: string) {
+    this.selectedBranches.set(repoPath, branchName);
+    this.showBranchDropdown.delete(repoPath);
+    this.requestUpdate();
+
+    // TODO: Implement branch switching logic
+    // This could involve:
+    // 1. Switching to an existing worktree
+    // 2. Creating a new worktree for the branch
+    // 3. Just updating the display
+
+    logger.debug(`Selected branch ${branchName} for repo ${repoPath}`);
+  }
+
+  private toggleBranchDropdown(repoPath: string) {
+    const isOpen = this.showBranchDropdown.get(repoPath) || false;
+
+    // Close all dropdowns
+    this.showBranchDropdown.clear();
+    this.showWorktreeDropdown.clear();
+
+    if (!isOpen) {
+      this.showBranchDropdown.set(repoPath, true);
+      // Load branches if not already loaded
+      this.loadBranchesForRepo(repoPath);
+    }
+
+    this.requestUpdate();
+  }
+
+  private renderBranchSelector(repoPath: string, repoSessions: Session[]) {
+    const branches = this.repoBranches.get(repoPath) || [];
+    const selectedBranch = this.selectedBranches.get(repoPath);
+    const isLoading = this.loadingBranches.has(repoPath);
+    const isDropdownOpen = this.showBranchDropdown.get(repoPath) || false;
+
+    // Get current branch from sessions if not selected
+    const currentBranch = selectedBranch || repoSessions[0]?.gitBranch || 'main';
+
+    return html`
+      <div class="relative">
+        <button
+          class="flex items-center gap-1 px-2 py-1 text-xs bg-bg-secondary hover:bg-bg-tertiary rounded-md border border-border transition-colors"
+          @click=${() => this.toggleBranchDropdown(repoPath)}
+          id="branch-selector-${repoPath.replace(/[^a-zA-Z0-9]/g, '-')}"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+              d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
+          <span class="font-mono">${currentBranch}</span>
+          ${
+            isLoading
+              ? html`<span class="animate-spin">⟳</span>`
+              : html`
+              <svg class="w-3 h-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}" 
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            `
+          }
+        </button>
+        
+        ${
+          isDropdownOpen
+            ? html`
+          <div class="branch-dropdown absolute right-0 mt-1 w-64 bg-bg-elevated border border-border rounded-md shadow-lg max-h-96 overflow-y-auto" style="z-index: ${Z_INDEX.BRANCH_SELECTOR_DROPDOWN}">
+            ${
+              branches.length === 0 && !isLoading
+                ? html`<div class="px-3 py-2 text-xs text-text-muted">No branches found</div>`
+                : html`
+                <div class="py-1">
+                  ${branches.map(
+                    (branch) => html`
+                    <button
+                      class="w-full text-left px-3 py-2 text-xs hover:bg-bg-secondary transition-colors flex items-center justify-between group"
+                      @click=${() => this.handleBranchChange(repoPath, branch.name)}
+                    >
+                      <div class="flex items-center gap-2">
+                        <span class="font-mono ${branch.current ? 'text-accent-primary font-semibold' : ''}">${branch.name}</span>
+                        ${branch.remote ? html`<span class="text-[10px] text-text-muted">remote</span>` : ''}
+                      </div>
+                      ${
+                        branch.worktree
+                          ? html`
+                        <span class="text-[10px] text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                          worktree
+                        </span>
+                      `
+                          : ''
+                      }
+                    </button>
+                  `
+                  )}
+                </div>
+              `
+            }
+          </div>
+        `
+            : ''
+        }
+      </div>
+    `;
+  }
+
+  private async loadWorktreesForRepo(repoPath: string) {
+    if (this.loadingWorktrees.has(repoPath) || this.repoWorktrees.has(repoPath)) {
+      return;
+    }
+
+    this.loadingWorktrees.add(repoPath);
+    this.requestUpdate();
+
+    try {
+      const response = await fetch(`/api/worktrees?${new URLSearchParams({ repoPath })}`, {
+        headers: this.authClient.getAuthHeader(),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        this.repoWorktrees.set(repoPath, data.worktrees || []);
+      } else {
+        logger.error(`Failed to load worktrees for ${repoPath}`);
+      }
+    } catch (error) {
+      logger.error('Error loading worktrees:', error);
+    } finally {
+      this.loadingWorktrees.delete(repoPath);
+      this.requestUpdate();
+    }
+  }
+
+  private toggleWorktreeDropdown(repoPath: string) {
+    const isOpen = this.showWorktreeDropdown.get(repoPath) || false;
+
+    // Close all dropdowns
+    this.showBranchDropdown.clear();
+    this.showWorktreeDropdown.clear();
+
+    if (!isOpen) {
+      this.showWorktreeDropdown.set(repoPath, true);
+      // Load worktrees if not already loaded
+      this.loadWorktreesForRepo(repoPath);
+    }
+
+    this.requestUpdate();
+  }
+
+  private async handleWorktreeSelect(repoPath: string, worktreePath: string) {
+    this.showWorktreeDropdown.delete(repoPath);
+    this.requestUpdate();
+
+    // Navigate to the worktree path by creating a session there
+    logger.debug(`Selected worktree ${worktreePath} for repo ${repoPath}`);
+
+    // TODO: Create a new session in the worktree or navigate to existing sessions
+  }
+
+  private renderWorktreeSelector(repoPath: string) {
+    const worktrees = this.repoWorktrees.get(repoPath) || [];
+    const isLoading = this.loadingWorktrees.has(repoPath);
+    const isDropdownOpen = this.showWorktreeDropdown.get(repoPath) || false;
+
+    return html`
+      <div class="relative">
+        <button
+          class="flex items-center gap-1 px-2 py-1 text-xs bg-bg-secondary hover:bg-bg-tertiary rounded-md border border-border transition-colors"
+          @click=${() => this.toggleWorktreeDropdown(repoPath)}
+          id="worktree-selector-${repoPath.replace(/[^a-zA-Z0-9]/g, '-')}"
+          title="Worktrees"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          </svg>
+          <span class="font-mono">${worktrees.length || 0}</span>
+          ${
+            isLoading
+              ? html`<span class="animate-spin">⟳</span>`
+              : html`
+              <svg class="w-3 h-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}" 
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            `
+          }
+        </button>
+        
+        ${
+          isDropdownOpen
+            ? html`
+          <div class="worktree-dropdown absolute right-0 mt-1 w-96 bg-bg-elevated border border-border rounded-md shadow-lg max-h-96 overflow-y-auto" style="z-index: ${Z_INDEX.BRANCH_SELECTOR_DROPDOWN}">
+            ${
+              worktrees.length === 0 && !isLoading
+                ? html`<div class="px-3 py-2 text-xs text-text-muted">No worktrees found</div>`
+                : html`
+                <div class="py-1">
+                  ${worktrees.map(
+                    (worktree) => html`
+                    <button
+                      class="w-full text-left px-3 py-2 text-xs hover:bg-bg-secondary transition-colors"
+                      @click=${() => this.handleWorktreeSelect(repoPath, worktree.path)}
+                    >
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <div class="font-mono text-text">${worktree.branch}</div>
+                          <div class="text-[10px] text-text-muted truncate">${worktree.path}</div>
+                        </div>
+                        ${
+                          worktree.detached
+                            ? html`
+                          <span class="text-[10px] text-status-warning">detached</span>
+                        `
+                            : ''
+                        }
+                      </div>
+                    </button>
+                  `
+                  )}
+                </div>
+              `
+            }
+          </div>
+        `
+            : ''
+        }
+      </div>
+    `;
+  }
+
   render() {
     // Group sessions by status and activity
     const activeSessions = this.sessions.filter(
@@ -510,14 +814,20 @@ export class SessionList extends LitElement {
                             ${
                               repoPath
                                 ? html`
-                                  <div class="flex items-center gap-2 mb-3">
-                                    <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                        d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    <h4 class="text-sm font-medium text-text-muted">
-                                      ${this.getRepoName(repoPath)}
-                                    </h4>
+                                  <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center gap-2">
+                                      <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                          d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      </svg>
+                                      <h4 class="text-sm font-medium text-text-muted">
+                                        ${this.getRepoName(repoPath)}
+                                      </h4>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                      ${this.renderBranchSelector(repoPath, repoSessions)}
+                                      ${this.renderWorktreeSelector(repoPath)}
+                                    </div>
                                   </div>
                                 `
                                 : ''
@@ -736,14 +1046,20 @@ export class SessionList extends LitElement {
                             ${
                               repoPath
                                 ? html`
-                                  <div class="flex items-center gap-2 mb-3">
-                                    <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                        d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    <h4 class="text-sm font-medium text-text-muted">
-                                      ${this.getRepoName(repoPath)}
-                                    </h4>
+                                  <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center gap-2">
+                                      <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                          d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      </svg>
+                                      <h4 class="text-sm font-medium text-text-muted">
+                                        ${this.getRepoName(repoPath)}
+                                      </h4>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                      ${this.renderBranchSelector(repoPath, repoSessions)}
+                                      ${this.renderWorktreeSelector(repoPath)}
+                                    </div>
                                   </div>
                                 `
                                 : ''
@@ -890,14 +1206,20 @@ export class SessionList extends LitElement {
                             ${
                               repoPath
                                 ? html`
-                                  <div class="flex items-center gap-2 mb-3">
-                                    <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                        d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    <h4 class="text-sm font-medium text-text-muted">
-                                      ${this.getRepoName(repoPath)}
-                                    </h4>
+                                  <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center gap-2">
+                                      <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                          d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      </svg>
+                                      <h4 class="text-sm font-medium text-text-muted">
+                                        ${this.getRepoName(repoPath)}
+                                      </h4>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                      ${this.renderBranchSelector(repoPath, repoSessions)}
+                                      ${this.renderWorktreeSelector(repoPath)}
+                                    </div>
                                   </div>
                                 `
                                 : ''

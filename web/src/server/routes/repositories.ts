@@ -20,6 +20,13 @@ export interface DiscoveredRepository {
   gitBranch?: string;
 }
 
+export interface Branch {
+  name: string;
+  current: boolean;
+  remote: boolean;
+  worktree?: string;
+}
+
 interface RepositorySearchOptions {
   basePath: string;
   maxDepth?: number;
@@ -30,6 +37,30 @@ interface RepositorySearchOptions {
  */
 export function createRepositoryRoutes(): Router {
   const router = Router();
+
+  // List branches for a repository
+  router.get('/repositories/branches', async (req, res) => {
+    try {
+      const repoPath = req.query.path as string;
+
+      if (!repoPath || typeof repoPath !== 'string') {
+        return res.status(400).json({
+          error: 'Missing or invalid path parameter',
+        });
+      }
+
+      const expandedPath = resolveAbsolutePath(repoPath);
+      logger.debug(`[GET /repositories/branches] Listing branches for: ${expandedPath}`);
+
+      // Get all branches (local and remote)
+      const branches = await listBranches(expandedPath);
+
+      res.json(branches);
+    } catch (error) {
+      logger.error('[GET /repositories/branches] Error listing branches:', error);
+      res.status(500).json({ error: 'Failed to list branches' });
+    }
+  });
 
   // Discover repositories endpoint
   router.get('/repositories/discover', async (req, res) => {
@@ -138,6 +169,136 @@ async function discoverRepositories(
   repositories.sort((a, b) => a.folderName.localeCompare(b.folderName));
 
   return repositories;
+}
+
+/**
+ * List all branches (local and remote) for a repository
+ */
+async function listBranches(repoPath: string): Promise<Branch[]> {
+  const branches: Branch[] = [];
+
+  try {
+    // Get current branch
+    let currentBranch: string | undefined;
+    try {
+      const { stdout } = await execAsync('git branch --show-current', { cwd: repoPath });
+      currentBranch = stdout.trim();
+    } catch {
+      logger.debug('Failed to get current branch, repository might be in detached HEAD state');
+    }
+
+    // Get all local branches
+    const { stdout: localBranchesOutput } = await execAsync('git branch', { cwd: repoPath });
+    const localBranches = localBranchesOutput
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => {
+        const isCurrent = line.startsWith('*');
+        const name = line.replace(/^\*?\s+/, '');
+        return {
+          name,
+          current: isCurrent || name === currentBranch,
+          remote: false,
+        };
+      });
+
+    branches.push(...localBranches);
+
+    // Get all remote branches
+    try {
+      const { stdout: remoteBranchesOutput } = await execAsync('git branch -r', { cwd: repoPath });
+      const remoteBranches = remoteBranchesOutput
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0 && !line.includes('->')) // Skip HEAD pointers
+        .map((line) => {
+          const name = line.replace(/^\s+/, '');
+          return {
+            name,
+            current: false,
+            remote: true,
+          };
+        });
+
+      branches.push(...remoteBranches);
+    } catch {
+      logger.debug('No remote branches found');
+    }
+
+    // Get worktree information
+    try {
+      const { stdout: worktreeOutput } = await execAsync('git worktree list --porcelain', {
+        cwd: repoPath,
+      });
+      const worktrees = parseWorktreeList(worktreeOutput);
+
+      // Add worktree information to branches
+      for (const worktree of worktrees) {
+        const branch = branches.find(
+          (b) =>
+            b.name === worktree.branch ||
+            b.name === `refs/heads/${worktree.branch}` ||
+            b.name.replace(/^origin\//, '') === worktree.branch
+        );
+        if (branch) {
+          branch.worktree = worktree.path;
+        }
+      }
+    } catch {
+      logger.debug('Failed to get worktree information');
+    }
+
+    // Sort branches: current first, then local, then remote
+    branches.sort((a, b) => {
+      if (a.current && !b.current) return -1;
+      if (!a.current && b.current) return 1;
+      if (!a.remote && b.remote) return -1;
+      if (a.remote && !b.remote) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    return branches;
+  } catch (error) {
+    logger.error('Error listing branches:', error);
+    throw error;
+  }
+}
+
+/**
+ * Parse worktree list output
+ */
+function parseWorktreeList(output: string): Array<{ path: string; branch: string }> {
+  const worktrees: Array<{ path: string; branch: string }> = [];
+  const lines = output.trim().split('\n');
+
+  let current: { path?: string; branch?: string } = {};
+
+  for (const line of lines) {
+    if (line === '') {
+      if (current.path && current.branch) {
+        worktrees.push({ path: current.path, branch: current.branch });
+      }
+      current = {};
+      continue;
+    }
+
+    const [key, ...valueParts] = line.split(' ');
+    const value = valueParts.join(' ');
+
+    if (key === 'worktree') {
+      current.path = value;
+    } else if (key === 'branch') {
+      current.branch = value.replace(/^refs\/heads\//, '');
+    }
+  }
+
+  // Handle last worktree
+  if (current.path && current.branch) {
+    worktrees.push({ path: current.path, branch: current.branch });
+  }
+
+  return worktrees;
 }
 
 /**
