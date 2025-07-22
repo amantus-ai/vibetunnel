@@ -15,6 +15,8 @@ struct NewSessionForm: View {
     private var sessionService
     @Environment(RepositoryDiscoveryService.self)
     private var repositoryDiscovery
+    @Environment(GitRepositoryMonitor.self)
+    private var gitMonitor
     @StateObject private var configManager = ConfigManager.shared
 
     // Form fields
@@ -23,6 +25,12 @@ struct NewSessionForm: View {
     @State private var workingDirectory = FilePathConstants.defaultRepositoryBasePath
     @State private var spawnWindow = true
     @State private var titleMode: TitleMode = .dynamic
+
+    // Git worktree state
+    @State private var isGitRepository = false
+    @State private var gitRepoPath: String?
+    @State private var selectedWorktreePath: String?
+    @State private var checkingGitStatus = false
 
     // UI state
     @State private var isCreating = false
@@ -123,6 +131,9 @@ struct NewSessionForm: View {
                             HStack(spacing: 8) {
                                 AutocompleteTextField(text: $workingDirectory, placeholder: "~/")
                                     .focused($focusedField, equals: .directory)
+                                    .onChange(of: workingDirectory) { _, newValue in
+                                        checkForGitRepository(at: newValue)
+                                    }
 
                                 Button(action: selectDirectory) {
                                     Image(systemName: "folder")
@@ -133,6 +144,21 @@ struct NewSessionForm: View {
                                 }
                                 .buttonStyle(.borderless)
                                 .help("Choose directory")
+                            }
+                        }
+                    }
+
+                    // Git worktree selection when Git repository is detected
+                    if isGitRepository, let repoPath = gitRepoPath {
+                        WorktreeSelectionView(
+                            gitRepoPath: repoPath,
+                            selectedWorktreePath: $selectedWorktreePath,
+                            serverManager: serverManager
+                        )
+                        .onChange(of: selectedWorktreePath) { _, newPath in
+                            if let newPath {
+                                // Update working directory to the selected worktree
+                                workingDirectory = newPath
                             }
                         }
                     }
@@ -299,6 +325,8 @@ struct NewSessionForm: View {
         .onAppear {
             loadPreferences()
             focusedField = .name
+            // Check if the default/loaded directory is a Git repository
+            checkForGitRepository(at: workingDirectory)
         }
         .task {
             await repositoryDiscovery.discoverRepositories(in: configManager.repositoryBasePath)
@@ -356,8 +384,11 @@ struct NewSessionForm: View {
                 // Parse command into array
                 let commandArray = parseCommand(command.trimmingCharacters(in: .whitespacesAndNewlines))
 
+                // Use selected worktree path if available, otherwise use the working directory
+                let finalWorkingDir = selectedWorktreePath ?? workingDirectory
+                
                 // Expand tilde in working directory
-                let expandedWorkingDir = NSString(string: workingDirectory).expandingTildeInPath
+                let expandedWorkingDir = NSString(string: finalWorkingDir).expandingTildeInPath
 
                 // Create session using SessionService
                 let sessionId = try await sessionService.createSession(
@@ -456,6 +487,30 @@ struct NewSessionForm: View {
         UserDefaults.standard.set(workingDirectory, forKey: AppConstants.UserDefaultsKeys.newSessionWorkingDirectory)
         UserDefaults.standard.set(spawnWindow, forKey: AppConstants.UserDefaultsKeys.newSessionSpawnWindow)
         UserDefaults.standard.set(titleMode.rawValue, forKey: AppConstants.UserDefaultsKeys.newSessionTitleMode)
+    }
+
+    private func checkForGitRepository(at path: String) {
+        guard !checkingGitStatus else { return }
+        
+        checkingGitStatus = true
+        
+        Task {
+            let expandedPath = NSString(string: path).expandingTildeInPath
+            if let repo = await gitMonitor.findRepository(for: expandedPath) {
+                await MainActor.run {
+                    self.isGitRepository = true
+                    self.gitRepoPath = repo.path
+                    self.checkingGitStatus = false
+                }
+            } else {
+                await MainActor.run {
+                    self.isGitRepository = false
+                    self.gitRepoPath = nil
+                    self.selectedWorktreePath = nil
+                    self.checkingGitStatus = false
+                }
+            }
+        }
     }
 }
 
