@@ -40,16 +40,22 @@ class AutocompleteService {
         suggestions = []
         
         guard !partialPath.isEmpty else {
+            logger.debug("[AutocompleteService] Empty path, returning")
             return
         }
 
         // Increment task counter to track latest task
         taskCounter += 1
         let thisTaskId = taskCounter
+        logger.debug("[AutocompleteService] Starting task \(thisTaskId) for path: '\(partialPath)'")
         
         currentTask = Task {
             await performFetch(for: partialPath, taskId: thisTaskId)
         }
+        
+        // Wait for the task to complete
+        await currentTask?.value
+        logger.debug("[AutocompleteService] Task \(thisTaskId) awaited, suggestions count: \(self.suggestions.count)")
     }
 
     private func performFetch(for originalPath: String, taskId: Int) async {
@@ -118,7 +124,7 @@ class AutocompleteService {
             // Limit to 20 results
             self.suggestions = Array(sortedSuggestions.prefix(20))
             
-            logger.debug("[AutocompleteService] Final suggestions count: \(self.suggestions.count), items: \(self.suggestions.map { $0.name }.joined(separator: ", "))")
+            logger.debug("[AutocompleteService] Task \(taskId) updated suggestions. Final count: \(self.suggestions.count), items: \(self.suggestions.map { $0.name }.joined(separator: ", "))")
         } else {
             logger.debug("[AutocompleteService] Discarding stale results from task \(taskId), current task is \(self.taskCounter)")
         }
@@ -142,7 +148,7 @@ class AutocompleteService {
         async -> [PathSuggestion]
     {
         // Move to background thread to avoid blocking UI
-        return await Task.detached(priority: .userInitiated) { [logger = self.logger, currentTaskId = self.taskCounter] in
+        return await Task.detached(priority: .userInitiated) { [logger = self.logger] in
             let expandedDir = NSString(string: directory).expandingTildeInPath
             let fileManager = FileManager.default
 
@@ -152,7 +158,7 @@ class AutocompleteService {
 
             do {
                 // Check if this task is still current before doing expensive operations
-                if taskId != currentTaskId {
+                if Task.isCancelled {
                     logger.debug("[AutocompleteService] Task \(taskId) cancelled, not processing directory listing")
                     return []
                 }
@@ -213,13 +219,13 @@ class AutocompleteService {
 
     private func getRepositorySuggestions(searchTerm: String, taskId: Int) async -> [PathSuggestion] {
         // Get git repositories from common locations
-        return await Task.detached(priority: .userInitiated) { [logger = self.logger, currentTaskId = self.taskCounter] in
+        return await Task.detached(priority: .userInitiated) { [logger = self.logger] in
             var suggestions: [PathSuggestion] = []
             let fileManager = FileManager.default
             
             // Check if this task is still current
-            if taskId != currentTaskId {
-                logger.debug("[AutocompleteService] Task \(taskId) cancelled, not processing repository search")
+            if Task.isCancelled {
+                logger.debug("[AutocompleteService] Task cancelled, not processing repository search")
                 return []
             }
             
@@ -243,7 +249,7 @@ class AutocompleteService {
                 guard fileManager.fileExists(atPath: basePath) else { continue }
                 
                 // Check if task is still current
-                if taskId != currentTaskId {
+                if Task.isCancelled {
                     return []
                 }
                 

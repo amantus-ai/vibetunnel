@@ -370,6 +370,7 @@ export class VibeTunnelApp extends LitElement {
     await this.checkAuthenticationStatus();
 
     // Then setup routing after auth is determined and sessions are loaded
+    // For session routes, this ensures sessions are already loaded before routing
     this.setupRouting();
   }
 
@@ -1292,15 +1293,27 @@ export class VibeTunnelApp extends LitElement {
       // Always navigate to the session view if a session ID is provided
       // The session-view component will handle loading and error cases
       logger.log(`Navigating to session ${sessionId} from URL`);
-      this.selectedSessionId = sessionId;
-      this.sessionLoadingState = 'idle'; // Reset loading state for new session
 
       // Load sessions if not already loaded and wait for them
       if (this.sessions.length === 0 && this.isAuthenticated) {
+        logger.log('Sessions not loaded yet, loading now...');
         await this.loadSessions();
       }
 
-      // Now set the view to session after sessions are loaded
+      // Verify the session exists
+      const sessionExists = this.sessions.find((s) => s.id === sessionId);
+      if (!sessionExists) {
+        logger.warn(`Session ${sessionId} not found in loaded sessions`);
+        // Show error and navigate to list
+        this.showError(`Session ${sessionId} not found`);
+        this.selectedSessionId = null;
+        this.currentView = 'list';
+        return;
+      }
+
+      // Session exists, navigate to it
+      this.selectedSessionId = sessionId;
+      this.sessionLoadingState = 'loaded';
       this.currentView = 'session';
     } else {
       this.selectedSessionId = null;

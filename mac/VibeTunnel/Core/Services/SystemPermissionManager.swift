@@ -71,6 +71,12 @@ final class SystemPermissionManager {
 
     /// Count of views that have registered for monitoring
     private var monitorRegistrationCount = 0
+    
+    /// Last time permissions were checked to avoid excessive checking
+    private var lastPermissionCheck: Date?
+    
+    /// Minimum interval between permission checks (in seconds)
+    private let minimumCheckInterval: TimeInterval = 0.5
 
     init() {
         // No automatic monitoring - UI components will register when visible
@@ -177,7 +183,7 @@ final class SystemPermissionManager {
     }
 
     private func startMonitoring() {
-        logger.info("Starting permission monitoring")
+        logger.info("Starting permission monitoring (registration count: \(self.monitorRegistrationCount))")
 
         // Initial check
         Task {
@@ -186,22 +192,36 @@ final class SystemPermissionManager {
 
         // Start timer for periodic checks
         monitorTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self else { return }
+            guard let self else { 
+                print("SystemPermissionManager: Timer fired but self is nil")
+                return 
+            }
             Task { @MainActor in
                 await self.checkAllPermissions()
             }
         }
+        
+        logger.debug("Permission monitoring timer created: \(String(describing: self.monitorTimer))")
     }
 
     private func stopMonitoring() {
-        logger.info("Stopping permission monitoring")
+        logger.info("Stopping permission monitoring (registration count: \(self.monitorRegistrationCount))")
         monitorTimer?.invalidate()
         monitorTimer = nil
+        // Clear the last check time to ensure immediate check on next start
+        lastPermissionCheck = nil
     }
 
     // MARK: - Permission Checking
 
     func checkAllPermissions() async {
+        // Avoid checking too frequently
+        if let lastCheck = lastPermissionCheck,
+           Date().timeIntervalSince(lastCheck) < minimumCheckInterval {
+            return
+        }
+        
+        lastPermissionCheck = Date()
         let oldPermissions = permissions
 
         // Check each permission type
@@ -221,10 +241,20 @@ final class SystemPermissionManager {
         let testScript = "return \"test\""
 
         do {
+            // Use a short timeout since this script is very simple
+            // This script is very simple and should complete quickly if permissions are granted
             _ = try await AppleScriptExecutor.shared.executeAsync(testScript, timeout: 1.0)
             return true
+        } catch let error as AppleScriptError {
+            // Only log actual errors, not timeouts which are expected when permissions are denied
+            if case .timeout = error {
+                logger.debug("AppleScript permission check timed out - likely no permission")
+            } else {
+                logger.debug("AppleScript check failed: \(error)")
+            }
+            return false
         } catch {
-            logger.debug("AppleScript check failed: \(error)")
+            logger.debug("AppleScript check failed with unexpected error: \(error)")
             return false
         }
     }

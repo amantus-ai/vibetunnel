@@ -268,9 +268,10 @@ struct AutocompleteTextField: View {
                 await autocompleteService.fetchSuggestions(for: newValue)
 
                 await MainActor.run {
-                    // Only show suggestions if the text hasn't changed during the async operation
-                    if text == newValue && !autocompleteService.suggestions.isEmpty {
+                    // Show suggestions if we have any results
+                    if !autocompleteService.suggestions.isEmpty {
                         showSuggestions = true
+                        print("[AutocompleteView] Showing \(autocompleteService.suggestions.count) suggestions")
                         // Auto-select first item if it's a good match
                         if let first = autocompleteService.suggestions.first,
                            first.name.lowercased().hasPrefix(
