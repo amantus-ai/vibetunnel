@@ -27,10 +27,33 @@ const mockNavigator = {
 vi.stubGlobal('navigator', mockNavigator);
 vi.stubGlobal('Notification', mockNotification);
 
+// Mock fetch globally
+global.fetch = vi.fn();
+
 describe('PushNotificationService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    
+    // Mock fetch responses
+    (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+      if (url === '/api/push/vapid-public-key') {
+        return Promise.resolve({
+          ok: true,
+          text: () => Promise.resolve('test-vapid-key'),
+        });
+      }
+      if (url === '/api/preferences/notifications') {
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
+    });
 
     // Reset service state
     // Using a type assertion to access private members for testing
