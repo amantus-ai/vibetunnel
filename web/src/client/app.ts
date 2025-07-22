@@ -366,12 +366,23 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private async initializeApp() {
+    logger.log('🚀 initializeApp() started');
+
     // First check authentication
     await this.checkAuthenticationStatus();
+
+    logger.log('✅ checkAuthenticationStatus() completed', {
+      isAuthenticated: this.isAuthenticated,
+      sessionCount: this.sessions.length,
+      currentView: this.currentView,
+      initialLoadComplete: this.initialLoadComplete,
+    });
 
     // Then setup routing after auth is determined and sessions are loaded
     // For session routes, this ensures sessions are already loaded before routing
     this.setupRouting();
+
+    logger.log('✅ setupRouting() completed');
   }
 
   private async checkAuthenticationStatus() {
@@ -1226,6 +1237,15 @@ export class VibeTunnelApp extends LitElement {
     const url = new URL(window.location.href);
     const pathParts = url.pathname.split('/').filter(Boolean);
 
+    logger.log('🔍 parseUrlAndSetState() called', {
+      url: url.href,
+      pathname: url.pathname,
+      pathParts,
+      currentView: this.currentView,
+      isAuthenticated: this.isAuthenticated,
+      sessionCount: this.sessions.length,
+    });
+
     // Check for single-segment paths first
     if (pathParts.length === 1) {
       // Check authentication first
@@ -1264,46 +1284,37 @@ export class VibeTunnelApp extends LitElement {
       sessionId = pathParts[1];
     }
 
-    // Check authentication status first (unless no-auth is enabled)
-    try {
-      const configResponse = await fetch('/api/auth/config');
-      if (configResponse.ok) {
-        const authConfig = await configResponse.json();
-        if (authConfig.noAuth) {
-          // Skip auth check for no-auth mode
-        } else if (!authClient.isAuthenticated()) {
-          this.currentView = 'auth';
-          this.selectedSessionId = null;
-          return;
-        }
-      } else if (!authClient.isAuthenticated()) {
-        this.currentView = 'auth';
-        this.selectedSessionId = null;
-        return;
-      }
-    } catch (_error) {
-      if (!authClient.isAuthenticated()) {
-        this.currentView = 'auth';
-        this.selectedSessionId = null;
-        return;
-      }
+    // Only check authentication if we haven't initialized yet
+    // This prevents duplicate auth checks during initial load
+    if (!this.initialLoadComplete && !this.isAuthenticated) {
+      logger.log('🔐 Not authenticated, redirecting to auth view');
+      this.currentView = 'auth';
+      this.selectedSessionId = null;
+      return;
     }
 
     if (sessionId) {
       // Always navigate to the session view if a session ID is provided
       // The session-view component will handle loading and error cases
-      logger.log(`Navigating to session ${sessionId} from URL`);
+      logger.log(`🎯 Navigating to session ${sessionId} from URL`);
 
       // Load sessions if not already loaded and wait for them
       if (this.sessions.length === 0 && this.isAuthenticated) {
-        logger.log('Sessions not loaded yet, loading now...');
+        logger.log('📋 Sessions not loaded yet, loading now...');
         await this.loadSessions();
+        logger.log('✅ Sessions loaded', { sessionCount: this.sessions.length });
       }
 
       // Verify the session exists
       const sessionExists = this.sessions.find((s) => s.id === sessionId);
+      logger.log('🔍 Looking for session', {
+        sessionId,
+        found: !!sessionExists,
+        availableSessions: this.sessions.map((s) => ({ id: s.id, status: s.status })),
+      });
+
       if (!sessionExists) {
-        logger.warn(`Session ${sessionId} not found in loaded sessions`);
+        logger.warn(`❌ Session ${sessionId} not found in loaded sessions`);
         // Show error and navigate to list
         this.showError(`Session ${sessionId} not found`);
         this.selectedSessionId = null;
@@ -1312,9 +1323,22 @@ export class VibeTunnelApp extends LitElement {
       }
 
       // Session exists, navigate to it
+      logger.log('✅ Session found, navigating to session view', {
+        sessionId,
+        sessionStatus: sessionExists.status,
+      });
       this.selectedSessionId = sessionId;
       this.sessionLoadingState = 'loaded';
       this.currentView = 'session';
+
+      // Force update to ensure render happens
+      this.requestUpdate();
+
+      logger.log('📍 Navigation complete', {
+        currentView: this.currentView,
+        selectedSessionId: this.selectedSessionId,
+        sessionLoadingState: this.sessionLoadingState,
+      });
     } else {
       this.selectedSessionId = null;
       this.currentView = 'list';
@@ -1566,6 +1590,17 @@ export class VibeTunnelApp extends LitElement {
   render() {
     const showSplitView = this.showSplitView;
     const selectedSession = this.selectedSession;
+
+    logger.log('🎨 App render()', {
+      currentView: this.currentView,
+      showSplitView,
+      selectedSessionId: this.selectedSessionId,
+      selectedSession: selectedSession
+        ? { id: selectedSession.id, status: selectedSession.status }
+        : null,
+      isAuthenticated: this.isAuthenticated,
+      sessionCount: this.sessions.length,
+    });
 
     return html`
       <!-- Error notification overlay -->

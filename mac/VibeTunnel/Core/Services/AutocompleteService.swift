@@ -36,11 +36,9 @@ class AutocompleteService {
         // Cancel any existing task
         currentTask?.cancel()
 
-        // Clear suggestions immediately to avoid showing stale results
-        suggestions = []
-        
         guard !partialPath.isEmpty else {
-            logger.debug("[AutocompleteService] Empty path, returning")
+            logger.debug("[AutocompleteService] Empty path, clearing suggestions")
+            suggestions = []
             return
         }
 

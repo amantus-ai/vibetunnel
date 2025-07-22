@@ -36,13 +36,17 @@ struct AutocompleteViewWithKeyboard: View {
                                 suggestion: suggestion,
                                 isSelected: index == selectedIndex
                             ) { onSelect(suggestion.suggestion) }
-                                .id(index)
+                                .id(suggestion.id)
                                 .onHover { hovering in
                                     if hovering {
                                         mouseHoverTriggered = true
                                         selectedIndex = index
                                     }
                                 }
+                                .transition(.asymmetric(
+                                    insertion: .opacity.combined(with: .move(edge: .top)),
+                                    removal: .opacity.combined(with: .scale(scale: 0.95))
+                                ))
 
                             if index < suggestions.count - 1 {
                                 Divider()
@@ -192,10 +196,15 @@ struct AutocompleteTextField: View {
                     selectedIndex = -1
                     autocompleteService.clearSuggestions()
                 }
-                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .scale(scale: 0.95)).combined(with: .offset(y: -5)),
+                    removal: .opacity.combined(with: .scale(scale: 0.95))
+                ))
+                .id(autocompleteService.suggestions.map(\.id))  // Force re-render when suggestions change
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: showSuggestions)
+        .animation(.easeInOut(duration: 0.15), value: showSuggestions)
+        .animation(.easeInOut(duration: 0.1), value: autocompleteService.suggestions)
     }
 
     private func handleKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {
@@ -274,19 +283,27 @@ struct AutocompleteTextField: View {
                 await autocompleteService.fetchSuggestions(for: newValue)
 
                 await MainActor.run {
-                    // Show suggestions if we have any results
+                    // Update suggestion visibility based on results
                     if !autocompleteService.suggestions.isEmpty {
                         showSuggestions = true
-                        print("[AutocompleteView] Showing \(autocompleteService.suggestions.count) suggestions")
-                        // Auto-select first item if it's a good match
-                        if let first = autocompleteService.suggestions.first,
+                        print("[AutocompleteView] Updated with \(autocompleteService.suggestions.count) suggestions")
+                        
+                        // Try to maintain selection if possible
+                        if selectedIndex >= autocompleteService.suggestions.count {
+                            selectedIndex = -1
+                        }
+                        
+                        // Auto-select first item if it's a good match and nothing is selected
+                        if selectedIndex == -1,
+                           let first = autocompleteService.suggestions.first,
                            first.name.lowercased().hasPrefix(
                                newValue.split(separator: "/").last?.lowercased() ?? ""
                            )
                         {
                             selectedIndex = 0
                         }
-                    } else {
+                    } else if showSuggestions {
+                        // Only hide if we're already showing and have no results
                         showSuggestions = false
                     }
                 }
