@@ -10,6 +10,10 @@ export interface AutocompleteItem {
   suggestion: string;
   isRepository?: boolean;
   gitBranch?: string;
+  gitStatusCount?: number;
+  gitAddedCount?: number;
+  gitModifiedCount?: number;
+  gitDeletedCount?: number;
 }
 
 export interface Repository {
@@ -19,6 +23,10 @@ export interface Repository {
   lastModified: string;
   relativePath: string;
   gitBranch?: string;
+  gitStatusCount?: number;
+  gitAddedCount?: number;
+  gitModifiedCount?: number;
+  gitDeletedCount?: number;
 }
 
 export class AutocompleteManager {
@@ -75,6 +83,7 @@ export class AutocompleteManager {
             suggestion: repo.path,
             isRepository: true,
             gitBranch: repo.gitBranch,
+            gitStatusCount: 0, // Repository service doesn't provide this yet
           }));
 
         // Merge with filesystem completions, avoiding duplicates

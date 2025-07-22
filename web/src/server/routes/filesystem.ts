@@ -689,9 +689,13 @@ export function createFilesystemRoutes(): Router {
               }
             }
 
-            // Check if this directory is a git repository and get branch
+            // Check if this directory is a git repository and get branch + status
             let isGitRepo = false;
             let gitBranch: string | undefined;
+            let gitStatusCount = 0;
+            let gitAddedCount = 0;
+            let gitModifiedCount = 0;
+            let gitDeletedCount = 0;
             if (isDirectory) {
               try {
                 await fs.stat(path.join(entryPath, '.git'));
@@ -706,6 +710,29 @@ export function createFilesystemRoutes(): Router {
                 } catch {
                   // Failed to get branch
                 }
+
+                // Get the number of changed files by type
+                try {
+                  const { stdout: statusOutput } = await execAsync('git status --porcelain', {
+                    cwd: entryPath,
+                  });
+                  const lines = statusOutput.split('\n').filter((line) => line.trim() !== '');
+
+                  for (const line of lines) {
+                    const statusCode = line.substring(0, 2);
+                    if (statusCode === '??' || statusCode === 'A ' || statusCode === 'AM') {
+                      gitAddedCount++;
+                    } else if (statusCode === ' D' || statusCode === 'D ') {
+                      gitDeletedCount++;
+                    } else if (statusCode === ' M' || statusCode === 'M ' || statusCode === 'MM') {
+                      gitModifiedCount++;
+                    }
+                  }
+
+                  gitStatusCount = gitAddedCount + gitModifiedCount + gitDeletedCount;
+                } catch {
+                  // Failed to get status
+                }
               } catch {
                 // Not a git repository
               }
@@ -719,6 +746,10 @@ export function createFilesystemRoutes(): Router {
               suggestion: isDirectory ? `${displayPath}/` : displayPath,
               isRepository: isGitRepo,
               gitBranch,
+              gitStatusCount,
+              gitAddedCount,
+              gitModifiedCount,
+              gitDeletedCount,
             };
           })
       );

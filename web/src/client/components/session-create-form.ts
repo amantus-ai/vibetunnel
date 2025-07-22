@@ -79,6 +79,14 @@ export class SessionCreateForm extends LitElement {
   @state() private showCreateWorktree = false;
   @state() private newBranchName = '';
   @state() private isCreatingWorktree = false;
+  
+  // New properties for split branch/worktree selectors
+  @state() private currentBranch: string = '';
+  @state() private selectedBaseBranch: string = '';
+  @state() private selectedWorktree?: string;
+  @state() private availableWorktrees: Array<{ branch: string; path: string; isMainWorktree?: boolean; isCurrentWorktree?: boolean }> = [];
+  @state() private isLoadingBranches = false;
+  @state() private isLoadingWorktrees = false;
 
   @state() private quickStartCommands = [
     { label: '✨ claude', command: 'claude' },
@@ -925,7 +933,60 @@ export class SessionCreateForm extends LitElement {
                               </span>
                               ${
                                 completion.gitBranch
-                                  ? html`<span class="text-primary text-[9px] sm:text-[10px] px-1">${completion.gitBranch}</span>`
+                                  ? html`
+                                    <div class="flex items-center gap-2">
+                                      ${
+                                        completion.gitAddedCount ||
+                                        completion.gitModifiedCount ||
+                                        completion.gitDeletedCount
+                                          ? html`
+                                            <div class="flex items-center gap-1.5 text-[9px] sm:text-[10px]">
+                                              ${
+                                                completion.gitAddedCount &&
+                                                completion.gitAddedCount > 0
+                                                  ? html`
+                                                    <span class="flex items-center gap-0.5 text-green-500">
+                                                      <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                                                      </svg>
+                                                      <span>${completion.gitAddedCount}</span>
+                                                    </span>
+                                                  `
+                                                  : nothing
+                                              }
+                                              ${
+                                                completion.gitModifiedCount &&
+                                                completion.gitModifiedCount > 0
+                                                  ? html`
+                                                    <span class="flex items-center gap-0.5 text-yellow-500">
+                                                      <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
+                                                        <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32l8.4-8.4z" />
+                                                      </svg>
+                                                      <span>${completion.gitModifiedCount}</span>
+                                                    </span>
+                                                  `
+                                                  : nothing
+                                              }
+                                              ${
+                                                completion.gitDeletedCount &&
+                                                completion.gitDeletedCount > 0
+                                                  ? html`
+                                                    <span class="flex items-center gap-0.5 text-red-500">
+                                                      <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                                                      </svg>
+                                                      <span>${completion.gitDeletedCount}</span>
+                                                    </span>
+                                                  `
+                                                  : nothing
+                                              }
+                                            </div>
+                                          `
+                                          : nothing
+                                      }
+                                      <span class="text-primary text-[9px] sm:text-[10px] px-1">${completion.gitBranch}</span>
+                                    </div>
+                                  `
                                   : nothing
                               }
                               <span class="text-text-muted text-[9px] sm:text-[10px] truncate max-w-[40%]">${completion.path}</span>
@@ -955,7 +1016,59 @@ export class SessionCreateForm extends LitElement {
                                     <div class="text-text text-xs sm:text-sm font-medium">${repo.folderName}</div>
                                     ${
                                       repo.gitBranch
-                                        ? html`<span class="text-primary text-[9px] sm:text-[10px] px-1">${repo.gitBranch}</span>`
+                                        ? html`
+                                          <div class="flex items-center gap-2">
+                                            ${
+                                              repo.gitAddedCount ||
+                                              repo.gitModifiedCount ||
+                                              repo.gitDeletedCount
+                                                ? html`
+                                                  <div class="flex items-center gap-1.5 text-[9px] sm:text-[10px]">
+                                                    ${
+                                                      repo.gitAddedCount && repo.gitAddedCount > 0
+                                                        ? html`
+                                                          <span class="flex items-center gap-0.5 text-green-500">
+                                                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                                                            </svg>
+                                                            <span>${repo.gitAddedCount}</span>
+                                                          </span>
+                                                        `
+                                                        : nothing
+                                                    }
+                                                    ${
+                                                      repo.gitModifiedCount &&
+                                                      repo.gitModifiedCount > 0
+                                                        ? html`
+                                                          <span class="flex items-center gap-0.5 text-yellow-500">
+                                                            <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
+                                                              <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32l8.4-8.4z" />
+                                                            </svg>
+                                                            <span>${repo.gitModifiedCount}</span>
+                                                          </span>
+                                                        `
+                                                        : nothing
+                                                    }
+                                                    ${
+                                                      repo.gitDeletedCount &&
+                                                      repo.gitDeletedCount > 0
+                                                        ? html`
+                                                          <span class="flex items-center gap-0.5 text-red-500">
+                                                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                                                            </svg>
+                                                            <span>${repo.gitDeletedCount}</span>
+                                                          </span>
+                                                        `
+                                                        : nothing
+                                                    }
+                                                  </div>
+                                                `
+                                                : nothing
+                                            }
+                                            <span class="text-primary text-[9px] sm:text-[10px] px-1">${repo.gitBranch}</span>
+                                          </div>
+                                        `
                                         : nothing
                                     }
                                   </div>
@@ -991,7 +1104,7 @@ export class SessionCreateForm extends LitElement {
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" class="text-primary">
                           <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        Git Branch/Worktree:
+                        Git Configuration:
                       </span>
                       ${
                         this.isCheckingGit
@@ -1004,25 +1117,27 @@ export class SessionCreateForm extends LitElement {
                       }
                     </label>
                     
-                    ${
-                      !this.showCreateWorktree
-                        ? html`
-                        <!-- Branch Selection Mode -->
+                    <!-- Base Branch Selection -->
+                    <div class="space-y-3">
+                      <div>
+                        <label class="text-text-muted text-[9px] sm:text-[10px] block mb-1">
+                          Base Branch:
+                        </label>
                         <div class="relative">
                           <select
-                            .value=${this.selectedBranch}
+                            .value=${this.selectedBaseBranch || this.currentBranch}
                             @change=${(e: Event) => {
                               const select = e.target as HTMLSelectElement;
-                              this.selectedBranch = select.value;
+                              this.selectedBaseBranch = select.value;
                             }}
                             class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm appearance-none pr-8"
-                            ?disabled=${this.disabled || this.isCreating}
-                            data-testid="git-branch-select"
+                            ?disabled=${this.disabled || this.isCreating || this.isLoadingBranches}
+                            data-testid="git-base-branch-select"
                           >
                             ${this.availableBranches.map(
                               (branch) => html`
-                                <option value="${branch}" ?selected=${branch === this.selectedBranch}>
-                                  ${branch}
+                                <option value="${branch}" ?selected=${branch === (this.selectedBaseBranch || this.currentBranch)}>
+                                  ${branch}${branch === this.currentBranch ? ' (current)' : ''}
                                 </option>
                               `
                             )}
@@ -1033,66 +1148,104 @@ export class SessionCreateForm extends LitElement {
                             </svg>
                           </div>
                         </div>
-                        <div class="flex items-center gap-2 mt-2">
-                          <button
-                            type="button"
-                            @click=${() => {
-                              this.showCreateWorktree = true;
-                              this.newBranchName = '';
-                            }}
-                            class="text-[10px] sm:text-xs text-primary hover:text-primary-dark transition-colors flex items-center gap-1"
-                            ?disabled=${this.disabled || this.isCreating}
-                          >
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                            Create new worktree
-                          </button>
-                        </div>
-                      `
-                        : html`
-                        <!-- Create Worktree Mode -->
-                        <div class="space-y-2">
-                          <input
-                            type="text"
-                            .value=${this.newBranchName}
-                            @input=${(e: InputEvent) => {
-                              this.newBranchName = (e.target as HTMLInputElement).value;
-                            }}
-                            placeholder="New branch name"
-                            class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm"
-                            ?disabled=${this.disabled || this.isCreating || this.isCreatingWorktree}
-                            @keydown=${(e: KeyboardEvent) => {
-                              if (e.key === 'Escape') {
-                                this.showCreateWorktree = false;
-                                this.newBranchName = '';
-                              }
-                            }}
-                          />
-                          <div class="flex items-center gap-2">
-                            <button
-                              type="button"
-                              @click=${this.handleCreateWorktree}
-                              class="text-[10px] sm:text-xs px-2 py-1 bg-primary text-bg-elevated rounded hover:bg-primary-dark transition-colors disabled:opacity-50"
-                              ?disabled=${!this.newBranchName.trim() || this.disabled || this.isCreating || this.isCreatingWorktree}
-                            >
-                              ${this.isCreatingWorktree ? 'Creating...' : 'Create'}
-                            </button>
-                            <button
-                              type="button"
-                              @click=${() => {
-                                this.showCreateWorktree = false;
-                                this.newBranchName = '';
-                              }}
-                              class="text-[10px] sm:text-xs text-text-muted hover:text-text transition-colors"
-                              ?disabled=${this.disabled || this.isCreating || this.isCreatingWorktree}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      `
-                    }
+                      </div>
+                      
+                      <!-- Worktree Selection -->
+                      <div>
+                        <label class="text-text-muted text-[9px] sm:text-[10px] block mb-1">
+                          Worktree:
+                        </label>
+                        ${
+                          !this.showCreateWorktree
+                            ? html`
+                            <div class="relative">
+                              <select
+                                .value=${this.selectedWorktree || 'none'}
+                                @change=${(e: Event) => {
+                                  const select = e.target as HTMLSelectElement;
+                                  this.selectedWorktree = select.value === 'none' ? undefined : select.value;
+                                }}
+                                class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm appearance-none pr-8"
+                                ?disabled=${this.disabled || this.isCreating || this.isLoadingWorktrees}
+                                data-testid="git-worktree-select"
+                              >
+                                <option value="none">No worktree (use main repository)</option>
+                                ${this.availableWorktrees.map(
+                                  (worktree) => html`
+                                    <option value="${worktree.branch}" ?selected=${worktree.branch === this.selectedWorktree}>
+                                      ${worktree.branch}${worktree.isMainWorktree ? ' (main)' : ''}${worktree.isCurrentWorktree ? ' (current)' : ''}
+                                    </option>
+                                  `
+                                )}
+                              </select>
+                              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-text-muted">
+                                <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
+                            </div>
+                            <div class="flex items-center gap-2 mt-2">
+                              <button
+                                type="button"
+                                @click=${() => {
+                                  this.showCreateWorktree = true;
+                                  this.newBranchName = '';
+                                }}
+                                class="text-[10px] sm:text-xs text-primary hover:text-primary-dark transition-colors flex items-center gap-1"
+                                ?disabled=${this.disabled || this.isCreating}
+                              >
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Create new worktree
+                              </button>
+                            </div>
+                          `
+                            : html`
+                            <!-- Create Worktree Mode -->
+                            <div class="space-y-2">
+                              <input
+                                type="text"
+                                .value=${this.newBranchName}
+                                @input=${(e: InputEvent) => {
+                                  this.newBranchName = (e.target as HTMLInputElement).value;
+                                }}
+                                placeholder="New branch name"
+                                class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm"
+                                ?disabled=${this.disabled || this.isCreating || this.isCreatingWorktree}
+                                @keydown=${(e: KeyboardEvent) => {
+                                  if (e.key === 'Escape') {
+                                    this.showCreateWorktree = false;
+                                    this.newBranchName = '';
+                                  }
+                                }}
+                              />
+                              <div class="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  @click=${this.handleCreateWorktree}
+                                  class="text-[10px] sm:text-xs px-2 py-1 bg-primary text-bg-elevated rounded hover:bg-primary-dark transition-colors disabled:opacity-50"
+                                  ?disabled=${!this.newBranchName.trim() || this.disabled || this.isCreating || this.isCreatingWorktree}
+                                >
+                                  ${this.isCreatingWorktree ? 'Creating...' : 'Create'}
+                                </button>
+                                <button
+                                  type="button"
+                                  @click=${() => {
+                                    this.showCreateWorktree = false;
+                                    this.newBranchName = '';
+                                  }}
+                                  class="text-[10px] sm:text-xs text-text-muted hover:text-text transition-colors"
+                                  ?disabled=${this.disabled || this.isCreating || this.isCreatingWorktree}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          `
+                        }
+                      </div>
+                    </div>
                   </div>
                 `
                 : ''
