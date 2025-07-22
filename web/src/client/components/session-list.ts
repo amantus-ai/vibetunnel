@@ -930,7 +930,7 @@ export class SessionList extends LitElement {
                       </h3>
                       ${Array.from(this.groupSessionsByRepo(activeSessions)).map(
                         ([repoPath, repoSessions]) => html`
-                          <div class="${repoPath ? 'mb-6 mt-6' : ''}">
+                          <div class="${repoPath ? 'mb-6 mt-6' : 'mb-4'}">
                             ${
                               repoPath
                                 ? html`
@@ -997,7 +997,7 @@ export class SessionList extends LitElement {
                       </h3>
                       ${Array.from(this.groupSessionsByRepo(idleSessions)).map(
                         ([repoPath, repoSessions]) => html`
-                          <div class="${repoPath ? 'mb-6 mt-6' : ''}">
+                          <div class="${repoPath ? 'mb-6 mt-6' : 'mb-4'}">
                             ${
                               repoPath
                                 ? html`
@@ -1064,7 +1064,7 @@ export class SessionList extends LitElement {
                       </h3>
                       ${Array.from(this.groupSessionsByRepo(exitedSessions)).map(
                         ([repoPath, repoSessions]) => html`
-                          <div class="${repoPath ? 'mb-6 mt-6' : ''}">
+                          <div class="${repoPath ? 'mb-6 mt-6' : 'mb-4'}">
                             ${
                               repoPath
                                 ? html`
