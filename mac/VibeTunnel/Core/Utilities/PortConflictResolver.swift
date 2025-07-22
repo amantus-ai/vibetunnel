@@ -556,11 +556,21 @@ final class PortConflictResolver {
         return nil
     }
 
+    private var isRunningInTest: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
     private func determineAction(for process: ProcessDetails, rootProcess: ProcessDetails?) -> ConflictAction {
         logger
             .debug(
                 "Determining action for process: \(process.name) (PID: \(process.pid), Path: \(process.path ?? "unknown"))"
             )
+
+        // If running in a test, don't kill the test runner process
+        if isRunningInTest, process.pid == ProcessInfo.processInfo.processIdentifier {
+            logger.warning("Conflict with test runner process detected. Avoiding self-termination.")
+            return .suggestAlternativePort
+        }
 
         // If it's our managed server, kill it
         if process.isManagedServer {

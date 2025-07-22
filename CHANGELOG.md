@@ -109,7 +109,7 @@
 ### 👥 Contributors
 
 First-time contributors to VibeTunnel:
-- [@gopi-kori](https://github.com/gopi-kori) - Made ngrok URLs clickable with copy button in Settings (#422)
+- [@gopikori](https://github.com/gopikori) - Made ngrok URLs clickable with copy button in Settings (#422)
 - [@claudemini](https://github.com/claudemini) - Improved theme toggle UI with better icon and tooltips (#438)
 
 Additional contributors:

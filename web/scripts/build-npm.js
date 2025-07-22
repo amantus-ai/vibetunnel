@@ -430,16 +430,48 @@ function bundleNodePty() {
 }
 
 // Copy authenticate-pam module for Linux support (OUR LINUX FIX)
+// Note: This was missing in beta 14 because the hardcoded pnpm path didn't match
+// the actual installation structure, causing PAM authentication to be unavailable
 function copyAuthenticatePam() {
   console.log('📦 Copying authenticate-pam module for Linux support...\n');
   
-  const srcDir = path.join(ROOT_DIR, 'node_modules', '.pnpm', 'authenticate-pam@1.0.5', 'node_modules', 'authenticate-pam');
-  const destDir = path.join(DIST_DIR, 'node_modules', 'authenticate-pam');
+  // Try multiple possible locations for authenticate-pam
+  const possiblePaths = [
+    // Direct node_modules path (symlink target)
+    path.join(ROOT_DIR, 'node_modules', 'authenticate-pam'),
+    // pnpm structure with version
+    path.join(ROOT_DIR, 'node_modules', '.pnpm', 'authenticate-pam@1.0.5', 'node_modules', 'authenticate-pam'),
+    // pnpm structure without specific version (in case of updates)
+    ...fs.existsSync(path.join(ROOT_DIR, 'node_modules', '.pnpm')) 
+      ? fs.readdirSync(path.join(ROOT_DIR, 'node_modules', '.pnpm'))
+          .filter(dir => dir.startsWith('authenticate-pam@'))
+          .map(dir => path.join(ROOT_DIR, 'node_modules', '.pnpm', dir, 'node_modules', 'authenticate-pam'))
+      : []
+  ];
   
-  if (!fs.existsSync(srcDir)) {
+  let srcDir = null;
+  for (const possiblePath of possiblePaths) {
+    try {
+      // Use fs.statSync to properly follow symlinks
+      const stats = fs.statSync(possiblePath);
+      if (stats.isDirectory()) {
+        srcDir = possiblePath;
+        console.log(`  Found authenticate-pam at: ${path.relative(ROOT_DIR, possiblePath)}`);
+        break;
+      }
+    } catch (e) {
+      // Path doesn't exist, continue to next
+    }
+  }
+  
+  if (!srcDir) {
     console.warn('⚠️  authenticate-pam source not found, Linux PAM auth may not work');
+    console.warn('    Searched in:');
+    possiblePaths.forEach(p => console.warn(`      - ${path.relative(ROOT_DIR, p)}`));
     return;
   }
+  
+  const destDir = path.join(DIST_DIR, 'node_modules', 'authenticate-pam');
   
   // Create destination directory structure
   fs.mkdirSync(path.dirname(destDir), { recursive: true });
