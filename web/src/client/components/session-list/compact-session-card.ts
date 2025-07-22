@@ -14,11 +14,8 @@ import { customElement, property } from 'lit/decorators.js';
 import type { Session } from '../../../shared/types.js';
 import { formatSessionDuration } from '../../../shared/utils/time.js';
 import type { AuthClient } from '../../services/auth-client.js';
-import { createLogger } from '../../utils/logger.js';
 import { formatPathForDisplay } from '../../utils/path-utils.js';
 import '../inline-edit.js';
-
-const logger = createLogger('compact-session-card');
 
 @customElement('compact-session-card')
 export class CompactSessionCard extends LitElement {
@@ -151,7 +148,6 @@ export class CompactSessionCard extends LitElement {
 
   private renderDeleteButton() {
     const isExited = this.session.status === 'exited';
-    const isTouchDevice = 'ontouchstart' in window;
 
     // Unified button styling with proper hover states
     const buttonClass = isExited

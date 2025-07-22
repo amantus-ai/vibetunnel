@@ -7,7 +7,7 @@
  * @fires follow-mode-change - When follow mode is changed
  * @fires worktree-action - When a worktree action is triggered
  */
-import { html, LitElement } from 'lit';
+import { html, LitElement, TemplateResult } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { getBaseRepoName } from '../../../shared/utils/git.js';
 
@@ -20,8 +20,8 @@ export class RepositoryHeader extends LitElement {
 
   @property({ type: String }) repoPath!: string;
   @property({ type: String }) followMode?: string;
-  @property({ type: Object }) followModeSelector?: any; // Will be rendered from parent
-  @property({ type: Object }) worktreeSelector?: any; // Will be rendered from parent
+  @property({ type: Object }) followModeSelector?: TemplateResult | string; // Will be rendered from parent
+  @property({ type: Object }) worktreeSelector?: TemplateResult | string; // Will be rendered from parent
 
   private getRepoName(): string {
     return getBaseRepoName(this.repoPath);

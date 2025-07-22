@@ -26,12 +26,10 @@ import './inline-edit.js';
 import './session-list/compact-session-card.js';
 import './session-list/repository-header.js';
 import { getBaseRepoName } from '../../shared/utils/git.js';
-import { formatSessionDuration } from '../../shared/utils/time.js';
 import { sessionActionService } from '../services/session-action-service.js';
 import { sendAIPrompt } from '../utils/ai-sessions.js';
 import { Z_INDEX } from '../utils/constants.js';
 import { createLogger } from '../utils/logger.js';
-import { formatPathForDisplay } from '../utils/path-utils.js';
 
 const logger = createLogger('session-list');
 
@@ -1087,145 +1085,14 @@ export class SessionList extends LitElement {
                             ${
                               this.compactMode
                                 ? html`
-                                  <!-- Enhanced compact list item for sidebar -->
-                                  <div
-                                    class="group flex items-center gap-3 p-3 rounded-lg cursor-pointer ${
-                                      session.id === this.selectedSessionId
-                                        ? 'bg-bg-elevated border border-accent-primary shadow-card-hover'
-                                        : 'bg-bg-secondary border border-border hover:bg-bg-tertiary hover:border-border-light hover:shadow-card opacity-75'
-                                    }"
-                                    @click=${() =>
-                                      this.handleSessionSelect({ detail: session } as CustomEvent)}
-                                  >
-                                    <!-- Status indicator -->
-                                    <div class="relative flex-shrink-0">
-                                      <div class="w-2.5 h-2.5 rounded-full bg-status-warning"></div>
-                                    </div>
-                                    
-                                    <!-- Elegant divider line -->
-                                    <div class="w-px h-8 bg-gradient-to-b from-transparent via-border to-transparent"></div>
-                                    
-                                    <!-- Session content -->
-                                    <div class="flex-1 min-w-0">
-                                      <div class="flex items-center gap-2 min-w-0">
-                                        <div
-                                          class="text-sm font-mono truncate ${
-                                            session.id === this.selectedSessionId
-                                              ? 'text-accent-primary font-medium'
-                                              : 'text-text-muted group-hover:text-text transition-colors'
-                                          }"
-                                          title="${
-                                            session.name ||
-                                            (Array.isArray(session.command)
-                                              ? session.command.join(' ')
-                                              : session.command)
-                                          }"
-                                        >
-                                          ${
-                                            session.name ||
-                                            (Array.isArray(session.command)
-                                              ? session.command.join(' ')
-                                              : session.command)
-                                          }
-                                        </div>
-                                        <!-- Git changes indicator -->
-                                        ${this.renderGitChanges(session)}
-                                      </div>
-                                      <div class="text-xs text-text-dim truncate flex items-center gap-1">
-                                        <span class="truncate">${formatPathForDisplay(session.workingDir)}</span>
-                                        ${
-                                          session.gitBranch
-                                            ? html`
-                                            <span class="text-text-muted/50">·</span>
-                                            <span class="text-status-success font-mono">${session.gitBranch}</span>
-                                            ${session.gitIsWorktree ? html`<span class="text-purple-400">⎇</span>` : ''}
-                                          `
-                                            : ''
-                                        }
-                                      </div>
-                                    </div>
-                                    
-                                    <!-- Right side: duration and close button -->
-                                    <div class="relative flex items-center flex-shrink-0 gap-1">
-                                      ${
-                                        'ontouchstart' in window
-                                          ? html`
-                                            <!-- Touch devices: Close button left of time -->
-                                            <button
-                                              class="btn-ghost text-text-muted p-1.5 rounded-md transition-all hover:text-status-warning hover:bg-bg-elevated hover:shadow-sm"
-                                              @click=${async (e: Event) => {
-                                                e.stopPropagation();
-                                                try {
-                                                  const response = await fetch(
-                                                    `/api/sessions/${session.id}/cleanup`,
-                                                    {
-                                                      method: 'DELETE',
-                                                      headers: this.authClient.getAuthHeader(),
-                                                    }
-                                                  );
-                                                  if (response.ok) {
-                                                    this.handleSessionKilled({
-                                                      detail: { sessionId: session.id },
-                                                    } as CustomEvent);
-                                                  }
-                                                } catch (error) {
-                                                  logger.error('Failed to clean up session', error);
-                                                }
-                                              }}
-                                              title="Clean up session"
-                                            >
-                                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                              </svg>
-                                            </button>
-                                            <div class="text-xs text-text-dim font-mono">
-                                              ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
-                                            </div>
-                                          `
-                                          : html`
-                                            <!-- Desktop: Time that hides on hover -->
-                                            <div class="text-xs text-text-dim font-mono transition-opacity group-hover:opacity-0">
-                                              ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
-                                            </div>
-                                            
-                                            <!-- Desktop: Buttons show on hover -->
-                                            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-0">
-                                              <!-- Clean up button -->
-                                              <button
-                                                class="btn-ghost text-text-muted p-1.5 rounded-md transition-all hover:text-status-warning hover:bg-bg-elevated hover:shadow-sm"
-                                                @click=${async (e: Event) => {
-                                                  e.stopPropagation();
-                                                  try {
-                                                    const response = await fetch(
-                                                      `/api/sessions/${session.id}/cleanup`,
-                                                      {
-                                                        method: 'DELETE',
-                                                        headers: this.authClient.getAuthHeader(),
-                                                      }
-                                                    );
-                                                    if (response.ok) {
-                                                      this.handleSessionKilled({
-                                                        detail: { sessionId: session.id },
-                                                      } as CustomEvent);
-                                                    }
-                                                  } catch (error) {
-                                                    logger.error(
-                                                      'Failed to clean up session',
-                                                      error
-                                                    );
-                                                  }
-                                                }}
-                                                title="Clean up session"
-                                              >
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                </svg>
-                                              </button>
-                                            </div>
-                                          `
-                                      }
-                                    </div>
-                                  </div>
+                                  <compact-session-card
+                                    .session=${session}
+                                    .authClient=${this.authClient}
+                                    .selected=${session.id === this.selectedSessionId}
+                                    .sessionType=${'exited'}
+                                    @session-select=${this.handleSessionSelect}
+                                    @session-cleanup=${this.handleSessionKilled}
+                                  ></compact-session-card>
                                 `
                                 : html`
                                   <!-- Full session card for main view -->
