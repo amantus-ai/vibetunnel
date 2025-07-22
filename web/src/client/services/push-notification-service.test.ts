@@ -36,7 +36,7 @@ describe('PushNotificationService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    
+
     // Mock fetch responses
     (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
       if (url === '/api/push/vapid-public-key') {
