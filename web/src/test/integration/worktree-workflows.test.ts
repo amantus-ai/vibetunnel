@@ -1,0 +1,523 @@
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import express from 'express';
+import request from 'supertest';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import { createSessionRoutes } from '../../server/routes/sessions.js';
+import { createWorktreeRoutes } from '../../server/routes/worktrees.js';
+import { createGitRoutes } from '../../server/routes/git.js';
+import { ptyManager } from '../../server/pty/pty-manager.js';
+import { SessionManager } from '../../server/pty/session-manager.js';
+import { TerminalManager } from '../../server/services/terminal-manager.js';
+import { ActivityMonitor } from '../../server/services/activity-monitor.js';
+import { StreamWatcher } from '../../server/services/stream-watcher.js';
+
+const execFileAsync = promisify(execFile);
+
+describe('Worktree Workflows Integration Tests', () => {
+  let app: express.Application;
+  let testRepoPath: string;
+  let sessionManager: SessionManager;
+  let terminalManager: TerminalManager;
+  let activityMonitor: ActivityMonitor;
+  let streamWatcher: StreamWatcher;
+
+  // Helper to execute git commands
+  async function gitExec(args: string[], cwd: string = testRepoPath) {
+    try {
+      const { stdout, stderr } = await execFileAsync('git', args, { cwd });
+      return { stdout: stdout.toString(), stderr: stderr.toString() };
+    } catch (error: any) {
+      throw new Error(`Git command failed: ${error.message}\nStderr: ${error.stderr}`);
+    }
+  }
+
+  // Helper to create a test repository with branches
+  async function setupTestRepo() {
+    // Create temporary directory
+    const tmpDir = await fs.mkdtemp(path.join('/tmp', 'vibetunnel-test-'));
+    testRepoPath = path.join(tmpDir, 'test-repo');
+    await fs.mkdir(testRepoPath, { recursive: true });
+
+    // Initialize git repo
+    await gitExec(['init']);
+    await gitExec(['config', 'user.email', 'test@example.com']);
+    await gitExec(['config', 'user.name', 'Test User']);
+
+    // Create initial commit
+    await fs.writeFile(path.join(testRepoPath, 'README.md'), '# Test Repository\n');
+    await gitExec(['add', 'README.md']);
+    await gitExec(['commit', '-m', 'Initial commit']);
+
+    // Create feature branch
+    await gitExec(['checkout', '-b', 'feature/test-feature']);
+    await fs.writeFile(path.join(testRepoPath, 'feature.js'), 'console.log("feature");\n');
+    await gitExec(['add', 'feature.js']);
+    await gitExec(['commit', '-m', 'Add feature']);
+
+    // Create another branch
+    await gitExec(['checkout', '-b', 'bugfix/critical-fix']);
+    await fs.writeFile(path.join(testRepoPath, 'fix.js'), 'console.log("fix");\n');
+    await gitExec(['add', 'fix.js']);
+    await gitExec(['commit', '-m', 'Critical fix']);
+
+    // Return to main branch
+    await gitExec(['checkout', 'main']);
+
+    // Create a worktree
+    const worktreePath = path.join(tmpDir, 'worktree-feature');
+    await gitExec(['worktree', 'add', worktreePath, 'feature/test-feature']);
+
+    return { testRepoPath, worktreePath, tmpDir };
+  }
+
+  beforeAll(async () => {
+    // Set up test repository
+    await setupTestRepo();
+
+    // Initialize services
+    sessionManager = new SessionManager();
+    terminalManager = new TerminalManager();
+    activityMonitor = new ActivityMonitor();
+    streamWatcher = new StreamWatcher();
+
+    // Set up Express app
+    app = express();
+    app.use(express.json());
+
+    const config = {
+      ptyManager,
+      terminalManager,
+      streamWatcher,
+      remoteRegistry: null,
+      isHQMode: false,
+      activityMonitor,
+    };
+
+    // Mount routes
+    app.use('/api', createSessionRoutes(config));
+    app.use('/api', createWorktreeRoutes());
+    app.use('/api', createGitRoutes());
+  });
+
+  afterAll(async () => {
+    // Clean up test repository
+    if (testRepoPath) {
+      const tmpDir = path.dirname(testRepoPath);
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  beforeEach(() => {
+    // Clear any session data
+    sessionManager.listSessions().forEach((session) => {
+      try {
+        ptyManager.closeSession(session.id);
+      } catch {}
+    });
+  });
+
+  describe('Complete Worktree Management Flow', () => {
+    it('should list worktrees with full metadata', async () => {
+      const response = await request(app)
+        .get('/api/worktrees')
+        .query({ repoPath: testRepoPath });
+
+      expect(response.status).toBe(200);
+      expect(response.body.worktrees).toBeDefined();
+      expect(response.body.worktrees.length).toBeGreaterThan(0);
+
+      const mainWorktree = response.body.worktrees.find((w: any) => w.isMainWorktree);
+      expect(mainWorktree).toBeDefined();
+      expect(mainWorktree.branch).toBe('main');
+      expect(mainWorktree.isCurrentWorktree).toBe(true);
+
+      const featureWorktree = response.body.worktrees.find(
+        (w: any) => w.branch === 'feature/test-feature' && !w.isMainWorktree
+      );
+      expect(featureWorktree).toBeDefined();
+      expect(featureWorktree.stats).toBeDefined();
+    });
+
+    it('should create session with Git metadata and verify dynamic title', async () => {
+      // Create a session in the test repository
+      const createResponse = await request(app)
+        .post('/api/sessions')
+        .send({
+          command: ['bash'],
+          workingDir: testRepoPath,
+          titleMode: 'dynamic',
+        });
+
+      expect(createResponse.status).toBe(200);
+      const sessionId = createResponse.body.sessionId;
+      expect(sessionId).toBeDefined();
+
+      // Get session info to verify Git metadata
+      const sessions = sessionManager.listSessions();
+      const session = sessions.find((s) => s.id === sessionId);
+      expect(session).toBeDefined();
+      expect(session.gitRepoPath).toBe(testRepoPath);
+      expect(session.gitBranch).toBe('main');
+
+      // Clean up
+      ptyManager.closeSession(sessionId);
+    });
+
+    it('should switch branches in main worktree', async () => {
+      // Switch to feature branch
+      const switchResponse = await request(app)
+        .post('/api/worktrees/switch')
+        .send({
+          repoPath: testRepoPath,
+          branch: 'feature/test-feature',
+        });
+
+      expect(switchResponse.status).toBe(200);
+      expect(switchResponse.body.success).toBe(true);
+      expect(switchResponse.body.currentBranch).toBe('feature/test-feature');
+
+      // Verify the branch was actually switched
+      const { stdout } = await gitExec(['branch', '--show-current']);
+      expect(stdout.trim()).toBe('feature/test-feature');
+
+      // Switch back to main
+      await gitExec(['checkout', 'main']);
+    });
+
+    it('should handle uncommitted changes when switching branches', async () => {
+      // Create uncommitted changes
+      await fs.writeFile(path.join(testRepoPath, 'uncommitted.txt'), 'test content');
+
+      // Try to switch branch (should fail)
+      const switchResponse = await request(app)
+        .post('/api/worktrees/switch')
+        .send({
+          repoPath: testRepoPath,
+          branch: 'bugfix/critical-fix',
+        });
+
+      expect(switchResponse.status).toBe(400);
+      expect(switchResponse.body.error).toContain('uncommitted changes');
+
+      // Clean up
+      await fs.unlink(path.join(testRepoPath, 'uncommitted.txt'));
+    });
+
+    it('should delete worktree', async () => {
+      // Create a new worktree to delete
+      const worktreePath = path.join(path.dirname(testRepoPath), 'worktree-to-delete');
+      await gitExec(['worktree', 'add', worktreePath, '-b', 'temp/delete-me']);
+
+      // Delete the worktree
+      const deleteResponse = await request(app)
+        .delete('/api/worktrees/temp/delete-me')
+        .query({ repoPath: testRepoPath });
+
+      expect(deleteResponse.status).toBe(200);
+      expect(deleteResponse.body.success).toBe(true);
+
+      // Verify worktree was removed
+      const listResponse = await request(app)
+        .get('/api/worktrees')
+        .query({ repoPath: testRepoPath });
+
+      const deletedWorktree = listResponse.body.worktrees.find(
+        (w: any) => w.branch === 'temp/delete-me'
+      );
+      expect(deletedWorktree).toBeUndefined();
+    });
+
+    it('should force delete worktree with uncommitted changes', async () => {
+      // Create a worktree with uncommitted changes
+      const worktreePath = path.join(path.dirname(testRepoPath), 'worktree-force-delete');
+      await gitExec(['worktree', 'add', worktreePath, '-b', 'temp/force-delete']);
+      
+      // Add uncommitted changes
+      await fs.writeFile(path.join(worktreePath, 'dirty.txt'), 'uncommitted');
+
+      // Try normal delete (should fail)
+      const normalDelete = await request(app)
+        .delete('/api/worktrees/temp/force-delete')
+        .query({ repoPath: testRepoPath });
+
+      expect(normalDelete.status).toBe(400);
+
+      // Force delete
+      const forceDelete = await request(app)
+        .delete('/api/worktrees/temp/force-delete')
+        .query({ repoPath: testRepoPath, force: 'true' });
+
+      expect(forceDelete.status).toBe(200);
+      expect(forceDelete.body.success).toBe(true);
+    });
+
+    it('should prune stale worktrees', async () => {
+      // Create a worktree
+      const staleWorktreePath = path.join(path.dirname(testRepoPath), 'stale-worktree');
+      await gitExec(['worktree', 'add', staleWorktreePath, '-b', 'temp/stale']);
+
+      // Manually remove the worktree directory to make it stale
+      await fs.rm(staleWorktreePath, { recursive: true, force: true });
+
+      // Prune worktrees
+      const pruneResponse = await request(app)
+        .post('/api/worktrees/prune')
+        .send({ repoPath: testRepoPath });
+
+      expect(pruneResponse.status).toBe(200);
+      expect(pruneResponse.body.pruned).toContain('temp/stale');
+
+      // Verify it was removed
+      const { stdout } = await gitExec(['worktree', 'list', '--porcelain']);
+      expect(stdout).not.toContain('temp/stale');
+    });
+  });
+
+  describe('Follow Mode Workflow', () => {
+    let followTestRepo: string;
+
+    beforeAll(async () => {
+      // Create a separate repo for follow mode tests
+      const tmpDir = await fs.mkdtemp(path.join('/tmp', 'vibetunnel-follow-'));
+      followTestRepo = path.join(tmpDir, 'follow-repo');
+      await fs.mkdir(followTestRepo, { recursive: true });
+
+      // Initialize and set up branches
+      await gitExec(['init'], followTestRepo);
+      await gitExec(['config', 'user.email', 'test@example.com'], followTestRepo);
+      await gitExec(['config', 'user.name', 'Test User'], followTestRepo);
+
+      await fs.writeFile(path.join(followTestRepo, 'README.md'), '# Follow Test\n');
+      await gitExec(['add', '.'], followTestRepo);
+      await gitExec(['commit', '-m', 'Initial'], followTestRepo);
+
+      await gitExec(['checkout', '-b', 'develop'], followTestRepo);
+      await fs.writeFile(path.join(followTestRepo, 'dev.txt'), 'development\n');
+      await gitExec(['add', '.'], followTestRepo);
+      await gitExec(['commit', '-m', 'Dev work'], followTestRepo);
+
+      await gitExec(['checkout', 'main'], followTestRepo);
+    });
+
+    afterAll(async () => {
+      // Clean up follow test repo
+      if (followTestRepo) {
+        await fs.rm(path.dirname(followTestRepo), { recursive: true, force: true });
+      }
+    });
+
+    it('should enable follow mode and install hooks', async () => {
+      const response = await request(app)
+        .post('/api/worktrees/follow')
+        .send({
+          repoPath: followTestRepo,
+          branch: 'develop',
+          enable: true,
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.enabled).toBe(true);
+      expect(response.body.branch).toBe('develop');
+      expect(response.body.hooksInstalled).toBe(true);
+
+      // Verify hooks were installed
+      const postCommitHook = await fs.readFile(
+        path.join(followTestRepo, '.git/hooks/post-commit'),
+        'utf8'
+      );
+      expect(postCommitHook).toContain('VibeTunnel Git hook');
+
+      // Verify git config was set
+      const { stdout } = await gitExec(['config', 'vibetunnel.followBranch'], followTestRepo);
+      expect(stdout.trim()).toBe('develop');
+    });
+
+    it('should disable follow mode and uninstall hooks', async () => {
+      // First enable follow mode
+      await request(app)
+        .post('/api/worktrees/follow')
+        .send({
+          repoPath: followTestRepo,
+          branch: 'develop',
+          enable: true,
+        });
+
+      // Now disable it
+      const response = await request(app)
+        .post('/api/worktrees/follow')
+        .send({
+          repoPath: followTestRepo,
+          enable: false,
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.enabled).toBe(false);
+
+      // Verify git config was updated
+      const { stdout } = await gitExec(['config', 'vibetunnel.followBranch'], followTestRepo);
+      expect(stdout.trim()).toBe('false');
+    });
+
+    it('should detect when branches have diverged', async () => {
+      // Enable follow mode
+      await request(app)
+        .post('/api/worktrees/follow')
+        .send({
+          repoPath: followTestRepo,
+          branch: 'develop',
+          enable: true,
+        });
+
+      // Create diverging commits
+      await gitExec(['checkout', 'main'], followTestRepo);
+      await fs.writeFile(path.join(followTestRepo, 'main-only.txt'), 'main branch\n');
+      await gitExec(['add', '.'], followTestRepo);
+      await gitExec(['commit', '-m', 'Main branch commit'], followTestRepo);
+
+      await gitExec(['checkout', 'develop'], followTestRepo);
+      await fs.writeFile(path.join(followTestRepo, 'dev-only.txt'), 'dev branch\n');
+      await gitExec(['add', '.'], followTestRepo);
+      await gitExec(['commit', '-m', 'Dev branch commit'], followTestRepo);
+
+      // Switch back to main
+      await gitExec(['checkout', 'main'], followTestRepo);
+
+      // Trigger git event (simulating what a hook would do)
+      const eventResponse = await request(app)
+        .post('/api/git/event')
+        .send({
+          repoPath: followTestRepo,
+          branch: 'develop',
+          event: 'checkout',
+        });
+
+      expect(eventResponse.status).toBe(200);
+      // Follow mode should be disabled due to divergence
+      expect(eventResponse.body.followMode).toBe(false);
+    });
+  });
+
+  describe('Git Event Processing', () => {
+    it('should update session titles on git events', async () => {
+      // Create two sessions in the same repo
+      const session1Response = await request(app)
+        .post('/api/sessions')
+        .send({
+          command: ['bash'],
+          workingDir: testRepoPath,
+          name: 'Editor',
+          titleMode: 'dynamic',
+        });
+
+      const session2Response = await request(app)
+        .post('/api/sessions')
+        .send({
+          command: ['bash'],
+          workingDir: path.join(testRepoPath, 'src'),
+          name: 'Terminal',
+          titleMode: 'dynamic',
+        });
+
+      const sessionId1 = session1Response.body.sessionId;
+      const sessionId2 = session2Response.body.sessionId;
+
+      // Trigger a git event
+      const eventResponse = await request(app)
+        .post('/api/git/event')
+        .send({
+          repoPath: testRepoPath,
+          branch: 'feature/test-feature',
+          event: 'checkout',
+        });
+
+      expect(eventResponse.status).toBe(200);
+      expect(eventResponse.body.sessionsUpdated).toBe(2);
+
+      // Verify session names were updated
+      const sessions = sessionManager.listSessions();
+      const updatedSession1 = sessions.find((s) => s.id === sessionId1);
+      const updatedSession2 = sessions.find((s) => s.id === sessionId2);
+
+      expect(updatedSession1?.name).toContain('[checkout: feature/test-feature]');
+      expect(updatedSession2?.name).toContain('[checkout: feature/test-feature]');
+
+      // Clean up
+      ptyManager.closeSession(sessionId1);
+      ptyManager.closeSession(sessionId2);
+    });
+
+    it('should handle concurrent git events with locking', async () => {
+      // Create a session
+      const sessionResponse = await request(app)
+        .post('/api/sessions')
+        .send({
+          command: ['bash'],
+          workingDir: testRepoPath,
+          name: 'Test Session',
+        });
+
+      const sessionId = sessionResponse.body.sessionId;
+
+      // Send multiple concurrent events
+      const events = Array.from({ length: 5 }, (_, i) => ({
+        repoPath: testRepoPath,
+        branch: `branch-${i}`,
+        event: 'checkout',
+      }));
+
+      const responses = await Promise.all(
+        events.map((event) =>
+          request(app)
+            .post('/api/git/event')
+            .send(event)
+        )
+      );
+
+      // All should succeed
+      responses.forEach((response) => {
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+      });
+
+      // Clean up
+      ptyManager.closeSession(sessionId);
+    });
+  });
+
+  describe('Repository Detection', () => {
+    it('should correctly identify git repositories and subpaths', async () => {
+      // Test repo root
+      const rootResponse = await request(app)
+        .get('/api/git/repo-info')
+        .query({ path: testRepoPath });
+
+      expect(rootResponse.status).toBe(200);
+      expect(rootResponse.body.isGitRepo).toBe(true);
+      expect(rootResponse.body.repoPath).toBe(testRepoPath);
+
+      // Test subdirectory
+      const subDir = path.join(testRepoPath, 'nested', 'deep');
+      await fs.mkdir(subDir, { recursive: true });
+
+      const subResponse = await request(app)
+        .get('/api/git/repo-info')
+        .query({ path: subDir });
+
+      expect(subResponse.status).toBe(200);
+      expect(subResponse.body.isGitRepo).toBe(true);
+      expect(subResponse.body.repoPath).toBe(testRepoPath);
+
+      // Test non-git directory
+      const nonGitDir = '/tmp';
+      const nonGitResponse = await request(app)
+        .get('/api/git/repo-info')
+        .query({ path: nonGitDir });
+
+      expect(nonGitResponse.status).toBe(200);
+      expect(nonGitResponse.body.isGitRepo).toBe(false);
+    });
+  });
+});
