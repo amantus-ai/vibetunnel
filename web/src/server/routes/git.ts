@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as path from 'path';
 import { promisify } from 'util';
 import { SessionManager } from '../pty/session-manager.js';
+import { createGitError, isGitNotFoundError, isNotGitRepositoryError } from '../utils/git-error.js';
 import { createLogger } from '../utils/logger.js';
 import { createControlEvent } from '../websocket/control-protocol.js';
 import { controlUnixHandler } from '../websocket/control-unix-handler.js';
@@ -101,10 +102,7 @@ async function execGit(
     return { stdout: stdout.toString(), stderr: stderr.toString() };
   } catch (error) {
     // Re-throw with more context
-    const gitError = new Error(`Git command failed: ${(error as any).message}`);
-    (gitError as any).code = (error as any).code;
-    (gitError as any).stderr = (error as any).stderr?.toString() || '';
-    throw gitError;
+    throw createGitError(error, 'Git command failed');
   }
 }
 
@@ -149,13 +147,13 @@ export function createGitRoutes(): Router {
         return res.json(response);
       } catch (error) {
         // If git command fails, it's not a git repo
-        if ((error as any).code === 'ENOENT') {
+        if (isGitNotFoundError(error)) {
           logger.debug('Git command not found');
           return res.json({ isGitRepo: false });
         }
 
         // Git returns exit code 128 when not in a git repo
-        if ((error as any).stderr?.includes('not a git repository')) {
+        if (isNotGitRepositoryError(error)) {
           logger.debug('Path is not in a git repository');
           return res.json({ isGitRepo: false });
         }
@@ -204,7 +202,7 @@ export function createGitRoutes(): Router {
       const sessionsInRepo = allSessions.filter((session) => {
         if (!session.workingDir) return false;
         const sessionPath = path.resolve(session.workingDir);
-        return sessionPath.startsWith(repoPath!);
+        return sessionPath.startsWith(repoPath);
       });
 
       logger.debug(`Found ${sessionsInRepo.length} sessions in repository ${repoPath}`);

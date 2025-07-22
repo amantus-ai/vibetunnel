@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as path from 'path';
 import { promisify } from 'util';
+import { createGitError, type GitError, isGitConfigNotFoundError } from '../utils/git-error.js';
 import { areHooksInstalled, installGitHooks } from '../utils/git-hooks.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -48,13 +49,9 @@ async function execGit(
       env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }, // Disable git prompts
     });
     return { stdout: stdout.toString(), stderr: stderr.toString() };
-  } catch (error: any) {
+  } catch (error) {
     // Re-throw with more context
-    const gitError = new Error(`Git command failed: ${error.message}`);
-    (gitError as any).code = error.code;
-    (gitError as any).stderr = error.stderr?.toString() || '';
-    (gitError as any).exitCode = error.code;
-    throw gitError;
+    throw createGitError(error, 'Git command failed');
   }
 }
 
@@ -303,9 +300,10 @@ export function createWorktreeRoutes(): Router {
       });
     } catch (error) {
       logger.error('Error listing worktrees:', error);
+      const gitError = error as GitError;
       return res.status(500).json({
         error: 'Failed to list worktrees',
-        details: (error as any).stderr || (error as any).message,
+        details: gitError.stderr || gitError.message,
       });
     }
   });
@@ -371,9 +369,10 @@ export function createWorktreeRoutes(): Router {
       });
     } catch (error) {
       logger.error('Error removing worktree:', error);
+      const gitError = error as GitError;
       return res.status(500).json({
         error: 'Failed to remove worktree',
-        details: (error as any).stderr || (error as any).message,
+        details: gitError.stderr || gitError.message,
       });
     }
   });
@@ -404,9 +403,10 @@ export function createWorktreeRoutes(): Router {
       });
     } catch (error) {
       logger.error('Error pruning worktrees:', error);
+      const gitError = error as GitError;
       return res.status(500).json({
         error: 'Failed to prune worktrees',
-        details: (error as any).stderr || (error as any).message,
+        details: gitError.stderr || gitError.message,
       });
     }
   });
@@ -450,9 +450,10 @@ export function createWorktreeRoutes(): Router {
       });
     } catch (error) {
       logger.error('Error switching branch:', error);
+      const gitError = error as GitError;
       return res.status(500).json({
         error: 'Failed to switch branch',
-        details: (error as any).stderr || (error as any).message,
+        details: gitError.stderr || gitError.message,
       });
     }
   });
@@ -538,7 +539,7 @@ export function createWorktreeRoutes(): Router {
       }
     } catch (error) {
       // Ignore error if config key doesn't exist when unsetting
-      if ((error as any).exitCode === 5 && !req.body.enable) {
+      if (isGitConfigNotFoundError(error) && !req.body.enable) {
         logger.debug('Follow mode was already disabled');
         return res.json({
           message: 'Follow mode disabled',
@@ -546,9 +547,10 @@ export function createWorktreeRoutes(): Router {
       }
 
       logger.error('Error managing follow mode:', error);
+      const gitError = error as GitError;
       return res.status(500).json({
         error: 'Failed to manage follow mode',
-        details: (error as any).stderr || (error as any).message,
+        details: gitError.stderr || gitError.message,
       });
     }
   });

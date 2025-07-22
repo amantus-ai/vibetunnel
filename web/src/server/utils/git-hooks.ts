@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { promisify } from 'util';
+import { createGitError } from './git-error.js';
 import { createLogger } from './logger.js';
 
 const logger = createLogger('git-hooks');
@@ -32,11 +33,8 @@ async function execGit(
       env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
     });
     return { stdout: stdout.toString(), stderr: stderr.toString() };
-  } catch (error: any) {
-    const gitError = new Error(`Git command failed: ${error.message}`);
-    (gitError as any).code = error.code;
-    (gitError as any).stderr = error.stderr?.toString() || '';
-    throw gitError;
+  } catch (error) {
+    throw createGitError(error, 'Git command failed');
   }
 }
 
@@ -103,7 +101,7 @@ async function installHook(
     }
 
     // If hook exists and is already ours, skip
-    if (existingHook && existingHook.includes('VibeTunnel Git hook')) {
+    if (existingHook?.includes('VibeTunnel Git hook')) {
       logger.debug(`${hookType} hook already installed`);
       return { success: true };
     }
@@ -146,9 +144,9 @@ exit 0
 
     logger.info(`Successfully installed ${hookType} hook`);
     return { success: true, backedUp: !!existingHook };
-  } catch (error: any) {
+  } catch (error) {
     logger.error(`Failed to install ${hookType} hook:`, error);
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -202,9 +200,9 @@ async function uninstallHook(
       logger.info(`Removed ${hookType} hook`);
       return { success: true, restored: false };
     }
-  } catch (error: any) {
+  } catch (error) {
     logger.error(`Failed to uninstall ${hookType} hook:`, error);
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 

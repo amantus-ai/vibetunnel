@@ -68,10 +68,7 @@ describe('Git Hooks', () => {
       expect(result).toEqual({ success: true });
 
       // Verify hooks directory was created
-      expect(mockMkdir).toHaveBeenCalledWith(
-        '/home/user/project/.git/hooks',
-        { recursive: true }
-      );
+      expect(mockMkdir).toHaveBeenCalledWith('/home/user/project/.git/hooks', { recursive: true });
 
       // Verify hook files were written
       expect(mockWriteFile).toHaveBeenCalledTimes(2);
@@ -86,14 +83,8 @@ describe('Git Hooks', () => {
 
       // Verify hooks were made executable
       expect(mockChmod).toHaveBeenCalledTimes(2);
-      expect(mockChmod).toHaveBeenCalledWith(
-        '/home/user/project/.git/hooks/post-commit',
-        0o755
-      );
-      expect(mockChmod).toHaveBeenCalledWith(
-        '/home/user/project/.git/hooks/post-checkout',
-        0o755
-      );
+      expect(mockChmod).toHaveBeenCalledWith('/home/user/project/.git/hooks/post-commit', 0o755);
+      expect(mockChmod).toHaveBeenCalledWith('/home/user/project/.git/hooks/post-checkout', 0o755);
     });
 
     it('should install hooks even when custom hooks path config fails', async () => {
@@ -108,10 +99,7 @@ describe('Git Hooks', () => {
       expect(result).toEqual({ success: true });
 
       // Verify default hooks directory was used
-      expect(mockMkdir).toHaveBeenCalledWith(
-        '/home/user/project/.git/hooks',
-        { recursive: true }
-      );
+      expect(mockMkdir).toHaveBeenCalledWith('/home/user/project/.git/hooks', { recursive: true });
 
       // Verify both hooks were written
       expect(mockWriteFile).toHaveBeenCalledWith(
@@ -144,22 +132,22 @@ describe('Git Hooks', () => {
       );
 
       // Find the call that contains the chained hook
-      const chainedHookCall = mockWriteFile.mock.calls.find((call: any[]) =>
-        call[0] === '/home/user/project/.git/hooks/post-commit' &&
-        call[1].includes('exec')
+      const chainedHookCall = mockWriteFile.mock.calls.find(
+        (call: any[]) =>
+          call[0] === '/home/user/project/.git/hooks/post-commit' && call[1].includes('exec')
       );
-      
+
       expect(chainedHookCall).toBeDefined();
-      expect(chainedHookCall[1]).toContain('exec "/home/user/project/.git/hooks/post-commit.vtbak" "$@"');
+      expect(chainedHookCall[1]).toContain(
+        'exec "/home/user/project/.git/hooks/post-commit.vtbak" "$@"'
+      );
     });
 
     it('should skip installation if hooks already installed', async () => {
       mockExecFile.mockRejectedValueOnce(new Error('key not found'));
 
       // Mock existing VibeTunnel hook
-      mockReadFile.mockResolvedValue(
-        '#!/bin/sh\n# VibeTunnel Git hook - post-commit\n'
-      );
+      mockReadFile.mockResolvedValue('#!/bin/sh\n# VibeTunnel Git hook - post-commit\n');
 
       const result = await installGitHooks('/home/user/project');
 
@@ -192,7 +180,7 @@ describe('Git Hooks', () => {
       mockReadFile
         .mockResolvedValueOnce('#!/bin/sh\n# VibeTunnel Git hook - post-commit\n')
         .mockResolvedValueOnce('#!/bin/sh\n# VibeTunnel Git hook - post-checkout\n');
-      
+
       // Mock access checks - no backups exist
       mockAccess.mockRejectedValue(new Error('File not found'));
 
@@ -201,12 +189,8 @@ describe('Git Hooks', () => {
       expect(result).toEqual({ success: true });
 
       // Verify both hooks were removed (no backups to restore)
-      expect(mockUnlink).toHaveBeenCalledWith(
-        '/home/user/project/.git/hooks/post-commit'
-      );
-      expect(mockUnlink).toHaveBeenCalledWith(
-        '/home/user/project/.git/hooks/post-checkout'
-      );
+      expect(mockUnlink).toHaveBeenCalledWith('/home/user/project/.git/hooks/post-commit');
+      expect(mockUnlink).toHaveBeenCalledWith('/home/user/project/.git/hooks/post-checkout');
     });
 
     it('should skip uninstall if hooks are not ours', async () => {
@@ -243,9 +227,7 @@ describe('Git Hooks', () => {
 
     it('should handle uninstall errors', async () => {
       mockExecFile.mockRejectedValueOnce(new Error('key not found'));
-      mockReadFile.mockResolvedValue(
-        '#!/bin/sh\n# VibeTunnel Git hook - post-commit\n'
-      );
+      mockReadFile.mockResolvedValue('#!/bin/sh\n# VibeTunnel Git hook - post-commit\n');
       mockAccess.mockRejectedValue(new Error('File not found'));
       mockUnlink.mockRejectedValueOnce(new Error('Permission denied'));
 
@@ -301,7 +283,7 @@ describe('Git Hooks', () => {
     it('should handle errors gracefully', async () => {
       // Mock git command error
       mockExecFile.mockRejectedValueOnce(new Error('Git command failed'));
-      
+
       // When git command fails, we still check the default .git/hooks path
       // Mock hooks exist and are ours
       mockReadFile

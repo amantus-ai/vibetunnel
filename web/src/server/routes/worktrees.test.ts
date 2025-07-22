@@ -14,18 +14,18 @@ vi.mock('util', async () => {
   const actual = await vi.importActual('util');
   return {
     ...actual,
-    promisify: (fn: any) => {
+    promisify: (fn: unknown) => {
       if (fn === require('child_process').execFile) {
         return vi.fn();
       }
-      return (actual as any).promisify(fn);
+      return (actual as typeof import('util')).promisify(fn as (...args: unknown[]) => void);
     },
   };
 });
 
 describe('Worktree Routes', () => {
   let app: express.Application;
-  let mockExecFile: any;
+  let mockExecFile: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     app = express();
@@ -411,8 +411,8 @@ branch refs/heads/feature/branch
     });
 
     it('should handle config unset when already disabled', async () => {
-      const error = new Error('Config not found');
-      (error as any).exitCode = 5;
+      const error = new Error('Config not found') as Error & { exitCode: number };
+      error.exitCode = 5;
       mockExecFile.mockRejectedValueOnce(error);
 
       const response = await request(app).post('/api/worktrees/follow').send({

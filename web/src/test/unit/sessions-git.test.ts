@@ -88,16 +88,16 @@ describe('Session Creation with Git Info', () => {
     mockSendControlMessage.mockReset();
     mockIsMacAppConnected.mockReset();
     mockIsMacAppConnected.mockReturnValue(false);
-    
+
     // Set up Express app
     app = express();
     app.use(express.json());
-    
+
     const mockTerminalManager = { getTerminalById: vi.fn() };
     const mockActivityMonitor = {};
     const mockStreamWatcher = {};
     const mockRemoteRegistry = null;
-    
+
     const config = {
       ptyManager: { createSession: mockCreateSession },
       terminalManager: mockTerminalManager,
@@ -106,7 +106,7 @@ describe('Session Creation with Git Info', () => {
       isHQMode: false,
       activityMonitor: mockActivityMonitor,
     };
-    
+
     app.use('/api', sessionsModule.createSessionRoutes(config));
   });
 

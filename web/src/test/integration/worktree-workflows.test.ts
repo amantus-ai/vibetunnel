@@ -1,18 +1,18 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { execFile } from 'child_process';
 import express from 'express';
-import request from 'supertest';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { execFile } from 'child_process';
+import request from 'supertest';
 import { promisify } from 'util';
-import { createSessionRoutes } from '../../server/routes/sessions.js';
-import { createWorktreeRoutes } from '../../server/routes/worktrees.js';
-import { createGitRoutes } from '../../server/routes/git.js';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ptyManager } from '../../server/pty/pty-manager.js';
 import { SessionManager } from '../../server/pty/session-manager.js';
-import { TerminalManager } from '../../server/services/terminal-manager.js';
+import { createGitRoutes } from '../../server/routes/git.js';
+import { createSessionRoutes } from '../../server/routes/sessions.js';
+import { createWorktreeRoutes } from '../../server/routes/worktrees.js';
 import { ActivityMonitor } from '../../server/services/activity-monitor.js';
 import { StreamWatcher } from '../../server/services/stream-watcher.js';
+import { TerminalManager } from '../../server/services/terminal-manager.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -121,9 +121,7 @@ describe('Worktree Workflows Integration Tests', () => {
 
   describe('Complete Worktree Management Flow', () => {
     it('should list worktrees with full metadata', async () => {
-      const response = await request(app)
-        .get('/api/worktrees')
-        .query({ repoPath: testRepoPath });
+      const response = await request(app).get('/api/worktrees').query({ repoPath: testRepoPath });
 
       expect(response.status).toBe(200);
       expect(response.body.worktrees).toBeDefined();
@@ -168,12 +166,10 @@ describe('Worktree Workflows Integration Tests', () => {
 
     it('should switch branches in main worktree', async () => {
       // Switch to feature branch
-      const switchResponse = await request(app)
-        .post('/api/worktrees/switch')
-        .send({
-          repoPath: testRepoPath,
-          branch: 'feature/test-feature',
-        });
+      const switchResponse = await request(app).post('/api/worktrees/switch').send({
+        repoPath: testRepoPath,
+        branch: 'feature/test-feature',
+      });
 
       expect(switchResponse.status).toBe(200);
       expect(switchResponse.body.success).toBe(true);
@@ -192,12 +188,10 @@ describe('Worktree Workflows Integration Tests', () => {
       await fs.writeFile(path.join(testRepoPath, 'uncommitted.txt'), 'test content');
 
       // Try to switch branch (should fail)
-      const switchResponse = await request(app)
-        .post('/api/worktrees/switch')
-        .send({
-          repoPath: testRepoPath,
-          branch: 'bugfix/critical-fix',
-        });
+      const switchResponse = await request(app).post('/api/worktrees/switch').send({
+        repoPath: testRepoPath,
+        branch: 'bugfix/critical-fix',
+      });
 
       expect(switchResponse.status).toBe(400);
       expect(switchResponse.body.error).toContain('uncommitted changes');
@@ -234,7 +228,7 @@ describe('Worktree Workflows Integration Tests', () => {
       // Create a worktree with uncommitted changes
       const worktreePath = path.join(path.dirname(testRepoPath), 'worktree-force-delete');
       await gitExec(['worktree', 'add', worktreePath, '-b', 'temp/force-delete']);
-      
+
       // Add uncommitted changes
       await fs.writeFile(path.join(worktreePath, 'dirty.txt'), 'uncommitted');
 
@@ -310,13 +304,11 @@ describe('Worktree Workflows Integration Tests', () => {
     });
 
     it('should enable follow mode and install hooks', async () => {
-      const response = await request(app)
-        .post('/api/worktrees/follow')
-        .send({
-          repoPath: followTestRepo,
-          branch: 'develop',
-          enable: true,
-        });
+      const response = await request(app).post('/api/worktrees/follow').send({
+        repoPath: followTestRepo,
+        branch: 'develop',
+        enable: true,
+      });
 
       expect(response.status).toBe(200);
       expect(response.body.enabled).toBe(true);
@@ -337,21 +329,17 @@ describe('Worktree Workflows Integration Tests', () => {
 
     it('should disable follow mode and uninstall hooks', async () => {
       // First enable follow mode
-      await request(app)
-        .post('/api/worktrees/follow')
-        .send({
-          repoPath: followTestRepo,
-          branch: 'develop',
-          enable: true,
-        });
+      await request(app).post('/api/worktrees/follow').send({
+        repoPath: followTestRepo,
+        branch: 'develop',
+        enable: true,
+      });
 
       // Now disable it
-      const response = await request(app)
-        .post('/api/worktrees/follow')
-        .send({
-          repoPath: followTestRepo,
-          enable: false,
-        });
+      const response = await request(app).post('/api/worktrees/follow').send({
+        repoPath: followTestRepo,
+        enable: false,
+      });
 
       expect(response.status).toBe(200);
       expect(response.body.enabled).toBe(false);
@@ -363,13 +351,11 @@ describe('Worktree Workflows Integration Tests', () => {
 
     it('should detect when branches have diverged', async () => {
       // Enable follow mode
-      await request(app)
-        .post('/api/worktrees/follow')
-        .send({
-          repoPath: followTestRepo,
-          branch: 'develop',
-          enable: true,
-        });
+      await request(app).post('/api/worktrees/follow').send({
+        repoPath: followTestRepo,
+        branch: 'develop',
+        enable: true,
+      });
 
       // Create diverging commits
       await gitExec(['checkout', 'main'], followTestRepo);
@@ -386,13 +372,11 @@ describe('Worktree Workflows Integration Tests', () => {
       await gitExec(['checkout', 'main'], followTestRepo);
 
       // Trigger git event (simulating what a hook would do)
-      const eventResponse = await request(app)
-        .post('/api/git/event')
-        .send({
-          repoPath: followTestRepo,
-          branch: 'develop',
-          event: 'checkout',
-        });
+      const eventResponse = await request(app).post('/api/git/event').send({
+        repoPath: followTestRepo,
+        branch: 'develop',
+        event: 'checkout',
+      });
 
       expect(eventResponse.status).toBe(200);
       // Follow mode should be disabled due to divergence
@@ -425,13 +409,11 @@ describe('Worktree Workflows Integration Tests', () => {
       const sessionId2 = session2Response.body.sessionId;
 
       // Trigger a git event
-      const eventResponse = await request(app)
-        .post('/api/git/event')
-        .send({
-          repoPath: testRepoPath,
-          branch: 'feature/test-feature',
-          event: 'checkout',
-        });
+      const eventResponse = await request(app).post('/api/git/event').send({
+        repoPath: testRepoPath,
+        branch: 'feature/test-feature',
+        event: 'checkout',
+      });
 
       expect(eventResponse.status).toBe(200);
       expect(eventResponse.body.sessionsUpdated).toBe(2);
@@ -469,11 +451,7 @@ describe('Worktree Workflows Integration Tests', () => {
       }));
 
       const responses = await Promise.all(
-        events.map((event) =>
-          request(app)
-            .post('/api/git/event')
-            .send(event)
-        )
+        events.map((event) => request(app).post('/api/git/event').send(event))
       );
 
       // All should succeed
@@ -502,9 +480,7 @@ describe('Worktree Workflows Integration Tests', () => {
       const subDir = path.join(testRepoPath, 'nested', 'deep');
       await fs.mkdir(subDir, { recursive: true });
 
-      const subResponse = await request(app)
-        .get('/api/git/repo-info')
-        .query({ path: subDir });
+      const subResponse = await request(app).get('/api/git/repo-info').query({ path: subDir });
 
       expect(subResponse.status).toBe(200);
       expect(subResponse.body.isGitRepo).toBe(true);

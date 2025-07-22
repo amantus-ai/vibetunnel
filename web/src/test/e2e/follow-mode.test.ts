@@ -1,10 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { spawn } from 'child_process';
+import { execFile, spawn } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { promisify } from 'util';
-import { execFile } from 'child_process';
 import request from 'supertest';
+import { promisify } from 'util';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const execFileAsync = promisify(execFile);
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -117,7 +116,7 @@ describe('Follow Mode End-to-End Tests', () => {
 
   beforeAll(async () => {
     // Set up test repository
-    const tmpDir = await setupTestRepo();
+    const _tmpDir = await setupTestRepo();
 
     // Start server
     await startServer();
@@ -159,9 +158,10 @@ describe('Follow Mode End-to-End Tests', () => {
       expect(configOutput).toBe('develop');
 
       // Verify hooks were installed
-      const postCommitExists = await fs.access(
-        path.join(testRepoPath, '.git/hooks/post-commit')
-      ).then(() => true).catch(() => false);
+      const postCommitExists = await fs
+        .access(path.join(testRepoPath, '.git/hooks/post-commit'))
+        .then(() => true)
+        .catch(() => false);
       expect(postCommitExists).toBe(true);
     });
 
@@ -266,43 +266,45 @@ describe('Follow Mode End-to-End Tests', () => {
     it('should handle multiple sessions in same repository', async () => {
       // Create multiple sessions
       const sessions = await Promise.all([
-        request(baseUrl).post('/api/sessions').send({
-          command: ['bash'],
-          workingDir: testRepoPath,
-          name: 'Editor',
-        }),
-        request(baseUrl).post('/api/sessions').send({
-          command: ['bash'],
-          workingDir: path.join(testRepoPath, 'src'),
-          name: 'Terminal',
-        }),
-        request(baseUrl).post('/api/sessions').send({
-          command: ['bash'],
-          workingDir: worktreePath,
-          name: 'Worktree Session',
-        }),
+        request(baseUrl)
+          .post('/api/sessions')
+          .send({
+            command: ['bash'],
+            workingDir: testRepoPath,
+            name: 'Editor',
+          }),
+        request(baseUrl)
+          .post('/api/sessions')
+          .send({
+            command: ['bash'],
+            workingDir: path.join(testRepoPath, 'src'),
+            name: 'Terminal',
+          }),
+        request(baseUrl)
+          .post('/api/sessions')
+          .send({
+            command: ['bash'],
+            workingDir: worktreePath,
+            name: 'Worktree Session',
+          }),
       ]);
 
       const sessionIds = sessions.map((r) => r.body.sessionId);
 
       // Trigger a git event
-      await request(baseUrl)
-        .post('/api/git/event')
-        .send({
-          repoPath: testRepoPath,
-          branch: 'feature/awesome',
-          event: 'merge',
-        });
+      await request(baseUrl).post('/api/git/event').send({
+        repoPath: testRepoPath,
+        branch: 'feature/awesome',
+        event: 'merge',
+      });
 
       // Check that appropriate sessions were updated
       const listResponse = await request(baseUrl).get('/api/sessions');
-      const updatedSessions = listResponse.body.filter((s: any) =>
-        sessionIds.includes(s.id)
-      );
+      const updatedSessions = listResponse.body.filter((s: any) => sessionIds.includes(s.id));
 
       // Main repo sessions should be updated
-      const mainRepoSessions = updatedSessions.filter((s: any) =>
-        s.workingDir.startsWith(testRepoPath) && !s.workingDir.startsWith(worktreePath)
+      const mainRepoSessions = updatedSessions.filter(
+        (s: any) => s.workingDir.startsWith(testRepoPath) && !s.workingDir.startsWith(worktreePath)
       );
       mainRepoSessions.forEach((s: any) => {
         expect(s.name).toContain('[merge: feature/awesome]');
@@ -315,9 +317,7 @@ describe('Follow Mode End-to-End Tests', () => {
       expect(worktreeSession.name).not.toContain('[merge: feature/awesome]');
 
       // Clean up
-      await Promise.all(
-        sessionIds.map((id) => request(baseUrl).delete(`/api/sessions/${id}`))
-      );
+      await Promise.all(sessionIds.map((id) => request(baseUrl).delete(`/api/sessions/${id}`)));
     });
   });
 
@@ -337,7 +337,9 @@ describe('Follow Mode End-to-End Tests', () => {
       expect(mainWt.branch).toBeDefined();
 
       // Check secondary worktree
-      const devWt = response.body.worktrees.find((w: any) => w.branch === 'develop' && !w.isMainWorktree);
+      const devWt = response.body.worktrees.find(
+        (w: any) => w.branch === 'develop' && !w.isMainWorktree
+      );
       expect(devWt).toBeDefined();
       expect(devWt.path).toBe(worktreePath);
     });
@@ -348,12 +350,10 @@ describe('Follow Mode End-to-End Tests', () => {
 
       // Switch to different branch
       const targetBranch = before === 'main' ? 'develop' : 'main';
-      const response = await request(baseUrl)
-        .post('/api/worktrees/switch')
-        .send({
-          repoPath: testRepoPath,
-          branch: targetBranch,
-        });
+      const response = await request(baseUrl).post('/api/worktrees/switch').send({
+        repoPath: testRepoPath,
+        branch: targetBranch,
+      });
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
@@ -369,25 +369,21 @@ describe('Follow Mode End-to-End Tests', () => {
       await fs.writeFile(path.join(testRepoPath, 'uncommitted.txt'), 'changes\n');
 
       // Enable follow mode
-      const followResponse = await request(baseUrl)
-        .post('/api/worktrees/follow')
-        .send({
-          repoPath: testRepoPath,
-          branch: 'develop',
-          enable: true,
-        });
+      const followResponse = await request(baseUrl).post('/api/worktrees/follow').send({
+        repoPath: testRepoPath,
+        branch: 'develop',
+        enable: true,
+      });
 
       expect(followResponse.status).toBe(200);
       expect(followResponse.body.enabled).toBe(true);
 
       // Try to trigger sync (should handle uncommitted changes gracefully)
-      const eventResponse = await request(baseUrl)
-        .post('/api/git/event')
-        .send({
-          repoPath: testRepoPath,
-          branch: 'develop',
-          event: 'checkout',
-        });
+      const eventResponse = await request(baseUrl).post('/api/git/event').send({
+        repoPath: testRepoPath,
+        branch: 'develop',
+        event: 'checkout',
+      });
 
       expect(eventResponse.status).toBe(200);
       // Should still be on original branch due to uncommitted changes
@@ -402,7 +398,7 @@ describe('Follow Mode End-to-End Tests', () => {
   describe('Hook Installation and Chaining', () => {
     it('should preserve existing hooks when installing', async () => {
       const hookPath = path.join(testRepoPath, '.git/hooks/post-commit');
-      
+
       // Create an existing hook
       const existingHook = `#!/bin/sh
 echo "Existing hook executed"
@@ -411,19 +407,20 @@ exit 0`;
       await fs.chmod(hookPath, 0o755);
 
       // Enable follow mode (installs hooks)
-      const response = await request(baseUrl)
-        .post('/api/worktrees/follow')
-        .send({
-          repoPath: testRepoPath,
-          branch: 'main',
-          enable: true,
-        });
+      const response = await request(baseUrl).post('/api/worktrees/follow').send({
+        repoPath: testRepoPath,
+        branch: 'main',
+        enable: true,
+      });
 
       expect(response.status).toBe(200);
 
       // Check that backup was created
       const backupPath = `${hookPath}.vtbak`;
-      const backupExists = await fs.access(backupPath).then(() => true).catch(() => false);
+      const backupExists = await fs
+        .access(backupPath)
+        .then(() => true)
+        .catch(() => false);
       expect(backupExists).toBe(true);
 
       // Check that new hook chains to backup
@@ -441,21 +438,17 @@ echo "Custom checkout hook"`;
       await fs.chmod(hookPath, 0o755);
 
       // Enable follow mode
-      await request(baseUrl)
-        .post('/api/worktrees/follow')
-        .send({
-          repoPath: testRepoPath,
-          branch: 'main',
-          enable: true,
-        });
+      await request(baseUrl).post('/api/worktrees/follow').send({
+        repoPath: testRepoPath,
+        branch: 'main',
+        enable: true,
+      });
 
       // Disable follow mode
-      await request(baseUrl)
-        .post('/api/worktrees/follow')
-        .send({
-          repoPath: testRepoPath,
-          enable: false,
-        });
+      await request(baseUrl).post('/api/worktrees/follow').send({
+        repoPath: testRepoPath,
+        enable: false,
+      });
 
       // Check that original hook was restored
       const restoredHook = await fs.readFile(hookPath, 'utf8');

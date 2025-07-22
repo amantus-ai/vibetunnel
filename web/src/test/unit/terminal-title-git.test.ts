@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateDynamicTitle, type ActivityState } from '../../server/utils/terminal-title.js';
+import { type ActivityState, generateDynamicTitle } from '../../server/utils/terminal-title.js';
 
 describe('Terminal Title Generation with Git Info', () => {
   describe('generateDynamicTitle', () => {
@@ -48,11 +48,7 @@ describe('Terminal Title Generation with Git Info', () => {
 
     it('should show path when no Git info available', () => {
       const activity: ActivityState = { isActive: false };
-      const title = generateDynamicTitle(
-        '/tmp/scripts',
-        ['python3'],
-        activity
-      );
+      const title = generateDynamicTitle('/tmp/scripts', ['python3'], activity);
 
       expect(title).toBe('\x1B]2;/tmp/scripts · python3\x07');
     });
@@ -133,9 +129,9 @@ describe('Terminal Title Generation with Git Info', () => {
     });
 
     it('should handle specific status with Git info', () => {
-      const activity: ActivityState = { 
+      const activity: ActivityState = {
         isActive: true,
-        specificStatus: { status: 'Building...' }
+        specificStatus: { status: 'Building...' },
       };
       const title = generateDynamicTitle(
         '/home/user/project',
@@ -195,14 +191,7 @@ describe('Terminal Title Generation with Git Info', () => {
 
     it('should handle Git repo at root', () => {
       const activity: ActivityState = { isActive: false };
-      const title = generateDynamicTitle(
-        '/',
-        ['bash'],
-        activity,
-        undefined,
-        '/',
-        'master'
-      );
+      const title = generateDynamicTitle('/', ['bash'], activity, undefined, '/', 'master');
 
       // path.basename('/') returns '' so the repo name is empty
       expect(title).toBe('\x1B]2;-master · bash\x07');
@@ -211,11 +200,7 @@ describe('Terminal Title Generation with Git Info', () => {
     it('should show home directory with tilde', () => {
       const activity: ActivityState = { isActive: false };
       const homeDir = require('os').homedir();
-      const title = generateDynamicTitle(
-        homeDir,
-        ['zsh'],
-        activity
-      );
+      const title = generateDynamicTitle(homeDir, ['zsh'], activity);
 
       expect(title).toBe('\x1B]2;~ · zsh\x07');
     });

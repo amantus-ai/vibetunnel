@@ -7,7 +7,7 @@ let mockExecFile: any;
 
 vi.mock('util', () => {
   return {
-    promisify: vi.fn((fn: any) => {
+    promisify: vi.fn((_fn: any) => {
       // Return a function that can be mocked later
       return (...args: any[]) => {
         if (mockExecFile) {
@@ -61,17 +61,17 @@ describe('Git Routes', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     mockExecFile = vi.fn();
-    
+
     // Import after mocks are set up
     const gitModule = await import('../../server/routes/git.js');
     createGitRoutes = gitModule.createGitRoutes;
-    
+
     const sessionModule = await import('../../server/pty/session-manager.js');
     SessionManager = sessionModule.SessionManager;
-    
+
     const controlModule = await import('../../server/websocket/control-unix-handler.js');
     controlUnixHandler = controlModule.controlUnixHandler;
-    
+
     app = express();
     app.use(express.json());
     app.use('/api', createGitRoutes());
@@ -196,14 +196,14 @@ describe('Git Routes', () => {
 
   describe('POST /api/git/event', () => {
     let mockSessionManagerInstance: any;
-    
+
     beforeEach(() => {
       // Reset mocks for each test
       mockSessionManagerInstance = {
         listSessions: vi.fn().mockReturnValue([]),
         updateSessionName: vi.fn(),
       };
-      
+
       // Make SessionManager constructor return our mock instance
       (SessionManager as any).mockImplementation(() => mockSessionManagerInstance);
     });
@@ -214,13 +214,11 @@ describe('Git Routes', () => {
         .mockResolvedValueOnce({ stdout: 'false\n', stderr: '' }) // follow mode check
         .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' }); // current branch
 
-      const response = await request(app)
-        .post('/api/git/event')
-        .send({
-          repoPath: '/home/user/project',
-          branch: 'feature/new',
-          event: 'checkout',
-        });
+      const response = await request(app).post('/api/git/event').send({
+        repoPath: '/home/user/project',
+        branch: 'feature/new',
+        event: 'checkout',
+      });
 
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({
@@ -255,13 +253,11 @@ describe('Git Routes', () => {
         .mockResolvedValueOnce({ stdout: 'false\n', stderr: '' }) // follow mode check
         .mockResolvedValueOnce({ stdout: 'develop\n', stderr: '' }); // current branch
 
-      const response = await request(app)
-        .post('/api/git/event')
-        .send({
-          repoPath: '/home/user/project',
-          branch: 'main',
-          event: 'pull',
-        });
+      const response = await request(app).post('/api/git/event').send({
+        repoPath: '/home/user/project',
+        branch: 'main',
+        event: 'pull',
+      });
 
       expect(response.status).toBe(200);
       expect(response.body.sessionsUpdated).toBe(2);
@@ -285,13 +281,11 @@ describe('Git Routes', () => {
         .mockResolvedValueOnce({ stdout: '0\n', stderr: '' }) // diverge check - no divergence
         .mockResolvedValueOnce({ stdout: '', stderr: '' }); // checkout command
 
-      const response = await request(app)
-        .post('/api/git/event')
-        .send({
-          repoPath: '/home/user/project',
-          branch: 'main',
-          event: 'checkout',
-        });
+      const response = await request(app).post('/api/git/event').send({
+        repoPath: '/home/user/project',
+        branch: 'main',
+        event: 'checkout',
+      });
 
       expect(response.status).toBe(200);
       expect(response.body.followMode).toBe(true);
@@ -311,13 +305,11 @@ describe('Git Routes', () => {
         .mockResolvedValueOnce({ stdout: '3\n', stderr: '' }) // diverge check - 3 commits diverged
         .mockResolvedValueOnce({ stdout: '', stderr: '' }); // disable follow mode
 
-      const response = await request(app)
-        .post('/api/git/event')
-        .send({
-          repoPath: '/home/user/project',
-          branch: 'main',
-          event: 'checkout',
-        });
+      const response = await request(app).post('/api/git/event').send({
+        repoPath: '/home/user/project',
+        branch: 'main',
+        event: 'checkout',
+      });
 
       expect(response.status).toBe(200);
       expect(response.body.followMode).toBe(false);
@@ -337,13 +329,11 @@ describe('Git Routes', () => {
         .mockResolvedValueOnce({ stdout: 'false\n', stderr: '' }) // follow mode check
         .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' }); // current branch
 
-      const response = await request(app)
-        .post('/api/git/event')
-        .send({
-          repoPath: '/home/user/project',
-          branch: 'feature',
-          event: 'merge',
-        });
+      const response = await request(app).post('/api/git/event').send({
+        repoPath: '/home/user/project',
+        branch: 'feature',
+        event: 'merge',
+      });
 
       expect(response.status).toBe(200);
       expect(controlUnixHandler.sendToMac).toHaveBeenCalledWith(
@@ -372,12 +362,8 @@ describe('Git Routes', () => {
 
       // Send two concurrent requests
       const [response1, response2] = await Promise.all([
-        request(app)
-          .post('/api/git/event')
-          .send({ repoPath: '/home/user/project', event: 'pull' }),
-        request(app)
-          .post('/api/git/event')
-          .send({ repoPath: '/home/user/project', event: 'push' }),
+        request(app).post('/api/git/event').send({ repoPath: '/home/user/project', event: 'pull' }),
+        request(app).post('/api/git/event').send({ repoPath: '/home/user/project', event: 'push' }),
       ]);
 
       expect(response1.status).toBe(200);
@@ -387,9 +373,7 @@ describe('Git Routes', () => {
     });
 
     it('should return 400 when repoPath is missing', async () => {
-      const response = await request(app)
-        .post('/api/git/event')
-        .send({ branch: 'main' });
+      const response = await request(app).post('/api/git/event').send({ branch: 'main' });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
