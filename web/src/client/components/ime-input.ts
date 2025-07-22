@@ -1,18 +1,19 @@
 /**
- * IME Input Component
+ * Desktop IME Input Component
  *
- * A reusable component for handling Input Method Editor (IME) composition,
- * particularly for CJK (Chinese, Japanese, Korean) text input.
+ * A reusable component for handling Input Method Editor (IME) composition
+ * on desktop browsers, particularly for CJK (Chinese, Japanese, Korean) text input.
  *
  * This component creates a hidden input element that captures IME composition
- * events and forwards the completed text to a callback function.
+ * events and forwards the completed text to a callback function. It's designed
+ * specifically for desktop environments where native IME handling is needed.
  */
 
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('ime-input');
 
-export interface IMEInputOptions {
+export interface DesktopIMEInputOptions {
   /** Container element to append the input to */
   container: HTMLElement;
   /** Callback when text is ready to be sent (after composition ends or regular input) */
@@ -29,15 +30,15 @@ export interface IMEInputOptions {
   zIndex?: number;
 }
 
-export class IMEInput {
+export class DesktopIMEInput {
   private input: HTMLInputElement;
   private isComposing = false;
-  private options: IMEInputOptions;
+  private options: DesktopIMEInputOptions;
   private documentClickHandler: ((e: Event) => void) | null = null;
   private globalPasteHandler: ((e: Event) => void) | null = null;
   private focusRetentionInterval: number | null = null;
 
-  constructor(options: IMEInputOptions) {
+  constructor(options: DesktopIMEInputOptions) {
     this.options = options;
     this.input = this.createInput();
     this.setupEventListeners();

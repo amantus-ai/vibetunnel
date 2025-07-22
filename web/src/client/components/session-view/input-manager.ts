@@ -13,7 +13,7 @@ import { consumeEvent } from '../../utils/event-utils.js';
 import { isIMEAllowedKey } from '../../utils/ime-constants.js';
 import { createLogger } from '../../utils/logger.js';
 import { detectMobile } from '../../utils/mobile-utils.js';
-import { IMEInput } from '../ime-input.js';
+import { DesktopIMEInput } from '../ime-input.js';
 import type { Terminal } from '../terminal.js';
 import type { VibeTerminalBinary } from '../vibe-terminal-binary.js';
 
@@ -31,7 +31,7 @@ export class InputManager {
   private useWebSocketInput = true; // Feature flag for WebSocket input
   private lastEscapeTime = 0;
   private readonly DOUBLE_ESCAPE_THRESHOLD = 500; // ms
-  private imeInput: IMEInput | null = null;
+  private imeInput: DesktopIMEInput | null = null;
 
   setSession(session: Session | null): void {
     // Clean up IME input when session is null
@@ -85,7 +85,7 @@ export class InputManager {
     }
 
     // Create IME input component
-    this.imeInput = new IMEInput({
+    this.imeInput = new DesktopIMEInput({
       container: terminalContainer,
       onTextInput: (text: string) => {
         this.sendInputText(text);
@@ -468,7 +468,7 @@ export class InputManager {
   }
 
   // For testing purposes only
-  getIMEInputForTesting(): IMEInput | null {
+  getIMEInputForTesting(): DesktopIMEInput | null {
     return this.imeInput;
   }
 }
