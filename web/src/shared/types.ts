@@ -28,6 +28,8 @@ export interface SessionInfo {
    */
   lastClearOffset?: number;
   version?: string; // VibeTunnel version that created this session
+  gitRepoPath?: string; // Repository root path
+  gitBranch?: string; // Current branch name
 }
 
 /**
@@ -87,6 +89,8 @@ export interface SessionCreateOptions {
   cols?: number;
   rows?: number;
   titleMode?: TitleMode;
+  gitRepoPath?: string;
+  gitBranch?: string;
 }
 
 /**

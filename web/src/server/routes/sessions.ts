@@ -3,6 +3,7 @@ import { Router } from 'express';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { promisify } from 'util';
 import { cellsToText } from '../../shared/terminal-text-formatter.js';
 import type { ServerStatus, Session, SessionActivity, TitleMode } from '../../shared/types.js';
 import { PtyError, type PtyManager } from '../pty/index.js';
@@ -16,6 +17,50 @@ import { createControlMessage, type TerminalSpawnResponse } from '../websocket/c
 import { controlUnixHandler } from '../websocket/control-unix-handler.js';
 
 const logger = createLogger('sessions');
+const execFile = promisify(require('child_process').execFile);
+
+interface GitInfo {
+  gitRepoPath?: string;
+  gitBranch?: string;
+}
+
+/**
+ * Detect Git repository information for a given directory
+ */
+async function detectGitInfo(workingDir: string): Promise<GitInfo> {
+  try {
+    // Check if the directory is in a Git repository
+    const { stdout: repoPath } = await execFile('git', ['rev-parse', '--show-toplevel'], {
+      cwd: workingDir,
+      timeout: 5000,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    });
+
+    const gitRepoPath = repoPath.trim();
+
+    // Get the current branch name
+    try {
+      const { stdout: branch } = await execFile('git', ['branch', '--show-current'], {
+        cwd: workingDir,
+        timeout: 5000,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      });
+
+      const gitBranch = branch.trim();
+      logger.debug(`Detected Git info: repo=${gitRepoPath}, branch=${gitBranch}`);
+
+      return { gitRepoPath, gitBranch };
+    } catch (branchError) {
+      // Could be in detached HEAD state or other situation where branch name isn't available
+      logger.debug(`Could not detect Git branch: ${branchError}`);
+      return { gitRepoPath };
+    }
+  } catch (error) {
+    // Not in a Git repository or git command failed
+    logger.debug(`Git detection failed for ${workingDir}: ${error}`);
+    return {};
+  }
+}
 
 interface SessionRoutesConfig {
   ptyManager: PtyManager;
@@ -213,8 +258,11 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         try {
           // Generate session ID
           const sessionId = generateSessionId();
-          const sessionName =
-            name || generateSessionName(command, resolvePath(workingDir, process.cwd()));
+          const resolvedCwd = resolvePath(workingDir, process.cwd());
+          const sessionName = name || generateSessionName(command, resolvedCwd);
+
+          // Detect Git information for terminal spawn
+          const gitInfo = await detectGitInfo(resolvedCwd);
 
           // Request Mac app to spawn terminal
           logger.log(
@@ -224,8 +272,10 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
             sessionId,
             sessionName,
             command,
-            workingDir: resolvePath(workingDir, process.cwd()),
+            workingDir: resolvedCwd,
             titleMode,
+            gitRepoPath: gitInfo.gitRepoPath,
+            gitBranch: gitInfo.gitBranch,
           });
 
           if (!spawnResult.success) {
@@ -261,6 +311,9 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
 
       const sessionName = name || generateSessionName(command, cwd);
 
+      // Detect Git information
+      const gitInfo = await detectGitInfo(cwd);
+
       logger.log(
         chalk.blue(
           `creating WEB session: ${command.join(' ')} in ${cwd} (spawn_terminal=${spawn_terminal})`
@@ -273,6 +326,8 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         cols,
         rows,
         titleMode,
+        gitRepoPath: gitInfo.gitRepoPath,
+        gitBranch: gitInfo.gitBranch,
       });
 
       const { sessionId, sessionInfo } = result;
@@ -1218,6 +1273,8 @@ export async function requestTerminalSpawn(params: {
   command: string[];
   workingDir: string;
   titleMode?: TitleMode;
+  gitRepoPath?: string;
+  gitBranch?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     // Create control message for terminal spawn
@@ -1229,6 +1286,8 @@ export async function requestTerminalSpawn(params: {
         workingDirectory: params.workingDir,
         command: params.command.join(' '),
         terminalPreference: null, // Let Mac app use default terminal
+        gitRepoPath: params.gitRepoPath,
+        gitBranch: params.gitBranch,
       },
       params.sessionId
     );

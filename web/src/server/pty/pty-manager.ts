@@ -248,6 +248,8 @@ export class PtyManager extends EventEmitter {
         initialRows: rows,
         lastClearOffset: 0,
         version: VERSION,
+        gitRepoPath: options.gitRepoPath,
+        gitBranch: options.gitBranch,
       };
 
       // Save initial session info
