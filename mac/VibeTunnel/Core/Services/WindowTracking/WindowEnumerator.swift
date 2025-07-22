@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import OSLog
 
-/// Handles window enumeration using Core Graphics APIs.
+/// Handles window enumeration using Accessibility APIs.
 @MainActor
 final class WindowEnumerator {
     private let logger = Logger(
@@ -22,70 +22,43 @@ final class WindowEnumerator {
         let tabReference: String? // AppleScript reference for Terminal.app tabs
         let tabID: String? // Tab identifier for iTerm2
 
-        // Window properties from Core Graphics
+        // Window properties from Accessibility APIs
         let bounds: CGRect?
         let title: String?
     }
 
-    /// Gets all terminal windows currently visible on screen.
+    /// Gets all terminal windows currently visible on screen using Accessibility APIs.
     static func getAllTerminalWindows() -> [WindowInfo] {
-        let options: CGWindowListOption = [.excludeDesktopElements, .optionOnScreenOnly]
-
-        guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
-            return []
-        }
-
-        var terminalWindows: [WindowInfo] = []
-        let terminalAppNames = Terminal.allCases.map(\.applicationName)
-
-        for window in windowList {
-            // Check if this is a terminal window
-            guard let ownerName = window[kCGWindowOwnerName as String] as? String,
-                  terminalAppNames.contains(ownerName)
-            else {
-                continue
+        // Get bundle identifiers for all terminal types
+        let terminalBundleIDs = Terminal.allCases.compactMap(\.bundleIdentifier)
+        
+        // Use AXElement to enumerate windows
+        let axWindows = AXElement.enumerateWindows(
+            bundleIdentifiers: terminalBundleIDs,
+            includeMinimized: false
+        )
+        
+        // Convert AXElement.WindowInfo to our WindowInfo
+        return axWindows.compactMap { axWindow in
+            // Find the matching Terminal enum
+            guard let terminal = Terminal.allCases.first(where: { 
+                $0.bundleIdentifier == axWindow.bundleIdentifier 
+            }) else {
+                return nil
             }
-
-            // Skip windows that aren't normal windows (e.g., menus, tooltips)
-            if let windowLayer = window[kCGWindowLayer as String] as? Int, windowLayer != 0 {
-                continue
-            }
-
-            // Get window properties
-            let windowID = window[kCGWindowNumber as String] as? CGWindowID ?? 0
-            let ownerPID = window[kCGWindowOwnerPID as String] as? pid_t ?? 0
-            let title = window[kCGWindowName as String] as? String
-
-            // Get window bounds
-            var bounds: CGRect?
-            if let boundsDict = window[kCGWindowBounds as String] as? [String: CGFloat] {
-                bounds = CGRect(
-                    x: boundsDict["X"] ?? 0,
-                    y: boundsDict["Y"] ?? 0,
-                    width: boundsDict["Width"] ?? 0,
-                    height: boundsDict["Height"] ?? 0
-                )
-            }
-
-            // Determine terminal app type
-            let terminal = Terminal.allCases.first { $0.applicationName == ownerName } ?? .terminal
-
-            let windowInfo = WindowInfo(
-                windowID: windowID,
-                ownerPID: ownerPID,
+            
+            return WindowInfo(
+                windowID: axWindow.windowID,
+                ownerPID: axWindow.pid,
                 terminalApp: terminal,
                 sessionID: "", // Will be filled by caller
                 createdAt: Date(),
                 tabReference: nil,
                 tabID: nil,
-                bounds: bounds,
-                title: title
+                bounds: axWindow.bounds,
+                title: axWindow.title
             )
-
-            terminalWindows.append(windowInfo)
         }
-
-        return terminalWindows
     }
 
     /// Extract window ID from Terminal.app tab reference
