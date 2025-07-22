@@ -29,8 +29,8 @@ import './session-view/ctrl-alpha-overlay.js';
 import './session-view/width-selector.js';
 import './session-view/session-header.js';
 import './worktree-manager.js';
-import { GitService } from '../services/git-service.js';
 import { authClient } from '../services/auth-client.js';
+import { GitService } from '../services/git-service.js';
 import { sessionActionService } from '../services/session-action-service.js';
 import { Z_INDEX } from '../utils/constants.js';
 import { createLogger } from '../utils/logger.js';
@@ -1528,7 +1528,9 @@ export class SessionView extends LitElement {
         <!-- Content Area (Terminal or Worktree) -->
         <div
           class="terminal-area bg-bg ${
-            this.session?.status === 'exited' && this.viewMode === 'terminal' ? 'session-exited opacity-90' : ''
+            this.session?.status === 'exited' && this.viewMode === 'terminal'
+              ? 'session-exited opacity-90'
+              : ''
           } ${
             // Add safe area padding for landscape mode on mobile to handle notch
             this.isMobile && this.isLandscape ? 'safe-area-left safe-area-right' : ''
@@ -1550,20 +1552,23 @@ export class SessionView extends LitElement {
               `
               : ''
           }
-          ${this.viewMode === 'worktree' && this.session?.gitRepoPath
-            ? html`
+          ${
+            this.viewMode === 'worktree' && this.session?.gitRepoPath
+              ? html`
               <worktree-manager
                 .gitService=${this.gitService}
                 .repoPath=${this.session.gitRepoPath}
-                @back=${() => this.viewMode = 'terminal'}
+                @back=${() => {
+                  this.viewMode = 'terminal';
+                }}
               ></worktree-manager>
             `
-            : this.viewMode === 'terminal'
-            ? html`
+              : this.viewMode === 'terminal'
+                ? html`
               <!-- Enhanced Terminal Component -->
               ${
                 this.useBinaryMode
-              ? html`
+                  ? html`
               <vibe-terminal-binary
                 .sessionId=${this.session?.id || ''}
                 .sessionStatus=${this.session?.status || 'running'}
@@ -1584,7 +1589,7 @@ export class SessionView extends LitElement {
                 @terminal-ready=${this.handleTerminalReady}
               ></vibe-terminal-binary>
             `
-              : html`
+                  : html`
               <vibe-terminal
                 .sessionId=${this.session?.id || ''}
                 .sessionStatus=${this.session?.status || 'running'}
@@ -1603,7 +1608,9 @@ export class SessionView extends LitElement {
                 @terminal-input=${this.handleTerminalInput}
               ></vibe-terminal>
             `
-              : ''
+              }
+            `
+                : ''
           }
         </div>
 

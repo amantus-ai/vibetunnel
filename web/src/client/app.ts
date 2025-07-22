@@ -980,7 +980,6 @@ export class VibeTunnelApp extends LitElement {
     }
   }
 
-
   private async handleKillAll() {
     // Get all running sessions from data instead of DOM elements
     const runningSessions = this.sessions.filter((session) => session.status === 'running');
@@ -1295,14 +1294,14 @@ export class VibeTunnelApp extends LitElement {
       logger.log(`Navigating to session ${sessionId} from URL`);
       this.selectedSessionId = sessionId;
       this.sessionLoadingState = 'idle'; // Reset loading state for new session
-      this.currentView = 'session';
 
-      // Load sessions in the background if not already loaded
+      // Load sessions if not already loaded and wait for them
       if (this.sessions.length === 0 && this.isAuthenticated) {
-        this.loadSessions().catch((error) => {
-          logger.error('Error loading sessions:', error);
-        });
+        await this.loadSessions();
       }
+
+      // Now set the view to session after sessions are loaded
+      this.currentView = 'session';
     } else {
       this.selectedSessionId = null;
       this.currentView = 'list';
@@ -1630,7 +1629,7 @@ export class VibeTunnelApp extends LitElement {
                 @insert-path=${this.handleNavigateToList}
               ></file-browser>
             `
-              : html`
+            : html`
       <!-- Main content with split view support -->
       <div class="${this.mainContainerClasses}">
         <!-- Mobile overlay when sidebar is open -->

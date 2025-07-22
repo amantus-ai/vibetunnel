@@ -153,7 +153,6 @@ export class SessionCard extends LitElement {
     await this.kill();
   }
 
-
   // Public method to kill the session with animation (or clean up exited session)
   public async kill(): Promise<boolean> {
     // Don't kill if already killing

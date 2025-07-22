@@ -23,6 +23,7 @@ import type { Session } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import './session-card.js';
 import './inline-edit.js';
+import { getBaseRepoName } from '../../shared/utils/git.js';
 import { formatSessionDuration } from '../../shared/utils/time.js';
 import { sessionActionService } from '../services/session-action-service.js';
 import { sendAIPrompt } from '../utils/ai-sessions.js';
@@ -263,7 +264,6 @@ export class SessionList extends LitElement {
     );
   };
 
-
   private async handleDeleteSession(sessionId: string) {
     await sessionActionService.deleteSessionById(sessionId, {
       authClient: this.authClient,
@@ -400,9 +400,7 @@ export class SessionList extends LitElement {
   }
 
   private getRepoName(repoPath: string): string {
-    // Extract the repository name from the path
-    const parts = repoPath.split('/');
-    return parts[parts.length - 1] || repoPath;
+    return getBaseRepoName(repoPath);
   }
 
   render() {

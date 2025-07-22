@@ -253,9 +253,9 @@ struct AutocompleteTextField: View {
         // Reset selection and keyboard navigation flag when text changes
         selectedIndex = -1
         keyboardNavigating = false
+        showSuggestions = false  // Hide suggestions immediately when typing
 
         guard !newValue.isEmpty else {
-            showSuggestions = false
             autocompleteService.clearSuggestions()
             return
         }

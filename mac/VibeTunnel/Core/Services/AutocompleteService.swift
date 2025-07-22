@@ -11,6 +11,7 @@ class AutocompleteService {
     private(set) var suggestions: [PathSuggestion] = []
 
     private var currentTask: Task<Void, Never>?
+    private var taskCounter = 0
     private let fileManager = FileManager.default
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AutocompleteService")
 
@@ -35,17 +36,23 @@ class AutocompleteService {
         // Cancel any existing task
         currentTask?.cancel()
 
+        // Clear suggestions immediately to avoid showing stale results
+        suggestions = []
+        
         guard !partialPath.isEmpty else {
-            suggestions = []
             return
         }
 
+        // Increment task counter to track latest task
+        taskCounter += 1
+        let thisTaskId = taskCounter
+        
         currentTask = Task {
-            await performFetch(for: partialPath)
+            await performFetch(for: partialPath, taskId: thisTaskId)
         }
     }
 
-    private func performFetch(for originalPath: String) async {
+    private func performFetch(for originalPath: String, taskId: Int) async {
         self.isLoading = true
         defer { self.isLoading = false }
 
@@ -77,7 +84,8 @@ class AutocompleteService {
         let fsSuggestions = await getFileSystemSuggestions(
             directory: dirPath,
             partialName: partialName,
-            originalPath: originalPath
+            originalPath: originalPath,
+            taskId: taskId
         )
 
         // Check if task was cancelled
@@ -91,8 +99,11 @@ class AutocompleteService {
 
         if isSearchingByName {
             // Get git repository suggestions from discovered repositories
-            let repoSuggestions = await getRepositorySuggestions(searchTerm: originalPath)
-
+            let repoSuggestions = await getRepositorySuggestions(searchTerm: originalPath, taskId: taskId)
+            
+            // Check if task was cancelled
+            if Task.isCancelled { return }
+            
             // Merge with filesystem suggestions, avoiding duplicates
             let existingPaths = Set(fsSuggestions.map(\.suggestion))
             let uniqueRepos = repoSuggestions.filter { !existingPaths.contains($0.suggestion) }
@@ -102,10 +113,15 @@ class AutocompleteService {
         // Sort suggestions
         let sortedSuggestions = sortSuggestions(allSuggestions, searchTerm: partialName)
 
-        // Limit to 20 results
-        self.suggestions = Array(sortedSuggestions.prefix(20))
-        
-        logger.debug("[AutocompleteService] Final suggestions count: \(self.suggestions.count), items: \(self.suggestions.map { $0.name }.joined(separator: ", "))")
+        // Only update suggestions if this is still the latest task
+        if taskId == taskCounter {
+            // Limit to 20 results
+            self.suggestions = Array(sortedSuggestions.prefix(20))
+            
+            logger.debug("[AutocompleteService] Final suggestions count: \(self.suggestions.count), items: \(self.suggestions.map { $0.name }.joined(separator: ", "))")
+        } else {
+            logger.debug("[AutocompleteService] Discarding stale results from task \(taskId), current task is \(self.taskCounter)")
+        }
     }
 
     private func splitPath(_ path: String) -> (directory: String, partialName: String) {
@@ -120,18 +136,28 @@ class AutocompleteService {
     private func getFileSystemSuggestions(
         directory: String,
         partialName: String,
-        originalPath: String
+        originalPath: String,
+        taskId: Int
     )
         async -> [PathSuggestion]
     {
-        let expandedDir = NSString(string: directory).expandingTildeInPath
+        // Move to background thread to avoid blocking UI
+        return await Task.detached(priority: .userInitiated) { [logger = self.logger, currentTaskId = self.taskCounter] in
+            let expandedDir = NSString(string: directory).expandingTildeInPath
+            let fileManager = FileManager.default
 
-        guard fileManager.fileExists(atPath: expandedDir) else {
-            return []
-        }
+            guard fileManager.fileExists(atPath: expandedDir) else {
+                return []
+            }
 
-        do {
-            let contents = try fileManager.contentsOfDirectory(atPath: expandedDir)
+            do {
+                // Check if this task is still current before doing expensive operations
+                if taskId != currentTaskId {
+                    logger.debug("[AutocompleteService] Task \(taskId) cancelled, not processing directory listing")
+                    return []
+                }
+                
+                let contents = try fileManager.contentsOfDirectory(atPath: expandedDir)
             
             // Debug logging
             let matching = contents.filter { filename in
@@ -179,11 +205,87 @@ class AutocompleteService {
                     isRepository: isGitRepo
                 )
             }
-        } catch {
-            return []
-        }
+            } catch {
+                return []
+            }
+        }.value
     }
 
+    private func getRepositorySuggestions(searchTerm: String, taskId: Int) async -> [PathSuggestion] {
+        // Get git repositories from common locations
+        return await Task.detached(priority: .userInitiated) { [logger = self.logger, currentTaskId = self.taskCounter] in
+            var suggestions: [PathSuggestion] = []
+            let fileManager = FileManager.default
+            
+            // Check if this task is still current
+            if taskId != currentTaskId {
+                logger.debug("[AutocompleteService] Task \(taskId) cancelled, not processing repository search")
+                return []
+            }
+            
+            // Common repository locations
+            let searchPaths = [
+                NSHomeDirectory() + "/Projects",
+                NSHomeDirectory() + "/Developer",
+                NSHomeDirectory() + "/Documents",
+                NSHomeDirectory() + "/Desktop",
+                NSHomeDirectory() + "/Code",
+                NSHomeDirectory() + "/repos",
+                NSHomeDirectory() + "/git",
+                NSHomeDirectory() + "/src",
+                NSHomeDirectory() + "/work",
+                NSHomeDirectory()  // Also check home directory
+            ]
+            
+            let lowercasedTerm = searchTerm.lowercased()
+            
+            for basePath in searchPaths {
+                guard fileManager.fileExists(atPath: basePath) else { continue }
+                
+                // Check if task is still current
+                if taskId != currentTaskId {
+                    return []
+                }
+                
+                do {
+                    let contents = try fileManager.contentsOfDirectory(atPath: basePath)
+                    
+                    for item in contents {
+                        // Skip if doesn't match search term
+                        if !lowercasedTerm.isEmpty && !item.lowercased().contains(lowercasedTerm) {
+                            continue
+                        }
+                        
+                        let fullPath = (basePath as NSString).appendingPathComponent(item)
+                        var isDirectory: ObjCBool = false
+                        
+                        guard fileManager.fileExists(atPath: fullPath, isDirectory: &isDirectory),
+                              isDirectory.boolValue else { continue }
+                        
+                        // Check if it's a git repository
+                        let gitPath = (fullPath as NSString).appendingPathComponent(".git")
+                        if fileManager.fileExists(atPath: gitPath) {
+                            let displayPath = fullPath.replacingOccurrences(of: NSHomeDirectory(), with: "~")
+                            
+                            suggestions.append(PathSuggestion(
+                                name: item,
+                                path: displayPath,
+                                type: .directory,
+                                suggestion: fullPath + "/",
+                                isRepository: true
+                            ))
+                        }
+                    }
+                } catch {
+                    // Ignore errors for individual directories
+                    continue
+                }
+            }
+            
+            return suggestions
+        }.value
+    }
+    
     private func sortSuggestions(_ suggestions: [PathSuggestion], searchTerm: String) -> [PathSuggestion] {
         let lowercasedTerm = searchTerm.lowercased()
 
@@ -230,57 +332,60 @@ class AutocompleteService {
         // we'll need to discover repositories inline or pass them as a parameter
         // For now, let's scan common locations for git repositories
 
-        let searchLower = searchTerm.lowercased().replacingOccurrences(of: "~/", with: "")
-        let homeDir = NSHomeDirectory()
-        let commonPaths = [
-            homeDir + "/Developer",
-            homeDir + "/Projects",
-            homeDir + "/Documents",
-            homeDir + "/Desktop",
-            homeDir + "/Code",
-            homeDir + "/repos",
-            homeDir + "/git"
-        ]
+        return await Task.detached(priority: .userInitiated) {
+            let fileManager = FileManager.default
+            let searchLower = searchTerm.lowercased().replacingOccurrences(of: "~/", with: "")
+            let homeDir = NSHomeDirectory()
+            let commonPaths = [
+                homeDir + "/Developer",
+                homeDir + "/Projects",
+                homeDir + "/Documents",
+                homeDir + "/Desktop",
+                homeDir + "/Code",
+                homeDir + "/repos",
+                homeDir + "/git"
+            ]
 
-        var repositories: [PathSuggestion] = []
+            var repositories: [PathSuggestion] = []
 
-        for basePath in commonPaths {
-            guard fileManager.fileExists(atPath: basePath) else { continue }
+            for basePath in commonPaths {
+                guard fileManager.fileExists(atPath: basePath) else { continue }
 
-            do {
-                let contents = try fileManager.contentsOfDirectory(atPath: basePath)
-                for item in contents {
-                    let fullPath = (basePath as NSString).appendingPathComponent(item)
-                    var isDirectory: ObjCBool = false
+                do {
+                    let contents = try fileManager.contentsOfDirectory(atPath: basePath)
+                    for item in contents {
+                        let fullPath = (basePath as NSString).appendingPathComponent(item)
+                        var isDirectory: ObjCBool = false
 
-                    guard fileManager.fileExists(atPath: fullPath, isDirectory: &isDirectory),
-                          isDirectory.boolValue else { continue }
+                        guard fileManager.fileExists(atPath: fullPath, isDirectory: &isDirectory),
+                              isDirectory.boolValue else { continue }
 
-                    // Check if it's a git repository
-                    let gitPath = (fullPath as NSString).appendingPathComponent(".git")
-                    guard fileManager.fileExists(atPath: gitPath) else { continue }
+                        // Check if it's a git repository
+                        let gitPath = (fullPath as NSString).appendingPathComponent(".git")
+                        guard fileManager.fileExists(atPath: gitPath) else { continue }
 
-                    // Check if name matches search term
-                    guard item.lowercased().contains(searchLower) else { continue }
+                        // Check if name matches search term
+                        guard item.lowercased().contains(searchLower) else { continue }
 
-                    // Convert to tilde path if in home directory
-                    let displayPath = fullPath.hasPrefix(homeDir) ?
-                        "~" + fullPath.dropFirst(homeDir.count) : fullPath
+                        // Convert to tilde path if in home directory
+                        let displayPath = fullPath.hasPrefix(homeDir) ?
+                            "~" + fullPath.dropFirst(homeDir.count) : fullPath
 
-                    repositories.append(PathSuggestion(
-                        name: item,
-                        path: displayPath,
-                        type: .directory,
-                        suggestion: displayPath + "/",
-                        isRepository: true
-                    ))
+                        repositories.append(PathSuggestion(
+                            name: item,
+                            path: displayPath,
+                            type: .directory,
+                            suggestion: displayPath + "/",
+                            isRepository: true
+                        ))
+                    }
+                } catch {
+                    // Ignore errors for individual directories
+                    continue
                 }
-            } catch {
-                // Ignore errors for individual directories
-                continue
             }
-        }
 
-        return repositories
+            return repositories
+        }.value
     }
 }

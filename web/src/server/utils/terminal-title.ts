@@ -7,6 +7,7 @@
 
 import * as os from 'os';
 import * as path from 'path';
+import { getBaseRepoName } from '../../shared/utils/git.js';
 import type { ActivityState } from './activity-detector.js';
 import { PromptDetector } from './prompt-patterns.js';
 
@@ -207,7 +208,7 @@ export function generateDynamicTitle(
 
   // If in a Git repository, format as repoName-branch instead of full path
   if (gitRepoPath && gitBranch) {
-    const repoName = path.basename(gitRepoPath);
+    const repoName = getBaseRepoName(gitRepoPath);
     baseParts.push(`${repoName}-${gitBranch}`);
   } else {
     baseParts.push(displayPath);
