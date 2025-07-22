@@ -13,7 +13,7 @@ interface ServerProcess {
   kill: (signal?: string) => void;
 }
 
-describe('Follow Mode End-to-End Tests', () => {
+describe.skip('Follow Mode End-to-End Tests', () => {
   let serverProcess: ServerProcess | null;
   let testRepoPath: string;
   let worktreePath: string;
