@@ -47,10 +47,13 @@ describe('Follow Mode End-to-End Tests', () => {
     await gitExec(['config', 'user.email', 'test@example.com']);
     await gitExec(['config', 'user.name', 'Test User']);
 
-    // Create main branch with initial commit
+    // Create initial commit on the default branch
     await fs.writeFile(path.join(testRepoPath, 'README.md'), '# Follow Mode Test\n');
     await gitExec(['add', 'README.md']);
     await gitExec(['commit', '-m', 'Initial commit']);
+
+    // Create and switch to main branch
+    await gitExec(['checkout', '-b', 'main']);
 
     // Create develop branch
     await gitExec(['checkout', '-b', 'develop']);

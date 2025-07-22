@@ -153,6 +153,20 @@ export class SessionCard extends LitElement {
     await this.kill();
   }
 
+  private handleGitWorktreeClick() {
+    // Dispatch event to navigate to worktree management
+    this.dispatchEvent(
+      new CustomEvent('navigate-to-worktrees', {
+        detail: {
+          repoPath: this.session.gitRepoPath,
+          sessionId: this.session.id,
+        },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
   // Public method to kill the session with animation (or clean up exited session)
   public async kill(): Promise<boolean> {
     // Don't kill if already killing
@@ -438,6 +452,36 @@ export class SessionCard extends LitElement {
                         ? html`<span class="block w-5 h-5 flex items-center justify-center animate-spin">⠋</span>`
                         : MAGIC_WAND_ICON
                     }
+                  </button>
+                `
+                : ''
+            }
+            ${
+              this.session.gitRepoPath
+                ? html`
+                  <button
+                    class="p-1 rounded-full transition-all duration-200 text-accent-primary hover:bg-accent-primary hover:bg-opacity-20 flex-shrink-0"
+                    @click=${(e: Event) => {
+                      e.stopPropagation();
+                      this.handleGitWorktreeClick();
+                    }}
+                    id="session-git-button"
+                    title="Manage Git worktrees"
+                    aria-label="Manage Git worktrees"
+                  >
+                    <svg
+                      class="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
                   </button>
                 `
                 : ''
