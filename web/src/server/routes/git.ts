@@ -210,15 +210,20 @@ export function createGitRoutes(): Router {
       const updatedSessionIds: string[] = [];
 
       // Check follow mode status
-      let followMode = false;
+      let followBranch: string | undefined;
       let currentBranch: string | undefined;
+      let followMode = false;
 
       try {
-        // Get follow mode setting
-        const { stdout: followModeOutput } = await execGit(['config', 'vibetunnel.followBranch'], {
-          cwd: repoPath,
-        });
-        followMode = followModeOutput.trim() === 'true';
+        // Get follow branch setting
+        const { stdout: followBranchOutput } = await execGit(
+          ['config', 'vibetunnel.followBranch'],
+          {
+            cwd: repoPath,
+          }
+        );
+        followBranch = followBranchOutput.trim();
+        followMode = !!followBranch;
 
         // Get current branch
         const { stdout: branchOutput } = await execGit(['branch', '--show-current'], {
@@ -227,22 +232,39 @@ export function createGitRoutes(): Router {
         currentBranch = branchOutput.trim();
       } catch (error) {
         // Config not set or git command failed - follow mode is disabled
-        logger.debug('Follow mode check failed or not configured:', error);
+        logger.debug('Follow branch check failed or not configured:', error);
       }
+
+      // Extract repository name from path
+      const repoName = path.basename(repoPath);
 
       // Update session titles for all sessions in the repository
       for (const session of sessionsInRepo) {
         try {
-          // Construct new title based on event
-          let newTitle = session.name || 'Terminal';
-
-          if (event && branch) {
-            // Add event information to the title
-            newTitle = `${session.name} [${event}: ${branch}]`;
-          } else if (currentBranch) {
-            // Just update with current branch
-            newTitle = `${session.name} [${currentBranch}]`;
+          // Get the branch for this specific session's working directory
+          let sessionBranch = currentBranch;
+          try {
+            const { stdout: sessionBranchOutput } = await execGit(['branch', '--show-current'], {
+              cwd: session.workingDir,
+            });
+            if (sessionBranchOutput.trim()) {
+              sessionBranch = sessionBranchOutput.trim();
+            }
+          } catch (_error) {
+            // Use current branch as fallback
+            logger.debug(`Could not get branch for session ${session.id}, using repo branch`);
           }
+
+          // Extract base session name (remove any existing git info)
+          const baseSessionName = session.name?.replace(/\s*\[.*\]\s*$/, '') || 'Terminal';
+
+          // Construct new title with format: activity - repoName-branch - sessionName
+          let activity = '';
+          if (event && branch) {
+            activity = `${event}: ${branch} - `;
+          }
+
+          const newTitle = `${activity}${repoName}-${sessionBranch || 'detached'} - ${baseSessionName}`;
 
           // Update the session name
           sessionManager.updateSessionName(session.id, newTitle);
@@ -255,13 +277,19 @@ export function createGitRoutes(): Router {
       }
 
       // Handle follow mode sync logic
-      if (followMode && branch && currentBranch !== branch) {
-        logger.info(`Follow mode active: syncing from ${currentBranch} to ${branch}`);
+      if (
+        followMode &&
+        followBranch &&
+        event === 'checkout' &&
+        branch === followBranch &&
+        currentBranch !== followBranch
+      ) {
+        logger.info(`Follow mode active: syncing from ${currentBranch} to ${followBranch}`);
 
         try {
-          // Check if branch has diverged
+          // Check if branches have diverged
           const { stdout: divergeCheck } = await execGit(
-            ['rev-list', '--count', `${branch}..HEAD`],
+            ['rev-list', '--count', `${followBranch}..HEAD`],
             { cwd: repoPath }
           );
 
@@ -271,25 +299,57 @@ export function createGitRoutes(): Router {
             logger.warn(`Branch has diverged by ${divergedCommits} commits, disabling follow mode`);
 
             // Disable follow mode
-            await execGit(['config', 'vibetunnel.followBranch', 'false'], {
+            await execGit(['config', '--local', '--unset', 'vibetunnel.followBranch'], {
               cwd: repoPath,
             });
 
             followMode = false;
+            followBranch = undefined;
+
+            // Send notification about follow mode being disabled
+            if (controlUnixHandler.isMacAppConnected()) {
+              const divergeNotification = createControlEvent('system', 'notification', {
+                level: 'error',
+                title: 'Follow Mode Disabled',
+                message: `Branches have diverged by ${divergedCommits} commits. Follow mode has been disabled.`,
+              });
+              controlUnixHandler.sendToMac(divergeNotification);
+            }
           } else {
-            // Perform the sync (checkout to the new branch)
-            logger.info(`Checking out branch: ${branch}`);
-            await execGit(['checkout', branch], { cwd: repoPath });
+            // Perform the sync (checkout to the followed branch)
+            logger.info(`Checking out branch: ${followBranch}`);
+            await execGit(['checkout', followBranch], { cwd: repoPath });
+
+            // Send sync success notification
+            if (controlUnixHandler.isMacAppConnected()) {
+              const syncNotification = createControlEvent('system', 'notification', {
+                level: 'info',
+                title: 'Repository Synced',
+                message: `Successfully synced to branch '${followBranch}'`,
+              });
+              controlUnixHandler.sendToMac(syncNotification);
+            }
           }
         } catch (error) {
           logger.error('Failed to sync branches:', error);
 
           // Disable follow mode on error
           try {
-            await execGit(['config', 'vibetunnel.followBranch', 'false'], {
+            await execGit(['config', '--local', '--unset', 'vibetunnel.followBranch'], {
               cwd: repoPath,
             });
             followMode = false;
+            followBranch = undefined;
+
+            // Send error notification
+            if (controlUnixHandler.isMacAppConnected()) {
+              const errorNotification = createControlEvent('system', 'notification', {
+                level: 'error',
+                title: 'Sync Failed',
+                message: `Failed to sync repository: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              });
+              controlUnixHandler.sendToMac(errorNotification);
+            }
           } catch (configError) {
             logger.error('Failed to disable follow mode:', configError);
           }
@@ -306,11 +366,23 @@ export function createGitRoutes(): Router {
         sessionsUpdated: updatedSessionIds,
       };
 
-      // Send notification via Unix socket to Mac app
+      // Send notifications via Unix socket to Mac app
       if (controlUnixHandler.isMacAppConnected()) {
+        // Send repository changed event
         const controlMessage = createControlEvent('git', 'repository-changed', notification);
         controlUnixHandler.sendToMac(controlMessage);
         logger.debug('Sent git event notification to Mac app');
+
+        // Send specific follow mode notifications
+        if (followMode && followBranch) {
+          // Follow mode is active
+          const followNotification = createControlEvent('system', 'notification', {
+            level: 'info',
+            title: 'Follow Mode Active',
+            message: `Following branch '${followBranch}' in ${path.basename(repoPath)}`,
+          });
+          controlUnixHandler.sendToMac(followNotification);
+        }
       }
 
       // Return success response

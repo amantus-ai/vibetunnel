@@ -213,7 +213,7 @@ describe('Git Routes', () => {
     it('should handle git event with repository lock', async () => {
       // Set up Git command mocks
       mockExecFile
-        .mockResolvedValueOnce({ stdout: 'false\n', stderr: '' }) // follow mode check
+        .mockRejectedValueOnce(new Error('Key not found')) // follow branch check (not set)
         .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' }); // current branch
 
       const response = await request(app).post('/api/git/event').send({
@@ -252,7 +252,7 @@ describe('Git Routes', () => {
       ]);
 
       mockExecFile
-        .mockResolvedValueOnce({ stdout: 'false\n', stderr: '' }) // follow mode check
+        .mockRejectedValueOnce(new Error('Key not found')) // follow branch check (not set)
         .mockResolvedValueOnce({ stdout: 'develop\n', stderr: '' }); // current branch
 
       const response = await request(app).post('/api/git/event').send({
@@ -278,8 +278,8 @@ describe('Git Routes', () => {
 
     it('should handle follow mode sync when branches have not diverged', async () => {
       mockExecFile
-        .mockResolvedValueOnce({ stdout: 'true\n', stderr: '' }) // follow mode enabled
-        .mockResolvedValueOnce({ stdout: 'develop\n', stderr: '' }) // current branch
+        .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' }) // follow branch is 'main'
+        .mockResolvedValueOnce({ stdout: 'develop\n', stderr: '' }) // current branch is 'develop'
         .mockResolvedValueOnce({ stdout: '0\n', stderr: '' }) // diverge check - no divergence
         .mockResolvedValueOnce({ stdout: '', stderr: '' }); // checkout command
 
@@ -302,8 +302,8 @@ describe('Git Routes', () => {
 
     it('should disable follow mode when branches have diverged', async () => {
       mockExecFile
-        .mockResolvedValueOnce({ stdout: 'true\n', stderr: '' }) // follow mode enabled
-        .mockResolvedValueOnce({ stdout: 'develop\n', stderr: '' }) // current branch
+        .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' }) // follow branch is 'main'
+        .mockResolvedValueOnce({ stdout: 'develop\n', stderr: '' }) // current branch is 'develop'
         .mockResolvedValueOnce({ stdout: '3\n', stderr: '' }) // diverge check - 3 commits diverged
         .mockResolvedValueOnce({ stdout: '', stderr: '' }); // disable follow mode
 
@@ -319,7 +319,7 @@ describe('Git Routes', () => {
       // Verify follow mode was disabled
       expect(mockExecFile).toHaveBeenCalledWith(
         'git',
-        ['config', 'vibetunnel.followBranch', 'false'],
+        ['config', '--local', '--unset', 'vibetunnel.followBranch'],
         expect.objectContaining({ cwd: expect.stringContaining('project') })
       );
     });
@@ -328,7 +328,7 @@ describe('Git Routes', () => {
       (controlUnixHandler.isMacAppConnected as ReturnType<typeof vi.fn>).mockReturnValue(true);
 
       mockExecFile
-        .mockResolvedValueOnce({ stdout: 'false\n', stderr: '' }) // follow mode check
+        .mockRejectedValueOnce(new Error('Key not found')) // follow branch check (not set)
         .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' }); // current branch
 
       const response = await request(app).post('/api/git/event').send({
@@ -357,9 +357,9 @@ describe('Git Routes', () => {
 
     it('should handle concurrent requests with locking', async () => {
       mockExecFile
-        .mockResolvedValueOnce({ stdout: 'false\n', stderr: '' })
+        .mockRejectedValueOnce(new Error('Key not found')) // first request - no follow branch
         .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' })
-        .mockResolvedValueOnce({ stdout: 'false\n', stderr: '' })
+        .mockRejectedValueOnce(new Error('Key not found')) // second request - no follow branch
         .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' });
 
       // Send two concurrent requests
@@ -391,9 +391,11 @@ describe('Git Routes', () => {
         .post('/api/git/event')
         .send({ repoPath: '/home/user/project' });
 
+      // Should still succeed even if git command fails
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({
         success: true,
+        repoPath: expect.stringContaining('project'),
         sessionsUpdated: 0,
       });
     });
@@ -412,7 +414,7 @@ describe('Git Routes', () => {
       });
 
       mockExecFile
-        .mockResolvedValueOnce({ stdout: 'false\n', stderr: '' })
+        .mockRejectedValueOnce(new Error('Key not found')) // follow branch check (not set)
         .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' });
 
       const response = await request(app)

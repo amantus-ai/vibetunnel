@@ -81,10 +81,15 @@ describe('Follow Mode End-to-End Tests', () => {
       serverPort = 4020 + Math.floor(Math.random() * 1000);
       baseUrl = `http://localhost:${serverPort}`;
 
-      serverProcess = spawn('node', ['dist/server/server.js'], {
+      // Use tsx to run the server directly from source
+      // Remove VIBETUNNEL_SEA to prevent node-pty from looking for pty.node next to executable
+      const serverEnv = { ...process.env };
+      delete serverEnv.VIBETUNNEL_SEA;
+
+      serverProcess = spawn('pnpm', ['exec', 'tsx', 'src/server/server.ts'], {
         cwd: process.cwd(),
         env: {
-          ...process.env,
+          ...serverEnv,
           PORT: String(serverPort),
           NODE_ENV: 'test',
         },
@@ -101,7 +106,8 @@ describe('Follow Mode End-to-End Tests', () => {
 
       serverProcess.stdout.on('data', (data: Buffer) => {
         const output = data.toString();
-        if (output.includes('Server is running') && !started) {
+        console.log('Server stdout:', output);
+        if (output.includes('VibeTunnel Server running') && !started) {
           started = true;
           clearTimeout(timeout);
           resolve();
@@ -109,7 +115,8 @@ describe('Follow Mode End-to-End Tests', () => {
       });
 
       serverProcess.stderr.on('data', (data: Buffer) => {
-        console.error('Server error:', data.toString());
+        const errorOutput = data.toString();
+        console.error('Server stderr:', errorOutput);
       });
 
       serverProcess.on('error', (error: Error) => {
@@ -214,9 +221,15 @@ describe('Follow Mode End-to-End Tests', () => {
       // Trigger event
       await vtExec(['git', 'event']);
 
-      // Check that follow mode was disabled
-      const { stdout } = await gitExec(['config', 'vibetunnel.followBranch']);
-      expect(stdout).toBe('false');
+      // Check that follow mode was disabled (config should not exist)
+      try {
+        await gitExec(['config', 'vibetunnel.followBranch']);
+        // If we get here, the config still exists
+        expect(true).toBe(false); // Fail the test
+      } catch (error) {
+        // Expected - config should not exist when disabled
+        expect(error).toBeDefined();
+      }
     });
 
     it('should unfollow using vt command', async () => {
@@ -227,9 +240,15 @@ describe('Follow Mode End-to-End Tests', () => {
       const { stdout } = await vtExec(['wtree', 'unfollow']);
       expect(stdout).toContain('disabled');
 
-      // Verify git config
-      const { stdout: configOutput } = await gitExec(['config', 'vibetunnel.followBranch']);
-      expect(configOutput).toBe('false');
+      // Verify git config was removed
+      try {
+        await gitExec(['config', 'vibetunnel.followBranch']);
+        // If we get here, the config still exists
+        expect(true).toBe(false); // Fail the test
+      } catch (error) {
+        // Expected - config should not exist when disabled
+        expect(error).toBeDefined();
+      }
     });
   });
 

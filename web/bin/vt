@@ -185,6 +185,7 @@ DESCRIPTION:
     - follow: Enable follow mode for a specific branch
     - unfollow: Disable follow mode
     - list: List all Git worktrees
+    - create: Create a new worktree for a branch
     
     The 'vt git event' command is used by Git hooks to notify VibeTunnel
     of repository changes for automatic worktree switching.
@@ -205,6 +206,8 @@ EXAMPLES:
     vt wtree follow feature # Enable follow mode for feature branch
     vt wtree unfollow       # Disable follow mode
     vt wtree list           # List all worktrees
+    vt wtree create feature ~/work/feature    # Create worktree for feature branch
+    vt wtree create hotfix ~/work/hotfix main # Create new hotfix branch from main
     
     # Git event command (typically called by Git hooks):
     vt git event            # Notify VibeTunnel of Git changes
@@ -351,8 +354,8 @@ if [[ "$1" == "wtree" ]]; then
             # Switch to the branch using git
             git checkout "$BRANCH" || exit 1
             
-            # Enable follow mode via API
-            make_api_request "/api/worktree/follow" "POST" "{\"repo\": \"$GIT_ROOT\", \"branch\": \"$BRANCH\"}"
+            # Enable follow mode via API with branch parameter
+            make_api_request "/api/worktrees/follow" "POST" "{\"repoPath\": \"$GIT_ROOT\", \"branch\": \"$BRANCH\", \"enable\": true}"
             echo "Switched to branch '$BRANCH' and enabled follow mode"
             exit 0
             ;;
@@ -365,15 +368,15 @@ if [[ "$1" == "wtree" ]]; then
             fi
             BRANCH="$2"
             
-            # Enable follow mode via API
-            make_api_request "/api/worktree/follow" "POST" "{\"repo\": \"$GIT_ROOT\", \"branch\": \"$BRANCH\"}"
+            # Enable follow mode via API with branch parameter
+            make_api_request "/api/worktrees/follow" "POST" "{\"repoPath\": \"$GIT_ROOT\", \"branch\": \"$BRANCH\", \"enable\": true}"
             echo "Enabled follow mode for branch '$BRANCH'"
             exit 0
             ;;
             
         "unfollow")
-            # Disable follow mode via API
-            make_api_request "/api/worktree/unfollow" "POST" "{\"repo\": \"$GIT_ROOT\"}"
+            # Disable follow mode via API (branch is optional when disabling)
+            make_api_request "/api/worktrees/follow" "POST" "{\"repoPath\": \"$GIT_ROOT\", \"branch\": \"\", \"enable\": false}"
             echo "Disabled follow mode"
             exit 0
             ;;
@@ -384,9 +387,29 @@ if [[ "$1" == "wtree" ]]; then
             exit 0
             ;;
             
+        "create")
+            if [[ $# -lt 3 ]]; then
+                echo "Error: 'vt wtree create' requires a branch name and path" >&2
+                echo "Usage: vt wtree create <branch> <path> [base-branch]" >&2
+                exit 1
+            fi
+            BRANCH="$2"
+            WORKTREE_PATH="$3"
+            BASE_BRANCH="${4:-}"
+            
+            # Create worktree via API
+            if [[ -n "$BASE_BRANCH" ]]; then
+                make_api_request "/api/worktrees" "POST" "{\"repoPath\": \"$GIT_ROOT\", \"branch\": \"$BRANCH\", \"path\": \"$WORKTREE_PATH\", \"baseBranch\": \"$BASE_BRANCH\"}"
+            else
+                make_api_request "/api/worktrees" "POST" "{\"repoPath\": \"$GIT_ROOT\", \"branch\": \"$BRANCH\", \"path\": \"$WORKTREE_PATH\"}"
+            fi
+            echo "Created worktree for branch '$BRANCH' at '$WORKTREE_PATH'"
+            exit 0
+            ;;
+            
         *)
             echo "Error: Unknown wtree command: $1" >&2
-            echo "Available commands: switch, follow, unfollow, list" >&2
+            echo "Available commands: switch, follow, unfollow, list, create" >&2
             exit 1
             ;;
     esac
@@ -402,7 +425,7 @@ if [[ "$1" == "git" && "$2" == "event" ]]; then
     fi
     
     # Notify server of git event
-    make_api_request "/api/git/event" "POST" "{\"repo\": \"$GIT_ROOT\"}"
+    make_api_request "/api/git/event" "POST" "{\"repoPath\": \"$GIT_ROOT\"}"
     exit 0
 fi
 

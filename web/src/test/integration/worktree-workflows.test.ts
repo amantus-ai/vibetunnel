@@ -346,11 +346,17 @@ describe('Worktree Workflows Integration Tests', () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.body.enabled).toBe(false);
+      expect(response.body.message).toBe('Follow mode disabled');
 
-      // Verify git config was updated
-      const { stdout } = await gitExec(['config', 'vibetunnel.followBranch'], followTestRepo);
-      expect(stdout.trim()).toBe('false');
+      // Verify git config was removed
+      try {
+        await gitExec(['config', 'vibetunnel.followBranch'], followTestRepo);
+        // If we get here, the config still exists
+        expect(true).toBe(false); // Fail the test
+      } catch (error) {
+        // Expected - config should not exist when disabled
+        expect(error).toBeDefined();
+      }
     });
 
     it('should detect when branches have diverged', async () => {

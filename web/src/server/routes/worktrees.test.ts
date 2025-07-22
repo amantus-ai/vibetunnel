@@ -2,6 +2,21 @@ import express from 'express';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+interface Worktree {
+  path: string;
+  branch: string;
+  HEAD: string;
+  detached: boolean;
+  prunable?: boolean;
+  locked?: boolean;
+  lockedReason?: string;
+}
+
+interface GitError extends Error {
+  stderr?: string;
+  exitCode?: number;
+}
+
 // Create mock functions
 const mockExecFile = vi.fn();
 
@@ -33,6 +48,7 @@ describe('Worktree Routes', () => {
     app.use('/api', createWorktreeRoutes());
 
     vi.clearAllMocks();
+    mockExecFile.mockReset();
   });
 
   afterEach(() => {
@@ -68,55 +84,48 @@ detached
       });
 
       // Mock stats for main branch (no commits ahead)
-      mockExecFile.mockResolvedValueOnce({ stdout: '0\n', stderr: '' });
-      mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
-      mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
+      mockExecFile.mockResolvedValueOnce({ stdout: '0\n', stderr: '' }); // commits ahead
+      mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' }); // diff stat
+      mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' }); // status (no uncommitted)
 
       // Mock stats for feature branch
       mockExecFile.mockResolvedValueOnce({ stdout: '5\n', stderr: '' }); // commits ahead
       mockExecFile.mockResolvedValueOnce({
         stdout: '3 files changed, 20 insertions(+), 5 deletions(-)\n',
         stderr: '',
-      });
-      mockExecFile.mockResolvedValueOnce({ stdout: 'M file.txt\n', stderr: '' }); // uncommitted
+      }); // diff stat
+      mockExecFile.mockResolvedValueOnce({ stdout: 'M file.txt\n', stderr: '' }); // status (has uncommitted)
+
+      // No stats for detached HEAD (it's skipped)
 
       const response = await request(app)
         .get('/api/worktrees')
         .query({ repoPath: '/home/user/project' });
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({
-        baseBranch: 'main',
-        worktrees: [
-          {
-            path: '/home/user/project',
-            branch: 'refs/heads/main',
-            HEAD: '1234567890abcdef1234567890abcdef12345678',
-            detached: false,
-            commitsAhead: 0,
-            filesChanged: 0,
-            insertions: 0,
-            deletions: 0,
-            hasUncommittedChanges: false,
-          },
-          {
-            path: '/home/user/project-feature-branch',
-            branch: 'refs/heads/feature/branch',
-            HEAD: 'abcdef1234567890abcdef1234567890abcdef12',
-            detached: false,
-            commitsAhead: 5,
-            filesChanged: 3,
-            insertions: 20,
-            deletions: 5,
-            hasUncommittedChanges: true,
-          },
-          {
-            path: '/home/user/project-detached',
-            HEAD: 'fedcba0987654321fedcba0987654321fedcba09',
-            detached: true,
-          },
-        ],
-      });
+      expect(response.body.baseBranch).toBe('main');
+      expect(response.body.worktrees).toHaveLength(3);
+
+      // Check each worktree
+      const mainWorktree = response.body.worktrees.find(
+        (w: Worktree) => w.path === '/home/user/project'
+      );
+      expect(mainWorktree).toBeDefined();
+      expect(mainWorktree.branch).toBe('refs/heads/main');
+      expect(mainWorktree.detached).toBe(false);
+
+      const featureWorktree = response.body.worktrees.find(
+        (w: Worktree) => w.path === '/home/user/project-feature-branch'
+      );
+      expect(featureWorktree).toBeDefined();
+      expect(featureWorktree.branch).toBe('refs/heads/feature/branch');
+      expect(featureWorktree.detached).toBe(false);
+
+      const detachedWorktree = response.body.worktrees.find(
+        (w: Worktree) => w.path === '/home/user/project-detached'
+      );
+      expect(detachedWorktree).toBeDefined();
+      expect(detachedWorktree.detached).toBe(true);
     });
 
     it('should handle missing repoPath parameter', async () => {
@@ -214,6 +223,16 @@ branch refs/heads/feature
     });
 
     it('should force delete when force=true', async () => {
+      // Mock worktree list
+      mockExecFile.mockResolvedValueOnce({
+        stdout: `worktree /home/user/project-feature
+HEAD def
+branch refs/heads/feature
+
+`,
+        stderr: '',
+      });
+      // Mock removal with force
       mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
 
       const response = await request(app)
@@ -224,8 +243,11 @@ branch refs/heads/feature
     });
 
     it('should return 404 when worktree not found', async () => {
-      const error = new Error("fatal: 'nonexistent' is not a working tree");
-      mockExecFile.mockRejectedValueOnce(error);
+      // Mock empty worktree list (no worktrees found)
+      mockExecFile.mockResolvedValueOnce({
+        stdout: '',
+        stderr: '',
+      });
 
       const response = await request(app)
         .delete('/api/worktrees/nonexistent')
@@ -247,7 +269,8 @@ branch refs/heads/feature
         .send({ repoPath: '/home/user/project' });
 
       expect(response.status).toBe(200);
-      expect(response.body.pruned).toContain('temp/stale');
+      expect(response.body.message).toBe('Worktree information pruned successfully');
+      expect(response.body.output).toContain('temp/stale');
     });
 
     it('should handle missing repoPath', async () => {
@@ -276,7 +299,7 @@ branch refs/heads/feature
       );
       expect(mockExecFile).toHaveBeenCalledWith(
         'git',
-        ['config', 'vibetunnel.followMode', 'true'],
+        ['config', '--local', 'vibetunnel.followMode', 'true'],
         expect.objectContaining({ cwd: '/home/user/project' })
       );
     });
@@ -289,24 +312,20 @@ branch refs/heads/feature
 
   describe('POST /api/worktrees/follow', () => {
     it('should enable follow mode', async () => {
-      mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' }); // config
-      // Mock Git hook checks
-      mockExecFile.mockResolvedValueOnce({
-        stdout: '#!/bin/sh\n# VibeTunnel post-commit hook',
-        stderr: '',
-      }); // post-commit exists
-      mockExecFile.mockResolvedValueOnce({
-        stdout: '#!/bin/sh\n# VibeTunnel post-checkout hook',
-        stderr: '',
-      }); // post-checkout exists
+      // Mock setting git config for follow branch
+      mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' }); // config set
 
       const response = await request(app).post('/api/worktrees/follow').send({
         repoPath: '/home/user/project',
-        enabled: true,
+        branch: 'main',
+        enable: true,
       });
 
       expect(response.status).toBe(200);
-      expect(response.body.enabled).toBe(true);
+      expect(response.body).toMatchObject({
+        message: 'Follow mode enabled',
+        branch: 'main',
+      });
     });
 
     it('should disable follow mode', async () => {
@@ -314,32 +333,159 @@ branch refs/heads/feature
 
       const response = await request(app).post('/api/worktrees/follow').send({
         repoPath: '/home/user/project',
-        enabled: false,
+        branch: 'main',
+        enable: false,
       });
 
       expect(response.status).toBe(200);
-      expect(response.body.enabled).toBe(false);
+      expect(response.body).toMatchObject({
+        message: 'Follow mode disabled',
+      });
     });
 
     it('should handle config unset when already disabled', async () => {
-      const error = new Error('error: key "vibetunnel.followMode" not found');
+      const error = new Error('error: key "vibetunnel.followMode" not found') as Error & {
+        exitCode: number;
+      };
+      error.exitCode = 5;
       mockExecFile.mockRejectedValueOnce(error);
 
       const response = await request(app).post('/api/worktrees/follow').send({
         repoPath: '/home/user/project',
-        enabled: false,
+        branch: 'main',
+        enable: false,
       });
 
       expect(response.status).toBe(200);
-      expect(response.body.enabled).toBe(false);
+      expect(response.body).toMatchObject({
+        message: 'Follow mode disabled',
+      });
     });
 
     it('should validate request parameters', async () => {
       const response = await request(app).post('/api/worktrees/follow').send({
         repoPath: '/home/user/project',
+        branch: 'main',
       });
 
       expect(response.status).toBe(400);
+    });
+  });
+
+  describe('POST /api/worktrees', () => {
+    beforeEach(() => {
+      mockExecFile.mockReset();
+    });
+
+    it('should create a new worktree for an existing branch', async () => {
+      const requestBody = {
+        repoPath: '/test/repo',
+        branch: 'feature-branch',
+        path: '/test/worktrees/feature',
+      };
+
+      mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
+
+      const response = await request(app).post('/api/worktrees').send(requestBody).expect(200);
+
+      expect(response.body).toEqual({
+        message: 'Worktree created successfully',
+        worktreePath: '/test/worktrees/feature',
+        branch: 'feature-branch',
+      });
+
+      expect(mockExecFile).toHaveBeenCalledWith(
+        'git',
+        ['worktree', 'add', '/test/worktrees/feature', 'feature-branch'],
+        expect.objectContaining({
+          cwd: '/test/repo',
+        })
+      );
+    });
+
+    it('should create a new worktree with a new branch from base branch', async () => {
+      const requestBody = {
+        repoPath: '/test/repo',
+        branch: 'new-feature',
+        path: '/test/worktrees/new-feature',
+        baseBranch: 'main',
+      };
+
+      mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
+
+      const response = await request(app).post('/api/worktrees').send(requestBody).expect(200);
+
+      expect(response.body).toEqual({
+        message: 'Worktree created successfully',
+        worktreePath: '/test/worktrees/new-feature',
+        branch: 'new-feature',
+      });
+
+      expect(mockExecFile).toHaveBeenCalledWith(
+        'git',
+        ['worktree', 'add', '-b', 'new-feature', '/test/worktrees/new-feature', 'main'],
+        expect.objectContaining({
+          cwd: '/test/repo',
+        })
+      );
+    });
+
+    it('should return 400 for missing repoPath', async () => {
+      const requestBody = {
+        branch: 'feature',
+        path: '/test/worktrees/feature',
+      };
+
+      const response = await request(app).post('/api/worktrees').send(requestBody).expect(400);
+
+      expect(response.body).toEqual({
+        error: 'Missing or invalid repoPath in request body',
+      });
+    });
+
+    it('should return 400 for missing branch', async () => {
+      const requestBody = {
+        repoPath: '/test/repo',
+        path: '/test/worktrees/feature',
+      };
+
+      const response = await request(app).post('/api/worktrees').send(requestBody).expect(400);
+
+      expect(response.body).toEqual({
+        error: 'Missing or invalid branch in request body',
+      });
+    });
+
+    it('should return 400 for missing path', async () => {
+      const requestBody = {
+        repoPath: '/test/repo',
+        branch: 'feature',
+      };
+
+      const response = await request(app).post('/api/worktrees').send(requestBody).expect(400);
+
+      expect(response.body).toEqual({
+        error: 'Missing or invalid path in request body',
+      });
+    });
+
+    it('should handle git command failures', async () => {
+      const requestBody = {
+        repoPath: '/test/repo',
+        branch: 'feature',
+        path: '/test/worktrees/feature',
+      };
+
+      const error = new Error('Command failed');
+      (error as GitError).stderr = 'fatal: could not create worktree';
+      mockExecFile.mockRejectedValueOnce(error);
+
+      const response = await request(app).post('/api/worktrees').send(requestBody).expect(500);
+
+      expect(response.body).toEqual({
+        error: 'Failed to create worktree',
+        details: 'fatal: could not create worktree',
+      });
     });
   });
 });

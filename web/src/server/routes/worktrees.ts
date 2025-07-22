@@ -4,6 +4,8 @@ import { promisify } from 'util';
 import { createGitError, type GitError, isGitConfigNotFoundError } from '../utils/git-error.js';
 import { areHooksInstalled, installGitHooks } from '../utils/git-hooks.js';
 import { createLogger } from '../utils/logger.js';
+import { createControlEvent } from '../websocket/control-protocol.js';
+import { controlUnixHandler } from '../websocket/control-unix-handler.js';
 
 const logger = createLogger('worktree-routes');
 const execFile = promisify(require('child_process').execFile);
@@ -334,7 +336,9 @@ export function createWorktreeRoutes(): Router {
       });
 
       const worktrees = parseWorktreePorcelain(listOutput);
-      const worktree = worktrees.find((w) => w.branch === branch);
+      const worktree = worktrees.find(
+        (w) => w.branch === `refs/heads/${branch}` || w.branch === branch
+      );
 
       if (!worktree) {
         return res.status(404).json({
@@ -437,8 +441,7 @@ export function createWorktreeRoutes(): Router {
       // Switch to the branch
       await execGit(['checkout', branch], { cwd: absoluteRepoPath });
 
-      // Enable follow mode (delegate to follow endpoint logic)
-      // For now, just set the git config
+      // Enable follow mode for the switched branch
       await execGit(['config', '--local', 'vibetunnel.followBranch', branch], {
         cwd: absoluteRepoPath,
       });
@@ -453,6 +456,66 @@ export function createWorktreeRoutes(): Router {
       const gitError = error as GitError;
       return res.status(500).json({
         error: 'Failed to switch branch',
+        details: gitError.stderr || gitError.message,
+      });
+    }
+  });
+
+  /**
+   * POST /api/worktrees
+   * Create a new worktree
+   */
+  router.post('/worktrees', async (req, res) => {
+    try {
+      const { repoPath, branch, path: worktreePath, baseBranch } = req.body;
+
+      if (!repoPath || typeof repoPath !== 'string') {
+        return res.status(400).json({
+          error: 'Missing or invalid repoPath in request body',
+        });
+      }
+
+      if (!branch || typeof branch !== 'string') {
+        return res.status(400).json({
+          error: 'Missing or invalid branch in request body',
+        });
+      }
+
+      if (!worktreePath || typeof worktreePath !== 'string') {
+        return res.status(400).json({
+          error: 'Missing or invalid path in request body',
+        });
+      }
+
+      const absoluteRepoPath = path.resolve(repoPath);
+      const absoluteWorktreePath = path.resolve(worktreePath);
+
+      logger.debug(`Creating worktree for branch: ${branch} at path: ${absoluteWorktreePath}`);
+
+      // Create the worktree
+      const createArgs = ['worktree', 'add'];
+
+      // If baseBranch is provided, create new branch from it
+      if (baseBranch) {
+        createArgs.push('-b', branch, absoluteWorktreePath, baseBranch);
+      } else {
+        // Otherwise just checkout existing branch
+        createArgs.push(absoluteWorktreePath, branch);
+      }
+
+      await execGit(createArgs, { cwd: absoluteRepoPath });
+
+      logger.info(`Successfully created worktree at: ${absoluteWorktreePath}`);
+      return res.json({
+        message: 'Worktree created successfully',
+        worktreePath: absoluteWorktreePath,
+        branch,
+      });
+    } catch (error) {
+      logger.error('Error creating worktree:', error);
+      const gitError = error as GitError;
+      return res.status(500).json({
+        error: 'Failed to create worktree',
         details: gitError.stderr || gitError.message,
       });
     }
@@ -510,12 +573,23 @@ export function createWorktreeRoutes(): Router {
           logger.info('Git hooks installed successfully');
         }
 
-        // Set the follow branch config
+        // Set the follow mode config to the branch name
         await execGit(['config', '--local', 'vibetunnel.followBranch', branch], {
           cwd: absoluteRepoPath,
         });
 
         logger.info(`Follow mode enabled for branch: ${branch}`);
+
+        // Send notification to Mac app
+        if (controlUnixHandler.isMacAppConnected()) {
+          const notification = createControlEvent('system', 'notification', {
+            level: 'info',
+            title: 'Follow Mode Enabled',
+            message: `Now following branch '${branch}' in ${path.basename(absoluteRepoPath)}`,
+          });
+          controlUnixHandler.sendToMac(notification);
+        }
+
         return res.json({
           message: 'Follow mode enabled',
           branch,
@@ -533,8 +607,20 @@ export function createWorktreeRoutes(): Router {
         // and the hooks are harmless when follow mode is disabled (they just check for vt command)
 
         logger.info('Follow mode disabled');
+
+        // Send notification to Mac app
+        if (controlUnixHandler.isMacAppConnected()) {
+          const notification = createControlEvent('system', 'notification', {
+            level: 'info',
+            title: 'Follow Mode Disabled',
+            message: `Follow mode has been disabled for ${path.basename(absoluteRepoPath)}`,
+          });
+          controlUnixHandler.sendToMac(notification);
+        }
+
         return res.json({
           message: 'Follow mode disabled',
+          branch,
         });
       }
     } catch (error) {
