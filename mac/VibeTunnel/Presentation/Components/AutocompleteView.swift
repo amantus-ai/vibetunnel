@@ -262,13 +262,14 @@ struct AutocompleteTextField: View {
 
         // Debounce the autocomplete request
         debounceTask = Task {
-            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms
+            try? await Task.sleep(nanoseconds: 100_000_000) // 100ms - reduced for better responsiveness
 
             if !Task.isCancelled {
                 await autocompleteService.fetchSuggestions(for: newValue)
 
                 await MainActor.run {
-                    if !autocompleteService.suggestions.isEmpty {
+                    // Only show suggestions if the text hasn't changed during the async operation
+                    if text == newValue && !autocompleteService.suggestions.isEmpty {
                         showSuggestions = true
                         // Auto-select first item if it's a good match
                         if let first = autocompleteService.suggestions.first,

@@ -54,6 +54,8 @@ export class SessionHeader extends LitElement {
   @property({ type: Boolean }) macAppConnected = false;
   @property({ type: Function }) onTerminateSession?: () => void;
   @property({ type: Function }) onClearSession?: () => void;
+  @property({ type: Boolean }) hasGitRepo = false;
+  @property({ type: String }) viewMode: 'terminal' | 'worktree' = 'terminal';
   @state() private isHovered = false;
 
   connectedCallback() {
@@ -276,6 +278,25 @@ export class SessionHeader extends LitElement {
             <notification-status
               @open-settings=${() => this.onOpenSettings?.()}
             ></notification-status>
+            
+            <!-- Git Worktree Toggle (only for git repos) -->
+            ${
+              this.hasGitRepo
+                ? html`
+                  <button
+                    class="bg-bg-tertiary border border-border rounded-lg px-3 py-2 font-mono text-xs transition-all duration-200 hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0 ${
+                      this.viewMode === 'worktree' ? 'text-primary border-primary' : 'text-muted'
+                    }"
+                    @click=${() => this.dispatchEvent(new CustomEvent('toggle-view-mode'))}
+                    title="${this.viewMode === 'terminal' ? 'Show Git worktrees' : 'Show terminal'}"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v.5H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2H9V5a1.5 1.5 0 1 1 3 0v.5h1a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3h1V5a2.5 2.5 0 0 1 5 0zm-2 0a1 1 0 1 0 2 0V5a1 1 0 0 0-2 0v.5z"/>
+                    </svg>
+                  </button>
+                `
+                : ''
+            }
             
             <!-- Terminal size button -->
             <button

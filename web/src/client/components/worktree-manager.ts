@@ -182,16 +182,11 @@ export class WorktreeManager extends LitElement {
 
   render() {
     return html`
-      <div class="p-4 max-w-4xl mx-auto">
-        <div class="flex items-center justify-between mb-6">
-          <h1 class="text-2xl font-bold text-text">Git Worktrees</h1>
-          <button 
-            @click=${this.handleBack}
-            class="px-4 py-2 text-sm font-medium text-text bg-surface rounded-md hover:bg-surface-hover transition-colors border border-border"
-          >
-            Back to Sessions
-          </button>
-        </div>
+      <div class="p-4 h-full overflow-y-auto bg-bg">
+        <div class="max-w-4xl mx-auto">
+          <div class="mb-6">
+            <h1 class="text-xl font-bold text-text">Git Worktrees</h1>
+          </div>
 
         ${
           this.error
@@ -387,6 +382,7 @@ export class WorktreeManager extends LitElement {
         `
             : ''
         }
+        </div>
       </div>
     `;
   }

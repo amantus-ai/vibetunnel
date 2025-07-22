@@ -30,6 +30,8 @@ class AutocompleteService {
 
     /// Fetch autocomplete suggestions for the given path
     func fetchSuggestions(for partialPath: String) async {
+        logger.debug("[AutocompleteService] fetchSuggestions called with: '\(partialPath)'")
+        
         // Cancel any existing task
         currentTask?.cancel()
 

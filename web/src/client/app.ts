@@ -36,7 +36,6 @@ import './components/unified-settings.js';
 import './components/notification-status.js';
 import './components/auth-login.js';
 import './components/ssh-key-manager.js';
-import './components/worktree-manager.js';
 import './components/git-notification-handler.js';
 import type { GitNotificationHandler } from './components/git-notification-handler.js';
 
@@ -66,12 +65,11 @@ export class VibeTunnelApp extends LitElement {
   @state() private successMessage = '';
   @state() private sessions: Session[] = [];
   @state() private loading = false;
-  @state() private currentView: 'list' | 'session' | 'auth' | 'file-browser' | 'worktrees' = 'auth';
+  @state() private currentView: 'list' | 'session' | 'auth' | 'file-browser' = 'auth';
   @state() private selectedSessionId: string | null = null;
   @state() private hideExited = this.loadHideExitedState();
   @state() private showCreateModal = false;
   @state() private showSSHKeyManager = false;
-  @state() private worktreeRepoPath = '';
   @state() private showSettings = false;
   @state() private isAuthenticated = false;
   @state() private sidebarCollapsed = this.loadSidebarState();
@@ -348,19 +346,6 @@ export class VibeTunnelApp extends LitElement {
     if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
       e.preventDefault();
       this.handleToggleSidebar();
-      return;
-    }
-
-    // Temporary: Handle Cmd+W / Ctrl+W to open worktree view for first Git session (development only)
-    if ((e.metaKey || e.ctrlKey) && e.key === 'w' && this.currentView === 'list') {
-      e.preventDefault();
-      // Find the first session with a Git repository
-      const gitSession = this.sessions.find((s) => s.gitRepoPath);
-      if (gitSession?.gitRepoPath) {
-        this.handleNavigateToWorktrees(gitSession.gitRepoPath);
-      } else {
-        this.showError('No sessions with Git repositories found');
-      }
       return;
     }
 
@@ -995,12 +980,6 @@ export class VibeTunnelApp extends LitElement {
     }
   }
 
-  private handleNavigateToWorktrees(repoPath: string): void {
-    this.worktreeRepoPath = repoPath;
-    document.title = 'VibeTunnel - Git Worktrees';
-    this.currentView = 'worktrees';
-    this.updateUrl();
-  }
 
   private async handleKillAll() {
     // Get all running sessions from data instead of DOM elements
@@ -1273,10 +1252,7 @@ export class VibeTunnelApp extends LitElement {
       }
 
       // Route based on the path segment
-      if (pathParts[0] === 'worktrees') {
-        this.currentView = 'worktrees';
-        return;
-      } else if (pathParts[0] === 'file-browser') {
+      if (pathParts[0] === 'file-browser') {
         this.currentView = 'file-browser';
         return;
       }
@@ -1342,9 +1318,6 @@ export class VibeTunnelApp extends LitElement {
     if (this.currentView === 'file-browser') {
       // Use path-based URL for file-browser view
       url.pathname = '/file-browser';
-    } else if (this.currentView === 'worktrees') {
-      // Use path-based URL for worktrees view
-      url.pathname = '/worktrees';
     } else if (sessionId) {
       // Use path-based URL for session view
       url.pathname = `/session/${sessionId}`;
@@ -1657,35 +1630,6 @@ export class VibeTunnelApp extends LitElement {
                 @insert-path=${this.handleNavigateToList}
               ></file-browser>
             `
-            : this.currentView === 'worktrees'
-              ? html`
-              <!-- Worktree management view -->
-              <div class="flex flex-col h-screen bg-secondary">
-                <app-header
-                  .sessions=${this.sessions}
-                  .hideExited=${this.hideExited}
-                  .showSplitView=${false}
-                  .currentUser=${authClient.getCurrentUser()?.userId || null}
-                  .authMethod=${authClient.getCurrentUser()?.authMethod || null}
-                  @create-session=${this.handleCreateSession}
-                  @hide-exited-change=${this.handleHideExitedChange}
-                  @kill-all-sessions=${this.handleKillAll}
-                  @clean-exited-sessions=${this.handleCleanExited}
-                  @open-file-browser=${this.handleOpenFileBrowser}
-                  @open-settings=${this.handleOpenSettings}
-                  @logout=${this.handleLogout}
-                  @navigate-to-list=${this.handleNavigateToList}
-                  @toggle-sidebar=${this.handleToggleSidebar}
-                ></app-header>
-                <div class="flex-1 overflow-y-auto">
-                  <worktree-manager
-                    .gitService=${this.gitService}
-                    .repoPath=${this.worktreeRepoPath}
-                    @back=${this.handleNavigateToList}
-                  ></worktree-manager>
-                </div>
-              </div>
-            `
               : html`
       <!-- Main content with split view support -->
       <div class="${this.mainContainerClasses}">
@@ -1740,7 +1684,6 @@ export class VibeTunnelApp extends LitElement {
               @kill-all-sessions=${this.handleKillAll}
               @navigate-to-session=${this.handleNavigateToSession}
               @open-file-browser=${this.handleOpenFileBrowser}
-              @navigate-to-worktrees=${(e: CustomEvent) => this.handleNavigateToWorktrees(e.detail.repoPath)}
             ></session-list>
           </div>
         </div>
@@ -1819,10 +1762,6 @@ export class VibeTunnelApp extends LitElement {
         @session-created=${this.handleSessionCreated}
         @cancel=${this.handleCreateModalClose}
         @error=${this.handleError}
-        @navigate-to-worktrees=${(e: CustomEvent) => {
-          this.handleCreateModalClose();
-          this.handleNavigateToWorktrees(e.detail.repoPath);
-        }}
       ></session-create-form>
 
       <!-- Git Notification Handler -->

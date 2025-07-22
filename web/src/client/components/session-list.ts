@@ -263,16 +263,6 @@ export class SessionList extends LitElement {
     );
   };
 
-  private handleNavigateToWorktrees = (e: CustomEvent) => {
-    // Forward the event to the parent (app.ts)
-    this.dispatchEvent(
-      new CustomEvent('navigate-to-worktrees', {
-        detail: e.detail,
-        bubbles: true,
-        composed: true,
-      })
-    );
-  };
 
   private async handleDeleteSession(sessionId: string) {
     await sessionActionService.deleteSessionById(sessionId, {
@@ -719,7 +709,6 @@ export class SessionList extends LitElement {
                             @session-kill-error=${this.handleSessionKillError}
                             @session-renamed=${this.handleSessionRenamed}
                             @session-rename-error=${this.handleSessionRenameError}
-                            @navigate-to-worktrees=${this.handleNavigateToWorktrees}
                           >
                           </session-card>
                         `
@@ -874,8 +863,7 @@ export class SessionList extends LitElement {
                                     @session-kill-error=${this.handleSessionKillError}
                                     @session-renamed=${this.handleSessionRenamed}
                                     @session-rename-error=${this.handleSessionRenameError}
-                                    @navigate-to-worktrees=${this.handleNavigateToWorktrees}
-                                  >
+                                          >
                                   </session-card>
                                 `
                             }
@@ -1028,8 +1016,7 @@ export class SessionList extends LitElement {
                                     @session-kill-error=${this.handleSessionKillError}
                                     @session-renamed=${this.handleSessionRenamed}
                                     @session-rename-error=${this.handleSessionRenameError}
-                                    @navigate-to-worktrees=${this.handleNavigateToWorktrees}
-                                  >
+                                          >
                                   </session-card>
                                 `
                             }

@@ -32,6 +32,10 @@ struct NewSessionForm: View {
     @State private var gitRepoPath: String?
     @State private var selectedWorktreePath: String?
     @State private var checkingGitStatus = false
+    @State private var worktreeService: WorktreeService?
+    @State private var newWorktreeBranchName = ""
+    @State private var worktreeBaseBranch = ""
+    @State private var shouldCreateNewWorktree = false
 
     // UI state
     @State private var isCreating = false
@@ -150,11 +154,14 @@ struct NewSessionForm: View {
                     }
 
                     // Git worktree selection when Git repository is detected
-                    if isGitRepository, let repoPath = gitRepoPath {
+                    if isGitRepository, let repoPath = gitRepoPath, let service = worktreeService {
                         WorktreeSelectionView(
                             gitRepoPath: repoPath,
                             selectedWorktreePath: $selectedWorktreePath,
-                            serverManager: serverManager
+                            worktreeService: service,
+                            newBranchName: $newWorktreeBranchName,
+                            createFromBranch: $worktreeBaseBranch,
+                            shouldCreateNewWorktree: $shouldCreateNewWorktree
                         )
                         .onChange(of: selectedWorktreePath) { _, newPath in
                             if let newPath {
@@ -382,11 +389,38 @@ struct NewSessionForm: View {
 
         Task {
             do {
+                var finalWorkingDir: String
+                
+                // If we need to create a new worktree first
+                if shouldCreateNewWorktree && !newWorktreeBranchName.isEmpty, 
+                   let service = worktreeService, 
+                   let repoPath = gitRepoPath {
+                    
+                    // Create the worktree
+                    let baseBranch = worktreeBaseBranch.isEmpty ? nil : worktreeBaseBranch
+                    try await service.createWorktree(
+                        gitRepoPath: repoPath,
+                        branch: newWorktreeBranchName,
+                        createBranch: true,
+                        baseBranch: baseBranch
+                    )
+                    
+                    // Wait for worktrees to refresh
+                    await service.fetchWorktrees(for: repoPath)
+                    
+                    // Find the newly created worktree
+                    if let newWorktree = service.worktrees.first(where: { $0.branch == newWorktreeBranchName }) {
+                        finalWorkingDir = newWorktree.path
+                    } else {
+                        throw NSError(domain: "VibeTunnel", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to find newly created worktree"])
+                    }
+                } else {
+                    // Use selected worktree path if available, otherwise use the working directory
+                    finalWorkingDir = selectedWorktreePath ?? workingDirectory
+                }
+                
                 // Parse command into array
                 let commandArray = parseCommand(command.trimmingCharacters(in: .whitespacesAndNewlines))
-
-                // Use selected worktree path if available, otherwise use the working directory
-                let finalWorkingDir = selectedWorktreePath ?? workingDirectory
                 
                 // Expand tilde in working directory
                 let expandedWorkingDir = NSString(string: finalWorkingDir).expandingTildeInPath
@@ -505,7 +539,13 @@ struct NewSessionForm: View {
                 await MainActor.run {
                     self.isGitRepository = true
                     self.gitRepoPath = repo.path
+                    self.worktreeService = WorktreeService(serverManager: serverManager)
                     self.checkingGitStatus = false
+                }
+                
+                // Fetch worktrees for the repository
+                if let service = self.worktreeService {
+                    await service.fetchWorktrees(for: repo.path)
                 }
             } else {
                 print("❌ [NewSessionForm] No Git repository found")
@@ -513,6 +553,10 @@ struct NewSessionForm: View {
                     self.isGitRepository = false
                     self.gitRepoPath = nil
                     self.selectedWorktreePath = nil
+                    self.worktreeService = nil
+                    self.shouldCreateNewWorktree = false
+                    self.newWorktreeBranchName = ""
+                    self.worktreeBaseBranch = ""
                     self.checkingGitStatus = false
                 }
             }

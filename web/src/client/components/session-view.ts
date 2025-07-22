@@ -28,6 +28,8 @@ import { titleManager } from '../utils/title-manager.js';
 import './session-view/ctrl-alpha-overlay.js';
 import './session-view/width-selector.js';
 import './session-view/session-header.js';
+import './worktree-manager.js';
+import { GitService } from '../services/git-service.js';
 import { authClient } from '../services/auth-client.js';
 import { sessionActionService } from '../services/session-action-service.js';
 import { Z_INDEX } from '../utils/constants.js';
@@ -99,6 +101,7 @@ export class SessionView extends LitElement {
   @state() private isLandscape = false;
   @state() private useBinaryMode = false;
   @state() private macAppConnected = false;
+  @state() private viewMode: 'terminal' | 'worktree' = 'terminal';
 
   private preferencesManager = TerminalPreferencesManager.getInstance();
 
@@ -120,6 +123,7 @@ export class SessionView extends LitElement {
   @state() private useDirectKeyboard = false;
   @state() private showQuickKeys = false;
   @state() private keyboardHeight = 0;
+  private gitService = new GitService(authClient);
 
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
   private createHiddenInputTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -1505,6 +1509,7 @@ export class SessionView extends LitElement {
             @select-image=${() => this.handleSelectImage()}
             @open-camera=${() => this.handleOpenCamera()}
             @show-image-upload-options=${() => this.handleSelectImage()}
+            @toggle-view-mode=${() => this.handleToggleViewMode()}
             @capture-toggled=${(e: CustomEvent) => {
               this.dispatchEvent(
                 new CustomEvent('capture-toggled', {
@@ -1514,14 +1519,16 @@ export class SessionView extends LitElement {
                 })
               );
             }}
+            .hasGitRepo=${!!this.session?.gitRepoPath}
+            .viewMode=${this.viewMode}
           >
           </session-header>
         </div>
 
-        <!-- Terminal Area -->
+        <!-- Content Area (Terminal or Worktree) -->
         <div
           class="terminal-area bg-bg ${
-            this.session?.status === 'exited' ? 'session-exited opacity-90' : ''
+            this.session?.status === 'exited' && this.viewMode === 'terminal' ? 'session-exited opacity-90' : ''
           } ${
             // Add safe area padding for landscape mode on mobile to handle notch
             this.isMobile && this.isLandscape ? 'safe-area-left safe-area-right' : ''
@@ -1543,9 +1550,19 @@ export class SessionView extends LitElement {
               `
               : ''
           }
-          <!-- Enhanced Terminal Component -->
-          ${
-            this.useBinaryMode
+          ${this.viewMode === 'worktree' && this.session?.gitRepoPath
+            ? html`
+              <worktree-manager
+                .gitService=${this.gitService}
+                .repoPath=${this.session.gitRepoPath}
+                @back=${() => this.viewMode = 'terminal'}
+              ></worktree-manager>
+            `
+            : this.viewMode === 'terminal'
+            ? html`
+              <!-- Enhanced Terminal Component -->
+              ${
+                this.useBinaryMode
               ? html`
               <vibe-terminal-binary
                 .sessionId=${this.session?.id || ''}
@@ -1586,6 +1603,7 @@ export class SessionView extends LitElement {
                 @terminal-input=${this.handleTerminalInput}
               ></vibe-terminal>
             `
+              : ''
           }
         </div>
 
@@ -1896,5 +1914,18 @@ export class SessionView extends LitElement {
         },
       },
     });
+  }
+
+  private handleToggleViewMode() {
+    if (this.session?.gitRepoPath) {
+      this.viewMode = this.viewMode === 'terminal' ? 'worktree' : 'terminal';
+      // Update managers for view mode change
+      if (this.viewMode === 'terminal') {
+        // Re-initialize terminal when switching back
+        requestAnimationFrame(() => {
+          this.ensureTerminalInitialized();
+        });
+      }
+    }
   }
 }
