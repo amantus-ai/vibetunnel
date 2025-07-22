@@ -208,7 +208,7 @@ export class WorktreeManager extends LitElement {
             : html`
           <div class="space-y-4">
             <div class="text-sm text-text-muted mb-4">
-              Repository: <span class="font-mono text-text">${this.formatPath(this.repoPath)}</span>
+              Repository: <span class="font-mono text-text break-all">${this.formatPath(this.repoPath)}</span>
             </div>
             
             ${
@@ -234,9 +234,9 @@ export class WorktreeManager extends LitElement {
                 ${this.worktrees.map(
                   (worktree) => html`
                   <div class="bg-surface rounded-lg p-4 border border-border hover:border-border-focus transition-colors">
-                    <div class="flex items-start justify-between">
-                      <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-2">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-2 flex-wrap">
                           <h3 class="font-semibold text-lg text-text">
                             ${worktree.branch || 'detached'}
                           </h3>
@@ -257,7 +257,7 @@ export class WorktreeManager extends LitElement {
                         </div>
                         
                         <div class="text-sm text-text-muted space-y-1">
-                          <div class="font-mono text-text-dim">${this.formatPath(worktree.path)}</div>
+                          <div class="font-mono text-text-dim break-all">${this.formatPath(worktree.path)}</div>
                           ${
                             worktree.HEAD
                               ? html`
@@ -268,7 +268,7 @@ export class WorktreeManager extends LitElement {
                           ${
                             worktree.commitsAhead !== undefined
                               ? html`
-                            <div class="flex items-center gap-4">
+                            <div class="flex items-center gap-4 flex-wrap">
                               ${
                                 worktree.commitsAhead > 0
                                   ? html`
@@ -290,7 +290,7 @@ export class WorktreeManager extends LitElement {
                         </div>
                       </div>
                       
-                      <div class="flex gap-2 ml-4">
+                      <div class="flex gap-2 flex-wrap sm:flex-nowrap sm:ml-4">
                         ${
                           !worktree.isMainWorktree
                             ? html`
@@ -347,8 +347,8 @@ export class WorktreeManager extends LitElement {
         ${
           this.showDeleteConfirm
             ? html`
-          <div class="fixed inset-0 bg-bg/80 backdrop-blur-sm flex items-center justify-center z-50">
-            <div class="bg-surface rounded-lg p-6 max-w-md w-full mx-4 border border-border shadow-elevated">
+          <div class="fixed inset-0 bg-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div class="bg-surface rounded-lg p-6 max-w-md w-full border border-border shadow-elevated">
               <h3 class="text-lg font-semibold mb-4 text-text">Confirm Delete</h3>
               <p class="text-text-muted mb-4">
                 Are you sure you want to delete the worktree for branch 
