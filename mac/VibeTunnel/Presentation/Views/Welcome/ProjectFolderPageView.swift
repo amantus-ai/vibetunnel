@@ -6,7 +6,7 @@ import SwiftUI
 /// Allows users to select their primary project directory for repository discovery
 /// and new session defaults. This path will be synced to the web UI settings.
 struct ProjectFolderPageView: View {
-    @StateObject private var configManager = ConfigManager.shared
+    private let configManager = ConfigManager.shared
 
     @State private var selectedPath = ""
     @State private var isShowingPicker = false

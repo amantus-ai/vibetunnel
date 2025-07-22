@@ -44,6 +44,7 @@ final class StatusBarMenuManager: NSObject {
     private var terminalLauncher: TerminalLauncher?
     private var gitRepositoryMonitor: GitRepositoryMonitor?
     private var repositoryDiscovery: RepositoryDiscoveryService?
+    private var configManager: ConfigManager?
 
     // Custom window management
     fileprivate var customWindow: CustomMenuWindow?
@@ -80,6 +81,7 @@ final class StatusBarMenuManager: NSObject {
         let terminalLauncher: TerminalLauncher
         let gitRepositoryMonitor: GitRepositoryMonitor
         let repositoryDiscovery: RepositoryDiscoveryService
+        let configManager: ConfigManager
     }
 
     // MARK: - Setup
@@ -92,6 +94,7 @@ final class StatusBarMenuManager: NSObject {
         self.terminalLauncher = configuration.terminalLauncher
         self.gitRepositoryMonitor = configuration.gitRepositoryMonitor
         self.repositoryDiscovery = configuration.repositoryDiscovery
+        self.configManager = configuration.configManager
     }
 
     // MARK: - State Management
@@ -126,7 +129,10 @@ final class StatusBarMenuManager: NSObject {
               let serverManager,
               let ngrokService,
               let tailscaleService,
-              let terminalLauncher else { return }
+              let terminalLauncher,
+              let gitRepositoryMonitor,
+              let repositoryDiscovery,
+              let configManager else { return }
 
         // Update menu state to custom window FIRST before any async operations
         updateMenuState(.customWindow, button: button)
@@ -147,6 +153,7 @@ final class StatusBarMenuManager: NSObject {
         .environment(sessionService)
         .environment(gitRepositoryMonitor)
         .environment(repositoryDiscovery)
+        .environment(configManager)
 
         // Wrap in custom container for proper styling
         let containerView = CustomMenuContainer {

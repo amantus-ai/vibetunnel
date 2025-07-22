@@ -7,6 +7,25 @@ struct AutocompleteView: View {
     let onSelect: (String) -> Void
 
     var body: some View {
+        AutocompleteViewWithKeyboard(
+            suggestions: suggestions,
+            selectedIndex: $selectedIndex,
+            keyboardNavigating: false,
+            onSelect: onSelect
+        )
+    }
+}
+
+/// View that displays autocomplete suggestions with keyboard navigation support
+struct AutocompleteViewWithKeyboard: View {
+    let suggestions: [AutocompleteService.PathSuggestion]
+    @Binding var selectedIndex: Int
+    let keyboardNavigating: Bool
+    let onSelect: (String) -> Void
+    
+    @State private var lastKeyboardState = false
+
+    var body: some View {
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
                 ScrollView {
@@ -32,11 +51,15 @@ struct AutocompleteView: View {
                 }
                 .frame(maxHeight: 200)
                 .onChange(of: selectedIndex) { _, newIndex in
-                    if newIndex >= 0 && newIndex < suggestions.count {
+                    // Only animate scroll when using keyboard navigation
+                    if newIndex >= 0 && newIndex < suggestions.count && keyboardNavigating {
                         withAnimation(.easeInOut(duration: 0.1)) {
                             proxy.scrollTo(newIndex, anchor: .center)
                         }
                     }
+                }
+                .onChange(of: keyboardNavigating) { _, newValue in
+                    lastKeyboardState = newValue
                 }
             }
         }
@@ -130,6 +153,7 @@ struct AutocompleteTextField: View {
     @FocusState private var isFocused: Bool
     @State private var debounceTask: Task<Void, Never>?
     @State private var justSelectedCompletion = false
+    @State private var keyboardNavigating = false
 
     var body: some View {
         VStack(spacing: 4) {
@@ -153,9 +177,10 @@ struct AutocompleteTextField: View {
                 }
 
             if showSuggestions && !autocompleteService.suggestions.isEmpty {
-                AutocompleteView(
+                AutocompleteViewWithKeyboard(
                     suggestions: autocompleteService.suggestions,
-                    selectedIndex: $selectedIndex
+                    selectedIndex: $selectedIndex,
+                    keyboardNavigating: keyboardNavigating
                 ) { suggestion in
                     justSelectedCompletion = true
                     text = suggestion
@@ -176,10 +201,12 @@ struct AutocompleteTextField: View {
 
         switch keyPress.key {
         case .downArrow:
+            keyboardNavigating = true
             selectedIndex = min(selectedIndex + 1, autocompleteService.suggestions.count - 1)
             return .handled
 
         case .upArrow:
+            keyboardNavigating = true
             selectedIndex = max(selectedIndex - 1, -1)
             return .handled
 
@@ -190,6 +217,7 @@ struct AutocompleteTextField: View {
                 showSuggestions = false
                 selectedIndex = -1
                 autocompleteService.clearSuggestions()
+                keyboardNavigating = false
                 return .handled
             }
             return .ignored
@@ -198,6 +226,7 @@ struct AutocompleteTextField: View {
             if showSuggestions {
                 showSuggestions = false
                 selectedIndex = -1
+                keyboardNavigating = false
                 return .handled
             }
             return .ignored
@@ -217,8 +246,9 @@ struct AutocompleteTextField: View {
         // Cancel previous debounce
         debounceTask?.cancel()
 
-        // Reset selection when text changes
+        // Reset selection and keyboard navigation flag when text changes
         selectedIndex = -1
+        keyboardNavigating = false
 
         guard !newValue.isEmpty else {
             showSuggestions = false

@@ -17,7 +17,8 @@ struct NewSessionForm: View {
     private var repositoryDiscovery
     @Environment(GitRepositoryMonitor.self)
     private var gitMonitor
-    @StateObject private var configManager = ConfigManager.shared
+    @Environment(ConfigManager.self)
+    private var configManager
 
     // Form fields
     @State private var command = "zsh"

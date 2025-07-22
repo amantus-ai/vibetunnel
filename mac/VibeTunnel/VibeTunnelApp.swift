@@ -24,6 +24,7 @@ struct VibeTunnelApp: App {
     @State var gitRepositoryMonitor = GitRepositoryMonitor()
     @State var repositoryDiscoveryService = RepositoryDiscoveryService()
     @State var sessionService: SessionService?
+    @State var configManager = ConfigManager.shared
 
     init() {
         // Connect the app delegate to this app instance
@@ -52,6 +53,7 @@ struct VibeTunnelApp: App {
                 .environment(terminalLauncher)
                 .environment(gitRepositoryMonitor)
                 .environment(repositoryDiscoveryService)
+                .environment(configManager)
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 580, height: 480)
@@ -72,6 +74,7 @@ struct VibeTunnelApp: App {
                     .environment(terminalLauncher)
                     .environment(gitRepositoryMonitor)
                     .environment(repositoryDiscoveryService)
+                    .environment(configManager)
                     .environment(sessionService ?? SessionService(
                         serverManager: serverManager,
                         sessionMonitor: sessionMonitor
@@ -96,6 +99,7 @@ struct VibeTunnelApp: App {
                 .environment(terminalLauncher)
                 .environment(gitRepositoryMonitor)
                 .environment(repositoryDiscoveryService)
+                .environment(configManager)
                 .environment(sessionService ?? SessionService(
                     serverManager: serverManager,
                     sessionMonitor: sessionMonitor
@@ -288,7 +292,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
                let tailscaleService = app?.tailscaleService,
                let terminalLauncher = app?.terminalLauncher,
                let gitRepositoryMonitor = app?.gitRepositoryMonitor,
-               let repositoryDiscoveryService = app?.repositoryDiscoveryService
+               let repositoryDiscoveryService = app?.repositoryDiscoveryService,
+               let configManager = app?.configManager
             {
                 // Connect GitRepositoryMonitor to SessionMonitor for pre-caching
                 sessionMonitor.gitRepositoryMonitor = gitRepositoryMonitor
@@ -300,7 +305,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
                     tailscaleService: tailscaleService,
                     terminalLauncher: terminalLauncher,
                     gitRepositoryMonitor: gitRepositoryMonitor,
-                    repositoryDiscovery: repositoryDiscoveryService
+                    repositoryDiscovery: repositoryDiscoveryService,
+                    configManager: configManager
                 )
             }
 

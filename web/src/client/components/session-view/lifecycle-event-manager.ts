@@ -242,6 +242,12 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       return;
     }
 
+    // Don't capture keyboard input for exited sessions (except Escape handled above)
+    if (this.session.status === 'exited') {
+      // Allow normal browser behavior for exited sessions
+      return;
+    }
+
     // Only prevent default for keys we're actually going to handle
     consumeEvent(e);
 

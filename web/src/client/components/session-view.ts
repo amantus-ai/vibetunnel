@@ -30,6 +30,7 @@ import './session-view/width-selector.js';
 import './session-view/session-header.js';
 import { authClient } from '../services/auth-client.js';
 import { sessionActionService } from '../services/session-action-service.js';
+import { Z_INDEX } from '../utils/constants.js';
 import { createLogger } from '../utils/logger.js';
 import {
   COMMON_TERMINAL_WIDTHS,
@@ -103,6 +104,7 @@ export class SessionView extends LitElement {
 
   // Bound event handlers to ensure proper cleanup
   private boundHandleDragOver = this.handleDragOver.bind(this);
+  private boundHandleDragEnter = this.handleDragEnter.bind(this);
   private boundHandleDragLeave = this.handleDragLeave.bind(this);
   private boundHandleDrop = this.handleDrop.bind(this);
   private boundHandlePaste = this.handlePaste.bind(this);
@@ -422,6 +424,7 @@ export class SessionView extends LitElement {
 
     // Add drag & drop and paste event listeners
     this.addEventListener('dragover', this.boundHandleDragOver);
+    this.addEventListener('dragenter', this.boundHandleDragEnter);
     this.addEventListener('dragleave', this.boundHandleDragLeave);
     this.addEventListener('drop', this.boundHandleDrop);
     document.addEventListener('paste', this.boundHandlePaste);
@@ -441,9 +444,14 @@ export class SessionView extends LitElement {
 
     // Remove drag & drop and paste event listeners
     this.removeEventListener('dragover', this.boundHandleDragOver);
+    this.removeEventListener('dragenter', this.boundHandleDragEnter);
     this.removeEventListener('dragleave', this.boundHandleDragLeave);
     this.removeEventListener('drop', this.boundHandleDrop);
     document.removeEventListener('paste', this.boundHandlePaste);
+
+    // Reset drag counter
+    this.dragCounter = 0;
+    this.isDragOver = false;
 
     // Clear any pending timeout
     if (this.createHiddenInputTimeout) {
@@ -1148,9 +1156,23 @@ export class SessionView extends LitElement {
   }
 
   // Drag & Drop handlers
+  private dragCounter = 0; // Track drag enter/leave events
+
   private handleDragOver(e: DragEvent) {
     e.preventDefault();
     e.stopPropagation();
+
+    // Check if the drag contains files
+    if (e.dataTransfer?.types.includes('Files')) {
+      this.isDragOver = true;
+    }
+  }
+
+  private handleDragEnter(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    this.dragCounter++;
 
     // Check if the drag contains files
     if (e.dataTransfer?.types.includes('Files')) {
@@ -1162,12 +1184,10 @@ export class SessionView extends LitElement {
     e.preventDefault();
     e.stopPropagation();
 
-    // Only hide drag overlay if we're leaving the main container
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
+    this.dragCounter--;
 
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+    // Only hide overlay when all drag operations have left
+    if (this.dragCounter === 0) {
       this.isDragOver = false;
     }
   }
@@ -1176,6 +1196,7 @@ export class SessionView extends LitElement {
     e.preventDefault();
     e.stopPropagation();
     this.isDragOver = false;
+    this.dragCounter = 0; // Reset counter on drop
 
     const files = Array.from(e.dataTransfer?.files || []);
 
@@ -1663,10 +1684,12 @@ export class SessionView extends LitElement {
             this.session?.status === 'exited'
               ? html`
                 <div
-                  class="fixed inset-0 flex items-center justify-center pointer-events-none z-[25]"
+                  class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+                  style="z-index: ${Z_INDEX.SESSION_EXITED_OVERLAY}; pointer-events: none !important;"
                 >
                   <div
                     class="bg-elevated border border-status-warning text-status-warning font-medium text-sm tracking-wide px-6 py-3 rounded-lg shadow-elevated animate-scale-in"
+                    style="pointer-events: none !important;"
                   >
                     <span class="flex items-center gap-2">
                       <span class="w-2 h-2 rounded-full bg-status-warning"></span>

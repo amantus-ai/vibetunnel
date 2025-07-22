@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Settings section for managing quick start commands
 struct QuickStartSettingsSection: View {
-    @StateObject private var configManager = ConfigManager.shared
+    @Environment(ConfigManager.self) private var configManager
     @State private var editingCommandId: String?
     @State private var newCommandName = ""
     @State private var newCommandCommand = ""
