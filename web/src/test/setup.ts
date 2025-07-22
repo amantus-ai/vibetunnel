@@ -111,7 +111,7 @@ global.IntersectionObserver = class IntersectionObserver {
 // Mock localStorage for Node environment
 if (typeof window === 'undefined') {
   const localStorageStore: Record<string, string> = {};
-  
+
   global.localStorage = {
     getItem: vi.fn((key: string) => localStorageStore[key] || null),
     setItem: vi.fn((key: string, value: string) => {
@@ -121,7 +121,7 @@ if (typeof window === 'undefined') {
       delete localStorageStore[key];
     }),
     clear: vi.fn(() => {
-      Object.keys(localStorageStore).forEach(key => {
+      Object.keys(localStorageStore).forEach((key) => {
         delete localStorageStore[key];
       });
     }),
@@ -131,7 +131,7 @@ if (typeof window === 'undefined') {
     }),
     get length() {
       return Object.keys(localStorageStore).length;
-    }
+    },
   } as Storage;
 }
 

@@ -76,8 +76,7 @@ describe('Events Router', () => {
       }
       const routes = (eventsRouter as unknown as { stack: RouteLayer[] }).stack;
       const notificationRoute = routes.find(
-        (r: RouteLayer) =>
-          r.route && r.route.path === '/events' && r.route.methods.get
+        (r: RouteLayer) => r.route && r.route.path === '/events' && r.route.methods.get
       );
       expect(notificationRoute).toBeTruthy();
 
@@ -95,22 +94,22 @@ describe('Events Router', () => {
     it('should send initial connection message', async () => {
       const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: RouteLayer) =>
-          r.route && r.route.path === '/events' && r.route.methods.get
+        (r: RouteLayer) => r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
       await handler(mockRequest, mockResponse);
 
       // Verify initial connection event
-      expect(mockResponse.write).toHaveBeenCalledWith('event: connected\ndata: {"type": "connected"}\n\n');
+      expect(mockResponse.write).toHaveBeenCalledWith(
+        'event: connected\ndata: {"type": "connected"}\n\n'
+      );
     });
 
     it('should forward sessionExit events as SSE', async () => {
       const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: RouteLayer) =>
-          r.route && r.route.path === '/events' && r.route.methods.get
+        (r: RouteLayer) => r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
@@ -143,8 +142,7 @@ describe('Events Router', () => {
     it('should forward commandFinished events as SSE', async () => {
       const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: RouteLayer) =>
-          r.route && r.route.path === '/events' && r.route.methods.get
+        (r: RouteLayer) => r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
@@ -173,8 +171,7 @@ describe('Events Router', () => {
     it('should handle multiple events', async () => {
       const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: RouteLayer) =>
-          r.route && r.route.path === '/events' && r.route.methods.get
+        (r: RouteLayer) => r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
@@ -199,8 +196,7 @@ describe('Events Router', () => {
 
       const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: RouteLayer) =>
-          r.route && r.route.path === '/events' && r.route.methods.get
+        (r: RouteLayer) => r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
@@ -221,8 +217,7 @@ describe('Events Router', () => {
     it('should clean up listeners on client disconnect', async () => {
       const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: RouteLayer) =>
-          r.route && r.route.path === '/events' && r.route.methods.get
+        (r: RouteLayer) => r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
@@ -256,8 +251,7 @@ describe('Events Router', () => {
 
       const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: RouteLayer) =>
-          r.route && r.route.path === '/events' && r.route.methods.get
+        (r: RouteLayer) => r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
@@ -272,8 +266,7 @@ describe('Events Router', () => {
     it('should include event ID for proper SSE format', async () => {
       const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: RouteLayer) =>
-          r.route && r.route.path === '/events' && r.route.methods.get
+        (r: RouteLayer) => r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
@@ -297,8 +290,7 @@ describe('Events Router', () => {
     it('should handle malformed event data', async () => {
       const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: RouteLayer) =>
-          r.route && r.route.path === '/events' && r.route.methods.get
+        (r: RouteLayer) => r.route && r.route.path === '/events' && r.route.methods.get
       );
 
       const handler = notificationRoute.route.stack[0].handle;
@@ -329,8 +321,7 @@ describe('Events Router', () => {
     it('should handle multiple concurrent SSE connections', async () => {
       const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
-        (r: RouteLayer) =>
-          r.route && r.route.path === '/events' && r.route.methods.get
+        (r: RouteLayer) => r.route && r.route.path === '/events' && r.route.methods.get
       );
       const handler = notificationRoute.route.stack[0].handle;
 

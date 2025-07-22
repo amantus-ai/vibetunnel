@@ -168,7 +168,12 @@ describe('Claude Turn Events', () => {
         })
         .filter(Boolean);
 
-      expect(eventTypes).toEqual(['session-start', 'claude-turn', 'command-finished', 'session-exit']);
+      expect(eventTypes).toEqual([
+        'session-start',
+        'claude-turn',
+        'command-finished',
+        'session-exit',
+      ]);
     });
 
     it('should properly format SSE message for claude-turn', async () => {
