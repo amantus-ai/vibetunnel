@@ -1,8 +1,9 @@
 /**
- * Mobile Menu Component
+ * Compact Menu Component
  *
- * Consolidates session header actions into a single dropdown menu for mobile devices.
- * Includes file browser, width settings, and other controls.
+ * Consolidates session header actions into a single dropdown menu when space is limited.
+ * Used on mobile devices and desktop when the header doesn't have enough space for individual buttons.
+ * Includes file browser, width settings, image upload, theme toggle, and other controls.
  */
 import { html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
@@ -10,8 +11,8 @@ import type { Session } from '../../../shared/types.js';
 import { Z_INDEX } from '../../utils/constants.js';
 import type { Theme } from '../theme-toggle-icon.js';
 
-@customElement('mobile-menu')
-export class MobileMenu extends LitElement {
+@customElement('compact-menu')
+export class CompactMenu extends LitElement {
   // Disable shadow DOM to use Tailwind
   createRenderRoot() {
     return this;
@@ -242,7 +243,7 @@ export class MobileMenu extends LitElement {
         <button
           class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onCreateSession)}
-          data-testid="mobile-new-session"
+          data-testid="compact-new-session"
           tabindex="${this.showMenu ? '0' : '-1'}"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -257,7 +258,7 @@ export class MobileMenu extends LitElement {
         <button
           class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onOpenFileBrowser)}
-          data-testid="mobile-file-browser"
+          data-testid="compact-file-browser"
           tabindex="${this.showMenu ? '0' : '-1'}"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -270,7 +271,7 @@ export class MobileMenu extends LitElement {
         <button
           class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onUploadImage)}
-          data-testid="mobile-upload-image"
+          data-testid="compact-upload-image"
           tabindex="${this.showMenu ? '0' : '-1'}"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -283,7 +284,7 @@ export class MobileMenu extends LitElement {
         <button
           class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onMaxWidthToggle)}
-          data-testid="mobile-width-settings"
+          data-testid="compact-width-settings"
           tabindex="${this.showMenu ? '0' : '-1'}"
         >
           <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
@@ -299,7 +300,7 @@ export class MobileMenu extends LitElement {
               <button
                 class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
                 @click=${() => this.handleAction(this.onToggleViewMode)}
-                data-testid="mobile-worktree-toggle"
+                data-testid="compact-worktree-toggle"
                 tabindex="${this.showMenu ? '0' : '-1'}"
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
@@ -315,7 +316,7 @@ export class MobileMenu extends LitElement {
         <button
           class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleThemeChange()}
-          data-testid="mobile-theme-toggle"
+          data-testid="compact-theme-toggle"
           tabindex="${this.showMenu ? '0' : '-1'}"
         >
           ${this.getThemeIcon()}
@@ -326,7 +327,7 @@ export class MobileMenu extends LitElement {
         <button
           class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
           @click=${() => this.handleAction(this.onOpenSettings)}
-          data-testid="mobile-settings"
+          data-testid="compact-settings"
           tabindex="${this.showMenu ? '0' : '-1'}"
         >
           <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
@@ -347,7 +348,7 @@ export class MobileMenu extends LitElement {
             <button
               class="w-full text-left px-4 py-3 text-sm font-mono text-status-error hover:bg-secondary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary' : ''}"
               @click=${() => this.handleAction(this.onTerminateSession)}
-              data-testid="mobile-terminate-session"
+              data-testid="compact-terminate-session"
               tabindex="${this.showMenu ? '0' : '-1'}"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -360,7 +361,7 @@ export class MobileMenu extends LitElement {
             <button
               class="w-full text-left px-4 py-3 text-sm font-mono text-muted hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
               @click=${() => this.handleAction(this.onClearSession)}
-              data-testid="mobile-clear-session"
+              data-testid="compact-clear-session"
               tabindex="${this.showMenu ? '0' : '-1'}"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">

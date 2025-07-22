@@ -23,6 +23,8 @@ import type { Session } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import './session-card.js';
 import './inline-edit.js';
+import './session-list/compact-session-card.js';
+import './session-list/repository-header.js';
 import { getBaseRepoName } from '../../shared/utils/git.js';
 import { formatSessionDuration } from '../../shared/utils/time.js';
 import { sessionActionService } from '../services/session-action-service.js';
@@ -934,22 +936,12 @@ export class SessionList extends LitElement {
                             ${
                               repoPath
                                 ? html`
-                                  <div class="flex items-center justify-between mb-3">
-                                    <div class="flex items-center gap-2">
-                                      <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                          d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
-                                      </svg>
-                                      <h4 class="text-sm font-medium text-text-muted flex items-center gap-2">
-                                        ${this.getRepoName(repoPath)}
-                                        ${this.renderFollowModeIndicator(repoPath)}
-                                      </h4>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                      ${this.renderFollowModeSelector(repoPath)}
-                                      ${this.renderWorktreeSelector(repoPath)}
-                                    </div>
-                                  </div>
+                                  <repository-header
+                                    .repoPath=${repoPath}
+                                    .followMode=${this.repoFollowMode.get(repoPath)}
+                                    .followModeSelector=${this.renderFollowModeSelector(repoPath)}
+                                    .worktreeSelector=${this.renderWorktreeSelector(repoPath)}
+                                  ></repository-header>
                                 `
                                 : ''
                             }
@@ -961,183 +953,15 @@ export class SessionList extends LitElement {
                     ${
                       this.compactMode
                         ? html`
-                          <!-- Enhanced compact list item for sidebar -->
-                          <div
-                            class="group flex items-center gap-3 p-3 rounded-lg cursor-pointer ${
-                              session.id === this.selectedSessionId
-                                ? 'bg-bg-elevated border border-accent-primary shadow-card-hover'
-                                : 'bg-bg-secondary border border-border hover:bg-bg-tertiary hover:border-border-light hover:shadow-card'
-                            }"
-                            @click=${() =>
-                              this.handleSessionSelect({ detail: session } as CustomEvent)}
-                          >
-                            <!-- Enhanced activity indicator with pulse animation -->
-                            <div class="relative flex-shrink-0">
-                              <div
-                                class="w-2.5 h-2.5 rounded-full ${
-                                  session.status === 'running'
-                                    ? session.activityStatus?.specificStatus
-                                      ? 'bg-status-warning animate-pulse-primary' // Claude active - amber with pulse
-                                      : session.activityStatus?.isActive
-                                        ? 'bg-status-success' // Generic active
-                                        : 'bg-status-success ring-1 ring-status-success ring-opacity-50' // Idle (subtle outline)
-                                    : 'bg-status-error'
-                                }"
-                                title="${
-                                  session.status === 'running' && session.activityStatus
-                                    ? session.activityStatus.specificStatus
-                                      ? `Active: ${session.activityStatus.specificStatus.app}`
-                                      : session.activityStatus.isActive
-                                        ? 'Active'
-                                        : 'Idle'
-                                    : session.status
-                                }"
-                              ></div>
-                              <!-- Pulse ring for active sessions -->
-                              ${
-                                session.status === 'running' && session.activityStatus?.isActive
-                                  ? html`<div class="absolute inset-0 w-2.5 h-2.5 rounded-full bg-status-success opacity-30 animate-ping"></div>`
-                                  : ''
-                              }
-                            </div>
-                            
-                            <!-- Elegant divider line -->
-                            <div class="w-px h-8 bg-gradient-to-b from-transparent via-border to-transparent"></div>
-                            
-                            <!-- Session content -->
-                            <div class="flex-1 min-w-0">
-                              <div class="flex items-center gap-2 min-w-0">
-                                <div
-                                  class="text-sm font-mono truncate ${
-                                    session.id === this.selectedSessionId
-                                      ? 'text-accent-primary font-medium'
-                                      : 'text-text group-hover:text-accent-primary transition-colors'
-                                  }"
-                                >
-                                  <inline-edit
-                                    .value=${
-                                      session.name ||
-                                      (Array.isArray(session.command)
-                                        ? session.command.join(' ')
-                                        : session.command)
-                                    }
-                                    .placeholder=${
-                                      Array.isArray(session.command)
-                                        ? session.command.join(' ')
-                                        : session.command
-                                    }
-                                    .onSave=${(newName: string) => this.handleRename(session.id, newName)}
-                                  ></inline-edit>
-                                </div>
-                                <!-- Git changes indicator -->
-                                ${this.renderGitChanges(session)}
-                              </div>
-                              <div class="text-xs text-text-muted truncate flex items-center gap-1">
-                                ${(() => {
-                                  // Build the path line with Git info
-                                  const parts = [];
-
-                                  // Add activity status if present
-                                  if (session.activityStatus?.specificStatus) {
-                                    parts.push(
-                                      html`<span class="text-status-warning flex-shrink-0">${session.activityStatus.specificStatus.status}</span>`
-                                    );
-                                  }
-
-                                  // Add path
-                                  parts.push(
-                                    html`<span class="truncate">${formatPathForDisplay(session.workingDir)}</span>`
-                                  );
-
-                                  // Add Git branch if present
-                                  if (session.gitBranch) {
-                                    parts.push(
-                                      html`<span class="text-status-success font-mono">${session.gitBranch}</span>`
-                                    );
-                                    if (session.gitIsWorktree) {
-                                      parts.push(html`<span class="text-purple-400">⎇</span>`);
-                                    }
-                                  }
-
-                                  // Join parts with separator
-                                  return parts.map((part, index) => {
-                                    if (index === 0) return part;
-                                    return html`<span class="text-text-muted/50">·</span>${part}`;
-                                  });
-                                })()}
-                              </div>
-                            </div>
-                            
-                            <!-- Right side: duration and close button -->
-                            <div class="relative flex items-center flex-shrink-0 gap-1">
-                              ${
-                                'ontouchstart' in window
-                                  ? html`
-                                    <!-- Touch devices: Close button left of time -->
-                                    ${
-                                      session.status === 'running' || session.status === 'exited'
-                                        ? html`
-                                          <button
-                                            class="btn-ghost text-status-error p-1.5 rounded-md transition-all hover:bg-elevated hover:shadow-sm hover:scale-110"
-                                            @click=${async (e: Event) => {
-                                              e.stopPropagation();
-                                              // Kill the session
-                                              try {
-                                                await this.handleDeleteSession(session.id);
-                                              } catch (error) {
-                                                logger.error('Failed to kill session', error);
-                                              }
-                                            }}
-                                            title="Kill Session"
-                                          >
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                            </svg>
-                                          </button>
-                                        `
-                                        : ''
-                                    }
-                                    <div class="text-xs text-text-muted font-mono">
-                                      ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
-                                    </div>
-                                  `
-                                  : html`
-                                    <!-- Desktop: Time that hides on hover -->
-                                    <div class="text-xs text-text-muted font-mono transition-opacity group-hover:opacity-0">
-                                      ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
-                                    </div>
-                                    
-                                    <!-- Desktop: Buttons show on hover -->
-                                    <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-0">
-                                      <!-- Close button -->
-                                      ${
-                                        session.status === 'running' || session.status === 'exited'
-                                          ? html`
-                                            <button
-                                              class="btn-ghost text-status-error p-1.5 rounded-md transition-all hover:bg-elevated hover:shadow-sm hover:scale-110"
-                                              @click=${async (e: Event) => {
-                                                e.stopPropagation();
-                                                // Kill the session
-                                                try {
-                                                  await this.handleDeleteSession(session.id);
-                                                } catch (error) {
-                                                  logger.error('Failed to kill session', error);
-                                                }
-                                              }}
-                                              title="Kill Session"
-                                            >
-                                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                              </svg>
-                                            </button>
-                                          `
-                                          : ''
-                                      }
-                                    </div>
-                                  `
-                              }
-                            </div>
-                          </div>
+                          <compact-session-card
+                            .session=${session}
+                            .authClient=${this.authClient}
+                            .selected=${session.id === this.selectedSessionId}
+                            .sessionType=${'active'}
+                            @session-select=${this.handleSessionSelect}
+                            @session-rename=${this.handleSessionRenamed}
+                            @session-delete=${this.handleSessionKilled}
+                          ></compact-session-card>
                         `
                         : html`
                           <!-- Full session card for main view -->
@@ -1179,22 +1003,12 @@ export class SessionList extends LitElement {
                             ${
                               repoPath
                                 ? html`
-                                  <div class="flex items-center justify-between mb-3">
-                                    <div class="flex items-center gap-2">
-                                      <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                          d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
-                                      </svg>
-                                      <h4 class="text-sm font-medium text-text-muted flex items-center gap-2">
-                                        ${this.getRepoName(repoPath)}
-                                        ${this.renderFollowModeIndicator(repoPath)}
-                                      </h4>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                      ${this.renderFollowModeSelector(repoPath)}
-                                      ${this.renderWorktreeSelector(repoPath)}
-                                    </div>
-                                  </div>
+                                  <repository-header
+                                    .repoPath=${repoPath}
+                                    .followMode=${this.repoFollowMode.get(repoPath)}
+                                    .followModeSelector=${this.renderFollowModeSelector(repoPath)}
+                                    .worktreeSelector=${this.renderWorktreeSelector(repoPath)}
+                                  ></repository-header>
                                 `
                                 : ''
                             }
@@ -1206,123 +1020,15 @@ export class SessionList extends LitElement {
                             ${
                               this.compactMode
                                 ? html`
-                                  <!-- Enhanced compact list item for sidebar -->
-                                  <div
-                                    class="group flex items-center gap-3 p-3 rounded-lg cursor-pointer ${
-                                      session.id === this.selectedSessionId
-                                        ? 'bg-bg-elevated border border-accent-primary shadow-card-hover'
-                                        : 'bg-bg-secondary border border-border hover:bg-bg-tertiary hover:border-border-light hover:shadow-card'
-                                    }"
-                                    @click=${() =>
-                                      this.handleSessionSelect({ detail: session } as CustomEvent)}
-                                  >
-                                    <!-- Status indicator for idle sessions -->
-                                    <div class="relative flex-shrink-0">
-                                      <div class="w-2.5 h-2.5 rounded-full bg-status-success ring-1 ring-status-success ring-opacity-50"
-                                           title="Idle"></div>
-                                    </div>
-                                    
-                                    <!-- Elegant divider line -->
-                                    <div class="w-px h-8 bg-gradient-to-b from-transparent via-border to-transparent"></div>
-                                    
-                                    <!-- Session content -->
-                                    <div class="flex-1 min-w-0">
-                                      <div class="flex items-center gap-2 min-w-0">
-                                        <div
-                                          class="text-sm font-mono truncate ${
-                                            session.id === this.selectedSessionId
-                                              ? 'text-accent-primary font-medium'
-                                              : 'text-text group-hover:text-accent-primary transition-colors'
-                                          }"
-                                          title="${
-                                            session.name ||
-                                            (Array.isArray(session.command)
-                                              ? session.command.join(' ')
-                                              : session.command)
-                                          }"
-                                        >
-                                          ${
-                                            session.name ||
-                                            (Array.isArray(session.command)
-                                              ? session.command.join(' ')
-                                              : session.command)
-                                          }
-                                        </div>
-                                        <!-- Git changes indicator -->
-                                        ${this.renderGitChanges(session)}
-                                      </div>
-                                      <div class="text-xs text-text-dim truncate flex items-center gap-1">
-                                        <span class="truncate">${formatPathForDisplay(session.workingDir)}</span>
-                                        ${
-                                          session.gitBranch
-                                            ? html`
-                                            <span class="text-text-muted/50">·</span>
-                                            <span class="text-status-success font-mono">${session.gitBranch}</span>
-                                            ${session.gitIsWorktree ? html`<span class="text-purple-400">⎇</span>` : ''}
-                                          `
-                                            : ''
-                                        }
-                                      </div>
-                                    </div>
-                                    
-                                    <!-- Right side: duration and close button -->
-                                    <div class="relative flex items-center flex-shrink-0 gap-1">
-                                      ${
-                                        'ontouchstart' in window
-                                          ? html`
-                                            <!-- Touch devices: Close button left of time -->
-                                            <button
-                                              class="btn-ghost text-status-error p-1.5 rounded-md transition-all hover:bg-elevated hover:shadow-sm hover:scale-110"
-                                              @click=${async (e: Event) => {
-                                                e.stopPropagation();
-                                                // Kill the session
-                                                try {
-                                                  await this.handleDeleteSession(session.id);
-                                                } catch (error) {
-                                                  logger.error('Failed to kill session', error);
-                                                }
-                                              }}
-                                              title="Kill Session"
-                                            >
-                                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                              </svg>
-                                            </button>
-                                            <div class="text-xs text-text-dim font-mono">
-                                              ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
-                                            </div>
-                                          `
-                                          : html`
-                                            <!-- Desktop: Time that hides on hover -->
-                                            <div class="text-xs text-text-dim font-mono transition-opacity group-hover:opacity-0">
-                                              ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
-                                            </div>
-                                            
-                                            <!-- Desktop: Buttons show on hover -->
-                                            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-0">
-                                              <!-- Kill button -->
-                                              <button
-                                                class="btn-ghost text-status-error p-1.5 rounded-md transition-all hover:bg-elevated hover:shadow-sm hover:scale-110"
-                                                @click=${async (e: Event) => {
-                                                  e.stopPropagation();
-                                                  // Kill the session
-                                                  try {
-                                                    await this.handleDeleteSession(session.id);
-                                                  } catch (error) {
-                                                    logger.error('Failed to kill session', error);
-                                                  }
-                                                }}
-                                                title="Kill Session"
-                                              >
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                </svg>
-                                              </button>
-                                            </div>
-                                          `
-                                      }
-                                    </div>
-                                  </div>
+                                  <compact-session-card
+                                    .session=${session}
+                                    .authClient=${this.authClient}
+                                    .selected=${session.id === this.selectedSessionId}
+                                    .sessionType=${'idle'}
+                                    @session-select=${this.handleSessionSelect}
+                                    @session-rename=${this.handleSessionRenamed}
+                                    @session-delete=${this.handleSessionKilled}
+                                  ></compact-session-card>
                                 `
                                 : html`
                                   <!-- Full session card for main view -->
@@ -1364,22 +1070,12 @@ export class SessionList extends LitElement {
                             ${
                               repoPath
                                 ? html`
-                                  <div class="flex items-center justify-between mb-3">
-                                    <div class="flex items-center gap-2">
-                                      <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                          d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
-                                      </svg>
-                                      <h4 class="text-sm font-medium text-text-muted flex items-center gap-2">
-                                        ${this.getRepoName(repoPath)}
-                                        ${this.renderFollowModeIndicator(repoPath)}
-                                      </h4>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                      ${this.renderFollowModeSelector(repoPath)}
-                                      ${this.renderWorktreeSelector(repoPath)}
-                                    </div>
-                                  </div>
+                                  <repository-header
+                                    .repoPath=${repoPath}
+                                    .followMode=${this.repoFollowMode.get(repoPath)}
+                                    .followModeSelector=${this.renderFollowModeSelector(repoPath)}
+                                    .worktreeSelector=${this.renderWorktreeSelector(repoPath)}
+                                  ></repository-header>
                                 `
                                 : ''
                             }

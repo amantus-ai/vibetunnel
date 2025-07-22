@@ -15,7 +15,7 @@ import '../keyboard-capture-indicator.js';
 import { authClient } from '../../services/auth-client.js';
 import { isAIAssistantSession, sendAIPrompt } from '../../utils/ai-sessions.js';
 import { createLogger } from '../../utils/logger.js';
-import './mobile-menu.js';
+import './compact-menu.js';
 import '../theme-toggle-icon.js';
 import './image-upload-menu.js';
 import './session-status-dropdown.js';
@@ -57,12 +57,76 @@ export class SessionHeader extends LitElement {
   @property({ type: Boolean }) hasGitRepo = false;
   @property({ type: String }) viewMode: 'terminal' | 'worktree' = 'terminal';
   @state() private isHovered = false;
+  @state() private useCompactMenu = false;
+  private resizeObserver?: ResizeObserver;
 
   connectedCallback() {
     super.connectedCallback();
     // Load saved theme preference
     const saved = localStorage.getItem('vibetunnel-theme');
     this.currentTheme = (saved as 'light' | 'dark' | 'system') || 'system';
+
+    // Setup resize observer for responsive button switching
+    this.setupResizeObserver();
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+  }
+
+  private setupResizeObserver() {
+    // Observe the header container for size changes
+    this.resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        this.checkButtonSpace(entry.contentRect.width);
+      }
+    });
+
+    // Start observing after the element is rendered
+    this.updateComplete.then(() => {
+      const headerContainer = this.querySelector('.session-header-container');
+      if (headerContainer) {
+        this.resizeObserver?.observe(headerContainer);
+      }
+    });
+  }
+
+  private checkButtonSpace(containerWidth: number) {
+    // Calculate the minimum space needed for all individual buttons
+    // Button widths (including padding):
+    const imageUploadButton = 40;
+    const themeToggleButton = 40;
+    const settingsButton = 40;
+    const widthSelectorButton = 100; // Wider due to text content
+    const statusDropdownButton = 100; // Wider due to text content
+    const buttonGap = 8;
+
+    // Other elements:
+    const captureIndicatorWidth = 80; // Keyboard capture indicator
+    const sessionInfoMinWidth = 250; // Minimum space for session name/path
+    const sidebarToggleWidth = this.showSidebarToggle && this.sidebarCollapsed ? 56 : 0; // Including gap
+    const padding = 32; // Container padding
+
+    // Calculate total required width
+    const buttonsWidth =
+      imageUploadButton +
+      themeToggleButton +
+      settingsButton +
+      widthSelectorButton +
+      statusDropdownButton +
+      buttonGap * 4;
+
+    const requiredWidth =
+      sessionInfoMinWidth + sidebarToggleWidth + captureIndicatorWidth + buttonsWidth + padding;
+
+    // Switch to compact menu if not enough space (with some buffer)
+    const shouldUseCompact = containerWidth < requiredWidth + 50;
+    if (shouldUseCompact !== this.useCompactMenu) {
+      this.useCompactMenu = shouldUseCompact;
+    }
   }
 
   private getStatusText(): string {
@@ -104,7 +168,7 @@ export class SessionHeader extends LitElement {
     return html`
       <!-- Header content -->
       <div
-        class="flex items-center justify-between border-b border-border text-sm min-w-0 bg-bg-secondary px-4 py-2"
+        class="flex items-center justify-between border-b border-border text-sm min-w-0 bg-bg-secondary px-4 py-2 session-header-container"
         style="padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right));"
       >
         <div class="flex items-center gap-3 min-w-0 flex-1 overflow-hidden flex-shrink">
@@ -240,16 +304,7 @@ export class SessionHeader extends LitElement {
           </div>
         </div>
         <div class="flex items-center gap-2 text-xs flex-shrink-0 ml-2">
-          <!-- Status dropdown - desktop only -->
-          <div class="hidden sm:block">
-            <session-status-dropdown
-              .session=${this.session}
-              .onTerminate=${this.onTerminateSession}
-              .onClear=${this.onClearSession}
-            ></session-status-dropdown>
-          </div>
-          
-          <!-- Keyboard capture indicator -->
+          <!-- Keyboard capture indicator (always visible) -->
           <keyboard-capture-indicator
             .active=${this.keyboardCaptureActive}
             .isMobile=${this.isMobile}
@@ -264,61 +319,78 @@ export class SessionHeader extends LitElement {
             }}
           ></keyboard-capture-indicator>
           
-          <!-- Desktop buttons - hidden on mobile -->
-          <div class="hidden sm:flex items-center gap-2">
-            <!-- Image Upload Menu -->
-            <image-upload-menu
-              .onPasteImage=${() => this.handlePasteImage()}
-              .onSelectImage=${() => this.handleSelectImage()}
-              .onOpenCamera=${() => this.handleOpenCamera()}
-              .onBrowseFiles=${() => this.onOpenFileBrowser?.()}
-              .isMobile=${this.isMobile}
-            ></image-upload-menu>
-            
-            <!-- Theme toggle -->
-            <theme-toggle-icon
-              .theme=${this.currentTheme}
-              @theme-changed=${(e: CustomEvent) => {
-                this.currentTheme = e.detail.theme;
-              }}
-            ></theme-toggle-icon>
-            
-            <!-- Settings button -->
-            <notification-status
-              @open-settings=${() => this.onOpenSettings?.()}
-            ></notification-status>
-            
-            
-            <!-- Terminal size button -->
-            <button
-              class="bg-bg-tertiary border border-border rounded-lg px-3 py-2 font-mono text-xs text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0 width-selector-button"
-              @click=${() => this.onMaxWidthToggle?.()}
-              title="${this.widthTooltip}"
-            >
-              ${this.widthLabel}
-            </button>
-          </div>
-          
-          <!-- Mobile menu - visible only on mobile -->
-          <div class="flex sm:hidden flex-shrink-0">
-            <mobile-menu
-              .session=${this.session}
-              .widthLabel=${this.widthLabel}
-              .widthTooltip=${this.widthTooltip}
-              .onOpenFileBrowser=${this.onOpenFileBrowser}
-              .onUploadImage=${() => this.handleMobileUploadImage()}
-              .onMaxWidthToggle=${this.onMaxWidthToggle}
-              .onOpenSettings=${this.onOpenSettings}
-              .onCreateSession=${this.onCreateSession}
-              .currentTheme=${this.currentTheme}
-              .macAppConnected=${this.macAppConnected}
-              .onTerminateSession=${this.onTerminateSession}
-              .onClearSession=${this.onClearSession}
-              .hasGitRepo=${this.hasGitRepo}
-              .viewMode=${this.viewMode}
-              .onToggleViewMode=${() => this.dispatchEvent(new CustomEvent('toggle-view-mode'))}
-            ></mobile-menu>
-          </div>
+          <!-- Responsive button container -->
+          ${
+            this.useCompactMenu || this.isMobile
+              ? html`
+              <!-- Compact menu for tight spaces or mobile -->
+              <div class="flex flex-shrink-0">
+                <compact-menu
+                  .session=${this.session}
+                  .widthLabel=${this.widthLabel}
+                  .widthTooltip=${this.widthTooltip}
+                  .onOpenFileBrowser=${this.onOpenFileBrowser}
+                  .onUploadImage=${() => this.handleMobileUploadImage()}
+                  .onMaxWidthToggle=${this.onMaxWidthToggle}
+                  .onOpenSettings=${this.onOpenSettings}
+                  .onCreateSession=${this.onCreateSession}
+                  .currentTheme=${this.currentTheme}
+                  .macAppConnected=${this.macAppConnected}
+                  .onTerminateSession=${this.onTerminateSession}
+                  .onClearSession=${this.onClearSession}
+                  .hasGitRepo=${this.hasGitRepo}
+                  .viewMode=${this.viewMode}
+                  .onToggleViewMode=${() => this.dispatchEvent(new CustomEvent('toggle-view-mode'))}
+                  @theme-changed=${(e: CustomEvent) => {
+                    this.currentTheme = e.detail.theme;
+                  }}
+                ></compact-menu>
+              </div>
+            `
+              : html`
+              <!-- Individual buttons for larger screens -->
+              <div class="flex items-center gap-2">
+                <!-- Status dropdown -->
+                <session-status-dropdown
+                  .session=${this.session}
+                  .onTerminate=${this.onTerminateSession}
+                  .onClear=${this.onClearSession}
+                ></session-status-dropdown>
+                
+                <!-- Image Upload Menu -->
+                <image-upload-menu
+                  .onPasteImage=${() => this.handlePasteImage()}
+                  .onSelectImage=${() => this.handleSelectImage()}
+                  .onOpenCamera=${() => this.handleOpenCamera()}
+                  .onBrowseFiles=${() => this.onOpenFileBrowser?.()}
+                  .isMobile=${this.isMobile}
+                ></image-upload-menu>
+                
+                <!-- Theme toggle -->
+                <theme-toggle-icon
+                  .theme=${this.currentTheme}
+                  @theme-changed=${(e: CustomEvent) => {
+                    this.currentTheme = e.detail.theme;
+                  }}
+                ></theme-toggle-icon>
+                
+                <!-- Settings button -->
+                <notification-status
+                  @open-settings=${() => this.onOpenSettings?.()}
+                ></notification-status>
+                
+                
+                <!-- Terminal size button -->
+                <button
+                  class="bg-bg-tertiary border border-border rounded-lg px-3 py-2 font-mono text-xs text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0 width-selector-button"
+                  @click=${() => this.onMaxWidthToggle?.()}
+                  title="${this.widthTooltip}"
+                >
+                  ${this.widthLabel}
+                </button>
+              </div>
+            `
+          }
         </div>
       </div>
     `;
