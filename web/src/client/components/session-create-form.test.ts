@@ -45,6 +45,7 @@ describe('SessionCreateForm', () => {
     // Create mock auth client
     mockAuthClient = {
       getAuthHeader: vi.fn(() => ({ Authorization: 'Bearer test-token' })),
+      fetch: vi.fn((url, options) => global.fetch(url, options)),
     } as unknown as AuthClient;
 
     // Create component
@@ -685,30 +686,60 @@ describe('SessionCreateForm', () => {
   });
 
   describe('Git repository integration', () => {
+    let fetchCalls: Array<[string, RequestInit | undefined]>;
+    
     beforeEach(async () => {
-      // Mock Git service endpoints
-      fetchMock.mockResponse('/api/git/repo-info', {
-        isGitRepo: true,
-        repoPath: '/home/user/project',
-      });
-
-      fetchMock.mockResponse('/api/worktrees', {
-        worktrees: [
-          { path: '/home/user/project', branch: 'main', HEAD: 'abc123', detached: false },
-          {
-            path: '/home/user/project-feature',
-            branch: 'feature',
-            HEAD: 'def456',
-            detached: false,
-          },
-        ],
-        baseBranch: 'main',
+      // Track fetch calls
+      fetchCalls = [];
+      
+      // Override global fetch with a custom mock that handles Git API patterns
+      const originalFetch = global.fetch;
+      global.fetch = vi.fn(async (url: string, options?: RequestInit) => {
+        const urlStr = url.toString();
+        
+        // Track the call
+        fetchCalls.push([urlStr, options]);
+        
+        // Mock Git repo info endpoint
+        if (urlStr.includes('/api/git/repo-info')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              isGitRepo: true,
+              repoPath: '/home/user/project',
+            }),
+          } as Response;
+        }
+        
+        // Mock worktrees endpoint
+        if (urlStr.includes('/api/worktrees')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              worktrees: [
+                { path: '/home/user/project', branch: 'main', HEAD: 'abc123', detached: false },
+                {
+                  path: '/home/user/project-feature',
+                  branch: 'feature',
+                  HEAD: 'def456',
+                  detached: false,
+                },
+              ],
+              baseBranch: 'main',
+            }),
+          } as Response;
+        }
+        
+        // For all other URLs, use the original fetchMock
+        return originalFetch(url, options);
       });
     });
 
     it('should check for Git repository when working directory changes', async () => {
       // Clear existing calls
-      fetchMock.clear();
+      fetchCalls = [];
 
       // Type in working directory
       await typeInInput(element, 'input[placeholder="~/"]', '/home/user/project');
@@ -717,9 +748,9 @@ describe('SessionCreateForm', () => {
       await waitForAsync(600);
 
       // Verify Git repo check was made
-      const gitCheckCall = fetchMock
-        .getCalls()
-        .find((call) => call[0].includes('/api/git/repo-info') && call[0].includes('project'));
+      const gitCheckCall = fetchCalls.find(
+        (call) => call[0].includes('/api/git/repo-info') && call[0].includes('project')
+      );
       expect(gitCheckCall).toBeTruthy();
     });
 
@@ -730,6 +761,11 @@ describe('SessionCreateForm', () => {
       await element.checkGitRepository();
       await element.updateComplete;
 
+      // Check that the Git repo info and branches are set correctly
+      expect(element.gitRepoInfo).toBeTruthy();
+      expect(element.gitRepoInfo?.isGitRepo).toBe(true);
+      expect(element.availableBranches).toEqual(['main', 'feature']);
+      
       // Check that branch selector is rendered
       const branchSelect = element.querySelector('[data-testid="git-branch-select"]');
       expect(branchSelect).toBeTruthy();
@@ -742,9 +778,17 @@ describe('SessionCreateForm', () => {
     });
 
     it('should not show branch selector for non-Git directories', async () => {
-      // Mock non-Git response
-      fetchMock.mockResponse('/api/git/repo-info', {
-        isGitRepo: false,
+      // Override fetch to return non-Git response
+      global.fetch = vi.fn(async (url: string) => {
+        const urlStr = url.toString();
+        if (urlStr.includes('/api/git/repo-info')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ isGitRepo: false }),
+          } as Response;
+        }
+        return fetchMock(url);
       });
 
       // Trigger Git check
@@ -759,19 +803,7 @@ describe('SessionCreateForm', () => {
     });
 
     it('should select current worktree branch by default', async () => {
-      // Mock worktree response with current path matching feature branch
-      fetchMock.mockResponse('/api/worktrees', {
-        worktrees: [
-          { path: '/home/user/project', branch: 'main', HEAD: 'abc123', detached: false },
-          {
-            path: '/home/user/project-feature',
-            branch: 'feature',
-            HEAD: 'def456',
-            detached: false,
-          },
-        ],
-        baseBranch: 'main',
-      });
+      // Already mocked in beforeEach - no need to re-mock
 
       // Set working directory to feature worktree
       element.workingDir = '/home/user/project-feature';
@@ -784,6 +816,8 @@ describe('SessionCreateForm', () => {
     });
 
     it('should select base branch when not in a worktree', async () => {
+      // Already mocked in beforeEach - no need to re-mock
+
       // Set working directory to a subdirectory
       element.workingDir = '/home/user/project/src';
       // @ts-expect-error - accessing private method for testing
@@ -845,8 +879,18 @@ describe('SessionCreateForm', () => {
     });
 
     it('should handle Git check errors gracefully', async () => {
-      // Mock Git check to fail
-      fetchMock.mockResponse('/api/git/repo-info', { error: 'Permission denied' }, { status: 403 });
+      // Override fetch to return error
+      global.fetch = vi.fn(async (url: string) => {
+        const urlStr = url.toString();
+        if (urlStr.includes('/api/git/repo-info')) {
+          return {
+            ok: false,
+            status: 403,
+            json: async () => ({ error: 'Permission denied' }),
+          } as Response;
+        }
+        return fetchMock(url);
+      });
 
       // Trigger Git check
       element.workingDir = '/home/user/restricted';
@@ -866,7 +910,7 @@ describe('SessionCreateForm', () => {
 
     it('should check Git when selecting from repository dropdown', async () => {
       // Clear calls
-      fetchMock.clear();
+      fetchCalls = [];
 
       // Simulate repository selection
       // @ts-expect-error - accessing private method for testing
@@ -875,18 +919,17 @@ describe('SessionCreateForm', () => {
       await waitForAsync(100);
 
       // Verify Git check was triggered
-      const gitCheckCall = fetchMock
-        .getCalls()
-        .find(
-          (call) => call[0].includes('/api/git/repo-info') && call[0].includes('another-project')
-        );
+      const gitCheckCall = fetchCalls.find(
+        (call) => call[0].includes('/api/git/repo-info') && call[0].includes('another-project')
+      );
       expect(gitCheckCall).toBeTruthy();
-      expect(element.workingDir).toBe('/home/user/another-project');
+      // formatPathForDisplay converts /home/user/path to ~/path
+      expect(element.workingDir).toBe('~/another-project');
     });
 
     it('should check Git when selecting directory from file browser', async () => {
       // Clear calls
-      fetchMock.clear();
+      fetchCalls = [];
 
       // Simulate directory selection event
       const event = new CustomEvent('directory-selected', {
@@ -898,11 +941,12 @@ describe('SessionCreateForm', () => {
       await waitForAsync(100);
 
       // Verify Git check was triggered
-      const gitCheckCall = fetchMock
-        .getCalls()
-        .find((call) => call[0].includes('/api/git/repo-info') && call[0].includes('new-project'));
+      const gitCheckCall = fetchCalls.find(
+        (call) => call[0].includes('/api/git/repo-info') && call[0].includes('new-project')
+      );
       expect(gitCheckCall).toBeTruthy();
-      expect(element.workingDir).toBe('/home/user/new-project');
+      // formatPathForDisplay converts /home/user/path to ~/path
+      expect(element.workingDir).toBe('~/new-project');
     });
 
     it('should update selected branch when changed in dropdown', async () => {
