@@ -294,4 +294,11 @@ export class VibeTerminalBuffer extends LitElement {
     if (!this.buffer) return '';
     return cellsToText(this.buffer.cells, includeStyles);
   }
+
+  /**
+   * Protected getter for buffer access by child classes
+   */
+  protected get bufferData(): BufferSnapshot | null {
+    return this.buffer;
+  }
 }

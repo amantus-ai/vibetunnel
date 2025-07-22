@@ -407,6 +407,7 @@ describe('SessionView Drag & Drop and Paste', () => {
             getAsFile: () => file,
           },
         ],
+        getData: () => '',
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -439,6 +440,7 @@ describe('SessionView Drag & Drop and Paste', () => {
             getAsFile: () => file2,
           },
         ],
+        getData: () => '',
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -468,6 +470,7 @@ describe('SessionView Drag & Drop and Paste', () => {
             getAsFile: () => file,
           },
         ],
+        getData: () => '',
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -494,6 +497,7 @@ describe('SessionView Drag & Drop and Paste', () => {
             getAsFile: () => file,
           },
         ],
+        getData: () => '',
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -520,6 +524,7 @@ describe('SessionView Drag & Drop and Paste', () => {
             getAsFile: () => file,
           },
         ],
+        getData: () => '',
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -542,6 +547,7 @@ describe('SessionView Drag & Drop and Paste', () => {
             type: 'text/plain',
           },
         ],
+        getData: () => '',
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -568,6 +574,7 @@ describe('SessionView Drag & Drop and Paste', () => {
             getAsFile: () => file,
           },
         ],
+        getData: () => '',
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -602,6 +609,7 @@ describe('SessionView Drag & Drop and Paste', () => {
           { kind: 'file', getAsFile: () => file2 },
           { kind: 'file', getAsFile: () => file3 },
         ],
+        getData: () => '',
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
