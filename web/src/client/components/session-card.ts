@@ -418,11 +418,6 @@ export class SessionCard extends LitElement {
                   }
                 }}
               ></inline-edit>
-              ${
-                this.session.gitBranch
-                  ? html`<span class="text-text-muted">[${this.session.gitBranch}]</span>`
-                  : ''
-              }
             </div>
           </div>
           <div class="flex items-center gap-1 flex-shrink-0">
@@ -558,8 +553,13 @@ export class SessionCard extends LitElement {
                 : ''
             }
           </div>
-          <div class="text-xs opacity-75 min-w-0 mt-1">
+          <div class="text-xs opacity-75 min-w-0 mt-1 flex justify-between items-center">
             <clickable-path .path=${this.session.workingDir} .iconSize=${12}></clickable-path>
+            ${
+              this.session.gitBranch
+                ? html`<span class="text-text-muted flex-shrink-0">[${this.session.gitBranch}]</span>`
+                : ''
+            }
           </div>
         </div>
       </div>
