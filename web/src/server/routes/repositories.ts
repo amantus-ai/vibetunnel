@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
+import { DEFAULT_REPOSITORY_BASE_PATH } from '../../shared/constants.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('repositories');
@@ -28,7 +29,7 @@ export function createRepositoryRoutes(): Router {
   // Discover repositories endpoint
   router.get('/repositories/discover', async (req, res) => {
     try {
-      const basePath = (req.query.path as string) || '~/';
+      const basePath = (req.query.path as string) || DEFAULT_REPOSITORY_BASE_PATH;
       const maxDepth = Number.parseInt(req.query.maxDepth as string) || 3;
 
       logger.debug(`[GET /repositories/discover] Discovering repositories in: ${basePath}`);

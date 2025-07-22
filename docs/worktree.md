@@ -106,13 +106,24 @@ To keep the user informed about background activities, the server implements a d
 
 ### 2.3. macOS Client (mac/)
 
-The macOS client will provide the user interface for this feature.
+The macOS client provides native UI for Git worktree management.
+
+**Implementation Details:**
+*   **Git Detection:** Uses `GitRepositoryMonitor` to automatically detect when the selected working directory is within a Git repository.
+*   **Worktree UI:** When Git is detected, `WorktreeSelectionView` appears in the session creation form, showing:
+    *   Current branch information  
+    *   List of available worktrees with their paths
+    *   Option to create new worktrees with custom branch names
+    *   Follow mode status indicator
+*   **Service Layer:** `WorktreeService` handles all communication with the server's `/api/worktrees` endpoints.
+*   **Data Models:** `Worktree.swift` defines the data structures for worktree information.
 
 *   **Notification Handling:** The client will listen for notification events on the Unix socket. Upon receiving one, it will generate and display a native `NSUserNotification` to the user.
 
 *   **Context-Aware UI:**
-    *   When a user selects a working directory for a new session, the client will call `GET /api/git/repo-info`.
-    *   If the directory is a Git repository, the UI will dynamically display an enhanced view with options to select or create a branch/worktree. Otherwise, the standard UI is shown.
+    *   When a user selects a working directory for a new session, the client automatically detects if it's a Git repository using `GitRepositoryMonitor`.
+    *   If the directory is a Git repository, the UI dynamically displays `WorktreeSelectionView` with options to select existing worktrees or create new ones.
+    *   When a worktree is selected or created, the working directory automatically updates to the worktree path.
 
 *   **UI Grouping and Labeling:**
     *   The main session list will be updated to group sessions by `gitRepoPath`.
@@ -212,11 +223,11 @@ The `vt` command-line tool will be extended to support worktree operations.
     d. Integrate success/error notifications using the existing toast message system.
     e. Add navigation between session list and worktree management views.
 4.  **macOS Client:**
-    a. Implement the context-aware UI for session creation.
+    a. ✅ Implement the context-aware UI for session creation - When a Git repository is detected, WorktreeSelectionView displays available worktrees and allows creating new ones.
     b. Implement the project-based grouping and branch labeling in the session list.
     c. Implement the notification handler for events received over the Unix socket.
-    d. Design and implement the UI for worktree management, including the simplified deletion flow.
-    e. Integrate the UI with the new server APIs.
+    d. ✅ Design and implement the UI for worktree management - WorktreeSelectionView provides full worktree management capabilities integrated into session creation.
+    e. ✅ Integrate the UI with the new server APIs - WorktreeService communicates with the server's /api/worktrees endpoints.
 5.  **Hooks:**
     a. Implement the logic for the safe, on-demand, chaining installation and uninstallation of the Git hooks.
 6.  **Testing:**

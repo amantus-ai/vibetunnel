@@ -105,7 +105,7 @@ export class SessionHeader extends LitElement {
         class="flex items-center justify-between border-b border-border text-sm min-w-0 bg-bg-secondary px-4 py-2"
         style="padding-top: max(0.5rem, env(safe-area-inset-top)); padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right));"
       >
-        <div class="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+        <div class="flex items-center gap-3 min-w-0 flex-1 overflow-hidden flex-shrink">
           <!-- Sidebar Toggle (when sidebar is collapsed) - visible on all screen sizes -->
           ${
             this.showSidebarToggle && this.sidebarCollapsed
@@ -162,9 +162,9 @@ export class SessionHeader extends LitElement {
           }
           <div class="text-primary min-w-0 flex-1 overflow-hidden">
             <div class="text-bright font-medium text-xs sm:text-sm min-w-0 overflow-hidden">
-              <div class="flex items-center gap-1 min-w-0" @mouseenter=${this.handleMouseEnter} @mouseleave=${this.handleMouseLeave}>
+              <div class="flex items-center gap-1 min-w-0 overflow-hidden" @mouseenter=${this.handleMouseEnter} @mouseleave=${this.handleMouseLeave}>
                 <inline-edit
-                  class="min-w-0"
+                  class="min-w-0 overflow-hidden block max-w-xs sm:max-w-md"
                   .value=${
                     this.session.name ||
                     (Array.isArray(this.session.command)

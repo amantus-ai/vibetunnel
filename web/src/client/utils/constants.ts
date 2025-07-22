@@ -50,6 +50,7 @@ export const Z_INDEX = {
   MODAL_BACKDROP: 100,
   FILE_PICKER: 110,
   SESSION_EXITED_OVERLAY: 120,
+  NOTIFICATION: 150, // Notifications appear above modals but below file browser
 
   // Special high-priority overlays (200+)
   FILE_BROWSER: 1100, // Must be higher than modal backdrop (1000)
