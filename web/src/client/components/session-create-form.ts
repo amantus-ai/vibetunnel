@@ -1262,7 +1262,12 @@ export class SessionCreateForm extends LitElement {
                                 ?disabled=${this.disabled || this.isCreating || this.isLoadingWorktrees}
                                 data-testid="git-worktree-select"
                               >
-                                <option value="none">No worktree (use main repository)</option>
+                                <option value="none">
+                                  ${this.selectedWorktree ? 'No worktree (use main repository)' : 
+                                    this.availableWorktrees.some(wt => wt.isCurrentWorktree && !wt.isMainWorktree) 
+                                      ? 'Switch to main repository' 
+                                      : 'No worktree (use main repository)'}
+                                </option>
                                 ${this.availableWorktrees.map((worktree) => {
                                   // Extract folder name from path
                                   const folderName =
