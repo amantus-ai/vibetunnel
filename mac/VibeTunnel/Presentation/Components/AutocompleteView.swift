@@ -43,10 +43,6 @@ struct AutocompleteViewWithKeyboard: View {
                                         selectedIndex = index
                                     }
                                 }
-                                .transition(.asymmetric(
-                                    insertion: .opacity.combined(with: .move(edge: .top)),
-                                    removal: .opacity.combined(with: .scale(scale: 0.95))
-                                ))
 
                             if index < suggestions.count - 1 {
                                 Divider()
@@ -200,11 +196,9 @@ struct AutocompleteTextField: View {
                     insertion: .opacity.combined(with: .scale(scale: 0.95)).combined(with: .offset(y: -5)),
                     removal: .opacity.combined(with: .scale(scale: 0.95))
                 ))
-                .id(autocompleteService.suggestions.map(\.id))  // Force re-render when suggestions change
             }
         }
         .animation(.easeInOut(duration: 0.15), value: showSuggestions)
-        .animation(.easeInOut(duration: 0.1), value: autocompleteService.suggestions)
     }
 
     private func handleKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {
