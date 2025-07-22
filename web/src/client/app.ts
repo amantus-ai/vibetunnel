@@ -36,9 +36,11 @@ import './components/unified-settings.js';
 import './components/notification-status.js';
 import './components/auth-login.js';
 import './components/ssh-key-manager.js';
+import './components/worktree-manager.js';
 
 import { authClient } from './services/auth-client.js';
 import { bufferSubscriptionService } from './services/buffer-subscription-service.js';
+import { GitService } from './services/git-service.js';
 import { pushNotificationService } from './services/push-notification-service.js';
 
 const logger = createLogger('app');
@@ -61,11 +63,12 @@ export class VibeTunnelApp extends LitElement {
   @state() private successMessage = '';
   @state() private sessions: Session[] = [];
   @state() private loading = false;
-  @state() private currentView: 'list' | 'session' | 'auth' | 'file-browser' = 'auth';
+  @state() private currentView: 'list' | 'session' | 'auth' | 'file-browser' | 'worktrees' = 'auth';
   @state() private selectedSessionId: string | null = null;
   @state() private hideExited = this.loadHideExitedState();
   @state() private showCreateModal = false;
   @state() private showSSHKeyManager = false;
+  @state() private worktreeRepoPath = '';
   @state() private showSettings = false;
   @state() private isAuthenticated = false;
   @state() private sidebarCollapsed = this.loadSidebarState();
@@ -87,6 +90,7 @@ export class VibeTunnelApp extends LitElement {
   private responsiveUnsubscribe?: () => void;
   private resizeCleanupFunctions: (() => void)[] = [];
   private sessionLoadingState: 'idle' | 'loading' | 'loaded' | 'not-found' = 'idle';
+  private gitService?: GitService;
 
   connectedCallback() {
     super.connectedCallback();
@@ -331,6 +335,19 @@ export class VibeTunnelApp extends LitElement {
       return;
     }
 
+    // Temporary: Handle Cmd+W / Ctrl+W to open worktree view for first Git session (development only)
+    if ((e.metaKey || e.ctrlKey) && e.key === 'w' && this.currentView === 'list') {
+      e.preventDefault();
+      // Find the first session with a Git repository
+      const gitSession = this.sessions.find((s) => s.gitRepoPath);
+      if (gitSession?.gitRepoPath) {
+        this.handleNavigateToWorktrees(gitSession.gitRepoPath);
+      } else {
+        this.showError('No sessions with Git repositories found');
+      }
+      return;
+    }
+
     // Handle Escape to close the session and return to list view
     if (
       e.key === 'Escape' &&
@@ -427,6 +444,9 @@ export class VibeTunnelApp extends LitElement {
       } else {
         logger.log('⏭️ Skipping push notification service initialization (no-auth mode)');
       }
+
+      // Initialize Git service
+      this.gitService = new GitService(authClient);
 
       logger.log('✅ Services initialized successfully');
     } catch (error) {
@@ -953,6 +973,13 @@ export class VibeTunnelApp extends LitElement {
     }
   }
 
+  private handleNavigateToWorktrees(repoPath: string): void {
+    this.worktreeRepoPath = repoPath;
+    document.title = 'VibeTunnel - Git Worktrees';
+    this.currentView = 'worktrees';
+    this.updateUrl();
+  }
+
   private async handleKillAll() {
     // Get all running sessions from data instead of DOM elements
     const runningSessions = this.sessions.filter((session) => session.status === 'running');
@@ -1231,6 +1258,12 @@ export class VibeTunnelApp extends LitElement {
       return;
     }
 
+    // Check for worktrees view
+    if (view === 'worktrees') {
+      this.currentView = 'worktrees';
+      return;
+    }
+
     if (sessionId) {
       // Always navigate to the session view if a session ID is provided
       // The session-view component will handle loading and error cases
@@ -1263,6 +1296,8 @@ export class VibeTunnelApp extends LitElement {
       if (sessionId || this.selectedSessionId) {
         url.searchParams.set('session', sessionId || this.selectedSessionId || '');
       }
+    } else if (this.currentView === 'worktrees') {
+      url.searchParams.set('view', 'worktrees');
     } else if (sessionId) {
       url.searchParams.set('session', sessionId);
     }
@@ -1571,7 +1606,36 @@ export class VibeTunnelApp extends LitElement {
                 @insert-path=${this.handleNavigateToList}
               ></file-browser>
             `
-            : html`
+            : this.currentView === 'worktrees'
+              ? html`
+              <!-- Worktree management view -->
+              <div class="flex flex-col h-screen bg-primary">
+                <app-header
+                  .sessions=${this.sessions}
+                  .hideExited=${this.hideExited}
+                  .showSplitView=${false}
+                  .currentUser=${authClient.getCurrentUser()?.userId || null}
+                  .authMethod=${authClient.getCurrentUser()?.authMethod || null}
+                  @create-session=${this.handleCreateSession}
+                  @hide-exited-change=${this.handleHideExitedChange}
+                  @kill-all-sessions=${this.handleKillAll}
+                  @clean-exited-sessions=${this.handleCleanExited}
+                  @open-file-browser=${this.handleOpenFileBrowser}
+                  @open-settings=${this.handleOpenSettings}
+                  @logout=${this.handleLogout}
+                  @navigate-to-list=${this.handleNavigateToList}
+                  @toggle-sidebar=${this.handleToggleSidebar}
+                ></app-header>
+                <div class="flex-1 overflow-y-auto">
+                  <worktree-manager
+                    .gitService=${this.gitService}
+                    .repoPath=${this.worktreeRepoPath}
+                    @back=${this.handleNavigateToList}
+                  ></worktree-manager>
+                </div>
+              </div>
+            `
+              : html`
       <!-- Main content with split view support -->
       <div class="${this.mainContainerClasses}">
         <!-- Mobile overlay when sidebar is open -->
@@ -1625,6 +1689,7 @@ export class VibeTunnelApp extends LitElement {
               @kill-all-sessions=${this.handleKillAll}
               @navigate-to-session=${this.handleNavigateToSession}
               @open-file-browser=${this.handleOpenFileBrowser}
+              @navigate-to-worktrees=${(e: CustomEvent) => this.handleNavigateToWorktrees(e.detail.repoPath)}
             ></session-list>
           </div>
         </div>

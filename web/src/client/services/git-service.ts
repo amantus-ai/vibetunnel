@@ -36,6 +36,7 @@ export interface Worktree {
 export interface WorktreeListResponse {
   worktrees: Worktree[];
   baseBranch: string;
+  followBranch?: string;
 }
 
 export class GitService {
