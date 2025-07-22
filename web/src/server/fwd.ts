@@ -15,6 +15,7 @@ import chalk from 'chalk';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { promisify } from 'util';
 import { type SessionInfo, TitleMode } from '../shared/types.js';
 import { PtyManager } from './pty/index.js';
 import { SessionManager } from './pty/session-manager.js';
@@ -35,6 +36,50 @@ import { parseVerbosityFromEnv } from './utils/verbosity-parser.js';
 import { BUILD_DATE, GIT_COMMIT, VERSION } from './version.js';
 
 const logger = createLogger('fwd');
+const execFile = promisify(require('child_process').execFile);
+
+interface GitInfo {
+  gitRepoPath?: string;
+  gitBranch?: string;
+}
+
+/**
+ * Detect Git repository information for a given directory
+ */
+async function detectGitInfo(workingDir: string): Promise<GitInfo> {
+  try {
+    // Check if the directory is in a Git repository
+    const { stdout: repoPath } = await execFile('git', ['rev-parse', '--show-toplevel'], {
+      cwd: workingDir,
+      timeout: 5000,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    });
+
+    const gitRepoPath = repoPath.trim();
+
+    // Get the current branch name
+    try {
+      const { stdout: branch } = await execFile('git', ['branch', '--show-current'], {
+        cwd: workingDir,
+        timeout: 5000,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      });
+
+      const gitBranch = branch.trim();
+      logger.debug(`Detected Git info: repo=${gitRepoPath}, branch=${gitBranch}`);
+
+      return { gitRepoPath, gitBranch };
+    } catch (branchError) {
+      // Could be in detached HEAD state or other situation where branch name isn't available
+      logger.debug(`Could not detect Git branch: ${branchError}`);
+      return { gitRepoPath };
+    }
+  } catch (error) {
+    // Not in a Git repository or git command failed
+    logger.debug(`Not a Git repository: ${error}`);
+    return {};
+  }
+}
 
 function showUsage() {
   console.log(chalk.blue(`VibeTunnel Forward v${VERSION}`) + chalk.gray(` (${BUILD_DATE})`));
@@ -373,6 +418,9 @@ export async function startVibeTunnelForward(args: string[]) {
       logger.log(chalk.cyan(`✓ ${modeDescriptions[titleMode]}`));
     }
 
+    // Detect Git information
+    const gitInfo = await detectGitInfo(cwd);
+
     // Variables that need to be accessible in cleanup
     let sessionFileWatcher: fs.FSWatcher | undefined;
     let fileWatchDebounceTimer: NodeJS.Timeout | undefined;
@@ -383,6 +431,8 @@ export async function startVibeTunnelForward(args: string[]) {
       workingDir: cwd,
       titleMode: titleMode,
       forwardToStdout: true,
+      gitRepoPath: gitInfo.gitRepoPath,
+      gitBranch: gitInfo.gitBranch,
       onExit: async (exitCode: number) => {
         // Show exit message
         logger.log(

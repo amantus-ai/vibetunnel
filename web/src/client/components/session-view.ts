@@ -1701,6 +1701,39 @@ export class SessionView extends LitElement {
               : ''
           }
 
+          <!-- Git Branch Display (bottom right) -->
+          ${
+            (
+              () => {
+                logger.debug('Session git info:', {
+                  gitBranch: this.session?.gitBranch,
+                  gitRepoPath: this.session?.gitRepoPath,
+                  sessionId: this.session?.id,
+                });
+                return this.session?.gitBranch;
+              }
+            )()
+              ? html`
+                <div
+                  class="fixed bottom-4 right-4"
+                  style="z-index: ${Z_INDEX.TERMINAL_OVERLAY}; pointer-events: none !important;"
+                >
+                  <div
+                    class="bg-elevated/80 backdrop-blur-sm text-muted text-xs font-mono px-3 py-1.5 rounded-md shadow-sm border border-tertiary/50"
+                    style="pointer-events: none !important;"
+                  >
+                    <span class="flex items-center gap-1.5">
+                      <svg class="w-3.5 h-3.5 text-primary opacity-60" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v.5H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2H9V5a1.5 1.5 0 1 1 3 0v.5h1a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3h1V5a2.5 2.5 0 0 1 5 0zm-2 0a1 1 0 1 0 2 0V5a1 1 0 0 0-2 0v.5z"/>
+                      </svg>
+                      <span>${this.session.gitBranch}</span>
+                    </span>
+                  </div>
+                </div>
+              `
+              : ''
+          }
+
           <!-- Mobile Input Overlay -->
           <mobile-input-overlay
           .visible=${this.isMobile && this.showMobileInput}
