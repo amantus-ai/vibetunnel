@@ -184,10 +184,10 @@ export class WorktreeManager extends LitElement {
     return html`
       <div class="p-4 max-w-4xl mx-auto">
         <div class="flex items-center justify-between mb-6">
-          <h1 class="text-2xl font-bold">Git Worktrees</h1>
+          <h1 class="text-2xl font-bold text-text">Git Worktrees</h1>
           <button 
             @click=${this.handleBack}
-            class="px-4 py-2 text-sm font-medium text-primary-dark bg-primary-light rounded-md hover:bg-primary-lighter transition-colors"
+            class="px-4 py-2 text-sm font-medium text-text bg-surface rounded-md hover:bg-surface-hover transition-colors border border-border"
           >
             Back to Sessions
           </button>
@@ -212,50 +212,61 @@ export class WorktreeManager extends LitElement {
         `
             : html`
           <div class="space-y-4">
-            <div class="text-sm text-secondary mb-2">
-              Repository: <span class="font-mono">${this.formatPath(this.repoPath)}</span>
+            <div class="text-sm text-text-muted mb-4">
+              Repository: <span class="font-mono text-text">${this.formatPath(this.repoPath)}</span>
             </div>
             
             ${
-              this.worktrees.length === 0
+              this.worktrees.length === 0 ||
+              (this.worktrees.length === 1 && this.worktrees[0].isMainWorktree)
                 ? html`
-              <div class="text-center py-8 text-secondary">
-                No worktrees found
+              <div class="text-center py-12 space-y-4">
+                <div class="text-text-muted text-lg">
+                  No additional worktrees found
+                </div>
+                <div class="text-text-dim text-sm max-w-md mx-auto">
+                  This repository only has the main worktree. You can create additional worktrees using the git worktree command in your terminal.
+                </div>
+                <div class="mt-6">
+                  <code class="text-xs bg-surface px-2 py-1 rounded font-mono text-text-muted">
+                    git worktree add ../feature-branch feature-branch
+                  </code>
+                </div>
               </div>
             `
                 : html`
               <div class="grid gap-4">
                 ${this.worktrees.map(
                   (worktree) => html`
-                  <div class="bg-primary-light rounded-lg p-4 border border-primary-lighter">
+                  <div class="bg-surface rounded-lg p-4 border border-border hover:border-border-focus transition-colors">
                     <div class="flex items-start justify-between">
                       <div class="flex-1">
                         <div class="flex items-center gap-2 mb-2">
-                          <h3 class="font-semibold text-lg">
+                          <h3 class="font-semibold text-lg text-text">
                             ${worktree.branch || 'detached'}
                           </h3>
                           ${
                             worktree.isMainWorktree
                               ? html`
-                            <span class="px-2 py-1 text-xs bg-accent-primary text-white rounded">Main</span>
+                            <span class="px-2 py-1 text-xs bg-primary text-bg-elevated rounded">Main</span>
                           `
                               : ''
                           }
                           ${
                             worktree.isCurrentWorktree
                               ? html`
-                            <span class="px-2 py-1 text-xs bg-green-600 text-white rounded">Current</span>
+                            <span class="px-2 py-1 text-xs bg-status-success text-bg-elevated rounded">Current</span>
                           `
                               : ''
                           }
                         </div>
                         
-                        <div class="text-sm text-secondary space-y-1">
-                          <div class="font-mono">${this.formatPath(worktree.path)}</div>
+                        <div class="text-sm text-text-muted space-y-1">
+                          <div class="font-mono text-text-dim">${this.formatPath(worktree.path)}</div>
                           ${
                             worktree.HEAD
                               ? html`
-                            <div>HEAD: <span class="font-mono">${worktree.HEAD.slice(0, 7)}</span></div>
+                            <div class="text-text-muted">HEAD: <span class="font-mono">${worktree.HEAD.slice(0, 7)}</span></div>
                           `
                               : ''
                           }
@@ -266,14 +277,14 @@ export class WorktreeManager extends LitElement {
                               ${
                                 worktree.commitsAhead > 0
                                   ? html`
-                                <span class="text-green-600">↑ ${worktree.commitsAhead} ahead</span>
+                                <span class="text-status-success">↑ ${worktree.commitsAhead} ahead</span>
                               `
                                   : ''
                               }
                               ${
                                 worktree.hasUncommittedChanges
                                   ? html`
-                                <span class="text-yellow-600">● Uncommitted changes</span>
+                                <span class="text-status-warning">● Uncommitted changes</span>
                               `
                                   : ''
                               }
@@ -292,8 +303,8 @@ export class WorktreeManager extends LitElement {
                             @click=${() => this.handleToggleFollow(worktree.branch, this.followBranch !== worktree.branch)}
                             class="px-3 py-1 text-sm font-medium ${
                               this.followBranch === worktree.branch
-                                ? 'text-white bg-green-600 hover:bg-green-700'
-                                : 'text-primary-dark bg-primary-lighter hover:bg-primary-lightest'
+                                ? 'text-bg-elevated bg-status-success hover:bg-status-success/90'
+                                : 'text-text bg-surface hover:bg-surface-hover border border-border'
                             } rounded transition-colors"
                             title="${this.followBranch === worktree.branch ? 'Disable follow mode' : 'Enable follow mode'}"
                           >
@@ -307,7 +318,7 @@ export class WorktreeManager extends LitElement {
                             ? html`
                           <button
                             @click=${() => this.handleSwitchBranch(worktree.branch)}
-                            class="px-3 py-1 text-sm font-medium text-white bg-accent-primary rounded hover:bg-accent-primary-dark transition-colors"
+                            class="px-3 py-1 text-sm font-medium text-bg-elevated bg-primary rounded hover:bg-primary-hover transition-colors"
                           >
                             Switch
                           </button>
@@ -319,7 +330,7 @@ export class WorktreeManager extends LitElement {
                             ? html`
                           <button
                             @click=${() => this.handleDeleteWorktree(worktree.branch, worktree.hasUncommittedChanges || false)}
-                            class="px-3 py-1 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors"
+                            class="px-3 py-1 text-sm font-medium text-bg-elevated bg-status-error rounded hover:bg-status-error/90 transition-colors"
                           >
                             Delete
                           </button>
@@ -341,17 +352,17 @@ export class WorktreeManager extends LitElement {
         ${
           this.showDeleteConfirm
             ? html`
-          <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-primary-light rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 class="text-lg font-semibold mb-4">Confirm Delete</h3>
-              <p class="text-secondary mb-4">
+          <div class="fixed inset-0 bg-bg/80 backdrop-blur-sm flex items-center justify-center z-50">
+            <div class="bg-surface rounded-lg p-6 max-w-md w-full mx-4 border border-border shadow-elevated">
+              <h3 class="text-lg font-semibold mb-4 text-text">Confirm Delete</h3>
+              <p class="text-text-muted mb-4">
                 Are you sure you want to delete the worktree for branch 
-                <span class="font-mono font-semibold">${this.deleteTargetBranch}</span>?
+                <span class="font-mono font-semibold text-text">${this.deleteTargetBranch}</span>?
               </p>
               ${
                 this.deleteHasChanges
                   ? html`
-                <p class="text-yellow-600 mb-4">
+                <p class="text-status-warning mb-4">
                   ⚠️ This worktree has uncommitted changes that will be lost.
                 </p>
               `
@@ -360,13 +371,13 @@ export class WorktreeManager extends LitElement {
               <div class="flex justify-end gap-2">
                 <button
                   @click=${this.cancelDelete}
-                  class="px-4 py-2 text-sm font-medium text-primary-dark bg-primary-lighter rounded hover:bg-primary-lightest transition-colors"
+                  class="px-4 py-2 text-sm font-medium text-text bg-surface rounded hover:bg-surface-hover transition-colors border border-border"
                 >
                   Cancel
                 </button>
                 <button
                   @click=${this.confirmDelete}
-                  class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors"
+                  class="px-4 py-2 text-sm font-medium text-bg-elevated bg-status-error rounded hover:bg-status-error/90 transition-colors"
                 >
                   Delete
                 </button>

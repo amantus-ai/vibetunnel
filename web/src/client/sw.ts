@@ -248,7 +248,7 @@ async function handleNotificationClick(action: string, data: NotificationData): 
         data.type === 'session-error' ||
         data.type === 'session-start'
       ) {
-        url += `/?session=${data.sessionId}`;
+        url += `/session/${data.sessionId}`;
       }
       break;
     }

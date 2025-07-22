@@ -960,6 +960,21 @@ export async function createApp(): Promise<AppInstance> {
     res.sendFile(path.join(publicPath, 'index.html'));
   });
 
+  // Handle /session/:id routes by serving the same index.html
+  app.get('/session/:id', (_req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+  });
+
+  // Handle /worktrees route by serving the same index.html
+  app.get('/worktrees', (_req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+  });
+
+  // Handle /file-browser route by serving the same index.html
+  app.get('/file-browser', (_req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+  });
+
   // 404 handler for all other routes
   app.use((req, res) => {
     if (req.path.startsWith('/api/')) {

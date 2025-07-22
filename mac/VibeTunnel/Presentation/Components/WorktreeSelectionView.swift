@@ -5,7 +5,7 @@ import OSLog
 struct WorktreeSelectionView: View {
     let gitRepoPath: String
     @Binding var selectedWorktreePath: String?
-    @StateObject private var worktreeService: WorktreeService
+    @State private var worktreeService: WorktreeService
     @State private var showCreateWorktree = false
     @State private var newBranchName = ""
     @State private var createFromBranch = ""
@@ -18,7 +18,7 @@ struct WorktreeSelectionView: View {
     init(gitRepoPath: String, selectedWorktreePath: Binding<String?>, serverManager: ServerManager) {
         self.gitRepoPath = gitRepoPath
         self._selectedWorktreePath = selectedWorktreePath
-        self._worktreeService = StateObject(wrappedValue: WorktreeService(serverManager: serverManager))
+        self._worktreeService = State(initialValue: WorktreeService(serverManager: serverManager))
     }
     
     var body: some View {

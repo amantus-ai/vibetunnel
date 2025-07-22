@@ -438,9 +438,11 @@ export class VibeTunnelApp extends LitElement {
 
     // Check if there was a session ID in the URL that we should navigate to
     const url = new URL(window.location.href);
-    const sessionId = url.searchParams.get('session');
-    if (sessionId) {
-      // Always navigate to the session view if a session ID is provided
+    const pathParts = url.pathname.split('/').filter(Boolean);
+
+    // Check for /session/:id pattern
+    if (pathParts.length === 2 && pathParts[0] === 'session') {
+      const sessionId = pathParts[1];
       logger.log(`Navigating to session ${sessionId} from URL after auth`);
       this.selectedSessionId = sessionId;
       this.sessionLoadingState = 'idle'; // Reset loading state for new session
@@ -1243,7 +1245,49 @@ export class VibeTunnelApp extends LitElement {
 
   private async parseUrlAndSetState() {
     const url = new URL(window.location.href);
-    const sessionId = url.searchParams.get('session');
+    const pathParts = url.pathname.split('/').filter(Boolean);
+
+    // Check for single-segment paths first
+    if (pathParts.length === 1) {
+      // Check authentication first
+      try {
+        const configResponse = await fetch('/api/auth/config');
+        if (configResponse.ok) {
+          const authConfig = await configResponse.json();
+          if (!authConfig.noAuth && !authClient.isAuthenticated()) {
+            this.currentView = 'auth';
+            this.selectedSessionId = null;
+            return;
+          }
+        } else if (!authClient.isAuthenticated()) {
+          this.currentView = 'auth';
+          this.selectedSessionId = null;
+          return;
+        }
+      } catch (_error) {
+        if (!authClient.isAuthenticated()) {
+          this.currentView = 'auth';
+          this.selectedSessionId = null;
+          return;
+        }
+      }
+
+      // Route based on the path segment
+      if (pathParts[0] === 'worktrees') {
+        this.currentView = 'worktrees';
+        return;
+      } else if (pathParts[0] === 'file-browser') {
+        this.currentView = 'file-browser';
+        return;
+      }
+    }
+
+    // Check for /session/:id pattern
+    let sessionId: string | null = null;
+    if (pathParts.length === 2 && pathParts[0] === 'session') {
+      sessionId = pathParts[1];
+    }
+
     const view = url.searchParams.get('view');
 
     // Check authentication status first (unless no-auth is enabled)
@@ -1273,14 +1317,7 @@ export class VibeTunnelApp extends LitElement {
 
     // Check for file-browser view
     if (view === 'file-browser') {
-      this.selectedSessionId = sessionId;
       this.currentView = 'file-browser';
-      return;
-    }
-
-    // Check for worktrees view
-    if (view === 'worktrees') {
-      this.currentView = 'worktrees';
       return;
     }
 
@@ -1313,13 +1350,17 @@ export class VibeTunnelApp extends LitElement {
 
     if (this.currentView === 'file-browser') {
       url.searchParams.set('view', 'file-browser');
-      if (sessionId || this.selectedSessionId) {
-        url.searchParams.set('session', sessionId || this.selectedSessionId || '');
-      }
+      // Reset pathname for file-browser view
+      url.pathname = '/';
     } else if (this.currentView === 'worktrees') {
-      url.searchParams.set('view', 'worktrees');
+      // Use path-based URL for worktrees view
+      url.pathname = '/worktrees';
     } else if (sessionId) {
-      url.searchParams.set('session', sessionId);
+      // Use path-based URL for session view
+      url.pathname = `/session/${sessionId}`;
+    } else {
+      // Reset to root for list view
+      url.pathname = '/';
     }
 
     // Update browser URL without triggering page reload
@@ -1629,7 +1670,7 @@ export class VibeTunnelApp extends LitElement {
             : this.currentView === 'worktrees'
               ? html`
               <!-- Worktree management view -->
-              <div class="flex flex-col h-screen bg-primary">
+              <div class="flex flex-col h-screen bg-secondary">
                 <app-header
                   .sessions=${this.sessions}
                   .hideExited=${this.hideExited}
