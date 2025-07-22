@@ -17,12 +17,14 @@ import { createAuthRoutes } from './routes/auth.js';
 import { createConfigRoutes } from './routes/config.js';
 import { createFileRoutes } from './routes/files.js';
 import { createFilesystemRoutes } from './routes/filesystem.js';
+import { createGitRoutes } from './routes/git.js';
 import { createLogRoutes } from './routes/logs.js';
 import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createRepositoryRoutes } from './routes/repositories.js';
 import { createSessionRoutes } from './routes/sessions.js';
 import { WebSocketInputHandler } from './routes/websocket-input.js';
+import { createWorktreeRoutes } from './routes/worktrees.js';
 import { ActivityMonitor } from './services/activity-monitor.js';
 import { AuthService } from './services/auth-service.js';
 import { BellEventHandler } from './services/bell-event-handler.js';
@@ -750,6 +752,14 @@ export async function createApp(): Promise<AppInstance> {
     })
   );
   logger.debug('Mounted config routes');
+
+  // Mount Git routes
+  app.use('/api', createGitRoutes());
+  logger.debug('Mounted Git routes');
+
+  // Mount worktree routes
+  app.use('/api', createWorktreeRoutes());
+  logger.debug('Mounted worktree routes');
 
   // Mount push notification routes
   if (vapidManager) {
