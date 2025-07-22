@@ -984,11 +984,22 @@ export class SessionCreateForm extends LitElement {
               )()
                 ? html`
                   <div class="mb-2 sm:mb-3 lg:mb-5 mt-2 sm:mt-3 lg:mt-4">
-                    <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm flex items-center gap-1.5">
-                      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" class="text-primary">
-                        <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      Git Branch/Worktree:
+                    <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm flex items-center gap-1.5 justify-between">
+                      <span class="flex items-center gap-1.5">
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" class="text-primary">
+                          <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Git Branch/Worktree:
+                      </span>
+                      ${
+                        this.isCheckingGit
+                          ? html`
+                          <span class="text-text-muted text-[9px] sm:text-[10px]">
+                            Checking repository...
+                          </span>
+                        `
+                          : ''
+                      }
                     </label>
                     
                     ${
@@ -1079,16 +1090,6 @@ export class SessionCreateForm extends LitElement {
                           </div>
                         </div>
                       `
-                    }
-                    
-                    ${
-                      this.isCheckingGit
-                        ? html`
-                        <div class="text-text-muted text-[9px] sm:text-[10px] mt-1">
-                          Checking repository...
-                        </div>
-                      `
-                        : ''
                     }
                   </div>
                 `

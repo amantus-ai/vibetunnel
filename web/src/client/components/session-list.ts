@@ -500,7 +500,7 @@ export class SessionList extends LitElement {
               ${
                 hasActiveSessions
                   ? html`
-                    <div class="mb-6">
+                    <div class="mb-6 mt-2">
                       <h3 class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">
                         Active <span class="text-text-dim">(${activeSessions.length})</span>
                       </h3>
@@ -726,7 +726,7 @@ export class SessionList extends LitElement {
               ${
                 hasIdleSessions
                   ? html`
-                    <div class="mb-6">
+                    <div class="mb-6 ${!hasActiveSessions ? 'mt-2' : ''}">
                       <h3 class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">
                         Idle <span class="text-text-dim">(${idleSessions.length})</span>
                       </h3>
@@ -880,7 +880,7 @@ export class SessionList extends LitElement {
               ${
                 showExitedSection && hasExitedSessions
                   ? html`
-                    <div>
+                    <div class="${!hasActiveSessions && !hasIdleSessions ? 'mt-2' : ''}">
                       <h3 class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">
                         Exited <span class="text-text-dim">(${exitedSessions.length})</span>
                       </h3>
