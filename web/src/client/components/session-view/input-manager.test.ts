@@ -172,9 +172,9 @@ describe('InputManager', () => {
 
   describe('Cross-platform consistency', () => {
     it('should not interfere with standard copy/paste shortcuts', async () => {
-      // Mock navigator.platform for macOS
-      Object.defineProperty(navigator, 'platform', {
-        value: 'MacIntel',
+      // Mock navigator.userAgent for macOS
+      Object.defineProperty(navigator, 'userAgent', {
+        value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         configurable: true,
       });
 
@@ -232,9 +232,9 @@ describe('InputManager', () => {
 
   describe('Browser shortcut detection', () => {
     it('should detect Cmd+Shift+A as browser shortcut on macOS', () => {
-      Object.defineProperty(navigator, 'platform', {
+      Object.defineProperty(navigator, 'userAgent', {
         writable: true,
-        value: 'MacIntel',
+        value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       });
 
       const event = new KeyboardEvent('keydown', {
@@ -252,9 +252,9 @@ describe('InputManager', () => {
     });
 
     it('should detect Cmd+1-9 as browser shortcuts on macOS', () => {
-      Object.defineProperty(navigator, 'platform', {
+      Object.defineProperty(navigator, 'userAgent', {
         writable: true,
-        value: 'MacIntel',
+        value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       });
 
       for (let i = 1; i <= 9; i++) {
@@ -273,9 +273,9 @@ describe('InputManager', () => {
     });
 
     it('should detect Cmd+Option+Left/Right as browser shortcuts on macOS', () => {
-      Object.defineProperty(navigator, 'platform', {
+      Object.defineProperty(navigator, 'userAgent', {
         writable: true,
-        value: 'MacIntel',
+        value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       });
 
       const leftEvent = new KeyboardEvent('keydown', {
@@ -635,7 +635,7 @@ describe('InputManager', () => {
 
         // Should fallback to safe positioning
         expect(imeInput.style.left).toBe('10px');
-        expect(imeInput.style.bottom).toBe('10px');
+        expect(imeInput.style.top).toBe('10px');
       });
     });
 

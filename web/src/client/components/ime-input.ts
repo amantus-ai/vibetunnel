@@ -250,10 +250,20 @@ export class IMEInput {
   };
 
   private updatePosition(): void {
-    if (!this.options.getCursorInfo) return;
+    if (!this.options.getCursorInfo) {
+      // Fallback to safe positioning when no cursor info provider
+      this.input.style.left = '10px';
+      this.input.style.top = '10px';
+      return;
+    }
 
     const cursorInfo = this.options.getCursorInfo();
-    if (!cursorInfo) return;
+    if (!cursorInfo) {
+      // Fallback to safe positioning when cursor info unavailable
+      this.input.style.left = '10px';
+      this.input.style.top = '10px';
+      return;
+    }
 
     // Position IME input at cursor location
     this.input.style.left = `${Math.max(10, cursorInfo.x)}px`;
