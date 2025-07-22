@@ -744,7 +744,6 @@ export class SessionList extends LitElement {
     }
   }
 
-
   private renderWorktreeSelector(repoPath: string) {
     const worktrees = this.repoWorktrees.get(repoPath) || [];
     const isLoading = this.loadingWorktrees.has(repoPath);
@@ -1293,49 +1292,60 @@ export class SessionList extends LitElement {
                                     
                                     <!-- Right side: duration and close button -->
                                     <div class="relative flex items-center flex-shrink-0 gap-1">
-                                      <!-- Session duration -->
-                                      <div class="text-xs text-text-dim font-mono">
-                                        ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
-                                      </div>
-                                      
-                                      <!-- Clean up button -->
-                                      <button
-                                        class="btn-ghost text-text-muted p-1.5 rounded-md transition-all flex-shrink-0 hover:text-status-warning hover:bg-bg-elevated hover:shadow-sm"
-                                        @click=${async (e: Event) => {
-                                          e.stopPropagation();
-                                          try {
-                                            const response = await fetch(
-                                              `/api/sessions/${session.id}/cleanup`,
-                                              {
-                                                method: 'DELETE',
-                                                headers: this.authClient.getAuthHeader(),
-                                              }
-                                            );
-                                            if (response.ok) {
-                                              this.handleSessionKilled({
-                                                detail: { sessionId: session.id },
-                                              } as CustomEvent);
-                                            }
-                                          } catch (error) {
-                                            logger.error('Failed to clean up session', error);
-                                          }
-                                        }}
-                                        title="Clean up session"
-                                      >
-                                        <svg
-                                          class="w-4 h-4"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          viewBox="0 0 24 24"
-                                        >
-                                          <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M6 18L18 6M6 6l12 12"
-                                          />
-                                        </svg>
-                                      </button>
+                                      ${
+                                        'ontouchstart' in window
+                                          ? html`
+                                            <!-- Touch devices: Close button left of time -->
+                                            <button
+                                              class="btn-ghost text-status-error p-1.5 rounded-md transition-all hover:bg-elevated hover:shadow-sm hover:scale-110"
+                                              @click=${async (e: Event) => {
+                                                e.stopPropagation();
+                                                // Kill the session
+                                                try {
+                                                  await this.handleDeleteSession(session.id);
+                                                } catch (error) {
+                                                  logger.error('Failed to kill session', error);
+                                                }
+                                              }}
+                                              title="Kill Session"
+                                            >
+                                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                              </svg>
+                                            </button>
+                                            <div class="text-xs text-text-dim font-mono">
+                                              ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
+                                            </div>
+                                          `
+                                          : html`
+                                            <!-- Desktop: Time that hides on hover -->
+                                            <div class="text-xs text-text-dim font-mono transition-opacity group-hover:opacity-0">
+                                              ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
+                                            </div>
+                                            
+                                            <!-- Desktop: Buttons show on hover -->
+                                            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-0">
+                                              <!-- Kill button -->
+                                              <button
+                                                class="btn-ghost text-status-error p-1.5 rounded-md transition-all hover:bg-elevated hover:shadow-sm hover:scale-110"
+                                                @click=${async (e: Event) => {
+                                                  e.stopPropagation();
+                                                  // Kill the session
+                                                  try {
+                                                    await this.handleDeleteSession(session.id);
+                                                  } catch (error) {
+                                                    logger.error('Failed to kill session', error);
+                                                  }
+                                                }}
+                                                title="Kill Session"
+                                              >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                </svg>
+                                              </button>
+                                            </div>
+                                          `
+                                      }
                                     </div>
                                   </div>
                                 `
@@ -1482,49 +1492,83 @@ export class SessionList extends LitElement {
                                     
                                     <!-- Right side: duration and close button -->
                                     <div class="relative flex items-center flex-shrink-0 gap-1">
-                                      <!-- Session duration -->
-                                      <div class="text-xs text-text-dim font-mono">
-                                        ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
-                                      </div>
-                                      
-                                      <!-- Clean up button -->
-                                      <button
-                                        class="btn-ghost text-text-muted p-1.5 rounded-md transition-all flex-shrink-0 hover:text-status-warning hover:bg-bg-elevated hover:shadow-sm"
-                                        @click=${async (e: Event) => {
-                                          e.stopPropagation();
-                                          try {
-                                            const response = await fetch(
-                                              `/api/sessions/${session.id}/cleanup`,
-                                              {
-                                                method: 'DELETE',
-                                                headers: this.authClient.getAuthHeader(),
-                                              }
-                                            );
-                                            if (response.ok) {
-                                              this.handleSessionKilled({
-                                                detail: { sessionId: session.id },
-                                              } as CustomEvent);
-                                            }
-                                          } catch (error) {
-                                            logger.error('Failed to clean up session', error);
-                                          }
-                                        }}
-                                        title="Clean up session"
-                                      >
-                                        <svg
-                                          class="w-4 h-4"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          viewBox="0 0 24 24"
-                                        >
-                                          <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M6 18L18 6M6 6l12 12"
-                                          />
-                                        </svg>
-                                      </button>
+                                      ${
+                                        'ontouchstart' in window
+                                          ? html`
+                                            <!-- Touch devices: Close button left of time -->
+                                            <button
+                                              class="btn-ghost text-text-muted p-1.5 rounded-md transition-all hover:text-status-warning hover:bg-bg-elevated hover:shadow-sm"
+                                              @click=${async (e: Event) => {
+                                                e.stopPropagation();
+                                                try {
+                                                  const response = await fetch(
+                                                    `/api/sessions/${session.id}/cleanup`,
+                                                    {
+                                                      method: 'DELETE',
+                                                      headers: this.authClient.getAuthHeader(),
+                                                    }
+                                                  );
+                                                  if (response.ok) {
+                                                    this.handleSessionKilled({
+                                                      detail: { sessionId: session.id },
+                                                    } as CustomEvent);
+                                                  }
+                                                } catch (error) {
+                                                  logger.error('Failed to clean up session', error);
+                                                }
+                                              }}
+                                              title="Clean up session"
+                                            >
+                                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                              </svg>
+                                            </button>
+                                            <div class="text-xs text-text-dim font-mono">
+                                              ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
+                                            </div>
+                                          `
+                                          : html`
+                                            <!-- Desktop: Time that hides on hover -->
+                                            <div class="text-xs text-text-dim font-mono transition-opacity group-hover:opacity-0">
+                                              ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
+                                            </div>
+                                            
+                                            <!-- Desktop: Buttons show on hover -->
+                                            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-0">
+                                              <!-- Clean up button -->
+                                              <button
+                                                class="btn-ghost text-text-muted p-1.5 rounded-md transition-all hover:text-status-warning hover:bg-bg-elevated hover:shadow-sm"
+                                                @click=${async (e: Event) => {
+                                                  e.stopPropagation();
+                                                  try {
+                                                    const response = await fetch(
+                                                      `/api/sessions/${session.id}/cleanup`,
+                                                      {
+                                                        method: 'DELETE',
+                                                        headers: this.authClient.getAuthHeader(),
+                                                      }
+                                                    );
+                                                    if (response.ok) {
+                                                      this.handleSessionKilled({
+                                                        detail: { sessionId: session.id },
+                                                      } as CustomEvent);
+                                                    }
+                                                  } catch (error) {
+                                                    logger.error(
+                                                      'Failed to clean up session',
+                                                      error
+                                                    );
+                                                  }
+                                                }}
+                                                title="Clean up session"
+                                              >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                </svg>
+                                              </button>
+                                            </div>
+                                          `
+                                      }
                                     </div>
                                   </div>
                                 `
