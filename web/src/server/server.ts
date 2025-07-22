@@ -15,6 +15,7 @@ import { createAuthMiddleware } from './middleware/auth.js';
 import { PtyManager } from './pty/index.js';
 import { createAuthRoutes } from './routes/auth.js';
 import { createConfigRoutes } from './routes/config.js';
+import { createControlRoutes } from './routes/control.js';
 import { createFileRoutes } from './routes/files.js';
 import { createFilesystemRoutes } from './routes/filesystem.js';
 import { createGitRoutes } from './routes/git.js';
@@ -760,6 +761,10 @@ export async function createApp(): Promise<AppInstance> {
   // Mount worktree routes
   app.use('/api', createWorktreeRoutes());
   logger.debug('Mounted worktree routes');
+
+  // Mount control routes
+  app.use('/api', createControlRoutes());
+  logger.debug('Mounted control routes');
 
   // Mount push notification routes
   if (vapidManager) {

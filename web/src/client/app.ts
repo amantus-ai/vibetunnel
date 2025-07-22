@@ -37,9 +37,12 @@ import './components/notification-status.js';
 import './components/auth-login.js';
 import './components/ssh-key-manager.js';
 import './components/worktree-manager.js';
+import './components/git-notification-handler.js';
+import type { GitNotificationHandler } from './components/git-notification-handler.js';
 
 import { authClient } from './services/auth-client.js';
 import { bufferSubscriptionService } from './services/buffer-subscription-service.js';
+import { getControlEventService } from './services/control-event-service.js';
 import { GitService } from './services/git-service.js';
 import { pushNotificationService } from './services/push-notification-service.js';
 
@@ -91,6 +94,7 @@ export class VibeTunnelApp extends LitElement {
   private resizeCleanupFunctions: (() => void)[] = [];
   private sessionLoadingState: 'idle' | 'loading' | 'loaded' | 'not-found' = 'idle';
   private gitService?: GitService;
+  private controlEventService?: ReturnType<typeof getControlEventService>;
 
   connectedCallback() {
     super.connectedCallback();
@@ -108,6 +112,16 @@ export class VibeTunnelApp extends LitElement {
   }
 
   firstUpdated() {
+    // Connect control event service to git notification handler
+    if (this.controlEventService) {
+      const gitNotificationHandler = this.querySelector(
+        'git-notification-handler'
+      ) as GitNotificationHandler;
+      if (gitNotificationHandler) {
+        gitNotificationHandler.setControlEventService(this.controlEventService);
+      }
+    }
+
     // Mark initial render as complete after a microtask to ensure DOM is settled
     Promise.resolve().then(() => {
       this.initialRenderComplete = true;
@@ -447,6 +461,10 @@ export class VibeTunnelApp extends LitElement {
 
       // Initialize Git service
       this.gitService = new GitService(authClient);
+
+      // Initialize control event service for real-time notifications
+      this.controlEventService = getControlEventService(authClient);
+      this.controlEventService.connect();
 
       logger.log('✅ Services initialized successfully');
     } catch (error) {
@@ -1773,6 +1791,9 @@ export class VibeTunnelApp extends LitElement {
           this.handleNavigateToWorktrees(e.detail.repoPath);
         }}
       ></session-create-form>
+
+      <!-- Git Notification Handler -->
+      <git-notification-handler></git-notification-handler>
 
       <!-- Version and logs link with smart positioning -->
       ${
