@@ -267,6 +267,17 @@ export function createWorktreeRoutes(): Router {
       const baseBranch = await detectDefaultBranch(absoluteRepoPath);
       logger.debug(`Using base branch: ${baseBranch}`);
 
+      // Get follow branch if configured
+      let followBranch: string | undefined;
+      try {
+        const { stdout } = await execGit(['config', 'vibetunnel.followBranch'], {
+          cwd: absoluteRepoPath,
+        });
+        followBranch = stdout.trim() || undefined;
+      } catch {
+        // No follow branch configured
+      }
+
       // Get worktree list
       const { stdout } = await execGit(['worktree', 'list', '--porcelain'], {
         cwd: absoluteRepoPath,
@@ -291,6 +302,7 @@ export function createWorktreeRoutes(): Router {
           return {
             ...worktree,
             ...stats,
+            stats, // Also include stats as a nested object for compatibility
             hasUncommittedChanges: hasChanges,
           };
         })
@@ -299,6 +311,7 @@ export function createWorktreeRoutes(): Router {
       return res.json({
         worktrees: enrichedWorktrees,
         baseBranch,
+        followBranch,
       });
     } catch (error) {
       logger.error('Error listing worktrees:', error);
@@ -370,6 +383,7 @@ export function createWorktreeRoutes(): Router {
 
       logger.info(`Successfully removed worktree: ${worktree.path}`);
       return res.json({
+        success: true,
         message: 'Worktree removed successfully',
         removedPath: worktree.path,
       });
@@ -404,8 +418,10 @@ export function createWorktreeRoutes(): Router {
 
       logger.info('Successfully pruned worktree information');
       return res.json({
+        success: true,
         message: 'Worktree information pruned successfully',
         output: stdout || stderr || 'No output',
+        pruned: stdout || stderr || '',
       });
     } catch (error) {
       logger.error('Error pruning worktrees:', error);
@@ -440,6 +456,15 @@ export function createWorktreeRoutes(): Router {
       const absoluteRepoPath = path.resolve(repoPath);
       logger.debug(`Switching to branch: ${branch} in repo: ${absoluteRepoPath}`);
 
+      // Check for uncommitted changes before switching
+      const hasChanges = await hasUncommittedChanges(absoluteRepoPath);
+      if (hasChanges) {
+        return res.status(400).json({
+          error: 'Cannot switch branches with uncommitted changes',
+          details: 'Please commit or stash your changes before switching branches',
+        });
+      }
+
       // Switch to the branch
       await execGit(['checkout', branch], { cwd: absoluteRepoPath });
 
@@ -450,8 +475,10 @@ export function createWorktreeRoutes(): Router {
 
       logger.info(`Successfully switched to branch: ${branch} with follow mode enabled`);
       return res.json({
+        success: true,
         message: 'Switched to branch and enabled follow mode',
         branch,
+        currentBranch: branch,
       });
     } catch (error) {
       logger.error('Error switching branch:', error);
@@ -593,9 +620,11 @@ export function createWorktreeRoutes(): Router {
         }
 
         return res.json({
+          success: true,
+          enabled: true,
           message: 'Follow mode enabled',
           branch,
-          hooksInstalled: !hooksAlreadyInstalled,
+          hooksInstalled: true,
           hooksInstallResult: hooksInstallResult,
         });
       } else {
@@ -621,6 +650,8 @@ export function createWorktreeRoutes(): Router {
         }
 
         return res.json({
+          success: true,
+          enabled: false,
           message: 'Follow mode disabled',
           branch,
         });
@@ -630,6 +661,8 @@ export function createWorktreeRoutes(): Router {
       if (isGitConfigNotFoundError(error) && !req.body.enable) {
         logger.debug('Follow mode was already disabled');
         return res.json({
+          success: true,
+          enabled: false,
           message: 'Follow mode disabled',
         });
       }

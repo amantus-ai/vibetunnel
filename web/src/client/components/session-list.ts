@@ -366,6 +366,55 @@ export class SessionList extends LitElement {
     }
   }
 
+  private groupSessionsByRepo(sessions: Session[]): Map<string | null, Session[]> {
+    const groups = new Map<string | null, Session[]>();
+
+    sessions.forEach((session) => {
+      const repoPath = session.gitRepoPath || null;
+      if (!groups.has(repoPath)) {
+        groups.set(repoPath, []);
+      }
+      const group = groups.get(repoPath);
+      if (group) {
+        group.push(session);
+      }
+    });
+
+    // Sort groups: non-git sessions first, then git sessions
+    const sortedGroups = new Map<string | null, Session[]>();
+
+    // Add non-git sessions first
+    if (groups.has(null)) {
+      const nullGroup = groups.get(null);
+      if (nullGroup) {
+        sortedGroups.set(null, nullGroup);
+      }
+    }
+
+    // Add git sessions sorted by repo name
+    const gitRepos = Array.from(groups.keys()).filter((key): key is string => key !== null);
+    gitRepos.sort((a, b) => {
+      const nameA = this.getRepoName(a);
+      const nameB = this.getRepoName(b);
+      return nameA.localeCompare(nameB);
+    });
+
+    gitRepos.forEach((repo) => {
+      const repoGroup = groups.get(repo);
+      if (repoGroup) {
+        sortedGroups.set(repo, repoGroup);
+      }
+    });
+
+    return sortedGroups;
+  }
+
+  private getRepoName(repoPath: string): string {
+    // Extract the repository name from the path
+    const parts = repoPath.split('/');
+    return parts[parts.length - 1] || repoPath;
+  }
+
   render() {
     // Group sessions by status and activity
     const activeSessions = this.sessions.filter(
@@ -467,11 +516,29 @@ export class SessionList extends LitElement {
                       <h3 class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">
                         Active <span class="text-text-dim">(${activeSessions.length})</span>
                       </h3>
-                      <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'} relative">
-                        ${repeat(
-                          activeSessions,
-                          (session) => session.id,
-                          (session) => html`
+                      ${Array.from(this.groupSessionsByRepo(activeSessions)).map(
+                        ([repoPath, repoSessions]) => html`
+                          <div class="${repoPath ? 'mb-6' : ''}">
+                            ${
+                              repoPath
+                                ? html`
+                                  <div class="flex items-center gap-2 mb-3">
+                                    <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                        d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    <h4 class="text-sm font-medium text-text-muted">
+                                      ${this.getRepoName(repoPath)}
+                                    </h4>
+                                  </div>
+                                `
+                                : ''
+                            }
+                            <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'} relative">
+                              ${repeat(
+                                repoSessions,
+                                (session) => session.id,
+                                (session) => html`
                     ${
                       this.compactMode
                         ? html`
@@ -658,8 +725,11 @@ export class SessionList extends LitElement {
                         `
                     }
                   `
-                        )}
-                      </div>
+                              )}
+                            </div>
+                          </div>
+                        `
+                      )}
                     </div>
                   `
                   : ''
@@ -673,11 +743,29 @@ export class SessionList extends LitElement {
                       <h3 class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">
                         Idle <span class="text-text-dim">(${idleSessions.length})</span>
                       </h3>
-                      <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'} relative">
-                        ${repeat(
-                          idleSessions,
-                          (session) => session.id,
-                          (session) => html`
+                      ${Array.from(this.groupSessionsByRepo(idleSessions)).map(
+                        ([repoPath, repoSessions]) => html`
+                          <div class="${repoPath ? 'mb-6' : ''}">
+                            ${
+                              repoPath
+                                ? html`
+                                  <div class="flex items-center gap-2 mb-3">
+                                    <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                        d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    <h4 class="text-sm font-medium text-text-muted">
+                                      ${this.getRepoName(repoPath)}
+                                    </h4>
+                                  </div>
+                                `
+                                : ''
+                            }
+                            <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'} relative">
+                              ${repeat(
+                                repoSessions,
+                                (session) => session.id,
+                                (session) => html`
                             ${
                               this.compactMode
                                 ? html`
@@ -792,8 +880,11 @@ export class SessionList extends LitElement {
                                 `
                             }
                           `
-                        )}
-                      </div>
+                              )}
+                            </div>
+                          </div>
+                        `
+                      )}
                     </div>
                   `
                   : ''
@@ -807,11 +898,29 @@ export class SessionList extends LitElement {
                       <h3 class="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">
                         Exited <span class="text-text-dim">(${exitedSessions.length})</span>
                       </h3>
-                      <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'} relative">
-                        ${repeat(
-                          exitedSessions,
-                          (session) => session.id,
-                          (session) => html`
+                      ${Array.from(this.groupSessionsByRepo(exitedSessions)).map(
+                        ([repoPath, repoSessions]) => html`
+                          <div class="${repoPath ? 'mb-6' : ''}">
+                            ${
+                              repoPath
+                                ? html`
+                                  <div class="flex items-center gap-2 mb-3">
+                                    <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                        d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    <h4 class="text-sm font-medium text-text-muted">
+                                      ${this.getRepoName(repoPath)}
+                                    </h4>
+                                  </div>
+                                `
+                                : ''
+                            }
+                            <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'} relative">
+                              ${repeat(
+                                repoSessions,
+                                (session) => session.id,
+                                (session) => html`
                             ${
                               this.compactMode
                                 ? html`
@@ -925,8 +1034,11 @@ export class SessionList extends LitElement {
                                 `
                             }
                           `
-                        )}
-                      </div>
+                              )}
+                            </div>
+                          </div>
+                        `
+                      )}
                     </div>
                   `
                   : ''

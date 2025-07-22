@@ -419,18 +419,25 @@ export class SessionCard extends LitElement {
           class="flex justify-between items-center px-3 py-2 border-b border-base bg-gradient-to-r from-secondary to-tertiary"
         >
           <div class="text-xs font-mono pr-2 flex-1 min-w-0 text-primary">
-            <inline-edit
-              .value=${this.session.name || this.session.command?.join(' ') || ''}
-              .placeholder=${this.session.command?.join(' ') || ''}
-              .onSave=${async (newName: string) => {
-                try {
-                  await this.handleRename(newName);
-                } catch (error) {
-                  // Error is already handled in handleRename
-                  logger.debug('Rename error caught in onSave', { error });
-                }
-              }}
-            ></inline-edit>
+            <div class="flex items-center gap-2">
+              <inline-edit
+                .value=${this.session.name || this.session.command?.join(' ') || ''}
+                .placeholder=${this.session.command?.join(' ') || ''}
+                .onSave=${async (newName: string) => {
+                  try {
+                    await this.handleRename(newName);
+                  } catch (error) {
+                    // Error is already handled in handleRename
+                    logger.debug('Rename error caught in onSave', { error });
+                  }
+                }}
+              ></inline-edit>
+              ${
+                this.session.gitBranch
+                  ? html`<span class="text-text-muted">[${this.session.gitBranch}]</span>`
+                  : ''
+              }
+            </div>
           </div>
           <div class="flex items-center gap-1 flex-shrink-0">
             ${
