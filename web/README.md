@@ -185,8 +185,20 @@ PUSH_CONTACT_EMAIL=admin@example.com # Contact email for VAPID configuration
 - **Real-time synchronization** - See output in real-time
 - **TTY forwarding** - Full terminal emulation support
 - **Session management** - Create, list, and manage sessions
+- **Git worktree support** - Work on multiple branches simultaneously
 - **Cross-platform** - Works on macOS and Linux
 - **No dependencies** - Just Node.js required
+
+### Git Worktree Integration
+
+VibeTunnel provides comprehensive Git worktree support, allowing you to:
+- Work on multiple branches simultaneously without stashing changes
+- Create new worktrees directly from the session creation dialog
+- Smart branch switching with uncommitted change detection
+- Follow mode to keep multiple worktrees in sync
+- Visual indicators for worktree sessions
+
+For detailed information, see the [Git Worktree Management Guide](docs/worktree.md).
 
 ## Package Contents
 
