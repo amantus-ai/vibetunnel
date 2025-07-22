@@ -141,6 +141,10 @@ export class WorktreeManager extends LitElement {
     try {
       await this.gitService.setFollowMode(this.repoPath, branch, enable);
       await this.loadWorktrees();
+
+      // Trigger a refresh of Git events after follow mode change
+      // The Git event service will pick up the change on its next poll
+
       const action = enable ? 'enabled' : 'disabled';
       this.dispatchEvent(
         new CustomEvent('success', {
@@ -187,11 +191,9 @@ export class WorktreeManager extends LitElement {
         ${
           this.error
             ? html`
-          <notification-status
-            .message=${this.error}
-            type="error"
-            .visible=${true}
-          ></notification-status>
+          <div class="bg-status-error text-white px-4 py-2 rounded mb-4">
+            ${this.error}
+          </div>
         `
             : ''
         }

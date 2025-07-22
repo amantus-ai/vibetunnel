@@ -169,19 +169,19 @@ describe('Worktree Workflows Integration Tests', () => {
     });
 
     it('should switch branches in main worktree', async () => {
-      // Switch to feature branch
+      // Switch to bugfix branch (not feature branch which has a worktree)
       const switchResponse = await request(app).post('/api/worktrees/switch').send({
         repoPath: testRepoPath,
-        branch: 'feature/test-feature',
+        branch: 'bugfix/critical-fix',
       });
 
       expect(switchResponse.status).toBe(200);
       expect(switchResponse.body.success).toBe(true);
-      expect(switchResponse.body.currentBranch).toBe('feature/test-feature');
+      expect(switchResponse.body.currentBranch).toBe('bugfix/critical-fix');
 
       // Verify the branch was actually switched
       const { stdout } = await gitExec(['branch', '--show-current']);
-      expect(stdout.trim()).toBe('feature/test-feature');
+      expect(stdout.trim()).toBe('bugfix/critical-fix');
 
       // Switch back to main
       await gitExec(['checkout', 'main']);
@@ -484,7 +484,10 @@ describe('Worktree Workflows Integration Tests', () => {
 
       expect(rootResponse.status).toBe(200);
       expect(rootResponse.body.isGitRepo).toBe(true);
-      expect(rootResponse.body.repoPath).toBe(testRepoPath);
+      // Handle macOS /tmp symlink to /private/tmp
+      const expectedPath = testRepoPath.replace(/^\/private/, '');
+      const actualPath = rootResponse.body.repoPath.replace(/^\/private/, '');
+      expect(actualPath).toBe(expectedPath);
 
       // Test subdirectory
       const subDir = path.join(testRepoPath, 'nested', 'deep');
@@ -494,7 +497,10 @@ describe('Worktree Workflows Integration Tests', () => {
 
       expect(subResponse.status).toBe(200);
       expect(subResponse.body.isGitRepo).toBe(true);
-      expect(subResponse.body.repoPath).toBe(testRepoPath);
+      // Handle macOS /tmp symlink to /private/tmp
+      const subExpectedPath = testRepoPath.replace(/^\/private/, '');
+      const subActualPath = subResponse.body.repoPath.replace(/^\/private/, '');
+      expect(subActualPath).toBe(subExpectedPath);
 
       // Test non-git directory
       const nonGitDir = '/tmp';

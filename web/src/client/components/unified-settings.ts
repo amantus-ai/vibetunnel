@@ -638,7 +638,7 @@ export class UnifiedSettings extends LitElement {
               </div>
             </div>
             <p class="text-muted text-xs mt-1">
-              Default directory for new sessions and repository discovery. Changes are automatically synced with the VibeTunnel Mac app.
+              Default directory for new sessions and repository discovery.
             </p>
           </div>
           <div class="flex gap-2">

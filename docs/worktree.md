@@ -87,7 +87,11 @@ A new set of routes will be created, likely in `web/src/server/routes/worktrees.
 
 ### 2.2. Event-Driven Notifications
 
-To keep the user informed about background activities, the server will send events to the macOS client via the existing Unix socket.
+To keep the user informed about background activities, the server implements a dual notification system:
+
+*   **Dual Notification Modes:**
+    *   **When macOS client is connected:** The server sends events to the macOS client via the existing Unix socket, which displays them as native macOS notifications.
+    *   **When macOS client is not connected:** The web UI displays notifications using its built-in notification system (toast messages).
 
 *   **Event Structure:** A standardized JSON payload will be used, e.g., `{ "type": "notification", "payload": { "level": "info" | "error", "title": "...", "message": "..." } }`.
 *   **Events to Implement:**
@@ -95,7 +99,10 @@ To keep the user informed about background activities, the server will send even
     *   `follow.disabled`: "Follow mode disabled."
     *   `sync.success`: "Repository synced successfully."
     *   `sync.error`: "Error syncing repository: [details]."
-*   **Server Logic:** The `/api/git/event` handler will be responsible for constructing and sending these event messages through the `controlUnixHandler`.
+*   **Server Logic:** The `/api/git/event` handler will be responsible for:
+    1. Checking if the macOS client is connected via the Unix socket.
+    2. If connected, sending event messages through the `controlUnixHandler` for native notifications.
+    3. If not connected, storing events for the web UI to poll or receive via SSE.
 
 ### 2.3. macOS Client (mac/)
 
@@ -127,7 +134,27 @@ The macOS client will provide the user interface for this feature.
             1.  **Delete Anyway:** Calls `DELETE /api/worktrees/:branch?force=true`.
             2.  **Cancel:** Closes the dialog.
 
-### 2.4. CLI Tool (`vt`)
+### 2.4. Web UI (web/)
+
+The web UI provides Git-aware features when the macOS client is not available:
+
+*   **Session Grouping and Branch Labels:**
+    *   Sessions are automatically grouped by their `gitRepoPath` property.
+    *   Each session displays its current Git branch name in brackets next to the session name.
+    *   Repository groups show a Git icon and the repository name as a header.
+
+*   **Worktree Management UI:**
+    *   Accessible via a Git icon button on session cards that have a `gitRepoPath`.
+    *   Displays the same worktree management interface as the macOS client.
+    *   All worktree operations (list, delete, prune, follow mode) are available.
+    *   Success/error notifications are displayed as toast messages in the web UI.
+
+*   **Notification Handling:**
+    *   When the macOS client is not connected, Git event notifications are displayed as temporary toast messages.
+    *   The web UI uses the existing `showSuccess` and `showError` methods for notification display.
+    *   Notifications automatically disappear after a configured timeout.
+
+### 2.5. CLI Tool (`vt`)
 
 The `vt` command-line tool will be extended to support worktree operations.
 
@@ -162,22 +189,29 @@ The `vt` command-line tool will be extended to support worktree operations.
 
 1.  **Server-Side:**
     a. Implement the new `/api/worktrees` and `/api/git` routes, including the unified `/api/git/event` endpoint with its in-memory lock.
-    b. Extend the `POST /api/sessions` and `GET /api/sessions` logic to handle the new Git-related session metadata.
+    b. Extend the `POST /api/sessions` and `GET /api/sessions` logic to handle the new Git-related session metadata (gitRepoPath, gitBranch).
     c. Implement the server-side intelligence in the `/api/git/event` handler to manage titles, sync, and follow-mode state.
-    d. Implement the core logic for shelling out to `git` for all worktree operations, ensuring all commands are executed with parameterized arguments (e.g., via `spawn`) to prevent injection vulnerabilities.
+    d. Implement dual notification delivery: Unix socket for macOS client, and event storage for web UI.
+    e. Implement the core logic for shelling out to `git` for all worktree operations, ensuring all commands are executed with parameterized arguments (e.g., via `spawn`) to prevent injection vulnerabilities.
 2.  **CLI:**
     a. Add the `wtree` and `git` subcommands to the `vt` tool, including the simplified `git event` command.
-3.  **macOS Client:**
+3.  **Web UI:**
+    a. Implement session grouping by repository with branch labels display.
+    b. Add Git icon button to session cards that have a gitRepoPath.
+    c. Implement the worktree management UI component with all operations (list, delete, prune, follow mode).
+    d. Integrate success/error notifications using the existing toast message system.
+    e. Add navigation between session list and worktree management views.
+4.  **macOS Client:**
     a. Implement the context-aware UI for session creation.
     b. Implement the project-based grouping and branch labeling in the session list.
     c. Implement the notification handler for events received over the Unix socket.
     d. Design and implement the UI for worktree management, including the simplified deletion flow.
     e. Integrate the UI with the new server APIs.
-4.  **Hooks:**
+5.  **Hooks:**
     a. Implement the logic for the safe, on-demand, chaining installation and uninstallation of the Git hooks.
-5.  **Testing:**
+6.  **Testing:**
     a. Write unit and integration tests for the new API endpoints.
-    b. Perform end-to-end testing of the UI flow.
+    b. Perform end-to-end testing of both web and macOS UI flows.
 
 ## 5. Design Rationale
 

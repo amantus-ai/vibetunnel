@@ -77,6 +77,9 @@ detached
         stderr: '',
       });
 
+      // Mock git config for follow branch (not set)
+      mockExecFile.mockRejectedValueOnce(new Error('Not found'));
+
       // Mock git worktree list
       mockExecFile.mockResolvedValueOnce({
         stdout: mockWorktreeListOutput,
@@ -136,6 +139,7 @@ detached
 
     it('should fallback to main branch when origin HEAD detection fails', async () => {
       mockExecFile.mockRejectedValueOnce(new Error('Not found'));
+      mockExecFile.mockRejectedValueOnce(new Error('Not found')); // follow branch not set
       mockExecFile.mockResolvedValueOnce({ stdout: mockWorktreeListOutput, stderr: '' });
 
       // Mock stats for all worktrees
@@ -158,6 +162,9 @@ detached
       mockExecFile.mockRejectedValueOnce(new Error('Not found'));
 
       // Mock git rev-parse to check for main branch (fails)
+      mockExecFile.mockRejectedValueOnce(new Error('Not found'));
+
+      // Mock git config for follow branch (not set)
       mockExecFile.mockRejectedValueOnce(new Error('Not found'));
 
       // Mock git worktree list
@@ -281,6 +288,7 @@ branch refs/heads/feature
 
   describe('POST /api/worktrees/switch', () => {
     it('should switch branch and enable follow mode', async () => {
+      mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' }); // status (no uncommitted changes)
       mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' }); // checkout
       mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' }); // config
 
