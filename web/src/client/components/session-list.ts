@@ -1029,50 +1029,41 @@ export class SessionList extends LitElement {
                                     .onSave=${(newName: string) => this.handleRename(session.id, newName)}
                                   ></inline-edit>
                                 </div>
-                                <!-- Git info: repo, branch, worktree indicator -->
-                                ${
-                                  session.gitRepoPath
-                                    ? html`
-                                  <div class="flex items-center gap-1 text-xs text-text-muted flex-shrink-0">
-                                    <span class="text-text-dim">@</span>
-                                    <span class="font-mono">${this.getRepoName(session.gitRepoPath)}</span>
-                                    ${
-                                      session.gitBranch
-                                        ? html`
-                                      <span class="text-status-success font-mono">[${session.gitBranch}]</span>
-                                    `
-                                        : ''
-                                    }
-                                    ${
-                                      session.gitIsWorktree
-                                        ? html`
-                                      <span class="text-purple-400">⎇</span>
-                                    `
-                                        : ''
-                                    }
-                                  </div>
-                                `
-                                    : ''
-                                }
                                 <!-- Git changes indicator -->
                                 ${this.renderGitChanges(session)}
                               </div>
                               <div class="text-xs text-text-muted truncate flex items-center gap-1">
                                 ${(() => {
-                                  // Show activity status inline with path
+                                  // Build the path line with Git info
+                                  const parts = [];
+
+                                  // Add activity status if present
                                   if (session.activityStatus?.specificStatus) {
-                                    return html`
-                                      <span class="text-status-warning flex-shrink-0">
-                                        ${session.activityStatus.specificStatus.status}
-                                      </span>
-                                      <span class="text-text-muted/50">·</span>
-                                      <span class="truncate">
-                                        ${formatPathForDisplay(session.workingDir)}
-                                      </span>
-                                    `;
-                                  } else {
-                                    return formatPathForDisplay(session.workingDir);
+                                    parts.push(
+                                      html`<span class="text-status-warning flex-shrink-0">${session.activityStatus.specificStatus.status}</span>`
+                                    );
                                   }
+
+                                  // Add path
+                                  parts.push(
+                                    html`<span class="truncate">${formatPathForDisplay(session.workingDir)}</span>`
+                                  );
+
+                                  // Add Git branch if present
+                                  if (session.gitBranch) {
+                                    parts.push(
+                                      html`<span class="text-status-success font-mono">${session.gitBranch}</span>`
+                                    );
+                                    if (session.gitIsWorktree) {
+                                      parts.push(html`<span class="text-purple-400">⎇</span>`);
+                                    }
+                                  }
+
+                                  // Join parts with separator
+                                  return parts.map((part, index) => {
+                                    if (index === 0) return part;
+                                    return html`<span class="text-text-muted/50">·</span>${part}`;
+                                  });
                                 })()}
                               </div>
                             </div>
@@ -1257,36 +1248,20 @@ export class SessionList extends LitElement {
                                               : session.command)
                                           }
                                         </div>
-                                        <!-- Git info: repo, branch, worktree indicator -->
-                                        ${
-                                          session.gitRepoPath
-                                            ? html`
-                                          <div class="flex items-center gap-1 text-xs text-text-muted flex-shrink-0">
-                                            <span class="text-text-dim">@</span>
-                                            <span class="font-mono">${this.getRepoName(session.gitRepoPath)}</span>
-                                            ${
-                                              session.gitBranch
-                                                ? html`
-                                              <span class="text-status-success font-mono">[${session.gitBranch}]</span>
-                                            `
-                                                : ''
-                                            }
-                                            ${
-                                              session.gitIsWorktree
-                                                ? html`
-                                              <span class="text-purple-400">⎇</span>
-                                            `
-                                                : ''
-                                            }
-                                          </div>
-                                        `
-                                            : ''
-                                        }
                                         <!-- Git changes indicator -->
                                         ${this.renderGitChanges(session)}
                                       </div>
-                                      <div class="text-xs text-text-dim truncate">
-                                        ${formatPathForDisplay(session.workingDir)}
+                                      <div class="text-xs text-text-dim truncate flex items-center gap-1">
+                                        <span class="truncate">${formatPathForDisplay(session.workingDir)}</span>
+                                        ${
+                                          session.gitBranch
+                                            ? html`
+                                            <span class="text-text-muted/50">·</span>
+                                            <span class="text-status-success font-mono">${session.gitBranch}</span>
+                                            ${session.gitIsWorktree ? html`<span class="text-purple-400">⎇</span>` : ''}
+                                          `
+                                            : ''
+                                        }
                                       </div>
                                     </div>
                                     
@@ -1457,36 +1432,20 @@ export class SessionList extends LitElement {
                                               : session.command)
                                           }
                                         </div>
-                                        <!-- Git info: repo, branch, worktree indicator -->
-                                        ${
-                                          session.gitRepoPath
-                                            ? html`
-                                          <div class="flex items-center gap-1 text-xs text-text-muted flex-shrink-0">
-                                            <span class="text-text-dim">@</span>
-                                            <span class="font-mono">${this.getRepoName(session.gitRepoPath)}</span>
-                                            ${
-                                              session.gitBranch
-                                                ? html`
-                                              <span class="text-status-success font-mono">[${session.gitBranch}]</span>
-                                            `
-                                                : ''
-                                            }
-                                            ${
-                                              session.gitIsWorktree
-                                                ? html`
-                                              <span class="text-purple-400">⎇</span>
-                                            `
-                                                : ''
-                                            }
-                                          </div>
-                                        `
-                                            : ''
-                                        }
                                         <!-- Git changes indicator -->
                                         ${this.renderGitChanges(session)}
                                       </div>
-                                      <div class="text-xs text-text-dim truncate">
-                                        ${formatPathForDisplay(session.workingDir)}
+                                      <div class="text-xs text-text-dim truncate flex items-center gap-1">
+                                        <span class="truncate">${formatPathForDisplay(session.workingDir)}</span>
+                                        ${
+                                          session.gitBranch
+                                            ? html`
+                                            <span class="text-text-muted/50">·</span>
+                                            <span class="text-status-success font-mono">${session.gitBranch}</span>
+                                            ${session.gitIsWorktree ? html`<span class="text-purple-400">⎇</span>` : ''}
+                                          `
+                                            : ''
+                                        }
                                       </div>
                                     </div>
                                     
