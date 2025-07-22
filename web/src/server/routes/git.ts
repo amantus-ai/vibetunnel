@@ -200,7 +200,7 @@ export function createGitRoutes(): Router {
       const sessionManager = new SessionManager();
       const allSessions = sessionManager.listSessions();
       const sessionsInRepo = allSessions.filter((session) => {
-        if (!session.workingDir) return false;
+        if (!session.workingDir || !repoPath) return false;
         const sessionPath = path.resolve(session.workingDir);
         return sessionPath.startsWith(repoPath);
       });

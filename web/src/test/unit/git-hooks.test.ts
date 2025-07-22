@@ -133,7 +133,7 @@ describe('Git Hooks', () => {
 
       // Find the call that contains the chained hook
       const chainedHookCall = mockWriteFile.mock.calls.find(
-        (call: any[]) =>
+        (call) =>
           call[0] === '/home/user/project/.git/hooks/post-commit' && call[1].includes('exec')
       );
 

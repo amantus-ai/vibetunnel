@@ -3,13 +3,13 @@ import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock promisify to return a function that we can control
-let mockExecFile: any;
+let mockExecFile: ReturnType<typeof vi.fn>;
 
 vi.mock('util', () => {
   return {
-    promisify: vi.fn((_fn: any) => {
+    promisify: vi.fn(() => {
       // Return a function that can be mocked later
-      return (...args: any[]) => {
+      return (...args: unknown[]) => {
         if (mockExecFile) {
           return mockExecFile(...args);
         }
@@ -34,7 +34,7 @@ vi.mock('../../server/websocket/control-unix-handler.js', () => ({
 }));
 
 vi.mock('../../server/websocket/control-protocol.js', () => ({
-  createControlEvent: vi.fn((category: string, action: string, payload: any) => ({
+  createControlEvent: vi.fn((category: string, action: string, payload: unknown) => ({
     type: 'event',
     category,
     action,
@@ -54,9 +54,9 @@ vi.mock('../../server/utils/logger.js', () => ({
 
 describe('Git Routes', () => {
   let app: express.Application;
-  let createGitRoutes: any;
-  let SessionManager: any;
-  let controlUnixHandler: any;
+  let createGitRoutes: typeof import('../../server/routes/git.js').createGitRoutes;
+  let SessionManager: typeof import('../../server/pty/session-manager.js').SessionManager;
+  let controlUnixHandler: typeof import('../../server/websocket/control-unix-handler.js').controlUnixHandler;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -111,7 +111,7 @@ describe('Git Routes', () => {
     });
 
     it('should return isGitRepo: false when not in a git repository', async () => {
-      const error = new Error('Command failed') as any;
+      const error = new Error('Command failed') as Error & { code?: number; stderr?: string };
       error.code = 128;
       error.stderr = 'fatal: not a git repository (or any of the parent directories): .git';
       mockExecFile.mockRejectedValueOnce(error);
@@ -127,7 +127,7 @@ describe('Git Routes', () => {
     });
 
     it('should return isGitRepo: false when git command is not found', async () => {
-      const error = new Error('Command not found') as any;
+      const error = new Error('Command not found') as Error & { code?: string };
       error.code = 'ENOENT';
       mockExecFile.mockRejectedValueOnce(error);
 
@@ -162,7 +162,7 @@ describe('Git Routes', () => {
     });
 
     it('should handle unexpected git errors', async () => {
-      const error = new Error('Unexpected git error') as any;
+      const error = new Error('Unexpected git error') as Error & { code?: number };
       error.code = 1;
       mockExecFile.mockRejectedValueOnce(error);
 
@@ -195,7 +195,7 @@ describe('Git Routes', () => {
   });
 
   describe('POST /api/git/event', () => {
-    let mockSessionManagerInstance: any;
+    let mockSessionManagerInstance: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
       // Reset mocks for each test
@@ -205,7 +205,9 @@ describe('Git Routes', () => {
       };
 
       // Make SessionManager constructor return our mock instance
-      (SessionManager as any).mockImplementation(() => mockSessionManagerInstance);
+      (SessionManager as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+        () => mockSessionManagerInstance
+      );
     });
 
     it('should handle git event with repository lock', async () => {
@@ -323,7 +325,7 @@ describe('Git Routes', () => {
     });
 
     it('should send notification to Mac app when connected', async () => {
-      (controlUnixHandler.isMacAppConnected as any).mockReturnValue(true);
+      (controlUnixHandler.isMacAppConnected as ReturnType<typeof vi.fn>).mockReturnValue(true);
 
       mockExecFile
         .mockResolvedValueOnce({ stdout: 'false\n', stderr: '' }) // follow mode check

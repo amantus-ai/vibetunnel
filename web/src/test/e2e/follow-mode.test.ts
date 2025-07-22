@@ -8,8 +8,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 const execFileAsync = promisify(execFile);
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+interface ServerProcess {
+  pid?: number;
+  kill: (signal?: string) => void;
+}
+
 describe('Follow Mode End-to-End Tests', () => {
-  let serverProcess: any;
+  let serverProcess: ServerProcess | null;
   let testRepoPath: string;
   let worktreePath: string;
   let serverPort: number;
@@ -245,7 +250,7 @@ describe('Follow Mode End-to-End Tests', () => {
 
       // Get initial session info
       const listResponse1 = await request(baseUrl).get('/api/sessions');
-      const session1 = listResponse1.body.find((s: any) => s.id === sessionId);
+      const session1 = listResponse1.body.find((s: { id: string }) => s.id === sessionId);
       expect(session1.gitBranch).toBe('main');
 
       // Switch branch
@@ -256,7 +261,7 @@ describe('Follow Mode End-to-End Tests', () => {
 
       // Get updated session info
       const listResponse2 = await request(baseUrl).get('/api/sessions');
-      const session2 = listResponse2.body.find((s: any) => s.id === sessionId);
+      const session2 = listResponse2.body.find((s: { id: string }) => s.id === sessionId);
       expect(session2.name).toContain('[checkout:');
 
       // Clean up
@@ -300,18 +305,21 @@ describe('Follow Mode End-to-End Tests', () => {
 
       // Check that appropriate sessions were updated
       const listResponse = await request(baseUrl).get('/api/sessions');
-      const updatedSessions = listResponse.body.filter((s: any) => sessionIds.includes(s.id));
+      const updatedSessions = listResponse.body.filter((s: { id: string }) =>
+        sessionIds.includes(s.id)
+      );
 
       // Main repo sessions should be updated
       const mainRepoSessions = updatedSessions.filter(
-        (s: any) => s.workingDir.startsWith(testRepoPath) && !s.workingDir.startsWith(worktreePath)
+        (s: { workingDir: string }) =>
+          s.workingDir.startsWith(testRepoPath) && !s.workingDir.startsWith(worktreePath)
       );
-      mainRepoSessions.forEach((s: any) => {
+      mainRepoSessions.forEach((s: { name: string }) => {
         expect(s.name).toContain('[merge: feature/awesome]');
       });
 
       // Worktree session should not be updated (different worktree)
-      const worktreeSession = updatedSessions.find((s: any) =>
+      const worktreeSession = updatedSessions.find((s: { workingDir: string }) =>
         s.workingDir.startsWith(worktreePath)
       );
       expect(worktreeSession.name).not.toContain('[merge: feature/awesome]');
@@ -332,13 +340,16 @@ describe('Follow Mode End-to-End Tests', () => {
       expect(response.body.worktrees.length).toBeGreaterThan(1);
 
       // Check main worktree
-      const mainWt = response.body.worktrees.find((w: any) => w.isMainWorktree);
+      const mainWt = response.body.worktrees.find(
+        (w: { isMainWorktree: boolean }) => w.isMainWorktree
+      );
       expect(mainWt).toBeDefined();
       expect(mainWt.branch).toBeDefined();
 
       // Check secondary worktree
       const devWt = response.body.worktrees.find(
-        (w: any) => w.branch === 'develop' && !w.isMainWorktree
+        (w: { branch: string; isMainWorktree: boolean }) =>
+          w.branch === 'develop' && !w.isMainWorktree
       );
       expect(devWt).toBeDefined();
       expect(devWt.path).toBe(worktreePath);

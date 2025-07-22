@@ -29,8 +29,9 @@ describe('Worktree Workflows Integration Tests', () => {
     try {
       const { stdout, stderr } = await execFileAsync('git', args, { cwd });
       return { stdout: stdout.toString(), stderr: stderr.toString() };
-    } catch (error: any) {
-      throw new Error(`Git command failed: ${error.message}\nStderr: ${error.stderr}`);
+    } catch (error) {
+      const err = error as Error & { stderr?: string };
+      throw new Error(`Git command failed: ${err.message}\nStderr: ${err.stderr || ''}`);
     }
   }
 
@@ -127,13 +128,16 @@ describe('Worktree Workflows Integration Tests', () => {
       expect(response.body.worktrees).toBeDefined();
       expect(response.body.worktrees.length).toBeGreaterThan(0);
 
-      const mainWorktree = response.body.worktrees.find((w: any) => w.isMainWorktree);
+      const mainWorktree = response.body.worktrees.find(
+        (w: { isMainWorktree: boolean }) => w.isMainWorktree
+      );
       expect(mainWorktree).toBeDefined();
       expect(mainWorktree.branch).toBe('main');
       expect(mainWorktree.isCurrentWorktree).toBe(true);
 
       const featureWorktree = response.body.worktrees.find(
-        (w: any) => w.branch === 'feature/test-feature' && !w.isMainWorktree
+        (w: { branch: string; isMainWorktree: boolean }) =>
+          w.branch === 'feature/test-feature' && !w.isMainWorktree
       );
       expect(featureWorktree).toBeDefined();
       expect(featureWorktree.stats).toBeDefined();
@@ -219,7 +223,7 @@ describe('Worktree Workflows Integration Tests', () => {
         .query({ repoPath: testRepoPath });
 
       const deletedWorktree = listResponse.body.worktrees.find(
-        (w: any) => w.branch === 'temp/delete-me'
+        (w: { branch: string }) => w.branch === 'temp/delete-me'
       );
       expect(deletedWorktree).toBeUndefined();
     });

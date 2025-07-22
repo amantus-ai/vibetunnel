@@ -47,12 +47,12 @@ vi.mock('../../server/services/remote-registry.js', () => ({
 }));
 
 vi.mock('../../server/websocket/control-protocol.js', () => ({
-  createControlMessage: vi.fn((category: string, action: string, payload: any) => ({
+  createControlMessage: vi.fn((category: string, action: string, payload: unknown) => ({
     type: 'request',
     category,
     action,
     payload,
-    sessionId: payload.sessionId,
+    sessionId: (payload as { sessionId?: string })?.sessionId,
   })),
 }));
 
@@ -74,11 +74,12 @@ vi.mock('fs', () => ({
 
 // Import modules after mocks are set up
 const sessionsModule = await import('../../server/routes/sessions.js');
-const express = (await import('express')).default;
-const request = (await import('supertest')).default;
+
+import express from 'express';
+import request from 'supertest';
 
 describe('Session Creation with Git Info', () => {
-  let app: any;
+  let app: express.Application;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -217,8 +218,8 @@ describe('Session Creation with Git Info', () => {
 
     it('should handle non-Git directories', async () => {
       // Mock Git command failure (not a git repo)
-      const error = new Error('Not a git repository');
-      (error as any).stderr = 'fatal: not a git repository';
+      const error = new Error('Not a git repository') as Error & { stderr?: string };
+      error.stderr = 'fatal: not a git repository';
       mockExecFile.mockRejectedValueOnce(error);
 
       mockCreateSession.mockResolvedValue({
