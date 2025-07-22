@@ -79,12 +79,17 @@ export class SessionCreateForm extends LitElement {
   @state() private showCreateWorktree = false;
   @state() private newBranchName = '';
   @state() private isCreatingWorktree = false;
-  
+
   // New properties for split branch/worktree selectors
   @state() private currentBranch: string = '';
   @state() private selectedBaseBranch: string = '';
   @state() private selectedWorktree?: string;
-  @state() private availableWorktrees: Array<{ branch: string; path: string; isMainWorktree?: boolean; isCurrentWorktree?: boolean }> = [];
+  @state() private availableWorktrees: Array<{
+    branch: string;
+    path: string;
+    isMainWorktree?: boolean;
+    isCurrentWorktree?: boolean;
+  }> = [];
   @state() private isLoadingBranches = false;
   @state() private isLoadingWorktrees = false;
 
@@ -666,7 +671,7 @@ export class SessionCreateForm extends LitElement {
         // Load branches in parallel with worktrees
         await Promise.all([
           this.loadBranches(repoInfo.repoPath),
-          this.loadWorktrees(repoInfo.repoPath, path)
+          this.loadWorktrees(repoInfo.repoPath, path),
         ]);
       } else {
         logger.log(`❌ Not a Git repository: ${path}`, repoInfo);
@@ -748,6 +753,59 @@ export class SessionCreateForm extends LitElement {
       );
     } finally {
       this.isCreatingWorktree = false;
+    }
+  }
+
+  private async loadBranches(_repoPath: string): Promise<void> {
+    this.isLoadingBranches = true;
+    try {
+      // For now, we'll use a simple list of common branches
+      // In a real implementation, this would fetch from the Git API
+      this.availableBranches = ['main', 'master', 'develop', 'staging', 'production'];
+
+      // Set current branch if not already set
+      if (!this.currentBranch && this.availableBranches.length > 0) {
+        this.currentBranch = this.availableBranches[0];
+        this.selectedBaseBranch = this.currentBranch;
+      }
+    } catch (error) {
+      logger.error('Failed to load branches:', error);
+      this.availableBranches = [];
+    } finally {
+      this.isLoadingBranches = false;
+    }
+  }
+
+  private async loadWorktrees(repoPath: string, currentPath: string): Promise<void> {
+    if (!this.gitService) {
+      return;
+    }
+
+    this.isLoadingWorktrees = true;
+    try {
+      const response = await this.gitService.listWorktrees(repoPath);
+      this.availableWorktrees = response.worktrees.map((wt) => ({
+        branch: wt.branch,
+        path: wt.path,
+        isMainWorktree: wt.isMainWorktree,
+        isCurrentWorktree: wt.path === currentPath,
+      }));
+
+      // Update current branch based on worktree info
+      const currentWorktree = response.worktrees.find(
+        (wt) => wt.isCurrentWorktree || wt.path === currentPath
+      );
+      if (currentWorktree) {
+        this.currentBranch = currentWorktree.branch;
+        if (!this.selectedBaseBranch) {
+          this.selectedBaseBranch = this.currentBranch;
+        }
+      }
+    } catch (error) {
+      logger.error('Failed to load worktrees:', error);
+      this.availableWorktrees = [];
+    } finally {
+      this.isLoadingWorktrees = false;
     }
   }
 
@@ -909,65 +967,59 @@ export class SessionCreateForm extends LitElement {
                               <span class="text-text text-xs sm:text-sm truncate flex-1">
                                 ${completion.name}
                               </span>
+                              <span class="text-text-muted text-[9px] sm:text-[10px] truncate max-w-[40%]">${completion.path}</span>
                               ${
                                 completion.gitBranch
+                                  ? html`<span class="text-primary text-[9px] sm:text-[10px]">[${completion.gitBranch}]</span>`
+                                  : nothing
+                              }
+                              ${
+                                completion.gitAddedCount ||
+                                completion.gitModifiedCount ||
+                                completion.gitDeletedCount
                                   ? html`
-                                    <div class="flex items-center gap-2">
+                                    <div class="flex items-center gap-1.5 text-[9px] sm:text-[10px]">
                                       ${
-                                        completion.gitAddedCount ||
-                                        completion.gitModifiedCount ||
-                                        completion.gitDeletedCount
+                                        completion.gitAddedCount && completion.gitAddedCount > 0
                                           ? html`
-                                            <div class="flex items-center gap-1.5 text-[9px] sm:text-[10px]">
-                                              ${
-                                                completion.gitAddedCount &&
-                                                completion.gitAddedCount > 0
-                                                  ? html`
-                                                    <span class="flex items-center gap-0.5 text-green-500">
-                                                      <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                                                      </svg>
-                                                      <span>${completion.gitAddedCount}</span>
-                                                    </span>
-                                                  `
-                                                  : nothing
-                                              }
-                                              ${
-                                                completion.gitModifiedCount &&
-                                                completion.gitModifiedCount > 0
-                                                  ? html`
-                                                    <span class="flex items-center gap-0.5 text-yellow-500">
-                                                      <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
-                                                        <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32l8.4-8.4z" />
-                                                      </svg>
-                                                      <span>${completion.gitModifiedCount}</span>
-                                                    </span>
-                                                  `
-                                                  : nothing
-                                              }
-                                              ${
-                                                completion.gitDeletedCount &&
-                                                completion.gitDeletedCount > 0
-                                                  ? html`
-                                                    <span class="flex items-center gap-0.5 text-red-500">
-                                                      <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                                                      </svg>
-                                                      <span>${completion.gitDeletedCount}</span>
-                                                    </span>
-                                                  `
-                                                  : nothing
-                                              }
-                                            </div>
+                                            <span class="flex items-center gap-0.5 text-green-500">
+                                              <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                                              </svg>
+                                              <span>${completion.gitAddedCount}</span>
+                                            </span>
                                           `
                                           : nothing
                                       }
-                                      <span class="text-primary text-[9px] sm:text-[10px]">[${completion.gitBranch}]</span>
+                                      ${
+                                        completion.gitModifiedCount &&
+                                        completion.gitModifiedCount > 0
+                                          ? html`
+                                            <span class="flex items-center gap-0.5 text-yellow-500">
+                                              <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32l8.4-8.4z" />
+                                              </svg>
+                                              <span>${completion.gitModifiedCount}</span>
+                                            </span>
+                                          `
+                                          : nothing
+                                      }
+                                      ${
+                                        completion.gitDeletedCount && completion.gitDeletedCount > 0
+                                          ? html`
+                                            <span class="flex items-center gap-0.5 text-red-500">
+                                              <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                                              </svg>
+                                              <span>${completion.gitDeletedCount}</span>
+                                            </span>
+                                          `
+                                          : nothing
+                                      }
                                     </div>
                                   `
                                   : nothing
                               }
-                              <span class="text-text-muted text-[9px] sm:text-[10px] truncate max-w-[40%]">${completion.path}</span>
                             </button>
                           `
                         )}
@@ -992,63 +1044,6 @@ export class SessionCreateForm extends LitElement {
                                 <div class="flex-1">
                                   <div class="flex items-center gap-2">
                                     <div class="text-text text-xs sm:text-sm font-medium">${repo.folderName}</div>
-                                    ${
-                                      repo.gitBranch
-                                        ? html`
-                                          <div class="flex items-center gap-2">
-                                            ${
-                                              repo.gitAddedCount ||
-                                              repo.gitModifiedCount ||
-                                              repo.gitDeletedCount
-                                                ? html`
-                                                  <div class="flex items-center gap-1.5 text-[9px] sm:text-[10px]">
-                                                    ${
-                                                      repo.gitAddedCount && repo.gitAddedCount > 0
-                                                        ? html`
-                                                          <span class="flex items-center gap-0.5 text-green-500">
-                                                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                                                            </svg>
-                                                            <span>${repo.gitAddedCount}</span>
-                                                          </span>
-                                                        `
-                                                        : nothing
-                                                    }
-                                                    ${
-                                                      repo.gitModifiedCount &&
-                                                      repo.gitModifiedCount > 0
-                                                        ? html`
-                                                          <span class="flex items-center gap-0.5 text-yellow-500">
-                                                            <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
-                                                              <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32l8.4-8.4z" />
-                                                            </svg>
-                                                            <span>${repo.gitModifiedCount}</span>
-                                                          </span>
-                                                        `
-                                                        : nothing
-                                                    }
-                                                    ${
-                                                      repo.gitDeletedCount &&
-                                                      repo.gitDeletedCount > 0
-                                                        ? html`
-                                                          <span class="flex items-center gap-0.5 text-red-500">
-                                                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                                                            </svg>
-                                                            <span>${repo.gitDeletedCount}</span>
-                                                          </span>
-                                                        `
-                                                        : nothing
-                                                    }
-                                                  </div>
-                                                `
-                                                : nothing
-                                            }
-                                            <span class="text-primary text-[9px] sm:text-[10px]">[${repo.gitBranch}]</span>
-                                          </div>
-                                        `
-                                        : nothing
-                                    }
                                   </div>
                                   <div class="text-text-muted text-[9px] sm:text-[10px] mt-0.5">${repo.relativePath}</div>
                                 </div>
@@ -1077,28 +1072,11 @@ export class SessionCreateForm extends LitElement {
               )()
                 ? html`
                   <div class="mb-2 sm:mb-3 lg:mb-5 mt-2 sm:mt-3 lg:mt-4">
-                    <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm flex items-center gap-1.5 justify-between">
-                      <span class="flex items-center gap-1.5">
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" class="text-primary">
-                          <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Git Configuration:
-                      </span>
-                      ${
-                        this.isCheckingGit
-                          ? html`
-                          <span class="text-text-muted text-[9px] sm:text-[10px]">
-                            Checking repository...
-                          </span>
-                        `
-                          : ''
-                      }
-                    </label>
                     
                     <!-- Base Branch Selection -->
                     <div class="space-y-3">
                       <div>
-                        <label class="text-text-muted text-[9px] sm:text-[10px] block mb-1">
+                        <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">
                           Base Branch:
                         </label>
                         <div class="relative">
@@ -1130,7 +1108,7 @@ export class SessionCreateForm extends LitElement {
                       
                       <!-- Worktree Selection -->
                       <div>
-                        <label class="text-text-muted text-[9px] sm:text-[10px] block mb-1">
+                        <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">
                           Worktree:
                         </label>
                         ${
@@ -1141,7 +1119,8 @@ export class SessionCreateForm extends LitElement {
                                 .value=${this.selectedWorktree || 'none'}
                                 @change=${(e: Event) => {
                                   const select = e.target as HTMLSelectElement;
-                                  this.selectedWorktree = select.value === 'none' ? undefined : select.value;
+                                  this.selectedWorktree =
+                                    select.value === 'none' ? undefined : select.value;
                                 }}
                                 class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm appearance-none pr-8"
                                 ?disabled=${this.disabled || this.isCreating || this.isLoadingWorktrees}
@@ -1201,14 +1180,6 @@ export class SessionCreateForm extends LitElement {
                               <div class="flex items-center gap-2">
                                 <button
                                   type="button"
-                                  @click=${this.handleCreateWorktree}
-                                  class="text-[10px] sm:text-xs px-2 py-1 bg-primary text-bg-elevated rounded hover:bg-primary-dark transition-colors disabled:opacity-50"
-                                  ?disabled=${!this.newBranchName.trim() || this.disabled || this.isCreating || this.isCreatingWorktree}
-                                >
-                                  ${this.isCreatingWorktree ? 'Creating...' : 'Create'}
-                                </button>
-                                <button
-                                  type="button"
                                   @click=${() => {
                                     this.showCreateWorktree = false;
                                     this.newBranchName = '';
@@ -1217,6 +1188,14 @@ export class SessionCreateForm extends LitElement {
                                   ?disabled=${this.disabled || this.isCreating || this.isCreatingWorktree}
                                 >
                                   Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  @click=${this.handleCreateWorktree}
+                                  class="text-[10px] sm:text-xs px-2 py-1 bg-primary text-bg-elevated rounded hover:bg-primary-dark transition-colors disabled:opacity-50"
+                                  ?disabled=${!this.newBranchName.trim() || this.disabled || this.isCreating || this.isCreatingWorktree}
+                                >
+                                  ${this.isCreatingWorktree ? 'Creating...' : 'Create'}
                                 </button>
                               </div>
                             </div>
