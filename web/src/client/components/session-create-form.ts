@@ -84,6 +84,7 @@ export class SessionCreateForm extends LitElement {
   @state() private currentBranch: string = '';
   @state() private selectedBaseBranch: string = '';
   @state() private selectedWorktree?: string;
+  @state() private branchSwitchWarning?: string;
   @state() private availableWorktrees: Array<{
     branch: string;
     path: string;
@@ -320,6 +321,7 @@ export class SessionCreateForm extends LitElement {
         this.sessionName = '';
         this.spawnWindow = false;
         this.titleMode = TitleMode.DYNAMIC;
+        this.branchSwitchWarning = undefined;
 
         // Then load from localStorage which may override the defaults
         // Don't await since we're in updated() lifecycle method
@@ -443,18 +445,51 @@ export class SessionCreateForm extends LitElement {
     // Determine if we're actually spawning a terminal window
     const effectiveSpawnTerminal = this.spawnWindow && this.macAppConnected;
 
-    // Determine the working directory - use worktree path if a worktree is selected
+    // Determine the working directory and branch
     let effectiveWorkingDir = this.workingDir?.trim() || '';
+    let effectiveBranch = '';
+
     if (this.selectedWorktree && this.availableWorktrees.length > 0) {
+      // Using a worktree - use its path and branch
       const selectedWorktreeInfo = this.availableWorktrees.find(
         (wt) => wt.branch === this.selectedWorktree
       );
       if (selectedWorktreeInfo?.path) {
         effectiveWorkingDir = selectedWorktreeInfo.path;
+        effectiveBranch = this.selectedWorktree;
         logger.log(
           `Using worktree path: ${effectiveWorkingDir} for branch: ${this.selectedWorktree}`
         );
       }
+    } else if (
+      this.gitRepoInfo?.isGitRepo &&
+      this.selectedBaseBranch &&
+      this.selectedBaseBranch !== this.currentBranch
+    ) {
+      // Not using worktree but selected a different branch - attempt to switch
+      logger.log(`Attempting to switch from ${this.currentBranch} to ${this.selectedBaseBranch}`);
+
+      try {
+        if (this.gitService && this.gitRepoInfo.repoPath) {
+          await this.gitService.switchBranch(this.gitRepoInfo.repoPath, this.selectedBaseBranch);
+          effectiveBranch = this.selectedBaseBranch;
+          logger.log(`Successfully switched to branch: ${this.selectedBaseBranch}`);
+        }
+      } catch (error) {
+        // Branch switch failed - show warning but continue with current branch
+        logger.warn(`Failed to switch branch: ${error}`);
+        effectiveBranch = this.currentBranch;
+
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const isUncommittedChanges = errorMessage.toLowerCase().includes('uncommitted changes');
+
+        this.branchSwitchWarning = isUncommittedChanges
+          ? `Cannot switch to ${this.selectedBaseBranch} due to uncommitted changes. Creating session on ${this.currentBranch}.`
+          : `Failed to switch to ${this.selectedBaseBranch}: ${errorMessage}. Creating session on ${this.currentBranch}.`;
+      }
+    } else {
+      // Using current branch
+      effectiveBranch = this.selectedBaseBranch || this.currentBranch;
     }
 
     const sessionData: SessionCreateData = {
@@ -465,9 +500,9 @@ export class SessionCreateForm extends LitElement {
     };
 
     // Add Git information if available
-    if (this.gitRepoInfo?.isGitRepo && this.gitRepoInfo.repoPath && this.selectedBranch) {
+    if (this.gitRepoInfo?.isGitRepo && this.gitRepoInfo.repoPath && effectiveBranch) {
       sessionData.gitRepoPath = this.gitRepoInfo.repoPath;
-      sessionData.gitBranch = this.selectedBranch;
+      sessionData.gitBranch = effectiveBranch;
     }
 
     // Only add dimensions for web sessions (not external terminal spawns)
@@ -836,6 +871,11 @@ export class SessionCreateForm extends LitElement {
         if (!this.selectedBaseBranch) {
           this.selectedBaseBranch = this.currentBranch;
         }
+        
+        // Pre-select the current worktree if we're already in one (not the main worktree)
+        if (!currentWorktree.isMainWorktree && !this.selectedWorktree) {
+          this.selectedWorktree = currentWorktree.branch.replace(/^refs\/heads\//, '');
+        }
       }
     } catch (error) {
       logger.error('Failed to load worktrees:', error);
@@ -884,6 +924,24 @@ export class SessionCreateForm extends LitElement {
           </div>
 
           <div class="p-3 sm:p-4 lg:p-6 overflow-y-auto flex-grow max-h-[65vh] sm:max-h-[75vh] lg:max-h-[80vh]">
+            <!-- Branch Switch Warning -->
+            ${
+              this.branchSwitchWarning
+                ? html`
+                  <div class="mb-3 sm:mb-4 p-2 sm:p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                    <div class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <p class="text-[10px] sm:text-xs text-yellow-200">
+                        ${this.branchSwitchWarning}
+                      </p>
+                    </div>
+                  </div>
+                `
+                : nothing
+            }
+            
             <!-- Session Name -->
             <div class="mb-2 sm:mb-3 lg:mb-5">
               <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Session Name (Optional):</label>
@@ -1013,7 +1071,11 @@ export class SessionCreateForm extends LitElement {
                                       <span>[${completion.gitBranch}]</span>
                                       ${
                                         completion.isWorktree
-                                          ? html`<span class="text-purple-500">(worktree)</span>`
+                                          ? html`<span class="text-purple-500 ml-0.5" title="Git worktree">
+                                              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+                                                <path d="M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z"/>
+                                              </svg>
+                                            </span>`
                                           : nothing
                                       }
                                     </span>`
@@ -1131,7 +1193,7 @@ export class SessionCreateForm extends LitElement {
                     <div class="space-y-3">
                       <div>
                         <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">
-                          Base Branch:
+                          ${this.selectedWorktree ? 'Base Branch for Worktree:' : 'Switch to Branch:'}
                         </label>
                         <div class="relative">
                           <select
@@ -1139,6 +1201,8 @@ export class SessionCreateForm extends LitElement {
                             @change=${(e: Event) => {
                               const select = e.target as HTMLSelectElement;
                               this.selectedBaseBranch = select.value;
+                              // Clear any previous warning
+                              this.branchSwitchWarning = undefined;
                             }}
                             class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm appearance-none pr-8"
                             ?disabled=${this.disabled || this.isCreating || this.isLoadingBranches}
@@ -1158,6 +1222,22 @@ export class SessionCreateForm extends LitElement {
                             </svg>
                           </div>
                         </div>
+                        ${
+                          !this.isLoadingBranches
+                            ? html`
+                              <p class="text-[9px] sm:text-[10px] text-text-muted mt-1">
+                                ${
+                                  this.selectedWorktree
+                                    ? 'New worktree branch will be created from this branch'
+                                    : this.selectedBaseBranch &&
+                                        this.selectedBaseBranch !== this.currentBranch
+                                      ? `Session will start on ${this.selectedBaseBranch} (currently on ${this.currentBranch})`
+                                      : `Current branch: ${this.currentBranch}`
+                                }
+                              </p>
+                            `
+                            : nothing
+                        }
                       </div>
                       
                       <!-- Worktree Selection -->
@@ -1175,6 +1255,8 @@ export class SessionCreateForm extends LitElement {
                                   const select = e.target as HTMLSelectElement;
                                   this.selectedWorktree =
                                     select.value === 'none' ? undefined : select.value;
+                                  // Clear any previous warning
+                                  this.branchSwitchWarning = undefined;
                                 }}
                                 class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm appearance-none pr-8"
                                 ?disabled=${this.disabled || this.isCreating || this.isLoadingWorktrees}
