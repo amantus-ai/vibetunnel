@@ -26,11 +26,16 @@ export function getBaseRepoName(repoPath: string): string {
     /-work$/i, // -work
     /-temp$/i, // -temp
     /-branch-\w+$/i, // -branch-feature
+    /-\w+$/i, // Any single-word suffix (catches -notifications, -feature, etc.)
   ];
 
   for (const pattern of worktreePatterns) {
     if (pattern.test(lastPart)) {
-      return lastPart.replace(pattern, '');
+      const baseName = lastPart.replace(pattern, '');
+      // Only return the base name if it's not empty and looks reasonable
+      if (baseName && baseName.length >= 2) {
+        return baseName;
+      }
     }
   }
 
