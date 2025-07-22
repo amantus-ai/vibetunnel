@@ -12,6 +12,7 @@ import { isBrowserShortcut, isCopyPasteShortcut } from '../../utils/browser-shor
 import { consumeEvent } from '../../utils/event-utils.js';
 import { isIMEAllowedKey } from '../../utils/ime-constants.js';
 import { createLogger } from '../../utils/logger.js';
+import { detectMobile } from '../../utils/mobile-utils.js';
 import { IMEInput } from '../ime-input.js';
 import type { Terminal } from '../terminal.js';
 import type { VibeTerminalBinary } from '../vibe-terminal-binary.js';
@@ -68,6 +69,14 @@ export class InputManager {
   }
 
   private setupIMEInput(): void {
+    // Skip IME input setup on mobile devices (they have their own IME handling)
+    if (detectMobile()) {
+      console.log('🔍 Skipping IME input setup on mobile device');
+      logger.log('Skipping IME input setup on mobile device');
+      return;
+    }
+    console.log('🔍 Setting up IME input on desktop device');
+
     // Find the terminal container to position the IME input correctly
     const terminalContainer = document.getElementById('terminal-container');
     if (!terminalContainer) {
@@ -456,5 +465,10 @@ export class InputManager {
     // Clear references to prevent memory leaks
     this.session = null;
     this.callbacks = null;
+  }
+
+  // For testing purposes only
+  getIMEInputForTesting(): IMEInput | null {
+    return this.imeInput;
   }
 }

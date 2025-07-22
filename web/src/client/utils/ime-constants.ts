@@ -5,17 +5,7 @@
 /**
  * Keys that are allowed to be processed even when IME input is focused
  */
-export const IME_ALLOWED_KEYS = [
-  'Backspace',
-  'Delete',
-  'ArrowLeft',
-  'ArrowRight',
-  'ArrowUp',
-  'ArrowDown',
-  'Home',
-  'End',
-  'Tab',
-] as const;
+export const IME_ALLOWED_KEYS = ['ArrowLeft', 'ArrowRight', 'Home', 'End'] as const;
 
 /**
  * Check if a keyboard event is allowed during IME input focus
@@ -25,6 +15,11 @@ export const IME_ALLOWED_KEYS = [
 export function isIMEAllowedKey(event: KeyboardEvent): boolean {
   // Allow all Cmd/Ctrl combinations (including Cmd+V)
   if (event.metaKey || event.ctrlKey) {
+    return true;
+  }
+
+  // Allow Alt/Option combinations (like Option+Backspace for word deletion)
+  if (event.altKey) {
     return true;
   }
 

@@ -5,7 +5,7 @@
 
 // Platform detection helper
 function isMacOS(): boolean {
-  return navigator.platform.toLowerCase().includes('mac');
+  return /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent);
 }
 
 // Constants for magic patterns
@@ -111,7 +111,7 @@ export function isCopyPasteShortcut(event: KeyboardShortcutEvent): boolean {
  */
 export function getPlatformName(): 'mac' | 'windows' | 'linux' {
   if (isMacOS()) return 'mac';
-  if (navigator.platform.toLowerCase().includes('win')) return 'windows';
+  if (/Win/i.test(navigator.userAgent)) return 'windows';
   return 'linux';
 }
 

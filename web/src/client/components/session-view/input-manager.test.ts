@@ -303,6 +303,44 @@ describe('InputManager', () => {
     });
   });
 
+  describe('Mobile Detection', () => {
+    it('should skip IME input setup on mobile devices', async () => {
+      // Mock mobile environment
+      Object.defineProperty(navigator, 'userAgent', {
+        writable: true,
+        value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15',
+      });
+      Object.defineProperty(navigator, 'maxTouchPoints', {
+        writable: true,
+        value: 5,
+      });
+
+      // Create terminal container
+      const terminalContainer = document.createElement('div');
+      terminalContainer.id = 'terminal-container';
+      document.body.appendChild(terminalContainer);
+
+      const mobileInputManager = new InputManager();
+      const mockSession: Session = {
+        id: 'test-session',
+        status: 'running',
+        title: 'Test Session',
+        createdAt: new Date().toISOString(),
+      };
+
+      // Set session (which triggers setupIMEInput)
+      mobileInputManager.setSession(mockSession);
+
+      // Should not create any IME input element on mobile
+      const imeInput = terminalContainer.querySelector('input');
+      expect(imeInput).toBeNull();
+
+      // Cleanup
+      mobileInputManager.cleanup();
+      document.body.removeChild(terminalContainer);
+    });
+  });
+
   describe('CJK IME Input', () => {
     let terminalContainer: HTMLElement;
     let mockTerminalElement: {
@@ -314,6 +352,16 @@ describe('InputManager', () => {
     let cjkInputManager: InputManager;
 
     beforeEach(() => {
+      // Mock non-mobile environment for IME tests
+      Object.defineProperty(navigator, 'userAgent', {
+        writable: true,
+        value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      });
+      Object.defineProperty(navigator, 'maxTouchPoints', {
+        writable: true,
+        value: 0,
+      });
+
       // Setup DOM for testing
       terminalContainer = document.createElement('div');
       terminalContainer.id = 'terminal-container';
@@ -556,11 +604,26 @@ describe('InputManager', () => {
         document.body.removeChild(otherElement);
       });
 
-      it('should set focus state attributes correctly', () => {
+      it('should set focus state attributes correctly', async () => {
         imeInput.dispatchEvent(new Event('focus'));
         expect(document.body.getAttribute('data-ime-input-focused')).toBe('true');
 
+        // Before triggering blur, we need to stop the focus retention interval
+        // to prevent it from interfering with the test
+        const imeInputComponent = cjkInputManager.getIMEInputForTesting();
+        if (imeInputComponent) {
+          imeInputComponent.stopFocusRetentionForTesting();
+        }
+
+        // Mock that active element is NOT the IME input to simulate real blur
+        Object.defineProperty(document, 'activeElement', {
+          value: document.body,
+          configurable: true,
+        });
+
         imeInput.dispatchEvent(new Event('blur'));
+        // Wait for delayed blur logic (50ms timeout)
+        await new Promise((resolve) => setTimeout(resolve, 60));
         expect(document.body.getAttribute('data-ime-input-focused')).toBeNull();
       });
     });
@@ -569,27 +632,27 @@ describe('InputManager', () => {
       it('should allow copy/paste shortcuts even when IME input is focused', () => {
         const imeInput = terminalContainer.querySelector('input') as HTMLInputElement;
 
-        const cmdVEvent = new KeyboardEvent('keydown', {
+        const ctrlVEvent = new KeyboardEvent('keydown', {
           key: 'v',
-          metaKey: true,
+          ctrlKey: true,
         });
-        Object.defineProperty(cmdVEvent, 'target', {
+        Object.defineProperty(ctrlVEvent, 'target', {
           value: imeInput,
           configurable: true,
         });
 
-        expect(cjkInputManager.isKeyboardShortcut(cmdVEvent)).toBe(true);
+        expect(cjkInputManager.isKeyboardShortcut(ctrlVEvent)).toBe(true);
 
-        const cmdCEvent = new KeyboardEvent('keydown', {
+        const ctrlCEvent = new KeyboardEvent('keydown', {
           key: 'c',
-          metaKey: true,
+          ctrlKey: true,
         });
-        Object.defineProperty(cmdCEvent, 'target', {
+        Object.defineProperty(ctrlCEvent, 'target', {
           value: imeInput,
           configurable: true,
         });
 
-        expect(cjkInputManager.isKeyboardShortcut(cmdCEvent)).toBe(true);
+        expect(cjkInputManager.isKeyboardShortcut(ctrlCEvent)).toBe(true);
       });
     });
 
