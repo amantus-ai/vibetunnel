@@ -5,7 +5,7 @@ import * as path from 'path';
 import request from 'supertest';
 import { promisify } from 'util';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { ptyManager } from '../../server/pty/pty-manager.js';
+import { PtyManager } from '../../server/pty/pty-manager.js';
 import { SessionManager } from '../../server/pty/session-manager.js';
 import { createGitRoutes } from '../../server/routes/git.js';
 import { createSessionRoutes } from '../../server/routes/sessions.js';
@@ -23,7 +23,7 @@ describe('Worktree Workflows Integration Tests', () => {
   let terminalManager: TerminalManager;
   let activityMonitor: ActivityMonitor;
   let streamWatcher: StreamWatcher;
-  let localPtyManager: any;
+  let localPtyManager: PtyManager;
 
   // Helper to execute git commands
   async function gitExec(args: string[], cwd: string = testRepoPath) {
@@ -86,7 +86,7 @@ describe('Worktree Workflows Integration Tests', () => {
     streamWatcher = new StreamWatcher();
 
     // Create PtyManager with session manager
-    localPtyManager = new ptyManager.constructor();
+    localPtyManager = new PtyManager();
     (localPtyManager as any).sessionManager = sessionManager;
 
     // Set up Express app
@@ -94,7 +94,7 @@ describe('Worktree Workflows Integration Tests', () => {
     app.use(express.json());
 
     const config = {
-      ptyManager: localPtyManager,
+      localPtyManager: localPtyManager,
       terminalManager,
       streamWatcher,
       remoteRegistry: null,
@@ -120,7 +120,7 @@ describe('Worktree Workflows Integration Tests', () => {
     // Clear any session data
     sessionManager.listSessions().forEach((session) => {
       try {
-        ptyManager.closeSession(session.id);
+        localPtyManager.closeSession(session.id);
       } catch {}
     });
   });
@@ -169,7 +169,7 @@ describe('Worktree Workflows Integration Tests', () => {
       expect(session.gitBranch).toBe('main');
 
       // Clean up
-      ptyManager.closeSession(sessionId);
+      localPtyManager.closeSession(sessionId);
     });
 
     it('should switch branches in main worktree', async () => {
@@ -441,8 +441,8 @@ describe('Worktree Workflows Integration Tests', () => {
       expect(updatedSession2?.name).toContain('[checkout: feature/test-feature]');
 
       // Clean up
-      ptyManager.closeSession(sessionId1);
-      ptyManager.closeSession(sessionId2);
+      localPtyManager.closeSession(sessionId1);
+      localPtyManager.closeSession(sessionId2);
     });
 
     it('should handle concurrent git events with locking', async () => {
@@ -475,7 +475,7 @@ describe('Worktree Workflows Integration Tests', () => {
       });
 
       // Clean up
-      ptyManager.closeSession(sessionId);
+      localPtyManager.closeSession(sessionId);
     });
   });
 
