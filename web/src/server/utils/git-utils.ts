@@ -17,36 +17,36 @@ export async function getMainRepositoryPath(gitPath: string): Promise<string> {
   try {
     const gitFile = path.join(gitPath, '.git');
     const stats = await stat(gitFile).catch(() => null);
-    
+
     if (!stats) {
       // Not a git repository
       return gitPath;
     }
-    
+
     if (stats.isDirectory()) {
       // This is the main repository
       return gitPath;
     }
-    
+
     // This is a worktree - read the .git file to find the main repo
     const gitFileContent = await readFile(gitFile, 'utf-8');
     const match = gitFileContent.match(/^gitdir:\s*(.+)$/m);
-    
+
     if (!match) {
       logger.warn(`Could not parse .git file at ${gitFile}`);
       return gitPath;
     }
-    
+
     // Extract main repo path from worktree path
     // Example: /Users/steipete/Projects/vibetunnel/.git/worktrees/vibetunnel-treetest
     // We want: /Users/steipete/Projects/vibetunnel
     const worktreePath = match[1].trim();
     const mainRepoMatch = worktreePath.match(/^(.+)\/.git\/worktrees\/.+$/);
-    
+
     if (mainRepoMatch) {
       return mainRepoMatch[1];
     }
-    
+
     // Fallback: try to resolve it using git command
     try {
       const { stdout } = await execFile('git', ['rev-parse', '--git-common-dir'], {
@@ -74,11 +74,11 @@ export async function isWorktree(gitPath: string): Promise<boolean> {
   try {
     const gitFile = path.join(gitPath, '.git');
     const stats = await stat(gitFile).catch(() => null);
-    
+
     if (!stats) {
       return false;
     }
-    
+
     // If .git is a file (not a directory), it's a worktree
     return !stats.isDirectory();
   } catch (error) {

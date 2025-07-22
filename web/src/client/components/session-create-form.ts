@@ -323,9 +323,15 @@ export class SessionCreateForm extends LitElement {
 
         // Then load from localStorage which may override the defaults
         // Don't await since we're in updated() lifecycle method
-        this.loadFromLocalStorage().catch((error) => {
-          logger.error('Failed to load from localStorage:', error);
-        });
+        this.loadFromLocalStorage()
+          .then(() => {
+            // Check if the loaded working directory is a Git repository
+            // This must happen AFTER localStorage is loaded
+            this.checkGitRepository();
+          })
+          .catch((error) => {
+            logger.error('Failed to load from localStorage:', error);
+          });
 
         // Re-check server status when form becomes visible
         this.checkServerStatus();
@@ -339,9 +345,6 @@ export class SessionCreateForm extends LitElement {
 
         // Discover repositories
         this.discoverRepositories();
-
-        // Check if the initial working directory is a Git repository
-        this.checkGitRepository();
       } else {
         // Remove global keyboard listener when hidden
         document.removeEventListener('keydown', this.handleGlobalKeyDown);

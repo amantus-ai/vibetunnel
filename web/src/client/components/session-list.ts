@@ -439,6 +439,33 @@ export class SessionList extends LitElement {
     return getBaseRepoName(repoPath);
   }
 
+  private renderGitChanges(session: Session) {
+    if (!session.gitRepoPath) return '';
+
+    const changes = [];
+
+    // Show ahead/behind counts
+    if (session.gitAheadCount && session.gitAheadCount > 0) {
+      changes.push(html`<span class="text-status-success">↑${session.gitAheadCount}</span>`);
+    }
+    if (session.gitBehindCount && session.gitBehindCount > 0) {
+      changes.push(html`<span class="text-status-warning">↓${session.gitBehindCount}</span>`);
+    }
+
+    // Show uncommitted changes indicator
+    if (session.gitHasChanges) {
+      changes.push(html`<span class="text-status-warning">●</span>`);
+    }
+
+    if (changes.length === 0) return '';
+
+    return html`
+      <div class="flex items-center gap-1 text-xs font-mono flex-shrink-0">
+        ${changes}
+      </div>
+    `;
+  }
+
   private async loadBranchesForRepo(repoPath: string) {
     if (this.loadingBranches.has(repoPath) || this.repoBranches.has(repoPath)) {
       return;
@@ -885,38 +912,59 @@ export class SessionList extends LitElement {
                             
                             <!-- Session content -->
                             <div class="flex-1 min-w-0">
-                              <div
-                                class="text-sm font-mono truncate ${
-                                  session.id === this.selectedSessionId
-                                    ? 'text-accent-primary font-medium'
-                                    : 'text-text group-hover:text-accent-primary transition-colors'
-                                }"
-                              >
-                                <inline-edit
-                                  .value=${
-                                    session.name ||
-                                    (Array.isArray(session.command)
-                                      ? session.command.join(' ')
-                                      : session.command)
-                                  }
-                                  .placeholder=${
-                                    Array.isArray(session.command)
-                                      ? session.command.join(' ')
-                                      : session.command
-                                  }
-                                  .onSave=${(newName: string) => this.handleRename(session.id, newName)}
-                                ></inline-edit>
+                              <div class="flex items-center gap-2 min-w-0">
+                                <div
+                                  class="text-sm font-mono truncate ${
+                                    session.id === this.selectedSessionId
+                                      ? 'text-accent-primary font-medium'
+                                      : 'text-text group-hover:text-accent-primary transition-colors'
+                                  }"
+                                >
+                                  <inline-edit
+                                    .value=${
+                                      session.name ||
+                                      (Array.isArray(session.command)
+                                        ? session.command.join(' ')
+                                        : session.command)
+                                    }
+                                    .placeholder=${
+                                      Array.isArray(session.command)
+                                        ? session.command.join(' ')
+                                        : session.command
+                                    }
+                                    .onSave=${(newName: string) => this.handleRename(session.id, newName)}
+                                  ></inline-edit>
+                                </div>
+                                <!-- Git info: repo, branch, worktree indicator -->
+                                ${
+                                  session.gitRepoPath
+                                    ? html`
+                                  <div class="flex items-center gap-1 text-xs text-text-muted flex-shrink-0">
+                                    <span class="text-text-dim">@</span>
+                                    <span class="font-mono">${this.getRepoName(session.gitRepoPath)}</span>
+                                    ${
+                                      session.gitBranch
+                                        ? html`
+                                      <span class="text-status-success font-mono">[${session.gitBranch}]</span>
+                                    `
+                                        : ''
+                                    }
+                                    ${
+                                      session.gitIsWorktree
+                                        ? html`
+                                      <span class="text-purple-400">⎇</span>
+                                    `
+                                        : ''
+                                    }
+                                  </div>
+                                `
+                                    : ''
+                                }
+                                <!-- Git changes indicator -->
+                                ${this.renderGitChanges(session)}
                               </div>
                               <div class="text-xs text-text-muted truncate flex items-center gap-1">
                                 ${(() => {
-                                  // Debug logging for activity status
-                                  if (session.status === 'running' && session.activityStatus) {
-                                    logger.debug(`Session ${session.id} activity:`, {
-                                      isActive: session.activityStatus.isActive,
-                                      specificStatus: session.activityStatus.specificStatus,
-                                    });
-                                  }
-
                                   // Show activity status inline with path
                                   if (session.activityStatus?.specificStatus) {
                                     return html`
@@ -1093,25 +1141,54 @@ export class SessionList extends LitElement {
                                     
                                     <!-- Session content -->
                                     <div class="flex-1 min-w-0">
-                                      <div
-                                        class="text-sm font-mono truncate ${
-                                          session.id === this.selectedSessionId
-                                            ? 'text-accent-primary font-medium'
-                                            : 'text-text group-hover:text-accent-primary transition-colors'
-                                        }"
-                                        title="${
-                                          session.name ||
-                                          (Array.isArray(session.command)
-                                            ? session.command.join(' ')
-                                            : session.command)
-                                        }"
-                                      >
+                                      <div class="flex items-center gap-2 min-w-0">
+                                        <div
+                                          class="text-sm font-mono truncate ${
+                                            session.id === this.selectedSessionId
+                                              ? 'text-accent-primary font-medium'
+                                              : 'text-text group-hover:text-accent-primary transition-colors'
+                                          }"
+                                          title="${
+                                            session.name ||
+                                            (Array.isArray(session.command)
+                                              ? session.command.join(' ')
+                                              : session.command)
+                                          }"
+                                        >
+                                          ${
+                                            session.name ||
+                                            (Array.isArray(session.command)
+                                              ? session.command.join(' ')
+                                              : session.command)
+                                          }
+                                        </div>
+                                        <!-- Git info: repo, branch, worktree indicator -->
                                         ${
-                                          session.name ||
-                                          (Array.isArray(session.command)
-                                            ? session.command.join(' ')
-                                            : session.command)
+                                          session.gitRepoPath
+                                            ? html`
+                                          <div class="flex items-center gap-1 text-xs text-text-muted flex-shrink-0">
+                                            <span class="text-text-dim">@</span>
+                                            <span class="font-mono">${this.getRepoName(session.gitRepoPath)}</span>
+                                            ${
+                                              session.gitBranch
+                                                ? html`
+                                              <span class="text-status-success font-mono">[${session.gitBranch}]</span>
+                                            `
+                                                : ''
+                                            }
+                                            ${
+                                              session.gitIsWorktree
+                                                ? html`
+                                              <span class="text-purple-400">⎇</span>
+                                            `
+                                                : ''
+                                            }
+                                          </div>
+                                        `
+                                            : ''
                                         }
+                                        <!-- Git changes indicator -->
+                                        ${this.renderGitChanges(session)}
                                       </div>
                                       <div class="text-xs text-text-dim truncate">
                                         ${formatPathForDisplay(session.workingDir)}
@@ -1252,25 +1329,54 @@ export class SessionList extends LitElement {
                                     
                                     <!-- Session content -->
                                     <div class="flex-1 min-w-0">
-                                      <div
-                                        class="text-sm font-mono truncate ${
-                                          session.id === this.selectedSessionId
-                                            ? 'text-accent-primary font-medium'
-                                            : 'text-text-muted group-hover:text-text transition-colors'
-                                        }"
-                                        title="${
-                                          session.name ||
-                                          (Array.isArray(session.command)
-                                            ? session.command.join(' ')
-                                            : session.command)
-                                        }"
-                                      >
+                                      <div class="flex items-center gap-2 min-w-0">
+                                        <div
+                                          class="text-sm font-mono truncate ${
+                                            session.id === this.selectedSessionId
+                                              ? 'text-accent-primary font-medium'
+                                              : 'text-text-muted group-hover:text-text transition-colors'
+                                          }"
+                                          title="${
+                                            session.name ||
+                                            (Array.isArray(session.command)
+                                              ? session.command.join(' ')
+                                              : session.command)
+                                          }"
+                                        >
+                                          ${
+                                            session.name ||
+                                            (Array.isArray(session.command)
+                                              ? session.command.join(' ')
+                                              : session.command)
+                                          }
+                                        </div>
+                                        <!-- Git info: repo, branch, worktree indicator -->
                                         ${
-                                          session.name ||
-                                          (Array.isArray(session.command)
-                                            ? session.command.join(' ')
-                                            : session.command)
+                                          session.gitRepoPath
+                                            ? html`
+                                          <div class="flex items-center gap-1 text-xs text-text-muted flex-shrink-0">
+                                            <span class="text-text-dim">@</span>
+                                            <span class="font-mono">${this.getRepoName(session.gitRepoPath)}</span>
+                                            ${
+                                              session.gitBranch
+                                                ? html`
+                                              <span class="text-status-success font-mono">[${session.gitBranch}]</span>
+                                            `
+                                                : ''
+                                            }
+                                            ${
+                                              session.gitIsWorktree
+                                                ? html`
+                                              <span class="text-purple-400">⎇</span>
+                                            `
+                                                : ''
+                                            }
+                                          </div>
+                                        `
+                                            : ''
                                         }
+                                        <!-- Git changes indicator -->
+                                        ${this.renderGitChanges(session)}
                                       </div>
                                       <div class="text-xs text-text-dim truncate">
                                         ${formatPathForDisplay(session.workingDir)}

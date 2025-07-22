@@ -27,6 +27,7 @@ interface GitInfo {
   gitBehindCount?: number;
   gitHasChanges?: boolean;
   gitIsWorktree?: boolean;
+  gitMainRepoPath?: string;
 }
 
 /**
@@ -98,8 +99,11 @@ async function detectGitInfo(workingDir: string): Promise<GitInfo> {
         logger.debug(`Could not get detailed Git status: ${statusError}`);
       }
 
+      // Get main repository path
+      const gitMainRepoPath = gitIsWorktree ? await getMainRepositoryPath(workingDir) : gitRepoPath;
+
       logger.debug(
-        `Detected Git info: repo=${gitRepoPath}, branch=${gitBranch}, ahead=${gitAheadCount}, behind=${gitBehindCount}, changes=${gitHasChanges}, worktree=${gitIsWorktree}`
+        `Detected Git info: repo=${gitRepoPath}, branch=${gitBranch}, ahead=${gitAheadCount}, behind=${gitBehindCount}, changes=${gitHasChanges}, worktree=${gitIsWorktree}, mainRepo=${gitMainRepoPath}`
       );
 
       return {
@@ -109,6 +113,7 @@ async function detectGitInfo(workingDir: string): Promise<GitInfo> {
         gitBehindCount,
         gitHasChanges,
         gitIsWorktree,
+        gitMainRepoPath,
       };
     } catch (branchError) {
       // Could be in detached HEAD state or other situation where branch name isn't available
@@ -340,6 +345,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
             gitBehindCount: gitInfo.gitBehindCount,
             gitHasChanges: gitInfo.gitHasChanges,
             gitIsWorktree: gitInfo.gitIsWorktree,
+            gitMainRepoPath: gitInfo.gitMainRepoPath,
           });
 
           if (!spawnResult.success) {
@@ -396,6 +402,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         gitBehindCount: gitInfo.gitBehindCount,
         gitHasChanges: gitInfo.gitHasChanges,
         gitIsWorktree: gitInfo.gitIsWorktree,
+        gitMainRepoPath: gitInfo.gitMainRepoPath,
       });
 
       const { sessionId, sessionInfo } = result;
@@ -1347,6 +1354,7 @@ export async function requestTerminalSpawn(params: {
   gitBehindCount?: number;
   gitHasChanges?: boolean;
   gitIsWorktree?: boolean;
+  gitMainRepoPath?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     // Create control message for terminal spawn
@@ -1364,6 +1372,7 @@ export async function requestTerminalSpawn(params: {
         gitBehindCount: params.gitBehindCount,
         gitHasChanges: params.gitHasChanges,
         gitIsWorktree: params.gitIsWorktree,
+        gitMainRepoPath: params.gitMainRepoPath,
       },
       params.sessionId
     );
