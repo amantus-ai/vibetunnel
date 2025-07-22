@@ -696,10 +696,17 @@ export function createFilesystemRoutes(): Router {
             let gitAddedCount = 0;
             let gitModifiedCount = 0;
             let gitDeletedCount = 0;
+            let isWorktree = false;
             if (isDirectory) {
               try {
-                await fs.stat(path.join(entryPath, '.git'));
+                const gitPath = path.join(entryPath, '.git');
+                const gitStat = await fs.stat(gitPath);
                 isGitRepo = true;
+
+                // Check if it's a worktree (has a .git file instead of directory)
+                if (gitStat.isFile()) {
+                  isWorktree = true;
+                }
 
                 // Get the current git branch
                 try {
@@ -750,6 +757,7 @@ export function createFilesystemRoutes(): Router {
               gitAddedCount,
               gitModifiedCount,
               gitDeletedCount,
+              isWorktree,
             };
           })
       );

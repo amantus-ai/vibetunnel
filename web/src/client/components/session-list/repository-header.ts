@@ -7,7 +7,7 @@
  * @fires follow-mode-change - When follow mode is changed
  * @fires worktree-action - When a worktree action is triggered
  */
-import { html, LitElement, TemplateResult } from 'lit';
+import { html, LitElement, type TemplateResult } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { getBaseRepoName } from '../../../shared/utils/git.js';
 

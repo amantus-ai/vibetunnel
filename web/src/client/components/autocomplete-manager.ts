@@ -14,6 +14,7 @@ export interface AutocompleteItem {
   gitAddedCount?: number;
   gitModifiedCount?: number;
   gitDeletedCount?: number;
+  isWorktree?: boolean;
 }
 
 export interface Repository {

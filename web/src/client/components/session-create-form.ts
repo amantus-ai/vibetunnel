@@ -1000,15 +1000,27 @@ export class SessionCreateForm extends LitElement {
                                       : html`<path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0113.25 16h-9.5A1.75 1.75 0 012 14.25V1.75zm1.75-.25a.25.25 0 00-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 00.25-.25V6h-2.75A1.75 1.75 0 019 4.25V1.5H3.75zm6.75.062V4.25c0 .138.112.25.25.25h2.688a.252.252 0 00-.011-.013l-2.914-2.914a.272.272 0 00-.013-.011z" />`
                                 }
                               </svg>
-                              <span class="text-text text-xs sm:text-sm truncate flex-1">
+                              <!-- Folder name -->
+                              <span class="text-text text-xs sm:text-sm font-medium min-w-0">
                                 ${completion.name}
                               </span>
-                              <span class="text-text-muted text-[9px] sm:text-[10px] truncate max-w-[40%]">${completion.path}</span>
+                              
+                              <!-- Git branch and worktree indicator -->
                               ${
                                 completion.gitBranch
-                                  ? html`<span class="text-primary text-[9px] sm:text-[10px]">[${completion.gitBranch}]</span>`
+                                  ? html`
+                                    <span class="text-primary text-[9px] sm:text-[10px] flex items-center gap-1">
+                                      <span>[${completion.gitBranch}]</span>
+                                      ${
+                                        completion.isWorktree
+                                          ? html`<span class="text-purple-500">(worktree)</span>`
+                                          : nothing
+                                      }
+                                    </span>`
                                   : nothing
                               }
+                              
+                              <!-- Git changes indicators -->
                               ${
                                 completion.gitAddedCount ||
                                 completion.gitModifiedCount ||
@@ -1056,6 +1068,12 @@ export class SessionCreateForm extends LitElement {
                                   `
                                   : nothing
                               }
+                              
+                              <!-- Spacer to push path to the right -->
+                              <div class="flex-1"></div>
+                              
+                              <!-- Full path -->
+                              <span class="text-text-muted text-[9px] sm:text-[10px] truncate max-w-[40%]">${completion.path}</span>
                             </button>
                           `
                         )}
@@ -1163,13 +1181,23 @@ export class SessionCreateForm extends LitElement {
                                 data-testid="git-worktree-select"
                               >
                                 <option value="none">No worktree (use main repository)</option>
-                                ${this.availableWorktrees.map(
-                                  (worktree) => html`
-                                    <option value="${worktree.branch}" ?selected=${worktree.branch === this.selectedWorktree}>
-                                      ${worktree.branch}${worktree.isMainWorktree ? ' (main)' : ''}${worktree.isCurrentWorktree ? ' (current)' : ''}
-                                    </option>
-                                  `
-                                )}
+                                ${this.availableWorktrees.map((worktree) => {
+                                  // Extract folder name from path
+                                  const folderName =
+                                    worktree.path.split('/').pop() || worktree.path;
+                                  // Check if folder name differs from branch name
+                                  const showBranch =
+                                    folderName.toLowerCase() !== worktree.branch.toLowerCase() &&
+                                    !folderName
+                                      .toLowerCase()
+                                      .endsWith(`-${worktree.branch.toLowerCase()}`);
+
+                                  return html`
+                                      <option value="${worktree.branch}" ?selected=${worktree.branch === this.selectedWorktree}>
+                                        ${folderName}${showBranch ? ` [${worktree.branch}]` : ''}${worktree.isMainWorktree ? ' (main)' : ''}${worktree.isCurrentWorktree ? ' (current)' : ''}
+                                      </option>
+                                    `;
+                                })}
                               </select>
                               <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-text-muted">
                                 <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
