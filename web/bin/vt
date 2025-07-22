@@ -128,6 +128,28 @@ if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
     exit 1
 fi
 
+# Function to get git repository root
+get_git_root() {
+    git rev-parse --show-toplevel 2>/dev/null
+}
+
+# Function to make API request to VibeTunnel server
+make_api_request() {
+    local endpoint="$1"
+    local method="${2:-GET}"
+    local data="$3"
+    
+    # Get VibeTunnel server port (default 4020)
+    local port="${VIBETUNNEL_PORT:-4020}"
+    local url="http://localhost:${port}${endpoint}"
+    
+    if [[ "$method" == "POST" && -n "$data" ]]; then
+        curl -s -X POST -H "Content-Type: application/json" -d "$data" "$url" 2>/dev/null
+    else
+        curl -s -X "$method" "$url" 2>/dev/null
+    fi
+}
+
 # Function to show help
 show_help() {
     cat << 'EOF'
@@ -140,6 +162,8 @@ USAGE:
     vt --no-shell-wrap [command] [args...]
     vt -S [command] [args...]
     vt title <new title>    # Inside a VibeTunnel session only
+    vt wtree <subcommand>   # Git worktree management
+    vt git event           # Git hook notifications
     vt --help
 
 QUICK VERBOSITY:
@@ -155,6 +179,15 @@ DESCRIPTION:
     functions, and builtins. Use --no-shell-wrap to execute commands directly.
 
     Inside a VibeTunnel session, use 'vt title' to update the session name.
+    
+    The 'vt wtree' commands provide Git worktree integration:
+    - switch: Switch to a branch and enable follow mode
+    - follow: Enable follow mode for a specific branch
+    - unfollow: Disable follow mode
+    - list: List all Git worktrees
+    
+    The 'vt git event' command is used by Git hooks to notify VibeTunnel
+    of repository changes for automatic worktree switching.
 
 EXAMPLES:
     vt top                  # Watch top with VibeTunnel monitoring
@@ -166,6 +199,15 @@ EXAMPLES:
     vt title "My Project"   # Update session title (inside session only)
     vt -q npm test          # Run with minimal output (errors only)
     vt -vv npm run dev      # Run with verbose output
+    
+    # Git worktree commands:
+    vt wtree switch main    # Switch to main branch and enable follow mode
+    vt wtree follow feature # Enable follow mode for feature branch
+    vt wtree unfollow       # Disable follow mode
+    vt wtree list           # List all worktrees
+    
+    # Git event command (typically called by Git hooks):
+    vt git event            # Notify VibeTunnel of Git changes
 
 OPTIONS:
     --shell, -i            Launch current shell (equivalent to vt $SHELL)
@@ -284,6 +326,84 @@ if [[ "$1" == "title" ]]; then
     echo "Error: 'vt title' can only be used inside a VibeTunnel session." >&2
     echo "Start a session first with 'vt' or 'vt <command>'" >&2
     exit 1
+fi
+
+# Handle 'vt wtree' commands
+if [[ "$1" == "wtree" ]]; then
+    shift # Remove 'wtree' from arguments
+    
+    # Get git root
+    GIT_ROOT=$(get_git_root)
+    if [[ -z "$GIT_ROOT" ]]; then
+        echo "Error: Not in a Git repository" >&2
+        exit 1
+    fi
+    
+    case "$1" in
+        "switch")
+            if [[ $# -lt 2 ]]; then
+                echo "Error: 'vt wtree switch' requires a branch name" >&2
+                echo "Usage: vt wtree switch <branch>" >&2
+                exit 1
+            fi
+            BRANCH="$2"
+            
+            # Switch to the branch using git
+            git checkout "$BRANCH" || exit 1
+            
+            # Enable follow mode via API
+            make_api_request "/api/worktree/follow" "POST" "{\"repo\": \"$GIT_ROOT\", \"branch\": \"$BRANCH\"}"
+            echo "Switched to branch '$BRANCH' and enabled follow mode"
+            exit 0
+            ;;
+            
+        "follow")
+            if [[ $# -lt 2 ]]; then
+                echo "Error: 'vt wtree follow' requires a branch name" >&2
+                echo "Usage: vt wtree follow <branch>" >&2
+                exit 1
+            fi
+            BRANCH="$2"
+            
+            # Enable follow mode via API
+            make_api_request "/api/worktree/follow" "POST" "{\"repo\": \"$GIT_ROOT\", \"branch\": \"$BRANCH\"}"
+            echo "Enabled follow mode for branch '$BRANCH'"
+            exit 0
+            ;;
+            
+        "unfollow")
+            # Disable follow mode via API
+            make_api_request "/api/worktree/unfollow" "POST" "{\"repo\": \"$GIT_ROOT\"}"
+            echo "Disabled follow mode"
+            exit 0
+            ;;
+            
+        "list")
+            # List worktrees using git command
+            git worktree list
+            exit 0
+            ;;
+            
+        *)
+            echo "Error: Unknown wtree command: $1" >&2
+            echo "Available commands: switch, follow, unfollow, list" >&2
+            exit 1
+            ;;
+    esac
+fi
+
+# Handle 'vt git event' command
+if [[ "$1" == "git" && "$2" == "event" ]]; then
+    # Get git root
+    GIT_ROOT=$(get_git_root)
+    if [[ -z "$GIT_ROOT" ]]; then
+        echo "Error: Not in a Git repository" >&2
+        exit 1
+    fi
+    
+    # Notify server of git event
+    make_api_request "/api/git/event" "POST" "{\"repo\": \"$GIT_ROOT\"}"
+    exit 0
 fi
 
 # Handle verbosity flags
