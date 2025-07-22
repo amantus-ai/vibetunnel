@@ -1,19 +1,19 @@
 import Foundation
-import Combine
 import OSLog
+import Observation
 
 /// Service for managing Git worktrees through the VibeTunnel server API
 @MainActor
-final class WorktreeService: ObservableObject {
+@Observable
+final class WorktreeService {
     private let logger = Logger(subsystem: "ai.vibe.VibeTunnel", category: "WorktreeService")
     private let serverManager: ServerManager
-    private var cancellables = Set<AnyCancellable>()
     
-    @Published private(set) var worktrees: [Worktree] = []
-    @Published private(set) var stats: WorktreeStats?
-    @Published private(set) var followMode: FollowModeStatus?
-    @Published private(set) var isLoading = false
-    @Published private(set) var error: Error?
+    private(set) var worktrees: [Worktree] = []
+    private(set) var stats: WorktreeStats?
+    private(set) var followMode: FollowModeStatus?
+    private(set) var isLoading = false
+    private(set) var error: Error?
     
     init(serverManager: ServerManager) {
         self.serverManager = serverManager

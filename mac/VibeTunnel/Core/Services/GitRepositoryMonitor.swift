@@ -69,26 +69,34 @@ public final class GitRepositoryMonitor {
     /// - Parameter filePath: Path to a file within a potential Git repository
     /// - Returns: GitRepository information if found, nil otherwise
     public func findRepository(for filePath: String) async -> GitRepository? {
+        print("🔍 [GitRepositoryMonitor] findRepository called for: \(filePath)")
+        
         // Validate path first
         guard validatePath(filePath) else {
+            print("❌ [GitRepositoryMonitor] Path validation failed for: \(filePath)")
             return nil
         }
 
         // Check cache first
         if let cached = getCachedRepository(for: filePath) {
+            print("📦 [GitRepositoryMonitor] Found cached repository for: \(filePath)")
             return cached
         }
 
         // Find the Git repository root
         guard let repoPath = await findGitRoot(from: filePath) else {
+            print("❌ [GitRepositoryMonitor] No Git root found for: \(filePath)")
             return nil
         }
+        
+        print("✅ [GitRepositoryMonitor] Found Git root at: \(repoPath)")
 
         // Check if we already have this repository cached
         let cachedRepo = repositoryCache[repoPath]
         if let cachedRepo {
             // Cache the file->repo mapping
             fileToRepoCache[filePath] = repoPath
+            print("📦 [GitRepositoryMonitor] Using cached repo data for: \(repoPath)")
             return cachedRepo
         }
 
@@ -98,6 +106,9 @@ public final class GitRepositoryMonitor {
         // Cache the result by repository path
         if let repository {
             cacheRepository(repository, originalFilePath: filePath)
+            print("✅ [GitRepositoryMonitor] Repository status obtained and cached for: \(repoPath)")
+        } else {
+            print("❌ [GitRepositoryMonitor] Failed to get repository status for: \(repoPath)")
         }
 
         return repository

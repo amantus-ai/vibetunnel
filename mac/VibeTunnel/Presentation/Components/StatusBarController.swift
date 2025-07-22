@@ -1,5 +1,4 @@
 import AppKit
-import Combine
 import Observation
 import SwiftUI
 
@@ -29,7 +28,6 @@ final class StatusBarController: NSObject {
 
     // MARK: - State Tracking
 
-    private var cancellables = Set<AnyCancellable>()
     private var updateTimer: Timer?
     private var hasNetworkAccess = true
 

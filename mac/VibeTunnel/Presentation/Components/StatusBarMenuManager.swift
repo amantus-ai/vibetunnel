@@ -1,6 +1,6 @@
 import AppKit
-import Combine
 import SwiftUI
+import Observation
 
 /// gross hack: https://stackoverflow.com/questions/26004684/nsstatusbarbutton-keep-highlighted?rq=4
 /// Didn't manage to keep the highlighted state reliable active with any other way.
@@ -26,6 +26,7 @@ extension NSStatusBarButton {
 /// handling mouse events and window state transitions. Provides special handling for
 /// maintaining button highlight state during custom window display.
 @MainActor
+@Observable
 final class StatusBarMenuManager: NSObject {
     // MARK: - Menu State Management
 
@@ -55,20 +56,17 @@ final class StatusBarMenuManager: NSObject {
     private var menuState: MenuState = .none
 
     // Track new session state
-    @Published private var isNewSessionActive = false
-    private var cancellables = Set<AnyCancellable>()
+    private var isNewSessionActive = false {
+        didSet {
+            // Update window when state changes
+            customWindow?.isNewSessionActive = isNewSessionActive
+        }
+    }
 
     // MARK: - Initialization
 
     override init() {
         super.init()
-
-        // Subscribe to new session state changes to update window
-        $isNewSessionActive
-            .sink { [weak self] isActive in
-                self?.customWindow?.isNewSessionActive = isActive
-            }
-            .store(in: &cancellables)
     }
 
     // MARK: - Configuration
