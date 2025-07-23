@@ -228,14 +228,14 @@ final class NotificationService: NSObject {
             await syncPreferencesToAPI(prefs)
         }
     }
-    
+
     /// Check the local notifications authorization status
     func authorizationStatus() async -> UNAuthorizationStatus {
         await UNUserNotificationCenter.current()
             .notificationSettings()
             .authorizationStatus
     }
-    
+
     /// Request notifications authorization
     @discardableResult
     func requestAuthorization() async throws -> Bool {
@@ -247,7 +247,7 @@ final class NotificationService: NSObject {
             ])
 
             logger.info("Notification permission granted: \(granted)")
-            
+
             return granted
         } catch {
             logger.error("Failed to request notification permissions: \(error)")

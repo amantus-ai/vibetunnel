@@ -17,9 +17,9 @@ struct NotificationPermissionPageView: View {
     )
 
     #if DEBUG
-    init(permissionStatus: UNAuthorizationStatus = .notDetermined) {
-        self.permissionStatus = permissionStatus
-    }
+        init(permissionStatus: UNAuthorizationStatus = .notDetermined) {
+            self.permissionStatus = permissionStatus
+        }
     #endif
 
     var body: some View {
@@ -72,7 +72,7 @@ struct NotificationPermissionPageView: View {
                                 .foregroundColor(.secondary)
                         }
                         .font(.body)
-                        
+
                         Button("Open System Settings") {
                             notificationService.openNotificationSettings()
                         }
@@ -118,7 +118,7 @@ struct NotificationPermissionPageView: View {
         Task {
             isRequestingPermission = true
             defer { isRequestingPermission = false }
-            let _ = try? await notificationService.requestAuthorization()
+            _ = try? await notificationService.requestAuthorization()
             // Update permission status after request
             await checkNotificationPermission()
         }
