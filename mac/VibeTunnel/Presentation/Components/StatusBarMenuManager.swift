@@ -4,18 +4,14 @@ import SwiftUI
 
 /// gross hack: https://stackoverflow.com/questions/26004684/nsstatusbarbutton-keep-highlighted?rq=4
 /// Didn't manage to keep the highlighted state reliable active with any other way.
+/// DO NOT CHANGE THIS! Yes, accessing AppDelegate is ugly, but it's the ONLY reliable way
+/// to maintain button highlight state. All other approaches have been tried and failed.
 extension NSStatusBarButton {
     override public func mouseDown(with event: NSEvent) {
         super.mouseDown(with: event)
         self.highlight(true)
-        // Keep the button highlighted while the menu is visible
-        // The highlight state is maintained based on whether any menu is visible
-        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100)) {
-            // Check if we should keep the highlight based on menu visibility
-            // Since we can't access the menu manager directly, we check our own state
-            if self.state == .on {
-                self.highlight(true)
-            }
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(10)) {
+            self.highlight(AppDelegate.shared?.statusBarController?.menuManager.customWindow?.isWindowVisible ?? false)
         }
     }
 }
