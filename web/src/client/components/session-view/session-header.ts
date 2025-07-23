@@ -81,7 +81,6 @@ export class SessionHeader extends LitElement {
     // Observe the header container for size changes
     this.resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        console.log('[SessionHeader] ResizeObserver triggered, width:', entry.contentRect.width);
         this.checkButtonSpace(entry.contentRect.width);
       }
     });
@@ -91,15 +90,11 @@ export class SessionHeader extends LitElement {
       // Use requestAnimationFrame to ensure DOM is fully rendered
       requestAnimationFrame(() => {
         const headerContainer = this.querySelector('.session-header-container');
-        console.log('[SessionHeader] Looking for header container:', headerContainer);
         if (headerContainer) {
           this.resizeObserver?.observe(headerContainer);
           // Trigger initial check
           const width = headerContainer.clientWidth;
-          console.log('[SessionHeader] Initial width check:', width);
           this.checkButtonSpace(width);
-        } else {
-          console.error('[SessionHeader] Could not find .session-header-container');
         }
       });
     });
@@ -111,15 +106,15 @@ export class SessionHeader extends LitElement {
     const imageUploadButton = 40;
     const themeToggleButton = 40;
     const settingsButton = 40;
-    const widthSelectorButton = 100; // Wider due to text content
-    const statusDropdownButton = 100; // Wider due to text content
+    const widthSelectorButton = 120; // Wider due to text content (increased)
+    const statusDropdownButton = 120; // Wider due to text content (increased)
     const buttonGap = 8;
 
     // Other elements:
-    const captureIndicatorWidth = 80; // Keyboard capture indicator
-    const sessionInfoMinWidth = 250; // Minimum space for session name/path
+    const captureIndicatorWidth = 100; // Keyboard capture indicator (increased)
+    const sessionInfoMinWidth = 300; // Minimum space for session name/path (increased)
     const sidebarToggleWidth = this.showSidebarToggle && this.sidebarCollapsed ? 56 : 0; // Including gap
-    const padding = 32; // Container padding
+    const padding = 48; // Container padding (increased)
 
     // Calculate total required width
     const buttonsWidth =
@@ -133,14 +128,15 @@ export class SessionHeader extends LitElement {
     const requiredWidth =
       sessionInfoMinWidth + sidebarToggleWidth + captureIndicatorWidth + buttonsWidth + padding;
 
-    // Switch to compact menu if not enough space (with some buffer)
-    const shouldUseCompact = containerWidth < requiredWidth + 50;
+    // Switch to compact menu more aggressively (larger buffer)
+    const buffer = 150; // Increased buffer to account for sidebar
+    const shouldUseCompact = containerWidth < requiredWidth + buffer;
     
     console.log('[SessionHeader] Width calculation:', {
       containerWidth,
       requiredWidth,
-      buffer: 50,
-      threshold: requiredWidth + 50,
+      buffer,
+      threshold: requiredWidth + buffer,
       shouldUseCompact,
       currentUseCompactMenu: this.useCompactMenu,
       willChange: shouldUseCompact !== this.useCompactMenu

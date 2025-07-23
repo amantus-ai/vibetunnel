@@ -181,8 +181,6 @@ export class CompactSessionCard extends LitElement {
       'items-center',
       'gap-3',
       'p-3',
-      'mb-3',
-      'last:mb-0',
       'rounded-lg',
       'cursor-pointer',
       this.selected
@@ -202,7 +200,7 @@ export class CompactSessionCard extends LitElement {
     const pathColorClass = isExited ? 'text-text-dim' : 'text-text-muted';
 
     return html`
-      <div class="${cardClasses}" @click=${this.handleClick}>
+      <div class="${cardClasses}" style="margin-bottom: 12px;" @click=${this.handleClick}>
         <!-- Status indicator -->
         <div class="relative flex-shrink-0">
           ${this.renderStatusIndicator()}
