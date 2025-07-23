@@ -817,8 +817,14 @@ describe('SessionView', () => {
 
       fitTerminalSpy = terminalElement.fitTerminal;
 
-      // Override querySelector to return our mock terminal
-      vi.spyOn(element, 'querySelector').mockReturnValue(terminalElement);
+      // Override querySelector to return our mock terminal only for terminal queries
+      vi.spyOn(element, 'querySelector').mockImplementation((selector: string) => {
+        if (selector.includes('terminal')) {
+          return terminalElement;
+        }
+        // Let other selectors go through normally
+        return HTMLElement.prototype.querySelector.call(element, selector);
+      });
     });
 
     it('should debounce multiple rapid calls to updateTerminalTransform', async () => {
@@ -865,10 +871,13 @@ describe('SessionView', () => {
       // Advance timers past debounce
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
+      await element.updateComplete;
 
-      // On mobile with keyboard and quick keys, height should be calculated dynamically
-      // Height reduction = keyboardHeight (300) + quickKeysHeight (150) + buffer (10) = 460px
-      expect(element.terminalContainerHeight).toBe('calc(100% - 460px)');
+      // On mobile with keyboard and quick keys, CSS variables should be set
+      const containerElement = element.querySelector('.session-view-grid');
+      expect(containerElement).toBeTruthy();
+      // Check that the CSS variable is set in the inline style attribute
+      expect(containerElement?.getAttribute('style')).toContain('--keyboard-height: 300px');
 
       // fitTerminal should be called even on mobile now (height changes allowed)
       expect(fitTerminalSpy).toHaveBeenCalledTimes(1);
@@ -893,9 +902,13 @@ describe('SessionView', () => {
       // Advance timers past debounce
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
+      await element.updateComplete;
 
-      // On desktop, quick keys should affect terminal height
-      expect(element.terminalContainerHeight).toBe('calc(100% - 150px)');
+      // On desktop, CSS variables should be set (no keyboard height)
+      const containerElement = element.querySelector('.session-view-grid');
+      expect(containerElement).toBeTruthy();
+      // Check that the CSS variable is set in the inline style attribute
+      expect(containerElement?.getAttribute('style')).toContain('--keyboard-height: 0px');
 
       vi.useRealTimers();
     });
@@ -911,10 +924,13 @@ describe('SessionView', () => {
 
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
+      await element.updateComplete;
 
-      // On mobile with keyboard only, height should be calculated dynamically
-      // Height reduction = keyboardHeight (300) + buffer (10) = 310px
-      expect(element.terminalContainerHeight).toBe('calc(100% - 310px)');
+      // On mobile with keyboard only, CSS variables should be set
+      const containerElement = element.querySelector('.session-view-grid');
+      expect(containerElement).toBeTruthy();
+      // Check that the CSS variable is set in the inline style attribute
+      expect(containerElement?.getAttribute('style')).toContain('--keyboard-height: 300px');
 
       // Now hide the keyboard
       (element as SessionViewTestInterface).keyboardHeight = 0;
@@ -922,9 +938,13 @@ describe('SessionView', () => {
 
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
+      await element.updateComplete;
 
-      // On mobile with keyboard hidden, height should be back to 100%
-      expect(element.terminalContainerHeight).toBe('100%');
+      // On mobile with keyboard hidden, CSS variables should be reset
+      const containerElement2 = element.querySelector('.session-view-grid');
+      expect(containerElement2).toBeTruthy();
+      // Check that the CSS variable is set in the inline style attribute
+      expect(containerElement2?.getAttribute('style')).toContain('--keyboard-height: 0px');
 
       vi.useRealTimers();
     });
@@ -966,10 +986,13 @@ describe('SessionView', () => {
       // Advance timers past debounce
       vi.advanceTimersByTime(110);
       await vi.runAllTimersAsync();
+      await element.updateComplete;
 
-      // On mobile with quick keys and keyboard, height should be calculated
-      // Height reduction = keyboardHeight (300) + quickKeysHeight (150) + buffer (10) = 460px
-      expect(element.terminalContainerHeight).toBe('calc(100% - 460px)');
+      // On mobile with quick keys and keyboard, CSS variables should be set
+      const containerElement = element.querySelector('.session-view-grid');
+      expect(containerElement).toBeTruthy();
+      // Check that the CSS variable is set in the inline style attribute
+      expect(containerElement?.getAttribute('style')).toContain('--keyboard-height: 300px');
 
       // fitTerminal should be called on mobile for height changes
       expect(fitTerminalSpy).toHaveBeenCalledTimes(1);

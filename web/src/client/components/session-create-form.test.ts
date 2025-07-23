@@ -165,11 +165,17 @@ describe('SessionCreateForm', () => {
     });
 
     it('should update command when quick start is clicked', async () => {
-      // Directly call the handler since button rendering is unreliable in tests
-      element.handleQuickStart('python3');
+      // Access the private method directly for testing
+      // @ts-expect-error - accessing private method for testing
+      element.handleQuickStartSelected(
+        new CustomEvent('quick-start-selected', {
+          detail: { command: 'python3' },
+        })
+      );
       await element.updateComplete;
 
       expect(element.command).toBe('python3');
+      expect(element.selectedQuickStart).toBe('python3');
     });
 
     it('should highlight selected quick start', async () => {
@@ -180,7 +186,12 @@ describe('SessionCreateForm', () => {
       expect(element.command).toBe('node');
 
       // When Claude is selected, title mode should be dynamic
-      element.handleQuickStart('claude');
+      // @ts-expect-error - accessing private method for testing
+      element.handleQuickStartSelected(
+        new CustomEvent('quick-start-selected', {
+          detail: { command: 'claude' },
+        })
+      );
       await element.updateComplete;
       expect(element.titleMode).toBe(TitleMode.DYNAMIC);
     });
@@ -708,6 +719,9 @@ describe('SessionCreateForm', () => {
             json: async () => ({
               isGitRepo: true,
               repoPath: '/home/user/project',
+              currentBranch: 'main',
+              hasChanges: false,
+              isWorktree: urlStr.includes('project-feature'),
             }),
           } as Response;
         }
@@ -729,6 +743,27 @@ describe('SessionCreateForm', () => {
               ],
               baseBranch: 'main',
             }),
+          } as Response;
+        }
+
+        // Mock branches endpoint
+        if (urlStr.includes('/api/repositories/branches')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => [
+              { name: 'main', current: true },
+              { name: 'feature', current: false },
+            ],
+          } as Response;
+        }
+
+        // Mock follow mode endpoint
+        if (urlStr.includes('/api/git/follow')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ followMode: false, followBranch: null }),
           } as Response;
         }
 
@@ -760,6 +795,9 @@ describe('SessionCreateForm', () => {
       // @ts-expect-error - accessing private method for testing
       await element.checkGitRepository();
       await element.updateComplete;
+      // Wait a bit for async branch loading
+      await waitForAsync(100);
+      await element.updateComplete;
 
       // Check that the Git repo info and branches are set correctly
       expect(element.gitRepoInfo).toBeTruthy();
@@ -767,14 +805,14 @@ describe('SessionCreateForm', () => {
       expect(element.availableBranches).toEqual(['main', 'feature']);
 
       // Check that branch selector is rendered
-      const branchSelect = element.querySelector('[data-testid="git-branch-select"]');
+      const branchSelect = element.querySelector('[data-testid="git-base-branch-select"]');
       expect(branchSelect).toBeTruthy();
 
       // Verify branches are populated
       const options = branchSelect?.querySelectorAll('option');
       expect(options?.length).toBe(2);
-      expect(options?.[0]?.textContent?.trim()).toBe('main');
-      expect(options?.[1]?.textContent?.trim()).toBe('feature');
+      expect(options?.[0]?.textContent?.trim()).toContain('main');
+      expect(options?.[1]?.textContent?.trim()).toContain('feature');
     });
 
     it('should not show branch selector for non-Git directories', async () => {
@@ -798,7 +836,7 @@ describe('SessionCreateForm', () => {
       await element.updateComplete;
 
       // Check that branch selector is NOT rendered
-      const branchSelect = element.querySelector('[data-testid="git-branch-select"]');
+      const branchSelect = element.querySelector('[data-testid="git-base-branch-select"]');
       expect(branchSelect).toBeFalsy();
     });
 
@@ -810,9 +848,12 @@ describe('SessionCreateForm', () => {
       // @ts-expect-error - accessing private method for testing
       await element.checkGitRepository();
       await element.updateComplete;
+      // Wait for async operations
+      await waitForAsync(100);
+      await element.updateComplete;
 
-      // Verify feature branch is selected
-      expect(element.selectedBranch).toBe('feature');
+      // Verify feature branch is selected in worktree
+      expect(element.selectedWorktree).toBe('feature');
     });
 
     it('should select base branch when not in a worktree', async () => {
@@ -823,9 +864,12 @@ describe('SessionCreateForm', () => {
       // @ts-expect-error - accessing private method for testing
       await element.checkGitRepository();
       await element.updateComplete;
+      // Wait for async operations
+      await waitForAsync(100);
+      await element.updateComplete;
 
       // Verify main branch is selected
-      expect(element.selectedBranch).toBe('main');
+      expect(element.selectedBaseBranch).toBe('main');
     });
 
     it('should include Git info in session creation request', async () => {
@@ -834,8 +878,13 @@ describe('SessionCreateForm', () => {
       });
 
       // Set up Git repository state
-      element.gitRepoInfo = { isGitRepo: true, repoPath: '/home/user/project' };
-      element.selectedBranch = 'feature';
+      element.gitRepoInfo = {
+        isGitRepo: true,
+        repoPath: '/home/user/project',
+        hasChanges: false,
+        isWorktree: false,
+      };
+      element.selectedBaseBranch = 'feature';
       element.command = 'vim';
       element.workingDir = '/home/user/project';
       await element.updateComplete;
@@ -860,7 +909,7 @@ describe('SessionCreateForm', () => {
 
       // Clear Git state
       element.gitRepoInfo = null;
-      element.selectedBranch = '';
+      element.selectedBaseBranch = '';
       element.command = 'bash';
       element.workingDir = '/home/user/downloads';
       await element.updateComplete;
@@ -953,12 +1002,12 @@ describe('SessionCreateForm', () => {
       // Set up Git state
       element.gitRepoInfo = { isGitRepo: true, repoPath: '/home/user/project' };
       element.availableBranches = ['main', 'develop', 'feature'];
-      element.selectedBranch = 'main';
+      element.selectedBaseBranch = 'main';
       await element.updateComplete;
 
       // Find and change the select element
       const branchSelect = element.querySelector(
-        '[data-testid="git-branch-select"]'
+        '[data-testid="git-base-branch-select"]'
       ) as HTMLSelectElement;
       expect(branchSelect).toBeTruthy();
 
@@ -969,7 +1018,7 @@ describe('SessionCreateForm', () => {
       await element.updateComplete;
 
       // Verify branch was updated
-      expect(element.selectedBranch).toBe('develop');
+      expect(element.selectedBaseBranch).toBe('develop');
     });
 
     it('should show loading state while checking Git', async () => {
