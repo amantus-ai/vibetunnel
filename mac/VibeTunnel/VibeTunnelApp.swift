@@ -24,6 +24,7 @@ struct VibeTunnelApp: App {
     @State var gitRepositoryMonitor = GitRepositoryMonitor()
     @State var repositoryDiscoveryService = RepositoryDiscoveryService()
     @State var sessionService: SessionService?
+    @State var worktreeService: WorktreeService?
     @State var configManager = ConfigManager.shared
 
     init() {
@@ -54,6 +55,7 @@ struct VibeTunnelApp: App {
                 .environment(gitRepositoryMonitor)
                 .environment(repositoryDiscoveryService)
                 .environment(configManager)
+                .environment(worktreeService ?? WorktreeService(serverManager: serverManager))
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 580, height: 480)
@@ -79,6 +81,7 @@ struct VibeTunnelApp: App {
                         serverManager: serverManager,
                         sessionMonitor: sessionMonitor
                     ))
+                    .environment(worktreeService ?? WorktreeService(serverManager: serverManager))
             } else {
                 Text("Session not found")
                     .frame(width: 400, height: 300)
@@ -104,6 +107,7 @@ struct VibeTunnelApp: App {
                     serverManager: serverManager,
                     sessionMonitor: sessionMonitor
                 ))
+                .environment(worktreeService ?? WorktreeService(serverManager: serverManager))
         }
         .commands {
             CommandGroup(after: .appInfo) {
@@ -250,6 +254,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         // Initialize SessionService
         if let serverManager = app?.serverManager, let sessionMonitor = app?.sessionMonitor {
             app?.sessionService = SessionService(serverManager: serverManager, sessionMonitor: sessionMonitor)
+        }
+        
+        // Initialize WorktreeService
+        if let serverManager = app?.serverManager {
+            app?.worktreeService = WorktreeService(serverManager: serverManager)
         }
 
         // Start the terminal control handler (registers its handler)

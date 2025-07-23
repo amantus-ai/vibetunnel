@@ -211,7 +211,7 @@ beforeAll(async () => {
     const { exec } = await import('child_process');
     const { promisify } = await import('util');
     const execAsync = promisify(exec);
-    
+
     // Kill any processes listening on test ports
     const testPorts = [3000, 3001, 3002, 3003, 3004, 3005];
     for (const port of testPorts) {

@@ -34,13 +34,10 @@ struct NewSessionForm: View {
     @State private var selectedWorktreeBranch: String?
     @State private var checkingGitStatus = false
     @State private var worktreeService: WorktreeService?
-    @State private var newWorktreeBranchName = ""
-    @State private var shouldCreateNewWorktree = false
     
     // Branch state (matching web version)
     @State private var currentBranch = ""
     @State private var selectedBaseBranch = ""
-    @State private var availableBranches: [String] = []
     @State private var branchSwitchWarning: String?
 
     // UI state
@@ -185,201 +182,47 @@ struct NewSessionForm: View {
                     }
 
                     // Git branch and worktree selection when Git repository is detected
-                    if isGitRepository, let _ = gitRepoPath, let service = worktreeService {
-                        VStack(alignment: .leading, spacing: 12) {
-                            // Base Branch Selection (like web version)
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(selectedWorktreePath != nil ? "Base Branch for Worktree:" : "Switch to Branch:")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.secondary)
-                                
-                                Menu {
-                                    ForEach(availableBranches, id: \.self) { branch in
-                                        Button(action: { 
-                                            selectedBaseBranch = branch
-                                            branchSwitchWarning = nil
-                                        }) {
-                                            HStack {
-                                                Text(branch)
-                                                if branch == currentBranch {
-                                                    Text("(current)")
-                                                        .foregroundColor(.secondary)
-                                                }
-                                                if branch == selectedBaseBranch {
-                                                    Image(systemName: "checkmark")
-                                                }
-                                            }
-                                        }
+                    if isGitRepository, let repoPath = gitRepoPath, let service = worktreeService {
+                        GitBranchWorktreeSelector(
+                            repoPath: repoPath,
+                            gitMonitor: gitMonitor,
+                            worktreeService: service,
+                            onBranchChanged: { branch in
+                                selectedBaseBranch = branch
+                                branchSwitchWarning = nil
+                            },
+                            onWorktreeChanged: { worktree in
+                                if let worktree = worktree {
+                                    // Find the worktree info to get the path
+                                    if let worktreeInfo = service.worktrees.first(where: { $0.branch == worktree }) {
+                                        selectedWorktreePath = worktreeInfo.path
+                                        selectedWorktreeBranch = worktreeInfo.branch
+                                        workingDirectory = worktreeInfo.path
                                     }
-                                } label: {
-                                    HStack(spacing: 4) {
-                                        Text(selectedBaseBranch.isEmpty ? currentBranch : selectedBaseBranch)
-                                            .font(.system(size: 11))
-                                            .foregroundColor(.primary)
-                                        Image(systemName: "chevron.up.chevron.down")
-                                            .font(.system(size: 8, weight: .medium))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 4)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .fill(Color.primary.opacity(0.05))
-                                    )
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(Color.primary.opacity(0.1), lineWidth: 1)
-                                    )
-                                }
-                                .menuStyle(.borderlessButton)
-                                .menuIndicator(.hidden)
-                                .fixedSize()
-                                .disabled(service.isLoadingBranches)
-                                
-                                if !service.isLoadingBranches {
-                                    Text(selectedWorktreePath != nil 
-                                        ? "New worktree branch will be created from this branch"
-                                        : (selectedBaseBranch != currentBranch 
-                                            ? "Session will start on \(selectedBaseBranch) (currently on \(currentBranch))"
-                                            : "Current branch: \(currentBranch)")
-                                    )
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary.opacity(0.8))
-                                }
-                            }
-                            
-                            // Worktree Selection (dropdown like web version)
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Worktree:")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.secondary)
-                                
-                                if !shouldCreateNewWorktree {
-                                    Menu {
-                                        Button(action: { 
-                                            selectedWorktreePath = nil
-                                            selectedWorktreeBranch = nil
-                                        }) {
-                                            Text(selectedWorktreePath != nil 
-                                                ? "No worktree (use main repository)"
-                                                : (service.worktrees.contains { $0.isCurrentWorktree == true && !($0.isMainWorktree ?? false) }
-                                                    ? "Switch to main repository"
-                                                    : "No worktree (use main repository)")
-                                            )
-                                        }
-                                        
-                                        Divider()
-                                        
-                                        ForEach(service.worktrees) { worktree in
-                                            Button(action: { 
-                                                selectedWorktreePath = worktree.path
-                                                selectedWorktreeBranch = worktree.branch
-                                                workingDirectory = worktree.path
-                                            }) {
-                                                HStack {
-                                                    // Extract folder name from path
-                                                    let folderName = URL(fileURLWithPath: worktree.path).lastPathComponent
-                                                    let showBranch = folderName.lowercased() != worktree.branch.lowercased() &&
-                                                                   !folderName.lowercased().hasSuffix("-\(worktree.branch.lowercased())")
-                                                    
-                                                    Text(folderName)
-                                                    if showBranch {
-                                                        Text("[\(worktree.branch)]")
-                                                            .foregroundColor(.secondary)
-                                                    }
-                                                    if worktree.isMainWorktree ?? false {
-                                                        Text("(main)")
-                                                            .foregroundColor(.secondary)
-                                                    }
-                                                    if worktree.isCurrentWorktree ?? false {
-                                                        Text("(current)")
-                                                            .foregroundColor(.secondary)
-                                                    }
-                                                    if worktree.branch == selectedWorktreeBranch {
-                                                        Spacer()
-                                                        Image(systemName: "checkmark")
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    } label: {
-                                        HStack(spacing: 4) {
-                                            if let selectedPath = selectedWorktreePath,
-                                               let worktree = service.worktrees.first(where: { $0.path == selectedPath }) {
-                                                let folderName = URL(fileURLWithPath: worktree.path).lastPathComponent
-                                                Text(folderName)
-                                                    .font(.system(size: 11))
-                                                    .foregroundColor(.primary)
-                                            } else {
-                                                Text("No worktree (use main repository)")
-                                                    .font(.system(size: 11))
-                                                    .foregroundColor(.primary)
-                                            }
-                                            Image(systemName: "chevron.up.chevron.down")
-                                                .font(.system(size: 8, weight: .medium))
-                                                .foregroundColor(.secondary)
-                                        }
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 4)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 6)
-                                                .fill(Color.primary.opacity(0.05))
-                                        )
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 6)
-                                                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
-                                        )
-                                    }
-                                    .menuStyle(.borderlessButton)
-                                    .menuIndicator(.hidden)
-                                    .fixedSize()
-                                    .disabled(service.isLoading)
-                                    
-                                    Button(action: { 
-                                        shouldCreateNewWorktree = true
-                                        newWorktreeBranchName = ""
-                                    }) {
-                                        Label("New Worktree", systemImage: "plus.circle")
-                                            .font(.caption)
-                                    }
-                                    .buttonStyle(.link)
-                                    .padding(.top, 4)
                                 } else {
-                                    // Create worktree form
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        HStack {
-                                            Text("Create New Worktree")
-                                                .font(.caption)
-                                                .fontWeight(.medium)
-                                                .foregroundColor(.secondary)
-                                            
-                                            Spacer()
-                                            
-                                            Button(action: {
-                                                shouldCreateNewWorktree = false
-                                                newWorktreeBranchName = ""
-                                            }) {
-                                                Image(systemName: "xmark.circle.fill")
-                                                    .font(.system(size: 12))
-                                                    .foregroundColor(.secondary)
-                                            }
-                                            .buttonStyle(.plain)
-                                        }
-                                        
-                                        TextField("Branch name", text: $newWorktreeBranchName)
-                                            .textFieldStyle(.roundedBorder)
-                                            .font(.system(size: 11))
-                                        
-                                        Text("Will be created from \(selectedBaseBranch)")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.secondary.opacity(0.8))
-                                    }
-                                    .padding(10)
-                                    .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-                                    .cornerRadius(6)
+                                    selectedWorktreePath = nil
+                                    selectedWorktreeBranch = nil
+                                    // Don't change workingDirectory here - keep the original git repo path
+                                }
+                            },
+                            onCreateWorktree: { branchName, baseBranch in
+                                // Create the worktree
+                                try await service.createWorktree(
+                                    gitRepoPath: repoPath,
+                                    branch: branchName,
+                                    createBranch: true,
+                                    baseBranch: baseBranch
+                                )
+                                
+                                // After creation, select the new worktree
+                                await service.fetchWorktrees(for: repoPath)
+                                if let newWorktree = service.worktrees.first(where: { $0.branch == branchName }) {
+                                    selectedWorktreePath = newWorktree.path
+                                    selectedWorktreeBranch = newWorktree.branch
+                                    workingDirectory = newWorktree.path
                                 }
                             }
-                        }
+                        )
                         .padding(.horizontal, 12)
                         .padding(.vertical, 10)
                         .background(

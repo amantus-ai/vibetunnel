@@ -140,20 +140,32 @@ private struct AutocompleteRow: View {
                         }
                     }
                     
-                    // Branch selector for Git repositories (removed redundant path display)
+                    // Branch and worktree selector for Git repositories
                     if let gitInfo = suggestion.gitInfo, gitInfo.branch != nil {
-                        HStack {
-                            Spacer()
-                            
-                            BranchSelectorView(
-                                repoPath: suggestion.suggestion.trimmingCharacters(in: CharacterSet(charactersIn: "/")),
-                                currentBranch: gitInfo.branch,
-                                onSelectBranch: { branch in
-                                    // This would need to trigger a worktree switch or checkout
-                                    print("Selected branch: \(branch) for path: \(suggestion.suggestion)")
-                                }
-                            )
-                        }
+                        GitBranchWorktreeSelector(
+                            repoPath: suggestion.suggestion.trimmingCharacters(in: CharacterSet(charactersIn: "/")),
+                            gitMonitor: gitMonitor,
+                            worktreeService: worktreeService,
+                            onBranchChanged: { branch in
+                                // Handle branch change
+                                print("Selected branch: \(branch) for path: \(suggestion.suggestion)")
+                            },
+                            onWorktreeChanged: { worktree in
+                                // Handle worktree change  
+                                print("Selected worktree: \(worktree ?? "none") for path: \(suggestion.suggestion)")
+                            },
+                            onCreateWorktree: { branchName, baseBranch in
+                                // Create new worktree
+                                let repoPath = suggestion.suggestion.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                                try await worktreeService.createWorktree(
+                                    gitRepoPath: repoPath,
+                                    branch: branchName,
+                                    createBranch: true,
+                                    baseBranch: baseBranch
+                                )
+                            }
+                        )
+                        .padding(.top, 4)
                     }
                 }
 
@@ -204,6 +216,7 @@ struct AutocompleteTextField: View {
     @Binding var text: String
     let placeholder: String
     @Environment(GitRepositoryMonitor.self) private var gitMonitor
+    @Environment(WorktreeService.self) private var worktreeService
     @State private var autocompleteService: AutocompleteService?
     @State private var showSuggestions = false
     @State private var selectedIndex = -1
