@@ -1,44 +1,43 @@
-import SwiftUI
-@preconcurrency import UserNotifications
 import os.log
+import SwiftUI
+import UserNotifications
 
 /// Notification permission page for onboarding flow.
 ///
 /// Allows users to enable native macOS notifications for VibeTunnel events
 /// during the welcome flow. Users can grant permissions or skip and enable later.
 struct NotificationPermissionPageView: View {
+    private let notificationService = NotificationService.shared
     @State private var isRequestingPermission = false
     @State private var permissionStatus: UNAuthorizationStatus = .notDetermined
-    
+
     private let logger = Logger(
         subsystem: "sh.vibetunnel.vibetunnel",
         category: "NotificationPermissionPageView"
     )
-    
+
     #if DEBUG
-    init(
-        isRequestingPermission: Bool = false,
-        permissionStatus: UNAuthorizationStatus = .notDetermined
-    ) {
-        self.isRequestingPermission = isRequestingPermission
+    init(permissionStatus: UNAuthorizationStatus = .notDetermined) {
         self.permissionStatus = permissionStatus
     }
     #endif
-    
+
     var body: some View {
         VStack(spacing: 30) {
             VStack(spacing: 16) {
                 Text("Enable Notifications")
                     .font(.largeTitle)
                     .fontWeight(.semibold)
-                
-                Text("Get notified about session events, command completions, and errors. You can customize which notifications to receive in Settings.")
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 480)
-                    .fixedSize(horizontal: false, vertical: true)
-                
+
+                Text(
+                    "Get notified about session events, command completions, and errors. You can customize which notifications to receive in Settings."
+                )
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 480)
+                .fixedSize(horizontal: false, vertical: true)
+
                 if permissionStatus != .denied {
                     // Notification examples
                     VStack(alignment: .leading, spacing: 12) {
@@ -53,7 +52,7 @@ struct NotificationPermissionPageView: View {
                     .cornerRadius(8)
                     .frame(maxWidth: 400)
                 }
-                
+
                 // Permission button/status
                 if permissionStatus == .authorized {
                     HStack {
@@ -74,8 +73,8 @@ struct NotificationPermissionPageView: View {
                         }
                         .font(.body)
                         
-                        Button(action: openSystemSettings) {
-                            Text("Open System Settings")
+                        Button("Open System Settings") {
+                            notificationService.openNotificationSettings()
                         }
                         .buttonStyle(.borderedProminent)
                         .frame(height: 32)
@@ -94,16 +93,14 @@ struct NotificationPermissionPageView: View {
                     .disabled(isRequestingPermission)
                     .frame(height: 32)
                 }
-                
-                Text("You can always change notification preferences later in Settings")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
             }
             Spacer()
         }
         .padding()
         .task {
-            await checkNotificationPermission()
+            if !isRunningPreviews() {
+                await checkNotificationPermission()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             // Check permissions when returning from System Settings
@@ -112,46 +109,30 @@ struct NotificationPermissionPageView: View {
             }
         }
     }
-    
+
     private func checkNotificationPermission() async {
-        permissionStatus = await UNUserNotificationCenter.current()
-            .notificationSettings()
-            .authorizationStatus
+        permissionStatus = await notificationService.authorizationStatus()
     }
-    
+
     private func requestNotificationPermission() {
-        isRequestingPermission = true
-        
         Task {
+            isRequestingPermission = true
             defer { isRequestingPermission = false }
-            
-            do {
-                let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [
-                    .alert,
-                    .sound,
-                    .badge
-                ])
-                
-                logger.info("Notification permission granted: \(granted)")
-                
-                // Update permission status after request
-                await checkNotificationPermission()
-            } catch {
-                logger.error("Failed to request notification permissions: \(error)")
-            }
+            let _ = try? await notificationService.requestAuthorization()
+            // Update permission status after request
+            await checkNotificationPermission()
         }
-    }
-    
-    private func openSystemSettings() {
-        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications")
-        else { assertionFailure("Invalid URL for System Preferences"); return }
-        
-        NSWorkspace.shared.open(url)
     }
 }
 
-#Preview("Notification Permission Page") {
-    NotificationPermissionPageView()
+#Preview("Not determined") {
+    NotificationPermissionPageView(permissionStatus: .notDetermined)
+        .frame(width: 640, height: 480)
+        .background(Color(NSColor.windowBackgroundColor))
+}
+
+#Preview("Authorized") {
+    NotificationPermissionPageView(permissionStatus: .authorized)
         .frame(width: 640, height: 480)
         .background(Color(NSColor.windowBackgroundColor))
 }

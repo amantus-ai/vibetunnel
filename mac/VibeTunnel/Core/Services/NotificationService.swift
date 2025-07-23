@@ -81,9 +81,6 @@ final class NotificationService: NSObject {
 
         logger.info("🔔 Starting notification service...")
 
-        // Check authorization status first
-        await checkAndRequestNotificationPermissions()
-
         connect()
     }
 
@@ -96,10 +93,7 @@ final class NotificationService: NSObject {
     func requestPermissionAndShowTestNotification() async -> Bool {
         let center = UNUserNotificationCenter.current()
 
-        // First check current authorization status
-        let settings = await center.notificationSettings()
-
-        switch settings.authorizationStatus {
+        switch await authorizationStatus() {
         case .notDetermined:
             // First time - request permission
             do {
@@ -218,7 +212,7 @@ final class NotificationService: NSObject {
     }
 
     /// Open System Settings to the Notifications pane
-    private func openNotificationSettings() {
+    func openNotificationSettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
             NSWorkspace.shared.open(url)
         }
@@ -234,35 +228,34 @@ final class NotificationService: NSObject {
             await syncPreferencesToAPI(prefs)
         }
     }
+    
+    /// Check the local notifications authorization status
+    func authorizationStatus() async -> UNAuthorizationStatus {
+        await UNUserNotificationCenter.current()
+            .notificationSettings()
+            .authorizationStatus
+    }
+    
+    /// Request notifications authorization
+    @discardableResult
+    func requestAuthorization() async throws -> Bool {
+        do {
+            let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [
+                .alert,
+                .sound,
+                .badge
+            ])
 
-    // MARK: - Private Methods
-
-    private nonisolated func checkAndRequestNotificationPermissions() async {
-        let center = UNUserNotificationCenter.current()
-        let settings = await center.notificationSettings()
-        let authStatus = settings.authorizationStatus
-
-        await MainActor.run {
-            if authStatus == .notDetermined {
-                logger.info("🔔 Notification permissions not determined, requesting authorization...")
-            } else {
-                logger.info("🔔 Notification authorization status: \(authStatus.rawValue)")
-            }
-        }
-
-        if authStatus == .notDetermined {
-            do {
-                let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
-                await MainActor.run {
-                    logger.info("🔔 Notification permission granted: \(granted)")
-                }
-            } catch {
-                await MainActor.run {
-                    logger.error("🔔 Failed to request notification permissions: \(error)")
-                }
-            }
+            logger.info("Notification permission granted: \(granted)")
+            
+            return granted
+        } catch {
+            logger.error("Failed to request notification permissions: \(error)")
+            throw error
         }
     }
+
+    // MARK: - Private Methods
 
     private func setupNotifications() {
         // Listen for server state changes
