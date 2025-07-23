@@ -13,6 +13,9 @@ describe('PTY Session.json Watcher', () => {
   let testSessionIds: string[] = [];
 
   beforeEach(async () => {
+    // Initialize PtyManager
+    await PtyManager.initialize();
+
     // Create a temporary control directory for tests with shorter path
     const shortId = Math.random().toString(36).substring(2, 8);
     controlPath = path.join(os.tmpdir(), `vt-${shortId}`);

@@ -15,9 +15,11 @@ import { createAuthMiddleware } from './middleware/auth.js';
 import { PtyManager } from './pty/index.js';
 import { createAuthRoutes } from './routes/auth.js';
 import { createConfigRoutes } from './routes/config.js';
+import { createEventsRouter } from './routes/events.js';
 import { createFileRoutes } from './routes/files.js';
 import { createFilesystemRoutes } from './routes/filesystem.js';
 import { createLogRoutes } from './routes/logs.js';
+import { createPreferencesRouter } from './routes/preferences.js';
 import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createRepositoryRoutes } from './routes/repositories.js';
@@ -25,7 +27,6 @@ import { createSessionRoutes } from './routes/sessions.js';
 import { WebSocketInputHandler } from './routes/websocket-input.js';
 import { ActivityMonitor } from './services/activity-monitor.js';
 import { AuthService } from './services/auth-service.js';
-import { BellEventHandler } from './services/bell-event-handler.js';
 import { BufferAggregator } from './services/buffer-aggregator.js';
 import { ConfigService } from './services/config-service.js';
 import { ControlDirWatcher } from './services/control-dir-watcher.js';
@@ -423,7 +424,8 @@ export async function createApp(): Promise<AppInstance> {
     logger.debug(`Using existing control directory: ${CONTROL_DIR}`);
   }
 
-  // Initialize PTY manager
+  // Initialize PTY manager with fallback support
+  await PtyManager.initialize();
   const ptyManager = new PtyManager(CONTROL_DIR);
   logger.debug('Initialized PTY manager');
 
@@ -464,7 +466,6 @@ export async function createApp(): Promise<AppInstance> {
   // Initialize push notification services
   let vapidManager: VapidManager | null = null;
   let pushNotificationService: PushNotificationService | null = null;
-  let bellEventHandler: BellEventHandler | null = null;
 
   if (config.pushEnabled) {
     try {
@@ -483,17 +484,12 @@ export async function createApp(): Promise<AppInstance> {
       pushNotificationService = new PushNotificationService(vapidManager);
       await pushNotificationService.initialize();
 
-      // Initialize bell event handler
-      bellEventHandler = new BellEventHandler();
-      bellEventHandler.setPushNotificationService(pushNotificationService);
-
       logger.log(chalk.green('Push notification services initialized'));
     } catch (error) {
       logger.error('Failed to initialize push notification services:', error);
       logger.warn('Continuing without push notifications');
       vapidManager = null;
       pushNotificationService = null;
-      bellEventHandler = null;
     }
   } else {
     logger.debug('Push notifications disabled');
@@ -677,14 +673,143 @@ export async function createApp(): Promise<AppInstance> {
     });
   });
 
-  // Connect bell event handler to PTY manager if push notifications are enabled
-  if (bellEventHandler) {
-    ptyManager.on('bell', (bellContext) => {
-      bellEventHandler.processBellEvent(bellContext).catch((error) => {
-        logger.error('Failed to process bell event:', error);
-      });
+  // Connect session exit notifications if push notifications are enabled
+  if (pushNotificationService) {
+    ptyManager.on('sessionExited', (sessionId: string) => {
+      // Load session info to get details
+      const sessionInfo = sessionManager.loadSessionInfo(sessionId);
+      const exitCode = sessionInfo?.exitCode ?? 0;
+      const sessionName = sessionInfo?.name || `Session ${sessionId}`;
+
+      // Determine notification type based on exit code
+      const notificationType = exitCode === 0 ? 'session-exit' : 'session-error';
+      const title = exitCode === 0 ? 'Session Ended' : 'Session Ended with Errors';
+      const body =
+        exitCode === 0
+          ? `${sessionName} has finished.`
+          : `${sessionName} exited with code ${exitCode}.`;
+
+      pushNotificationService
+        .sendNotification({
+          type: notificationType,
+          title,
+          body,
+          icon: '/apple-touch-icon.png',
+          badge: '/favicon-32.png',
+          tag: `vibetunnel-${notificationType}-${sessionId}`,
+          requireInteraction: false,
+          data: {
+            type: notificationType,
+            sessionId,
+            sessionName,
+            exitCode,
+            timestamp: new Date().toISOString(),
+          },
+          actions: [
+            { action: 'view-logs', title: 'View Logs' },
+            { action: 'dismiss', title: 'Dismiss' },
+          ],
+        })
+        .catch((error) => {
+          logger.error('Failed to send session exit notification:', error);
+        });
     });
-    logger.debug('Connected bell event handler to PTY manager');
+    logger.debug('Connected session exit notifications to PTY manager');
+
+    // Connect command finished notifications
+    ptyManager.on('commandFinished', ({ sessionId, command, exitCode, duration, timestamp }) => {
+      const isClaudeCommand = command.toLowerCase().includes('claude');
+
+      // Enhanced logging for Claude commands
+      if (isClaudeCommand) {
+        logger.log(
+          chalk.magenta(
+            `📬 Server received Claude commandFinished event: sessionId=${sessionId}, command="${command}", exitCode=${exitCode}, duration=${duration}ms`
+          )
+        );
+      } else {
+        logger.debug(
+          `Server received commandFinished event for session ${sessionId}: "${command}"`
+        );
+      }
+
+      // Determine notification type based on exit code
+      const notificationType = exitCode === 0 ? 'command-finished' : 'command-error';
+      const title = exitCode === 0 ? 'Command Completed' : 'Command Failed';
+      const body =
+        exitCode === 0
+          ? `${command} completed successfully`
+          : `${command} failed with exit code ${exitCode}`;
+
+      // Format duration for display
+      const durationStr =
+        duration > 60000
+          ? `${Math.round(duration / 60000)}m ${Math.round((duration % 60000) / 1000)}s`
+          : `${Math.round(duration / 1000)}s`;
+
+      logger.debug(
+        `Sending push notification: type=${notificationType}, title="${title}", body="${body} (${durationStr})"`
+      );
+
+      pushNotificationService
+        .sendNotification({
+          type: notificationType,
+          title,
+          body: `${body} (${durationStr})`,
+          icon: '/apple-touch-icon.png',
+          badge: '/favicon-32.png',
+          tag: `vibetunnel-command-${sessionId}-${Date.now()}`,
+          requireInteraction: false,
+          data: {
+            type: notificationType,
+            sessionId,
+            command,
+            exitCode,
+            duration,
+            timestamp,
+          },
+          actions: [
+            { action: 'view-session', title: 'View Session' },
+            { action: 'dismiss', title: 'Dismiss' },
+          ],
+        })
+        .catch((error) => {
+          logger.error('Failed to send command finished notification:', error);
+        });
+    });
+    logger.debug('Connected command finished notifications to PTY manager');
+
+    // Connect Claude turn notifications
+    ptyManager.on('claudeTurn', (sessionId: string, sessionName: string) => {
+      logger.info(
+        `🔔 NOTIFICATION DEBUG: Sending push notification for Claude turn - sessionId: ${sessionId}`
+      );
+
+      pushNotificationService
+        .sendNotification({
+          type: 'claude-turn',
+          title: 'Claude Ready',
+          body: `${sessionName} is waiting for your input.`,
+          icon: '/apple-touch-icon.png',
+          badge: '/favicon-32.png',
+          tag: `vibetunnel-claude-turn-${sessionId}`,
+          requireInteraction: true,
+          data: {
+            type: 'claude-turn',
+            sessionId,
+            sessionName,
+            timestamp: new Date().toISOString(),
+          },
+          actions: [
+            { action: 'view-session', title: 'View Session' },
+            { action: 'dismiss', title: 'Dismiss' },
+          ],
+        })
+        .catch((error) => {
+          logger.error('Failed to send Claude turn notification:', error);
+        });
+    });
+    logger.debug('Connected Claude turn notifications to PTY manager');
   }
 
   // Mount authentication routes (no auth required)
@@ -738,6 +863,10 @@ export async function createApp(): Promise<AppInstance> {
   app.use('/api', createFileRoutes());
   logger.debug('Mounted file routes');
 
+  // Mount preferences routes
+  app.use('/api', createPreferencesRouter());
+  logger.debug('Mounted preferences routes');
+
   // Mount repository routes
   app.use('/api', createRepositoryRoutes());
   logger.debug('Mounted repository routes');
@@ -758,11 +887,14 @@ export async function createApp(): Promise<AppInstance> {
       createPushRoutes({
         vapidManager,
         pushNotificationService,
-        bellEventHandler: bellEventHandler ?? undefined,
       })
     );
     logger.debug('Mounted push notification routes');
   }
+
+  // Mount events router for SSE streaming
+  app.use('/api', createEventsRouter(ptyManager));
+  logger.debug('Mounted events routes');
 
   // Initialize control socket
   try {
@@ -1080,6 +1212,7 @@ export async function createApp(): Promise<AppInstance> {
         isHQMode: config.isHQMode,
         hqClient,
         ptyManager,
+        pushNotificationService: pushNotificationService || undefined,
       });
       controlDirWatcher.start();
       logger.debug('Started control directory watcher');
@@ -1125,6 +1258,10 @@ let serverStarted = false;
 export async function startVibeTunnelServer() {
   // Initialize logger if not already initialized (preserves debug mode from CLI)
   initLogger();
+
+  // Log diagnostic info if debug mode
+  if (process.env.DEBUG === 'true' || process.argv.includes('--debug')) {
+  }
 
   // Prevent multiple server instances
   if (serverStarted) {

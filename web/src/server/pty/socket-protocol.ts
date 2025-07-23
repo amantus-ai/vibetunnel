@@ -183,7 +183,13 @@ export function parsePayload(type: MessageType, payload: Buffer): unknown {
     case MessageType.CONTROL_CMD:
     case MessageType.STATUS_UPDATE:
     case MessageType.ERROR:
-      return JSON.parse(payload.toString('utf8'));
+      try {
+        return JSON.parse(payload.toString('utf8'));
+      } catch (e) {
+        throw new Error(
+          `Failed to parse JSON payload for message type ${type}: ${e instanceof Error ? e.message : String(e)}`
+        );
+      }
 
     case MessageType.HEARTBEAT:
       return null;

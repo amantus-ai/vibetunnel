@@ -238,9 +238,15 @@ export class ActivityDetector {
   private readonly STATUS_TIMEOUT = 10000; // 10 seconds - clear status if not seen
   private readonly MEANINGFUL_OUTPUT_THRESHOLD = 5; // characters
 
-  constructor(command: string[]) {
+  // Track Claude status transitions for turn notifications
+  private hadClaudeStatus = false;
+  private onClaudeTurnCallback?: (sessionId: string) => void;
+  private sessionId?: string;
+
+  constructor(command: string[], sessionId?: string) {
     // Find matching detector for this command
     this.detector = detectors.find((d) => d.detect(command)) || null;
+    this.sessionId = sessionId;
 
     if (this.detector) {
       logger.log(
@@ -288,6 +294,12 @@ export class ActivityDetector {
           this.lastStatusTime = Date.now();
           // Always update activity time for app-specific status
           this.lastActivityTime = Date.now();
+
+          // Update Claude status tracking
+          if (this.detector.name === 'claude') {
+            this.hadClaudeStatus = true;
+          }
+
           return {
             filteredData: status.filteredData,
             activity: {
@@ -314,6 +326,13 @@ export class ActivityDetector {
   }
 
   /**
+   * Set callback for Claude turn notifications
+   */
+  setOnClaudeTurn(callback: (sessionId: string) => void): void {
+    this.onClaudeTurnCallback = callback;
+  }
+
+  /**
    * Get current activity state (for periodic updates)
    */
   getActivityState(): ActivityState {
@@ -324,6 +343,15 @@ export class ActivityDetector {
     if (this.currentStatus && now - this.lastStatusTime > this.STATUS_TIMEOUT) {
       logger.debug('Clearing stale status - not seen for', this.STATUS_TIMEOUT, 'ms');
       this.currentStatus = null;
+
+      // Check if this was a Claude status clearing
+      if (this.hadClaudeStatus && this.detector?.name === 'claude') {
+        logger.log("Claude turn detected - status cleared, it's the user's turn");
+        if (this.onClaudeTurnCallback && this.sessionId) {
+          this.onClaudeTurnCallback(this.sessionId);
+        }
+        this.hadClaudeStatus = false;
+      }
     }
 
     // If we have a specific status (like Claude running), always show it

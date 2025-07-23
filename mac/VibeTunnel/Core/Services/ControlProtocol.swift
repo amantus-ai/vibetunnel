@@ -14,6 +14,7 @@ enum ControlProtocol {
         case terminal
         case git
         case system
+        case notification
     }
 
     // MARK: - Control Message Structure (with generic payload support)

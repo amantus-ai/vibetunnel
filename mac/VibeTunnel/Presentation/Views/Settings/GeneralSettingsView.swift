@@ -37,6 +37,12 @@ struct GeneralSettingsView: View {
         UpdateChannel(rawValue: updateChannelRaw) ?? .stable
     }
 
+    private func updateNotificationPreferences() {
+        // Load current preferences and notify the service
+        let prefs = NotificationService.NotificationPreferences()
+        NotificationService.shared.updatePreferences(prefs)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -67,6 +73,89 @@ struct GeneralSettingsView: View {
                         Text("Automatically start VibeTunnel when you log into your Mac.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                    }
+
+                    // Show Session Notifications
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle("Show Session Notifications", isOn: $showNotifications)
+                            .onChange(of: showNotifications) { _, newValue in
+                                // Ensure NotificationService starts/stops based on the toggle
+                                if newValue {
+                                    Task {
+                                        // Request permissions and show test notification
+                                        let granted = await NotificationService.shared.requestPermissionAndShowTestNotification()
+                                        
+                                        if granted {
+                                            await NotificationService.shared.start()
+                                        } else {
+                                            // If permission denied, turn toggle back off
+                                            await MainActor.run {
+                                                showNotifications = false
+                                                
+                                                // Show alert explaining the situation
+                                                let alert = NSAlert()
+                                                alert.messageText = "Notification Permission Required"
+                                                alert.informativeText = "VibeTunnel needs permission to show notifications. Please enable notifications for VibeTunnel in System Settings."
+                                                alert.alertStyle = .informational
+                                                alert.addButton(withTitle: "Open System Settings")
+                                                alert.addButton(withTitle: "Cancel")
+                                                
+                                                if alert.runModal() == .alertFirstButtonReturn {
+                                                    // Settings will already be open from the service
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    NotificationService.shared.stop()
+                                }
+                            }
+                        Text("Display native macOS notifications for session and command events.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        if showNotifications {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Notify me for:")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.leading, 20)
+                                    .padding(.top, 4)
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    NotificationCheckbox(
+                                        title: "Session starts",
+                                        key: "notifications.sessionStart",
+                                        updateAction: updateNotificationPreferences
+                                    )
+
+                                    NotificationCheckbox(
+                                        title: "Session ends",
+                                        key: "notifications.sessionExit",
+                                        updateAction: updateNotificationPreferences
+                                    )
+
+                                    NotificationCheckbox(
+                                        title: "Commands complete (> 3 seconds)",
+                                        key: "notifications.commandCompletion",
+                                        updateAction: updateNotificationPreferences
+                                    )
+
+                                    NotificationCheckbox(
+                                        title: "Commands fail",
+                                        key: "notifications.commandError",
+                                        updateAction: updateNotificationPreferences
+                                    )
+
+                                    NotificationCheckbox(
+                                        title: "Terminal bell (\u{0007})",
+                                        key: "notifications.bell",
+                                        updateAction: updateNotificationPreferences
+                                    )
+                                }
+                                .padding(.leading, 20)
+                            }
+                        }
                     }
 
                     // Show in Dock
@@ -175,6 +264,82 @@ struct GeneralSettingsView: View {
     private func updateLocalIPAddress() {
         Task {
             localIPAddress = await ServerConfigurationHelpers.updateLocalIPAddress(accessMode: accessMode)
+        }
+    }
+}
+
+// MARK: - Notification Checkbox Component
+
+private struct NotificationCheckbox: View {
+    let title: String
+    let key: String
+    let updateAction: () -> Void
+
+    @State private var isChecked: Bool
+
+    init(title: String, key: String, updateAction: @escaping () -> Void) {
+        self.title = title
+        self.key = key
+        self.updateAction = updateAction
+        self._isChecked = State(initialValue: UserDefaults.standard.bool(forKey: key))
+    }
+
+    var body: some View {
+        Button(action: toggleCheck) {
+            HStack(spacing: 6) {
+                Image(systemName: isChecked ? "checkmark.square.fill" : "square")
+                    .foregroundStyle(isChecked ? Color.accentColor : Color.secondary)
+                    .font(.system(size: 14))
+                    .animation(.easeInOut(duration: 0.15), value: isChecked)
+
+                Text(title)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.primary)
+
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onAppear {
+            // Sync with UserDefaults on appear
+            isChecked = UserDefaults.standard.bool(forKey: key)
+        }
+    }
+
+    private func toggleCheck() {
+        // If enabling any notification checkbox and main notifications are off, request permissions first
+        if !isChecked && !UserDefaults.standard.bool(forKey: "showNotifications") {
+            Task { @MainActor in
+                // Request permissions and enable main toggle
+                let granted = await NotificationService.shared.requestPermissionAndShowTestNotification()
+                
+                if granted {
+                    // Enable main notifications toggle
+                    UserDefaults.standard.set(true, forKey: "showNotifications")
+                    
+                    // Enable this specific checkbox
+                    isChecked = true
+                    UserDefaults.standard.set(isChecked, forKey: key)
+                    updateAction()
+                    
+                    // Start notification service
+                    await NotificationService.shared.start()
+                } else {
+                    // Show alert if permission was denied
+                    let alert = NSAlert()
+                    alert.messageText = "Notification Permission Required"
+                    alert.informativeText = "VibeTunnel needs permission to show notifications. Please enable notifications for VibeTunnel in System Settings."
+                    alert.alertStyle = .informational
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
+                }
+            }
+        } else {
+            // Normal toggle behavior
+            isChecked.toggle()
+            UserDefaults.standard.set(isChecked, forKey: key)
+            updateAction()
         }
     }
 }

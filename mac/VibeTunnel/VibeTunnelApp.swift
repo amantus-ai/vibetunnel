@@ -140,6 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
     var app: VibeTunnelApp?
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AppDelegate")
     private(set) var statusBarController: StatusBarController?
+    private let notificationService = NotificationService.shared
 
     /// Distributed notification name used to ask an existing instance to show the Settings window.
     private static let showSettingsNotification = Notification.Name("sh.vibetunnel.vibetunnel.showSettings")
@@ -262,6 +263,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
 
         // Start Git monitoring early
         app?.gitRepositoryMonitor.startMonitoring()
+
+        // Start native notification service
+        Task { [weak self] in
+            await self?.notificationService.start()
+        }
 
         // Initialize and start HTTP server using ServerManager
         Task {

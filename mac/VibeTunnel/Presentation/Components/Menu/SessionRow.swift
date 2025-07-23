@@ -162,8 +162,9 @@ struct SessionRow: View {
                             .padding(.vertical, 2)
                             .background(
                                 RoundedRectangle(cornerRadius: 4)
-                                    .fill(isHoveringFolder ? AppColors.Fallback.controlBackground(for: colorScheme)
-                                        .opacity(0.15) : Color.clear
+                                    .fill(
+                                        isHoveringFolder ? AppColors.Fallback.controlBackground(for: colorScheme)
+                                            .opacity(0.15) : Color.clear
                                     )
                             )
                         })

@@ -145,3 +145,4 @@ buildServer.json
 
 # OpenCode local development state
 .opencode/
+.env

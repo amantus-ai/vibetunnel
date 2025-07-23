@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { fixture, html } from '@open-wc/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MockWebSocket } from '@/test/utils/lit-test-utils';
 import type { AppPreferences } from './unified-settings';
 import './unified-settings';
 import type { UnifiedSettings } from './unified-settings';
@@ -8,7 +9,7 @@ import type { UnifiedSettings } from './unified-settings';
 // Mock modules
 vi.mock('@/client/services/push-notification-service', () => ({
   pushNotificationService: {
-    isSupported: () => false,
+    isSupported: vi.fn(() => false),
     requestPermission: vi.fn(),
     subscribe: vi.fn(),
     unsubscribe: vi.fn(),
@@ -422,5 +423,314 @@ describe('UnifiedSettings - Repository Discovery', () => {
     // Should still show repository count as 0
     const repositoryCountElement = el.querySelector('#repository-status');
     expect(repositoryCountElement?.textContent).toContain('0 repositories found');
+  });
+});
+
+describe('UnifiedSettings - Notification Settings', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    MockWebSocket.reset();
+    localStorage.clear();
+
+    // Mock default fetch response
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        repositoryBasePath: '~/',
+        serverConfigured: false,
+      }),
+    });
+  });
+
+  afterEach(() => {
+    // Clean up any remaining WebSocket instances
+    MockWebSocket.instances.forEach((ws) => {
+      if (ws.onclose) {
+        ws.close();
+      }
+    });
+  });
+
+  it('should display notification settings when push notifications are supported', async () => {
+    // Mock push notification service as supported
+    const { pushNotificationService } = await import('@/client/services/push-notification-service');
+    (pushNotificationService.isSupported as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+    const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+    el.visible = true;
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
+
+    // Find the notification section
+    const notificationSection = Array.from(el.querySelectorAll('h3')).find((h3) =>
+      h3.textContent?.includes('Notifications')
+    );
+    expect(notificationSection).toBeTruthy();
+
+    // Find the enable notifications toggle
+    const enableToggle = el.querySelector('button[aria-checked]');
+    expect(enableToggle).toBeTruthy();
+  });
+
+  it('should show warning when push notifications are not supported', async () => {
+    // Mock push notification service as not supported
+    const { pushNotificationService } = await import('@/client/services/push-notification-service');
+    (pushNotificationService.isSupported as ReturnType<typeof vi.fn>).mockReturnValue(false);
+
+    const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+    el.visible = true;
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
+
+    // Find warning message
+    const warningText = Array.from(el.querySelectorAll('p')).find((p) =>
+      p.textContent?.includes('Push notifications are not supported')
+    );
+    expect(warningText).toBeTruthy();
+  });
+
+  it('should toggle notifications when enable button is clicked', async () => {
+    const { pushNotificationService } = await import('@/client/services/push-notification-service');
+    (pushNotificationService.isSupported as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (pushNotificationService.getPermission as ReturnType<typeof vi.fn>).mockReturnValue('granted');
+    (pushNotificationService.requestPermission as ReturnType<typeof vi.fn>).mockResolvedValue(
+      'granted'
+    );
+    (pushNotificationService.subscribe as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+    const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+    el.visible = true;
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
+
+    // Find and click the enable toggle
+    const enableToggle = el.querySelector('button[role="switch"]') as HTMLButtonElement;
+    expect(enableToggle).toBeTruthy();
+
+    // Click to enable
+    enableToggle.click();
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
+
+    // Verify permission was requested and subscription was created
+    expect(pushNotificationService.requestPermission).toHaveBeenCalled();
+    expect(pushNotificationService.subscribe).toHaveBeenCalled();
+  });
+
+  it('should show notification type toggles when notifications are enabled', async () => {
+    const { pushNotificationService } = await import('@/client/services/push-notification-service');
+    (pushNotificationService.isSupported as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (pushNotificationService.loadPreferences as ReturnType<typeof vi.fn>).mockReturnValue({
+      enabled: true,
+      sessionExit: true,
+      sessionStart: false,
+      sessionError: true,
+      commandNotifications: true,
+      systemAlerts: true,
+      soundEnabled: true,
+      vibrationEnabled: true,
+    });
+
+    const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+    el.visible = true;
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
+
+    // Find notification type toggles
+    const sessionExitToggle = Array.from(el.querySelectorAll('label')).find((label) =>
+      label.textContent?.includes('Session Exit')
+    );
+    const sessionStartToggle = Array.from(el.querySelectorAll('label')).find((label) =>
+      label.textContent?.includes('Session Start')
+    );
+    const commandToggle = Array.from(el.querySelectorAll('label')).find((label) =>
+      label.textContent?.includes('Command Completion')
+    );
+
+    expect(sessionExitToggle).toBeTruthy();
+    expect(sessionStartToggle).toBeTruthy();
+    expect(commandToggle).toBeTruthy();
+  });
+
+  it('should save preferences when notification type is toggled', async () => {
+    const { pushNotificationService } = await import('@/client/services/push-notification-service');
+    (pushNotificationService.isSupported as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (pushNotificationService.loadPreferences as ReturnType<typeof vi.fn>).mockReturnValue({
+      enabled: true,
+      sessionExit: true,
+      sessionStart: false,
+      sessionError: true,
+      commandNotifications: true,
+      systemAlerts: true,
+      soundEnabled: true,
+      vibrationEnabled: true,
+    });
+
+    const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+    el.visible = true;
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
+
+    // Find and click a notification type toggle
+    const toggleButtons = el.querySelectorAll('button[role="switch"]');
+    const sessionExitToggle = Array.from(toggleButtons).find((btn) => {
+      const parent = btn.closest('div');
+      return parent?.querySelector('label')?.textContent?.includes('Session Exit');
+    }) as HTMLButtonElement;
+
+    expect(sessionExitToggle).toBeTruthy();
+    sessionExitToggle.click();
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Verify preferences were saved
+    expect(pushNotificationService.savePreferences).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionExit: false, // Toggled from true to false
+      })
+    );
+  });
+
+  it('should send test notification when test button is clicked', async () => {
+    const { pushNotificationService } = await import('@/client/services/push-notification-service');
+    (pushNotificationService.isSupported as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (pushNotificationService.isSubscribed as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (pushNotificationService.getPermission as ReturnType<typeof vi.fn>).mockReturnValue('granted');
+    (pushNotificationService.getSubscription as ReturnType<typeof vi.fn>).mockReturnValue({
+      endpoint: 'https://example.com/push',
+      expirationTime: null,
+    });
+    (pushNotificationService.loadPreferences as ReturnType<typeof vi.fn>).mockReturnValue({
+      enabled: true,
+      sessionExit: true,
+      sessionStart: true,
+      sessionError: true,
+      commandNotifications: true,
+      systemAlerts: true,
+      soundEnabled: true,
+      vibrationEnabled: true,
+    });
+    (pushNotificationService.testNotification as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+    const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+    el.visible = true;
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
+
+    // Find and click test notification button
+    const testButton = Array.from(el.querySelectorAll('button')).find((btn) =>
+      btn.textContent?.includes('Test Notification')
+    ) as HTMLButtonElement;
+
+    expect(testButton).toBeTruthy();
+    expect(testButton.disabled).toBe(false);
+
+    testButton.click();
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Verify test notification was sent
+    expect(pushNotificationService.testNotification).toHaveBeenCalled();
+  });
+
+  it('should disable test button when notifications are not subscribed', async () => {
+    const { pushNotificationService } = await import('@/client/services/push-notification-service');
+    (pushNotificationService.isSupported as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (pushNotificationService.isSubscribed as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    (pushNotificationService.getPermission as ReturnType<typeof vi.fn>).mockReturnValue('granted');
+    (pushNotificationService.getSubscription as ReturnType<typeof vi.fn>).mockReturnValue(null);
+    (pushNotificationService.loadPreferences as ReturnType<typeof vi.fn>).mockReturnValue({
+      enabled: true,
+      sessionExit: true,
+      sessionStart: true,
+      sessionError: true,
+      commandNotifications: true,
+      systemAlerts: true,
+      soundEnabled: true,
+      vibrationEnabled: true,
+    });
+
+    const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+    el.visible = true;
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
+
+    // Find test notification button
+    const testButton = Array.from(el.querySelectorAll('button')).find((btn) =>
+      btn.textContent?.includes('Test Notification')
+    ) as HTMLButtonElement;
+
+    expect(testButton).toBeTruthy();
+    expect(testButton.disabled).toBe(true);
+    expect(testButton.title).toBe('Enable notifications first');
+  });
+
+  it('should handle unsubscribe when disabling notifications', async () => {
+    const { pushNotificationService } = await import('@/client/services/push-notification-service');
+    (pushNotificationService.isSupported as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (pushNotificationService.isSubscribed as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (pushNotificationService.loadPreferences as ReturnType<typeof vi.fn>).mockReturnValue({
+      enabled: true,
+      sessionExit: true,
+      sessionStart: true,
+      sessionError: true,
+      commandNotifications: true,
+      systemAlerts: true,
+      soundEnabled: true,
+      vibrationEnabled: true,
+    });
+    (pushNotificationService.unsubscribe as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+
+    const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+    el.visible = true;
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
+
+    // Find and click the enable toggle to disable
+    const enableToggle = el.querySelector('button[role="switch"]') as HTMLButtonElement;
+    enableToggle.click();
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Verify unsubscribe was called
+    expect(pushNotificationService.unsubscribe).toHaveBeenCalled();
+    expect(pushNotificationService.savePreferences).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: false,
+      })
+    );
+  });
+
+  it('should show iOS-specific message for Safari', async () => {
+    // Mock iOS Safari detection
+    const el = await fixture<UnifiedSettings>(html`<unified-settings></unified-settings>`);
+
+    // Override the isIOSSafari method
+    // Using object bracket notation to access private methods for testing
+    (el as unknown as { isIOSSafari: () => boolean }).isIOSSafari = () => true;
+    (el as unknown as { isStandalone: () => boolean }).isStandalone = () => false;
+
+    const { pushNotificationService } = await import('@/client/services/push-notification-service');
+    (pushNotificationService.isSupported as ReturnType<typeof vi.fn>).mockReturnValue(false);
+
+    el.visible = true;
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await el.updateComplete;
+
+    // Find iOS-specific message
+    const iosMessage = Array.from(el.querySelectorAll('p')).find((p) =>
+      p.textContent?.includes('Add to Home Screen')
+    );
+    expect(iosMessage).toBeTruthy();
   });
 });
