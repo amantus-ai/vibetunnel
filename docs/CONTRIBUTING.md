@@ -39,7 +39,7 @@ We love your input! We want to make contributing to VibeTunnel as easy and trans
 3. **Open the Xcode project**
    ```bash
    # From the root directory
-   open mac/VibeTunnel-Mac.xcworkspace
+   open mac/VibeTunnel-Mac.xcodeproj
    ```
 
 4. **Configure code signing (optional for development)**
