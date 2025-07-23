@@ -303,7 +303,7 @@ describe('PushNotificationService', () => {
       expect(pushNotificationService.isSupported()).toBeDefined();
 
       // Verify preferences were loaded
-      const prefs = pushNotificationService.getPreferences();
+      const prefs = await pushNotificationService.loadPreferences();
       expect(prefs.sessionStart).toBe(true);
       expect(prefs.sessionExit).toBe(false);
     });
@@ -317,7 +317,7 @@ describe('PushNotificationService', () => {
       expect(pushNotificationService.isSupported()).toBeDefined();
 
       // Verify default preferences
-      const prefs = pushNotificationService.getPreferences();
+      const prefs = await pushNotificationService.loadPreferences();
       expect(prefs).toBeDefined();
     });
 
