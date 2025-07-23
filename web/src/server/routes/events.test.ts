@@ -244,11 +244,6 @@ describe('Events Router', () => {
     });
 
     it('should handle response errors gracefully', async () => {
-      // Mock a response that throws on write
-      mockResponse.write = vi.fn().mockImplementation(() => {
-        throw new Error('Connection lost');
-      });
-
       const routes = (eventsRouter as unknown as ExpressRouter).stack;
       const notificationRoute = routes.find(
         (r: RouteLayer) => r.route && r.route.path === '/events' && r.route.methods.get
@@ -256,6 +251,14 @@ describe('Events Router', () => {
 
       const handler = notificationRoute.route.stack[0].handle;
       await handler(mockRequest, mockResponse);
+
+      // Clear initial write call
+      vi.clearAllMocks();
+
+      // Now mock response to throw on write
+      mockResponse.write = vi.fn().mockImplementation(() => {
+        throw new Error('Connection lost');
+      });
 
       // Should not throw even if write fails
       expect(() => {

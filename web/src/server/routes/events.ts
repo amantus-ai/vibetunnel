@@ -24,16 +24,57 @@ export function createEventsRouter(ptyManager: PtyManager): Router {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('Access-Control-Allow-Origin', '*');
 
-    // Send initial connection event
-    res.write('event: connected\ndata: {"type": "connected"}\n\n');
-
-    // Keep connection alive
-    const keepAlive = setInterval(() => {
-      res.write(':heartbeat\n\n'); // SSE comment to keep connection alive
-    }, 30000);
-
     // Event ID counter
     let eventId = 0;
+    // biome-ignore lint/style/useConst: keepAlive is assigned after declaration
+    let keepAlive: NodeJS.Timeout;
+
+    // Interface for command finished event
+    interface CommandFinishedEvent {
+      sessionId: string;
+      command: string;
+      duration: number;
+      exitCode: number;
+    }
+
+    // Forward-declare event handlers for cleanup
+    // biome-ignore lint/style/useConst: These are assigned later in the code
+    let onSessionStarted: (sessionId: string, sessionName: string) => void;
+    // biome-ignore lint/style/useConst: These are assigned later in the code
+    let onSessionExited: (sessionId: string, sessionName: string, exitCode?: number) => void;
+    // biome-ignore lint/style/useConst: These are assigned later in the code
+    let onCommandFinished: (data: CommandFinishedEvent) => void;
+    // biome-ignore lint/style/useConst: These are assigned later in the code
+    let onClaudeTurn: (sessionId: string, sessionName: string) => void;
+
+    // Cleanup function to remove event listeners
+    const cleanup = () => {
+      if (keepAlive) {
+        clearInterval(keepAlive);
+      }
+      ptyManager.off('sessionStarted', onSessionStarted);
+      ptyManager.off('sessionExited', onSessionExited);
+      ptyManager.off('commandFinished', onCommandFinished);
+      ptyManager.off('claudeTurn', onClaudeTurn);
+    };
+
+    // Send initial connection event
+    try {
+      res.write('event: connected\ndata: {"type": "connected"}\n\n');
+    } catch (error) {
+      logger.debug('Failed to send initial connection event:', error);
+      return;
+    }
+
+    // Keep connection alive
+    keepAlive = setInterval(() => {
+      try {
+        res.write(':heartbeat\n\n'); // SSE comment to keep connection alive
+      } catch (error) {
+        logger.debug('Failed to send heartbeat:', error);
+        cleanup();
+      }
+    }, 30000);
 
     // Event handlers
     const sendEvent = (type: string, data: Record<string, unknown>) => {
@@ -61,26 +102,26 @@ export function createEventsRouter(ptyManager: PtyManager): Router {
 
       // Proper SSE format with id, event, and data fields
       const sseMessage = `id: ${++eventId}\nevent: ${type}\ndata: ${JSON.stringify(event)}\n\n`;
-      res.write(sseMessage);
+
+      try {
+        res.write(sseMessage);
+      } catch (error) {
+        logger.debug('Failed to write SSE event:', error);
+        // Client disconnected, remove listeners
+        cleanup();
+      }
     };
 
     // Listen for session events
-    const onSessionStarted = (sessionId: string, sessionName: string) => {
+    onSessionStarted = (sessionId: string, sessionName: string) => {
       sendEvent('session-start', { sessionId, sessionName });
     };
 
-    const onSessionExited = (sessionId: string, sessionName: string, exitCode?: number) => {
+    onSessionExited = (sessionId: string, sessionName: string, exitCode?: number) => {
       sendEvent('session-exit', { sessionId, sessionName, exitCode });
     };
 
-    interface CommandFinishedEvent {
-      sessionId: string;
-      command: string;
-      duration: number;
-      exitCode: number;
-    }
-
-    const onCommandFinished = (data: CommandFinishedEvent) => {
+    onCommandFinished = (data: CommandFinishedEvent) => {
       const isClaudeCommand = data.command.toLowerCase().includes('claude');
 
       if (isClaudeCommand) {
@@ -109,7 +150,7 @@ export function createEventsRouter(ptyManager: PtyManager): Router {
       }
     };
 
-    const onClaudeTurn = (sessionId: string, sessionName: string) => {
+    onClaudeTurn = (sessionId: string, sessionName: string) => {
       logger.info(
         `🔔 NOTIFICATION DEBUG: SSE forwarding claude-turn event - sessionId: ${sessionId}, sessionName: "${sessionName}"`
       );
@@ -129,13 +170,7 @@ export function createEventsRouter(ptyManager: PtyManager): Router {
     // Handle client disconnect
     req.on('close', () => {
       logger.debug('Client disconnected from event stream');
-      clearInterval(keepAlive);
-
-      // Unsubscribe from events
-      ptyManager.off('sessionStarted', onSessionStarted);
-      ptyManager.off('sessionExited', onSessionExited);
-      ptyManager.off('commandFinished', onCommandFinished);
-      ptyManager.off('claudeTurn', onClaudeTurn);
+      cleanup();
     });
   });
 
