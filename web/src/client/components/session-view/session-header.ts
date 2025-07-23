@@ -131,17 +131,7 @@ export class SessionHeader extends LitElement {
     // Switch to compact menu more aggressively (larger buffer)
     const buffer = 150; // Increased buffer to account for sidebar
     const shouldUseCompact = containerWidth < requiredWidth + buffer;
-    
-    console.log('[SessionHeader] Width calculation:', {
-      containerWidth,
-      requiredWidth,
-      buffer,
-      threshold: requiredWidth + buffer,
-      shouldUseCompact,
-      currentUseCompactMenu: this.useCompactMenu,
-      willChange: shouldUseCompact !== this.useCompactMenu
-    });
-    
+
     if (shouldUseCompact !== this.useCompactMenu) {
       this.useCompactMenu = shouldUseCompact;
       this.requestUpdate();
