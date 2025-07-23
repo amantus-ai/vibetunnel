@@ -201,19 +201,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         // Set up notification center delegate
         UNUserNotificationCenter.current().delegate = self
 
-        // Request notification permissions
-        Task {
-            do {
-                let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [
-                    .alert,
-                    .sound,
-                    .badge
-                ])
-                logger.info("Notification permission granted: \(granted)")
-            } catch {
-                logger.error("Failed to request notification permissions: \(error)")
-            }
-        }
 
         // Initialize dock icon visibility through DockIconManager
         DockIconManager.shared.updateDockVisibility()

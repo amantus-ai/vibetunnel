@@ -10,13 +10,14 @@ import SwiftUI
 /// ## Topics
 ///
 /// ### Overview
-/// The welcome flow consists of eight pages:
+/// The welcome flow consists of nine pages:
 /// - ``WelcomePageView`` - Introduction and app overview
 /// - ``VTCommandPageView`` - CLI tool installation
 /// - ``RequestPermissionsPageView`` - System permissions setup
 /// - ``SelectTerminalPageView`` - Terminal selection and testing
 /// - ``ProjectFolderPageView`` - Project folder configuration
 /// - ``ProtectDashboardPageView`` - Dashboard security configuration
+/// - ``NotificationPermissionPageView`` - Notification permissions setup
 /// - ``ControlAgentArmyPageView`` - Managing multiple AI agent sessions
 /// - ``AccessDashboardPageView`` - Remote access instructions
 struct WelcomeView: View {
@@ -72,11 +73,15 @@ struct WelcomeView: View {
                     ProtectDashboardPageView()
                         .frame(width: pageWidth)
 
-                    // Page 7: Control Your Agent Army
+                    // Page 7: Notification Permissions
+                    NotificationPermissionPageView()
+                        .frame(width: pageWidth)
+
+                    // Page 8: Control Your Agent Army
                     ControlAgentArmyPageView()
                         .frame(width: pageWidth)
 
-                    // Page 8: Accessing Dashboard
+                    // Page 9: Accessing Dashboard
                     AccessDashboardPageView()
                         .frame(width: pageWidth)
                 }
@@ -123,7 +128,7 @@ struct WelcomeView: View {
 
                 // Page indicators centered
                 HStack(spacing: 8) {
-                    ForEach(0..<8) { index in
+                    ForEach(0..<9) { index in
                         Button {
                             withAnimation {
                                 currentPage = index
@@ -164,7 +169,7 @@ struct WelcomeView: View {
     }
 
     private var buttonTitle: String {
-        currentPage == 7 ? "Finish" : "Next"
+        currentPage == 8 ? "Finish" : "Next"
     }
 
     private func handleBackAction() {
@@ -174,7 +179,7 @@ struct WelcomeView: View {
     }
 
     private func handleNextAction() {
-        if currentPage < 7 {
+        if currentPage < 8 {
             withAnimation {
                 currentPage += 1
             }
