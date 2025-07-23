@@ -29,8 +29,11 @@ export function createEventsRouter(ptyManager: PtyManager): Router {
 
     // Keep connection alive
     const keepAlive = setInterval(() => {
-      res.write(':\n\n'); // SSE comment to keep connection alive
+      res.write(':heartbeat\n\n'); // SSE comment to keep connection alive
     }, 30000);
+
+    // Event ID counter
+    let eventId = 0;
 
     // Event handlers
     const sendEvent = (type: string, data: Record<string, unknown>) => {
@@ -56,7 +59,9 @@ export function createEventsRouter(ptyManager: PtyManager): Router {
         logger.log(`🚀 SSE: Sending Claude ${type} event for session ${data.sessionId}`);
       }
 
-      res.write(`data: ${JSON.stringify(event)}\n\n`);
+      // Proper SSE format with id, event, and data fields
+      const sseMessage = `id: ${++eventId}\nevent: ${type}\ndata: ${JSON.stringify(event)}\n\n`;
+      res.write(sseMessage);
     };
 
     // Listen for session events

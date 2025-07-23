@@ -331,6 +331,7 @@ describe('Events Router', () => {
         write: vi.fn(),
         end: vi.fn(),
         on: vi.fn(),
+        setHeader: vi.fn(),
       } as unknown as Response;
 
       const client2Response = {
@@ -338,6 +339,7 @@ describe('Events Router', () => {
         write: vi.fn(),
         end: vi.fn(),
         on: vi.fn(),
+        setHeader: vi.fn(),
       } as unknown as Response;
 
       // Connect both clients
