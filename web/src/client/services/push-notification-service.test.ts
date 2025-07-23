@@ -19,12 +19,40 @@ const mockNotification = {
 const mockNavigator = {
   serviceWorker: {
     ready: Promise.resolve(mockServiceWorkerRegistration as unknown as ServiceWorkerRegistration),
-    register: vi.fn(),
+    register: vi.fn().mockResolvedValue(mockServiceWorkerRegistration),
+    addEventListener: vi.fn(),
   },
   userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+  permissions: {
+    query: vi.fn().mockResolvedValue({
+      state: 'prompt',
+      addEventListener: vi.fn(),
+    }),
+  },
 };
 
+// Create mockWindow as a function to allow dynamic updates
+const createMockWindow = () => ({
+  PushManager: {},
+  Notification: mockNotification,
+  navigator: mockNavigator,
+  matchMedia: vi.fn().mockReturnValue({
+    matches: false,
+    addEventListener: vi.fn(),
+  }),
+  atob: vi.fn((str: string) => Buffer.from(str, 'base64').toString('binary')),
+  btoa: vi.fn((str: string) => Buffer.from(str, 'binary').toString('base64')),
+  dispatchEvent: vi.fn(),
+  addEventListener: vi.fn(),
+  location: {
+    origin: 'http://localhost:3000',
+  },
+});
+
+let mockWindow = createMockWindow();
+
 // Setup global mocks
+vi.stubGlobal('window', mockWindow);
 vi.stubGlobal('navigator', mockNavigator);
 vi.stubGlobal('Notification', mockNotification);
 vi.stubGlobal('PushManager', {});
@@ -37,12 +65,20 @@ describe('PushNotificationService', () => {
     vi.clearAllMocks();
     localStorage.clear();
 
+    // Reset mockWindow
+    mockWindow = createMockWindow();
+    vi.stubGlobal('window', mockWindow);
+
     // Mock fetch responses
     (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
       if (url === '/api/push/vapid-public-key') {
         return Promise.resolve({
           ok: true,
-          text: () => Promise.resolve('test-vapid-key'),
+          json: () =>
+            Promise.resolve({
+              publicKey: 'test-vapid-key',
+              enabled: true,
+            }),
         });
       }
       if (url === '/api/preferences/notifications') {
@@ -82,21 +118,27 @@ describe('PushNotificationService', () => {
     });
 
     it('should return false when Notification API is not available', () => {
-      vi.stubGlobal('Notification', undefined);
+      // biome-ignore lint/suspicious/noExplicitAny: Required for test mocking
+      delete (mockWindow as any).Notification;
+      vi.stubGlobal('window', mockWindow);
+
       expect(pushNotificationService.isSupported()).toBe(false);
-      vi.stubGlobal('Notification', mockNotification);
     });
 
     it('should return false when serviceWorker is not available', () => {
-      vi.stubGlobal('navigator', { ...mockNavigator, serviceWorker: undefined });
-      expect(pushNotificationService.isSupported()).toBe(false);
+      // biome-ignore lint/suspicious/noExplicitAny: Required for test mocking
+      delete (mockNavigator as any).serviceWorker;
       vi.stubGlobal('navigator', mockNavigator);
+
+      expect(pushNotificationService.isSupported()).toBe(false);
     });
 
     it('should return false when PushManager is not available', () => {
-      vi.stubGlobal('PushManager', undefined);
+      // biome-ignore lint/suspicious/noExplicitAny: Required for test mocking
+      delete (mockWindow as any).PushManager;
+      vi.stubGlobal('window', mockWindow);
+
       expect(pushNotificationService.isSupported()).toBe(false);
-      vi.stubGlobal('PushManager', {});
     });
   });
 
@@ -112,7 +154,7 @@ describe('PushNotificationService', () => {
         soundEnabled: true,
         vibrationEnabled: false,
       };
-      localStorage.setItem('vibetunnel_notification_preferences', JSON.stringify(savedPrefs));
+      localStorage.setItem('vibetunnel-notification-preferences', JSON.stringify(savedPrefs));
 
       await pushNotificationService.initialize();
 
@@ -131,10 +173,18 @@ describe('PushNotificationService', () => {
       const mockSubscription = {
         endpoint: 'https://fcm.googleapis.com/test',
         expirationTime: null,
+        getKey: vi.fn((name: string) => {
+          if (name === 'p256dh') return new Uint8Array([1, 2, 3]);
+          if (name === 'auth') return new Uint8Array([4, 5, 6]);
+          return null;
+        }),
       };
       mockServiceWorkerRegistration.pushManager.getSubscription.mockResolvedValue(mockSubscription);
 
       await pushNotificationService.initialize();
+
+      // Wait for initialization to complete
+      await pushNotificationService.waitForInitialization();
 
       expect(mockServiceWorkerRegistration.pushManager.getSubscription).toHaveBeenCalled();
       expect(pushNotificationService.isSubscribed()).toBe(true);
@@ -144,6 +194,8 @@ describe('PushNotificationService', () => {
   describe('requestPermission', () => {
     it('should request notification permission', async () => {
       mockNotification.requestPermission.mockResolvedValue('granted');
+      mockWindow.Notification = mockNotification;
+      vi.stubGlobal('window', mockWindow);
 
       const result = await pushNotificationService.requestPermission();
 
@@ -153,6 +205,8 @@ describe('PushNotificationService', () => {
 
     it('should handle permission denial', async () => {
       mockNotification.requestPermission.mockResolvedValue('denied');
+      mockWindow.Notification = mockNotification;
+      vi.stubGlobal('window', mockWindow);
 
       const result = await pushNotificationService.requestPermission();
 
@@ -169,16 +223,17 @@ describe('PushNotificationService', () => {
       const mockSubscription = {
         endpoint: 'https://fcm.googleapis.com/test',
         expirationTime: null,
-        toJSON: () => ({
-          endpoint: 'https://fcm.googleapis.com/test',
-          expirationTime: null,
-          keys: {
-            p256dh: 'test-key',
-            auth: 'test-auth',
-          },
+        getKey: vi.fn((name: string) => {
+          if (name === 'p256dh') return new Uint8Array([1, 2, 3]);
+          if (name === 'auth') return new Uint8Array([4, 5, 6]);
+          return null;
         }),
       };
       mockServiceWorkerRegistration.pushManager.subscribe.mockResolvedValue(mockSubscription);
+
+      // Mock permission as granted
+      mockNotification.permission = 'granted';
+      mockNotification.requestPermission.mockResolvedValue('granted');
 
       // Mock fetch for saving subscription
       global.fetch = vi.fn().mockResolvedValue({
@@ -186,13 +241,13 @@ describe('PushNotificationService', () => {
         json: () => Promise.resolve({ success: true }),
       });
 
-      const result = await pushNotificationService.subscribe('test-public-key');
+      const result = await pushNotificationService.subscribe();
 
       expect(mockServiceWorkerRegistration.pushManager.subscribe).toHaveBeenCalledWith({
         userVisibleOnly: true,
         applicationServerKey: expect.any(Uint8Array),
       });
-      expect(result).toBe(true);
+      expect(result).toBeTruthy();
       expect(pushNotificationService.isSubscribed()).toBe(true);
     });
 
@@ -201,9 +256,12 @@ describe('PushNotificationService', () => {
         new Error('Subscribe failed')
       );
 
-      const result = await pushNotificationService.subscribe('test-public-key');
+      // Mock permission as granted
+      mockNotification.permission = 'granted';
+      mockNotification.requestPermission.mockResolvedValue('granted');
 
-      expect(result).toBe(false);
+      await expect(pushNotificationService.subscribe()).rejects.toThrow('Subscribe failed');
+
       expect(pushNotificationService.isSubscribed()).toBe(false);
     });
   });
@@ -213,20 +271,25 @@ describe('PushNotificationService', () => {
       const mockSubscription = {
         endpoint: 'https://fcm.googleapis.com/test',
         unsubscribe: vi.fn().mockResolvedValue(true),
+        getKey: vi.fn((name: string) => {
+          if (name === 'p256dh') return new Uint8Array([1, 2, 3]);
+          if (name === 'auth') return new Uint8Array([4, 5, 6]);
+          return null;
+        }),
       };
       mockServiceWorkerRegistration.pushManager.getSubscription.mockResolvedValue(mockSubscription);
 
       await pushNotificationService.initialize();
+      await pushNotificationService.waitForInitialization();
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ success: true }),
       });
 
-      const result = await pushNotificationService.unsubscribe();
+      await pushNotificationService.unsubscribe();
 
       expect(mockSubscription.unsubscribe).toHaveBeenCalled();
-      expect(result).toBe(true);
       expect(pushNotificationService.isSubscribed()).toBe(false);
     });
 
@@ -235,9 +298,9 @@ describe('PushNotificationService', () => {
 
       await pushNotificationService.initialize();
 
-      const result = await pushNotificationService.unsubscribe();
+      // Should not throw when no subscription exists
+      await expect(pushNotificationService.unsubscribe()).resolves.not.toThrow();
 
-      expect(result).toBe(true);
       expect(pushNotificationService.isSubscribed()).toBe(false);
     });
   });
@@ -262,7 +325,7 @@ describe('PushNotificationService', () => {
 
       await pushNotificationService.savePreferences(preferences);
 
-      const saved = localStorage.getItem('vibetunnel_notification_preferences');
+      const saved = localStorage.getItem('vibetunnel-notification-preferences');
       expect(saved).toBeTruthy();
       if (saved) {
         expect(JSON.parse(saved)).toEqual(preferences);
@@ -287,12 +350,12 @@ describe('PushNotificationService', () => {
       await pushNotificationService.savePreferences(preferences);
 
       // Should still save to localStorage even if server fails
-      const saved = localStorage.getItem('vibetunnel_notification_preferences');
+      const saved = localStorage.getItem('vibetunnel-notification-preferences');
       expect(saved).toBeTruthy();
     });
   });
 
-  describe('showLocalNotification', () => {
+  describe('testNotification', () => {
     it('should show notification when permission is granted', async () => {
       Object.defineProperty(mockNotification, 'permission', {
         writable: true,
@@ -301,19 +364,15 @@ describe('PushNotificationService', () => {
 
       await pushNotificationService.initialize();
 
-      await pushNotificationService.showLocalNotification({
-        title: 'Test Notification',
-        body: 'Test body',
-        icon: '/icon.png',
-        tag: 'test-tag',
-      });
+      await pushNotificationService.testNotification();
 
       expect(mockServiceWorkerRegistration.showNotification).toHaveBeenCalledWith(
-        'Test Notification',
+        'VibeTunnel Test',
         expect.objectContaining({
-          body: 'Test body',
-          icon: '/icon.png',
-          tag: 'test-tag',
+          body: 'Push notifications are working correctly!',
+          icon: '/apple-touch-icon.png',
+          badge: '/favicon-32.png',
+          tag: 'vibetunnel-test',
         })
       );
     });
@@ -326,70 +385,48 @@ describe('PushNotificationService', () => {
 
       await pushNotificationService.initialize();
 
-      await pushNotificationService.showLocalNotification({
-        title: 'Test Notification',
-        body: 'Test body',
-      });
+      await expect(pushNotificationService.testNotification()).rejects.toThrow(
+        'Notification permission not granted'
+      );
 
       expect(mockServiceWorkerRegistration.showNotification).not.toHaveBeenCalled();
     });
 
-    it('should respect notification preferences', async () => {
-      Object.defineProperty(mockNotification, 'permission', {
-        writable: true,
-        value: 'granted',
-      });
-
-      const preferences: NotificationPreferences = {
-        enabled: false,
-        sessionExit: true,
-        sessionStart: true,
-        sessionError: true,
-        commandNotifications: true,
-        systemAlerts: true,
-        soundEnabled: true,
-        vibrationEnabled: true,
-      };
-
-      await pushNotificationService.initialize();
-      await pushNotificationService.savePreferences(preferences);
-
-      await pushNotificationService.showLocalNotification({
-        title: 'Test Notification',
-        body: 'Test body',
-      });
-
-      expect(mockServiceWorkerRegistration.showNotification).not.toHaveBeenCalled();
+    it('should throw error when service worker not initialized', async () => {
+      await expect(pushNotificationService.testNotification()).rejects.toThrow(
+        'Service worker not initialized'
+      );
     });
   });
 
-  describe('testNotification', () => {
-    it('should send a test notification', async () => {
+  describe('sendTestNotification', () => {
+    it('should send a test notification via server', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ success: true }),
       });
 
-      const result = await pushNotificationService.testNotification();
+      await pushNotificationService.sendTestNotification('Test message');
 
       expect(fetch).toHaveBeenCalledWith('/api/push/test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ message: 'Test message' }),
       });
-      expect(result).toBe(true);
     });
 
     it('should handle test notification failure', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 500,
+        statusText: 'Internal Server Error',
       });
 
-      const result = await pushNotificationService.testNotification();
-
-      expect(result).toBe(false);
+      await expect(pushNotificationService.sendTestNotification()).rejects.toThrow(
+        'Server responded with 500: Internal Server Error'
+      );
     });
   });
 
