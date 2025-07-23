@@ -201,7 +201,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         // Set up notification center delegate
         UNUserNotificationCenter.current().delegate = self
 
-
         // Initialize dock icon visibility through DockIconManager
         DockIconManager.shared.updateDockVisibility()
 
