@@ -10,9 +10,11 @@ final class WorktreeService {
     private let serverManager: ServerManager
     
     private(set) var worktrees: [Worktree] = []
+    private(set) var branches: [GitBranch] = []
     private(set) var stats: WorktreeStats?
     private(set) var followMode: FollowModeStatus?
     private(set) var isLoading = false
+    private(set) var isLoadingBranches = false
     private(set) var error: Error?
     
     init(serverManager: ServerManager) {
@@ -194,6 +196,43 @@ final class WorktreeService {
         
         // Refresh the worktree list
         await fetchWorktrees(for: gitRepoPath)
+    }
+    
+    /// Fetch the list of branches for a Git repository
+    func fetchBranches(for gitRepoPath: String) async {
+        isLoadingBranches = true
+        
+        do {
+            guard let baseURL = URL(string: "\(URLConstants.localServerBase):\(serverManager.port)") else {
+                throw WorktreeError.invalidURL
+            }
+            
+            var components = URLComponents(url: baseURL.appendingPathComponent("api/repositories/branches"), resolvingAgainstBaseURL: false)!
+            components.queryItems = [URLQueryItem(name: "path", value: gitRepoPath)]
+            
+            guard let url = components.url else {
+                throw WorktreeError.invalidURL
+            }
+            
+            let (data, response) = try await URLSession.shared.data(from: url)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw WorktreeError.invalidResponse
+            }
+            
+            if httpResponse.statusCode == 200 {
+                let decoder = JSONDecoder()
+                self.branches = try decoder.decode([GitBranch].self, from: data)
+            } else {
+                let errorData = try? JSONDecoder().decode(ErrorResponse.self, from: data)
+                throw WorktreeError.serverError(errorData?.error ?? "Failed to fetch branches")
+            }
+        } catch {
+            self.error = error
+            logger.error("Failed to fetch branches: \(error.localizedDescription)")
+        }
+        
+        isLoadingBranches = false
     }
 }
 

@@ -18,11 +18,17 @@ VibeTunnel's worktree support is built on three main components:
 - Not implemented as a service, Git operations are embedded in routes
 
 **Worktree Routes** (`web/src/server/routes/worktrees.ts`)
-- `GET /api/worktrees` - List all worktrees with stats
+- `GET /api/worktrees` - List all worktrees with stats and follow mode status
 - `POST /api/worktrees` - Create new worktree
 - `DELETE /api/worktrees/:branch` - Remove worktree
-- `POST /api/worktrees/switch` - Switch branch with follow mode
-- `POST /api/worktrees/follow` - Enable/disable follow mode
+- `POST /api/worktrees/switch` - Switch branch and enable follow mode
+- `POST /api/worktrees/follow` - Enable/disable follow mode for a branch
+
+**Git Routes** (`web/src/server/routes/git.ts`)
+- `GET /api/git/repo-info` - Get repository information
+- `POST /api/git/event` - Process git hook events (internal use)
+- `GET /api/git/follow` - Check follow mode status for a repository
+- `GET /api/git/notifications` - Get pending notifications
 
 ### Key Functions
 
@@ -67,20 +73,23 @@ async function execGit(args: string[], options?: { cwd?: string }) {
 
 ### Follow Mode Implementation
 
-Follow mode uses Git hooks and a state file:
+Follow mode uses Git hooks and git config for state management:
 
-1. **State File**: `~/.vibetunnel/follow-mode.json`
-   ```json
-   {
-     "/path/to/repo": {
-       "branch": "feature/branch",
-       "enabled": true
-     }
-   }
+1. **State Storage**: Git config `vibetunnel.followBranch`
+   ```bash
+   # Follow mode state is stored per repository
+   git config vibetunnel.followBranch "feature/branch"
+   
+   # Check follow mode status
+   git config vibetunnel.followBranch
+   
+   # Disable follow mode
+   git config --unset vibetunnel.followBranch
    ```
 
-2. **Git Hooks**: `post-checkout` hook detects branch changes
-3. **API Notification**: Hook calls VibeTunnel API to sync
+2. **Git Hooks**: `post-checkout` and `post-commit` hooks detect changes
+3. **Event Processing**: Hooks execute `vt git event` command
+4. **Branch Synchronization**: Main repository follows worktree changes
 
 ## Frontend Implementation
 
@@ -172,27 +181,47 @@ async function installGitHooks(repoPath: string): Promise<void> {
 
 ### Hook Script
 
+The actual hook implementation uses the `vt` command:
+
 ```bash
 #!/bin/sh
 # VibeTunnel Git hook - post-checkout
 
-# Get the branch name
-branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+# Execute vt git event command if available
+if command -v vt >/dev/null 2>&1; then
+  vt git event checkout "$@" >/dev/null 2>&1 || true
+fi
 
-# Notify VibeTunnel API
-curl -X POST http://localhost:4020/api/git/hook \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"event\": \"checkout\",
-    \"repoPath\": \"$PWD\",
-    \"branch\": \"$branch\",
-    \"previousHEAD\": \"$1\",
-    \"newHEAD\": \"$2\",
-    \"branchCheckout\": \"$3\"
-  }" \
-  >/dev/null 2>&1 || true
-
+# Always exit successfully to not interfere with git operations
 exit 0
+```
+
+The `vt git event` command:
+- Processes the git event type (checkout, commit, etc.)
+- Reads repository state and follow mode configuration
+- Triggers branch synchronization if follow mode is enabled
+- Sends notifications to connected sessions
+
+### Follow Mode Logic
+
+When a checkout event occurs:
+
+```typescript
+// Check if follow mode is enabled
+const followBranch = await getGitConfig(repoPath, 'vibetunnel.followBranch');
+
+if (followBranch && event === 'checkout') {
+  // Check for uncommitted changes
+  const hasChanges = await checkUncommittedChanges(mainRepoPath);
+  
+  if (!hasChanges) {
+    // Perform the sync (checkout to the followed branch)
+    await execGit(['checkout', followBranch], { cwd: mainRepoPath });
+  } else {
+    // Disable follow mode due to uncommitted changes
+    await unsetGitConfig(mainRepoPath, 'vibetunnel.followBranch');
+  }
+}
 ```
 
 ## Data Models

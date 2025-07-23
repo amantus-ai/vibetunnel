@@ -144,6 +144,18 @@ Follow mode keeps your main repository in sync with worktree operations:
 3. Git hooks automatically notify VibeTunnel of branch changes
 4. Sessions show [checkout: branch] tags during transitions
 
+Follow mode state is stored in the repository's git config:
+```bash
+# Check current follow mode
+git config vibetunnel.followBranch
+
+# Manually set follow mode
+git config vibetunnel.followBranch feature/my-branch
+
+# Disable follow mode
+git config --unset vibetunnel.followBranch
+```
+
 ### Enabling Follow Mode
 
 ```bash
@@ -156,6 +168,23 @@ curl -X POST http://localhost:4020/api/worktrees/follow \
     "branch": "feature/branch",
     "enable": true
   }'
+```
+
+### Checking Follow Mode Status
+
+```bash
+# Check if follow mode is enabled for a repository
+curl "http://localhost:4020/api/git/follow?path=/path/to/repo" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Response:
+{
+  "isGitRepo": true,
+  "repoPath": "/path/to/repo",
+  "followMode": true,
+  "followBranch": "feature/branch",
+  "currentBranch": "main"
+}
 ```
 
 ### Use Cases
@@ -309,11 +338,13 @@ Use worktrees for CI/CD workflows:
 For detailed API documentation, see the main [API specification](./spec.md#worktree-endpoints).
 
 Key endpoints:
-- `GET /api/worktrees` - List worktrees
+- `GET /api/worktrees` - List worktrees with current follow mode status
 - `POST /api/worktrees` - Create worktree
 - `DELETE /api/worktrees/:branch` - Remove worktree
-- `POST /api/worktrees/switch` - Switch branch with follow mode
-- `POST /api/worktrees/follow` - Toggle follow mode
+- `POST /api/worktrees/switch` - Switch branch and enable follow mode
+- `POST /api/worktrees/follow` - Enable/disable follow mode for a branch
+- `GET /api/git/follow` - Check follow mode status for a repository
+- `POST /api/git/event` - Internal endpoint used by git hooks
 
 ## Conclusion
 

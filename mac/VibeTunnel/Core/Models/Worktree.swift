@@ -11,6 +11,8 @@ struct Worktree: Codable, Identifiable, Equatable {
     let prunable: Bool
     let isDetached: Bool
     let head: String
+    let isMainWorktree: Bool?
+    let isCurrentWorktree: Bool?
     
     enum CodingKeys: String, CodingKey {
         case path
@@ -21,6 +23,8 @@ struct Worktree: Codable, Identifiable, Equatable {
         case prunable
         case isDetached
         case head
+        case isMainWorktree
+        case isCurrentWorktree
     }
 }
 
@@ -61,4 +65,18 @@ struct SwitchBranchRequest: Codable {
 struct FollowModeRequest: Codable {
     let enabled: Bool
     let targetBranch: String?
+}
+
+/// Represents a Git branch
+struct GitBranch: Codable, Identifiable, Equatable {
+    let id = UUID()
+    let name: String
+    let current: Bool
+    let remote: Bool
+    
+    enum CodingKeys: String, CodingKey {
+        case name
+        case current
+        case remote
+    }
 }

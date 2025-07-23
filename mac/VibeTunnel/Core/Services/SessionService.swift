@@ -176,7 +176,9 @@ final class SessionService {
         titleMode: String = "dynamic",
         spawnTerminal: Bool = false,
         cols: Int = 120,
-        rows: Int = 30
+        rows: Int = 30,
+        gitRepoPath: String? = nil,
+        gitBranch: String? = nil
     )
         async throws -> String
     {
@@ -205,6 +207,14 @@ final class SessionService {
             // Web sessions need terminal dimensions
             body["cols"] = cols
             body["rows"] = rows
+        }
+        
+        // Add git information if available
+        if let gitRepoPath = gitRepoPath {
+            body["gitRepoPath"] = gitRepoPath
+        }
+        if let gitBranch = gitBranch {
+            body["gitBranch"] = gitBranch
         }
 
         var request = URLRequest(url: url)
