@@ -276,6 +276,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         // Start Git monitoring early
         app?.gitRepositoryMonitor.startMonitoring()
 
+        // Initialize status bar controller IMMEDIATELY to show menu bar icon
+        if let sessionMonitor = app?.sessionMonitor,
+           let serverManager = app?.serverManager,
+           let ngrokService = app?.ngrokService,
+           let tailscaleService = app?.tailscaleService,
+           let terminalLauncher = app?.terminalLauncher,
+           let gitRepositoryMonitor = app?.gitRepositoryMonitor,
+           let repositoryDiscoveryService = app?.repositoryDiscoveryService,
+           let configManager = app?.configManager,
+           let worktreeService = app?.worktreeService
+        {
+            // Connect GitRepositoryMonitor to SessionMonitor for pre-caching
+            sessionMonitor.gitRepositoryMonitor = gitRepositoryMonitor
+
+            statusBarController = StatusBarController(
+                sessionMonitor: sessionMonitor,
+                serverManager: serverManager,
+                ngrokService: ngrokService,
+                tailscaleService: tailscaleService,
+                terminalLauncher: terminalLauncher,
+                gitRepositoryMonitor: gitRepositoryMonitor,
+                repositoryDiscovery: repositoryDiscoveryService,
+                configManager: configManager,
+                worktreeService: worktreeService
+            )
+        }
+
         // Initialize and start HTTP server using ServerManager
         Task {
             guard let serverManager = app?.serverManager else { return }
@@ -292,33 +319,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
                 if let error = serverManager.lastError {
                     logger.error("Server start error: \(error.localizedDescription)")
                 }
-            }
-
-            // Initialize status bar controller after services are ready
-            if let sessionMonitor = app?.sessionMonitor,
-               let serverManager = app?.serverManager,
-               let ngrokService = app?.ngrokService,
-               let tailscaleService = app?.tailscaleService,
-               let terminalLauncher = app?.terminalLauncher,
-               let gitRepositoryMonitor = app?.gitRepositoryMonitor,
-               let repositoryDiscoveryService = app?.repositoryDiscoveryService,
-               let configManager = app?.configManager,
-               let worktreeService = app?.worktreeService
-            {
-                // Connect GitRepositoryMonitor to SessionMonitor for pre-caching
-                sessionMonitor.gitRepositoryMonitor = gitRepositoryMonitor
-
-                statusBarController = StatusBarController(
-                    sessionMonitor: sessionMonitor,
-                    serverManager: serverManager,
-                    ngrokService: ngrokService,
-                    tailscaleService: tailscaleService,
-                    terminalLauncher: terminalLauncher,
-                    gitRepositoryMonitor: gitRepositoryMonitor,
-                    repositoryDiscovery: repositoryDiscoveryService,
-                    configManager: configManager,
-                    worktreeService: worktreeService
-                )
             }
 
             // Set up multi-layer cleanup for cloudflared processes
