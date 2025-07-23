@@ -49,11 +49,20 @@ jobs:
       - name: Build application
         run: pnpm run build
         
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+        
       - name: Run client tests
-        run: pnpm run test:client:coverage | tee test-output-client.txt || true
+        run: |
+          export CI=true
+          export NODE_ENV=test
+          pnpm run test:client:coverage --reporter=verbose | tee test-output-client.txt || true
         
       - name: Run server tests  
-        run: pnpm run test:server:coverage | tee test-output-server.txt || true
+        run: |
+          export CI=true
+          export NODE_ENV=test
+          pnpm run test:server:coverage --reporter=verbose | tee test-output-server.txt || true
         
       - name: Process test results
         run: |
