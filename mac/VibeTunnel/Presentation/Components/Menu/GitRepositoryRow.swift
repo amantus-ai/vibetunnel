@@ -15,17 +15,11 @@ struct GitRepositoryRow: View {
     }
 
     private var branchInfo: some View {
-        HStack(spacing: 1) {
-            Image(systemName: "arrow.branch")
-                .font(.system(size: 9))
-                .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
-
-            Text(repository.currentBranch ?? "detached")
-                .font(.system(size: 10))
-                .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
+        Text("[\(repository.currentBranch ?? "detached")\(repository.isWorktree ? "+" : "")]")
+            .font(.system(size: 10))
+            .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
+            .lineLimit(1)
+            .truncationMode(.middle)
     }
 
     private var changeIndicators: some View {
@@ -108,19 +102,15 @@ struct GitRepositoryRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 2) {
-            // Branch info
+        HStack(spacing: 4) {
+            // Branch info - highest priority
             branchInfo
+                .layoutPriority(2)
 
             if repository.hasChanges {
-                Text("•")
-                    .font(.system(size: 8))
-                    .foregroundColor(.secondary.opacity(0.5))
-
                 changeIndicators
+                    .layoutPriority(1)
             }
-
-            Spacer()
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 2)

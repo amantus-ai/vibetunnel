@@ -226,7 +226,7 @@ export class GitBranchSelector extends LitElement {
 
                       return html`
                         <option value="${worktree.branch}" ?selected=${worktree.branch === this.selectedWorktree}>
-                          ${folderName}${showBranch ? ` [${worktree.branch}]` : ''}${worktree.isMainWorktree ? ' (main)' : ''}${worktree.isCurrentWorktree ? ' (current)' : ''}${this.followMode && this.followBranch === worktree.branch ? ' ⚡️ following' : ''}
+                          ${worktree.branch === this.selectedWorktree ? 'Use selected worktree: ' : ''}${folderName}${showBranch ? ` [${worktree.branch}]` : ''}${worktree.isMainWorktree ? ' (main)' : ''}${worktree.isCurrentWorktree ? ' (current)' : ''}${this.followMode && this.followBranch === worktree.branch ? ' ⚡️ following' : ''}
                         </option>
                       `;
                     })}

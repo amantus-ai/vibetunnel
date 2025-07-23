@@ -143,38 +143,45 @@ struct SessionRow: View {
                 HStack(alignment: .center, spacing: 6) {
                     // Left side: Path and git info
                     HStack(alignment: .center, spacing: 4) {
-                        // Folder icon and path - clickable as one unit
+                        // Folder icon - clickable
                         Button(action: {
                             NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
                         }, label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "folder")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary)
-
-                                Text(compactPath)
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                                    .truncationMode(.head)
-                            }
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(isHoveringFolder ? AppColors.Fallback.controlBackground(for: colorScheme)
-                                        .opacity(0.15) : Color.clear
-                                    )
-                            )
+                            Image(systemName: "folder")
+                                .font(.system(size: 10))
+                                .foregroundColor(isHoveringFolder ? .primary : .secondary)
+                                .padding(4)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(isHoveringFolder ? AppColors.Fallback.controlBackground(for: colorScheme)
+                                            .opacity(0.3) : Color.clear
+                                        )
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .strokeBorder(
+                                            isHoveringFolder ? AppColors.Fallback.gitBorder(for: colorScheme).opacity(0.4) : Color.clear,
+                                            lineWidth: 0.5
+                                        )
+                                )
                         })
                         .buttonStyle(.plain)
                         .onHover { hovering in
                             isHoveringFolder = hovering
                         }
                         .help("Open in Finder")
+                        
+                        // Path text - not clickable
+                        Text(compactPath)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.head)
+                            .layoutPriority(-1)  // Lowest priority
 
                         if let repo = gitRepository {
                             GitRepositoryRow(repository: repo)
+                                .layoutPriority(1)  // Highest priority
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)

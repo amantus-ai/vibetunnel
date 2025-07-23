@@ -14,6 +14,11 @@
  * - /path/to/normalrepo -> normalrepo
  */
 export function getBaseRepoName(repoPath: string): string {
+  // Handle root path edge case
+  if (repoPath === '/') {
+    return '';
+  }
+
   // Extract the last part of the path
   const parts = repoPath.split('/');
   const lastPart = parts[parts.length - 1] || repoPath;
