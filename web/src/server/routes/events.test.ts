@@ -132,11 +132,23 @@ describe('Events Router', () => {
       );
 
       // Verify SSE was sent - check that the data contains our expected fields
-      expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringMatching(
-          /id: \d+\nevent: session-exit\ndata: \{.*"type":"session-exit".*"sessionId":"test-123".*"sessionName":"Test Session".*"exitCode":0.*\}\n\n/
-        )
-      );
+      const writeCall = (mockResponse.write as ReturnType<typeof vi.fn>).mock.calls[0][0];
+
+      // Verify the SSE format
+      const lines = writeCall.split('\n');
+      expect(lines[0]).toMatch(/^id: \d+$/);
+      expect(lines[1]).toBe('event: session-exit');
+      expect(lines[2]).toMatch(/^data: /);
+
+      // Parse and verify the JSON data
+      const jsonData = JSON.parse(lines[2].replace('data: ', ''));
+      expect(jsonData).toMatchObject({
+        type: 'session-exit',
+        sessionId: 'test-123',
+        sessionName: 'Test Session',
+        exitCode: 0,
+        timestamp: expect.any(String),
+      });
     });
 
     it('should forward commandFinished events as SSE', async () => {
@@ -161,11 +173,24 @@ describe('Events Router', () => {
       mockPtyManager.emit('commandFinished', eventData);
 
       // Verify SSE was sent - check that the data contains our expected fields
-      expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringMatching(
-          /id: \d+\nevent: command-finished\ndata: \{.*"type":"command-finished".*"sessionId":"test-123".*"command":"npm test".*"exitCode":0.*"duration":5432.*\}\n\n/
-        )
-      );
+      const writeCall = (mockResponse.write as ReturnType<typeof vi.fn>).mock.calls[0][0];
+
+      // Verify the SSE format
+      const lines = writeCall.split('\n');
+      expect(lines[0]).toMatch(/^id: \d+$/);
+      expect(lines[1]).toBe('event: command-finished');
+      expect(lines[2]).toMatch(/^data: /);
+
+      // Parse and verify the JSON data
+      const jsonData = JSON.parse(lines[2].replace('data: ', ''));
+      expect(jsonData).toMatchObject({
+        type: 'command-finished',
+        sessionId: 'test-123',
+        command: 'npm test',
+        exitCode: 0,
+        duration: 5432,
+        timestamp: expect.any(String),
+      });
     });
 
     it('should handle multiple events', async () => {
@@ -187,7 +212,7 @@ describe('Events Router', () => {
 
       // Should have written 3 events
       const writeCalls = (mockResponse.write as ReturnType<typeof vi.fn>).mock.calls;
-      const eventCalls = writeCalls.filter((call) => call[0].includes('event:'));
+      const eventCalls = writeCalls.filter((call) => call[0].includes('event: '));
       expect(eventCalls).toHaveLength(3);
     });
 
