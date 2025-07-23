@@ -134,7 +134,7 @@ describe('Events Router', () => {
       // Verify SSE was sent - check that the data contains our expected fields
       expect(mockResponse.write).toHaveBeenCalledWith(
         expect.stringMatching(
-          /data: \{.*"type":"session-exit".*"sessionId":"test-123".*"sessionName":"Test Session".*"exitCode":0.*\}\n\n/
+          /id: \d+\nevent: session-exit\ndata: \{.*"type":"session-exit".*"sessionId":"test-123".*"sessionName":"Test Session".*"exitCode":0.*\}\n\n/
         )
       );
     });
@@ -163,7 +163,7 @@ describe('Events Router', () => {
       // Verify SSE was sent - check that the data contains our expected fields
       expect(mockResponse.write).toHaveBeenCalledWith(
         expect.stringMatching(
-          /data: \{.*"type":"command-finished".*"sessionId":"test-123".*"command":"npm test".*"exitCode":0.*"duration":5432.*\}\n\n/
+          /id: \d+\nevent: command-finished\ndata: \{.*"type":"command-finished".*"sessionId":"test-123".*"command":"npm test".*"exitCode":0.*"duration":5432.*\}\n\n/
         )
       );
     });

@@ -184,11 +184,13 @@ describe('Claude Turn Events', () => {
 
       const writeCall = (mockResponse.write as ReturnType<typeof vi.fn>).mock.calls[0][0];
 
-      // Verify proper SSE format
-      expect(writeCall).toMatch(/^data: .+\n\n$/);
+      // Verify proper SSE format with id, event, and data fields
+      expect(writeCall).toMatch(/^id: \d+\nevent: claude-turn\ndata: .+\n\n$/);
 
-      // Extract and verify JSON
-      const jsonStr = writeCall.replace('data: ', '').trim();
+      // Extract and verify JSON from the SSE message
+      const matches = writeCall.match(/data: (.+)\n\n$/);
+      expect(matches).toBeTruthy();
+      const jsonStr = matches[1];
       const eventData = JSON.parse(jsonStr);
 
       expect(eventData).toMatchObject({
