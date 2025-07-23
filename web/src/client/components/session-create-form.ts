@@ -14,7 +14,11 @@
 import { html, LitElement, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import './file-browser.js';
-import './quick-start-editor.js';
+import './session-create-form/git-branch-selector.js';
+import './session-create-form/quick-start-section.js';
+import './session-create-form/form-options-section.js';
+import './session-create-form/directory-autocomplete.js';
+import './session-create-form/repository-dropdown.js';
 import { DEFAULT_REPOSITORY_BASE_PATH } from '../../shared/constants.js';
 import type { Session } from '../../shared/types.js';
 import { TitleMode } from '../../shared/types.js';
@@ -34,12 +38,19 @@ import {
   saveSessionFormData,
   setSessionFormValue,
 } from '../utils/storage-utils.js';
-import { getTitleModeDescription } from '../utils/title-mode-utils.js';
 import {
   type AutocompleteItem,
   AutocompleteManager,
   type Repository,
 } from './autocomplete-manager.js';
+import type { WorktreeInfo } from './session-create-form/git-branch-selector.js';
+import {
+  checkFollowMode,
+  enableFollowMode,
+  generateWorktreePath,
+  loadBranches,
+} from './session-create-form/git-utils.js';
+import type { QuickStartItem } from './session-create-form/quick-start-section.js';
 
 const logger = createLogger('session-create-form');
 
@@ -70,27 +81,17 @@ export class SessionCreateForm extends LitElement {
   @state() private completions: AutocompleteItem[] = [];
   @state() private selectedCompletionIndex = -1;
   @state() private isLoadingCompletions = false;
-  @state() private showOptions = false;
-  @state() private quickStartEditMode = false;
   @state() private gitRepoInfo: GitRepoInfo | null = null;
   @state() private isCheckingGit = false;
   @state() private availableBranches: string[] = [];
   @state() private selectedBranch: string = '';
-  @state() private showCreateWorktree = false;
-  @state() private newBranchName = '';
-  @state() private isCreatingWorktree = false;
 
   // New properties for split branch/worktree selectors
   @state() private currentBranch: string = '';
   @state() private selectedBaseBranch: string = '';
   @state() private selectedWorktree?: string;
   @state() private branchSwitchWarning?: string;
-  @state() private availableWorktrees: Array<{
-    branch: string;
-    path: string;
-    isMainWorktree?: boolean;
-    isCurrentWorktree?: boolean;
-  }> = [];
+  @state() private availableWorktrees: WorktreeInfo[] = [];
   @state() private isLoadingBranches = false;
   @state() private isLoadingWorktrees = false;
 
@@ -100,7 +101,7 @@ export class SessionCreateForm extends LitElement {
   @state() private showFollowMode = false;
   @state() private isCheckingFollowMode = false;
 
-  @state() private quickStartCommands = [
+  @state() private quickStartCommands: QuickStartItem[] = [
     { label: '✨ claude', command: 'claude' },
     { label: '✨ gemini', command: 'gemini' },
     { label: 'zsh', command: 'zsh' },
@@ -410,13 +411,16 @@ export class SessionCreateForm extends LitElement {
     this.sessionName = input.value;
   }
 
-  private handleSpawnWindowChange() {
-    this.spawnWindow = !this.spawnWindow;
+  private handleSpawnWindowChanged(e: CustomEvent) {
+    this.spawnWindow = e.detail.enabled;
   }
 
-  private handleTitleModeChange(e: Event) {
-    const select = e.target as HTMLSelectElement;
-    this.titleMode = select.value as TitleMode;
+  private handleTitleModeChanged(e: CustomEvent) {
+    this.titleMode = e.detail.mode as TitleMode;
+  }
+
+  private handleFollowModeChanged(e: CustomEvent) {
+    this.showFollowMode = e.detail.enabled;
   }
 
   private handleBrowse() {
@@ -535,21 +539,13 @@ export class SessionCreateForm extends LitElement {
         }
 
         logger.log(`Enabling follow mode for branch: ${effectiveBranch}`);
-        const response = await fetch('/api/worktrees/follow', {
-          method: 'POST',
-          headers: {
-            ...this.authClient.getAuthHeader(),
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            repoPath: this.gitRepoInfo.repoPath,
-            branch: effectiveBranch,
-            enable: true,
-          }),
-        });
+        const success = await enableFollowMode(
+          this.gitRepoInfo.repoPath,
+          effectiveBranch,
+          this.authClient
+        );
 
-        if (!response.ok) {
-          logger.error('Failed to enable follow mode:', response.statusText);
+        if (!success) {
           // Show error to user
           this.dispatchEvent(
             new CustomEvent('error', {
@@ -633,7 +629,8 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
-  private handleQuickStart(command: string) {
+  private handleQuickStartSelected(e: CustomEvent) {
+    const command = e.detail.command;
     this.command = command;
     this.selectedQuickStart = command;
 
@@ -641,6 +638,77 @@ export class SessionCreateForm extends LitElement {
     if (command.toLowerCase().includes('claude')) {
       this.titleMode = TitleMode.DYNAMIC;
     }
+  }
+
+  private handleBranchChanged(e: CustomEvent) {
+    this.selectedBaseBranch = e.detail.branch;
+    // Clear any previous warning
+    this.branchSwitchWarning = undefined;
+  }
+
+  private handleWorktreeChanged(e: CustomEvent) {
+    this.selectedWorktree = e.detail.worktree;
+    // Clear any previous warning
+    this.branchSwitchWarning = undefined;
+  }
+
+  private async handleCreateWorktreeRequest(e: CustomEvent) {
+    const { branchName, baseBranch } = e.detail;
+    if (!this.gitRepoInfo?.repoPath || !this.gitService) {
+      return;
+    }
+
+    try {
+      const worktreePath = generateWorktreePath(this.gitRepoInfo.repoPath, branchName);
+
+      // Create the worktree
+      await this.gitService.createWorktree(
+        this.gitRepoInfo.repoPath,
+        branchName,
+        worktreePath,
+        baseBranch
+      );
+
+      // Update working directory to the new worktree
+      this.workingDir = worktreePath;
+
+      // Update selected branch to the new branch
+      this.selectedBranch = branchName;
+
+      // Add new branch to available branches
+      if (!this.availableBranches.includes(branchName)) {
+        this.availableBranches = [...this.availableBranches, branchName];
+      }
+
+      // Reload worktrees
+      await this.loadWorktrees(this.gitRepoInfo.repoPath, worktreePath);
+
+      // Show success message
+      this.dispatchEvent(
+        new CustomEvent('success', {
+          detail: `Created worktree for branch '${branchName}'`,
+          bubbles: true,
+          composed: true,
+        })
+      );
+    } catch (error) {
+      logger.error('Failed to create worktree:', error);
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: error instanceof Error ? error.message : 'Failed to create worktree',
+          bubbles: true,
+          composed: true,
+        })
+      );
+    }
+  }
+
+  private handleAutocompleteItemSelected(e: CustomEvent) {
+    this.handleSelectCompletion(e.detail.suggestion);
+  }
+
+  private handleRepositorySelected(e: CustomEvent) {
+    this.handleSelectRepository(e.detail.path);
   }
 
   private async discoverRepositories() {
@@ -718,14 +786,6 @@ export class SessionCreateForm extends LitElement {
     this.selectedCompletionIndex = -1;
     // Check Git repository after autocomplete selection
     this.checkGitRepository();
-  }
-
-  private handleToggleOptions() {
-    this.showOptions = !this.showOptions;
-  }
-
-  private handleToggleFollowMode() {
-    this.showFollowMode = !this.showFollowMode;
   }
 
   private handleWorkingDirKeydown(e: KeyboardEvent) {
@@ -819,63 +879,6 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
-  private async handleCreateWorktree() {
-    if (!this.newBranchName.trim() || !this.gitRepoInfo?.repoPath || !this.gitService) {
-      return;
-    }
-
-    this.isCreatingWorktree = true;
-
-    try {
-      // Generate worktree path based on branch name
-      const branchSlug = this.newBranchName.trim().replace(/[^a-zA-Z0-9-_]/g, '-');
-      const worktreePath = `${this.gitRepoInfo.repoPath}-${branchSlug}`;
-
-      // Create the worktree
-      await this.gitService.createWorktree(
-        this.gitRepoInfo.repoPath,
-        this.newBranchName.trim(),
-        worktreePath,
-        this.selectedBranch || 'main' // Use selected branch as base
-      );
-
-      // Update working directory to the new worktree
-      this.workingDir = worktreePath;
-
-      // Update selected branch to the new branch
-      this.selectedBranch = this.newBranchName.trim();
-
-      // Add new branch to available branches
-      if (!this.availableBranches.includes(this.selectedBranch)) {
-        this.availableBranches = [...this.availableBranches, this.selectedBranch];
-      }
-
-      // Reset UI state
-      this.showCreateWorktree = false;
-      this.newBranchName = '';
-
-      // Show success message
-      this.dispatchEvent(
-        new CustomEvent('success', {
-          detail: `Created worktree for branch '${this.selectedBranch}'`,
-          bubbles: true,
-          composed: true,
-        })
-      );
-    } catch (error) {
-      logger.error('Failed to create worktree:', error);
-      this.dispatchEvent(
-        new CustomEvent('error', {
-          detail: error instanceof Error ? error.message : 'Failed to create worktree',
-          bubbles: true,
-          composed: true,
-        })
-      );
-    } finally {
-      this.isCreatingWorktree = false;
-    }
-  }
-
   private async loadBranches(repoPath: string): Promise<void> {
     if (!this.authClient) {
       return;
@@ -883,32 +886,15 @@ export class SessionCreateForm extends LitElement {
 
     this.isLoadingBranches = true;
     try {
-      const response = await fetch(
-        `/api/repositories/branches?${new URLSearchParams({ path: repoPath })}`,
-        {
-          headers: this.authClient.getAuthHeader(),
-        }
-      );
+      const { branches, currentBranch } = await loadBranches(repoPath, this.authClient);
+      this.availableBranches = branches;
 
-      if (response.ok) {
-        const branches = await response.json();
-        this.availableBranches = branches.map((b: { name: string; current: boolean }) => b.name);
-
-        // Set the current branch
-        const currentBranchData = branches.find((b: { current: boolean }) => b.current);
-        if (currentBranchData) {
-          this.currentBranch = currentBranchData.name;
-          if (!this.selectedBaseBranch) {
-            this.selectedBaseBranch = this.currentBranch;
-          }
+      if (currentBranch) {
+        this.currentBranch = currentBranch;
+        if (!this.selectedBaseBranch) {
+          this.selectedBaseBranch = this.currentBranch;
         }
-      } else {
-        logger.error('Failed to load branches:', response.statusText);
-        this.availableBranches = [];
       }
-    } catch (error) {
-      logger.error('Failed to load branches:', error);
-      this.availableBranches = [];
     } finally {
       this.isLoadingBranches = false;
     }
@@ -996,27 +982,16 @@ export class SessionCreateForm extends LitElement {
 
     this.isCheckingFollowMode = true;
     try {
-      const response = await fetch(`/api/git/follow?${new URLSearchParams({ path: repoPath })}`, {
-        headers: this.authClient.getAuthHeader(),
+      const { followMode: mode, followBranch: branch } = await checkFollowMode(
+        repoPath,
+        this.authClient
+      );
+      this.followMode = mode;
+      this.followBranch = branch;
+      logger.log('Follow mode status:', {
+        followMode: this.followMode,
+        followBranch: this.followBranch,
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        this.followMode = data.followMode || false;
-        this.followBranch = data.followBranch || null;
-        logger.log('Follow mode status:', {
-          followMode: this.followMode,
-          followBranch: this.followBranch,
-        });
-      } else {
-        logger.error('Failed to check follow mode:', response.statusText);
-        this.followMode = false;
-        this.followBranch = null;
-      }
-    } catch (error) {
-      logger.error('Failed to check follow mode:', error);
-      this.followMode = false;
-      this.followBranch = null;
     } finally {
       this.isCheckingFollowMode = false;
     }
@@ -1168,579 +1143,67 @@ export class SessionCreateForm extends LitElement {
                   </svg>
                 </button>
               </div>
-              ${
-                this.showCompletions && this.completions.length > 0
-                  ? html`
-                    <div class="absolute left-0 right-0 mt-1 bg-bg-elevated border border-border/50 rounded-lg overflow-hidden shadow-lg z-50">
-                      <div class="max-h-48 sm:max-h-64 lg:max-h-80 overflow-y-auto">
-                        ${this.completions.map(
-                          (completion, index) => html`
-                            <button
-                              @click=${() => this.handleSelectCompletion(completion.suggestion)}
-                              class="w-full text-left px-3 py-2 hover:bg-surface-hover transition-colors duration-200 flex items-center gap-2 ${
-                                index === this.selectedCompletionIndex
-                                  ? 'bg-primary/20 border-l-2 border-primary'
-                                  : ''
-                              }"
-                              type="button"
-                            >
-                              <svg 
-                                width="12" 
-                                height="12" 
-                                viewBox="0 0 16 16" 
-                                fill="currentColor"
-                                class="${completion.isRepository ? 'text-primary' : 'text-text-muted'} flex-shrink-0"
-                              >
-                                ${
-                                  completion.isRepository
-                                    ? html`<path d="M4.177 7.823A4.5 4.5 0 118 12.5a4.474 4.474 0 01-1.653-.316.75.75 0 11.557-1.392 2.999 2.999 0 001.096.208 3 3 0 10-2.108-5.134.75.75 0 01.236.662l.428 3.009a.75.75 0 01-1.255.592L2.847 7.677a.75.75 0 01.426-1.27A4.476 4.476 0 014.177 7.823zM8 1a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 1zm3.197 2.197a.75.75 0 01.092.992l-1 1.25a.75.75 0 01-1.17-.938l1-1.25a.75.75 0 01.992-.092.75.75 0 01.086.038zM5.75 8a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 015.75 8zm5.447 2.197a.75.75 0 01.092.992l-1 1.25a.75.75 0 11-1.17-.938l1-1.25a.75.75 0 01.992-.092.75.75 0 01.086.038z" />`
-                                    : completion.type === 'directory'
-                                      ? html`<path d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z" />`
-                                      : html`<path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0113.25 16h-9.5A1.75 1.75 0 012 14.25V1.75zm1.75-.25a.25.25 0 00-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 00.25-.25V6h-2.75A1.75 1.75 0 019 4.25V1.5H3.75zm6.75.062V4.25c0 .138.112.25.25.25h2.688a.252.252 0 00-.011-.013l-2.914-2.914a.272.272 0 00-.013-.011z" />`
-                                }
-                              </svg>
-                              <!-- Folder name -->
-                              <span class="text-text text-xs sm:text-sm font-medium min-w-0">
-                                ${completion.name}
-                              </span>
-                              
-                              <!-- Git branch and worktree indicator -->
-                              ${
-                                completion.gitBranch
-                                  ? html`
-                                    <span class="text-primary text-[9px] sm:text-[10px] flex items-center gap-1">
-                                      <span>[${completion.gitBranch}]</span>
-                                      ${
-                                        completion.isWorktree
-                                          ? html`<span class="text-purple-500 ml-0.5" title="Git worktree">
-                                              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
-                                                <path d="M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z"/>
-                                              </svg>
-                                            </span>`
-                                          : nothing
-                                      }
-                                    </span>`
-                                  : nothing
-                              }
-                              
-                              <!-- Git changes indicators -->
-                              ${
-                                completion.gitAddedCount ||
-                                completion.gitModifiedCount ||
-                                completion.gitDeletedCount
-                                  ? html`
-                                    <div class="flex items-center gap-1.5 text-[9px] sm:text-[10px]">
-                                      ${
-                                        completion.gitAddedCount && completion.gitAddedCount > 0
-                                          ? html`
-                                            <span class="flex items-center gap-0.5 text-green-500">
-                                              <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                                              </svg>
-                                              <span>${completion.gitAddedCount}</span>
-                                            </span>
-                                          `
-                                          : nothing
-                                      }
-                                      ${
-                                        completion.gitModifiedCount &&
-                                        completion.gitModifiedCount > 0
-                                          ? html`
-                                            <span class="flex items-center gap-0.5 text-yellow-500">
-                                              <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32l8.4-8.4z" />
-                                              </svg>
-                                              <span>${completion.gitModifiedCount}</span>
-                                            </span>
-                                          `
-                                          : nothing
-                                      }
-                                      ${
-                                        completion.gitDeletedCount && completion.gitDeletedCount > 0
-                                          ? html`
-                                            <span class="flex items-center gap-0.5 text-red-500">
-                                              <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                                              </svg>
-                                              <span>${completion.gitDeletedCount}</span>
-                                            </span>
-                                          `
-                                          : nothing
-                                      }
-                                    </div>
-                                  `
-                                  : nothing
-                              }
-                              
-                              <!-- Spacer (removed redundant path display) -->
-                              <div class="flex-1"></div>
-                            </button>
-                          `
-                        )}
-                      </div>
-                    </div>
-                  `
-                  : ''
-              }
-              ${
-                this.showRepositoryDropdown && this.repositories.length > 0
-                  ? html`
-                    <div class="mt-2 bg-bg-elevated border border-border/50 rounded-lg overflow-hidden">
-                      <div class="max-h-48 overflow-y-auto">
-                        ${this.repositories.map(
-                          (repo) => html`
-                            <button
-                              @click=${() => this.handleSelectRepository(repo.path)}
-                              class="w-full text-left px-3 py-2 hover:bg-surface-hover transition-colors duration-200 border-b border-border/30 last:border-b-0"
-                              type="button"
-                            >
-                              <div class="flex items-center justify-between">
-                                <div class="flex-1">
-                                  <div class="flex items-center gap-2">
-                                    <div class="text-text text-xs sm:text-sm font-medium">${repo.folderName}</div>
-                                  </div>
-                                  <div class="text-text-muted text-[9px] sm:text-[10px] mt-0.5">${repo.relativePath}</div>
-                                </div>
-                                <div class="text-text-muted text-[9px] sm:text-[10px]">
-                                  ${new Date(repo.lastModified).toLocaleDateString()}
-                                </div>
-                              </div>
-                            </button>
-                          `
-                        )}
-                      </div>
-                    </div>
-                  `
-                  : ''
-              }
+              <directory-autocomplete
+                .visible=${this.showCompletions}
+                .items=${this.completions}
+                .selectedIndex=${this.selectedCompletionIndex}
+                .isLoading=${this.isLoadingCompletions}
+                @item-selected=${this.handleAutocompleteItemSelected}
+              ></directory-autocomplete>
+              <repository-dropdown
+                .visible=${this.showRepositoryDropdown}
+                .repositories=${this.repositories}
+                @repository-selected=${this.handleRepositorySelected}
+              ></repository-dropdown>
             </div>
 
             <!-- Git Branch/Worktree Selection (shown when Git repository detected) -->
-            ${
-              (
-                () => {
-                  logger.log(`🎨 Render check - gitRepoInfo:`, this.gitRepoInfo);
-                  logger.log(`🎨 Render check - isGitRepo:`, this.gitRepoInfo?.isGitRepo);
-                  return this.gitRepoInfo?.isGitRepo;
-                }
-              )()
-                ? html`
-                  <div class="mb-2 sm:mb-3 mt-2 sm:mt-3">
-                    
-                    <!-- Base Branch Selection -->
-                    <div class="space-y-2">
-                      <div>
-                        <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm flex items-center gap-2">
-                          ${this.selectedWorktree ? 'Base Branch for Worktree:' : 'Switch to Branch:'}
-                          ${
-                            this.gitRepoInfo?.hasChanges && !this.selectedWorktree
-                              ? html`
-                            <span class="text-yellow-500 text-[9px] sm:text-[10px] flex items-center gap-1">
-                              <span>●</span>
-                              <span>Uncommitted changes</span>
-                            </span>
-                          `
-                              : ''
-                          }
-                        </label>
-                        <div class="relative">
-                          <select
-                            .value=${this.selectedBaseBranch || this.currentBranch}
-                            @change=${(e: Event) => {
-                              const select = e.target as HTMLSelectElement;
-                              this.selectedBaseBranch = select.value;
-                              // Clear any previous warning
-                              this.branchSwitchWarning = undefined;
-                            }}
-                            class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm appearance-none pr-8 ${
-                              this.gitRepoInfo?.hasChanges && !this.selectedWorktree
-                                ? 'opacity-50 cursor-not-allowed'
-                                : ''
-                            }"
-                            ?disabled=${this.disabled || this.isCreating || this.isLoadingBranches || (this.gitRepoInfo?.hasChanges && !this.selectedWorktree)}
-                            data-testid="git-base-branch-select"
-                          >
-                            ${this.availableBranches.map(
-                              (branch) => html`
-                                <option value="${branch}" ?selected=${branch === (this.selectedBaseBranch || this.currentBranch)}>
-                                  ${branch}${branch === this.currentBranch ? ' (current)' : ''}
-                                </option>
-                              `
-                            )}
-                          </select>
-                          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-text-muted">
-                            <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
-                        </div>
-                        ${
-                          !this.isLoadingBranches
-                            ? html`
-                              <p class="text-[9px] sm:text-[10px] text-text-muted mt-1">
-                                ${
-                                  this.gitRepoInfo?.hasChanges && !this.selectedWorktree
-                                    ? html`<span class="text-yellow-500">Branch switching is disabled due to uncommitted changes. Commit or stash changes first.</span>`
-                                    : this.selectedWorktree
-                                      ? `Session will use worktree: ${this.selectedWorktree}`
-                                      : this.selectedBaseBranch &&
-                                          this.selectedBaseBranch !== this.currentBranch
-                                        ? `Session will start on ${this.selectedBaseBranch}`
-                                        : ''
-                                }
-                                ${
-                                  this.followMode &&
-                                  this.followBranch &&
-                                  (
-                                    (this.gitRepoInfo?.hasChanges && !this.selectedWorktree) ||
-                                      this.selectedWorktree ||
-                                      (this.selectedBaseBranch &&
-                                        this.selectedBaseBranch !== this.currentBranch)
-                                  )
-                                    ? html`${
-                                        (this.gitRepoInfo?.hasChanges && !this.selectedWorktree) ||
-                                        this.selectedWorktree ||
-                                        (
-                                          this.selectedBaseBranch &&
-                                            this.selectedBaseBranch !== this.currentBranch
-                                        )
-                                          ? html`<br>`
-                                          : ''
-                                      }<span class="text-primary">Follow mode active: following ${this.followBranch}</span>`
-                                    : this.followMode && this.followBranch
-                                      ? html`<span class="text-primary">Follow mode active: following ${this.followBranch}</span>`
-                                      : ''
-                                }
-                              </p>
-                            `
-                            : nothing
-                        }
-                      </div>
-                      
-                      <!-- Worktree Selection -->
-                      <div>
-                        <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">
-                          Worktree:
-                        </label>
-                        ${
-                          !this.showCreateWorktree
-                            ? html`
-                            <div class="relative">
-                              <select
-                                .value=${this.selectedWorktree || 'none'}
-                                @change=${(e: Event) => {
-                                  const select = e.target as HTMLSelectElement;
-                                  this.selectedWorktree =
-                                    select.value === 'none' ? undefined : select.value;
-                                  // Clear any previous warning
-                                  this.branchSwitchWarning = undefined;
-                                }}
-                                class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm appearance-none pr-8"
-                                ?disabled=${this.disabled || this.isCreating || this.isLoadingWorktrees}
-                                data-testid="git-worktree-select"
-                              >
-                                <option value="none">
-                                  ${
-                                    this.selectedWorktree
-                                      ? 'No worktree (use main repository)'
-                                      : this.availableWorktrees.some(
-                                            (wt) => wt.isCurrentWorktree && !wt.isMainWorktree
-                                          )
-                                        ? 'Switch to main repository'
-                                        : 'No worktree (use main repository)'
-                                  }
-                                </option>
-                                ${this.availableWorktrees.map((worktree) => {
-                                  // Extract folder name from path
-                                  const folderName =
-                                    worktree.path.split('/').pop() || worktree.path;
-                                  // Check if folder name differs from branch name
-                                  const showBranch =
-                                    folderName.toLowerCase() !== worktree.branch.toLowerCase() &&
-                                    !folderName
-                                      .toLowerCase()
-                                      .endsWith(`-${worktree.branch.toLowerCase()}`);
-
-                                  return html`
-                                      <option value="${worktree.branch}" ?selected=${worktree.branch === this.selectedWorktree}>
-                                        ${folderName}${showBranch ? ` [${worktree.branch}]` : ''}${worktree.isMainWorktree ? ' (main)' : ''}${worktree.isCurrentWorktree ? ' (current)' : ''}${this.followMode && this.followBranch === worktree.branch ? ' ⚡️ following' : ''}
-                                      </option>
-                                    `;
-                                })}
-                              </select>
-                              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-text-muted">
-                                <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                              </div>
-                            </div>
-                            <div class="flex items-center gap-2 mt-2">
-                              <button
-                                type="button"
-                                @click=${() => {
-                                  this.showCreateWorktree = true;
-                                  this.newBranchName = '';
-                                }}
-                                class="text-[10px] sm:text-xs text-primary hover:text-primary-dark transition-colors flex items-center gap-1"
-                                ?disabled=${this.disabled || this.isCreating}
-                              >
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                                Create new worktree
-                              </button>
-                            </div>
-                          `
-                            : html`
-                            <!-- Create Worktree Mode -->
-                            <div class="space-y-2">
-                              <input
-                                type="text"
-                                .value=${this.newBranchName}
-                                @input=${(e: InputEvent) => {
-                                  this.newBranchName = (e.target as HTMLInputElement).value;
-                                }}
-                                placeholder="New branch name"
-                                class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm"
-                                ?disabled=${this.disabled || this.isCreating || this.isCreatingWorktree}
-                                @keydown=${(e: KeyboardEvent) => {
-                                  if (e.key === 'Escape') {
-                                    this.showCreateWorktree = false;
-                                    this.newBranchName = '';
-                                  }
-                                }}
-                              />
-                              <div class="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  @click=${() => {
-                                    this.showCreateWorktree = false;
-                                    this.newBranchName = '';
-                                  }}
-                                  class="text-[10px] sm:text-xs text-text-muted hover:text-text transition-colors"
-                                  ?disabled=${this.disabled || this.isCreating || this.isCreatingWorktree}
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  @click=${this.handleCreateWorktree}
-                                  class="text-[10px] sm:text-xs px-2 py-1 bg-primary text-bg-elevated rounded hover:bg-primary-dark transition-colors disabled:opacity-50"
-                                  ?disabled=${!this.newBranchName.trim() || this.disabled || this.isCreating || this.isCreatingWorktree}
-                                >
-                                  ${this.isCreatingWorktree ? 'Creating...' : 'Create'}
-                                </button>
-                              </div>
-                            </div>
-                          `
-                        }
-                      </div>
-                    </div>
-                  </div>
-                `
-                : ''
-            }
+            <git-branch-selector
+              .gitRepoInfo=${this.gitRepoInfo}
+              .disabled=${this.disabled}
+              .isCreating=${this.isCreating}
+              .currentBranch=${this.currentBranch}
+              .selectedBaseBranch=${this.selectedBaseBranch}
+              .selectedWorktree=${this.selectedWorktree}
+              .availableBranches=${this.availableBranches}
+              .availableWorktrees=${this.availableWorktrees}
+              .isLoadingBranches=${this.isLoadingBranches}
+              .isLoadingWorktrees=${this.isLoadingWorktrees}
+              .followMode=${this.followMode}
+              .followBranch=${this.followBranch}
+              .showFollowMode=${this.showFollowMode}
+              .branchSwitchWarning=${this.branchSwitchWarning}
+              @branch-changed=${this.handleBranchChanged}
+              @worktree-changed=${this.handleWorktreeChanged}
+              @create-worktree=${this.handleCreateWorktreeRequest}
+            ></git-branch-selector>
 
             <!-- Quick Start Section -->
-            <div class="${this.quickStartEditMode ? '' : 'mb-3 sm:mb-4'}">
-              ${
-                this.quickStartEditMode
-                  ? html`
-                    <!-- Full width editor when in edit mode -->
-                    <div class="-mx-3 sm:-mx-4 lg:-mx-6">
-                      <quick-start-editor
-                        .commands=${this.quickStartCommands.map((cmd) => ({
-                          name: cmd.label === cmd.command ? undefined : cmd.label,
-                          command: cmd.command,
-                        }))}
-                        .editing=${true}
-                        @quick-start-changed=${this.handleQuickStartChanged}
-                        @editing-changed=${(e: CustomEvent) => {
-                          this.quickStartEditMode = e.detail.editing;
-                        }}
-                      ></quick-start-editor>
-                    </div>
-                  `
-                  : html`
-                    <!-- Normal mode with Edit button -->
-                    <div class="flex items-center justify-between mb-1 sm:mb-2 mt-3 sm:mt-4">
-                      <label class="form-label text-text-muted uppercase text-[9px] sm:text-[10px] lg:text-xs tracking-wider"
-                        >Quick Start</label
-                      >
-                      <quick-start-editor
-                        .commands=${this.quickStartCommands.map((cmd) => ({
-                          name: cmd.label === cmd.command ? undefined : cmd.label,
-                          command: cmd.command,
-                        }))}
-                        .editing=${false}
-                        @quick-start-changed=${this.handleQuickStartChanged}
-                        @editing-changed=${(e: CustomEvent) => {
-                          this.quickStartEditMode = e.detail.editing;
-                        }}
-                      ></quick-start-editor>
-                    </div>
-                  `
-              }
-              ${
-                !this.quickStartEditMode
-                  ? html`
-                  <div class="grid grid-cols-2 gap-2 sm:gap-2.5 lg:gap-3 mt-1.5 sm:mt-2">
-                    ${this.quickStartCommands.map(
-                      ({ label, command }) => html`
-                        <button
-                          @click=${() => this.handleQuickStart(command)}
-                          class="${
-                            this.command === command
-                              ? 'px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 lg:py-3 rounded-lg border text-left transition-all bg-primary bg-opacity-10 border-primary/50 text-primary hover:bg-opacity-20 font-medium text-[10px] sm:text-xs lg:text-sm'
-                              : 'px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 lg:py-3 rounded-lg border text-left transition-all bg-bg-elevated border-border/50 text-text hover:bg-hover hover:border-primary/50 hover:text-primary text-[10px] sm:text-xs lg:text-sm'
-                          }"
-                          ?disabled=${this.disabled || this.isCreating}
-                        >
-                          ${label}
-                        </button>
-                      `
-                    )}
-                  </div>
-                `
-                  : ''
-              }
-            </div>
+            <quick-start-section
+              .commands=${this.quickStartCommands}
+              .selectedCommand=${this.command}
+              .disabled=${this.disabled}
+              .isCreating=${this.isCreating}
+              @quick-start-selected=${this.handleQuickStartSelected}
+              @quick-start-changed=${this.handleQuickStartChanged}
+            ></quick-start-section>
 
             <!-- Options Section (collapsible) -->
-            <div class="mb-2 sm:mb-4 lg:mb-6">
-              <button
-                id="session-options-button"
-                @click=${this.handleToggleOptions}
-                class="flex items-center gap-1.5 sm:gap-2 text-text-muted hover:text-primary transition-colors duration-200"
-                type="button"
-                aria-expanded="${this.showOptions}"
-              >
-                <svg 
-                  width="8" 
-                  height="8" 
-                  class="sm:w-2 sm:h-2 lg:w-2.5 lg:h-2.5 transition-transform duration-200 flex-shrink-0" 
-                  viewBox="0 0 16 16" 
-                  fill="currentColor"
-                  style="transform: ${this.showOptions ? 'rotate(90deg)' : 'rotate(0deg)'}"
-                >
-                  <path
-                    d="M5.22 1.22a.75.75 0 011.06 0l6.25 6.25a.75.75 0 010 1.06l-6.25 6.25a.75.75 0 01-1.06-1.06L10.94 8 5.22 2.28a.75.75 0 010-1.06z"
-                  />
-                </svg>
-                <span class="form-label mb-0 text-text-muted uppercase text-[9px] sm:text-[10px] lg:text-xs tracking-wider">Options</span>
-              </button>
-
-              ${
-                this.showOptions
-                  ? html`
-                <div class="mt-2 sm:mt-3">
-                  <!-- Spawn Window Toggle - Only show when Mac app is connected -->
-                  ${
-                    this.macAppConnected
-                      ? html`
-                        <div class="flex items-center justify-between bg-bg-elevated border border-border/50 rounded-lg p-2 sm:p-3 lg:p-4 mb-2 sm:mb-3">
-                          <div class="flex-1 pr-2 sm:pr-3 lg:pr-4">
-                            <span class="text-primary text-[10px] sm:text-xs lg:text-sm font-medium">Spawn window</span>
-                            <p class="text-[9px] sm:text-[10px] lg:text-xs text-text-muted mt-0.5 hidden sm:block">Opens native terminal window</p>
-                          </div>
-                          <button
-                            role="switch"
-                            aria-checked="${this.spawnWindow}"
-                            @click=${this.handleSpawnWindowChange}
-                            class="relative inline-flex h-4 w-8 sm:h-5 sm:w-10 lg:h-6 lg:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-bg-secondary ${
-                              this.spawnWindow ? 'bg-primary' : 'bg-border/50'
-                            }"
-                            ?disabled=${this.disabled || this.isCreating}
-                            data-testid="spawn-window-toggle"
-                          >
-                            <span
-                              class="inline-block h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5 transform rounded-full bg-bg-elevated transition-transform ${
-                                this.spawnWindow
-                                  ? 'translate-x-4 sm:translate-x-5'
-                                  : 'translate-x-0.5'
-                              }"
-                            ></span>
-                          </button>
-                        </div>
-                      `
-                      : ''
-                  }
-
-                  <!-- Terminal Title Mode -->
-                  <div class="flex items-center justify-between bg-bg-elevated border border-border/50 rounded-lg p-2 sm:p-3 lg:p-4 mb-2 sm:mb-3">
-                    <div class="flex-1 pr-2 sm:pr-3 lg:pr-4">
-                      <span class="text-primary text-[10px] sm:text-xs lg:text-sm font-medium">Terminal Title Mode</span>
-                      <p class="text-[9px] sm:text-[10px] lg:text-xs text-text-muted mt-0.5 hidden sm:block">
-                        ${getTitleModeDescription(this.titleMode)}
-                      </p>
-                    </div>
-                    <div class="relative">
-                      <select
-                        .value=${this.titleMode}
-                        @change=${this.handleTitleModeChange}
-                        class="bg-bg-tertiary border border-border/50 rounded-lg px-1.5 py-1 pr-6 sm:px-2 sm:py-1.5 sm:pr-7 lg:px-3 lg:py-2 lg:pr-8 text-text text-[10px] sm:text-xs lg:text-sm transition-all duration-200 hover:border-primary/50 focus:border-primary focus:outline-none appearance-none cursor-pointer"
-                        style="min-width: 80px"
-                        ?disabled=${this.disabled || this.isCreating}
-                      >
-                        <option value="${TitleMode.NONE}" class="bg-bg-tertiary text-text" ?selected=${this.titleMode === TitleMode.NONE}>None</option>
-                        <option value="${TitleMode.FILTER}" class="bg-bg-tertiary text-text" ?selected=${this.titleMode === TitleMode.FILTER}>Filter</option>
-                        <option value="${TitleMode.STATIC}" class="bg-bg-tertiary text-text" ?selected=${this.titleMode === TitleMode.STATIC}>Static</option>
-                        <option value="${TitleMode.DYNAMIC}" class="bg-bg-tertiary text-text" ?selected=${this.titleMode === TitleMode.DYNAMIC}>Dynamic</option>
-                      </select>
-                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 sm:px-1.5 lg:px-2 text-text-muted">
-                        <svg class="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Follow Mode Toggle - Show for Git repositories -->
-                  ${
-                    this.gitRepoInfo?.isGitRepo
-                      ? html`
-                        <div class="flex items-center justify-between bg-bg-elevated border border-border/50 rounded-lg p-2 sm:p-3 lg:p-4">
-                          <div class="flex-1 pr-2 sm:pr-3 lg:pr-4">
-                            <span class="text-primary text-[10px] sm:text-xs lg:text-sm font-medium">Follow Mode</span>
-                            <p class="text-[9px] sm:text-[10px] lg:text-xs text-text-muted mt-0.5 hidden sm:block">
-                              ${
-                                this.followMode
-                                  ? `Currently following: ${this.followBranch || 'unknown'}`
-                                  : this.selectedWorktree
-                                    ? 'Switch follow mode to the new worktree'
-                                    : this.showFollowMode
-                                      ? 'Will enable follow mode for the session branch'
-                                      : 'Keep main repository in sync with worktree'
-                              }
-                            </p>
-                          </div>
-                          <button
-                            role="switch"
-                            aria-checked="${this.showFollowMode}"
-                            @click=${this.handleToggleFollowMode}
-                            class="relative inline-flex h-4 w-8 sm:h-5 sm:w-10 lg:h-6 lg:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-bg-secondary ${
-                              this.showFollowMode ? 'bg-primary' : 'bg-border/50'
-                            }"
-                            ?disabled=${this.disabled || this.isCreating || this.followMode}
-                            data-testid="follow-mode-toggle"
-                          >
-                            <span
-                              class="inline-block h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5 transform rounded-full bg-bg-elevated transition-transform ${
-                                this.showFollowMode
-                                  ? 'translate-x-4 sm:translate-x-5'
-                                  : 'translate-x-0.5'
-                              }"
-                            ></span>
-                          </button>
-                        </div>
-                      `
-                      : ''
-                  }
-                </div>
-                `
-                  : ''
-              }
-            </div>
+            <form-options-section
+              .macAppConnected=${this.macAppConnected}
+              .spawnWindow=${this.spawnWindow}
+              .titleMode=${this.titleMode}
+              .gitRepoInfo=${this.gitRepoInfo}
+              .followMode=${this.followMode}
+              .followBranch=${this.followBranch}
+              .showFollowMode=${this.showFollowMode}
+              .selectedWorktree=${this.selectedWorktree}
+              .disabled=${this.disabled}
+              .isCreating=${this.isCreating}
+              @spawn-window-changed=${this.handleSpawnWindowChanged}
+              @title-mode-changed=${this.handleTitleModeChanged}
+              @follow-mode-changed=${this.handleFollowModeChanged}
+            ></form-options-section>
 
             <div class="flex gap-1.5 sm:gap-2 mt-2 sm:mt-3">
               <button
