@@ -17,9 +17,6 @@ import '../file-browser.js';
 import '../file-picker.js';
 import '../terminal-settings-modal.js';
 
-// Re-export this as it's needed by session-view
-import './width-selector.js';
-
 export interface OverlaysCallbacks {
   // Mobile input callbacks
   onMobileInputSendOnly: (text: string) => void;
