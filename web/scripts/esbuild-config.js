@@ -20,6 +20,7 @@ const commonOptions = {
   },
   define: {
     'process.env.NODE_ENV': '"production"',
+    'global': 'globalThis',
     '__APP_VERSION__': JSON.stringify(version),
   },
   external: [],
