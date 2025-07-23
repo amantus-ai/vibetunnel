@@ -2,6 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NotificationPreferences } from './push-notification-service.js';
 import { pushNotificationService } from './push-notification-service.js';
 
+// Mock the auth client
+vi.mock('./auth-client', () => ({
+  authClient: {
+    getAuthHeader: vi.fn(() => ({ Authorization: 'Bearer test-token' })),
+  },
+}));
+
 // Mock the global objects
 const mockServiceWorkerRegistration = {
   pushManager: {
@@ -16,10 +23,11 @@ const mockNotification = {
   permission: 'default' as NotificationPermission,
 };
 
+// Create a proper navigator mock that passes the 'in' operator check
 const mockNavigator = {
   serviceWorker: {
     ready: Promise.resolve(mockServiceWorkerRegistration as unknown as ServiceWorkerRegistration),
-    register: vi.fn().mockResolvedValue(mockServiceWorkerRegistration),
+    register: vi.fn().mockResolvedValue(mockServiceWorkerRegistration as unknown as ServiceWorkerRegistration),
     addEventListener: vi.fn(),
   },
   userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
@@ -31,11 +39,32 @@ const mockNavigator = {
   },
 };
 
+// Ensure global objects are properly defined for the 'in' operator
+if (typeof global.window === 'undefined') {
+  global.window = {} as any;
+}
+if (typeof global.navigator === 'undefined') {
+  global.navigator = {} as any;
+}
+
+// Set up the navigator with serviceWorker before tests
+Object.defineProperty(global.navigator, 'serviceWorker', {
+  value: mockNavigator.serviceWorker,
+  writable: true,
+  configurable: true,
+});
+
+// Define PushManager constructor to pass the 'in' operator check
+global.PushManager = class PushManager {} as any;
+
+// Define Notification constructor to pass the 'in' operator check
+global.Notification = mockNotification as any;
+
 // Create mockWindow as a function to allow dynamic updates
 const createMockWindow = () => ({
-  PushManager: {},
-  Notification: mockNotification,
-  navigator: mockNavigator,
+  PushManager: global.PushManager,
+  Notification: global.Notification,
+  navigator: global.navigator,
   matchMedia: vi.fn().mockReturnValue({
     matches: false,
     addEventListener: vi.fn(),
@@ -51,11 +80,14 @@ const createMockWindow = () => ({
 
 let mockWindow = createMockWindow();
 
+// Ensure window is globally available
+global.window = mockWindow as any;
+
 // Setup global mocks
 vi.stubGlobal('window', mockWindow);
-vi.stubGlobal('navigator', mockNavigator);
-vi.stubGlobal('Notification', mockNotification);
-vi.stubGlobal('PushManager', {});
+vi.stubGlobal('navigator', global.navigator);
+vi.stubGlobal('Notification', global.Notification);
+vi.stubGlobal('PushManager', global.PushManager);
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -67,6 +99,7 @@ describe('PushNotificationService', () => {
 
     // Reset mockWindow
     mockWindow = createMockWindow();
+    global.window = mockWindow as any;
     vi.stubGlobal('window', mockWindow);
 
     // Mock fetch responses
@@ -100,12 +133,16 @@ describe('PushNotificationService', () => {
       serviceWorkerRegistration: ServiceWorkerRegistration | null;
       pushSubscription: globalThis.PushSubscription | null;
       preferences: NotificationPreferences | null;
+      initializationPromise: Promise<void> | null;
+      vapidPublicKey: string | null;
     }
     const testService = pushNotificationService as unknown as TestPushNotificationService;
     testService.initialized = false;
     testService.serviceWorkerRegistration = null;
     testService.pushSubscription = null;
     testService.preferences = null;
+    testService.initializationPromise = null;
+    testService.vapidPublicKey = 'test-vapid-key';
   });
 
   afterEach(() => {
