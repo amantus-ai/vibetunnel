@@ -108,6 +108,22 @@ global.IntersectionObserver = class IntersectionObserver {
   thresholds = [];
 };
 
+// Mock localStorage for tests
+const localStorageMock = {
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
+  length: 0,
+  key: vi.fn(),
+};
+
+// Add localStorage to global scope
+if (typeof global !== 'undefined') {
+  // biome-ignore lint/suspicious/noExplicitAny: Test setup requires any for global mocking
+  (global as any).localStorage = localStorageMock;
+}
+
 // Mock matchMedia (only if window exists - for browser tests)
 if (typeof window !== 'undefined') {
   Object.defineProperty(window, 'matchMedia', {
@@ -123,6 +139,10 @@ if (typeof window !== 'undefined') {
       dispatchEvent: vi.fn(),
     })),
   });
+
+  // Also add localStorage to window for browser tests
+  // biome-ignore lint/suspicious/noExplicitAny: Test setup requires any for window mocking
+  (window as any).localStorage = localStorageMock;
 }
 
 // Mock WebSocket for tests that need it
