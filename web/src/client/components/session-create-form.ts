@@ -871,7 +871,7 @@ export class SessionCreateForm extends LitElement {
         if (!this.selectedBaseBranch) {
           this.selectedBaseBranch = this.currentBranch;
         }
-        
+
         // Pre-select the current worktree if we're already in one (not the main worktree)
         if (!currentWorktree.isMainWorktree && !this.selectedWorktree) {
           this.selectedWorktree = currentWorktree.branch.replace(/^refs\/heads\//, '');
@@ -898,7 +898,7 @@ export class SessionCreateForm extends LitElement {
           @click=${(e: Event) => e.stopPropagation()}
           data-testid="session-create-modal"
         >
-          <div class="p-3 sm:p-4 lg:p-6 mb-1 sm:mb-2 lg:mb-3 border-b border-border/50 relative bg-gradient-to-r from-bg-secondary to-bg-tertiary flex-shrink-0 rounded-t-xl">
+          <div class="p-3 sm:p-4 mb-1 sm:mb-2 border-b border-border/50 relative bg-gradient-to-r from-bg-secondary to-bg-tertiary flex-shrink-0 rounded-t-xl">
             <h2 id="modal-title" class="text-primary text-base sm:text-lg lg:text-xl font-bold">New Session</h2>
             <button
               class="absolute top-2 right-2 sm:top-3 sm:right-3 lg:top-5 lg:right-5 text-text-muted hover:text-text transition-all duration-200 p-1.5 sm:p-2 hover:bg-bg-elevated/30 rounded-lg"
@@ -923,12 +923,12 @@ export class SessionCreateForm extends LitElement {
             </button>
           </div>
 
-          <div class="p-3 sm:p-4 lg:p-6 overflow-y-auto flex-grow max-h-[65vh] sm:max-h-[75vh] lg:max-h-[80vh]">
+          <div class="p-3 sm:p-4 overflow-y-auto flex-grow max-h-[65vh] sm:max-h-[75vh] lg:max-h-[80vh]">
             <!-- Branch Switch Warning -->
             ${
               this.branchSwitchWarning
                 ? html`
-                  <div class="mb-3 sm:mb-4 p-2 sm:p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <div class="mb-2 sm:mb-3 p-2 sm:p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                     <div class="flex items-start gap-2">
                       <svg class="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -943,7 +943,7 @@ export class SessionCreateForm extends LitElement {
             }
             
             <!-- Session Name -->
-            <div class="mb-2 sm:mb-3 lg:mb-5">
+            <div class="mb-2 sm:mb-3">
               <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Session Name (Optional):</label>
               <input
                 type="text"
@@ -957,7 +957,7 @@ export class SessionCreateForm extends LitElement {
             </div>
 
             <!-- Command -->
-            <div class="mb-2 sm:mb-3 lg:mb-5">
+            <div class="mb-2 sm:mb-3">
               <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Command:</label>
               <input
                 type="text"
@@ -971,7 +971,7 @@ export class SessionCreateForm extends LitElement {
             </div>
 
             <!-- Working Directory -->
-            <div class="mb-4 sm:mb-5 lg:mb-6">
+            <div class="mb-3 sm:mb-4">
               <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Working Directory:</label>
               <div class="relative">
                 <div class="flex gap-1.5 sm:gap-2">
@@ -1187,10 +1187,10 @@ export class SessionCreateForm extends LitElement {
                 }
               )()
                 ? html`
-                  <div class="mb-2 sm:mb-3 lg:mb-5 mt-2 sm:mt-3 lg:mt-4">
+                  <div class="mb-2 sm:mb-3 mt-2 sm:mt-3">
                     
                     <!-- Base Branch Selection -->
-                    <div class="space-y-3">
+                    <div class="space-y-2">
                       <div>
                         <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">
                           ${this.selectedWorktree ? 'Base Branch for Worktree:' : 'Switch to Branch:'}
@@ -1263,10 +1263,15 @@ export class SessionCreateForm extends LitElement {
                                 data-testid="git-worktree-select"
                               >
                                 <option value="none">
-                                  ${this.selectedWorktree ? 'No worktree (use main repository)' : 
-                                    this.availableWorktrees.some(wt => wt.isCurrentWorktree && !wt.isMainWorktree) 
-                                      ? 'Switch to main repository' 
-                                      : 'No worktree (use main repository)'}
+                                  ${
+                                    this.selectedWorktree
+                                      ? 'No worktree (use main repository)'
+                                      : this.availableWorktrees.some(
+                                            (wt) => wt.isCurrentWorktree && !wt.isMainWorktree
+                                          )
+                                        ? 'Switch to main repository'
+                                        : 'No worktree (use main repository)'
+                                  }
                                 </option>
                                 ${this.availableWorktrees.map((worktree) => {
                                   // Extract folder name from path
@@ -1360,7 +1365,7 @@ export class SessionCreateForm extends LitElement {
             }
 
             <!-- Quick Start Section -->
-            <div class="${this.quickStartEditMode ? '' : 'mb-4 sm:mb-5 lg:mb-6'}">
+            <div class="${this.quickStartEditMode ? '' : 'mb-3 sm:mb-4'}">
               ${
                 this.quickStartEditMode
                   ? html`
@@ -1381,7 +1386,7 @@ export class SessionCreateForm extends LitElement {
                   `
                   : html`
                     <!-- Normal mode with Edit button -->
-                    <div class="flex items-center justify-between mb-1 sm:mb-2 lg:mb-3 mt-4 sm:mt-5 lg:mt-6">
+                    <div class="flex items-center justify-between mb-1 sm:mb-2 mt-3 sm:mt-4">
                       <label class="form-label text-text-muted uppercase text-[9px] sm:text-[10px] lg:text-xs tracking-wider"
                         >Quick Start</label
                       >
@@ -1451,7 +1456,7 @@ export class SessionCreateForm extends LitElement {
               ${
                 this.showOptions
                   ? html`
-                <div class="space-y-2 sm:space-y-3 mt-2 sm:mt-4 lg:mt-6">
+                <div class="space-y-2 mt-2 sm:mt-3">
                   <!-- Spawn Window Toggle - Only show when Mac app is connected -->
                   ${
                     this.macAppConnected
@@ -1518,7 +1523,7 @@ export class SessionCreateForm extends LitElement {
               }
             </div>
 
-            <div class="flex gap-1.5 sm:gap-2 lg:gap-3 mt-2 sm:mt-3 lg:mt-4 xl:mt-6">
+            <div class="flex gap-1.5 sm:gap-2 mt-2 sm:mt-3">
               <button
                 id="session-cancel-button"
                 class="flex-1 bg-bg-elevated border border-border/50 text-text px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 xl:px-6 xl:py-3 rounded-lg font-mono text-[10px] sm:text-xs lg:text-sm transition-all duration-200 hover:bg-hover hover:border-border"

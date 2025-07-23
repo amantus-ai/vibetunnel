@@ -311,7 +311,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     grid-auto-rows: 400px;
-    gap: 1.25rem;
+    gap: 1.5rem;
     padding: 0.5rem 0.75rem;
     /* Enable smooth grid transitions - disabled in session view */
     transition: grid-template-columns 0.3s ease-out;

@@ -943,7 +943,7 @@ export class SessionList extends LitElement {
                                 `
                                 : ''
                             }
-                            <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'} relative">
+                            <div class="${this.compactMode ? '' : 'session-flex-responsive'} relative">
                               ${repeat(
                                 repoSessions,
                                 (session) => session.id,
@@ -1010,7 +1010,7 @@ export class SessionList extends LitElement {
                                 `
                                 : ''
                             }
-                            <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'} relative">
+                            <div class="${this.compactMode ? '' : 'session-flex-responsive'} relative">
                               ${repeat(
                                 repoSessions,
                                 (session) => session.id,
@@ -1077,7 +1077,7 @@ export class SessionList extends LitElement {
                                 `
                                 : ''
                             }
-                            <div class="${this.compactMode ? 'space-y-2' : 'session-flex-responsive'} relative">
+                            <div class="${this.compactMode ? '' : 'session-flex-responsive'} relative">
                               ${repeat(
                                 repoSessions,
                                 (session) => session.id,
