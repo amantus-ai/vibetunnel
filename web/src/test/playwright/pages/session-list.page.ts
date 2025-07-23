@@ -145,24 +145,38 @@ export class SessionListPage extends BasePage {
     );
 
     // Verify spawn window toggle is in correct state (should be set from localStorage)
+    // Note: The toggle is only visible when Mac app is connected
     const spawnWindowToggle = this.page
       .locator('[data-testid="spawn-window-toggle"]')
       .or(this.page.locator('button[role="switch"]'));
 
-    // Wait for the toggle to be ready
-    await spawnWindowToggle.waitFor({ state: 'visible', timeout: 2000 });
+    // Check if the toggle exists (it won't in CI where Mac app isn't connected)
+    const toggleCount = await spawnWindowToggle.count();
+    if (toggleCount > 0) {
+      // Wait for the toggle to be ready
+      await spawnWindowToggle.waitFor({ state: 'visible', timeout: 2000 });
 
-    // Verify the state matches what we expect
-    const isSpawnWindowOn = (await spawnWindowToggle.getAttribute('aria-checked')) === 'true';
+      // Verify the state matches what we expect
+      const isSpawnWindowOn = (await spawnWindowToggle.getAttribute('aria-checked')) === 'true';
 
-    // If the state doesn't match, there's an issue with localStorage loading
-    if (isSpawnWindowOn !== spawnWindow) {
-      console.warn(
-        `WARNING: Spawn window toggle state mismatch! Expected ${spawnWindow} but got ${isSpawnWindowOn}`
-      );
-      // Try clicking to correct it
-      await spawnWindowToggle.click({ force: true });
-      await this.page.waitForTimeout(500);
+      // If the state doesn't match, there's an issue with localStorage loading
+      if (isSpawnWindowOn !== spawnWindow) {
+        console.warn(
+          `WARNING: Spawn window toggle state mismatch! Expected ${spawnWindow} but got ${isSpawnWindowOn}`
+        );
+        // Try clicking to correct it
+        await spawnWindowToggle.click({ force: true });
+        await this.page.waitForTimeout(500);
+      }
+    } else {
+      // Toggle not visible (Mac app not connected)
+      console.log('Spawn window toggle not visible - Mac app not connected');
+      // In CI, spawnWindow should always be false since Mac app isn't connected
+      if (spawnWindow) {
+        console.warn(
+          'WARNING: Requested spawn window but Mac app not connected - will create web session instead'
+        );
+      }
     }
 
     // Fill in the session name if provided

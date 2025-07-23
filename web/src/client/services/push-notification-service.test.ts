@@ -51,9 +51,15 @@ if (typeof global.navigator === 'undefined') {
   global.navigator = {} as unknown as Navigator;
 }
 
-// Set up the navigator with serviceWorker before tests
+// Set up the navigator with serviceWorker and permissions before tests
 Object.defineProperty(global.navigator, 'serviceWorker', {
   value: mockNavigator.serviceWorker,
+  writable: true,
+  configurable: true,
+});
+
+Object.defineProperty(global.navigator, 'permissions', {
+  value: mockNavigator.permissions,
   writable: true,
   configurable: true,
 });
@@ -112,6 +118,13 @@ describe('PushNotificationService', () => {
     // Ensure navigator.serviceWorker is properly set
     Object.defineProperty(global.navigator, 'serviceWorker', {
       value: mockNavigator.serviceWorker,
+      writable: true,
+      configurable: true,
+    });
+
+    // Ensure navigator.permissions is properly set
+    Object.defineProperty(global.navigator, 'permissions', {
+      value: mockNavigator.permissions,
       writable: true,
       configurable: true,
     });

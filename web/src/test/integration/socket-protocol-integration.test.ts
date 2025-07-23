@@ -21,7 +21,7 @@ describe('Socket Protocol Integration', () => {
   let testDir: string;
   let ptyManager: PtyManager;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // IMPORTANT: macOS has a 104 character limit for Unix socket paths (103 usable).
     // The full socket path will be: testDir + sessionId (36 chars UUID) + '/ipc.sock' (9 chars)
     // Example: /tmp/vt-1234567890/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/ipc.sock
@@ -30,12 +30,17 @@ describe('Socket Protocol Integration', () => {
     testDir = `/tmp/vt-${Date.now()}`;
     fs.mkdirSync(testDir, { recursive: true });
     ptyManager = new PtyManager(testDir);
+    await ptyManager.initialize();
   });
 
   afterEach(async () => {
-    await ptyManager.shutdown();
+    if (ptyManager) {
+      await ptyManager.shutdown();
+    }
     try {
-      fs.rmSync(testDir, { recursive: true, force: true });
+      if (testDir) {
+        fs.rmSync(testDir, { recursive: true, force: true });
+      }
     } catch {
       // Ignore cleanup errors
     }

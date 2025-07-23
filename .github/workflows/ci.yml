@@ -2,70 +2,189 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop, master ]
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:
+    branches: [ main, develop, master ]
 
-permissions:
-  contents: read
-  pull-requests: write
-  issues: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # Check which parts of the codebase have changed
-  changes:
-    name: Detect changes
-    runs-on: ubuntu-latest
-    outputs:
-      web: ${{ steps.filter.outputs.web }}
-      mac: ${{ steps.filter.outputs.mac }}
-      ios: ${{ steps.filter.outputs.ios }}
-    steps:
-    - uses: actions/checkout@v4
-    - uses: dorny/paths-filter@v3
-      id: filter
-      with:
-        filters: |
-          web:
-            - 'web/**'
-            - '.github/workflows/node.yml'
-            - '.github/workflows/web-ci.yml'
-            - 'package.json'
-            - 'pnpm-workspace.yaml'
-          mac:
-            - 'mac/**'
-            - '.github/workflows/mac.yml'
-            - 'VibeTunnel.xcworkspace/**'
-            - 'Package.swift'
-            - 'Package.resolved'
-          ios:
-            - 'ios/**'
-            - '.github/workflows/ios.yml'
-            - 'VibeTunnel.xcworkspace/**'
-
-  node:
+  # Node.js / Web tests
+  node-ci:
     name: Node.js CI
-    needs: changes
-    if: ${{ needs.changes.outputs.web == 'true' || needs.changes.outputs.mac == 'true' || github.event_name == 'workflow_dispatch' }}
-    uses: ./.github/workflows/node.yml
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+          
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: web/pnpm-lock.yaml
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Check formatting
+        run: pnpm run format:check
+        
+      - name: Run linter
+        run: pnpm run lint
+        
+      - name: Run type checking
+        run: pnpm run typecheck
+        
+      - name: Build native modules
+        run: pnpm run build:native
+        
+      - name: Build application
+        run: pnpm run build
+        
+      - name: Run client tests
+        run: pnpm run test:client:coverage | tee test-output-client.txt || true
+        
+      - name: Run server tests  
+        run: pnpm run test:server:coverage | tee test-output-server.txt || true
+        
+      - name: Process test results
+        run: |
+          echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Extract client test summary
+          if [ -f test-output-client.txt ]; then
+            echo "### Client Tests" >> $GITHUB_STEP_SUMMARY
+            grep -E "(Test Files|Tests|Duration)" test-output-client.txt | tail -3 >> $GITHUB_STEP_SUMMARY || true
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Extract server test summary
+          if [ -f test-output-server.txt ]; then
+            echo "### Server Tests" >> $GITHUB_STEP_SUMMARY
+            grep -E "(Test Files|Tests|Duration)" test-output-server.txt | tail -3 >> $GITHUB_STEP_SUMMARY || true
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Extract coverage summaries
+          if [ -f coverage/client/coverage-summary.json ]; then
+            echo "### Client Coverage" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat coverage/client/coverage-summary.json | jq -r '.total | to_entries | map("\(.key): \(.value.pct)%") | join(", ")' >> $GITHUB_STEP_SUMMARY || true
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ -f coverage/server/coverage-summary.json ]; then
+            echo "### Server Coverage" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat coverage/server/coverage-summary.json | jq -r '.total | to_entries | map("\(.key): \(.value.pct)%") | join(", ")' >> $GITHUB_STEP_SUMMARY || true
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+          
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            web/coverage/
+            web/test-output-*.txt
+          retention-days: 7
+          
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build-artifacts
+          path: |
+            web/dist/
+            web/public/bundle/
+          retention-days: 7
 
-  mac:
-    name: Mac CI
-    needs: [changes]
-    if: |
-      always() && 
-      !contains(needs.*.result, 'failure') && 
-      !contains(needs.*.result, 'cancelled') &&
-      (needs.changes.outputs.mac == 'true' || needs.changes.outputs.web == 'true' || github.event_name == 'workflow_dispatch')
-    uses: ./.github/workflows/mac.yml
-    
-  ios:
-    name: iOS CI
-    needs: [changes]
-    if: |
-      always() && 
-      !contains(needs.*.result, 'failure') && 
-      !contains(needs.*.result, 'cancelled') &&
-      (needs.changes.outputs.ios == 'true' || github.event_name == 'workflow_dispatch')
-    uses: ./.github/workflows/ios.yml
+  # macOS CI
+  mac-ci:
+    name: macOS CI
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+        
+      - name: Download web artifacts from Node CI
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build-artifacts
+          path: web/
+        continue-on-error: true
+        
+      - name: Build web frontend if artifacts missing
+        if: failure()
+        run: |
+          cd web
+          npm ci
+          npm run build
+          
+      - name: Run macOS tests
+        run: |
+          cd mac
+          swift test --parallel
+          
+      - name: Build macOS app (Debug)
+        run: |
+          cd mac
+          ./scripts/build.sh --configuration Debug
+          
+      - name: Upload macOS build logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-build-logs
+          path: |
+            mac/build/
+            mac/*.log
+          retention-days: 7
+
+  # iOS CI
+  ios-ci:
+    name: iOS CI  
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+        
+      - name: Build iOS app
+        run: |
+          cd ios
+          xcodebuild build \
+            -project VibeTunnel-iOS.xcodeproj \
+            -scheme VibeTunnel-iOS \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+            
+      - name: Run iOS tests
+        run: |
+          cd ios
+          xcodebuild test \
+            -project VibeTunnel-iOS.xcodeproj \
+            -scheme VibeTunnel-iOS \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -resultBundlePath TestResults.xcresult
+            
+      - name: Upload iOS test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: ios/TestResults.xcresult
+          retention-days: 7

@@ -228,19 +228,21 @@ test.describe('Keyboard Shortcuts', () => {
     ]);
     await page.waitForLoadState('domcontentloaded');
 
-    // Turn off native terminal
+    // Turn off native terminal (if toggle exists - only visible when Mac app is connected)
     const spawnWindowToggle = page.locator('button[role="switch"]');
-    await spawnWindowToggle.waitFor({ state: 'visible', timeout: 2000 });
-    if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
-      await spawnWindowToggle.click();
-      // Wait for toggle state to update
-      await page.waitForFunction(
-        () => {
-          const toggle = document.querySelector('button[role="switch"]');
-          return toggle?.getAttribute('aria-checked') === 'false';
-        },
-        { timeout: 1000 }
-      );
+    if (await spawnWindowToggle.count() > 0) {
+      await spawnWindowToggle.waitFor({ state: 'visible', timeout: 2000 });
+      if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
+        await spawnWindowToggle.click();
+        // Wait for toggle state to update
+        await page.waitForFunction(
+          () => {
+            const toggle = document.querySelector('button[role="switch"]');
+            return toggle?.getAttribute('aria-checked') === 'false';
+          },
+          { timeout: 1000 }
+        );
+      }
     }
 
     // Fill session name and track it

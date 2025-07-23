@@ -178,8 +178,11 @@ export async function openCreateSessionDialog(
  */
 export async function disableSpawnWindow(page: Page): Promise<void> {
   const spawnWindowToggle = page.locator('button[role="switch"]');
-  if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
-    await spawnWindowToggle.click();
+  // Check if toggle exists (only visible when Mac app is connected)
+  if (await spawnWindowToggle.count() > 0) {
+    if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
+      await spawnWindowToggle.click();
+    }
   }
 }
 
