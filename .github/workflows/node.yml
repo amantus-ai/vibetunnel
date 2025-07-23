@@ -8,12 +8,9 @@ permissions:
   pull-requests: write
   issues: write
 
-# All jobs run in parallel for faster CI execution
-# Using pnpm install --frozen-lockfile for reproducible installs
-# Build already uses esbuild for fast TypeScript compilation
 jobs:
-  lint:
-    name: Lint TypeScript/JavaScript Code
+  node-ci:
+    name: Node.js CI - Lint, Build, Test, Type Check
     runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     env:
       GITHUB_REPO_NAME: ${{ github.repository }}
@@ -28,109 +25,10 @@ jobs:
         node-version: '24'
 
     - name: Setup pnpm
-      uses: pnpm/action-setup@v2
+      uses: pnpm/action-setup@v4
       with:
-        version: 9
+        version: 10
         run_install: false
-
-    # Skip pnpm cache - testing if fresh installs are faster
-    # The cache was extremely large and might be slower than fresh install
-
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libpam0g-dev
-
-    - name: Install dependencies
-      working-directory: web
-      run: |
-        pnpm config set network-concurrency 4
-        pnpm config set child-concurrency 2
-        pnpm install --frozen-lockfile --prefer-offline
-
-    - name: Check formatting with Biome
-      id: biome-format
-      working-directory: web
-      continue-on-error: true
-      run: |
-        pnpm run format:check 2>&1 | tee biome-format-output.txt
-        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
-
-    - name: Run Biome linting
-      id: biome-lint
-      working-directory: web
-      continue-on-error: true
-      run: |
-        pnpm run lint:biome 2>&1 | tee biome-lint-output.txt
-        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
-
-    - name: Read Biome Format Output
-      if: always()
-      id: biome-format-output
-      working-directory: web
-      run: |
-        if [ -f biome-format-output.txt ]; then
-          echo 'content<<EOF' >> $GITHUB_OUTPUT
-          cat biome-format-output.txt >> $GITHUB_OUTPUT
-          echo 'EOF' >> $GITHUB_OUTPUT
-        else
-          echo "content=No output" >> $GITHUB_OUTPUT
-        fi
-
-    - name: Read Biome Lint Output
-      if: always()
-      id: biome-lint-output
-      working-directory: web
-      run: |
-        if [ -f biome-lint-output.txt ]; then
-          echo 'content<<EOF' >> $GITHUB_OUTPUT
-          cat biome-lint-output.txt >> $GITHUB_OUTPUT
-          echo 'EOF' >> $GITHUB_OUTPUT
-        else
-          echo "content=No output" >> $GITHUB_OUTPUT
-        fi
-
-    - name: Report Biome Format Results
-      if: always()
-      uses: ./.github/actions/lint-reporter
-      with:
-        title: 'Node.js Biome Formatting'
-        lint-result: ${{ steps.biome-format.outputs.result == '0' && 'success' || 'failure' }}
-        lint-output: ${{ steps.biome-format-output.outputs.content }}
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Report Biome Lint Results
-      if: always()
-      uses: ./.github/actions/lint-reporter
-      with:
-        title: 'Node.js Biome Linting'
-        lint-result: ${{ steps.biome-lint.outputs.result == '0' && 'success' || 'failure' }}
-        lint-output: ${{ steps.biome-lint-output.outputs.content }}
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-
-  build-and-test:
-    name: Build and Test
-    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
-    env:
-      GITHUB_REPO_NAME: ${{ github.repository }}
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24'
-
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v2
-      with:
-        version: 9
-        run_install: false
-
-    # Skip pnpm cache - testing if fresh installs are faster
-    # The cache was extremely large and might be slower than fresh install
 
     - name: Install system dependencies
       run: |
@@ -161,38 +59,131 @@ jobs:
       run: |
         cd node-pty && npm install && npm run build
 
-    - name: Build frontend and backend
+    # Run all checks in parallel
+    - name: Run all checks in parallel
       working-directory: web
       run: |
-        # Use all available cores for esbuild
-        export ESBUILD_MAX_WORKERS=$(nproc)
-        pnpm run build:ci
+        # Create a temporary directory for outputs
+        mkdir -p ci-outputs
+        
+        # Run format check in background
+        (
+          echo "Starting format check..."
+          pnpm run format:check > ci-outputs/format-output.txt 2>&1
+          echo $? > ci-outputs/format-exit-code.txt
+          echo "Format check completed"
+        ) &
+        
+        # Run lint in background
+        (
+          echo "Starting lint..."
+          pnpm run lint:biome > ci-outputs/lint-output.txt 2>&1
+          echo $? > ci-outputs/lint-exit-code.txt
+          echo "Lint completed"
+        ) &
+        
+        # Run typecheck in background
+        (
+          echo "Starting type check..."
+          pnpm run typecheck > ci-outputs/typecheck-output.txt 2>&1
+          echo $? > ci-outputs/typecheck-exit-code.txt
+          echo "Type check completed"
+        ) &
+        
+        # Run build in background
+        (
+          echo "Starting build..."
+          export ESBUILD_MAX_WORKERS=$(nproc)
+          pnpm run build:ci > ci-outputs/build-output.txt 2>&1
+          echo $? > ci-outputs/build-exit-code.txt
+          echo "Build completed"
+        ) &
+        
+        # Run tests in background
+        (
+          echo "Starting tests..."
+          # Run client and server tests sequentially to avoid conflicts
+          pnpm run test:client:coverage > ci-outputs/test-client-output.txt 2>&1
+          CLIENT_EXIT=$?
+          pnpm run test:server:coverage > ci-outputs/test-server-output.txt 2>&1
+          SERVER_EXIT=$?
+          # Return non-zero if either test failed
+          if [ $CLIENT_EXIT -ne 0 ] || [ $SERVER_EXIT -ne 0 ]; then
+            echo 1 > ci-outputs/test-exit-code.txt
+          else
+            echo 0 > ci-outputs/test-exit-code.txt
+          fi
+          echo "Tests completed"
+        ) &
+        
+        # Run audit in background
+        (
+          echo "Starting security audit..."
+          pnpm audit --audit-level=moderate > ci-outputs/audit-output.txt 2>&1 || true
+          echo 0 > ci-outputs/audit-exit-code.txt  # Don't fail on audit
+          echo "Audit completed"
+        ) &
+        
+        # Wait for all background jobs to complete
+        wait
+        
+        echo "All parallel checks completed"
 
-    - name: Run client tests with coverage
-      id: test-client-coverage
-      working-directory: web
-      run: |
-        pnpm run test:client:coverage 2>&1 | tee test-client-output.txt
-        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
-
-    - name: Run server tests with coverage
-      id: test-server-coverage
-      working-directory: web
-      run: |
-        pnpm run test:server:coverage 2>&1 | tee test-server-output.txt
-        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
-      env:
-        CI: true
-
-    - name: Check test results
+    # Process results
+    - name: Process check results
       if: always()
+      id: results
       working-directory: web
       run: |
-        if [ "${{ steps.test-client-coverage.outputs.result }}" != "0" ] || [ "${{ steps.test-server-coverage.outputs.result }}" != "0" ]; then
-          echo "::error::Tests failed"
-          exit 1
+        # Read exit codes
+        FORMAT_EXIT=$(cat ci-outputs/format-exit-code.txt || echo 1)
+        LINT_EXIT=$(cat ci-outputs/lint-exit-code.txt || echo 1)
+        TYPECHECK_EXIT=$(cat ci-outputs/typecheck-exit-code.txt || echo 1)
+        BUILD_EXIT=$(cat ci-outputs/build-exit-code.txt || echo 1)
+        TEST_EXIT=$(cat ci-outputs/test-exit-code.txt || echo 1)
+        
+        # Set outputs
+        echo "format_result=$FORMAT_EXIT" >> $GITHUB_OUTPUT
+        echo "lint_result=$LINT_EXIT" >> $GITHUB_OUTPUT
+        echo "typecheck_result=$TYPECHECK_EXIT" >> $GITHUB_OUTPUT
+        echo "build_result=$BUILD_EXIT" >> $GITHUB_OUTPUT
+        echo "test_result=$TEST_EXIT" >> $GITHUB_OUTPUT
+        
+        # Read outputs for reporting
+        echo 'format_output<<EOF' >> $GITHUB_OUTPUT
+        cat ci-outputs/format-output.txt 2>/dev/null || echo "No output" >> $GITHUB_OUTPUT
+        echo 'EOF' >> $GITHUB_OUTPUT
+        
+        echo 'lint_output<<EOF' >> $GITHUB_OUTPUT
+        cat ci-outputs/lint-output.txt 2>/dev/null || echo "No output" >> $GITHUB_OUTPUT
+        echo 'EOF' >> $GITHUB_OUTPUT
+        
+        echo 'typecheck_output<<EOF' >> $GITHUB_OUTPUT
+        cat ci-outputs/typecheck-output.txt 2>/dev/null || echo "No output" >> $GITHUB_OUTPUT
+        echo 'EOF' >> $GITHUB_OUTPUT
+        
+        echo 'build_output<<EOF' >> $GITHUB_OUTPUT
+        tail -n 50 ci-outputs/build-output.txt 2>/dev/null || echo "No output" >> $GITHUB_OUTPUT
+        echo 'EOF' >> $GITHUB_OUTPUT
+        
+        echo 'test_output<<EOF' >> $GITHUB_OUTPUT
+        tail -n 100 ci-outputs/test-client-output.txt 2>/dev/null || echo "No client test output" >> $GITHUB_OUTPUT
+        echo "---" >> $GITHUB_OUTPUT
+        tail -n 100 ci-outputs/test-server-output.txt 2>/dev/null || echo "No server test output" >> $GITHUB_OUTPUT
+        echo 'EOF' >> $GITHUB_OUTPUT
+        
+        echo 'audit_output<<EOF' >> $GITHUB_OUTPUT
+        cat ci-outputs/audit-output.txt 2>/dev/null || echo "No output" >> $GITHUB_OUTPUT
+        echo 'EOF' >> $GITHUB_OUTPUT
+        
+        # Determine overall result
+        if [ $FORMAT_EXIT -ne 0 ] || [ $LINT_EXIT -ne 0 ] || [ $TYPECHECK_EXIT -ne 0 ] || [ $BUILD_EXIT -ne 0 ] || [ $TEST_EXIT -ne 0 ]; then
+          echo "overall_result=failure" >> $GITHUB_OUTPUT
+        else
+          echo "overall_result=success" >> $GITHUB_OUTPUT
         fi
 
+    # Generate coverage summary
     - name: Generate coverage summaries
       if: always()
       working-directory: web
@@ -211,10 +202,6 @@ jobs:
             };
             console.log(JSON.stringify(summary, null, 2));
           " > coverage-client-summary.json
-          
-          if [ -f test-client-output.txt ]; then
-            tail -n 50 test-client-output.txt > coverage-client-output.txt
-          fi
         else
           echo '{"error": "No client coverage data found"}' > coverage-client-summary.json
         fi
@@ -233,206 +220,78 @@ jobs:
             };
             console.log(JSON.stringify(summary, null, 2));
           " > coverage-server-summary.json
-          
-          if [ -f test-server-output.txt ]; then
-            tail -n 50 test-server-output.txt > coverage-server-output.txt
-          fi
         else
           echo '{"error": "No server coverage data found"}' > coverage-server-summary.json
         fi
-        
-        # Create combined summary for backward compatibility
-        node -e "
-          const clientCov = require('./coverage-client-summary.json');
-          const serverCov = require('./coverage-server-summary.json');
-          const combined = {
-            client: clientCov,
-            server: serverCov
-          };
-          console.log(JSON.stringify(combined, null, 2));
-        " > coverage-summary-formatted.json || echo '{"error": "Failed to combine coverage data"}' > coverage-summary-formatted.json
 
-    - name: Upload coverage artifacts
+    # Report results
+    - name: Report Format Results
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: ./.github/actions/lint-reporter
       with:
-        name: node-coverage
-        path: |
-          web/coverage-summary-formatted.json
-          web/coverage-client-summary.json
-          web/coverage-server-summary.json
-          web/coverage-client-output.txt
-          web/coverage-server-output.txt
-          web/coverage/client/lcov.info
-          web/coverage/server/lcov.info
+        title: 'Node.js Biome Formatting'
+        lint-result: ${{ steps.results.outputs.format_result == '0' && 'success' || 'failure' }}
+        lint-output: ${{ steps.results.outputs.format_output }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
-    # Build artifacts no longer uploaded - Mac CI builds web as part of Xcode build
-
-  type-check:
-    name: TypeScript Type Checking
-    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
-    env:
-      GITHUB_REPO_NAME: ${{ github.repository }}
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+    - name: Report Lint Results
+      if: always()
+      uses: ./.github/actions/lint-reporter
       with:
-        node-version: '24'
+        title: 'Node.js Biome Linting'
+        lint-result: ${{ steps.results.outputs.lint_result == '0' && 'success' || 'failure' }}
+        lint-output: ${{ steps.results.outputs.lint_output }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v2
+    - name: Report TypeCheck Results
+      if: always()
+      uses: ./.github/actions/lint-reporter
       with:
-        version: 9
-        run_install: false
+        title: 'Node.js TypeScript Type Checking'
+        lint-result: ${{ steps.results.outputs.typecheck_result == '0' && 'success' || 'failure' }}
+        lint-output: ${{ steps.results.outputs.typecheck_output }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
-    # Skip pnpm cache - testing if fresh installs are faster
-    # The cache was extremely large and might be slower than fresh install
-
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libpam0g-dev
-
-    - name: Install dependencies
-      working-directory: web
-      run: |
-        pnpm config set network-concurrency 4
-        pnpm config set child-concurrency 2
-        pnpm install --frozen-lockfile --prefer-offline
-
-    - name: Build node-pty for TypeScript
-      working-directory: web
-      run: |
-        cd node-pty && npm install && npm run build
-
-    - name: Check TypeScript types
-      working-directory: web
-      run: pnpm run typecheck
-
-  audit:
-    name: Security Audit
-    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+    - name: Report Build Results
+      if: always()
+      uses: ./.github/actions/lint-reporter
       with:
-        node-version: '24'
+        title: 'Node.js Build'
+        lint-result: ${{ steps.results.outputs.build_result == '0' && 'success' || 'failure' }}
+        lint-output: ${{ steps.results.outputs.build_output }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v2
+    - name: Report Test Results
+      if: always()
+      uses: ./.github/actions/lint-reporter
       with:
-        version: 9
-        run_install: false
+        title: 'Node.js Tests'
+        lint-result: ${{ steps.results.outputs.test_result == '0' && 'success' || 'failure' }}
+        lint-output: ${{ steps.results.outputs.test_output }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Run pnpm audit
-      working-directory: web
-      run: pnpm audit --audit-level=moderate || true
-      # || true to not fail the build on vulnerabilities, but still report them
-
-  report-coverage:
-    name: Report Coverage Results  
-    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
-    needs: [build-and-test]
-    # Keep Node.js coverage reporting for PRs since it's fast
-    if: always() && github.event_name == 'pull_request'
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Download coverage artifacts
-      uses: actions/download-artifact@v4
+    - name: Report Audit Results
+      if: always()
+      uses: ./.github/actions/lint-reporter
       with:
-        name: node-coverage
-        path: web/coverage-artifacts
+        title: 'Node.js Security Audit'
+        lint-result: 'success'
+        lint-output: ${{ steps.results.outputs.audit_output }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Read coverage summaries
-      id: coverage
-      working-directory: web
-      run: |
-        # Initialize result variables
-        CLIENT_RESULT="failure"
-        SERVER_RESULT="failure"
-        
-        # Process client coverage
-        if [ -f coverage-artifacts/coverage-client-summary.json ]; then
-          CLIENT_JSON=$(cat coverage-artifacts/coverage-client-summary.json)
-          CLIENT_LINES=$(echo "$CLIENT_JSON" | jq -r '.lines.pct // 0')
-          CLIENT_FUNCTIONS=$(echo "$CLIENT_JSON" | jq -r '.functions.pct // 0')
-          CLIENT_BRANCHES=$(echo "$CLIENT_JSON" | jq -r '.branches.pct // 0')
-          CLIENT_STATEMENTS=$(echo "$CLIENT_JSON" | jq -r '.statements.pct // 0')
-          
-          # Always report as success - we're just reporting coverage
-          CLIENT_RESULT="success"
-          
-          echo "client_lines=$CLIENT_LINES" >> $GITHUB_OUTPUT
-          echo "client_functions=$CLIENT_FUNCTIONS" >> $GITHUB_OUTPUT
-          echo "client_branches=$CLIENT_BRANCHES" >> $GITHUB_OUTPUT
-          echo "client_statements=$CLIENT_STATEMENTS" >> $GITHUB_OUTPUT
-        fi
-        
-        # Process server coverage
-        if [ -f coverage-artifacts/coverage-server-summary.json ]; then
-          SERVER_JSON=$(cat coverage-artifacts/coverage-server-summary.json)
-          SERVER_LINES=$(echo "$SERVER_JSON" | jq -r '.lines.pct // 0')
-          SERVER_FUNCTIONS=$(echo "$SERVER_JSON" | jq -r '.functions.pct // 0')
-          SERVER_BRANCHES=$(echo "$SERVER_JSON" | jq -r '.branches.pct // 0')
-          SERVER_STATEMENTS=$(echo "$SERVER_JSON" | jq -r '.statements.pct // 0')
-          
-          # Always report as success - we're just reporting coverage
-          SERVER_RESULT="success"
-          
-          echo "server_lines=$SERVER_LINES" >> $GITHUB_OUTPUT
-          echo "server_functions=$SERVER_FUNCTIONS" >> $GITHUB_OUTPUT
-          echo "server_branches=$SERVER_BRANCHES" >> $GITHUB_OUTPUT
-          echo "server_statements=$SERVER_STATEMENTS" >> $GITHUB_OUTPUT
-        fi
-        
-        # Always report as success - we're just reporting coverage
-        echo "result=success" >> $GITHUB_OUTPUT
-        
-        echo "client_result=$CLIENT_RESULT" >> $GITHUB_OUTPUT
-        echo "server_result=$SERVER_RESULT" >> $GITHUB_OUTPUT
-        
-        # Format output
-        CLIENT_OUTPUT=""
-        SERVER_OUTPUT=""
-        
-        if [ -f coverage-artifacts/coverage-client-output.txt ]; then
-          CLIENT_OUTPUT=$(tail -n 20 coverage-artifacts/coverage-client-output.txt | grep -v "^\[" | head -10)
-        fi
-        
-        if [ -f coverage-artifacts/coverage-server-output.txt ]; then
-          SERVER_OUTPUT=$(tail -n 20 coverage-artifacts/coverage-server-output.txt | grep -v "^\[" | head -10)
-        fi
-        
-        echo "client_output<<EOF" >> $GITHUB_OUTPUT
-        echo "$CLIENT_OUTPUT" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
-        
-        echo "server_output<<EOF" >> $GITHUB_OUTPUT
-        echo "$SERVER_OUTPUT" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
-
+    # Format and report coverage
     - name: Format coverage output
       id: format-coverage
-      if: always()
+      if: always() && github.event_name == 'pull_request'
+      working-directory: web
       run: |
         # Format client coverage
         CLIENT_OUTPUT="**Client Coverage:**\n"
-        if [ "${{ steps.coverage.outputs.client_lines }}" != "" ]; then
-          CLIENT_LINES="${{ steps.coverage.outputs.client_lines }}"
-          CLIENT_FUNCTIONS="${{ steps.coverage.outputs.client_functions }}"
-          CLIENT_BRANCHES="${{ steps.coverage.outputs.client_branches }}"
-          CLIENT_STATEMENTS="${{ steps.coverage.outputs.client_statements }}"
+        if [ -f coverage-client-summary.json ] && [ "$(jq -r '.error // empty' coverage-client-summary.json)" = "" ]; then
+          CLIENT_LINES=$(jq -r '.lines.pct' coverage-client-summary.json)
+          CLIENT_FUNCTIONS=$(jq -r '.functions.pct' coverage-client-summary.json)
+          CLIENT_BRANCHES=$(jq -r '.branches.pct' coverage-client-summary.json)
+          CLIENT_STATEMENTS=$(jq -r '.statements.pct' coverage-client-summary.json)
           
           CLIENT_OUTPUT="${CLIENT_OUTPUT}• Lines: ${CLIENT_LINES}%\n"
           CLIENT_OUTPUT="${CLIENT_OUTPUT}• Functions: ${CLIENT_FUNCTIONS}%\n"
@@ -444,11 +303,11 @@ jobs:
         
         # Format server coverage
         SERVER_OUTPUT="\n**Server Coverage:**\n"
-        if [ "${{ steps.coverage.outputs.server_lines }}" != "" ]; then
-          SERVER_LINES="${{ steps.coverage.outputs.server_lines }}"
-          SERVER_FUNCTIONS="${{ steps.coverage.outputs.server_functions }}"
-          SERVER_BRANCHES="${{ steps.coverage.outputs.server_branches }}"
-          SERVER_STATEMENTS="${{ steps.coverage.outputs.server_statements }}"
+        if [ -f coverage-server-summary.json ] && [ "$(jq -r '.error // empty' coverage-server-summary.json)" = "" ]; then
+          SERVER_LINES=$(jq -r '.lines.pct' coverage-server-summary.json)
+          SERVER_FUNCTIONS=$(jq -r '.functions.pct' coverage-server-summary.json)
+          SERVER_BRANCHES=$(jq -r '.branches.pct' coverage-server-summary.json)
+          SERVER_STATEMENTS=$(jq -r '.statements.pct' coverage-server-summary.json)
           
           SERVER_OUTPUT="${SERVER_OUTPUT}• Lines: ${SERVER_LINES}%\n"
           SERVER_OUTPUT="${SERVER_OUTPUT}• Functions: ${SERVER_FUNCTIONS}%\n"
@@ -463,9 +322,31 @@ jobs:
         echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Report Coverage Results
+      if: always() && github.event_name == 'pull_request'
       uses: ./.github/actions/lint-reporter
       with:
         title: 'Node.js Test Coverage'
-        lint-result: ${{ steps.coverage.outputs.result }}
+        lint-result: 'success'
         lint-output: ${{ steps.format-coverage.outputs.output }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    # Upload artifacts
+    - name: Upload coverage artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: node-coverage
+        path: |
+          web/coverage-client-summary.json
+          web/coverage-server-summary.json
+          web/coverage/client/lcov.info
+          web/coverage/server/lcov.info
+
+    # Check overall result
+    - name: Check overall result
+      if: always()
+      run: |
+        if [ "${{ steps.results.outputs.overall_result }}" = "failure" ]; then
+          echo "::error::One or more checks failed"
+          exit 1
+        fi

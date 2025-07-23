@@ -21,8 +21,9 @@ jobs:
     - name: Clean workspace
       run: |
         # Clean workspace for self-hosted runner
+        # Clean workspace but preserve .git directory
+        find . -maxdepth 1 -name '.*' -not -name '.git' -not -name '.' -not -name '..' -exec rm -rf {} + || true
         rm -rf * || true
-        rm -rf .* || true
         
     - name: Checkout code
       uses: actions/checkout@v4
@@ -464,8 +465,9 @@ jobs:
     - name: Clean workspace
       run: |
         # Clean workspace for self-hosted runner
+        # Clean workspace but preserve .git directory
+        find . -maxdepth 1 -name '.*' -not -name '.git' -not -name '.' -not -name '..' -exec rm -rf {} + || true
         rm -rf * || true
-        rm -rf .* || true
         
     - name: Checkout code
       uses: actions/checkout@v4
