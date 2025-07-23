@@ -27,7 +27,9 @@ const mockNotification = {
 const mockNavigator = {
   serviceWorker: {
     ready: Promise.resolve(mockServiceWorkerRegistration as unknown as ServiceWorkerRegistration),
-    register: vi.fn().mockResolvedValue(mockServiceWorkerRegistration as unknown as ServiceWorkerRegistration),
+    register: vi
+      .fn()
+      .mockResolvedValue(mockServiceWorkerRegistration as unknown as ServiceWorkerRegistration),
     addEventListener: vi.fn(),
   },
   userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
@@ -41,10 +43,10 @@ const mockNavigator = {
 
 // Ensure global objects are properly defined for the 'in' operator
 if (typeof global.window === 'undefined') {
-  global.window = {} as any;
+  global.window = {} as unknown as Window & typeof globalThis;
 }
 if (typeof global.navigator === 'undefined') {
-  global.navigator = {} as any;
+  global.navigator = {} as unknown as Navigator;
 }
 
 // Set up the navigator with serviceWorker before tests
@@ -55,10 +57,10 @@ Object.defineProperty(global.navigator, 'serviceWorker', {
 });
 
 // Define PushManager constructor to pass the 'in' operator check
-global.PushManager = class PushManager {} as any;
+global.PushManager = class PushManager {} as unknown as typeof PushManager;
 
 // Define Notification constructor to pass the 'in' operator check
-global.Notification = mockNotification as any;
+global.Notification = mockNotification as unknown as typeof Notification;
 
 // Create mockWindow as a function to allow dynamic updates
 const createMockWindow = () => ({
@@ -81,7 +83,7 @@ const createMockWindow = () => ({
 let mockWindow = createMockWindow();
 
 // Ensure window is globally available
-global.window = mockWindow as any;
+global.window = mockWindow as unknown as Window & typeof globalThis;
 
 // Setup global mocks
 vi.stubGlobal('window', mockWindow);
@@ -99,7 +101,7 @@ describe('PushNotificationService', () => {
 
     // Reset mockWindow
     mockWindow = createMockWindow();
-    global.window = mockWindow as any;
+    global.window = mockWindow as unknown as Window & typeof globalThis;
     vi.stubGlobal('window', mockWindow);
 
     // Mock fetch responses
