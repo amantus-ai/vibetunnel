@@ -228,7 +228,7 @@ struct GitBranchWorktreeSelector: View {
     private var worktreeNoneText: String {
         if selectedWorktree != nil {
             return "No worktree (use main repository)"
-        } else if availableWorktrees.contains(where: { $0.isCurrent && !$0.isMain }) {
+        } else if availableWorktrees.contains(where: { $0.isCurrentWorktree == true && $0.isMainWorktree != true }) {
             return "Switch to main repository"
         } else {
             return "No worktree (use main repository)"
@@ -258,10 +258,10 @@ struct GitBranchWorktreeSelector: View {
         if showBranch {
             result += " [\(worktree.branch)]"
         }
-        if worktree.isMain {
+        if worktree.isMainWorktree == true {
             result += " (main)"
         }
-        if worktree.isCurrent {
+        if worktree.isCurrentWorktree == true {
             result += " (current)"
         }
         if followMode && followBranch == worktree.branch {
@@ -288,16 +288,19 @@ struct GitBranchWorktreeSelector: View {
         isLoadingBranches = false
         
         // Load worktrees
-        do {
-            let worktrees = try await worktreeService.listWorktrees(for: repoPath)
-            availableWorktrees = worktrees
-            
-            // Check follow mode status
-            if let currentWorktree = worktrees.first(where: { $0.isCurrent }) {
-                followMode = currentWorktree.isFollowing
-                followBranch = currentWorktree.followingBranch
-            }
-        } catch {
+        await worktreeService.fetchWorktrees(for: repoPath)
+        availableWorktrees = worktreeService.worktrees
+        
+        // Check follow mode status from the service
+        if let followModeStatus = worktreeService.followMode {
+            followMode = followModeStatus.enabled
+            followBranch = followModeStatus.targetBranch
+        } else {
+            followMode = false
+            followBranch = nil
+        }
+        
+        if let error = worktreeService.error {
             print("Failed to load worktrees: \(error)")
             errorMessage = "Failed to load worktrees"
         }

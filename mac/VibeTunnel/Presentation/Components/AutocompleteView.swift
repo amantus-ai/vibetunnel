@@ -140,33 +140,6 @@ private struct AutocompleteRow: View {
                         }
                     }
                     
-                    // Branch and worktree selector for Git repositories
-                    if let gitInfo = suggestion.gitInfo, gitInfo.branch != nil {
-                        GitBranchWorktreeSelector(
-                            repoPath: suggestion.suggestion.trimmingCharacters(in: CharacterSet(charactersIn: "/")),
-                            gitMonitor: gitMonitor,
-                            worktreeService: worktreeService,
-                            onBranchChanged: { branch in
-                                // Handle branch change
-                                print("Selected branch: \(branch) for path: \(suggestion.suggestion)")
-                            },
-                            onWorktreeChanged: { worktree in
-                                // Handle worktree change  
-                                print("Selected worktree: \(worktree ?? "none") for path: \(suggestion.suggestion)")
-                            },
-                            onCreateWorktree: { branchName, baseBranch in
-                                // Create new worktree
-                                let repoPath = suggestion.suggestion.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-                                try await worktreeService.createWorktree(
-                                    gitRepoPath: repoPath,
-                                    branch: branchName,
-                                    createBranch: true,
-                                    baseBranch: baseBranch
-                                )
-                            }
-                        )
-                        .padding(.top, 4)
-                    }
                 }
 
                 Spacer()
