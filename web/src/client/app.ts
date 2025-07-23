@@ -847,38 +847,7 @@ export class VibeTunnelApp extends LitElement {
     // Force a re-render immediately
     this.requestUpdate();
 
-    // Then apply view transition if supported (non-blocking) and not in test environment
-    const isTestEnvironment =
-      window.location.search.includes('test=true') ||
-      navigator.userAgent.includes('HeadlessChrome');
-
-    // Skip animation if we're in session detail view
-    const isInSessionDetailView = this.currentView === 'session';
-
-    if (
-      !isTestEnvironment &&
-      !isInSessionDetailView &&
-      'startViewTransition' in document &&
-      typeof document.startViewTransition === 'function'
-    ) {
-      // Set data attribute to indicate transition is starting
-      document.documentElement.setAttribute('data-view-transition', 'active');
-
-      try {
-        const transition = document.startViewTransition(() => {
-          // Force another re-render to ensure the modal is displayed
-          this.requestUpdate();
-        });
-
-        // Clear the attribute when transition completes
-        transition.finished.finally(() => {
-          document.documentElement.removeAttribute('data-view-transition');
-        });
-      } catch (_error) {
-        // If view transition fails, just clear the attribute
-        document.documentElement.removeAttribute('data-view-transition');
-      }
-    }
+    // Animation disabled - modal appears instantly
   }
 
   private handleCreateModalClose() {

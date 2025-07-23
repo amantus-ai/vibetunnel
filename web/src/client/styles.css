@@ -1638,10 +1638,6 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   }
 
 
-  /* Ensure smooth backdrop fade */
-  .modal-backdrop {
-    animation: fade-in 0.3s ease-out;
-  }
 
 
 
