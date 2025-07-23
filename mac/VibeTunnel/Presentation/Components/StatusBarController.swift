@@ -25,6 +25,7 @@ final class StatusBarController: NSObject {
     private let gitRepositoryMonitor: GitRepositoryMonitor
     private let repositoryDiscovery: RepositoryDiscoveryService
     private let configManager: ConfigManager
+    private let worktreeService: WorktreeService
 
     // MARK: - State Tracking
 
@@ -41,7 +42,8 @@ final class StatusBarController: NSObject {
         terminalLauncher: TerminalLauncher,
         gitRepositoryMonitor: GitRepositoryMonitor,
         repositoryDiscovery: RepositoryDiscoveryService,
-        configManager: ConfigManager
+        configManager: ConfigManager,
+        worktreeService: WorktreeService
     ) {
         self.sessionMonitor = sessionMonitor
         self.serverManager = serverManager
@@ -51,6 +53,7 @@ final class StatusBarController: NSObject {
         self.gitRepositoryMonitor = gitRepositoryMonitor
         self.repositoryDiscovery = repositoryDiscovery
         self.configManager = configManager
+        self.worktreeService = worktreeService
 
         self.menuManager = StatusBarMenuManager()
 
@@ -97,7 +100,8 @@ final class StatusBarController: NSObject {
             terminalLauncher: terminalLauncher,
             gitRepositoryMonitor: gitRepositoryMonitor,
             repositoryDiscovery: repositoryDiscovery,
-            configManager: configManager
+            configManager: configManager,
+            worktreeService: worktreeService
         )
         menuManager.setup(with: configuration)
     }

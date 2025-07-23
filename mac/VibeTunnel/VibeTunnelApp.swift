@@ -302,7 +302,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
                let terminalLauncher = app?.terminalLauncher,
                let gitRepositoryMonitor = app?.gitRepositoryMonitor,
                let repositoryDiscoveryService = app?.repositoryDiscoveryService,
-               let configManager = app?.configManager
+               let configManager = app?.configManager,
+               let worktreeService = app?.worktreeService
             {
                 // Connect GitRepositoryMonitor to SessionMonitor for pre-caching
                 sessionMonitor.gitRepositoryMonitor = gitRepositoryMonitor
@@ -315,7 +316,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
                     terminalLauncher: terminalLauncher,
                     gitRepositoryMonitor: gitRepositoryMonitor,
                     repositoryDiscovery: repositoryDiscoveryService,
-                    configManager: configManager
+                    configManager: configManager,
+                    worktreeService: worktreeService
                 )
             }
 

@@ -74,7 +74,6 @@ export class SessionView extends LitElement {
   @property({ type: Boolean }) showSidebarToggle = false;
   @property({ type: Boolean }) sidebarCollapsed = false;
   @property({ type: Boolean }) disableFocusManagement = false;
-  @property({ type: Boolean }) keyboardCaptureActive = true;
 
   // Managers
   private connectionManager!: ConnectionManager;
@@ -98,13 +97,7 @@ export class SessionView extends LitElement {
   private boundHandlePaste?: (e: ClipboardEvent) => void;
 
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
-  private createHiddenInputTimeout: ReturnType<typeof setTimeout> | null = null;
   private _updateTerminalTransformTimeout: ReturnType<typeof setTimeout> | null = null;
-
-  // Get UI state from the manager
-  private getUIState() {
-    return this.uiStateManager.getState();
-  }
 
   private createLifecycleEventManagerCallbacks(): LifecycleEventManagerCallbacks {
     return {
@@ -173,7 +166,7 @@ export class SessionView extends LitElement {
       setConnected: (connected: boolean) => {
         this.uiStateManager.setConnected(connected);
       },
-      getKeyboardCaptureActive: () => this.keyboardCaptureActive,
+      getKeyboardCaptureActive: () => this.uiStateManager.getState().keyboardCaptureActive,
     };
   }
 
@@ -297,7 +290,7 @@ export class SessionView extends LitElement {
     this.inputManager = new InputManager();
     this.inputManager.setCallbacks({
       requestUpdate: () => this.requestUpdate(),
-      getKeyboardCaptureActive: () => this.keyboardCaptureActive,
+      getKeyboardCaptureActive: () => this.uiStateManager.getState().keyboardCaptureActive,
     });
 
     // Initialize mobile input manager
@@ -478,12 +471,6 @@ export class SessionView extends LitElement {
     // Reset drag state
     this.fileOperationsManager.resetDragState();
 
-    // Clear any pending timeout
-    if (this.createHiddenInputTimeout) {
-      clearTimeout(this.createHiddenInputTimeout);
-      this.createHiddenInputTimeout = null;
-    }
-
     // Clear any pending updateTerminalTransform timeout
     if (this._updateTerminalTransformTimeout) {
       clearTimeout(this._updateTerminalTransformTimeout);
@@ -620,13 +607,6 @@ export class SessionView extends LitElement {
       this.session
     ) {
       this.ensureTerminalInitialized();
-    }
-
-    // Update input manager callbacks when keyboard capture state changes
-    if (changedProperties.has('keyboardCaptureActive') && this.inputManager) {
-      // The callback already returns this.keyboardCaptureActive which gets the updated value
-      // We don't need to update callbacks, but we can add logging for debugging
-      logger.log('Keyboard capture state updated:', this.keyboardCaptureActive);
     }
   }
 
@@ -769,54 +749,10 @@ export class SessionView extends LitElement {
     }
   }
 
-  getMobileInputText(): string {
-    return this.uiStateManager.getState().mobileInputText;
-  }
-
-  clearMobileInputText(): void {
-    this.uiStateManager.setMobileInputText('');
-  }
-
-  closeMobileInput(): void {
-    this.uiStateManager.setShowMobileInput(false);
-  }
-
-  shouldRefocusHiddenInput(): boolean {
-    return this.directKeyboardManager.shouldRefocusHiddenInput();
-  }
-
-  refocusHiddenInput(): void {
-    this.directKeyboardManager.refocusHiddenInput();
-  }
-
-  startFocusRetention(): void {
-    this.directKeyboardManager.startFocusRetentionPublic();
-  }
-
-  delayedRefocusHiddenInput(): void {
-    this.directKeyboardManager.delayedRefocusHiddenInputPublic();
-  }
-
-  private async handleMobileInputSendOnly(text: string) {
-    await this.mobileInputManager.handleMobileInputSendOnly(text);
-  }
-
-  private async handleMobileInputSend(text: string) {
-    await this.mobileInputManager.handleMobileInputSend(text);
-  }
-
-  private handleMobileInputCancel() {
-    this.mobileInputManager.handleMobileInputCancel();
-  }
-
   private async handleSpecialKey(key: string) {
     if (this.inputManager) {
       await this.inputManager.sendInputText(key);
     }
-  }
-
-  private handleCtrlAlphaToggle() {
-    this.uiStateManager.toggleCtrlAlpha();
   }
 
   private async handleCtrlKey(letter: string) {
@@ -880,85 +816,6 @@ export class SessionView extends LitElement {
 
     // Request update after all synchronous operations
     this.requestUpdate();
-  }
-
-  private handleTerminalFitToggle() {
-    this.terminalSettingsManager.handleTerminalFitToggle();
-  }
-
-  private handleMaxWidthToggle() {
-    this.terminalSettingsManager.handleMaxWidthToggle();
-  }
-
-  private handleWidthSelect(newMaxCols: number) {
-    this.terminalSettingsManager.handleWidthSelect(newMaxCols);
-  }
-
-  getCurrentWidthLabel(): string {
-    return this.terminalSettingsManager.getCurrentWidthLabel();
-  }
-
-  getWidthTooltip(): string {
-    return this.terminalSettingsManager.getWidthTooltip();
-  }
-
-  private handleFontSizeChange(newSize: number) {
-    this.terminalSettingsManager.handleFontSizeChange(newSize);
-  }
-
-  private handleThemeChange(newTheme: TerminalThemeId) {
-    this.terminalSettingsManager.handleThemeChange(newTheme);
-  }
-
-  private handleOpenFileBrowser() {
-    this.fileOperationsManager.openFileBrowser();
-  }
-
-  private handleCloseFileBrowser() {
-    this.fileOperationsManager.closeFileBrowser();
-  }
-
-  private handleOpenFilePicker() {
-    this.fileOperationsManager.openFilePicker();
-  }
-
-  private handleCloseFilePicker() {
-    this.fileOperationsManager.closeFilePicker();
-  }
-
-  private async handlePasteImage() {
-    await this.fileOperationsManager.pasteImage();
-  }
-
-  private handleSelectImage() {
-    this.fileOperationsManager.selectImage();
-  }
-
-  private handleOpenCamera() {
-    this.fileOperationsManager.openCamera();
-  }
-
-  private async handleFileSelected(event: CustomEvent) {
-    await this.fileOperationsManager.handleFileSelected(event.detail.path);
-  }
-
-  private handleFileError(event: CustomEvent) {
-    this.fileOperationsManager.handleFileError(event.detail);
-  }
-
-  private async handleRename(event: CustomEvent) {
-    const { sessionId, newName } = event.detail;
-    await this.sessionActionsHandler.handleRename(sessionId, newName);
-  }
-
-  private async handleInsertPath(event: CustomEvent) {
-    const { path, type } = event.detail;
-    await this.fileOperationsManager.insertPath(path, type);
-  }
-
-  focusHiddenInput() {
-    // Delegate to the DirectKeyboardManager
-    this.directKeyboardManager.focusHiddenInput();
   }
 
   private handleTerminalClick(e: Event) {
@@ -1034,6 +891,39 @@ export class SessionView extends LitElement {
     }, 100); // Debounce by 100ms
   }
 
+  // SessionViewInterface methods required by managers
+  focusHiddenInput(): void {
+    this.directKeyboardManager.focusHiddenInput();
+  }
+
+  getMobileInputText(): string {
+    return this.uiStateManager.getState().mobileInputText;
+  }
+
+  clearMobileInputText(): void {
+    this.uiStateManager.setMobileInputText('');
+  }
+
+  closeMobileInput(): void {
+    this.uiStateManager.setShowMobileInput(false);
+  }
+
+  shouldRefocusHiddenInput(): boolean {
+    return this.directKeyboardManager.shouldRefocusHiddenInput();
+  }
+
+  refocusHiddenInput(): void {
+    this.directKeyboardManager.refocusHiddenInput();
+  }
+
+  startFocusRetention(): void {
+    this.directKeyboardManager.startFocusRetentionPublic();
+  }
+
+  delayedRefocusHiddenInput(): void {
+    this.directKeyboardManager.delayedRefocusHiddenInputPublic();
+  }
+
   refreshTerminalAfterMobileInput() {
     // After closing mobile input, the viewport changes and the terminal
     // needs to recalculate its scroll position to avoid getting stuck
@@ -1070,7 +960,7 @@ export class SessionView extends LitElement {
     }
 
     // Get UI state once for the entire render method
-    const uiState = this.getUIState();
+    const uiState = this.uiStateManager.getState();
 
     return html`
       <style>
@@ -1169,32 +1059,35 @@ export class SessionView extends LitElement {
             .terminalFontSize=${uiState.terminalFontSize}
             .customWidth=${uiState.customWidth}
             .showWidthSelector=${uiState.showWidthSelector}
-            .keyboardCaptureActive=${this.keyboardCaptureActive}
+            .keyboardCaptureActive=${uiState.keyboardCaptureActive}
             .isMobile=${uiState.isMobile}
-            .widthLabel=${this.getCurrentWidthLabel()}
-            .widthTooltip=${this.getWidthTooltip()}
+            .widthLabel=${this.terminalSettingsManager.getCurrentWidthLabel()}
+            .widthTooltip=${this.terminalSettingsManager.getWidthTooltip()}
             .onBack=${() => this.handleBack()}
             .onSidebarToggle=${() => this.handleSidebarToggle()}
             .onCreateSession=${() => this.handleCreateSession()}
-            .onOpenFileBrowser=${() => this.handleOpenFileBrowser()}
-            .onOpenImagePicker=${() => this.handleOpenFilePicker()}
-            .onMaxWidthToggle=${() => this.handleMaxWidthToggle()}
-            .onWidthSelect=${(width: number) => this.handleWidthSelect(width)}
-            .onFontSizeChange=${(size: number) => this.handleFontSizeChange(size)}
+            .onOpenFileBrowser=${() => this.fileOperationsManager.openFileBrowser()}
+            .onOpenImagePicker=${() => this.fileOperationsManager.openFilePicker()}
+            .onMaxWidthToggle=${() => this.terminalSettingsManager.handleMaxWidthToggle()}
+            .onWidthSelect=${(width: number) => this.terminalSettingsManager.handleWidthSelect(width)}
+            .onFontSizeChange=${(size: number) => this.terminalSettingsManager.handleFontSizeChange(size)}
             .onOpenSettings=${() => this.handleOpenSettings()}
             .macAppConnected=${uiState.macAppConnected}
-            .onTerminateSession=${() => this.handleTerminateSession()}
-            .onClearSession=${() => this.handleClearSession()}
+            .onTerminateSession=${() => this.sessionActionsHandler.handleTerminateSession()}
+            .onClearSession=${() => this.sessionActionsHandler.handleClearSession()}
             @close-width-selector=${() => {
               this.uiStateManager.setShowWidthSelector(false);
               this.uiStateManager.setCustomWidth('');
             }}
-            @session-rename=${(e: CustomEvent) => this.handleRename(e)}
-            @paste-image=${() => this.handlePasteImage()}
-            @select-image=${() => this.handleSelectImage()}
-            @open-camera=${() => this.handleOpenCamera()}
-            @show-image-upload-options=${() => this.handleSelectImage()}
-            @toggle-view-mode=${() => this.handleToggleViewMode()}
+            @session-rename=${async (e: CustomEvent) => {
+              const { sessionId, newName } = e.detail;
+              await this.sessionActionsHandler.handleRename(sessionId, newName);
+            }}
+            @paste-image=${async () => await this.fileOperationsManager.pasteImage()}
+            @select-image=${() => this.fileOperationsManager.selectImage()}
+            @open-camera=${() => this.fileOperationsManager.openCamera()}
+            @show-image-upload-options=${() => this.fileOperationsManager.selectImage()}
+            @toggle-view-mode=${() => this.sessionActionsHandler.handleToggleViewMode()}
             @capture-toggled=${(e: CustomEvent) => {
               this.dispatchEvent(
                 new CustomEvent('capture-toggled', {
@@ -1357,7 +1250,7 @@ export class SessionView extends LitElement {
                   </button>
                   <button
                     class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
-                    @click=${this.handleOpenFilePicker}
+                    @click=${() => this.fileOperationsManager.openFilePicker()}
                     title="Upload file"
                   >
                     📷
@@ -1371,7 +1264,7 @@ export class SessionView extends LitElement {
                   </button>
                   <button
                     class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
-                    @click=${this.handleCtrlAlphaToggle}
+                    @click=${() => this.uiStateManager.toggleCtrlAlpha()}
                   >
                     CTRL
                   </button>
@@ -1395,9 +1288,11 @@ export class SessionView extends LitElement {
             .uiState=${uiState}
             .callbacks=${{
               // Mobile input callbacks
-              onMobileInputSendOnly: (text: string) => this.handleMobileInputSendOnly(text),
-              onMobileInputSend: (text: string) => this.handleMobileInputSend(text),
-              onMobileInputCancel: () => this.handleMobileInputCancel(),
+              onMobileInputSendOnly: (text: string) =>
+                this.mobileInputManager.handleMobileInputSendOnly(text),
+              onMobileInputSend: (text: string) =>
+                this.mobileInputManager.handleMobileInputSend(text),
+              onMobileInputCancel: () => this.mobileInputManager.handleMobileInputCancel(),
               onMobileInputTextChange: (text: string) =>
                 this.uiStateManager.setMobileInputText(text),
 
@@ -1411,16 +1306,26 @@ export class SessionView extends LitElement {
               onQuickKeyPress: (key: string) => this.directKeyboardManager.handleQuickKeyPress(key),
 
               // File browser/picker
-              onCloseFileBrowser: () => this.handleCloseFileBrowser(),
-              onInsertPath: (e: CustomEvent) => this.handleInsertPath(e),
-              onFileSelected: (e: CustomEvent) => this.handleFileSelected(e),
-              onFileError: (e: CustomEvent) => this.handleFileError(e),
-              onCloseFilePicker: () => this.handleCloseFilePicker(),
+              onCloseFileBrowser: () => this.fileOperationsManager.closeFileBrowser(),
+              onInsertPath: async (e: CustomEvent) => {
+                const { path, type } = e.detail;
+                await this.fileOperationsManager.insertPath(path, type);
+              },
+              onFileSelected: async (e: CustomEvent) => {
+                await this.fileOperationsManager.handleFileSelected(e.detail.path);
+              },
+              onFileError: (e: CustomEvent) => {
+                this.fileOperationsManager.handleFileError(e.detail);
+              },
+              onCloseFilePicker: () => this.fileOperationsManager.closeFilePicker(),
 
               // Terminal settings
-              onWidthSelect: (width: number) => this.handleWidthSelect(width),
-              onFontSizeChange: (size: number) => this.handleFontSizeChange(size),
-              onThemeChange: (theme: TerminalThemeId) => this.handleThemeChange(theme),
+              onWidthSelect: (width: number) =>
+                this.terminalSettingsManager.handleWidthSelect(width),
+              onFontSizeChange: (size: number) =>
+                this.terminalSettingsManager.handleFontSizeChange(size),
+              onThemeChange: (theme: TerminalThemeId) =>
+                this.terminalSettingsManager.handleThemeChange(theme),
               onCloseWidthSelector: () => {
                 this.uiStateManager.setShowWidthSelector(false);
                 this.uiStateManager.setCustomWidth('');
@@ -1437,17 +1342,5 @@ export class SessionView extends LitElement {
       </div>
       </div>
     `;
-  }
-
-  private async handleTerminateSession() {
-    await this.sessionActionsHandler.handleTerminateSession();
-  }
-
-  private async handleClearSession() {
-    await this.sessionActionsHandler.handleClearSession();
-  }
-
-  private handleToggleViewMode() {
-    this.sessionActionsHandler.handleToggleViewMode();
   }
 }

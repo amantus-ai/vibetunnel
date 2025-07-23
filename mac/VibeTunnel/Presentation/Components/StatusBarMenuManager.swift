@@ -46,6 +46,7 @@ final class StatusBarMenuManager: NSObject {
     private var gitRepositoryMonitor: GitRepositoryMonitor?
     private var repositoryDiscovery: RepositoryDiscoveryService?
     private var configManager: ConfigManager?
+    private var worktreeService: WorktreeService?
 
     // Custom window management
     fileprivate var customWindow: CustomMenuWindow?
@@ -80,6 +81,7 @@ final class StatusBarMenuManager: NSObject {
         let gitRepositoryMonitor: GitRepositoryMonitor
         let repositoryDiscovery: RepositoryDiscoveryService
         let configManager: ConfigManager
+        let worktreeService: WorktreeService
     }
 
     // MARK: - Setup
@@ -93,6 +95,7 @@ final class StatusBarMenuManager: NSObject {
         self.gitRepositoryMonitor = configuration.gitRepositoryMonitor
         self.repositoryDiscovery = configuration.repositoryDiscovery
         self.configManager = configuration.configManager
+        self.worktreeService = configuration.worktreeService
     }
 
     // MARK: - State Management
@@ -130,7 +133,8 @@ final class StatusBarMenuManager: NSObject {
               let terminalLauncher,
               let gitRepositoryMonitor,
               let repositoryDiscovery,
-              let configManager else { return }
+              let configManager,
+              let worktreeService else { return }
 
         // Update menu state to custom window FIRST before any async operations
         updateMenuState(.customWindow, button: button)
@@ -152,6 +156,7 @@ final class StatusBarMenuManager: NSObject {
         .environment(gitRepositoryMonitor)
         .environment(repositoryDiscovery)
         .environment(configManager)
+        .environment(worktreeService)
 
         // Wrap in custom container for proper styling
         let containerView = CustomMenuContainer {
