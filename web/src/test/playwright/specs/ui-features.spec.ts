@@ -116,10 +116,12 @@ test.describe('UI Features', () => {
     await page.click('button[title="Create New Session"]', { timeout: 10000 });
     await page.waitForSelector('input[placeholder="My Session"]', { state: 'visible' });
 
-    // Turn off native terminal
+    // Turn off native terminal if toggle exists
     const spawnWindowToggle = page.locator('button[role="switch"]');
-    if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
-      await spawnWindowToggle.click();
+    if ((await spawnWindowToggle.count()) > 0) {
+      if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
+        await spawnWindowToggle.click();
+      }
     }
 
     // Look for quick start buttons

@@ -230,10 +230,11 @@ test.describe('Keyboard Shortcuts', () => {
 
     // Turn off native terminal
     const spawnWindowToggle = page.locator('button[role="switch"]');
-    await spawnWindowToggle.waitFor({ state: 'visible', timeout: 2000 });
-    if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
-      await spawnWindowToggle.click();
-      // Wait for toggle state to update
+    if ((await spawnWindowToggle.count()) > 0) {
+      await spawnWindowToggle.waitFor({ state: 'visible', timeout: 2000 });
+      if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
+        await spawnWindowToggle.click();
+        // Wait for toggle state to update
       await page.waitForFunction(
         () => {
           const toggle = document.querySelector('button[role="switch"]');

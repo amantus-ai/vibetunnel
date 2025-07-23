@@ -70,6 +70,8 @@ Do NOT use three separate commands (add, commit, push) as this is slow.
 - We do not care about deprecation - remove old code completely
 - Always prefer clean refactoring over gradual migration
 - Delete unused functions and code paths immediately
+- **We do not care about backwards compatibility** - Everything is shipped together
+- No need to support "older UI versions" - the web UI and server are always deployed as a unit
 
 ## Best Practices
 - ALWAYS use `Z_INDEX` constants in `src/client/utils/constants.ts` instead of setting z-index properties using primitives / magic numbers
@@ -92,3 +94,29 @@ Do NOT use three separate commands (add, commit, push) as this is slow.
 - This is because it conflicts with other tools that use 'vt' (there are many)
 - Instead, vt is conditionally installed via postinstall script only if available
 - The postinstall script checks if vt already exists before creating a symlink
+
+## CRITICAL: Playwright Test UI Changes
+**IMPORTANT: When tests fail looking for UI elements, investigate the actual UI structure!**
+
+### Common Pattern: Collapsible Sections
+Many UI elements are now inside collapsible sections that need to be expanded first:
+
+Example: The spawn window toggle is now inside an "Options" section
+```typescript
+// WRONG - Just increasing timeout won't help if element is hidden
+await page.locator('[data-testid="spawn-window-toggle"]').waitFor({ timeout: 10000 });
+
+// CORRECT - First expand the section, then access the element
+const optionsButton = page.locator('#session-options-button');
+await optionsButton.click(); // Expand the options section
+await page.waitForTimeout(300); // Wait for animation
+const toggle = page.locator('[data-testid="spawn-window-toggle"]');
+await toggle.waitFor({ state: 'visible' });
+```
+
+### Best Practices for Test Stability
+1. **Always use semantic IDs and data-testid attributes** - These are more stable than CSS selectors
+2. **Understand the UI structure** - Don't just increase timeouts, investigate why elements aren't found
+3. **Check for collapsible/expandable sections** - Many elements are now hidden by default
+4. **Wait for animations** - After expanding sections, wait briefly for animations to complete
+5. **Use proper element states** - Wait for 'visible' not just 'attached' for interactive elements
