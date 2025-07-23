@@ -234,14 +234,14 @@ final class NotificationService: NSObject {
         // For now, we'll rely on the UI to call updatePreferences when settings change
         // In the future, we could add a proper observation mechanism
     }
-    
+
     /// Check the local notifications authorization status
     func authorizationStatus() async -> UNAuthorizationStatus {
         await UNUserNotificationCenter.current()
             .notificationSettings()
             .authorizationStatus
     }
-    
+
     /// Request notifications authorization
     @discardableResult
     func requestAuthorization() async throws -> Bool {
@@ -253,7 +253,7 @@ final class NotificationService: NSObject {
             ])
 
             logger.info("Notification permission granted: \(granted)")
-            
+
             return granted
         } catch {
             logger.error("Failed to request notification permissions: \(error)")
