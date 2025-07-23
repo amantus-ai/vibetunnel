@@ -15,7 +15,7 @@ struct GitRepositoryRow: View {
     }
 
     private var branchInfo: some View {
-        Text("[\(repository.currentBranch ?? "detached")\(repository.isWorktree ? "+" : "")]")
+        Text("[\(repository.currentBranch ?? "detached")]\(repository.isWorktree ? "+" : "")")
             .font(.system(size: 10))
             .foregroundColor(AppColors.Fallback.gitBranch(for: colorScheme))
             .lineLimit(1)
