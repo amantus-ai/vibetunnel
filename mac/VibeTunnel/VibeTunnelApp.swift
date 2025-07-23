@@ -272,7 +272,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         app?.gitRepositoryMonitor.startMonitoring()
 
         // Initialize status bar controller IMMEDIATELY to show menu bar icon
-        guard let app = app else {
+        guard let app else {
             fatalError("VibeTunnelApp instance not connected to AppDelegate")
         }
 
@@ -300,6 +300,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
             // Check if server actually started
             if serverManager.isRunning {
                 logger.info("HTTP server started successfully on port \(serverManager.port)")
+
+                // Update status bar icon to reflect server running state
+                statusBarController?.updateStatusItemDisplay()
 
                 // Session monitoring starts automatically
             } else {

@@ -68,13 +68,13 @@ struct WorktreeSelectionView: View {
                                         WorktreeRow(
                                             worktree: worktree,
                                             isSelected: selectedWorktreePath == worktree.path
-                                        )                                            {
-                                                selectedWorktreePath = worktree.path
-                                                shouldCreateNewWorktree = false
-                                                showCreateWorktree = false
-                                                newBranchName = ""
-                                                createFromBranch = ""
-                                            }
+                                        ) {
+                                            selectedWorktreePath = worktree.path
+                                            shouldCreateNewWorktree = false
+                                            showCreateWorktree = false
+                                            newBranchName = ""
+                                            createFromBranch = ""
+                                        }
                                     }
                                 }
                             }

@@ -87,7 +87,14 @@ final class StatusBarController: NSObject {
             // Initialize the icon controller
             iconController = StatusBarIconController(button: button)
 
+            // Perform initial update immediately for instant feedback
             updateStatusItemDisplay()
+
+            // Schedule another update after a short delay to catch server startup
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(100))
+                updateStatusItemDisplay()
+            }
         }
     }
 
@@ -111,13 +118,16 @@ final class StatusBarController: NSObject {
         observeServerState()
 
         // Create a timer to periodically update the display
-        // since SessionMonitor doesn't have a publisher
+        // This serves dual purpose: updating session counts and ensuring server state is reflected
         updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 _ = await self?.sessionMonitor.getSessions()
                 self?.updateStatusItemDisplay()
             }
         }
+
+        // Fire timer immediately to catch any early state changes
+        updateTimer?.fire()
     }
 
     private func observeServerState() {
