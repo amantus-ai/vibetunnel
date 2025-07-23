@@ -81,16 +81,27 @@ export class SessionHeader extends LitElement {
     // Observe the header container for size changes
     this.resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
+        console.log('[SessionHeader] ResizeObserver triggered, width:', entry.contentRect.width);
         this.checkButtonSpace(entry.contentRect.width);
       }
     });
 
     // Start observing after the element is rendered
     this.updateComplete.then(() => {
-      const headerContainer = this.querySelector('.session-header-container');
-      if (headerContainer) {
-        this.resizeObserver?.observe(headerContainer);
-      }
+      // Use requestAnimationFrame to ensure DOM is fully rendered
+      requestAnimationFrame(() => {
+        const headerContainer = this.querySelector('.session-header-container');
+        console.log('[SessionHeader] Looking for header container:', headerContainer);
+        if (headerContainer) {
+          this.resizeObserver?.observe(headerContainer);
+          // Trigger initial check
+          const width = headerContainer.clientWidth;
+          console.log('[SessionHeader] Initial width check:', width);
+          this.checkButtonSpace(width);
+        } else {
+          console.error('[SessionHeader] Could not find .session-header-container');
+        }
+      });
     });
   }
 
@@ -124,8 +135,20 @@ export class SessionHeader extends LitElement {
 
     // Switch to compact menu if not enough space (with some buffer)
     const shouldUseCompact = containerWidth < requiredWidth + 50;
+    
+    console.log('[SessionHeader] Width calculation:', {
+      containerWidth,
+      requiredWidth,
+      buffer: 50,
+      threshold: requiredWidth + 50,
+      shouldUseCompact,
+      currentUseCompactMenu: this.useCompactMenu,
+      willChange: shouldUseCompact !== this.useCompactMenu
+    });
+    
     if (shouldUseCompact !== this.useCompactMenu) {
       this.useCompactMenu = shouldUseCompact;
+      this.requestUpdate();
     }
   }
 

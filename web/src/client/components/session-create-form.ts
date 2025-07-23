@@ -1382,7 +1382,7 @@ export class SessionCreateForm extends LitElement {
                                   this.gitRepoInfo?.hasChanges && !this.selectedWorktree
                                     ? html`<span class="text-yellow-500">Branch switching is disabled due to uncommitted changes. Commit or stash changes first.</span>`
                                     : this.selectedWorktree
-                                      ? 'New worktree branch will be created from this branch'
+                                      ? `Session will use worktree: ${this.selectedWorktree}`
                                       : this.selectedBaseBranch &&
                                           this.selectedBaseBranch !== this.currentBranch
                                         ? `Session will start on ${this.selectedBaseBranch}`
@@ -1633,12 +1633,12 @@ export class SessionCreateForm extends LitElement {
               ${
                 this.showOptions
                   ? html`
-                <div class="space-y-2 sm:space-y-3 mt-2 sm:mt-3">
+                <div class="mt-2 sm:mt-3">
                   <!-- Spawn Window Toggle - Only show when Mac app is connected -->
                   ${
                     this.macAppConnected
                       ? html`
-                        <div class="flex items-center justify-between bg-bg-elevated border border-border/50 rounded-lg p-2 sm:p-3 lg:p-4">
+                        <div class="flex items-center justify-between bg-bg-elevated border border-border/50 rounded-lg p-2 sm:p-3 lg:p-4 mb-2 sm:mb-3">
                           <div class="flex-1 pr-2 sm:pr-3 lg:pr-4">
                             <span class="text-primary text-[10px] sm:text-xs lg:text-sm font-medium">Spawn window</span>
                             <p class="text-[9px] sm:text-[10px] lg:text-xs text-text-muted mt-0.5 hidden sm:block">Opens native terminal window</p>
@@ -1667,7 +1667,7 @@ export class SessionCreateForm extends LitElement {
                   }
 
                   <!-- Terminal Title Mode -->
-                  <div class="flex items-center justify-between bg-bg-elevated border border-border/50 rounded-lg p-2 sm:p-3 lg:p-4">
+                  <div class="flex items-center justify-between bg-bg-elevated border border-border/50 rounded-lg p-2 sm:p-3 lg:p-4 mb-2 sm:mb-3">
                     <div class="flex-1 pr-2 sm:pr-3 lg:pr-4">
                       <span class="text-primary text-[10px] sm:text-xs lg:text-sm font-medium">Terminal Title Mode</span>
                       <p class="text-[9px] sm:text-[10px] lg:text-xs text-text-muted mt-0.5 hidden sm:block">
@@ -1695,9 +1695,9 @@ export class SessionCreateForm extends LitElement {
                     </div>
                   </div>
 
-                  <!-- Follow Mode Toggle - Only show for main repository -->
+                  <!-- Follow Mode Toggle - Show for Git repositories -->
                   ${
-                    this.gitRepoInfo?.isGitRepo && !this.selectedWorktree
+                    this.gitRepoInfo?.isGitRepo
                       ? html`
                         <div class="flex items-center justify-between bg-bg-elevated border border-border/50 rounded-lg p-2 sm:p-3 lg:p-4">
                           <div class="flex-1 pr-2 sm:pr-3 lg:pr-4">
@@ -1706,9 +1706,11 @@ export class SessionCreateForm extends LitElement {
                               ${
                                 this.followMode
                                   ? `Currently following: ${this.followBranch || 'unknown'}`
-                                  : this.showFollowMode
-                                    ? 'Will enable follow mode for the session branch'
-                                    : 'Keep main repository in sync with worktree'
+                                  : this.selectedWorktree
+                                    ? 'Switch follow mode to the new worktree'
+                                    : this.showFollowMode
+                                      ? 'Will enable follow mode for the session branch'
+                                      : 'Keep main repository in sync with worktree'
                               }
                             </p>
                           </div>
