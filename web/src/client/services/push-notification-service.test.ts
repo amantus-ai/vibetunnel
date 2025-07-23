@@ -31,12 +31,19 @@ const createMockNavigator = () => ({
       .fn()
       .mockResolvedValue(mockServiceWorkerRegistration as unknown as ServiceWorkerRegistration),
     addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
   },
   userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
   permissions: {
-    query: vi.fn().mockResolvedValue({
-      state: 'prompt',
-      addEventListener: vi.fn(),
+    query: vi.fn().mockImplementation((descriptor) => {
+      if (descriptor.name === 'notifications') {
+        return Promise.resolve({
+          state: 'prompt',
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        });
+      }
+      return Promise.reject(new Error('Unsupported permission'));
     }),
   },
 });
@@ -103,9 +110,12 @@ vi.stubGlobal('PushManager', global.PushManager);
 global.fetch = vi.fn();
 
 describe('PushNotificationService', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     localStorage.clear();
+
+    // Ensure any pending promises are resolved
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // Reset mockWindow
     mockWindow = createMockWindow();
@@ -172,8 +182,45 @@ describe('PushNotificationService', () => {
     testService.vapidPublicKey = 'test-vapid-key';
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Clean up the service
+    pushNotificationService.dispose();
+
+    // Wait for any pending async operations
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Clear localStorage
+    localStorage.clear();
+
+    // Clear all mocks
+    vi.clearAllMocks();
+
+    // Restore all mocks
     vi.restoreAllMocks();
+
+    // Clear any pending timers
+    vi.clearAllTimers();
+
+    // Reset the service state
+    interface TestPushNotificationService {
+      initialized: boolean;
+      serviceWorkerRegistration: ServiceWorkerRegistration | null;
+      pushSubscription: globalThis.PushSubscription | null;
+      preferences: NotificationPreferences | null;
+      initializationPromise: Promise<void> | null;
+      vapidPublicKey: string | null;
+      boundServiceWorkerMessageHandler: ((event: MessageEvent) => void) | null;
+      permissionStatusListener: (() => void) | null;
+    }
+    const testService = pushNotificationService as unknown as TestPushNotificationService;
+    testService.initialized = false;
+    testService.serviceWorkerRegistration = null;
+    testService.pushSubscription = null;
+    testService.preferences = null;
+    testService.initializationPromise = null;
+    testService.vapidPublicKey = null;
+    testService.boundServiceWorkerMessageHandler = null;
+    testService.permissionStatusListener = null;
   });
 
   describe('isSupported', () => {
@@ -182,27 +229,57 @@ describe('PushNotificationService', () => {
     });
 
     it('should return false when Notification API is not available', () => {
+      // Save original values
+      const originalNotification = window.Notification;
+      const originalGlobalNotification = global.Notification;
+
+      // Remove Notification API
       // biome-ignore lint/suspicious/noExplicitAny: Required for test mocking
-      delete (mockWindow as any).Notification;
-      vi.stubGlobal('window', mockWindow);
+      delete (window as any).Notification;
+      // biome-ignore lint/suspicious/noExplicitAny: Required for test mocking
+      delete (global as any).Notification;
 
       expect(pushNotificationService.isSupported()).toBe(false);
+
+      // Restore original values
+      window.Notification = originalNotification;
+      global.Notification = originalGlobalNotification;
     });
 
     it('should return false when serviceWorker is not available', () => {
+      // Save original value
+      const originalServiceWorker = navigator.serviceWorker;
+
+      // Remove serviceWorker
       // biome-ignore lint/suspicious/noExplicitAny: Required for test mocking
-      delete (mockNavigator as any).serviceWorker;
-      vi.stubGlobal('navigator', mockNavigator);
+      delete (navigator as any).serviceWorker;
 
       expect(pushNotificationService.isSupported()).toBe(false);
+
+      // Restore original value
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: originalServiceWorker,
+        writable: true,
+        configurable: true,
+      });
     });
 
     it('should return false when PushManager is not available', () => {
+      // Save original values
+      const originalPushManager = window.PushManager;
+      const originalGlobalPushManager = global.PushManager;
+
+      // Remove PushManager
       // biome-ignore lint/suspicious/noExplicitAny: Required for test mocking
-      delete (mockWindow as any).PushManager;
-      vi.stubGlobal('window', mockWindow);
+      delete (window as any).PushManager;
+      // biome-ignore lint/suspicious/noExplicitAny: Required for test mocking
+      delete (global as any).PushManager;
 
       expect(pushNotificationService.isSupported()).toBe(false);
+
+      // Restore original values
+      window.PushManager = originalPushManager;
+      global.PushManager = originalGlobalPushManager;
     });
   });
 
@@ -221,18 +298,27 @@ describe('PushNotificationService', () => {
       localStorage.setItem('vibetunnel-notification-preferences', JSON.stringify(savedPrefs));
 
       await pushNotificationService.initialize();
-      await pushNotificationService.waitForInitialization();
 
       // Just verify initialization completes without error
       expect(pushNotificationService.isSupported()).toBeDefined();
+
+      // Verify preferences were loaded
+      const prefs = pushNotificationService.getPreferences();
+      expect(prefs.sessionStart).toBe(true);
+      expect(prefs.sessionExit).toBe(false);
     });
 
     it('should use default preferences when localStorage is empty', async () => {
+      localStorage.clear();
+
       await pushNotificationService.initialize();
-      await pushNotificationService.waitForInitialization();
 
       // Just verify initialization completes without error
       expect(pushNotificationService.isSupported()).toBeDefined();
+
+      // Verify default preferences
+      const prefs = pushNotificationService.getPreferences();
+      expect(prefs).toBeDefined();
     });
 
     it('should get existing subscription', async () => {
@@ -248,7 +334,6 @@ describe('PushNotificationService', () => {
       mockServiceWorkerRegistration.pushManager.getSubscription.mockResolvedValue(mockSubscription);
 
       await pushNotificationService.initialize();
-      await pushNotificationService.waitForInitialization();
 
       expect(mockServiceWorkerRegistration.pushManager.getSubscription).toHaveBeenCalled();
       expect(pushNotificationService.isSubscribed()).toBe(true);
@@ -289,7 +374,6 @@ describe('PushNotificationService', () => {
       testService.initializationPromise = null;
 
       await pushNotificationService.initialize();
-      await pushNotificationService.waitForInitialization();
     });
 
     it('should create a new push subscription', async () => {
@@ -361,7 +445,6 @@ describe('PushNotificationService', () => {
       mockServiceWorkerRegistration.pushManager.getSubscription.mockResolvedValue(mockSubscription);
 
       await pushNotificationService.initialize();
-      await pushNotificationService.waitForInitialization();
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -444,7 +527,6 @@ describe('PushNotificationService', () => {
       });
 
       await pushNotificationService.initialize();
-      await pushNotificationService.waitForInitialization();
 
       await pushNotificationService.testNotification();
 
@@ -466,7 +548,6 @@ describe('PushNotificationService', () => {
       });
 
       await pushNotificationService.initialize();
-      await pushNotificationService.waitForInitialization();
 
       await expect(pushNotificationService.testNotification()).rejects.toThrow(
         'Notification permission not granted'
@@ -540,7 +621,6 @@ describe('PushNotificationService', () => {
       const callback = vi.fn();
 
       await pushNotificationService.initialize();
-      await pushNotificationService.waitForInitialization();
 
       const unsubscribe = pushNotificationService.onSubscriptionChange(callback);
 

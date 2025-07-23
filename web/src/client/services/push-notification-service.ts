@@ -20,6 +20,8 @@ export class PushNotificationService {
   private vapidPublicKey: string | null = null;
   private pushNotificationsAvailable = false;
   private initializationPromise: Promise<void> | null = null;
+  private boundServiceWorkerMessageHandler: ((event: MessageEvent) => void) | null = null;
+  private permissionStatusListener: (() => void) | null = null;
 
   // biome-ignore lint/complexity/noUselessConstructor: This constructor documents the intentional design decision to not auto-initialize
   constructor() {
@@ -77,10 +79,8 @@ export class PushNotificationService {
       this.pushSubscription = await this.serviceWorkerRegistration.pushManager.getSubscription();
 
       // Listen for service worker messages
-      navigator.serviceWorker.addEventListener(
-        'message',
-        this.handleServiceWorkerMessage.bind(this)
-      );
+      this.boundServiceWorkerMessageHandler = this.handleServiceWorkerMessage.bind(this);
+      navigator.serviceWorker.addEventListener('message', this.boundServiceWorkerMessageHandler);
 
       // Monitor permission changes
       this.monitorPermissionChanges();
@@ -116,13 +116,14 @@ export class PushNotificationService {
 
   private monitorPermissionChanges(): void {
     // Modern browsers support permission change events
-    if ('permissions' in navigator) {
+    if ('permissions' in navigator && navigator.permissions && navigator.permissions.query) {
       navigator.permissions
         .query({ name: 'notifications' as PermissionName })
         .then((permissionStatus) => {
-          permissionStatus.addEventListener('change', () => {
+          this.permissionStatusListener = () => {
             this.notifyPermissionChange(permissionStatus.state as NotificationPermission);
-          });
+          };
+          permissionStatus.addEventListener('change', this.permissionStatusListener);
         })
         .catch((error) => {
           logger.warn('failed to monitor permission changes:', error);
@@ -662,11 +663,43 @@ export class PushNotificationService {
    * Clean up service
    */
   dispose(): void {
+    // Remove event listeners
+    if (this.boundServiceWorkerMessageHandler && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.removeEventListener('message', this.boundServiceWorkerMessageHandler);
+      this.boundServiceWorkerMessageHandler = null;
+    }
+
+    // Remove permission change listener
+    if (
+      this.permissionStatusListener &&
+      'permissions' in navigator &&
+      navigator.permissions &&
+      navigator.permissions.query
+    ) {
+      navigator.permissions
+        .query({ name: 'notifications' as PermissionName })
+        .then((permissionStatus) => {
+          if (this.permissionStatusListener) {
+            permissionStatus.removeEventListener('change', this.permissionStatusListener);
+            this.permissionStatusListener = null;
+          }
+        })
+        .catch(() => {
+          // Ignore errors during cleanup
+        });
+    }
+
+    // Clear callbacks
     this.permissionChangeCallbacks.clear();
     this.subscriptionChangeCallbacks.clear();
+
+    // Reset state
     this.initialized = false;
     this.vapidPublicKey = null;
     this.pushNotificationsAvailable = false;
+    this.serviceWorkerRegistration = null;
+    this.pushSubscription = null;
+    this.initializationPromise = null;
   }
 }
 

@@ -123,9 +123,6 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app
         
       - name: Download web artifacts from Node CI
         uses: actions/download-artifact@v4
@@ -167,9 +164,6 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app
         
       - name: Build iOS app
         run: |

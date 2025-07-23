@@ -143,6 +143,7 @@ The CI workflow automatically runs both Node.js and Mac builds:
 - **Node.js CI**: Runs for web OR Mac file changes to ensure web artifacts are always available
 - **Mac CI**: Downloads web artifacts from Node.js CI, with fallback to build locally if missing
 - **Cross-dependency**: Mac builds require web artifacts, so Node.js CI must complete first
+- **Xcode Version**: We use latest Xcode here on our own test runners, do not ever modify CI to use xcode-select
 
 ## Testing on External Devices (iPad, Safari, etc.)
 

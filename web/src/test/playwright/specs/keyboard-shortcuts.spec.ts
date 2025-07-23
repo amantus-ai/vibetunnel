@@ -230,7 +230,7 @@ test.describe('Keyboard Shortcuts', () => {
 
     // Turn off native terminal (if toggle exists - only visible when Mac app is connected)
     const spawnWindowToggle = page.locator('button[role="switch"]');
-    if (await spawnWindowToggle.count() > 0) {
+    if ((await spawnWindowToggle.count()) > 0) {
       await spawnWindowToggle.waitFor({ state: 'visible', timeout: 2000 });
       if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
         await spawnWindowToggle.click();
