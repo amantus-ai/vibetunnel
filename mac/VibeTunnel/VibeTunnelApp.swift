@@ -138,7 +138,7 @@ struct VibeTunnelApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
     // Needed for menu item highlight hack
-    weak static var shared: AppDelegate?
+    static weak var shared: AppDelegate?
     override init() {
         super.init()
         Self.shared = self
@@ -255,7 +255,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         if let serverManager = app?.serverManager, let sessionMonitor = app?.sessionMonitor {
             app?.sessionService = SessionService(serverManager: serverManager, sessionMonitor: sessionMonitor)
         }
-        
+
         // Initialize WorktreeService
         if let serverManager = app?.serverManager {
             app?.worktreeService = WorktreeService(serverManager: serverManager)

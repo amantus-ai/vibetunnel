@@ -1,6 +1,6 @@
 import Foundation
-import OSLog
 import Observation
+import OSLog
 
 /// Manager for VibeTunnel configuration stored in ~/.vibetunnel/config.json
 /// Provides centralized configuration management for all app settings

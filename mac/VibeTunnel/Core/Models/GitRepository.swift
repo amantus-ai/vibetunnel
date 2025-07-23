@@ -26,16 +26,16 @@ public struct GitRepository: Sendable, Equatable, Hashable {
 
     /// Current branch name
     public let currentBranch: String?
-    
+
     /// Number of commits ahead of upstream
     public let aheadCount: Int?
-    
+
     /// Number of commits behind upstream
     public let behindCount: Int?
-    
+
     /// Name of the tracking branch (e.g., "origin/main")
     public let trackingBranch: String?
-    
+
     /// Whether this is a worktree (not the main repository)
     public let isWorktree: Bool
 

@@ -160,7 +160,8 @@ struct SessionRow: View {
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 4)
                                         .strokeBorder(
-                                            isHoveringFolder ? AppColors.Fallback.gitBorder(for: colorScheme).opacity(0.4) : Color.clear,
+                                            isHoveringFolder ? AppColors.Fallback.gitBorder(for: colorScheme)
+                                                .opacity(0.4) : Color.clear,
                                             lineWidth: 0.5
                                         )
                                 )
@@ -170,18 +171,18 @@ struct SessionRow: View {
                             isHoveringFolder = hovering
                         }
                         .help("Open in Finder")
-                        
+
                         // Path text - not clickable
                         Text(compactPath)
                             .font(.system(size: 10, design: .monospaced))
                             .foregroundColor(.secondary)
                             .lineLimit(1)
                             .truncationMode(.head)
-                            .layoutPriority(-1)  // Lowest priority
+                            .layoutPriority(-1) // Lowest priority
 
                         if let repo = gitRepository {
                             GitRepositoryRow(repository: repo)
-                                .layoutPriority(1)  // Highest priority
+                                .layoutPriority(1) // Highest priority
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)

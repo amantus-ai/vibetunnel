@@ -1,5 +1,5 @@
-import SwiftUI
 import OSLog
+import SwiftUI
 
 /// View for selecting or creating Git worktrees
 struct WorktreeSelectionView: View {
@@ -13,15 +13,14 @@ struct WorktreeSelectionView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @FocusState private var focusedField: Field?
-    
+
     enum Field: Hashable {
         case branchName
         case baseBranch
     }
-    
+
     private let logger = Logger(subsystem: "ai.vibe.VibeTunnel", category: "WorktreeSelectionView")
-    
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
@@ -32,7 +31,7 @@ struct WorktreeSelectionView: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.secondary)
             }
-            
+
             if worktreeService.isLoading {
                 HStack {
                     ProgressView()
@@ -55,35 +54,34 @@ struct WorktreeSelectionView: View {
                                 .foregroundColor(.accentColor)
                         }
                     }
-                    
+
                     // Worktree selection
                     if !worktreeService.worktrees.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(selectedWorktreePath != nil ? "Selected Worktree" : "Select Worktree")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            
+
                             ScrollView {
                                 VStack(spacing: 2) {
                                     ForEach(worktreeService.worktrees) { worktree in
                                         WorktreeRow(
                                             worktree: worktree,
-                                            isSelected: selectedWorktreePath == worktree.path,
-                                            onSelect: {
+                                            isSelected: selectedWorktreePath == worktree.path
+                                        )                                            {
                                                 selectedWorktreePath = worktree.path
                                                 shouldCreateNewWorktree = false
                                                 showCreateWorktree = false
                                                 newBranchName = ""
                                                 createFromBranch = ""
                                             }
-                                        )
                                     }
                                 }
                             }
                             .frame(maxHeight: 120)
                         }
                     }
-                    
+
                     // Action buttons or create form
                     if showCreateWorktree {
                         // Inline create worktree form
@@ -93,9 +91,9 @@ struct WorktreeSelectionView: View {
                                     .font(.caption)
                                     .fontWeight(.medium)
                                     .foregroundColor(.secondary)
-                                
+
                                 Spacer()
-                                
+
                                 Button(action: {
                                     showCreateWorktree = false
                                     shouldCreateNewWorktree = false
@@ -108,21 +106,20 @@ struct WorktreeSelectionView: View {
                                 }
                                 .buttonStyle(.plain)
                             }
-                            
+
                             TextField("Branch name", text: $newBranchName)
                                 .textFieldStyle(.roundedBorder)
                                 .font(.system(size: 11))
                                 .focused($focusedField, equals: .branchName)
-                            
+
                             TextField("Base branch (optional)", text: $createFromBranch)
                                 .textFieldStyle(.roundedBorder)
                                 .font(.system(size: 11))
                                 .focused($focusedField, equals: .baseBranch)
-                            
+
                             Text("Leave empty to create from current branch")
                                 .font(.system(size: 10))
                                 .foregroundColor(.secondary.opacity(0.8))
-                            
                         }
                         .padding(.top, 8)
                         .padding(10)
@@ -133,7 +130,7 @@ struct WorktreeSelectionView: View {
                         }
                     } else {
                         HStack(spacing: 8) {
-                            Button(action: { 
+                            Button(action: {
                                 showCreateWorktree = true
                                 shouldCreateNewWorktree = true
                             }) {
@@ -141,7 +138,7 @@ struct WorktreeSelectionView: View {
                                     .font(.caption)
                             }
                             .buttonStyle(.link)
-                            
+
                             if let followMode = worktreeService.followMode {
                                 Toggle(isOn: .constant(followMode.enabled)) {
                                     Label("Follow Mode", systemImage: "arrow.triangle.2.circlepath")
@@ -171,12 +168,11 @@ struct WorktreeSelectionView: View {
             await worktreeService.fetchWorktrees(for: gitRepoPath)
         }
         .alert("Error", isPresented: $showError) {
-            Button("OK") { }
+            Button("OK") {}
         } message: {
             Text(errorMessage)
         }
     }
-    
 }
 
 /// Row view for displaying a single worktree
@@ -184,26 +180,26 @@ struct WorktreeRow: View {
     let worktree: Worktree
     let isSelected: Bool
     let onSelect: () -> Void
-    
+
     var body: some View {
         Button(action: onSelect) {
             HStack {
                 Image(systemName: worktree.isCurrentBranch ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 10))
                     .foregroundColor(worktree.isCurrentBranch ? .accentColor : .secondary)
-                
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(worktree.branch)
                         .font(.system(.caption, design: .monospaced))
                         .foregroundColor(isSelected ? .white : .primary)
-                    
+
                     Text(shortenPath(worktree.path))
                         .font(.system(size: 10))
                         .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
                 }
-                
+
                 Spacer()
-                
+
                 if worktree.isLocked {
                     Image(systemName: "lock.fill")
                         .font(.system(size: 10))
@@ -217,7 +213,7 @@ struct WorktreeRow: View {
         }
         .buttonStyle(.plain)
     }
-    
+
     private func shortenPath(_ path: String) -> String {
         let components = path.components(separatedBy: "/")
         if components.count > 3 {
@@ -226,4 +222,3 @@ struct WorktreeRow: View {
         return path
     }
 }
-

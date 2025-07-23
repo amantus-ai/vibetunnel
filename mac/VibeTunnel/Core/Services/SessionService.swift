@@ -208,12 +208,12 @@ final class SessionService {
             body["cols"] = cols
             body["rows"] = rows
         }
-        
+
         // Add git information if available
-        if let gitRepoPath = gitRepoPath {
+        if let gitRepoPath {
             body["gitRepoPath"] = gitRepoPath
         }
-        if let gitBranch = gitBranch {
+        if let gitBranch {
             body["gitBranch"] = gitBranch
         }
 

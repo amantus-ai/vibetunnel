@@ -15,7 +15,7 @@ class AutocompleteService {
     private let fileManager = FileManager.default
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AutocompleteService")
     private let gitMonitor: GitRepositoryMonitor
-    
+
     init(gitMonitor: GitRepositoryMonitor = GitRepositoryMonitor()) {
         self.gitMonitor = gitMonitor
     }
@@ -33,7 +33,7 @@ class AutocompleteService {
             case file
             case directory
         }
-        
+
         struct GitInfo: Equatable {
             let branch: String?
             let aheadCount: Int?
@@ -46,7 +46,7 @@ class AutocompleteService {
     /// Fetch autocomplete suggestions for the given path
     func fetchSuggestions(for partialPath: String) async {
         logger.debug("[AutocompleteService] fetchSuggestions called with: '\(partialPath)'")
-        
+
         // Cancel any existing task
         currentTask?.cancel()
 
@@ -60,11 +60,11 @@ class AutocompleteService {
         taskCounter += 1
         let thisTaskId = taskCounter
         logger.debug("[AutocompleteService] Starting task \(thisTaskId) for path: '\(partialPath)'")
-        
+
         currentTask = Task {
             await performFetch(for: partialPath, taskId: thisTaskId)
         }
-        
+
         // Wait for the task to complete
         await currentTask?.value
         logger.debug("[AutocompleteService] Task \(thisTaskId) awaited, suggestions count: \(self.suggestions.count)")
@@ -75,7 +75,7 @@ class AutocompleteService {
         defer { self.isLoading = false }
 
         var partialPath = originalPath
-        
+
         logger.debug("[AutocompleteService] performFetch - originalPath: '\(originalPath)'")
 
         // Handle tilde expansion
@@ -87,12 +87,12 @@ class AutocompleteService {
                 partialPath = homeDir + partialPath.dropFirst(1)
             }
         }
-        
+
         logger.debug("[AutocompleteService] After expansion - partialPath: '\(partialPath)'")
 
         // Determine directory and partial filename
         let (dirPath, partialName) = splitPath(partialPath)
-        
+
         logger.debug("[AutocompleteService] After split - dirPath: '\(dirPath)', partialName: '\(partialName)'")
 
         // Check if task was cancelled
@@ -118,10 +118,10 @@ class AutocompleteService {
         if isSearchingByName {
             // Get git repository suggestions from discovered repositories
             let repoSuggestions = await getRepositorySuggestions(searchTerm: originalPath, taskId: taskId)
-            
+
             // Check if task was cancelled
             if Task.isCancelled { return }
-            
+
             // Merge with filesystem suggestions, avoiding duplicates
             let existingPaths = Set(fsSuggestions.map(\.suggestion))
             let uniqueRepos = repoSuggestions.filter { !existingPaths.contains($0.suggestion) }
@@ -130,20 +130,26 @@ class AutocompleteService {
 
         // Sort suggestions
         let sortedSuggestions = sortSuggestions(allSuggestions, searchTerm: partialName)
-        
+
         // Limit to 20 results before enriching with Git info
         let limitedSuggestions = Array(sortedSuggestions.prefix(20))
-        
+
         // Enrich with Git info
         let enrichedSuggestions = await enrichSuggestionsWithGitInfo(limitedSuggestions)
 
         // Only update suggestions if this is still the latest task
         if taskId == taskCounter {
             self.suggestions = enrichedSuggestions
-            
-            logger.debug("[AutocompleteService] Task \(taskId) updated suggestions. Final count: \(self.suggestions.count), items: \(self.suggestions.map { $0.name }.joined(separator: ", "))")
+
+            logger
+                .debug(
+                    "[AutocompleteService] Task \(taskId) updated suggestions. Final count: \(self.suggestions.count), items: \(self.suggestions.map(\.name).joined(separator: ", "))"
+                )
         } else {
-            logger.debug("[AutocompleteService] Discarding stale results from task \(taskId), current task is \(self.taskCounter)")
+            logger
+                .debug(
+                    "[AutocompleteService] Discarding stale results from task \(taskId), current task is \(self.taskCounter)"
+                )
         }
     }
 
@@ -165,7 +171,7 @@ class AutocompleteService {
         async -> [PathSuggestion]
     {
         // Move to background thread to avoid blocking UI
-        return await Task.detached(priority: .userInitiated) { [logger = self.logger] in
+        await Task.detached(priority: .userInitiated) { [logger = self.logger] in
             let expandedDir = NSString(string: directory).expandingTildeInPath
             let fileManager = FileManager.default
 
@@ -179,56 +185,59 @@ class AutocompleteService {
                     logger.debug("[AutocompleteService] Task \(taskId) cancelled, not processing directory listing")
                     return []
                 }
-                
+
                 let contents = try fileManager.contentsOfDirectory(atPath: expandedDir)
-            
-            // Debug logging
-            let matching = contents.filter { filename in
-                partialName.isEmpty || filename.lowercased().hasPrefix(partialName.lowercased())
-            }
-            logger.debug("[AutocompleteService] Directory: \(expandedDir), PartialName: '\(partialName)', Total items: \(contents.count), Matching: \(matching.count) - \(matching.joined(separator: ", "))")
 
-            return contents.compactMap { filename -> PathSuggestion? in
-                // Filter by partial name (case-insensitive)
-                if !partialName.isEmpty &&
-                    !filename.lowercased().hasPrefix(partialName.lowercased())
-                {
-                    return nil
+                // Debug logging
+                let matching = contents.filter { filename in
+                    partialName.isEmpty || filename.lowercased().hasPrefix(partialName.lowercased())
                 }
+                logger
+                    .debug(
+                        "[AutocompleteService] Directory: \(expandedDir), PartialName: '\(partialName)', Total items: \(contents.count), Matching: \(matching.count) - \(matching.joined(separator: ", "))"
+                    )
 
-                // Skip hidden files unless explicitly searching for them
-                if !partialName.hasPrefix(".") && filename.hasPrefix(".") {
-                    return nil
-                }
-
-                let fullPath = (expandedDir as NSString).appendingPathComponent(filename)
-                var isDirectory: ObjCBool = false
-                fileManager.fileExists(atPath: fullPath, isDirectory: &isDirectory)
-
-                // Build display path
-                let displayPath: String = if originalPath.hasSuffix("/") {
-                    originalPath + filename
-                } else {
-                    if let lastSlash = originalPath.lastIndex(of: "/") {
-                        String(originalPath[..<originalPath.index(after: lastSlash)]) + filename
-                    } else {
-                        filename
+                return contents.compactMap { filename -> PathSuggestion? in
+                    // Filter by partial name (case-insensitive)
+                    if !partialName.isEmpty &&
+                        !filename.lowercased().hasPrefix(partialName.lowercased())
+                    {
+                        return nil
                     }
+
+                    // Skip hidden files unless explicitly searching for them
+                    if !partialName.hasPrefix(".") && filename.hasPrefix(".") {
+                        return nil
+                    }
+
+                    let fullPath = (expandedDir as NSString).appendingPathComponent(filename)
+                    var isDirectory: ObjCBool = false
+                    fileManager.fileExists(atPath: fullPath, isDirectory: &isDirectory)
+
+                    // Build display path
+                    let displayPath: String = if originalPath.hasSuffix("/") {
+                        originalPath + filename
+                    } else {
+                        if let lastSlash = originalPath.lastIndex(of: "/") {
+                            String(originalPath[..<originalPath.index(after: lastSlash)]) + filename
+                        } else {
+                            filename
+                        }
+                    }
+
+                    // Check if it's a git repository
+                    let isGitRepo = isDirectory.boolValue &&
+                        fileManager.fileExists(atPath: (fullPath as NSString).appendingPathComponent(".git"))
+
+                    return PathSuggestion(
+                        name: filename,
+                        path: displayPath,
+                        type: isDirectory.boolValue ? .directory : .file,
+                        suggestion: isDirectory.boolValue ? displayPath + "/" : displayPath,
+                        isRepository: isGitRepo,
+                        gitInfo: nil // Git info will be fetched later if needed
+                    )
                 }
-
-                // Check if it's a git repository
-                let isGitRepo = isDirectory.boolValue &&
-                    fileManager.fileExists(atPath: (fullPath as NSString).appendingPathComponent(".git"))
-
-                return PathSuggestion(
-                    name: filename,
-                    path: displayPath,
-                    type: isDirectory.boolValue ? .directory : .file,
-                    suggestion: isDirectory.boolValue ? displayPath + "/" : displayPath,
-                    isRepository: isGitRepo,
-                    gitInfo: nil  // Git info will be fetched later if needed
-                )
-            }
             } catch {
                 return []
             }
@@ -237,16 +246,16 @@ class AutocompleteService {
 
     private func getRepositorySuggestions(searchTerm: String, taskId: Int) async -> [PathSuggestion] {
         // Get git repositories from common locations
-        return await Task.detached(priority: .userInitiated) { [logger = self.logger] in
+        await Task.detached(priority: .userInitiated) { [logger = self.logger] in
             var suggestions: [PathSuggestion] = []
             let fileManager = FileManager.default
-            
+
             // Check if this task is still current
             if Task.isCancelled {
                 logger.debug("[AutocompleteService] Task cancelled, not processing repository search")
                 return []
             }
-            
+
             // Common repository locations
             let searchPaths = [
                 NSHomeDirectory() + "/Projects",
@@ -258,46 +267,46 @@ class AutocompleteService {
                 NSHomeDirectory() + "/git",
                 NSHomeDirectory() + "/src",
                 NSHomeDirectory() + "/work",
-                NSHomeDirectory()  // Also check home directory
+                NSHomeDirectory() // Also check home directory
             ]
-            
+
             let lowercasedTerm = searchTerm.lowercased()
-            
+
             for basePath in searchPaths {
                 guard fileManager.fileExists(atPath: basePath) else { continue }
-                
+
                 // Check if task is still current
                 if Task.isCancelled {
                     return []
                 }
-                
+
                 do {
                     let contents = try fileManager.contentsOfDirectory(atPath: basePath)
-                    
+
                     for item in contents {
                         // Skip if doesn't match search term
                         if !lowercasedTerm.isEmpty && !item.lowercased().contains(lowercasedTerm) {
                             continue
                         }
-                        
+
                         let fullPath = (basePath as NSString).appendingPathComponent(item)
                         var isDirectory: ObjCBool = false
-                        
+
                         guard fileManager.fileExists(atPath: fullPath, isDirectory: &isDirectory),
                               isDirectory.boolValue else { continue }
-                        
+
                         // Check if it's a git repository
                         let gitPath = (fullPath as NSString).appendingPathComponent(".git")
                         if fileManager.fileExists(atPath: gitPath) {
                             let displayPath = fullPath.replacingOccurrences(of: NSHomeDirectory(), with: "~")
-                            
+
                             suggestions.append(PathSuggestion(
                                 name: item,
                                 path: displayPath,
                                 type: .directory,
                                 suggestion: fullPath + "/",
                                 isRepository: true,
-                                gitInfo: nil  // Git info will be fetched later if needed
+                                gitInfo: nil // Git info will be fetched later if needed
                             ))
                         }
                     }
@@ -306,11 +315,11 @@ class AutocompleteService {
                     continue
                 }
             }
-            
+
             return suggestions
         }.value
     }
-    
+
     private func sortSuggestions(_ suggestions: [PathSuggestion], searchTerm: String) -> [PathSuggestion] {
         let lowercasedTerm = searchTerm.lowercased()
 
@@ -351,18 +360,20 @@ class AutocompleteService {
         currentTask?.cancel()
         suggestions = []
     }
-    
+
     /// Fetch Git info for directory suggestions
     private func enrichSuggestionsWithGitInfo(_ suggestions: [PathSuggestion]) async -> [PathSuggestion] {
         await withTaskGroup(of: (Int, PathSuggestion.GitInfo?).self) { group in
             var enrichedSuggestions = suggestions
-            
+
             // Only fetch Git info for directories and repositories
             for (index, suggestion) in suggestions.enumerated() {
                 if suggestion.type == .directory {
                     group.addTask { [gitMonitor = self.gitMonitor] in
                         // Expand path for Git lookup
-                        let expandedPath = NSString(string: suggestion.suggestion.trimmingCharacters(in: CharacterSet(charactersIn: "/"))).expandingTildeInPath
+                        let expandedPath = NSString(string: suggestion.suggestion
+                            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                        ).expandingTildeInPath
                         let gitInfo = await gitMonitor.findRepository(for: expandedPath).map { repo in
                             PathSuggestion.GitInfo(
                                 branch: repo.currentBranch,
@@ -376,21 +387,21 @@ class AutocompleteService {
                     }
                 }
             }
-            
+
             // Collect results
             for await (index, gitInfo) in group {
-                if let gitInfo = gitInfo {
+                if let gitInfo {
                     enrichedSuggestions[index] = PathSuggestion(
                         name: enrichedSuggestions[index].name,
                         path: enrichedSuggestions[index].path,
                         type: enrichedSuggestions[index].type,
                         suggestion: enrichedSuggestions[index].suggestion,
-                        isRepository: true,  // If we have Git info, it's a repository
+                        isRepository: true, // If we have Git info, it's a repository
                         gitInfo: gitInfo
                     )
                 }
             }
-            
+
             return enrichedSuggestions
         }
     }
@@ -400,7 +411,7 @@ class AutocompleteService {
         // we'll need to discover repositories inline or pass them as a parameter
         // For now, let's scan common locations for git repositories
 
-        return await Task.detached(priority: .userInitiated) {
+        await Task.detached(priority: .userInitiated) {
             let fileManager = FileManager.default
             let searchLower = searchTerm.lowercased().replacingOccurrences(of: "~/", with: "")
             let homeDir = NSHomeDirectory()
@@ -445,7 +456,7 @@ class AutocompleteService {
                             type: .directory,
                             suggestion: displayPath + "/",
                             isRepository: true,
-                            gitInfo: nil  // Git info will be fetched later if needed
+                            gitInfo: nil // Git info will be fetched later if needed
                         ))
                     }
                 } catch {

@@ -1,17 +1,17 @@
-import SwiftUI
 import Combine
+import SwiftUI
 
 /// A SwiftUI component for Git branch and worktree selection, mirroring the web UI functionality
 struct GitBranchWorktreeSelector: View {
     // MARK: - Properties
-    
+
     let repoPath: String
     let gitMonitor: GitRepositoryMonitor
     let worktreeService: WorktreeService
     let onBranchChanged: (String) -> Void
     let onWorktreeChanged: (String?) -> Void
     let onCreateWorktree: (String, String) async throws -> Void
-    
+
     @State private var selectedBranch: String = ""
     @State private var selectedWorktree: String?
     @State private var availableBranches: [String] = []
@@ -25,11 +25,11 @@ struct GitBranchWorktreeSelector: View {
     @State private var followMode = false
     @State private var followBranch: String?
     @State private var errorMessage: String?
-    
+
     @FocusState private var isNewBranchFieldFocused: Bool
-    
+
     // MARK: - Body
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Base Branch Selection
@@ -38,7 +38,7 @@ struct GitBranchWorktreeSelector: View {
                     Text(selectedWorktree != nil ? "Base Branch for Worktree:" : "Switch to Branch:")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
-                    
+
                     if hasUncommittedChanges && selectedWorktree == nil {
                         HStack(spacing: 2) {
                             Image(systemName: "circle.fill")
@@ -50,7 +50,7 @@ struct GitBranchWorktreeSelector: View {
                         }
                     }
                 }
-                
+
                 Menu {
                     ForEach(availableBranches, id: \.self) { branch in
                         Button(action: {
@@ -83,19 +83,19 @@ struct GitBranchWorktreeSelector: View {
                 .buttonStyle(.plain)
                 .disabled(isLoadingBranches || (hasUncommittedChanges && selectedWorktree == nil))
                 .opacity((hasUncommittedChanges && selectedWorktree == nil) ? 0.5 : 1.0)
-                
+
                 // Status text
                 if !isLoadingBranches {
                     statusText
                 }
             }
-            
+
             // Worktree Selection
             VStack(alignment: .leading, spacing: 4) {
                 Text("Worktree:")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
-                
+
                 if !showCreateWorktree {
                     Menu {
                         Button(action: {
@@ -104,9 +104,9 @@ struct GitBranchWorktreeSelector: View {
                         }) {
                             Text(worktreeNoneText)
                         }
-                        
+
                         Divider()
-                        
+
                         ForEach(availableWorktrees, id: \.id) { worktree in
                             Button(action: {
                                 selectedWorktree = worktree.branch
@@ -136,7 +136,7 @@ struct GitBranchWorktreeSelector: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(isLoadingWorktrees)
-                    
+
                     Button(action: {
                         showCreateWorktree = true
                         newBranchName = ""
@@ -165,7 +165,7 @@ struct GitBranchWorktreeSelector: View {
                                     createWorktree()
                                 }
                             }
-                        
+
                         HStack(spacing: 8) {
                             Button("Cancel") {
                                 showCreateWorktree = false
@@ -175,15 +175,17 @@ struct GitBranchWorktreeSelector: View {
                             .font(.system(size: 11))
                             .buttonStyle(.plain)
                             .disabled(isCreatingWorktree)
-                            
+
                             Button(isCreatingWorktree ? "Creating..." : "Create") {
                                 createWorktree()
                             }
                             .font(.system(size: 11))
                             .buttonStyle(.borderedProminent)
-                            .disabled(newBranchName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCreatingWorktree)
+                            .disabled(newBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
+                                .isEmpty || isCreatingWorktree
+                            )
                         }
-                        
+
                         if let error = errorMessage {
                             Text(error)
                                 .font(.system(size: 9))
@@ -197,9 +199,9 @@ struct GitBranchWorktreeSelector: View {
             await loadGitData()
         }
     }
-    
+
     // MARK: - Subviews
-    
+
     @ViewBuilder
     private var statusText: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -216,7 +218,7 @@ struct GitBranchWorktreeSelector: View {
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
             }
-            
+
             if followMode, let branch = followBranch {
                 Text("Follow mode active: following \(branch)")
                     .font(.system(size: 9))
@@ -224,32 +226,33 @@ struct GitBranchWorktreeSelector: View {
             }
         }
     }
-    
+
     private var worktreeNoneText: String {
         if selectedWorktree != nil {
-            return "No worktree (use main repository)"
+            "No worktree (use main repository)"
         } else if availableWorktrees.contains(where: { $0.isCurrentWorktree == true && $0.isMainWorktree != true }) {
-            return "Switch to main repository"
+            "Switch to main repository"
         } else {
-            return "No worktree (use main repository)"
+            "No worktree (use main repository)"
         }
     }
-    
+
     private var selectedWorktreeText: String {
         if let worktree = selectedWorktree,
-           let info = availableWorktrees.first(where: { $0.branch == worktree }) {
+           let info = availableWorktrees.first(where: { $0.branch == worktree })
+        {
             return formatWorktreeName(info)
         }
         return worktreeNoneText
     }
-    
+
     // MARK: - Methods
-    
+
     private func formatWorktreeName(_ worktree: Worktree) -> String {
         let folderName = URL(fileURLWithPath: worktree.path).lastPathComponent
         let showBranch = folderName.lowercased() != worktree.branch.lowercased() &&
-                        !folderName.lowercased().hasSuffix("-\(worktree.branch.lowercased())")
-        
+            !folderName.lowercased().hasSuffix("-\(worktree.branch.lowercased())")
+
         var result = ""
         if worktree.branch == selectedWorktree {
             result += "Use selected worktree: "
@@ -269,16 +272,16 @@ struct GitBranchWorktreeSelector: View {
         }
         return result
     }
-    
+
     private func getCurrentBranch() -> String {
         // TODO: Get current branch from GitRepository
-        return selectedBranch
+        selectedBranch
     }
-    
+
     private func loadGitData() async {
         isLoadingBranches = true
         isLoadingWorktrees = true
-        
+
         // Load branches
         let branches = await gitMonitor.getBranches(for: repoPath)
         availableBranches = branches
@@ -286,11 +289,11 @@ struct GitBranchWorktreeSelector: View {
             selectedBranch = firstBranch
         }
         isLoadingBranches = false
-        
+
         // Load worktrees
         await worktreeService.fetchWorktrees(for: repoPath)
         availableWorktrees = worktreeService.worktrees
-        
+
         // Check follow mode status from the service
         if let followModeStatus = worktreeService.followMode {
             followMode = followModeStatus.enabled
@@ -299,33 +302,33 @@ struct GitBranchWorktreeSelector: View {
             followMode = false
             followBranch = nil
         }
-        
+
         if let error = worktreeService.error {
             print("Failed to load worktrees: \(error)")
             errorMessage = "Failed to load worktrees"
         }
         isLoadingWorktrees = false
-        
+
         // Check for uncommitted changes
         if let repo = await gitMonitor.findRepository(for: repoPath) {
             hasUncommittedChanges = repo.hasChanges
         }
     }
-    
+
     private func createWorktree() {
         let trimmedName = newBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return }
-        
+
         isCreatingWorktree = true
         errorMessage = nil
-        
+
         Task {
             do {
                 try await onCreateWorktree(trimmedName, selectedBranch.isEmpty ? "main" : selectedBranch)
                 isCreatingWorktree = false
                 showCreateWorktree = false
                 newBranchName = ""
-                
+
                 // Reload to show new worktree
                 await loadGitData()
             } catch {

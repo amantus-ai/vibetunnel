@@ -71,10 +71,10 @@ final class SystemPermissionManager {
 
     /// Count of views that have registered for monitoring
     private var monitorRegistrationCount = 0
-    
+
     /// Last time permissions were checked to avoid excessive checking
     private var lastPermissionCheck: Date?
-    
+
     /// Minimum interval between permission checks (in seconds)
     private let minimumCheckInterval: TimeInterval = 0.5
 
@@ -192,15 +192,15 @@ final class SystemPermissionManager {
 
         // Start timer for periodic checks
         monitorTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self else { 
+            guard let self else {
                 print("SystemPermissionManager: Timer fired but self is nil")
-                return 
+                return
             }
             Task { @MainActor in
                 await self.checkAllPermissions()
             }
         }
-        
+
         logger.debug("Permission monitoring timer created: \(String(describing: self.monitorTimer))")
     }
 
@@ -217,10 +217,11 @@ final class SystemPermissionManager {
     func checkAllPermissions() async {
         // Avoid checking too frequently
         if let lastCheck = lastPermissionCheck,
-           Date().timeIntervalSince(lastCheck) < minimumCheckInterval {
+           Date().timeIntervalSince(lastCheck) < minimumCheckInterval
+        {
             return
         }
-        
+
         lastPermissionCheck = Date()
         let oldPermissions = permissions
 

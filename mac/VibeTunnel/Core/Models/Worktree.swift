@@ -13,7 +13,7 @@ struct Worktree: Codable, Identifiable, Equatable {
     let head: String
     let isMainWorktree: Bool?
     let isCurrentWorktree: Bool?
-    
+
     enum CodingKeys: String, CodingKey {
         case path
         case branch
@@ -73,7 +73,7 @@ struct GitBranch: Codable, Identifiable, Equatable {
     let name: String
     let current: Bool
     let remote: Bool
-    
+
     enum CodingKeys: String, CodingKey {
         case name
         case current

@@ -68,10 +68,11 @@ public final class GitRepositoryMonitor {
     private let serverPort: Int = {
         // Get port from environment or use default
         if let portString = ProcessInfo.processInfo.environment["SERVER_PORT"],
-           let port = Int(portString) {
+           let port = Int(portString)
+        {
             return port
         }
-        return 4020
+        return 4_020
     }()
 
     // MARK: - Public Methods
@@ -87,7 +88,7 @@ public final class GitRepositoryMonitor {
         }
         return cached
     }
-    
+
     /// Get list of branches for a repository
     /// - Parameter repoPath: Path to the Git repository
     /// - Returns: Array of branch names (without refs/heads/ prefix)
@@ -101,34 +102,34 @@ public final class GitRepositoryMonitor {
                     continuation.resume(returning: [])
                     return
                 }
-                
+
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
                 process.arguments = ["branch", "--format=%(refname:short)"]
                 process.currentDirectoryURL = URL(fileURLWithPath: sanitizedPath)
-                
+
                 let outputPipe = Pipe()
                 process.standardOutput = outputPipe
                 process.standardError = Pipe() // Suppress error output
-                
+
                 do {
                     try process.run()
                     process.waitUntilExit()
-                    
+
                     guard process.terminationStatus == 0 else {
                         continuation.resume(returning: [])
                         return
                     }
-                    
+
                     let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
                     let output = String(data: outputData, encoding: .utf8) ?? ""
-                    
+
                     // Parse branch names (one per line)
                     let branches = output
                         .split(separator: "\n")
                         .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                         .filter { !$0.isEmpty }
-                    
+
                     continuation.resume(returning: branches)
                 } catch {
                     continuation.resume(returning: [])
@@ -142,7 +143,7 @@ public final class GitRepositoryMonitor {
     /// - Returns: GitRepository information if found, nil otherwise
     public func findRepository(for filePath: String) async -> GitRepository? {
         print("🔍 [GitRepositoryMonitor] findRepository called for: \(filePath)")
-        
+
         // Validate path first
         guard validatePath(filePath) else {
             print("❌ [GitRepositoryMonitor] Path validation failed for: \(filePath)")
@@ -160,7 +161,7 @@ public final class GitRepositoryMonitor {
             print("❌ [GitRepositoryMonitor] No Git root found for: \(filePath)")
             return nil
         }
-        
+
         print("✅ [GitRepositoryMonitor] Found Git root at: \(repoPath)")
 
         // Check if we already have this repository cached
@@ -279,24 +280,28 @@ public final class GitRepositoryMonitor {
     /// Find the Git repository root starting from a given path
     private nonisolated func findGitRoot(from path: String) async -> String? {
         let expandedPath = NSString(string: path).expandingTildeInPath
-        
+
         // Use HTTP endpoint to check if it's a git repository
-        guard let url = URL(string: "http://localhost:\(serverPort)/api/git/repo-info?path=\(expandedPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") else {
+        guard let url =
+            URL(
+                string: "http://localhost:\(serverPort)/api/git/repo-info?path=\(expandedPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+            )
+        else {
             return nil
         }
-        
+
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             let decoder = JSONDecoder()
             let response = try decoder.decode(GitRepoInfoResponse.self, from: data)
-            
+
             if response.isGitRepo {
                 return response.repoPath
             }
         } catch {
             print("❌ [GitRepositoryMonitor] Failed to get git repo info: \(error)")
         }
-        
+
         return nil
     }
 
@@ -337,22 +342,26 @@ public final class GitRepositoryMonitor {
     /// Get basic repository status without GitHub URL
     private nonisolated func getBasicGitStatus(at repoPath: String) async -> GitRepository? {
         // Use HTTP endpoint to get git status
-        guard let url = URL(string: "http://localhost:\(serverPort)/api/git/repository-info?path=\(repoPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") else {
+        guard let url =
+            URL(
+                string: "http://localhost:\(serverPort)/api/git/repository-info?path=\(repoPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+            )
+        else {
             return nil
         }
-        
+
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             let decoder = JSONDecoder()
             let response = try decoder.decode(GitRepositoryInfoResponse.self, from: data)
-            
+
             if !response.isGitRepo {
                 return nil
             }
-            
+
             // Check if this is a worktree by looking for .git file instead of directory
             let isWorktree = Self.checkIfWorktree(at: response.repoPath)
-            
+
             return GitRepository(
                 path: response.repoPath,
                 modifiedCount: response.modifiedCount,
@@ -374,17 +383,17 @@ public final class GitRepositoryMonitor {
     /// Check if the given path is a Git worktree
     private nonisolated static func checkIfWorktree(at path: String) -> Bool {
         let gitPath = URL(fileURLWithPath: path).appendingPathComponent(".git")
-        
+
         // In a worktree, .git is a file containing the path to the real .git directory
         // In a regular repository, .git is a directory
         var isDirectory: ObjCBool = false
         if FileManager.default.fileExists(atPath: gitPath.path, isDirectory: &isDirectory) {
             return !isDirectory.boolValue
         }
-        
+
         return false
     }
-    
+
     /// Parse git status --porcelain output
     private nonisolated static func parseGitStatus(output: String, repoPath: String) -> GitRepository {
         let lines = output.split(separator: "\n")
@@ -403,7 +412,7 @@ public final class GitRepositoryMonitor {
             // Parse branch information (first line with --branch flag)
             if trimmedLine.hasPrefix("##") {
                 let branchInfo = trimmedLine.dropFirst(2).trimmingCharacters(in: .whitespaces)
-                
+
                 // Parse branch line format:
                 // ## branch
                 // ## branch...origin/branch
@@ -412,7 +421,7 @@ public final class GitRepositoryMonitor {
                 // ## branch...origin/branch [ahead 2, behind 1]
                 // ## HEAD (no branch)
                 // ## Initial commit on branch
-                
+
                 if branchInfo == "HEAD (no branch)" {
                     currentBranch = "HEAD"
                 } else if branchInfo.hasPrefix("Initial commit on ") {
@@ -423,20 +432,21 @@ public final class GitRepositoryMonitor {
                     // Extract branch and tracking info
                     if let dotsRange = branchInfo.range(of: "...") {
                         currentBranch = String(branchInfo[..<dotsRange.lowerBound])
-                        
+
                         // Extract tracking branch and ahead/behind info
                         let afterDots = String(branchInfo[dotsRange.upperBound...])
-                        
+
                         if let bracketRange = afterDots.range(of: " [") {
                             // Has ahead/behind info
                             trackingBranch = String(afterDots[..<bracketRange.lowerBound])
-                            
+
                             let trackingInfo = String(afterDots[bracketRange.upperBound...])
                             if let closeBracket = trackingInfo.firstIndex(of: "]") {
                                 let statusInfo = String(trackingInfo[..<closeBracket])
-                                
+
                                 // Parse ahead/behind counts
-                                let parts = statusInfo.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                                let parts = statusInfo.split(separator: ",")
+                                    .map { $0.trimmingCharacters(in: .whitespaces) }
                                 for part in parts {
                                     if part.hasPrefix("ahead ") {
                                         aheadCount = Int(part.dropFirst("ahead ".count))
@@ -490,7 +500,7 @@ public final class GitRepositoryMonitor {
 
         // Check if this is a worktree by looking for .git file instead of directory
         let isWorktree = checkIfWorktree(at: repoPath)
-        
+
         return GitRepository(
             path: repoPath,
             modifiedCount: modifiedCount,
@@ -517,7 +527,11 @@ public final class GitRepositoryMonitor {
         githubURLFetchesInProgress.insert(repoPath)
 
         // Try to get from HTTP endpoint first
-        if let url = URL(string: "http://localhost:\(serverPort)/api/git/remote?path=\(repoPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") {
+        if let url =
+            URL(
+                string: "http://localhost:\(serverPort)/api/git/remote?path=\(repoPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+            )
+        {
             do {
                 let (data, _) = try await URLSession.shared.data(from: url)
                 let decoder = JSONDecoder()
@@ -527,11 +541,12 @@ public final class GitRepositoryMonitor {
                     let remoteUrl: String?
                 }
                 let response = try decoder.decode(RemoteResponse.self, from: data)
-                
+
                 if let remoteUrlString = response.remoteUrl,
-                   let githubURL = GitRepository.parseGitHubURL(from: remoteUrlString) {
+                   let githubURL = GitRepository.parseGitHubURL(from: remoteUrlString)
+                {
                     self.githubURLCache[repoPath] = githubURL
-                    
+
                     // Update cached repository with GitHub URL
                     if var cachedRepo = self.repositoryCache[repoPath] {
                         cachedRepo = GitRepository(
@@ -581,7 +596,7 @@ public final class GitRepositoryMonitor {
                 }
             }
         }
-        
+
         // Remove from in-progress set
         self.githubURLFetchesInProgress.remove(repoPath)
     }

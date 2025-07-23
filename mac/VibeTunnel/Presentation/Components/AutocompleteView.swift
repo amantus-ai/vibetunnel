@@ -22,7 +22,7 @@ struct AutocompleteViewWithKeyboard: View {
     @Binding var selectedIndex: Int
     let keyboardNavigating: Bool
     let onSelect: (String) -> Void
-    
+
     @State private var lastKeyboardState = false
     @State private var mouseHoverTriggered = false
 
@@ -98,7 +98,7 @@ private struct AutocompleteRow: View {
                             .font(.system(size: 12))
                             .foregroundColor(.primary)
                             .lineLimit(1)
-                        
+
                         // Git status badges
                         if let gitInfo = suggestion.gitInfo {
                             HStack(spacing: 4) {
@@ -108,7 +108,7 @@ private struct AutocompleteRow: View {
                                         .font(.system(size: 10))
                                         .foregroundColor(gitInfo.isWorktree ? .purple : .secondary)
                                 }
-                                
+
                                 // Ahead/behind indicators
                                 if let ahead = gitInfo.aheadCount, ahead > 0 {
                                     HStack(spacing: 2) {
@@ -119,7 +119,7 @@ private struct AutocompleteRow: View {
                                     }
                                     .foregroundColor(.green)
                                 }
-                                
+
                                 if let behind = gitInfo.behindCount, behind > 0 {
                                     HStack(spacing: 2) {
                                         Image(systemName: "arrow.down")
@@ -129,7 +129,7 @@ private struct AutocompleteRow: View {
                                     }
                                     .foregroundColor(.orange)
                                 }
-                                
+
                                 // Changes indicator
                                 if gitInfo.hasChanges {
                                     Image(systemName: "circle.fill")
@@ -139,7 +139,6 @@ private struct AutocompleteRow: View {
                             }
                         }
                     }
-                    
                 }
 
                 Spacer()
@@ -306,7 +305,7 @@ struct AutocompleteTextField: View {
             autocompleteService?.clearSuggestions()
             return
         }
-        
+
         // Show suggestions immediately if we already have them, they'll update when new ones arrive
         if !(autocompleteService?.suggestions.isEmpty ?? true) {
             showSuggestions = true
@@ -323,13 +322,15 @@ struct AutocompleteTextField: View {
                     // Update suggestion visibility based on results
                     if !(autocompleteService?.suggestions.isEmpty ?? true) {
                         showSuggestions = true
-                        print("[AutocompleteView] Updated with \(autocompleteService?.suggestions.count ?? 0) suggestions")
-                        
+                        print(
+                            "[AutocompleteView] Updated with \(autocompleteService?.suggestions.count ?? 0) suggestions"
+                        )
+
                         // Try to maintain selection if possible
                         if selectedIndex >= (autocompleteService?.suggestions.count ?? 0) {
                             selectedIndex = -1
                         }
-                        
+
                         // Auto-select first item if it's a good match and nothing is selected
                         if selectedIndex == -1,
                            let first = autocompleteService?.suggestions.first,

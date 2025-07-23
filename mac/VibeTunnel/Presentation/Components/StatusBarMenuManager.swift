@@ -1,6 +1,6 @@
 import AppKit
-import SwiftUI
 import Observation
+import SwiftUI
 
 /// gross hack: https://stackoverflow.com/questions/26004684/nsstatusbarbutton-keep-highlighted?rq=4
 /// Didn't manage to keep the highlighted state reliable active with any other way.
@@ -56,7 +56,7 @@ final class StatusBarMenuManager: NSObject {
     /// State management
     private var menuState: MenuState = .none
 
-    // Track new session state
+    /// Track new session state
     private var isNewSessionActive = false {
         didSet {
             // Update window when state changes

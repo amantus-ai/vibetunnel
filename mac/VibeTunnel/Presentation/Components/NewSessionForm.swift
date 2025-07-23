@@ -34,7 +34,7 @@ struct NewSessionForm: View {
     @State private var selectedWorktreeBranch: String?
     @State private var checkingGitStatus = false
     @State private var worktreeService: WorktreeService?
-    
+
     // Branch state (matching web version)
     @State private var currentBranch = ""
     @State private var selectedBaseBranch = ""
@@ -105,12 +105,12 @@ struct NewSessionForm: View {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .font(.system(size: 14))
                                 .foregroundColor(.yellow)
-                            
+
                             Text(warning)
                                 .font(.system(size: 11))
                                 .foregroundColor(.primary)
                                 .fixedSize(horizontal: false, vertical: true)
-                            
+
                             Spacer(minLength: 0)
                         }
                         .padding(10)
@@ -123,7 +123,7 @@ struct NewSessionForm: View {
                                 .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
                         )
                     }
-                    
+
                     // Name field (first)
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Name")
@@ -192,7 +192,7 @@ struct NewSessionForm: View {
                                 branchSwitchWarning = nil
                             },
                             onWorktreeChanged: { worktree in
-                                if let worktree = worktree {
+                                if let worktree {
                                     // Find the worktree info to get the path
                                     if let worktreeInfo = service.worktrees.first(where: { $0.branch == worktree }) {
                                         selectedWorktreePath = worktreeInfo.path
@@ -213,7 +213,7 @@ struct NewSessionForm: View {
                                     createBranch: true,
                                     baseBranch: baseBranch
                                 )
-                                
+
                                 // After creation, select the new worktree
                                 await service.fetchWorktrees(for: repoPath)
                                 if let newWorktree = service.worktrees.first(where: { $0.branch == branchName }) {
@@ -455,21 +455,21 @@ struct NewSessionForm: View {
             do {
                 var finalWorkingDir: String
                 var effectiveBranch = ""
-                
+
                 // Clear any previous warning
                 await MainActor.run {
                     branchSwitchWarning = nil
                 }
-                
+
                 // If using a specific worktree
-                if let selectedWorktreePath = selectedWorktreePath, let selectedBranch = selectedWorktreeBranch {
+                if let selectedWorktreePath, let selectedBranch = selectedWorktreeBranch {
                     // Using a specific worktree
                     finalWorkingDir = selectedWorktreePath
                     effectiveBranch = selectedBranch
                 } else if isGitRepository && !selectedBaseBranch.isEmpty && selectedBaseBranch != currentBranch {
                     // Not using worktree but selected a different branch - attempt to switch
                     finalWorkingDir = workingDirectory
-                    
+
                     if let service = worktreeService, let repoPath = gitRepoPath {
                         do {
                             try await service.switchBranch(gitRepoPath: repoPath, branch: selectedBaseBranch)
@@ -477,10 +477,10 @@ struct NewSessionForm: View {
                         } catch {
                             // Branch switch failed - show warning but continue with current branch
                             effectiveBranch = currentBranch
-                            
+
                             let errorMessage = error.localizedDescription
                             let isUncommittedChanges = errorMessage.lowercased().contains("uncommitted changes")
-                            
+
                             await MainActor.run {
                                 branchSwitchWarning = isUncommittedChanges
                                     ? "Cannot switch to \(selectedBaseBranch) due to uncommitted changes. Creating session on \(currentBranch)."
@@ -493,10 +493,10 @@ struct NewSessionForm: View {
                     finalWorkingDir = workingDirectory
                     effectiveBranch = selectedBaseBranch.isEmpty ? currentBranch : selectedBaseBranch
                 }
-                
+
                 // Parse command into array
                 let commandArray = parseCommand(command.trimmingCharacters(in: .whitespacesAndNewlines))
-                
+
                 // Expand tilde in working directory
                 let expandedWorkingDir = NSString(string: finalWorkingDir).expandingTildeInPath
 
@@ -603,14 +603,14 @@ struct NewSessionForm: View {
 
     private func checkForGitRepository(at path: String) {
         guard !checkingGitStatus else { return }
-        
+
         print("🔍 [NewSessionForm] Checking for Git repository at: \(path)")
         checkingGitStatus = true
-        
+
         Task {
             let expandedPath = NSString(string: path).expandingTildeInPath
             print("🔍 [NewSessionForm] Expanded path: \(expandedPath)")
-            
+
             if let repo = await gitMonitor.findRepository(for: expandedPath) {
                 print("✅ [NewSessionForm] Found Git repository: \(repo.path)")
                 await MainActor.run {
@@ -619,7 +619,7 @@ struct NewSessionForm: View {
                     self.worktreeService = WorktreeService(serverManager: serverManager)
                     self.checkingGitStatus = false
                 }
-                
+
                 // Fetch branches and worktrees in parallel
                 if let service = self.worktreeService {
                     await withTaskGroup(of: Void.self) { group in
@@ -630,12 +630,12 @@ struct NewSessionForm: View {
                             await service.fetchWorktrees(for: repo.path)
                         }
                     }
-                    
+
                     // Update UI state with fetched data
                     await MainActor.run {
                         // Set available branches
                         // Branches are now loaded by GitBranchWorktreeSelector
-                        
+
                         // Find and set current branch
                         if let currentBranchData = service.branches.first(where: { $0.current }) {
                             self.currentBranch = currentBranchData.name
@@ -643,10 +643,10 @@ struct NewSessionForm: View {
                                 self.selectedBaseBranch = currentBranchData.name
                             }
                         }
-                        
+
                         // Pre-select current worktree if we're in one (not the main worktree)
-                        if let currentWorktree = service.worktrees.first(where: { 
-                            $0.path == expandedPath && !(($0.isMainWorktree ?? false))
+                        if let currentWorktree = service.worktrees.first(where: {
+                            $0.path == expandedPath && !($0.isMainWorktree ?? false)
                         }) {
                             self.selectedWorktreePath = currentWorktree.path
                             self.selectedWorktreeBranch = currentWorktree.branch
