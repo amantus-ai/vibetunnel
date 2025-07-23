@@ -2,6 +2,29 @@ import Combine
 import Foundation
 import Observation
 
+// MARK: - Response Types
+
+struct GitRepoInfoResponse: Codable {
+    let isGitRepo: Bool
+    let repoPath: String?
+}
+
+struct GitRepositoryInfoResponse: Codable {
+    let isGitRepo: Bool
+    let repoPath: String
+    let currentBranch: String?
+    let remoteUrl: String?
+    let hasChanges: Bool
+    let modifiedCount: Int
+    let untrackedCount: Int
+    let stagedCount: Int
+    let addedCount: Int
+    let deletedCount: Int
+    let aheadCount: Int
+    let behindCount: Int
+    let hasUpstream: Bool
+}
+
 /// Monitors and caches Git repository status information for efficient UI updates.
 ///
 /// `GitRepositoryMonitor` provides real-time Git repository information for terminal sessions
@@ -41,14 +64,14 @@ public final class GitRepositoryMonitor {
     /// Operation queue for rate limiting git operations
     private let gitOperationQueue = OperationQueue()
 
-    /// Path to the git binary
-    private let gitPath: String = {
-        // Check common locations
-        let locations = ["/usr/bin/git", "/opt/homebrew/bin/git", "/usr/local/bin/git"]
-        for path in locations where FileManager.default.fileExists(atPath: path) {
-            return path
+    /// Server port for API requests
+    private let serverPort: Int = {
+        // Get port from environment or use default
+        if let portString = ProcessInfo.processInfo.environment["SERVER_PORT"],
+           let port = Int(portString) {
+            return port
         }
-        return "/usr/bin/git" // fallback
+        return 4020
     }()
 
     // MARK: - Public Methods
@@ -69,8 +92,10 @@ public final class GitRepositoryMonitor {
     /// - Parameter repoPath: Path to the Git repository
     /// - Returns: Array of branch names (without refs/heads/ prefix)
     public func getBranches(for repoPath: String) async -> [String] {
+        // For now, keep using git directly for branch listing
+        // This is called by the UI and we don't have a branch listing endpoint yet
         await withCheckedContinuation { continuation in
-            gitOperationQueue.addOperation { [gitPath = self.gitPath] in
+            gitOperationQueue.addOperation {
                 // Sanitize the path before using it
                 guard let sanitizedPath = self.sanitizePath(repoPath) else {
                     continuation.resume(returning: [])
@@ -78,7 +103,7 @@ public final class GitRepositoryMonitor {
                 }
                 
                 let process = Process()
-                process.executableURL = URL(fileURLWithPath: gitPath)
+                process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
                 process.arguments = ["branch", "--format=%(refname:short)"]
                 process.currentDirectoryURL = URL(fileURLWithPath: sanitizedPath)
                 
@@ -254,24 +279,24 @@ public final class GitRepositoryMonitor {
     /// Find the Git repository root starting from a given path
     private nonisolated func findGitRoot(from path: String) async -> String? {
         let expandedPath = NSString(string: path).expandingTildeInPath
-        var currentPath = URL(fileURLWithPath: expandedPath)
-
-        // If it's a file, start from its directory
-        if !currentPath.hasDirectoryPath {
-            currentPath = currentPath.deletingLastPathComponent()
+        
+        // Use HTTP endpoint to check if it's a git repository
+        guard let url = URL(string: "http://localhost:\(serverPort)/api/git/repo-info?path=\(expandedPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") else {
+            return nil
         }
-
-        // Search up the directory tree to the root
-        while currentPath.path != "/" {
-            let gitPath = currentPath.appendingPathComponent(".git")
-
-            if FileManager.default.fileExists(atPath: gitPath.path) {
-                return currentPath.path
+        
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let decoder = JSONDecoder()
+            let response = try decoder.decode(GitRepoInfoResponse.self, from: data)
+            
+            if response.isGitRepo {
+                return response.repoPath
             }
-
-            currentPath = currentPath.deletingLastPathComponent()
+        } catch {
+            print("❌ [GitRepositoryMonitor] Failed to get git repo info: \(error)")
         }
-
+        
         return nil
     }
 
@@ -300,9 +325,9 @@ public final class GitRepositoryMonitor {
                 githubURL: cachedURL
             )
         } else {
-            // Fetch GitHub URL in background (non-blocking)
+            // Fetch GitHub URL from remote endpoint or local git command
             Task {
-                fetchGitHubURLInBackground(for: repoPath)
+                await fetchGitHubURLInBackground(for: repoPath)
             }
         }
 
@@ -311,41 +336,38 @@ public final class GitRepositoryMonitor {
 
     /// Get basic repository status without GitHub URL
     private nonisolated func getBasicGitStatus(at repoPath: String) async -> GitRepository? {
-        await withCheckedContinuation { continuation in
-            self.gitOperationQueue.addOperation {
-                // Sanitize the path before using it
-                guard let sanitizedPath = self.sanitizePath(repoPath) else {
-                    continuation.resume(returning: nil)
-                    return
-                }
-
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: self.gitPath)
-                process.arguments = ["status", "--porcelain", "--branch"]
-                process.currentDirectoryURL = URL(fileURLWithPath: sanitizedPath)
-
-                let outputPipe = Pipe()
-                process.standardOutput = outputPipe
-                process.standardError = Pipe() // Suppress error output
-
-                do {
-                    try process.run()
-                    process.waitUntilExit()
-
-                    guard process.terminationStatus == 0 else {
-                        continuation.resume(returning: nil)
-                        return
-                    }
-
-                    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-                    let output = String(data: outputData, encoding: .utf8) ?? ""
-
-                    let result = Self.parseGitStatus(output: output, repoPath: repoPath)
-                    continuation.resume(returning: result)
-                } catch {
-                    continuation.resume(returning: nil)
-                }
+        // Use HTTP endpoint to get git status
+        guard let url = URL(string: "http://localhost:\(serverPort)/api/git/repository-info?path=\(repoPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") else {
+            return nil
+        }
+        
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let decoder = JSONDecoder()
+            let response = try decoder.decode(GitRepositoryInfoResponse.self, from: data)
+            
+            if !response.isGitRepo {
+                return nil
             }
+            
+            // Check if this is a worktree by looking for .git file instead of directory
+            let isWorktree = Self.checkIfWorktree(at: response.repoPath)
+            
+            return GitRepository(
+                path: response.repoPath,
+                modifiedCount: response.modifiedCount,
+                addedCount: response.addedCount,
+                deletedCount: response.deletedCount,
+                untrackedCount: response.untrackedCount,
+                currentBranch: response.currentBranch,
+                aheadCount: response.aheadCount > 0 ? response.aheadCount : nil,
+                behindCount: response.behindCount > 0 ? response.behindCount : nil,
+                trackingBranch: response.hasUpstream ? "origin/\(response.currentBranch ?? "main")" : nil,
+                isWorktree: isWorktree
+            )
+        } catch {
+            print("❌ [GitRepositoryMonitor] Failed to get git status: \(error)")
+            return nil
         }
     }
 
@@ -485,7 +507,7 @@ public final class GitRepositoryMonitor {
 
     /// Fetch GitHub URL in background and cache it
     @MainActor
-    private func fetchGitHubURLInBackground(for repoPath: String) {
+    private func fetchGitHubURLInBackground(for repoPath: String) async {
         // Check if already cached or fetch in progress
         if githubURLCache[repoPath] != nil || githubURLFetchesInProgress.contains(repoPath) {
             return
@@ -494,41 +516,73 @@ public final class GitRepositoryMonitor {
         // Mark as in progress
         githubURLFetchesInProgress.insert(repoPath)
 
-        // Fetch in background
-        Task {
-            gitOperationQueue.addOperation {
-                if let githubURL = GitRepository.getGitHubURL(for: repoPath) {
-                    Task { @MainActor in
-                        self.githubURLCache[repoPath] = githubURL
-
-                        // Update cached repository with GitHub URL
-                        if var cachedRepo = self.repositoryCache[repoPath] {
-                            cachedRepo = GitRepository(
-                                path: cachedRepo.path,
-                                modifiedCount: cachedRepo.modifiedCount,
-                                addedCount: cachedRepo.addedCount,
-                                deletedCount: cachedRepo.deletedCount,
-                                untrackedCount: cachedRepo.untrackedCount,
-                                currentBranch: cachedRepo.currentBranch,
-                                aheadCount: cachedRepo.aheadCount,
-                                behindCount: cachedRepo.behindCount,
-                                trackingBranch: cachedRepo.trackingBranch,
-                                isWorktree: cachedRepo.isWorktree,
-                                githubURL: githubURL
-                            )
-                            self.repositoryCache[repoPath] = cachedRepo
-                        }
-
-                        // Remove from in-progress set
-                        self.githubURLFetchesInProgress.remove(repoPath)
+        // Try to get from HTTP endpoint first
+        if let url = URL(string: "http://localhost:\(serverPort)/api/git/remote?path=\(repoPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                let decoder = JSONDecoder()
+                struct RemoteResponse: Codable {
+                    let isGitRepo: Bool
+                    let repoPath: String?
+                    let remoteUrl: String?
+                }
+                let response = try decoder.decode(RemoteResponse.self, from: data)
+                
+                if let remoteUrlString = response.remoteUrl,
+                   let githubURL = GitRepository.parseGitHubURL(from: remoteUrlString) {
+                    self.githubURLCache[repoPath] = githubURL
+                    
+                    // Update cached repository with GitHub URL
+                    if var cachedRepo = self.repositoryCache[repoPath] {
+                        cachedRepo = GitRepository(
+                            path: cachedRepo.path,
+                            modifiedCount: cachedRepo.modifiedCount,
+                            addedCount: cachedRepo.addedCount,
+                            deletedCount: cachedRepo.deletedCount,
+                            untrackedCount: cachedRepo.untrackedCount,
+                            currentBranch: cachedRepo.currentBranch,
+                            aheadCount: cachedRepo.aheadCount,
+                            behindCount: cachedRepo.behindCount,
+                            trackingBranch: cachedRepo.trackingBranch,
+                            isWorktree: cachedRepo.isWorktree,
+                            githubURL: githubURL
+                        )
+                        self.repositoryCache[repoPath] = cachedRepo
                     }
-                } else {
-                    Task { @MainActor in
-                        // Remove from in-progress set even if fetch failed
-                        self.githubURLFetchesInProgress.remove(repoPath)
+                }
+            } catch {
+                // Fall back to using GitRepository.getGitHubURL if HTTP endpoint fails
+                Task {
+                    gitOperationQueue.addOperation {
+                        if let githubURL = GitRepository.getGitHubURL(for: repoPath) {
+                            Task { @MainActor in
+                                self.githubURLCache[repoPath] = githubURL
+
+                                // Update cached repository with GitHub URL
+                                if var cachedRepo = self.repositoryCache[repoPath] {
+                                    cachedRepo = GitRepository(
+                                        path: cachedRepo.path,
+                                        modifiedCount: cachedRepo.modifiedCount,
+                                        addedCount: cachedRepo.addedCount,
+                                        deletedCount: cachedRepo.deletedCount,
+                                        untrackedCount: cachedRepo.untrackedCount,
+                                        currentBranch: cachedRepo.currentBranch,
+                                        aheadCount: cachedRepo.aheadCount,
+                                        behindCount: cachedRepo.behindCount,
+                                        trackingBranch: cachedRepo.trackingBranch,
+                                        isWorktree: cachedRepo.isWorktree,
+                                        githubURL: githubURL
+                                    )
+                                    self.repositoryCache[repoPath] = cachedRepo
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
+        
+        // Remove from in-progress set
+        self.githubURLFetchesInProgress.remove(repoPath)
     }
 }

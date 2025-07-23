@@ -140,18 +140,11 @@ private struct AutocompleteRow: View {
                         }
                     }
                     
-                    // Path on second line for better visibility
-                    HStack {
-                        Text(suggestion.path)
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.head)
-                        
-                        Spacer()
-                        
-                        // Branch selector for Git repositories
-                        if let gitInfo = suggestion.gitInfo, gitInfo.branch != nil {
+                    // Branch selector for Git repositories (removed redundant path display)
+                    if let gitInfo = suggestion.gitInfo, gitInfo.branch != nil {
+                        HStack {
+                            Spacer()
+                            
                             BranchSelectorView(
                                 repoPath: suggestion.suggestion.trimmingCharacters(in: CharacterSet(charactersIn: "/")),
                                 currentBranch: gitInfo.branch,

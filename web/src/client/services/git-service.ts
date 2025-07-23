@@ -12,6 +12,8 @@ const logger = createLogger('git-service');
 export interface GitRepoInfo {
   isGitRepo: boolean;
   repoPath?: string;
+  hasChanges?: boolean;
+  isWorktree?: boolean;
 }
 
 export interface Worktree {

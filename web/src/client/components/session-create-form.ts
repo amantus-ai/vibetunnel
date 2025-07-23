@@ -94,6 +94,12 @@ export class SessionCreateForm extends LitElement {
   @state() private isLoadingBranches = false;
   @state() private isLoadingWorktrees = false;
 
+  // Follow mode state
+  @state() private followMode = false;
+  @state() private followBranch: string | null = null;
+  @state() private showFollowMode = false;
+  @state() private isCheckingFollowMode = false;
+
   @state() private quickStartCommands = [
     { label: '✨ claude', command: 'claude' },
     { label: '✨ gemini', command: 'gemini' },
@@ -455,7 +461,7 @@ export class SessionCreateForm extends LitElement {
         (wt) => wt.branch === this.selectedWorktree
       );
       if (selectedWorktreeInfo?.path) {
-        effectiveWorkingDir = selectedWorktreeInfo.path;
+        effectiveWorkingDir = formatPathForDisplay(selectedWorktreeInfo.path);
         effectiveBranch = this.selectedWorktree;
         logger.log(
           `Using worktree path: ${effectiveWorkingDir} for branch: ${this.selectedWorktree}`
@@ -516,6 +522,58 @@ export class SessionCreateForm extends LitElement {
     // Add session name if provided
     if (this.sessionName?.trim()) {
       sessionData.name = this.sessionName.trim();
+    }
+
+    // Handle follow mode - enable for selected branch if toggle is on
+    if (this.showFollowMode && this.gitRepoInfo?.repoPath && effectiveBranch && this.authClient) {
+      try {
+        // Check if follow mode is already active for a different branch
+        if (this.followMode && this.followBranch && this.followBranch !== effectiveBranch) {
+          logger.log(
+            `Follow mode is already active for branch: ${this.followBranch}, switching to: ${effectiveBranch}`
+          );
+        }
+
+        logger.log(`Enabling follow mode for branch: ${effectiveBranch}`);
+        const response = await fetch('/api/worktrees/follow', {
+          method: 'POST',
+          headers: {
+            ...this.authClient.getAuthHeader(),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            repoPath: this.gitRepoInfo.repoPath,
+            branch: effectiveBranch,
+            enable: true,
+          }),
+        });
+
+        if (!response.ok) {
+          logger.error('Failed to enable follow mode:', response.statusText);
+          // Show error to user
+          this.dispatchEvent(
+            new CustomEvent('error', {
+              detail: 'Failed to enable follow mode. Session will be created without follow mode.',
+              bubbles: true,
+              composed: true,
+            })
+          );
+        } else {
+          logger.log('Follow mode enabled successfully');
+          // Update local state
+          this.followMode = true;
+          this.followBranch = effectiveBranch;
+        }
+      } catch (error) {
+        logger.error('Error enabling follow mode:', error);
+        this.dispatchEvent(
+          new CustomEvent('error', {
+            detail: 'Error enabling follow mode. Session will be created without follow mode.',
+            bubbles: true,
+            composed: true,
+          })
+        );
+      }
     }
 
     try {
@@ -666,6 +724,10 @@ export class SessionCreateForm extends LitElement {
     this.showOptions = !this.showOptions;
   }
 
+  private handleToggleFollowMode() {
+    this.showFollowMode = !this.showFollowMode;
+  }
+
   private handleWorkingDirKeydown(e: KeyboardEvent) {
     if (!this.showCompletions || this.completions.length === 0) return;
 
@@ -705,6 +767,8 @@ export class SessionCreateForm extends LitElement {
       this.gitRepoInfo = null;
       this.availableBranches = [];
       this.selectedBranch = '';
+      this.followMode = false;
+      this.followBranch = null;
       return;
     }
 
@@ -719,10 +783,11 @@ export class SessionCreateForm extends LitElement {
         // Trigger re-render after updating gitRepoInfo
         this.requestUpdate();
 
-        // Load branches in parallel with worktrees
+        // Load branches, worktrees, and follow mode status in parallel
         await Promise.all([
           this.loadBranches(repoInfo.repoPath),
           this.loadWorktrees(repoInfo.repoPath, path),
+          this.checkFollowMode(repoInfo.repoPath),
         ]);
       } else {
         logger.log(`❌ Not a Git repository: ${path}`, repoInfo);
@@ -733,6 +798,8 @@ export class SessionCreateForm extends LitElement {
         this.selectedBaseBranch = '';
         this.availableWorktrees = [];
         this.selectedWorktree = undefined;
+        this.followMode = false;
+        this.followBranch = null;
         // Trigger re-render to clear Git UI
         this.requestUpdate();
       }
@@ -745,6 +812,8 @@ export class SessionCreateForm extends LitElement {
       this.selectedBaseBranch = '';
       this.availableWorktrees = [];
       this.selectedWorktree = undefined;
+      this.followMode = false;
+      this.followBranch = null;
     } finally {
       this.isCheckingGit = false;
     }
@@ -885,13 +954,81 @@ export class SessionCreateForm extends LitElement {
     }
   }
 
+  private renderGitBranchIndicator() {
+    if (
+      !this.gitRepoInfo?.isGitRepo ||
+      !this.currentBranch ||
+      document.activeElement?.getAttribute('data-testid') === 'working-dir-input'
+    ) {
+      return nothing;
+    }
+
+    return html`
+      <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+        <span class="text-[10px] sm:text-xs text-primary font-medium flex items-center gap-1">
+          <span class="text-text-muted">[</span>
+          ${this.currentBranch}
+          <span class="text-text-muted">]</span>
+          ${this.gitRepoInfo.hasChanges ? html`<span class="text-yellow-500" title="Modified">●</span>` : ''}
+          ${
+            this.gitRepoInfo.isWorktree
+              ? html`
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" class="text-purple-400" title="Git worktree">
+              <path d="M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z"/>
+            </svg>
+          `
+              : ''
+          }
+        </span>
+      </div>
+    `;
+  }
+
+  private handleWorkingDirFocus() {
+    // Force re-render to hide the branch indicator
+    this.requestUpdate();
+  }
+
+  private async checkFollowMode(repoPath: string): Promise<void> {
+    if (!this.authClient) {
+      return;
+    }
+
+    this.isCheckingFollowMode = true;
+    try {
+      const response = await fetch(`/api/git/follow?${new URLSearchParams({ path: repoPath })}`, {
+        headers: this.authClient.getAuthHeader(),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        this.followMode = data.followMode || false;
+        this.followBranch = data.followBranch || null;
+        logger.log('Follow mode status:', {
+          followMode: this.followMode,
+          followBranch: this.followBranch,
+        });
+      } else {
+        logger.error('Failed to check follow mode:', response.statusText);
+        this.followMode = false;
+        this.followBranch = null;
+      }
+    } catch (error) {
+      logger.error('Failed to check follow mode:', error);
+      this.followMode = false;
+      this.followBranch = null;
+    } finally {
+      this.isCheckingFollowMode = false;
+    }
+  }
+
   render() {
     if (!this.visible) {
       return html``;
     }
 
     return html`
-      <div class="modal-backdrop flex items-center justify-center" @click=${this.handleBackdropClick} role="dialog" aria-modal="true">
+      <div class="modal-backdrop flex items-center justify-center py-4 sm:py-6 lg:py-8" @click=${this.handleBackdropClick} role="dialog" aria-modal="true">
         <div
           class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] mx-2 sm:mx-4 overflow-hidden"
           style="pointer-events: auto;"
@@ -923,7 +1060,7 @@ export class SessionCreateForm extends LitElement {
             </button>
           </div>
 
-          <div class="p-3 sm:p-4 overflow-y-auto flex-grow max-h-[65vh] sm:max-h-[75vh] lg:max-h-[80vh]">
+          <div class="p-3 sm:p-4 overflow-y-auto flex-grow max-h-[calc(100vh-8rem)] sm:max-h-[calc(100vh-6rem)] lg:max-h-[calc(100vh-4rem)]">
             <!-- Branch Switch Warning -->
             ${
               this.branchSwitchWarning
@@ -975,18 +1112,22 @@ export class SessionCreateForm extends LitElement {
               <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Working Directory:</label>
               <div class="relative">
                 <div class="flex gap-1.5 sm:gap-2">
-                <input
-                  type="text"
-                  class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm flex-1"
-                  .value=${this.workingDir}
-                  @input=${this.handleWorkingDirChange}
-                  @keydown=${this.handleWorkingDirKeydown}
-                  @blur=${this.handleWorkingDirBlur}
-                  placeholder="~/"
-                  ?disabled=${this.disabled || this.isCreating}
-                  data-testid="working-dir-input"
-                  autocomplete="off"
-                />
+                <div class="relative flex-1">
+                  <input
+                    type="text"
+                    class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm w-full pr-24"
+                    .value=${this.workingDir}
+                    @input=${this.handleWorkingDirChange}
+                    @keydown=${this.handleWorkingDirKeydown}
+                    @blur=${this.handleWorkingDirBlur}
+                    @focus=${this.handleWorkingDirFocus}
+                    placeholder="~/"
+                    ?disabled=${this.disabled || this.isCreating}
+                    data-testid="working-dir-input"
+                    autocomplete="off"
+                  />
+                  ${this.renderGitBranchIndicator()}
+                </div>
                 <button
                   id="session-browse-button"
                   class="bg-bg-tertiary border border-border/50 rounded-lg p-1.5 sm:p-2 lg:p-3 font-mono text-text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary/50 hover:shadow-sm flex-shrink-0"
@@ -1131,11 +1272,8 @@ export class SessionCreateForm extends LitElement {
                                   : nothing
                               }
                               
-                              <!-- Spacer to push path to the right -->
+                              <!-- Spacer (removed redundant path display) -->
                               <div class="flex-1"></div>
-                              
-                              <!-- Full path -->
-                              <span class="text-text-muted text-[9px] sm:text-[10px] truncate max-w-[40%]">${completion.path}</span>
                             </button>
                           `
                         )}
@@ -1192,8 +1330,18 @@ export class SessionCreateForm extends LitElement {
                     <!-- Base Branch Selection -->
                     <div class="space-y-2">
                       <div>
-                        <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">
+                        <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm flex items-center gap-2">
                           ${this.selectedWorktree ? 'Base Branch for Worktree:' : 'Switch to Branch:'}
+                          ${
+                            this.gitRepoInfo?.hasChanges && !this.selectedWorktree
+                              ? html`
+                            <span class="text-yellow-500 text-[9px] sm:text-[10px] flex items-center gap-1">
+                              <span>●</span>
+                              <span>Uncommitted changes</span>
+                            </span>
+                          `
+                              : ''
+                          }
                         </label>
                         <div class="relative">
                           <select
@@ -1204,8 +1352,12 @@ export class SessionCreateForm extends LitElement {
                               // Clear any previous warning
                               this.branchSwitchWarning = undefined;
                             }}
-                            class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm appearance-none pr-8"
-                            ?disabled=${this.disabled || this.isCreating || this.isLoadingBranches}
+                            class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm appearance-none pr-8 ${
+                              this.gitRepoInfo?.hasChanges && !this.selectedWorktree
+                                ? 'opacity-50 cursor-not-allowed'
+                                : ''
+                            }"
+                            ?disabled=${this.disabled || this.isCreating || this.isLoadingBranches || (this.gitRepoInfo?.hasChanges && !this.selectedWorktree)}
                             data-testid="git-base-branch-select"
                           >
                             ${this.availableBranches.map(
@@ -1227,12 +1379,37 @@ export class SessionCreateForm extends LitElement {
                             ? html`
                               <p class="text-[9px] sm:text-[10px] text-text-muted mt-1">
                                 ${
-                                  this.selectedWorktree
-                                    ? 'New worktree branch will be created from this branch'
-                                    : this.selectedBaseBranch &&
-                                        this.selectedBaseBranch !== this.currentBranch
-                                      ? `Session will start on ${this.selectedBaseBranch} (currently on ${this.currentBranch})`
-                                      : `Current branch: ${this.currentBranch}`
+                                  this.gitRepoInfo?.hasChanges && !this.selectedWorktree
+                                    ? html`<span class="text-yellow-500">Branch switching is disabled due to uncommitted changes. Commit or stash changes first.</span>`
+                                    : this.selectedWorktree
+                                      ? 'New worktree branch will be created from this branch'
+                                      : this.selectedBaseBranch &&
+                                          this.selectedBaseBranch !== this.currentBranch
+                                        ? `Session will start on ${this.selectedBaseBranch}`
+                                        : ''
+                                }
+                                ${
+                                  this.followMode &&
+                                  this.followBranch &&
+                                  (
+                                    (this.gitRepoInfo?.hasChanges && !this.selectedWorktree) ||
+                                      this.selectedWorktree ||
+                                      (this.selectedBaseBranch &&
+                                        this.selectedBaseBranch !== this.currentBranch)
+                                  )
+                                    ? html`${
+                                        (this.gitRepoInfo?.hasChanges && !this.selectedWorktree) ||
+                                        this.selectedWorktree ||
+                                        (
+                                          this.selectedBaseBranch &&
+                                            this.selectedBaseBranch !== this.currentBranch
+                                        )
+                                          ? html`<br>`
+                                          : ''
+                                      }<span class="text-primary">Follow mode active: following ${this.followBranch}</span>`
+                                    : this.followMode && this.followBranch
+                                      ? html`<span class="text-primary">Follow mode active: following ${this.followBranch}</span>`
+                                      : ''
                                 }
                               </p>
                             `
@@ -1286,7 +1463,7 @@ export class SessionCreateForm extends LitElement {
 
                                   return html`
                                       <option value="${worktree.branch}" ?selected=${worktree.branch === this.selectedWorktree}>
-                                        ${folderName}${showBranch ? ` [${worktree.branch}]` : ''}${worktree.isMainWorktree ? ' (main)' : ''}${worktree.isCurrentWorktree ? ' (current)' : ''}
+                                        ${folderName}${showBranch ? ` [${worktree.branch}]` : ''}${worktree.isMainWorktree ? ' (main)' : ''}${worktree.isCurrentWorktree ? ' (current)' : ''}${this.followMode && this.followBranch === worktree.branch ? ' ⚡️ following' : ''}
                                       </option>
                                     `;
                                 })}
@@ -1456,7 +1633,7 @@ export class SessionCreateForm extends LitElement {
               ${
                 this.showOptions
                   ? html`
-                <div class="space-y-2 mt-2 sm:mt-3">
+                <div class="space-y-2 sm:space-y-3 mt-2 sm:mt-3">
                   <!-- Spawn Window Toggle - Only show when Mac app is connected -->
                   ${
                     this.macAppConnected
@@ -1517,8 +1694,48 @@ export class SessionCreateForm extends LitElement {
                       </div>
                     </div>
                   </div>
+
+                  <!-- Follow Mode Toggle - Only show for main repository -->
+                  ${
+                    this.gitRepoInfo?.isGitRepo && !this.selectedWorktree
+                      ? html`
+                        <div class="flex items-center justify-between bg-bg-elevated border border-border/50 rounded-lg p-2 sm:p-3 lg:p-4">
+                          <div class="flex-1 pr-2 sm:pr-3 lg:pr-4">
+                            <span class="text-primary text-[10px] sm:text-xs lg:text-sm font-medium">Follow Mode</span>
+                            <p class="text-[9px] sm:text-[10px] lg:text-xs text-text-muted mt-0.5 hidden sm:block">
+                              ${
+                                this.followMode
+                                  ? `Currently following: ${this.followBranch || 'unknown'}`
+                                  : this.showFollowMode
+                                    ? 'Will enable follow mode for the session branch'
+                                    : 'Keep main repository in sync with worktree'
+                              }
+                            </p>
+                          </div>
+                          <button
+                            role="switch"
+                            aria-checked="${this.showFollowMode}"
+                            @click=${this.handleToggleFollowMode}
+                            class="relative inline-flex h-4 w-8 sm:h-5 sm:w-10 lg:h-6 lg:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-bg-secondary ${
+                              this.showFollowMode ? 'bg-primary' : 'bg-border/50'
+                            }"
+                            ?disabled=${this.disabled || this.isCreating || this.followMode}
+                            data-testid="follow-mode-toggle"
+                          >
+                            <span
+                              class="inline-block h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5 transform rounded-full bg-bg-elevated transition-transform ${
+                                this.showFollowMode
+                                  ? 'translate-x-4 sm:translate-x-5'
+                                  : 'translate-x-0.5'
+                              }"
+                            ></span>
+                          </button>
+                        </div>
+                      `
+                      : ''
+                  }
                 </div>
-              `
+                `
                   : ''
               }
             </div>

@@ -587,5 +587,347 @@ export function createGitRoutes(): Router {
     }
   });
 
+  /**
+   * GET /api/git/status
+   * Get repository status with file counts and branch info
+   */
+  router.get('/git/status', async (req, res) => {
+    try {
+      const { path: queryPath } = req.query;
+
+      if (!queryPath || typeof queryPath !== 'string') {
+        return res.status(400).json({
+          error: 'Missing or invalid path parameter',
+        });
+      }
+
+      // Resolve the path to absolute
+      const absolutePath = resolveAbsolutePath(queryPath);
+      logger.debug(`Getting git status for path: ${absolutePath}`);
+
+      try {
+        // Get repository root
+        const { stdout: repoPathOutput } = await execGit(['rev-parse', '--show-toplevel'], {
+          cwd: absolutePath,
+        });
+        const repoPath = repoPathOutput.trim();
+
+        // Get current branch
+        const { stdout: branchOutput } = await execGit(['branch', '--show-current'], {
+          cwd: repoPath,
+        });
+        const currentBranch = branchOutput.trim();
+
+        // Get status in porcelain format
+        const { stdout: statusOutput } = await execGit(['status', '--porcelain=v1'], {
+          cwd: repoPath,
+        });
+
+        // Parse status output
+        const lines = statusOutput
+          .trim()
+          .split('\n')
+          .filter((line) => line.length > 0);
+        let modifiedCount = 0;
+        let untrackedCount = 0;
+        let stagedCount = 0;
+        let addedCount = 0;
+        let deletedCount = 0;
+
+        for (const line of lines) {
+          if (line.length < 2) continue;
+
+          const indexStatus = line[0];
+          const workTreeStatus = line[1];
+
+          // Staged changes
+          if (indexStatus !== ' ' && indexStatus !== '?') {
+            stagedCount++;
+
+            // Count specific types of staged changes
+            if (indexStatus === 'A') {
+              addedCount++;
+            } else if (indexStatus === 'D') {
+              deletedCount++;
+            }
+          }
+
+          // Working tree changes
+          if (workTreeStatus === 'M') {
+            modifiedCount++;
+          } else if (workTreeStatus === 'D' && indexStatus === ' ') {
+            // Deleted in working tree but not staged
+            deletedCount++;
+          }
+
+          // Untracked files
+          if (indexStatus === '?' && workTreeStatus === '?') {
+            untrackedCount++;
+          }
+        }
+
+        // Get ahead/behind counts
+        let aheadCount = 0;
+        let behindCount = 0;
+        let hasUpstream = false;
+
+        try {
+          // Check if we have an upstream branch
+          const { stdout: upstreamOutput } = await execGit(
+            ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'],
+            { cwd: repoPath }
+          );
+
+          if (upstreamOutput.trim()) {
+            hasUpstream = true;
+
+            // Get ahead/behind counts
+            const { stdout: aheadBehindOutput } = await execGit(
+              ['rev-list', '--left-right', '--count', 'HEAD...@{u}'],
+              { cwd: repoPath }
+            );
+
+            const [ahead, behind] = aheadBehindOutput
+              .trim()
+              .split('\t')
+              .map((n) => Number.parseInt(n, 10));
+            aheadCount = ahead || 0;
+            behindCount = behind || 0;
+          }
+        } catch (_error) {
+          // No upstream branch configured
+          logger.debug('No upstream branch configured');
+        }
+
+        return res.json({
+          isGitRepo: true,
+          repoPath,
+          currentBranch,
+          hasChanges: lines.length > 0,
+          modifiedCount,
+          untrackedCount,
+          stagedCount,
+          addedCount,
+          deletedCount,
+          aheadCount,
+          behindCount,
+          hasUpstream,
+        });
+      } catch (error) {
+        if (isNotGitRepositoryError(error)) {
+          return res.json({
+            isGitRepo: false,
+          });
+        }
+        throw error;
+      }
+    } catch (error) {
+      logger.error('Error getting git status:', error);
+      return res.status(500).json({
+        error: 'Failed to get git status',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
+  /**
+   * GET /api/git/remote
+   * Get remote URL for a repository
+   */
+  router.get('/git/remote', async (req, res) => {
+    try {
+      const { path: queryPath } = req.query;
+
+      if (!queryPath || typeof queryPath !== 'string') {
+        return res.status(400).json({
+          error: 'Missing or invalid path parameter',
+        });
+      }
+
+      // Resolve the path to absolute
+      const absolutePath = resolveAbsolutePath(queryPath);
+      logger.debug(`Getting git remote for path: ${absolutePath}`);
+
+      try {
+        // Get repository root
+        const { stdout: repoPathOutput } = await execGit(['rev-parse', '--show-toplevel'], {
+          cwd: absolutePath,
+        });
+        const repoPath = repoPathOutput.trim();
+
+        // Get remote URL
+        const { stdout: remoteOutput } = await execGit(['remote', 'get-url', 'origin'], {
+          cwd: repoPath,
+        });
+        const remoteUrl = remoteOutput.trim();
+
+        return res.json({
+          isGitRepo: true,
+          repoPath,
+          remoteUrl,
+        });
+      } catch (error) {
+        if (isNotGitRepositoryError(error)) {
+          return res.json({
+            isGitRepo: false,
+          });
+        }
+
+        // Check if it's just missing remote
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('No such remote')) {
+          return res.json({
+            isGitRepo: true,
+            remoteUrl: null,
+          });
+        }
+
+        throw error;
+      }
+    } catch (error) {
+      logger.error('Error getting git remote:', error);
+      return res.status(500).json({
+        error: 'Failed to get git remote',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
+  /**
+   * GET /api/git/repository-info
+   * Get comprehensive repository information (combines multiple git commands)
+   */
+  router.get('/git/repository-info', async (req, res) => {
+    try {
+      const { path: queryPath } = req.query;
+
+      if (!queryPath || typeof queryPath !== 'string') {
+        return res.status(400).json({
+          error: 'Missing or invalid path parameter',
+        });
+      }
+
+      // Resolve the path to absolute
+      const absolutePath = resolveAbsolutePath(queryPath);
+      logger.debug(`Getting comprehensive git info for path: ${absolutePath}`);
+
+      try {
+        // Get repository root
+        const { stdout: repoPathOutput } = await execGit(['rev-parse', '--show-toplevel'], {
+          cwd: absolutePath,
+        });
+        const repoPath = repoPathOutput.trim();
+
+        // Gather all information in parallel
+        const [branchResult, statusResult, remoteResult, aheadBehindResult] =
+          await Promise.allSettled([
+            // Current branch
+            execGit(['branch', '--show-current'], { cwd: repoPath }),
+            // Status
+            execGit(['status', '--porcelain=v1'], { cwd: repoPath }),
+            // Remote URL
+            execGit(['remote', 'get-url', 'origin'], { cwd: repoPath }),
+            // Ahead/behind counts
+            execGit(['rev-list', '--left-right', '--count', 'HEAD...@{u}'], { cwd: repoPath }),
+          ]);
+
+        // Process results
+        const currentBranch =
+          branchResult.status === 'fulfilled' ? branchResult.value.stdout.trim() : null;
+
+        // Parse status
+        let modifiedCount = 0;
+        let untrackedCount = 0;
+        let stagedCount = 0;
+        let addedCount = 0;
+        let deletedCount = 0;
+        let hasChanges = false;
+
+        if (statusResult.status === 'fulfilled') {
+          const lines = statusResult.value.stdout
+            .trim()
+            .split('\n')
+            .filter((line) => line.length > 0);
+          hasChanges = lines.length > 0;
+
+          for (const line of lines) {
+            if (line.length < 2) continue;
+
+            const indexStatus = line[0];
+            const workTreeStatus = line[1];
+
+            if (indexStatus !== ' ' && indexStatus !== '?') {
+              stagedCount++;
+
+              if (indexStatus === 'A') {
+                addedCount++;
+              } else if (indexStatus === 'D') {
+                deletedCount++;
+              }
+            }
+
+            if (workTreeStatus === 'M') {
+              modifiedCount++;
+            } else if (workTreeStatus === 'D' && indexStatus === ' ') {
+              deletedCount++;
+            }
+
+            if (indexStatus === '?' && workTreeStatus === '?') {
+              untrackedCount++;
+            }
+          }
+        }
+
+        // Remote URL
+        const remoteUrl =
+          remoteResult.status === 'fulfilled' ? remoteResult.value.stdout.trim() : null;
+
+        // Ahead/behind counts
+        let aheadCount = 0;
+        let behindCount = 0;
+        let hasUpstream = false;
+
+        if (aheadBehindResult.status === 'fulfilled') {
+          hasUpstream = true;
+          const [ahead, behind] = aheadBehindResult.value.stdout
+            .trim()
+            .split('\t')
+            .map((n) => Number.parseInt(n, 10));
+          aheadCount = ahead || 0;
+          behindCount = behind || 0;
+        }
+
+        return res.json({
+          isGitRepo: true,
+          repoPath,
+          currentBranch,
+          remoteUrl,
+          hasChanges,
+          modifiedCount,
+          untrackedCount,
+          stagedCount,
+          addedCount,
+          deletedCount,
+          aheadCount,
+          behindCount,
+          hasUpstream,
+        });
+      } catch (error) {
+        if (isNotGitRepositoryError(error)) {
+          return res.json({
+            isGitRepo: false,
+          });
+        }
+        throw error;
+      }
+    } catch (error) {
+      logger.error('Error getting repository info:', error);
+      return res.status(500).json({
+        error: 'Failed to get repository info',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
   return router;
 }
