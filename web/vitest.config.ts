@@ -37,6 +37,15 @@ export default defineConfig(({ mode }) => {
       environment: isClient ? 'happy-dom' : 'node',
       testTimeout: 60000, // 60s for e2e tests
       hookTimeout: 30000, // 30s for setup/teardown
+      poolOptions: {
+        threads: {
+          singleThread: true, // Run tests sequentially to reduce memory usage
+        },
+        forks: {
+          singleFork: true,
+        }
+      },
+      isolate: true, // Isolate tests in separate contexts
       coverage: {
         provider: 'v8',
         reporter: ['text', 'json', 'json-summary', 'html', 'lcov'],

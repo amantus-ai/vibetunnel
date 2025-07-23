@@ -203,3 +203,37 @@ afterAll(() => {
   console.error = originalError;
   console.warn = originalWarn;
 });
+
+// Clean up any hanging processes before each test suite
+beforeAll(async () => {
+  // Kill any leftover vibetunnel server processes
+  try {
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+    
+    // Kill any processes listening on test ports
+    const testPorts = [3000, 3001, 3002, 3003, 3004, 3005];
+    for (const port of testPorts) {
+      try {
+        // Find process using the port
+        const { stdout } = await execAsync(`lsof -ti:${port} || true`);
+        const pid = stdout.trim();
+        if (pid) {
+          await execAsync(`kill -9 ${pid}`);
+        }
+      } catch {
+        // Ignore errors - port might not be in use
+      }
+    }
+  } catch {
+    // Ignore errors in process cleanup
+  }
+});
+
+// Force garbage collection between test suites if available
+afterEach(() => {
+  if (global.gc) {
+    global.gc();
+  }
+});
