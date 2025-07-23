@@ -124,6 +124,43 @@ if (typeof global !== 'undefined') {
   (global as any).localStorage = localStorageMock;
 }
 
+// Prevent duplicate custom element registration in tests
+// We need to patch the registration after each test to handle module re-imports
+const registeredElements = new Set<string>();
+
+// Helper to patch customElements.define
+function patchCustomElements() {
+  if (typeof window !== 'undefined' && window.customElements) {
+    const originalDefine = window.customElements.define.bind(window.customElements);
+    const originalGet = window.customElements.get.bind(window.customElements);
+    
+    window.customElements.define = function(name: string, constructor: CustomElementConstructor, options?: ElementDefinitionOptions) {
+      // Check both our registry and the real registry
+      if (registeredElements.has(name) || originalGet(name)) {
+        return;
+      }
+      registeredElements.add(name);
+      try {
+        originalDefine(name, constructor, options);
+      } catch (e) {
+        // Ignore duplicate registration errors
+        if (e instanceof Error && e.message.includes('already been used')) {
+          return;
+        }
+        throw e;
+      }
+    };
+  }
+}
+
+// Apply patch immediately for module imports
+patchCustomElements();
+
+// Re-apply patch before each test in case happy-dom resets it
+beforeEach(() => {
+  patchCustomElements();
+});
+
 // Mock matchMedia (only if window exists - for browser tests)
 if (typeof window !== 'undefined') {
   Object.defineProperty(window, 'matchMedia', {
