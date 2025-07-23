@@ -215,10 +215,13 @@ struct AutocompleteTextField: View {
                             showSuggestions = false
                             selectedIndex = -1
                         }
+                    } else if focused && !text.isEmpty && !(autocompleteService?.suggestions.isEmpty ?? true) {
+                        // Show suggestions when field gains focus if we have any
+                        showSuggestions = true
                     }
                 }
 
-            if showSuggestions && !(autocompleteService?.suggestions.isEmpty ?? true) {
+            if showSuggestions && isFocused && !(autocompleteService?.suggestions.isEmpty ?? true) {
                 AutocompleteViewWithKeyboard(
                     suggestions: autocompleteService?.suggestions ?? [],
                     selectedIndex: $selectedIndex,
@@ -244,7 +247,7 @@ struct AutocompleteTextField: View {
     }
 
     private func handleKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {
-        guard showSuggestions && !(autocompleteService?.suggestions.isEmpty ?? true) else {
+        guard isFocused && showSuggestions && !(autocompleteService?.suggestions.isEmpty ?? true) else {
             return .ignored
         }
 
@@ -306,8 +309,8 @@ struct AutocompleteTextField: View {
             return
         }
 
-        // Show suggestions immediately if we already have them, they'll update when new ones arrive
-        if !(autocompleteService?.suggestions.isEmpty ?? true) {
+        // Show suggestions immediately if we already have them and field is focused, they'll update when new ones arrive
+        if isFocused && !(autocompleteService?.suggestions.isEmpty ?? true) {
             showSuggestions = true
         }
 
@@ -319,8 +322,8 @@ struct AutocompleteTextField: View {
                 await autocompleteService?.fetchSuggestions(for: newValue)
 
                 await MainActor.run {
-                    // Update suggestion visibility based on results
-                    if !(autocompleteService?.suggestions.isEmpty ?? true) {
+                    // Update suggestion visibility based on results - only show if focused
+                    if isFocused && !(autocompleteService?.suggestions.isEmpty ?? true) {
                         showSuggestions = true
                         print(
                             "[AutocompleteView] Updated with \(autocompleteService?.suggestions.count ?? 0) suggestions"

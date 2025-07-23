@@ -133,15 +133,19 @@ function patchCustomElements() {
   if (typeof window !== 'undefined' && window.customElements) {
     const originalDefine = window.customElements.define.bind(window.customElements);
     const originalGet = window.customElements.get.bind(window.customElements);
-    
-    window.customElements.define = function(name: string, constructor: CustomElementConstructor, options?: ElementDefinitionOptions) {
+
+    window.customElements.define = (
+      name: string,
+      elementConstructor: CustomElementConstructor,
+      options?: ElementDefinitionOptions
+    ) => {
       // Check both our registry and the real registry
       if (registeredElements.has(name) || originalGet(name)) {
         return;
       }
       registeredElements.add(name);
       try {
-        originalDefine(name, constructor, options);
+        originalDefine(name, elementConstructor, options);
       } catch (e) {
         // Ignore duplicate registration errors
         if (e instanceof Error && e.message.includes('already been used')) {

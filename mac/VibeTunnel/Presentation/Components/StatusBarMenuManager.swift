@@ -10,7 +10,7 @@ extension NSStatusBarButton {
         self.highlight(true)
         // Keep the button highlighted while the menu is visible
         // The highlight state is maintained based on whether any menu is visible
-        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(10)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100)) {
             // Check if we should keep the highlight based on menu visibility
             // Since we can't access the menu manager directly, we check our own state
             if self.state == .on {

@@ -27,6 +27,7 @@ struct GitBranchWorktreeSelector: View {
     @State private var errorMessage: String?
 
     @FocusState private var isNewBranchFieldFocused: Bool
+    @Environment(\.colorScheme) private var colorScheme
 
     // MARK: - Body
 
@@ -43,10 +44,10 @@ struct GitBranchWorktreeSelector: View {
                         HStack(spacing: 2) {
                             Image(systemName: "circle.fill")
                                 .font(.system(size: 6))
-                                .foregroundColor(.yellow)
+                                .foregroundColor(AppColors.Fallback.gitChanges(for: colorScheme))
                             Text("Uncommitted changes")
                                 .font(.system(size: 9))
-                                .foregroundColor(.yellow)
+                                .foregroundColor(AppColors.Fallback.gitChanges(for: colorScheme))
                         }
                     }
                 }
@@ -208,7 +209,7 @@ struct GitBranchWorktreeSelector: View {
             if hasUncommittedChanges && selectedWorktree == nil {
                 Text("Branch switching is disabled due to uncommitted changes. Commit or stash changes first.")
                     .font(.system(size: 9))
-                    .foregroundColor(.yellow)
+                    .foregroundColor(AppColors.Fallback.gitChanges(for: colorScheme))
             } else if let worktree = selectedWorktree {
                 Text("Session will use worktree: \(worktree)")
                     .font(.system(size: 9))
