@@ -24,7 +24,7 @@ struct VibeTunnelApp: App {
     @State var gitRepositoryMonitor = GitRepositoryMonitor()
     @State var repositoryDiscoveryService = RepositoryDiscoveryService()
     @State var sessionService: SessionService?
-    @State var worktreeService: WorktreeService?
+    @State var worktreeService = WorktreeService(serverManager: ServerManager.shared)
     @State var configManager = ConfigManager.shared
 
     init() {
@@ -55,7 +55,7 @@ struct VibeTunnelApp: App {
                 .environment(gitRepositoryMonitor)
                 .environment(repositoryDiscoveryService)
                 .environment(configManager)
-                .environment(worktreeService ?? WorktreeService(serverManager: serverManager))
+                .environment(worktreeService)
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 580, height: 480)
@@ -81,7 +81,7 @@ struct VibeTunnelApp: App {
                         serverManager: serverManager,
                         sessionMonitor: sessionMonitor
                     ))
-                    .environment(worktreeService ?? WorktreeService(serverManager: serverManager))
+                    .environment(worktreeService)
             } else {
                 Text("Session not found")
                     .frame(width: 400, height: 300)
@@ -107,7 +107,7 @@ struct VibeTunnelApp: App {
                     serverManager: serverManager,
                     sessionMonitor: sessionMonitor
                 ))
-                .environment(worktreeService ?? WorktreeService(serverManager: serverManager))
+                .environment(worktreeService)
         }
         .commands {
             CommandGroup(after: .appInfo) {
@@ -256,11 +256,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
             app?.sessionService = SessionService(serverManager: serverManager, sessionMonitor: sessionMonitor)
         }
 
-        // Initialize WorktreeService
-        if let serverManager = app?.serverManager {
-            app?.worktreeService = WorktreeService(serverManager: serverManager)
-        }
-
         // Start the terminal control handler (registers its handler)
         TerminalControlHandler.shared.start()
 
@@ -277,35 +272,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         app?.gitRepositoryMonitor.startMonitoring()
 
         // Initialize status bar controller IMMEDIATELY to show menu bar icon
-        if let sessionMonitor = app?.sessionMonitor,
-           let serverManager = app?.serverManager,
-           let ngrokService = app?.ngrokService,
-           let tailscaleService = app?.tailscaleService,
-           let terminalLauncher = app?.terminalLauncher,
-           let gitRepositoryMonitor = app?.gitRepositoryMonitor,
-           let repositoryDiscoveryService = app?.repositoryDiscoveryService,
-           let configManager = app?.configManager,
-           let worktreeService = app?.worktreeService
-        {
-            // Connect GitRepositoryMonitor to SessionMonitor for pre-caching
-            sessionMonitor.gitRepositoryMonitor = gitRepositoryMonitor
-
-            statusBarController = StatusBarController(
-                sessionMonitor: sessionMonitor,
-                serverManager: serverManager,
-                ngrokService: ngrokService,
-                tailscaleService: tailscaleService,
-                terminalLauncher: terminalLauncher,
-                gitRepositoryMonitor: gitRepositoryMonitor,
-                repositoryDiscovery: repositoryDiscoveryService,
-                configManager: configManager,
-                worktreeService: worktreeService
-            )
+        guard let app = app else {
+            fatalError("VibeTunnelApp instance not connected to AppDelegate")
         }
+
+        // Connect GitRepositoryMonitor to SessionMonitor for pre-caching
+        app.sessionMonitor.gitRepositoryMonitor = app.gitRepositoryMonitor
+
+        statusBarController = StatusBarController(
+            sessionMonitor: app.sessionMonitor,
+            serverManager: app.serverManager,
+            ngrokService: app.ngrokService,
+            tailscaleService: app.tailscaleService,
+            terminalLauncher: app.terminalLauncher,
+            gitRepositoryMonitor: app.gitRepositoryMonitor,
+            repositoryDiscovery: app.repositoryDiscoveryService,
+            configManager: app.configManager,
+            worktreeService: app.worktreeService
+        )
 
         // Initialize and start HTTP server using ServerManager
         Task {
-            guard let serverManager = app?.serverManager else { return }
+            let serverManager = app.serverManager
             logger.info("Attempting to start HTTP server using ServerManager...")
             await serverManager.start()
 
