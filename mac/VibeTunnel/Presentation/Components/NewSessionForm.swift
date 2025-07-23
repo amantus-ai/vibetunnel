@@ -461,31 +461,8 @@ struct NewSessionForm: View {
                     branchSwitchWarning = nil
                 }
                 
-                // If we need to create a new worktree first
-                if shouldCreateNewWorktree && !newWorktreeBranchName.isEmpty, 
-                   let service = worktreeService, 
-                   let repoPath = gitRepoPath {
-                    
-                    // Create the worktree using selected base branch
-                    let baseBranch = selectedBaseBranch.isEmpty ? nil : selectedBaseBranch
-                    try await service.createWorktree(
-                        gitRepoPath: repoPath,
-                        branch: newWorktreeBranchName,
-                        createBranch: true,
-                        baseBranch: baseBranch
-                    )
-                    
-                    // Wait for worktrees to refresh
-                    await service.fetchWorktrees(for: repoPath)
-                    
-                    // Find the newly created worktree
-                    if let newWorktree = service.worktrees.first(where: { $0.branch == newWorktreeBranchName }) {
-                        finalWorkingDir = newWorktree.path
-                        effectiveBranch = newWorktreeBranchName
-                    } else {
-                        throw NSError(domain: "VibeTunnel", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to find newly created worktree"])
-                    }
-                } else if let selectedWorktreePath = selectedWorktreePath, let selectedBranch = selectedWorktreeBranch {
+                // If using a specific worktree
+                if let selectedWorktreePath = selectedWorktreePath, let selectedBranch = selectedWorktreeBranch {
                     // Using a specific worktree
                     finalWorkingDir = selectedWorktreePath
                     effectiveBranch = selectedBranch
@@ -657,7 +634,7 @@ struct NewSessionForm: View {
                     // Update UI state with fetched data
                     await MainActor.run {
                         // Set available branches
-                        self.availableBranches = service.branches.map { $0.name }
+                        // Branches are now loaded by GitBranchWorktreeSelector
                         
                         // Find and set current branch
                         if let currentBranchData = service.branches.first(where: { $0.current }) {
@@ -684,11 +661,8 @@ struct NewSessionForm: View {
                     self.selectedWorktreePath = nil
                     self.selectedWorktreeBranch = nil
                     self.worktreeService = nil
-                    self.shouldCreateNewWorktree = false
-                    self.newWorktreeBranchName = ""
                     self.currentBranch = ""
                     self.selectedBaseBranch = ""
-                    self.availableBranches = []
                     self.branchSwitchWarning = nil
                     self.checkingGitStatus = false
                 }
