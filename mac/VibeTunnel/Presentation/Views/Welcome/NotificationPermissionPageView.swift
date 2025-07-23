@@ -83,8 +83,8 @@ struct NotificationPermissionPageView: View {
                     Button(action: requestNotificationPermission) {
                         if isRequestingPermission {
                             ProgressView()
-                                .scaleEffect(0.8)
-                                .frame(width: 16, height: 16)
+                                .scaleEffect(0.5)
+                                .frame(width: 8, height: 8)
                         } else {
                             Text("Enable Notifications")
                         }
