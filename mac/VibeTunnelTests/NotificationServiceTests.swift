@@ -5,7 +5,7 @@ import UserNotifications
 @Suite("NotificationService Tests")
 struct NotificationServiceTests {
     @Test("Default notification preferences are loaded correctly")
-    func testDefaultPreferences() {
+    func defaultPreferences() {
         let preferences = NotificationService.NotificationPreferences()
 
         // Verify default values
@@ -36,7 +36,7 @@ struct NotificationServiceTests {
 
     @Test("Session start notification is sent when enabled")
     @MainActor
-    func testSessionStartNotification() async throws {
+    func sessionStartNotification() async throws {
         let service = NotificationService.shared
 
         // Enable session start notifications
@@ -56,7 +56,7 @@ struct NotificationServiceTests {
 
     @Test("Session exit notification includes exit code")
     @MainActor
-    func testSessionExitNotification() async throws {
+    func sessionExitNotification() async throws {
         let service = NotificationService.shared
 
         // Enable session exit notifications
@@ -75,7 +75,7 @@ struct NotificationServiceTests {
 
     @Test("Command completion notification respects duration threshold")
     @MainActor
-    func testCommandCompletionNotification() async throws {
+    func commandCompletionNotification() async throws {
         let service = NotificationService.shared
 
         // Enable command completion notifications
@@ -100,7 +100,7 @@ struct NotificationServiceTests {
 
     @Test("Command error notification is sent for non-zero exit codes")
     @MainActor
-    func testCommandErrorNotification() async throws {
+    func commandErrorNotification() async throws {
         let service = NotificationService.shared
 
         // Enable command error notifications
@@ -121,7 +121,7 @@ struct NotificationServiceTests {
 
     @Test("Bell notification is sent when enabled")
     @MainActor
-    func testBellNotification() async throws {
+    func bellNotification() async throws {
         let service = NotificationService.shared
 
         // Enable bell notifications
@@ -138,7 +138,7 @@ struct NotificationServiceTests {
 
     @Test("Notifications are not sent when disabled")
     @MainActor
-    func testDisabledNotifications() async throws {
+    func disabledNotifications() async throws {
         let service = NotificationService.shared
 
         // Disable all notifications
@@ -168,7 +168,7 @@ struct NotificationServiceTests {
 
     @Test("Service handles missing session names gracefully")
     @MainActor
-    func testMissingSessionNames() async throws {
+    func missingSessionNames() async throws {
         let service = NotificationService.shared
 
         // Enable notifications

@@ -261,10 +261,10 @@ class ServerManager {
             // Initialize terminal control handler
             // The handler registers itself with SharedUnixSocketManager during init
             _ = TerminalControlHandler.shared
-            
+
             // Initialize notification control handler
             _ = NotificationControlHandler.shared
-            
+
             // Note: SystemControlHandler is initialized in AppDelegate via
             // SharedUnixSocketManager.initializeSystemHandler()
 

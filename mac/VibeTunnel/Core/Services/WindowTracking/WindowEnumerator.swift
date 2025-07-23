@@ -31,22 +31,22 @@ final class WindowEnumerator {
     static func getAllTerminalWindows() -> [WindowInfo] {
         // Get bundle identifiers for all terminal types
         let terminalBundleIDs = Terminal.allCases.compactMap(\.bundleIdentifier)
-        
+
         // Use AXElement to enumerate windows
         let axWindows = AXElement.enumerateWindows(
             bundleIdentifiers: terminalBundleIDs,
             includeMinimized: false
         )
-        
+
         // Convert AXElement.WindowInfo to our WindowInfo
         return axWindows.compactMap { axWindow in
             // Find the matching Terminal enum
-            guard let terminal = Terminal.allCases.first(where: { 
-                $0.bundleIdentifier == axWindow.bundleIdentifier 
+            guard let terminal = Terminal.allCases.first(where: {
+                $0.bundleIdentifier == axWindow.bundleIdentifier
             }) else {
                 return nil
             }
-            
+
             return WindowInfo(
                 windowID: axWindow.windowID,
                 ownerPID: axWindow.pid,

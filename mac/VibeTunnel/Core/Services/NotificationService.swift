@@ -274,7 +274,8 @@ final class NotificationService: NSObject {
         )
     }
 
-    @objc private func serverStateChanged(_ notification: Notification) {
+    @objc
+    private func serverStateChanged(_ notification: Notification) {
         if serverManager.isRunning {
             logger.info("🔔 Server started, initializing notification service...")
             // Delay connection to ensure server is ready
