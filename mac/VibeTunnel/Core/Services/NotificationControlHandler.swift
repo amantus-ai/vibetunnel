@@ -20,7 +20,7 @@ final class NotificationControlHandler {
     private init() {
         // Register handler with the shared socket manager
         SharedUnixSocketManager.shared.registerControlHandler(for: .notification) { [weak self] data in
-            await self?.handleMessage(data)
+            _ = await self?.handleMessage(data)
             return nil // No response needed for notifications
         }
         

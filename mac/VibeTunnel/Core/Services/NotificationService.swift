@@ -1,5 +1,5 @@
-import Foundation
 import AppKit
+import Foundation
 import os.log
 @preconcurrency import UserNotifications
 
@@ -95,27 +95,27 @@ final class NotificationService: NSObject {
     /// Request notification permissions and show test notification
     func requestPermissionAndShowTestNotification() async -> Bool {
         let center = UNUserNotificationCenter.current()
-        
+
         // First check current authorization status
         let settings = await center.notificationSettings()
-        
+
         switch settings.authorizationStatus {
         case .notDetermined:
             // First time - request permission
             do {
                 let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
-                
+
                 if granted {
                     logger.info("✅ Notification permissions granted")
-                    
+
                     // Show test notification
                     let content = UNMutableNotificationContent()
                     content.title = "VibeTunnel Notifications"
                     content.body = "Notifications are now enabled! You'll receive alerts for terminal events."
                     content.sound = .default
-                    
+
                     deliverNotification(content, identifier: "permission-granted-\(UUID().uuidString)")
-                    
+
                     return true
                 } else {
                     logger.warning("❌ Notification permissions denied")
@@ -125,75 +125,75 @@ final class NotificationService: NSObject {
                 logger.error("Failed to request notification permissions: \(error)")
                 return false
             }
-            
+
         case .denied:
             // Already denied - open System Settings
             logger.info("Opening System Settings to Notifications pane")
             openNotificationSettings()
             return false
-            
+
         case .authorized, .provisional, .ephemeral:
             // Already authorized - show test notification
             logger.info("✅ Notifications already authorized")
-            
+
             let content = UNMutableNotificationContent()
             content.title = "VibeTunnel Notifications"
             content.body = "Notifications are enabled! You'll receive alerts for terminal events."
             content.sound = .default
-            
+
             deliverNotification(content, identifier: "permission-test-\(UUID().uuidString)")
-            
+
             return true
-            
+
         @unknown default:
             return false
         }
     }
-    
+
     // MARK: - Public Notification Methods
-    
+
     /// Send a session start notification
     func sendSessionStartNotification(sessionName: String) async {
         guard preferences.sessionStart else { return }
-        
+
         let content = UNMutableNotificationContent()
         content.title = "Session Started"
         content.body = sessionName
         content.sound = .default
         content.categoryIdentifier = "SESSION"
         content.interruptionLevel = .passive
-        
+
         deliverNotificationWithAutoDismiss(content, identifier: "session-start-\(UUID().uuidString)", dismissAfter: 5.0)
     }
-    
+
     /// Send a session exit notification
     func sendSessionExitNotification(sessionName: String, exitCode: Int) async {
         guard preferences.sessionExit else { return }
-        
+
         let content = UNMutableNotificationContent()
         content.title = "Session Ended"
         content.body = sessionName
         content.sound = .default
         content.categoryIdentifier = "SESSION"
-        
+
         if exitCode != 0 {
             content.subtitle = "Exit code: \(exitCode)"
         }
-        
+
         deliverNotification(content, identifier: "session-exit-\(UUID().uuidString)")
     }
-    
+
     /// Send a command completion notification (also used for "Your Turn")
     func sendCommandCompletionNotification(command: String, duration: Int) async {
         guard preferences.commandCompletion else { return }
-        
+
         let content = UNMutableNotificationContent()
         content.title = "Your Turn"
         content.body = command
         content.sound = .default
         content.categoryIdentifier = "COMMAND"
         content.interruptionLevel = .active
-        
+
         if duration > 0 {
             let seconds = duration / 1_000
             if seconds > 60 {
@@ -202,10 +202,10 @@ final class NotificationService: NSObject {
                 content.subtitle = "Duration: \(seconds)s"
             }
         }
-        
+
         deliverNotification(content, identifier: "command-\(UUID().uuidString)")
     }
-    
+
     /// Send a generic notification
     func sendGenericNotification(title: String, body: String) async {
         let content = UNMutableNotificationContent()
@@ -213,10 +213,10 @@ final class NotificationService: NSObject {
         content.body = body
         content.sound = .default
         content.categoryIdentifier = "GENERAL"
-        
+
         deliverNotification(content, identifier: "generic-\(UUID().uuidString)")
     }
-    
+
     /// Open System Settings to the Notifications pane
     private func openNotificationSettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
