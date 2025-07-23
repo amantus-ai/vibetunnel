@@ -951,10 +951,7 @@ export class SessionCreateForm extends LitElement {
 
     return html`
       <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-        <span class="text-[10px] sm:text-xs text-primary font-medium flex items-center gap-1">
-          <span class="text-text-muted">[</span>
-          ${this.currentBranch}
-          <span class="text-text-muted">]</span>
+        <span class="text-[10px] sm:text-xs text-primary font-medium flex items-center gap-1">[${this.currentBranch}]
           ${this.gitRepoInfo.hasChanges ? html`<span class="text-yellow-500" title="Modified">●</span>` : ''}
           ${
             this.gitRepoInfo.isWorktree
