@@ -23,8 +23,8 @@ const mockNotification = {
   permission: 'default' as NotificationPermission,
 };
 
-// Create a proper navigator mock that passes the 'in' operator check
-const mockNavigator = {
+// Function to create a fresh navigator mock
+const createMockNavigator = () => ({
   serviceWorker: {
     ready: Promise.resolve(mockServiceWorkerRegistration as unknown as ServiceWorkerRegistration),
     register: vi
@@ -39,7 +39,9 @@ const mockNavigator = {
       addEventListener: vi.fn(),
     }),
   },
-};
+});
+
+let mockNavigator = createMockNavigator();
 
 // Ensure global objects are properly defined for the 'in' operator
 if (typeof global.window === 'undefined') {
@@ -103,6 +105,16 @@ describe('PushNotificationService', () => {
     mockWindow = createMockWindow();
     global.window = mockWindow as unknown as Window & typeof globalThis;
     vi.stubGlobal('window', mockWindow);
+
+    // Reset mockNavigator
+    mockNavigator = createMockNavigator();
+
+    // Ensure navigator.serviceWorker is properly set
+    Object.defineProperty(global.navigator, 'serviceWorker', {
+      value: mockNavigator.serviceWorker,
+      writable: true,
+      configurable: true,
+    });
 
     // Mock fetch responses
     (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
@@ -196,6 +208,7 @@ describe('PushNotificationService', () => {
       localStorage.setItem('vibetunnel-notification-preferences', JSON.stringify(savedPrefs));
 
       await pushNotificationService.initialize();
+      await pushNotificationService.waitForInitialization();
 
       // Just verify initialization completes without error
       expect(pushNotificationService.isSupported()).toBeDefined();
@@ -203,6 +216,7 @@ describe('PushNotificationService', () => {
 
     it('should use default preferences when localStorage is empty', async () => {
       await pushNotificationService.initialize();
+      await pushNotificationService.waitForInitialization();
 
       // Just verify initialization completes without error
       expect(pushNotificationService.isSupported()).toBeDefined();
@@ -221,8 +235,6 @@ describe('PushNotificationService', () => {
       mockServiceWorkerRegistration.pushManager.getSubscription.mockResolvedValue(mockSubscription);
 
       await pushNotificationService.initialize();
-
-      // Wait for initialization to complete
       await pushNotificationService.waitForInitialization();
 
       expect(mockServiceWorkerRegistration.pushManager.getSubscription).toHaveBeenCalled();
@@ -255,7 +267,16 @@ describe('PushNotificationService', () => {
 
   describe('subscribe', () => {
     beforeEach(async () => {
+      // Reset the service state to ensure clean test environment
+      // biome-ignore lint/suspicious/noExplicitAny: Required for test mocking
+      const testService = pushNotificationService as unknown as any;
+      testService.initialized = false;
+      testService.serviceWorkerRegistration = null;
+      testService.pushSubscription = null;
+      testService.initializationPromise = null;
+
       await pushNotificationService.initialize();
+      await pushNotificationService.waitForInitialization();
     });
 
     it('should create a new push subscription', async () => {
@@ -291,6 +312,14 @@ describe('PushNotificationService', () => {
     });
 
     it('should handle subscription failure', async () => {
+      // Reset the subscription state
+      // biome-ignore lint/suspicious/noExplicitAny: Required for test mocking
+      const testService = pushNotificationService as unknown as any;
+      testService.pushSubscription = null;
+
+      // Ensure no existing subscription
+      mockServiceWorkerRegistration.pushManager.getSubscription.mockResolvedValue(null);
+
       mockServiceWorkerRegistration.pushManager.subscribe.mockRejectedValue(
         new Error('Subscribe failed')
       );
@@ -402,6 +431,7 @@ describe('PushNotificationService', () => {
       });
 
       await pushNotificationService.initialize();
+      await pushNotificationService.waitForInitialization();
 
       await pushNotificationService.testNotification();
 
@@ -423,6 +453,7 @@ describe('PushNotificationService', () => {
       });
 
       await pushNotificationService.initialize();
+      await pushNotificationService.waitForInitialization();
 
       await expect(pushNotificationService.testNotification()).rejects.toThrow(
         'Notification permission not granted'
@@ -496,20 +527,32 @@ describe('PushNotificationService', () => {
       const callback = vi.fn();
 
       await pushNotificationService.initialize();
+      await pushNotificationService.waitForInitialization();
+
       const unsubscribe = pushNotificationService.onSubscriptionChange(callback);
 
       const mockSubscription = {
         endpoint: 'https://fcm.googleapis.com/test',
+        expirationTime: null,
+        getKey: vi.fn((name: string) => {
+          if (name === 'p256dh') return new Uint8Array([1, 2, 3]);
+          if (name === 'auth') return new Uint8Array([4, 5, 6]);
+          return null;
+        }),
         toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/test' }),
       };
       mockServiceWorkerRegistration.pushManager.subscribe.mockResolvedValue(mockSubscription);
+
+      // Mock permission as granted
+      mockNotification.permission = 'granted';
+      mockNotification.requestPermission.mockResolvedValue('granted');
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ success: true }),
       });
 
-      await pushNotificationService.subscribe('test-key');
+      await pushNotificationService.subscribe();
 
       expect(callback).toHaveBeenCalledWith(
         expect.objectContaining({
