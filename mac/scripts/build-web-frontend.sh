@@ -78,8 +78,10 @@ fi
 if [ -f "${HASH_FILE}" ]; then
     CURRENT_HASH=$(cat "${HASH_FILE}")
 else
-    echo "warning: Hash file not found. Forcing full rebuild..."
-    CURRENT_HASH="force-rebuild-$(date +%s)"
+    # If hash file doesn't exist, we need to rebuild
+    # Generate a unique hash to force rebuild
+    CURRENT_HASH="no-hash-file-$(date +%s)"
+    echo "Hash file not found at ${HASH_FILE}. Will rebuild..."
 fi
 
 # Check if we need to rebuild

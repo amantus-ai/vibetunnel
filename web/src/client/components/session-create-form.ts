@@ -43,7 +43,7 @@ import {
   AutocompleteManager,
   type Repository,
 } from './autocomplete-manager.js';
-import { type WorktreeInfo, type GitBranchSelector } from './session-create-form/git-branch-selector.js';
+import type { WorktreeInfo } from './session-create-form/git-branch-selector.js';
 import {
   checkFollowMode,
   enableFollowMode,
@@ -95,10 +95,6 @@ export class SessionCreateForm extends LitElement {
   @state() private followMode = false;
   @state() private followBranch: string | null = null;
   @state() private showFollowMode = false;
-  @state() private selectedQuickStart: string | null = null;
-  @state() private isDiscovering = false;
-  @state() private isCheckingGit = false;
-  @state() private isCheckingFollowMode = false;
 
   @state() private quickStartCommands: QuickStartItem[] = [
     { label: '✨ claude', command: 'claude' },
@@ -108,6 +104,16 @@ export class SessionCreateForm extends LitElement {
     { label: 'node', command: 'node' },
     { label: '▶️ pnpm run dev', command: 'pnpm run dev' },
   ];
+
+  // State properties for UI
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used in template
+  @state() private selectedQuickStart = '';
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used in discoverDirectories method
+  @state() private isDiscovering = false;
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used in checkGitEnabled method
+  @state() private isCheckingGit = false;
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used in checkFollowMode method
+  @state() private isCheckingFollowMode = false;
 
   private completionsDebounceTimer?: NodeJS.Timeout;
   private gitCheckDebounceTimer?: NodeJS.Timeout;
@@ -671,7 +677,8 @@ export class SessionCreateForm extends LitElement {
 
     try {
       // Use custom path if provided, otherwise generate default
-      const worktreePath = customPath || generateWorktreePath(this.gitRepoInfo.repoPath, branchName);
+      const worktreePath =
+        customPath || generateWorktreePath(this.gitRepoInfo.repoPath, branchName);
 
       // Create the worktree
       await this.gitService.createWorktree(
@@ -698,15 +705,7 @@ export class SessionCreateForm extends LitElement {
       // Select the newly created worktree
       this.selectedWorktree = branchName;
 
-      // Clear the isCreatingWorktree state in git-branch-selector
-      const gitBranchSelector = this.querySelector('git-branch-selector') as GitBranchSelector;
-      if (gitBranchSelector) {
-        gitBranchSelector.isCreatingWorktree = false;
-        gitBranchSelector.showCreateWorktree = false;
-        gitBranchSelector.newBranchName = '';
-        gitBranchSelector.customPath = '';
-        gitBranchSelector.useCustomPath = false;
-      }
+      // Git branch selector will reset its own state after successful creation
 
       // Show success message
       this.dispatchEvent(
@@ -719,11 +718,7 @@ export class SessionCreateForm extends LitElement {
     } catch (error) {
       logger.error('Failed to create worktree:', error);
 
-      // Clear the isCreatingWorktree state in git-branch-selector on error too
-      const gitBranchSelector = this.querySelector('git-branch-selector') as GitBranchSelector;
-      if (gitBranchSelector) {
-        gitBranchSelector.isCreatingWorktree = false;
-      }
+      // Git branch selector will reset its own state on error
 
       // Determine specific error message
       let errorMessage = 'Failed to create worktree';

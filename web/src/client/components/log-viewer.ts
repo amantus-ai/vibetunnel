@@ -25,7 +25,6 @@ export class LogViewer extends LitElement {
   @state() private logSize = '';
   @state() private showClient = true;
   @state() private showServer = true;
-  @state() private error = '';
 
   private refreshInterval?: number;
   private isFirstLoad = true;
@@ -88,7 +87,8 @@ export class LogViewer extends LitElement {
         });
       }
     } catch (err) {
-      this.error = err instanceof Error ? err.message : 'Failed to load logs';
+      // Error is logged but not displayed in UI
+      console.error('Failed to load logs:', err);
       this.loading = false;
     }
   }
@@ -186,7 +186,7 @@ export class LogViewer extends LitElement {
       this.logs = [];
       this.logSize = '0 Bytes';
     } catch (err) {
-      this.error = err instanceof Error ? err.message : 'Failed to clear logs';
+      console.error('Failed to clear logs:', err);
     }
   }
 
@@ -207,7 +207,7 @@ export class LogViewer extends LitElement {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      this.error = err instanceof Error ? err.message : 'Failed to download logs';
+      console.error('Failed to download logs:', err);
     }
   }
 

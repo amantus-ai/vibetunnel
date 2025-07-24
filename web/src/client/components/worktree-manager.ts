@@ -37,7 +37,6 @@ export class WorktreeManager extends LitElement {
   @state() private newWorktreePath = '';
   @state() private useCustomPath = false;
   @state() private isCreatingWorktree = false;
-  @state() private availableBranches: string[] = [];
 
   connectedCallback() {
     super.connectedCallback();
@@ -184,7 +183,7 @@ export class WorktreeManager extends LitElement {
 
   private async handleCreateWorktree() {
     const branchName = this.newBranchName.trim();
-    
+
     if (!branchName || !this.gitService || !this.repoPath) {
       return;
     }
@@ -205,9 +204,10 @@ export class WorktreeManager extends LitElement {
     this.isCreatingWorktree = true;
     try {
       // Use custom path if provided, otherwise generate default
-      const worktreePath = this.useCustomPath && this.newWorktreePath.trim() 
-        ? this.newWorktreePath.trim()
-        : this.generateWorktreePath(branchName);
+      const worktreePath =
+        this.useCustomPath && this.newWorktreePath.trim()
+          ? this.newWorktreePath.trim()
+          : this.generateWorktreePath(branchName);
 
       await this.gitService.createWorktree(
         this.repoPath,
@@ -234,7 +234,7 @@ export class WorktreeManager extends LitElement {
       );
     } catch (err) {
       logger.error('Failed to create worktree:', err);
-      
+
       let errorMessage = 'Failed to create worktree';
       if (err instanceof Error) {
         if (err.message.includes('already exists')) {
@@ -245,7 +245,7 @@ export class WorktreeManager extends LitElement {
           errorMessage = err.message;
         }
       }
-      
+
       this.dispatchEvent(
         new CustomEvent('error', {
           detail: { message: errorMessage },
@@ -260,7 +260,7 @@ export class WorktreeManager extends LitElement {
 
   private validateBranchName(name: string): string | null {
     // Check if branch already exists
-    const existingBranches = this.worktrees.map(wt => wt.branch.replace(/^refs\/heads\//, ''));
+    const existingBranches = this.worktrees.map((wt) => wt.branch.replace(/^refs\/heads\//, ''));
     if (existingBranches.includes(name)) {
       return `Branch '${name}' already exists`;
     }
@@ -269,15 +269,15 @@ export class WorktreeManager extends LitElement {
     if (name.startsWith('-') || name.endsWith('-')) {
       return 'Branch name cannot start or end with a hyphen';
     }
-    
+
     if (name.includes('..') || name.includes('~') || name.includes('^') || name.includes(':')) {
       return 'Branch name contains invalid characters (.. ~ ^ :)';
     }
-    
+
     if (name.endsWith('.lock')) {
       return 'Branch name cannot end with .lock';
     }
-    
+
     if (name.includes('//') || name.includes('\\')) {
       return 'Branch name cannot contain consecutive slashes';
     }
@@ -464,7 +464,151 @@ export class WorktreeManager extends LitElement {
             `
             }
           </div>
+
+          <!-- Create New Worktree Button -->
+          <div class="mt-6 flex justify-center">
+            <button
+              @click=${() => {
+                this.showCreateWorktree = true;
+              }}
+              class="px-4 py-2 text-sm font-medium text-bg-elevated bg-primary rounded hover:bg-primary-hover transition-colors flex items-center gap-2"
+              ?disabled=${this.loading}
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Create New Worktree
+            </button>
+          </div>
         `
+        }
+
+        <!-- Create Worktree Modal -->
+        ${
+          this.showCreateWorktree
+            ? html`
+            <div class="fixed inset-0 bg-bg/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div class="bg-surface rounded-lg p-6 max-w-md w-full border border-border shadow-elevated">
+                <h3 class="text-lg font-semibold mb-4 text-text">Create New Worktree</h3>
+                
+                <div class="space-y-4">
+                  <!-- Branch Name Input -->
+                  <div>
+                    <label class="block text-sm font-medium text-text-muted mb-1">
+                      Branch Name
+                    </label>
+                    <input
+                      type="text"
+                      .value=${this.newBranchName}
+                      @input=${(e: InputEvent) => {
+                        this.newBranchName = (e.target as HTMLInputElement).value;
+                      }}
+                      placeholder="feature/new-feature"
+                      class="w-full px-3 py-2 bg-bg border border-border rounded focus:border-primary focus:outline-none text-text"
+                      ?disabled=${this.isCreatingWorktree}
+                      @keydown=${(e: KeyboardEvent) => {
+                        if (e.key === 'Enter' && this.newBranchName.trim()) {
+                          this.handleCreateWorktree();
+                        } else if (e.key === 'Escape') {
+                          this.handleCancelCreateWorktree();
+                        }
+                      }}
+                    />
+                    ${
+                      this.newBranchName.trim()
+                        ? html`
+                        <div class="text-xs mt-1 ${this.validateBranchName(this.newBranchName) ? 'text-status-error' : 'text-text-dim'}">
+                          ${this.validateBranchName(this.newBranchName) || 'Valid branch name'}
+                        </div>
+                      `
+                        : ''
+                    }
+                  </div>
+
+                  <!-- Base Branch Selection -->
+                  <div>
+                    <label class="block text-sm font-medium text-text-muted mb-1">
+                      Base Branch
+                    </label>
+                    <div class="text-sm text-text bg-bg px-3 py-2 border border-border rounded">
+                      ${this.baseBranch}
+                    </div>
+                  </div>
+
+                  <!-- Path Customization -->
+                  <div>
+                    <label class="flex items-center gap-2 text-sm text-text-muted cursor-pointer">
+                      <input
+                        type="checkbox"
+                        .checked=${this.useCustomPath}
+                        @change=${(e: Event) => {
+                          this.useCustomPath = (e.target as HTMLInputElement).checked;
+                          if (!this.useCustomPath) {
+                            this.newWorktreePath = '';
+                          }
+                        }}
+                        ?disabled=${this.isCreatingWorktree}
+                        class="rounded"
+                      />
+                      <span>Customize worktree path</span>
+                    </label>
+                  </div>
+
+                  ${
+                    this.useCustomPath
+                      ? html`
+                      <div>
+                        <label class="block text-sm font-medium text-text-muted mb-1">
+                          Custom Path
+                        </label>
+                        <input
+                          type="text"
+                          .value=${this.newWorktreePath}
+                          @input=${(e: InputEvent) => {
+                            this.newWorktreePath = (e.target as HTMLInputElement).value;
+                          }}
+                          placeholder="/path/to/worktree"
+                          class="w-full px-3 py-2 bg-bg border border-border rounded focus:border-primary focus:outline-none text-text"
+                          ?disabled=${this.isCreatingWorktree}
+                        />
+                        <div class="text-xs text-text-dim mt-1">
+                          ${
+                            this.newWorktreePath.trim()
+                              ? `Will create at: ${this.newWorktreePath.trim()}`
+                              : 'Enter absolute path for the worktree'
+                          }
+                        </div>
+                      </div>
+                    `
+                      : html`
+                      <div class="text-xs text-text-dim">
+                        Default path: ${this.generateWorktreePath(this.newBranchName.trim() || 'branch')}
+                      </div>
+                    `
+                  }
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="flex justify-end gap-2 mt-6">
+                  <button
+                    @click=${this.handleCancelCreateWorktree}
+                    class="px-4 py-2 text-sm font-medium text-text bg-surface rounded hover:bg-surface-hover transition-colors border border-border"
+                    ?disabled=${this.isCreatingWorktree}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    @click=${this.handleCreateWorktree}
+                    class="px-4 py-2 text-sm font-medium text-bg-elevated bg-primary rounded hover:bg-primary-hover transition-colors disabled:opacity-50"
+                    ?disabled=${!this.newBranchName.trim() || !!this.validateBranchName(this.newBranchName.trim()) || (this.useCustomPath && !this.newWorktreePath.trim()) || this.isCreatingWorktree}
+                  >
+                    ${this.isCreatingWorktree ? 'Creating...' : 'Create Worktree'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          `
+            : ''
         }
 
         ${

@@ -93,9 +93,18 @@ describe('SessionView Drag & Drop and Paste', () => {
   let element: SessionView;
   let mockFilePicker: Partial<FilePicker>;
 
+  beforeAll(async () => {
+    // Import components to register custom elements
+    await import('./session-view.js');
+    await import('./terminal.js');
+    await import('./vibe-terminal-binary.js');
+    await import('./session-view/terminal-renderer.js');
+  });
+
   // Helper to access the uiStateManager from the element
   const _getUiStateManager = () => {
     // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+    // biome-ignore lint/suspicious/noExplicitAny: need to access private property
     return (element as any)['uiStateManager'];
   };
 
@@ -128,6 +137,11 @@ describe('SessionView Drag & Drop and Paste', () => {
     await import('./terminal.js');
     await import('./vibe-terminal-binary.js');
     await import('./session-view/terminal-renderer.js');
+
+    // Ensure custom element is registered
+    if (!customElements.get('session-view')) {
+      console.error('session-view custom element not registered!');
+    }
     // Create mock file picker
     mockFilePicker = {
       uploadFile: vi.fn().mockResolvedValue(undefined),
@@ -140,33 +154,22 @@ describe('SessionView Drag & Drop and Paste', () => {
       title: 'Test Session',
     });
 
+    // Create element without session first
     element = await fixture<SessionView>(html`
-      <session-view .session=${mockSession}></session-view>
+      <session-view></session-view>
     `);
 
     // Wait for element to be fully initialized
+    await element.updateComplete;
+
+    // Now set the session
+    element.session = mockSession;
     await element.updateComplete;
     // Wait for firstUpdated to be called
     await waitForAsync();
 
     // Give the component time to fully initialize all managers
     await new Promise((resolve) => setTimeout(resolve, 10));
-    
-    // Verify the element is connected
-    if (!element.isConnected) {
-      console.error('Element is not connected to DOM');
-    }
-    
-    // Log what's available on the element
-    const allProps = [];
-    let obj = element;
-    do {
-      allProps.push(...Object.getOwnPropertyNames(obj));
-    } while (obj = Object.getPrototypeOf(obj));
-    
-    console.log('Manager properties:', allProps.filter(p => p.includes('Manager')).slice(0, 10));
-    console.log('uiStateManager exists?', 'uiStateManager' in element);
-    console.log('Type of element:', element.constructor.name);
 
     // Mock the file picker element
     vi.spyOn(element, 'querySelector').mockImplementation((selector: string) => {
@@ -181,6 +184,11 @@ describe('SessionView Drag & Drop and Paste', () => {
   afterEach(() => {
     element.remove();
     vi.clearAllMocks();
+    // Clear the logger mock to avoid test pollution
+    mockLogger.log.mockClear();
+    mockLogger.error.mockClear();
+    mockLogger.warn.mockClear();
+    mockLogger.debug.mockClear();
   });
 
   describe('Drag Over', () => {
@@ -193,6 +201,7 @@ describe('SessionView Drag & Drop and Paste', () => {
       const _testElement = element as SessionViewTestInterface;
       // Access the manager using bracket notation for private property
       // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property
       const uiStateManager = (element as any)['uiStateManager'];
       expect(uiStateManager).toBeDefined();
       expect(uiStateManager.getState().isDragOver).toBe(true);
@@ -205,6 +214,7 @@ describe('SessionView Drag & Drop and Paste', () => {
       await element.updateComplete;
 
       // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property
       const uiStateManager = (element as any)['uiStateManager'];
       expect(uiStateManager.getState().isDragOver).toBe(false);
     });
@@ -229,6 +239,7 @@ describe('SessionView Drag & Drop and Paste', () => {
       element.dispatchEvent(dragOverEvent);
       await element.updateComplete;
       // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property
       const uiStateManager = (element as any)['uiStateManager'];
       expect(uiStateManager.getState().isDragOver).toBe(true);
 
@@ -251,7 +262,9 @@ describe('SessionView Drag & Drop and Paste', () => {
       await element.updateComplete;
 
       // Drop always sets isDragOver to false
-      expect(testElement.uiStateManager.getState().isDragOver).toBe(false);
+      // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property
+      expect((element as any)['uiStateManager'].getState().isDragOver).toBe(false);
     });
 
     it('should keep drag overlay when dragging within the element', async () => {
@@ -260,6 +273,7 @@ describe('SessionView Drag & Drop and Paste', () => {
       element.dispatchEvent(dragOverEvent);
       await element.updateComplete;
       // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property
       const uiStateManager = (element as any)['uiStateManager'];
       expect(uiStateManager.getState().isDragOver).toBe(true);
 
@@ -298,15 +312,16 @@ describe('SessionView Drag & Drop and Paste', () => {
 
       const proxiedEvent = new Proxy(dragLeaveEvent, proxyHandler);
 
-      // Directly call the handler
-      const sessionView = element as SessionView & { handleDragLeave: (e: DragEvent) => void };
-      sessionView.handleDragLeave(proxiedEvent);
+      // Dispatch the event instead of calling handler directly
+      element.dispatchEvent(proxiedEvent);
       await element.updateComplete;
 
       // Restore original function
       element.getBoundingClientRect = originalGetBoundingClientRect;
 
-      expect(testElement.uiStateManager.getState().isDragOver).toBe(true);
+      // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property
+      expect((element as any)['uiStateManager'].getState().isDragOver).toBe(true);
     });
   });
 
@@ -510,8 +525,10 @@ describe('SessionView Drag & Drop and Paste', () => {
     });
 
     it('should not handle paste when file browser is open', async () => {
-      const testElement = element as SessionViewTestInterface;
-      testElement.uiStateManager.setShowFileBrowser(true);
+      // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property
+      const uiStateManager = (element as any)['uiStateManager'];
+      uiStateManager.setShowFileBrowser(true);
       await element.updateComplete;
 
       const file = new File(['test'], 'test.txt', { type: 'text/plain' });
@@ -537,8 +554,10 @@ describe('SessionView Drag & Drop and Paste', () => {
     });
 
     it('should not handle paste when image picker is open', async () => {
-      const testElement = element as SessionViewTestInterface;
-      testElement.uiStateManager.setShowImagePicker(true);
+      // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property
+      const uiStateManager = (element as any)['uiStateManager'];
+      uiStateManager.setShowImagePicker(true);
       await element.updateComplete;
 
       const file = new File(['test'], 'test.txt', { type: 'text/plain' });
@@ -564,8 +583,10 @@ describe('SessionView Drag & Drop and Paste', () => {
     });
 
     it('should not handle paste when mobile input is open', async () => {
-      const testElement = element as SessionViewTestInterface;
-      testElement.uiStateManager.setShowMobileInput(true);
+      // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property
+      const uiStateManager = (element as any)['uiStateManager'];
+      uiStateManager.setShowMobileInput(true);
       await element.updateComplete;
 
       const file = new File(['test'], 'test.txt', { type: 'text/plain' });
@@ -689,17 +710,19 @@ describe('SessionView Drag & Drop and Paste', () => {
 
       // Verify the state is set correctly
       // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property
       const uiStateManager = (element as any)['uiStateManager'];
       expect(uiStateManager.getState().isDragOver).toBe(true);
     });
 
     it('should hide drag overlay when isDragOver is false', async () => {
-      const testElement = element as SessionViewTestInterface;
       // First show it
       const dragOverEvent = createDragEvent('dragover', true);
       element.dispatchEvent(dragOverEvent);
       await element.updateComplete;
-      expect(testElement.uiStateManager.getState().isDragOver).toBe(true);
+      // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property
+      expect((element as any)['uiStateManager'].getState().isDragOver).toBe(true);
 
       // Then hide it with drop
       const dropEvent = new DragEvent('drop', {
@@ -716,25 +739,29 @@ describe('SessionView Drag & Drop and Paste', () => {
       await element.updateComplete;
 
       // Verify the state is set correctly
-      expect(testElement.uiStateManager.getState().isDragOver).toBe(false);
+      // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property
+      expect((element as any)['uiStateManager'].getState().isDragOver).toBe(false);
     });
 
     it.skip('should toggle drag overlay state correctly', async () => {
       // Initial state
-      const testElement = element as SessionViewTestInterface;
-      expect(testElement.uiStateManager.getState().isDragOver).toBe(false);
+      // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property
+      const uiStateManager = (element as any)['uiStateManager'];
+      expect(uiStateManager.getState().isDragOver).toBe(false);
 
       // Drag over with files
       const dragOverEvent = createDragEvent('dragover', true);
       element.dispatchEvent(dragOverEvent);
       await element.updateComplete;
-      expect(testElement.uiStateManager.getState().isDragOver).toBe(true);
+      expect(uiStateManager.getState().isDragOver).toBe(true);
 
       // Drag over without files should not change state
       const dragOverNoFiles = createDragEvent('dragover', false);
       element.dispatchEvent(dragOverNoFiles);
       await element.updateComplete;
-      expect(testElement.uiStateManager.getState().isDragOver).toBe(false);
+      expect(uiStateManager.getState().isDragOver).toBe(false);
     });
   });
 
@@ -743,8 +770,11 @@ describe('SessionView Drag & Drop and Paste', () => {
       // Override the querySelector mock to return null
       vi.spyOn(element, 'querySelector').mockReturnValue(null);
 
-      // Clear previous mock calls
+      // Clear all logger mocks to ensure clean state
+      mockLogger.log.mockClear();
       mockLogger.error.mockClear();
+      mockLogger.warn.mockClear();
+      mockLogger.debug.mockClear();
 
       const file = new File(['test'], 'test.txt', { type: 'text/plain' });
       const dropEvent = new DragEvent('drop', {

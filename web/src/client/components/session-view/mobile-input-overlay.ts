@@ -47,7 +47,7 @@ export class MobileInputOverlay extends LitElement {
 
   // IME composition state tracking for Japanese/CJK input
   private isComposing = false;
-  private compositionBuffer = '';
+  @property({ type: String }) compositionBuffer = '';
 
   private touchStartHandler = (e: TouchEvent) => {
     const touch = e.touches[0];

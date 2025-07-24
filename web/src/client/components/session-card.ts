@@ -64,6 +64,7 @@ export class SessionCard extends LitElement {
   @state() private isActive = false;
   @state() private isSendingPrompt = false;
   @state() private terminalTheme: TerminalThemeId = 'auto';
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used in render method
   @state() private isHovered = false;
 
   private killingInterval: number | null = null;

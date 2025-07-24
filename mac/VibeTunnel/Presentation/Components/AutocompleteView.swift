@@ -309,7 +309,8 @@ struct AutocompleteTextField: View {
             return
         }
 
-        // Show suggestions immediately if we already have them and field is focused, they'll update when new ones arrive
+        // Show suggestions immediately if we already have them and field is focused, they'll update when new ones
+        // arrive
         if isFocused && !(autocompleteService?.suggestions.isEmpty ?? true) {
             showSuggestions = true
         }

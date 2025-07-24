@@ -1,10 +1,3 @@
-//
-//  GitInfo.swift
-//  VibeTunnel
-//
-//  Created on 2025-07-24.
-//
-
 import Foundation
 
 /// Information about a Git repository

@@ -16,7 +16,7 @@ class AutocompleteService {
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AutocompleteService")
     private let gitMonitor: GitRepositoryMonitor
 
-    // Common repository search paths relative to home directory
+    /// Common repository search paths relative to home directory
     private static let commonRepositoryPaths = [
         "/Projects",
         "/Developer",
@@ -263,18 +263,10 @@ class AutocompleteService {
             }
 
             // Common repository locations
-            let searchPaths = [
-                NSHomeDirectory() + "/Projects",
-                NSHomeDirectory() + "/Developer",
-                NSHomeDirectory() + "/Documents",
-                NSHomeDirectory() + "/Desktop",
-                NSHomeDirectory() + "/Code",
-                NSHomeDirectory() + "/repos",
-                NSHomeDirectory() + "/git",
-                NSHomeDirectory() + "/src",
-                NSHomeDirectory() + "/work",
-                NSHomeDirectory() // Also check home directory
-            ]
+            let homeDir = NSHomeDirectory()
+            let searchPaths = Self.commonRepositoryPaths.map { path in
+                path.isEmpty ? homeDir : homeDir + path
+            }
 
             let lowercasedTerm = searchTerm.lowercased()
 
@@ -421,15 +413,9 @@ class AutocompleteService {
             let fileManager = FileManager.default
             let searchLower = searchTerm.lowercased().replacingOccurrences(of: "~/", with: "")
             let homeDir = NSHomeDirectory()
-            let commonPaths = [
-                homeDir + "/Developer",
-                homeDir + "/Projects",
-                homeDir + "/Documents",
-                homeDir + "/Desktop",
-                homeDir + "/Code",
-                homeDir + "/repos",
-                homeDir + "/git"
-            ]
+            let commonPaths = Self.commonRepositoryPaths
+                .filter { !$0.isEmpty } // Exclude home directory for this method
+                .map { homeDir + $0 }
 
             var repositories: [PathSuggestion] = []
 

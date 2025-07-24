@@ -47,18 +47,18 @@ final class StatusBarIconController {
     /// - Parameter isServerRunning: A boolean indicating if the server is running.
     private func updateIcon(isServerRunning: Bool) {
         guard let button else { return }
-        
+
         // Always use the same icon - it's already set as a template in the asset catalog
         guard let image = NSImage(named: "menubar") else {
             print("Warning: menubar icon not found")
             return
         }
-        
+
         // The image is already configured as a template in Contents.json,
         // but we set it explicitly to be safe
         image.isTemplate = true
         button.image = image
-        
+
         // Use opacity to indicate server state:
         // - 1.0 (fully opaque) when server is running
         // - 0.5 (semi-transparent) when server is stopped

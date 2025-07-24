@@ -28,7 +28,6 @@ interface SessionViewInterface {
 export class MobileInputManager {
   private sessionView: SessionViewInterface;
   private inputManager: InputManager | null = null;
-  private terminal: Terminal | null = null;
 
   constructor(sessionView: SessionViewInterface) {
     this.sessionView = sessionView;
@@ -38,8 +37,8 @@ export class MobileInputManager {
     this.inputManager = inputManager;
   }
 
-  setTerminal(terminal: Terminal | null) {
-    this.terminal = terminal;
+  setTerminal(_terminal: Terminal | null) {
+    // Terminal is passed but not currently used
   }
 
   handleMobileInputToggle() {

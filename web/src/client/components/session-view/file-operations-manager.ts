@@ -22,6 +22,9 @@ export interface FileOperationsCallbacks {
   setShowFileBrowser: (value: boolean) => void;
   setShowImagePicker: (value: boolean) => void;
   getIsMobile: () => boolean;
+  getShowFileBrowser: () => boolean;
+  getShowImagePicker: () => boolean;
+  getShowMobileInput: () => boolean;
   dispatchEvent: (event: Event) => boolean;
   requestUpdate: () => void;
 }
@@ -294,9 +297,14 @@ export class FileOperationsManager {
   async handlePaste(e: ClipboardEvent): Promise<void> {
     if (!this.callbacks) return;
 
-    // Only handle paste if session view is focused and no modal is open
-    // Note: We need to check these states from the parent component
-    // The parent should disable paste handling when modals are open
+    // Check if paste handling should be enabled
+    const showFileBrowser = this.callbacks.getShowFileBrowser();
+    const showImagePicker = this.callbacks.getShowImagePicker();
+    const showMobileInput = this.callbacks.getShowMobileInput();
+
+    if (!this.shouldHandlePaste(showFileBrowser, showImagePicker, showMobileInput)) {
+      return; // Don't handle paste when modals are open
+    }
 
     const items = Array.from(e.clipboardData?.items || []);
     const fileItems = items.filter((item) => item.kind === 'file');

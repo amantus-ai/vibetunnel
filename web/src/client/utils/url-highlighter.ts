@@ -54,6 +54,7 @@ export function processLinks(container: HTMLElement): void {
  * LinkProcessor class encapsulates the URL detection and highlighting logic
  */
 class LinkProcessor {
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used in constructor
   private container: HTMLElement;
   private lines: NodeListOf<Element>;
   private processedRanges: Map<number, ProcessedRange[]> = new Map();

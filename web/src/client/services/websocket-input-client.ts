@@ -20,6 +20,7 @@ export class WebSocketInputClient {
   private session: Session | null = null;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private connectionPromise: Promise<void> | null = null;
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used for connection state management
   private isConnecting = false;
 
   // Configuration

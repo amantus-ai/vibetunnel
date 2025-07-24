@@ -188,6 +188,9 @@ export class SessionView extends LitElement {
       setShowFileBrowser: (value: boolean) => this.uiStateManager.setShowFileBrowser(value),
       setShowImagePicker: (value: boolean) => this.uiStateManager.setShowImagePicker(value),
       getIsMobile: () => this.uiStateManager.getState().isMobile,
+      getShowFileBrowser: () => this.uiStateManager.getState().showFileBrowser,
+      getShowImagePicker: () => this.uiStateManager.getState().showImagePicker,
+      getShowMobileInput: () => this.uiStateManager.getState().showMobileInput,
       dispatchEvent: (event: Event) => this.dispatchEvent(event),
     });
 

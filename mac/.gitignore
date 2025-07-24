@@ -36,6 +36,9 @@ build_output.txt
 # Release state - temporary file
 .release-state.json
 
+# Web content hash - build-time generated file
+.web-content-hash
+
 # Sparkle private key - NEVER commit this!
 sparkle-private-ed-key.pem
 sparkle-private-key-KEEP-SECURE.txt

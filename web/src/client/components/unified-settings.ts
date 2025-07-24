@@ -52,7 +52,6 @@ export class UnifiedSettings extends LitElement {
   @state() private subscription: PushSubscription | null = null;
   @state() private isLoading = false;
   @state() private testingNotification = false;
-  @state() private hasNotificationChanges = false;
 
   // App settings state
   @state() private appPreferences: AppPreferences = DEFAULT_APP_PREFERENCES;
@@ -305,7 +304,6 @@ export class UnifiedSettings extends LitElement {
     value: boolean
   ) {
     this.notificationPreferences = { ...this.notificationPreferences, [key]: value };
-    this.hasNotificationChanges = true;
     pushNotificationService.savePreferences(this.notificationPreferences);
   }
 

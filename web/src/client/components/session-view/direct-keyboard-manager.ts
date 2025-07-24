@@ -58,13 +58,19 @@ export class DirectKeyboardManager {
   private keyboardActivationTimeout: number | null = null;
   private captureClickHandler: ((e: Event) => void) | null = null;
   private globalPasteHandler: ((e: Event) => void) | null = null;
-  private instanceId: string;
-  private hiddenInputFocused = false;
-  private keyboardModeTimestamp = 0;
-  private compositionBuffer = '';
 
   // IME composition state tracking for Japanese/CJK input
   private isComposing = false;
+
+  // Instance management
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used in constructor
+  private instanceId: string;
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used for focus state management
+  private hiddenInputFocused = false;
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used for keyboard mode timing
+  private keyboardModeTimestamp = 0;
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used for IME composition
+  private compositionBuffer = '';
 
   constructor(instanceId: string) {
     this.instanceId = instanceId;

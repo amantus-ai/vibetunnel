@@ -186,7 +186,7 @@ final class CustomMenuWindow: NSPanel {
         // This helps maintain the button's highlight state
         orderFront(nil)
         makeKey()
-        
+
         // Ensure window can receive keyboard events for navigation
         becomeKey()
 
