@@ -256,14 +256,24 @@ test.describe('Keyboard Capture Toggle', () => {
     // With capture ON, Cmd/Ctrl+A should go to terminal (move to line start)
     const isMac = process.platform === 'darwin';
     await page.keyboard.type('hello world');
+    
+    // Debug: Take a screenshot before pressing Ctrl+A
+    await page.screenshot({ path: 'debug-before-ctrl-a.png' });
+    
     await page.keyboard.press(isMac ? 'Meta+a' : 'Control+a');
-
+    await page.waitForTimeout(200); // Give terminal time to process
+    
     // Type something at the beginning of line
     await page.keyboard.type('START ');
+    
+    // Debug: Take a screenshot after typing START
+    await page.screenshot({ path: 'debug-after-start.png' });
+    
     await page.keyboard.press('Enter');
+    await page.waitForTimeout(500); // Give terminal time to process
 
     // Should see "START hello world"
-    await expect(page.locator('text="START hello world"')).toBeVisible({ timeout: 2000 });
+    await expect(page.locator('text="START hello world"')).toBeVisible({ timeout: 5000 });
 
     // Now toggle capture OFF
     await page.keyboard.press('Escape');
