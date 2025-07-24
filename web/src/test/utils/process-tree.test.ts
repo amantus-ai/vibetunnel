@@ -15,10 +15,10 @@ describe('process-tree', () => {
       // Mock outputs for each ps call as it walks up the tree
       const output1 = `  PID  PPID COMMAND
 12345 67890 /usr/bin/node /path/to/app.js`;
-      
+
       const output2 = `  PID  PPID COMMAND
 67890   123 /bin/bash`;
-      
+
       const output3 = `  PID  PPID COMMAND
   123     1 /sbin/init`;
 
@@ -85,10 +85,10 @@ describe('process-tree', () => {
     it('should detect cly wrapper', () => {
       const output1 = `  PID  PPID COMMAND
 12345 67890 /usr/bin/node /path/to/app.js`;
-      
+
       const output2 = `  PID  PPID COMMAND
 67890 11111 cly --verbose`;
-      
+
       const output3 = `  PID  PPID COMMAND
 11111   123 /bin/zsh`;
 
@@ -103,10 +103,10 @@ describe('process-tree', () => {
     it('should detect claude-wrapper script', () => {
       const output1 = `  PID  PPID COMMAND
 12345 67890 /usr/bin/node app.js`;
-      
+
       const output2 = `  PID  PPID COMMAND
 67890 11111 /bin/zsh /Users/user/.config/zsh/claude-wrapper.zsh`;
-      
+
       const output3 = `  PID  PPID COMMAND
 11111   123 /bin/zsh`;
 
@@ -175,13 +175,11 @@ describe('process-tree', () => {
     it('should return cly command when found', () => {
       const output1 = `  PID  PPID COMMAND
 12345 67890 /usr/bin/node app.js`;
-      
+
       const output2 = `  PID  PPID COMMAND
 67890 11111 cly --title "My Project"`;
 
-      vi.mocked(execSync)
-        .mockReturnValueOnce(output1)
-        .mockReturnValueOnce(output2);
+      vi.mocked(execSync).mockReturnValueOnce(output1).mockReturnValueOnce(output2);
 
       expect(getClaudeCommandFromTree()).toBe('cly --title "My Project"');
     });

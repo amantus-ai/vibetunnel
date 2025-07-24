@@ -28,6 +28,7 @@ export class CompactSessionCard extends LitElement {
   @property({ type: Object }) authClient!: AuthClient;
   @property({ type: Boolean }) selected = false;
   @property({ type: String }) sessionType: 'active' | 'idle' | 'exited' = 'active';
+  @property({ type: Number }) sessionNumber?: number;
 
   private handleClick() {
     this.dispatchEvent(
@@ -201,9 +202,20 @@ export class CompactSessionCard extends LitElement {
 
     return html`
       <div class="${cardClasses}" style="margin-bottom: 12px;" @click=${this.handleClick}>
-        <!-- Status indicator -->
-        <div class="relative flex-shrink-0">
-          ${this.renderStatusIndicator()}
+        <!-- Session number and status indicator -->
+        <div class="flex items-center gap-2 flex-shrink-0">
+          ${
+            this.sessionNumber
+              ? html`
+            <span class="text-xs font-mono ${this.selected ? 'text-accent-primary' : 'text-text-muted'} min-w-[1.5rem] text-center">
+              ${this.sessionNumber}
+            </span>
+          `
+              : ''
+          }
+          <div class="relative">
+            ${this.renderStatusIndicator()}
+          </div>
         </div>
         
         <!-- Elegant divider line -->
