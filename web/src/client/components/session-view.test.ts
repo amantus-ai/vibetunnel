@@ -19,20 +19,38 @@ global.EventSource = MockEventSource as unknown as typeof EventSource;
 import type { SessionView } from './session-view';
 import type { Terminal } from './terminal';
 
-// Test interface for SessionView private properties
+// Test interface for SessionView with access to private managers
 interface SessionViewTestInterface extends SessionView {
-  connected: boolean;
   loadingAnimationManager: {
     isLoading: () => boolean;
     startLoading: () => void;
     stopLoading: () => void;
   };
-  isMobile: boolean;
-  terminalCols: number;
-  terminalRows: number;
-  showWidthSelector: boolean;
-  showQuickKeys: boolean;
-  keyboardHeight: number;
+  uiStateManager: {
+    getState: () => any;
+    setIsMobile: (value: boolean) => void;
+    setShowQuickKeys: (value: boolean) => void;
+    setKeyboardHeight: (value: number) => void;
+    setTerminalCols: (value: number) => void;
+    setTerminalRows: (value: number) => void;
+    setShowWidthSelector: (value: boolean) => void;
+    setTerminalMaxCols: (value: number) => void;
+    setShowMobileInput: (value: boolean) => void;
+    setShowFileBrowser: (value: boolean) => void;
+  };
+  connectionManager?: {
+    getIsConnected: () => boolean;
+    setupStreamConnection: (sessionId: string) => void;
+    cleanupStreamConnection: () => void;
+  };
+  terminalLifecycleManager?: {
+    getTerminal: () => any;
+  };
+  terminalSettingsManager: {
+    getCurrentWidthLabel: () => string;
+    getWidthTooltip: () => string;
+    handleWidthSelect: (width: number) => void;
+  };
   updateTerminalTransform: () => void;
   _updateTerminalTransformTimeout: ReturnType<typeof setTimeout> | null;
 }
@@ -62,6 +80,20 @@ describe('SessionView', () => {
     // Clear localStorage to prevent test pollution
     localStorage.clear();
 
+    // Mock matchMedia if it doesn't exist
+    if (!window.matchMedia) {
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+    }
+
     // Setup fetch mock
     fetchMock = setupFetchMock();
 
@@ -89,8 +121,14 @@ describe('SessionView', () => {
     it('should create component with default state', () => {
       expect(element).toBeDefined();
       expect(element.session).toBeNull();
-      expect((element as SessionViewTestInterface).connected).toBe(true);
-      expect((element as SessionViewTestInterface).loadingAnimationManager.isLoading()).toBe(true); // Loading starts when no session
+
+      const testElement = element as SessionViewTestInterface;
+      // Check UI state through the manager
+      const uiState = testElement.uiStateManager.getState();
+      expect(uiState.connected).toBe(false);
+
+      // Loading animation should be active when no session
+      expect(testElement.loadingAnimationManager.isLoading()).toBe(true);
     });
 
     it('should detect mobile environment', async () => {
@@ -149,7 +187,9 @@ describe('SessionView', () => {
       await mobileElement.updateComplete;
 
       // Component detects mobile based on touch capabilities
-      expect((mobileElement as SessionViewTestInterface).isMobile).toBe(true);
+      const mobileTestElement = mobileElement as SessionViewTestInterface;
+      const uiState = mobileTestElement.uiStateManager.getState();
+      expect(uiState.isMobile).toBe(true);
 
       // Restore original values
       Object.defineProperty(navigator, 'maxTouchPoints', {
@@ -332,10 +372,12 @@ describe('SessionView', () => {
 
         // Component updates its state but doesn't send resize via input endpoint
         // Note: The actual dimensions might be slightly different due to terminal calculations
-        expect((element as SessionViewTestInterface).terminalCols).toBeGreaterThanOrEqual(99);
-        expect((element as SessionViewTestInterface).terminalCols).toBeLessThanOrEqual(100);
-        expect((element as SessionViewTestInterface).terminalRows).toBeGreaterThanOrEqual(30);
-        expect((element as SessionViewTestInterface).terminalRows).toBeLessThanOrEqual(35);
+        const testElement = element as SessionViewTestInterface;
+        const uiState = testElement.uiStateManager.getState();
+        expect(uiState.terminalCols).toBeGreaterThanOrEqual(99);
+        expect(uiState.terminalCols).toBeLessThanOrEqual(100);
+        expect(uiState.terminalRows).toBeGreaterThanOrEqual(30);
+        expect(uiState.terminalRows).toBeLessThanOrEqual(35);
       }
     });
   });
@@ -380,8 +422,11 @@ describe('SessionView', () => {
 
         await element.updateComplete;
 
-        // Connection state should update
-        expect((element as SessionViewTestInterface).connected).toBe(true);
+        // Connection state should update through manager
+        const testElement = element as SessionViewTestInterface;
+        if (testElement.connectionManager) {
+          expect(testElement.connectionManager.getIsConnected()).toBe(true);
+        }
       }
     });
 
@@ -436,18 +481,20 @@ describe('SessionView', () => {
 
       const mockSession = createMockSession();
       element.session = mockSession;
-      element.isMobile = true;
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setIsMobile(true);
       await element.updateComplete;
     });
 
     it('should show mobile input overlay', async () => {
-      element.showMobileInput = true;
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setShowMobileInput(true);
       await element.updateComplete;
 
-      // Look for mobile input elements
-      const mobileOverlay = element.querySelector('[class*="mobile-overlay"]');
-      const mobileForm = element.querySelector('form');
-      const mobileTextarea = element.querySelector('textarea');
+      // Look for mobile input elements in shadow DOM
+      const mobileOverlay = element.shadowRoot?.querySelector('[class*="mobile-overlay"]');
+      const mobileForm = element.shadowRoot?.querySelector('form');
+      const mobileTextarea = element.shadowRoot?.querySelector('textarea');
 
       // At least one mobile input element should exist
       expect(mobileOverlay || mobileForm || mobileTextarea).toBeTruthy();
@@ -465,7 +512,8 @@ describe('SessionView', () => {
         }
       );
 
-      element.showMobileInput = true;
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setShowMobileInput(true);
       await element.updateComplete;
 
       // Look for mobile input form
@@ -493,7 +541,8 @@ describe('SessionView', () => {
     it('should show file browser when triggered', async () => {
       const mockSession = createMockSession();
       element.session = mockSession;
-      element.showFileBrowser = true;
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setShowFileBrowser(true);
       await element.updateComplete;
 
       const fileBrowser = element.querySelector('file-browser');
@@ -514,7 +563,8 @@ describe('SessionView', () => {
 
       const mockSession = createMockSession();
       element.session = mockSession;
-      element.showFileBrowser = true;
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setShowFileBrowser(true);
       await element.updateComplete;
 
       const fileBrowser = element.querySelector('file-browser');
@@ -537,7 +587,8 @@ describe('SessionView', () => {
     it('should close file browser on cancel', async () => {
       const mockSession = createMockSession();
       element.session = mockSession;
-      element.showFileBrowser = true;
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setShowFileBrowser(true);
       await element.updateComplete;
 
       const fileBrowser = element.querySelector('file-browser');
@@ -545,7 +596,8 @@ describe('SessionView', () => {
         // Dispatch cancel event
         fileBrowser.dispatchEvent(new Event('browser-cancel', { bubbles: true }));
 
-        expect(element.showFileBrowser).toBe(false);
+        const testElement = element as SessionViewTestInterface;
+        expect(testElement.uiStateManager.getState().showFileBrowser).toBe(false);
       }
     });
   });
@@ -572,7 +624,8 @@ describe('SessionView', () => {
       if (fitButton) {
         (fitButton as HTMLElement).click();
         await element.updateComplete;
-        expect(element.terminalFitHorizontally).toBe(true);
+        const testElement = element as SessionViewTestInterface;
+        expect(testElement.uiStateManager.getState().terminalFitHorizontally).toBe(true);
       } else {
         // If no fit button found, skip this test
         expect(true).toBe(true);
@@ -594,12 +647,14 @@ describe('SessionView', () => {
         (widthButton as HTMLElement).click();
         await element.updateComplete;
 
-        expect((element as SessionViewTestInterface).showWidthSelector).toBe(true);
+        const testElement = element as SessionViewTestInterface;
+        expect(testElement.uiStateManager.getState().showWidthSelector).toBe(true);
       }
     });
 
     it('should change terminal width preset', async () => {
-      element.showWidthSelector = true;
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setShowWidthSelector(true);
       await element.updateComplete;
 
       // Click on 80 column preset
@@ -607,8 +662,9 @@ describe('SessionView', () => {
       if (preset80) {
         await clickElement(element, '[data-width="80"]');
 
-        expect(element.terminalMaxCols).toBe(80);
-        expect(element.showWidthSelector).toBe(false);
+        const testElement = element as SessionViewTestInterface;
+        expect(testElement.uiStateManager.getState().terminalMaxCols).toBe(80);
+        expect(testElement.uiStateManager.getState().showWidthSelector).toBe(false);
       }
     });
 
@@ -629,35 +685,37 @@ describe('SessionView', () => {
     });
 
     it('should set user override when width is selected', async () => {
-      element.showWidthSelector = true;
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setShowWidthSelector(true);
       await element.updateComplete;
 
       const terminal = element.querySelector('vibe-terminal') as Terminal;
       const setUserOverrideWidthSpy = vi.spyOn(terminal, 'setUserOverrideWidth');
 
       // Simulate width selection
-      element.handleWidthSelect(100);
+      testElement.terminalSettingsManager.handleWidthSelect(100);
       await element.updateComplete;
 
       expect(setUserOverrideWidthSpy).toHaveBeenCalledWith(true);
       expect(terminal.maxCols).toBe(100);
-      expect(element.terminalMaxCols).toBe(100);
+      expect(testElement.uiStateManager.getState().terminalMaxCols).toBe(100);
     });
 
     it('should allow unlimited width selection with override', async () => {
-      element.showWidthSelector = true;
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setShowWidthSelector(true);
       await element.updateComplete;
 
       const terminal = element.querySelector('vibe-terminal') as Terminal;
       const setUserOverrideWidthSpy = vi.spyOn(terminal, 'setUserOverrideWidth');
 
       // Select unlimited (0)
-      element.handleWidthSelect(0);
+      testElement.terminalSettingsManager.handleWidthSelect(0);
       await element.updateComplete;
 
       expect(setUserOverrideWidthSpy).toHaveBeenCalledWith(true);
       expect(terminal.maxCols).toBe(0);
-      expect(element.terminalMaxCols).toBe(0);
+      expect(testElement.uiStateManager.getState().terminalMaxCols).toBe(0);
     });
 
     it('should show limited width label when constrained by session dimensions', async () => {
@@ -668,7 +726,8 @@ describe('SessionView', () => {
       mockSession.initialRows = 30;
 
       element.session = mockSession;
-      element.terminalMaxCols = 0; // No manual width selection
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setTerminalMaxCols(0); // No manual width selection
       await element.updateComplete;
 
       const terminal = element.querySelector('vibe-terminal') as Terminal;
@@ -686,11 +745,11 @@ describe('SessionView', () => {
 
       // With no manual selection (terminalMaxCols = 0) and initial dimensions,
       // the label should show "≤120" for tunneled sessions
-      const label = element.getCurrentWidthLabel();
+      const label = testElement.terminalSettingsManager.getCurrentWidthLabel();
       expect(label).toBe('≤120');
 
       // Tooltip should explain the limitation
-      const tooltip = element.getWidthTooltip();
+      const tooltip = testElement.terminalSettingsManager.getWidthTooltip();
       expect(tooltip).toContain('Limited to native terminal width');
       expect(tooltip).toContain('120 columns');
     });
@@ -709,10 +768,11 @@ describe('SessionView', () => {
       }
 
       // With user override, should show ∞
-      const label = element.getCurrentWidthLabel();
+      const testElement = element as SessionViewTestInterface;
+      const label = testElement.terminalSettingsManager.getCurrentWidthLabel();
       expect(label).toBe('∞');
 
-      const tooltip = element.getWidthTooltip();
+      const tooltip = testElement.terminalSettingsManager.getWidthTooltip();
       expect(tooltip).toBe('Terminal width: Unlimited');
     });
 
@@ -723,7 +783,8 @@ describe('SessionView', () => {
       mockSession.initialRows = 30;
 
       element.session = mockSession;
-      element.terminalMaxCols = 0; // No manual width selection
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setTerminalMaxCols(0); // No manual width selection
       await element.updateComplete;
 
       const terminal = element.querySelector('vibe-terminal') as Terminal;
@@ -734,11 +795,11 @@ describe('SessionView', () => {
       }
 
       // Frontend-created sessions should show unlimited, not limited by initial dimensions
-      const label = element.getCurrentWidthLabel();
+      const label = testElement.terminalSettingsManager.getCurrentWidthLabel();
       expect(label).toBe('∞');
 
       // Tooltip should show unlimited
-      const tooltip = element.getWidthTooltip();
+      const tooltip = testElement.terminalSettingsManager.getWidthTooltip();
       expect(tooltip).toBe('Terminal width: Unlimited');
     });
   });
@@ -874,9 +935,10 @@ describe('SessionView', () => {
         vi.useFakeTimers();
 
         // Set mobile mode and show quick keys
-        (element as SessionViewTestInterface).isMobile = true;
-        (element as SessionViewTestInterface).showQuickKeys = true;
-        (element as SessionViewTestInterface).keyboardHeight = 300;
+        const testElement = element as SessionViewTestInterface;
+        testElement.uiStateManager.setIsMobile(true);
+        testElement.uiStateManager.setShowQuickKeys(true);
+        testElement.uiStateManager.setKeyboardHeight(300);
 
         // Call updateTerminalTransform
         (element as SessionViewTestInterface).updateTerminalTransform();
@@ -906,9 +968,10 @@ describe('SessionView', () => {
       vi.useFakeTimers();
 
       // Set desktop mode but show quick keys
-      (element as SessionViewTestInterface).isMobile = false;
-      (element as SessionViewTestInterface).showQuickKeys = true;
-      (element as SessionViewTestInterface).keyboardHeight = 0;
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setIsMobile(false);
+      testElement.uiStateManager.setShowQuickKeys(true);
+      testElement.uiStateManager.setKeyboardHeight(0);
 
       // Call updateTerminalTransform
       (element as SessionViewTestInterface).updateTerminalTransform();
@@ -934,9 +997,10 @@ describe('SessionView', () => {
         vi.useFakeTimers();
 
         // Initially set some height reduction
-        (element as SessionViewTestInterface).isMobile = true;
-        (element as SessionViewTestInterface).showQuickKeys = false;
-        (element as SessionViewTestInterface).keyboardHeight = 300;
+        const testElement = element as SessionViewTestInterface;
+        testElement.uiStateManager.setIsMobile(true);
+        testElement.uiStateManager.setShowQuickKeys(false);
+        testElement.uiStateManager.setKeyboardHeight(300);
         (element as SessionViewTestInterface).updateTerminalTransform();
 
         vi.advanceTimersByTime(110);
@@ -950,7 +1014,7 @@ describe('SessionView', () => {
         expect(containerElement?.getAttribute('style')).toContain('--keyboard-height: 300px');
 
         // Now hide the keyboard
-        (element as SessionViewTestInterface).keyboardHeight = 0;
+        testElement.uiStateManager.setKeyboardHeight(0);
         (element as SessionViewTestInterface).updateTerminalTransform();
 
         vi.advanceTimersByTime(110);
@@ -989,16 +1053,17 @@ describe('SessionView', () => {
       vi.useFakeTimers();
 
       // First call with keyboard height
-      (element as SessionViewTestInterface).isMobile = true;
-      (element as SessionViewTestInterface).keyboardHeight = 200;
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setIsMobile(true);
+      testElement.uiStateManager.setKeyboardHeight(200);
       (element as SessionViewTestInterface).updateTerminalTransform();
 
       // Second call with different height before debounce
-      (element as SessionViewTestInterface).keyboardHeight = 300;
+      testElement.uiStateManager.setKeyboardHeight(300);
       (element as SessionViewTestInterface).updateTerminalTransform();
 
       // Third call with quick keys enabled
-      (element as SessionViewTestInterface).showQuickKeys = true;
+      testElement.uiStateManager.setShowQuickKeys(true);
       (element as SessionViewTestInterface).updateTerminalTransform();
 
       // Advance timers past debounce

@@ -10,6 +10,18 @@ import { createMockSession } from '@/test/utils/lit-test-utils';
 import type { FilePicker } from './file-picker.js';
 import type { SessionView } from './session-view.js';
 
+// Test interface for SessionView with access to private managers
+interface SessionViewTestInterface extends SessionView {
+  uiStateManager: {
+    getState: () => any;
+    setIsDragOver: (value: boolean) => void;
+    setShowFileBrowser: (value: boolean) => void;
+    setShowImagePicker: (value: boolean) => void;
+    setShowMobileInput: (value: boolean) => void;
+  };
+  uploadFile?: (file: File) => Promise<void>;
+}
+
 // Mock auth client
 vi.mock('../services/auth-client.js', () => ({
   authClient: {
@@ -148,7 +160,8 @@ describe('SessionView Drag & Drop and Paste', () => {
       element.dispatchEvent(dragEvent);
       await element.updateComplete;
 
-      expect(element.isDragOver).toBe(true);
+      const testElement = element as SessionViewTestInterface;
+      expect(testElement.uiStateManager.getState().isDragOver).toBe(true);
     });
 
     it('should not show drag overlay when non-files are dragged over', async () => {
@@ -157,7 +170,8 @@ describe('SessionView Drag & Drop and Paste', () => {
       element.dispatchEvent(dragEvent);
       await element.updateComplete;
 
-      expect(element.isDragOver).toBe(false);
+      const testElement = element as SessionViewTestInterface;
+      expect(testElement.uiStateManager.getState().isDragOver).toBe(false);
     });
 
     it('should prevent default behavior on dragover', () => {
@@ -179,7 +193,8 @@ describe('SessionView Drag & Drop and Paste', () => {
       const dragOverEvent = createDragEvent('dragover', true);
       element.dispatchEvent(dragOverEvent);
       await element.updateComplete;
-      expect(element.isDragOver).toBe(true);
+      const testElement = element as SessionViewTestInterface;
+      expect(testElement.uiStateManager.getState().isDragOver).toBe(true);
 
       // Test simplified behavior - drop event always sets isDragOver to false
       const dropEvent = new DragEvent('drop', {
@@ -200,7 +215,7 @@ describe('SessionView Drag & Drop and Paste', () => {
       await element.updateComplete;
 
       // Drop always sets isDragOver to false
-      expect(element.isDragOver).toBe(false);
+      expect(testElement.uiStateManager.getState().isDragOver).toBe(false);
     });
 
     it('should keep drag overlay when dragging within the element', async () => {
@@ -208,7 +223,8 @@ describe('SessionView Drag & Drop and Paste', () => {
       const dragOverEvent = createDragEvent('dragover', true);
       element.dispatchEvent(dragOverEvent);
       await element.updateComplete;
-      expect(element.isDragOver).toBe(true);
+      const testElement = element as SessionViewTestInterface;
+      expect(testElement.uiStateManager.getState().isDragOver).toBe(true);
 
       // Create a drag leave event within bounds
       const dragLeaveEvent = new DragEvent('dragleave', {
@@ -253,7 +269,7 @@ describe('SessionView Drag & Drop and Paste', () => {
       // Restore original function
       element.getBoundingClientRect = originalGetBoundingClientRect;
 
-      expect(element.isDragOver).toBe(true);
+      expect(testElement.uiStateManager.getState().isDragOver).toBe(true);
     });
   });
 
@@ -275,11 +291,11 @@ describe('SessionView Drag & Drop and Paste', () => {
         configurable: true,
       });
 
-      element.isDragOver = true;
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setIsDragOver(true);
       element.dispatchEvent(dropEvent);
       await element.updateComplete;
-
-      expect(element.isDragOver).toBe(false);
+      expect(testElement.uiStateManager.getState().isDragOver).toBe(false);
       expect(mockFilePicker.uploadFile).toHaveBeenCalledWith(file);
     });
 
@@ -457,7 +473,8 @@ describe('SessionView Drag & Drop and Paste', () => {
     });
 
     it('should not handle paste when file browser is open', async () => {
-      element.showFileBrowser = true;
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setShowFileBrowser(true);
       await element.updateComplete;
 
       const file = new File(['test'], 'test.txt', { type: 'text/plain' });
@@ -483,7 +500,8 @@ describe('SessionView Drag & Drop and Paste', () => {
     });
 
     it('should not handle paste when image picker is open', async () => {
-      element.showImagePicker = true;
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setShowImagePicker(true);
       await element.updateComplete;
 
       const file = new File(['test'], 'test.txt', { type: 'text/plain' });
@@ -509,7 +527,8 @@ describe('SessionView Drag & Drop and Paste', () => {
     });
 
     it('should not handle paste when mobile input is open', async () => {
-      element.showMobileInput = true;
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setShowMobileInput(true);
       await element.updateComplete;
 
       const file = new File(['test'], 'test.txt', { type: 'text/plain' });
@@ -632,15 +651,17 @@ describe('SessionView Drag & Drop and Paste', () => {
       await element.updateComplete;
 
       // Verify the state is set correctly
-      expect(element.isDragOver).toBe(true);
+      const testElement = element as SessionViewTestInterface;
+      expect(testElement.uiStateManager.getState().isDragOver).toBe(true);
     });
 
     it('should hide drag overlay when isDragOver is false', async () => {
+      const testElement = element as SessionViewTestInterface;
       // First show it
       const dragOverEvent = createDragEvent('dragover', true);
       element.dispatchEvent(dragOverEvent);
       await element.updateComplete;
-      expect(element.isDragOver).toBe(true);
+      expect(testElement.uiStateManager.getState().isDragOver).toBe(true);
 
       // Then hide it with drop
       const dropEvent = new DragEvent('drop', {
@@ -657,24 +678,25 @@ describe('SessionView Drag & Drop and Paste', () => {
       await element.updateComplete;
 
       // Verify the state is set correctly
-      expect(element.isDragOver).toBe(false);
+      expect(testElement.uiStateManager.getState().isDragOver).toBe(false);
     });
 
     it.skip('should toggle drag overlay state correctly', async () => {
       // Initial state
-      expect(element.isDragOver).toBe(false);
+      const testElement = element as SessionViewTestInterface;
+      expect(testElement.uiStateManager.getState().isDragOver).toBe(false);
 
       // Drag over with files
       const dragOverEvent = createDragEvent('dragover', true);
       element.dispatchEvent(dragOverEvent);
       await element.updateComplete;
-      expect(element.isDragOver).toBe(true);
+      expect(testElement.uiStateManager.getState().isDragOver).toBe(true);
 
       // Drag over without files should not change state
       const dragOverNoFiles = createDragEvent('dragover', false);
       element.dispatchEvent(dragOverNoFiles);
       await element.updateComplete;
-      expect(element.isDragOver).toBe(false);
+      expect(testElement.uiStateManager.getState().isDragOver).toBe(false);
     });
   });
 

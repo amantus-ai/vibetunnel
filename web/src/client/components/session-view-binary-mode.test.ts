@@ -7,6 +7,19 @@ import './session-view.js';
 import type { Session } from '../../shared/types.js';
 import type { SessionView } from './session-view.js';
 
+// Test interface for SessionView with access to private managers
+interface SessionViewTestInterface extends SessionView {
+  uiStateManager: {
+    getState: () => any;
+    setUseBinaryMode: (value: boolean) => void;
+    setConnected: (value: boolean) => void;
+  };
+  connectionManager?: {
+    cleanupStreamConnection: () => void;
+  };
+  ensureTerminalInitialized: () => void;
+}
+
 describe('SessionView Binary Mode', () => {
   let element: SessionView;
   // biome-ignore lint/suspicious/noExplicitAny: mock type
@@ -74,9 +87,9 @@ describe('SessionView Binary Mode', () => {
   });
 
   it('should render binary terminal when useBinaryMode is true', async () => {
-    // Set binary mode on element directly
-    // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
-    element['useBinaryMode'] = true;
+    // Set binary mode through uiStateManager
+    const testElement = element as SessionViewTestInterface;
+    testElement.uiStateManager.setUseBinaryMode(true);
 
     await element.updateComplete;
 
@@ -90,14 +103,14 @@ describe('SessionView Binary Mode', () => {
   it('should load binary mode preference on connect', async () => {
     // The loading happens in connectedCallback before we can mock
     // Test that the component responds to preferences
-    // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
-    expect(element['useBinaryMode']).toBe(false); // Default
+    const testElement = element as SessionViewTestInterface;
+    expect(testElement.uiStateManager.getState().useBinaryMode).toBe(false); // Default
 
     // Simulate preference change
     window.dispatchEvent(new CustomEvent('terminal-binary-mode-changed', { detail: true }));
 
-    // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
-    expect(element['useBinaryMode']).toBe(true);
+    await element.updateComplete;
+    expect(testElement.uiStateManager.getState().useBinaryMode).toBe(true);
   });
 
   it('should switch terminals when binary mode changes', async () => {
@@ -120,10 +133,10 @@ describe('SessionView Binary Mode', () => {
 
   it('should reconnect when switching modes with active session', async () => {
     // Set up spies
-    // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
-    const cleanupSpy = vi.spyOn(element['connectionManager'], 'cleanupStreamConnection');
+    const testElement = element as SessionViewTestInterface;
+    const cleanupSpy = vi.spyOn(testElement.connectionManager!, 'cleanupStreamConnection');
     const requestUpdateSpy = vi.spyOn(element, 'requestUpdate');
-    const ensureInitSpy = vi.spyOn(element, 'ensureTerminalInitialized');
+    const ensureInitSpy = vi.spyOn(testElement, 'ensureTerminalInitialized');
 
     // Clear any previous calls from setup
     cleanupSpy.mockClear();
@@ -131,8 +144,7 @@ describe('SessionView Binary Mode', () => {
     ensureInitSpy.mockClear();
 
     // Set element as connected with session
-    // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
-    element['connected'] = true;
+    testElement.uiStateManager.setConnected(true);
 
     await element.updateComplete;
 

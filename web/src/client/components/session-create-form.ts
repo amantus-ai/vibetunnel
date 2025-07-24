@@ -1019,10 +1019,10 @@ export class SessionCreateForm extends LitElement {
           @click=${(e: Event) => e.stopPropagation()}
           data-testid="session-create-modal"
         >
-          <div class="p-3 sm:p-4 mb-1 sm:mb-2 border-b border-border/50 relative bg-gradient-to-r from-bg-secondary to-bg-tertiary flex-shrink-0 rounded-t-xl">
+          <div class="p-3 sm:p-4 mb-1 sm:mb-2 border-b border-border/50 relative bg-gradient-to-r from-bg-secondary to-bg-tertiary flex-shrink-0 rounded-t-xl flex items-center justify-between">
             <h2 id="modal-title" class="text-primary text-base sm:text-lg lg:text-xl font-bold">New Session</h2>
             <button
-              class="absolute top-2 right-2 sm:top-3 sm:right-3 lg:top-5 lg:right-5 text-text-muted hover:text-text transition-all duration-200 p-1.5 sm:p-2 hover:bg-bg-elevated/30 rounded-lg"
+              class="text-text-muted hover:text-text transition-all duration-200 p-1.5 sm:p-2 hover:bg-bg-elevated/30 rounded-lg"
               @click=${this.handleCancel}
               title="Close (Esc)"
               aria-label="Close modal"

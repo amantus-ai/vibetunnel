@@ -56,7 +56,7 @@ describe('SessionList', () => {
       expect(element).toBeDefined();
       // Wait for the component to be fully initialized
       await element.updateComplete;
-      
+
       // Check if the element is actually a SessionList
       expect(element.tagName.toLowerCase()).toBe('session-list');
       expect(element.sessions).toBeDefined();

@@ -136,20 +136,18 @@ describe('Worktree Workflows Integration Tests', () => {
       expect(response.body.baseBranch).toBe('main');
 
       // Find main repository worktree
-      const mainWorktree = response.body.worktrees.find(
-        (w: { branch: string; path: string }) => {
-          // Handle macOS /tmp symlink
-          const normalizedPath = w.path.replace(/^\/private/, '');
-          const normalizedRepoPath = testRepoPath.replace(/^\/private/, '');
-          return normalizedPath === normalizedRepoPath;
-        }
-      );
+      const mainWorktree = response.body.worktrees.find((w: { branch: string; path: string }) => {
+        // Handle macOS /tmp symlink
+        const normalizedPath = w.path.replace(/^\/private/, '');
+        const normalizedRepoPath = testRepoPath.replace(/^\/private/, '');
+        return normalizedPath === normalizedRepoPath;
+      });
       expect(mainWorktree).toBeDefined();
       expect(mainWorktree.branch).toMatch(/^(refs\/heads\/)?main$/);
 
       // Find feature worktree (branch might include refs/heads/ prefix)
-      const featureWorktree = response.body.worktrees.find(
-        (w: { branch: string }) => w.branch.includes('feature/test-feature')
+      const featureWorktree = response.body.worktrees.find((w: { branch: string }) =>
+        w.branch.includes('feature/test-feature')
       );
       expect(featureWorktree).toBeDefined();
       expect(featureWorktree.path).toContain('worktree-feature');
@@ -457,7 +455,7 @@ describe('Worktree Workflows Integration Tests', () => {
       expect(eventResponse.body.notification).toBeDefined();
       expect(eventResponse.body.notification.branch).toBe('feature/test-feature');
       expect(eventResponse.body.notification.event).toBe('checkout');
-      
+
       // Note: Due to the git routes creating their own SessionManager instance,
       // we can't verify the actual session title updates in this test.
       // The route correctly processes the event and reports updating 2 sessions.
