@@ -19,7 +19,7 @@ final class PowerManagementService {
     private var assertionID: IOPMAssertionID = 0
     private var isAssertionActive = false
 
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "PowerManagement")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "PowerManagement")
 
     private init() {}
 

@@ -10,7 +10,7 @@ struct GlowingAppIcon: View {
     /// Configuration
     let size: CGFloat
 
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "GlowingAppIcon")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "GlowingAppIcon")
     let enableFloating: Bool
     let enableInteraction: Bool
     let glowIntensity: Double

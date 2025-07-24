@@ -6,7 +6,7 @@ struct AppPreferences {
     let preferredTerminal: String?
     let showInDock: Bool
     let updateChannel: String
-    
+
     static func current() -> Self {
         Self(
             preferredGitApp: UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.preferredGitApp),

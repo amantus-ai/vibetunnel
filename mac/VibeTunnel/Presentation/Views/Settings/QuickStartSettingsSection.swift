@@ -113,7 +113,7 @@ struct QuickStartSettingsSection: View {
         }
     }
 
-    private func updateCommand(_ updated: ConfigManager.QuickStartCommand) {
+    private func updateCommand(_ updated: QuickStartCommand) {
         configManager.updateCommand(
             id: updated.id,
             name: updated.name,
@@ -121,7 +121,7 @@ struct QuickStartSettingsSection: View {
         )
     }
 
-    private func deleteCommand(_ command: ConfigManager.QuickStartCommand) {
+    private func deleteCommand(_ command: QuickStartCommand) {
         configManager.deleteCommand(id: command.id)
     }
 
@@ -166,10 +166,10 @@ struct QuickStartSettingsSection: View {
 // MARK: - Command Row
 
 private struct QuickStartCommandRow: View {
-    let command: ConfigManager.QuickStartCommand
+    let command: QuickStartCommand
     let isEditing: Bool
     let onEdit: () -> Void
-    let onSave: (ConfigManager.QuickStartCommand) -> Void
+    let onSave: (QuickStartCommand) -> Void
     let onDelete: () -> Void
     let onStopEditing: () -> Void
 

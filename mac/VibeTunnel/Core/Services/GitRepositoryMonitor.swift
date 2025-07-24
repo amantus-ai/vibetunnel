@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import Observation
+import OSLog
 
 // MARK: - Response Types
 
@@ -61,14 +62,14 @@ public final class GitRepositoryMonitor {
 
     // MARK: - Private Properties
 
+    /// Logger for debugging
+    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "GitRepositoryMonitor")
+
     /// Operation queue for rate limiting git operations
     private let gitOperationQueue = OperationQueue()
 
-    /// Server port for API requests
-    private var serverPort: Int {
-        // Get port from ServerManager (which reads from UserDefaults)
-        Int(ServerManager.shared.port) ?? NetworkConstants.defaultPort
-    }
+    /// Server manager for API requests
+    private let serverManager = ServerManager.shared
 
     // MARK: - Public Methods
 
@@ -89,8 +90,9 @@ public final class GitRepositoryMonitor {
     /// - Returns: Array of branch names (without refs/heads/ prefix)
     public func getBranches(for repoPath: String) async -> [String] {
         // Use the server endpoint to get branches
-        guard let url = URL(
-            string: "http://localhost:\(serverPort)/api/repositories/branches?path=\(repoPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+        guard let url = serverManager.buildURL(
+            endpoint: "/api/repositories/branches",
+            queryItems: [URLQueryItem(name: "path", value: repoPath)]
         ) else {
             logger.error("Failed to construct branches URL")
             return []
@@ -99,7 +101,7 @@ public final class GitRepositoryMonitor {
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             let decoder = JSONDecoder()
-            
+
             // Define the branch structure we expect from the server
             struct Branch: Codable {
                 let name: String
@@ -107,14 +109,14 @@ public final class GitRepositoryMonitor {
                 let remote: Bool
                 let worktreePath: String?
             }
-            
+
             let branches = try decoder.decode([Branch].self, from: data)
-            
+
             // Filter to local branches only and extract names
             let localBranchNames = branches
                 .filter { !$0.remote }
-                .map { $0.name }
-            
+                .map(\.name)
+
             logger.debug("Retrieved \(localBranchNames.count) local branches from server")
             return localBranchNames
         } catch {
@@ -267,11 +269,14 @@ public final class GitRepositoryMonitor {
         let expandedPath = NSString(string: path).expandingTildeInPath
 
         // Use HTTP endpoint to check if it's a git repository
-        guard let url =
-            URL(
-                string: "http://localhost:\(serverPort)/api/git/repo-info?path=\(expandedPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+        let url = await MainActor.run {
+            serverManager.buildURL(
+                endpoint: "/api/git/repo-info",
+                queryItems: [URLQueryItem(name: "path", value: expandedPath)]
             )
-        else {
+        }
+
+        guard let url else {
             return nil
         }
 
@@ -327,11 +332,14 @@ public final class GitRepositoryMonitor {
     /// Get basic repository status without GitHub URL
     private nonisolated func getBasicGitStatus(at repoPath: String) async -> GitRepository? {
         // Use HTTP endpoint to get git status
-        guard let url =
-            URL(
-                string: "http://localhost:\(serverPort)/api/git/repository-info?path=\(repoPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+        let url = await MainActor.run {
+            serverManager.buildURL(
+                endpoint: "/api/git/repository-info",
+                queryItems: [URLQueryItem(name: "path", value: repoPath)]
             )
-        else {
+        }
+
+        guard let url else {
             return nil
         }
 
@@ -391,11 +399,14 @@ public final class GitRepositoryMonitor {
         githubURLFetchesInProgress.insert(repoPath)
 
         // Try to get from HTTP endpoint first
-        if let url =
-            URL(
-                string: "http://localhost:\(serverPort)/api/git/remote?path=\(repoPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+        let url = await MainActor.run {
+            serverManager.buildURL(
+                endpoint: "/api/git/remote",
+                queryItems: [URLQueryItem(name: "path", value: repoPath)]
             )
-        {
+        }
+
+        if let url {
             do {
                 let (data, _) = try await URLSession.shared.data(from: url)
                 let decoder = JSONDecoder()

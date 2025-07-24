@@ -27,7 +27,7 @@ struct GeneralSettingsView: View {
     private var serverManager
 
     private let startupManager = StartupManager()
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "GeneralSettings")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "GeneralSettings")
 
     private var accessMode: DashboardAccessMode {
         DashboardAccessMode(rawValue: accessModeString) ?? .localhost

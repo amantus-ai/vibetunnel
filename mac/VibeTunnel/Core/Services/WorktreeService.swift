@@ -27,17 +27,10 @@ final class WorktreeService {
         error = nil
 
         do {
-            guard let baseURL = URL(string: "\(URLConstants.localServerBase):\(serverManager.port)") else {
-                throw WorktreeError.invalidURL
-            }
-
-            var components = URLComponents(
-                url: baseURL.appendingPathComponent("api/worktrees"),
-                resolvingAgainstBaseURL: false
-            )!
-            components.queryItems = [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)]
-
-            guard let url = components.url else {
+            guard let url = serverManager.buildURL(
+                endpoint: "/api/worktrees",
+                queryItems: [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)]
+            ) else {
                 throw WorktreeError.invalidURL
             }
 
@@ -74,25 +67,13 @@ final class WorktreeService {
     )
         async throws
     {
-        guard let baseURL = URL(string: "\(URLConstants.localServerBase):\(serverManager.port)") else {
-            throw WorktreeError.invalidURL
-        }
-
-        var components = URLComponents(
-            url: baseURL.appendingPathComponent("api/worktrees"),
-            resolvingAgainstBaseURL: false
-        )!
-        components.queryItems = [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)]
-
-        guard let url = components.url else {
-            throw WorktreeError.invalidURL
-        }
-
         let request = CreateWorktreeRequest(branch: branch, createBranch: createBranch, baseBranch: baseBranch)
-        var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpBody = try JSONEncoder().encode(request)
+        let urlRequest = try serverManager.makeRequest(
+            endpoint: "/api/worktrees",
+            method: "POST",
+            body: request,
+            queryItems: [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)]
+        )
 
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
@@ -111,25 +92,14 @@ final class WorktreeService {
 
     /// Delete a worktree
     func deleteWorktree(gitRepoPath: String, branch: String, force: Bool = false) async throws {
-        guard let baseURL = URL(string: "\(URLConstants.localServerBase):\(serverManager.port)") else {
-            throw WorktreeError.invalidURL
-        }
-
-        var components = URLComponents(
-            url: baseURL.appendingPathComponent("api/worktrees/\(branch)"),
-            resolvingAgainstBaseURL: false
-        )!
-        components.queryItems = [
-            URLQueryItem(name: "gitRepoPath", value: gitRepoPath),
-            URLQueryItem(name: "force", value: String(force))
-        ]
-
-        guard let url = components.url else {
-            throw WorktreeError.invalidURL
-        }
-
-        var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = "DELETE"
+        let urlRequest = try serverManager.makeRequest(
+            endpoint: "/api/worktrees/\(branch)",
+            method: "DELETE",
+            queryItems: [
+                URLQueryItem(name: "gitRepoPath", value: gitRepoPath),
+                URLQueryItem(name: "force", value: String(force))
+            ]
+        )
 
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
@@ -148,25 +118,13 @@ final class WorktreeService {
 
     /// Switch to a different branch
     func switchBranch(gitRepoPath: String, branch: String, createBranch: Bool = false) async throws {
-        guard let baseURL = URL(string: "\(URLConstants.localServerBase):\(serverManager.port)") else {
-            throw WorktreeError.invalidURL
-        }
-
-        var components = URLComponents(
-            url: baseURL.appendingPathComponent("api/worktrees/switch"),
-            resolvingAgainstBaseURL: false
-        )!
-        components.queryItems = [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)]
-
-        guard let url = components.url else {
-            throw WorktreeError.invalidURL
-        }
-
         let request = SwitchBranchRequest(branch: branch, createBranch: createBranch)
-        var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpBody = try JSONEncoder().encode(request)
+        let urlRequest = try serverManager.makeRequest(
+            endpoint: "/api/worktrees/switch",
+            method: "POST",
+            body: request,
+            queryItems: [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)]
+        )
 
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
@@ -185,25 +143,13 @@ final class WorktreeService {
 
     /// Toggle follow mode
     func toggleFollowMode(gitRepoPath: String, enabled: Bool, targetBranch: String? = nil) async throws {
-        guard let baseURL = URL(string: "\(URLConstants.localServerBase):\(serverManager.port)") else {
-            throw WorktreeError.invalidURL
-        }
-
-        var components = URLComponents(
-            url: baseURL.appendingPathComponent("api/worktrees/follow"),
-            resolvingAgainstBaseURL: false
-        )!
-        components.queryItems = [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)]
-
-        guard let url = components.url else {
-            throw WorktreeError.invalidURL
-        }
-
         let request = FollowModeRequest(enabled: enabled, targetBranch: targetBranch)
-        var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpBody = try JSONEncoder().encode(request)
+        let urlRequest = try serverManager.makeRequest(
+            endpoint: "/api/worktrees/follow",
+            method: "POST",
+            body: request,
+            queryItems: [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)]
+        )
 
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
@@ -225,17 +171,10 @@ final class WorktreeService {
         isLoadingBranches = true
 
         do {
-            guard let baseURL = URL(string: "\(URLConstants.localServerBase):\(serverManager.port)") else {
-                throw WorktreeError.invalidURL
-            }
-
-            var components = URLComponents(
-                url: baseURL.appendingPathComponent("api/repositories/branches"),
-                resolvingAgainstBaseURL: false
-            )!
-            components.queryItems = [URLQueryItem(name: "path", value: gitRepoPath)]
-
-            guard let url = components.url else {
+            guard let url = serverManager.buildURL(
+                endpoint: "/api/repositories/branches",
+                queryItems: [URLQueryItem(name: "path", value: gitRepoPath)]
+            ) else {
                 throw WorktreeError.invalidURL
             }
 
@@ -267,6 +206,7 @@ enum WorktreeError: LocalizedError {
     case invalidURL
     case invalidResponse
     case serverError(String)
+    case invalidConfiguration
 
     var errorDescription: String? {
         switch self {
@@ -276,6 +216,8 @@ enum WorktreeError: LocalizedError {
             "Invalid server response"
         case .serverError(let message):
             message
+        case .invalidConfiguration:
+            "Invalid configuration"
         }
     }
 }

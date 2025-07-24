@@ -26,7 +26,7 @@ struct DashboardSettingsView: View {
     @State private var ngrokStatus: NgrokTunnelStatus?
     @State private var tailscaleStatus: (isInstalled: Bool, isRunning: Bool, hostname: String?)?
 
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "DashboardSettings")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "DashboardSettings")
 
     private var accessMode: DashboardAccessMode {
         DashboardAccessMode(rawValue: accessModeString) ?? .localhost

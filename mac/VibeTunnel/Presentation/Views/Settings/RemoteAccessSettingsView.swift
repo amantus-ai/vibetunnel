@@ -34,7 +34,7 @@ struct RemoteAccessSettingsView: View {
     @State private var showingServerErrorAlert = false
     @State private var serverErrorMessage = ""
 
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "RemoteAccessSettings")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "RemoteAccessSettings")
 
     private var accessMode: DashboardAccessMode {
         DashboardAccessMode(rawValue: accessModeString) ?? .localhost
@@ -219,7 +219,7 @@ private struct TailscaleIntegrationSection: View {
 
     @State private var statusCheckTimer: Timer?
 
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "TailscaleIntegrationSection")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "TailscaleIntegrationSection")
 
     var body: some View {
         Section {

@@ -140,7 +140,6 @@ enum AppConstants {
 // MARK: - Convenience Methods
 
 extension AppConstants {
-
     /// Check if the app is in development mode (debug or dev server enabled)
     static func isInDevelopmentMode() -> Bool {
         let debug = DebugConfig.current()

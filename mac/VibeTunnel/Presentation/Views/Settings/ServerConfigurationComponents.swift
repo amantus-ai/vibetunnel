@@ -208,7 +208,7 @@ private struct PortConfigurationView: View {
 
 @MainActor
 enum ServerConfigurationHelpers {
-    private static let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "ServerConfiguration")
+    private static let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "ServerConfiguration")
 
     static func restartServerWithNewPort(_ port: Int, serverManager: ServerManager) async {
         // Update the port in ServerManager and restart

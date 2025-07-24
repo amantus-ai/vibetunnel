@@ -5,7 +5,7 @@ struct ServerConfig {
     let port: Int
     let dashboardAccessMode: String
     let cleanupOnStartup: Bool
-    
+
     static func current() -> Self {
         Self(
             port: AppConstants.intValue(for: AppConstants.UserDefaultsKeys.serverPort),

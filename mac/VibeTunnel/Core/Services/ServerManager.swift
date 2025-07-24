@@ -354,20 +354,9 @@ class ServerManager {
         try? await Task.sleep(for: .milliseconds(10_000))
 
         do {
-            // Create URL for cleanup endpoint
-            guard let url = URL(string: "\(URLConstants.localServerBase):\(self.port)\(APIEndpoints.cleanupExited)")
-            else {
-                logger.warning("Failed to create cleanup URL")
-                return
-            }
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
+            // Create authenticated request for cleanup
+            var request = try makeRequest(endpoint: APIEndpoints.cleanupExited, method: "POST")
             request.timeoutInterval = 10
-
-            // Add local auth token if available
-            if let server = bunServer {
-                request.setValue(server.localToken, forHTTPHeaderField: NetworkConstants.localAuthHeader)
-            }
 
             // Make the cleanup request
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -571,6 +560,59 @@ class ServerManager {
             throw ServerError.startupFailed(ErrorMessages.serverNotRunning)
         }
         request.setValue(server.localToken, forHTTPHeaderField: NetworkConstants.localAuthHeader)
+    }
+
+    // MARK: - Request Helpers
+
+    /// Build a URL for the local server with the given endpoint
+    func buildURL(endpoint: String) -> URL? {
+        URL(string: "\(URLConstants.localServerBase):\(port)\(endpoint)")
+    }
+
+    /// Build a URL for the local server with the given endpoint and query parameters
+    func buildURL(endpoint: String, queryItems: [URLQueryItem]?) -> URL? {
+        guard let baseURL = buildURL(endpoint: endpoint) else { return nil }
+
+        guard let queryItems, !queryItems.isEmpty else {
+            return baseURL
+        }
+
+        var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
+        components?.queryItems = queryItems
+        return components?.url
+    }
+
+    /// Create an authenticated JSON request
+    func makeRequest(
+        endpoint: String,
+        method: String = "POST",
+        body: Encodable? = nil,
+        queryItems: [URLQueryItem]? = nil
+    )
+        throws -> URLRequest
+    {
+        let url: URL? = if let queryItems, !queryItems.isEmpty {
+            buildURL(endpoint: endpoint, queryItems: queryItems)
+        } else {
+            buildURL(endpoint: endpoint)
+        }
+
+        guard let url else {
+            throw URLError(.badURL)
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue(NetworkConstants.contentTypeJSON, forHTTPHeaderField: NetworkConstants.contentTypeHeader)
+        request.setValue(NetworkConstants.localhost, forHTTPHeaderField: NetworkConstants.hostHeader)
+
+        if let body {
+            request.httpBody = try JSONEncoder().encode(body)
+        }
+
+        try authenticate(request: &request)
+
+        return request
     }
 }
 

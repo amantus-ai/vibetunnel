@@ -110,4 +110,62 @@ public struct GitRepository: Sendable, Equatable, Hashable {
     }
 
     // MARK: - Internal Methods
+
+    /// Get GitHub URL for a repository path
+    static func getGitHubURL(for repoPath: String) -> URL? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["remote", "get-url", "origin"]
+        process.currentDirectoryURL = URL(fileURLWithPath: repoPath)
+
+        let outputPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+
+            guard process.terminationStatus == 0 else {
+                return nil
+            }
+
+            let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: outputData, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+            return parseGitHubURL(from: output)
+        } catch {
+            return nil
+        }
+    }
+
+    /// Parse GitHub URL from git remote output
+    static func parseGitHubURL(from remoteURL: String) -> URL? {
+        // Handle HTTPS URLs: https://github.com/user/repo.git
+        if remoteURL.starts(with: "https://github.com/") {
+            let cleanedURL = remoteURL
+                .replacingOccurrences(of: ".git", with: "")
+                .replacingOccurrences(of: "https://", with: "https://")
+            return URL(string: cleanedURL)
+        }
+
+        // Handle SSH URLs: git@github.com:user/repo.git
+        if remoteURL.starts(with: "git@github.com:") {
+            let repoPath = remoteURL
+                .replacingOccurrences(of: "git@github.com:", with: "")
+                .replacingOccurrences(of: ".git", with: "")
+            return URL(string: "https://github.com/\(repoPath)")
+        }
+
+        // Handle SSH format: ssh://git@github.com/user/repo.git
+        if remoteURL.starts(with: "ssh://git@github.com/") {
+            let repoPath = remoteURL
+                .replacingOccurrences(of: "ssh://git@github.com/", with: "")
+                .replacingOccurrences(of: ".git", with: "")
+            return URL(string: "https://github.com/\(repoPath)")
+        }
+
+        return nil
+    }
 }

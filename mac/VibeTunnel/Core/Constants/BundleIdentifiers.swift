@@ -7,6 +7,9 @@ enum BundleIdentifiers {
     static let main = "sh.vibetunnel.vibetunnel"
     static let vibeTunnel = "sh.vibetunnel.vibetunnel"
 
+    /// Logging subsystem identifier for unified logging
+    static let loggerSubsystem = "sh.vibetunnel.vibetunnel"
+
     // MARK: - Terminal Applications
 
     static let terminal = "com.apple.Terminal"

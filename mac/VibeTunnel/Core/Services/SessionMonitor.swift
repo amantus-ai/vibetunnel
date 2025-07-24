@@ -60,8 +60,7 @@ final class SessionMonitor {
 
     private var lastFetch: Date?
     private let cacheInterval: TimeInterval = 2.0
-    private let serverPort: Int
-    private var localAuthToken: String?
+    private let serverManager = ServerManager.shared
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SessionMonitor")
 
     /// Reference to GitRepositoryMonitor for pre-caching
@@ -71,16 +70,13 @@ final class SessionMonitor {
     private var refreshTimer: Timer?
 
     private init() {
-        let port = UserDefaults.standard.integer(forKey: "serverPort")
-        self.serverPort = port > 0 ? port : 4_020
-
         // Start periodic refresh
         startPeriodicRefresh()
     }
 
     /// Set the local auth token for server requests
     func setLocalAuthToken(_ token: String?) {
-        self.localAuthToken = token
+        // No longer needed - ServerManager handles authentication
     }
 
     /// Number of running sessions
@@ -109,23 +105,11 @@ final class SessionMonitor {
 
     private func fetchSessions() async {
         do {
-            // Get current port (might have changed)
-            let port = UserDefaults.standard.integer(forKey: "serverPort")
-            let actualPort = port > 0 ? port : serverPort
-
-            guard let url = URL(string: "http://localhost:\(actualPort)/api/sessions") else {
-                throw URLError(.badURL)
-            }
-
-            var request = URLRequest(url: url, timeoutInterval: 3.0)
-
-            // Add Host header to ensure request is recognized as local
-            request.setValue("localhost", forHTTPHeaderField: "Host")
-
-            // Add local auth token if available
-            if let token = localAuthToken {
-                request.setValue(token, forHTTPHeaderField: "X-VibeTunnel-Local")
-            }
+            var request = try serverManager.makeRequest(
+                endpoint: APIEndpoints.sessions,
+                method: "GET"
+            )
+            request.timeoutInterval = 3.0
 
             let (data, response) = try await URLSession.shared.data(for: request)
 

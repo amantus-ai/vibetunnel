@@ -19,9 +19,9 @@ final class WindowMatcher {
         sessionInfo: ServerSessionInfo?,
         tabReference: String?,
         tabID: String?,
-        terminalWindows: [WindowEnumerator.WindowInfo]
+        terminalWindows: [WindowInfo]
     )
-        -> WindowEnumerator.WindowInfo?
+        -> WindowInfo?
     {
         // Filter windows for the specific terminal
         let filteredWindows = terminalWindows.filter { $0.terminalApp == terminal }
@@ -157,9 +157,9 @@ final class WindowMatcher {
     func findWindowForSession(
         _ sessionID: String,
         sessionInfo: ServerSessionInfo,
-        allWindows: [WindowEnumerator.WindowInfo]
+        allWindows: [WindowInfo]
     )
-        -> WindowEnumerator.WindowInfo?
+        -> WindowInfo?
     {
         // First try to find window by process PID traversal
         if let sessionPID = sessionInfo.pid {

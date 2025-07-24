@@ -9,7 +9,7 @@ struct PathSuggestion: Identifiable, Equatable {
     let suggestion: String // The complete path to insert
     let isRepository: Bool
     let gitInfo: GitInfo?
-    
+
     enum SuggestionType {
         case file
         case directory

@@ -16,7 +16,6 @@ enum ControlProtocol {
         case system
     }
 
-
     // MARK: - Base message for runtime dispatch
 
     protocol AnyControlMessage {

@@ -11,7 +11,6 @@ final class WindowEnumerator {
         category: "WindowEnumerator"
     )
 
-
     /// Gets all terminal windows currently visible on screen using Accessibility APIs.
     static func getAllTerminalWindows() -> [WindowInfo] {
         // Get bundle identifiers for all terminal types

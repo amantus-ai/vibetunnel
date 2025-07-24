@@ -5,7 +5,7 @@ import SwiftUI
 // MARK: - Logger
 
 extension Logger {
-    fileprivate static let advanced = Logger(subsystem: "com.vibetunnel.VibeTunnel", category: "AdvancedSettings")
+    fileprivate static let advanced = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "AdvancedSettings")
 }
 
 /// Advanced settings tab for power user options

@@ -47,7 +47,6 @@ final class ConfigManager {
     var sessionSpawnWindow: Bool = true
     var sessionTitleMode: TitleMode = .dynamic
 
-
     /// Comprehensive configuration structure
     private struct VibeTunnelConfig: Codable {
         let version: Int

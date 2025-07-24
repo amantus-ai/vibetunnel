@@ -10,7 +10,7 @@ struct ControlMessage<Payload: Codable>: Codable {
     let payload: Payload?
     let sessionId: String?
     let error: String?
-    
+
     init(
         id: String = UUID().uuidString,
         type: ControlProtocol.MessageType,

@@ -24,20 +24,12 @@ final class SessionService {
             throw SessionServiceError.invalidName
         }
 
-        guard let url =
-            URL(string: "\(URLConstants.localServerBase):\(serverManager.port)\(APIEndpoints.sessions)/\(sessionId)")
-        else {
-            throw SessionServiceError.invalidURL
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "PATCH"
-        request.setValue(NetworkConstants.contentTypeJSON, forHTTPHeaderField: NetworkConstants.contentTypeHeader)
-        request.setValue(NetworkConstants.localhost, forHTTPHeaderField: NetworkConstants.hostHeader)
-        try serverManager.authenticate(request: &request)
-
         let body = ["name": trimmedName]
-        request.httpBody = try JSONEncoder().encode(body)
+        let request = try serverManager.makeRequest(
+            endpoint: "\(APIEndpoints.sessions)/\(sessionId)",
+            method: "PATCH",
+            body: body
+        )
 
         let (_, response) = try await URLSession.shared.data(for: request)
 
@@ -68,16 +60,10 @@ final class SessionService {
     /// - Note: The server implements graceful termination (SIGTERM → SIGKILL)
     ///         with a 3-second timeout before force-killing processes.
     func terminateSession(sessionId: String) async throws {
-        guard let url =
-            URL(string: "\(URLConstants.localServerBase):\(serverManager.port)\(APIEndpoints.sessions)/\(sessionId)")
-        else {
-            throw SessionServiceError.invalidURL
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "DELETE"
-        request.setValue(NetworkConstants.localhost, forHTTPHeaderField: NetworkConstants.hostHeader)
-        try serverManager.authenticate(request: &request)
+        let request = try serverManager.makeRequest(
+            endpoint: "\(APIEndpoints.sessions)/\(sessionId)",
+            method: "DELETE"
+        )
 
         let (_, response) = try await URLSession.shared.data(for: request)
 
@@ -110,22 +96,12 @@ final class SessionService {
             throw SessionServiceError.serverNotRunning
         }
 
-        guard let url =
-            URL(
-                string: "\(URLConstants.localServerBase):\(serverManager.port)\(APIEndpoints.sessions)/\(sessionId)/input"
-            )
-        else {
-            throw SessionServiceError.invalidURL
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(NetworkConstants.contentTypeJSON, forHTTPHeaderField: NetworkConstants.contentTypeHeader)
-        request.setValue(NetworkConstants.localhost, forHTTPHeaderField: NetworkConstants.hostHeader)
-        try serverManager.authenticate(request: &request)
-
         let body = ["text": text]
-        request.httpBody = try JSONEncoder().encode(body)
+        let request = try serverManager.makeRequest(
+            endpoint: "\(APIEndpoints.sessions)/\(sessionId)/input",
+            method: "POST",
+            body: body
+        )
 
         let (_, response) = try await URLSession.shared.data(for: request)
 
@@ -142,22 +118,12 @@ final class SessionService {
             throw SessionServiceError.serverNotRunning
         }
 
-        guard let url =
-            URL(
-                string: "\(URLConstants.localServerBase):\(serverManager.port)\(APIEndpoints.sessions)/\(sessionId)/input"
-            )
-        else {
-            throw SessionServiceError.invalidURL
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(NetworkConstants.contentTypeJSON, forHTTPHeaderField: NetworkConstants.contentTypeHeader)
-        request.setValue(NetworkConstants.localhost, forHTTPHeaderField: NetworkConstants.hostHeader)
-        try serverManager.authenticate(request: &request)
-
         let body = ["key": key]
-        request.httpBody = try JSONEncoder().encode(body)
+        let request = try serverManager.makeRequest(
+            endpoint: "\(APIEndpoints.sessions)/\(sessionId)/input",
+            method: "POST",
+            body: body
+        )
 
         let (_, response) = try await URLSession.shared.data(for: request)
 
@@ -186,11 +152,6 @@ final class SessionService {
             throw SessionServiceError.serverNotRunning
         }
 
-        guard let url = URL(string: "\(URLConstants.localServerBase):\(serverManager.port)\(APIEndpoints.sessions)")
-        else {
-            throw SessionServiceError.invalidURL
-        }
-
         var body: [String: Any] = [
             "command": command,
             "workingDir": workingDir,
@@ -215,6 +176,11 @@ final class SessionService {
         }
         if let gitBranch {
             body["gitBranch"] = gitBranch
+        }
+
+        // Note: We can't use makeRequest here because it requires Encodable and we have [String: Any]
+        guard let url = serverManager.buildURL(endpoint: APIEndpoints.sessions) else {
+            throw SessionServiceError.invalidURL
         }
 
         var request = URLRequest(url: url)

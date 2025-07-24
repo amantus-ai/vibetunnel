@@ -17,7 +17,7 @@ public protocol StartupControlling: Sendable {
 /// - Integration with macOS ServiceManagement APIs
 @MainActor
 public struct StartupManager: StartupControlling {
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "startup")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "startup")
 
     public init() {}
 

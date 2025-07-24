@@ -81,7 +81,7 @@ final class WindowFocuser {
     }
 
     /// Focus a window based on terminal type
-    func focusWindow(_ windowInfo: WindowEnumerator.WindowInfo) {
+    func focusWindow(_ windowInfo: WindowInfo) {
         switch windowInfo.terminalApp {
         case .terminal:
             // Terminal.app has special AppleScript support for tab selection
@@ -96,7 +96,7 @@ final class WindowFocuser {
     }
 
     /// Focuses a Terminal.app window/tab.
-    private func focusTerminalAppWindow(_ windowInfo: WindowEnumerator.WindowInfo) {
+    private func focusTerminalAppWindow(_ windowInfo: WindowInfo) {
         if let tabRef = windowInfo.tabReference {
             // Use stored tab reference to select the tab
             // The tabRef format is "tab id X of window id Y"
@@ -146,7 +146,7 @@ final class WindowFocuser {
     }
 
     /// Focuses an iTerm2 window.
-    private func focusiTerm2Window(_ windowInfo: WindowEnumerator.WindowInfo) {
+    private func focusiTerm2Window(_ windowInfo: WindowInfo) {
         // iTerm2 has its own tab system that doesn't use standard macOS tabs
         // We need to use AppleScript to find and select the correct tab
 
@@ -221,7 +221,7 @@ final class WindowFocuser {
     /// Select the correct tab in a window that uses macOS standard tabs
     private func selectTab(
         tabs: [AXElement],
-        windowInfo: WindowEnumerator.WindowInfo,
+        windowInfo: WindowInfo,
         sessionInfo: ServerSessionInfo?
     ) {
         logger.debug("Attempting to select tab for session \(windowInfo.sessionID) from \(tabs.count) tabs")
@@ -277,7 +277,7 @@ final class WindowFocuser {
     }
 
     /// Focuses a window by using the process PID directly
-    private func focusWindowUsingPID(_ windowInfo: WindowEnumerator.WindowInfo) -> Bool {
+    private func focusWindowUsingPID(_ windowInfo: WindowInfo) -> Bool {
         // Get session info for better matching
         let sessionInfo = SessionMonitor.shared.sessions[windowInfo.sessionID]
         // Create AXElement directly from the PID
@@ -406,7 +406,7 @@ final class WindowFocuser {
     }
 
     /// Focuses a window using Accessibility APIs.
-    private func focusWindowUsingAccessibility(_ windowInfo: WindowEnumerator.WindowInfo) {
+    private func focusWindowUsingAccessibility(_ windowInfo: WindowInfo) {
         // First try PID-based approach
         if focusWindowUsingPID(windowInfo) {
             logger.info("Successfully focused window using PID-based approach")

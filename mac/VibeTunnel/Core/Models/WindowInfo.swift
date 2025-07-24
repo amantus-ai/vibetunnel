@@ -8,11 +8,11 @@ struct WindowInfo {
     let terminalApp: Terminal
     let sessionID: String
     let createdAt: Date
-    
+
     // Tab-specific information
     let tabReference: String? // AppleScript reference for Terminal.app tabs
     let tabID: String? // Tab identifier for iTerm2
-    
+
     // Window properties from Accessibility APIs
     let bounds: CGRect?
     let title: String?

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// View that displays autocomplete suggestions in a dropdown
 struct AutocompleteView: View {
-    let suggestions: [AutocompleteService.PathSuggestion]
+    let suggestions: [PathSuggestion]
     @Binding var selectedIndex: Int
     let onSelect: (String) -> Void
 
@@ -18,7 +18,7 @@ struct AutocompleteView: View {
 
 /// View that displays autocomplete suggestions with keyboard navigation support
 struct AutocompleteViewWithKeyboard: View {
-    let suggestions: [AutocompleteService.PathSuggestion]
+    let suggestions: [PathSuggestion]
     @Binding var selectedIndex: Int
     let keyboardNavigating: Bool
     let onSelect: (String) -> Void
@@ -78,7 +78,7 @@ struct AutocompleteViewWithKeyboard: View {
 }
 
 private struct AutocompleteRow: View {
-    let suggestion: AutocompleteService.PathSuggestion
+    let suggestion: PathSuggestion
     let isSelected: Bool
     let onTap: () -> Void
 

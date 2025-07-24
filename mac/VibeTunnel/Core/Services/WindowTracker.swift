@@ -42,7 +42,7 @@ final class WindowTracker {
     )
 
     /// Maps session IDs to their terminal window information
-    private var sessionWindowMap: [String: WindowEnumerator.WindowInfo] = [:]
+    private var sessionWindowMap: [String: WindowInfo] = [:]
 
     /// Tracks which sessions we opened via AppleScript (and can close).
     ///
@@ -124,14 +124,14 @@ final class WindowTracker {
     // MARK: - Window Information
 
     /// Gets the window information for a specific session.
-    func windowInfo(for sessionID: String) -> WindowEnumerator.WindowInfo? {
+    func windowInfo(for sessionID: String) -> WindowInfo? {
         mapLock.withLock {
             sessionWindowMap[sessionID]
         }
     }
 
     /// Gets all tracked windows.
-    func allTrackedWindows() -> [WindowEnumerator.WindowInfo] {
+    func allTrackedWindows() -> [WindowInfo] {
         mapLock.withLock {
             Array(sessionWindowMap.values)
         }
@@ -249,7 +249,7 @@ final class WindowTracker {
     /// - Returns: AppleScript string to close the window, or empty string if unsupported
     ///
     /// - Note: All scripts include error handling to gracefully handle already-closed windows
-    private func generateCloseWindowScript(for windowInfo: WindowEnumerator.WindowInfo) -> String {
+    private func generateCloseWindowScript(for windowInfo: WindowInfo) -> String {
         switch windowInfo.terminalApp {
         case .terminal:
             // Use window ID to close - more reliable than tab references
@@ -382,7 +382,7 @@ final class WindowTracker {
         tabReference: String?,
         tabID: String?
     )
-        -> WindowEnumerator.WindowInfo?
+        -> WindowInfo?
     {
         let allWindows = WindowEnumerator.getAllTerminalWindows()
         let sessionInfo = getSessionInfo(for: sessionID)
@@ -409,15 +409,15 @@ final class WindowTracker {
 
     /// Helper to create WindowInfo from a found window
     private func createWindowInfo(
-        from window: WindowEnumerator.WindowInfo,
+        from window: WindowInfo,
         sessionID: String,
         terminal: Terminal,
         tabReference: String?,
         tabID: String?
     )
-        -> WindowEnumerator.WindowInfo
+        -> WindowInfo
     {
-        WindowEnumerator.WindowInfo(
+        WindowInfo(
             windowID: window.windowID,
             ownerPID: window.ownerPID,
             terminalApp: terminal,
@@ -438,15 +438,13 @@ final class WindowTracker {
     }
 
     /// Finds a terminal window for a session that was attached via `vt`.
-    private func findWindowForSession(_ sessionID: String, sessionInfo: ServerSessionInfo) -> WindowEnumerator
-        .WindowInfo?
-    {
+    private func findWindowForSession(_ sessionID: String, sessionInfo: ServerSessionInfo) -> WindowInfo? {
         let allWindows = WindowEnumerator.getAllTerminalWindows()
 
         if let window = windowMatcher
             .findWindowForSession(sessionID, sessionInfo: sessionInfo, allWindows: allWindows)
         {
-            return WindowEnumerator.WindowInfo(
+            return WindowInfo(
                 windowID: window.windowID,
                 ownerPID: window.ownerPID,
                 terminalApp: window.terminalApp,
