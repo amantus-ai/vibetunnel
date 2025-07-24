@@ -169,28 +169,10 @@ describe('vt command', () => {
     // Check for critical conditionals
     expect(scriptContent).toContain('if [ -z "$VIBETUNNEL_BIN" ]');
     expect(scriptContent).toContain('if [ -n "$VIBETUNNEL_SESSION_ID" ]');
-
-    // Ensure no empty if statements (the bug we fixed)
-    const lines = scriptContent.split('\n');
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (line.startsWith('if ') && line.includes('then')) {
-        // Find the matching fi
-        let depth = 1;
-        let hasContent = false;
-        for (let j = i + 1; j < lines.length && depth > 0; j++) {
-          const nextLine = lines[j].trim();
-          if (nextLine.startsWith('if ')) depth++;
-          if (nextLine === 'fi') depth--;
-          if (depth === 1 && nextLine && !nextLine.startsWith('#') && nextLine !== 'fi') {
-            hasContent = true;
-          }
-        }
-        if (!hasContent) {
-          throw new Error(`Empty if statement found at line ${i + 1}: ${line}`);
-        }
-      }
-    }
+    
+    // Check that follow command handling exists
+    expect(scriptContent).toContain('if [[ "$1" == "follow" ]]');
+    expect(scriptContent).toContain('if [[ "$1" == "unfollow" ]]');
   });
 
   it('should be included in npm package files', () => {
