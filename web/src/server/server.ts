@@ -23,6 +23,7 @@ import { createFileRoutes } from './routes/files.js';
 import { createFilesystemRoutes } from './routes/filesystem.js';
 import { createGitRoutes } from './routes/git.js';
 import { createLogRoutes } from './routes/logs.js';
+import { createMultiplexerRoutes } from './routes/multiplexer.js';
 import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createRepositoryRoutes } from './routes/repositories.js';
@@ -906,6 +907,10 @@ export async function createApp(): Promise<AppInstance> {
   // Mount tmux routes
   app.use('/api/tmux', createTmuxRoutes({ ptyManager }));
   logger.debug('Mounted tmux routes');
+
+  // Mount multiplexer routes (unified tmux/zellij interface)
+  app.use('/api/multiplexer', createMultiplexerRoutes({ ptyManager }));
+  logger.debug('Mounted multiplexer routes');
 
   // Mount push notification routes
   if (vapidManager) {

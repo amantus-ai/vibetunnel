@@ -2,13 +2,20 @@ import type { PropertyValues } from 'lit';
 import { css, html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
-import type { TmuxPane, TmuxSession, TmuxTarget, TmuxWindow } from '../../shared/tmux-types.js';
+import type {
+  MultiplexerSession,
+  MultiplexerStatus,
+  MultiplexerTarget,
+  MultiplexerType,
+  TmuxPane,
+  TmuxWindow,
+} from '../../shared/multiplexer-types.js';
 import { apiClient } from '../services/api-client.js';
 import { Z_INDEX } from '../utils/constants.js';
 import './modal-wrapper.js';
 
-@customElement('tmux-session-modal')
-export class TmuxSessionModal extends LitElement {
+@customElement('multiplexer-modal')
+export class MultiplexerModal extends LitElement {
   static styles = css`
     :host {
       position: fixed;
@@ -42,6 +49,49 @@ export class TmuxSessionModal extends LitElement {
       font-size: 1.25rem;
       font-weight: 600;
       color: rgb(var(--color-text));
+    }
+
+    .multiplexer-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid rgb(var(--color-border));
+    }
+
+    .tab {
+      padding: 0.5rem 1rem;
+      border: none;
+      background: none;
+      color: rgb(var(--color-text-muted));
+      cursor: pointer;
+      position: relative;
+      transition: color 0.2s ease;
+    }
+
+    .tab:hover {
+      color: rgb(var(--color-text));
+    }
+
+    .tab.active {
+      color: #10B981;
+    }
+
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #10B981;
+    }
+
+    .tab-count {
+      margin-left: 0.5rem;
+      font-size: 0.75rem;
+      padding: 0.125rem 0.375rem;
+      background: rgb(var(--color-bg-tertiary));
+      border-radius: 9999px;
     }
 
     .status-message {
@@ -124,6 +174,15 @@ export class TmuxSessionModal extends LitElement {
 
     .status-indicator.current {
       background: #10B981;
+    }
+
+    .exited-badge {
+      background: #EF4444;
+      color: white;
+      padding: 0.125rem 0.375rem;
+      border-radius: 0.25rem;
+      font-size: 0.625rem;
+      font-weight: 600;
     }
 
     .windows-list {
@@ -312,7 +371,10 @@ export class TmuxSessionModal extends LitElement {
   open = false;
 
   @state()
-  private sessions: TmuxSession[] = [];
+  private activeTab: MultiplexerType = 'tmux';
+
+  @state()
+  private multiplexerStatus: MultiplexerStatus | null = null;
 
   @state()
   private windows: Map<string, TmuxWindow[]> = new Map();
@@ -330,55 +392,52 @@ export class TmuxSessionModal extends LitElement {
   private loading = true;
 
   @state()
-  private tmuxAvailable = true;
-
-  @state()
   private error: string | null = null;
 
   async connectedCallback() {
     super.connectedCallback();
     if (this.open) {
-      await this.loadSessions();
+      await this.loadMultiplexerStatus();
     }
   }
 
   protected updated(changedProps: PropertyValues) {
     if (changedProps.has('open') && this.open) {
-      this.loadSessions();
+      this.loadMultiplexerStatus();
     }
   }
 
-  private async loadSessions() {
+  private async loadMultiplexerStatus() {
     this.loading = true;
     this.error = null;
 
     try {
-      // Check if tmux is available
-      const availableResponse = await apiClient.get('/tmux/available');
-      this.tmuxAvailable = availableResponse.available;
+      // Get status of all multiplexers
+      const statusResponse = await apiClient.get<MultiplexerStatus>('/multiplexer/status');
+      this.multiplexerStatus = statusResponse;
 
-      if (!this.tmuxAvailable) {
-        this.loading = false;
-        return;
+      // Set active tab to first available multiplexer
+      if (!statusResponse.tmux.available && statusResponse.zellij.available) {
+        this.activeTab = 'zellij';
       }
 
-      // Load sessions
-      const sessionsResponse = await apiClient.get('/tmux/sessions');
-      this.sessions = sessionsResponse.sessions;
-
-      // Load windows for each session
+      // Load windows for tmux sessions
       this.windows.clear();
-      for (const session of this.sessions) {
-        try {
-          const windowsResponse = await apiClient.get(`/tmux/sessions/${session.name}/windows`);
-          this.windows.set(session.name, windowsResponse.windows);
-        } catch (error) {
-          console.error(`Failed to load windows for session ${session.name}:`, error);
+      if (statusResponse.tmux.available) {
+        for (const session of statusResponse.tmux.sessions) {
+          try {
+            const windowsResponse = await apiClient.get(
+              `/multiplexer/tmux/sessions/${session.name}/windows`
+            );
+            this.windows.set(session.name, windowsResponse.windows);
+          } catch (error) {
+            console.error(`Failed to load windows for tmux session ${session.name}:`, error);
+          }
         }
       }
     } catch (error) {
-      console.error('Failed to load tmux sessions:', error);
-      this.error = 'Failed to load tmux sessions';
+      console.error('Failed to load multiplexer status:', error);
+      this.error = 'Failed to load terminal sessions';
     } finally {
       this.loading = false;
     }
@@ -411,7 +470,7 @@ export class TmuxSessionModal extends LitElement {
 
     try {
       const response = await apiClient.get(
-        `/tmux/sessions/${sessionName}/panes?window=${windowIndex}`
+        `/multiplexer/tmux/sessions/${sessionName}/panes?window=${windowIndex}`
       );
       console.log(`Loaded panes for ${key}:`, response.panes);
       this.panes.set(key, response.panes);
@@ -436,7 +495,7 @@ export class TmuxSessionModal extends LitElement {
 
   private formatPaneInfo(pane: TmuxPane): string {
     console.log('formatPaneInfo called with:', pane);
-    
+
     // If we have a meaningful title that's not just the hostname, use it
     if (pane.title && !pane.title.includes('< /dev/null') && !pane.title.match(/^[\w.-]+$/)) {
       return pane.title;
@@ -453,9 +512,10 @@ export class TmuxSessionModal extends LitElement {
     return pane.command || 'shell';
   }
 
-  private async attachToSession(target: TmuxTarget) {
+  private async attachToSession(target: MultiplexerTarget) {
     try {
-      const response = await apiClient.post('/tmux/attach', {
+      const response = await apiClient.post('/multiplexer/attach', {
+        type: target.type,
         sessionName: target.session,
         windowIndex: target.window,
         paneIndex: target.pane,
@@ -463,7 +523,7 @@ export class TmuxSessionModal extends LitElement {
         rows: 24,
         titleMode: 'dynamic',
         metadata: {
-          source: 'tmux-modal',
+          source: 'multiplexer-modal',
         },
       });
 
@@ -480,8 +540,8 @@ export class TmuxSessionModal extends LitElement {
         );
       }
     } catch (error) {
-      console.error('Failed to attach to tmux session:', error);
-      this.error = 'Failed to attach to tmux session';
+      console.error(`Failed to attach to ${target.type} session:`, error);
+      this.error = `Failed to attach to ${target.type} session`;
     }
   }
 
@@ -491,20 +551,22 @@ export class TmuxSessionModal extends LitElement {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const sessionName = `session-${timestamp}`;
 
-      // Create the tmux session
-      const createResponse = await apiClient.post('/tmux/sessions', {
+      // Create the session
+      const createResponse = await apiClient.post('/multiplexer/sessions', {
+        type: this.activeTab,
         name: sessionName,
       });
 
       if (createResponse.success) {
         // Attach to the newly created session
-        const attachResponse = await apiClient.post('/tmux/attach', {
+        const attachResponse = await apiClient.post('/multiplexer/attach', {
+          type: this.activeTab,
           sessionName: sessionName,
           cols: 80, // TODO: Get actual terminal dimensions
           rows: 24,
           titleMode: 'dynamic',
           metadata: {
-            source: 'tmux-modal-new',
+            source: 'multiplexer-modal-new',
           },
         });
 
@@ -521,8 +583,8 @@ export class TmuxSessionModal extends LitElement {
         }
       }
     } catch (error) {
-      console.error('Failed to create new tmux session:', error);
-      this.error = 'Failed to create new tmux session';
+      console.error(`Failed to create new ${this.activeTab} session:`, error);
+      this.error = `Failed to create new ${this.activeTab} session`;
     }
   }
 
@@ -530,47 +592,99 @@ export class TmuxSessionModal extends LitElement {
     this.dispatchEvent(new CustomEvent('close'));
   }
 
+  private switchTab(type: MultiplexerType) {
+    this.activeTab = type;
+  }
+
   render() {
     if (!this.open) return null;
+
+    const status = this.multiplexerStatus;
+    const activeMultiplexer = status ? status[this.activeTab] : null;
 
     return html`
       <modal-wrapper .open=${this.open} @close=${this.handleClose}>
         <div class="content">
-          <h2>tmux Sessions</h2>
+          <h2>Terminal Sessions</h2>
+
+          ${
+            status && (status.tmux.available || status.zellij.available)
+              ? html`
+              <div class="multiplexer-tabs">
+                ${
+                  status.tmux.available
+                    ? html`
+                    <button
+                      class="tab ${this.activeTab === 'tmux' ? 'active' : ''}"
+                      @click=${() => this.switchTab('tmux')}
+                    >
+                      tmux
+                      <span class="tab-count">${status.tmux.sessions.length}</span>
+                    </button>
+                  `
+                    : null
+                }
+                ${
+                  status.zellij.available
+                    ? html`
+                    <button
+                      class="tab ${this.activeTab === 'zellij' ? 'active' : ''}"
+                      @click=${() => this.switchTab('zellij')}
+                    >
+                      Zellij
+                      <span class="tab-count">${status.zellij.sessions.length}</span>
+                    </button>
+                  `
+                    : null
+                }
+              </div>
+            `
+              : null
+          }
 
           ${
             this.loading
-              ? html`<div class="status-message">Loading tmux sessions...</div>`
-              : !this.tmuxAvailable
-                ? html`
-                <div class="empty-state">
-                  <h3>tmux Not Available</h3>
-                  <p>tmux is not installed or not available on this system.</p>
-                  <p>Install tmux to use this feature.</p>
-                </div>
-              `
-                : this.error
-                  ? html`<div class="status-message">${this.error}</div>`
-                  : this.sessions.length === 0
+              ? html`<div class="status-message">Loading terminal sessions...</div>`
+              : !status
+                ? html`<div class="status-message">No multiplexer status available</div>`
+                : !status.tmux.available && !status.zellij.available
+                  ? html`
+                    <div class="empty-state">
+                      <h3>No Terminal Multiplexer Available</h3>
+                      <p>Neither tmux nor Zellij is installed on this system.</p>
+                      <p>Install tmux or Zellij to use this feature.</p>
+                    </div>
+                  `
+                  : !activeMultiplexer?.available
                     ? html`
-                <div class="empty-state">
-                  <h3>No tmux Sessions</h3>
-                  <p>There are no active tmux sessions.</p>
-                  <button class="create-button" @click=${this.createNewSession}>
-                    Create New Session
-                  </button>
-                </div>
-              `
-                    : html`
-                <div class="session-list">
-                  ${repeat(
-                    this.sessions,
-                    (session) => session.name,
-                    (session) => {
-                      const sessionWindows = this.windows.get(session.name) || [];
-                      const isExpanded = this.expandedSessions.has(session.name);
+                      <div class="empty-state">
+                        <h3>${this.activeTab} Not Available</h3>
+                        <p>${this.activeTab} is not installed or not available on this system.</p>
+                        <p>Install ${this.activeTab} to use this feature.</p>
+                      </div>
+                    `
+                    : this.error
+                      ? html`<div class="status-message">${this.error}</div>`
+                      : activeMultiplexer.sessions.length === 0
+                        ? html`
+                          <div class="empty-state">
+                            <h3>No ${this.activeTab} Sessions</h3>
+                            <p>There are no active ${this.activeTab} sessions.</p>
+                            <button class="create-button" @click=${this.createNewSession}>
+                              Create New Session
+                            </button>
+                          </div>
+                        `
+                        : html`
+                          <div class="session-list">
+                            ${repeat(
+                              activeMultiplexer.sessions,
+                              (session) => `${session.type}-${session.name}`,
+                              (session) => {
+                                const sessionWindows = this.windows.get(session.name) || [];
+                                const isExpanded = this.expandedSessions.has(session.name);
 
-                      return html`
+                                return html`
                         <div class="session-item ${isExpanded ? 'expanded' : ''}">
                           <div
                             class="session-header"
@@ -579,7 +693,16 @@ export class TmuxSessionModal extends LitElement {
                             <div class="session-info">
                               <div class="session-name">${session.name}</div>
                               <div class="session-meta">
-                                <span>${session.windows} window${session.windows !== 1 ? 's' : ''}</span>
+                                ${
+                                  session.windows !== undefined
+                                    ? html`<span>${session.windows} window${session.windows !== 1 ? 's' : ''}</span>`
+                                    : null
+                                }
+                                ${
+                                  session.exited
+                                    ? html`<span class="exited-badge">EXITED</span>`
+                                    : null
+                                }
                                 ${
                                   session.activity
                                     ? html`<span>Last activity: ${this.formatTimestamp(session.activity)}</span>`
@@ -602,7 +725,10 @@ export class TmuxSessionModal extends LitElement {
                                 class="attach-button"
                                 @click=${(e: Event) => {
                                   e.stopPropagation();
-                                  this.attachToSession({ session: session.name });
+                                  this.attachToSession({
+                                    type: session.type,
+                                    session: session.name,
+                                  });
                                 }}
                               >
                                 Attach
@@ -612,7 +738,7 @@ export class TmuxSessionModal extends LitElement {
                           </div>
 
                           ${
-                            isExpanded && sessionWindows.length > 0
+                            session.type === 'tmux' && isExpanded && sessionWindows.length > 0
                               ? html`
                                 <div class="windows-list">
                                   ${repeat(
@@ -633,6 +759,7 @@ export class TmuxSessionModal extends LitElement {
                                                 this.toggleWindow(session.name, window.index);
                                               } else {
                                                 this.attachToSession({
+                                                  type: session.type,
                                                   session: session.name,
                                                   window: window.index,
                                                 });
@@ -663,6 +790,7 @@ export class TmuxSessionModal extends LitElement {
                                                         @click=${(e: Event) => {
                                                           e.stopPropagation();
                                                           this.attachToSession({
+                                                            type: session.type,
                                                             session: session.name,
                                                             window: window.index,
                                                             pane: pane.index,
@@ -691,8 +819,8 @@ export class TmuxSessionModal extends LitElement {
                           }
                         </div>
                       `;
-                    }
-                  )}
+                              }
+                            )}
                 </div>
               `
           }
@@ -700,7 +828,7 @@ export class TmuxSessionModal extends LitElement {
           <div class="actions">
             <button class="action-button" @click=${this.handleClose}>Cancel</button>
             ${
-              !this.loading && this.tmuxAvailable
+              !this.loading && activeMultiplexer?.available
                 ? html`
                   <button class="action-button primary" @click=${this.createNewSession}>
                     New Session
@@ -717,6 +845,6 @@ export class TmuxSessionModal extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'tmux-session-modal': TmuxSessionModal;
+    'multiplexer-modal': MultiplexerModal;
   }
 }
