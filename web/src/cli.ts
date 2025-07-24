@@ -122,6 +122,98 @@ async function handleSystemdService(): Promise<void> {
 }
 
 /**
+ * Handle socket API commands
+ */
+async function handleSocketCommand(command: string): Promise<void> {
+  try {
+    const { SocketApiClient } = await import('./server/socket-api-client.js');
+    const client = new SocketApiClient();
+
+    switch (command) {
+      case 'status': {
+        const status = await client.getStatus();
+        console.log('VibeTunnel Server Status:');
+        console.log(`  Running: ${status.running ? 'Yes' : 'No'}`);
+        if (status.running) {
+          console.log(`  Port: ${status.port || 'Unknown'}`);
+          console.log(`  URL: ${status.url || 'Unknown'}`);
+        }
+        // TODO: Add follow mode status when we have a way to query it
+        break;
+      }
+
+      case 'follow': {
+        const branch = process.argv[3];
+        const repoPath = process.cwd();
+        
+        // Check if we're in a git repo
+        if (!require('fs').existsSync(require('path').join(repoPath, '.git'))) {
+          console.error('Error: Not in a Git repository');
+          process.exit(1);
+        }
+
+        // If no branch specified, get current branch
+        let targetBranch = branch;
+        if (!targetBranch) {
+          const { execSync } = await import('child_process');
+          targetBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
+        }
+
+        const response = await client.setFollowMode({
+          repoPath,
+          branch: targetBranch,
+          enable: true,
+        });
+
+        if (response.success) {
+          console.log(`Enabled follow mode for branch '${targetBranch}'`);
+        } else {
+          console.error(`Failed to enable follow mode: ${response.error || 'Unknown error'}`);
+          process.exit(1);
+        }
+        break;
+      }
+
+      case 'unfollow': {
+        const repoPath = process.cwd();
+        
+        const response = await client.setFollowMode({
+          repoPath,
+          enable: false,
+        });
+
+        if (response.success) {
+          console.log('Disabled follow mode');
+        } else {
+          console.error(`Failed to disable follow mode: ${response.error || 'Unknown error'}`);
+          process.exit(1);
+        }
+        break;
+      }
+
+      case 'git-event': {
+        const repoPath = process.cwd();
+        
+        await client.sendGitEvent({
+          repoPath,
+          type: 'other', // We don't know the specific type from command line
+        });
+        break;
+      }
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message === 'VibeTunnel server is not running') {
+      console.error('Error: VibeTunnel server is not running');
+      console.error('Start the server first with: vibetunnel');
+    } else {
+      logger.error('Socket command failed:', error);
+    }
+    closeLogger();
+    process.exit(1);
+  }
+}
+
+/**
  * Start the VibeTunnel server with optional startup logging
  */
 function handleStartServer(): void {

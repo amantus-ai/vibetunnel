@@ -40,34 +40,21 @@ export class SessionActionsHandler {
     const session = this.callbacks.getSession();
     if (!session || sessionId !== session.id) return;
 
-    try {
-      const response = await fetch(`/api/sessions/${sessionId}`, {
-        method: HttpMethod.PATCH,
-        headers: {
-          'Content-Type': 'application/json',
-          ...authClient.getAuthHeader(),
-        },
-        body: JSON.stringify({ name: newName }),
-      });
+    const result = await renameSession(sessionId, newName, authClient);
 
-      if (!response.ok) {
-        const errorData = await response.text();
-        logger.error('Failed to rename session', { errorData, sessionId });
-        throw new Error(`Rename failed: ${response.status}`);
-      }
+    if (result.success) {
+      // Note: We're using newName here as the server doesn't return the actual name
+      // in our current implementation. This matches the existing behavior.
+      const actualName = newName;
 
-      // Get the actual name from the server response
-      const result = await response.json();
-      const actualName = result.name || newName;
-
-      // Update the local session object with the server-assigned name
+      // Update the local session object with the new name
       this.callbacks.setSession({ ...session, name: actualName });
 
       // Update the page title with the new session name
       const sessionName = actualName || session.command.join(' ');
       titleManager.setSessionTitle(sessionName);
 
-      // Dispatch event to notify parent components with the actual name
+      // Dispatch event to notify parent components
       this.callbacks.dispatchEvent(
         new CustomEvent('session-renamed', {
           detail: { sessionId, newName: actualName },
@@ -77,13 +64,13 @@ export class SessionActionsHandler {
       );
 
       logger.log(`Session ${sessionId} renamed to: ${actualName}`);
-    } catch (error) {
-      logger.error('Error renaming session', { error, sessionId });
-
+    } else {
       // Show error to user
       this.callbacks.dispatchEvent(
         new CustomEvent('error', {
-          detail: `Failed to rename session: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          detail: `Failed to rename session: ${result.error}`,
+          bubbles: true,
+          composed: true,
         })
       );
     }
