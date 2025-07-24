@@ -91,11 +91,6 @@ export class SessionView extends LitElement {
 
   private gitService = new GitService(authClient);
   private boundHandleOrientationChange?: () => void;
-  private boundHandleDragOver?: (e: DragEvent) => void;
-  private boundHandleDragEnter?: (e: DragEvent) => void;
-  private boundHandleDragLeave?: (e: DragEvent) => void;
-  private boundHandleDrop?: (e: DragEvent) => void;
-  private boundHandlePaste?: (e: ClipboardEvent) => void;
 
   // Bound terminal event handlers
   private boundHandleTerminalClick = this.handleTerminalClick.bind(this);
@@ -443,19 +438,6 @@ export class SessionView extends LitElement {
 
     // Use FileOperationsManager's event setup which includes dragend and global dragover
     this.fileOperationsManager.setupEventListeners(this);
-
-    // Store references for cleanup
-    this.boundHandleDragOver = this.fileOperationsManager.handleDragOver.bind(
-      this.fileOperationsManager
-    );
-    this.boundHandleDragEnter = this.fileOperationsManager.handleDragEnter.bind(
-      this.fileOperationsManager
-    );
-    this.boundHandleDragLeave = this.fileOperationsManager.handleDragLeave.bind(
-      this.fileOperationsManager
-    );
-    this.boundHandleDrop = this.fileOperationsManager.handleDrop.bind(this.fileOperationsManager);
-    this.boundHandlePaste = this.fileOperationsManager.handlePaste.bind(this.fileOperationsManager);
   }
 
   disconnectedCallback() {

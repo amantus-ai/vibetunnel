@@ -370,7 +370,7 @@ export class FileOperationsManager {
     logger.debug('Drag operation ended, resetting drag state');
   }
 
-  handleGlobalDragOver(e: DragEvent): void {
+  handleGlobalDragOver(_e: DragEvent): void {
     // Clear any existing timer
     if (this.globalDragOverTimer) {
       clearTimeout(this.globalDragOverTimer);
