@@ -364,7 +364,7 @@ final class WindowTracker {
                     }
                     logger
                         .info(
-                            "Found and registered window for session: \(session.id) (attachedViaVT: \(session.attachedViaVT ?? false))"
+                            "Found and registered window for session: \(session.id)"
                         )
                 } else {
                     logger.debug("Could not find window for session: \(session.id)")

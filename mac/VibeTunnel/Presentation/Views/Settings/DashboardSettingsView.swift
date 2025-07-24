@@ -87,7 +87,7 @@ struct DashboardSettingsView: View {
 
                 return DashboardSessionInfo(
                     id: session.id,
-                    title: session.name ?? "Untitled",
+                    title: session.name.isEmpty ? "Untitled" : session.name,
                     createdAt: createdAt,
                     isActive: session.isRunning
                 )

@@ -259,7 +259,7 @@ final class WindowMatcher {
         logger.debug("Looking for tab matching session \(sessionID) in \(tabs.count) tabs")
         logger.debug("  Working dir: \(workingDir)")
         logger.debug("  Dir name: \(dirName)")
-        logger.debug("  Session name: \(sessionName ?? "none")")
+        logger.debug("  Session name: \(sessionName)")
         logger.debug("  Activity: \(activityStatus ?? "none")")
 
         for (index, tab) in tabs.enumerated() {
@@ -273,8 +273,8 @@ final class WindowMatcher {
                 }
 
                 // Check for session name match
-                if let name = sessionName, !name.isEmpty, title.contains(name) {
-                    logger.info("Found tab by session name match: \(name) at index \(index)")
+                if !sessionName.isEmpty, title.contains(sessionName) {
+                    logger.info("Found tab by session name match: \(sessionName) at index \(index)")
                     return tab
                 }
 

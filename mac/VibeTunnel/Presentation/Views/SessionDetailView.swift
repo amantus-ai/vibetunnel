@@ -256,7 +256,7 @@ struct SessionDetailView: View {
             // Log session details for debugging
             logger
                 .info(
-                    "Session details: id=\(session.id), pid=\(session.pid ?? -1), workingDir=\(session.workingDir), attachedViaVT=\(session.attachedViaVT ?? false)"
+                    "Session details: id=\(session.id), pid=\(session.pid ?? -1), workingDir=\(session.workingDir)"
                 )
 
             // Try to match by various criteria

@@ -44,8 +44,8 @@ final class WorktreeService {
                 let decoder = JSONDecoder()
                 let worktreeResponse = try decoder.decode(WorktreeListResponse.self, from: data)
                 self.worktrees = worktreeResponse.worktrees
-                self.stats = worktreeResponse.stats
-                self.followMode = worktreeResponse.followMode
+                // Stats and followMode are not part of the current API response
+                // They could be fetched separately if needed
             } else {
                 let errorData = try? JSONDecoder().decode(ErrorResponse.self, from: data)
                 throw WorktreeError.serverError(errorData?.error ?? "Unknown error")
