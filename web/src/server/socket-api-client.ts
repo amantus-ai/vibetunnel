@@ -100,18 +100,32 @@ export class SocketApiClient {
         .connect()
         .then(() => {
           // Send the request
-          const message =
-            type === MessageType.GIT_FOLLOW_REQUEST
-              ? (client as any).send(
-                  (client as any).constructor.prototype.constructor.MessageBuilder.gitFollowRequest(
-                    payload
-                  )
+          let message: any;
+          switch (type) {
+            case MessageType.STATUS_REQUEST:
+              message = (client as any).send(
+                (client as any).constructor.prototype.constructor.MessageBuilder.statusRequest()
+              );
+              break;
+            case MessageType.GIT_FOLLOW_REQUEST:
+              message = (client as any).send(
+                (client as any).constructor.prototype.constructor.MessageBuilder.gitFollowRequest(
+                  payload
                 )
-              : (client as any).send(
-                  (client as any).constructor.prototype.constructor.MessageBuilder.gitEventNotify(
-                    payload
-                  )
-                );
+              );
+              break;
+            case MessageType.GIT_EVENT_NOTIFY:
+              message = (client as any).send(
+                (client as any).constructor.prototype.constructor.MessageBuilder.gitEventNotify(
+                  payload
+                )
+              );
+              break;
+            default:
+              clearTimeout(timer);
+              reject(new Error(`Unsupported message type: ${type}`));
+              return;
+          }
 
           if (!message) {
             clearTimeout(timer);
@@ -134,20 +148,15 @@ export class SocketApiClient {
     }
 
     try {
-      // For now, we'll check if we can connect to the socket
-      // In the future, we can add a STATUS_REQUEST message type
-      const client = new VibeTunnelSocketClient(this.controlSocketPath);
-      await client.connect();
-      client.disconnect();
-
-      // If we can connect, server is running
-      // We don't have port info via socket yet
-      return {
-        running: true,
-        port: Number.parseInt(process.env.VIBETUNNEL_PORT || '4020'),
-        url: `http://localhost:${process.env.VIBETUNNEL_PORT || '4020'}`,
-      };
+      // Send STATUS_REQUEST and wait for STATUS_RESPONSE
+      const response = await this.sendRequest<{}, ServerStatus>(
+        MessageType.STATUS_REQUEST,
+        {},
+        MessageType.STATUS_RESPONSE
+      );
+      return response;
     } catch (error) {
+      logger.error('Failed to get server status:', error);
       return { running: false };
     }
   }

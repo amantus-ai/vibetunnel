@@ -21,6 +21,9 @@ export enum MessageType {
   // Reserved for future use
   STDOUT_SUBSCRIBE = 0x10,
   METRICS = 0x11,
+  // Status operations
+  STATUS_REQUEST = 0x20, // Request server status
+  STATUS_RESPONSE = 0x21, // Server status response
   // Git operations
   GIT_FOLLOW_REQUEST = 0x30, // Enable/disable Git follow mode
   GIT_FOLLOW_RESPONSE = 0x31, // Response to follow request
@@ -73,6 +76,25 @@ export interface ErrorMessage {
   code: string;
   message: string;
   details?: unknown;
+}
+
+/**
+ * Server status request (empty payload)
+ */
+export type StatusRequest = {};
+
+/**
+ * Server status response
+ */
+export interface StatusResponse {
+  running: boolean;
+  port?: number;
+  url?: string;
+  followMode?: {
+    enabled: boolean;
+    branch?: string;
+    repoPath?: string;
+  };
 }
 
 /**
@@ -225,6 +247,14 @@ export const MessageBuilder = {
   gitEventAck(ack: GitEventAck): Buffer {
     return frameMessage(MessageType.GIT_EVENT_ACK, ack);
   },
+
+  statusRequest(): Buffer {
+    return frameMessage(MessageType.STATUS_REQUEST, {});
+  },
+
+  statusResponse(response: StatusResponse): Buffer {
+    return frameMessage(MessageType.STATUS_RESPONSE, response);
+  },
 } as const;
 
 /**
@@ -238,6 +268,8 @@ export function parsePayload(type: MessageType, payload: Buffer): unknown {
     case MessageType.CONTROL_CMD:
     case MessageType.STATUS_UPDATE:
     case MessageType.ERROR:
+    case MessageType.STATUS_REQUEST:
+    case MessageType.STATUS_RESPONSE:
     case MessageType.GIT_FOLLOW_REQUEST:
     case MessageType.GIT_FOLLOW_RESPONSE:
     case MessageType.GIT_EVENT_NOTIFY:

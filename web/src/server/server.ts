@@ -10,6 +10,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { WebSocketServer } from 'ws';
+import { apiSocketServer } from './api-socket-server.js';
 import type { AuthenticatedRequest } from './middleware/auth.js';
 import { createAuthMiddleware } from './middleware/auth.js';
 import { PtyManager } from './pty/index.js';
@@ -790,6 +791,15 @@ export async function createApp(): Promise<AppInstance> {
     // For now, we'll let the server continue without these features.
   }
 
+  // Initialize API socket for CLI commands
+  try {
+    await apiSocketServer.start();
+    logger.log(chalk.green('API socket server: READY'));
+  } catch (error) {
+    logger.error('Failed to initialize API socket server:', error);
+    logger.warn('vt commands will not work via socket.');
+  }
+
   // Handle WebSocket upgrade with authentication
   server.on('upgrade', async (request, socket, head) => {
     // Parse the URL to extract path and query parameters
@@ -1034,6 +1044,9 @@ export async function createApp(): Promise<AppInstance> {
       logger.log(
         chalk.green(`VibeTunnel Server running on http://${displayAddress}:${actualPort}`)
       );
+
+      // Update API socket server with actual port information
+      apiSocketServer.setServerInfo(actualPort, `http://${displayAddress}:${actualPort}`);
 
       if (config.noAuth) {
         logger.warn(chalk.yellow('Authentication: DISABLED (--no-auth)'));

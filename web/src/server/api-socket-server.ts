@@ -7,23 +7,46 @@ import * as fs from 'fs';
 import * as net from 'net';
 import * as os from 'os';
 import * as path from 'path';
-import { execGit } from './services/git-service.js';
-import { areHooksInstalled, installGitHooks } from './services/git-hooks.js';
-import { createControlEvent } from './websocket/control-protocol.js';
-import { controlUnixHandler } from './websocket/control-unix-handler.js';
+import { promisify } from 'util';
 import {
-  GitEventAck,
-  GitEventNotify,
-  GitFollowRequest,
-  GitFollowResponse,
+  type GitEventAck,
+  type GitEventNotify,
+  type GitFollowRequest,
+  type GitFollowResponse,
   MessageBuilder,
   MessageParser,
   MessageType,
   parsePayload,
+  type StatusResponse,
 } from './pty/socket-protocol.js';
+import { createGitError } from './utils/git-error.js';
+import { areHooksInstalled, installGitHooks, uninstallGitHooks } from './utils/git-hooks.js';
 import { createLogger } from './utils/logger.js';
+import { createControlEvent } from './websocket/control-protocol.js';
+import { controlUnixHandler } from './websocket/control-unix-handler.js';
 
 const logger = createLogger('api-socket');
+const execFile = promisify(require('child_process').execFile);
+
+/**
+ * Execute a git command with proper error handling
+ */
+async function execGit(
+  args: string[],
+  options: { cwd?: string; timeout?: number } = {}
+): Promise<{ stdout: string; stderr: string }> {
+  try {
+    const { stdout, stderr } = await execFile('git', args, {
+      cwd: options.cwd || process.cwd(),
+      timeout: options.timeout || 5000,
+      maxBuffer: 1024 * 1024, // 1MB
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }, // Disable git prompts
+    });
+    return { stdout: stdout.toString(), stderr: stderr.toString() };
+  } catch (error) {
+    throw createGitError(error, 'Git command failed');
+  }
+}
 
 /**
  * API Socket Server that handles CLI commands via Unix socket
@@ -37,12 +60,12 @@ export class ApiSocketServer {
   constructor() {
     const homeDir = os.homedir();
     const socketDir = path.join(homeDir, '.vibetunnel');
-    
+
     // Ensure directory exists
     if (!fs.existsSync(socketDir)) {
       fs.mkdirSync(socketDir, { recursive: true });
     }
-    
+
     // Use a different socket name to avoid conflicts
     this.socketPath = path.join(socketDir, 'api.sock');
   }
@@ -105,10 +128,10 @@ export class ApiSocketServer {
    */
   private handleConnection(socket: net.Socket): void {
     const parser = new MessageParser();
-    
+
     socket.on('data', (data) => {
       parser.addData(data);
-      
+
       for (const { type, payload } of parser.parseMessages()) {
         this.handleMessage(socket, type, payload);
       }
@@ -122,11 +145,19 @@ export class ApiSocketServer {
   /**
    * Handle incoming messages
    */
-  private async handleMessage(socket: net.Socket, type: MessageType, payload: Buffer): Promise<void> {
+  private async handleMessage(
+    socket: net.Socket,
+    type: MessageType,
+    payload: Buffer
+  ): Promise<void> {
     try {
       const data = parsePayload(type, payload);
 
       switch (type) {
+        case MessageType.STATUS_REQUEST:
+          await this.handleStatusRequest(socket);
+          break;
+
         case MessageType.GIT_FOLLOW_REQUEST:
           await this.handleGitFollowRequest(socket, data as GitFollowRequest);
           break;
@@ -145,9 +176,52 @@ export class ApiSocketServer {
   }
 
   /**
+   * Handle status request
+   */
+  private async handleStatusRequest(socket: net.Socket): Promise<void> {
+    try {
+      // Get current working directory for follow mode check
+      const cwd = process.cwd();
+
+      // Check follow mode status
+      let followMode: StatusResponse['followMode'];
+      try {
+        const { stdout } = await execGit(['config', 'vibetunnel.followBranch'], { cwd });
+        const followBranch = stdout.trim();
+        if (followBranch) {
+          // Get repo path
+          const { stdout: repoPath } = await execGit(['rev-parse', '--show-toplevel'], { cwd });
+          followMode = {
+            enabled: true,
+            branch: followBranch,
+            repoPath: repoPath.trim(),
+          };
+        }
+      } catch (_error) {
+        // Not in a git repo or follow mode not configured
+      }
+
+      const response: StatusResponse = {
+        running: true,
+        port: this.serverPort,
+        url: this.serverUrl,
+        followMode,
+      };
+
+      socket.write(MessageBuilder.statusResponse(response));
+    } catch (error) {
+      logger.error('Failed to get status:', error);
+      this.sendError(socket, 'Failed to get server status');
+    }
+  }
+
+  /**
    * Handle Git follow mode request
    */
-  private async handleGitFollowRequest(socket: net.Socket, request: GitFollowRequest): Promise<void> {
+  private async handleGitFollowRequest(
+    socket: net.Socket,
+    request: GitFollowRequest
+  ): Promise<void> {
     try {
       const { repoPath, branch, enable } = request;
       const absoluteRepoPath = path.resolve(repoPath);
@@ -159,12 +233,12 @@ export class ApiSocketServer {
       if (enable) {
         // Check if Git hooks are already installed
         const hooksAlreadyInstalled = await areHooksInstalled(absoluteRepoPath);
-        
+
         if (!hooksAlreadyInstalled) {
           // Install Git hooks
           logger.info('Installing Git hooks for follow mode');
           const installResult = await installGitHooks(absoluteRepoPath);
-          
+
           if (!installResult.success) {
             const response: GitFollowResponse = {
               success: false,
@@ -176,7 +250,7 @@ export class ApiSocketServer {
         }
 
         // Set the follow mode config
-        await execGit(['config', '--local', 'vibetunnel.followBranch', branch!], {
+        await execGit(['config', '--local', 'vibetunnel.followBranch', branch || ''], {
           cwd: absoluteRepoPath,
         });
 
@@ -200,6 +274,17 @@ export class ApiSocketServer {
         await execGit(['config', '--local', '--unset', 'vibetunnel.followBranch'], {
           cwd: absoluteRepoPath,
         });
+
+        // Uninstall Git hooks when disabling follow mode
+        logger.info('Uninstalling Git hooks');
+        const uninstallResult = await uninstallGitHooks(absoluteRepoPath);
+
+        if (!uninstallResult.success) {
+          logger.warn('Failed to uninstall some Git hooks:', uninstallResult.errors);
+          // Continue anyway - follow mode is still disabled
+        } else {
+          logger.info('Git hooks uninstalled successfully');
+        }
 
         // Send notification to Mac app
         if (controlUnixHandler.isMacAppConnected()) {
@@ -229,16 +314,14 @@ export class ApiSocketServer {
    * Handle Git event notification
    */
   private async handleGitEventNotify(socket: net.Socket, event: GitEventNotify): Promise<void> {
-    // Forward to the existing Git event handler
-    // This would trigger the same logic as the HTTP endpoint
-    
+    // For now, just acknowledge receipt
+    // The git hooks will continue to use the HTTP endpoint directly
+    logger.debug(`Git event notification received: ${event.type} for ${event.repoPath}`);
+
     const ack: GitEventAck = {
       handled: true,
     };
     socket.write(MessageBuilder.gitEventAck(ack));
-    
-    // TODO: Actually trigger the Git event handling logic
-    // For now, just acknowledge receipt
   }
 
   /**

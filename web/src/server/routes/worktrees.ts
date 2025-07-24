@@ -2,7 +2,7 @@ import { Router } from 'express';
 import * as path from 'path';
 import { promisify } from 'util';
 import { createGitError, type GitError, isGitConfigNotFoundError } from '../utils/git-error.js';
-import { areHooksInstalled, installGitHooks } from '../utils/git-hooks.js';
+import { areHooksInstalled, installGitHooks, uninstallGitHooks } from '../utils/git-hooks.js';
 import { createLogger } from '../utils/logger.js';
 import { createControlEvent } from '../websocket/control-protocol.js';
 import { controlUnixHandler } from '../websocket/control-unix-handler.js';
@@ -636,9 +636,16 @@ export function createWorktreeRoutes(): Router {
           cwd: absoluteRepoPath,
         });
 
-        // Note: We intentionally keep Git hooks installed even when disabling follow mode
-        // This avoids the complexity of managing hook installation/uninstallation
-        // and the hooks are harmless when follow mode is disabled (they just check for vt command)
+        // Uninstall Git hooks when disabling follow mode
+        logger.info('Uninstalling Git hooks');
+        const uninstallResult = await uninstallGitHooks(absoluteRepoPath);
+
+        if (!uninstallResult.success) {
+          logger.warn('Failed to uninstall some Git hooks:', uninstallResult.errors);
+          // Continue anyway - follow mode is still disabled
+        } else {
+          logger.info('Git hooks uninstalled successfully');
+        }
 
         logger.info('Follow mode disabled');
 

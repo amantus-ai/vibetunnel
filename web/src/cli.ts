@@ -137,8 +137,18 @@ async function handleSocketCommand(command: string): Promise<void> {
         if (status.running) {
           console.log(`  Port: ${status.port || 'Unknown'}`);
           console.log(`  URL: ${status.url || 'Unknown'}`);
+
+          if (status.followMode) {
+            console.log('\nGit Follow Mode:');
+            console.log(`  Enabled: ${status.followMode.enabled ? 'Yes' : 'No'}`);
+            if (status.followMode.enabled && status.followMode.branch) {
+              console.log(`  Following branch: ${status.followMode.branch}`);
+              console.log(`  Repository: ${status.followMode.repoPath || 'Unknown'}`);
+            }
+          } else {
+            console.log('\nGit Follow Mode: Not in a git repository');
+          }
         }
-        // TODO: Add follow mode status when we have a way to query it
         break;
       }
 
