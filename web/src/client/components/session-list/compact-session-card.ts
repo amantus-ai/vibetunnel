@@ -219,24 +219,17 @@ export class CompactSessionCard extends LitElement {
         </div>
         
         <!-- Elegant divider line -->
-        <div class="w-px h-8 bg-gradient-to-b from-transparent via-border to-transparent"></div>
+        <div class="w-px h-full self-stretch bg-gradient-to-b from-transparent via-border to-transparent"></div>
         
         <!-- Session content -->
         <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 min-w-0">
-            <div class="text-sm font-mono truncate ${nameColorClass}">
-              ${this.renderSessionName()}
-            </div>
+          <!-- Row 1: Session name -->
+          <div class="text-sm font-mono truncate ${nameColorClass}">
+            ${this.renderSessionName()}
           </div>
-          <div class="text-xs ${pathColorClass} truncate flex items-center gap-1">
-            ${
-              this.sessionType === 'active' && session.activityStatus?.specificStatus
-                ? html`
-                  <span class="text-status-warning flex-shrink-0">${session.activityStatus.specificStatus.status}</span>
-                  <span class="text-text-muted/50">·</span>
-                `
-                : ''
-            }
+          
+          <!-- Row 2: Path, branch, and git changes -->
+          <div class="text-xs ${pathColorClass} truncate flex items-center gap-1 mt-1">
             <span class="truncate">${formatPathForDisplay(session.workingDir)}</span>
             ${
               session.gitBranch
@@ -250,6 +243,25 @@ export class CompactSessionCard extends LitElement {
                 : ''
             }
           </div>
+          
+          <!-- Row 3: Activity status (only shown if there's activity) -->
+          ${
+            this.sessionType === 'active' && session.activityStatus?.specificStatus
+              ? html`
+                <div class="text-xs text-status-warning truncate mt-1 flex items-center gap-1">
+                  <span class="flex-shrink-0">${session.activityStatus.specificStatus.status}</span>
+                  ${
+                    session.activityStatus.specificStatus.app
+                      ? html`
+                        <span class="text-text-muted/50">·</span>
+                        <span class="text-text-muted">${session.activityStatus.specificStatus.app}</span>
+                      `
+                      : ''
+                  }
+                </div>
+              `
+              : ''
+          }
         </div>
         
         <!-- Right side: duration and close button -->

@@ -104,8 +104,9 @@ export class SessionList extends LitElement {
 
     if (!isInsideSelector) {
       if (this.showFollowDropdown.size > 0 || this.showWorktreeDropdown.size > 0) {
-        this.showFollowDropdown.clear();
-        this.showWorktreeDropdown.clear();
+        // Create new empty maps to close all dropdowns atomically
+        this.showFollowDropdown = new Map<string, boolean>();
+        this.showWorktreeDropdown = new Map<string, boolean>();
         this.requestUpdate();
       }
     }
@@ -411,7 +412,10 @@ export class SessionList extends LitElement {
 
   private async handleFollowModeChange(repoPath: string, followBranch: string | undefined) {
     this.repoFollowMode.set(repoPath, followBranch);
-    this.showFollowDropdown.delete(repoPath);
+    // Create new map without this repo's dropdown
+    const newFollowDropdown = new Map(this.showFollowDropdown);
+    newFollowDropdown.delete(repoPath);
+    this.showFollowDropdown = newFollowDropdown;
     this.requestUpdate();
 
     try {
@@ -453,15 +457,20 @@ export class SessionList extends LitElement {
   private toggleFollowDropdown(repoPath: string) {
     const isOpen = this.showFollowDropdown.get(repoPath) || false;
 
-    // Close all dropdowns
-    this.showFollowDropdown.clear();
-    this.showWorktreeDropdown.clear();
+    // Create new maps to avoid intermediate states during update
+    const newFollowDropdown = new Map<string, boolean>();
+    const newWorktreeDropdown = new Map<string, boolean>();
 
+    // Only set the clicked dropdown if it wasn't already open
     if (!isOpen) {
-      this.showFollowDropdown.set(repoPath, true);
+      newFollowDropdown.set(repoPath, true);
       // Load follow mode if not already loaded
       this.loadFollowModeForRepo(repoPath);
     }
+
+    // Update state atomically
+    this.showFollowDropdown = newFollowDropdown;
+    this.showWorktreeDropdown = newWorktreeDropdown;
 
     this.requestUpdate();
   }
@@ -571,21 +580,27 @@ export class SessionList extends LitElement {
   private toggleWorktreeDropdown(repoPath: string) {
     const isOpen = this.showWorktreeDropdown.get(repoPath) || false;
 
-    // Close all dropdowns
-    this.showFollowDropdown.clear();
-    this.showWorktreeDropdown.clear();
+    // Create new maps to avoid intermediate states during update
+    const newFollowDropdown = new Map<string, boolean>();
+    const newWorktreeDropdown = new Map<string, boolean>();
 
+    // Only set the clicked dropdown if it wasn't already open
     if (!isOpen) {
-      this.showWorktreeDropdown.set(repoPath, true);
+      newWorktreeDropdown.set(repoPath, true);
       // Load worktrees if not already loaded
       this.loadWorktreesForRepo(repoPath);
     }
+
+    // Update state atomically
+    this.showFollowDropdown = newFollowDropdown;
+    this.showWorktreeDropdown = newWorktreeDropdown;
 
     this.requestUpdate();
   }
 
   private async createSessionInWorktree(worktreePath: string) {
-    this.showWorktreeDropdown.clear();
+    // Close all dropdowns atomically
+    this.showWorktreeDropdown = new Map<string, boolean>();
     this.requestUpdate();
 
     try {

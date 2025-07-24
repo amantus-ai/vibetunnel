@@ -554,25 +554,50 @@ export class VibeTunnelApp extends LitElement {
             logger.debug('No sessions have activity status');
           }
 
-          // Preserve Git information from existing sessions if not present in new data
-          // This handles the case where Git info is dynamically detected but not yet persisted
-          const mergedSessions = newSessions.map((newSession) => {
+          // Preserve Git information and reuse existing session objects when possible
+          // This prevents unnecessary re-renders by maintaining object references
+          const updatedSessions = newSessions.map((newSession) => {
             const existingSession = this.sessions.find((s) => s.id === newSession.id);
-            if (existingSession?.gitRepoPath && !newSession.gitRepoPath) {
-              // Preserve Git fields from existing session
-              return {
-                ...newSession,
-                gitRepoPath: existingSession.gitRepoPath,
-                gitBranch: existingSession.gitBranch,
-                gitIsWorktree: existingSession.gitIsWorktree,
-                gitMainRepoPath: existingSession.gitMainRepoPath,
-                // Don't preserve counts as they might be stale
-              };
+
+            if (existingSession) {
+              // Check if the session has actually changed
+              const hasChanges =
+                existingSession.status !== newSession.status ||
+                existingSession.name !== newSession.name ||
+                existingSession.workingDir !== newSession.workingDir ||
+                existingSession.activityStatus !== newSession.activityStatus ||
+                existingSession.exitCode !== newSession.exitCode ||
+                // Check if Git info has been added in the new data
+                (!existingSession.gitRepoPath && newSession.gitRepoPath);
+
+              if (!hasChanges) {
+                // No changes - return the existing object reference
+                return existingSession;
+              }
+
+              // Merge changes, preserving Git info if not in new data
+              if (existingSession.gitRepoPath && !newSession.gitRepoPath) {
+                return {
+                  ...newSession,
+                  gitRepoPath: existingSession.gitRepoPath,
+                  gitBranch: existingSession.gitBranch,
+                  gitIsWorktree: existingSession.gitIsWorktree,
+                  gitMainRepoPath: existingSession.gitMainRepoPath,
+                };
+              }
             }
+
             return newSession;
           });
 
-          this.sessions = mergedSessions;
+          // Only update sessions if there are actual changes
+          const hasSessionChanges =
+            updatedSessions.length !== this.sessions.length ||
+            updatedSessions.some((session, index) => session !== this.sessions[index]);
+
+          if (hasSessionChanges) {
+            this.sessions = updatedSessions;
+          }
           this.clearError();
 
           // Update page title if we're in list view

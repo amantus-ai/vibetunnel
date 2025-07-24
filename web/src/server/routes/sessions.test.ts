@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { controlUnixHandler } from '../websocket/control-unix-handler';
+import { requestTerminalSpawn } from '../websocket/control-unix-utils';
 import { createSessionRoutes } from './sessions';
 
 // Mock dependencies
@@ -17,6 +18,22 @@ vi.mock('../utils/logger', () => ({
     error: vi.fn(),
     warn: vi.fn(),
   }),
+}));
+
+vi.mock('../utils/git-info', () => ({
+  detectGitInfo: vi.fn().mockResolvedValue({
+    gitRepoPath: undefined,
+    gitBranch: undefined,
+    gitAheadCount: 0,
+    gitBehindCount: 0,
+    gitHasChanges: false,
+    gitIsWorktree: false,
+    gitMainRepoPath: undefined,
+  }),
+}));
+
+vi.mock('../websocket/control-unix-utils', () => ({
+  requestTerminalSpawn: vi.fn().mockResolvedValue({ success: false }),
 }));
 
 describe('sessions routes', () => {
@@ -200,60 +217,12 @@ describe('sessions routes', () => {
   });
 
   describe('POST /sessions - Git detection', () => {
-    let mockGitUtils: {
-      getMainRepositoryPath: ReturnType<typeof vi.fn>;
-    };
-    let mockChildProcess: {
-      execFile: ReturnType<typeof vi.fn>;
-    };
-    let mockFs: {
-      promises: {
-        stat: ReturnType<typeof vi.fn>;
-      };
-      existsSync: ReturnType<typeof vi.fn>;
-    };
+    let mockDetectGitInfo: ReturnType<typeof vi.fn>;
 
-    beforeEach(() => {
-      // Mock git-utils
-      mockGitUtils = {
-        getMainRepositoryPath: vi.fn(),
-      };
-      vi.doMock('../utils/git-utils', () => mockGitUtils);
-
-      // Mock child_process.execFile
-      mockChildProcess = {
-        execFile: vi.fn(),
-      };
-      vi.doMock('child_process', () => ({
-        execFile: (
-          cmd: string,
-          args: string[],
-          opts: { maxBuffer?: number; timeout?: number },
-          cb: (error: Error | null, stdout?: string) => void
-        ) => {
-          if (cb) {
-            const result = mockChildProcess.execFile(cmd, args, opts);
-            if (result instanceof Error) {
-              cb(result);
-            } else {
-              cb(null, result);
-            }
-          }
-          return { on: vi.fn(), stdout: { on: vi.fn() }, stderr: { on: vi.fn() } };
-        },
-      }));
-
-      // Mock fs
-      mockFs = {
-        promises: {
-          stat: vi.fn(),
-        },
-        existsSync: vi.fn(() => true),
-      };
-      vi.doMock('fs', () => ({
-        ...mockFs,
-        default: mockFs,
-      }));
+    beforeEach(async () => {
+      // Import and mock detectGitInfo
+      const gitInfoModule = await import('../utils/git-info');
+      mockDetectGitInfo = vi.mocked(gitInfoModule.detectGitInfo);
 
       // Update mockPtyManager to handle createSession
       mockPtyManager.createSession = vi.fn(() => ({
@@ -269,22 +238,20 @@ describe('sessions routes', () => {
     });
 
     afterEach(() => {
-      vi.doUnmock('../utils/git-utils');
-      vi.doUnmock('child_process');
-      vi.doUnmock('fs');
+      vi.clearAllMocks();
     });
 
     it('should detect Git repository information for regular repository', async () => {
-      // Mock git commands for regular repository
-      mockChildProcess.execFile
-        .mockImplementationOnce(() => ({ stdout: '/test/repo\n' })) // git rev-parse --show-toplevel
-        .mockImplementationOnce(() => ({ stdout: 'main\n' })) // git branch --show-current
-        .mockImplementationOnce(() => ({
-          stdout: '## main...origin/main [ahead 2, behind 1]\nM file1.txt\n?? file2.txt\n',
-        })); // git status --porcelain=v1 --branch
-
-      // Mock fs.stat to indicate .git is a directory (regular repo)
-      mockFs.promises.stat.mockResolvedValueOnce({ isDirectory: () => true });
+      // Mock detectGitInfo to return regular repository info
+      mockDetectGitInfo.mockResolvedValueOnce({
+        gitRepoPath: '/test/repo',
+        gitBranch: 'main',
+        gitAheadCount: 2,
+        gitBehindCount: 1,
+        gitHasChanges: true,
+        gitIsWorktree: false,
+        gitMainRepoPath: undefined,
+      });
 
       const router = createSessionRoutes({
         ptyManager: mockPtyManager,
@@ -324,14 +291,7 @@ describe('sessions routes', () => {
       await createRoute.route.stack[0].handle(mockReq, mockRes);
 
       // Verify Git detection was called
-      expect(mockChildProcess.execFile).toHaveBeenCalledWith(
-        'git',
-        ['rev-parse', '--show-toplevel'],
-        expect.objectContaining({
-          cwd: '/test/repo',
-          timeout: 5000,
-        })
-      );
+      expect(mockDetectGitInfo).toHaveBeenCalledWith('/test/repo');
 
       // Verify session was created with Git info
       expect(mockPtyManager.createSession).toHaveBeenCalledWith(
@@ -348,19 +308,16 @@ describe('sessions routes', () => {
     });
 
     it('should detect Git worktree information', async () => {
-      // Mock git commands for worktree
-      mockChildProcess.execFile
-        .mockImplementationOnce(() => ({ stdout: '/test/worktree\n' }))
-        .mockImplementationOnce(() => ({ stdout: 'feature/new-feature\n' }))
-        .mockImplementationOnce(() => ({
-          stdout: '## feature/new-feature...origin/feature/new-feature\n',
-        }));
-
-      // Mock fs.stat to indicate .git is a file (worktree)
-      mockFs.promises.stat.mockResolvedValueOnce({ isDirectory: () => false });
-
-      // Mock getMainRepositoryPath
-      mockGitUtils.getMainRepositoryPath.mockResolvedValueOnce('/test/main-repo');
+      // Mock detectGitInfo to return worktree info
+      mockDetectGitInfo.mockResolvedValueOnce({
+        gitRepoPath: '/test/worktree',
+        gitBranch: 'feature/new-feature',
+        gitAheadCount: 0,
+        gitBehindCount: 0,
+        gitHasChanges: false,
+        gitIsWorktree: true,
+        gitMainRepoPath: '/test/main-repo',
+      });
 
       const router = createSessionRoutes({
         ptyManager: mockPtyManager,
@@ -409,9 +366,15 @@ describe('sessions routes', () => {
     });
 
     it('should handle non-Git directories gracefully', async () => {
-      // Mock git command to fail (not a git repo)
-      mockChildProcess.execFile.mockImplementationOnce(() => {
-        throw new Error('fatal: not a git repository');
+      // Mock detectGitInfo to return no Git info
+      mockDetectGitInfo.mockResolvedValueOnce({
+        gitRepoPath: undefined,
+        gitBranch: undefined,
+        gitAheadCount: 0,
+        gitBehindCount: 0,
+        gitHasChanges: false,
+        gitIsWorktree: false,
+        gitMainRepoPath: undefined,
       });
 
       const router = createSessionRoutes({
@@ -464,12 +427,16 @@ describe('sessions routes', () => {
     });
 
     it('should handle detached HEAD state', async () => {
-      // Mock git commands - detached HEAD
-      mockChildProcess.execFile
-        .mockImplementationOnce(() => ({ stdout: '/test/repo\n' }))
-        .mockImplementationOnce(() => {
-          throw new Error('fatal: ref HEAD is not a symbolic ref');
-        });
+      // Mock detectGitInfo to return detached HEAD state
+      mockDetectGitInfo.mockResolvedValueOnce({
+        gitRepoPath: '/test/repo',
+        gitBranch: undefined, // No branch in detached HEAD
+        gitAheadCount: 0,
+        gitBehindCount: 0,
+        gitHasChanges: false,
+        gitIsWorktree: false,
+        gitMainRepoPath: undefined,
+      });
 
       const router = createSessionRoutes({
         ptyManager: mockPtyManager,
@@ -516,20 +483,20 @@ describe('sessions routes', () => {
     });
 
     it('should pass Git info to terminal spawn request', async () => {
-      // Mock git commands
-      mockChildProcess.execFile
-        .mockImplementationOnce(() => ({ stdout: '/test/repo\n' }))
-        .mockImplementationOnce(() => ({ stdout: 'develop\n' }))
-        .mockImplementationOnce(() => ({
-          stdout: '## develop...origin/develop\nM src/file.ts\n',
-        }));
+      // Mock detectGitInfo
+      mockDetectGitInfo.mockResolvedValueOnce({
+        gitRepoPath: '/test/repo',
+        gitBranch: 'develop',
+        gitAheadCount: 0,
+        gitBehindCount: 0,
+        gitHasChanges: true,
+        gitIsWorktree: false,
+        gitMainRepoPath: undefined,
+      });
 
-      mockFs.promises.stat.mockResolvedValueOnce({ isDirectory: () => true });
-
-      // Mock control unix handler to simulate successful terminal spawn
-      vi.mocked(controlUnixHandler).sendMessage = vi.fn().mockResolvedValueOnce({
+      // Mock requestTerminalSpawn to simulate successful terminal spawn
+      vi.mocked(requestTerminalSpawn).mockResolvedValueOnce({
         success: true,
-        type: 'terminalSpawnResponse',
       });
 
       const router = createSessionRoutes({
@@ -568,9 +535,8 @@ describe('sessions routes', () => {
       await createRoute.route.stack[0].handle(mockReq, mockRes);
 
       // Verify terminal spawn was called with Git info
-      expect(controlUnixHandler.sendMessage).toHaveBeenCalledWith(
+      expect(requestTerminalSpawn).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'terminalSpawnRequest',
           gitRepoPath: '/test/repo',
           gitBranch: 'develop',
           gitHasChanges: true,
