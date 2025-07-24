@@ -183,7 +183,7 @@ struct VibeTunnelMenuView: View {
         switch currentFocus {
         case .sessionRow(let sessionId):
             // Find the session and trigger the appropriate action
-            if let session = sessionMonitor.sessions[sessionId] {
+            if sessionMonitor.sessions[sessionId] != nil {
                 let hasWindow = WindowTracker.shared.windowInfo(for: sessionId) != nil
                 
                 if hasWindow {
