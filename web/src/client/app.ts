@@ -554,7 +554,25 @@ export class VibeTunnelApp extends LitElement {
             logger.debug('No sessions have activity status');
           }
 
-          this.sessions = newSessions;
+          // Preserve Git information from existing sessions if not present in new data
+          // This handles the case where Git info is dynamically detected but not yet persisted
+          const mergedSessions = newSessions.map((newSession) => {
+            const existingSession = this.sessions.find((s) => s.id === newSession.id);
+            if (existingSession?.gitRepoPath && !newSession.gitRepoPath) {
+              // Preserve Git fields from existing session
+              return {
+                ...newSession,
+                gitRepoPath: existingSession.gitRepoPath,
+                gitBranch: existingSession.gitBranch,
+                gitIsWorktree: existingSession.gitIsWorktree,
+                gitMainRepoPath: existingSession.gitMainRepoPath,
+                // Don't preserve counts as they might be stale
+              };
+            }
+            return newSession;
+          });
+
+          this.sessions = mergedSessions;
           this.clearError();
 
           // Update page title if we're in list view

@@ -6,6 +6,7 @@
  */
 
 import { createLogger } from './logger.js';
+import { getClaudeCommandFromTree, isClaudeInProcessTree } from './process-tree.js';
 import { PromptDetector } from './prompt-patterns.js';
 
 const logger = createLogger('activity-detector');
@@ -214,9 +215,26 @@ const detectors: AppDetector[] = [
   {
     name: 'claude',
     detect: (cmd) => {
-      // Check if any part of the command contains 'claude'
+      // First check if the command directly contains 'claude'
       const cmdStr = cmd.join(' ').toLowerCase();
-      return cmdStr.includes('claude');
+      if (cmdStr.includes('claude')) {
+        logger.debug('Claude detected in command line');
+        return true;
+      }
+
+      // If not found in command, check the process tree
+      // This catches cases where Claude is run through wrappers or scripts
+      if (isClaudeInProcessTree()) {
+        logger.debug('Claude detected in process tree');
+        // Log the actual Claude command if available
+        const claudeCmd = getClaudeCommandFromTree();
+        if (claudeCmd) {
+          logger.debug(`Claude command from tree: ${claudeCmd}`);
+        }
+        return true;
+      }
+
+      return false;
     },
     parseStatus: parseClaudeStatus,
   },

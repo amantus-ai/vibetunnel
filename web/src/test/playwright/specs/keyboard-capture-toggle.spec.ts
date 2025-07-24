@@ -251,7 +251,7 @@ test.describe('Keyboard Capture Toggle', () => {
     // Find the keyboard capture indicator to verify initial state
     const captureIndicator = page.locator('keyboard-capture-indicator');
     await expect(captureIndicator).toBeVisible();
-    
+
     // Verify capture is ON initially
     const initialButtonState = await captureIndicator.locator('button').getAttribute('class');
     expect(initialButtonState).toContain('text-primary');
@@ -259,20 +259,21 @@ test.describe('Keyboard Capture Toggle', () => {
     // With capture ON, shortcuts should be captured and sent to terminal
     // We'll test this by looking at console logs
     const isMac = process.platform === 'darwin';
-    
+
     // Clear logs and test a shortcut with capture ON
     consoleLogs.length = 0;
     await page.keyboard.press(isMac ? 'Meta+l' : 'Control+l');
     await page.waitForTimeout(300);
-    
+
     // With capture ON, we should see logs about keyboard events being captured
-    const captureOnLogs = consoleLogs.filter((log) => 
-      log.includes('keydown intercepted') || 
-      log.includes('Keyboard capture active') ||
-      log.includes('Sending key to terminal')
+    const _captureOnLogs = consoleLogs.filter(
+      (log) =>
+        log.includes('keydown intercepted') ||
+        log.includes('Keyboard capture active') ||
+        log.includes('Sending key to terminal')
     );
     console.log('Console logs with capture ON:', consoleLogs);
-    
+
     // The key should have been sent to terminal (logs might vary)
     // At minimum, we shouldn't see "allowing browser to handle" messages
     const browserHandledWithCaptureOn = consoleLogs.filter((log) =>
@@ -293,17 +294,18 @@ test.describe('Keyboard Capture Toggle', () => {
     // Check console logs to verify keyboard capture is OFF
     // The log message from lifecycle-event-manager is "Keyboard capture OFF - allowing browser to handle key:"
     // or from session-view "Keyboard capture state updated to: false"
-    const captureOffLogs = consoleLogs.filter((log) => 
-      log.includes('Keyboard capture OFF') || 
-      log.includes('Keyboard capture state updated to: false') ||
-      log.includes('Keyboard capture indicator updated: OFF')
+    const captureOffLogs = consoleLogs.filter(
+      (log) =>
+        log.includes('Keyboard capture OFF') ||
+        log.includes('Keyboard capture state updated to: false') ||
+        log.includes('Keyboard capture indicator updated: OFF')
     );
     console.log('All logs after toggle:', consoleLogs);
     expect(captureOffLogs.length).toBeGreaterThan(0);
 
     // Clear logs to test with capture OFF
     consoleLogs.length = 0;
-    
+
     // With capture OFF, browser shortcuts should work
     // Test the same shortcut as before
     await page.keyboard.press(isMac ? 'Meta+l' : 'Control+l');
@@ -315,7 +317,7 @@ test.describe('Keyboard Capture Toggle', () => {
       log.includes('allowing browser to handle key:')
     );
     console.log('Console logs with capture OFF:', consoleLogs);
-    
+
     // If we don't see the specific log, the test might be running too fast
     // or the key might not be a captured shortcut. Let's just verify capture is OFF
     if (browserHandleLogs.length === 0) {

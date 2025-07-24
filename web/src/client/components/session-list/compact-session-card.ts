@@ -104,26 +104,26 @@ export class CompactSessionCard extends LitElement {
 
     const changes = [];
 
-    // Show ahead/behind counts
-    if (this.session.gitAheadCount && this.session.gitAheadCount > 0) {
-      changes.push(html`<span class="text-status-success">↑${this.session.gitAheadCount}</span>`);
-    }
-    if (this.session.gitBehindCount && this.session.gitBehindCount > 0) {
-      changes.push(html`<span class="text-status-warning">↓${this.session.gitBehindCount}</span>`);
+    // Show uncommitted changes indicator first
+    if (this.session.gitHasChanges) {
+      changes.push(html`<span class="text-status-warning ml-1">●</span>`);
     }
 
-    // Show uncommitted changes indicator
-    if (this.session.gitHasChanges) {
-      changes.push(html`<span class="text-status-warning">●</span>`);
+    // Show ahead/behind counts
+    if (this.session.gitAheadCount && this.session.gitAheadCount > 0) {
+      changes.push(
+        html`<span class="text-status-success ml-1">↑${this.session.gitAheadCount}</span>`
+      );
+    }
+    if (this.session.gitBehindCount && this.session.gitBehindCount > 0) {
+      changes.push(
+        html`<span class="text-status-warning ml-1">↓${this.session.gitBehindCount}</span>`
+      );
     }
 
     if (changes.length === 0) return '';
 
-    return html`
-      <div class="flex items-center gap-1 text-xs font-mono flex-shrink-0">
-        ${changes}
-      </div>
-    `;
+    return html`${changes}`;
   }
 
   private renderSessionName() {
@@ -215,8 +215,6 @@ export class CompactSessionCard extends LitElement {
             <div class="text-sm font-mono truncate ${nameColorClass}">
               ${this.renderSessionName()}
             </div>
-            <!-- Git changes indicator -->
-            ${this.renderGitChanges()}
           </div>
           <div class="text-xs ${pathColorClass} truncate flex items-center gap-1">
             ${
@@ -232,8 +230,10 @@ export class CompactSessionCard extends LitElement {
               session.gitBranch
                 ? html`
                   <span class="text-text-muted/50">·</span>
-                  <span class="text-status-success font-mono">${session.gitBranch}</span>
-                  ${session.gitIsWorktree ? html`<span class="text-purple-400">⎇</span>` : ''}
+                  <span class="text-status-success font-mono">[${session.gitBranch}]</span>
+                  ${session.gitIsWorktree ? html`<span class="text-purple-400 ml-0.5">⎇</span>` : ''}
+                  <!-- Git changes indicator after branch -->
+                  ${this.renderGitChanges()}
                 `
                 : ''
             }

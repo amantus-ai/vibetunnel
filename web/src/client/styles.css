@@ -1859,3 +1859,66 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 .session-view .interactive-slow {
   transition: none !important;
 }
+
+/* Dark mode checkbox styling */
+.session-toggle-checkbox {
+  /* Remove default styling */
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  
+  /* Custom styling */
+  width: 1rem;
+  height: 1rem;
+  background-color: rgb(var(--color-bg-primary));
+  border: 2px solid rgb(var(--color-border) / 0.5);
+  border-radius: 3px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin: 0;
+  
+  /* Grid for centering checkmark */
+  display: grid;
+  place-content: center;
+}
+
+/* Hover state */
+.session-toggle-checkbox:hover:not(:checked) {
+  border-color: rgb(var(--color-border));
+  background-color: rgb(var(--color-bg-secondary));
+}
+
+/* Checked state */
+.session-toggle-checkbox:checked {
+  background-color: rgb(var(--color-primary) / 0.15);
+  border-color: rgb(var(--color-primary) / 0.5);
+}
+
+/* Checkmark using pseudo-element */
+.session-toggle-checkbox::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  transform: scale(0);
+  transition: transform 0.15s ease-in-out;
+  background-color: rgb(var(--color-primary));
+  
+  /* Create checkmark shape using clip-path */
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+/* Show checkmark when checked */
+.session-toggle-checkbox:checked::before {
+  transform: scale(1);
+}
+
+/* Focus state */
+.session-toggle-checkbox:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(var(--color-primary) / 0.25);
+}
+
+/* Focus visible for keyboard navigation */
+.session-toggle-checkbox:focus-visible {
+  box-shadow: 0 0 0 2px rgb(var(--color-primary) / 0.4);
+}

@@ -1055,7 +1055,7 @@ export class SessionList extends LitElement {
               <label class="flex items-center gap-2 cursor-pointer group whitespace-nowrap">
                 <input
                   type="checkbox"
-                  class="w-4 h-4 rounded border-border bg-bg-primary text-accent-primary focus:ring-accent-primary focus:ring-offset-0 focus:ring-2 cursor-pointer"
+                  class="session-toggle-checkbox"
                   ?checked=${!this.hideExited}
                   @change=${(e: Event) => {
                     const checked = (e.target as HTMLInputElement).checked;
@@ -1065,7 +1065,7 @@ export class SessionList extends LitElement {
                   data-testid="show-exited-toggle"
                 />
                 <span class="text-xs text-text-muted group-hover:text-text font-mono select-none">
-                  Show exited
+                  Show
                 </span>
               </label>
             `

@@ -4,6 +4,10 @@ import {
   type AppDetector,
   registerDetector,
 } from '../../server/utils/activity-detector.js';
+import * as processTree from '../../server/utils/process-tree.js';
+
+// Mock the process-tree module
+vi.mock('../../server/utils/process-tree.js');
 
 describe('Activity Detector', () => {
   beforeEach(() => {
@@ -208,6 +212,60 @@ describe('Activity Detector', () => {
       const result = detector.processOutput('test');
 
       expect(result.activity.specificStatus?.status).toBe('Version 2');
+    });
+  });
+
+  describe('Claude detection with process tree', () => {
+    beforeEach(() => {
+      // Reset mocks
+      vi.mocked(processTree.isClaudeInProcessTree).mockReturnValue(false);
+      vi.mocked(processTree.getClaudeCommandFromTree).mockReturnValue(null);
+    });
+
+    it('should detect claude via process tree when not in command', () => {
+      // Mock process tree to indicate Claude is running
+      vi.mocked(processTree.isClaudeInProcessTree).mockReturnValue(true);
+      vi.mocked(processTree.getClaudeCommandFromTree).mockReturnValue('/usr/bin/claude --resume');
+
+      // Create detector with a command that doesn't contain 'claude'
+      const detector = new ActivityDetector(['bash', '-l']);
+      const result = detector.processOutput(
+        '✻ Measuring… (6s · ↑ 100 tokens · esc to interrupt)\n'
+      );
+
+      // Should still detect Claude status because it's in the process tree
+      expect(result.activity.specificStatus).toBeDefined();
+      expect(result.activity.specificStatus?.app).toBe('claude');
+      expect(result.activity.specificStatus?.status).toContain('Measuring');
+    });
+
+    it('should not detect claude when neither in command nor process tree', () => {
+      // Process tree indicates no Claude
+      vi.mocked(processTree.isClaudeInProcessTree).mockReturnValue(false);
+
+      const detector = new ActivityDetector(['vim', 'file.txt']);
+      const result = detector.processOutput(
+        '✻ Measuring… (6s · ↑ 100 tokens · esc to interrupt)\n'
+      );
+
+      // Should not detect Claude status
+      expect(result.activity.specificStatus).toBeUndefined();
+    });
+
+    it('should prefer direct command detection over process tree', () => {
+      // Even if process tree check fails, should still work with direct command
+      vi.mocked(processTree.isClaudeInProcessTree).mockImplementation(() => {
+        throw new Error('Process tree check failed');
+      });
+
+      const detector = new ActivityDetector(['claude', '--resume']);
+      const result = detector.processOutput(
+        '✻ Measuring… (6s · ↑ 100 tokens · esc to interrupt)\n'
+      );
+
+      // Should still detect Claude status
+      expect(result.activity.specificStatus).toBeDefined();
+      expect(result.activity.specificStatus?.app).toBe('claude');
     });
   });
 });

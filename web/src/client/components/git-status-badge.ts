@@ -116,6 +116,7 @@ export class GitStatusBadge extends LitElement {
       const status = await response.json();
 
       // Update the session object with new git status
+      // Preserve all existing session fields, only update Git counts
       this.session = {
         ...this.session,
         gitModifiedCount: status.modified,
@@ -140,12 +141,12 @@ export class GitStatusBadge extends LitElement {
       return null;
     }
 
-    const hasLocalChanges =
+    const _hasLocalChanges =
       (this.session.gitModifiedCount ?? 0) > 0 ||
       (this.session.gitUntrackedCount ?? 0) > 0 ||
       (this.session.gitStagedCount ?? 0) > 0;
 
-    const hasRemoteChanges =
+    const _hasRemoteChanges =
       (this.session.gitAheadCount ?? 0) > 0 || (this.session.gitBehindCount ?? 0) > 0;
 
     // Always show the badge when in a Git repository
