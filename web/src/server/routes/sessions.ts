@@ -85,11 +85,35 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         );
       });
 
-      // Add source info to local sessions
-      const localSessionsWithSource = localSessions.map((session) => ({
-        ...session,
-        source: 'local' as const,
-      }));
+      // Add source info to local sessions and detect Git info if missing
+      const localSessionsWithSource = await Promise.all(
+        localSessions.map(async (session) => {
+          // If session doesn't have Git info, try to detect it
+          if (!session.gitRepoPath && session.workingDir) {
+            try {
+              const gitInfo = await detectGitInfo(session.workingDir);
+              logger.debug(
+                `[GET /sessions] Detected Git info for session ${session.id}: repo=${gitInfo.gitRepoPath}, branch=${gitInfo.gitBranch}`
+              );
+              return {
+                ...session,
+                ...gitInfo,
+                source: 'local' as const,
+              };
+            } catch (error) {
+              // If Git detection fails, just return session as-is
+              logger.debug(
+                `[GET /sessions] Could not detect Git info for session ${session.id}: ${error}`
+              );
+            }
+          }
+
+          return {
+            ...session,
+            source: 'local' as const,
+          };
+        })
+      );
 
       allSessions = [...localSessionsWithSource];
 
@@ -586,6 +610,24 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
       if (!session) {
         return res.status(404).json({ error: 'Session not found' });
       }
+
+      // If session doesn't have Git info, try to detect it
+      if (!session.gitRepoPath && session.workingDir) {
+        try {
+          const gitInfo = await detectGitInfo(session.workingDir);
+          logger.debug(
+            `[GET /sessions/:id] Detected Git info for session ${session.id}: repo=${gitInfo.gitRepoPath}, branch=${gitInfo.gitBranch}`
+          );
+          res.json({ ...session, ...gitInfo });
+          return;
+        } catch (error) {
+          // If Git detection fails, just return session as-is
+          logger.debug(
+            `[GET /sessions/:id] Could not detect Git info for session ${session.id}: ${error}`
+          );
+        }
+      }
+
       res.json(session);
     } catch (error) {
       logger.error('error getting session info:', error);

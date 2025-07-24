@@ -1020,29 +1020,29 @@ export class SessionList extends LitElement {
 
     return html`
       <div class="sticky bottom-0 border-t border-border bg-bg-secondary shadow-lg" style="z-index: ${Z_INDEX.SESSION_LIST_BOTTOM_BAR};">
-        <div class="px-4 py-3 flex items-center justify-between">
+        <div class="px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <!-- Status group (left side) -->
-          <div class="flex items-center gap-4">
+          <div class="flex flex-wrap items-center gap-3 sm:gap-4">
             <!-- Session counts -->
-            <div class="flex items-center gap-3 font-mono text-xs">
+            <div class="flex items-center gap-2 sm:gap-3 font-mono text-xs">
               ${
                 activeSessions.length > 0
                   ? html`
-                <span class="text-status-success">${activeSessions.length} Active</span>
+                <span class="text-status-success whitespace-nowrap">${activeSessions.length} Active</span>
               `
                   : ''
               }
               ${
                 idleSessions.length > 0
                   ? html`
-                <span class="text-text-muted">${idleSessions.length} Idle</span>
+                <span class="text-text-muted whitespace-nowrap">${idleSessions.length} Idle</span>
               `
                   : ''
               }
               ${
                 exitedSessions.length > 0
                   ? html`
-                <span class="text-text-dim">${exitedSessions.length} Exited</span>
+                <span class="text-text-dim whitespace-nowrap">${exitedSessions.length} Exited</span>
               `
                   : ''
               }
@@ -1052,7 +1052,7 @@ export class SessionList extends LitElement {
             ${
               exitedSessions.length > 0
                 ? html`
-              <label class="flex items-center gap-2 cursor-pointer group">
+              <label class="flex items-center gap-2 cursor-pointer group whitespace-nowrap">
                 <input
                   type="checkbox"
                   class="w-4 h-4 rounded border-border bg-bg-primary text-accent-primary focus:ring-accent-primary focus:ring-offset-0 focus:ring-2 cursor-pointer"
@@ -1074,7 +1074,7 @@ export class SessionList extends LitElement {
           </div>
 
           <!-- Actions group (right side) -->
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 ml-auto">
             <!-- Clean button (only visible when showing exited sessions) -->
             ${
               !this.hideExited && exitedSessions.length > 0
