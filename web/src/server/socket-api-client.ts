@@ -37,7 +37,8 @@ export class SocketApiClient {
 
   constructor() {
     const homeDir = os.homedir();
-    this.controlSocketPath = path.join(homeDir, '.vibetunnel', 'control.sock');
+    // Use api.sock instead of control.sock to avoid conflicts with Mac app
+    this.controlSocketPath = path.join(homeDir, '.vibetunnel', 'api.sock');
   }
 
   /**
