@@ -842,8 +842,8 @@ export class SessionList extends LitElement {
                                   <repository-header
                                     .repoPath=${repoPath}
                                     .followMode=${this.repoFollowMode.get(repoPath)}
-                                    .followModeSelector=${this.renderFollowModeSelector(repoPath)}
-                                    .worktreeSelector=${this.renderWorktreeSelector(repoPath)}
+                                    .followModeSelector=${this.renderFollowModeSelector(repoPath, 'active')}
+                                    .worktreeSelector=${this.renderWorktreeSelector(repoPath, 'active')}
                                   ></repository-header>
                                 `
                                 : ''
