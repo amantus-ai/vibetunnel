@@ -2,7 +2,7 @@ import Combine
 import SwiftUI
 import os.log
 
-private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "GitBranchWorktreeSelector")
+private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "GitBranchWorktreeSelector")
 
 /// A SwiftUI component for Git branch and worktree selection, mirroring the web UI functionality
 struct GitBranchWorktreeSelector: View {

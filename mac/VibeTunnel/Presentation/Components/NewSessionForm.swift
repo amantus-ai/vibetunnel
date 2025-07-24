@@ -1,7 +1,7 @@
 import SwiftUI
 import os.log
 
-private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "NewSessionForm")
+private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "NewSessionForm")
 
 /// Compact new session form designed for the popover.
 ///

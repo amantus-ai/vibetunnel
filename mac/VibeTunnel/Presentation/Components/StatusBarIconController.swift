@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import os.log
 
-private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "StatusBarIconController")
+private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "StatusBarIconController")
 
 /// Manages the visual appearance of the status bar item's button.
 ///

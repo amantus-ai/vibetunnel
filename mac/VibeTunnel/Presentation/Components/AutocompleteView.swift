@@ -1,7 +1,7 @@
 import SwiftUI
 import os.log
 
-private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AutocompleteView")
+private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "AutocompleteView")
 
 /// View that displays autocomplete suggestions in a dropdown
 struct AutocompleteView: View {

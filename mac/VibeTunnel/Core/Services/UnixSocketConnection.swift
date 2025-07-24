@@ -5,7 +5,7 @@ import OSLog
 /// Manages UNIX socket connection for screen capture communication with automatic reconnection
 @MainActor
 final class UnixSocketConnection {
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "UnixSocket")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "UnixSocket")
 
     // MARK: - Properties
 

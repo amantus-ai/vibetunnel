@@ -5,7 +5,7 @@ import OSLog
 /// This handles all control messages between the Mac app and the server
 @MainActor
 final class SharedUnixSocketManager {
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SharedUnixSocket")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "SharedUnixSocket")
 
     // MARK: - Singleton
 

@@ -53,6 +53,13 @@ if [ -d ".git" ] && command -v git >/dev/null 2>&1; then
         DIFF_HASH=$(git diff HEAD -- src/ package.json tsconfig.json vite.config.ts 2>/dev/null | shasum -a 256 | cut -d' ' -f1)
         CONTENT_HASH="${CONTENT_HASH}-${DIFF_HASH:0:8}"
     fi
+    
+    # Also check for untracked files in src/
+    UNTRACKED_FILES=$(git ls-files --others --exclude-standard -- src/ 2>/dev/null | head -20)
+    if [ -n "$UNTRACKED_FILES" ]; then
+        UNTRACKED_HASH=$(echo "$UNTRACKED_FILES" | xargs -I {} cat {} 2>/dev/null | shasum -a 256 | cut -d' ' -f1)
+        CONTENT_HASH="${CONTENT_HASH}-untracked-${UNTRACKED_HASH:0:8}"
+    fi
 else
     # Fallback to direct file hashing if git is not available
     # Use a single tar command to process all files at once - much faster than individual cats
