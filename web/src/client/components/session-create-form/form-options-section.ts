@@ -155,9 +155,11 @@ export class FormOptionsSection extends LitElement {
                 </div>
               </div>
 
-              <!-- Follow Mode Toggle - Show for Git repositories -->
+              <!-- Follow Mode Toggle - Show only when a worktree is selected -->
               ${
-                this.gitRepoInfo?.isGitRepo
+                this.gitRepoInfo?.isGitRepo &&
+                this.selectedWorktree &&
+                this.selectedWorktree !== 'none'
                   ? html`
                   <div class="flex items-center justify-between bg-bg-elevated border border-border/50 rounded-lg p-2 sm:p-3 lg:p-4">
                     <div class="flex-1 pr-2 sm:pr-3 lg:pr-4">
@@ -166,11 +168,7 @@ export class FormOptionsSection extends LitElement {
                         ${
                           this.followMode
                             ? `Currently following: ${this.followBranch || 'unknown'}`
-                            : this.selectedWorktree
-                              ? 'Switch follow mode to the new worktree'
-                              : this.showFollowMode
-                                ? 'Will enable follow mode for the session branch'
-                                : 'Keep main repository in sync with worktree'
+                            : 'Keep main repository in sync with this worktree'
                         }
                       </p>
                     </div>

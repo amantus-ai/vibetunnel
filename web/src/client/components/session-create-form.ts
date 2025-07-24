@@ -528,8 +528,15 @@ export class SessionCreateForm extends LitElement {
       sessionData.name = this.sessionName.trim();
     }
 
-    // Handle follow mode - enable for selected branch if toggle is on
-    if (this.showFollowMode && this.gitRepoInfo?.repoPath && effectiveBranch && this.authClient) {
+    // Handle follow mode - only enable when a worktree is selected
+    if (
+      this.showFollowMode &&
+      this.selectedWorktree &&
+      this.selectedWorktree !== 'none' &&
+      this.gitRepoInfo?.repoPath &&
+      effectiveBranch &&
+      this.authClient
+    ) {
       try {
         // Check if follow mode is already active for a different branch
         if (this.followMode && this.followBranch && this.followBranch !== effectiveBranch) {
@@ -538,7 +545,7 @@ export class SessionCreateForm extends LitElement {
           );
         }
 
-        logger.log(`Enabling follow mode for branch: ${effectiveBranch}`);
+        logger.log(`Enabling follow mode for worktree branch: ${effectiveBranch}`);
         const success = await enableFollowMode(
           this.gitRepoInfo.repoPath,
           effectiveBranch,
@@ -555,7 +562,7 @@ export class SessionCreateForm extends LitElement {
             })
           );
         } else {
-          logger.log('Follow mode enabled successfully');
+          logger.log('Follow mode enabled successfully for worktree');
           // Update local state
           this.followMode = true;
           this.followBranch = effectiveBranch;
@@ -650,6 +657,11 @@ export class SessionCreateForm extends LitElement {
     this.selectedWorktree = e.detail.worktree;
     // Clear any previous warning
     this.branchSwitchWarning = undefined;
+
+    // Reset follow mode toggle when no worktree is selected
+    if (!this.selectedWorktree || this.selectedWorktree === 'none') {
+      this.showFollowMode = false;
+    }
   }
 
   private async handleCreateWorktreeRequest(e: CustomEvent) {

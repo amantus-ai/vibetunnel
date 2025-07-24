@@ -235,13 +235,14 @@ test.describe('Keyboard Shortcuts', () => {
       if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {
         await spawnWindowToggle.click();
         // Wait for toggle state to update
-      await page.waitForFunction(
-        () => {
-          const toggle = document.querySelector('button[role="switch"]');
-          return toggle?.getAttribute('aria-checked') === 'false';
-        },
-        { timeout: 1000 }
-      );
+        await page.waitForFunction(
+          () => {
+            const toggle = document.querySelector('button[role="switch"]');
+            return toggle?.getAttribute('aria-checked') === 'false';
+          },
+          { timeout: 1000 }
+        );
+      }
     }
 
     // Fill session name and track it

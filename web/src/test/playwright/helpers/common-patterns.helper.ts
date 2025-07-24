@@ -179,15 +179,15 @@ export async function openCreateSessionDialog(
 export async function disableSpawnWindow(page: Page): Promise<void> {
   // First expand the options section where spawn window toggle is located
   const optionsButton = page.locator('#session-options-button');
-  
+
   // Options button should always exist in current UI
   await optionsButton.waitFor({ state: 'visible', timeout: 3000 });
   await optionsButton.click();
   await page.waitForTimeout(300); // Wait for expansion animation
-  
+
   // Now look for the spawn window toggle with specific data-testid
   const spawnWindowToggle = page.locator('[data-testid="spawn-window-toggle"]');
-  
+
   // Only try to disable if the toggle exists (Mac app connected)
   if ((await spawnWindowToggle.count()) > 0) {
     if ((await spawnWindowToggle.getAttribute('aria-checked')) === 'true') {

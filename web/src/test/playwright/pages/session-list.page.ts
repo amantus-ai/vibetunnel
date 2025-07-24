@@ -148,17 +148,17 @@ export class SessionListPage extends BasePage {
     // First need to expand the options section as toggle is now inside a collapsible options area
     try {
       const optionsButton = this.page.locator('#session-options-button');
-      
+
       // Options button should always exist in current UI
       await optionsButton.waitFor({ state: 'visible', timeout: 3000 });
       await optionsButton.click();
       await this.page.waitForTimeout(300); // Wait for expansion animation
-      
+
       // Now look for the spawn window toggle
       const spawnWindowToggle = this.page.locator('[data-testid="spawn-window-toggle"]');
-      
-      const toggleExists = await spawnWindowToggle.count() > 0;
-      
+
+      const toggleExists = (await spawnWindowToggle.count()) > 0;
+
       if (toggleExists) {
         // Wait for the toggle to be visible after expansion
         await spawnWindowToggle.waitFor({ state: 'visible', timeout: 2000 });
@@ -177,7 +177,9 @@ export class SessionListPage extends BasePage {
         }
       } else if (spawnWindow) {
         // User requested spawn window but Mac app is not connected
-        console.log('INFO: Spawn window requested but Mac app is not connected - toggle not available');
+        console.log(
+          'INFO: Spawn window requested but Mac app is not connected - toggle not available'
+        );
       }
     } catch (error) {
       // Log but don't fail the test if spawn window toggle check fails

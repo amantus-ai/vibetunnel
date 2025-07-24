@@ -86,11 +86,6 @@ detached
         stderr: '',
       });
 
-      // Mock stats for main branch (no commits ahead)
-      mockExecFile.mockResolvedValueOnce({ stdout: '0\n', stderr: '' }); // commits ahead
-      mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' }); // diff stat
-      mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' }); // status (no uncommitted)
-
       // Mock stats for feature branch
       mockExecFile.mockResolvedValueOnce({ stdout: '5\n', stderr: '' }); // commits ahead
       mockExecFile.mockResolvedValueOnce({
@@ -107,15 +102,10 @@ detached
 
       expect(response.status).toBe(200);
       expect(response.body.baseBranch).toBe('main');
-      expect(response.body.worktrees).toHaveLength(3);
+      // The API filters out the main repository, so we expect only 2 worktrees
+      expect(response.body.worktrees).toHaveLength(2);
 
-      // Check each worktree
-      const mainWorktree = response.body.worktrees.find(
-        (w: Worktree) => w.path === '/home/user/project'
-      );
-      expect(mainWorktree).toBeDefined();
-      expect(mainWorktree.branch).toBe('refs/heads/main');
-      expect(mainWorktree.detached).toBe(false);
+      // Check each worktree (main repository is filtered out)
 
       const featureWorktree = response.body.worktrees.find(
         (w: Worktree) => w.path === '/home/user/project-feature-branch'
@@ -150,8 +140,8 @@ detached
       // Mock git worktree list
       mockExecFile.mockResolvedValueOnce({ stdout: mockWorktreeListOutput, stderr: '' });
 
-      // Mock stats for all worktrees
-      for (let i = 0; i < 3; i++) {
+      // Mock stats for worktrees (main repo is filtered out, so only 2 worktrees)
+      for (let i = 0; i < 2; i++) {
         mockExecFile.mockResolvedValueOnce({ stdout: '0\n', stderr: '' });
         mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
         mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
@@ -178,8 +168,8 @@ detached
       // Mock git worktree list
       mockExecFile.mockResolvedValueOnce({ stdout: mockWorktreeListOutput, stderr: '' });
 
-      // Mock stats for all worktrees
-      for (let i = 0; i < 3; i++) {
+      // Mock stats for worktrees (main repo is filtered out, so only 2 worktrees)
+      for (let i = 0; i < 2; i++) {
         mockExecFile.mockResolvedValueOnce({ stdout: '0\n', stderr: '' });
         mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
         mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
@@ -303,11 +293,10 @@ branch refs/heads/feature
       const response = await request(app).post('/api/worktrees/switch').send({
         repoPath: '/home/user/project',
         branch: 'develop',
-        enableFollowMode: true,
       });
 
       expect(response.status).toBe(200);
-      expect(response.body.branch).toBe('develop');
+      expect(response.body.currentBranch).toBe('develop');
       expect(mockExecFile).toHaveBeenCalledWith(
         'git',
         ['checkout', 'develop'],
@@ -339,6 +328,8 @@ branch refs/heads/feature
 
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({
+        success: true,
+        enabled: true,
         message: 'Follow mode enabled',
         branch: 'main',
       });
@@ -355,15 +346,19 @@ branch refs/heads/feature
 
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({
+        success: true,
+        enabled: false,
         message: 'Follow mode disabled',
       });
     });
 
     it('should handle config unset when already disabled', async () => {
-      const error = new Error('error: key "vibetunnel.followMode" not found') as Error & {
+      const error = new Error('error: key "vibetunnel.followBranch" not found') as Error & {
         exitCode: number;
+        stderr: string;
       };
       error.exitCode = 5;
+      error.stderr = 'error: key "vibetunnel.followBranch" not found';
       mockExecFile.mockRejectedValueOnce(error);
 
       const response = await request(app).post('/api/worktrees/follow').send({
@@ -374,6 +369,8 @@ branch refs/heads/feature
 
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({
+        success: true,
+        enabled: false,
         message: 'Follow mode disabled',
       });
     });

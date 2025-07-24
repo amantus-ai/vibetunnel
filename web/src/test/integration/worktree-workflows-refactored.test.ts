@@ -3,11 +3,14 @@ import * as path from 'path';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createStandardTestRepo, type GitTestRepo } from '../helpers/git-test-helper.js';
+import { SessionTestHelper } from '../helpers/session-test-helper.js';
 import { createTestServer } from '../helpers/test-server.js';
 
 describe('Worktree Workflows Integration Tests (Refactored)', () => {
   let testServer: ReturnType<typeof createTestServer>;
   let gitRepo: GitTestRepo;
+  let sessionHelper: SessionTestHelper;
+  const createdSessionIds: string[] = [];
 
   beforeAll(async () => {
     // Create test repository
@@ -22,11 +25,26 @@ describe('Worktree Workflows Integration Tests (Refactored)', () => {
         config: false,
       },
     });
+
+    // Initialize session helper
+    sessionHelper = new SessionTestHelper(testServer.ptyManager);
   });
 
   afterAll(async () => {
-    // Clean up server
-    await testServer.cleanup();
+    // Kill only sessions created by this test
+    await sessionHelper.killTrackedSessions();
+
+    // Clean up any remaining sessions that were created via API
+    for (const sessionId of createdSessionIds) {
+      try {
+        await testServer.ptyManager.killSession(sessionId);
+      } catch (_error) {
+        // Session might already be dead
+      }
+    }
+
+    // Stop services (without killing all sessions)
+    testServer.activityMonitor.stop();
 
     // Clean up repository
     await gitRepo.cleanup();
@@ -218,6 +236,7 @@ describe('Worktree Workflows Integration Tests (Refactored)', () => {
       expect(createResponse.body.sessionId).toBeDefined();
 
       const sessionId = createResponse.body.sessionId;
+      createdSessionIds.push(sessionId); // Track for cleanup
 
       // Get session info
       const sessionsResponse = await request(testServer.app).get('/api/sessions');
@@ -227,8 +246,13 @@ describe('Worktree Workflows Integration Tests (Refactored)', () => {
       expect(session.gitRepoPath).toBeTruthy();
       expect(session.gitBranch).toBe('main');
 
-      // Clean up
+      // Clean up immediately
       await request(testServer.app).delete(`/api/sessions/${sessionId}`);
+      // Remove from tracking since we cleaned it up
+      const index = createdSessionIds.indexOf(sessionId);
+      if (index > -1) {
+        createdSessionIds.splice(index, 1);
+      }
     });
 
     it('should handle sessions in subdirectories', async () => {
@@ -246,6 +270,7 @@ describe('Worktree Workflows Integration Tests (Refactored)', () => {
 
       expect(createResponse.status).toBe(200);
       const sessionId = createResponse.body.sessionId;
+      createdSessionIds.push(sessionId); // Track for cleanup
 
       // Get session info
       const sessionsResponse = await request(testServer.app).get('/api/sessions');
@@ -255,8 +280,13 @@ describe('Worktree Workflows Integration Tests (Refactored)', () => {
       expect(session.gitRepoPath).toBeTruthy();
       expect(session.workingDir).toBe(subDir);
 
-      // Clean up
+      // Clean up immediately
       await request(testServer.app).delete(`/api/sessions/${sessionId}`);
+      // Remove from tracking since we cleaned it up
+      const index = createdSessionIds.indexOf(sessionId);
+      if (index > -1) {
+        createdSessionIds.splice(index, 1);
+      }
     });
   });
 

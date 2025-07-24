@@ -11,9 +11,16 @@ vi.mock('child_process', () => ({
   execFile: vi.fn(),
 }));
 
-// Mock util.promisify to return our controlled mock
+// Mock util.promisify to return appropriate mocks based on the function
 vi.mock('util', () => ({
-  promisify: vi.fn(() => mockExecFile),
+  promisify: vi.fn((fn) => {
+    // If it's execFile from child_process, return our mock
+    if (fn && fn.name === 'execFile') {
+      return mockExecFile;
+    }
+    // For fs functions, return original promisified versions
+    return vi.fn();
+  }),
 }));
 
 // Mock dependencies
@@ -70,6 +77,8 @@ vi.mock('../../server/utils/logger.js', () => ({
 vi.mock('fs', () => ({
   existsSync: vi.fn().mockReturnValue(true),
   fsync: vi.fn(),
+  readFile: vi.fn(),
+  stat: vi.fn(),
 }));
 
 // Import modules after mocks are set up
