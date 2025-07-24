@@ -340,56 +340,16 @@ fi
 
 # Handle 'vt follow' command
 if [[ "$1" == "follow" ]]; then
-    # Get git root
-    GIT_ROOT=$(get_git_root)
-    if [[ -z "$GIT_ROOT" ]]; then
-        echo "Error: Not in a Git repository" >&2
-        exit 1
-    fi
-    
-    ESCAPED_GIT_ROOT=$(json_escape "$GIT_ROOT")
-    
     if [[ -n "$2" ]]; then
-        # Branch name provided - switch to it and enable follow mode
-        BRANCH="$2"
-        ESCAPED_BRANCH=$(json_escape "$BRANCH")
-        
-        # First enable follow mode
-        JSON_PAYLOAD="{\"repoPath\": \"$ESCAPED_GIT_ROOT\", \"branch\": \"$ESCAPED_BRANCH\", \"enable\": true}"
-        if make_api_request "/api/worktrees/follow" "POST" "$JSON_PAYLOAD" >/dev/null 2>&1; then
-            # Now switch to the branch
-            if git checkout "$BRANCH" 2>/dev/null; then
-                echo "Switched to branch '$BRANCH' and enabled follow mode"
-                exit 0
-            else
-                # Git checkout failed, disable follow mode
-                make_api_request "/api/worktrees/follow" "POST" "{\"repoPath\": \"$ESCAPED_GIT_ROOT\", \"branch\": \"\", \"enable\": false}" >/dev/null 2>&1
-                echo "Error: Failed to switch to branch '$BRANCH'" >&2
-                exit 1
-            fi
-        else
-            echo "Error: Failed to enable follow mode" >&2
-            exit 1
-        fi
-    else
-        # No branch name - enable follow mode for current branch
-        CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-        if [[ -z "$CURRENT_BRANCH" ]]; then
-            echo "Error: Could not determine current branch" >&2
-            exit 1
-        fi
-        
-        ESCAPED_BRANCH=$(json_escape "$CURRENT_BRANCH")
-        JSON_PAYLOAD="{\"repoPath\": \"$ESCAPED_GIT_ROOT\", \"branch\": \"$ESCAPED_BRANCH\", \"enable\": true}"
-        
-        if make_api_request "/api/worktrees/follow" "POST" "$JSON_PAYLOAD" >/dev/null 2>&1; then
-            echo "Enabled follow mode for branch '$CURRENT_BRANCH'"
-            exit 0
-        else
-            echo "Error: Failed to enable follow mode" >&2
+        # Branch name provided - switch to it first
+        if ! git checkout "$2" 2>/dev/null; then
+            echo "Error: Failed to switch to branch '$2'" >&2
             exit 1
         fi
     fi
+    
+    # Use vibetunnel CLI to enable follow mode via socket
+    exec "$VIBETUNNEL_BIN" follow "$2"
 fi
 
 # Handle 'vt unfollow' command

@@ -247,6 +247,13 @@ async function parseCommandAndExecute(): Promise<void> {
       await handleForwardCommand();
       break;
 
+    case 'status':
+    case 'follow':
+    case 'unfollow':
+    case 'git-event':
+      await handleSocketCommand(command);
+      break;
+
     case 'systemd':
       await handleSystemdService();
       break;

@@ -13,13 +13,13 @@
 import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Session } from '../../shared/types.js';
-import { HttpMethod } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { sessionActionService } from '../services/session-action-service.js';
 import { isAIAssistantSession, sendAIPrompt } from '../utils/ai-sessions.js';
 import { createLogger } from '../utils/logger.js';
 import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
 import type { TerminalThemeId } from '../utils/terminal-themes.js';
+import { renameSession } from '../utils/session-actions.js';
 
 const logger = createLogger('session-card');
 import './vibe-terminal-buffer.js';
@@ -270,22 +270,9 @@ export class SessionCard extends LitElement {
   }
 
   private async handleRename(newName: string) {
-    try {
-      const response = await fetch(`/api/sessions/${this.session.id}`, {
-        method: HttpMethod.PATCH,
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.authClient.getAuthHeader(),
-        },
-        body: JSON.stringify({ name: newName }),
-      });
+    const result = await renameSession(this.session.id, newName, this.authClient);
 
-      if (!response.ok) {
-        const errorData = await response.text();
-        logger.error('Failed to rename session', { errorData, sessionId: this.session.id });
-        throw new Error(`Rename failed: ${response.status}`);
-      }
-
+    if (result.success) {
       // Update the local session object
       this.session = { ...this.session, name: newName };
 
@@ -302,15 +289,13 @@ export class SessionCard extends LitElement {
       );
 
       logger.log(`Session ${this.session.id} renamed to: ${newName}`);
-    } catch (error) {
-      logger.error('Error renaming session', { error, sessionId: this.session.id });
-
+    } else {
       // Show error to user
       this.dispatchEvent(
         new CustomEvent('session-rename-error', {
           detail: {
             sessionId: this.session.id,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: result.error || 'Unknown error',
           },
           bubbles: true,
           composed: true,
