@@ -127,6 +127,23 @@ export class GitService {
 
   /**
    * Check if a path is within a Git repository
+   *
+   * This method determines if the given path is part of a Git repository and
+   * provides additional information about the repository state.
+   *
+   * @param path - Absolute path to check (e.g., '/Users/alice/projects/myapp')
+   * @returns Promise resolving to repository information
+   *
+   * @example
+   * ```typescript
+   * const info = await gitService.checkGitRepo('/Users/alice/projects/myapp');
+   * if (info.isGitRepo) {
+   *   console.log(`Repository at: ${info.repoPath}`);
+   *   console.log(`Has changes: ${info.hasChanges}`);
+   * }
+   * ```
+   *
+   * @throws Error if the API request fails
    */
   async checkGitRepo(path: string): Promise<GitRepoInfo> {
     try {
@@ -145,6 +162,25 @@ export class GitService {
 
   /**
    * List all worktrees for a repository
+   *
+   * Retrieves information about all worktrees associated with the repository,
+   * including their branches, paths, and change statistics.
+   *
+   * @param repoPath - Absolute path to the repository root
+   * @returns Promise resolving to worktree list with base branch and follow mode info
+   *
+   * @example
+   * ```typescript
+   * const { worktrees, baseBranch } = await gitService.listWorktrees('/path/to/repo');
+   *
+   * // Find worktrees with uncommitted changes
+   * const dirtyWorktrees = worktrees.filter(wt => wt.hasUncommittedChanges);
+   *
+   * // Check if a specific branch has a worktree
+   * const hasBranch = worktrees.some(wt => wt.branch === 'feature/new-ui');
+   * ```
+   *
+   * @throws Error if the API request fails or repository is invalid
    */
   async listWorktrees(repoPath: string): Promise<WorktreeListResponse> {
     try {
@@ -163,6 +199,38 @@ export class GitService {
 
   /**
    * Create a new worktree
+   *
+   * Creates a new Git worktree linked to the repository. This allows you to
+   * work on multiple branches simultaneously in different directories.
+   *
+   * @param repoPath - Absolute path to the repository root
+   * @param branch - Branch name for the new worktree (will be created if doesn't exist)
+   * @param path - Absolute path where the worktree should be created
+   * @param baseBranch - Optional base branch to create the new branch from (defaults to repository's default branch)
+   *
+   * @example
+   * ```typescript
+   * // Create a worktree for a new feature branch
+   * await gitService.createWorktree(
+   *   '/Users/alice/myproject',
+   *   'feature/dark-mode',
+   *   '/Users/alice/myproject-dark-mode'
+   * );
+   *
+   * // Create a worktree based on a specific branch
+   * await gitService.createWorktree(
+   *   '/Users/alice/myproject',
+   *   'hotfix/security-patch',
+   *   '/Users/alice/myproject-hotfix',
+   *   'release/v2.0'
+   * );
+   * ```
+   *
+   * @throws Error if:
+   * - The branch already has a worktree
+   * - The target path already exists
+   * - The repository path is invalid
+   * - Git operation fails
    */
   async createWorktree(
     repoPath: string,
@@ -191,6 +259,28 @@ export class GitService {
 
   /**
    * Delete a worktree
+   *
+   * Removes a worktree from the repository. The worktree directory will be
+   * deleted and the branch association will be removed.
+   *
+   * @param repoPath - Absolute path to the repository root
+   * @param branch - Branch name of the worktree to delete
+   * @param force - Force deletion even if there are uncommitted changes (default: false)
+   *
+   * @example
+   * ```typescript
+   * // Safe delete (will fail if there are uncommitted changes)
+   * await gitService.deleteWorktree('/path/to/repo', 'feature/old-feature');
+   *
+   * // Force delete (discards uncommitted changes)
+   * await gitService.deleteWorktree('/path/to/repo', 'feature/old-feature', true);
+   * ```
+   *
+   * @throws Error if:
+   * - The worktree doesn't exist
+   * - The worktree has uncommitted changes (unless force=true)
+   * - The worktree is locked
+   * - Attempting to delete the main worktree
    */
   async deleteWorktree(repoPath: string, branch: string, force = false): Promise<void> {
     try {
@@ -213,6 +303,27 @@ export class GitService {
 
   /**
    * Prune worktree information
+   *
+   * Cleans up worktree administrative data for worktrees whose directories
+   * have been manually deleted. This is equivalent to `git worktree prune`.
+   *
+   * @param repoPath - Absolute path to the repository root
+   *
+   * @example
+   * ```typescript
+   * // Clean up after manually deleting worktree directories
+   * await gitService.pruneWorktrees('/path/to/repo');
+   *
+   * // Typical workflow after manual cleanup
+   * const { worktrees } = await gitService.listWorktrees('/path/to/repo');
+   * const prunableCount = worktrees.filter(wt => wt.prunable).length;
+   * if (prunableCount > 0) {
+   *   await gitService.pruneWorktrees('/path/to/repo');
+   *   console.log(`Pruned ${prunableCount} worktrees`);
+   * }
+   * ```
+   *
+   * @throws Error if the API request fails or repository is invalid
    */
   async pruneWorktrees(repoPath: string): Promise<void> {
     try {
@@ -235,6 +346,27 @@ export class GitService {
 
   /**
    * Switch to a branch and enable follow mode
+   *
+   * Switches the current session to track a different branch's worktree.
+   * This enables "follow mode" where the terminal session automatically
+   * changes directory to the worktree of the selected branch.
+   *
+   * @param repoPath - Absolute path to the repository root
+   * @param branch - Branch name to switch to (must have an existing worktree)
+   *
+   * @example
+   * ```typescript
+   * // Switch to a different branch's worktree
+   * await gitService.switchBranch('/path/to/repo', 'feature/new-ui');
+   *
+   * // The terminal session will now be in the worktree directory
+   * // for the 'feature/new-ui' branch
+   * ```
+   *
+   * @throws Error if:
+   * - The branch doesn't have a worktree
+   * - The worktree path is invalid or inaccessible
+   * - The API request fails
    */
   async switchBranch(repoPath: string, branch: string): Promise<void> {
     try {
@@ -258,6 +390,39 @@ export class GitService {
 
   /**
    * Enable or disable follow mode
+   *
+   * Controls automatic synchronization between the main repository and worktrees.
+   * When follow mode is enabled for a branch, the main repository will automatically
+   * checkout that branch whenever any of its worktrees perform a checkout operation.
+   * 
+   * This feature uses Git hooks (post-checkout, post-commit) and stores state in
+   * the Git config as `vibetunnel.followBranch`.
+   * 
+   * **Important behaviors:**
+   * - Only one branch can have follow mode enabled at a time
+   * - Follow mode is automatically disabled if uncommitted changes prevent switching
+   * - Git hooks are installed automatically when accessing a repository
+   * - The `vt git event` command handles the synchronization
+   *
+   * @param repoPath - Absolute path to the repository root
+   * @param branch - Branch name to set follow mode for
+   * @param enable - True to enable follow mode, false to disable
+   *
+   * @example
+   * ```typescript
+   * // Enable follow mode for main branch
+   * await gitService.setFollowMode('/path/to/repo', 'main', true);
+   * // Now when you checkout in any worktree, main repo follows to 'main'
+   *
+   * // Disable follow mode
+   * await gitService.setFollowMode('/path/to/repo', 'main', false);
+   *
+   * // Switch follow mode to a different branch
+   * await gitService.setFollowMode('/path/to/repo', 'main', false);
+   * await gitService.setFollowMode('/path/to/repo', 'feature/ui', true);
+   * ```
+   *
+   * @throws Error if the API request fails or parameters are invalid
    */
   async setFollowMode(repoPath: string, branch: string, enable: boolean): Promise<void> {
     try {

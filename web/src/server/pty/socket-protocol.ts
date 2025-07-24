@@ -81,7 +81,7 @@ export interface ErrorMessage {
 /**
  * Server status request (empty payload)
  */
-export type StatusRequest = {};
+export type StatusRequest = Record<string, never>;
 
 /**
  * Server status response

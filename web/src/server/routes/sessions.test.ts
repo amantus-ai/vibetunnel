@@ -225,7 +225,12 @@ describe('sessions routes', () => {
         execFile: vi.fn(),
       };
       vi.doMock('child_process', () => ({
-        execFile: (cmd: string, args: string[], opts: any, cb: Function) => {
+        execFile: (
+          cmd: string,
+          args: string[],
+          opts: any,
+          cb: (error: Error | null, stdout?: string) => void
+        ) => {
           if (cb) {
             const result = mockChildProcess.execFile(cmd, args, opts);
             if (result instanceof Error) {
