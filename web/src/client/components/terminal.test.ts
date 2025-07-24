@@ -45,12 +45,12 @@ describe('Terminal', () => {
 
     // Wait for the component to be ready
     await element.updateComplete;
-    
+
     // Wait for terminal container to be available
     await waitForElement(element, '#terminal-container');
-    
+
     // Allow terminal initialization to complete
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     // Get mock terminal instance after component initializes
     mockTerminal = (element as unknown as { terminal: MockTerminal })
@@ -91,7 +91,7 @@ describe('Terminal', () => {
     it('should initialize xterm terminal after first update', async () => {
       // Terminal should already be initialized from beforeEach
       const terminal = mockTerminal;
-      
+
       // If not initialized yet, skip this test
       if (!terminal) {
         console.warn('Terminal not initialized in test environment');
@@ -110,6 +110,8 @@ describe('Terminal', () => {
       `);
 
       await customElement.updateComplete;
+      await waitForElement(customElement, '#terminal-container');
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // In test environment, attribute to property conversion may not work correctly
       // Check if attributes were set

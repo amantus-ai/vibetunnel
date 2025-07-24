@@ -926,6 +926,9 @@ export class VibeTunnelApp extends LitElement {
     // Remove any lingering modal-closing class from previous interactions
     document.body.classList.remove('modal-closing');
 
+    // Clear workingDir when opening from header
+    this.createDialogWorkingDir = '';
+
     // Immediately set the modal to visible
     this.showCreateModal = true;
     logger.log('showCreateModal set to true');
