@@ -1484,6 +1484,44 @@ export class Terminal extends LitElement {
   }
 
   /**
+   * Scroll the viewport to follow the cursor position.
+   * This ensures the cursor stays visible during text input or playback.
+   */
+  private followCursor() {
+    if (!this.terminal) return;
+
+    const buffer = this.terminal.buffer.active;
+    const cursorY = buffer.cursorY + buffer.viewportY; // Absolute cursor position in buffer
+    const lineHeight = this.fontSize * 1.2;
+
+    // Calculate what line the cursor is on
+    const cursorLine = cursorY;
+
+    // Calculate current viewport range in lines
+    const viewportStartLine = Math.floor(this.viewportY / lineHeight);
+    const viewportEndLine = viewportStartLine + this.actualRows - 1;
+
+    // Set programmatic scroll flag to prevent state updates
+    this.programmaticScroll = true;
+
+    // If cursor is outside viewport, scroll to keep it visible
+    if (cursorLine < viewportStartLine) {
+      // Cursor is above viewport - scroll up
+      this.viewportY = cursorLine * lineHeight;
+    } else if (cursorLine > viewportEndLine) {
+      // Cursor is below viewport - scroll down to show cursor at bottom of viewport
+      this.viewportY = Math.max(0, (cursorLine - this.actualRows + 1) * lineHeight);
+    }
+
+    // Ensure we don't scroll past the buffer
+    const maxScrollPixels = Math.max(0, (buffer.length - this.actualRows) * lineHeight);
+    this.viewportY = Math.min(this.viewportY, maxScrollPixels);
+
+    // Clear programmatic scroll flag
+    this.programmaticScroll = false;
+  }
+
+  /**
    * Handle click on scroll-to-bottom indicator
    */
   private handleScrollToBottom = () => {
