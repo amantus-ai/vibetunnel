@@ -16,7 +16,7 @@ struct NotificationServiceTests {
         defaults.removeObject(forKey: "notifications.bell")
         defaults.removeObject(forKey: "notifications.claudeTurn")
         defaults.synchronize() // Force synchronization after removal
-        
+
         // Create preferences - this should trigger default initialization
         let preferences = NotificationService.NotificationPreferences()
 
@@ -29,7 +29,7 @@ struct NotificationServiceTests {
         #expect(preferences.commandError == true)
         #expect(preferences.bell == true)
         #expect(preferences.claudeTurn == true)
-        
+
         // Verify UserDefaults was also set correctly
         #expect(defaults.bool(forKey: "notifications.sessionStart") == true)
         #expect(defaults.bool(forKey: "notifications.sessionExit") == true)

@@ -29,10 +29,10 @@ final class NotificationService: NSObject {
 
         init() {
             let defaults = UserDefaults.standard
-            
+
             // Check if this is first initialization
             let isInitialized = defaults.object(forKey: "notifications.initialized") != nil
-            
+
             if !isInitialized {
                 // First time - register defaults and use them
                 let defaultPrefs: [String: Any] = [
@@ -44,16 +44,16 @@ final class NotificationService: NSObject {
                     "notifications.claudeTurn": true,
                     "notifications.initialized": true
                 ]
-                
+
                 // Register defaults
                 defaults.register(defaults: defaultPrefs)
-                
+
                 // Set the values explicitly
                 for (key, value) in defaultPrefs {
                     defaults.set(value, forKey: key)
                 }
                 defaults.synchronize()
-                
+
                 // Use the default true values
                 self.sessionStart = true
                 self.sessionExit = true

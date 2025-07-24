@@ -13,7 +13,7 @@ struct NotificationServiceClaudeTurnTests {
         defaults.removeObject(forKey: "notifications.initialized")
         defaults.removeObject(forKey: "notifications.claudeTurn")
         defaults.synchronize()
-        
+
         let preferences = NotificationService.NotificationPreferences()
 
         // Then
