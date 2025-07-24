@@ -19,7 +19,7 @@ struct WorktreeSelectionView: View {
         case baseBranch
     }
 
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "WorktreeSelectionView")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "WorktreeSelectionView")
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -44,7 +44,7 @@ struct WorktreeSelectionView: View {
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     // Current branch info
-                    if let currentBranch = worktreeService.worktrees.first(where: { $0.isCurrentBranch }) {
+                    if let currentBranch = worktreeService.worktrees.first(where: { $0.isCurrentWorktree ?? false }) {
                         HStack {
                             Label("Current Branch", systemImage: "arrow.branch")
                                 .font(.caption)
@@ -184,9 +184,9 @@ struct WorktreeRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack {
-                Image(systemName: worktree.isCurrentBranch ? "checkmark.circle.fill" : "circle")
+                Image(systemName: (worktree.isCurrentWorktree ?? false) ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 10))
-                    .foregroundColor(worktree.isCurrentBranch ? .accentColor : .secondary)
+                    .foregroundColor((worktree.isCurrentWorktree ?? false) ? .accentColor : .secondary)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(worktree.branch)
@@ -200,7 +200,7 @@ struct WorktreeRow: View {
 
                 Spacer()
 
-                if worktree.isLocked {
+                if worktree.locked ?? false {
                     Image(systemName: "lock.fill")
                         .font(.system(size: 10))
                         .foregroundColor(.orange)

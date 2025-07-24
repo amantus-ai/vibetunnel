@@ -5,24 +5,34 @@ struct Worktree: Codable, Identifiable, Equatable {
     let id = UUID()
     let path: String
     let branch: String
-    let isCurrentBranch: Bool
-    let isLocked: Bool
-    let reason: String?
-    let prunable: Bool
-    let isDetached: Bool
-    let head: String
+    let HEAD: String
+    let detached: Bool
+    let prunable: Bool?
+    let locked: Bool?
+    let lockedReason: String?
+    // Extended stats
+    let commitsAhead: Int?
+    let filesChanged: Int?
+    let insertions: Int?
+    let deletions: Int?
+    let hasUncommittedChanges: Bool?
+    // UI helpers
     let isMainWorktree: Bool?
     let isCurrentWorktree: Bool?
 
     enum CodingKeys: String, CodingKey {
         case path
         case branch
-        case isCurrentBranch
-        case isLocked
-        case reason
+        case HEAD
+        case detached
         case prunable
-        case isDetached
-        case head
+        case locked
+        case lockedReason
+        case commitsAhead
+        case filesChanged
+        case insertions
+        case deletions
+        case hasUncommittedChanges
         case isMainWorktree
         case isCurrentWorktree
     }
@@ -31,8 +41,8 @@ struct Worktree: Codable, Identifiable, Equatable {
 /// Response from the worktree API
 struct WorktreeListResponse: Codable {
     let worktrees: [Worktree]
-    let stats: WorktreeStats
-    let followMode: FollowModeStatus
+    let baseBranch: String
+    let followBranch: String?
 }
 
 /// Statistics about worktrees
@@ -73,10 +83,12 @@ struct GitBranch: Codable, Identifiable, Equatable {
     let name: String
     let current: Bool
     let remote: Bool
+    let worktree: String?
 
     enum CodingKeys: String, CodingKey {
         case name
         case current
         case remote
+        case worktree
     }
 }

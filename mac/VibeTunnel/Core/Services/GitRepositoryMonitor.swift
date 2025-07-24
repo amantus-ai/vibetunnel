@@ -12,18 +12,19 @@ struct GitRepoInfoResponse: Codable {
 
 struct GitRepositoryInfoResponse: Codable {
     let isGitRepo: Bool
-    let repoPath: String
+    let repoPath: String?  // Made optional to match when isGitRepo is false
     let currentBranch: String?
     let remoteUrl: String?
-    let hasChanges: Bool
-    let modifiedCount: Int
-    let untrackedCount: Int
-    let stagedCount: Int
-    let addedCount: Int
-    let deletedCount: Int
-    let aheadCount: Int
-    let behindCount: Int
-    let hasUpstream: Bool
+    let githubUrl: String?  // Added missing field from server response
+    let hasChanges: Bool?  // Made optional for when isGitRepo is false
+    let modifiedCount: Int?
+    let untrackedCount: Int?
+    let stagedCount: Int?
+    let addedCount: Int?
+    let deletedCount: Int?
+    let aheadCount: Int?
+    let behindCount: Int?
+    let hasUpstream: Bool?
 }
 
 /// Monitors and caches Git repository status information for efficient UI updates.
@@ -351,21 +352,31 @@ public final class GitRepositoryMonitor {
             if !response.isGitRepo {
                 return nil
             }
+            
+            // Ensure we have required fields when isGitRepo is true
+            guard let repoPath = response.repoPath else {
+                logger.error("❌ Invalid response: isGitRepo is true but repoPath is missing")
+                return nil
+            }
 
             // Check if this is a worktree by looking for .git file instead of directory
-            let isWorktree = Self.checkIfWorktree(at: response.repoPath)
+            let isWorktree = Self.checkIfWorktree(at: repoPath)
+            
+            // Parse GitHub URL if provided
+            let githubURL = response.githubUrl.flatMap { URL(string: $0) }
 
             return GitRepository(
-                path: response.repoPath,
-                modifiedCount: response.modifiedCount,
-                addedCount: response.addedCount,
-                deletedCount: response.deletedCount,
-                untrackedCount: response.untrackedCount,
+                path: repoPath,
+                modifiedCount: response.modifiedCount ?? 0,
+                addedCount: response.addedCount ?? 0,
+                deletedCount: response.deletedCount ?? 0,
+                untrackedCount: response.untrackedCount ?? 0,
                 currentBranch: response.currentBranch,
-                aheadCount: response.aheadCount > 0 ? response.aheadCount : nil,
-                behindCount: response.behindCount > 0 ? response.behindCount : nil,
-                trackingBranch: response.hasUpstream ? "origin/\(response.currentBranch ?? "main")" : nil,
-                isWorktree: isWorktree
+                aheadCount: (response.aheadCount ?? 0) > 0 ? response.aheadCount : nil,
+                behindCount: (response.behindCount ?? 0) > 0 ? response.behindCount : nil,
+                trackingBranch: (response.hasUpstream ?? false) ? "origin/\(response.currentBranch ?? "main")" : nil,
+                isWorktree: isWorktree,
+                githubURL: githubURL
             )
         } catch {
             logger.error("❌ Failed to get git status: \(error)")

@@ -8,19 +8,33 @@ import os.log
 /// including its command, directory, process status, and activity information.
 struct ServerSessionInfo: Codable {
     let id: String
-    let command: [String] // Changed from String to [String] to match server
-    let name: String? // Added missing field
+    let name: String
+    let command: [String]
     let workingDir: String
     let status: String
     let exitCode: Int?
     let startedAt: String
+    let pid: Int?
+    let initialCols: Int?
+    let initialRows: Int?
+    let lastClearOffset: Int?
+    let version: String?
+    let gitRepoPath: String?
+    let gitBranch: String?
+    let gitAheadCount: Int?
+    let gitBehindCount: Int?
+    let gitHasChanges: Bool?
+    let gitIsWorktree: Bool?
+    let gitMainRepoPath: String?
+    
+    // Additional fields from Session (not SessionInfo)
     let lastModified: String
-    let pid: Int? // Made optional since it might not exist for all sessions
-    let initialCols: Int? // Added missing field
-    let initialRows: Int? // Added missing field
+    let active: Bool?
     let activityStatus: ActivityStatus?
-    let source: String? // Added for HQ mode
-    let attachedViaVT: Bool? // Added for VT attachment tracking
+    let source: String?
+    let remoteId: String?
+    let remoteName: String?
+    let remoteUrl: String?
 
     var isRunning: Bool {
         status == "running"
