@@ -145,7 +145,7 @@ async function handleSocketCommand(command: string): Promise<void> {
       case 'follow': {
         const branch = process.argv[3];
         const repoPath = process.cwd();
-        
+
         // Check if we're in a git repo
         if (!require('fs').existsSync(require('path').join(repoPath, '.git'))) {
           console.error('Error: Not in a Git repository');
@@ -176,7 +176,7 @@ async function handleSocketCommand(command: string): Promise<void> {
 
       case 'unfollow': {
         const repoPath = process.cwd();
-        
+
         const response = await client.setFollowMode({
           repoPath,
           enable: false,
@@ -193,7 +193,7 @@ async function handleSocketCommand(command: string): Promise<void> {
 
       case 'git-event': {
         const repoPath = process.cwd();
-        
+
         await client.sendGitEvent({
           repoPath,
           type: 'other', // We don't know the specific type from command line

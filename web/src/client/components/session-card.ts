@@ -17,9 +17,9 @@ import type { AuthClient } from '../services/auth-client.js';
 import { sessionActionService } from '../services/session-action-service.js';
 import { isAIAssistantSession, sendAIPrompt } from '../utils/ai-sessions.js';
 import { createLogger } from '../utils/logger.js';
+import { renameSession } from '../utils/session-actions.js';
 import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
 import type { TerminalThemeId } from '../utils/terminal-themes.js';
-import { renameSession } from '../utils/session-actions.js';
 
 const logger = createLogger('session-card');
 import './vibe-terminal-buffer.js';

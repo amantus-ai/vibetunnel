@@ -11,8 +11,8 @@ import type { Session } from '../../../shared/types.js';
 import { authClient } from '../../services/auth-client.js';
 import { sessionActionService } from '../../services/session-action-service.js';
 import { createLogger } from '../../utils/logger.js';
-import { titleManager } from '../../utils/title-manager.js';
 import { renameSession } from '../../utils/session-actions.js';
+import { titleManager } from '../../utils/title-manager.js';
 
 const logger = createLogger('session-actions-handler');
 

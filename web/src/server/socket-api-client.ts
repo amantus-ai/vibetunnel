@@ -8,10 +8,10 @@ import * as os from 'os';
 import * as path from 'path';
 import { VibeTunnelSocketClient } from './pty/socket-client.js';
 import {
-  GitEventAck,
-  GitEventNotify,
-  GitFollowRequest,
-  GitFollowResponse,
+  type GitEventAck,
+  type GitEventNotify,
+  type GitFollowRequest,
+  type GitFollowResponse,
   MessageType,
 } from './pty/socket-protocol.js';
 import { createLogger } from './utils/logger.js';
@@ -61,7 +61,7 @@ export class SocketApiClient {
     }
 
     const client = new VibeTunnelSocketClient(this.controlSocketPath);
-    
+
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         client.disconnect();
@@ -95,13 +95,23 @@ export class SocketApiClient {
       // Override the handleMessage method to intercept messages
       (client as any).handleMessage = handleMessage;
 
-      client.connect()
+      client
+        .connect()
         .then(() => {
           // Send the request
-          const message = (type === MessageType.GIT_FOLLOW_REQUEST)
-            ? (client as any).send((client as any).constructor.prototype.constructor.MessageBuilder.gitFollowRequest(payload))
-            : (client as any).send((client as any).constructor.prototype.constructor.MessageBuilder.gitEventNotify(payload));
-          
+          const message =
+            type === MessageType.GIT_FOLLOW_REQUEST
+              ? (client as any).send(
+                  (client as any).constructor.prototype.constructor.MessageBuilder.gitFollowRequest(
+                    payload
+                  )
+                )
+              : (client as any).send(
+                  (client as any).constructor.prototype.constructor.MessageBuilder.gitEventNotify(
+                    payload
+                  )
+                );
+
           if (!message) {
             clearTimeout(timer);
             reject(new Error('Failed to send request'));
@@ -128,13 +138,13 @@ export class SocketApiClient {
       const client = new VibeTunnelSocketClient(this.controlSocketPath);
       await client.connect();
       client.disconnect();
-      
+
       // If we can connect, server is running
       // We don't have port info via socket yet
-      return { 
+      return {
         running: true,
-        port: parseInt(process.env.VIBETUNNEL_PORT || '4020'),
-        url: `http://localhost:${process.env.VIBETUNNEL_PORT || '4020'}`
+        port: Number.parseInt(process.env.VIBETUNNEL_PORT || '4020'),
+        url: `http://localhost:${process.env.VIBETUNNEL_PORT || '4020'}`,
       };
     } catch (error) {
       return { running: false };

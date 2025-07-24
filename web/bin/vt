@@ -338,6 +338,12 @@ if [[ "$1" == "title" ]]; then
     exit 1
 fi
 
+# Handle 'vt status' command
+if [[ "$1" == "status" ]]; then
+    # Use vibetunnel CLI to show status via socket
+    exec "$VIBETUNNEL_BIN" status
+fi
+
 # Handle 'vt follow' command
 if [[ "$1" == "follow" ]]; then
     if [[ -n "$2" ]]; then
@@ -354,37 +360,14 @@ fi
 
 # Handle 'vt unfollow' command
 if [[ "$1" == "unfollow" ]]; then
-    # Get git root
-    GIT_ROOT=$(get_git_root)
-    if [[ -z "$GIT_ROOT" ]]; then
-        echo "Error: Not in a Git repository" >&2
-        exit 1
-    fi
-    
-    # Disable follow mode
-    ESCAPED_GIT_ROOT=$(json_escape "$GIT_ROOT")
-    if make_api_request "/api/worktrees/follow" "POST" "{\"repoPath\": \"$ESCAPED_GIT_ROOT\", \"branch\": \"\", \"enable\": false}" >/dev/null 2>&1; then
-        echo "Disabled follow mode"
-        exit 0
-    else
-        echo "Error: Failed to disable follow mode" >&2
-        exit 1
-    fi
+    # Use vibetunnel CLI to disable follow mode via socket
+    exec "$VIBETUNNEL_BIN" unfollow
 fi
 
 # Handle 'vt git event' command
 if [[ "$1" == "git" && "$2" == "event" ]]; then
-    # Get git root
-    GIT_ROOT=$(get_git_root)
-    if [[ -z "$GIT_ROOT" ]]; then
-        echo "Error: Not in a Git repository" >&2
-        exit 1
-    fi
-    
-    # Notify server of git event
-    ESCAPED_GIT_ROOT=$(json_escape "$GIT_ROOT")
-    make_api_request "/api/git/event" "POST" "{\"repoPath\": \"$ESCAPED_GIT_ROOT\"}"
-    exit 0
+    # Use vibetunnel CLI to send git event via socket
+    exec "$VIBETUNNEL_BIN" git-event
 fi
 
 # Handle verbosity flags

@@ -762,7 +762,7 @@ describe('SessionView Drag & Drop and Paste', () => {
       element.dispatchEvent(dragOverNoFiles);
       await element.updateComplete;
       expect(uiStateManager.getState().isDragOver).toBe(true);
-      
+
       // Drop event should hide the overlay
       const dropEvent = new DragEvent('drop', {
         bubbles: true,
