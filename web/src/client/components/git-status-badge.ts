@@ -148,10 +148,8 @@ export class GitStatusBadge extends LitElement {
     const hasRemoteChanges =
       (this.session.gitAheadCount ?? 0) > 0 || (this.session.gitBehindCount ?? 0) > 0;
 
-    if (!hasLocalChanges && !hasRemoteChanges && !this.detailed) {
-      // Clean repository, show nothing unless detailed view is requested
-      return null;
-    }
+    // Always show the badge when in a Git repository
+    // Even if there are no changes, users want to see the branch name
 
     return html`
       <div class="flex items-center gap-1.5 text-xs">

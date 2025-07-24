@@ -197,6 +197,22 @@ export class SessionHeader extends LitElement {
                     <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
                   </svg>
                 </button>
+                
+                <!-- Go to Root button (desktop only) -->
+                <button
+                  class="hidden sm:flex bg-bg-tertiary border border-border text-primary rounded-lg p-2 font-mono transition-all duration-200 hover:bg-surface-hover hover:border-primary hover:shadow-glow-primary-sm flex-shrink-0"
+                  @click=${() => window.location.href = '/'}
+                  title="Go to root"
+                  data-testid="go-to-root-button"
+                >
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                    <!-- Four small rounded rectangles icon -->
+                    <rect x="3" y="3" width="6" height="6" rx="1.5" ry="1.5"/>
+                    <rect x="11" y="3" width="6" height="6" rx="1.5" ry="1.5"/>
+                    <rect x="3" y="11" width="6" height="6" rx="1.5" ry="1.5"/>
+                    <rect x="11" y="11" width="6" height="6" rx="1.5" ry="1.5"/>
+                  </svg>
+                </button>
               `
               : ''
           }
