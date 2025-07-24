@@ -228,7 +228,7 @@ describe('sessions routes', () => {
         execFile: (
           cmd: string,
           args: string[],
-          opts: any,
+          opts: { maxBuffer?: number; timeout?: number },
           cb: (error: Error | null, stdout?: string) => void
         ) => {
           if (cb) {
@@ -296,9 +296,15 @@ describe('sessions routes', () => {
       });
 
       // Find the POST /sessions route handler
-      const routes = (router as any).stack;
+      interface RouteLayer {
+        route?: {
+          path: string;
+          methods: { post?: boolean };
+        };
+      }
+      const routes = (router as { stack: RouteLayer[] }).stack;
       const createRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/sessions' && r.route.methods.post
+        (r) => r.route && r.route.path === '/sessions' && r.route.methods.post
       );
 
       const mockReq = {
@@ -365,9 +371,15 @@ describe('sessions routes', () => {
         activityMonitor: mockActivityMonitor,
       });
 
-      const routes = (router as any).stack;
+      interface RouteLayer {
+        route?: {
+          path: string;
+          methods: { post?: boolean };
+        };
+      }
+      const routes = (router as { stack: RouteLayer[] }).stack;
       const createRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/sessions' && r.route.methods.post
+        (r) => r.route && r.route.path === '/sessions' && r.route.methods.post
       );
 
       const mockReq = {
@@ -411,9 +423,15 @@ describe('sessions routes', () => {
         activityMonitor: mockActivityMonitor,
       });
 
-      const routes = (router as any).stack;
+      interface RouteLayer {
+        route?: {
+          path: string;
+          methods: { post?: boolean };
+        };
+      }
+      const routes = (router as { stack: RouteLayer[] }).stack;
       const createRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/sessions' && r.route.methods.post
+        (r) => r.route && r.route.path === '/sessions' && r.route.methods.post
       );
 
       const mockReq = {
@@ -462,9 +480,15 @@ describe('sessions routes', () => {
         activityMonitor: mockActivityMonitor,
       });
 
-      const routes = (router as any).stack;
+      interface RouteLayer {
+        route?: {
+          path: string;
+          methods: { post?: boolean };
+        };
+      }
+      const routes = (router as { stack: RouteLayer[] }).stack;
       const createRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/sessions' && r.route.methods.post
+        (r) => r.route && r.route.path === '/sessions' && r.route.methods.post
       );
 
       const mockReq = {
@@ -517,9 +541,15 @@ describe('sessions routes', () => {
         activityMonitor: mockActivityMonitor,
       });
 
-      const routes = (router as any).stack;
+      interface RouteLayer {
+        route?: {
+          path: string;
+          methods: { post?: boolean };
+        };
+      }
+      const routes = (router as { stack: RouteLayer[] }).stack;
       const createRoute = routes.find(
-        (r: any) => r.route && r.route.path === '/sessions' && r.route.methods.post
+        (r) => r.route && r.route.path === '/sessions' && r.route.methods.post
       );
 
       const mockReq = {

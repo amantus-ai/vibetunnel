@@ -25,7 +25,7 @@ const mockPushManager = {
 describe('PushNotificationService', () => {
   let service: PushNotificationService;
   let mockAuthClient: AuthClient;
-  let originalNavigator: any;
+  let originalNavigator: Navigator;
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {

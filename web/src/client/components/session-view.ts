@@ -74,6 +74,7 @@ export class SessionView extends LitElement {
   @property({ type: Boolean }) showSidebarToggle = false;
   @property({ type: Boolean }) sidebarCollapsed = false;
   @property({ type: Boolean }) disableFocusManagement = false;
+  @property({ type: Boolean }) keyboardCaptureActive = true;
 
   // Managers
   private connectionManager!: ConnectionManager;
@@ -1152,6 +1153,7 @@ export class SessionView extends LitElement {
                 uiState.useBinaryMode
                   ? html`
               <vibe-terminal-binary
+                id="session-terminal"
                 .sessionId=${this.session?.id || ''}
                 .sessionStatus=${this.session?.status || 'running'}
                 .cols=${80}
@@ -1173,6 +1175,7 @@ export class SessionView extends LitElement {
             `
                   : html`
               <vibe-terminal
+                id="session-terminal"
                 .sessionId=${this.session?.id || ''}
                 .sessionStatus=${this.session?.status || 'running'}
                 .cols=${80}

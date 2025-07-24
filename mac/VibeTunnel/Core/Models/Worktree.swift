@@ -147,7 +147,7 @@ struct WorktreeListResponse: Codable {
 ///
 /// ```swift
 /// let stats = WorktreeStats(total: 5, locked: 1, prunable: 2)
-/// print("Active worktrees: \(stats.total - stats.prunable)")
+/// logger.info("Active worktrees: \(stats.total - stats.prunable)")
 /// ```
 struct WorktreeStats: Codable {
     /// Total number of worktrees including the main worktree.

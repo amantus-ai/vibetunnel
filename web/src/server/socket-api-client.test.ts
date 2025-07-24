@@ -67,7 +67,10 @@ describe('SocketApiClient', () => {
         },
       };
 
-      vi.spyOn(client as any, 'sendRequest').mockResolvedValue(mockStatus);
+      vi.spyOn(
+        client as unknown as { sendRequest: (...args: unknown[]) => unknown },
+        'sendRequest'
+      ).mockResolvedValue(mockStatus);
 
       const status = await client.getStatus();
 
@@ -76,7 +79,10 @@ describe('SocketApiClient', () => {
 
     it('should handle connection errors gracefully', async () => {
       vi.spyOn(fs, 'existsSync').mockReturnValue(true);
-      vi.spyOn(client as any, 'sendRequest').mockRejectedValue(new Error('Connection failed'));
+      vi.spyOn(
+        client as unknown as { sendRequest: (...args: unknown[]) => unknown },
+        'sendRequest'
+      ).mockRejectedValue(new Error('Connection failed'));
 
       const status = await client.getStatus();
 
@@ -99,12 +105,17 @@ describe('SocketApiClient', () => {
         currentBranch: 'feature-branch',
       };
 
-      vi.spyOn(client as any, 'sendRequest').mockResolvedValue(expectedResponse);
+      vi.spyOn(
+        client as unknown as { sendRequest: (...args: unknown[]) => unknown },
+        'sendRequest'
+      ).mockResolvedValue(expectedResponse);
 
       const response = await client.setFollowMode(request);
 
       expect(response).toEqual(expectedResponse);
-      expect((client as any).sendRequest).toHaveBeenCalledWith(
+      expect(
+        (client as unknown as { sendRequest: (...args: unknown[]) => unknown }).sendRequest
+      ).toHaveBeenCalledWith(
         expect.anything(), // MessageType.GIT_FOLLOW_REQUEST
         request,
         expect.anything() // MessageType.GIT_FOLLOW_RESPONSE
@@ -139,7 +150,10 @@ describe('SocketApiClient', () => {
         handled: true,
       };
 
-      vi.spyOn(client as any, 'sendRequest').mockResolvedValue(expectedAck);
+      vi.spyOn(
+        client as unknown as { sendRequest: (...args: unknown[]) => unknown },
+        'sendRequest'
+      ).mockResolvedValue(expectedAck);
 
       const ack = await client.sendGitEvent(event);
 
@@ -158,7 +172,9 @@ describe('SocketApiClient', () => {
       const realClient = new SocketApiClient();
 
       // Override the timeout to be shorter for testing
-      const promise = (realClient as any).sendRequest(
+      const promise = (
+        realClient as unknown as { sendRequest: (...args: unknown[]) => unknown }
+      ).sendRequest(
         0x20, // STATUS_REQUEST
         {},
         0x21, // STATUS_RESPONSE
@@ -182,7 +198,13 @@ describe('SocketApiClient', () => {
 
       const realClient = new SocketApiClient();
 
-      await expect((realClient as any).sendRequest(0x20, {}, 0x21)).rejects.toThrow('Socket error');
+      await expect(
+        (realClient as unknown as { sendRequest: (...args: unknown[]) => unknown }).sendRequest(
+          0x20,
+          {},
+          0x21
+        )
+      ).rejects.toThrow('Socket error');
     });
   });
 });

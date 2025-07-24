@@ -30,6 +30,7 @@ struct GitBranchWorktreeSelector: View {
     @State private var errorMessage: String?
 
     @FocusState private var isNewBranchFieldFocused: Bool
+
     @Environment(\.colorScheme) private var colorScheme
 
     // MARK: - Body
@@ -60,7 +61,7 @@ struct GitBranchWorktreeSelector: View {
                         Button(action: {
                             selectedBranch = branch
                             onBranchChanged(branch)
-                        }) {
+                        }, label: {
                             HStack {
                                 Text(branch)
                                 if branch == getCurrentBranch() {
@@ -68,7 +69,7 @@ struct GitBranchWorktreeSelector: View {
                                         .foregroundColor(.secondary)
                                 }
                             }
-                        }
+                        })
                     }
                 } label: {
                     HStack {
@@ -105,9 +106,9 @@ struct GitBranchWorktreeSelector: View {
                         Button(action: {
                             selectedWorktree = nil
                             onWorktreeChanged(nil)
-                        }) {
+                        }, label: {
                             Text(worktreeNoneText)
-                        }
+                        })
 
                         Divider()
 
@@ -115,14 +116,14 @@ struct GitBranchWorktreeSelector: View {
                             Button(action: {
                                 selectedWorktree = worktree.branch
                                 onWorktreeChanged(worktree.branch)
-                            }) {
+                            }, label: {
                                 HStack {
                                     Text(formatWorktreeName(worktree))
                                     if followMode && followBranch == worktree.branch {
                                         Text("⚡️")
                                     }
                                 }
-                            }
+                            })
                         }
                     } label: {
                         HStack {
@@ -145,7 +146,7 @@ struct GitBranchWorktreeSelector: View {
                         showCreateWorktree = true
                         newBranchName = ""
                         isNewBranchFieldFocused = true
-                    }) {
+                    }, label: {
                         HStack(spacing: 4) {
                             Image(systemName: "plus")
                                 .font(.system(size: 10))
@@ -153,7 +154,7 @@ struct GitBranchWorktreeSelector: View {
                                 .font(.system(size: 11))
                         }
                         .foregroundColor(.accentColor)
-                    }
+                    })
                     .buttonStyle(.plain)
                     .padding(.top, 4)
                 } else {

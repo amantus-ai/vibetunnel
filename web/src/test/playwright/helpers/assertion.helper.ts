@@ -284,8 +284,8 @@ export async function assertSessionCount(
  * Asserts terminal is ready and responsive
  */
 export async function assertTerminalReady(page: Page, timeout = 15000): Promise<void> {
-  // Check terminal element exists
-  const terminal = page.locator('vibe-terminal');
+  // Check terminal element exists (using ID selector for reliability)
+  const terminal = page.locator('#session-terminal');
   await expect(terminal).toBeVisible({ timeout });
 
   // Wait a bit for terminal to initialize

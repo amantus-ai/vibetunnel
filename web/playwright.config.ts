@@ -115,6 +115,7 @@ export default defineConfig({
       testMatch: [
         '**/session-management-global.spec.ts',
         '**/keyboard-shortcuts.spec.ts',
+        '**/keyboard-capture-toggle.spec.ts',
         '**/terminal-interaction.spec.ts',
       ],
       fullyParallel: false, // Override global setting for serial tests

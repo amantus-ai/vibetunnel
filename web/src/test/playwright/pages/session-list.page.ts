@@ -406,8 +406,8 @@ export class SessionListPage extends BasePage {
         }
       }
 
-      // Wait for terminal to be ready
-      await this.page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 10000 });
+      // Wait for terminal to be ready (using ID selector for reliability)
+      await this.page.waitForSelector('#session-terminal', { state: 'visible', timeout: 10000 });
     } else {
       // For spawn window, wait for modal to close
       await this.page.waitForSelector('.modal-content', { state: 'hidden', timeout: 4000 });

@@ -99,11 +99,11 @@ struct WorktreeSelectionView: View {
                                     shouldCreateNewWorktree = false
                                     newBranchName = ""
                                     createFromBranch = ""
-                                }) {
+                                }, label: {
                                     Image(systemName: "xmark.circle.fill")
                                         .font(.system(size: 12))
                                         .foregroundColor(.secondary)
-                                }
+                                })
                                 .buttonStyle(.plain)
                             }
 
@@ -133,10 +133,10 @@ struct WorktreeSelectionView: View {
                             Button(action: {
                                 showCreateWorktree = true
                                 shouldCreateNewWorktree = true
-                            }) {
+                            }, label: {
                                 Label("New Worktree", systemImage: "plus.circle")
                                     .font(.caption)
-                            }
+                            })
                             .buttonStyle(.link)
 
                             if let followMode = worktreeService.followMode {

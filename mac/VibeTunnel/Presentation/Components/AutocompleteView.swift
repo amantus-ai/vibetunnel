@@ -191,6 +191,7 @@ struct AutocompleteTextField: View {
     @Binding var text: String
     let placeholder: String
     @Environment(GitRepositoryMonitor.self) private var gitMonitor
+
     @Environment(WorktreeService.self) private var worktreeService
     @State private var autocompleteService: AutocompleteService?
     @State private var showSuggestions = false

@@ -18,12 +18,12 @@ describe('HQClient', () => {
   let mockServer: WebSocketServer;
   let mockConfig: HQConfig;
   let serverUrl: string;
-  let serverReceivedMessages: any[] = [];
+  let serverReceivedMessages: unknown[] = [];
 
   beforeEach(async () => {
     // Create a mock WebSocket server
     mockServer = new WebSocketServer({ port: 0 });
-    const address = mockServer.address() as any;
+    const address = mockServer.address() as { port: number };
     serverUrl = `ws://localhost:${address.port}`;
 
     // Reset received messages
@@ -266,7 +266,7 @@ describe('HQClient', () => {
     it('should handle connection timeout', async () => {
       // Create a server that doesn't respond to registration
       const silentServer = new WebSocketServer({ port: 0 });
-      const silentAddress = silentServer.address() as any;
+      const silentAddress = silentServer.address() as { port: number };
       const silentUrl = `ws://localhost:${silentAddress.port}`;
 
       silentServer.on('connection', () => {

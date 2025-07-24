@@ -14,6 +14,7 @@ struct GeneralSettingsView: View {
     private var showInDock = true
     @AppStorage(AppConstants.UserDefaultsKeys.preventSleepWhenRunning)
     private var preventSleepWhenRunning = true
+
     @Environment(ConfigManager.self) private var configManager
     @AppStorage(AppConstants.UserDefaultsKeys.serverPort)
     private var serverPort = "4020"

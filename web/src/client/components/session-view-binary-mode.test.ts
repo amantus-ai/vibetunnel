@@ -207,7 +207,7 @@ describe('SessionView Binary Mode', () => {
 
     await element.updateComplete;
 
-    const binaryTerminal = element.querySelector('vibe-terminal-binary') as any;
+    const binaryTerminal = element.querySelector('vibe-terminal-binary') as Element | null;
     expect(binaryTerminal).toBeTruthy();
 
     // Properties are bound through lit's property binding in the template
@@ -293,7 +293,7 @@ describe('SessionView Binary Mode', () => {
     // Test scrollToBottom with type guard
     if (terminal && 'scrollToBottom' in terminal) {
       // Should not throw
-      (terminal as any).scrollToBottom();
+      (terminal as { scrollToBottom: () => void }).scrollToBottom();
     }
   });
 

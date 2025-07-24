@@ -89,36 +89,62 @@ export class SocketApiClient {
           responseReceived = true;
           clearTimeout(timer);
           client.disconnect();
-          reject(new Error((data as any).message || 'Server error'));
+          reject(new Error((data as { message?: string }).message || 'Server error'));
         }
       };
 
       // Override the handleMessage method to intercept messages
-      (client as any).handleMessage = handleMessage;
+      (client as unknown as { handleMessage: typeof handleMessage }).handleMessage = handleMessage;
 
       client
         .connect()
         .then(() => {
           // Send the request
-          let message: any;
+          let message: unknown;
           switch (type) {
             case MessageType.STATUS_REQUEST:
-              message = (client as any).send(
-                (client as any).constructor.prototype.constructor.MessageBuilder.statusRequest()
+              message = (client as unknown as { send: (msg: unknown) => unknown }).send(
+                (
+                  client as unknown as {
+                    constructor: {
+                      prototype: {
+                        constructor: {
+                          MessageBuilder: Record<string, (...args: unknown[]) => unknown>;
+                        };
+                      };
+                    };
+                  }
+                ).constructor.prototype.constructor.MessageBuilder.statusRequest()
               );
               break;
             case MessageType.GIT_FOLLOW_REQUEST:
-              message = (client as any).send(
-                (client as any).constructor.prototype.constructor.MessageBuilder.gitFollowRequest(
-                  payload
-                )
+              message = (client as unknown as { send: (msg: unknown) => unknown }).send(
+                (
+                  client as unknown as {
+                    constructor: {
+                      prototype: {
+                        constructor: {
+                          MessageBuilder: Record<string, (...args: unknown[]) => unknown>;
+                        };
+                      };
+                    };
+                  }
+                ).constructor.prototype.constructor.MessageBuilder.gitFollowRequest(payload)
               );
               break;
             case MessageType.GIT_EVENT_NOTIFY:
-              message = (client as any).send(
-                (client as any).constructor.prototype.constructor.MessageBuilder.gitEventNotify(
-                  payload
-                )
+              message = (client as unknown as { send: (msg: unknown) => unknown }).send(
+                (
+                  client as unknown as {
+                    constructor: {
+                      prototype: {
+                        constructor: {
+                          MessageBuilder: Record<string, (...args: unknown[]) => unknown>;
+                        };
+                      };
+                    };
+                  }
+                ).constructor.prototype.constructor.MessageBuilder.gitEventNotify(payload)
               );
               break;
             default:
@@ -149,7 +175,7 @@ export class SocketApiClient {
 
     try {
       // Send STATUS_REQUEST and wait for STATUS_RESPONSE
-      const response = await this.sendRequest<{}, ServerStatus>(
+      const response = await this.sendRequest<Record<string, never>, ServerStatus>(
         MessageType.STATUS_REQUEST,
         {},
         MessageType.STATUS_RESPONSE

@@ -299,7 +299,9 @@ describe('SessionList', () => {
         { session: { id: 'session-2', status: 'exited' }, classList: { add: vi.fn() } },
         { session: { id: 'session-3', status: 'exited' }, classList: { add: vi.fn() } },
       ];
-      vi.spyOn(element, 'querySelectorAll').mockReturnValue(mockSessionCards as any);
+      vi.spyOn(element, 'querySelectorAll').mockReturnValue(
+        mockSessionCards as unknown as NodeListOf<Element>
+      );
 
       await element.handleCleanupExited();
 

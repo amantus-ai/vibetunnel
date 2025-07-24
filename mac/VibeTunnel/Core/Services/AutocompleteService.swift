@@ -350,24 +350,22 @@ class AutocompleteService {
             var enrichedSuggestions = suggestions
 
             // Only fetch Git info for directories and repositories
-            for (index, suggestion) in suggestions.enumerated() {
-                if suggestion.type == .directory {
-                    group.addTask { [gitMonitor = self.gitMonitor] in
-                        // Expand path for Git lookup
-                        let expandedPath = NSString(string: suggestion.suggestion
-                            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-                        ).expandingTildeInPath
-                        let gitInfo = await gitMonitor.findRepository(for: expandedPath).map { repo in
-                            GitInfo(
-                                branch: repo.currentBranch,
-                                aheadCount: repo.aheadCount,
-                                behindCount: repo.behindCount,
-                                hasChanges: repo.hasChanges,
-                                isWorktree: repo.isWorktree
-                            )
-                        }
-                        return (index, gitInfo)
+            for (index, suggestion) in suggestions.enumerated() where suggestion.type == .directory {
+                group.addTask { [gitMonitor = self.gitMonitor] in
+                    // Expand path for Git lookup
+                    let expandedPath = NSString(string: suggestion.suggestion
+                        .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                    ).expandingTildeInPath
+                    let gitInfo = await gitMonitor.findRepository(for: expandedPath).map { repo in
+                        GitInfo(
+                            branch: repo.currentBranch,
+                            aheadCount: repo.aheadCount,
+                            behindCount: repo.behindCount,
+                            hasChanges: repo.hasChanges,
+                            isWorktree: repo.isWorktree
+                        )
                     }
+                    return (index, gitInfo)
                 }
             }
 

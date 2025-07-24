@@ -9,7 +9,7 @@ export function prettifyPath(absolutePath: string): string {
   const homeDir = os.homedir();
 
   if (absolutePath.startsWith(homeDir)) {
-    return '~' + absolutePath.slice(homeDir.length);
+    return `~${absolutePath.slice(homeDir.length)}`;
   }
 
   return absolutePath;

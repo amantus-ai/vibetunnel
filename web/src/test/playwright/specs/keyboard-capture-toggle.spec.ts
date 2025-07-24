@@ -47,7 +47,7 @@ test.describe('Keyboard Capture Toggle', () => {
       return new Promise<boolean>((resolve) => {
         document.addEventListener(
           'capture-toggled',
-          (e: any) => {
+          (e: CustomEvent<{ active: boolean }>) => {
             console.log('🎯 capture-toggled event received:', e.detail);
             resolve(e.detail.active);
           },
@@ -84,7 +84,7 @@ test.describe('Keyboard Capture Toggle', () => {
       return new Promise<boolean>((resolve) => {
         document.addEventListener(
           'capture-toggled',
-          (e: any) => {
+          (e: CustomEvent<{ active: boolean }>) => {
             console.log('🎯 capture-toggled event received (2nd):', e.detail);
             resolve(e.detail.active);
           },

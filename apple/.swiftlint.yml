@@ -22,7 +22,6 @@ excluded:
 # Rule configuration
 opt_in_rules:
   - array_init
-  - attributes
   - closure_end_indentation
   - closure_spacing
   - contains_over_filter_count
@@ -51,7 +50,6 @@ opt_in_rules:
   - legacy_random
   - literal_expression_end_indentation
   - lower_acl_than_parent
-  - modifier_order
   - multiline_arguments
   - multiline_function_chains
   - multiline_literal_brackets
@@ -93,6 +91,10 @@ disabled_rules:
   - todo
   # Disable opening_brace as it conflicts with SwiftFormat's multiline wrapping
   - opening_brace
+  # Disable attributes as it conflicts with SwiftFormat's attribute formatting
+  - attributes
+  # Disable modifier_order as it conflicts with SwiftFormat's modifier ordering
+  - modifier_order
   # Note: Swift 6 requires more explicit self references
   # SwiftFormat is configured to preserve these with --disable redundantSelf
 
