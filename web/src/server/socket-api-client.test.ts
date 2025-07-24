@@ -104,7 +104,7 @@ describe('SocketApiClient', () => {
       const response = await client.setFollowMode(request);
 
       expect(response).toEqual(expectedResponse);
-      expect(client as any).sendRequest).toHaveBeenCalledWith(
+      expect((client as any).sendRequest).toHaveBeenCalledWith(
         expect.anything(), // MessageType.GIT_FOLLOW_REQUEST
         request,
         expect.anything() // MessageType.GIT_FOLLOW_RESPONSE
