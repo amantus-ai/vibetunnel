@@ -37,7 +37,7 @@ final class WindowTracker {
     static let shared = WindowTracker()
 
     private let logger = Logger(
-        subsystem: "sh.vibetunnel.vibetunnel",
+        subsystem: BundleIdentifiers.loggerSubsystem,
         category: "WindowTracker"
     )
 

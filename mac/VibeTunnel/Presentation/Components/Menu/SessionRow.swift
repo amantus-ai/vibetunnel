@@ -31,7 +31,7 @@ struct SessionRow: View {
     @State private var isHoveringFolder = false
     @FocusState private var isEditFieldFocused: Bool
 
-    private static let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SessionRow")
+    private static let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "SessionRow")
 
     /// Computed property that reads directly from the monitor's cache
     /// This will automatically update when the monitor refreshes

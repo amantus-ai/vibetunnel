@@ -246,7 +246,7 @@ struct ProjectFolderPageView: View {
                 // Operation not permitted - another common permission error
             } catch {
                 // Log unexpected errors for debugging
-                Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "ProjectFolderPageView")
+                Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "ProjectFolderPageView")
                     .debug("Unexpected error scanning \(dirPath): \(error)")
             }
         }

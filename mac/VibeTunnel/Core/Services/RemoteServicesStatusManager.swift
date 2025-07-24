@@ -14,7 +14,7 @@ final class RemoteServicesStatusManager {
 
     private var statusCheckTimer: Timer?
     private let checkInterval: TimeInterval = RemoteAccessConstants.statusCheckInterval
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "RemoteServicesStatus")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "RemoteServicesStatus")
 
     // Service references
     private let ngrokService = NgrokService.shared

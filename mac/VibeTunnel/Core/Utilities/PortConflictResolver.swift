@@ -76,7 +76,7 @@ enum ConflictAction {
 /// and can automatically kill conflicting processes when appropriate.
 @MainActor
 final class PortConflictResolver {
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "PortConflictResolver")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "PortConflictResolver")
 
     static let shared = PortConflictResolver()
 

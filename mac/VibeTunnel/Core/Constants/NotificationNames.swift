@@ -4,7 +4,7 @@ import Foundation
 extension Notification.Name {
     // MARK: - Settings
 
-    static let showSettings = Notification.Name("sh.vibetunnel.vibetunnel.showSettings")
+    static let showSettings = Notification.Name("\(BundleIdentifiers.vibeTunnel).showSettings")
 
     // MARK: - Updates
 

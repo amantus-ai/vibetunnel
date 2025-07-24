@@ -368,7 +368,7 @@ struct AsyncLineSequence: AsyncSequence {
 /// Provides secure storage and retrieval of ngrok authentication tokens
 /// using the macOS Keychain Services API.
 private enum KeychainHelper {
-    private static let service = "sh.vibetunnel.vibetunnel"
+    private static let service = KeychainConstants.vibeTunnelService
     private static let account = "ngrok-auth-token"
 
     static func getNgrokAuthToken() -> String? {

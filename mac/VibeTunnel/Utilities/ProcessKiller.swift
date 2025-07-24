@@ -5,7 +5,7 @@ import OSLog
 /// Utility to detect and terminate other VibeTunnel instances
 @MainActor
 enum ProcessKiller {
-    private static let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "ProcessKiller")
+    private static let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "ProcessKiller")
 
     /// Kill all other VibeTunnel instances except the current one
     static func killOtherInstances() {

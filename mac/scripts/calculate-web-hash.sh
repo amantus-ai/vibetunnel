@@ -11,7 +11,14 @@ else
 fi
 
 WEB_DIR="${PROJECT_DIR}/../web"
-HASH_FILE="${BUILT_PRODUCTS_DIR}/.web-content-hash"
+
+# Set hash file location - use BUILT_PRODUCTS_DIR if available, otherwise use temp location
+if [ -n "${BUILT_PRODUCTS_DIR}" ]; then
+    HASH_FILE="${BUILT_PRODUCTS_DIR}/.web-content-hash"
+else
+    # When running outside Xcode, use a temp location
+    HASH_FILE="${PROJECT_DIR}/build/.web-content-hash"
+fi
 
 # Check if web directory exists
 if [ ! -d "${WEB_DIR}" ]; then
@@ -22,32 +29,49 @@ fi
 echo "Calculating web content hash..."
 cd "${WEB_DIR}"
 
-# Hash only file contents, not metadata
-# This ensures the hash only changes when file contents change
-CONTENT_HASH=$(find . \
-    -type f \
-    \( -name "*.ts" -o -name "*.js" -o -name "*.json" -o -name "*.css" -o -name "*.html" \
-       -o -name "*.tsx" -o -name "*.jsx" -o -name "*.vue" -o -name "*.svelte" \
-       -o -name "*.yaml" -o -name "*.yml" -o -name "*.toml" -o -name "*.d.ts" \) \
-    -not -path "./node_modules/*" \
-    -not -path "./dist/*" \
-    -not -path "./public/*" \
-    -not -path "./.next/*" \
-    -not -path "./coverage/*" \
-    -not -path "./.cache/*" \
-    -not -path "./.node-builds/*" \
-    -not -path "./build/*" \
-    -not -path "./native/*" \
-    -not -path "./node-build-artifacts/*" \
-    -not -name "package-lock.json" | \
-    sort | \
-    while read file; do
-        echo "FILE:$file"
-        cat "$file" 2>/dev/null || true
-        echo ""
-    done | \
-    shasum -a 256 | \
-    cut -d' ' -f1)
+# Ultra-fast approach: Use git to get hash of tracked files if possible
+if [ -d ".git" ] && command -v git >/dev/null 2>&1; then
+    # Use git to hash all tracked files in src/ and key config files
+    # This is extremely fast as git already has file hashes
+    CONTENT_HASH=$(
+        git ls-tree -r HEAD -- \
+            'src/' \
+            'package.json' \
+            'tsconfig.json' \
+            'vite.config.ts' \
+            '.env' \
+            '.env.local' \
+            2>/dev/null | \
+        awk '{print $3}' | \
+        sort | \
+        shasum -a 256 | \
+        cut -d' ' -f1
+    )
+    
+    # If there are uncommitted changes, append a hash of the diff
+    if ! git diff --quiet HEAD -- src/ package.json tsconfig.json vite.config.ts 2>/dev/null; then
+        DIFF_HASH=$(git diff HEAD -- src/ package.json tsconfig.json vite.config.ts 2>/dev/null | shasum -a 256 | cut -d' ' -f1)
+        CONTENT_HASH="${CONTENT_HASH}-${DIFF_HASH:0:8}"
+    fi
+else
+    # Fallback to direct file hashing if git is not available
+    # Use a single tar command to process all files at once - much faster than individual cats
+    CONTENT_HASH=$(
+        tar cf - \
+            --exclude='*/node_modules' \
+            --exclude='*/dist' \
+            --exclude='*/build' \
+            src/ \
+            package.json \
+            tsconfig.json \
+            vite.config.ts \
+            .env \
+            .env.local \
+            2>/dev/null | \
+        shasum -a 256 | \
+        cut -d' ' -f1
+    )
+fi
 
 echo "Web content hash: ${CONTENT_HASH}"
 

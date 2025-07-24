@@ -7,7 +7,7 @@ import OSLog
 /// Provides convenient methods for checking and requesting accessibility permissions.
 public enum AXPermissions {
     private static let logger = Logger(
-        subsystem: "sh.vibetunnel.vibetunnel",
+        subsystem: BundleIdentifiers.loggerSubsystem,
         category: "AXPermissions"
     )
 

@@ -6,7 +6,7 @@ import OSLog
 
 extension Logger {
     fileprivate static let repositoryDiscovery = Logger(
-        subsystem: "sh.vibetunnel.vibetunnel",
+        subsystem: BundleIdentifiers.loggerSubsystem,
         category: "RepositoryDiscovery"
     )
 }
