@@ -28,6 +28,12 @@
 - Visual focus indicators appear automatically when using keyboard
 - Menu closes after selecting a session or opening settings
 
+#### **Quick Session Switching with Number Keys**
+- When keyboard capture is active, use Cmd+1-9 (Mac) or Ctrl+1-9 (Linux) to instantly switch between sessions
+- Cmd/Ctrl+0 switches to the 10th session
+- Works only when keyboard capture is enabled in session view, allowing quick navigation without mouse
+- Session numbers match the numbers shown in the session list
+
 ### 🎨 UI/UX Improvements
 
 #### **Enhanced Git Integration**
