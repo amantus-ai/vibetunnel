@@ -1,274 +1,353 @@
-# Worktree and Git Integration Feature Overview
+# Git Worktree Management in VibeTunnel
 
-## 1. Objective
+VibeTunnel provides comprehensive Git worktree support, allowing you to work on multiple branches simultaneously without the overhead of cloning repositories multiple times. This guide covers everything you need to know about using worktrees effectively in VibeTunnel.
 
-The goal is to create an **optional** feature that allows seamless, branch-focused management of Git worktrees and enhances all terminal sessions with Git context. This includes:
-*   Creating sessions from branches via worktrees.
-*   A "follow mode" to keep the main checkout and a worktree in sync.
-*   **Git-aware dynamic titles** that show the current branch.
-*   UI for managing worktrees (pruning, deleting, etc.).
+## Table of Contents
 
-The feature should feel like a natural extension of the existing session management, only presenting its specialized UI when the user is working within a Git repository.
+- [What are Git Worktrees?](#what-are-git-worktrees)
+- [VibeTunnel's Worktree Features](#vibetunnels-worktree-features)
+- [Creating Sessions with Worktrees](#creating-sessions-with-worktrees)
+- [Branch Management](#branch-management)
+- [Worktree Operations](#worktree-operations)
+- [Follow Mode](#follow-mode)
+- [Best Practices](#best-practices)
+- [Common Workflows](#common-workflows)
+- [Troubleshooting](#troubleshooting)
 
-## 2. Core Components
+## What are Git Worktrees?
 
-### 2.1. Server-Side Logic (web/)
+Git worktrees allow you to have multiple working trees attached to the same repository, each checked out to a different branch. This means you can:
 
-The core logic will reside in the server application (`web/`).
+- Work on multiple features simultaneously
+- Keep a clean main branch while experimenting
+- Quickly switch between tasks without stashing changes
+- Run tests on one branch while developing on another
 
-#### 2.1.1. Git-Aware Dynamic Titles & State Management
+## VibeTunnel's Worktree Features
 
-*   **Title Format:** The dynamic title for sessions within a Git repository will follow the format: `activity - repoName-branch - sessionName`.
-*   **Session Creation:** When a session is created with `titleMode: 'dynamic'`, the server will detect if the working directory is in a Git repo. If so, it will fetch the `repoName` (e.g., the directory name) and the current `branch` to construct the initial title.
-*   **`POST /api/git/event`**: A single, generic endpoint to notify the server of a change in a Git repository.
-    *   **Request Body:** `repoPath` (string, required).
-    *   **Action:** This endpoint is the central hub for all hook-based automation. It will use an in-memory lock to prevent race conditions from multiple, rapid-fire events for the same repository. When triggered, it will:
-        1.  **Update Titles:** Find all active sessions within the `repoPath` and reconstruct their dynamic titles using the new format, fetching the fresh branch name for each session's specific working directory.
-        2.  **Check Follow Mode:** Read the follow mode state using `git config vibetunnel.followBranch`.
-        3.  **Trigger Sync:** If follow mode is active, it will trigger the bi-directional sync logic.
-        4.  **Check for Auto-Disable:** If the event was triggered from the main repo, it will check if the current branch has diverged from the followed branch and disable follow mode if necessary.
-        5.  **Send Notifications:** Send events to the macOS client for any actions taken (e.g., "Follow mode disabled").
+VibeTunnel enhances Git worktrees with:
 
-#### 2.1.2. API Endpoint Modifications
+1. **Visual Worktree Management**: See all worktrees at a glance in the session list
+2. **Smart Branch Switching**: Automatically handle branch conflicts and uncommitted changes
+3. **Follow Mode**: Keep multiple worktrees in sync when switching branches
+4. **Integrated Session Creation**: Create new sessions directly in worktrees
+5. **Worktree-aware Terminal Titles**: See which worktree you're working in
 
-*   **`POST /api/sessions`**
-    *   The `ptyManager.createSession` logic will be updated to store `gitRepoPath` and `branch` on the session object if they are provided in the request. This data is crucial for UI grouping and labeling.
+## Creating Sessions with Worktrees
 
-*   **`GET /api/sessions`**
-    *   The returned `Session` objects will now optionally include `gitRepoPath` and `branch` fields, allowing the client to group and label sessions correctly.
+### Using the New Session Dialog
 
-#### 2.1.3. New API Endpoints for Worktree Management
+When creating a new session in a Git repository, VibeTunnel provides intelligent branch and worktree selection:
 
-A new set of routes will be created, likely in `web/src/server/routes/worktrees.ts`.
+1. **Base Branch Selection**
+   - When no worktree is selected: "Switch to Branch" - attempts to switch the main repository to the selected branch
+   - When creating a worktree: "Base Branch for Worktree" - uses this as the source branch
 
-*   **`GET /api/git/repo-info`**
-    *   **Query Param:** `path` (string, required)
-    *   **Action:** Checks if the given path is within a Git repository. If so, returns the root path of the repository.
-    *   **Returns:** `{ "isGitRepo": true, "repoPath": "/path/to/repo" }` or `{ "isGitRepo": false }`.
+2. **Worktree Selection**
+   - Choose "No worktree (use main repository)" to work in the main checkout
+   - Select an existing worktree to create a session there
+   - Click "Create new worktree" to create a new worktree on-the-fly
 
-*   **`GET /api/worktrees`**
-    *   **Query Param:** `repoPath` (string, required)
-    *   **Action:**
-        1.  Auto-detects the repository's default branch (the `base_branch`) by running `git symbolic-ref refs/remotes/origin/HEAD`. It will fall back to `main` and then `master` if detection fails.
-        2.  Executes `git worktree list --porcelain` to get all worktrees.
-        3.  For each worktree, it will also execute:
-            *   `git rev-list --count <base_branch>...<branch>` to get the number of commits ahead of the base branch.
-            *   `git diff --shortstat <base_branch>...<branch>` to get the total file changes and LOC additions/deletions.
-            *   `git status --porcelain` within the worktree directory to check for uncommitted changes.
-    *   **Returns:** A JSON list of worktrees, each with its path, branch, commit count, LOC stats, and dirty status.
+### Smart Branch Switching
 
-*   **`DELETE /api/worktrees/:branch`**
-    *   **Query Params:** `repoPath` (string, required), `force` (boolean, optional, default: `false`)
-    *   **Action:**
-        1.  The server will map the URL-encoded `:branch` name to its corresponding worktree path.
-        2.  Checks for uncommitted changes in the worktree using `git status --porcelain`.
-        3.  If changes exist and `force` is `false`, it returns a `409 Conflict` error.
-        4.  If no changes exist or `force` is `true`, it executes `git worktree remove --force <worktree-path>`.
+When you select a different branch without choosing a worktree:
 
-*   **`POST /api/worktrees/prune`**
-    *   **Request Body:** `repoPath` (string, required)
-    *   **Action:** Executes `git worktree prune` in the specified repository path.
+```
+Selected: feature/new-ui
+Current: main
+Action: Attempts to switch from main to feature/new-ui
+```
 
-*   **`POST /api/worktrees/switch`**
-    *   **Request Body:** `repoPath` (string, required), `branch` (string, required)
-    *   **Action:** A convenience endpoint that switches the main repository to the specified branch and enables follow mode.
-        1.  `git -C <repoPath> checkout <branch>`
-        2.  Calls the `follow` logic internally to enable follow mode for that branch.
+If the switch fails (e.g., due to uncommitted changes):
+- A warning is displayed
+- The session is created on the current branch
+- No work is lost
 
-*   **`POST /api/worktrees/follow`**
-    *   **Request Body:**
-        *   `repoPath` (string, required): Path to the main repository.
-        *   `branch` (string, required): The branch whose worktree to follow.
-        *   `enable` (boolean, required): `true` to enable follow mode, `false` to disable.
-    *   **Action:**
-        1.  If `enable` is `true`, this endpoint is responsible for the **one-time installation of the Git hooks** if they don't already exist.
-        2.  It sets the follow state using `git config --local vibetunnel.followBranch <branch>`.
-        3.  If `enable` is `false`, it unsets the config using `git config --local --unset vibetunnel.followBranch`.
+### Creating New Worktrees
 
-### 2.2. Event-Driven Notifications
+To create a new worktree from the session dialog:
 
-To keep the user informed about background activities, the server implements a dual notification system:
+1. Select your base branch (e.g., `main` or `develop`)
+2. Click "Create new worktree"
+3. Enter the new branch name
+4. Click "Create"
 
-*   **Dual Notification Modes:**
-    *   **When macOS client is connected:** The server sends events to the macOS client via the existing Unix socket, which displays them as native macOS notifications.
-    *   **When macOS client is not connected:** The web UI displays notifications using its built-in notification system (toast messages).
+The worktree will be created at: `{repo-path}-{branch-name}`
 
-*   **Event Structure:** A standardized JSON payload will be used, e.g., `{ "type": "notification", "payload": { "level": "info" | "error", "title": "...", "message": "..." } }`.
-*   **Events to Implement:**
-    *   `follow.enabled`: "Follow mode enabled for branch [branch]."
-    *   `follow.disabled`: "Follow mode disabled."
-    *   `sync.success`: "Repository synced successfully."
-    *   `sync.error`: "Error syncing repository: [details]."
-*   **Server Logic:** The `/api/git/event` handler will be responsible for:
-    1. Checking if the macOS client is connected via the Unix socket.
-    2. If connected, sending event messages through the `controlUnixHandler` for native notifications.
-    3. If not connected, storing events for the web UI to poll or receive via SSE.
+Example: `/Users/you/project` → `/Users/you/project-feature-awesome`
 
-### 2.3. macOS Client (mac/)
+## Branch Management
 
-The macOS client provides native UI for Git worktree management.
+### Branch States in VibeTunnel
 
-**Implementation Details:**
-*   **Git Detection:** Uses `GitRepositoryMonitor` to automatically detect when the selected working directory is within a Git repository.
-*   **Worktree UI:** When Git is detected, `WorktreeSelectionView` appears in the session creation form, showing:
-    *   Current branch information  
-    *   List of available worktrees with their paths
-    *   Option to create new worktrees with custom branch names
-    *   Follow mode status indicator
-*   **Service Layer:** `WorktreeService` handles all communication with the server's `/api/worktrees` endpoints.
-*   **Data Models:** `Worktree.swift` defines the data structures for worktree information.
+VibeTunnel shows rich Git information for each session:
 
-*   **Notification Handling:** The client will listen for notification events on the Unix socket. Upon receiving one, it will generate and display a native `NSUserNotification` to the user.
+- **Branch Name**: Current branch with worktree indicator
+- **Ahead/Behind**: Commits ahead/behind the upstream branch
+- **Changes**: Uncommitted changes indicator
+- **Worktree Status**: Main worktree vs feature worktrees
 
-*   **Context-Aware UI:**
-    *   When a user selects a working directory for a new session, the client automatically detects if it's a Git repository using `GitRepositoryMonitor`.
-    *   If the directory is a Git repository, the UI dynamically displays `WorktreeSelectionView` with options to select existing worktrees or create new ones.
-    *   When a worktree is selected or created, the working directory automatically updates to the worktree path.
+### Switching Branches
 
-*   **UI Grouping and Labeling:**
-    *   The main session list will be updated to group sessions by `gitRepoPath`.
-    *   Each group will have a header (e.g., the project folder name).
-    *   Within a group, each session will be clearly labeled with its `branch` name.
+There are several ways to switch branches:
 
-*   **Worktree Management UI:**
-    *   The dedicated management view will list worktrees based on their branches.
-    *   This view will fetch data from `GET /api/worktrees` and display:
-        *   The branch name.
-        *   A summary of changes (e.g., "30 commits, +150, -25 lines").
-        *   A visual indicator (e.g., a dot) if the worktree has uncommitted changes.
-    *   It will include a button to trigger `POST /api/worktrees/prune`.
-    *   It will allow a user to select a branch and enable/disable "Follow Mode" via a call to `POST /api/worktrees/follow`.
-    *   **Deletion Flow:**
-        *   Each branch in the list will have a "Delete" button.
-        *   Clicking "Delete" calls `DELETE /api/worktrees/:branch`.
-        *   If the server responds with `409 Conflict`, the UI will present a confirmation dialog with two options:
-            1.  **Delete Anyway:** Calls `DELETE /api/worktrees/:branch?force=true`.
-            2.  **Cancel:** Closes the dialog.
+1. **In Main Repository**: Use the branch selector in the new session dialog
+2. **In Worktrees**: Each worktree maintains its own branch
+3. **With Follow Mode**: Automatically sync the main repository when switching in a worktree
 
-### 2.4. Web UI (web/)
+## Worktree Operations
 
-The web UI provides Git-aware features when the macOS client is not available:
+### Listing Worktrees
 
-*   **Session Creation with Git Integration:**
-    *   When creating a new session, the UI detects if the selected directory is a Git repository.
-    *   If a Git repository is detected, users can:
-        *   Select an existing branch from a dropdown
-        *   Create a new worktree with a custom branch name
-        *   Navigate to the worktree management UI
-    *   When creating a new worktree, the working directory automatically switches to the new worktree path.
+View all worktrees for a repository:
+- In the session list, worktrees are marked with a special indicator
+- The autocomplete dropdown shows worktree paths with their branches
+- Use the Git app launcher to see a dedicated worktree view
 
-*   **Session Grouping and Branch Labels:**
-    *   Sessions are automatically grouped by their `gitRepoPath` property.
-    *   Each session displays its current Git branch name in brackets next to the session name.
-    *   Repository groups show a Git icon and the repository name as a header.
+### Creating Worktrees via API
 
-*   **Worktree Management UI:**
-    *   Accessible via a Git icon button on session cards that have a `gitRepoPath`.
-    *   Also accessible from the session creation dialog when a Git repository is detected.
-    *   Displays the same worktree management interface as the macOS client.
-    *   All worktree operations (list, delete, prune, follow mode) are available.
-    *   Success/error notifications are displayed as toast messages in the web UI.
+```bash
+# Using VibeTunnel's API
+curl -X POST http://localhost:4020/api/worktrees \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "repoPath": "/path/to/repo",
+    "branch": "feature/new-feature",
+    "path": "/path/to/repo-new-feature",
+    "baseBranch": "main"
+  }'
+```
 
-*   **Notification Handling:**
-    *   Git event notifications are event-driven, not polled.
-    *   When the macOS client is connected, notifications are sent via Unix socket for native display.
-    *   When the macOS client is not connected, notifications are stored server-side and included in API responses.
-    *   The web UI displays these notifications as temporary toast messages using the existing `showSuccess` and `showError` methods.
+### Deleting Worktrees
 
-### 2.5. CLI Tool (`vt`)
+Remove worktrees when no longer needed:
 
-The `vt` command-line tool will be extended to support worktree operations.
+```bash
+# Via API
+curl -X DELETE "http://localhost:4020/api/worktrees/feature-branch?repoPath=/path/to/repo" \
+  -H "Authorization: Bearer YOUR_TOKEN"
 
-*   **New Subcommand: `vt wtree`**
-    *   **`vt wtree switch <branch-name>`:** A high-level command to switch the main repository to a branch and enable follow mode.
-    *   **`vt wtree follow <branch>`:** A CLI method to enable follow mode for a specific branch's worktree.
-    *   **`vt wtree unfollow`:** Disables follow mode.
-*   **New Subcommand: `vt git`**
-    *   **`vt git event`:** Called by Git hooks to notify the server of a change.
+# With force option for worktrees with uncommitted changes
+curl -X DELETE "http://localhost:4020/api/worktrees/feature-branch?repoPath=/path/to/repo&force=true" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
 
-## 3. Git Integration and Follow Mode
+## Follow Mode
 
-*   **Path Structure:**
-    *   When creating worktrees, branch names will be "slugified" (e.g., `feature/foo` becomes `feature-foo`) to create valid directory names. The server will manage this mapping.
+Follow mode keeps your main repository in sync with worktree operations:
 
-*   **Hook Installation and Resilience:**
-    *   **On-Demand Installation:** The server will only install the Git hooks (`post-commit`, `post-checkout`) when a user explicitly enables "Follow Mode" for the first time on a given repository (via the UI or the `vt wtree switch` command).
-    *   **Safe Amendment (Chaining):** The installation process will first resolve the correct hooks directory (checking `git config core.hooksPath`). If a hook file already exists, it will be backed up (e.g., `post-checkout.vtbak`), and the new VibeTunnel hook will be written to `exec` the backup script if it exists, thus chaining the hooks. Uninstallation will restore the backup.
-    *   **Resilient by Design:** The installed hook scripts will be designed to be robust and non-intrusive. They will first check if the `vt` command is available in the system's `PATH`. If `vt` is not found, the hook will immediately and silently exit with a success code.
+### How It Works
 
-*   **Hook Logic:**
-    *   Both the `post-commit` and `post-checkout` hooks will simply call `vt git event`, which notifies the server that a change has occurred in the repository.
-    *   All hook operations will run in the background (`&`) to avoid blocking Git operations.
+1. Enable follow mode for a worktree branch
+2. When you switch branches in the worktree, the main repository follows
+3. Git hooks automatically notify VibeTunnel of branch changes
+4. Sessions show [checkout: branch] tags during transitions
 
-*   **Configuration:**
-    *   Follow mode state will be stored in Git's own configuration system (`git config --local vibetunnel.followBranch <branch>`). This avoids creating extra files in the user's repository.
+Follow mode state is stored in the repository's git config:
+```bash
+# Check current follow mode
+git config vibetunnel.followBranch
 
-*   **Automatic Disabling:**
-    *   When the `/api/git/event` endpoint is triggered, it will check if the main repo's current branch has diverged from the followed branch, and if so, disable follow mode.
+# Manually set follow mode
+git config vibetunnel.followBranch feature/my-branch
 
-## 4. Implementation Steps
+# Disable follow mode
+git config --unset vibetunnel.followBranch
+```
 
-1.  **Server-Side:**
-    a. Implement the new `/api/worktrees` and `/api/git` routes, including the unified `/api/git/event` endpoint with its in-memory lock.
-    b. Extend the `POST /api/sessions` and `GET /api/sessions` logic to handle the new Git-related session metadata (gitRepoPath, gitBranch).
-    c. Implement the server-side intelligence in the `/api/git/event` handler to manage titles, sync, and follow-mode state.
-    d. Implement dual notification delivery: Unix socket for macOS client, and event storage for web UI.
-    e. Implement the core logic for shelling out to `git` for all worktree operations, ensuring all commands are executed with parameterized arguments (e.g., via `spawn`) to prevent injection vulnerabilities.
-2.  **CLI:**
-    a. Add the `wtree` and `git` subcommands to the `vt` tool, including the simplified `git event` command.
-3.  **Web UI:**
-    a. Implement session grouping by repository with branch labels display.
-    b. Add Git icon button to session cards that have a gitRepoPath.
-    c. Implement the worktree management UI component with all operations (list, delete, prune, follow mode).
-    d. Integrate success/error notifications using the existing toast message system.
-    e. Add navigation between session list and worktree management views.
-4.  **macOS Client:**
-    a. ✅ Implement the context-aware UI for session creation - When a Git repository is detected, WorktreeSelectionView displays available worktrees and allows creating new ones.
-    b. Implement the project-based grouping and branch labeling in the session list.
-    c. Implement the notification handler for events received over the Unix socket.
-    d. ✅ Design and implement the UI for worktree management - WorktreeSelectionView provides full worktree management capabilities integrated into session creation.
-    e. ✅ Integrate the UI with the new server APIs - WorktreeService communicates with the server's /api/worktrees endpoints.
-5.  **Hooks:**
-    a. Implement the logic for the safe, on-demand, chaining installation and uninstallation of the Git hooks.
-6.  **Testing:**
-    a. Write unit and integration tests for the new API endpoints.
-    b. Perform end-to-end testing of both web and macOS UI flows.
+### Enabling Follow Mode
 
-## 5. Design Rationale
+```bash
+# Via API
+curl -X POST http://localhost:4020/api/worktrees/follow \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "repoPath": "/path/to/repo",
+    "branch": "feature/branch",
+    "enable": true
+  }'
+```
 
-This section documents the key architectural decisions and alternatives considered during the planning phase.
+### Checking Follow Mode Status
 
-*   **Git Interaction: Shelling Out vs. `libgit2`**
-    *   **Decision:** The plan specifies shelling out to the `git` command-line tool directly.
-    *   **Rationale:** This approach is simple, has no additional dependencies, and is guaranteed to be compatible with the user's installed version of Git. It is the most pragmatic and robust starting point.
-    *   **Alternative Considered:** Using a library like `nodegit` (which provides bindings for `libgit2`). While potentially faster and providing structured output, it adds a complex native dependency that can complicate installation and maintenance. It remains a viable option for a future performance optimization if the shelling-out approach proves to be too slow.
+```bash
+# Check if follow mode is enabled for a repository
+curl "http://localhost:4020/api/git/follow?path=/path/to/repo" \
+  -H "Authorization: Bearer YOUR_TOKEN"
 
-*   **Automation Trigger: Git Hooks vs. File System Watchers**
-    *   **Decision:** Use Git hooks (`post-commit`, `post-checkout`).
-    *   **Rationale:** Hooks provide precise, high-level information about specific Git events. A `post-commit` hook fires exactly once after a successful commit. A file system watcher, in contrast, would generate a storm of low-level events during a commit or rebase, making it difficult and error-prone to determine the user's actual intent. Hooks are the idiomatic and correct tool for this job.
+# Response:
+{
+  "isGitRepo": true,
+  "repoPath": "/path/to/repo",
+  "followMode": true,
+  "followBranch": "feature/branch",
+  "currentBranch": "main"
+}
+```
 
-*   **Hook Architecture: Simple "Poke" vs. "Smart" Hooks**
-    *   **Decision:** The hooks are designed to be simple, containing only a single command (`vt git event`) that notifies the server of a change.
-    *   **Rationale:** This makes the hooks themselves extremely robust and easy to maintain. All the complex logic (determining the branch, checking follow mode, updating titles, triggering syncs) is centralized on the server. This is a much cleaner separation of concerns than having complex logic in the hook scripts themselves.
+### Use Cases
 
-*   **Security: Single-User Context and Best Practices**
-    *   **Context:** This feature is designed for a single-user, local desktop application where the server and the Git commands run with the user's own permissions. This mitigates the most severe risks, such as privilege escalation or accessing unauthorized parts of the file system.
-    *   **Decision:** Despite the mitigated risk, the plan explicitly adopts security best practices.
-    *   **Rationale:** Using parameterized arguments for all shell commands prevents command injection vulnerabilities and is a good engineering practice. This ensures the feature is safe and robust, even if parts of the code are reused in different contexts in the future.
+- **Paired Programming**: Keep multiple views in sync
+- **Testing**: Run tests in main while developing in worktree
+- **Code Review**: Follow along as someone switches between branches
 
-*   **Hook Installation: On-Demand & Safe Chaining**
-    *   **Decision:** Hooks are only installed when a user explicitly opts into "Follow Mode". The installation process safely chains with any existing user hooks.
-    *   **Rationale:** This is a core principle of minimizing the application's footprint and respecting the user's existing workflow. We should never overwrite or break a user's configuration.
+## Best Practices
 
-*   **State Management: `git config` vs. Custom File**
-    *   **Decision:** Use `git config` to store the follow-mode state.
-    *   **Rationale:** This is the idiomatic "Git way" to store repository-specific configuration. It avoids creating extra files that need to be ignored and leverages Git's own robust configuration system.
+### 1. Naming Conventions
 
-### 5.1. Future Considerations
+Use descriptive branch names that work well as directory names:
+- ✅ `feature/user-authentication`
+- ✅ `bugfix/memory-leak`
+- ❌ `fix/issue#123` (special characters)
 
-This section documents potential improvements that are out of scope for the initial implementation but are worth considering for future iterations.
+### 2. Worktree Organization
 
-*   **Performance:** The `GET /api/worktrees` endpoint can be slow on repositories with many worktrees. Future optimizations could include caching the results for a few seconds or splitting the API to load stats on demand.
-*   **Event Debouncing:** Rapid-fire Git events (e.g., during an interactive rebase) could spam the `/api/git/event` endpoint. A debouncing mechanism could be added to batch these events.
-*   **Advanced Repositories:** The initial implementation may have undefined behavior with non-standard repository setups like bare repos or those with many submodules. Future work could add explicit checks to detect and handle (or disable the feature for) these cases.
-*   **Configurable Title Template:** The dynamic title format is currently fixed. A future version could allow users to customize this template.
+Keep worktrees organized:
+```
+~/projects/
+  myapp/              # Main repository
+  myapp-feature-auth/ # Feature worktree
+  myapp-bugfix-api/   # Bugfix worktree
+  myapp-release-2.0/  # Release worktree
+```
+
+### 3. Cleanup
+
+Regularly clean up unused worktrees:
+- Remove merged feature branches
+- Prune worktrees for deleted remote branches
+- Use `git worktree prune` to clean up references
+
+### 4. Performance
+
+- Limit active worktrees to what you're actively working on
+- Use follow mode judiciously (it triggers branch switches)
+- Close sessions in unused worktrees to free resources
+
+## Common Workflows
+
+### Feature Development
+
+1. Create a worktree for your feature branch
+2. Open VibeTunnel session in the worktree
+3. Develop without affecting main branch
+4. Run tests in main while developing
+5. Merge and remove worktree when done
+
+### Bug Fixes
+
+1. Create worktree from production branch
+2. Reproduce and fix the bug
+3. Cherry-pick to other branches if needed
+4. Clean up worktree after merge
+
+### Code Review
+
+1. Create worktree for the PR branch
+2. Enable follow mode
+3. Review code while author demonstrates
+4. Switch between different PR branches easily
+
+### Parallel Development
+
+1. Keep main worktree on stable branch
+2. Create feature worktrees for each task
+3. Switch between tasks instantly
+4. No stashing or context switching needed
+
+## Troubleshooting
+
+### "Cannot switch branches due to uncommitted changes"
+
+**Problem**: Trying to switch branches with uncommitted work
+**Solution**: 
+- Commit or stash your changes first
+- Use a worktree to work on the other branch
+- VibeTunnel will show a warning and stay on current branch
+
+### "Worktree path already exists"
+
+**Problem**: Directory already exists when creating worktree
+**Solution**:
+- Choose a different name for your branch
+- Manually remove the existing directory
+- Use the `-force` option if appropriate
+
+### "Branch already checked out in another worktree"
+
+**Problem**: Git prevents checking out the same branch in multiple worktrees
+**Solution**:
+- Use the existing worktree for that branch
+- Create a new branch from the desired branch
+- Remove the other worktree if no longer needed
+
+### Worktree Not Showing in List
+
+**Problem**: Created worktree doesn't appear in VibeTunnel
+**Solution**:
+- Ensure the worktree is within a discoverable path
+- Check that Git recognizes it: `git worktree list`
+- Refresh the repository discovery in VibeTunnel
+
+### Follow Mode Not Working
+
+**Problem**: Main repository doesn't follow worktree changes
+**Solution**:
+- Ensure Git hooks are installed (VibeTunnel does this automatically)
+- Check hook permissions: `ls -la .git/hooks/post-checkout`
+- Verify follow mode is enabled for the branch
+- Check for uncommitted changes blocking the switch
+
+## Advanced Topics
+
+### Custom Worktree Locations
+
+You can create worktrees in custom locations:
+
+```bash
+# Create in a specific directory
+git worktree add /custom/path/feature-branch feature/branch
+
+# VibeTunnel will still discover and manage it
+```
+
+### Bare Repositories
+
+For maximum flexibility, use a bare repository with worktrees:
+
+```bash
+# Clone as bare
+git clone --bare https://github.com/user/repo.git repo.git
+
+# Create worktrees from bare repo
+git -C repo.git worktree add ../repo-main main
+git -C repo.git worktree add ../repo-feature feature/branch
+```
+
+### Integration with CI/CD
+
+Use worktrees for CI/CD workflows:
+- Keep a clean worktree for builds
+- Test multiple branches simultaneously
+- Isolate deployment branches
+
+## API Reference
+
+For detailed API documentation, see the main [API specification](./spec.md#worktree-endpoints).
+
+Key endpoints:
+- `GET /api/worktrees` - List worktrees with current follow mode status
+- `POST /api/worktrees` - Create worktree
+- `DELETE /api/worktrees/:branch` - Remove worktree
+- `POST /api/worktrees/switch` - Switch branch and enable follow mode
+- `POST /api/worktrees/follow` - Enable/disable follow mode for a branch
+- `GET /api/git/follow` - Check follow mode status for a repository
+- `POST /api/git/event` - Internal endpoint used by git hooks
+
+## Conclusion
+
+Git worktrees in VibeTunnel provide a powerful way to manage multiple branches and development tasks. By understanding the branch switching behavior, follow mode, and best practices, you can significantly improve your development workflow.
+
+For implementation details and architecture, see the [Worktree Implementation Spec](./worktree-spec.md).
