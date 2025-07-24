@@ -2,19 +2,73 @@
 
 ## [Unreleased]
 
-### ✨ Features
+### ✨ Major Features
 
-- **Mac Menu Bar Keyboard Navigation**
-  - Navigate sessions with arrow keys (↑/↓) with wraparound support
-  - Press Enter to focus terminal windows or open web sessions
-  - Visual focus indicators appear automatically when using keyboard
-  - Menu closes after selecting a session or opening settings
+#### **Git Worktree Management**
+- Full worktree support: Create, manage, and delete Git worktrees directly from VibeTunnel
+- Follow Mode: Terminal sessions automatically navigate to corresponding directories when switching Git branches
+- Visual indicators: Fork icon (⑂) shows worktree sessions, branch names displayed throughout UI
+- HTTP Git API: New endpoints for Git operations (`/api/git/status`, `/api/git/branches`, `/api/worktrees`)
+- Branch selection: Choose branches before creating sessions with real-time repository status
 
-### 🎨 UI Improvements
+#### **Mac Menu Bar Keyboard Navigation**
+- Navigate sessions with arrow keys (↑/↓) with wraparound support
+- Press Enter to focus terminal windows or open web sessions
+- Visual focus indicators appear automatically when using keyboard
+- Menu closes after selecting a session or opening settings
 
-- **Mac Menu Bar Enhancement**
-  - Increased height of bottom action bar for better clickability
-  - Larger button padding provides more comfortable click targets
+### 🎨 UI/UX Improvements
+
+#### **Enhanced Git Integration**
+- See branch names, commit status, and sync state in autocomplete suggestions
+- Real-time display of uncommitted changes (added/modified/deleted files)
+- Branch selector dropdown for switching branches before creating sessions
+- Repository grouping in session list with branch/worktree selectors
+- Consistent branch name formatting with square brackets: `[main]`
+
+#### **Interface Polish**
+- Responsive design: Better mobile/iPad layouts with adaptive button switching
+- Collapsible options: Session options now in expandable sections for cleaner UI
+- Increased menu bar button heights for better clickability
+- Improved spacing and padding throughout the interface
+- Smoother animations and transitions
+
+### 🐛 Bug Fixes
+
+#### **Stability & Performance**
+- Fixed menu bar icon not appearing on app launch
+- Resolved memory leaks causing OOM crashes during test runs
+- Fixed Node.js v24.3.0 fs.cpSync crash with workaround
+- Improved CI performance with better caching and parallel jobs
+- Fixed EventSource handling in tests
+
+#### **UI Fixes**
+- Autocomplete dropdown only shows when text field is focused
+- Fixed drag & drop overlay persistence issues
+- Resolved CSS/JS resource loading on nested routes
+- Fixed terminal output corruption in high-volume sessions
+- Corrected menu bar icon opacity states
+
+### 🔧 Technical Improvements
+
+#### **Architecture**
+- Modular refactoring: Split `session-view.ts` into 7 specialized managers
+- Component breakdown: Refactored `session-create-form` into smaller components
+- Unified components: Created reusable `GitBranchWorktreeSelector`
+- Better separation: Clear boundaries between UI and business logic
+
+#### **Test Infrastructure**
+- Comprehensive test cleanup preventing memory exhaustion
+- Updated Playwright tests for new UI structure
+- Fixed TypeScript strict mode compliance
+- Proper mock cleanup and session management
+- Re-enabled previously disabled test files after fixing memory issues
+
+#### **Developer Experience**
+- Improved TypeScript type safety throughout
+- Better error handling and logging
+- Consistent code formatting across macOS and web codebases
+- Removed outdated crash investigation documentation
 
 ## [1.0.0-beta.14] - 2025-07-21
 
