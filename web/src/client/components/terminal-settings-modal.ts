@@ -54,7 +54,7 @@ export class TerminalSettingsModal extends LitElement {
         }}
       >
         <div
-          class="bg-elevated rounded-lg shadow-elevated max-w-lg w-full max-h-[90vh] overflow-y-auto"
+          class="bg-bg-elevated rounded-lg shadow-elevated max-w-lg w-full max-h-[90vh] overflow-y-auto"
           style="z-index: ${Z_INDEX.FILE_PICKER}"
         >
           <div class="p-6">
@@ -62,15 +62,15 @@ export class TerminalSettingsModal extends LitElement {
             
             <!-- Width Settings -->
             <div class="mb-6">
-              <h3 class="text-sm font-medium text-secondary mb-3">Terminal Width</h3>
+              <h3 class="text-sm font-medium text-text-muted mb-3">Terminal Width</h3>
               <div class="grid grid-cols-3 gap-2 mb-3">
                 ${COMMON_TERMINAL_WIDTHS.map(
                   (preset) => html`
                     <button
                       class="px-3 py-2 rounded text-sm font-mono transition-all ${
                         this.terminalMaxCols === preset.value
-                          ? 'bg-primary text-bg'
-                          : 'bg-secondary text-primary hover:bg-tertiary'
+                          ? 'bg-primary text-white'
+                          : 'bg-surface text-text hover:bg-surface-hover'
                       }"
                       @click=${() => this.onWidthSelect?.(preset.value)}
                     >
@@ -84,7 +84,7 @@ export class TerminalSettingsModal extends LitElement {
               <div class="flex gap-2">
                 <input
                   type="number"
-                  class="flex-1 px-3 py-2 bg-secondary rounded font-mono text-sm"
+                  class="flex-1 px-3 py-2 bg-surface text-text rounded font-mono text-sm placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Custom width (e.g., 120)"
                   .value=${this.customWidth}
                   @input=${(e: Event) => {
@@ -97,7 +97,7 @@ export class TerminalSettingsModal extends LitElement {
                   }}
                 />
                 <button
-                  class="px-4 py-2 bg-primary text-bg rounded text-sm font-medium hover:bg-primary-light transition-colors"
+                  class="px-4 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary-hover transition-colors"
                   @click=${this.handleCustomWidthSubmit}
                 >
                   Set
@@ -107,36 +107,36 @@ export class TerminalSettingsModal extends LitElement {
             
             <!-- Font Size Settings -->
             <div class="mb-6">
-              <h3 class="text-sm font-medium text-secondary mb-3">Font Size</h3>
+              <h3 class="text-sm font-medium text-text-muted mb-3">Font Size</h3>
               <div class="flex items-center gap-4">
                 <button
-                  class="w-8 h-8 rounded bg-secondary hover:bg-tertiary flex items-center justify-center text-primary transition-colors"
+                  class="w-8 h-8 rounded bg-surface hover:bg-surface-hover flex items-center justify-center text-text transition-colors"
                   @click=${() => this.onFontSizeChange?.(this.terminalFontSize - 1)}
                 >
                   -
                 </button>
-                <span class="font-mono text-primary w-12 text-center">${this.terminalFontSize}</span>
+                <span class="font-mono text-primary w-12 text-center text-lg">${this.terminalFontSize}</span>
                 <button
-                  class="w-8 h-8 rounded bg-secondary hover:bg-tertiary flex items-center justify-center text-primary transition-colors"
+                  class="w-8 h-8 rounded bg-surface hover:bg-surface-hover flex items-center justify-center text-text transition-colors"
                   @click=${() => this.onFontSizeChange?.(this.terminalFontSize + 1)}
                 >
                   +
                 </button>
-                <span class="text-xs text-muted ml-2">(8-32)</span>
+                <span class="text-xs text-text-muted ml-2">(8-32)</span>
               </div>
             </div>
             
             <!-- Theme Settings -->
             <div class="mb-6">
-              <h3 class="text-sm font-medium text-secondary mb-3">Theme</h3>
+              <h3 class="text-sm font-medium text-text-muted mb-3">Theme</h3>
               <div class="grid grid-cols-2 gap-2">
                 ${Object.entries(TERMINAL_THEMES).map(
                   ([id, theme]) => html`
                     <button
                       class="px-3 py-2 rounded text-sm transition-all ${
                         this.terminalTheme === id
-                          ? 'bg-primary text-bg'
-                          : 'bg-secondary text-primary hover:bg-tertiary'
+                          ? 'bg-primary text-white'
+                          : 'bg-surface text-text hover:bg-surface-hover'
                       }"
                       @click=${() => this.onThemeChange?.(id as TerminalThemeId)}
                     >
@@ -150,7 +150,7 @@ export class TerminalSettingsModal extends LitElement {
             <!-- Close button -->
             <div class="flex justify-end">
               <button
-                class="px-4 py-2 bg-secondary text-primary rounded text-sm font-medium hover:bg-tertiary transition-colors"
+                class="px-4 py-2 bg-surface text-primary rounded text-sm font-medium hover:bg-surface-hover transition-colors"
                 @click=${() => this.onClose?.()}
               >
                 Done

@@ -237,14 +237,15 @@ The server runs as a standalone Node.js executable with embedded modules, provid
 
 ## Git Follow Mode
 
-Git Follow Mode automatically switches your VibeTunnel terminal to the Git worktree that matches the branch you're working on in your editor or IDE. When you switch branches in VSCode, IntelliJ, or your favorite editor, VibeTunnel follows along.
+Git Follow Mode keeps your main repository checkout synchronized with the branch you're working on in a Git worktree. This allows agents to work in worktrees while your IDE, server, and other tools stay open on the main repository - they'll automatically update when the worktree switches branches.
 
 ### What is Follow Mode?
 
-Follow mode creates a seamless workflow between your code editor and terminal:
-- Switch branches in your IDE → Terminal automatically follows
-- Work on multiple features → Each gets its own terminal context
-- No manual directory switching → Stay focused on coding
+Follow mode creates a seamless workflow for agent-assisted development:
+- Agents work in worktrees → Main repository automatically follows their branch switches
+- Keep Xcode/IDE open → It updates automatically without reopening projects
+- Server stays running → No need to restart servers in different folders
+- Zero manual intervention → Main repo stays in sync with active development
 
 ### Quick Start
 
@@ -261,10 +262,10 @@ vt unfollow
 
 ### How It Works
 
-1. **Git Hooks**: VibeTunnel installs lightweight Git hooks (post-commit, post-checkout) that detect branch changes
-2. **Automatic Switching**: When you switch branches, the terminal updates to match
-3. **Worktree Support**: Works seamlessly with Git worktrees for parallel development
-4. **IDE Integration**: Any editor that uses Git will trigger the follow behavior
+1. **Git Hooks**: VibeTunnel installs lightweight Git hooks (post-commit, post-checkout) in worktrees that detect branch changes
+2. **Main Repo Sync**: When you switch branches in a worktree, the main repository automatically checks out to the same branch
+3. **Smart Handling**: If the main repo has uncommitted changes, follow mode pauses to prevent data loss
+4. **Development Continuity**: Your IDE, servers, and tools running on the main repo seamlessly follow your active work
 5. **Clean Uninstall**: When you run `vt unfollow`, Git hooks are automatically removed and any original hooks are restored
 
 ### Common Workflows
@@ -282,17 +283,17 @@ vt follow feature/user-auth
 vt unfollow
 ```
 
-#### Multiple Worktree Setup
+#### Agent Development with Worktrees
 ```bash
-# Create worktrees for different features
-git worktree add ../project-auth feature/auth
-git worktree add ../project-api feature/api
+# Create a worktree for agent development
+git worktree add ../project-agent feature/new-feature
 
-# Enable follow mode in each worktree
-cd ../project-auth && vt follow
-cd ../project-api && vt follow
+# Enable follow mode on the main repo
+cd ../project && vt follow
 
-# Now switching branches in your IDE switches to the right worktree!
+# Agent works in the worktree while you stay in main repo
+# When agent switches branches in worktree, your main repo follows!
+# Your Xcode/IDE and servers stay running without interruption
 ```
 
 #### Code Review Workflow

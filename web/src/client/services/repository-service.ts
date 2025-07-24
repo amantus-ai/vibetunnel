@@ -33,14 +33,55 @@ export class RepositoryService {
   private authClient: AuthClient;
   private serverConfigService: ServerConfigService;
 
+  /**
+   * Creates a new RepositoryService instance
+   *
+   * @param authClient - Authentication client for API requests
+   * @param serverConfigService - Service for accessing server configuration
+   */
   constructor(authClient: AuthClient, serverConfigService: ServerConfigService) {
     this.authClient = authClient;
     this.serverConfigService = serverConfigService;
   }
 
   /**
-   * Discovers git repositories in the configured base path
-   * @returns Promise with discovered repositories
+   * Discovers Git repositories in the configured base path
+   *
+   * Scans the directory tree starting from the server-configured repository base path
+   * to find all Git repositories. The scan is recursive and identifies directories
+   * containing a `.git` subdirectory.
+   *
+   * The discovery process:
+   * 1. Retrieves the base path from server configuration
+   * 2. Makes an authenticated API request to scan for repositories
+   * 3. Returns repository metadata including name, path, and last modified time
+   *
+   * @returns Promise resolving to an array of discovered repositories
+   *          Returns empty array if discovery fails or no repositories found
+   *
+   * @throws Never throws - errors are logged and empty array returned
+   *
+   * @example
+   * ```typescript
+   * const repoService = new RepositoryService(authClient, serverConfig);
+   *
+   * // Discover all repositories
+   * const repos = await repoService.discoverRepositories();
+   *
+   * // Use in autocomplete
+   * repos.forEach(repo => {
+   *   console.log(`Found: ${repo.name} at ${repo.path}`);
+   *   console.log(`Last modified: ${new Date(repo.lastModified)}`);
+   * });
+   *
+   * // Handle empty results
+   * if (repos.length === 0) {
+   *   console.log('No repositories found or discovery failed');
+   * }
+   * ```
+   *
+   * @see web/src/server/routes/repositories.ts:15 - Server endpoint implementation
+   * @see web/src/server/services/file-system.service.ts - Underlying directory scanning
    */
   async discoverRepositories(): Promise<Repository[]> {
     try {
