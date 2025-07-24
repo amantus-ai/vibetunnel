@@ -131,7 +131,8 @@ describe('SessionView', () => {
       const testElement = element as SessionViewTestInterface;
       // Check UI state through the manager
       const uiState = testElement.uiStateManager.getState();
-      expect(uiState.connected).toBe(false);
+      // Connected is set to true in connectedCallback
+      expect(uiState.connected).toBe(true);
 
       // Loading animation should be active when no session
       expect(testElement.loadingAnimationManager.isLoading()).toBe(true);
@@ -931,8 +932,19 @@ describe('SessionView', () => {
 
       fitTerminalSpy = terminalElement.fitTerminal;
 
-      // Override querySelector to return our mock terminal only for terminal queries
+      // Override querySelector to return appropriate mocks
       vi.spyOn(element, 'querySelector').mockImplementation((selector: string) => {
+        if (selector === 'terminal-renderer') {
+          // Return a mock terminal-renderer that also has querySelector
+          return {
+            querySelector: (innerSelector: string) => {
+              if (innerSelector.includes('terminal')) {
+                return terminalElement;
+              }
+              return null;
+            },
+          };
+        }
         if (selector.includes('terminal')) {
           return terminalElement;
         }

@@ -941,38 +941,50 @@ describe('SessionCreateForm', () => {
         return fetchMock(url);
       });
 
-      // Trigger Git check
+      // Trigger working directory change which should check Git
       element.workingDir = '/home/user/restricted';
-      // @ts-expect-error - accessing private method for testing
-      await element.checkGitRepository();
+      await element.updateComplete;
+      // Wait for async Git check to complete
+      await waitForAsync(100);
       await element.updateComplete;
 
       // Should handle error without crashing
       expect(element.gitRepoInfo).toBe(null);
       expect(element.availableBranches).toEqual([]);
-      expect(element.selectedBranch).toBe('');
+      expect(element.selectedBaseBranch).toBe('');
 
-      // Branch selector should not be shown
-      const branchSelect = element.querySelector('[data-testid="git-branch-select"]');
-      expect(branchSelect).toBeFalsy();
+      // Branch selector element exists but should not render any content
+      const branchSelector = element.querySelector('git-branch-selector');
+      expect(branchSelector).toBeTruthy();
+      // Check that it renders nothing (no selects)
+      const selects = branchSelector?.querySelectorAll('select');
+      expect(selects?.length).toBe(0);
     });
 
     it('should check Git when selecting from repository dropdown', async () => {
       // Clear calls
       fetchCalls = [];
 
-      // Simulate repository selection
-      // @ts-expect-error - accessing private method for testing
-      element.handleSelectRepository('/home/user/another-project');
+      // Simulate repository selection by changing working directory
+      // This mimics what happens when a repository is selected from the dropdown
+      element.workingDir = '~/another-project';
+      // Trigger the input event handler which debounces Git check
+      const inputEvent = new Event('input');
+      const input = element.querySelector('[data-testid="working-dir-input"]');
+      if (input) {
+        Object.defineProperty(inputEvent, 'target', { value: input, enumerable: true });
+        (input as HTMLInputElement).value = '~/another-project';
+        input.dispatchEvent(inputEvent);
+      }
 
-      await waitForAsync(100);
+      // Wait for debounced Git check (500ms)
+      await waitForAsync(600);
 
       // Verify Git check was triggered
       const gitCheckCall = fetchCalls.find(
         (call) => call[0].includes('/api/git/repo-info') && call[0].includes('another-project')
       );
       expect(gitCheckCall).toBeTruthy();
-      // formatPathForDisplay converts /home/user/path to ~/path
       expect(element.workingDir).toBe('~/another-project');
     });
 
@@ -980,13 +992,27 @@ describe('SessionCreateForm', () => {
       // Clear calls
       fetchCalls = [];
 
-      // Simulate directory selection event
+      // Simulate directory selection event from file browser
       const event = new CustomEvent('directory-selected', {
         detail: '/home/user/new-project',
+        bubbles: true,
+        composed: true,
       });
 
-      element.handleDirectorySelected(event);
+      // Show file browser first
+      element.showFileBrowser = true;
+      await element.updateComplete;
 
+      // Find the file-browser element and dispatch event from it
+      const fileBrowser = element.querySelector('file-browser');
+      if (fileBrowser) {
+        fileBrowser.dispatchEvent(event);
+      } else {
+        // Fallback: dispatch on element
+        element.dispatchEvent(event);
+      }
+
+      await element.updateComplete;
       await waitForAsync(100);
 
       // Verify Git check was triggered
@@ -996,6 +1022,8 @@ describe('SessionCreateForm', () => {
       expect(gitCheckCall).toBeTruthy();
       // formatPathForDisplay converts /home/user/path to ~/path
       expect(element.workingDir).toBe('~/new-project');
+      // File browser should be hidden after selection
+      expect(element.showFileBrowser).toBe(false);
     });
 
     it('should update selected branch when changed in dropdown', async () => {

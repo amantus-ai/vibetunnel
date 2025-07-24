@@ -352,7 +352,7 @@ describe('SessionList', () => {
 
       // Second call should return immediately without making a fetch
       await promise2;
-      expect(fetchMock.count()).toBe(1); // Only one fetch call
+      expect(fetchMock.calls('/api/cleanup-exited').length).toBe(1); // Only one fetch call
 
       // Wait for first cleanup to complete
       await promise1;
@@ -377,12 +377,12 @@ describe('SessionList', () => {
       ];
       await element.updateComplete;
 
-      // Find toggle button - when hideExited is true (default), button shows "Show Exited"
-      const toggleButton = element.querySelector('#show-exited-button');
-      expect(toggleButton).toBeTruthy();
+      // Find toggle checkbox - when hideExited is true (default), checkbox is unchecked
+      const toggleCheckbox = element.querySelector('#show-exited-toggle') as HTMLInputElement;
+      expect(toggleCheckbox).toBeTruthy();
 
-      if (toggleButton) {
-        (toggleButton as HTMLElement).click();
+      if (toggleCheckbox) {
+        toggleCheckbox.click();
 
         // The component doesn't directly change hideExited - it emits an event
         // The parent should handle the event and update the property

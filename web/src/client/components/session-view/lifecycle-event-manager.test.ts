@@ -24,6 +24,7 @@ describe('LifecycleEventManager', () => {
         }),
         handleKeyboardInput: vi.fn(),
         getIsMobile: vi.fn().mockReturnValue(false),
+        getKeyboardCaptureActive: vi.fn().mockReturnValue(true),
       };
 
       const mockSession = {
@@ -63,6 +64,8 @@ describe('LifecycleEventManager', () => {
           isKeyboardShortcut: vi.fn().mockReturnValue(true), // This is a browser shortcut
         }),
         getIsMobile: vi.fn().mockReturnValue(false),
+        getKeyboardCaptureActive: vi.fn().mockReturnValue(true),
+        handleKeyboardInput: vi.fn(),
       };
 
       manager.setCallbacks(mockCallbacks as Parameters<typeof manager.setCallbacks>[0]);

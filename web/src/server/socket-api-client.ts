@@ -36,9 +36,10 @@ export class SocketApiClient {
   private readonly controlSocketPath: string;
 
   constructor() {
-    const homeDir = os.homedir();
+    // Use control directory from environment or default
+    const controlDir = process.env.VIBETUNNEL_CONTROL_DIR || path.join(os.homedir(), '.vibetunnel');
     // Use api.sock instead of control.sock to avoid conflicts with Mac app
-    this.controlSocketPath = path.join(homeDir, '.vibetunnel', 'api.sock');
+    this.controlSocketPath = path.join(controlDir, 'api.sock');
   }
 
   /**

@@ -40,15 +40,19 @@ export default defineConfig(({ mode }) => {
       include: testInclude,
       setupFiles: ['./src/test/setup.ts'],
       environment: isClient ? 'happy-dom' : 'node',
-      testTimeout: 60000, // 60s for e2e tests
-      hookTimeout: 30000, // 30s for setup/teardown
+      testTimeout: 10000, // 10s for tests
+      hookTimeout: 10000, // 10s for setup/teardown
       reporters,
       poolOptions: {
         threads: {
-          singleThread: true, // Run tests sequentially to reduce memory usage
+          // Use available CPU cores for parallel execution
+          maxThreads: undefined,
+          minThreads: 1,
         },
         forks: {
-          singleFork: true,
+          // Allow multiple forks for better test isolation
+          maxForks: undefined,
+          minForks: 1,
         }
       },
       isolate: true, // Isolate tests in separate contexts

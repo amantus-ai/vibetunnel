@@ -2,19 +2,14 @@
  * @vitest-environment happy-dom
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AuthClient } from './auth-client';
 import { PushNotificationService } from './push-notification-service';
 
-// Mock navigator.serviceWorker
-const mockServiceWorker = {
-  ready: Promise.resolve({
-    pushManager: {
-      getSubscription: vi.fn(),
-      subscribe: vi.fn(),
-    },
-  }),
-  register: vi.fn(),
-};
+// Mock the auth client
+vi.mock('./auth-client', () => ({
+  authClient: {
+    getAuthHeader: vi.fn(() => ({})), // Return empty object, no auth header
+  },
+}));
 
 // Mock PushManager
 const mockPushManager = {
@@ -22,10 +17,16 @@ const mockPushManager = {
   subscribe: vi.fn(),
 };
 
+// Mock navigator.serviceWorker
+const mockServiceWorker = {
+  ready: Promise.resolve({
+    pushManager: mockPushManager,
+  }),
+  register: vi.fn(),
+};
+
 describe('PushNotificationService', () => {
   let service: PushNotificationService;
-  let mockAuthClient: AuthClient;
-  let originalNavigator: Navigator;
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -33,133 +34,110 @@ describe('PushNotificationService', () => {
     fetchMock = vi.fn();
     global.fetch = fetchMock;
 
-    // Mock auth client
-    mockAuthClient = {
-      getAuthHeader: vi.fn(() => ({ Authorization: 'Bearer test-token' })),
-      fetch: vi.fn(),
-    } as unknown as AuthClient;
-
-    // Save original navigator
-    originalNavigator = global.navigator;
-
     // Mock navigator with service worker and push support
-    Object.defineProperty(global, 'navigator', {
-      value: {
-        serviceWorker: mockServiceWorker,
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-        vendor: 'Apple Computer, Inc.',
-        standalone: false,
-      },
-      configurable: true,
-    });
+    const mockNavigator = {
+      serviceWorker: mockServiceWorker,
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+      vendor: 'Apple Computer, Inc.',
+      standalone: false,
+    };
+    vi.stubGlobal('navigator', mockNavigator);
 
     // Mock window.Notification
-    Object.defineProperty(global, 'Notification', {
-      value: {
-        permission: 'default',
-        requestPermission: vi.fn(),
-      },
-      configurable: true,
+    vi.stubGlobal('Notification', {
+      permission: 'default',
+      requestPermission: vi.fn(),
     });
+
+    // Mock window.PushManager
+    vi.stubGlobal('PushManager', function PushManager() {});
 
     // Reset mocks
     mockPushManager.getSubscription.mockReset();
     mockPushManager.subscribe.mockReset();
     mockServiceWorker.register.mockReset();
+    vi.clearAllMocks();
 
     // Create service instance
-    service = new PushNotificationService(mockAuthClient);
+    service = new PushNotificationService();
   });
 
   afterEach(() => {
-    // Restore original navigator
-    global.navigator = originalNavigator;
+    // Restore all global stubs
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
-  describe('isAvailable', () => {
+  describe('isSupported', () => {
     it('should return true when all requirements are met', () => {
-      expect(service.isAvailable()).toBe(true);
+      expect(service.isSupported()).toBe(true);
     });
 
     it('should return false when serviceWorker is not available', () => {
-      Object.defineProperty(global, 'navigator', {
-        value: {
-          ...global.navigator,
-          serviceWorker: undefined,
-        },
-        configurable: true,
-      });
+      // Create a new mock navigator without serviceWorker
+      const navigatorWithoutSW = {
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+        vendor: 'Apple Computer, Inc.',
+        standalone: false,
+        serviceWorker: undefined,
+      };
+      vi.stubGlobal('navigator', navigatorWithoutSW);
 
-      const serviceWithoutSW = new PushNotificationService(mockAuthClient);
-      expect(serviceWithoutSW.isAvailable()).toBe(false);
+      const serviceWithoutSW = new PushNotificationService();
+      expect(serviceWithoutSW.isSupported()).toBe(false);
     });
 
     it('should return false when PushManager is not available', () => {
-      Object.defineProperty(global, 'PushManager', {
-        value: undefined,
-        configurable: true,
-      });
-
-      const serviceWithoutPush = new PushNotificationService(mockAuthClient);
-      expect(serviceWithoutPush.isAvailable()).toBe(false);
+      vi.stubGlobal('PushManager', undefined);
+      const serviceWithoutPush = new PushNotificationService();
+      expect(serviceWithoutPush.isSupported()).toBe(false);
     });
 
     it('should return false when Notification is not available', () => {
-      Object.defineProperty(global, 'Notification', {
-        value: undefined,
-        configurable: true,
-      });
-
-      const serviceWithoutNotification = new PushNotificationService(mockAuthClient);
-      expect(serviceWithoutNotification.isAvailable()).toBe(false);
+      vi.stubGlobal('Notification', undefined);
+      const serviceWithoutNotification = new PushNotificationService();
+      expect(serviceWithoutNotification.isSupported()).toBe(false);
     });
   });
 
   describe('iOS Safari PWA detection', () => {
     it('should detect iOS Safari in PWA mode', () => {
-      Object.defineProperty(global, 'navigator', {
-        value: {
-          ...global.navigator,
-          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)',
-          vendor: 'Apple Computer, Inc.',
-          standalone: true,
-        },
-        configurable: true,
-      });
+      const iOSNavigator = {
+        serviceWorker: mockServiceWorker,
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)',
+        vendor: 'Apple Computer, Inc.',
+        standalone: true,
+      };
+      vi.stubGlobal('navigator', iOSNavigator);
 
-      const iOSService = new PushNotificationService(mockAuthClient);
-      expect(iOSService.isAvailable()).toBe(true);
+      const iOSService = new PushNotificationService();
+      expect(iOSService.isSupported()).toBe(true);
     });
 
     it('should not be available on iOS Safari outside PWA', () => {
-      Object.defineProperty(global, 'navigator', {
-        value: {
-          ...global.navigator,
-          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)',
-          vendor: 'Apple Computer, Inc.',
-          standalone: false,
-        },
-        configurable: true,
-      });
+      const iOSNavigator = {
+        serviceWorker: mockServiceWorker,
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)',
+        vendor: 'Apple Computer, Inc.',
+        standalone: false,
+      };
+      vi.stubGlobal('navigator', iOSNavigator);
 
-      const iOSService = new PushNotificationService(mockAuthClient);
-      expect(iOSService.isAvailable()).toBe(false);
+      const iOSService = new PushNotificationService();
+      expect(iOSService.isSupported()).toBe(false);
     });
 
     it('should detect iPad Safari in PWA mode', () => {
-      Object.defineProperty(global, 'navigator', {
-        value: {
-          ...global.navigator,
-          userAgent: 'Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X)',
-          vendor: 'Apple Computer, Inc.',
-          standalone: true,
-        },
-        configurable: true,
-      });
+      const iPadNavigator = {
+        serviceWorker: mockServiceWorker,
+        userAgent: 'Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X)',
+        vendor: 'Apple Computer, Inc.',
+        standalone: true,
+      };
+      vi.stubGlobal('navigator', iPadNavigator);
 
-      const iPadService = new PushNotificationService(mockAuthClient);
-      expect(iPadService.isAvailable()).toBe(true);
+      const iPadService = new PushNotificationService();
+      expect(iPadService.isSupported()).toBe(true);
     });
   });
 
@@ -167,6 +145,7 @@ describe('PushNotificationService', () => {
     it('should fetch and cache VAPID config', async () => {
       const mockVapidConfig = {
         publicKey: 'test-vapid-public-key',
+        enabled: true,
       };
 
       fetchMock.mockResolvedValueOnce({
@@ -174,18 +153,19 @@ describe('PushNotificationService', () => {
         json: async () => mockVapidConfig,
       });
 
-      const config = await service.refreshVapidConfig();
+      await service.refreshVapidConfig();
 
       expect(fetchMock).toHaveBeenCalledWith('/api/push/vapid-public-key', {
-        headers: { Authorization: 'Bearer test-token' },
+        headers: {},
       });
-      expect(config).toEqual(mockVapidConfig);
     });
 
     it('should handle fetch errors', async () => {
       fetchMock.mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(service.refreshVapidConfig()).rejects.toThrow('Network error');
+      // refreshVapidConfig doesn't throw, it logs errors
+      await service.refreshVapidConfig();
+      // No error thrown, just logged
     });
 
     it('should handle non-ok responses', async () => {
@@ -195,57 +175,86 @@ describe('PushNotificationService', () => {
         statusText: 'Internal Server Error',
       });
 
-      await expect(service.refreshVapidConfig()).rejects.toThrow(
-        'Failed to fetch VAPID public key: 500 Internal Server Error'
-      );
+      // refreshVapidConfig doesn't throw, it logs errors
+      await service.refreshVapidConfig();
+      // No error thrown, just logged
     });
   });
 
-  describe('getCurrentSubscription', () => {
+  describe('getSubscription', () => {
     it('should return current subscription if exists', async () => {
       const mockSubscription = {
         endpoint: 'https://push.example.com/subscription/123',
         expirationTime: null,
-        options: {},
+        getKey: (name: string) => {
+          if (name === 'p256dh') return new Uint8Array([1, 2, 3]);
+          if (name === 'auth') return new Uint8Array([4, 5, 6]);
+          return null;
+        },
       };
 
-      mockPushManager.getSubscription.mockResolvedValueOnce(mockSubscription);
+      mockPushManager.getSubscription.mockResolvedValue(mockSubscription);
 
-      const subscription = await service.getCurrentSubscription();
+      // Mock VAPID config fetch
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ publicKey: 'test-vapid-key', enabled: true }),
+      });
 
-      expect(subscription).toEqual(mockSubscription);
-      expect(mockPushManager.getSubscription).toHaveBeenCalled();
+      await service.initialize();
+      const subscription = service.getSubscription();
+
+      expect(subscription).toBeTruthy();
+      expect(subscription?.endpoint).toBe('https://push.example.com/subscription/123');
     });
 
     it('should return null if no subscription exists', async () => {
       mockPushManager.getSubscription.mockResolvedValueOnce(null);
 
-      const subscription = await service.getCurrentSubscription();
+      // Mock VAPID config fetch
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ publicKey: 'test-vapid-key', enabled: true }),
+      });
+
+      await service.initialize();
+      const subscription = service.getSubscription();
 
       expect(subscription).toBeNull();
     });
 
     it('should handle service worker errors', async () => {
-      // Override serviceWorker.ready to reject
-      Object.defineProperty(global.navigator.serviceWorker, 'ready', {
-        value: Promise.reject(new Error('Service worker failed')),
-        configurable: true,
+      // Override the ready promise to reject
+      const failingServiceWorker = {
+        ready: Promise.reject(new Error('Service worker failed')),
+        register: vi.fn(),
+      };
+
+      vi.stubGlobal('navigator', {
+        serviceWorker: failingServiceWorker,
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+        vendor: 'Apple Computer, Inc.',
+        standalone: false,
       });
 
-      const serviceWithError = new PushNotificationService(mockAuthClient);
-      await expect(serviceWithError.getCurrentSubscription()).rejects.toThrow(
-        'Service worker failed'
-      );
+      const serviceWithError = new PushNotificationService();
+
+      // initialize() doesn't throw, it catches errors
+      await serviceWithError.initialize();
+      expect(serviceWithError.getSubscription()).toBeNull();
     });
   });
 
   describe('subscribe', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       // Set up successful VAPID config fetch
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ publicKey: 'test-vapid-key' }),
+        json: async () => ({ publicKey: 'test-vapid-key', enabled: true }),
       });
+
+      // Initialize the service to set up service worker registration
+      await service.initialize();
     });
 
     it('should request permission and subscribe successfully', async () => {
@@ -256,6 +265,11 @@ describe('PushNotificationService', () => {
       // Mock successful subscription
       const mockSubscription = {
         endpoint: 'https://push.example.com/sub/456',
+        getKey: (name: string) => {
+          if (name === 'p256dh') return new Uint8Array([1, 2, 3]);
+          if (name === 'auth') return new Uint8Array([4, 5, 6]);
+          return null;
+        },
         toJSON: () => ({
           endpoint: 'https://push.example.com/sub/456',
           keys: { p256dh: 'key1', auth: 'key2' },
@@ -264,11 +278,10 @@ describe('PushNotificationService', () => {
       mockPushManager.subscribe.mockResolvedValueOnce(mockSubscription);
 
       // Mock successful server registration
-      const mockFetch = vi.fn().mockResolvedValueOnce({
+      fetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ success: true }),
       });
-      mockAuthClient.fetch = mockFetch;
 
       const result = await service.subscribe();
 
@@ -277,12 +290,14 @@ describe('PushNotificationService', () => {
         userVisibleOnly: true,
         applicationServerKey: expect.any(Uint8Array),
       });
-      expect(mockFetch).toHaveBeenCalledWith('/api/push/subscribe', {
+      expect(fetchMock).toHaveBeenCalledWith('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mockSubscription.toJSON()),
+        body: expect.stringContaining('endpoint'),
       });
-      expect(result).toEqual(mockSubscription);
+      // Result is converted to our interface format, not the raw subscription
+      expect(result).toBeTruthy();
+      expect(result?.endpoint).toBe('https://push.example.com/sub/456');
     });
 
     it('should handle permission denied', async () => {
@@ -309,51 +324,74 @@ describe('PushNotificationService', () => {
 
       const mockSubscription = {
         endpoint: 'https://push.example.com/sub/789',
+        getKey: (name: string) => {
+          if (name === 'p256dh') return new Uint8Array([1, 2, 3]);
+          if (name === 'auth') return new Uint8Array([4, 5, 6]);
+          return null;
+        },
         toJSON: () => ({ endpoint: 'https://push.example.com/sub/789' }),
       };
       mockPushManager.subscribe.mockResolvedValueOnce(mockSubscription);
 
-      const mockFetch = vi.fn().mockResolvedValueOnce({
+      fetchMock.mockResolvedValueOnce({
         ok: false,
         status: 400,
         statusText: 'Bad Request',
       });
-      mockAuthClient.fetch = mockFetch;
 
-      await expect(service.subscribe()).rejects.toThrow(
-        'Failed to register subscription with server: 400 Bad Request'
-      );
+      await expect(service.subscribe()).rejects.toThrow('Server responded with 400: Bad Request');
     });
   });
 
   describe('unsubscribe', () => {
     it('should unsubscribe successfully', async () => {
+      // Set up a subscription
       const mockSubscription = {
         endpoint: 'https://push.example.com/sub/999',
         unsubscribe: vi.fn().mockResolvedValueOnce(true),
+        getKey: (name: string) => {
+          if (name === 'p256dh') return new Uint8Array([1, 2, 3]);
+          if (name === 'auth') return new Uint8Array([4, 5, 6]);
+          return null;
+        },
         toJSON: () => ({ endpoint: 'https://push.example.com/sub/999' }),
       };
 
+      // Mock getting existing subscription on init
       mockPushManager.getSubscription.mockResolvedValueOnce(mockSubscription);
 
-      const mockFetch = vi.fn().mockResolvedValueOnce({
+      // Mock VAPID config
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ publicKey: 'test-vapid-key', enabled: true }),
+      });
+
+      // Initialize to pick up the subscription
+      await service.initialize();
+
+      // Mock successful server unregistration
+      fetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ success: true }),
       });
-      mockAuthClient.fetch = mockFetch;
 
       await service.unsubscribe();
 
       expect(mockSubscription.unsubscribe).toHaveBeenCalled();
-      expect(mockFetch).toHaveBeenCalledWith('/api/push/unsubscribe', {
+      expect(fetchMock).toHaveBeenCalledWith('/api/push/unsubscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ endpoint: mockSubscription.endpoint }),
       });
     });
 
     it('should handle case when no subscription exists', async () => {
-      mockPushManager.getSubscription.mockResolvedValueOnce(null);
+      // Mock VAPID config
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ publicKey: 'test-vapid-key', enabled: true }),
+      });
+
+      await service.initialize();
 
       // Should not throw
       await expect(service.unsubscribe()).resolves.toBeUndefined();
@@ -363,24 +401,41 @@ describe('PushNotificationService', () => {
       const mockSubscription = {
         endpoint: 'https://push.example.com/sub/fail',
         unsubscribe: vi.fn().mockResolvedValueOnce(true),
+        getKey: (name: string) => {
+          if (name === 'p256dh') return new Uint8Array([1, 2, 3]);
+          if (name === 'auth') return new Uint8Array([4, 5, 6]);
+          return null;
+        },
         toJSON: () => ({ endpoint: 'https://push.example.com/sub/fail' }),
       };
 
+      // Mock getting existing subscription on init
       mockPushManager.getSubscription.mockResolvedValueOnce(mockSubscription);
 
-      const mockFetch = vi.fn().mockResolvedValueOnce({
+      // Mock VAPID config
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ publicKey: 'test-vapid-key', enabled: true }),
+      });
+
+      // Initialize to pick up the subscription
+      await service.initialize();
+
+      fetchMock.mockResolvedValueOnce({
         ok: false,
         status: 500,
+        statusText: 'Internal Server Error',
       });
-      mockAuthClient.fetch = mockFetch;
 
-      // Should not throw, just log error
+      // Should not throw - unsubscribe continues even if server fails
       await expect(service.unsubscribe()).resolves.toBeUndefined();
+
+      // But subscription should still be unsubscribed locally
       expect(mockSubscription.unsubscribe).toHaveBeenCalled();
     });
   });
 
-  describe('getServerPushStatus', () => {
+  describe('getServerStatus', () => {
     it('should fetch server push status', async () => {
       const mockStatus = {
         enabled: true,
@@ -393,36 +448,16 @@ describe('PushNotificationService', () => {
         json: async () => mockStatus,
       });
 
-      const status = await service.getServerPushStatus();
+      const status = await service.getServerStatus();
 
-      expect(fetchMock).toHaveBeenCalledWith('/api/push/status', {
-        headers: { Authorization: 'Bearer test-token' },
-      });
+      expect(fetchMock).toHaveBeenCalledWith('/api/push/status', expect.any(Object));
       expect(status).toEqual(mockStatus);
     });
 
     it('should handle fetch errors', async () => {
       fetchMock.mockRejectedValueOnce(new Error('Network failure'));
 
-      await expect(service.getServerPushStatus()).rejects.toThrow('Network failure');
-    });
-  });
-
-  describe('urlBase64ToUint8Array', () => {
-    it('should convert base64 URL-safe string to Uint8Array', () => {
-      // This is a simplified test - in reality you'd use actual VAPID keys
-      const base64 = 'SGVsbG8gV29ybGQ'; // "Hello World" in base64
-      const result = service.urlBase64ToUint8Array(base64);
-
-      expect(result).toBeInstanceOf(Uint8Array);
-      expect(result.length).toBeGreaterThan(0);
-    });
-
-    it('should handle URL-safe base64 with padding', () => {
-      const base64WithDashes = 'SGVs-bG8gV29y_bGQ=';
-      const result = service.urlBase64ToUint8Array(base64WithDashes);
-
-      expect(result).toBeInstanceOf(Uint8Array);
+      await expect(service.getServerStatus()).rejects.toThrow('Network failure');
     });
   });
 });

@@ -59,8 +59,9 @@ export class ApiSocketServer {
   private serverUrl?: string;
 
   constructor() {
-    const homeDir = os.homedir();
-    const socketDir = path.join(homeDir, '.vibetunnel');
+    // Use control directory from environment or default
+    const controlDir = process.env.VIBETUNNEL_CONTROL_DIR || path.join(os.homedir(), '.vibetunnel');
+    const socketDir = controlDir;
 
     // Ensure directory exists
     if (!fs.existsSync(socketDir)) {

@@ -146,9 +146,10 @@ export class ControlUnixHandler {
   private messageBuffer = Buffer.alloc(0);
 
   constructor() {
-    // Use a unique socket path in user's home directory to avoid /tmp issues
+    // Use control directory from environment or default
     const home = process.env.HOME || '/tmp';
-    const socketDir = path.join(home, '.vibetunnel');
+    const controlDir = process.env.VIBETUNNEL_CONTROL_DIR || path.join(home, '.vibetunnel');
+    const socketDir = controlDir;
 
     // Ensure directory exists
     try {

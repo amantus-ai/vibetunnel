@@ -2,10 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpMethod } from '../../shared/types.js';
 import { clearAuthConfigCache, createLogger, setDebugMode } from './logger.js';
 
-// Mock the auth client module
+// Mock the auth client module with a function we can control
+const getAuthHeaderMock = vi.fn();
 vi.mock('../services/auth-client.js', () => ({
   authClient: {
-    getAuthHeader: vi.fn(),
+    getAuthHeader: getAuthHeaderMock,
   },
 }));
 
@@ -23,6 +24,8 @@ describe.sequential('Frontend Logger', () => {
     // Reset all mocks
     vi.clearAllMocks();
     mockFetch.mockReset();
+    getAuthHeaderMock.mockReset();
+    getAuthHeaderMock.mockReturnValue({}); // Default to no auth
 
     // Spy on console methods
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -79,9 +82,8 @@ describe.sequential('Frontend Logger', () => {
   });
 
   describe('Server Logging - Authenticated Mode', () => {
-    beforeEach(async () => {
-      const { authClient } = await import('../services/auth-client.js');
-      vi.mocked(authClient.getAuthHeader).mockReturnValue({
+    beforeEach(() => {
+      getAuthHeaderMock.mockReturnValue({
         Authorization: 'Bearer test-token',
       });
     });
@@ -137,20 +139,18 @@ describe.sequential('Frontend Logger', () => {
       // Clear any existing calls to ensure clean state
       mockFetch.mockClear();
 
-      // Wait a bit to ensure any async operations from previous tests complete
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Clear again after waiting
-      mockFetch.mockClear();
-
       logger.log('log message');
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
       logger.warn('warn message');
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
       logger.error('error message');
-      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Wait for all async operations to complete
+      await vi.waitFor(
+        () => {
+          const logCalls = mockFetch.mock.calls.filter((call) => call[0] === '/api/logs/client');
+          return logCalls.length >= 3;
+        },
+        { timeout: 5000 }
+      );
 
       // Get all log calls
       const logCalls = mockFetch.mock.calls.filter((call) => call[0] === '/api/logs/client');
@@ -170,9 +170,8 @@ describe.sequential('Frontend Logger', () => {
   });
 
   describe('Server Logging - No-Auth Mode', () => {
-    beforeEach(async () => {
-      const { authClient } = await import('../services/auth-client.js');
-      vi.mocked(authClient.getAuthHeader).mockReturnValue({});
+    beforeEach(() => {
+      getAuthHeaderMock.mockReturnValue({});
 
       // Mock auth config endpoint to return no-auth mode
       mockFetch.mockImplementation((url) => {
@@ -214,13 +213,17 @@ describe.sequential('Frontend Logger', () => {
       const logger = createLogger('test-module');
 
       logger.log('message 1');
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
       logger.log('message 2');
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
       logger.log('message 3');
-      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Wait for all operations to complete
+      await vi.waitFor(
+        () => {
+          const logCalls = mockFetch.mock.calls.filter((call) => call[0] === '/api/logs/client');
+          return logCalls.length >= 3;
+        },
+        { timeout: 5000 }
+      );
 
       // The logger should only check auth config once due to caching
       const authConfigCalls = mockFetch.mock.calls.filter((call) => call[0] === '/api/auth/config');
@@ -236,14 +239,30 @@ describe.sequential('Frontend Logger', () => {
 
       // First log - should fetch auth config
       logger.log('message 1');
-      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await vi.waitFor(
+        () => {
+          const logCalls = mockFetch.mock.calls.filter((call) => call[0] === '/api/logs/client');
+          return logCalls.length >= 1;
+        },
+        { timeout: 5000 }
+      );
 
       // Clear cache to simulate expiration
       clearAuthConfigCache();
 
       // Second log - should fetch auth config again
       logger.log('message 2');
-      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await vi.waitFor(
+        () => {
+          const authConfigCalls = mockFetch.mock.calls.filter(
+            (call) => call[0] === '/api/auth/config'
+          );
+          return authConfigCalls.length >= 2;
+        },
+        { timeout: 5000 }
+      );
 
       // Should have fetched auth config twice
       const authConfigCalls = mockFetch.mock.calls.filter((call) => call[0] === '/api/auth/config');
@@ -252,9 +271,8 @@ describe.sequential('Frontend Logger', () => {
   });
 
   describe('Server Logging - Not Authenticated', () => {
-    beforeEach(async () => {
-      const { authClient } = await import('../services/auth-client.js');
-      vi.mocked(authClient.getAuthHeader).mockReturnValue({});
+    beforeEach(() => {
+      getAuthHeaderMock.mockReturnValue({});
 
       // Mock auth config endpoint to return auth required
       mockFetch.mockImplementation((url) => {
@@ -274,8 +292,13 @@ describe.sequential('Frontend Logger', () => {
       const logger = createLogger('test-module');
       logger.log('test message');
 
-      // Wait a bit to ensure async operations complete
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Wait for auth config to be fetched
+      await vi.waitFor(
+        () => {
+          return mockFetch.mock.calls.length >= 1;
+        },
+        { timeout: 5000 }
+      );
 
       // Should only call auth config, not the log endpoint
       expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -287,9 +310,8 @@ describe.sequential('Frontend Logger', () => {
   });
 
   describe('Error Handling', () => {
-    beforeEach(async () => {
-      const { authClient } = await import('../services/auth-client.js');
-      vi.mocked(authClient.getAuthHeader).mockReturnValue({
+    beforeEach(() => {
+      getAuthHeaderMock.mockReturnValue({
         Authorization: 'Bearer test-token',
       });
     });
@@ -307,8 +329,7 @@ describe.sequential('Frontend Logger', () => {
     });
 
     it('should handle auth config fetch errors gracefully', async () => {
-      const { authClient } = await import('../services/auth-client.js');
-      vi.mocked(authClient.getAuthHeader).mockReturnValue({});
+      getAuthHeaderMock.mockReturnValue({});
 
       // Make auth config fetch fail
       mockFetch.mockRejectedValueOnce(new Error('Config fetch failed'));
@@ -342,8 +363,7 @@ describe.sequential('Frontend Logger', () => {
     });
 
     it('should handle non-200 responses from auth config', async () => {
-      const { authClient } = await import('../services/auth-client.js');
-      vi.mocked(authClient.getAuthHeader).mockReturnValue({});
+      getAuthHeaderMock.mockReturnValue({});
 
       // Mock auth config endpoint to return error
       mockFetch.mockResolvedValueOnce(
@@ -356,8 +376,13 @@ describe.sequential('Frontend Logger', () => {
       const logger = createLogger('test-module');
       logger.log('test message');
 
-      // Wait a bit
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Wait for auth config to be attempted
+      await vi.waitFor(
+        () => {
+          return mockFetch.mock.calls.length >= 1;
+        },
+        { timeout: 5000 }
+      );
 
       // Should not send log when auth config fails
       const logCalls = mockFetch.mock.calls.filter((call) => call[0] === '/api/logs/client');
@@ -366,9 +391,8 @@ describe.sequential('Frontend Logger', () => {
   });
 
   describe('Debug Mode', () => {
-    beforeEach(async () => {
-      const { authClient } = await import('../services/auth-client.js');
-      vi.mocked(authClient.getAuthHeader).mockReturnValue({
+    beforeEach(() => {
+      getAuthHeaderMock.mockReturnValue({
         Authorization: 'Bearer test-token',
       });
       mockFetch.mockResolvedValue(new Response());
@@ -380,7 +404,7 @@ describe.sequential('Frontend Logger', () => {
 
       logger.debug('debug message');
 
-      // Wait a bit
+      // Wait a bit to ensure no calls are made
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Should not call fetch

@@ -64,8 +64,8 @@ describe('AuthLogin', () => {
     `);
 
     await element.updateComplete;
-    // Wait for initial loading
-    await waitForAsync();
+    // Wait a short time for async operations
+    await waitForAsync(10);
   });
 
   afterEach(() => {
@@ -115,7 +115,7 @@ describe('AuthLogin', () => {
       `);
 
       // Wait for auto-login
-      await waitForAsync();
+      await waitForAsync(10);
 
       expect(authHandler).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -160,7 +160,7 @@ describe('AuthLogin', () => {
       }
 
       // Wait for async operation
-      await waitForAsync();
+      await waitForAsync(10);
 
       expect(mockAuthClient.authenticateWithPassword).toHaveBeenCalledWith(
         'testuser',
@@ -189,7 +189,7 @@ describe('AuthLogin', () => {
       await submitForm(element, 'form');
 
       // Wait for async operation
-      await waitForAsync();
+      await waitForAsync(10);
 
       // Should show error
       const errorText = getTextContent(element, '[data-testid="error-message"]');
@@ -198,7 +198,7 @@ describe('AuthLogin', () => {
 
     it('should disable form while loading', async () => {
       mockAuthClient.authenticateWithPassword.mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 200))
+        () => new Promise((resolve) => setTimeout(resolve, 50))
       );
 
       const submitButton = element.querySelector(
@@ -212,7 +212,7 @@ describe('AuthLogin', () => {
       expect(submitButton?.disabled).toBe(true);
 
       // Wait for completion
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     });
 
     it('should not show password form when disabled', async () => {
@@ -231,7 +231,7 @@ describe('AuthLogin', () => {
       `);
 
       await disabledElement.updateComplete;
-      await waitForAsync();
+      await waitForAsync(10);
 
       const passwordInput = disabledElement.querySelector('input[type="password"]');
       expect(passwordInput).toBeFalsy();
@@ -263,7 +263,7 @@ describe('AuthLogin', () => {
       await clickElement(element, '[data-testid="ssh-login"]');
 
       // Wait for async operation
-      await waitForAsync();
+      await waitForAsync(10);
 
       expect(mockAuthClient.authenticate).toHaveBeenCalledWith('testuser');
       expect(authHandler).toHaveBeenCalledWith(
@@ -288,7 +288,7 @@ describe('AuthLogin', () => {
       await clickElement(element, '[data-testid="ssh-login"]');
 
       // Wait for async operation
-      await waitForAsync();
+      await waitForAsync(10);
 
       // Component shows the error from the auth result
       const errorDiv = element.querySelector('[data-testid="error-message"]');
@@ -312,7 +312,7 @@ describe('AuthLogin', () => {
       `);
 
       await disabledElement.updateComplete;
-      await waitForAsync();
+      await waitForAsync(10);
 
       const sshButton = disabledElement.querySelector('[data-testid="ssh-login"]');
       expect(sshButton).toBeFalsy();
@@ -330,7 +330,7 @@ describe('AuthLogin', () => {
       `);
 
       await errorElement.updateComplete;
-      await waitForAsync();
+      await waitForAsync(10);
 
       const errorText = errorElement.textContent;
       expect(errorText).toContain('Failed to load user information');
@@ -346,7 +346,7 @@ describe('AuthLogin', () => {
       `);
 
       await configElement.updateComplete;
-      await waitForAsync();
+      await waitForAsync(10);
 
       // Should still render with default config
       expect(configElement.querySelector('form')).toBeTruthy();
