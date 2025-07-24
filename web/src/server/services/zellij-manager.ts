@@ -21,6 +21,14 @@ export class ZellijManager {
     this.ptyManager = ptyManager;
   }
 
+  /**
+   * Strip ANSI escape codes from text
+   */
+  private stripAnsiCodes(text: string): string {
+    // eslint-disable-next-line no-control-regex
+    return text.replace(/\x1b\[[0-9;]*m/g, '');
+  }
+
   static getInstance(ptyManager: PtyManager): ZellijManager {
     if (!ZellijManager.instance) {
       ZellijManager.instance = new ZellijManager(ptyManager);
@@ -60,14 +68,29 @@ export class ZellijManager {
         .filter((line) => line.trim());
 
       for (const line of lines) {
-        // Example: "my-session [EXITED]" or "active-session"
-        const exited = line.includes('[EXITED]');
-        const name = line.replace('[EXITED]', '').trim();
+        // Strip ANSI codes first
+        const cleanLine = this.stripAnsiCodes(line).trim();
+        
+        if (!cleanLine) continue;
+
+        // Parse session info
+        // Format: "session-name [Created 15s ago]" or "session-name [EXITED] [Created 1h ago]"
+        const exited = cleanLine.includes('[EXITED]');
+        
+        // Extract session name (everything before the first [)
+        const nameMatch = cleanLine.match(/^([^\[]+)/);
+        if (!nameMatch) continue;
+        
+        const name = nameMatch[1].trim();
+        
+        // Extract created time if available
+        const createdMatch = cleanLine.match(/\[Created ([^\]]+)\]/);
+        const created = createdMatch ? createdMatch[1] : 'unknown';
 
         if (name) {
           sessions.push({
             name,
-            created: 'unknown', // Zellij doesn't provide creation time in list
+            created,
             exited,
           });
         }
