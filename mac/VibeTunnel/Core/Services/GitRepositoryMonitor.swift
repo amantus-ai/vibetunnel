@@ -129,34 +129,34 @@ public final class GitRepositoryMonitor {
     /// - Parameter filePath: Path to a file within a potential Git repository
     /// - Returns: GitRepository information if found, nil otherwise
     public func findRepository(for filePath: String) async -> GitRepository? {
-        print("🔍 [GitRepositoryMonitor] findRepository called for: \(filePath)")
+        logger.info("🔍 findRepository called for: \(filePath)")
 
         // Validate path first
         guard validatePath(filePath) else {
-            print("❌ [GitRepositoryMonitor] Path validation failed for: \(filePath)")
+            logger.warning("❌ Path validation failed for: \(filePath)")
             return nil
         }
 
         // Check cache first
         if let cached = getCachedRepository(for: filePath) {
-            print("📦 [GitRepositoryMonitor] Found cached repository for: \(filePath)")
+            logger.debug("📦 Found cached repository for: \(filePath)")
             return cached
         }
 
         // Find the Git repository root
         guard let repoPath = await findGitRoot(from: filePath) else {
-            print("❌ [GitRepositoryMonitor] No Git root found for: \(filePath)")
+            logger.info("❌ No Git root found for: \(filePath)")
             return nil
         }
 
-        print("✅ [GitRepositoryMonitor] Found Git root at: \(repoPath)")
+        logger.info("✅ Found Git root at: \(repoPath)")
 
         // Check if we already have this repository cached
         let cachedRepo = repositoryCache[repoPath]
         if let cachedRepo {
             // Cache the file->repo mapping
             fileToRepoCache[filePath] = repoPath
-            print("📦 [GitRepositoryMonitor] Using cached repo data for: \(repoPath)")
+            logger.debug("📦 Using cached repo data for: \(repoPath)")
             return cachedRepo
         }
 
@@ -166,9 +166,9 @@ public final class GitRepositoryMonitor {
         // Cache the result by repository path
         if let repository {
             cacheRepository(repository, originalFilePath: filePath)
-            print("✅ [GitRepositoryMonitor] Repository status obtained and cached for: \(repoPath)")
+            logger.info("✅ Repository status obtained and cached for: \(repoPath)")
         } else {
-            print("❌ [GitRepositoryMonitor] Failed to get repository status for: \(repoPath)")
+            logger.error("❌ Failed to get repository status for: \(repoPath)")
         }
 
         return repository
@@ -289,7 +289,7 @@ public final class GitRepositoryMonitor {
                 return response.repoPath
             }
         } catch {
-            print("❌ [GitRepositoryMonitor] Failed to get git repo info: \(error)")
+            logger.error("❌ Failed to get git repo info: \(error)")
         }
 
         return nil
@@ -368,7 +368,7 @@ public final class GitRepositoryMonitor {
                 isWorktree: isWorktree
             )
         } catch {
-            print("❌ [GitRepositoryMonitor] Failed to get git status: \(error)")
+            logger.error("❌ Failed to get git status: \(error)")
             return nil
         }
     }

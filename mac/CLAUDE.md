@@ -8,6 +8,78 @@
 * Use the most modern macOS APIs. Since there is no backward compatibility constraint, this app can target the latest macOS version with the newest APIs.
 * Use the most modern Swift language features and conventions. Target Swift 6 and use Swift concurrency (async/await, actors) and Swift macros where applicable.
 
+## Logging Guidelines
+
+**IMPORTANT**: Never use `print()` statements in production code. Always use the unified logging system with proper Logger instances.
+
+### Setting up Loggers
+
+Each Swift file should declare its own logger at the top of the file:
+
+```swift
+import os.log
+
+private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "CategoryName")
+```
+
+### Log Levels
+
+Choose the appropriate log level based on context:
+
+- **`.debug`** - Detailed information useful only during development/debugging
+  ```swift
+  logger.debug("Detailed state: \(internalState)")
+  ```
+
+- **`.info`** - General informational messages about normal app flow
+  ```swift
+  logger.info("Session created with ID: \(sessionID)")
+  ```
+
+- **`.notice`** - Important events that are part of normal operation
+  ```swift
+  logger.notice("User authenticated successfully")
+  ```
+
+- **`.warning`** - Warnings about potential issues that don't prevent operation
+  ```swift
+  logger.warning("Failed to cache data, continuing without cache")
+  ```
+
+- **`.error`** - Errors that indicate failure but app can continue
+  ```swift
+  logger.error("Failed to load preferences: \(error)")
+  ```
+
+- **`.fault`** - Critical errors that indicate programming mistakes or system failures
+  ```swift
+  logger.fault("Unexpected nil value in required configuration")
+  ```
+
+### Common Patterns
+
+```swift
+// Instead of:
+print("🔍 [GitRepositoryMonitor] findRepository called for: \(filePath)")
+
+// Use:
+logger.info("🔍 findRepository called for: \(filePath)")
+
+// Instead of:
+print("❌ [GitRepositoryMonitor] Failed to get git status: \(error)")
+
+// Use:
+logger.error("❌ Failed to get git status: \(error)")
+```
+
+### Benefits
+
+- Logs are automatically categorized and searchable with `vtlog`
+- Performance optimized (debug logs compiled out in release builds)
+- Privacy-aware (use `\(value, privacy: .public)` when needed)
+- Integrates with Console.app and system log tools
+- Consistent format across the entire codebase
+
 ## Important Build Instructions
 
 ### Xcode Build Process

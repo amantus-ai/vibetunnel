@@ -1,5 +1,8 @@
 import AppKit
 import Foundation
+import os.log
+
+private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "StatusBarIconController")
 
 /// Manages the visual appearance of the status bar item's button.
 ///
@@ -50,7 +53,7 @@ final class StatusBarIconController {
 
         // Always use the same icon - it's already set as a template in the asset catalog
         guard let image = NSImage(named: "menubar") else {
-            print("Warning: menubar icon not found")
+            logger.warning("menubar icon not found")
             return
         }
 

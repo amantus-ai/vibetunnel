@@ -21,7 +21,7 @@ final class TailscaleService {
     private static let apiTimeoutInterval: TimeInterval = 5.0
 
     /// Logger instance for debugging
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "TailscaleService")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "TailscaleService")
 
     /// Indicates if Tailscale app is installed on the system
     private(set) var isInstalled = false

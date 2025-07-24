@@ -1,4 +1,7 @@
 import SwiftUI
+import os.log
+
+private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AutocompleteView")
 
 /// View that displays autocomplete suggestions in a dropdown
 struct AutocompleteView: View {
@@ -326,9 +329,7 @@ struct AutocompleteTextField: View {
                     // Update suggestion visibility based on results - only show if focused
                     if isFocused && !(autocompleteService?.suggestions.isEmpty ?? true) {
                         showSuggestions = true
-                        print(
-                            "[AutocompleteView] Updated with \(autocompleteService?.suggestions.count ?? 0) suggestions"
-                        )
+                        logger.debug("Updated with \(autocompleteService?.suggestions.count ?? 0) suggestions")
 
                         // Try to maintain selection if possible
                         if selectedIndex >= (autocompleteService?.suggestions.count ?? 0) {

@@ -7,7 +7,7 @@ import OSLog
 @MainActor
 final class WindowEnumerator {
     private let logger = Logger(
-        subsystem: "sh.vibetunnel.vibetunnel",
+        subsystem: BundleIdentifiers.loggerSubsystem,
         category: "WindowEnumerator"
     )
 

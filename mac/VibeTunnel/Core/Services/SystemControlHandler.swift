@@ -8,7 +8,7 @@ import OSLog
 /// The handler must be registered during app initialization to handle these messages.
 @MainActor
 final class SystemControlHandler {
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SystemControl")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "SystemControl")
 
     // MARK: - Properties
 

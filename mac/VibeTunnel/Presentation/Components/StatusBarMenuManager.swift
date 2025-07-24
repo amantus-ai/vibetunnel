@@ -2,6 +2,7 @@ import AppKit
 import Observation
 import SwiftUI
 
+#if !SWIFT_PACKAGE
 /// gross hack: https://stackoverflow.com/questions/26004684/nsstatusbarbutton-keep-highlighted?rq=4
 /// Didn't manage to keep the highlighted state reliable active with any other way.
 /// DO NOT CHANGE THIS! Yes, accessing AppDelegate is ugly, but it's the ONLY reliable way
@@ -15,6 +16,7 @@ extension NSStatusBarButton {
         }
     }
 }
+#endif
 
 /// Manages status bar menu behavior, providing left-click custom view and right-click context menu functionality.
 ///

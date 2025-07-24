@@ -37,7 +37,7 @@ struct DebugSettingsView: View {
     @State private var devServerValidation: DevServerValidation = .notValidated
     @State private var devServerManager = DevServerManager.shared
 
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "DebugSettings")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "DebugSettings")
 
     var body: some View {
         NavigationStack {

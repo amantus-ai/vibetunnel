@@ -6,7 +6,7 @@ import OSLog
 final class DevServerManager: ObservableObject {
     static let shared = DevServerManager()
 
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "DevServerManager")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "DevServerManager")
 
     /// Validates a development server path
     func validate(path: String) -> DevServerValidation {
