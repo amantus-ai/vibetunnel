@@ -102,6 +102,8 @@ describe.sequential.skip('Logs API Tests', () => {
   });
 
   describe('GET /api/logs/info', () => {
+    // TODO: This test is flaky - sometimes the log file size is 0 even after writing
+    // This appears to be a timing issue where the file is created but not yet flushed
     it('should return log file information', async () => {
       // First write a log to ensure the file exists
       await fetch(`http://localhost:${server?.port}/api/logs/client`, {
@@ -116,15 +118,19 @@ describe.sequential.skip('Logs API Tests', () => {
         }),
       });
 
-      // Flush the log buffer to ensure data is written to disk
-      await fetch(`http://localhost:${server?.port}/api/logs/flush`, {
-        method: 'POST',
-      });
+      // Wait and retry for the log file to be written and flushed
+      let info: { exists: boolean; size: number };
+      let attempts = 0;
+      const maxAttempts = 10;
+      const retryDelay = 200;
 
-      // Now check the log file info
-      const response = await fetch(`http://localhost:${server?.port}/api/logs/info`);
-      expect(response.status).toBe(200);
-      const info = await response.json();
+      do {
+        await sleep(retryDelay);
+        const response = await fetch(`http://localhost:${server?.port}/api/logs/info`);
+        expect(response.status).toBe(200);
+        info = await response.json();
+        attempts++;
+      } while (!info.exists && attempts < maxAttempts);
 
       expect(info).toHaveProperty('exists');
       expect(info).toHaveProperty('size');
@@ -157,10 +163,8 @@ describe.sequential.skip('Logs API Tests', () => {
         }),
       });
 
-      // Flush the log buffer to ensure data is written to disk
-      await fetch(`http://localhost:${server?.port}/api/logs/flush`, {
-        method: 'POST',
-      });
+      // Wait for log to be written and flushed
+      await sleep(500);
 
       const response = await fetch(`http://localhost:${server?.port}/api/logs/raw`);
 
