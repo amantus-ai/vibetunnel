@@ -34,21 +34,6 @@ class AutocompleteService {
         self.gitMonitor = gitMonitor
     }
 
-    struct PathSuggestion: Identifiable, Equatable {
-        let id = UUID()
-        let name: String
-        let path: String
-        let type: SuggestionType
-        let suggestion: String // The complete path to insert
-        let isRepository: Bool
-        let gitInfo: GitInfo?
-
-        enum SuggestionType {
-            case file
-            case directory
-        }
-    }
-
     /// Fetch autocomplete suggestions for the given path
     func fetchSuggestions(for partialPath: String) async {
         logger.debug("[AutocompleteService] fetchSuggestions called with: '\(partialPath)'")
