@@ -190,12 +190,6 @@ export class MultiplexerModal extends LitElement {
       border-top: 1px solid rgb(var(--color-border));
     }
 
-    .zellij-session-info {
-      padding: 1rem 1rem 1rem 2rem;
-      background: rgb(var(--color-bg));
-      border-top: 1px solid rgb(var(--color-border));
-    }
-
     .attach-button {
       padding: 0.5rem 1rem;
       background: rgb(var(--color-accent-green));
@@ -711,10 +705,11 @@ export class MultiplexerModal extends LitElement {
                                 const isExpanded = this.expandedSessions.has(session.name);
 
                                 return html`
-                        <div class="session-item ${isExpanded ? 'expanded' : ''}">
+                        <div class="session-item ${session.type === 'tmux' && isExpanded ? 'expanded' : ''}">
                           <div
                             class="session-header"
-                            @click=${() => this.toggleSession(session.name)}
+                            @click=${() => session.type === 'tmux' ? this.toggleSession(session.name) : null}
+                            style="cursor: ${session.type === 'tmux' ? 'pointer' : 'default'}"
                           >
                             <div class="session-info">
                               <div class="session-name">${session.name}</div>
@@ -747,27 +742,45 @@ export class MultiplexerModal extends LitElement {
                                   ? html`<div class="status-indicator current" title="Current"></div>`
                                   : null
                               }
-                              <button
-                                class="attach-button"
-                                @click=${(e: Event) => {
-                                  e.stopPropagation();
-                                  this.attachToSession({
-                                    type: session.type,
-                                    session: session.name,
-                                  });
-                                }}
-                              >
-                                Attach
-                              </button>
-                              <span class="expand-icon">▶</span>
+                              ${
+                                session.type === 'tmux'
+                                  ? html`
+                                    <button
+                                      class="attach-button"
+                                      @click=${(e: Event) => {
+                                        e.stopPropagation();
+                                        this.attachToSession({
+                                          type: session.type,
+                                          session: session.name,
+                                        });
+                                      }}
+                                    >
+                                      Attach
+                                    </button>
+                                    <span class="expand-icon">▶</span>
+                                  `
+                                  : html`
+                                    <button
+                                      class="attach-button"
+                                      @click=${(e: Event) => {
+                                        e.stopPropagation();
+                                        this.attachToSession({
+                                          type: session.type,
+                                          session: session.name,
+                                        });
+                                      }}
+                                    >
+                                      Attach to Session
+                                    </button>
+                                  `
+                              }
                             </div>
                           </div>
 
                           ${
-                            isExpanded
-                              ? (session.type === 'tmux' && sessionWindows.length > 0
-                                ? html`
-                                  <div class="windows-list">
+                            session.type === 'tmux' && isExpanded && sessionWindows.length > 0
+                              ? html`
+                                <div class="windows-list">
                                   ${repeat(
                                     sessionWindows,
                                     (window) => `${session.name}-${window.index}`,
@@ -842,21 +855,6 @@ export class MultiplexerModal extends LitElement {
                                   )}
                                 </div>
                               `
-                              : session.type === 'zellij'
-                                ? html`
-                                  <div class="zellij-session-info">
-                                    <button
-                                      class="attach-button"
-                                      @click=${() => this.attachToSession({
-                                        type: 'zellij',
-                                        session: session.name,
-                                      })}
-                                    >
-                                      Attach to Session
-                                    </button>
-                                  </div>
-                                `
-                                : null)
                               : null
                           }
                         </div>
