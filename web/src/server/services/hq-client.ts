@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { v4 as uuidv4 } from 'uuid';
+import { HttpMethod } from '../../shared/types.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('hq-client');
@@ -42,7 +43,7 @@ export class HQClient {
 
     try {
       const response = await fetch(`${this.hqUrl}/api/remotes/register`, {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Basic ${Buffer.from(`${this.hqUsername}:${this.hqPassword}`).toString('base64')}`,
@@ -95,7 +96,7 @@ export class HQClient {
     try {
       // Try to unregister
       const response = await fetch(`${this.hqUrl}/api/remotes/${this.remoteId}`, {
-        method: 'DELETE',
+        method: HttpMethod.DELETE,
         headers: {
           Authorization: `Basic ${Buffer.from(`${this.hqUsername}:${this.hqPassword}`).toString('base64')}`,
         },

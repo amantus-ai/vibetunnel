@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import * as fs from 'fs';
 import * as path from 'path';
+import { HttpMethod } from '../../shared/types.js';
 import type { PtyManager } from '../pty/index.js';
 import { isShuttingDown } from '../server.js';
 import { createLogger } from '../utils/logger.js';
@@ -163,7 +164,7 @@ export class ControlDirWatcher {
     // For now, we'll trigger a session list refresh by calling the HQ's session endpoint
     // This will cause HQ to update its registry with the latest session information
     const response = await fetch(`${hqUrl}/api/remotes/${remoteName}/refresh-sessions`, {
-      method: 'POST',
+      method: HttpMethod.POST,
       headers: {
         'Content-Type': 'application/json',
         Authorization: hqAuth,

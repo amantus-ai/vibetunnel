@@ -13,6 +13,7 @@
 import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Session } from '../../shared/types.js';
+import { HttpMethod } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { sessionActionService } from '../services/session-action-service.js';
 import { isAIAssistantSession, sendAIPrompt } from '../utils/ai-sessions.js';
@@ -271,7 +272,7 @@ export class SessionCard extends LitElement {
   private async handleRename(newName: string) {
     try {
       const response = await fetch(`/api/sessions/${this.session.id}`, {
-        method: 'PATCH',
+        method: HttpMethod.PATCH,
         headers: {
           'Content-Type': 'application/json',
           ...this.authClient.getAuthHeader(),

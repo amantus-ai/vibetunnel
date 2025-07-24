@@ -5,6 +5,7 @@
  * that can be reused across components.
  */
 
+import { HttpMethod } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { createLogger } from './logger.js';
 
@@ -31,7 +32,7 @@ export async function terminateSession(
 
   try {
     const response = await fetch(`/api/sessions/${sessionId}`, {
-      method: 'DELETE',
+      method: HttpMethod.DELETE,
       headers: {
         ...authClient.getAuthHeader(),
       },
@@ -64,7 +65,7 @@ export async function cleanupAllExitedSessions(
 ): Promise<SessionActionResult> {
   try {
     const response = await fetch('/api/cleanup-exited', {
-      method: 'POST',
+      method: HttpMethod.POST,
       headers: {
         ...authClient.getAuthHeader(),
       },

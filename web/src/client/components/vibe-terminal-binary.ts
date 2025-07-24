@@ -12,6 +12,7 @@
  */
 import { html, type PropertyValues } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
+import { HttpMethod } from '../../shared/types.js';
 import { authClient } from '../services/auth-client.js';
 import { consumeEvent } from '../utils/event-utils.js';
 import { createLogger } from '../utils/logger.js';
@@ -348,7 +349,7 @@ export class VibeTerminalBinary extends VibeTerminalBuffer {
       }
 
       await fetch(`/api/sessions/${this.sessionId}/input`, {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers,
         body: JSON.stringify({ text }),
       });

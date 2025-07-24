@@ -1,4 +1,5 @@
 import type { TitleMode } from '../../shared/types.js';
+import { HttpMethod } from '../../shared/types.js';
 import { createLogger } from '../utils/logger.js';
 import type { AuthClient } from './auth-client.js';
 
@@ -42,7 +43,7 @@ export class SessionService {
   async createSession(sessionData: SessionCreateData): Promise<SessionCreateResult> {
     try {
       const response = await fetch('/api/sessions', {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
           ...this.authClient.getAuthHeader(),

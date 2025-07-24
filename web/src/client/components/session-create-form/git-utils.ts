@@ -2,6 +2,7 @@
  * Git-related utility functions for session creation
  */
 
+import { HttpMethod } from '../../../shared/types.js';
 import type { AuthClient } from '../../services/auth-client.js';
 import { createLogger } from '../../utils/logger.js';
 
@@ -72,7 +73,7 @@ export async function enableFollowMode(
 ): Promise<boolean> {
   try {
     const response = await fetch('/api/worktrees/follow', {
-      method: 'POST',
+      method: HttpMethod.POST,
       headers: {
         ...authClient.getAuthHeader(),
         'Content-Type': 'application/json',

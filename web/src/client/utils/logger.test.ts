@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { HttpMethod } from '../../shared/types.js';
 import { clearAuthConfigCache, createLogger, setDebugMode } from './logger.js';
 
 // Mock the auth client module
@@ -95,7 +96,7 @@ describe.sequential('Frontend Logger', () => {
       await vi.waitFor(() => expect(mockFetch).toHaveBeenCalled());
 
       expect(mockFetch).toHaveBeenCalledWith('/api/logs/client', {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer test-token',

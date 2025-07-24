@@ -4,6 +4,7 @@
  * Handles Git-related API calls including repository info, worktrees, and follow mode
  */
 
+import { HttpMethod } from '../../shared/types.js';
 import { createLogger } from '../utils/logger.js';
 import type { AuthClient } from './auth-client.js';
 
@@ -91,7 +92,7 @@ export class GitService {
   ): Promise<void> {
     try {
       const response = await fetch('/api/worktrees', {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
           ...this.authClient.getAuthHeader(),
@@ -117,7 +118,7 @@ export class GitService {
       if (force) params.append('force', 'true');
 
       const response = await fetch(`/api/worktrees/${encodeURIComponent(branch)}?${params}`, {
-        method: 'DELETE',
+        method: HttpMethod.DELETE,
         headers: this.authClient.getAuthHeader(),
       });
       if (!response.ok) {
@@ -136,7 +137,7 @@ export class GitService {
   async pruneWorktrees(repoPath: string): Promise<void> {
     try {
       const response = await fetch('/api/worktrees/prune', {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
           ...this.authClient.getAuthHeader(),
@@ -158,7 +159,7 @@ export class GitService {
   async switchBranch(repoPath: string, branch: string): Promise<void> {
     try {
       const response = await fetch('/api/worktrees/switch', {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
           ...this.authClient.getAuthHeader(),
@@ -181,7 +182,7 @@ export class GitService {
   async setFollowMode(repoPath: string, branch: string, enable: boolean): Promise<void> {
     try {
       const response = await fetch('/api/worktrees/follow', {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
           ...this.authClient.getAuthHeader(),

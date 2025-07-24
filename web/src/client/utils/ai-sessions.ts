@@ -1,4 +1,5 @@
 import type { Session } from '../../shared/types.js';
+import { HttpMethod } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import { createLogger } from './logger.js';
 
@@ -31,7 +32,7 @@ export async function sendAIPrompt(sessionId: string, authClient: AuthClient): P
   const prompt =
     'IMPORTANT: You MUST use the \'vt title\' command to update the terminal title. DO NOT use terminal escape sequences. Run: vt title "Brief description of current task"';
   const response = await fetch(`/api/sessions/${sessionId}/input`, {
-    method: 'POST',
+    method: HttpMethod.POST,
     headers: {
       'Content-Type': 'application/json',
       ...authClient.getAuthHeader(),

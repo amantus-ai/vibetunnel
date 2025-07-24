@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { HttpMethod } from '../../shared/types.js';
 import type { QuickStartCommand } from '../../types/config.js';
 import type { AuthClient } from './auth-client.js';
 import { type ServerConfig, ServerConfigService } from './server-config-service.js';
@@ -141,7 +142,7 @@ describe('ServerConfigService', () => {
       await service.updateQuickStartCommands(newCommands);
 
       expect(fetchMock).toHaveBeenCalledWith('/api/config', {
-        method: 'PUT',
+        method: HttpMethod.PUT,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -165,7 +166,7 @@ describe('ServerConfigService', () => {
       await service.updateQuickStartCommands(commands);
 
       expect(fetchMock).toHaveBeenCalledWith('/api/config', {
-        method: 'PUT',
+        method: HttpMethod.PUT,
         headers: {
           'Content-Type': 'application/json',
         },

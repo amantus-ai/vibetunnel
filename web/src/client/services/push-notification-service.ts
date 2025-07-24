@@ -1,4 +1,5 @@
 import type { PushNotificationPreferences, PushSubscription } from '../../shared/types';
+import { HttpMethod } from '../../shared/types';
 import { createLogger } from '../utils/logger';
 import { authClient } from './auth-client';
 
@@ -454,7 +455,7 @@ export class PushNotificationService {
   private async sendSubscriptionToServer(subscription: PushSubscription): Promise<void> {
     try {
       const response = await fetch('/api/push/subscribe', {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -475,7 +476,7 @@ export class PushNotificationService {
   private async removeSubscriptionFromServer(): Promise<void> {
     try {
       const response = await fetch('/api/push/unsubscribe', {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -581,7 +582,7 @@ export class PushNotificationService {
   async sendTestNotification(message?: string): Promise<void> {
     try {
       const response = await fetch('/api/push/test', {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
         },

@@ -7,6 +7,7 @@
  * - Server configuration status
  */
 import { DEFAULT_REPOSITORY_BASE_PATH } from '../../shared/constants.js';
+import { HttpMethod } from '../../shared/types.js';
 import type { QuickStartCommand } from '../../types/config.js';
 import { createLogger } from '../utils/logger.js';
 import type { AuthClient } from './auth-client.js';
@@ -110,7 +111,7 @@ export class ServerConfigService {
 
     try {
       const response = await fetch('/api/config', {
-        method: 'PUT',
+        method: HttpMethod.PUT,
         headers: {
           'Content-Type': 'application/json',
           ...(this.authClient ? this.authClient.getAuthHeader() : {}),
@@ -166,7 +167,7 @@ export class ServerConfigService {
 
     try {
       const response = await fetch('/api/config', {
-        method: 'PUT',
+        method: HttpMethod.PUT,
         headers: {
           'Content-Type': 'application/json',
           ...(this.authClient ? this.authClient.getAuthHeader() : {}),

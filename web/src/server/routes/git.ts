@@ -3,6 +3,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 import { SessionManager } from '../pty/session-manager.js';
 import { createGitError, isGitNotFoundError, isNotGitRepositoryError } from '../utils/git-error.js';
+import { isWorktree } from '../utils/git-utils.js';
 import { createLogger } from '../utils/logger.js';
 import { resolveAbsolutePath } from '../utils/path-utils.js';
 import { createControlEvent } from '../websocket/control-protocol.js';
@@ -835,6 +836,9 @@ export function createGitRoutes(): Router {
         });
         const repoPath = repoPathOutput.trim();
 
+        // Check if this is a worktree
+        const worktreeStatus = await isWorktree(repoPath);
+
         // Gather all information in parallel
         const [branchResult, statusResult, remoteResult, aheadBehindResult] =
           await Promise.allSettled([
@@ -928,6 +932,7 @@ export function createGitRoutes(): Router {
           aheadCount,
           behindCount,
           hasUpstream,
+          isWorktree: worktreeStatus,
         });
       } catch (error) {
         if (isNotGitRepositoryError(error)) {

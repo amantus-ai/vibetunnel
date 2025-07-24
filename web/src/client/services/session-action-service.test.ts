@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Session } from '../../shared/types.js';
+import { HttpMethod, type Session } from '../../shared/types.js';
 import type { AuthClient } from './auth-client.js';
 import { sessionActionService } from './session-action-service.js';
 
@@ -334,7 +334,7 @@ describe('SessionActionService', () => {
       expect(result.success).toBe(true);
       expect(onSuccess).toHaveBeenCalledWith('delete', 'test-id');
       expect(fetch).toHaveBeenCalledWith('/api/sessions/test-id', {
-        method: 'DELETE',
+        method: HttpMethod.DELETE,
         headers: { Authorization: 'Bearer test-token' },
       });
       expect(window.dispatchEvent).toHaveBeenCalledWith(

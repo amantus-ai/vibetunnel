@@ -5,6 +5,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 import { cellsToText } from '../../shared/terminal-text-formatter.js';
 import type { ServerStatus, Session, SessionActivity, TitleMode } from '../../shared/types.js';
+import { HttpMethod } from '../../shared/types.js';
 import { PtyError, type PtyManager } from '../pty/index.js';
 import type { ActivityMonitor } from '../services/activity-monitor.js';
 import type { RemoteRegistry } from '../services/remote-registry.js';
@@ -283,7 +284,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         // Forward the request to the remote server
         const startTime = Date.now();
         const response = await fetch(`${remote.url}/api/sessions`, {
-          method: 'POST',
+          method: HttpMethod.POST,
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${remote.token}`,
@@ -579,7 +580,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
           // Forward kill request to remote server
           try {
             const response = await fetch(`${remote.url}/api/sessions/${sessionId}`, {
-              method: 'DELETE',
+              method: HttpMethod.DELETE,
               headers: {
                 Authorization: `Bearer ${remote.token}`,
               },
@@ -642,7 +643,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
           // Forward cleanup request to remote server
           try {
             const response = await fetch(`${remote.url}/api/sessions/${sessionId}/cleanup`, {
-              method: 'DELETE',
+              method: HttpMethod.DELETE,
               headers: {
                 Authorization: `Bearer ${remote.token}`,
               },
@@ -706,7 +707,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         const remoteCleanupPromises = allRemotes.map(async (remote) => {
           try {
             const response = await fetch(`${remote.url}/api/cleanup-exited`, {
-              method: 'POST',
+              method: HttpMethod.POST,
               headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${remote.token}`,
@@ -1062,7 +1063,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
           // Forward input to remote server
           try {
             const response = await fetch(`${remote.url}/api/sessions/${sessionId}/input`, {
-              method: 'POST',
+              method: HttpMethod.POST,
               headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${remote.token}`,
@@ -1137,7 +1138,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
           // Forward resize to remote server
           try {
             const response = await fetch(`${remote.url}/api/sessions/${sessionId}/resize`, {
-              method: 'POST',
+              method: HttpMethod.POST,
               headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${remote.token}`,
@@ -1209,7 +1210,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
           // Forward update to remote server
           try {
             const response = await fetch(`${remote.url}/api/sessions/${sessionId}`, {
-              method: 'PATCH',
+              method: HttpMethod.PATCH,
               headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${remote.token}`,
@@ -1268,7 +1269,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         if (remote) {
           logger.debug(`forwarding reset-size to remote ${remote.id}`);
           const response = await fetch(`${remote.url}/api/sessions/${sessionId}/reset-size`, {
-            method: 'POST',
+            method: HttpMethod.POST,
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${remote.token}`,

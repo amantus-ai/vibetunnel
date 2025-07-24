@@ -12,6 +12,7 @@ import { keyed } from 'lit/directives/keyed.js';
 
 // Import shared types
 import type { Session } from '../shared/types.js';
+import { HttpMethod } from '../shared/types.js';
 import { isBrowserShortcut } from './utils/browser-shortcuts.js';
 // Import utilities
 import { BREAKPOINTS, SIDEBAR, TIMING, TRANSITIONS, Z_INDEX } from './utils/constants.js';
@@ -955,7 +956,7 @@ export class VibeTunnelApp extends LitElement {
     const killPromises = runningSessions.map(async (session) => {
       try {
         const response = await fetch(`/api/sessions/${session.id}`, {
-          method: 'DELETE',
+          method: HttpMethod.DELETE,
           headers: {
             ...authClient.getAuthHeader(),
           },

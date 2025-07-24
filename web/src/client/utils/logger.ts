@@ -1,3 +1,5 @@
+import { HttpMethod } from '../../shared/types.js';
+
 interface LogLevel {
   log: 'log';
   warn: 'warn';
@@ -112,7 +114,7 @@ async function sendToServer(level: keyof LogLevel, module: string, args: unknown
     }
 
     await fetch('/api/logs/client', {
-      method: 'POST',
+      method: HttpMethod.POST,
       headers,
       body: JSON.stringify({
         level,

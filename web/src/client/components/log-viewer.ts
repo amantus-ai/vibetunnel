@@ -1,5 +1,6 @@
 import { html, LitElement, type TemplateResult } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { HttpMethod } from '../../shared/types.js';
 import { authClient } from '../services/auth-client.js';
 
 interface LogEntry {
@@ -177,7 +178,7 @@ export class LogViewer extends LitElement {
 
     try {
       const response = await fetch('/api/logs/clear', {
-        method: 'DELETE',
+        method: HttpMethod.DELETE,
         headers: { ...authClient.getAuthHeader() },
       });
       if (!response.ok) {

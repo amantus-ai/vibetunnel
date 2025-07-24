@@ -6,6 +6,7 @@
  */
 
 import type { Session } from '../../../shared/types.js';
+import { HttpMethod } from '../../../shared/types.js';
 import { authClient } from '../../services/auth-client.js';
 import { websocketInputClient } from '../../services/websocket-input-client.js';
 import { isBrowserShortcut, isCopyPasteShortcut } from '../../utils/browser-shortcuts.js';
@@ -212,7 +213,7 @@ export class InputManager {
       // Fallback to HTTP if WebSocket failed
       logger.debug('WebSocket unavailable, falling back to HTTP');
       const response = await fetch(`/api/sessions/${this.session.id}/input`, {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
           ...authClient.getAuthHeader(),

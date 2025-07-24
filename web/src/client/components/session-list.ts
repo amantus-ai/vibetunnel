@@ -20,6 +20,7 @@ import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import type { Session } from '../../shared/types.js';
+import { HttpMethod } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
 import './session-card.js';
 import './inline-edit.js';
@@ -279,7 +280,7 @@ export class SessionList extends LitElement {
 
     try {
       const response = await fetch('/api/cleanup-exited', {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           ...this.authClient.getAuthHeader(),
         },
@@ -415,7 +416,7 @@ export class SessionList extends LitElement {
 
     try {
       const response = await fetch('/api/repositories/follow-mode', {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
           ...this.authClient.getAuthHeader(),
@@ -590,7 +591,7 @@ export class SessionList extends LitElement {
     try {
       // Create a new session in the worktree
       const response = await fetch('/api/sessions', {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
           ...this.authClient.getAuthHeader(),

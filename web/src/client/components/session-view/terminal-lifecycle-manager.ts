@@ -6,6 +6,7 @@
  */
 
 import type { Session } from '../../../shared/types.js';
+import { HttpMethod } from '../../../shared/types.js';
 import { authClient } from '../../services/auth-client.js';
 import { createLogger } from '../../utils/logger.js';
 import type { TerminalThemeId } from '../../utils/terminal-themes.js';
@@ -191,7 +192,7 @@ export class TerminalLifecycleManager {
           );
 
           const response = await fetch(`/api/sessions/${this.session.id}/resize`, {
-            method: 'POST',
+            method: HttpMethod.POST,
             headers: {
               'Content-Type': 'application/json',
               ...authClient.getAuthHeader(),
@@ -231,7 +232,7 @@ export class TerminalLifecycleManager {
 
     try {
       const response = await fetch(`/api/sessions/${this.session.id}/reset-size`, {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
           ...authClient.getAuthHeader(),

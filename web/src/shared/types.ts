@@ -3,6 +3,19 @@
  */
 
 /**
+ * HTTP methods enum
+ */
+export enum HttpMethod {
+  GET = 'GET',
+  POST = 'POST',
+  PUT = 'PUT',
+  DELETE = 'DELETE',
+  PATCH = 'PATCH',
+  HEAD = 'HEAD',
+  OPTIONS = 'OPTIONS',
+}
+
+/**
  * Session status enum
  */
 export type SessionStatus = 'starting' | 'running' | 'exited';

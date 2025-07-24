@@ -31,6 +31,7 @@
  */
 
 import type { Session } from '../../shared/types.js';
+import { HttpMethod } from '../../shared/types.js';
 import { createLogger } from '../utils/logger.js';
 import type { SessionActionResult } from '../utils/session-actions.js';
 import { terminateSession as terminateSessionUtil } from '../utils/session-actions.js';
@@ -327,7 +328,7 @@ class SessionActionService {
   ): Promise<SessionActionResult> {
     try {
       const response = await fetch(`/api/sessions/${sessionId}`, {
-        method: 'DELETE',
+        method: HttpMethod.DELETE,
         headers: {
           ...options.authClient.getAuthHeader(),
         },

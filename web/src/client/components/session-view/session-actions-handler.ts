@@ -8,6 +8,7 @@
  * - View mode toggling (terminal vs worktree)
  */
 import type { Session } from '../../../shared/types.js';
+import { HttpMethod } from '../../../shared/types.js';
 import { authClient } from '../../services/auth-client.js';
 import { sessionActionService } from '../../services/session-action-service.js';
 import { createLogger } from '../../utils/logger.js';
@@ -41,7 +42,7 @@ export class SessionActionsHandler {
 
     try {
       const response = await fetch(`/api/sessions/${sessionId}`, {
-        method: 'PATCH',
+        method: HttpMethod.PATCH,
         headers: {
           'Content-Type': 'application/json',
           ...authClient.getAuthHeader(),

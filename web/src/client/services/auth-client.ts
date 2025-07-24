@@ -1,3 +1,4 @@
+import { HttpMethod } from '../../shared/types.js';
 import { createLogger } from '../utils/logger.js';
 import { BrowserSSHAgent } from './ssh-agent.js';
 
@@ -147,7 +148,7 @@ export class AuthClient {
 
       // Send authentication request
       const response = await fetch('/api/auth/ssh-key', {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           challengeId: challenge.challengeId,
@@ -185,7 +186,7 @@ export class AuthClient {
   async authenticateWithPassword(userId: string, password: string): Promise<AuthResponse> {
     try {
       const response = await fetch('/api/auth/password', {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, password }),
       });
@@ -256,7 +257,7 @@ export class AuthClient {
       // Call server logout endpoint
       if (this.currentUser?.token) {
         await fetch('/api/auth/logout', {
-          method: 'POST',
+          method: HttpMethod.POST,
           headers: {
             Authorization: `Bearer ${this.currentUser.token}`,
             'Content-Type': 'application/json',
@@ -341,7 +342,7 @@ export class AuthClient {
 
   private async createChallenge(userId: string): Promise<Challenge> {
     const response = await fetch('/api/auth/challenge', {
-      method: 'POST',
+      method: HttpMethod.POST,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId }),
     });

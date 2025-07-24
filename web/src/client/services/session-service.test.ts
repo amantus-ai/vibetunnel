@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TitleMode } from '../../shared/types';
+import { HttpMethod, TitleMode } from '../../shared/types';
 import type { AuthClient } from './auth-client';
 import { type SessionCreateData, SessionService } from './session-service';
 
@@ -54,7 +54,7 @@ describe('SessionService', () => {
       const result = await service.createSession(mockSessionData);
 
       expect(fetchMock).toHaveBeenCalledWith('/api/sessions', {
-        method: 'POST',
+        method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer test-token',
