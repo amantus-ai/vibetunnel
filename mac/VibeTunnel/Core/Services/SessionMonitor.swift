@@ -61,7 +61,7 @@ final class SessionMonitor {
     private var lastFetch: Date?
     private let cacheInterval: TimeInterval = 2.0
     private let serverManager = ServerManager.shared
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SessionMonitor")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "SessionMonitor")
 
     /// Reference to GitRepositoryMonitor for pre-caching
     weak var gitRepositoryMonitor: GitRepositoryMonitor?
@@ -76,7 +76,6 @@ final class SessionMonitor {
 
     /// Set the local auth token for server requests
     func setLocalAuthToken(_ token: String?) {
-        // No longer needed - ServerManager handles authentication
     }
 
     /// Number of running sessions
