@@ -160,7 +160,7 @@ Visit [http://localhost:4020](http://localhost:4020) to see all your terminal se
 - **🤖 AI Agent Friendly** - Perfect for monitoring Claude Code, ChatGPT, or any terminal-based AI tools
 - **📊 Dynamic Terminal Titles** - Real-time activity tracking shows what's happening in each session
 - **🔄 Git Follow Mode** - Terminal automatically follows your IDE's branch switching
-- **⌨️ Smart Keyboard Handling** - Intelligent shortcut routing with toggleable capture modes
+- **⌨️ Smart Keyboard Handling** - Intelligent shortcut routing with toggleable capture modes. When capture is active, use Cmd+1-9/0 (Mac) or Ctrl+1-9/0 (Linux) to quickly switch between sessions
 - **🔒 Secure by Design** - Multiple authentication modes, localhost-only mode, or secure tunneling via Tailscale/ngrok
 - **📱 Mobile Ready** - Native iOS app and responsive web interface for phones and tablets
 - **🎬 Session Recording** - All sessions recorded in asciinema format for later playback

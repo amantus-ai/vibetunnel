@@ -33,6 +33,7 @@ export class FileOperationsManager {
   private callbacks: FileOperationsCallbacks | null = null;
   private dragCounter = 0;
   private dragLeaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private globalDragOverTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Bound event handlers for cleanup
   private boundHandleDragOver: (e: DragEvent) => void;
@@ -40,6 +41,8 @@ export class FileOperationsManager {
   private boundHandleDragLeave: (e: DragEvent) => void;
   private boundHandleDrop: (e: DragEvent) => void;
   private boundHandlePaste: (e: ClipboardEvent) => void;
+  private boundHandleDragEnd: (e: DragEvent) => void;
+  private boundGlobalDragOver: (e: DragEvent) => void;
 
   constructor() {
     // Bind event handlers
@@ -48,6 +51,8 @@ export class FileOperationsManager {
     this.boundHandleDragLeave = this.handleDragLeave.bind(this);
     this.boundHandleDrop = this.handleDrop.bind(this);
     this.boundHandlePaste = this.handlePaste.bind(this);
+    this.boundHandleDragEnd = this.handleDragEnd.bind(this);
+    this.boundGlobalDragOver = this.handleGlobalDragOver.bind(this);
   }
 
   setCallbacks(callbacks: FileOperationsCallbacks): void {
@@ -60,6 +65,10 @@ export class FileOperationsManager {
     element.addEventListener('dragleave', this.boundHandleDragLeave);
     element.addEventListener('drop', this.boundHandleDrop);
     document.addEventListener('paste', this.boundHandlePaste);
+    // Add dragend to handle cancelled drag operations
+    document.addEventListener('dragend', this.boundHandleDragEnd);
+    // Add global dragover to detect when dragging outside our element
+    document.addEventListener('dragover', this.boundGlobalDragOver, true);
   }
 
   removeEventListeners(element: HTMLElement): void {
@@ -68,11 +77,17 @@ export class FileOperationsManager {
     element.removeEventListener('dragleave', this.boundHandleDragLeave);
     element.removeEventListener('drop', this.boundHandleDrop);
     document.removeEventListener('paste', this.boundHandlePaste);
+    document.removeEventListener('dragend', this.boundHandleDragEnd);
+    document.removeEventListener('dragover', this.boundGlobalDragOver, true);
 
-    // Clear any pending drag leave timer
+    // Clear any pending timers
     if (this.dragLeaveTimer) {
       clearTimeout(this.dragLeaveTimer);
       this.dragLeaveTimer = null;
+    }
+    if (this.globalDragOverTimer) {
+      clearTimeout(this.globalDragOverTimer);
+      this.globalDragOverTimer = null;
     }
 
     // Reset drag state
@@ -249,10 +264,14 @@ export class FileOperationsManager {
     e.preventDefault();
     e.stopPropagation();
 
-    // Clear any pending drag leave timer
+    // Clear any pending timers
     if (this.dragLeaveTimer) {
       clearTimeout(this.dragLeaveTimer);
       this.dragLeaveTimer = null;
+    }
+    if (this.globalDragOverTimer) {
+      clearTimeout(this.globalDragOverTimer);
+      this.globalDragOverTimer = null;
     }
 
     // Check if the drag contains files
@@ -329,6 +348,45 @@ export class FileOperationsManager {
       } catch (error) {
         logger.error(`Failed to upload file: ${file.name}`, error);
       }
+    }
+  }
+
+  handleDragEnd(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Clear any pending drag leave timer
+    if (this.dragLeaveTimer) {
+      clearTimeout(this.dragLeaveTimer);
+      this.dragLeaveTimer = null;
+    }
+
+    // Reset drag state when drag operation ends (e.g., user cancels with ESC)
+    this.dragCounter = 0;
+    if (this.callbacks) {
+      this.callbacks.setIsDragOver(false);
+    }
+
+    logger.debug('Drag operation ended, resetting drag state');
+  }
+
+  handleGlobalDragOver(e: DragEvent): void {
+    // Clear any existing timer
+    if (this.globalDragOverTimer) {
+      clearTimeout(this.globalDragOverTimer);
+      this.globalDragOverTimer = null;
+    }
+
+    // If we have an active drag state, set a timer to clear it if no drag events occur
+    if (this.callbacks && this.dragCounter > 0) {
+      this.globalDragOverTimer = setTimeout(() => {
+        // If no drag events have occurred for 500ms, assume the drag left the window
+        this.dragCounter = 0;
+        if (this.callbacks) {
+          this.callbacks.setIsDragOver(false);
+        }
+        logger.debug('No drag events detected, clearing drag state');
+      }, 500);
     }
   }
 

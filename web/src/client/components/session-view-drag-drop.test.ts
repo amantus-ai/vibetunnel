@@ -267,6 +267,32 @@ describe('SessionView Drag & Drop and Paste', () => {
       expect((element as any)['uiStateManager'].getState().isDragOver).toBe(false);
     });
 
+    it('should hide drag overlay when drag operation is cancelled (dragend)', async () => {
+      // First, trigger drag over to set isDragOver to true
+      const dragOverEvent = createDragEvent('dragover', true);
+      element.dispatchEvent(dragOverEvent);
+      await element.updateComplete;
+      // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property
+      const uiStateManager = (element as any)['uiStateManager'];
+      expect(uiStateManager.getState().isDragOver).toBe(true);
+
+      // Simulate drag end event (e.g., user presses ESC or drags outside window)
+      const dragEndEvent = new DragEvent('dragend', {
+        bubbles: true,
+        cancelable: true,
+      });
+
+      // Dispatch dragend on the document since that's where it's registered
+      document.dispatchEvent(dragEndEvent);
+      await element.updateComplete;
+
+      // Dragend should clear the drag state
+      // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property
+      expect((element as any)['uiStateManager'].getState().isDragOver).toBe(false);
+    });
+
     it('should keep drag overlay when dragging within the element', async () => {
       // First, trigger drag over to set isDragOver to true
       const dragOverEvent = createDragEvent('dragover', true);

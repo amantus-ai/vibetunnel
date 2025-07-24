@@ -248,16 +248,8 @@ export class CompactSessionCard extends LitElement {
           ${
             this.sessionType === 'active' && session.activityStatus?.specificStatus
               ? html`
-                <div class="text-xs text-status-warning truncate mt-1 flex items-center gap-1">
+                <div class="text-xs text-status-warning truncate mt-1">
                   <span class="flex-shrink-0">${session.activityStatus.specificStatus.status}</span>
-                  ${
-                    session.activityStatus.specificStatus.app
-                      ? html`
-                        <span class="text-text-muted/50">·</span>
-                        <span class="text-text-muted">${session.activityStatus.specificStatus.app}</span>
-                      `
-                      : ''
-                  }
                 </div>
               `
               : ''

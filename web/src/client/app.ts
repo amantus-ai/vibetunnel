@@ -83,6 +83,10 @@ export class VibeTunnelApp extends LitElement {
   private responsiveObserverInitialized = false;
   private initialRenderComplete = false;
   private sidebarAnimationReady = false;
+  // Session caching to reduce re-renders
+  private _cachedSelectedSession: Session | undefined;
+  private _cachedSelectedSessionId: string | null = null;
+  private _lastLoggedView: string | null = null;
 
   private hotReloadWs: WebSocket | null = null;
   private errorTimeoutId: number | null = null;
@@ -180,6 +184,40 @@ export class VibeTunnelApp extends LitElement {
 
   private handleKeyDown = (e: KeyboardEvent) => {
     const isMacOS = navigator.platform.toLowerCase().includes('mac');
+
+    // Handle Cmd/Ctrl+1234567890 for session switching when keyboard capture is active
+    if (this.currentView === 'session' && this.keyboardCaptureActive) {
+      const primaryModifier = isMacOS ? e.metaKey : e.ctrlKey;
+      const wrongModifier = isMacOS ? e.ctrlKey : e.metaKey;
+
+      if (primaryModifier && !wrongModifier && !e.shiftKey && !e.altKey && /^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Get the session number (1-9, 0 = 10)
+        const sessionNumber = e.key === '0' ? 10 : Number.parseInt(e.key);
+
+        // Get visible sessions in the same order as the session list
+        const activeSessions = this.sessions.filter(
+          (session) => session.status === 'running' && session.activityStatus?.isActive !== false
+        );
+
+        // Check if the requested session exists
+        if (sessionNumber > 0 && sessionNumber <= activeSessions.length) {
+          const targetSession = activeSessions[sessionNumber - 1];
+          if (targetSession) {
+            logger.log(`Switching to session ${sessionNumber}: ${targetSession.name}`);
+            this.handleNavigateToSession(
+              new CustomEvent('navigate-to-session', {
+                detail: { sessionId: targetSession.id },
+              })
+            );
+          }
+        }
+
+        return;
+      }
+    }
 
     // Check if we're capturing and what the shortcut would do
     const checkCapturedShortcut = (): {
@@ -597,6 +635,9 @@ export class VibeTunnelApp extends LitElement {
 
           if (hasSessionChanges) {
             this.sessions = updatedSessions;
+            // Clear session cache when sessions change
+            this._cachedSelectedSession = undefined;
+            this._cachedSelectedSessionId = null;
           }
           this.clearError();
 
@@ -1453,7 +1494,19 @@ export class VibeTunnelApp extends LitElement {
   }
 
   private get selectedSession(): Session | undefined {
-    return this.sessions.find((s) => s.id === this.selectedSessionId);
+    // Use cached value if session ID hasn't changed
+    if (this._cachedSelectedSessionId === this.selectedSessionId && this._cachedSelectedSession) {
+      // Verify the cached session still exists in the sessions array
+      const stillExists = this.sessions.find((s) => s.id === this._cachedSelectedSession?.id);
+      if (stillExists === this._cachedSelectedSession) {
+        return this._cachedSelectedSession;
+      }
+    }
+
+    // Recalculate and cache
+    this._cachedSelectedSessionId = this.selectedSessionId;
+    this._cachedSelectedSession = this.sessions.find((s) => s.id === this.selectedSessionId);
+    return this._cachedSelectedSession;
   }
 
   private get sidebarClasses(): string {
@@ -1578,16 +1631,23 @@ export class VibeTunnelApp extends LitElement {
     const showSplitView = this.showSplitView;
     const selectedSession = this.selectedSession;
 
-    logger.log('🎨 App render()', {
-      currentView: this.currentView,
-      showSplitView,
-      selectedSessionId: this.selectedSessionId,
-      selectedSession: selectedSession
-        ? { id: selectedSession.id, status: selectedSession.status }
-        : null,
-      isAuthenticated: this.isAuthenticated,
-      sessionCount: this.sessions.length,
-    });
+    // Reduced logging frequency - only log when view changes
+    const shouldLog = this.currentView !== this._lastLoggedView;
+
+    if (shouldLog) {
+      logger.log('🎨 App render()', {
+        currentView: this.currentView,
+        showSplitView,
+        selectedSessionId: this.selectedSessionId,
+        selectedSession: selectedSession
+          ? { id: selectedSession.id, status: selectedSession.status }
+          : null,
+        isAuthenticated: this.isAuthenticated,
+        sessionCount: this.sessions.length,
+        cacheHit: this._cachedSelectedSessionId === this.selectedSessionId,
+      });
+      this._lastLoggedView = this.currentView;
+    }
 
     return html`
       <!-- Error notification overlay -->

@@ -34,8 +34,10 @@ These shortcuts always work, regardless of keyboard capture state:
 | ⌘T | Ctrl+T | New tab |
 | ⌘W | Ctrl+W | Close tab |
 | ⌘⇧T | Ctrl+Shift+T | Reopen closed tab |
-| ⌘1-9 | Ctrl+1-9 | Switch to tab 1-9 |
-| ⌘0 | Ctrl+0 | Switch to last tab |
+| ⌘1-9 | Ctrl+1-9 | Switch to tab 1-9* |
+| ⌘0 | Ctrl+0 | Switch to last tab* |
+
+*When keyboard capture is active in session view, these shortcuts switch between VibeTunnel sessions instead of browser tabs
 
 ### Window Management
 | macOS | Windows/Linux | Action |
@@ -71,6 +73,14 @@ These shortcuts always work, regardless of keyboard capture state:
 | ⌘O | Ctrl+O | Browse files | List view |
 | ⌘B | Ctrl+B | Toggle sidebar | Any view |
 | Escape | Escape | Return to list | Session/File browser |
+
+### Session Switching (When Keyboard Capture Active)
+| macOS | Windows/Linux | Action | Context |
+|-------|---------------|--------|---------|
+| ⌘1-9 | Ctrl+1-9 | Switch to session 1-9 | Session view with capture ON |
+| ⌘0 | Ctrl+0 | Switch to session 10 | Session view with capture ON |
+
+**Note**: When keyboard capture is active in session view, number shortcuts switch between VibeTunnel sessions instead of browser tabs. The session numbers correspond to the numbers shown in the session list. This allows quick navigation between active sessions without leaving the keyboard.
 
 ## Terminal Shortcuts (When Capture Active)
 
@@ -154,8 +164,9 @@ These shortcuts perform browser actions:
 
 1. **Double-tap Escape** to quickly toggle between terminal and browser shortcuts
 2. **Critical shortcuts** (new tab, close tab, copy/paste) always work
-3. **Tab switching** (⌘1-9, ⌘0) always works for quick navigation
-4. When unsure, check the keyboard icon in the session header to see capture state
+3. **Session switching** (⌘1-9, ⌘0) - When keyboard capture is ON in session view, quickly switch between active sessions
+4. **Tab switching** (⌘1-9, ⌘0) - When keyboard capture is OFF, switch browser tabs as usual
+5. When unsure, check the keyboard icon in the session header to see capture state
 
 ## Troubleshooting
 

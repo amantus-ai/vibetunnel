@@ -441,7 +441,10 @@ export class SessionView extends LitElement {
     // Set up lifecycle (replaces the extracted lifecycle logic)
     this.lifecycleEventManager.setupLifecycle();
 
-    // Create bound event handlers for drag & drop
+    // Use FileOperationsManager's event setup which includes dragend and global dragover
+    this.fileOperationsManager.setupEventListeners(this);
+
+    // Store references for cleanup
     this.boundHandleDragOver = this.fileOperationsManager.handleDragOver.bind(
       this.fileOperationsManager
     );
@@ -453,13 +456,6 @@ export class SessionView extends LitElement {
     );
     this.boundHandleDrop = this.fileOperationsManager.handleDrop.bind(this.fileOperationsManager);
     this.boundHandlePaste = this.fileOperationsManager.handlePaste.bind(this.fileOperationsManager);
-
-    // Add drag & drop and paste event listeners
-    this.addEventListener('dragover', this.boundHandleDragOver);
-    this.addEventListener('dragenter', this.boundHandleDragEnter);
-    this.addEventListener('dragleave', this.boundHandleDragLeave);
-    this.addEventListener('drop', this.boundHandleDrop);
-    document.addEventListener('paste', this.boundHandlePaste);
   }
 
   disconnectedCallback() {
@@ -474,12 +470,8 @@ export class SessionView extends LitElement {
     // Remove binary mode listener
     window.removeEventListener('terminal-binary-mode-changed', this.handleBinaryModeChange);
 
-    // Remove drag & drop and paste event listeners
-    if (this.boundHandleDragOver) this.removeEventListener('dragover', this.boundHandleDragOver);
-    if (this.boundHandleDragEnter) this.removeEventListener('dragenter', this.boundHandleDragEnter);
-    if (this.boundHandleDragLeave) this.removeEventListener('dragleave', this.boundHandleDragLeave);
-    if (this.boundHandleDrop) this.removeEventListener('drop', this.boundHandleDrop);
-    if (this.boundHandlePaste) document.removeEventListener('paste', this.boundHandlePaste);
+    // Remove drag & drop and paste event listeners using FileOperationsManager
+    this.fileOperationsManager.removeEventListeners(this);
 
     // Reset drag state
     this.fileOperationsManager.resetDragState();
