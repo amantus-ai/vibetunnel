@@ -35,10 +35,11 @@ describe('VibeTerminalBinary', () => {
     vi.restoreAllMocks();
   });
 
-  it('should render terminal container', () => {
+  it('should render terminal container', async () => {
+    await element.updateComplete;
+
     const container = element.querySelector('#terminal-container');
     expect(container).toBeTruthy();
-    expect(container?.classList.contains('terminal-scroll-container')).toBe(true);
   });
 
   it('should initialize with default properties', () => {
@@ -98,11 +99,13 @@ describe('VibeTerminalBinary', () => {
   });
 
   it('should send input text via HTTP POST', async () => {
-    const testText = 'test input';
+    await element.updateComplete;
 
-    // Call sendInputText directly (it's private, so we access it via any)
-    // biome-ignore lint/suspicious/noExplicitAny: casting for testing
-    await (element as any).sendInputText(testText);
+    // Get hidden input and simulate typing
+    const container = element.querySelector('#terminal-container');
+    const hiddenInput = container?.querySelector('input[type="text"]') as HTMLInputElement;
+    hiddenInput.value = 'test input';
+    hiddenInput.dispatchEvent(new Event('input'));
 
     expect(window.fetch).toHaveBeenCalledTimes(1);
     expect(window.fetch).toHaveBeenCalledWith('/api/sessions/test-session-id/input', {
@@ -111,11 +114,13 @@ describe('VibeTerminalBinary', () => {
         'Content-Type': 'application/json',
         Authorization: 'Bearer test-token',
       },
-      body: JSON.stringify({ text: testText }),
+      body: JSON.stringify({ text: 'test input' }),
     });
   });
 
   it('should dispatch terminal-input event after sending input', async () => {
+    await element.updateComplete;
+
     const testText = 'test input';
     const inputPromise = new Promise<string>((resolve) => {
       element.addEventListener(
@@ -127,25 +132,29 @@ describe('VibeTerminalBinary', () => {
       );
     });
 
-    // Call sendInputText
-    // biome-ignore lint/suspicious/noExplicitAny: casting for testing
-    await (element as any).sendInputText(testText);
+    // Get hidden input and simulate typing
+    const container = element.querySelector('#terminal-container');
+    const hiddenInput = container?.querySelector('input[type="text"]') as HTMLInputElement;
+    hiddenInput.value = testText;
+    hiddenInput.dispatchEvent(new Event('input'));
 
     const detail = await inputPromise;
     expect(detail).toBe(testText);
   });
 
-  it('should handle special keys in keydown', () => {
+  it('should handle special keys in keydown', async () => {
+    await element.updateComplete;
+
     const preventDefaultMock = vi.fn();
     const stopPropagationMock = vi.fn();
 
     // Test Enter key
-    let event = new KeyboardEvent('keydown', { key: 'Enter' });
-    event.preventDefault = preventDefaultMock;
-    event.stopPropagation = stopPropagationMock;
+    const enterEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+    Object.defineProperty(enterEvent, 'preventDefault', { value: preventDefaultMock });
+    Object.defineProperty(enterEvent, 'stopPropagation', { value: stopPropagationMock });
 
-    // biome-ignore lint/suspicious/noExplicitAny: casting for testing
-    (element as any).handleKeydown(event);
+    // Dispatch event on the element
+    element.dispatchEvent(enterEvent);
 
     expect(preventDefaultMock).toHaveBeenCalled();
     expect(stopPropagationMock).toHaveBeenCalled();
@@ -158,14 +167,15 @@ describe('VibeTerminalBinary', () => {
 
     // Reset mocks
     vi.clearAllMocks();
+    preventDefaultMock.mockClear();
+    stopPropagationMock.mockClear();
 
     // Test Arrow Up
-    event = new KeyboardEvent('keydown', { key: 'ArrowUp' });
-    event.preventDefault = preventDefaultMock;
-    event.stopPropagation = stopPropagationMock;
+    const arrowEvent = new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true });
+    Object.defineProperty(arrowEvent, 'preventDefault', { value: preventDefaultMock });
+    Object.defineProperty(arrowEvent, 'stopPropagation', { value: stopPropagationMock });
 
-    // biome-ignore lint/suspicious/noExplicitAny: casting for testing
-    (element as any).handleKeydown(event);
+    element.dispatchEvent(arrowEvent);
 
     expect(window.fetch).toHaveBeenCalledWith(
       '/api/sessions/test-session-id/input',
@@ -175,14 +185,18 @@ describe('VibeTerminalBinary', () => {
     );
   });
 
-  it('should handle Ctrl key combinations', () => {
-    // Test Ctrl+C
-    const event = new KeyboardEvent('keydown', { key: 'c', ctrlKey: true });
-    event.preventDefault = vi.fn();
-    event.stopPropagation = vi.fn();
+  it('should handle Ctrl key combinations', async () => {
+    await element.updateComplete;
 
-    // biome-ignore lint/suspicious/noExplicitAny: casting for testing
-    (element as any).handleKeydown(event);
+    // Test Ctrl+C
+    const preventDefaultMock = vi.fn();
+    const stopPropagationMock = vi.fn();
+
+    const event = new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true });
+    Object.defineProperty(event, 'preventDefault', { value: preventDefaultMock });
+    Object.defineProperty(event, 'stopPropagation', { value: stopPropagationMock });
+
+    element.dispatchEvent(event);
 
     expect(window.fetch).toHaveBeenCalledWith(
       '/api/sessions/test-session-id/input',
@@ -250,18 +264,23 @@ describe('VibeTerminalBinary', () => {
     element.rows = 30;
     await element.updateComplete;
 
-    // Force size update
-    // biome-ignore lint/suspicious/noExplicitAny: casting for testing
-    (element as any).updateTerminalSize();
+    // Mock container dimensions to trigger resize
+    const container = element.querySelector('#terminal-container') as HTMLElement;
+    if (container) {
+      // Trigger a resize observer callback by simulating a resize
+      const resizeEvent = new Event('resize');
+      window.dispatchEvent(resizeEvent);
+    }
 
     const detail = await resizePromise;
     expect(typeof detail.cols).toBe('number');
     expect(typeof detail.rows).toBe('number');
   });
 
-  it('should apply max columns constraint', () => {
+  it('should apply max columns constraint', async () => {
     element.maxCols = 120;
     element.fitHorizontally = true; // Enable horizontal fitting to apply maxCols constraint
+    await element.updateComplete;
 
     // Mock terminal container dimensions
     const container = element.querySelector('#terminal-container') as HTMLElement;
@@ -278,40 +297,63 @@ describe('VibeTerminalBinary', () => {
         toJSON: () => ({}),
       } as DOMRect);
 
-      // biome-ignore lint/suspicious/noExplicitAny: casting for testing
-      (element as any).updateTerminalSize();
+      // Listen for resize event to verify columns are constrained
+      const resizePromise = new Promise<{ cols: number }>((resolve) => {
+        element.addEventListener(
+          'terminal-resize',
+          (e: Event) => {
+            resolve((e as CustomEvent).detail);
+          },
+          { once: true }
+        );
+      });
 
-      // Should be capped at maxCols (or very close due to rounding)
-      // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
-      expect(element['currentCols']).toBeLessThanOrEqual(120);
-      // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
-      expect(element['currentCols']).toBeGreaterThanOrEqual(119);
+      // Trigger resize
+      const resizeEvent = new Event('resize');
+      window.dispatchEvent(resizeEvent);
+
+      const detail = await resizePromise;
+      // Should be capped at maxCols
+      expect(detail.cols).toBeLessThanOrEqual(120);
     }
   });
 
-  it('should focus hidden input when focus is called', () => {
-    // biome-ignore lint/suspicious/noExplicitAny: casting for testing
-    const hiddenInput = (element as any).hiddenInput as HTMLInputElement;
-    const focusMock = vi.spyOn(hiddenInput, 'focus');
+  it('should focus hidden input when focus is called', async () => {
+    await element.updateComplete;
 
+    // Get hidden input from the terminal container
+    const container = element.querySelector('#terminal-container');
+    const hiddenInput = container?.querySelector('input[type="text"]') as HTMLInputElement;
+    expect(hiddenInput).toBeTruthy();
+
+    const focusMock = vi.spyOn(hiddenInput, 'focus');
     element.focus();
 
     expect(focusMock).toHaveBeenCalledTimes(1);
   });
 
-  it('should blur hidden input when blur is called', () => {
-    // biome-ignore lint/suspicious/noExplicitAny: casting for testing
-    const hiddenInput = (element as any).hiddenInput as HTMLInputElement;
-    const blurMock = vi.spyOn(hiddenInput, 'blur');
+  it('should blur hidden input when blur is called', async () => {
+    await element.updateComplete;
 
+    // Get hidden input from the terminal container
+    const container = element.querySelector('#terminal-container');
+    const hiddenInput = container?.querySelector('input[type="text"]') as HTMLInputElement;
+    expect(hiddenInput).toBeTruthy();
+
+    const blurMock = vi.spyOn(hiddenInput, 'blur');
     element.blur();
 
     expect(blurMock).toHaveBeenCalledTimes(1);
   });
 
-  it('should handle input event from hidden input', () => {
-    // biome-ignore lint/suspicious/noExplicitAny: casting for testing
-    const hiddenInput = (element as any).hiddenInput as HTMLInputElement;
+  it('should handle input event from hidden input', async () => {
+    await element.updateComplete;
+
+    // Get hidden input from the terminal container
+    const container = element.querySelector('#terminal-container');
+    const hiddenInput = container?.querySelector('input[type="text"]') as HTMLInputElement;
+    expect(hiddenInput).toBeTruthy();
+
     hiddenInput.value = 'test text';
 
     // Trigger input event

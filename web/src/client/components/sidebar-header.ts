@@ -13,7 +13,6 @@ import './notification-status.js';
 export class SidebarHeader extends HeaderBase {
   render() {
     const runningSessions = this.runningSessions;
-    const isWorktreeView = window.location.pathname.includes('/worktree');
 
     return html`
       <div
@@ -30,6 +29,7 @@ export class SidebarHeader extends HeaderBase {
             aria-label="Collapse sidebar"
             aria-expanded="true"
             aria-controls="sidebar"
+            data-button-id="toggle-sidebar"
           >
             <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
               <path d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"/>
@@ -44,6 +44,7 @@ export class SidebarHeader extends HeaderBase {
             }}
             title="Go to root"
             data-testid="go-to-root-button-sidebar"
+            data-button-id="go-to-root"
           >
             <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
               <!-- Four small rounded rectangles icon -->
@@ -51,37 +52,6 @@ export class SidebarHeader extends HeaderBase {
               <rect x="11" y="3" width="6" height="6" rx="1.5" ry="1.5"/>
               <rect x="3" y="11" width="6" height="6" rx="1.5" ry="1.5"/>
               <rect x="11" y="11" width="6" height="6" rx="1.5" ry="1.5"/>
-            </svg>
-          </button>
-          
-          <!-- Git Worktree Toggle button -->
-          <button
-            class="p-2 text-primary bg-bg-tertiary border border-border hover:bg-surface-hover hover:border-primary rounded-md transition-all duration-200 flex-shrink-0"
-            @click=${() => {
-              // Toggle between worktree view and session list
-              if (isWorktreeView) {
-                window.location.href = '/';
-              } else {
-                // Navigate to worktree view - we'll dispatch an event for the app to handle
-                this.dispatchEvent(new CustomEvent('show-worktrees'));
-              }
-            }}
-            title="${isWorktreeView ? 'Show Sessions' : 'Show Git Worktrees'}"
-            data-testid="worktree-toggle-button-sidebar"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              ${
-                isWorktreeView
-                  ? html`
-                  <!-- Terminal icon for going back to sessions -->
-                  <path d="M4.707 3.293a1 1 0 00-1.414 1.414L5.586 6 3.293 8.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414l-3-3z"/>
-                  <path d="M7 11.5a.5.5 0 01.5-.5h4a.5.5 0 010 1h-4a.5.5 0 01-.5-.5z"/>
-                `
-                  : html`
-                  <!-- Worktree/Book icon -->
-                  <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
-                `
-              }
             </svg>
           </button>
           

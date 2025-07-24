@@ -1,8 +1,16 @@
-import * as fs from 'fs';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GitFollowRequest, GitFollowResponse } from './pty/socket-protocol.js';
 import { SocketApiClient } from './socket-api-client.js';
+
+// Mock fs module
+vi.mock('fs', async () => {
+  const actual = await vi.importActual<typeof import('fs')>('fs');
+  return {
+    ...actual,
+    existsSync: vi.fn(),
+  };
+});
 
 // Mock dependencies
 vi.mock('./utils/logger.js', () => ({
@@ -43,7 +51,8 @@ describe('SocketApiClient', () => {
 
   describe('getStatus', () => {
     it('should return not running when socket does not exist', async () => {
-      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
+      const { existsSync } = await import('fs');
+      vi.mocked(existsSync).mockReturnValue(false);
 
       const status = await client.getStatus();
 
@@ -53,7 +62,8 @@ describe('SocketApiClient', () => {
     });
 
     it('should return server status when socket exists', async () => {
-      vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+      const { existsSync } = await import('fs');
+      vi.mocked(existsSync).mockReturnValue(true);
 
       // Mock the sendRequest method
       const mockStatus = {
@@ -78,7 +88,8 @@ describe('SocketApiClient', () => {
     });
 
     it('should handle connection errors gracefully', async () => {
-      vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+      const { existsSync } = await import('fs');
+      vi.mocked(existsSync).mockReturnValue(true);
       vi.spyOn(
         client as unknown as { sendRequest: (...args: unknown[]) => unknown },
         'sendRequest'
@@ -92,7 +103,8 @@ describe('SocketApiClient', () => {
 
   describe('setFollowMode', () => {
     it('should send follow mode request', async () => {
-      vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+      const { existsSync } = await import('fs');
+      vi.mocked(existsSync).mockReturnValue(true);
 
       const request: GitFollowRequest = {
         repoPath: '/Users/test/project',
@@ -123,7 +135,8 @@ describe('SocketApiClient', () => {
     });
 
     it('should throw error when socket is not available', async () => {
-      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
+      const { existsSync } = await import('fs');
+      vi.mocked(existsSync).mockReturnValue(false);
 
       const request: GitFollowRequest = {
         repoPath: '/Users/test/project',
@@ -139,7 +152,8 @@ describe('SocketApiClient', () => {
 
   describe('sendGitEvent', () => {
     it('should send git event notification', async () => {
-      vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+      const { existsSync } = await import('fs');
+      vi.mocked(existsSync).mockReturnValue(true);
 
       const event = {
         repoPath: '/Users/test/project',
@@ -163,7 +177,8 @@ describe('SocketApiClient', () => {
 
   describe('sendRequest', () => {
     it('should handle timeout', async () => {
-      vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+      const { existsSync } = await import('fs');
+      vi.mocked(existsSync).mockReturnValue(true);
 
       // Mock connect to succeed but never send response
       mockConnect.mockResolvedValue(undefined);
@@ -185,7 +200,8 @@ describe('SocketApiClient', () => {
     });
 
     it('should handle server errors', async () => {
-      vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+      const { existsSync } = await import('fs');
+      vi.mocked(existsSync).mockReturnValue(true);
 
       mockConnect.mockResolvedValue(undefined);
 

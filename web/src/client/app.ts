@@ -625,25 +625,24 @@ export class VibeTunnelApp extends LitElement {
                   gitModifiedCount: existingSession.gitModifiedCount,
                   gitUntrackedCount: existingSession.gitUntrackedCount,
                 });
-                return {
-                  ...newSession,
-                  gitRepoPath: existingSession.gitRepoPath,
-                  gitBranch: existingSession.gitBranch,
-                  gitIsWorktree: existingSession.gitIsWorktree,
-                  gitMainRepoPath: existingSession.gitMainRepoPath,
-                  // Preserve Git status counts that may have been updated by git-status-badge
-                  gitModifiedCount: existingSession.gitModifiedCount,
-                  gitUntrackedCount: existingSession.gitUntrackedCount,
-                  gitStagedCount: existingSession.gitStagedCount,
-                  gitAheadCount: existingSession.gitAheadCount,
-                  gitBehindCount: existingSession.gitBehindCount,
-                  gitAddedCount: existingSession.gitAddedCount,
-                  gitDeletedCount: existingSession.gitDeletedCount,
-                  gitHasChanges: existingSession.gitHasChanges,
-                };
+                // Update the existing session object in place to preserve reference
+                existingSession.status = newSession.status;
+                existingSession.name = newSession.name;
+                existingSession.workingDir = newSession.workingDir;
+                existingSession.activityStatus = newSession.activityStatus;
+                existingSession.exitCode = newSession.exitCode;
+                existingSession.lastModified = newSession.lastModified;
+                existingSession.active = newSession.active;
+                existingSession.source = newSession.source;
+                existingSession.remoteId = newSession.remoteId;
+                existingSession.remoteName = newSession.remoteName;
+                existingSession.remoteUrl = newSession.remoteUrl;
+                // Git fields are already in existingSession, so we don't need to copy them
+                return existingSession;
               }
             }
 
+            // If newSession has Git data, ensure we create a complete session object
             return newSession;
           });
 
@@ -1526,9 +1525,12 @@ export class VibeTunnelApp extends LitElement {
     // Use cached value if session ID hasn't changed
     if (this._cachedSelectedSessionId === this.selectedSessionId && this._cachedSelectedSession) {
       // Verify the cached session still exists in the sessions array
+      // Note: We're now updating session objects in place, so the reference should remain stable
       const stillExists = this.sessions.find((s) => s.id === this._cachedSelectedSession?.id);
-      if (stillExists === this._cachedSelectedSession) {
-        return this._cachedSelectedSession;
+      if (stillExists) {
+        // Update cache to point to the current session object (might be the same reference)
+        this._cachedSelectedSession = stillExists;
+        return stillExists;
       }
     }
 

@@ -1,3 +1,5 @@
+// @vitest-environment happy-dom
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GitService } from '../../services/git-service.js';
 import type { GitBranchSelector } from './git-branch-selector.js';
