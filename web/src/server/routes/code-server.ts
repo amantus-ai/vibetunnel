@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Router } from 'express';
 import type { SessionManager } from '../pty/session-manager.js';
 import { CodeServerManager } from '../services/code-server-manager.js';
 import { createLogger } from '../utils/logger.js';
@@ -11,7 +11,7 @@ let codeServerManager: CodeServerManager;
 export function createCodeServerRoutes(options: {
   sessionManager: SessionManager;
   codeServerManager: CodeServerManager;
-}) {
+}): Router {
   codeServerManager = options.codeServerManager;
   const { sessionManager } = options;
 
