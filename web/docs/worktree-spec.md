@@ -364,10 +364,3 @@ if (!absolutePath.startsWith(allowedBasePath)) {
 - Switch branches with warnings
 - Follow mode synchronization
 
-## Future Enhancements
-
-1. **Worktree Templates** - Predefined worktree configurations
-2. **Bulk Operations** - Manage multiple worktrees at once
-3. **Remote Worktrees** - Support for worktrees on remote servers
-4. **Worktree Sync** - Keep worktrees updated with upstream
-5. **Visual Worktree Graph** - Show relationships between worktrees

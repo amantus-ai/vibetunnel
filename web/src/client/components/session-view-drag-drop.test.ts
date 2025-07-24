@@ -8,12 +8,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { waitForAsync } from '@/test/utils/component-helpers';
 import { createMockSession } from '@/test/utils/lit-test-utils';
 import type { FilePicker } from './file-picker.js';
+import type { UIState } from './session-view/ui-state-manager.js';
 import type { SessionView } from './session-view.js';
 
 // Test interface for SessionView with access to private managers
 interface SessionViewTestInterface extends SessionView {
   uiStateManager: {
-    getState: () => any;
+    getState: () => UIState;
     setIsDragOver: (value: boolean) => void;
     setShowFileBrowser: (value: boolean) => void;
     setShowImagePicker: (value: boolean) => void;
