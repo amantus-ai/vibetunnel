@@ -698,11 +698,7 @@ describe('SessionView Drag & Drop and Paste', () => {
   });
 
   describe('Visual Overlay', () => {
-    it.skip('should show drag overlay when isDragOver is true', async () => {
-      // The drag and drop functionality works, but verifying the visual overlay
-      // in tests is challenging due to Lit's shadow DOM rendering in the test environment.
-      // We've verified the core functionality works - files are uploaded when dropped.
-
+    it('should show drag overlay when isDragOver is true', async () => {
       // Trigger drag over
       const dragOverEvent = createDragEvent('dragover', true);
       element.dispatchEvent(dragOverEvent);
@@ -713,6 +709,9 @@ describe('SessionView Drag & Drop and Paste', () => {
       // biome-ignore lint/suspicious/noExplicitAny: need to access private property
       const uiStateManager = (element as any)['uiStateManager'];
       expect(uiStateManager.getState().isDragOver).toBe(true);
+
+      // The visual overlay is rendered by overlays-container based on this state
+      // Testing actual DOM rendering is not needed as long as state is correct
     });
 
     it('should hide drag overlay when isDragOver is false', async () => {
@@ -744,7 +743,7 @@ describe('SessionView Drag & Drop and Paste', () => {
       expect((element as any)['uiStateManager'].getState().isDragOver).toBe(false);
     });
 
-    it.skip('should toggle drag overlay state correctly', async () => {
+    it('should toggle drag overlay state correctly', async () => {
       // Initial state
       // biome-ignore lint/complexity/useLiteralKeys: accessing private property for testing
       // biome-ignore lint/suspicious/noExplicitAny: need to access private property
@@ -757,9 +756,24 @@ describe('SessionView Drag & Drop and Paste', () => {
       await element.updateComplete;
       expect(uiStateManager.getState().isDragOver).toBe(true);
 
-      // Drag over without files should not change state
+      // Drag over without files keeps the current state (doesn't hide it)
+      // The overlay is only hidden on drag leave or drop
       const dragOverNoFiles = createDragEvent('dragover', false);
       element.dispatchEvent(dragOverNoFiles);
+      await element.updateComplete;
+      expect(uiStateManager.getState().isDragOver).toBe(true);
+      
+      // Drop event should hide the overlay
+      const dropEvent = new DragEvent('drop', {
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(dropEvent, 'dataTransfer', {
+        value: { files: [] },
+        writable: false,
+        configurable: true,
+      });
+      element.dispatchEvent(dropEvent);
       await element.updateComplete;
       expect(uiStateManager.getState().isDragOver).toBe(false);
     });
