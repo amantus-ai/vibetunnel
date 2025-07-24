@@ -550,36 +550,41 @@ export class MultiplexerModal extends LitElement {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const sessionName = `session-${timestamp}`;
 
-      // Create the session
-      const createResponse = await apiClient.post('/multiplexer/sessions', {
-        type: this.activeTab,
-        name: sessionName,
-      });
-
-      if (createResponse.success) {
-        // Attach to the newly created session
-        const attachResponse = await apiClient.post('/multiplexer/attach', {
+      if (this.activeTab === 'tmux') {
+        // For tmux, create the session first
+        const createResponse = await apiClient.post('/multiplexer/sessions', {
           type: this.activeTab,
-          sessionName: sessionName,
-          cols: 80, // TODO: Get actual terminal dimensions
-          rows: 24,
-          titleMode: 'dynamic',
-          metadata: {
-            source: 'multiplexer-modal-new',
-          },
+          name: sessionName,
         });
 
-        if (attachResponse.success) {
-          // Close modal and navigate to the new session
-          this.handleClose();
-          this.dispatchEvent(
-            new CustomEvent('navigate-to-session', {
-              detail: { sessionId: attachResponse.sessionId },
-              bubbles: true,
-              composed: true,
-            })
-          );
+        if (!createResponse.success) {
+          throw new Error('Failed to create tmux session');
         }
+      }
+
+      // For both tmux and zellij, attach to the session
+      // Zellij will create the session automatically with the -c flag
+      const attachResponse = await apiClient.post('/multiplexer/attach', {
+        type: this.activeTab,
+        sessionName: sessionName,
+        cols: 80, // TODO: Get actual terminal dimensions
+        rows: 24,
+        titleMode: 'dynamic',
+        metadata: {
+          source: 'multiplexer-modal-new',
+        },
+      });
+
+      if (attachResponse.success) {
+        // Close modal and navigate to the new session
+        this.handleClose();
+        this.dispatchEvent(
+          new CustomEvent('navigate-to-session', {
+            detail: { sessionId: attachResponse.sessionId },
+            bubbles: true,
+            composed: true,
+          })
+        );
       }
     } catch (error) {
       console.error(`Failed to create new ${this.activeTab} session:`, error);
