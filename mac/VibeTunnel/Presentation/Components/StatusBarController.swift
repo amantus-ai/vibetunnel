@@ -99,7 +99,7 @@ final class StatusBarController: NSObject {
     }
 
     private func setupMenuManager() {
-        let configuration = StatusBarMenuManager.Configuration(
+        let configuration = StatusBarMenuConfiguration(
             sessionMonitor: sessionMonitor,
             serverManager: serverManager,
             ngrokService: ngrokService,
