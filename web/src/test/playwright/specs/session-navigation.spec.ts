@@ -44,7 +44,7 @@ test.describe('Session Navigation', () => {
 
     // Verify we navigated to the session
     const currentUrl = page.url();
-    if (!currentUrl.includes('?session=')) {
+    if (!currentUrl.includes('/session/')) {
       await takeDebugScreenshot(page, 'no-session-in-url');
       throw new Error(`Failed to navigate to session view. Current URL: ${currentUrl}`);
     }

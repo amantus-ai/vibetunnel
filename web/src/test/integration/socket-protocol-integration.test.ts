@@ -37,7 +37,8 @@ describe('Socket Protocol Integration', () => {
 
   afterEach(async () => {
     await sessionHelper.killTrackedSessions();
-    await ptyManager.shutdown();
+    // NEVER call ptyManager.shutdown() as it would kill ALL sessions
+    // including the VibeTunnel session running Claude Code
     try {
       fs.rmSync(testDir, { recursive: true, force: true });
     } catch {

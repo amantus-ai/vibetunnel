@@ -154,15 +154,15 @@ test.describe('UI Features', () => {
     // Use Promise.race to handle both navigation and potential modal close
     await Promise.race([
       createButton.click({ timeout: 5000 }),
-      page.waitForURL(/\?session=/, { timeout: 30000 }),
+      page.waitForURL(/\/session\//, { timeout: 30000 }),
     ]).catch(async () => {
       // If the first click failed, try force click
       await createButton.click({ force: true });
     });
 
     // Ensure we navigate to the session
-    if (!page.url().includes('?session=')) {
-      await page.waitForURL(/\?session=/, { timeout: 10000 });
+    if (!page.url().includes('/session/')) {
+      await page.waitForURL(/\/session\//, { timeout: 10000 });
     }
 
     // Track for cleanup

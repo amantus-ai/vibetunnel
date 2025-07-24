@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PtyManager } from '../../server/pty/pty-manager';
+import { SessionTestHelper } from '../helpers/session-test-helper';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -45,6 +46,7 @@ const getTestSessionId = () => {
 
 describe.skip('PtyManager', { timeout: 60000 }, () => {
   let ptyManager: PtyManager;
+  let sessionHelper: SessionTestHelper;
   let testDir: string;
 
   beforeAll(() => {
@@ -67,16 +69,17 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
 
   beforeEach(() => {
     ptyManager = new PtyManager(testDir);
+    sessionHelper = new SessionTestHelper(ptyManager);
   });
 
   afterEach(async () => {
-    // Ensure all sessions are cleaned up
-    await ptyManager.shutdown();
+    // Only clean up sessions created by this test
+    await sessionHelper.killTrackedSessions();
   });
 
   describe('Session Creation', { timeout: 10000 }, () => {
     it('should create a simple echo session', async () => {
-      const result = await ptyManager.createSession(['echo', 'Hello, World!'], {
+      const result = await sessionHelper.createTrackedSession(['echo', 'Hello, World!'], {
         workingDir: testDir,
         name: 'Test Echo',
         sessionId: getTestSessionId(),
@@ -122,7 +125,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
       const customDir = path.join(testDir, 'custom');
       fs.mkdirSync(customDir, { recursive: true });
 
-      const result = await ptyManager.createSession(['pwd'], {
+      const result = await sessionHelper.createTrackedSession(['pwd'], {
         workingDir: customDir,
         name: 'PWD Test',
         sessionId: getTestSessionId(),
@@ -164,7 +167,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
     });
 
     it('should handle session with environment variables', async () => {
-      const result = await ptyManager.createSession(
+      const result = await sessionHelper.createTrackedSession(
         process.platform === 'win32'
           ? ['cmd', '/c', 'echo %TEST_VAR%']
           : ['sh', '-c', 'echo $TEST_VAR'],
@@ -213,14 +216,15 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
       const sessionId = randomBytes(4).toString('hex');
 
       // Create first session
-      const result1 = await ptyManager.createSession(['sleep', '10'], {
+      const result1 = await sessionHelper.createTrackedSession(['sleep', '10'], {
         sessionId,
         workingDir: testDir,
       });
       expect(result1).toBeDefined();
       expect(result1.sessionId).toBe(sessionId);
 
-      // Try to create duplicate
+      // Try to create duplicate - this should fail at the ptyManager level
+      // We intentionally don't use sessionHelper here to test the duplicate detection
       await expect(
         ptyManager.createSession(['echo', 'test'], {
           sessionId,
@@ -230,7 +234,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
     });
 
     it('should handle non-existent command gracefully', async () => {
-      const result = await ptyManager.createSession(['nonexistentcommand12345'], {
+      const result = await sessionHelper.createTrackedSession(['nonexistentcommand12345'], {
         workingDir: testDir,
         sessionId: getTestSessionId(),
       });
@@ -255,7 +259,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
 
   describe('Session Input/Output', { timeout: 10000 }, () => {
     it('should send input to session', async () => {
-      const result = await ptyManager.createSession(['cat'], {
+      const result = await sessionHelper.createTrackedSession(['cat'], {
         workingDir: testDir,
         sessionId: getTestSessionId(),
       });
@@ -279,7 +283,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
     });
 
     it('should handle binary data in input', async () => {
-      const result = await ptyManager.createSession(['cat'], {
+      const result = await sessionHelper.createTrackedSession(['cat'], {
         workingDir: testDir,
         sessionId: getTestSessionId(),
       });
@@ -317,7 +321,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
 
   describe('Session Resize', { timeout: 10000 }, () => {
     it('should resize terminal dimensions', async () => {
-      const result = await ptyManager.createSession(
+      const result = await sessionHelper.createTrackedSession(
         process.platform === 'win32' ? ['cmd'] : ['bash'],
         {
           workingDir: testDir,
@@ -337,7 +341,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
     });
 
     it('should reject invalid dimensions', async () => {
-      const result = await ptyManager.createSession(['cat'], {
+      const result = await sessionHelper.createTrackedSession(['cat'], {
         workingDir: testDir,
         sessionId: getTestSessionId(),
       });
@@ -357,7 +361,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
 
   describe('Session Termination', { timeout: 10000 }, () => {
     it('should kill session with SIGTERM', async () => {
-      const result = await ptyManager.createSession(['sleep', '60'], {
+      const result = await sessionHelper.createTrackedSession(['sleep', '60'], {
         workingDir: testDir,
         sessionId: getTestSessionId(),
       });
@@ -381,7 +385,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
 
     it('should force kill with SIGKILL if needed', async () => {
       // Create a session that ignores SIGTERM
-      const result = await ptyManager.createSession(
+      const result = await sessionHelper.createTrackedSession(
         process.platform === 'win32'
           ? ['cmd', '/c', 'ping 127.0.0.1 -n 60']
           : ['sh', '-c', 'trap "" TERM; sleep 60'],
@@ -409,7 +413,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
     });
 
     it('should clean up session files on exit', async () => {
-      const result = await ptyManager.createSession(['echo', 'test'], {
+      const result = await sessionHelper.createTrackedSession(['echo', 'test'], {
         workingDir: testDir,
         sessionId: getTestSessionId(),
       });
@@ -429,7 +433,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
 
   describe('Session Information', { timeout: 10000 }, () => {
     it('should get session info', async () => {
-      const result = await ptyManager.createSession(['sleep', '10'], {
+      const result = await sessionHelper.createTrackedSession(['sleep', '10'], {
         workingDir: testDir,
         name: 'Info Test',
         sessionId: getTestSessionId(),
@@ -455,41 +459,13 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
     });
   });
 
-  describe('Shutdown', { timeout: 15000 }, () => {
-    it('should kill all sessions on shutdown', async () => {
-      const sessionIds: string[] = [];
-
-      // Create multiple sessions
-      for (let i = 0; i < 3; i++) {
-        const result = await ptyManager.createSession(['sleep', '60'], {
-          workingDir: testDir,
-          sessionId: getTestSessionId(),
-        });
-        sessionIds.push(result.sessionId);
-      }
-
-      // Shutdown
-      await ptyManager.shutdown();
-
-      // All sessions should have exited
-      for (const sessionId of sessionIds) {
-        const sessionJsonPath = path.join(testDir, sessionId, 'session.json');
-        if (fs.existsSync(sessionJsonPath)) {
-          const sessionInfo = JSON.parse(fs.readFileSync(sessionJsonPath, 'utf8'));
-          expect(sessionInfo.status).toBe('exited');
-        }
-      }
-    });
-
-    it('should handle shutdown with no sessions', async () => {
-      // Should not throw
-      await expect(ptyManager.shutdown()).resolves.not.toThrow();
-    });
-  });
+  // REMOVED: Shutdown tests that would kill all sessions including test runner's own session
+  // These tests are dangerous when running inside VibeTunnel as they would terminate
+  // the test runner itself. Use SessionTestHelper instead for proper cleanup.
 
   describe('Control Pipe', { timeout: 10000 }, () => {
     it('should handle resize via control pipe', async () => {
-      const result = await ptyManager.createSession(['sleep', '10'], {
+      const result = await sessionHelper.createTrackedSession(['sleep', '10'], {
         workingDir: testDir,
         sessionId: getTestSessionId(),
         cols: 80,
@@ -510,7 +486,7 @@ describe.skip('PtyManager', { timeout: 60000 }, () => {
     });
 
     it('should handle input via stdin file', async () => {
-      const result = await ptyManager.createSession(['cat'], {
+      const result = await sessionHelper.createTrackedSession(['cat'], {
         workingDir: testDir,
         sessionId: getTestSessionId(),
       });

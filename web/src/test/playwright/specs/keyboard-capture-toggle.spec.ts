@@ -27,9 +27,12 @@ test.describe('Keyboard Capture Toggle', () => {
 
   test('should toggle keyboard capture with double Escape', async ({ page }) => {
     // Create a session
-    await createAndNavigateToSession(page, {
+    const session = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('capture-toggle'),
     });
+
+    // Track the session for cleanup
+    sessionManager.trackSession(session.sessionName, session.sessionId);
 
     await assertTerminalReady(page);
     await sessionViewPage.clickTerminal();
@@ -114,9 +117,12 @@ test.describe('Keyboard Capture Toggle', () => {
 
   test('should show captured shortcuts in indicator tooltip', async ({ page }) => {
     // Create a session
-    await createAndNavigateToSession(page, {
+    const session = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('capture-tooltip'),
     });
+
+    // Track the session for cleanup
+    sessionManager.trackSession(session.sessionName, session.sessionId);
 
     await assertTerminalReady(page);
     await sessionViewPage.clickTerminal();
@@ -159,9 +165,12 @@ test.describe('Keyboard Capture Toggle', () => {
 
   test('should respect keyboard capture state for shortcuts', async ({ page }) => {
     // Create a session
-    await createAndNavigateToSession(page, {
+    const session = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('capture-shortcuts'),
     });
+
+    // Track the session for cleanup
+    sessionManager.trackSession(session.sessionName, session.sessionId);
 
     await assertTerminalReady(page);
     await sessionViewPage.clickTerminal();

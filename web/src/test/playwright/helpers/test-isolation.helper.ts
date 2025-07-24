@@ -5,7 +5,7 @@ import type { Page } from '@playwright/test';
  */
 export async function ensureCleanState(page: Page): Promise<void> {
   // If we're on a session page, navigate to root first
-  if (page.url().includes('?session=')) {
+  if (page.url().includes('/session/')) {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle');
   }
@@ -129,18 +129,15 @@ export async function cleanupTestSessions(page: Page, sessionPrefix = 'test-'): 
     if (count > 0) {
       console.log(`Found ${count} test sessions to cleanup`);
 
-      // Try bulk cleanup first
-      const killAllButton = page.locator('button:has-text("Kill All")');
-      if (await killAllButton.isVisible({ timeout: 1000 })) {
-        await killAllButton.click();
+      // NEVER use Kill All button as it would kill ALL sessions including
+      // the VibeTunnel session that Claude Code is running in!
+      // Always clean up test sessions individually
+      for (let i = 0; i < count; i++) {
+        const session = testSessions.nth(0); // Always get first as they get removed
+        const sessionName = await session.locator('.text-sm').first().textContent();
 
-        // Handle confirmation dialog
-        page.on('dialog', (dialog) => dialog.accept());
-        await page.waitForTimeout(1000);
-      } else {
-        // Clean up individually
-        for (let i = 0; i < count; i++) {
-          const session = testSessions.nth(0); // Always get first as they get removed
+        // Double-check this is a test session before killing
+        if (sessionName?.toLowerCase().includes(sessionPrefix.toLowerCase())) {
           const killButton = session.locator('[data-testid="kill-session-button"]');
 
           if (await killButton.isVisible({ timeout: 500 })) {

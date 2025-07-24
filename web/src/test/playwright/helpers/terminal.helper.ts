@@ -134,25 +134,45 @@ export function generateTestSessionName(): string {
 
 /**
  * Clean up all test sessions
+ * IMPORTANT: Only cleans up sessions that start with "test-" to avoid killing the VibeTunnel session running Claude Code
  */
 export async function cleanupSessions(page: Page): Promise<void> {
   try {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-    const killAllButton = page.locator('button:has-text("Kill All")');
-    if (await killAllButton.isVisible()) {
-      // Set up dialog handler before clicking
-      const dialogPromise = page.waitForEvent('dialog');
-      await killAllButton.click();
+    // NEVER use Kill All button as it would kill ALL sessions including
+    // the VibeTunnel session that Claude Code is running in!
+    // Instead, find and kill only test sessions individually
+    const testSessions = page.locator('session-card').filter({ hasText: /^test-/i });
+    const count = await testSessions.count();
 
-      const dialog = await dialogPromise;
-      await dialog.accept();
+    if (count > 0) {
+      console.log(`Found ${count} test sessions to cleanup`);
 
-      // Wait for all sessions to be marked as exited
+      // Kill each test session individually
+      for (let i = 0; i < count; i++) {
+        const session = testSessions.nth(0); // Always get first as they get removed
+        const sessionName = await session.locator('.text-sm').first().textContent();
+
+        // Double-check this is a test session
+        if (sessionName?.toLowerCase().startsWith('test-')) {
+          const killButton = session.locator('[data-testid="kill-session-button"]');
+          if (await killButton.isVisible({ timeout: 500 })) {
+            await killButton.click();
+            await page.waitForTimeout(500); // Wait for session to be removed
+          }
+        }
+      }
+
+      // Wait for all test sessions to be marked as exited
       await page.waitForFunction(
         () => {
           const cards = document.querySelectorAll('session-card');
           return Array.from(cards).every((card) => {
+            const nameElement = card.querySelector('.text-sm');
+            const name = nameElement?.textContent || '';
+            // Only check test sessions
+            if (!name.toLowerCase().startsWith('test-')) return true;
             const text = card.textContent?.toLowerCase() || '';
             return text.includes('exited') || text.includes('exit');
           });

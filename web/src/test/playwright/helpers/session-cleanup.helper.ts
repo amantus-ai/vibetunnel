@@ -3,6 +3,7 @@ import { CLEANUP_CONFIG } from '../config/test-constants';
 import type { SessionInfo } from '../types/session.types';
 import { logger } from '../utils/logger';
 import { extractBaseUrl } from '../utils/url.utils';
+import { TestSessionTracker } from './test-session-tracker';
 
 /**
  * Smart session cleanup helper that efficiently removes test sessions
@@ -160,53 +161,62 @@ export class SessionCleanupHelper {
   }
 
   /**
-   * Fast cleanup all sessions (for test teardown)
+   * DEPRECATED: This method is dangerous as it kills ALL sessions including the one Claude Code is running in!
+   * Use cleanupTestSessions() instead.
+   * @deprecated
    */
   async cleanupAllSessions(): Promise<void> {
+    console.warn(
+      '[SessionCleanupHelper] WARNING: cleanupAllSessions() is deprecated and dangerous!'
+    );
+    console.warn(
+      '[SessionCleanupHelper] It will kill ALL sessions including active development sessions.'
+    );
+    console.warn('[SessionCleanupHelper] Use cleanupTestSessions() instead.');
+    // Return without doing anything to prevent accidents
+    return;
+  }
+
+  /**
+   * Safe cleanup - only removes sessions created by tests
+   * NEVER uses Kill All button to avoid killing the VibeTunnel session running Claude Code
+   */
+  async cleanupTestSessions(): Promise<void> {
     try {
-      // First try the UI Kill All button if available
-      if (this.page.url().endsWith('/')) {
-        const killAllButton = this.page.locator('button:has-text("Kill All")');
-        if (await killAllButton.isVisible({ timeout: 500 })) {
-          try {
-            const [dialog] = await Promise.all([
-              this.page.waitForEvent('dialog', { timeout: 1000 }),
-              killAllButton.click(),
-            ]);
-            await dialog.accept();
-          } catch {
-            // Dialog didn't appear, continue with cleanup
-            logger.debug('No dialog appeared for Kill All button');
-          }
+      const tracker = TestSessionTracker.getInstance();
 
-          // Wait briefly for sessions to exit
-          await this.page.waitForTimeout(500);
-          return;
-        }
-      }
-
-      // Fallback to API cleanup
+      // Get all sessions via API
       const sessions = await this.page.evaluate(async (url) => {
         const response = await fetch(`${url}/api/sessions`);
         if (!response.ok) return [];
         return response.json();
       }, this.baseUrl);
 
-      if (sessions.length > 0) {
-        await this.page.evaluate(
-          async ({ url, sessionIds }) => {
-            const promises = sessionIds.map((id: string) =>
-              fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {
-                // Ignore individual failures
-              })
-            );
-            await Promise.all(promises);
-          },
-          { url: this.baseUrl, sessionIds: sessions.map((s: SessionInfo) => s.id) }
-        );
+      // Filter to only test sessions
+      const testSessions = sessions.filter((s: SessionInfo) =>
+        tracker.shouldCleanupSession(s.id, s.name)
+      );
+
+      if (testSessions.length === 0) {
+        logger.debug('No test sessions to clean up');
+        return;
       }
+
+      logger.info(`Cleaning up ${testSessions.length} test sessions`);
+
+      await this.page.evaluate(
+        async ({ url, sessionIds }) => {
+          const promises = sessionIds.map((id: string) =>
+            fetch(`${url}/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {
+              // Ignore individual failures
+            })
+          );
+          await Promise.all(promises);
+        },
+        { url: this.baseUrl, sessionIds: testSessions.map((s: SessionInfo) => s.id) }
+      );
     } catch (error) {
-      logger.error('Failed to cleanup all sessions:', error);
+      logger.error('Failed to cleanup test sessions:', error);
     }
   }
 

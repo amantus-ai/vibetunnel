@@ -71,7 +71,7 @@ test.describe('Keyboard Shortcuts', () => {
       // File browser might not work in test environment
       if (!parentDirButton && !gitChangesButton) {
         // Just verify we're still in session view
-        await expect(page).toHaveURL(/\?session=/);
+        await expect(page).toHaveURL(/\/session\//);
         return; // Skip the rest of the test
       }
     }
@@ -256,7 +256,7 @@ test.describe('Keyboard Shortcuts', () => {
     await page.keyboard.press('Enter');
 
     // Should create session and navigate
-    await expect(page).toHaveURL(/\?session=/, { timeout: 8000 });
+    await expect(page).toHaveURL(/\/session\//, { timeout: 8000 });
 
     // Wait for terminal to be ready
     await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 5000 });

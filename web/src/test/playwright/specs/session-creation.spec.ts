@@ -75,7 +75,7 @@ test.describe('Session Creation', () => {
     await sessionListPage.createNewSession(sessionName, false);
 
     // Wait for navigation to session view
-    await page.waitForURL(/\?session=/, { timeout: 10000 });
+    await page.waitForURL(/\/session\//, { timeout: 10000 });
     console.log(`Navigated to session: ${page.url()}`);
 
     // Wait for terminal to be ready
@@ -203,7 +203,7 @@ test.describe('Session Creation', () => {
       }
 
       // Check if we navigated to the session
-      if (page.url().includes('?session=')) {
+      if (page.url().includes('/session/')) {
         // Wait for terminal to be ready before navigating back
         await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 10000 });
         await assertTerminalReady(page, 15000);

@@ -1,5 +1,6 @@
 import { TIMEOUTS } from '../constants/timeouts';
 import { screenshotOnError } from '../helpers/screenshot.helper';
+import { TestSessionTracker } from '../helpers/test-session-tracker';
 import { validateCommand, validateSessionName } from '../utils/validation.utils';
 import { BasePage } from './base.page';
 
@@ -333,6 +334,9 @@ export class SessionListPage extends BasePage {
           // Log if session ID is missing
           if (!sessionId) {
             console.error('Session created but no sessionId in response:', responseBody);
+          } else {
+            // Track this session for cleanup
+            TestSessionTracker.getInstance().trackSession(sessionId);
           }
         } else {
           // Check if a session was actually created by looking for it in the DOM
@@ -383,15 +387,16 @@ export class SessionListPage extends BasePage {
 
       // Check if we're already on the session page
       const currentUrl = this.page.url();
-      if (currentUrl.includes('?session=')) {
+      if (currentUrl.includes('/session/')) {
+        // Already on session page, do nothing
       } else {
-        // If we have a session ID, try navigating manually
+        // If we have a session ID, navigate to the session page
         if (sessionId) {
-          await this.page.goto(`/?session=${sessionId}`, { waitUntil: 'domcontentloaded' });
+          await this.page.goto(`/session/${sessionId}`, { waitUntil: 'domcontentloaded' });
         } else {
           // Wait for automatic navigation
           try {
-            await this.page.waitForURL(/\?session=/, { timeout: 10000 });
+            await this.page.waitForURL(/\/session\//, { timeout: 10000 });
           } catch (error) {
             const finalUrl = this.page.url();
             console.error(`Failed to navigate to session. Current URL: ${finalUrl}`);
@@ -406,8 +411,32 @@ export class SessionListPage extends BasePage {
         }
       }
 
-      // Wait for terminal to be ready (using ID selector for reliability)
+      // Debug: Log current URL and page state
+      const debugUrl = this.page.url();
+      console.log(`[DEBUG] Current URL after navigation: ${debugUrl}`);
+
+      // Debug: Check if session view component exists
+      const sessionViewExists = await this.page.evaluate(() => {
+        const sessionView = document.querySelector('session-view');
+        return {
+          exists: !!sessionView,
+          visible: sessionView ? window.getComputedStyle(sessionView).display !== 'none' : false,
+          innerHTML: sessionView ? sessionView.innerHTML.substring(0, 200) : 'N/A',
+        };
+      });
+      console.log('[DEBUG] Session view state:', sessionViewExists);
+
+      // Wait for terminal-renderer to be visible first
       await this.page.waitForSelector('#session-terminal', { state: 'visible', timeout: 10000 });
+
+      // Then wait for the actual terminal component inside to be visible
+      await this.page.waitForSelector(
+        '#session-terminal vibe-terminal, #session-terminal vibe-terminal-binary',
+        {
+          state: 'visible',
+          timeout: 10000,
+        }
+      );
     } else {
       // For spawn window, wait for modal to close
       await this.page.waitForSelector('.modal-content', { state: 'hidden', timeout: 4000 });
@@ -422,7 +451,7 @@ export class SessionListPage extends BasePage {
 
   async clickSession(sessionName: string) {
     // First ensure we're on the session list page
-    if (this.page.url().includes('?session=')) {
+    if (this.page.url().includes('/session/')) {
       await this.page.goto('/', { waitUntil: 'domcontentloaded' });
       await this.page.waitForLoadState('networkidle');
     }
@@ -456,7 +485,7 @@ export class SessionListPage extends BasePage {
     await sessionCard.click();
 
     // Wait for navigation to session view
-    await this.page.waitForURL(/\?session=/, { timeout: 5000 });
+    await this.page.waitForURL(/\/session\//, { timeout: 5000 });
   }
 
   async isSessionActive(sessionName: string): Promise<boolean> {

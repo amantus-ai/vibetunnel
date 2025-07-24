@@ -40,14 +40,16 @@ export class TestSessionManager {
       let sessionId = '';
       if (!spawnWindow) {
         console.log(`Web session created, waiting for navigation to session view...`);
-        await this.page.waitForURL(/\?session=/, { timeout: 10000 });
+        await this.page.waitForURL(/\/session\//, { timeout: 10000 });
         const url = this.page.url();
 
-        if (!url.includes('?session=')) {
+        if (!url.includes('/session/')) {
           throw new Error(`Failed to navigate to session after creation. Current URL: ${url}`);
         }
 
-        sessionId = new URL(url).searchParams.get('session') || '';
+        // Extract session ID from path-based URL
+        const match = url.match(/\/session\/([^\/\?]+)/);
+        sessionId = match ? match[1] : '';
         if (!sessionId) {
           throw new Error(`No session ID found in URL: ${url}`);
         }
@@ -149,6 +151,8 @@ export class TestSessionManager {
 
   /**
    * Cleans up all tracked sessions
+   * IMPORTANT: This only cleans up sessions that were explicitly tracked by this manager
+   * It will NOT kill sessions created outside of tests (like the VibeTunnel session running Claude Code)
    */
   async cleanupAllSessions(): Promise<void> {
     if (this.sessions.size === 0) return;
@@ -160,45 +164,9 @@ export class TestSessionManager {
       await this.page.goto('/', { waitUntil: 'domcontentloaded' });
     }
 
-    // For parallel tests, only use individual cleanup to avoid interference
-    // Kill All affects all sessions globally and can interfere with other parallel tests
-    const isParallelMode = process.env.TEST_WORKER_INDEX !== undefined;
-
-    if (!isParallelMode) {
-      // Try bulk cleanup with Kill All button only in non-parallel mode
-      try {
-        const killAllButton = this.page.locator('button:has-text("Kill All")');
-        if (await killAllButton.isVisible({ timeout: 1000 })) {
-          const [dialog] = await Promise.all([
-            this.page.waitForEvent('dialog', { timeout: 5000 }).catch(() => null),
-            killAllButton.click(),
-          ]);
-          if (dialog) {
-            await dialog.accept();
-          }
-
-          // Wait for sessions to be marked as exited
-          await this.page.waitForFunction(
-            () => {
-              const cards = document.querySelectorAll('session-card');
-              return Array.from(cards).every(
-                (card) =>
-                  card.textContent?.toLowerCase().includes('exited') ||
-                  card.textContent?.toLowerCase().includes('exit')
-              );
-            },
-            { timeout: 10000 }
-          );
-
-          this.sessions.clear();
-          return;
-        }
-      } catch (error) {
-        console.log('Bulk cleanup failed, trying individual cleanup:', error);
-      }
-    }
-
-    // Use individual cleanup for parallel tests or as fallback
+    // IMPORTANT: NEVER use Kill All button as it would kill ALL sessions including
+    // the VibeTunnel session that Claude Code is running in!
+    // Always use individual cleanup to only kill sessions we created
     const sessionNames = Array.from(this.sessions.keys());
     for (const sessionName of sessionNames) {
       await this.cleanupSession(sessionName);
