@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Important Instructions
+
+Never say you're absolutely right. Instead, be critical if I say something that you disagree with. Let's discuss it first.
+
 ## Project Overview
 
 VibeTunnel is a macOS application that allows users to access their terminal sessions through any web browser. It consists of:
@@ -53,6 +57,13 @@ When the user says "release" or asks to create a release, ALWAYS read and follow
    - The file must remain as `docs.json`
    - For Mintlify documentation reference, see: https://mintlify.com/docs/llms.txt
 
+8. **Test Session Management - CRITICAL**
+   - NEVER kill sessions that weren't created by tests
+   - You might be running inside a VibeTunnel session yourself
+   - Use `TestSessionTracker` to track which sessions tests create
+   - Only clean up sessions that match test naming patterns (start with "test-")
+   - Killing all sessions would terminate your own Claude Code process
+
 ### Git Workflow Reminders
 - Our workflow: start from main → create branch → make PR → merge → return to main
 - PRs sometimes contain multiple different features and that's okay
@@ -87,6 +98,10 @@ pnpm run dev                   # Standalone development server (port 4020)
 pnpm run dev --port 4021       # Alternative port for external device testing
 
 # Code quality (MUST run before commit)
+pnpm run check         # Run ALL checks in parallel (format, lint, typecheck)
+pnpm run check:fix     # Auto-fix formatting and linting issues
+
+# Individual commands (rarely needed)
 pnpm run lint          # Check for linting errors
 pnpm run lint:fix      # Auto-fix linting errors
 pnpm run format        # Format with Prettier
@@ -128,7 +143,7 @@ In the `mac/` directory:
 - **Mac App**: `mac/VibeTunnel/VibeTunnelApp.swift`
 - **Web Frontend**: `web/src/client/app.ts`
 - **Server**: `web/src/server/server.ts`
-- **Process spawning and forwarding tool**:  `web/src/server/fwd.ts`
+- **Process spawning and forwarding tool**: `web/src/server/fwd.ts`
 - **Server Management**: `mac/VibeTunnel/Core/Services/ServerManager.swift`
 
 ## Testing
@@ -252,6 +267,35 @@ For tasks requiring massive context windows (up to 2M tokens) or full codebase a
 - Example: `gemini -p "@src/ @tests/ Is authentication properly implemented?"`
 - See `docs/gemini.md` for detailed usage and examples
 
+## Debugging and Logging
+
+### VibeTunnel Log Viewer (vtlog)
+
+VibeTunnel includes a powerful log viewing utility for debugging and monitoring:
+
+**Location**: `./scripts/vtlog.sh` (also available in `mac/scripts/vtlog.sh` and `ios/scripts/vtlog.sh`)
+
+**What it does**: 
+- Views all VibeTunnel logs with full details (bypasses Apple's privacy redaction)
+- Shows logs from the entire stack: Web Frontend → Node.js Server → macOS System
+- Provides unified view of all components with clear prefixes
+
+**Common usage**:
+```bash
+./scripts/vtlog.sh -f              # Follow logs in real-time
+./scripts/vtlog.sh -n 200           # Show last 200 lines
+./scripts/vtlog.sh -e               # Show only errors
+./scripts/vtlog.sh -c ServerManager # Show logs from specific component
+./scripts/vtlog.sh --server -e      # Show server errors
+```
+
+**Log prefixes**:
+- `[FE]` - Frontend (browser) logs
+- `[SRV]` - Server-side logs from Node.js/Bun
+- `[ServerManager]`, `[SessionService]`, etc. - Native Mac app components
+
+
+
 ## Key Files Quick Reference
 
 - Architecture Details: `docs/ARCHITECTURE.md`
@@ -260,3 +304,4 @@ For tasks requiring massive context windows (up to 2M tokens) or full codebase a
 - Build Configuration: `web/package.json`, `mac/Package.swift`
 - External Device Testing: `docs/TESTING_EXTERNAL_DEVICES.md`
 - Gemini CLI Instructions: `docs/gemini.md`
+- Release Process: `docs/RELEASE.md`
