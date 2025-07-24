@@ -76,21 +76,28 @@ async function execGit(args: string[], options?: { cwd?: string }) {
 
 Follow mode uses Git hooks and git config for state management:
 
-1. **State Storage**: Git config `vibetunnel.followBranch`
+1. **State Storage**: Git config `vibetunnel.followWorktree`
    ```bash
-   # Follow mode state is stored per repository
-   git config vibetunnel.followBranch "feature/branch"
+   # Follow mode stores the worktree path in main repository
+   git config vibetunnel.followWorktree "/path/to/worktree"
    
    # Check follow mode status
-   git config vibetunnel.followBranch
+   git config vibetunnel.followWorktree
    
    # Disable follow mode
-   git config --unset vibetunnel.followBranch
+   git config --unset vibetunnel.followWorktree
    ```
 
-2. **Git Hooks**: `post-checkout` and `post-commit` hooks detect changes
+2. **Git Hooks**: Installed in BOTH main repo and worktree
+   - `post-checkout`: Detects branch switches
+   - `post-commit`: Detects new commits
+   - `post-merge`: Detects merge operations
+   
 3. **Event Processing**: Hooks execute `vt git event` command
-4. **Branch Synchronization**: Main repository follows worktree changes
+4. **Synchronization Logic**:
+   - Worktree events → Main repo syncs (branch, commits, checkouts)
+   - Main repo commits → Worktree syncs (commits only)
+   - Main repo branch switch → Auto-unfollow
 
 ## Frontend Implementation
 
@@ -209,22 +216,48 @@ The `vt git event` command:
 
 ### Follow Mode Logic
 
-When a checkout event occurs:
+The git event handler determines sync behavior based on event source:
 
 ```typescript
-// Check if follow mode is enabled
-const followBranch = await getGitConfig(repoPath, 'vibetunnel.followBranch');
+// Get follow mode configuration
+const followWorktree = await getGitConfig(mainRepoPath, 'vibetunnel.followWorktree');
+if (!followWorktree) return; // Follow mode not enabled
 
-if (followBranch && event === 'checkout') {
-  // Check for uncommitted changes
-  const hasChanges = await checkUncommittedChanges(mainRepoPath);
-  
-  if (!hasChanges) {
-    // Perform the sync (checkout to the followed branch)
-    await execGit(['checkout', followBranch], { cwd: mainRepoPath });
-  } else {
-    // Disable follow mode due to uncommitted changes
-    await unsetGitConfig(mainRepoPath, 'vibetunnel.followBranch');
+// Determine if event is from main repo or worktree
+const eventPath = req.body.repoPath;
+const isFromWorktree = eventPath === followWorktree;
+const isFromMain = eventPath === mainRepoPath;
+
+if (isFromWorktree) {
+  // Worktree → Main sync
+  switch (event) {
+    case 'checkout':
+      // Sync branch or commit to main
+      const target = req.body.branch || req.body.commit;
+      await execGit(['checkout', target], { cwd: mainRepoPath });
+      break;
+    
+    case 'commit':
+    case 'merge':
+      // Pull changes to main
+      await execGit(['fetch'], { cwd: mainRepoPath });
+      await execGit(['merge', 'FETCH_HEAD'], { cwd: mainRepoPath });
+      break;
+  }
+} else if (isFromMain) {
+  // Main → Worktree sync
+  switch (event) {
+    case 'checkout':
+      // Branch switch in main = stop following
+      await unsetGitConfig(mainRepoPath, 'vibetunnel.followWorktree');
+      sendNotification('Follow mode disabled - switched branches in main repository');
+      break;
+    
+    case 'commit':
+      // Sync commit to worktree
+      await execGit(['fetch'], { cwd: followWorktree });
+      await execGit(['merge', 'FETCH_HEAD'], { cwd: followWorktree });
+      break;
   }
 }
 ```

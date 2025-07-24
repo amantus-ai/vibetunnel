@@ -153,30 +153,37 @@ async function handleSocketCommand(command: string): Promise<void> {
       }
 
       case 'follow': {
-        const branch = process.argv[3];
-        const repoPath = process.cwd();
-
-        // Check if we're in a git repo
-        if (!require('fs').existsSync(require('path').join(repoPath, '.git'))) {
-          console.error('Error: Not in a Git repository');
-          process.exit(1);
+        // Parse command line arguments
+        const args = process.argv.slice(3);
+        let worktreePath: string | undefined;
+        let mainRepoPath: string | undefined;
+        let fromWorktree = false;
+        
+        // Parse flags
+        for (let i = 0; i < args.length; i++) {
+          switch (args[i]) {
+            case '--from-worktree':
+              fromWorktree = true;
+              break;
+            case '--worktree-path':
+              worktreePath = args[++i];
+              break;
+            case '--main-repo':
+              mainRepoPath = args[++i];
+              break;
+          }
         }
-
-        // If no branch specified, get current branch
-        let targetBranch = branch;
-        if (!targetBranch) {
-          const { execSync } = await import('child_process');
-          targetBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
-        }
-
+        
         const response = await client.setFollowMode({
-          repoPath,
-          branch: targetBranch,
           enable: true,
+          worktreePath,
+          mainRepoPath,
+          // For backward compatibility, pass repoPath if mainRepoPath not set
+          repoPath: mainRepoPath,
         });
 
         if (response.success) {
-          console.log(`Enabled follow mode for branch '${targetBranch}'`);
+          // Success message is already printed by the vt script
         } else {
           console.error(`Failed to enable follow mode: ${response.error || 'Unknown error'}`);
           process.exit(1);

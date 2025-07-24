@@ -22,6 +22,7 @@ import {
 import { createGitError } from './utils/git-error.js';
 import { areHooksInstalled, installGitHooks, uninstallGitHooks } from './utils/git-hooks.js';
 import { createLogger } from './utils/logger.js';
+import { prettifyPath } from './utils/path-prettify.js';
 import { createControlEvent } from './websocket/control-protocol.js';
 import { controlUnixHandler } from './websocket/control-unix-handler.js';
 
@@ -223,11 +224,19 @@ export class ApiSocketServer {
     request: GitFollowRequest
   ): Promise<void> {
     try {
-      const { repoPath, branch, enable } = request;
-      const absoluteRepoPath = path.resolve(repoPath);
+      const { repoPath, branch, enable, worktreePath, mainRepoPath } = request;
+      
+      // Use new fields if available, otherwise fall back to old fields
+      const targetMainRepo = mainRepoPath || repoPath;
+      if (!targetMainRepo) {
+        throw new Error('No repository path provided');
+      }
+      
+      const absoluteMainRepo = path.resolve(targetMainRepo);
+      const absoluteWorktreePath = worktreePath ? path.resolve(worktreePath) : undefined;
 
       logger.debug(
-        `${enable ? 'Enabling' : 'Disabling'} follow mode${branch ? ` for branch: ${branch}` : ''}`
+        `${enable ? 'Enabling' : 'Disabling'} follow mode${absoluteWorktreePath ? ` for worktree: ${absoluteWorktreePath}` : branch ? ` for branch: ${branch}` : ''}`
       );
 
       if (enable) {
@@ -249,41 +258,160 @@ export class ApiSocketServer {
           }
         }
 
-        // Set the follow mode config
-        await execGit(['config', '--local', 'vibetunnel.followBranch', branch || ''], {
-          cwd: absoluteRepoPath,
+        // If we have a worktree path, use that. Otherwise try to find worktree from branch
+        let followPath: string;
+        let displayName: string;
+        
+        if (absoluteWorktreePath) {
+          // Direct worktree path provided
+          followPath = absoluteWorktreePath;
+          
+          // Get the branch name from the worktree for display
+          try {
+            const { stdout } = await execGit(['branch', '--show-current'], {
+              cwd: absoluteWorktreePath,
+            });
+            displayName = stdout.trim() || path.basename(absoluteWorktreePath);
+          } catch {
+            displayName = path.basename(absoluteWorktreePath);
+          }
+        } else if (branch) {
+          // Try to find worktree for the branch
+          try {
+            const { stdout } = await execGit(['worktree', 'list', '--porcelain'], {
+              cwd: absoluteMainRepo,
+            });
+            
+            const lines = stdout.split('\n');
+            let foundWorktree: string | undefined;
+            
+            for (let i = 0; i < lines.length; i++) {
+              if (lines[i].startsWith('worktree ')) {
+                const worktreePath = lines[i].substring(9);
+                // Check if next lines contain our branch
+                if (i + 2 < lines.length && lines[i + 2] === `branch refs/heads/${branch}`) {
+                  if (worktreePath !== absoluteMainRepo) {
+                    foundWorktree = worktreePath;
+                    break;
+                  }
+                }
+              }
+            }
+            
+            if (!foundWorktree) {
+              throw new Error(`No worktree found for branch '${branch}'`);
+            }
+            
+            followPath = foundWorktree;
+            displayName = branch;
+          } catch (error) {
+            throw new Error(`Failed to find worktree: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        } else {
+          // No branch or worktree specified - try current branch
+          try {
+            const { stdout } = await execGit(['branch', '--show-current'], {
+              cwd: absoluteMainRepo,
+            });
+            const currentBranch = stdout.trim();
+            
+            if (!currentBranch) {
+              throw new Error('Not on a branch (detached HEAD)');
+            }
+            
+            // Recursively call with the current branch
+            return this.handleGitFollowRequest(socket, {
+              ...request,
+              branch: currentBranch,
+            });
+          } catch (error) {
+            throw new Error(`Failed to get current branch: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+        
+        // Set the follow mode config with worktree path
+        await execGit(['config', '--local', 'vibetunnel.followWorktree', followPath], {
+          cwd: absoluteMainRepo,
         });
+        
+        // Install hooks in both locations
+        const mainRepoHooksInstalled = await areHooksInstalled(absoluteMainRepo);
+        if (!mainRepoHooksInstalled) {
+          logger.info('Installing Git hooks in main repository');
+          const installResult = await installGitHooks(absoluteMainRepo);
+          if (!installResult.success) {
+            throw new Error('Failed to install Git hooks in main repository');
+          }
+        }
+        
+        const worktreeHooksInstalled = await areHooksInstalled(followPath);
+        if (!worktreeHooksInstalled) {
+          logger.info('Installing Git hooks in worktree');
+          const installResult = await installGitHooks(followPath);
+          if (!installResult.success) {
+            logger.warn('Failed to install Git hooks in worktree, continuing anyway');
+          }
+        }
 
         // Send notification to Mac app
         if (controlUnixHandler.isMacAppConnected()) {
           const notification = createControlEvent('system', 'notification', {
             level: 'info',
             title: 'Follow Mode Enabled',
-            message: `Now following branch '${branch}' in ${path.basename(absoluteRepoPath)}`,
+            message: `Now following ${displayName} in ${path.basename(absoluteMainRepo)}`,
           });
           controlUnixHandler.sendToMac(notification);
         }
 
         const response: GitFollowResponse = {
           success: true,
-          currentBranch: branch,
+          currentBranch: displayName,
         };
         socket.write(MessageBuilder.gitFollowResponse(response));
       } else {
         // Disable follow mode
-        await execGit(['config', '--local', '--unset', 'vibetunnel.followBranch'], {
-          cwd: absoluteRepoPath,
+        await execGit(['config', '--local', '--unset', 'vibetunnel.followWorktree'], {
+          cwd: absoluteMainRepo,
         });
+        
+        // Also try to unset the old config for backward compatibility
+        try {
+          await execGit(['config', '--local', '--unset', 'vibetunnel.followBranch'], {
+            cwd: absoluteMainRepo,
+          });
+        } catch {
+          // Ignore if it doesn't exist
+        }
 
-        // Uninstall Git hooks when disabling follow mode
-        logger.info('Uninstalling Git hooks');
-        const uninstallResult = await uninstallGitHooks(absoluteRepoPath);
+        // Get the worktree path that was being followed
+        let followedWorktree: string | undefined;
+        try {
+          const { stdout } = await execGit(['config', 'vibetunnel.followWorktree'], {
+            cwd: absoluteMainRepo,
+          });
+          followedWorktree = stdout.trim();
+        } catch {
+          // No worktree was being followed
+        }
+        
+        // Uninstall Git hooks from main repo
+        logger.info('Uninstalling Git hooks from main repository');
+        const mainUninstallResult = await uninstallGitHooks(absoluteMainRepo);
+        
+        // Also uninstall from worktree if we know which one was being followed
+        if (followedWorktree && followedWorktree !== absoluteMainRepo) {
+          logger.info('Uninstalling Git hooks from worktree');
+          const worktreeUninstallResult = await uninstallGitHooks(followedWorktree);
+          if (!worktreeUninstallResult.success) {
+            logger.warn('Failed to uninstall some Git hooks from worktree:', worktreeUninstallResult.errors);
+          }
+        }
 
-        if (!uninstallResult.success) {
-          logger.warn('Failed to uninstall some Git hooks:', uninstallResult.errors);
+        if (!mainUninstallResult.success) {
+          logger.warn('Failed to uninstall some Git hooks from main repo:', mainUninstallResult.errors);
           // Continue anyway - follow mode is still disabled
         } else {
-          logger.info('Git hooks uninstalled successfully');
+          logger.info('Git hooks uninstalled successfully from main repository');
         }
 
         // Send notification to Mac app
@@ -291,7 +419,7 @@ export class ApiSocketServer {
           const notification = createControlEvent('system', 'notification', {
             level: 'info',
             title: 'Follow Mode Disabled',
-            message: `Follow mode disabled in ${path.basename(absoluteRepoPath)}`,
+            message: `Follow mode disabled in ${path.basename(absoluteMainRepo)}`,
           });
           controlUnixHandler.sendToMac(notification);
         }

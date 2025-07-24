@@ -164,7 +164,13 @@ export class GitBranchSelector extends LitElement {
           <!-- Base Branch Selection -->
           <div>
             <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm flex items-center gap-2">
-              ${this.selectedWorktree ? 'Base Branch for Worktree:' : 'Switch to Branch:'}
+              ${
+                this.availableWorktrees.some((wt) => wt.isCurrentWorktree && !wt.isMainWorktree)
+                  ? 'Base Branch for Current Worktree:'
+                  : this.selectedWorktree
+                    ? 'Base Branch for Worktree:'
+                    : 'Switch to Branch:'
+              }
               ${
                 this.gitRepoInfo?.hasChanges && !this.selectedWorktree
                   ? html`
@@ -261,13 +267,11 @@ export class GitBranchSelector extends LitElement {
                   >
                     <option value="none">
                       ${
-                        this.selectedWorktree
-                          ? 'No worktree (use main repository)'
-                          : this.availableWorktrees.some(
-                                (wt) => wt.isCurrentWorktree && !wt.isMainWorktree
-                              )
-                            ? 'Switch to main repository'
-                            : 'No worktree (use main repository)'
+                        this.availableWorktrees.some(
+                          (wt) => wt.isCurrentWorktree && !wt.isMainWorktree
+                        )
+                          ? 'Use main repository'
+                          : 'Use selected worktree'
                       }
                     </option>
                     ${this.availableWorktrees.map((worktree) => {
@@ -278,7 +282,7 @@ export class GitBranchSelector extends LitElement {
 
                       return html`
                         <option value="${worktree.branch}" ?selected=${worktree.branch === this.selectedWorktree}>
-                          ${worktree.branch === this.selectedWorktree ? 'Use selected worktree: ' : ''}${folderName}${showBranch ? ` [${worktree.branch}]` : ''}${worktree.isMainWorktree ? ' (main)' : ''}${worktree.isCurrentWorktree ? ' (current)' : ''}${this.followMode && this.followBranch === worktree.branch ? ' ⚡️ following' : ''}
+                          ${folderName}${showBranch ? ` [${worktree.branch}]` : ''}${worktree.isMainWorktree ? ' (main)' : ''}${worktree.isCurrentWorktree ? ' (current)' : ''}${this.followMode && this.followBranch === worktree.branch ? ' ⚡️ following' : ''}
                         </option>
                       `;
                     })}

@@ -135,40 +135,53 @@ curl -X DELETE "http://localhost:4020/api/worktrees/feature-branch?repoPath=/pat
 
 ## Follow Mode
 
-Follow mode automatically switches your VibeTunnel terminal to the Git worktree that matches the branch you're working on in your editor or IDE. When you switch branches in your editor, VibeTunnel follows along.
+Follow mode keeps your main repository synchronized with a specific worktree. This allows agents to work in worktrees while your IDE, Xcode, and servers stay open on the main repository - they'll automatically update when the worktree changes.
 
 ### How It Works
 
-1. Enable follow mode for a specific branch or the current branch
-2. When Git detects branch changes (via hooks), VibeTunnel automatically switches to the corresponding worktree
-3. Sessions show [checkout: branch] tags during transitions
-4. The main repository stays in sync with your active work
+1. Enable follow mode from either the main repo or a worktree
+2. Git hooks in both locations detect changes (commits, branch switches, checkouts)
+3. Changes in the worktree sync to the main repository
+4. Commits in the main repository sync to the worktree
+5. Branch switches in the main repository auto-disable follow mode
 
-Follow mode state is stored in the repository's git config:
+Follow mode state is stored in the main repository's git config:
 ```bash
-# Check current follow mode
-git config vibetunnel.followBranch
+# Check which worktree is being followed
+git config vibetunnel.followWorktree
 
-# The vt command handles this automatically
+# Returns the path to the followed worktree when active
 ```
 
 ### Using Follow Mode with vt
 
+From a worktree:
 ```bash
-# Enable follow mode for current branch
+# Enable follow mode for this worktree
+vt follow
+# Output: Enabling follow mode for worktree: ~/project-feature
+#         Main repository (~/project) will track this worktree
+```
+
+From main repository:
+```bash
+# Follow current branch's worktree (if it exists)
 vt follow
 
-# Switch to a branch and enable follow mode
+# Follow a specific branch's worktree
 vt follow feature/new-feature
+
+# Follow a worktree by path
+vt follow ~/project-feature
 
 # Disable follow mode
 vt unfollow
 ```
 
 The `vt follow` command is smart:
-- Without arguments: enables follow mode for your current branch
-- With a branch name: switches to that branch AND enables follow mode
-- This eliminates the need for separate switch and follow operations
+- From worktree: Always follows the current worktree
+- From main repo without args: Follows current branch's worktree if it exists
+- From main repo with args: Can specify branch name or worktree path
 
 ### Checking Follow Mode Status
 
@@ -182,11 +195,11 @@ git config vibetunnel.followBranch
 
 ### Use Cases
 
-- **IDE Integration**: Your terminal automatically follows your IDE's branch switches
-- **Paired Programming**: Keep multiple views in sync
-- **Testing**: Run tests in main while developing in worktree
-- **Code Review**: Follow along as someone switches between branches
-- **Context Switching**: Instantly jump to the right worktree when changing tasks
+- **Agent Development**: Agents work in worktrees while your IDE/Xcode stays on main repo
+- **Continuous Development**: Keep servers running without restarts when switching features
+- **Testing**: Make changes in worktree, test immediately in main repo environment
+- **Parallel Work**: Multiple agents in different worktrees, switch follow mode as needed
+- **Zero Disruption**: Never close your IDE or restart servers when context switching
 
 ## Best Practices
 
@@ -226,12 +239,16 @@ Regularly clean up unused worktrees:
 ### Quick Start with Follow Mode
 
 ```bash
-# Start working on a feature
+# Create a worktree for agent development
 git worktree add ../myproject-feature feature/awesome
-cd ../myproject-feature
-vt follow  # Enable follow mode for this feature
 
-# Now when you switch branches in your IDE, VibeTunnel follows
+# From the worktree, enable follow mode
+cd ../myproject-feature
+vt follow  # Main repo will now track this worktree
+
+# Or from the main repo
+cd ../myproject
+vt follow ../myproject-feature  # Same effect
 ```
 
 ### Feature Development
@@ -239,25 +256,35 @@ vt follow  # Enable follow mode for this feature
 1. Create a worktree for your feature branch
    ```bash
    git worktree add ../project-feature feature/new-ui
-   cd ../project-feature
-   vt follow  # Terminal will now track this feature
    ```
-2. Open VibeTunnel session in the worktree
-3. Develop without affecting main branch
-4. Run tests in main while developing
+2. Enable follow mode
+   ```bash
+   # From the worktree
+   cd ../project-feature
+   vt follow
+   
+   # Or from main repo
+   cd ../project
+   vt follow feature/new-ui
+   ```
+3. Agent develops in worktree while you stay in main repo
+4. Your IDE and servers automatically see updates
 5. Merge and remove worktree when done
 
-### Quick Branch Switching
+### Agent-Assisted Development
 
 ```bash
-# Currently on main, want to work on a feature
-vt follow feature/api-update
-# This switches to the branch AND enables follow mode
+# Create worktree for agent
+git worktree add ../project-agent feature/ai-feature
 
-# Done with the feature, go back to main
-vt follow main
+# Enable follow mode from main repo
+vt follow ../project-agent
 
-# Stop following branches
+# Agent works in worktree, your main repo stays in sync
+# Switch branches in worktree? Main repo follows
+# Commit in worktree? Main repo updates
+
+# When done
 vt unfollow
 ```
 
@@ -275,22 +302,13 @@ vt unfollow
 4. Cherry-pick to other branches if needed
 5. Clean up worktree after merge
 
-### Code Review
-
-1. Reviewer enables follow mode
-   ```bash
-   vt follow  # Follow current branch
-   ```
-2. Author switches between branches in their IDE
-3. Reviewer's terminal automatically follows along
-4. No manual switching needed
-
 ### Parallel Development
 
-1. Keep main worktree on stable branch
-2. Create feature worktrees for each task
-3. Use `vt follow <branch>` to instantly switch context
-4. No stashing or context switching needed
+1. Keep main repo on stable branch with IDE/servers running
+2. Create worktrees for different features
+3. Use `vt follow ~/project-feature1` to track first feature
+4. Switch to `vt follow ~/project-feature2` for second feature
+5. Main repo instantly syncs without restarting anything
 
 ## Troubleshooting
 
@@ -330,10 +348,11 @@ vt unfollow
 
 **Problem**: Main repository doesn't follow worktree changes
 **Solution**:
-- Ensure Git hooks are installed (VibeTunnel does this automatically)
-- Check hook permissions: `ls -la .git/hooks/post-checkout`
-- Verify follow mode is enabled for the branch
-- Check for uncommitted changes blocking the switch
+- Ensure you enabled follow mode: `git config vibetunnel.followWorktree`
+- Check hooks are installed in both repos: `ls -la .git/hooks/post-*`
+- Verify worktree path is correct: `vt status`
+- Check for uncommitted changes in main repo blocking sync
+- If you switched branches in main repo, follow mode auto-disabled
 
 ## Advanced Topics
 

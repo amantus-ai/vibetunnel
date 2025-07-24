@@ -145,6 +145,16 @@ json_escape() {
     printf '%s' "$str"
 }
 
+# Function to convert absolute paths to use ~
+prettify_path() {
+    local path="$1"
+    local home="$HOME"
+    if [[ "$path" == "$home"* ]]; then
+        echo "~${path#$home}"
+    else
+        echo "$path"
+    fi
+}
 
 # Function to show help
 show_help() {
@@ -334,16 +344,111 @@ fi
 
 # Handle 'vt follow' command
 if [[ "$1" == "follow" ]]; then
-    if [[ -n "$2" ]]; then
-        # Branch name provided - switch to it first
-        if ! git checkout "$2" 2>/dev/null; then
-            echo "Error: Failed to switch to branch '$2'" >&2
+    # Detect if we're in a worktree
+    IS_WORKTREE=$(git rev-parse --is-inside-work-tree 2>/dev/null)
+    COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null)
+    
+    if [[ "$IS_WORKTREE" == "true" ]] && [[ "$COMMON_DIR" != ".git" ]]; then
+        # We're in a worktree
+        if [[ -n "$2" ]]; then
+            # Error if trying to specify path/branch from worktree
+            WORKTREE_PATH=$(git rev-parse --show-toplevel)
+            echo "Error: Cannot specify arguments when running from a worktree."
+            echo "To enable follow mode for this worktree ($(prettify_path "$WORKTREE_PATH")):"
+            echo "  vt follow"
             exit 1
         fi
+        
+        WORKTREE_PATH=$(git rev-parse --show-toplevel)
+        # Extract main repo path from git common dir
+        MAIN_REPO=$(dirname "$COMMON_DIR")
+        
+        echo "Enabling follow mode for worktree: $(prettify_path "$WORKTREE_PATH")"
+        echo "Main repository ($(prettify_path "$MAIN_REPO")) will track this worktree"
+        
+        # Use vibetunnel CLI with worktree context
+        exec "$VIBETUNNEL_BIN" follow --from-worktree --worktree-path "$WORKTREE_PATH" --main-repo "$MAIN_REPO"
+    else
+        # We're in main repo
+        MAIN_REPO=$(git rev-parse --show-toplevel 2>/dev/null)
+        if [[ -z "$MAIN_REPO" ]]; then
+            echo "Error: Not in a git repository" >&2
+            exit 1
+        fi
+        
+        ARG="$2"
+        
+        if [[ -z "$ARG" ]]; then
+            # No argument - try to be smart
+            CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
+            
+            if [[ -z "$CURRENT_BRANCH" ]]; then
+                # Detached HEAD
+                echo "Error: Not on a branch (detached HEAD state)."
+                echo "Available worktrees:"
+                git worktree list | tail -n +2 | while read -r line; do
+                    WPATH=$(echo "$line" | awk '{print $1}')
+                    WBRANCH=$(echo "$line" | grep -oE '\[[^]]+\]' | tr -d '[]')
+                    echo "  $WBRANCH -> $(prettify_path "$WPATH")"
+                done
+                echo ""
+                echo "To follow a worktree, use one of:"
+                echo "  vt follow <branch-name>"
+                echo "  vt follow <worktree-path>"
+                exit 1
+            fi
+            
+            # Check if current branch has a worktree
+            WORKTREE_PATH=$(git worktree list --porcelain | grep -B2 "branch refs/heads/$CURRENT_BRANCH" | grep "worktree" | cut -d' ' -f2 | grep -v "^$MAIN_REPO$" | head -n1)
+            
+            if [[ -z "$WORKTREE_PATH" ]]; then
+                # No worktree for current branch
+                echo "Error: Current branch '$CURRENT_BRANCH' has no associated worktree."
+                echo "Available worktrees:"
+                git worktree list | tail -n +2 | while read -r line; do
+                    WPATH=$(echo "$line" | awk '{print $1}')
+                    WBRANCH=$(echo "$line" | grep -oE '\[[^]]+\]' | tr -d '[]')
+                    echo "  $WBRANCH -> $(prettify_path "$WPATH")"
+                done
+                echo ""
+                echo "To follow a worktree, use one of:"
+                echo "  vt follow <branch-name>"
+                echo "  vt follow <worktree-path>"
+                exit 1
+            fi
+            
+            # Success - current branch has a worktree
+            echo "Enabling follow mode for branch: $CURRENT_BRANCH"
+            echo "Following worktree: $(prettify_path "$WORKTREE_PATH")"
+            echo "Main repository: $(prettify_path "$MAIN_REPO")"
+            exec "$VIBETUNNEL_BIN" follow --worktree-path "$WORKTREE_PATH" --main-repo "$MAIN_REPO"
+            
+        elif [[ -d "$ARG" ]] || [[ "$ARG" == /* ]] || [[ "$ARG" == ../* ]]; then
+            # Path argument
+            WORKTREE_PATH=$(realpath "$ARG" 2>/dev/null)
+            if [[ -z "$WORKTREE_PATH" ]] || [[ ! -d "$WORKTREE_PATH" ]]; then
+                echo "Error: Invalid path: $ARG" >&2
+                exit 1
+            fi
+            echo "Enabling follow mode for worktree: $(prettify_path "$WORKTREE_PATH")"
+            echo "Main repository: $(prettify_path "$MAIN_REPO")"
+            exec "$VIBETUNNEL_BIN" follow --worktree-path "$WORKTREE_PATH" --main-repo "$MAIN_REPO"
+        else
+            # Branch argument
+            WORKTREE_PATH=$(git worktree list --porcelain | grep -B2 "branch refs/heads/$ARG" | grep "worktree" | cut -d' ' -f2 | grep -v "^$MAIN_REPO$" | head -n1)
+            
+            if [[ -z "$WORKTREE_PATH" ]]; then
+                echo "Error: No worktree found for branch '$ARG'"
+                echo "Create a worktree first: git worktree add ../${ARG//\//-} $ARG"
+                exit 1
+            fi
+            
+            echo "Enabling follow mode for branch: $ARG"
+            echo "Following worktree: $(prettify_path "$WORKTREE_PATH")"
+            echo "Main repository: $(prettify_path "$MAIN_REPO")"
+            exec "$VIBETUNNEL_BIN" follow --worktree-path "$WORKTREE_PATH" --main-repo "$MAIN_REPO"
+        fi
     fi
-    
-    # Use vibetunnel CLI to enable follow mode via socket
-    exec "$VIBETUNNEL_BIN" follow "$2"
 fi
 
 # Handle 'vt unfollow' command

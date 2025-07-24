@@ -250,13 +250,19 @@ Follow mode creates a seamless workflow for agent-assisted development:
 ### Quick Start
 
 ```bash
-# Enable follow mode for your current branch
+# From a worktree - enable follow mode for this worktree
 vt follow
 
-# Switch to a branch and enable follow mode
+# From main repo - follow current branch's worktree (if it exists)
+vt follow
+
+# From main repo - follow a specific branch's worktree
 vt follow feature/new-api
 
-# Disable follow mode (removes Git hooks automatically)
+# From main repo - follow a worktree by path
+vt follow ~/project-feature
+
+# Disable follow mode
 vt unfollow
 ```
 
@@ -283,32 +289,16 @@ cd ../project && vt follow
 # Your Xcode/IDE and servers stay running without interruption
 ```
 
-#### Code Review Workflow
-```bash
-# Reviewer enables follow mode
-vt follow
-
-# As the author switches between PR branches
-# The reviewer's terminal follows along
-# Perfect for live code reviews!
-```
-
-### Best Practices
-
-- **One follow per repository**: Only one branch can be followed at a time
-- **Use with worktrees**: Combine with Git worktrees for the best experience
-- **IDE agnostic**: Works with any editor that changes Git branches
-- **Lightweight**: Minimal overhead, hooks only notify on actual branch changes
 
 ### Technical Details
 
-Follow mode stores its state in your repository's Git config:
+Follow mode stores the worktree path in your main repository's Git config:
 ```bash
-# Check current follow status
-git config vibetunnel.followBranch
+# Check which worktree is being followed
+git config vibetunnel.followWorktree
 
-# Manually set (not recommended, use vt instead)
-git config vibetunnel.followBranch feature/my-branch
+# Follow mode is active when this returns a path
+# The config is managed by vt commands - manual editing not recommended
 ```
 
 For more advanced Git worktree workflows, see our [detailed worktree documentation](docs/worktree.md).

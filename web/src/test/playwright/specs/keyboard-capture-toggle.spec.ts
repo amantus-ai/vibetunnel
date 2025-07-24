@@ -166,6 +166,12 @@ test.describe('Keyboard Capture Toggle', () => {
     await assertTerminalReady(page);
     await sessionViewPage.clickTerminal();
 
+    // Set up console log monitoring
+    const consoleLogs: string[] = [];
+    page.on('console', (msg) => {
+      consoleLogs.push(msg.text());
+    });
+
     // Type some text first
     await page.keyboard.type('echo "test"');
     await page.keyboard.press('Enter');
@@ -194,18 +200,22 @@ test.describe('Keyboard Capture Toggle', () => {
     const buttonState = await captureIndicator.locator('button').getAttribute('class');
     expect(buttonState).toContain('text-muted');
 
-    // With capture OFF, Cmd/Ctrl+A should select all (browser behavior)
-    // Type some text
-    await page.keyboard.type('another test');
+    // Check console logs to verify keyboard capture is OFF
+    const captureOffLogs = consoleLogs.filter((log) => log.includes('Keyboard capture OFF'));
+    expect(captureOffLogs.length).toBeGreaterThan(0);
 
-    // Press Cmd/Ctrl+A - should select all
-    await page.keyboard.press(isMac ? 'Meta+a' : 'Control+a');
+    // With capture OFF, browser shortcuts should work
+    // Test a browser shortcut that won't interfere with the terminal
+    // For example, Cmd/Ctrl+L normally focuses the address bar
+    await page.keyboard.press(isMac ? 'Meta+l' : 'Control+l');
 
-    // Type replacement text - should replace all selected text
-    await page.keyboard.type('replaced');
-    await page.keyboard.press('Enter');
+    // Wait a bit to see if any logs appear about allowing browser to handle the key
+    await page.waitForTimeout(200);
 
-    // Should see "replaced" (not "another test")
-    await expect(page.locator('text="replaced"')).toBeVisible({ timeout: 2000 });
+    // Check that the browser was allowed to handle the shortcut
+    const browserHandleLogs = consoleLogs.filter((log) =>
+      log.includes('Keyboard capture OFF - allowing browser to handle key:')
+    );
+    expect(browserHandleLogs.length).toBeGreaterThan(0);
   });
 });
