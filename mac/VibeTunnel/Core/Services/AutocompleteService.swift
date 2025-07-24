@@ -17,7 +17,7 @@ class AutocompleteService {
     private let gitMonitor: GitRepositoryMonitor
 
     /// Common repository search paths relative to home directory
-    private static let commonRepositoryPaths = [
+    private nonisolated static let commonRepositoryPaths = [
         "/Projects",
         "/Developer",
         "/Documents",
