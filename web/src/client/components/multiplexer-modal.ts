@@ -190,6 +190,28 @@ export class MultiplexerModal extends LitElement {
       border-top: 1px solid rgb(var(--color-border));
     }
 
+    .zellij-session-info {
+      padding: 1rem 1rem 1rem 2rem;
+      background: rgb(var(--color-bg));
+      border-top: 1px solid rgb(var(--color-border));
+    }
+
+    .attach-button {
+      padding: 0.5rem 1rem;
+      background: rgb(var(--color-accent-green));
+      color: rgb(var(--color-bg));
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+
+    .attach-button:hover {
+      background: rgb(var(--color-accent-green) / 0.8);
+    }
+
     .window-item {
       padding: 0.5rem;
       margin-bottom: 0.25rem;
@@ -742,9 +764,10 @@ export class MultiplexerModal extends LitElement {
                           </div>
 
                           ${
-                            session.type === 'tmux' && isExpanded && sessionWindows.length > 0
-                              ? html`
-                                <div class="windows-list">
+                            isExpanded
+                              ? session.type === 'tmux' && sessionWindows.length > 0
+                                ? html`
+                                  <div class="windows-list">
                                   ${repeat(
                                     sessionWindows,
                                     (window) => `${session.name}-${window.index}`,
@@ -819,7 +842,21 @@ export class MultiplexerModal extends LitElement {
                                   )}
                                 </div>
                               `
-                              : null
+                              : session.type === 'zellij'
+                                ? html`
+                                  <div class="zellij-session-info">
+                                    <button
+                                      class="attach-button"
+                                      @click=${() => this.attachToSession({
+                                        type: 'zellij',
+                                        session: session.name,
+                                      })}
+                                    >
+                                      Attach to Session
+                                    </button>
+                                  </div>
+                                `
+                                : null
                           }
                         </div>
                       `;
