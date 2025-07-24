@@ -45,10 +45,14 @@ export default defineConfig(({ mode }) => {
       reporters,
       poolOptions: {
         threads: {
-          singleThread: true, // Run tests sequentially to reduce memory usage
+          // Use available CPU cores for parallel execution
+          maxThreads: undefined,
+          minThreads: 1,
         },
         forks: {
-          singleFork: true,
+          // Allow multiple forks for better test isolation
+          maxForks: undefined,
+          minForks: 1,
         }
       },
       isolate: true, // Isolate tests in separate contexts
