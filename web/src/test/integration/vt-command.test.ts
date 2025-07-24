@@ -169,7 +169,7 @@ describe('vt command', () => {
     // Check for critical conditionals
     expect(scriptContent).toContain('if [ -z "$VIBETUNNEL_BIN" ]');
     expect(scriptContent).toContain('if [ -n "$VIBETUNNEL_SESSION_ID" ]');
-    
+
     // Check that follow command handling exists
     expect(scriptContent).toContain('if [[ "$1" == "follow" ]]');
     expect(scriptContent).toContain('if [[ "$1" == "unfollow" ]]');

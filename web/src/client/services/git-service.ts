@@ -1,7 +1,37 @@
 /**
  * Git Service
  *
- * Handles Git-related API calls including repository info, worktrees, and follow mode
+ * Handles Git-related API calls including repository info, worktrees, and follow mode.
+ * This service provides a client-side interface to interact with Git repositories
+ * through the VibeTunnel server API.
+ *
+ * ## Main Features
+ * - Repository detection and status checking
+ * - Git worktree management (list, create, delete, prune)
+ * - Branch switching with follow mode support
+ * - Repository change detection
+ *
+ * ## Usage Example
+ * ```typescript
+ * const gitService = new GitService(authClient);
+ *
+ * // Check if current path is a git repository
+ * const repoInfo = await gitService.checkGitRepo('/path/to/project');
+ * if (repoInfo.isGitRepo) {
+ *   // List all worktrees
+ *   const { worktrees } = await gitService.listWorktrees(repoInfo.repoPath);
+ *
+ *   // Create a new worktree
+ *   await gitService.createWorktree(
+ *     repoInfo.repoPath,
+ *     'feature/new-branch',
+ *     '/path/to/worktree'
+ *   );
+ * }
+ * ```
+ *
+ * @see web/src/server/controllers/git-controller.ts for server-side implementation
+ * @see web/src/server/controllers/worktree-controller.ts for worktree endpoints
  */
 
 import { HttpMethod } from '../../shared/types.js';
@@ -10,6 +40,14 @@ import type { AuthClient } from './auth-client.js';
 
 const logger = createLogger('git-service');
 
+/**
+ * Git repository information
+ *
+ * @property isGitRepo - Whether the path is within a Git repository
+ * @property repoPath - Absolute path to the repository root (if isGitRepo is true)
+ * @property hasChanges - Whether the repository has uncommitted changes
+ * @property isWorktree - Whether the current path is a Git worktree (not the main repository)
+ */
 export interface GitRepoInfo {
   isGitRepo: boolean;
   repoPath?: string;
@@ -17,6 +55,31 @@ export interface GitRepoInfo {
   isWorktree?: boolean;
 }
 
+/**
+ * Git worktree information
+ *
+ * A worktree allows you to have multiple working directories attached to the same repository.
+ * Each worktree has its own working directory and can check out a different branch.
+ *
+ * @property path - Absolute path to the worktree directory
+ * @property branch - Branch name checked out in this worktree
+ * @property HEAD - Current commit SHA
+ * @property detached - Whether HEAD is detached (not on a branch)
+ * @property prunable - Whether this worktree can be pruned (directory missing)
+ * @property locked - Whether this worktree is locked (prevents deletion)
+ * @property lockedReason - Reason why the worktree is locked
+ *
+ * Extended statistics (populated by the server):
+ * @property commitsAhead - Number of commits ahead of the base branch
+ * @property filesChanged - Number of files with changes
+ * @property insertions - Number of lines added
+ * @property deletions - Number of lines removed
+ * @property hasUncommittedChanges - Whether there are uncommitted changes
+ *
+ * UI helper properties:
+ * @property isMainWorktree - Whether this is the main worktree (not a linked worktree)
+ * @property isCurrentWorktree - Whether this worktree matches the current session path
+ */
 export interface Worktree {
   path: string;
   branch: string;
@@ -36,12 +99,29 @@ export interface Worktree {
   isCurrentWorktree?: boolean;
 }
 
+/**
+ * Response from listing worktrees
+ *
+ * @property worktrees - Array of all worktrees for the repository
+ * @property baseBranch - The default/main branch of the repository (e.g., 'main' or 'master')
+ * @property followBranch - Currently active branch for follow mode (if any)
+ */
 export interface WorktreeListResponse {
   worktrees: Worktree[];
   baseBranch: string;
   followBranch?: string;
 }
 
+/**
+ * GitService provides client-side methods for interacting with Git repositories
+ * through the VibeTunnel API. All methods require authentication via AuthClient.
+ *
+ * The service handles:
+ * - Error logging and propagation
+ * - Authentication headers
+ * - Request/response serialization
+ * - URL encoding for path parameters
+ */
 export class GitService {
   constructor(private authClient: AuthClient) {}
 

@@ -1,15 +1,6 @@
-import * as fs from 'fs';
-import * as net from 'net';
-import * as path from 'path';
+import type * as net from 'net';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  type GitFollowRequest,
-  type GitFollowResponse,
-  MessageBuilder,
-  MessageParser,
-  MessageType,
-  type StatusResponse,
-} from './pty/socket-protocol.js';
+import { type GitFollowRequest, MessageType } from './pty/socket-protocol.js';
 
 // Mock dependencies at the module level
 vi.mock('fs', async () => {
@@ -65,18 +56,17 @@ vi.mock('util', () => ({
 
 describe('ApiSocketServer', () => {
   let apiSocketServer: any;
-  const testSocketPath = path.join(process.env.HOME || '/tmp', '.vibetunnel', 'api.sock');
   let client: net.Socket;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    
+
     // Configure fs mocks
     const fsMock = await import('fs');
     vi.mocked(fsMock.existsSync).mockReturnValue(false);
     vi.mocked(fsMock.mkdirSync).mockImplementation(() => undefined);
     vi.mocked(fsMock.unlinkSync).mockImplementation(() => {});
-    
+
     // Import after mocks are set up
     const module = await import('./api-socket-server.js');
     apiSocketServer = module.apiSocketServer;
@@ -108,14 +98,14 @@ describe('ApiSocketServer', () => {
       mockExecFile.mockRejectedValue(new Error('Not a git repository'));
 
       apiSocketServer.setServerInfo(4020, 'http://localhost:4020');
-      
+
       // Test the handler directly since we can't create real sockets with mocked fs
       const mockSocket = {
         write: vi.fn(),
       };
-      
+
       await apiSocketServer.handleStatusRequest(mockSocket);
-      
+
       expect(mockSocket.write).toHaveBeenCalled();
       const call = mockSocket.write.mock.calls[0][0];
       expect(call[0]).toBe(MessageType.STATUS_RESPONSE);
@@ -128,13 +118,13 @@ describe('ApiSocketServer', () => {
         .mockResolvedValueOnce({ stdout: '/Users/test/project\n', stderr: '' }); // rev-parse
 
       apiSocketServer.setServerInfo(4020, 'http://localhost:4020');
-      
+
       const mockSocket = {
         write: vi.fn(),
       };
-      
+
       await apiSocketServer.handleStatusRequest(mockSocket);
-      
+
       expect(mockSocket.write).toHaveBeenCalled();
     });
   });
@@ -153,9 +143,9 @@ describe('ApiSocketServer', () => {
       const mockSocket = {
         write: vi.fn(),
       };
-      
+
       await apiSocketServer.handleGitFollowRequest(mockSocket, request);
-      
+
       expect(mockSocket.write).toHaveBeenCalled();
       const call = mockSocket.write.mock.calls[0][0];
       expect(call[0]).toBe(MessageType.GIT_FOLLOW_RESPONSE);
@@ -173,9 +163,9 @@ describe('ApiSocketServer', () => {
       const mockSocket = {
         write: vi.fn(),
       };
-      
+
       await apiSocketServer.handleGitFollowRequest(mockSocket, request);
-      
+
       expect(mockSocket.write).toHaveBeenCalled();
     });
 
@@ -192,9 +182,9 @@ describe('ApiSocketServer', () => {
       const mockSocket = {
         write: vi.fn(),
       };
-      
+
       await apiSocketServer.handleGitFollowRequest(mockSocket, request);
-      
+
       expect(mockSocket.write).toHaveBeenCalled();
     });
   });
@@ -204,12 +194,12 @@ describe('ApiSocketServer', () => {
       const mockSocket = {
         write: vi.fn(),
       };
-      
+
       await apiSocketServer.handleGitEventNotify(mockSocket, {
         repoPath: '/Users/test/project',
         type: 'checkout',
       });
-      
+
       expect(mockSocket.write).toHaveBeenCalled();
       const call = mockSocket.write.mock.calls[0][0];
       expect(call[0]).toBe(MessageType.GIT_EVENT_ACK);

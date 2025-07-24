@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SocketApiClient } from './socket-api-client.js';
 import type { GitFollowRequest, GitFollowResponse } from './pty/socket-protocol.js';
+import { SocketApiClient } from './socket-api-client.js';
 
 // Mock dependencies
 vi.mock('./utils/logger.js', () => ({
@@ -30,7 +30,7 @@ vi.mock('./pty/socket-client.js', () => ({
 
 describe('SocketApiClient', () => {
   let client: SocketApiClient;
-  const testSocketPath = path.join(process.env.HOME || '/tmp', '.vibetunnel', 'api.sock');
+  const _testSocketPath = path.join(process.env.HOME || '/tmp', '.vibetunnel', 'api.sock');
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -120,7 +120,9 @@ describe('SocketApiClient', () => {
         enable: true,
       };
 
-      await expect(client.setFollowMode(request)).rejects.toThrow('VibeTunnel server is not running');
+      await expect(client.setFollowMode(request)).rejects.toThrow(
+        'VibeTunnel server is not running'
+      );
     });
   });
 
@@ -148,13 +150,13 @@ describe('SocketApiClient', () => {
   describe('sendRequest', () => {
     it('should handle timeout', async () => {
       vi.spyOn(fs, 'existsSync').mockReturnValue(true);
-      
+
       // Mock connect to succeed but never send response
       mockConnect.mockResolvedValue(undefined);
-      
+
       // Use a real client instance to test the actual sendRequest method
       const realClient = new SocketApiClient();
-      
+
       // Override the timeout to be shorter for testing
       const promise = (realClient as any).sendRequest(
         0x20, // STATUS_REQUEST
@@ -168,9 +170,9 @@ describe('SocketApiClient', () => {
 
     it('should handle server errors', async () => {
       vi.spyOn(fs, 'existsSync').mockReturnValue(true);
-      
+
       mockConnect.mockResolvedValue(undefined);
-      
+
       // Set up the mock to call the error handler
       mockOn.mockImplementation((event, handler) => {
         if (event === 'error') {
@@ -179,10 +181,8 @@ describe('SocketApiClient', () => {
       });
 
       const realClient = new SocketApiClient();
-      
-      await expect(
-        (realClient as any).sendRequest(0x20, {}, 0x21)
-      ).rejects.toThrow('Socket error');
+
+      await expect((realClient as any).sendRequest(0x20, {}, 0x21)).rejects.toThrow('Socket error');
     });
   });
 });

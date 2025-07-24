@@ -412,7 +412,7 @@ describe('PushNotificationService', () => {
     it('should convert base64 URL-safe string to Uint8Array', () => {
       // This is a simplified test - in reality you'd use actual VAPID keys
       const base64 = 'SGVsbG8gV29ybGQ'; // "Hello World" in base64
-      const result = service['urlBase64ToUint8Array'](base64);
+      const result = service.urlBase64ToUint8Array(base64);
 
       expect(result).toBeInstanceOf(Uint8Array);
       expect(result.length).toBeGreaterThan(0);
@@ -420,7 +420,7 @@ describe('PushNotificationService', () => {
 
     it('should handle URL-safe base64 with padding', () => {
       const base64WithDashes = 'SGVs-bG8gV29y_bGQ=';
-      const result = service['urlBase64ToUint8Array'](base64WithDashes);
+      const result = service.urlBase64ToUint8Array(base64WithDashes);
 
       expect(result).toBeInstanceOf(Uint8Array);
     });

@@ -27,7 +27,7 @@ describe.skip('Follow Mode End-to-End Tests', () => {
   }
 
   // Helper to run vt commands
-  async function vtExec(args: string[], cwd: string = testRepoPath) {
+  async function _vtExec(args: string[], cwd: string = testRepoPath) {
     const vtPath = path.join(process.cwd(), 'bin', 'vt');
     try {
       const { stdout, stderr } = await execFileAsync(vtPath, args, {
@@ -292,7 +292,7 @@ describe.skip('Follow Mode End-to-End Tests', () => {
         repoPath: testRepoPath,
         enable: false,
       });
-      
+
       expect(response.status).toBe(200);
       expect(response.body.enabled).toBe(false);
 
@@ -332,11 +332,13 @@ describe.skip('Follow Mode End-to-End Tests', () => {
       await gitExec(['checkout', 'develop']);
 
       // Trigger git event via API
-      await request(baseUrl).post('/api/git/event').send({
-        repoPath: testRepoPath,
-        branch: currentBranch === 'main' ? 'develop' : 'main',
-        event: 'checkout',
-      });
+      await request(baseUrl)
+        .post('/api/git/event')
+        .send({
+          repoPath: testRepoPath,
+          branch: currentBranch === 'main' ? 'develop' : 'main',
+          event: 'checkout',
+        });
 
       // Get updated session info
       const listResponse2 = await request(baseUrl).get('/api/sessions');
@@ -350,7 +352,7 @@ describe.skip('Follow Mode End-to-End Tests', () => {
     it('should handle multiple sessions in same repository', async () => {
       // Create src directory for the second session
       await fs.mkdir(path.join(testRepoPath, 'src'), { recursive: true });
-      
+
       // Create multiple sessions
       const sessions = await Promise.all([
         request(baseUrl)
