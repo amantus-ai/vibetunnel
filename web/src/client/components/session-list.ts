@@ -1012,69 +1012,112 @@ export class SessionList extends LitElement {
   private renderExitedControls() {
     const exitedSessions = this.sessions.filter((session) => session.status === 'exited');
     const runningSessions = this.sessions.filter((session) => session.status === 'running');
+    const activeSessions = runningSessions.filter((s) => s.activityStatus?.isActive !== false);
+    const idleSessions = runningSessions.filter((s) => s.activityStatus?.isActive === false);
 
-    // If no exited sessions and no running sessions, don't show controls
-    if (exitedSessions.length === 0 && runningSessions.length === 0) return '';
+    // If no sessions at all, don't show controls
+    if (this.sessions.length === 0) return '';
 
     return html`
-      <div class="sticky bottom-0 border-t border-border bg-bg-secondary p-3 flex flex-wrap gap-2 shadow-lg" style="z-index: ${Z_INDEX.SESSION_LIST_BOTTOM_BAR};">
-        <!-- Control buttons with consistent styling -->
-        ${
-          exitedSessions.length > 0
-            ? html`
-                <!-- Show/Hide Exited button -->
-                <button
-                  class="font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 ${
-                    this.hideExited
-                      ? 'border-border bg-bg-elevated text-text-muted hover:bg-surface-hover hover:text-accent-primary hover:border-accent-primary hover:shadow-sm active:scale-95'
-                      : 'border-accent-primary bg-accent-primary bg-opacity-10 text-accent-primary hover:bg-opacity-20 hover:shadow-glow-primary-sm active:scale-95'
-                  }"
-                  id="${this.hideExited ? 'show-exited-button' : 'hide-exited-button'}"
-                  @click=${() =>
-                    this.dispatchEvent(
-                      new CustomEvent('hide-exited-change', { detail: !this.hideExited })
-                    )}
-                  data-testid="${this.hideExited ? 'show-exited-button' : 'hide-exited-button'}"
-                >
-                  ${this.hideExited ? 'Show' : 'Hide'} Exited
-                  <span class="text-text-dim">(${exitedSessions.length})</span>
-                </button>
-                
-                <!-- Clean Exited button (only when Show Exited is active) -->
-                ${
-                  !this.hideExited
-                    ? html`
-                      <button
-                        class="font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 border-status-warning bg-status-warning bg-opacity-10 text-status-warning hover:bg-opacity-20 hover:shadow-glow-warning-sm active:scale-95 disabled:opacity-50"
-                        id="clean-exited-button"
-                        @click=${this.handleCleanupExited}
-                        ?disabled=${this.cleaningExited}
-                        data-testid="clean-exited-button"
-                      >
-                        ${this.cleaningExited ? 'Cleaning...' : 'Clean Exited'}
-                      </button>
-                    `
-                    : ''
-                }
+      <div class="sticky bottom-0 border-t border-border bg-bg-secondary shadow-lg" style="z-index: ${Z_INDEX.SESSION_LIST_BOTTOM_BAR};">
+        <div class="px-4 py-3 flex items-center justify-between">
+          <!-- Status group (left side) -->
+          <div class="flex items-center gap-4">
+            <!-- Session counts -->
+            <div class="flex items-center gap-3 font-mono text-xs">
+              ${
+                activeSessions.length > 0
+                  ? html`
+                <span class="text-status-success">${activeSessions.length} Active</span>
+              `
+                  : ''
+              }
+              ${
+                idleSessions.length > 0
+                  ? html`
+                <span class="text-text-muted">${idleSessions.length} Idle</span>
+              `
+                  : ''
+              }
+              ${
+                exitedSessions.length > 0
+                  ? html`
+                <span class="text-text-dim">${exitedSessions.length} Exited</span>
+              `
+                  : ''
+              }
+            </div>
+
+            <!-- Show exited toggle (only if there are exited sessions) -->
+            ${
+              exitedSessions.length > 0
+                ? html`
+              <label class="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  class="w-4 h-4 rounded border-border bg-bg-primary text-accent-primary focus:ring-accent-primary focus:ring-offset-0 focus:ring-2 cursor-pointer"
+                  ?checked=${!this.hideExited}
+                  @change=${(e: Event) => {
+                    const checked = (e.target as HTMLInputElement).checked;
+                    this.dispatchEvent(new CustomEvent('hide-exited-change', { detail: !checked }));
+                  }}
+                  id="show-exited-toggle"
+                  data-testid="show-exited-toggle"
+                />
+                <span class="text-xs text-text-muted group-hover:text-text font-mono select-none">
+                  Show exited
+                </span>
+              </label>
             `
-            : ''
-        }
-        
-        <!-- Kill All button -->
-        ${
-          runningSessions.length > 0
-            ? html`
+                : ''
+            }
+          </div>
+
+          <!-- Actions group (right side) -->
+          <div class="flex items-center gap-2">
+            <!-- Clean button (only visible when showing exited sessions) -->
+            ${
+              !this.hideExited && exitedSessions.length > 0
+                ? html`
               <button
-                class="font-mono text-xs px-4 py-2 rounded-lg border transition-all duration-200 border-status-error bg-status-error bg-opacity-10 text-status-error hover:bg-opacity-20 hover:shadow-glow-error-sm active:scale-95"
+                class="font-mono text-xs px-3 py-1.5 rounded-md border transition-all duration-200 border-status-warning bg-status-warning bg-opacity-10 text-status-warning hover:bg-opacity-20 hover:shadow-glow-warning-sm active:scale-95 disabled:opacity-50"
+                id="clean-exited-button"
+                @click=${this.handleCleanupExited}
+                ?disabled=${this.cleaningExited}
+                data-testid="clean-exited-button"
+              >
+                ${
+                  this.cleaningExited
+                    ? html`
+                  <span class="flex items-center gap-1">
+                    <span class="animate-spin">⟳</span>
+                    Cleaning...
+                  </span>
+                `
+                    : 'Clean'
+                }
+              </button>
+            `
+                : ''
+            }
+            
+            <!-- Kill All button (always visible if there are running sessions) -->
+            ${
+              runningSessions.length > 0
+                ? html`
+              <button
+                class="font-mono text-xs px-3 py-1.5 rounded-md border transition-all duration-200 border-status-error bg-status-error bg-opacity-10 text-status-error hover:bg-opacity-20 hover:shadow-glow-error-sm active:scale-95"
                 id="kill-all-button"
                 @click=${() => this.dispatchEvent(new CustomEvent('kill-all-sessions'))}
                 data-testid="kill-all-button"
               >
-                Kill All <span class="text-text-dim">(${runningSessions.length})</span>
+                Kill All
               </button>
             `
-            : ''
-        }
+                : ''
+            }
+          </div>
+        </div>
       </div>
     `;
   }

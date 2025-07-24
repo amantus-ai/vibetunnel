@@ -66,7 +66,7 @@ export class GitStatusBadge extends LitElement {
         oldId: oldSession?.id,
         newId: this.session?.id,
       });
-      
+
       if (this.session?.id && !document.hidden) {
         this._startPolling();
       } else {

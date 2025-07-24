@@ -28,7 +28,7 @@ test.describe('Keyboard Capture Toggle', () => {
   test.skip('should toggle keyboard capture with double Escape', async ({ page }) => {
     // Create a session
     const session = await createAndNavigateToSession(page, {
-      name: sessionManager.generateSessionName('capture-toggle'),
+      name: sessionManager.generateSessionName('test-capture-toggle'),
     });
 
     // Track the session for cleanup
@@ -136,7 +136,7 @@ test.describe('Keyboard Capture Toggle', () => {
   test('should toggle keyboard capture by clicking indicator', async ({ page }) => {
     // Create a session
     const session = await createAndNavigateToSession(page, {
-      name: sessionManager.generateSessionName('capture-click'),
+      name: sessionManager.generateSessionName('test-capture-click'),
     });
 
     // Track the session for cleanup
@@ -185,7 +185,7 @@ test.describe('Keyboard Capture Toggle', () => {
   test('should show captured shortcuts in indicator tooltip', async ({ page }) => {
     // Create a session
     const session = await createAndNavigateToSession(page, {
-      name: sessionManager.generateSessionName('capture-tooltip'),
+      name: sessionManager.generateSessionName('test-capture-tooltip'),
     });
 
     // Track the session for cleanup
@@ -233,7 +233,7 @@ test.describe('Keyboard Capture Toggle', () => {
   test('should respect keyboard capture state for shortcuts', async ({ page }) => {
     // Create a session
     const session = await createAndNavigateToSession(page, {
-      name: sessionManager.generateSessionName('capture-shortcuts'),
+      name: sessionManager.generateSessionName('test-capture-shortcuts'),
     });
 
     // Track the session for cleanup

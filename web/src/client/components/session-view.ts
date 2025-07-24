@@ -96,7 +96,7 @@ export class SessionView extends LitElement {
   private boundHandleDragLeave?: (e: DragEvent) => void;
   private boundHandleDrop?: (e: DragEvent) => void;
   private boundHandlePaste?: (e: ClipboardEvent) => void;
-  
+
   // Bound terminal event handlers
   private boundHandleTerminalClick = this.handleTerminalClick.bind(this);
   private boundHandleTerminalInput = this.handleTerminalInput.bind(this);
@@ -295,7 +295,7 @@ export class SessionView extends LitElement {
       }
     );
     this.connectionManager.setConnected(true);
-    
+
     // Set connected state in UI state manager
     this.uiStateManager.setConnected(true);
 
@@ -557,7 +557,7 @@ export class SessionView extends LitElement {
         ? (terminalRenderer.querySelector('vibe-terminal-binary') as VibeTerminalBinary | null)
         : (terminalRenderer.querySelector('vibe-terminal') as Terminal | null);
     }
-    
+
     // Fallback to direct search (shouldn't happen with new structure)
     return this.uiStateManager.getState().useBinaryMode
       ? (this.querySelector('vibe-terminal-binary') as VibeTerminalBinary | null)

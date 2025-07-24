@@ -32,6 +32,7 @@ export interface FileOperationsCallbacks {
 export class FileOperationsManager {
   private callbacks: FileOperationsCallbacks | null = null;
   private dragCounter = 0;
+  private dragLeaveTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Bound event handlers for cleanup
   private boundHandleDragOver: (e: DragEvent) => void;
@@ -67,6 +68,12 @@ export class FileOperationsManager {
     element.removeEventListener('dragleave', this.boundHandleDragLeave);
     element.removeEventListener('drop', this.boundHandleDrop);
     document.removeEventListener('paste', this.boundHandlePaste);
+
+    // Clear any pending drag leave timer
+    if (this.dragLeaveTimer) {
+      clearTimeout(this.dragLeaveTimer);
+      this.dragLeaveTimer = null;
+    }
 
     // Reset drag state
     this.dragCounter = 0;
@@ -225,6 +232,12 @@ export class FileOperationsManager {
 
   // Reset drag state
   resetDragState(): void {
+    // Clear any pending drag leave timer
+    if (this.dragLeaveTimer) {
+      clearTimeout(this.dragLeaveTimer);
+      this.dragLeaveTimer = null;
+    }
+
     this.dragCounter = 0;
     if (this.callbacks) {
       this.callbacks.setIsDragOver(false);
@@ -236,6 +249,12 @@ export class FileOperationsManager {
     e.preventDefault();
     e.stopPropagation();
 
+    // Clear any pending drag leave timer
+    if (this.dragLeaveTimer) {
+      clearTimeout(this.dragLeaveTimer);
+      this.dragLeaveTimer = null;
+    }
+
     // Check if the drag contains files
     if (e.dataTransfer?.types.includes('Files') && this.callbacks) {
       this.callbacks.setIsDragOver(true);
@@ -245,6 +264,12 @@ export class FileOperationsManager {
   handleDragEnter(e: DragEvent): void {
     e.preventDefault();
     e.stopPropagation();
+
+    // Clear any pending drag leave timer
+    if (this.dragLeaveTimer) {
+      clearTimeout(this.dragLeaveTimer);
+      this.dragLeaveTimer = null;
+    }
 
     this.dragCounter++;
 
@@ -260,15 +285,29 @@ export class FileOperationsManager {
 
     this.dragCounter--;
 
-    // Only hide overlay when all drag operations have left
-    if (this.dragCounter === 0 && this.callbacks) {
-      this.callbacks.setIsDragOver(false);
+    // Use a timer to handle the drag leave to avoid flicker when moving between elements
+    if (this.dragLeaveTimer) {
+      clearTimeout(this.dragLeaveTimer);
     }
+
+    this.dragLeaveTimer = setTimeout(() => {
+      // Check if we're really outside the drop zone
+      if (this.dragCounter <= 0 && this.callbacks) {
+        this.callbacks.setIsDragOver(false);
+        this.dragCounter = 0; // Reset to 0 to handle any counting inconsistencies
+      }
+    }, 100); // Small delay to handle rapid enter/leave events
   }
 
   async handleDrop(e: DragEvent): Promise<void> {
     e.preventDefault();
     e.stopPropagation();
+
+    // Clear any pending drag leave timer
+    if (this.dragLeaveTimer) {
+      clearTimeout(this.dragLeaveTimer);
+      this.dragLeaveTimer = null;
+    }
 
     if (this.callbacks) {
       this.callbacks.setIsDragOver(false);

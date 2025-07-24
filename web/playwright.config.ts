@@ -106,6 +106,7 @@ export default defineConfig({
         '**/push-notifications.spec.ts',
         '**/authentication.spec.ts',
         '**/activity-monitoring.spec.ts',
+        '**/git-status-badge-debug.spec.ts',
       ],
     },
     // Serial tests - these tests perform global operations or modify shared state
