@@ -1279,16 +1279,9 @@ export class Terminal extends LitElement {
         }
       });
 
-      // Follow cursor: scroll to bottom if enabled
+      // Follow cursor if requested
       if (followCursor && this.followCursorEnabled) {
-        const buffer = this.terminal.buffer.active;
-        const lineHeight = this.fontSize * 1.2;
-        const maxScrollPixels = Math.max(0, (buffer.length - this.actualRows) * lineHeight);
-
-        // Set programmatic scroll flag and scroll to bottom
-        this.programmaticScroll = true;
-        this.viewportY = maxScrollPixels;
-        this.programmaticScroll = false;
+        this.followCursor();
       }
     });
   }

@@ -12,7 +12,7 @@ import { ServerConfigService } from '../services/server-config-service.js';
 import { createLogger } from '../utils/logger.js';
 import { type MediaQueryState, responsiveObserver } from '../utils/responsive-utils.js';
 
-const logger = createLogger('unified-settings');
+const logger = createLogger('settings');
 
 export interface AppPreferences {
   useDirectKeyboard: boolean;
@@ -28,8 +28,8 @@ const DEFAULT_APP_PREFERENCES: AppPreferences = {
 
 export const STORAGE_KEY = 'vibetunnel_app_preferences';
 
-@customElement('unified-settings')
-export class UnifiedSettings extends LitElement {
+@customElement('vt-settings')
+export class Settings extends LitElement {
   // Disable shadow DOM to use Tailwind
   createRenderRoot() {
     return this;

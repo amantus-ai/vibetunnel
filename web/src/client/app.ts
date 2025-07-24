@@ -33,7 +33,7 @@ import './components/session-view.js';
 import './components/session-card.js';
 import './components/file-browser.js';
 import './components/log-viewer.js';
-import './components/unified-settings.js';
+import './components/settings.js';
 import './components/notification-status.js';
 import './components/auth-login.js';
 import './components/ssh-key-manager.js';
@@ -1728,7 +1728,7 @@ export class VibeTunnelApp extends LitElement {
 
 
       <!-- Unified Settings Modal -->
-      <unified-settings
+      <vt-settings
         .visible=${this.showSettings}
         .authClient=${authClient}
         @close=${this.handleCloseSettings}
@@ -1736,7 +1736,7 @@ export class VibeTunnelApp extends LitElement {
         @notifications-disabled=${() => this.showSuccess('Notifications disabled')}
         @success=${(e: CustomEvent) => this.showSuccess(e.detail)}
         @error=${(e: CustomEvent) => this.showError(e.detail)}
-      ></unified-settings>
+      ></vt-settings>
 
       <!-- SSH Key Manager Modal -->
       <ssh-key-manager

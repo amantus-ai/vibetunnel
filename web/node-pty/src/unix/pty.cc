@@ -172,7 +172,6 @@ void SetupExitCallback(Napi::Env env, Napi::Function cb, pid_t pid) {
           continue;
         }
         if (ret == -1 && errno == ECHILD) {
-          // XXX node v0.8.x seems to have this problem.
           // waitpid is already handled elsewhere.
           ;
         } else {
