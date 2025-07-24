@@ -52,7 +52,7 @@ struct WindowHighlightConfig {
 @MainActor
 final class WindowHighlightEffect {
     private let logger = Logger(
-        subsystem: "sh.vibetunnel.vibetunnel",
+        subsystem: BundleIdentifiers.loggerSubsystem,
         category: "WindowHighlightEffect"
     )
 

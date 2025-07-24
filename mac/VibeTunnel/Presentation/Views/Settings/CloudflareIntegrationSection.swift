@@ -13,7 +13,7 @@ struct CloudflareIntegrationSection: View {
     @State private var isTogglingTunnel = false
     @State private var tunnelEnabled = false
 
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "CloudflareIntegrationSection")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "CloudflareIntegrationSection")
 
     // MARK: - Constants
 

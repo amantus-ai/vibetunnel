@@ -16,7 +16,7 @@ struct SecurityPermissionsSettingsView: View {
 
     @State private var permissionUpdateTrigger = 0
 
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "SecurityPermissionsSettings")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "SecurityPermissionsSettings")
 
     // MARK: - Helper Properties
 

@@ -1,5 +1,8 @@
 import Combine
 import SwiftUI
+import os.log
+
+private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "GitBranchWorktreeSelector")
 
 /// A SwiftUI component for Git branch and worktree selection, mirroring the web UI functionality
 struct GitBranchWorktreeSelector: View {
@@ -305,7 +308,7 @@ struct GitBranchWorktreeSelector: View {
         }
 
         if let error = worktreeService.error {
-            print("Failed to load worktrees: \(error)")
+            logger.error("Failed to load worktrees: \(error)")
             errorMessage = "Failed to load worktrees"
         }
         isLoadingWorktrees = false

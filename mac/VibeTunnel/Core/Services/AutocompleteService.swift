@@ -13,7 +13,7 @@ class AutocompleteService {
     private var currentTask: Task<Void, Never>?
     private var taskCounter = 0
     private let fileManager = FileManager.default
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AutocompleteService")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "AutocompleteService")
     private let gitMonitor: GitRepositoryMonitor
 
     /// Common repository search paths relative to home directory

@@ -4,7 +4,7 @@ import OSLog
 /// Handles terminal control messages via the unified control socket
 @MainActor
 final class TerminalControlHandler {
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "TerminalControl")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "TerminalControl")
 
     // MARK: - Singleton
 

@@ -6,7 +6,7 @@ import OSLog
 @MainActor
 final class WindowFocuser {
     private let logger = Logger(
-        subsystem: "sh.vibetunnel.vibetunnel",
+        subsystem: BundleIdentifiers.loggerSubsystem,
         category: "WindowFocuser"
     )
 

@@ -36,7 +36,7 @@ final class CloudflareService {
     private static let serverStopTimeoutMillis = 500
 
     /// Logger instance for debugging
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "CloudflareService")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "CloudflareService")
 
     /// Indicates if cloudflared CLI is installed on the system
     private(set) var isInstalled = false

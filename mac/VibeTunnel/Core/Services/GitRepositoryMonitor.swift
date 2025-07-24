@@ -63,7 +63,7 @@ public final class GitRepositoryMonitor {
     // MARK: - Private Properties
 
     /// Logger for debugging
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "GitRepositoryMonitor")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "GitRepositoryMonitor")
 
     /// Operation queue for rate limiting git operations
     private let gitOperationQueue = OperationQueue()

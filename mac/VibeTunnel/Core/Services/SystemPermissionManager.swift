@@ -62,7 +62,7 @@ final class SystemPermissionManager {
     ]
 
     private let logger = Logger(
-        subsystem: "sh.vibetunnel.vibetunnel",
+        subsystem: BundleIdentifiers.loggerSubsystem,
         category: "SystemPermissions"
     )
 
@@ -192,10 +192,7 @@ final class SystemPermissionManager {
 
         // Start timer for periodic checks
         monitorTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self else {
-                print("SystemPermissionManager: Timer fired but self is nil")
-                return
-            }
+            guard let self else { return }
             Task { @MainActor in
                 await self.checkAllPermissions()
             }

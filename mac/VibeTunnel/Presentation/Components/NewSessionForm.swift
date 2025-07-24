@@ -1,4 +1,7 @@
 import SwiftUI
+import os.log
+
+private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "NewSessionForm")
 
 /// Compact new session form designed for the popover.
 ///
@@ -604,15 +607,15 @@ struct NewSessionForm: View {
     private func checkForGitRepository(at path: String) {
         guard !checkingGitStatus else { return }
 
-        print("🔍 [NewSessionForm] Checking for Git repository at: \(path)")
+        logger.info("🔍 Checking for Git repository at: \(path)")
         checkingGitStatus = true
 
         Task {
             let expandedPath = NSString(string: path).expandingTildeInPath
-            print("🔍 [NewSessionForm] Expanded path: \(expandedPath)")
+            logger.debug("🔍 Expanded path: \(expandedPath)")
 
             if let repo = await gitMonitor.findRepository(for: expandedPath) {
-                print("✅ [NewSessionForm] Found Git repository: \(repo.path)")
+                logger.info("✅ Found Git repository: \(repo.path)")
                 await MainActor.run {
                     self.isGitRepository = true
                     self.gitRepoPath = repo.path
@@ -654,7 +657,7 @@ struct NewSessionForm: View {
                     }
                 }
             } else {
-                print("❌ [NewSessionForm] No Git repository found")
+                logger.info("❌ No Git repository found")
                 await MainActor.run {
                     self.isGitRepository = false
                     self.gitRepoPath = nil

@@ -9,7 +9,7 @@ import OSLog
 final class ConfigManager {
     static let shared = ConfigManager()
 
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "ConfigManager")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "ConfigManager")
     private let configDir: URL
     private let configPath: URL
     private var fileMonitor: DispatchSourceFileSystemObject?
