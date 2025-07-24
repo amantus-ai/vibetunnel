@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { SessionCreateOptions } from '../../shared/types.js';
 import type { PtyManager } from '../pty/pty-manager.js';
-import { MultiplexerManager } from '../services/multiplexer-manager.js';
+import { MultiplexerManager, type MultiplexerType } from '../services/multiplexer-manager.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('multiplexer-routes');
@@ -122,7 +122,7 @@ export function createMultiplexerRoutes(options: { ptyManager: PtyManager }): Ro
   router.delete('/sessions/:type/:sessionName', async (req, res) => {
     try {
       const { type, sessionName } = req.params;
-      await multiplexerManager.killSession(type as any, sessionName);
+      await multiplexerManager.killSession(type as MultiplexerType, sessionName);
       res.json({ success: true });
     } catch (error) {
       logger.error('Failed to kill session', { error });

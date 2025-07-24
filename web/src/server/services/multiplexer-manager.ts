@@ -1,9 +1,9 @@
-import type { TmuxPane, TmuxSession, TmuxWindow } from '../../shared/tmux-types.js';
+import type { TmuxPane, TmuxWindow } from '../../shared/tmux-types.js';
 import type { SessionCreateOptions } from '../../shared/types.js';
 import type { PtyManager } from '../pty/pty-manager.js';
 import { createLogger } from '../utils/logger.js';
 import { TmuxManager } from './tmux-manager.js';
-import { ZellijManager, type ZellijSession } from './zellij-manager.js';
+import { ZellijManager } from './zellij-manager.js';
 
 const logger = createLogger('MultiplexerManager');
 

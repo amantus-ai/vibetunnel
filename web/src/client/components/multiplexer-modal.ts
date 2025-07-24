@@ -3,7 +3,6 @@ import { css, html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import type {
-  MultiplexerSession,
   MultiplexerStatus,
   MultiplexerTarget,
   MultiplexerType,
@@ -482,7 +481,7 @@ export class MultiplexerModal extends LitElement {
 
   private formatTimestamp(timestamp: string): string {
     const ts = Number.parseInt(timestamp, 10);
-    if (isNaN(ts)) return timestamp;
+    if (Number.isNaN(ts)) return timestamp;
 
     const now = Math.floor(Date.now() / 1000);
     const diff = now - ts;

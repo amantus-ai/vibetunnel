@@ -1892,13 +1892,14 @@ export class VibeTunnelApp extends LitElement {
       <!-- Git Notification Handler -->
       <git-notification-handler></git-notification-handler>
 
-      <!-- Multiplexer Session Modal -->
+      <!-- Multiplexer Modal (tmux/Zellij) -->
       <multiplexer-modal
         .open=${this.showTmuxModal}
         @close=${() => {
           this.showTmuxModal = false;
         }}
         @navigate-to-session=${this.handleNavigateToSession}
+        @create-session=${this.handleCreateSession}
       ></multiplexer-modal>
     `;
   }
