@@ -20,6 +20,11 @@ export class GitStatusBadge extends LitElement {
   @property({ type: Number }) pollInterval = 5000; // Poll every 5 seconds
 
   @state() private _isPolling = false;
+  @state() private _gitModifiedCount = 0;
+  @state() private _gitUntrackedCount = 0;
+  @state() private _gitStagedCount = 0;
+  @state() private _gitAheadCount = 0;
+  @state() private _gitBehindCount = 0;
 
   private _pollTimer?: number;
   private _visibilityHandler?: () => void;
@@ -60,12 +65,25 @@ export class GitStatusBadge extends LitElement {
     // Handle session changes
     if (changedProperties.has('session')) {
       const oldSession = changedProperties.get('session') as Session | null;
-      console.debug('[GitStatusBadge] Session changed', {
-        oldGitRepoPath: oldSession?.gitRepoPath,
-        newGitRepoPath: this.session?.gitRepoPath,
-        oldId: oldSession?.id,
-        newId: this.session?.id,
-      });
+
+      // Only log if gitRepoPath actually changed to reduce noise
+      if (oldSession?.gitRepoPath !== this.session?.gitRepoPath) {
+        console.debug('[GitStatusBadge] Git repo path changed', {
+          oldGitRepoPath: oldSession?.gitRepoPath,
+          newGitRepoPath: this.session?.gitRepoPath,
+          oldId: oldSession?.id,
+          newId: this.session?.id,
+        });
+      }
+
+      // Initialize internal state from session
+      if (this.session) {
+        this._gitModifiedCount = this.session.gitModifiedCount ?? 0;
+        this._gitUntrackedCount = this.session.gitUntrackedCount ?? 0;
+        this._gitStagedCount = this.session.gitStagedCount ?? 0;
+        this._gitAheadCount = this.session.gitAheadCount ?? 0;
+        this._gitBehindCount = this.session.gitBehindCount ?? 0;
+      }
 
       if (this.session?.id && !document.hidden) {
         this._startPolling();
@@ -115,19 +133,14 @@ export class GitStatusBadge extends LitElement {
 
       const status = await response.json();
 
-      // Update the session object with new git status
-      // Preserve all existing session fields, only update Git counts
-      this.session = {
-        ...this.session,
-        gitModifiedCount: status.modified,
-        gitUntrackedCount: status.untracked,
-        gitStagedCount: status.added,
-        gitAheadCount: status.ahead,
-        gitBehindCount: status.behind,
-      };
+      // Update internal state instead of modifying the session object
+      this._gitModifiedCount = status.modified || 0;
+      this._gitUntrackedCount = status.untracked || 0;
+      this._gitStagedCount = status.added || 0;
+      this._gitAheadCount = status.ahead || 0;
+      this._gitBehindCount = status.behind || 0;
 
-      // Trigger re-render
-      this.requestUpdate();
+      // State updates will trigger re-render automatically
     } catch (error) {
       // Silently ignore errors to avoid disrupting the UI
       console.debug('Failed to update git status:', error);
@@ -142,12 +155,9 @@ export class GitStatusBadge extends LitElement {
     }
 
     const _hasLocalChanges =
-      (this.session.gitModifiedCount ?? 0) > 0 ||
-      (this.session.gitUntrackedCount ?? 0) > 0 ||
-      (this.session.gitStagedCount ?? 0) > 0;
+      this._gitModifiedCount > 0 || this._gitUntrackedCount > 0 || this._gitStagedCount > 0;
 
-    const _hasRemoteChanges =
-      (this.session.gitAheadCount ?? 0) > 0 || (this.session.gitBehindCount ?? 0) > 0;
+    const _hasRemoteChanges = this._gitAheadCount > 0 || this._gitBehindCount > 0;
 
     // Always show the badge when in a Git repository
     // Even if there are no changes, users want to see the branch name
@@ -176,9 +186,9 @@ export class GitStatusBadge extends LitElement {
   private renderLocalChanges() {
     if (!this.session) return null;
 
-    const modifiedCount = this.session.gitModifiedCount ?? 0;
-    const untrackedCount = this.session.gitUntrackedCount ?? 0;
-    const stagedCount = this.session.gitStagedCount ?? 0;
+    const modifiedCount = this._gitModifiedCount;
+    const untrackedCount = this._gitUntrackedCount;
+    const stagedCount = this._gitStagedCount;
     const totalChanges = modifiedCount + untrackedCount + stagedCount;
 
     if (totalChanges === 0 && !this.detailed) return null;
@@ -229,8 +239,8 @@ export class GitStatusBadge extends LitElement {
   private renderRemoteChanges() {
     if (!this.session) return null;
 
-    const aheadCount = this.session.gitAheadCount ?? 0;
-    const behindCount = this.session.gitBehindCount ?? 0;
+    const aheadCount = this._gitAheadCount;
+    const behindCount = this._gitBehindCount;
 
     if (aheadCount === 0 && behindCount === 0) return null;
 

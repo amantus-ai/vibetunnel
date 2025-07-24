@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GitService } from '../../services/git-service.js';
+import './git-branch-selector.js';
 import type { GitBranchSelector } from './git-branch-selector.js';
 
 describe('Worktree Creation UI', () => {
