@@ -28,6 +28,7 @@ interface SessionViewInterface {
 export class MobileInputManager {
   private sessionView: SessionViewInterface;
   private inputManager: InputManager | null = null;
+  private terminal: Terminal | null = null;
 
   constructor(sessionView: SessionViewInterface) {
     this.sessionView = sessionView;

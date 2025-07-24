@@ -25,6 +25,7 @@ export class LogViewer extends LitElement {
   @state() private logSize = '';
   @state() private showClient = true;
   @state() private showServer = true;
+  @state() private error = '';
 
   private refreshInterval?: number;
   private isFirstLoad = true;

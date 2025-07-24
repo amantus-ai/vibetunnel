@@ -64,6 +64,7 @@ export class SessionCard extends LitElement {
   @state() private isActive = false;
   @state() private isSendingPrompt = false;
   @state() private terminalTheme: TerminalThemeId = 'auto';
+  @state() private isHovered = false;
 
   private killingInterval: number | null = null;
   private activityTimeout: number | null = null;

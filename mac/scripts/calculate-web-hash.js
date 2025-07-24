@@ -21,42 +21,35 @@ const EXCLUDE_FILES = new Set(['package-lock.json']);
 
 // Worker code for parallel hashing
 if (!isMainThread) {
-  const { files, webDir, xxhashPath } = workerData;
+  const { files, webDir } = workerData;
   
-  // Load xxhash in worker context using absolute path
-  const xxhashWasm = require(xxhashPath);
-  
-  async function hashFile(filePath, hasher) {
+  async function hashFile(filePath) {
     try {
       const absolutePath = path.join(webDir, filePath);
       const content = await fs.readFile(absolutePath);
-      const fileData = `FILE:${filePath}\n${content}\n`;
       
-      // Use xxHash64 for speed
-      return hasher.h64ToString(fileData, 0xCAFEBABE);
+      // Use MD5 for speed - we don't need cryptographic security here
+      const hash = crypto.createHash('md5');
+      hash.update(filePath);
+      hash.update(content);
+      
+      return hash.digest('hex');
     } catch (error) {
       console.error(`Error hashing ${filePath}:`, error.message);
       return null;
     }
   }
   
-  // Initialize xxhash and process files
-  xxhashWasm().then(async hasher => {
-    const hashes = await Promise.all(files.map(file => hashFile(file, hasher)));
-    parentPort.postMessage(hashes.filter(h => h !== null));
-  });
+  Promise.all(files.map(hashFile))
+    .then(hashes => parentPort.postMessage(hashes.filter(h => h !== null)));
   
   return;
 }
 
 // Main thread code
-// Set up paths
 const scriptDir = path.dirname(__filename);
 const projectDir = process.env.SRCROOT || path.dirname(scriptDir);
 const webDir = path.join(projectDir, '..', 'web');
-
-// Change to web directory to find node_modules
-process.chdir(webDir);
 
 async function* walkDir(dir) {
   const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -115,13 +108,10 @@ async function calculateHashParallel(files) {
   const allHashes = results.flat();
   
   // Combine all hashes into final hash
-  const combinedData = allHashes.join('\n');
+  const finalHash = crypto.createHash('md5');
+  allHashes.forEach(hash => finalHash.update(hash));
   
-  // Use xxhash for final hash
-  const xxhashWasm = require('xxhash-wasm');
-  const hasher = await xxhashWasm();
-  
-  return hasher.h64ToString(combinedData, 0xCAFEBABE);
+  return finalHash.digest('hex');
 }
 
 async function main() {
@@ -135,7 +125,10 @@ async function main() {
     process.exit(1);
   }
   
-  console.log('Calculating web content hash (parallel + xxHash)...');
+  console.log('Calculating web content hash...');
+  
+  // Change to web directory
+  process.chdir(webDir);
   
   try {
     const files = await collectFiles('.');

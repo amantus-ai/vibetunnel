@@ -19,6 +19,7 @@ export class PushNotificationService {
   private initialized = false;
   private vapidPublicKey: string | null = null;
   private initializationPromise: Promise<void> | null = null;
+  private pushNotificationsAvailable = true;
 
   // biome-ignore lint/complexity/noUselessConstructor: This constructor documents the intentional design decision to not auto-initialize
   constructor() {
