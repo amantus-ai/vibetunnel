@@ -42,7 +42,6 @@ import type { GitNotificationHandler } from './components/git-notification-handl
 import { authClient } from './services/auth-client.js';
 import { bufferSubscriptionService } from './services/buffer-subscription-service.js';
 import { getControlEventService } from './services/control-event-service.js';
-import { GitService } from './services/git-service.js';
 import { pushNotificationService } from './services/push-notification-service.js';
 
 const logger = createLogger('app');
@@ -92,7 +91,6 @@ export class VibeTunnelApp extends LitElement {
   private resizeCleanupFunctions: (() => void)[] = [];
   private sessionLoadingState: 'idle' | 'loading' | 'loaded' | 'not-found' = 'idle';
   private controlEventService?: ReturnType<typeof getControlEventService>;
-  private gitService?: GitService;
 
   connectedCallback() {
     super.connectedCallback();
@@ -459,9 +457,6 @@ export class VibeTunnelApp extends LitElement {
       } else {
         logger.log('⏭️ Skipping push notification service initialization (no-auth mode)');
       }
-
-      // Initialize Git service
-      this.gitService = new GitService(authClient);
 
       // Initialize control event service for real-time notifications
       this.controlEventService = getControlEventService(authClient);

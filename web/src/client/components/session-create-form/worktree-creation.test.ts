@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GitService } from '../../services/git-service.js';
-import { GitBranchSelector } from './git-branch-selector.js';
+import type { GitBranchSelector } from './git-branch-selector.js';
 
 describe('Worktree Creation UI', () => {
   let element: GitBranchSelector;
-  let mockGitService: GitService;
+  let _mockGitService: GitService;
 
   beforeEach(async () => {
     // Create mock git service
-    mockGitService = {
+    _mockGitService = {
       checkGitRepo: vi.fn(),
       listWorktrees: vi.fn(),
       createWorktree: vi.fn(),
@@ -29,7 +29,7 @@ describe('Worktree Creation UI', () => {
     element.availableBranches = ['main', 'develop', 'feature/existing'];
     element.currentBranch = 'main';
     element.selectedBaseBranch = 'main';
-    
+
     document.body.appendChild(element);
     await element.updateComplete;
   });
@@ -73,7 +73,9 @@ describe('Worktree Creation UI', () => {
     });
 
     it('should show worktree creation form when button clicked', async () => {
-      const createButton = element.shadowRoot?.querySelector('button[title="Create new worktree"]') as HTMLButtonElement;
+      const createButton = element.shadowRoot?.querySelector(
+        'button[title="Create new worktree"]'
+      ) as HTMLButtonElement;
       createButton.click();
       await element.updateComplete;
 
@@ -98,7 +100,9 @@ describe('Worktree Creation UI', () => {
       await element.updateComplete;
 
       // Set branch name
-      const input = element.shadowRoot?.querySelector('input[placeholder="New branch name"]') as HTMLInputElement;
+      const input = element.shadowRoot?.querySelector(
+        'input[placeholder="New branch name"]'
+      ) as HTMLInputElement;
       input.value = 'feature/new-branch';
       input.dispatchEvent(new Event('input'));
       await element.updateComplete;
@@ -109,8 +113,9 @@ describe('Worktree Creation UI', () => {
       });
 
       // Click create
-      const createBtn = Array.from(element.shadowRoot?.querySelectorAll('button') || [])
-        .find(btn => btn.textContent?.includes('Create')) as HTMLButtonElement;
+      const createBtn = Array.from(element.shadowRoot?.querySelectorAll('button') || []).find(
+        (btn) => btn.textContent?.includes('Create')
+      ) as HTMLButtonElement;
       createBtn.click();
 
       // Verify event
@@ -131,7 +136,9 @@ describe('Worktree Creation UI', () => {
       await element.updateComplete;
 
       // Set invalid branch name
-      const input = element.shadowRoot?.querySelector('input[placeholder="New branch name"]') as HTMLInputElement;
+      const input = element.shadowRoot?.querySelector(
+        'input[placeholder="New branch name"]'
+      ) as HTMLInputElement;
       input.value = '-invalid-name';
       input.dispatchEvent(new Event('input'));
       await element.updateComplete;
@@ -142,8 +149,9 @@ describe('Worktree Creation UI', () => {
       });
 
       // Click create
-      const createBtn = Array.from(element.shadowRoot?.querySelectorAll('button') || [])
-        .find(btn => btn.textContent?.includes('Create')) as HTMLButtonElement;
+      const createBtn = Array.from(element.shadowRoot?.querySelectorAll('button') || []).find(
+        (btn) => btn.textContent?.includes('Create')
+      ) as HTMLButtonElement;
       createBtn.click();
 
       // Verify error event
@@ -161,13 +169,16 @@ describe('Worktree Creation UI', () => {
       element.showCreateWorktree = true;
       await element.updateComplete;
 
-      const createBtn = Array.from(element.shadowRoot?.querySelectorAll('button') || [])
-        .find(btn => btn.textContent?.includes('Create')) as HTMLButtonElement;
-      
+      const createBtn = Array.from(element.shadowRoot?.querySelectorAll('button') || []).find(
+        (btn) => btn.textContent?.includes('Create')
+      ) as HTMLButtonElement;
+
       expect(createBtn.disabled).toBe(true);
 
       // Type something
-      const input = element.shadowRoot?.querySelector('input[placeholder="New branch name"]') as HTMLInputElement;
+      const input = element.shadowRoot?.querySelector(
+        'input[placeholder="New branch name"]'
+      ) as HTMLInputElement;
       input.value = 'feature/test';
       input.dispatchEvent(new Event('input'));
       await element.updateComplete;
@@ -184,7 +195,9 @@ describe('Worktree Creation UI', () => {
       await element.updateComplete;
 
       // Click cancel
-      const cancelBtn = element.shadowRoot?.querySelector('button:has-text("Cancel")') as HTMLButtonElement;
+      const cancelBtn = element.shadowRoot?.querySelector(
+        'button:has-text("Cancel")'
+      ) as HTMLButtonElement;
       cancelBtn.click();
       await element.updateComplete;
 
@@ -201,7 +214,9 @@ describe('Worktree Creation UI', () => {
       await element.updateComplete;
 
       // Press escape on input
-      const input = element.shadowRoot?.querySelector('input[placeholder="New branch name"]') as HTMLInputElement;
+      const input = element.shadowRoot?.querySelector(
+        'input[placeholder="New branch name"]'
+      ) as HTMLInputElement;
       const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' });
       input.dispatchEvent(escapeEvent);
       await element.updateComplete;
@@ -219,15 +234,16 @@ describe('Worktree Creation UI', () => {
 
       // Check that inputs are disabled
       const allInputs = element.shadowRoot?.querySelectorAll('input, button, select');
-      allInputs?.forEach(input => {
+      allInputs?.forEach((input) => {
         if (input.hasAttribute('disabled') !== undefined) {
           expect(input.hasAttribute('disabled')).toBe(true);
         }
       });
 
       // Check loading text
-      const createBtn = Array.from(element.shadowRoot?.querySelectorAll('button') || [])
-        .find(btn => btn.textContent?.includes('Creating...'));
+      const createBtn = Array.from(element.shadowRoot?.querySelectorAll('button') || []).find(
+        (btn) => btn.textContent?.includes('Creating...')
+      );
       expect(createBtn).toBeTruthy();
     });
   });

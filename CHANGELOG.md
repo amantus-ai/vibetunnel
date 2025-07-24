@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.0.0-beta.15] - 2025-07-24
 
 ### ✨ Major Features
 

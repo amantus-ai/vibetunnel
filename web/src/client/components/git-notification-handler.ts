@@ -30,7 +30,6 @@ export class GitNotificationHandler extends LitElement {
   @state() private notifications: GitNotification[] = [];
   private unsubscribe?: () => void;
   private autoHideTimers = new Map<string, NodeJS.Timeout>();
-  private controlEventService?: ControlEventService;
 
   setControlEventService(service: ControlEventService): void {
     if (this.unsubscribe) {

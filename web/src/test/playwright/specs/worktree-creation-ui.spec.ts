@@ -32,7 +32,9 @@ test.describe('Worktree Creation UI', () => {
 
     // Check if git-branch-selector component appears
     const gitBranchSelector = page.locator('git-branch-selector');
-    const isBranchSelectorVisible = await gitBranchSelector.isVisible({ timeout: 2000 }).catch(() => false);
+    const isBranchSelectorVisible = await gitBranchSelector
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
 
     // Note: In a real test environment, we'd need to mock the git API responses
     // or ensure we have a test git repository available
@@ -61,7 +63,7 @@ test.describe('Worktree Creation UI', () => {
 
     // Assuming git-branch-selector is visible (would need mocking)
     const createWorktreeButton = page.locator('button:has-text("Create worktree")');
-    
+
     if (await createWorktreeButton.isVisible({ timeout: 2000 }).catch(() => false)) {
       await createWorktreeButton.click();
 
@@ -75,7 +77,7 @@ test.describe('Worktree Creation UI', () => {
       // Look for create button
       const createButton = page.locator('button:has-text("Create")').last();
       await expect(createButton).toBeVisible();
-      
+
       // Verify cancel button exists
       const cancelButton = page.locator('button:has-text("Cancel")');
       await expect(cancelButton).toBeVisible();
@@ -92,20 +94,20 @@ test.describe('Worktree Creation UI', () => {
 
     // Assuming we can get to the worktree creation form
     const branchNameInput = page.locator('input[placeholder="New branch name"]');
-    
+
     if (await branchNameInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       // Test invalid branch names
       const invalidNames = [
-        '-invalid',  // starts with hyphen
-        'invalid-',  // ends with hyphen
-        'HEAD',      // reserved name
+        '-invalid', // starts with hyphen
+        'invalid-', // ends with hyphen
+        'HEAD', // reserved name
         'feature..branch', // contains ..
       ];
 
       for (const invalidName of invalidNames) {
         await branchNameInput.clear();
         await branchNameInput.fill(invalidName);
-        
+
         // Try to create
         const createButton = page.locator('button:has-text("Create")').last();
         await createButton.click();

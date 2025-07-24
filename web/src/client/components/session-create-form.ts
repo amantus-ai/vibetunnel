@@ -95,6 +95,10 @@ export class SessionCreateForm extends LitElement {
   @state() private followMode = false;
   @state() private followBranch: string | null = null;
   @state() private showFollowMode = false;
+  @state() private selectedQuickStart: string | null = null;
+  @state() private isDiscovering = false;
+  @state() private isCheckingGit = false;
+  @state() private isCheckingFollowMode = false;
 
   @state() private quickStartCommands: QuickStartItem[] = [
     { label: '✨ claude', command: 'claude' },
