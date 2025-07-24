@@ -104,6 +104,9 @@ struct GitRepositoryInfoResponse: Codable {
 
     /// Whether this branch has an upstream tracking branch.
     let hasUpstream: Bool?
+    
+    /// Whether this repository is a Git worktree.
+    let isWorktree: Bool?
 }
 
 /// Monitors and caches Git repository status information for efficient UI updates.
@@ -169,19 +172,7 @@ public final class GitRepositoryMonitor {
     /// - Parameter repoPath: Path to the Git repository
     /// - Returns: Array of branch names (without refs/heads/ prefix)
     public func getBranches(for repoPath: String) async -> [String] {
-        // Use the server endpoint to get branches
-        guard let url = serverManager.buildURL(
-            endpoint: "/api/repositories/branches",
-            queryItems: [URLQueryItem(name: "path", value: repoPath)]
-        ) else {
-            logger.error("Failed to construct branches URL")
-            return []
-        }
-
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let decoder = JSONDecoder()
-
             // Define the branch structure we expect from the server
             // Represents a Git branch from the server API.
             struct Branch: Codable {
@@ -195,7 +186,12 @@ public final class GitRepositoryMonitor {
                 let worktreePath: String?
             }
 
-            let branches = try decoder.decode([Branch].self, from: data)
+            let branches = try await serverManager.performRequest(
+                endpoint: "/api/repositories/branches",
+                method: "GET",
+                queryItems: [URLQueryItem(name: "path", value: repoPath)],
+                responseType: [Branch].self
+            )
 
             // Filter to local branches only and extract names
             let localBranchNames = branches
@@ -443,8 +439,8 @@ public final class GitRepositoryMonitor {
                 return nil
             }
 
-            // Check if this is a worktree by looking for .git file instead of directory
-            let isWorktree = Self.checkIfWorktree(at: repoPath)
+            // Use worktree status from server response, fallback to local check if not available
+            let isWorktree = response.isWorktree ?? Self.checkIfWorktree(at: repoPath)
 
             // Parse GitHub URL if provided
             let githubURL = response.githubUrl.flatMap { URL(string: $0) }

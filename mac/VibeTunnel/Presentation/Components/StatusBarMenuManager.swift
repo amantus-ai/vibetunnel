@@ -71,13 +71,9 @@ final class StatusBarMenuManager: NSObject {
         super.init()
     }
 
-    // MARK: - Configuration
-
-    typealias Configuration = StatusBarMenuConfiguration
-
     // MARK: - Setup
 
-    func setup(with configuration: Configuration) {
+    func setup(with configuration: StatusBarMenuConfiguration) {
         self.sessionMonitor = configuration.sessionMonitor
         self.serverManager = configuration.serverManager
         self.ngrokService = configuration.ngrokService
