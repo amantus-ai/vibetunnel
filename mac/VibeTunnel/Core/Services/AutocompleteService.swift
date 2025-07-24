@@ -16,6 +16,20 @@ class AutocompleteService {
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "AutocompleteService")
     private let gitMonitor: GitRepositoryMonitor
 
+    // Common repository search paths relative to home directory
+    private static let commonRepositoryPaths = [
+        "/Projects",
+        "/Developer",
+        "/Documents",
+        "/Desktop",
+        "/Code",
+        "/repos",
+        "/git",
+        "/src",
+        "/work",
+        "" // Home directory itself
+    ]
+
     init(gitMonitor: GitRepositoryMonitor = GitRepositoryMonitor()) {
         self.gitMonitor = gitMonitor
     }
@@ -32,14 +46,6 @@ class AutocompleteService {
         enum SuggestionType {
             case file
             case directory
-        }
-
-        struct GitInfo: Equatable {
-            let branch: String?
-            let aheadCount: Int?
-            let behindCount: Int?
-            let hasChanges: Bool
-            let isWorktree: Bool
         }
     }
 
@@ -363,7 +369,7 @@ class AutocompleteService {
 
     /// Fetch Git info for directory suggestions
     private func enrichSuggestionsWithGitInfo(_ suggestions: [PathSuggestion]) async -> [PathSuggestion] {
-        await withTaskGroup(of: (Int, PathSuggestion.GitInfo?).self) { group in
+        await withTaskGroup(of: (Int, GitInfo?).self) { group in
             var enrichedSuggestions = suggestions
 
             // Only fetch Git info for directories and repositories
@@ -375,7 +381,7 @@ class AutocompleteService {
                             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
                         ).expandingTildeInPath
                         let gitInfo = await gitMonitor.findRepository(for: expandedPath).map { repo in
-                            PathSuggestion.GitInfo(
+                            GitInfo(
                                 branch: repo.currentBranch,
                                 aheadCount: repo.aheadCount,
                                 behindCount: repo.behindCount,
