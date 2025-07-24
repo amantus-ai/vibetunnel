@@ -6,7 +6,7 @@ import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('tmux-routes');
 
-export function createTmuxRoutes(options: { ptyManager: PtyManager }) {
+export function createTmuxRoutes(options: { ptyManager: PtyManager }): Router {
   const { ptyManager } = options;
   const router = Router();
   const tmuxManager = TmuxManager.getInstance(ptyManager);

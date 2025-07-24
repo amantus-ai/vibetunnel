@@ -25,6 +25,7 @@ export interface TmuxPane {
   command?: string;
   width: number;
   height: number;
+  currentPath?: string;
 }
 
 export interface TmuxTarget {

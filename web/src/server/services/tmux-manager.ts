@@ -28,7 +28,7 @@ export class TmuxManager {
    */
   async isAvailable(): Promise<boolean> {
     try {
-      await execAsync('which tmux');
+      await execAsync('which tmux', { shell: '/bin/sh' });
       return true;
     } catch {
       return false;
@@ -41,14 +41,25 @@ export class TmuxManager {
   async listSessions(): Promise<TmuxSession[]> {
     try {
       const { stdout } = await execAsync(
-        "tmux list-sessions -F '#{session_name}|#{session_windows}|#{session_created}|#{?session_attached,attached,detached}|#{session_activity}|#{?session_active,active,}'"
+        "tmux list-sessions -F '#{session_name}|#{session_windows}|#{session_created}|#{?session_attached,attached,detached}|#{session_activity}|#{?session_active,active,}'",
+        { shell: '/bin/sh' }
       );
 
       return stdout
         .trim()
         .split('\n')
-        .filter((line) => line)
+        .filter((line) => line && line.includes('|'))
         .map((line) => {
+          // Handle potential shell output pollution
+          const pipeIndex = line.indexOf('|');
+          if (pipeIndex > 0 && !line.substring(0, pipeIndex).match(/^[a-zA-Z0-9_-]+$/)) {
+            // If there's non-alphanumeric content before the first pipe, find the session name
+            const match = line.match(/([a-zA-Z0-9_-]+)\|/);
+            if (match) {
+              line = line.substring(line.indexOf(match[0]));
+            }
+          }
+
           const [name, windows, created, attached, activity, current] = line.split('|');
           return {
             name,
@@ -73,7 +84,8 @@ export class TmuxManager {
   async listWindows(sessionName: string): Promise<TmuxWindow[]> {
     try {
       const { stdout } = await execAsync(
-        `tmux list-windows -t '${sessionName}' -F '#{session_name}|#{window_index}|#{window_name}|#{?window_active,active,}|#{window_panes}'`
+        `tmux list-windows -t '${sessionName}' -F '#{session_name}|#{window_index}|#{window_name}|#{?window_active,active,}|#{window_panes}'`,
+        { shell: '/bin/sh' }
       );
 
       return stdout
@@ -104,7 +116,8 @@ export class TmuxManager {
       const target = windowIndex !== undefined ? `${sessionName}:${windowIndex}` : sessionName;
 
       const { stdout } = await execAsync(
-        `tmux list-panes -t '${target}' -F '#{session_name}|#{window_index}|#{pane_index}|#{?pane_active,active,}|#{pane_title}|#{pane_pid}|#{pane_current_command}|#{pane_width}|#{pane_height}'`
+        `tmux list-panes -t '${target}' -F '#{session_name}|#{window_index}|#{pane_index}|#{?pane_active,active,}|#{pane_title}|#{pane_pid}|#{pane_current_command}|#{pane_width}|#{pane_height}|#{pane_current_path}'`,
+        { shell: '/bin/sh' }
       );
 
       return stdout
@@ -112,7 +125,7 @@ export class TmuxManager {
         .split('\n')
         .filter((line) => line)
         .map((line) => {
-          const [session, window, index, active, title, pid, command, width, height] =
+          const [session, window, index, active, title, pid, command, width, height, currentPath] =
             line.split('|');
           return {
             session,
@@ -124,6 +137,7 @@ export class TmuxManager {
             command: command || undefined,
             width: Number.parseInt(width, 10),
             height: Number.parseInt(height, 10),
+            currentPath: currentPath || undefined,
           };
         });
     } catch (error) {
@@ -163,7 +177,10 @@ export class TmuxManager {
       }
     }
 
-    const tmuxCommand = ['tmux', 'attach-session', '-t', target];
+    // Always attach to session/window level, not individual panes
+    // This gives users full control over pane management once attached
+    const attachTarget = windowIndex !== undefined ? `${sessionName}:${windowIndex}` : sessionName;
+    const tmuxCommand = ['tmux', 'attach-session', '-t', attachTarget];
 
     // Create a new VibeTunnel session that runs tmux attach
     const sessionOptions: SessionCreateOptions = {

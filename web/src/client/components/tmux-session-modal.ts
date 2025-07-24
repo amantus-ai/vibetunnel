@@ -2,7 +2,7 @@ import type { PropertyValues } from 'lit';
 import { css, html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
-import type { TmuxSession, TmuxTarget, TmuxWindow } from '../../shared/tmux-types.js';
+import type { TmuxPane, TmuxSession, TmuxTarget, TmuxWindow } from '../../shared/tmux-types.js';
 import { apiClient } from '../services/api-client.js';
 import { Z_INDEX } from '../utils/constants.js';
 import './modal-wrapper.js';
@@ -14,10 +14,14 @@ export class TmuxSessionModal extends LitElement {
       position: fixed;
       inset: 0;
       z-index: ${Z_INDEX.MODAL};
-      display: flex;
+      display: none;
       align-items: center;
       justify-content: center;
       padding: 1rem;
+    }
+
+    :host([open]) {
+      display: flex;
     }
 
     .content {
@@ -26,21 +30,26 @@ export class TmuxSessionModal extends LitElement {
       max-height: 80vh;
       display: flex;
       flex-direction: column;
+      background: rgb(var(--color-bg-secondary));
+      border: 1px solid rgb(var(--color-border));
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     }
 
     h2 {
       margin: 0 0 1rem 0;
       font-size: 1.25rem;
       font-weight: 600;
-      color: var(--text-primary);
+      color: rgb(var(--color-text));
     }
 
     .status-message {
       margin-bottom: 1rem;
       padding: 0.75rem;
-      background: var(--bg-tertiary);
+      background: rgb(var(--color-bg-tertiary));
       border-radius: 0.5rem;
-      color: var(--text-secondary);
+      color: rgb(var(--color-text-muted));
       text-align: center;
     }
 
@@ -53,29 +62,30 @@ export class TmuxSessionModal extends LitElement {
 
     .session-item {
       margin-bottom: 0.5rem;
-      border: 1px solid var(--border);
+      border: 1px solid rgb(var(--color-border));
       border-radius: 0.5rem;
       overflow: hidden;
       transition: all 0.2s ease;
     }
 
     .session-item:hover {
-      border-color: var(--primary);
+      border-color: #10B981;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .session-header {
       padding: 0.75rem 1rem;
-      background: var(--bg-secondary);
+      background: rgb(var(--color-bg-secondary));
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: space-between;
       transition: background-color 0.2s ease;
+      position: relative;
     }
 
     .session-header:hover {
-      background: var(--bg-tertiary);
+      background: rgb(var(--color-bg-tertiary));
     }
 
     .session-info {
@@ -84,13 +94,13 @@ export class TmuxSessionModal extends LitElement {
 
     .session-name {
       font-weight: 600;
-      color: var(--text-primary);
+      color: rgb(var(--color-text));
       margin-bottom: 0.25rem;
     }
 
     .session-meta {
       font-size: 0.875rem;
-      color: var(--text-secondary);
+      color: rgb(var(--color-text-muted));
       display: flex;
       gap: 1rem;
     }
@@ -105,21 +115,21 @@ export class TmuxSessionModal extends LitElement {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--text-tertiary);
+      background: rgb(var(--color-text-dim));
     }
 
     .status-indicator.attached {
-      background: var(--success);
+      background: #10B981;
     }
 
     .status-indicator.current {
-      background: var(--primary);
+      background: #10B981;
     }
 
     .windows-list {
       padding: 0.5rem 1rem 0.75rem 2rem;
-      background: var(--bg-primary);
-      border-top: 1px solid var(--border);
+      background: rgb(var(--color-bg));
+      border-top: 1px solid rgb(var(--color-border));
     }
 
     .window-item {
@@ -134,11 +144,11 @@ export class TmuxSessionModal extends LitElement {
     }
 
     .window-item:hover {
-      background: var(--bg-secondary);
+      background: rgb(var(--color-bg-secondary));
     }
 
     .window-item.active {
-      background: var(--bg-tertiary);
+      background: rgb(var(--color-bg-tertiary));
       font-weight: 500;
     }
 
@@ -149,14 +159,62 @@ export class TmuxSessionModal extends LitElement {
     }
 
     .window-index {
-      font-family: var(--font-mono);
+      font-family: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
       font-size: 0.875rem;
-      color: var(--text-secondary);
+      color: rgb(var(--color-text-muted));
     }
 
     .panes-count {
       font-size: 0.75rem;
-      color: var(--text-tertiary);
+      color: rgb(var(--color-text-dim));
+    }
+
+    .panes-list {
+      padding: 0.25rem 0.5rem 0.5rem 1.5rem;
+      background: rgb(var(--color-bg));
+      border-top: 1px solid rgb(var(--color-border));
+    }
+
+    .pane-item {
+      padding: 0.375rem 0.5rem;
+      margin-bottom: 0.125rem;
+      border-radius: 0.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.875rem;
+      transition: background-color 0.2s ease;
+    }
+
+    .pane-item:hover {
+      background: rgb(var(--color-bg-secondary));
+    }
+
+    .pane-item.active {
+      background: rgb(var(--color-bg-tertiary));
+      font-weight: 500;
+    }
+
+    .pane-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .pane-index {
+      font-family: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.75rem;
+      color: rgb(var(--color-text-muted));
+    }
+
+    .pane-command {
+      color: rgb(var(--color-text));
+    }
+
+    .pane-size {
+      font-size: 0.75rem;
+      color: rgb(var(--color-text-dim));
     }
 
     .actions {
@@ -168,29 +226,29 @@ export class TmuxSessionModal extends LitElement {
 
     .action-button {
       padding: 0.5rem 1rem;
-      border: 1px solid var(--border);
+      border: 1px solid rgb(var(--color-border));
       border-radius: 0.375rem;
-      background: var(--bg-secondary);
-      color: var(--text-primary);
+      background: rgb(var(--color-bg-secondary));
+      color: rgb(var(--color-text));
       font-size: 0.875rem;
       cursor: pointer;
       transition: all 0.2s ease;
     }
 
     .action-button:hover {
-      background: var(--bg-tertiary);
-      border-color: var(--primary);
+      background: rgb(var(--color-bg-tertiary));
+      border-color: #10B981;
     }
 
     .action-button.primary {
-      background: var(--primary);
+      background: #10B981;
       color: white;
-      border-color: var(--primary);
+      border-color: #10B981;
     }
 
     .action-button.primary:hover {
-      background: var(--primary-hover);
-      border-color: var(--primary-hover);
+      background: #059669;
+      border-color: #059669;
     }
 
     .expand-icon {
@@ -201,21 +259,42 @@ export class TmuxSessionModal extends LitElement {
       transform: rotate(90deg);
     }
 
+    .attach-button {
+      padding: 0.25rem 0.75rem;
+      margin-right: 0.5rem;
+      background: #10B981;
+      color: white;
+      border: none;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .attach-button:hover {
+      background: #059669;
+    }
+
+    .attach-button:active {
+      transform: scale(0.95);
+    }
+
     .empty-state {
       text-align: center;
       padding: 3rem 1rem;
-      color: var(--text-secondary);
+      color: rgb(var(--color-text-muted));
     }
 
     .empty-state h3 {
       margin: 0 0 0.5rem 0;
-      color: var(--text-primary);
+      color: rgb(var(--color-text));
     }
 
     .create-button {
       margin-top: 1rem;
       padding: 0.75rem 1.5rem;
-      background: var(--primary);
+      background: #10B981;
       color: white;
       border: none;
       border-radius: 0.375rem;
@@ -225,11 +304,11 @@ export class TmuxSessionModal extends LitElement {
     }
 
     .create-button:hover {
-      background: var(--primary-hover);
+      background: #059669;
     }
   `;
 
-  @property({ type: Boolean })
+  @property({ type: Boolean, reflect: true })
   open = false;
 
   @state()
@@ -239,7 +318,13 @@ export class TmuxSessionModal extends LitElement {
   private windows: Map<string, TmuxWindow[]> = new Map();
 
   @state()
+  private panes: Map<string, TmuxPane[]> = new Map();
+
+  @state()
   private expandedSessions: Set<string> = new Set();
+
+  @state()
+  private expandedWindows: Set<string> = new Set();
 
   @state()
   private loading = true;
@@ -308,6 +393,66 @@ export class TmuxSessionModal extends LitElement {
     this.requestUpdate();
   }
 
+  private toggleWindow(sessionName: string, windowIndex: number) {
+    const key = `${sessionName}:${windowIndex}`;
+    if (this.expandedWindows.has(key)) {
+      this.expandedWindows.delete(key);
+    } else {
+      this.expandedWindows.add(key);
+      // Load panes for this window if not already loaded
+      this.loadPanesForWindow(sessionName, windowIndex);
+    }
+    this.requestUpdate();
+  }
+
+  private async loadPanesForWindow(sessionName: string, windowIndex: number) {
+    const key = `${sessionName}:${windowIndex}`;
+    if (this.panes.has(key)) return; // Already loaded
+
+    try {
+      const response = await apiClient.get(
+        `/tmux/sessions/${sessionName}/panes?window=${windowIndex}`
+      );
+      console.log(`Loaded panes for ${key}:`, response.panes);
+      this.panes.set(key, response.panes);
+      this.requestUpdate();
+    } catch (error) {
+      console.error(`Failed to load panes for window ${key}:`, error);
+    }
+  }
+
+  private formatTimestamp(timestamp: string): string {
+    const ts = Number.parseInt(timestamp, 10);
+    if (isNaN(ts)) return timestamp;
+
+    const now = Math.floor(Date.now() / 1000);
+    const diff = now - ts;
+
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  }
+
+  private formatPaneInfo(pane: TmuxPane): string {
+    console.log('formatPaneInfo called with:', pane);
+    
+    // If we have a meaningful title that's not just the hostname, use it
+    if (pane.title && !pane.title.includes('< /dev/null') && !pane.title.match(/^[\w.-]+$/)) {
+      return pane.title;
+    }
+
+    // If we have a current path, show it with the command
+    if (pane.currentPath && pane.command) {
+      // Simple home directory replacement for display
+      const shortPath = pane.currentPath.replace(/^\/Users\/[^/]+/, '~');
+      return `${pane.command} (${shortPath})`;
+    }
+
+    // Otherwise just show command or 'shell'
+    return pane.command || 'shell';
+  }
+
   private async attachToSession(target: TmuxTarget) {
     try {
       const response = await apiClient.post('/tmux/attach', {
@@ -341,14 +486,44 @@ export class TmuxSessionModal extends LitElement {
   }
 
   private async createNewSession() {
-    // Close the modal and dispatch create-session event
-    this.handleClose();
-    this.dispatchEvent(
-      new CustomEvent('create-session', {
-        bubbles: true,
-        composed: true,
-      })
-    );
+    try {
+      // Generate a unique session name
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const sessionName = `session-${timestamp}`;
+
+      // Create the tmux session
+      const createResponse = await apiClient.post('/tmux/sessions', {
+        name: sessionName,
+      });
+
+      if (createResponse.success) {
+        // Attach to the newly created session
+        const attachResponse = await apiClient.post('/tmux/attach', {
+          sessionName: sessionName,
+          cols: 80, // TODO: Get actual terminal dimensions
+          rows: 24,
+          titleMode: 'dynamic',
+          metadata: {
+            source: 'tmux-modal-new',
+          },
+        });
+
+        if (attachResponse.success) {
+          // Close modal and navigate to the new session
+          this.handleClose();
+          this.dispatchEvent(
+            new CustomEvent('navigate-to-session', {
+              detail: { sessionId: attachResponse.sessionId },
+              bubbles: true,
+              composed: true,
+            })
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Failed to create new tmux session:', error);
+      this.error = 'Failed to create new tmux session';
+    }
   }
 
   private handleClose() {
@@ -407,7 +582,7 @@ export class TmuxSessionModal extends LitElement {
                                 <span>${session.windows} window${session.windows !== 1 ? 's' : ''}</span>
                                 ${
                                   session.activity
-                                    ? html`<span>Last activity: ${session.activity}</span>`
+                                    ? html`<span>Last activity: ${this.formatTimestamp(session.activity)}</span>`
                                     : null
                                 }
                               </div>
@@ -423,6 +598,15 @@ export class TmuxSessionModal extends LitElement {
                                   ? html`<div class="status-indicator current" title="Current"></div>`
                                   : null
                               }
+                              <button
+                                class="attach-button"
+                                @click=${(e: Event) => {
+                                  e.stopPropagation();
+                                  this.attachToSession({ session: session.name });
+                                }}
+                              >
+                                Attach
+                              </button>
                               <span class="expand-icon">▶</span>
                             </div>
                           </div>
@@ -434,24 +618,72 @@ export class TmuxSessionModal extends LitElement {
                                   ${repeat(
                                     sessionWindows,
                                     (window) => `${session.name}-${window.index}`,
-                                    (window) => html`
-                                      <div
-                                        class="window-item ${window.active ? 'active' : ''}"
-                                        @click=${() =>
-                                          this.attachToSession({
-                                            session: session.name,
-                                            window: window.index,
-                                          })}
-                                      >
-                                        <div class="window-info">
-                                          <span class="window-index">${window.index}:</span>
-                                          <span>${window.name}</span>
+                                    (window) => {
+                                      const windowKey = `${session.name}:${window.index}`;
+                                      const isWindowExpanded = this.expandedWindows.has(windowKey);
+                                      const windowPanes = this.panes.get(windowKey) || [];
+
+                                      return html`
+                                        <div>
+                                          <div
+                                            class="window-item ${window.active ? 'active' : ''}"
+                                            @click=${(e: Event) => {
+                                              e.stopPropagation();
+                                              if (window.panes > 1) {
+                                                this.toggleWindow(session.name, window.index);
+                                              } else {
+                                                this.attachToSession({
+                                                  session: session.name,
+                                                  window: window.index,
+                                                });
+                                              }
+                                            }}
+                                          >
+                                            <div class="window-info">
+                                              <span class="window-index">${window.index}:</span>
+                                              <span>${window.name}</span>
+                                            </div>
+                                            <span class="panes-count">
+                                              ${window.panes} pane${window.panes !== 1 ? 's' : ''}
+                                              ${window.panes > 1 ? html`<span class="expand-icon" style="margin-left: 0.5rem;">${isWindowExpanded ? '▼' : '▶'}</span>` : ''}
+                                            </span>
+                                          </div>
+                                          
+                                          ${
+                                            isWindowExpanded && windowPanes.length > 0
+                                              ? html`
+                                                <div class="panes-list">
+                                                  ${repeat(
+                                                    windowPanes,
+                                                    (pane) =>
+                                                      `${session.name}:${window.index}.${pane.index}`,
+                                                    (pane) => html`
+                                                      <div
+                                                        class="pane-item ${pane.active ? 'active' : ''}"
+                                                        @click=${(e: Event) => {
+                                                          e.stopPropagation();
+                                                          this.attachToSession({
+                                                            session: session.name,
+                                                            window: window.index,
+                                                            pane: pane.index,
+                                                          });
+                                                        }}
+                                                      >
+                                                        <div class="pane-info">
+                                                          <span class="pane-index">%${pane.index}</span>
+                                                          <span class="pane-command">${this.formatPaneInfo(pane)}</span>
+                                                        </div>
+                                                        <span class="pane-size">${pane.width}×${pane.height}</span>
+                                                      </div>
+                                                    `
+                                                  )}
+                                                </div>
+                                              `
+                                              : null
+                                          }
                                         </div>
-                                        <span class="panes-count">
-                                          ${window.panes} pane${window.panes !== 1 ? 's' : ''}
-                                        </span>
-                                      </div>
-                                    `
+                                      `;
+                                    }
                                   )}
                                 </div>
                               `
