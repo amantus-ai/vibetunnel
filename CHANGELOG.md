@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.0-beta.15] - 2025-07-24
+## [1.0.0-beta.15] - 2025-07-25
 
 ### ✨ Major Features
 
@@ -10,6 +10,17 @@
 - Visual indicators: Fork icon (⑂) shows worktree sessions, branch names displayed throughout UI
 - HTTP Git API: New endpoints for Git operations (`/api/git/status`, `/api/git/branches`, `/api/worktrees`)
 - Branch selection: Choose branches before creating sessions with real-time repository status
+
+#### **Git Worktree Follow Mode** 
+- VibeTunnel now intelligently follows Git worktrees instead of just branches, making it perfect for developers who use worktrees for parallel development
+- When you switch branches in your editor/IDE, VibeTunnel automatically switches to the corresponding worktree terminal session
+- The `vt follow` command now works contextually - run it from either your main repository or a worktree, and it sets up the appropriate tracking
+- Follow mode displays worktree paths with `~` for your home directory, making them easier to read
+
+#### **Robust Command Communication**
+- The `vt` command now uses Unix domain sockets instead of HTTP for more reliable communication
+- No more port discovery issues - commands like `vt status`, `vt follow`, and `vt unfollow` work instantly
+- Socket-based API at `~/.vibetunnel/api.sock` provides consistent command execution
 
 #### **Mac Menu Bar Keyboard Navigation**
 - Navigate sessions with arrow keys (↑/↓) with wraparound support
@@ -48,6 +59,9 @@
 - Resolved CSS/JS resource loading on nested routes
 - Fixed terminal output corruption in high-volume sessions
 - Corrected menu bar icon opacity states
+- **Terminal Settings UI Restored**: Fixed missing terminal width selector, restored grid layout for width/font/theme options
+- **Worktree Selection UI Improvements**: Fixed confusing dropdown behavior, consistent text regardless of selection state
+- **Intelligent Cursor Following**: Restored smart cursor tracking that keeps cursor visible during text input
 
 ### 🔧 Technical Improvements
 
@@ -56,6 +70,8 @@
 - Component breakdown: Refactored `session-create-form` into smaller components
 - Unified components: Created reusable `GitBranchWorktreeSelector`
 - Better separation: Clear boundaries between UI and business logic
+- **Session rename functionality centralized**: Eliminated duplicate code across components
+- **Socket-based vt command communication**: Replaced HTTP with Unix domain sockets for reliability
 
 #### **Test Infrastructure**
 - Comprehensive test cleanup preventing memory exhaustion
@@ -69,6 +85,8 @@
 - Better error handling and logging
 - Consistent code formatting across macOS and web codebases
 - Removed outdated crash investigation documentation
+- Comprehensive JSDoc documentation added to service classes
+- Removed backwards compatibility for older vt command versions
 
 ## [1.0.0-beta.14] - 2025-07-21
 
