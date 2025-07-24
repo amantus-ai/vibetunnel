@@ -121,6 +121,7 @@ describe('SessionView Drag & Drop and Paste', () => {
     await import('./session-view.js');
     await import('./terminal.js');
     await import('./vibe-terminal-binary.js');
+    await import('./session-view/terminal-renderer.js');
     // Create mock file picker
     mockFilePicker = {
       uploadFile: vi.fn().mockResolvedValue(undefined),

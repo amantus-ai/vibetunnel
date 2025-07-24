@@ -189,8 +189,8 @@ final class CustomMenuWindow: NSPanel {
 
         // Button state is managed by StatusBarMenuManager
 
-        // Set first responder after window is visible
-        makeFirstResponder(self)
+        // Allow SwiftUI content to manage focus naturally
+        // Don't set window as first responder to enable keyboard navigation
 
         // Force immediate layout of all subviews to prevent delayed rendering
         contentView?.layoutSubtreeIfNeeded()
@@ -359,8 +359,8 @@ final class CustomMenuWindow: NSPanel {
 
     override func makeKey() {
         super.makeKey()
-        // Set the window itself as first responder to prevent auto-focus
-        makeFirstResponder(self)
+        // Allow SwiftUI content to manage focus naturally
+        // Don't set window as first responder to enable keyboard navigation
     }
 
     override var canBecomeMain: Bool {

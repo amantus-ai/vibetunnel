@@ -69,7 +69,22 @@ export class GitBranchSelector extends LitElement {
   }
 
   private async handleCreateWorktree() {
-    if (!this.newBranchName.trim()) {
+    const branchName = this.newBranchName.trim();
+
+    if (!branchName) {
+      return;
+    }
+
+    // Validate branch name
+    const validationError = this.validateBranchName(branchName);
+    if (validationError) {
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: validationError,
+          bubbles: true,
+          composed: true,
+        })
+      );
       return;
     }
 
@@ -77,13 +92,45 @@ export class GitBranchSelector extends LitElement {
     this.dispatchEvent(
       new CustomEvent('create-worktree', {
         detail: {
-          branchName: this.newBranchName.trim(),
+          branchName: branchName,
           baseBranch: this.selectedBaseBranch || 'main',
         },
         bubbles: true,
         composed: true,
       })
     );
+  }
+
+  private validateBranchName(name: string): string | null {
+    // Check if branch already exists
+    if (this.availableBranches.includes(name)) {
+      return `Branch '${name}' already exists`;
+    }
+
+    // Git branch name validation rules
+    if (name.startsWith('-') || name.endsWith('-')) {
+      return 'Branch name cannot start or end with a hyphen';
+    }
+
+    if (name.includes('..') || name.includes('~') || name.includes('^') || name.includes(':')) {
+      return 'Branch name contains invalid characters (.. ~ ^ :)';
+    }
+
+    if (name.endsWith('.lock')) {
+      return 'Branch name cannot end with .lock';
+    }
+
+    if (name.includes('//') || name.includes('\\')) {
+      return 'Branch name cannot contain consecutive slashes';
+    }
+
+    // Reserved names
+    const reserved = ['HEAD', 'FETCH_HEAD', 'ORIG_HEAD', 'MERGE_HEAD'];
+    if (reserved.includes(name.toUpperCase())) {
+      return `'${name}' is a reserved Git name`;
+    }
+
+    return null;
   }
 
   private handleNewBranchInput(e: InputEvent) {

@@ -70,6 +70,7 @@ describe('SessionView', () => {
     await import('./session-view');
     await import('./terminal');
     await import('./vibe-terminal-binary');
+    await import('./session-view/terminal-renderer');
   });
 
   beforeEach(async () => {

@@ -95,6 +95,10 @@ export class SessionCreateForm extends LitElement {
   @state() private followMode = false;
   @state() private followBranch: string | null = null;
   @state() private showFollowMode = false;
+  @state() private isCheckingGit = false;
+  @state() private isCheckingFollowMode = false;
+  @state() private isDiscovering = false;
+  @state() private selectedQuickStart: string | null = null;
 
   @state() private quickStartCommands: QuickStartItem[] = [
     { label: '✨ claude', command: 'claude' },
@@ -679,8 +683,8 @@ export class SessionCreateForm extends LitElement {
       // Update working directory to the new worktree
       this.workingDir = worktreePath;
 
-      // Update selected branch to the new branch
-      this.selectedBranch = branchName;
+      // Update selected base branch to the new branch
+      this.selectedBaseBranch = branchName;
 
       // Add new branch to available branches
       if (!this.availableBranches.includes(branchName)) {
@@ -689,6 +693,17 @@ export class SessionCreateForm extends LitElement {
 
       // Reload worktrees
       await this.loadWorktrees(this.gitRepoInfo.repoPath, worktreePath);
+
+      // Select the newly created worktree
+      this.selectedWorktree = branchName;
+
+      // Clear the isCreatingWorktree state in git-branch-selector
+      const gitBranchSelector = this.querySelector('git-branch-selector');
+      if (gitBranchSelector) {
+        (gitBranchSelector as any).isCreatingWorktree = false;
+        (gitBranchSelector as any).showCreateWorktree = false;
+        (gitBranchSelector as any).newBranchName = '';
+      }
 
       // Show success message
       this.dispatchEvent(
@@ -700,9 +715,30 @@ export class SessionCreateForm extends LitElement {
       );
     } catch (error) {
       logger.error('Failed to create worktree:', error);
+
+      // Clear the isCreatingWorktree state in git-branch-selector on error too
+      const gitBranchSelector = this.querySelector('git-branch-selector');
+      if (gitBranchSelector) {
+        (gitBranchSelector as any).isCreatingWorktree = false;
+      }
+
+      // Determine specific error message
+      let errorMessage = 'Failed to create worktree';
+      if (error instanceof Error) {
+        if (error.message.includes('already exists')) {
+          errorMessage = `Worktree path already exists. Try a different branch name.`;
+        } else if (error.message.includes('already checked out')) {
+          errorMessage = `Branch '${branchName}' is already checked out in another worktree`;
+        } else if (error.message.includes('Permission denied')) {
+          errorMessage = 'Permission denied. Check directory permissions.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
       this.dispatchEvent(
         new CustomEvent('error', {
-          detail: error instanceof Error ? error.message : 'Failed to create worktree',
+          detail: errorMessage,
           bubbles: true,
           composed: true,
         })
@@ -829,7 +865,7 @@ export class SessionCreateForm extends LitElement {
       logger.debug('No path or gitService, clearing Git info');
       this.gitRepoInfo = null;
       this.availableBranches = [];
-      this.selectedBranch = '';
+      this.selectedBaseBranch = '';
       this.followMode = false;
       this.followBranch = null;
       return;
@@ -856,7 +892,7 @@ export class SessionCreateForm extends LitElement {
         logger.log(`❌ Not a Git repository: ${path}`, repoInfo);
         this.gitRepoInfo = null;
         this.availableBranches = [];
-        this.selectedBranch = '';
+        this.selectedBaseBranch = '';
         this.currentBranch = '';
         this.selectedBaseBranch = '';
         this.availableWorktrees = [];
@@ -870,7 +906,7 @@ export class SessionCreateForm extends LitElement {
       logger.error('❌ Error checking Git repository:', error);
       this.gitRepoInfo = null;
       this.availableBranches = [];
-      this.selectedBranch = '';
+      this.selectedBaseBranch = '';
       this.currentBranch = '';
       this.selectedBaseBranch = '';
       this.availableWorktrees = [];

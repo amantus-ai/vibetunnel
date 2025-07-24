@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import './session-view.js';
 import './terminal.js';
 import './vibe-terminal-binary.js';
+import './session-view/terminal-renderer.js';
 import type { Session } from '../../shared/types.js';
 import type { UIState } from './session-view/ui-state-manager.js';
 import type { SessionView } from './session-view.js';
@@ -79,6 +80,7 @@ describe('SessionView Binary Mode', () => {
   });
 
   afterEach(() => {
+    element?.remove();
     vi.clearAllMocks();
     localStorage.clear();
     // Don't restore matchMedia - it's globally mocked
