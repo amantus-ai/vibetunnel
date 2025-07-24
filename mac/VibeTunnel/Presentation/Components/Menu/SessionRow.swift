@@ -90,12 +90,12 @@ struct SessionRow: View {
                             .truncationMode(.tail)
 
                         // Show session name if available
-                        if let sessionName = session.value.name, !sessionName.isEmpty {
+                        if !session.value.name.isEmpty {
                             Text("–")
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary.opacity(0.6))
 
-                            Text(sessionName)
+                            Text(session.value.name)
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
@@ -410,15 +410,15 @@ struct SessionRow: View {
 
     private var sessionName: String {
         // Use the session name if available, otherwise fall back to directory name
-        if let sessionName = session.value.name, !sessionName.isEmpty {
-            return sessionName
+        if !session.value.name.isEmpty {
+            return session.value.name
         }
         let workingDir = session.value.workingDir
         return (workingDir as NSString).lastPathComponent
     }
 
     private func startEditing() {
-        editedName = session.value.name ?? ""
+        editedName = session.value.name
         isEditing = true
         isEditFieldFocused = true
     }
@@ -507,8 +507,8 @@ struct SessionRow: View {
         var tooltip = ""
 
         // Session name
-        if let sessionName = session.value.name, !sessionName.isEmpty {
-            tooltip += "Session: \(sessionName)\n"
+        if !session.value.name.isEmpty {
+            tooltip += "Session: \(session.value.name)\n"
         }
 
         // Command

@@ -27,29 +27,15 @@ final class WorktreeService {
         error = nil
 
         do {
-            guard let url = serverManager.buildURL(
+            let worktreeResponse = try await serverManager.performRequest(
                 endpoint: "/api/worktrees",
-                queryItems: [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)]
-            ) else {
-                throw WorktreeError.invalidURL
-            }
-
-            let (data, response) = try await URLSession.shared.data(from: url)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw WorktreeError.invalidResponse
-            }
-
-            if httpResponse.statusCode == 200 {
-                let decoder = JSONDecoder()
-                let worktreeResponse = try decoder.decode(WorktreeListResponse.self, from: data)
-                self.worktrees = worktreeResponse.worktrees
-                // Stats and followMode are not part of the current API response
-                // They could be fetched separately if needed
-            } else {
-                let errorData = try? JSONDecoder().decode(ErrorResponse.self, from: data)
-                throw WorktreeError.serverError(errorData?.error ?? "Unknown error")
-            }
+                method: "GET",
+                queryItems: [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)],
+                responseType: WorktreeListResponse.self
+            )
+            self.worktrees = worktreeResponse.worktrees
+            // Stats and followMode are not part of the current API response
+            // They could be fetched separately if needed
         } catch {
             self.error = error
             logger.error("Failed to fetch worktrees: \(error.localizedDescription)")
@@ -68,23 +54,12 @@ final class WorktreeService {
         async throws
     {
         let request = CreateWorktreeRequest(branch: branch, createBranch: createBranch, baseBranch: baseBranch)
-        let urlRequest = try serverManager.makeRequest(
+        try await serverManager.performVoidRequest(
             endpoint: "/api/worktrees",
             method: "POST",
             body: request,
             queryItems: [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)]
         )
-
-        let (data, response) = try await URLSession.shared.data(for: urlRequest)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw WorktreeError.invalidResponse
-        }
-
-        if httpResponse.statusCode != 200 {
-            let errorData = try? JSONDecoder().decode(ErrorResponse.self, from: data)
-            throw WorktreeError.serverError(errorData?.error ?? "Failed to create worktree")
-        }
 
         // Refresh the worktree list
         await fetchWorktrees(for: gitRepoPath)
@@ -92,7 +67,7 @@ final class WorktreeService {
 
     /// Delete a worktree
     func deleteWorktree(gitRepoPath: String, branch: String, force: Bool = false) async throws {
-        let urlRequest = try serverManager.makeRequest(
+        try await serverManager.performVoidRequest(
             endpoint: "/api/worktrees/\(branch)",
             method: "DELETE",
             queryItems: [
@@ -101,17 +76,6 @@ final class WorktreeService {
             ]
         )
 
-        let (data, response) = try await URLSession.shared.data(for: urlRequest)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw WorktreeError.invalidResponse
-        }
-
-        if httpResponse.statusCode != 200 {
-            let errorData = try? JSONDecoder().decode(ErrorResponse.self, from: data)
-            throw WorktreeError.serverError(errorData?.error ?? "Failed to delete worktree")
-        }
-
         // Refresh the worktree list
         await fetchWorktrees(for: gitRepoPath)
     }
@@ -119,23 +83,12 @@ final class WorktreeService {
     /// Switch to a different branch
     func switchBranch(gitRepoPath: String, branch: String, createBranch: Bool = false) async throws {
         let request = SwitchBranchRequest(branch: branch, createBranch: createBranch)
-        let urlRequest = try serverManager.makeRequest(
+        try await serverManager.performVoidRequest(
             endpoint: "/api/worktrees/switch",
             method: "POST",
             body: request,
             queryItems: [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)]
         )
-
-        let (data, response) = try await URLSession.shared.data(for: urlRequest)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw WorktreeError.invalidResponse
-        }
-
-        if httpResponse.statusCode != 200 {
-            let errorData = try? JSONDecoder().decode(ErrorResponse.self, from: data)
-            throw WorktreeError.serverError(errorData?.error ?? "Failed to switch branch")
-        }
 
         // Refresh the worktree list
         await fetchWorktrees(for: gitRepoPath)
@@ -144,23 +97,12 @@ final class WorktreeService {
     /// Toggle follow mode
     func toggleFollowMode(gitRepoPath: String, enabled: Bool, targetBranch: String? = nil) async throws {
         let request = FollowModeRequest(enabled: enabled, targetBranch: targetBranch)
-        let urlRequest = try serverManager.makeRequest(
+        try await serverManager.performVoidRequest(
             endpoint: "/api/worktrees/follow",
             method: "POST",
             body: request,
             queryItems: [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)]
         )
-
-        let (data, response) = try await URLSession.shared.data(for: urlRequest)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw WorktreeError.invalidResponse
-        }
-
-        if httpResponse.statusCode != 200 {
-            let errorData = try? JSONDecoder().decode(ErrorResponse.self, from: data)
-            throw WorktreeError.serverError(errorData?.error ?? "Failed to toggle follow mode")
-        }
 
         // Refresh the worktree list
         await fetchWorktrees(for: gitRepoPath)
@@ -171,26 +113,12 @@ final class WorktreeService {
         isLoadingBranches = true
 
         do {
-            guard let url = serverManager.buildURL(
+            self.branches = try await serverManager.performRequest(
                 endpoint: "/api/repositories/branches",
-                queryItems: [URLQueryItem(name: "path", value: gitRepoPath)]
-            ) else {
-                throw WorktreeError.invalidURL
-            }
-
-            let (data, response) = try await URLSession.shared.data(from: url)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw WorktreeError.invalidResponse
-            }
-
-            if httpResponse.statusCode == 200 {
-                let decoder = JSONDecoder()
-                self.branches = try decoder.decode([GitBranch].self, from: data)
-            } else {
-                let errorData = try? JSONDecoder().decode(ErrorResponse.self, from: data)
-                throw WorktreeError.serverError(errorData?.error ?? "Failed to fetch branches")
-            }
+                method: "GET",
+                queryItems: [URLQueryItem(name: "path", value: gitRepoPath)],
+                responseType: [GitBranch].self
+            )
         } catch {
             self.error = error
             logger.error("Failed to fetch branches: \(error.localizedDescription)")
@@ -223,7 +151,3 @@ enum WorktreeError: LocalizedError {
 }
 
 // MARK: - Helper Types
-
-private struct ErrorResponse: Codable {
-    let error: String
-}

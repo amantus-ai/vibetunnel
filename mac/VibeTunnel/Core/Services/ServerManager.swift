@@ -616,6 +616,85 @@ class ServerManager {
     }
 }
 
+// MARK: - Network Request Extension
+
+extension ServerManager {
+    /// Perform a network request with automatic JSON parsing and error handling
+    /// - Parameters:
+    ///   - endpoint: The API endpoint path
+    ///   - method: HTTP method (default: "POST")
+    ///   - body: Optional request body (Encodable)
+    ///   - queryItems: Optional query parameters
+    ///   - responseType: The expected response type (must be Decodable)
+    /// - Returns: Decoded response of the specified type
+    /// - Throws: NetworkError for various failure cases
+    func performRequest<T: Decodable>(
+        endpoint: String,
+        method: String = "POST",
+        body: Encodable? = nil,
+        queryItems: [URLQueryItem]? = nil,
+        responseType: T.Type
+    ) async throws -> T {
+        let request = try makeRequest(
+            endpoint: endpoint,
+            method: method,
+            body: body,
+            queryItems: queryItems
+        )
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorData = try? JSONDecoder().decode(ErrorResponse.self, from: data)
+            throw NetworkError.serverError(
+                statusCode: httpResponse.statusCode,
+                message: errorData?.error ?? "Request failed with status \(httpResponse.statusCode)"
+            )
+        }
+        
+        return try JSONDecoder().decode(T.self, from: data)
+    }
+    
+    /// Perform a network request that returns no body (void response)
+    /// - Parameters:
+    ///   - endpoint: The API endpoint path
+    ///   - method: HTTP method (default: "POST")
+    ///   - body: Optional request body (Encodable)
+    ///   - queryItems: Optional query parameters
+    /// - Throws: NetworkError for various failure cases
+    func performVoidRequest(
+        endpoint: String,
+        method: String = "POST",
+        body: Encodable? = nil,
+        queryItems: [URLQueryItem]? = nil
+    ) async throws {
+        let request = try makeRequest(
+            endpoint: endpoint,
+            method: method,
+            body: body,
+            queryItems: queryItems
+        )
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorData = try? JSONDecoder().decode(ErrorResponse.self, from: data)
+            throw NetworkError.serverError(
+                statusCode: httpResponse.statusCode,
+                message: errorData?.error ?? "Request failed with status \(httpResponse.statusCode)"
+            )
+        }
+    }
+}
+
 // MARK: - Server Manager Error
 
 /// Errors specific to server management operations.

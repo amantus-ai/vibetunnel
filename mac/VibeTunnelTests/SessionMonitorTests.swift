@@ -68,6 +68,7 @@ final class SessionMonitorTests {
         let json = """
         {
             "id": "minimal-session",
+            "name": "sh (/tmp)",
             "command": ["sh"],
             "workingDir": "/tmp",
             "status": "exited",
@@ -81,7 +82,7 @@ final class SessionMonitorTests {
 
         #expect(session.id == "minimal-session")
         #expect(session.command == ["sh"])
-        #expect(session.name == nil)
+        #expect(session.name == "sh (/tmp)")
         #expect(session.workingDir == "/tmp")
         #expect(session.status == "exited")
         #expect(session.exitCode == nil)
@@ -137,6 +138,7 @@ final class SessionMonitorTests {
         [
             {
                 "id": "session-1",
+                "name": "bash (/home/user1)",
                 "command": ["bash"],
                 "workingDir": "/home/user1",
                 "status": "running",
@@ -146,6 +148,7 @@ final class SessionMonitorTests {
             },
             {
                 "id": "session-2",
+                "name": "python3 (/home/user2)",
                 "command": ["python3", "script.py"],
                 "workingDir": "/home/user2",
                 "status": "exited",
@@ -243,6 +246,7 @@ final class SessionMonitorTests {
         let json = """
         {
             "id": "weird-status",
+            "name": "bash (/tmp)",
             "command": ["bash"],
             "workingDir": "/tmp",
             "status": "zombie",
@@ -277,6 +281,7 @@ final class SessionMonitorTests {
             let json = """
             {
                 "id": "test-\(status)",
+                "name": "test (/tmp)",
                 "command": ["test"],
                 "workingDir": "/tmp",
                 "status": "\(status)",
@@ -417,6 +422,7 @@ final class SessionMonitorTests {
             },
             {
                 "id": "20250101-083000-ghi789",
+                "name": "git (~/vibetunnel)",
                 "command": ["git", "log", "--oneline", "-10"],
                 "workingDir": "/Users/developer/vibetunnel",
                 "status": "exited",

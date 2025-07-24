@@ -100,18 +100,10 @@ final class SessionService {
     /// - Note: The server implements graceful termination (SIGTERM → SIGKILL)
     ///         with a 3-second timeout before force-killing processes.
     func terminateSession(sessionId: String) async throws {
-        let request = try serverManager.makeRequest(
+        try await serverManager.performVoidRequest(
             endpoint: "\(APIEndpoints.sessions)/\(sessionId)",
             method: "DELETE"
         )
-
-        let (_, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 || httpResponse.statusCode == 204
-        else {
-            throw SessionServiceError.requestFailed(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1)
-        }
 
         // After successfully terminating the session, close the window if we opened it.
         // This is the key feature that prevents orphaned terminal windows.
@@ -137,19 +129,11 @@ final class SessionService {
         }
 
         let body = ["text": text]
-        let request = try serverManager.makeRequest(
+        try await serverManager.performVoidRequest(
             endpoint: "\(APIEndpoints.sessions)/\(sessionId)/input",
             method: "POST",
             body: body
         )
-
-        let (_, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 || httpResponse.statusCode == 204
-        else {
-            throw SessionServiceError.requestFailed(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1)
-        }
     }
 
     /// Send a key command to a session
@@ -159,19 +143,11 @@ final class SessionService {
         }
 
         let body = ["key": key]
-        let request = try serverManager.makeRequest(
+        try await serverManager.performVoidRequest(
             endpoint: "\(APIEndpoints.sessions)/\(sessionId)/input",
             method: "POST",
             body: body
         )
-
-        let (_, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 || httpResponse.statusCode == 204
-        else {
-            throw SessionServiceError.requestFailed(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1)
-        }
     }
 
     /// Create a new session
@@ -209,37 +185,18 @@ final class SessionService {
             gitBranch: gitBranch
         )
 
-        // Use makeRequest with our typed struct
-        let request = try serverManager.makeRequest(
+        // Use performRequest to create the session
+        let createResponse = try await serverManager.performRequest(
             endpoint: APIEndpoints.sessions,
             method: "POST",
-            body: requestBody
+            body: requestBody,
+            responseType: CreateSessionResponse.self
         )
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200
-        else {
-            var errorMessage = "Failed to create session"
-            if let errorData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let error = errorData["error"] as? String
-            {
-                errorMessage = error
-            }
-            throw SessionServiceError.createFailed(message: errorMessage)
-        }
-
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let sessionId = json["sessionId"] as? String
-        else {
-            throw SessionServiceError.invalidResponse
-        }
 
         // Refresh session list
         await sessionMonitor.refresh()
 
-        return sessionId
+        return createResponse.sessionId
     }
 }
 

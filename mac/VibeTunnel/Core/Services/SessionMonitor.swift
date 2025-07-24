@@ -8,7 +8,7 @@ import os.log
 /// including its command, directory, process status, and activity information.
 struct ServerSessionInfo: Codable {
     let id: String
-    let name: String?
+    let name: String
     let command: [String]
     let workingDir: String
     let status: String
@@ -117,21 +117,11 @@ final class SessionMonitor {
 
     private func fetchSessions() async {
         do {
-            var request = try serverManager.makeRequest(
+            let sessionsArray = try await serverManager.performRequest(
                 endpoint: APIEndpoints.sessions,
-                method: "GET"
+                method: "GET",
+                responseType: [ServerSessionInfo].self
             )
-            request.timeoutInterval = 3.0
-
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200
-            else {
-                throw URLError(.badServerResponse)
-            }
-
-            let sessionsArray = try JSONDecoder().decode([ServerSessionInfo].self, from: data)
 
             // Convert to dictionary
             var sessionsDict: [String: ServerSessionInfo] = [:]

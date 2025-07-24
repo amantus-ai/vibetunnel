@@ -59,14 +59,14 @@ jobs:
       run: |
         cd node-pty && npm install && npm run build
 
-    # Run all checks in parallel
-    - name: Run all checks in parallel
+    # Run all checks - build first, then tests
+    - name: Run all checks
       working-directory: web
       run: |
         # Create a temporary directory for outputs
         mkdir -p ci-outputs
         
-        # Run format check in background
+        # Run format, lint, typecheck, and audit in parallel (these don't depend on build)
         (
           echo "Starting format check..."
           pnpm run format:check > ci-outputs/format-output.txt 2>&1
@@ -74,7 +74,6 @@ jobs:
           echo "Format check completed"
         ) &
         
-        # Run lint in background
         (
           echo "Starting lint..."
           pnpm run lint:biome > ci-outputs/lint-output.txt 2>&1
@@ -82,7 +81,6 @@ jobs:
           echo "Lint completed"
         ) &
         
-        # Run typecheck in background
         (
           echo "Starting type check..."
           pnpm run typecheck > ci-outputs/typecheck-output.txt 2>&1
@@ -90,33 +88,6 @@ jobs:
           echo "Type check completed"
         ) &
         
-        # Run build in background
-        (
-          echo "Starting build..."
-          export ESBUILD_MAX_WORKERS=$(nproc)
-          pnpm run build:ci > ci-outputs/build-output.txt 2>&1
-          echo $? > ci-outputs/build-exit-code.txt
-          echo "Build completed"
-        ) &
-        
-        # Run tests in background
-        (
-          echo "Starting tests..."
-          # Run client and server tests sequentially to avoid conflicts
-          pnpm run test:client:coverage > ci-outputs/test-client-output.txt 2>&1
-          CLIENT_EXIT=$?
-          pnpm run test:server:coverage > ci-outputs/test-server-output.txt 2>&1
-          SERVER_EXIT=$?
-          # Return non-zero if either test failed
-          if [ $CLIENT_EXIT -ne 0 ] || [ $SERVER_EXIT -ne 0 ]; then
-            echo 1 > ci-outputs/test-exit-code.txt
-          else
-            echo 0 > ci-outputs/test-exit-code.txt
-          fi
-          echo "Tests completed"
-        ) &
-        
-        # Run audit in background
         (
           echo "Starting security audit..."
           pnpm audit --audit-level=moderate > ci-outputs/audit-output.txt 2>&1 || true
@@ -124,10 +95,32 @@ jobs:
           echo "Audit completed"
         ) &
         
-        # Wait for all background jobs to complete
+        # Wait for parallel checks
         wait
         
-        echo "All parallel checks completed"
+        # Run build (must complete before tests)
+        echo "Starting build..."
+        export ESBUILD_MAX_WORKERS=$(nproc)
+        pnpm run build:ci > ci-outputs/build-output.txt 2>&1
+        echo $? > ci-outputs/build-exit-code.txt
+        echo "Build completed"
+        
+        # Run tests after build completes
+        echo "Starting tests..."
+        # Run client and server tests sequentially to avoid conflicts
+        pnpm run test:client:coverage > ci-outputs/test-client-output.txt 2>&1
+        CLIENT_EXIT=$?
+        pnpm run test:server:coverage > ci-outputs/test-server-output.txt 2>&1
+        SERVER_EXIT=$?
+        # Return non-zero if either test failed
+        if [ $CLIENT_EXIT -ne 0 ] || [ $SERVER_EXIT -ne 0 ]; then
+          echo 1 > ci-outputs/test-exit-code.txt
+        else
+          echo 0 > ci-outputs/test-exit-code.txt
+        fi
+        echo "Tests completed"
+        
+        echo "All checks completed"
 
     # Process results
     - name: Process check results
