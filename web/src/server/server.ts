@@ -22,6 +22,7 @@ import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createRepositoryRoutes } from './routes/repositories.js';
 import { createSessionRoutes } from './routes/sessions.js';
+import { createTmuxRoutes } from './routes/tmux.js';
 import { WebSocketInputHandler } from './routes/websocket-input.js';
 import { ActivityMonitor } from './services/activity-monitor.js';
 import { AuthService } from './services/auth-service.js';
@@ -750,6 +751,10 @@ export async function createApp(): Promise<AppInstance> {
     })
   );
   logger.debug('Mounted config routes');
+
+  // Mount tmux routes
+  app.use('/api/tmux', createTmuxRoutes({ ptyManager }));
+  logger.debug('Mounted tmux routes');
 
   // Mount push notification routes
   if (vapidManager) {

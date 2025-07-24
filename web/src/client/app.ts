@@ -27,6 +27,7 @@ import { VERSION } from './version.js';
 // Import components
 import './components/app-header.js';
 import './components/session-create-form.js';
+import './components/tmux-session-modal.js';
 import './components/session-list.js';
 import './components/session-view.js';
 import './components/session-card.js';
@@ -65,6 +66,7 @@ export class VibeTunnelApp extends LitElement {
   @state() private selectedSessionId: string | null = null;
   @state() private hideExited = this.loadHideExitedState();
   @state() private showCreateModal = false;
+  @state() private showTmuxModal = false;
   @state() private showSSHKeyManager = false;
   @state() private showSettings = false;
   @state() private isAuthenticated = false;
@@ -118,10 +120,12 @@ export class VibeTunnelApp extends LitElement {
     // Update hasActiveOverlay whenever any overlay state changes
     if (
       changedProperties.has('showCreateModal') ||
+      changedProperties.has('showTmuxModal') ||
       changedProperties.has('showSSHKeyManager') ||
       changedProperties.has('showSettings')
     ) {
-      this.hasActiveOverlay = this.showCreateModal || this.showSSHKeyManager || this.showSettings;
+      this.hasActiveOverlay =
+        this.showCreateModal || this.showTmuxModal || this.showSSHKeyManager || this.showSettings;
     }
 
     // Force re-render when sessions change or view changes to update log button position
@@ -1346,6 +1350,10 @@ export class VibeTunnelApp extends LitElement {
     this.handleNavigateToFileBrowser();
   };
 
+  private handleOpenTmuxSessions = () => {
+    this.showTmuxModal = true;
+  };
+
   private handleNotificationEnabled = (e: CustomEvent) => {
     const { success, reason } = e.detail;
     if (success) {
@@ -1600,6 +1608,7 @@ export class VibeTunnelApp extends LitElement {
             @kill-all-sessions=${this.handleKillAll}
             @clean-exited-sessions=${this.handleCleanExited}
             @open-file-browser=${this.handleOpenFileBrowser}
+            @open-tmux-sessions=${this.handleOpenTmuxSessions}
             @open-settings=${this.handleOpenSettings}
             @logout=${this.handleLogout}
             @navigate-to-list=${this.handleNavigateToList}
@@ -1700,6 +1709,16 @@ export class VibeTunnelApp extends LitElement {
         @cancel=${this.handleCreateModalClose}
         @error=${this.handleError}
       ></session-create-form>
+
+      <!-- Tmux Session Modal -->
+      <tmux-session-modal
+        .open=${this.showTmuxModal}
+        @close=${() => {
+          this.showTmuxModal = false;
+        }}
+        @navigate-to-session=${this.handleNavigateToSession}
+        @create-session=${this.handleCreateSession}
+      ></tmux-session-modal>
 
       <!-- Version and logs link with smart positioning -->
       ${
