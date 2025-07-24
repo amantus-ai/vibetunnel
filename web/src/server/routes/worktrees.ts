@@ -285,18 +285,9 @@ export function createWorktreeRoutes(): Router {
 
       const allWorktrees = parseWorktreePorcelain(stdout);
 
-      // Filter out the main repository from the worktree list
-      // The main repository is always the first entry and its path matches the repo path
-      const worktrees = allWorktrees.filter((worktree) => {
-        // Normalize paths for comparison (resolve symlinks, relative paths, etc.)
-        const normalizedWorktreePath = path.resolve(worktree.path);
-        const normalizedRepoPath = path.resolve(absoluteRepoPath);
-        return normalizedWorktreePath !== normalizedRepoPath;
-      });
-
-      // Enrich worktrees with additional stats
+      // Enrich all worktrees with additional stats (including main repository)
       const enrichedWorktrees = await Promise.all(
-        worktrees.map(async (worktree) => {
+        allWorktrees.map(async (worktree) => {
           // Skip stats for detached HEAD
           if (worktree.detached || !worktree.branch) {
             return worktree;
