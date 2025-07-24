@@ -7,7 +7,7 @@ export const BREAKPOINTS = {
 } as const;
 
 export const SIDEBAR = {
-  DEFAULT_WIDTH: 320,
+  DEFAULT_WIDTH: 420,
   MIN_WIDTH: 240,
   MAX_WIDTH: 600,
   MOBILE_RIGHT_MARGIN: 80,

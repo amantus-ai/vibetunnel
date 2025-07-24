@@ -723,6 +723,9 @@ export class SessionList extends LitElement {
     const hasExitedSessions = exitedSessions.length > 0;
     const showExitedSection = !this.hideExited && (hasIdleSessions || hasExitedSessions);
 
+    // Track session index for numbering
+    let sessionIndex = 0;
+
     return html`
       <div class="font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-bg-primary rounded-lg" data-testid="session-list-container">
         <div class="p-4 pt-5">
@@ -828,7 +831,9 @@ export class SessionList extends LitElement {
                               ${repeat(
                                 repoSessions,
                                 (session) => session.id,
-                                (session) => html`
+                                (session) => {
+                                  const currentIndex = ++sessionIndex;
+                                  return html`
                     ${
                       this.compactMode
                         ? html`
@@ -837,6 +842,7 @@ export class SessionList extends LitElement {
                             .authClient=${this.authClient}
                             .selected=${session.id === this.selectedSessionId}
                             .sessionType=${'active'}
+                            .sessionNumber=${currentIndex}
                             @session-select=${this.handleSessionSelect}
                             @session-rename=${this.handleSessionRenamed}
                             @session-delete=${this.handleSessionKilled}
@@ -857,7 +863,8 @@ export class SessionList extends LitElement {
                           </session-card>
                         `
                     }
-                  `
+                  `;
+                                }
                               )}
                             </div>
                           </div>
@@ -895,7 +902,9 @@ export class SessionList extends LitElement {
                               ${repeat(
                                 repoSessions,
                                 (session) => session.id,
-                                (session) => html`
+                                (session) => {
+                                  const currentIndex = ++sessionIndex;
+                                  return html`
                             ${
                               this.compactMode
                                 ? html`
@@ -904,6 +913,7 @@ export class SessionList extends LitElement {
                                     .authClient=${this.authClient}
                                     .selected=${session.id === this.selectedSessionId}
                                     .sessionType=${'idle'}
+                                    .sessionNumber=${currentIndex}
                                     @session-select=${this.handleSessionSelect}
                                     @session-rename=${this.handleSessionRenamed}
                                     @session-delete=${this.handleSessionKilled}

@@ -90,9 +90,6 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         localSessions.map(async (session) => {
           // If session doesn't have Git info, try to detect it
           if (!session.gitRepoPath && session.workingDir) {
-            logger.debug(
-              `[GET /sessions] Session ${session.id} missing gitRepoPath, detecting Git info for: ${session.workingDir}`
-            );
             try {
               const gitInfo = await detectGitInfo(session.workingDir);
               logger.debug(

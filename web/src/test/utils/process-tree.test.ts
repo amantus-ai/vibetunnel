@@ -12,15 +12,20 @@ vi.mock('child_process');
 describe('process-tree', () => {
   describe('getProcessTree', () => {
     it('should parse process tree correctly', () => {
-      const mockOutput = `  PID  PPID COMMAND
-12345 67890 /usr/bin/node /path/to/app.js
-67890   123 /bin/bash
+      // Mock outputs for each ps call as it walks up the tree
+      const output1 = `  PID  PPID COMMAND
+12345 67890 /usr/bin/node /path/to/app.js`;
+      
+      const output2 = `  PID  PPID COMMAND
+67890   123 /bin/bash`;
+      
+      const output3 = `  PID  PPID COMMAND
   123     1 /sbin/init`;
 
       vi.mocked(execSync)
-        .mockReturnValueOnce(mockOutput)
-        .mockReturnValueOnce(mockOutput.split('\n').slice(0, 3).join('\n'))
-        .mockReturnValueOnce(mockOutput.split('\n').slice(0, 2).join('\n'));
+        .mockReturnValueOnce(output1)
+        .mockReturnValueOnce(output2)
+        .mockReturnValueOnce(output3);
 
       const tree = getProcessTree();
 
@@ -78,29 +83,37 @@ describe('process-tree', () => {
     });
 
     it('should detect cly wrapper', () => {
-      const mockOutput = `  PID  PPID COMMAND
-12345 67890 /usr/bin/node /path/to/app.js
-67890 11111 cly --verbose
+      const output1 = `  PID  PPID COMMAND
+12345 67890 /usr/bin/node /path/to/app.js`;
+      
+      const output2 = `  PID  PPID COMMAND
+67890 11111 cly --verbose`;
+      
+      const output3 = `  PID  PPID COMMAND
 11111   123 /bin/zsh`;
 
       vi.mocked(execSync)
-        .mockReturnValueOnce(mockOutput)
-        .mockReturnValueOnce(mockOutput.split('\n').slice(0, 3).join('\n'))
-        .mockReturnValueOnce(mockOutput.split('\n').slice(0, 2).join('\n'));
+        .mockReturnValueOnce(output1)
+        .mockReturnValueOnce(output2)
+        .mockReturnValueOnce(output3);
 
       expect(isClaudeInProcessTree()).toBe(true);
     });
 
     it('should detect claude-wrapper script', () => {
-      const mockOutput = `  PID  PPID COMMAND
-12345 67890 /usr/bin/node app.js
-67890 11111 /bin/zsh /Users/user/.config/zsh/claude-wrapper.zsh
+      const output1 = `  PID  PPID COMMAND
+12345 67890 /usr/bin/node app.js`;
+      
+      const output2 = `  PID  PPID COMMAND
+67890 11111 /bin/zsh /Users/user/.config/zsh/claude-wrapper.zsh`;
+      
+      const output3 = `  PID  PPID COMMAND
 11111   123 /bin/zsh`;
 
       vi.mocked(execSync)
-        .mockReturnValueOnce(mockOutput)
-        .mockReturnValueOnce(mockOutput.split('\n').slice(0, 3).join('\n'))
-        .mockReturnValueOnce(mockOutput.split('\n').slice(0, 2).join('\n'));
+        .mockReturnValueOnce(output1)
+        .mockReturnValueOnce(output2)
+        .mockReturnValueOnce(output3);
 
       expect(isClaudeInProcessTree()).toBe(true);
     });
@@ -160,13 +173,15 @@ describe('process-tree', () => {
     });
 
     it('should return cly command when found', () => {
-      const mockOutput = `  PID  PPID COMMAND
-12345 67890 /usr/bin/node app.js
+      const output1 = `  PID  PPID COMMAND
+12345 67890 /usr/bin/node app.js`;
+      
+      const output2 = `  PID  PPID COMMAND
 67890 11111 cly --title "My Project"`;
 
       vi.mocked(execSync)
-        .mockReturnValueOnce(mockOutput)
-        .mockReturnValueOnce(mockOutput.split('\n').slice(0, 3).join('\n'));
+        .mockReturnValueOnce(output1)
+        .mockReturnValueOnce(output2);
 
       expect(getClaudeCommandFromTree()).toBe('cly --title "My Project"');
     });
