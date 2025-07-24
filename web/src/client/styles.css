@@ -283,6 +283,9 @@
     @apply fixed inset-0 bg-bg bg-opacity-80;
     z-index: 1000;
     backdrop-filter: blur(4px);
+    /* Disable all transitions and animations */
+    transition: none !important;
+    animation: none !important;
   }
 
   /* Modal content */
@@ -291,6 +294,9 @@
     @apply shadow-2xl shadow-black/50;
     position: relative;
     z-index: 1001;
+    /* Disable all transitions and animations */
+    transition: none !important;
+    animation: none !important;
   }
 
   /* Modal positioning when used as sibling to backdrop */

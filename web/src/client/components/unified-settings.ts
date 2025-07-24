@@ -104,9 +104,8 @@ export class UnifiedSettings extends LitElement {
     if (changedProperties.has('visible')) {
       if (this.visible) {
         document.addEventListener('keydown', this.handleKeyDown);
-        document.startViewTransition?.(() => {
-          this.requestUpdate();
-        });
+        // Removed view transition for instant display
+        this.requestUpdate();
         // Discover repositories when settings are opened
         this.discoverRepositories();
       } else {
@@ -388,7 +387,6 @@ export class UnifiedSettings extends LitElement {
       <div class="modal-backdrop flex items-center justify-center" @click=${this.handleBackdropClick}>
         <div
           class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-2xl mx-2 sm:mx-4 max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col"
-          style="view-transition-name: settings-modal"
         >
           <!-- Header -->
           <div class="p-4 pb-4 border-b border-border/50 relative flex-shrink-0">
