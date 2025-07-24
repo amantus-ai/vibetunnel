@@ -1,6 +1,58 @@
 import Foundation
 import Observation
 
+/// Request body for creating a new session
+struct SessionCreateRequest: Encodable {
+    let command: [String]
+    let workingDir: String
+    let titleMode: String
+    let name: String?
+    let spawn_terminal: Bool?
+    let cols: Int?
+    let rows: Int?
+    let gitRepoPath: String?
+    let gitBranch: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case command
+        case workingDir
+        case titleMode
+        case name
+        case spawn_terminal
+        case cols
+        case rows
+        case gitRepoPath
+        case gitBranch
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(command, forKey: .command)
+        try container.encode(workingDir, forKey: .workingDir)
+        try container.encode(titleMode, forKey: .titleMode)
+        
+        // Only encode optional values if they're present
+        if let name = name, !name.isEmpty {
+            try container.encode(name, forKey: .name)
+        }
+        if let spawn_terminal = spawn_terminal {
+            try container.encode(spawn_terminal, forKey: .spawn_terminal)
+        }
+        if let cols = cols {
+            try container.encode(cols, forKey: .cols)
+        }
+        if let rows = rows {
+            try container.encode(rows, forKey: .rows)
+        }
+        if let gitRepoPath = gitRepoPath {
+            try container.encode(gitRepoPath, forKey: .gitRepoPath)
+        }
+        if let gitBranch = gitBranch {
+            try container.encode(gitBranch, forKey: .gitBranch)
+        }
+    }
+}
+
 /// Service for managing session-related API operations.
 ///
 /// Provides high-level methods for interacting with terminal sessions through
@@ -152,43 +204,29 @@ final class SessionService {
             throw SessionServiceError.serverNotRunning
         }
 
-        var body: [String: Any] = [
-            "command": command,
-            "workingDir": workingDir,
-            "titleMode": titleMode
-        ]
+        // Trim the name if provided
+        let trimmedName = name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let finalName = (trimmedName?.isEmpty ?? true) ? nil : trimmedName
 
-        if let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
-            body["name"] = name
-        }
+        // Create the strongly-typed request
+        let requestBody = SessionCreateRequest(
+            command: command,
+            workingDir: workingDir,
+            titleMode: titleMode,
+            name: finalName,
+            spawn_terminal: spawnTerminal ? true : nil,
+            cols: spawnTerminal ? nil : cols,
+            rows: spawnTerminal ? nil : rows,
+            gitRepoPath: gitRepoPath,
+            gitBranch: gitBranch
+        )
 
-        if spawnTerminal {
-            body["spawn_terminal"] = true
-        } else {
-            // Web sessions need terminal dimensions
-            body["cols"] = cols
-            body["rows"] = rows
-        }
-
-        // Add git information if available
-        if let gitRepoPath {
-            body["gitRepoPath"] = gitRepoPath
-        }
-        if let gitBranch {
-            body["gitBranch"] = gitBranch
-        }
-
-        // Note: We can't use makeRequest here because it requires Encodable and we have [String: Any]
-        guard let url = serverManager.buildURL(endpoint: APIEndpoints.sessions) else {
-            throw SessionServiceError.invalidURL
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(NetworkConstants.contentTypeJSON, forHTTPHeaderField: NetworkConstants.contentTypeHeader)
-        request.setValue(NetworkConstants.localhost, forHTTPHeaderField: NetworkConstants.hostHeader)
-        try serverManager.authenticate(request: &request)
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        // Use makeRequest with our typed struct
+        let request = try serverManager.makeRequest(
+            endpoint: APIEndpoints.sessions,
+            method: "POST",
+            body: requestBody
+        )
 
         let (data, response) = try await URLSession.shared.data(for: request)
 

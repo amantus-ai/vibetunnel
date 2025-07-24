@@ -5,25 +5,104 @@ import OSLog
 
 // MARK: - Response Types
 
+/// Response from the Git repository info API endpoint.
+///
+/// This lightweight response is used to quickly determine if a given path
+/// is within a Git repository and find the repository root.
+///
+/// ## Usage
+///
+/// ```swift
+/// let response = GitRepoInfoResponse(
+///     isGitRepo: true,
+///     repoPath: "/Users/developer/my-project"
+/// )
+/// ```
 struct GitRepoInfoResponse: Codable {
+    /// Indicates whether the path is within a Git repository.
     let isGitRepo: Bool
+    
+    /// The absolute path to the repository root.
+    ///
+    /// Only present when `isGitRepo` is `true`.
     let repoPath: String?
 }
 
+/// Comprehensive Git repository information response from the API.
+///
+/// Contains detailed status information about a Git repository including
+/// file changes, branch status, and remote tracking information.
+///
+/// ## Topics
+///
+/// ### Repository Status
+/// - ``isGitRepo``
+/// - ``repoPath``
+/// - ``hasChanges``
+///
+/// ### Branch Information
+/// - ``currentBranch``
+/// - ``remoteUrl``
+/// - ``githubUrl``
+/// - ``hasUpstream``
+///
+/// ### File Changes
+/// - ``modifiedCount``
+/// - ``untrackedCount``
+/// - ``stagedCount``
+/// - ``addedCount``
+/// - ``deletedCount``
+///
+/// ### Sync Status
+/// - ``aheadCount``
+/// - ``behindCount``
 struct GitRepositoryInfoResponse: Codable {
+    /// Indicates whether this is a valid Git repository.
     let isGitRepo: Bool
-    let repoPath: String? // Made optional to match when isGitRepo is false
+    
+    /// The absolute path to the repository root.
+    ///
+    /// Optional to handle cases where `isGitRepo` is false.
+    let repoPath: String?
+    
+    /// The currently checked-out branch name.
     let currentBranch: String?
+    
+    /// The remote URL for the origin remote.
     let remoteUrl: String?
-    let githubUrl: String? // Added missing field from server response
-    let hasChanges: Bool? // Made optional for when isGitRepo is false
+    
+    /// The GitHub URL if this is a GitHub repository.
+    ///
+    /// Automatically derived from `remoteUrl` when it's a GitHub remote.
+    let githubUrl: String?
+    
+    /// Whether the repository has any uncommitted changes.
+    ///
+    /// Optional for when `isGitRepo` is false.
+    let hasChanges: Bool?
+    
+    /// Number of files with unstaged modifications.
     let modifiedCount: Int?
+    
+    /// Number of untracked files.
     let untrackedCount: Int?
+    
+    /// Number of files staged for commit.
     let stagedCount: Int?
+    
+    /// Number of new files added to the repository.
     let addedCount: Int?
+    
+    /// Number of files deleted from the repository.
     let deletedCount: Int?
+    
+    /// Number of commits ahead of the upstream branch.
     let aheadCount: Int?
+    
+    /// Number of commits behind the upstream branch.
     let behindCount: Int?
+    
+    /// Whether this branch has an upstream tracking branch.
     let hasUpstream: Bool?
 }
 
@@ -104,10 +183,15 @@ public final class GitRepositoryMonitor {
             let decoder = JSONDecoder()
 
             // Define the branch structure we expect from the server
+            /// Represents a Git branch from the server API.
             struct Branch: Codable {
+                /// The branch name (e.g., "main", "feature/login").
                 let name: String
+                /// Whether this is the currently checked-out branch.
                 let current: Bool
+                /// Whether this is a remote tracking branch.
                 let remote: Bool
+                /// Path to the worktree using this branch, if any.
                 let worktreePath: String?
             }
 
@@ -421,10 +505,15 @@ public final class GitRepositoryMonitor {
             do {
                 let (data, _) = try await URLSession.shared.data(from: url)
                 let decoder = JSONDecoder()
+                /// Response from the Git remote API endpoint.
                 struct RemoteResponse: Codable {
+                    /// Whether this is a valid Git repository.
                     let isGitRepo: Bool
+                    /// The absolute path to the repository root.
                     let repoPath: String?
+                    /// The remote origin URL.
                     let remoteUrl: String?
+                    /// The GitHub URL if this is a GitHub repository.
                     let githubUrl: String?
                 }
                 let response = try decoder.decode(RemoteResponse.self, from: data)

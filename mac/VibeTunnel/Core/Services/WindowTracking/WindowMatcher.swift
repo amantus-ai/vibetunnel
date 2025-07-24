@@ -254,7 +254,7 @@ final class WindowMatcher {
         let dirName = (workingDir as NSString).lastPathComponent
         let sessionID = sessionInfo.id
         let activityStatus = sessionInfo.activityStatus?.specificStatus?.status
-        let sessionName = sessionInfo.name
+        let sessionName = sessionInfo.name ?? ""
 
         logger.debug("Looking for tab matching session \(sessionID) in \(tabs.count) tabs")
         logger.debug("  Working dir: \(workingDir)")

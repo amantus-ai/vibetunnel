@@ -256,6 +256,7 @@ describe('vt title Command Integration', () => {
   });
 
   it('should handle concurrent title updates', async () => {
+    if (skipTests) return;
     const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     const sessionDir = path.join(testControlDir, sessionId);
     await fs.mkdir(sessionDir, { recursive: true });
@@ -308,6 +309,7 @@ describe('vt title Command Integration', () => {
   });
 
   it('should preserve JSON formatting and other fields', async () => {
+    if (skipTests) return;
     const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     const sessionDir = path.join(testControlDir, sessionId);
     await fs.mkdir(sessionDir, { recursive: true });

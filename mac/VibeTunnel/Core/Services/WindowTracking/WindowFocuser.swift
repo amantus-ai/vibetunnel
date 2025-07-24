@@ -346,9 +346,9 @@ final class WindowFocuser {
                     }
 
                     // Check for session name
-                    if !sessionInfo.name.isEmpty && title.contains(sessionInfo.name) {
+                    if let sessionName = sessionInfo.name, !sessionName.isEmpty && title.contains(sessionName) {
                         matchScore += 150 // High score for session name match
-                        logger.debug("Window \(index) has session name in title: \(sessionInfo.name)")
+                        logger.debug("Window \(index) has session name in title: \(sessionName)")
                     }
                 }
             }
@@ -498,7 +498,7 @@ final class WindowFocuser {
                         logger.debug("Window \(index) has working directory in title")
                     }
 
-                    if !sessionInfo.name.isEmpty && title.contains(sessionInfo.name) {
+                    if let sessionName = sessionInfo.name, !sessionName.isEmpty && title.contains(sessionName) {
                         matchScore += 150
                         logger.debug("Window \(index) has session name in title")
                     }

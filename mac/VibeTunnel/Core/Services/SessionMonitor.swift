@@ -8,7 +8,7 @@ import os.log
 /// including its command, directory, process status, and activity information.
 struct ServerSessionInfo: Codable {
     let id: String
-    let name: String
+    let name: String?
     let command: [String]
     let workingDir: String
     let status: String
