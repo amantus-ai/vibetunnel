@@ -38,6 +38,9 @@ struct PathSuggestion: Identifiable, Equatable {
     let gitInfo: GitInfo?
 
     /// The type of file system entry.
+    ///
+    /// Distinguishes between different types of file system entries
+    /// to provide appropriate UI representation and behavior.
     enum SuggestionType {
         /// A regular file
         case file
