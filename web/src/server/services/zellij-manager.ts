@@ -96,15 +96,18 @@ export class ZellijManager {
 
   /**
    * Create a new zellij session
+   * Note: Zellij requires a terminal, so we create sessions through attachToZellij instead
    */
   async createSession(name: string, layout?: string): Promise<void> {
-    try {
-      const layoutArg = layout ? `-l ${layout}` : '';
-      await execAsync(`zellij -s '${name}' ${layoutArg}`, { shell: '/bin/sh' });
-      logger.info('Created zellij session', { name, layout });
-    } catch (error) {
-      logger.error('Failed to create zellij session', { name, error });
-      throw error;
+    // Zellij can't create detached sessions like tmux
+    // Sessions are created when attaching to them
+    logger.info('Zellij session will be created on first attach', { name, layout });
+    
+    // Store the layout preference if provided
+    if (layout) {
+      // We could store this in a temporary map or config file
+      // For now, we'll just log it
+      logger.info('Layout preference noted for session', { name, layout });
     }
   }
 
@@ -113,10 +116,19 @@ export class ZellijManager {
    */
   async attachToZellij(
     sessionName: string,
-    options?: Partial<SessionCreateOptions>
+    options?: Partial<SessionCreateOptions> & { layout?: string }
   ): Promise<string> {
-    // Zellij attach command
-    const zellijCommand = ['zellij', 'attach', sessionName];
+    // Zellij attach command with -c flag to create if doesn't exist
+    const zellijCommand = ['zellij', 'attach', '-c', sessionName];
+    
+    // Add layout if provided and session doesn't exist yet
+    if (options?.layout) {
+      const sessions = await this.listSessions();
+      const sessionExists = sessions.some(s => s.name === sessionName && !s.exited);
+      if (!sessionExists) {
+        zellijCommand.push('-l', options.layout);
+      }
+    }
 
     // Create a new VibeTunnel session that runs zellij attach
     const sessionOptions: SessionCreateOptions = {
