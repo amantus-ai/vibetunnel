@@ -68,7 +68,6 @@ export class Terminal extends LitElement {
   @state() private cursorVisible = true; // Track cursor visibility state
 
   private container: HTMLElement | null = null;
-  private resizeTimeout: NodeJS.Timeout | null = null;
   private explicitSizeSet = false; // Flag to prevent auto-resize when size is explicitly set
 
   // Virtual scrolling optimization
@@ -929,14 +928,6 @@ export class Terminal extends LitElement {
     this.container.addEventListener('pointercancel', handlePointerCancel);
   }
 
-  private scrollViewport(deltaLines: number) {
-    if (!this.terminal) return;
-
-    const lineHeight = this.fontSize * 1.2;
-    const deltaPixels = deltaLines * lineHeight;
-    this.scrollViewportPixels(deltaPixels);
-  }
-
   private scrollViewportPixels(deltaPixels: number) {
     if (!this.terminal) return;
 
@@ -1455,44 +1446,6 @@ export class Terminal extends LitElement {
     if (!this.terminal) return 0;
     const buffer = this.terminal.buffer.active;
     return Math.max(0, buffer.length - this.actualRows);
-  }
-
-  /**
-   * Scroll the viewport to follow the cursor position.
-   * This ensures the cursor stays visible during text input or playback.
-   */
-  private followCursor() {
-    if (!this.terminal) return;
-
-    const buffer = this.terminal.buffer.active;
-    const cursorY = buffer.cursorY + buffer.viewportY; // Absolute cursor position in buffer
-    const lineHeight = this.fontSize * 1.2;
-
-    // Calculate what line the cursor is on
-    const cursorLine = cursorY;
-
-    // Calculate current viewport range in lines
-    const viewportStartLine = Math.floor(this.viewportY / lineHeight);
-    const viewportEndLine = viewportStartLine + this.actualRows - 1;
-
-    // Set programmatic scroll flag to prevent state updates
-    this.programmaticScroll = true;
-
-    // If cursor is outside viewport, scroll to keep it visible
-    if (cursorLine < viewportStartLine) {
-      // Cursor is above viewport - scroll up
-      this.viewportY = cursorLine * lineHeight;
-    } else if (cursorLine > viewportEndLine) {
-      // Cursor is below viewport - scroll down to show cursor at bottom of viewport
-      this.viewportY = Math.max(0, (cursorLine - this.actualRows + 1) * lineHeight);
-    }
-
-    // Ensure we don't scroll past the buffer
-    const maxScrollPixels = Math.max(0, (buffer.length - this.actualRows) * lineHeight);
-    this.viewportY = Math.min(this.viewportY, maxScrollPixels);
-
-    // Clear programmatic scroll flag
-    this.programmaticScroll = false;
   }
 
   /**

@@ -104,17 +104,6 @@ export class MonacoEditor extends LitElement {
     }
   }
 
-  private async waitForMonaco(timeout = 10000): Promise<void> {
-    const startTime = Date.now();
-
-    while (!window.monaco) {
-      if (Date.now() - startTime > timeout) {
-        throw new Error('Monaco Editor failed to load within timeout');
-      }
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-  }
-
   private setupResizeObserver() {
     this.resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {

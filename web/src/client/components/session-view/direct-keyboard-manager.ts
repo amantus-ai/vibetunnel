@@ -50,21 +50,17 @@ export interface DirectKeyboardCallbacks {
 export class DirectKeyboardManager {
   private hiddenInput: HTMLInputElement | null = null;
   private focusRetentionInterval: number | null = null;
-  private instanceId: string;
   private inputManager: InputManager | null = null;
   private sessionViewElement: HTMLElement | null = null;
   private callbacks: DirectKeyboardCallbacks | null = null;
   private showQuickKeys = false;
-  private hiddenInputFocused = false;
   private keyboardMode = false; // Track whether we're in keyboard mode
-  private keyboardModeTimestamp = 0; // Track when we entered keyboard mode
   private keyboardActivationTimeout: number | null = null;
   private captureClickHandler: ((e: Event) => void) | null = null;
   private globalPasteHandler: ((e: Event) => void) | null = null;
 
   // IME composition state tracking for Japanese/CJK input
   private isComposing = false;
-  private compositionBuffer = '';
 
   constructor(instanceId: string) {
     this.instanceId = instanceId;

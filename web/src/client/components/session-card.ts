@@ -62,7 +62,6 @@ export class SessionCard extends LitElement {
   @state() private killing = false;
   @state() private killingFrame = 0;
   @state() private isActive = false;
-  @state() private isHovered = false;
   @state() private isSendingPrompt = false;
   @state() private terminalTheme: TerminalThemeId = 'auto';
 
@@ -596,13 +595,6 @@ export class SessionCard extends LitElement {
     `;
   }
 
-  private getStatusText(): string {
-    if (this.session.active === false) {
-      return 'waiting';
-    }
-    return this.session.status;
-  }
-
   private getActivityStatusText(): string {
     if (this.killing) {
       return 'killing...';
@@ -614,16 +606,6 @@ export class SessionCard extends LitElement {
       return this.session.activityStatus.specificStatus.status;
     }
     return this.session.status;
-  }
-
-  private getStatusColor(): string {
-    if (this.killing) {
-      return 'text-status-error';
-    }
-    if (this.session.active === false) {
-      return 'text-muted';
-    }
-    return this.session.status === 'running' ? 'text-status-success' : 'text-status-warning';
   }
 
   private getActivityStatusColor(): string {

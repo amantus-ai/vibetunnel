@@ -72,19 +72,15 @@ export class SessionCreateForm extends LitElement {
 
   @state() private isCreating = false;
   @state() private showFileBrowser = false;
-  @state() private selectedQuickStart = 'zsh';
   @state() private showRepositoryDropdown = false;
   @state() private repositories: Repository[] = [];
-  @state() private isDiscovering = false;
   @state() private macAppConnected = false;
   @state() private showCompletions = false;
   @state() private completions: AutocompleteItem[] = [];
   @state() private selectedCompletionIndex = -1;
   @state() private isLoadingCompletions = false;
   @state() private gitRepoInfo: GitRepoInfo | null = null;
-  @state() private isCheckingGit = false;
   @state() private availableBranches: string[] = [];
-  @state() private selectedBranch: string = '';
 
   // New properties for split branch/worktree selectors
   @state() private currentBranch: string = '';
@@ -99,7 +95,6 @@ export class SessionCreateForm extends LitElement {
   @state() private followMode = false;
   @state() private followBranch: string | null = null;
   @state() private showFollowMode = false;
-  @state() private isCheckingFollowMode = false;
 
   @state() private quickStartCommands: QuickStartItem[] = [
     { label: '✨ claude', command: 'claude' },
@@ -738,10 +733,6 @@ export class SessionCreateForm extends LitElement {
     } finally {
       this.isDiscovering = false;
     }
-  }
-
-  private handleToggleRepositoryDropdown() {
-    this.showRepositoryDropdown = !this.showRepositoryDropdown;
   }
 
   private handleToggleAutocomplete() {

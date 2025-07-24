@@ -26,8 +26,6 @@ import './inline-edit.js';
 import './session-list/compact-session-card.js';
 import './session-list/repository-header.js';
 import { getBaseRepoName } from '../../shared/utils/git.js';
-import { sessionActionService } from '../services/session-action-service.js';
-import { sendAIPrompt } from '../utils/ai-sessions.js';
 import { Z_INDEX } from '../utils/constants.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -57,8 +55,6 @@ export class SessionList extends LitElement {
   >();
   @state() private loadingWorktrees = new Set<string>();
   @state() private showWorktreeDropdown = new Map<string, boolean>();
-
-  private previousRunningCount = 0;
 
   connectedCallback() {
     super.connectedCallback();
@@ -216,9 +212,6 @@ export class SessionList extends LitElement {
       }
     }, 0);
   };
-  private handleRefresh() {
-    this.dispatchEvent(new CustomEvent('refresh'));
-  }
 
   private handleSessionSelect(e: CustomEvent) {
     const session = e.detail as Session;
@@ -256,43 +249,6 @@ export class SessionList extends LitElement {
     );
   }
 
-  private async handleRename(sessionId: string, newName: string) {
-    try {
-      const response = await fetch(`/api/sessions/${sessionId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.authClient.getAuthHeader(),
-        },
-        body: JSON.stringify({ name: newName }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        logger.error('Failed to rename session', { errorData, sessionId });
-        throw new Error(`Rename failed: ${response.status}`);
-      }
-
-      // Update the local session object
-      const sessionIndex = this.sessions.findIndex((s) => s.id === sessionId);
-      if (sessionIndex >= 0) {
-        this.sessions[sessionIndex] = { ...this.sessions[sessionIndex], name: newName };
-        this.requestUpdate();
-      }
-
-      logger.debug(`Session ${sessionId} renamed to: ${newName}`);
-    } catch (error) {
-      logger.error('Error renaming session', { error, sessionId });
-
-      // Show error to user
-      this.dispatchEvent(
-        new CustomEvent('error', {
-          detail: `Failed to rename session: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        })
-      );
-    }
-  }
-
   private handleSessionRenamed = (e: CustomEvent) => {
     const { sessionId, newName } = e.detail;
     // Update the local session object
@@ -314,39 +270,6 @@ export class SessionList extends LitElement {
       })
     );
   };
-
-  private async handleDeleteSession(sessionId: string) {
-    await sessionActionService.deleteSessionById(sessionId, {
-      authClient: this.authClient,
-      callbacks: {
-        onError: (errorMessage) => {
-          this.handleSessionKillError({
-            detail: {
-              sessionId,
-              error: errorMessage,
-            },
-          } as CustomEvent);
-        },
-        onSuccess: () => {
-          // Session killed successfully - update local state and trigger refresh
-          this.handleSessionKilled({ detail: { sessionId } } as CustomEvent);
-        },
-      },
-    });
-  }
-
-  private async handleSendAIPrompt(sessionId: string) {
-    try {
-      await sendAIPrompt(sessionId, this.authClient);
-    } catch (error) {
-      logger.error('Failed to send AI prompt', error);
-      this.dispatchEvent(
-        new CustomEvent('error', {
-          detail: `Failed to send AI prompt: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        })
-      );
-    }
-  }
 
   public async handleCleanupExited() {
     if (this.cleaningExited) return;
@@ -453,49 +376,6 @@ export class SessionList extends LitElement {
 
   private getRepoName(repoPath: string): string {
     return getBaseRepoName(repoPath);
-  }
-
-  private renderFollowModeIndicator(repoPath: string) {
-    const followMode = this.repoFollowMode.get(repoPath);
-    if (!followMode) return '';
-
-    return html`
-      <span class="text-[10px] px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded flex items-center gap-1" 
-            title="Following worktree: ${followMode}">
-        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-            d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-        </svg>
-        ${followMode}
-      </span>
-    `;
-  }
-
-  private renderGitChanges(session: Session) {
-    if (!session.gitRepoPath) return '';
-
-    const changes = [];
-
-    // Show ahead/behind counts
-    if (session.gitAheadCount && session.gitAheadCount > 0) {
-      changes.push(html`<span class="text-status-success">↑${session.gitAheadCount}</span>`);
-    }
-    if (session.gitBehindCount && session.gitBehindCount > 0) {
-      changes.push(html`<span class="text-status-warning">↓${session.gitBehindCount}</span>`);
-    }
-
-    // Show uncommitted changes indicator
-    if (session.gitHasChanges) {
-      changes.push(html`<span class="text-status-warning">●</span>`);
-    }
-
-    if (changes.length === 0) return '';
-
-    return html`
-      <div class="flex items-center gap-1 text-xs font-mono flex-shrink-0">
-        ${changes}
-      </div>
-    `;
   }
 
   private async loadFollowModeForRepo(repoPath: string) {
