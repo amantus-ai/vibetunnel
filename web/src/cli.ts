@@ -63,6 +63,10 @@ function printHelp(): void {
   console.log('Usage:');
   console.log('  vibetunnel [options]                    Start VibeTunnel server');
   console.log('  vibetunnel fwd <session-id> <command>   Forward command to session');
+  console.log('  vibetunnel status                       Show server and follow mode status');
+  console.log('  vibetunnel follow [branch]              Enable Git follow mode');
+  console.log('  vibetunnel unfollow                     Disable Git follow mode');
+  console.log('  vibetunnel git-event                    Notify server of Git event');
   console.log('  vibetunnel systemd [action]             Manage systemd service (Linux)');
   console.log('  vibetunnel version                      Show version');
   console.log('  vibetunnel help                         Show this help');

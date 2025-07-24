@@ -8,11 +8,11 @@
  * - View mode toggling (terminal vs worktree)
  */
 import type { Session } from '../../../shared/types.js';
-import { HttpMethod } from '../../../shared/types.js';
 import { authClient } from '../../services/auth-client.js';
 import { sessionActionService } from '../../services/session-action-service.js';
 import { createLogger } from '../../utils/logger.js';
 import { titleManager } from '../../utils/title-manager.js';
+import { renameSession } from '../../utils/session-actions.js';
 
 const logger = createLogger('session-actions-handler');
 
