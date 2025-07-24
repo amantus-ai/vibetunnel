@@ -59,6 +59,54 @@ const TITLE_UPDATE_INTERVAL_MS = 1000; // How often to check if title needs upda
 const TITLE_INJECTION_QUIET_PERIOD_MS = 50; // Minimum quiet period before injecting title
 const TITLE_INJECTION_CHECK_INTERVAL_MS = 10; // How often to check for quiet period
 
+/**
+ * PtyManager handles the lifecycle and I/O operations of pseudo-terminal (PTY) sessions.
+ *
+ * This class provides comprehensive terminal session management including:
+ * - Creating and managing PTY processes using node-pty
+ * - Handling terminal input/output with proper buffering and queuing
+ * - Managing terminal resizing from both browser and host terminal
+ * - Recording sessions in asciinema format for playback
+ * - Communicating with external sessions via Unix domain sockets
+ * - Dynamic terminal title management with activity detection
+ * - Session persistence and recovery across server restarts
+ *
+ * The PtyManager supports both in-memory sessions (where the PTY is managed directly)
+ * and external sessions (where communication happens via IPC sockets).
+ *
+ * @extends EventEmitter
+ *
+ * @fires PtyManager#sessionExited - When a session terminates
+ * @fires PtyManager#sessionNameChanged - When a session name is updated
+ * @fires PtyManager#bell - When a bell character is detected in terminal output
+ *
+ * @example
+ * ```typescript
+ * // Create a PTY manager instance
+ * const ptyManager = new PtyManager('/path/to/control/dir');
+ *
+ * // Create a new session
+ * const { sessionId, sessionInfo } = await ptyManager.createSession(
+ *   ['bash', '-l'],
+ *   {
+ *     name: 'My Terminal',
+ *     workingDir: '/home/user',
+ *     cols: 80,
+ *     rows: 24,
+ *     titleMode: TitleMode.DYNAMIC
+ *   }
+ * );
+ *
+ * // Send input to the session
+ * ptyManager.sendInput(sessionId, { text: 'ls -la\n' });
+ *
+ * // Resize the terminal
+ * ptyManager.resizeSession(sessionId, 100, 30);
+ *
+ * // Kill the session gracefully
+ * await ptyManager.killSession(sessionId);
+ * ```
+ */
 export class PtyManager extends EventEmitter {
   private sessions = new Map<string, PtySession>();
   private sessionManager: SessionManager;

@@ -145,14 +145,75 @@ describe('SessionCard', () => {
       expect(statusText).toContain('waiting');
     });
 
-    it.skip('should display PID when available', async () => {
-      // TODO: PID display is not implemented in session-card component
-      const mockPid = 12345;
-      element.session = createMockSession({ pid: mockPid });
+    it('should display Git branch when available', async () => {
+      const mockBranch = 'feature/awesome-feature';
+      element.session = createMockSession({ gitBranch: mockBranch });
       await element.updateComplete;
 
-      const pidText = element.textContent;
-      expect(pidText).toContain(`PID: ${mockPid}`);
+      const gitBranchElement = element.querySelector('.bg-surface-2');
+      expect(gitBranchElement).toBeTruthy();
+      expect(gitBranchElement?.textContent).toBe(mockBranch);
+    });
+
+    it('should display Git ahead/behind counts', async () => {
+      element.session = createMockSession({
+        gitBranch: 'main',
+        gitAheadCount: 3,
+        gitBehindCount: 2,
+      });
+      await element.updateComplete;
+
+      // Find the Git status section specifically
+      const gitStatusElements = element.querySelectorAll(
+        '.flex.items-center.gap-1.text-\\[10px\\]'
+      );
+      const gitStatusElement = Array.from(gitStatusElements).find((el) =>
+        el.querySelector('.bg-surface-2')
+      );
+
+      expect(gitStatusElement).toBeTruthy();
+
+      // Find ahead count within the Git status section
+      const aheadElement = gitStatusElement?.querySelector('.text-status-success');
+      expect(aheadElement).toBeTruthy();
+      expect(aheadElement?.textContent).toContain('3');
+
+      // Find behind count within the Git status section
+      const behindElement = gitStatusElement?.querySelector('.text-status-warning');
+      expect(behindElement).toBeTruthy();
+      expect(behindElement?.textContent).toContain('2');
+    });
+
+    it('should display Git changes indicator', async () => {
+      element.session = createMockSession({
+        gitBranch: 'main',
+        gitHasChanges: true,
+      });
+      await element.updateComplete;
+
+      const changesElement = element.querySelector('.text-yellow-500');
+      expect(changesElement).toBeTruthy();
+      expect(changesElement?.textContent).toContain('●');
+    });
+
+    it('should display Git worktree indicator', async () => {
+      element.session = createMockSession({
+        gitBranch: 'worktree-branch',
+        gitIsWorktree: true,
+      });
+      await element.updateComplete;
+
+      const worktreeElement = element.querySelector('.text-purple-400');
+      expect(worktreeElement).toBeTruthy();
+      expect(worktreeElement?.getAttribute('title')).toBe('Git worktree');
+    });
+
+    it('should not display Git status when no branch is set', async () => {
+      element.session = createMockSession({ gitBranch: undefined });
+      await element.updateComplete;
+
+      const gitBranchElement = element.querySelector('.bg-surface-2');
+      expect(gitBranchElement).toBeFalsy();
     });
 
     it('should display working directory', () => {

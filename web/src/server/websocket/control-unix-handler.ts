@@ -93,6 +93,50 @@ class SystemHandler implements MessageHandler {
   }
 }
 
+/**
+ * Handles Unix domain socket communication between the VibeTunnel web server and macOS app.
+ * 
+ * This class manages a Unix socket server that provides bidirectional communication
+ * between the web server and the native macOS application. It implements a message-based
+ * protocol with length-prefixed framing for reliable message delivery and supports
+ * multiple message categories including terminal control and system events.
+ * 
+ * Key features:
+ * - Unix domain socket server with automatic cleanup on restart
+ * - Length-prefixed binary protocol for message framing
+ * - Message routing based on categories (terminal, system)
+ * - Request/response pattern with timeout support
+ * - WebSocket bridge for browser clients
+ * - Automatic socket permission management (0600)
+ * 
+ * @example
+ * ```typescript
+ * // Create and start the handler
+ * const handler = new ControlUnixHandler();
+ * await handler.start();
+ * 
+ * // Check if Mac app is connected
+ * if (handler.isMacAppConnected()) {
+ *   // Send a control message
+ *   const response = await handler.sendControlMessage({
+ *     id: 'msg-123',
+ *     type: 'request',
+ *     category: 'terminal',
+ *     action: 'spawn',
+ *     payload: {
+ *       sessionId: 'session-456',
+ *       workingDirectory: '/Users/alice',
+ *       command: 'vim'
+ *     }
+ *   });
+ * }
+ * 
+ * // Handle browser WebSocket connections
+ * ws.on('connection', (socket) => {
+ *   handler.handleBrowserConnection(socket, userId);
+ * });
+ * ```
+ */
 export class ControlUnixHandler {
   private pendingRequests = new Map<string, (response: ControlMessage) => void>();
   private macSocket: net.Socket | null = null;

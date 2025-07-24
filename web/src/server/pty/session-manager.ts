@@ -1,8 +1,60 @@
 /**
- * SessionManager - Handles session persistence and file system operations
+ * SessionManager - Centralized management for terminal session lifecycle and persistence
  *
- * This class manages the session directory structure, metadata persistence,
- * and file operations to maintain compatibility with tty-fwd format.
+ * This class provides a comprehensive solution for managing terminal sessions in VibeTunnel.
+ * It handles session directory structure, metadata persistence, process tracking, and
+ * file operations while maintaining compatibility with the tty-fwd format.
+ *
+ * ## Key Features:
+ * - **Session Lifecycle Management**: Create, track, and cleanup terminal sessions
+ * - **Persistent Storage**: Store session metadata and I/O streams in filesystem
+ * - **Process Tracking**: Monitor running processes and detect zombie sessions
+ * - **Version Management**: Handle cleanup across VibeTunnel version upgrades
+ * - **Unique Naming**: Ensure session names are unique with automatic suffix handling
+ * - **Atomic Operations**: Use temp files and rename for safe metadata updates
+ *
+ * ## Directory Structure:
+ * ```
+ * ~/.vibetunnel/control/
+ * ├── .version                    # VibeTunnel version tracking
+ * └── [session-id]/              # Per-session directory
+ *     ├── session.json           # Session metadata
+ *     ├── stdout                 # Process output stream
+ *     └── stdin                  # Process input (FIFO or file)
+ * ```
+ *
+ * ## Session States:
+ * - `starting`: Session is being initialized
+ * - `running`: Process is active and accepting input
+ * - `exited`: Process has terminated
+ *
+ * @example
+ * ```typescript
+ * // Initialize session manager
+ * const manager = new SessionManager();
+ *
+ * // Create a new session
+ * const paths = manager.createSessionDirectory('session-123');
+ *
+ * // Save session metadata
+ * manager.saveSessionInfo('session-123', {
+ *   name: 'Development Server',
+ *   status: 'starting',
+ *   pid: 12345,
+ *   startedAt: new Date().toISOString()
+ * });
+ *
+ * // Update session status when process starts
+ * manager.updateSessionStatus('session-123', 'running', 12345);
+ *
+ * // List all sessions
+ * const sessions = manager.listSessions();
+ * console.log(`Found ${sessions.length} sessions`);
+ *
+ * // Cleanup when done
+ * manager.updateSessionStatus('session-123', 'exited', undefined, 0);
+ * manager.cleanupSession('session-123');
+ * ```
  */
 
 import chalk from 'chalk';

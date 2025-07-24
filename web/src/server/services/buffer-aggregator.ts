@@ -19,6 +19,58 @@ interface RemoteWebSocketConnection {
   subscriptions: Set<string>;
 }
 
+/**
+ * Aggregates and distributes terminal buffer updates across local and remote sessions.
+ *
+ * The BufferAggregator acts as a central hub for WebSocket-based terminal buffer streaming,
+ * managing connections between clients and terminal sessions. In HQ (headquarters) mode,
+ * it also handles connections to remote VibeTunnel servers, enabling cross-server terminal
+ * session access.
+ *
+ * Key features:
+ * - WebSocket-based real-time buffer streaming
+ * - Support for both local and remote terminal sessions
+ * - Efficient binary protocol for buffer updates
+ * - Automatic connection management and reconnection
+ * - Session subscription/unsubscription handling
+ * - Remote server connection pooling in HQ mode
+ * - Graceful cleanup on disconnection
+ *
+ * The aggregator uses a binary protocol for buffer updates:
+ * - Magic byte (0xBF) to identify binary messages
+ * - 4-byte session ID length (little-endian)
+ * - UTF-8 encoded session ID
+ * - Binary terminal buffer data
+ *
+ * @example
+ * ```typescript
+ * // Create aggregator for local-only mode
+ * const aggregator = new BufferAggregator({
+ *   terminalManager,
+ *   remoteRegistry: null,
+ *   isHQMode: false
+ * });
+ *
+ * // Handle client WebSocket connection
+ * wss.on('connection', (ws) => {
+ *   aggregator.handleClientConnection(ws);
+ * });
+ *
+ * // In HQ mode with remote registry
+ * const hqAggregator = new BufferAggregator({
+ *   terminalManager,
+ *   remoteRegistry,
+ *   isHQMode: true
+ * });
+ *
+ * // Register remote server
+ * await hqAggregator.onRemoteRegistered(remoteId);
+ * ```
+ *
+ * @see TerminalManager - Manages local terminal instances
+ * @see RemoteRegistry - Tracks remote VibeTunnel servers in HQ mode
+ * @see web/src/server/routes/buffer.ts - WebSocket endpoint setup
+ */
 export class BufferAggregator {
   private config: BufferAggregatorConfig;
   private remoteConnections: Map<string, RemoteWebSocketConnection> = new Map();

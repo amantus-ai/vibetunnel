@@ -3,6 +3,33 @@ import { screenshotOnError } from '../helpers/screenshot.helper';
 import { validateCommand, validateSessionName } from '../utils/validation.utils';
 import { BasePage } from './base.page';
 
+/**
+ * Page object for the session list view, handling terminal session management operations.
+ * 
+ * This class provides methods for interacting with the main session list interface,
+ * including creating new sessions, managing existing sessions, and navigating between
+ * session cards. It handles both web-based sessions and Mac app spawn window sessions,
+ * with support for modal interactions and form validation.
+ * 
+ * Key features:
+ * - Session creation with configurable options (name, command, spawn window)
+ * - Session card interaction (click, kill, status checking)
+ * - Modal management for the create session dialog
+ * - Support for both web and native Mac app features
+ * 
+ * @example
+ * ```typescript
+ * // Create a new session
+ * const sessionList = new SessionListPage(page);
+ * await sessionList.navigate();
+ * await sessionList.createNewSession('My Test Session', false, 'echo "Hello"');
+ * 
+ * // Interact with existing sessions
+ * await sessionList.clickSession('My Test Session');
+ * const isActive = await sessionList.isSessionActive('My Test Session');
+ * await sessionList.killSession('My Test Session');
+ * ```
+ */
 export class SessionListPage extends BasePage {
   // Selectors
   private readonly selectors = {

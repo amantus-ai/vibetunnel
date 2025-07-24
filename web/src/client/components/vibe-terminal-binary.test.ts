@@ -3,6 +3,7 @@
 import { fixture } from '@open-wc/testing';
 import { html } from 'lit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { HttpMethod } from '../../shared/types.js';
 import './vibe-terminal-binary.js';
 import { authClient } from '../services/auth-client.js';
 import type { VibeTerminalBinary } from './vibe-terminal-binary.js';
@@ -105,7 +106,7 @@ describe('VibeTerminalBinary', () => {
 
     expect(window.fetch).toHaveBeenCalledTimes(1);
     expect(window.fetch).toHaveBeenCalledWith('/api/sessions/test-session-id/input', {
-      method: 'POST',
+      method: HttpMethod.POST,
       headers: {
         'Content-Type': 'application/json',
         Authorization: 'Bearer test-token',

@@ -1,8 +1,47 @@
 /**
  * AsciinemaWriter - Records terminal sessions in asciinema format
  *
- * This class writes terminal output in the standard asciinema cast format
+ * This class writes terminal output in the standard asciinema cast format (v2),
  * which is compatible with asciinema players and the existing web interface.
+ * It handles real-time streaming of terminal data while properly managing:
+ * - UTF-8 encoding and incomplete multi-byte sequences
+ * - ANSI escape sequences preservation
+ * - Buffering and backpressure
+ * - Atomic writes with fsync for durability
+ *
+ * Key features:
+ * - Real-time recording with minimal buffering
+ * - Proper handling of escape sequences across buffer boundaries
+ * - Support for all asciinema event types (output, input, resize, markers)
+ * - Automatic directory creation and file management
+ * - Thread-safe write queue for concurrent operations
+ *
+ * @example
+ * ```typescript
+ * // Create a writer for a new recording
+ * const writer = AsciinemaWriter.create(
+ *   '/path/to/recording.cast',
+ *   80,  // terminal width
+ *   24,  // terminal height
+ *   'npm test',  // command being recorded
+ *   'Test Run Recording'  // title
+ * );
+ *
+ * // Write terminal output
+ * writer.writeOutput(Buffer.from('Hello, world!\r\n'));
+ *
+ * // Record user input
+ * writer.writeInput('ls -la');
+ *
+ * // Handle terminal resize
+ * writer.writeResize(120, 40);
+ *
+ * // Add a bookmark/marker
+ * writer.writeMarker('Test started');
+ *
+ * // Close the recording when done
+ * await writer.close();
+ * ```
  */
 
 import { once } from 'events';

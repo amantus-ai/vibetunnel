@@ -25,6 +25,37 @@ interface User {
   loginTime: number;
 }
 
+/**
+ * Authentication client for managing user authentication state and operations.
+ *
+ * Handles multiple authentication methods including SSH key-based authentication
+ * (priority) and password-based authentication (fallback). Manages authentication
+ * tokens, user sessions, and provides authenticated API request capabilities.
+ *
+ * Features:
+ * - SSH key authentication using browser-based SSH agent
+ * - Password authentication fallback
+ * - Persistent token storage and validation
+ * - User avatar retrieval with platform-specific support
+ * - Automatic authentication flow (tries SSH keys first)
+ *
+ * @example
+ * ```typescript
+ * const auth = new AuthClient();
+ *
+ * // Check authentication status
+ * if (!auth.isAuthenticated()) {
+ *   // Try SSH key auth first, then password
+ *   const result = await auth.authenticate(userId);
+ * }
+ *
+ * // Make authenticated API requests
+ * const response = await auth.fetch('/api/sessions');
+ * ```
+ *
+ * @see BrowserSSHAgent - Browser-based SSH key management
+ * @see web/src/server/routes/auth.ts - Server-side authentication endpoints
+ */
 export class AuthClient {
   private static readonly TOKEN_KEY = 'vibetunnel_auth_token';
   private static readonly USER_KEY = 'vibetunnel_user_data';

@@ -28,6 +28,12 @@ interface CreateSessionOptions {
   remoteId?: string;
   remoteName?: string;
   remoteUrl?: string;
+  // Git-related properties
+  gitBranch?: string;
+  gitAheadCount?: number;
+  gitBehindCount?: number;
+  gitHasChanges?: boolean;
+  gitIsWorktree?: boolean;
 }
 
 interface CreateActivityOptions {
@@ -76,6 +82,12 @@ export function createTestSession(options: CreateSessionOptions = {}): Session {
     remoteId: options.remoteId,
     remoteName: options.remoteName,
     remoteUrl: options.remoteUrl,
+    // Git-related properties
+    gitBranch: options.gitBranch,
+    gitAheadCount: options.gitAheadCount,
+    gitBehindCount: options.gitBehindCount,
+    gitHasChanges: options.gitHasChanges,
+    gitIsWorktree: options.gitIsWorktree,
   };
 }
 

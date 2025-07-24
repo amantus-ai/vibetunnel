@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Session } from '../../../shared/types.js';
+import { HttpMethod, type Session } from '../../../shared/types.js';
 import { InputManager } from './input-manager.js';
 
 // Mock fetch globally
@@ -66,7 +66,7 @@ describe('InputManager', () => {
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/sessions/test-session-id/input',
         expect.objectContaining({
-          method: 'POST',
+          method: HttpMethod.POST,
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
           }),
@@ -89,7 +89,7 @@ describe('InputManager', () => {
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/sessions/test-session-id/input',
         expect.objectContaining({
-          method: 'POST',
+          method: HttpMethod.POST,
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
           }),
@@ -112,7 +112,7 @@ describe('InputManager', () => {
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/sessions/test-session-id/input',
         expect.objectContaining({
-          method: 'POST',
+          method: HttpMethod.POST,
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
           }),
@@ -137,7 +137,7 @@ describe('InputManager', () => {
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/sessions/test-session-id/input',
         expect.objectContaining({
-          method: 'POST',
+          method: HttpMethod.POST,
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
           }),
@@ -160,7 +160,7 @@ describe('InputManager', () => {
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/sessions/test-session-id/input',
         expect.objectContaining({
-          method: 'POST',
+          method: HttpMethod.POST,
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
           }),
