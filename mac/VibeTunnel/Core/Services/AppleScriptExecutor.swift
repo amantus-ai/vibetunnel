@@ -18,7 +18,7 @@ private struct SendableDescriptor: @unchecked Sendable {
 @MainActor
 final class AppleScriptExecutor {
     private let logger = Logger(
-        subsystem: "sh.vibetunnel.vibetunnel",
+        subsystem: BundleIdentifiers.loggerSubsystem,
         category: "AppleScriptExecutor"
     )
 

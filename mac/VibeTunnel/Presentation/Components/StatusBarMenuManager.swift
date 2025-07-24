@@ -131,10 +131,11 @@ final class StatusBarMenuManager: NSObject {
         let sessionService = SessionService(serverManager: serverManager, sessionMonitor: sessionMonitor)
 
         // Create the main view with all dependencies and binding
-        let mainView = VibeTunnelMenuView(isNewSessionActive: Binding(
+        let sessionBinding = Binding(
             get: { [weak self] in self?.isNewSessionActive ?? false },
             set: { [weak self] in self?.isNewSessionActive = $0 }
-        ))
+        )
+        let mainView = VibeTunnelMenuView(isNewSessionActive: sessionBinding)
         .environment(sessionMonitor)
         .environment(serverManager)
         .environment(ngrokService)

@@ -6,7 +6,7 @@ import OSLog
 @MainActor
 @Observable
 final class WorktreeService {
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "WorktreeService")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "WorktreeService")
     private let serverManager: ServerManager
 
     private(set) var worktrees: [Worktree] = []

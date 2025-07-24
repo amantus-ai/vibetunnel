@@ -389,7 +389,7 @@ enum TerminalLauncherError: LocalizedError {
 @Observable
 final class TerminalLauncher {
     static let shared = TerminalLauncher()
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "TerminalLauncher")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "TerminalLauncher")
 
     private init() {
         performFirstRunAutoDetection()

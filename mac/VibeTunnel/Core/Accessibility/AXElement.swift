@@ -12,7 +12,7 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
     public let element: AXUIElement
 
     private let logger = Logger(
-        subsystem: "sh.vibetunnel.vibetunnel",
+        subsystem: BundleIdentifiers.loggerSubsystem,
         category: "AXElement"
     )
 
