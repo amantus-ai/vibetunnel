@@ -8,7 +8,12 @@ struct NotificationServiceClaudeTurnTests {
     @Test("Should have claude turn preference enabled by default")
     @MainActor
     func claudeTurnDefaultPreference() async throws {
-        // Given
+        // Given - Clear UserDefaults to simulate fresh install
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: "notifications.initialized")
+        defaults.removeObject(forKey: "notifications.claudeTurn")
+        defaults.synchronize()
+        
         let preferences = NotificationService.NotificationPreferences()
 
         // Then

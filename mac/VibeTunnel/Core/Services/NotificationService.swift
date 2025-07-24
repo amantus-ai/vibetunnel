@@ -28,24 +28,47 @@ final class NotificationService: NSObject {
         var claudeTurn: Bool = true
 
         init() {
-            // Load from UserDefaults
             let defaults = UserDefaults.standard
-            self.sessionStart = defaults.bool(forKey: "notifications.sessionStart")
-            self.sessionExit = defaults.bool(forKey: "notifications.sessionExit")
-            self.commandCompletion = defaults.bool(forKey: "notifications.commandCompletion")
-            self.commandError = defaults.bool(forKey: "notifications.commandError")
-            self.bell = defaults.bool(forKey: "notifications.bell")
-            self.claudeTurn = defaults.bool(forKey: "notifications.claudeTurn")
-
-            // Set defaults if not set
-            if !defaults.bool(forKey: "notifications.initialized") {
-                defaults.set(true, forKey: "notifications.sessionStart")
-                defaults.set(true, forKey: "notifications.sessionExit")
-                defaults.set(true, forKey: "notifications.commandCompletion")
-                defaults.set(true, forKey: "notifications.commandError")
-                defaults.set(true, forKey: "notifications.bell")
-                defaults.set(true, forKey: "notifications.claudeTurn")
-                defaults.set(true, forKey: "notifications.initialized")
+            
+            // Check if this is first initialization
+            let isInitialized = defaults.object(forKey: "notifications.initialized") != nil
+            
+            if !isInitialized {
+                // First time - register defaults and use them
+                let defaultPrefs: [String: Any] = [
+                    "notifications.sessionStart": true,
+                    "notifications.sessionExit": true,
+                    "notifications.commandCompletion": true,
+                    "notifications.commandError": true,
+                    "notifications.bell": true,
+                    "notifications.claudeTurn": true,
+                    "notifications.initialized": true
+                ]
+                
+                // Register defaults
+                defaults.register(defaults: defaultPrefs)
+                
+                // Set the values explicitly
+                for (key, value) in defaultPrefs {
+                    defaults.set(value, forKey: key)
+                }
+                defaults.synchronize()
+                
+                // Use the default true values
+                self.sessionStart = true
+                self.sessionExit = true
+                self.commandCompletion = true
+                self.commandError = true
+                self.bell = true
+                self.claudeTurn = true
+            } else {
+                // Load existing preferences from UserDefaults
+                self.sessionStart = defaults.bool(forKey: "notifications.sessionStart")
+                self.sessionExit = defaults.bool(forKey: "notifications.sessionExit")
+                self.commandCompletion = defaults.bool(forKey: "notifications.commandCompletion")
+                self.commandError = defaults.bool(forKey: "notifications.commandError")
+                self.bell = defaults.bool(forKey: "notifications.bell")
+                self.claudeTurn = defaults.bool(forKey: "notifications.claudeTurn")
             }
         }
 

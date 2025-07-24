@@ -6,14 +6,38 @@ import UserNotifications
 struct NotificationServiceTests {
     @Test("Default notification preferences are loaded correctly")
     func defaultPreferences() {
+        // Clear UserDefaults to simulate fresh install
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: "notifications.initialized")
+        defaults.removeObject(forKey: "notifications.sessionStart")
+        defaults.removeObject(forKey: "notifications.sessionExit")
+        defaults.removeObject(forKey: "notifications.commandCompletion")
+        defaults.removeObject(forKey: "notifications.commandError")
+        defaults.removeObject(forKey: "notifications.bell")
+        defaults.removeObject(forKey: "notifications.claudeTurn")
+        defaults.synchronize() // Force synchronization after removal
+        
+        // Create preferences - this should trigger default initialization
         let preferences = NotificationService.NotificationPreferences()
 
-        // Verify default values
+        // Remove debug prints
+
+        // Verify default values are properly loaded
         #expect(preferences.sessionStart == true)
         #expect(preferences.sessionExit == true)
         #expect(preferences.commandCompletion == true)
         #expect(preferences.commandError == true)
         #expect(preferences.bell == true)
+        #expect(preferences.claudeTurn == true)
+        
+        // Verify UserDefaults was also set correctly
+        #expect(defaults.bool(forKey: "notifications.sessionStart") == true)
+        #expect(defaults.bool(forKey: "notifications.sessionExit") == true)
+        #expect(defaults.bool(forKey: "notifications.commandCompletion") == true)
+        #expect(defaults.bool(forKey: "notifications.commandError") == true)
+        #expect(defaults.bool(forKey: "notifications.bell") == true)
+        #expect(defaults.bool(forKey: "notifications.claudeTurn") == true)
+        #expect(defaults.bool(forKey: "notifications.initialized") == true)
     }
 
     @Test("Notification preferences can be updated")
