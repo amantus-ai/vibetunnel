@@ -23,7 +23,7 @@ export class SidebarHeader extends HeaderBase {
         <div class="flex items-center gap-2">
           <!-- Toggle button -->
           <button
-            class="p-2 text-text-muted hover:text-text rounded-lg hover:bg-bg-tertiary transition-all duration-200 flex-shrink-0"
+            class="p-2 text-primary bg-bg-tertiary border border-border hover:bg-surface-hover hover:border-primary rounded-md transition-all duration-200 flex-shrink-0"
             @click=${() => this.dispatchEvent(new CustomEvent('toggle-sidebar'))}
             title="Collapse sidebar (⌘B)"
             aria-label="Collapse sidebar"
@@ -37,7 +37,7 @@ export class SidebarHeader extends HeaderBase {
           
           <!-- Go to Root button -->
           <button
-            class="p-2 text-text-muted hover:text-text rounded-lg hover:bg-bg-tertiary transition-all duration-200 flex-shrink-0"
+            class="p-2 text-primary bg-bg-tertiary border border-border hover:bg-surface-hover hover:border-primary rounded-md transition-all duration-200 flex-shrink-0"
             @click=${() => {
               window.location.href = '/';
             }}
