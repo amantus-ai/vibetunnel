@@ -69,6 +69,7 @@ export class VibeTunnelApp extends LitElement {
   @state() private selectedSessionId: string | null = null;
   @state() private hideExited = this.loadHideExitedState();
   @state() private showCreateModal = false;
+  @state() private createDialogWorkingDir = '';
   @state() private showSSHKeyManager = false;
   @state() private showSettings = false;
   @state() private isAuthenticated = false;
@@ -606,7 +607,10 @@ export class VibeTunnelApp extends LitElement {
                 existingSession.activityStatus !== newSession.activityStatus ||
                 existingSession.exitCode !== newSession.exitCode ||
                 // Check if Git info has been added in the new data
-                (!existingSession.gitRepoPath && newSession.gitRepoPath);
+                (!existingSession.gitRepoPath && newSession.gitRepoPath) ||
+                // Don't check Git counts here - they are updated by git-status-badge component
+                // and we want to preserve those updates, not trigger re-renders
+                false;
 
               if (!hasChanges) {
                 // No changes - return the existing object reference
@@ -615,12 +619,27 @@ export class VibeTunnelApp extends LitElement {
 
               // Merge changes, preserving Git info if not in new data
               if (existingSession.gitRepoPath && !newSession.gitRepoPath) {
+                logger.debug('[App] Preserving Git info for session', {
+                  sessionId: existingSession.id,
+                  gitRepoPath: existingSession.gitRepoPath,
+                  gitModifiedCount: existingSession.gitModifiedCount,
+                  gitUntrackedCount: existingSession.gitUntrackedCount,
+                });
                 return {
                   ...newSession,
                   gitRepoPath: existingSession.gitRepoPath,
                   gitBranch: existingSession.gitBranch,
                   gitIsWorktree: existingSession.gitIsWorktree,
                   gitMainRepoPath: existingSession.gitMainRepoPath,
+                  // Preserve Git status counts that may have been updated by git-status-badge
+                  gitModifiedCount: existingSession.gitModifiedCount,
+                  gitUntrackedCount: existingSession.gitUntrackedCount,
+                  gitStagedCount: existingSession.gitStagedCount,
+                  gitAheadCount: existingSession.gitAheadCount,
+                  gitBehindCount: existingSession.gitBehindCount,
+                  gitAddedCount: existingSession.gitAddedCount,
+                  gitDeletedCount: existingSession.gitDeletedCount,
+                  gitHasChanges: existingSession.gitHasChanges,
                 };
               }
             }
@@ -920,6 +939,7 @@ export class VibeTunnelApp extends LitElement {
   private handleCreateModalClose() {
     // Simply close the modal without animation
     this.showCreateModal = false;
+    this.createDialogWorkingDir = '';
     this.requestUpdate();
   }
 
@@ -1481,6 +1501,12 @@ export class VibeTunnelApp extends LitElement {
     this.handleNavigateToFileBrowser();
   };
 
+  private handleOpenCreateDialog = (e: CustomEvent) => {
+    const workingDir = e.detail?.workingDir || '';
+    this.createDialogWorkingDir = workingDir;
+    this.handleCreateSession();
+  };
+
   private handleCaptureToggled = (e: CustomEvent) => {
     logger.log(`🎯 handleCaptureToggled called with:`, e.detail);
     this.keyboardCaptureActive = e.detail.active;
@@ -1778,6 +1804,7 @@ export class VibeTunnelApp extends LitElement {
               @kill-all-sessions=${this.handleKillAll}
               @navigate-to-session=${this.handleNavigateToSession}
               @open-file-browser=${this.handleOpenFileBrowser}
+              @open-create-dialog=${this.handleOpenCreateDialog}
             ></session-list>
           </div>
         </div>
@@ -1852,6 +1879,7 @@ export class VibeTunnelApp extends LitElement {
       <!-- Session Create Modal -->
       <session-create-form
         .visible=${this.showCreateModal}
+        .workingDir=${this.createDialogWorkingDir}
         .authClient=${authClient}
         @session-created=${this.handleSessionCreated}
         @cancel=${this.handleCreateModalClose}

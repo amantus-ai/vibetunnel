@@ -521,7 +521,7 @@ export class SessionList extends LitElement {
           <div class="follow-dropdown absolute right-0 mt-1 w-64 bg-bg-elevated border border-border rounded-md shadow-lg max-h-96 overflow-y-auto" style="z-index: ${Z_INDEX.BRANCH_SELECTOR_DROPDOWN}">
             <div class="py-1">
               <button
-                class="w-full text-left px-3 py-2 text-xs hover:bg-bg-secondary transition-colors flex items-center justify-between"
+                class="w-full text-left px-3 py-2 text-xs hover:bg-bg-elevated transition-colors flex items-center justify-between"
                 @click=${() => this.handleFollowModeChange(repoPath, undefined)}
               >
                 <span class="font-mono ${!followMode ? 'text-accent-primary font-semibold' : ''}">Standalone</span>
@@ -531,7 +531,7 @@ export class SessionList extends LitElement {
               ${worktrees.map(
                 (worktree) => html`
                 <button
-                  class="w-full text-left px-3 py-2 text-xs hover:bg-bg-secondary transition-colors flex items-center justify-between"
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-bg-elevated transition-colors flex items-center justify-between"
                   @click=${() => this.handleFollowModeChange(repoPath, worktree.branch)}
                 >
                   <div class="flex items-center gap-2">
@@ -603,46 +603,18 @@ export class SessionList extends LitElement {
     this.requestUpdate();
   }
 
-  private async createSessionInWorktree(worktreePath: string) {
+  private createSessionInWorktree(worktreePath: string) {
     // Close all dropdowns atomically
     this.showWorktreeDropdown = new Map<string, boolean>();
     this.requestUpdate();
 
-    try {
-      // Create a new session in the worktree
-      const response = await fetch('/api/sessions', {
-        method: HttpMethod.POST,
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.authClient.getAuthHeader(),
-        },
-        body: JSON.stringify({
-          workingDir: worktreePath,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create session');
-      }
-
-      const event = new CustomEvent('show-toast', {
-        detail: { message: 'Created new session in worktree', type: 'success' },
-        bubbles: true,
-        composed: true,
-      });
-      this.dispatchEvent(event);
-
-      // Refresh sessions
-      this.dispatchEvent(new CustomEvent('refresh'));
-    } catch (error) {
-      logger.error('Error creating session in worktree:', error);
-      const event = new CustomEvent('show-toast', {
-        detail: { message: 'Failed to create session', type: 'error' },
-        bubbles: true,
-        composed: true,
-      });
-      this.dispatchEvent(event);
-    }
+    // Dispatch event to open create session dialog with pre-filled path
+    const event = new CustomEvent('open-create-dialog', {
+      detail: { workingDir: worktreePath },
+      bubbles: true,
+      composed: true,
+    });
+    this.dispatchEvent(event);
   }
 
   private renderWorktreeSelector(repoPath: string, sectionType: string = '') {
@@ -689,31 +661,36 @@ export class SessionList extends LitElement {
                     (worktree) => html`
                     <div class="border-b border-border last:border-b-0">
                       <div class="px-3 py-2">
-                        <div class="flex items-center justify-between mb-1">
-                          <div class="font-mono text-text">${worktree.branch}</div>
-                          ${
-                            worktree.detached
-                              ? html`
-                            <span class="text-[10px] px-1.5 py-0.5 bg-status-warning/20 text-status-warning rounded">
-                              detached
-                            </span>
-                          `
-                              : ''
-                          }
-                        </div>
-                        <div class="text-[10px] text-text-muted truncate mb-2">${worktree.path}</div>
-                        <div class="flex gap-2">
+                        <div class="flex items-center justify-between gap-2">
+                          <div class="flex items-center gap-2 min-w-0 flex-1">
+                            <svg class="w-3 h-3 text-text-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <div class="font-mono text-sm truncate">
+                              ${worktree.branch.replace(/^refs\/heads\//, '')}
+                            </div>
+                            ${
+                              worktree.detached
+                                ? html`
+                              <span class="text-[10px] px-1.5 py-0.5 bg-status-warning/20 text-status-warning rounded flex-shrink-0">
+                                detached
+                              </span>
+                            `
+                                : ''
+                            }
+                          </div>
                           <button
-                            class="flex-1 px-2 py-1 text-[10px] bg-bg-secondary hover:bg-bg-tertiary border border-border rounded transition-colors"
+                            class="p-1 hover:bg-bg-elevated rounded transition-colors flex-shrink-0"
                             @click=${() => this.createSessionInWorktree(worktree.path)}
                             title="Create new session in this worktree"
                           >
-                            <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                             </svg>
-                            New Session
                           </button>
                         </div>
+                        <div class="text-[10px] text-text-muted truncate pl-5">${worktree.path}</div>
                       </div>
                     </div>
                   `
