@@ -21,7 +21,7 @@ import OSLog
 struct GitRepoInfoResponse: Codable {
     /// Indicates whether the path is within a Git repository.
     let isGitRepo: Bool
-    
+
     /// The absolute path to the repository root.
     ///
     /// Only present when `isGitRepo` is `true`.
@@ -59,49 +59,49 @@ struct GitRepoInfoResponse: Codable {
 struct GitRepositoryInfoResponse: Codable {
     /// Indicates whether this is a valid Git repository.
     let isGitRepo: Bool
-    
+
     /// The absolute path to the repository root.
     ///
     /// Optional to handle cases where `isGitRepo` is false.
     let repoPath: String?
-    
+
     /// The currently checked-out branch name.
     let currentBranch: String?
-    
+
     /// The remote URL for the origin remote.
     let remoteUrl: String?
-    
+
     /// The GitHub URL if this is a GitHub repository.
     ///
     /// Automatically derived from `remoteUrl` when it's a GitHub remote.
     let githubUrl: String?
-    
+
     /// Whether the repository has any uncommitted changes.
     ///
     /// Optional for when `isGitRepo` is false.
     let hasChanges: Bool?
-    
+
     /// Number of files with unstaged modifications.
     let modifiedCount: Int?
-    
+
     /// Number of untracked files.
     let untrackedCount: Int?
-    
+
     /// Number of files staged for commit.
     let stagedCount: Int?
-    
+
     /// Number of new files added to the repository.
     let addedCount: Int?
-    
+
     /// Number of files deleted from the repository.
     let deletedCount: Int?
-    
+
     /// Number of commits ahead of the upstream branch.
     let aheadCount: Int?
-    
+
     /// Number of commits behind the upstream branch.
     let behindCount: Int?
-    
+
     /// Whether this branch has an upstream tracking branch.
     let hasUpstream: Bool?
 }
@@ -183,7 +183,7 @@ public final class GitRepositoryMonitor {
             let decoder = JSONDecoder()
 
             // Define the branch structure we expect from the server
-            /// Represents a Git branch from the server API.
+            // Represents a Git branch from the server API.
             struct Branch: Codable {
                 /// The branch name (e.g., "main", "feature/login").
                 let name: String
@@ -505,7 +505,7 @@ public final class GitRepositoryMonitor {
             do {
                 let (data, _) = try await URLSession.shared.data(from: url)
                 let decoder = JSONDecoder()
-                /// Response from the Git remote API endpoint.
+                // Response from the Git remote API endpoint.
                 struct RemoteResponse: Codable {
                     /// Whether this is a valid Git repository.
                     let isGitRepo: Bool

@@ -7,49 +7,37 @@ struct SessionCreateRequest: Encodable {
     let workingDir: String
     let titleMode: String
     let name: String?
-    let spawn_terminal: Bool?
+    let spawnTerminal: Bool?
     let cols: Int?
     let rows: Int?
     let gitRepoPath: String?
     let gitBranch: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case command
         case workingDir
         case titleMode
         case name
-        case spawn_terminal
+        case spawnTerminal = "spawn_terminal"
         case cols
         case rows
         case gitRepoPath
         case gitBranch
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(command, forKey: .command)
         try container.encode(workingDir, forKey: .workingDir)
         try container.encode(titleMode, forKey: .titleMode)
-        
+
         // Only encode optional values if they're present
-        if let name = name, !name.isEmpty {
-            try container.encode(name, forKey: .name)
-        }
-        if let spawn_terminal = spawn_terminal {
-            try container.encode(spawn_terminal, forKey: .spawn_terminal)
-        }
-        if let cols = cols {
-            try container.encode(cols, forKey: .cols)
-        }
-        if let rows = rows {
-            try container.encode(rows, forKey: .rows)
-        }
-        if let gitRepoPath = gitRepoPath {
-            try container.encode(gitRepoPath, forKey: .gitRepoPath)
-        }
-        if let gitBranch = gitBranch {
-            try container.encode(gitBranch, forKey: .gitBranch)
-        }
+        try container.encodeIfPresent(name, forKey: .name)
+        try container.encodeIfPresent(spawnTerminal, forKey: .spawnTerminal)
+        try container.encodeIfPresent(cols, forKey: .cols)
+        try container.encodeIfPresent(rows, forKey: .rows)
+        try container.encodeIfPresent(gitRepoPath, forKey: .gitRepoPath)
+        try container.encodeIfPresent(gitBranch, forKey: .gitBranch)
     }
 }
 
@@ -214,7 +202,7 @@ final class SessionService {
             workingDir: workingDir,
             titleMode: titleMode,
             name: finalName,
-            spawn_terminal: spawnTerminal ? true : nil,
+            spawnTerminal: spawnTerminal ? true : nil,
             cols: spawnTerminal ? nil : cols,
             rows: spawnTerminal ? nil : rows,
             gitRepoPath: gitRepoPath,

@@ -36,65 +36,65 @@ import Foundation
 struct Worktree: Codable, Identifiable, Equatable {
     /// Unique identifier for the worktree instance.
     let id = UUID()
-    
+
     /// The file system path to the worktree directory.
     let path: String
-    
+
     /// The branch name associated with this worktree.
     ///
     /// This is the branch that the worktree is currently checked out to.
     let branch: String
-    
+
     /// The SHA hash of the current HEAD commit.
     let HEAD: String
-    
+
     /// Indicates whether the worktree is in a detached HEAD state.
     ///
     /// When `true`, the worktree is not on any branch but directly on a commit.
     let detached: Bool
-    
+
     /// Indicates whether this worktree can be pruned (removed).
     ///
     /// A worktree is prunable when its associated branch has been deleted
     /// or when it's no longer needed.
     let prunable: Bool?
-    
+
     /// Indicates whether this worktree is locked.
     ///
     /// Locked worktrees cannot be pruned or removed until unlocked.
     let locked: Bool?
-    
+
     /// The reason why this worktree is locked, if applicable.
     ///
     /// Only present when `locked` is `true`.
     let lockedReason: String?
-    
+
     // MARK: - Extended Statistics
-    
+
     /// Number of commits this branch is ahead of the base branch.
     let commitsAhead: Int?
-    
+
     /// Number of files with uncommitted changes in this worktree.
     let filesChanged: Int?
-    
+
     /// Number of line insertions in uncommitted changes.
     let insertions: Int?
-    
+
     /// Number of line deletions in uncommitted changes.
     let deletions: Int?
-    
+
     /// Indicates whether this worktree has any uncommitted changes.
     ///
     /// This includes both staged and unstaged changes.
     let hasUncommittedChanges: Bool?
-    
+
     // MARK: - UI Helpers
-    
+
     /// Indicates whether this is the main worktree (not a linked worktree).
     ///
     /// The main worktree is typically the original repository directory.
     let isMainWorktree: Bool?
-    
+
     /// Indicates whether this worktree is currently active in VibeTunnel.
     let isCurrentWorktree: Bool?
 
@@ -130,10 +130,10 @@ struct Worktree: Codable, Identifiable, Equatable {
 struct WorktreeListResponse: Codable {
     /// Array of all worktrees in the repository.
     let worktrees: [Worktree]
-    
+
     /// The base branch for the repository (typically "main" or "master").
     let baseBranch: String
-    
+
     /// The branch being followed in follow mode, if enabled.
     let followBranch: String?
 }
@@ -152,10 +152,10 @@ struct WorktreeListResponse: Codable {
 struct WorktreeStats: Codable {
     /// Total number of worktrees including the main worktree.
     let total: Int
-    
+
     /// Number of worktrees that are currently locked.
     let locked: Int
-    
+
     /// Number of worktrees that can be pruned.
     let prunable: Int
 }
@@ -168,7 +168,7 @@ struct WorktreeStats: Codable {
 struct FollowModeStatus: Codable {
     /// Whether follow mode is currently active.
     let enabled: Bool
-    
+
     /// The branch being followed when enabled.
     let targetBranch: String?
 }
@@ -187,10 +187,10 @@ struct FollowModeStatus: Codable {
 struct CreateWorktreeRequest: Codable {
     /// The branch name for the new worktree.
     let branch: String
-    
+
     /// Whether to create the branch if it doesn't exist.
     let createBranch: Bool
-    
+
     /// The base branch to create from when `createBranch` is true.
     ///
     /// If nil, uses the repository's default branch.
@@ -204,7 +204,7 @@ struct CreateWorktreeRequest: Codable {
 struct SwitchBranchRequest: Codable {
     /// The branch to switch to.
     let branch: String
-    
+
     /// Whether to create the branch if it doesn't exist.
     let createBranch: Bool
 }
@@ -223,7 +223,7 @@ struct SwitchBranchRequest: Codable {
 struct FollowModeRequest: Codable {
     /// Whether to enable or disable follow mode.
     let enabled: Bool
-    
+
     /// The branch to follow when enabling.
     ///
     /// Required when `enabled` is true, ignored otherwise.
@@ -248,16 +248,16 @@ struct FollowModeRequest: Codable {
 struct GitBranch: Codable, Identifiable, Equatable {
     /// Unique identifier for the branch instance.
     let id = UUID()
-    
+
     /// The branch name (e.g., "main", "feature/login", "origin/develop").
     let name: String
-    
+
     /// Whether this is the currently checked-out branch.
     let current: Bool
-    
+
     /// Whether this is a remote tracking branch.
     let remote: Bool
-    
+
     /// Path to the worktree using this branch, if any.
     ///
     /// Will be nil for branches not associated with any worktree.
