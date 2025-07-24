@@ -1079,6 +1079,7 @@ export class SessionView extends LitElement {
             .macAppConnected=${uiState.macAppConnected}
             .onTerminateSession=${() => this.sessionActionsHandler.handleTerminateSession()}
             .onClearSession=${() => this.sessionActionsHandler.handleClearSession()}
+            .onToggleViewMode=${() => this.sessionActionsHandler.handleToggleViewMode()}
             @close-width-selector=${() => {
               this.uiStateManager.setShowWidthSelector(false);
               this.uiStateManager.setCustomWidth('');
