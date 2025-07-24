@@ -439,8 +439,8 @@ public final class GitRepositoryMonitor {
                 return nil
             }
 
-            // Use worktree status from server response, fallback to local check if not available
-            let isWorktree = response.isWorktree ?? Self.checkIfWorktree(at: repoPath)
+            // Use worktree status from server response
+            let isWorktree = response.isWorktree ?? false
 
             // Parse GitHub URL if provided
             let githubURL = response.githubUrl.flatMap { URL(string: $0) }
@@ -464,19 +464,6 @@ public final class GitRepositoryMonitor {
         }
     }
 
-    /// Check if the given path is a Git worktree
-    private nonisolated static func checkIfWorktree(at path: String) -> Bool {
-        let gitPath = URL(fileURLWithPath: path).appendingPathComponent(".git")
-
-        // In a worktree, .git is a file containing the path to the real .git directory
-        // In a regular repository, .git is a directory
-        var isDirectory: ObjCBool = false
-        if FileManager.default.fileExists(atPath: gitPath.path, isDirectory: &isDirectory) {
-            return !isDirectory.boolValue
-        }
-
-        return false
-    }
 
     /// Fetch GitHub URL in background and cache it
     @MainActor
