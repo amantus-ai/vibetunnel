@@ -10,13 +10,13 @@ struct QuickStartCommand: Identifiable, Codable, Equatable {
     ///
     /// Generated automatically if not provided during initialization.
     var id: String
-    
+
     /// Optional human-readable name for the command.
     ///
     /// When provided, this is used for display instead of showing
     /// the raw command string.
     var name: String?
-    
+
     /// The actual command to execute in the terminal.
     ///
     /// This can be any valid shell command or script.

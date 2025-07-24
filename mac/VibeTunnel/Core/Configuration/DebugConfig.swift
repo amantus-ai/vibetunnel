@@ -13,7 +13,7 @@ struct DebugConfig {
     /// - Diagnostic information in the interface
     /// - Relaxed security restrictions for testing
     let debugMode: Bool
-    
+
     /// The current logging level.
     ///
     /// Controls the verbosity of log output. Common values include:

@@ -26,7 +26,7 @@ struct ServerSessionInfo: Codable {
     let gitHasChanges: Bool?
     let gitIsWorktree: Bool?
     let gitMainRepoPath: String?
-    
+
     // Additional fields from Session (not SessionInfo)
     let lastModified: String
     let active: Bool?
@@ -89,8 +89,7 @@ final class SessionMonitor {
     }
 
     /// Set the local auth token for server requests
-    func setLocalAuthToken(_ token: String?) {
-    }
+    func setLocalAuthToken(_ token: String?) {}
 
     /// Number of running sessions
     var sessionCount: Int {

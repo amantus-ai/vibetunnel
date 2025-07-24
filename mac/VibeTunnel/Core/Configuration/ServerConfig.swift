@@ -10,7 +10,7 @@ struct ServerConfig {
     /// Default is typically 4020 for production or 4021 for development.
     /// Users can customize this to avoid port conflicts with other services.
     let port: Int
-    
+
     /// The dashboard access mode.
     ///
     /// Controls who can access the VibeTunnel web dashboard:
@@ -18,7 +18,7 @@ struct ServerConfig {
     /// - `"network"`: Accessible from any device on the local network
     /// - `"tunnel"`: Accessible through ngrok tunnel (requires authentication)
     let dashboardAccessMode: String
-    
+
     /// Whether to clean up stale sessions on startup.
     ///
     /// When `true`, the server will remove any orphaned or inactive

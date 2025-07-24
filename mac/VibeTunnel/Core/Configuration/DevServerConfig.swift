@@ -12,7 +12,7 @@ struct DevServerConfig {
     /// server with hot reload capabilities. When `false`, the app uses the
     /// pre-built embedded web server.
     let useDevServer: Bool
-    
+
     /// The path to the development server directory.
     ///
     /// This should point to the directory containing the web application

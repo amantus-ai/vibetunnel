@@ -10,13 +10,13 @@ struct TunnelMetrics: Codable {
     /// This represents the number of clients currently connected to
     /// the tunnel endpoint.
     let connectionsCount: Int
-    
+
     /// Total bytes received through the tunnel.
     ///
     /// This cumulative value represents all data received from external
     /// clients since the tunnel was established.
     let bytesIn: Int64
-    
+
     /// Total bytes sent through the tunnel.
     ///
     /// This cumulative value represents all data sent to external

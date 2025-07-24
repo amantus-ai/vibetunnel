@@ -16,7 +16,7 @@ struct AppPreferences {
     /// - `"Fork"`: Fork Git client
     /// - `nil`: Use system default or no preference
     let preferredGitApp: String?
-    
+
     /// The preferred terminal application.
     ///
     /// When set, VibeTunnel will use this terminal for opening new sessions.
@@ -27,13 +27,13 @@ struct AppPreferences {
     /// - `"Hyper"`: Hyper terminal
     /// - `nil`: Use system default Terminal.app
     let preferredTerminal: String?
-    
+
     /// Whether to show VibeTunnel in the macOS Dock.
     ///
     /// When `false`, the app runs as a menu bar only application.
     /// When `true`, the app icon appears in the Dock for easier access.
     let showInDock: Bool
-    
+
     /// The update channel for automatic updates.
     ///
     /// Controls which releases the app checks for updates:

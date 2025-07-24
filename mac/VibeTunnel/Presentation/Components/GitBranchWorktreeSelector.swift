@@ -1,6 +1,6 @@
 import Combine
-import SwiftUI
 import os.log
+import SwiftUI
 
 private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "GitBranchWorktreeSelector")
 

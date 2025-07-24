@@ -3,19 +3,22 @@ import Observation
 import SwiftUI
 
 #if !SWIFT_PACKAGE
-/// gross hack: https://stackoverflow.com/questions/26004684/nsstatusbarbutton-keep-highlighted?rq=4
-/// Didn't manage to keep the highlighted state reliable active with any other way.
-/// DO NOT CHANGE THIS! Yes, accessing AppDelegate is ugly, but it's the ONLY reliable way
-/// to maintain button highlight state. All other approaches have been tried and failed.
-extension NSStatusBarButton {
-    override public func mouseDown(with event: NSEvent) {
-        super.mouseDown(with: event)
-        self.highlight(true)
-        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100)) {
-            self.highlight(AppDelegate.shared?.statusBarController?.menuManager.customWindow?.isWindowVisible ?? false)
+    /// gross hack: https://stackoverflow.com/questions/26004684/nsstatusbarbutton-keep-highlighted?rq=4
+    /// Didn't manage to keep the highlighted state reliable active with any other way.
+    /// DO NOT CHANGE THIS! Yes, accessing AppDelegate is ugly, but it's the ONLY reliable way
+    /// to maintain button highlight state. All other approaches have been tried and failed.
+    extension NSStatusBarButton {
+        override public func mouseDown(with event: NSEvent) {
+            super.mouseDown(with: event)
+            self.highlight(true)
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100)) {
+                self
+                    .highlight(AppDelegate.shared?.statusBarController?.menuManager.customWindow?
+                        .isWindowVisible ?? false
+                    )
+            }
         }
     }
-}
 #endif
 
 /// Manages status bar menu behavior, providing left-click custom view and right-click context menu functionality.
@@ -136,16 +139,16 @@ final class StatusBarMenuManager: NSObject {
             set: { [weak self] in self?.isNewSessionActive = $0 }
         )
         let mainView = VibeTunnelMenuView(isNewSessionActive: sessionBinding)
-        .environment(sessionMonitor)
-        .environment(serverManager)
-        .environment(ngrokService)
-        .environment(tailscaleService)
-        .environment(terminalLauncher)
-        .environment(sessionService)
-        .environment(gitRepositoryMonitor)
-        .environment(repositoryDiscovery)
-        .environment(configManager)
-        .environment(worktreeService)
+            .environment(sessionMonitor)
+            .environment(serverManager)
+            .environment(ngrokService)
+            .environment(tailscaleService)
+            .environment(terminalLauncher)
+            .environment(sessionService)
+            .environment(gitRepositoryMonitor)
+            .environment(repositoryDiscovery)
+            .environment(configManager)
+            .environment(worktreeService)
 
         // Wrap in custom container for proper styling
         let containerView = CustomMenuContainer {

@@ -12,11 +12,11 @@ struct GitRepoInfoResponse: Codable {
 
 struct GitRepositoryInfoResponse: Codable {
     let isGitRepo: Bool
-    let repoPath: String?  // Made optional to match when isGitRepo is false
+    let repoPath: String? // Made optional to match when isGitRepo is false
     let currentBranch: String?
     let remoteUrl: String?
-    let githubUrl: String?  // Added missing field from server response
-    let hasChanges: Bool?  // Made optional for when isGitRepo is false
+    let githubUrl: String? // Added missing field from server response
+    let hasChanges: Bool? // Made optional for when isGitRepo is false
     let modifiedCount: Int?
     let untrackedCount: Int?
     let stagedCount: Int?
@@ -352,7 +352,7 @@ public final class GitRepositoryMonitor {
             if !response.isGitRepo {
                 return nil
             }
-            
+
             // Ensure we have required fields when isGitRepo is true
             guard let repoPath = response.repoPath else {
                 logger.error("❌ Invalid response: isGitRepo is true but repoPath is missing")
@@ -361,7 +361,7 @@ public final class GitRepositoryMonitor {
 
             // Check if this is a worktree by looking for .git file instead of directory
             let isWorktree = Self.checkIfWorktree(at: repoPath)
-            
+
             // Parse GitHub URL if provided
             let githubURL = response.githubUrl.flatMap { URL(string: $0) }
 

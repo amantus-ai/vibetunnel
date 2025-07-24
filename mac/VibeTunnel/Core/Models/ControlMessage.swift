@@ -13,34 +13,34 @@ struct ControlMessage<Payload: Codable>: Codable {
     /// Generated automatically if not provided. Used for message tracking
     /// and correlation of requests with responses.
     let id: String
-    
+
     /// The type of message (request, response, event, etc.).
     ///
     /// Determines how the message should be processed by the receiver.
     let type: ControlProtocol.MessageType
-    
+
     /// The functional category of the message.
     ///
     /// Groups related actions together (e.g., auth, session, config).
     let category: ControlProtocol.Category
-    
+
     /// The specific action to perform within the category.
     ///
     /// Combined with the category, this uniquely identifies what
     /// operation the message represents.
     let action: String
-    
+
     /// Optional payload data specific to the action.
     ///
     /// The generic type allows different message types to carry
     /// appropriate data structures while maintaining type safety.
     let payload: Payload?
-    
+
     /// Optional session identifier this message relates to.
     ///
     /// Used when the message is specific to a particular terminal session.
     let sessionId: String?
-    
+
     /// Optional error message for response messages.
     ///
     /// Populated when a request fails or an error occurs during processing.
