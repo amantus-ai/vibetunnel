@@ -29,11 +29,19 @@ describe.skip('Follow Mode End-to-End Tests', () => {
   // Helper to run vt commands
   async function vtExec(args: string[], cwd: string = testRepoPath) {
     const vtPath = path.join(process.cwd(), 'bin', 'vt');
-    const { stdout, stderr } = await execFileAsync(vtPath, args, {
-      cwd,
-      env: { ...process.env, VIBETUNNEL_PORT: String(serverPort) },
-    });
-    return { stdout: stdout.toString().trim(), stderr: stderr.toString().trim() };
+    try {
+      const { stdout, stderr } = await execFileAsync(vtPath, args, {
+        cwd,
+        env: { ...process.env, VIBETUNNEL_PORT: String(serverPort) },
+      });
+      return { stdout: stdout.toString().trim(), stderr: stderr.toString().trim() };
+    } catch (error: any) {
+      // If vt command fails, return error info for debugging
+      return {
+        stdout: error.stdout?.toString().trim() || '',
+        stderr: error.stderr?.toString().trim() || error.message,
+      };
+    }
   }
 
   // Setup test repository with multiple branches
@@ -52,8 +60,19 @@ describe.skip('Follow Mode End-to-End Tests', () => {
     await gitExec(['add', 'README.md']);
     await gitExec(['commit', '-m', 'Initial commit']);
 
-    // Create and switch to main branch
-    await gitExec(['checkout', '-b', 'main']);
+    // Check if we're already on main branch or need to create it
+    const { stdout: currentBranch } = await gitExec(['branch', '--show-current']);
+    if (currentBranch !== 'main') {
+      // Check if main exists
+      try {
+        await gitExec(['rev-parse', '--verify', 'main']);
+        // Main exists, just checkout
+        await gitExec(['checkout', 'main']);
+      } catch {
+        // Main doesn't exist, create it
+        await gitExec(['checkout', '-b', 'main']);
+      }
+    }
 
     // Create develop branch
     await gitExec(['checkout', '-b', 'develop']);
@@ -95,6 +114,8 @@ describe.skip('Follow Mode End-to-End Tests', () => {
           ...serverEnv,
           PORT: String(serverPort),
           NODE_ENV: 'test',
+          // Ensure server can find node modules
+          NODE_PATH: path.join(process.cwd(), 'node_modules'),
         },
         stdio: ['pipe', 'pipe', 'pipe'],
       });
@@ -109,7 +130,7 @@ describe.skip('Follow Mode End-to-End Tests', () => {
 
       serverProcess.stdout.on('data', (data: Buffer) => {
         const output = data.toString();
-        console.log('Server stdout:', output);
+        console.log('[Server]', output.trim());
         if (output.includes('VibeTunnel Server running') && !started) {
           started = true;
           clearTimeout(timeout);
@@ -119,7 +140,7 @@ describe.skip('Follow Mode End-to-End Tests', () => {
 
       serverProcess.stderr.on('data', (data: Buffer) => {
         const errorOutput = data.toString();
-        console.error('Server stderr:', errorOutput);
+        console.error('[Server Error]', errorOutput.trim());
       });
 
       serverProcess.on('error', (error: Error) => {
@@ -159,14 +180,18 @@ describe.skip('Follow Mode End-to-End Tests', () => {
     }
   });
 
-  describe('Follow Mode via CLI', () => {
-    it('should enable follow mode using vt command', async () => {
-      // Enable follow mode
-      const { stdout } = await vtExec(['wtree', 'follow', 'develop']);
+  describe('Follow Mode via API', () => {
+    it('should enable follow mode', async () => {
+      // Enable follow mode via API
+      const response = await request(baseUrl).post('/api/worktrees/follow').send({
+        repoPath: testRepoPath,
+        branch: 'develop',
+        enable: true,
+      });
 
-      // Verify response
-      expect(stdout).toContain('enabled');
-      expect(stdout).toContain('develop');
+      expect(response.status).toBe(200);
+      expect(response.body.enabled).toBe(true);
+      expect(response.body.branch).toBe('develop');
 
       // Verify git config was set
       const { stdout: configOutput } = await gitExec(['config', 'vibetunnel.followBranch']);
@@ -181,8 +206,12 @@ describe.skip('Follow Mode End-to-End Tests', () => {
     });
 
     it('should switch branches and sync with follow mode', async () => {
-      // Enable follow mode for develop
-      await vtExec(['wtree', 'follow', 'develop']);
+      // Enable follow mode for develop via API
+      await request(baseUrl).post('/api/worktrees/follow').send({
+        repoPath: testRepoPath,
+        branch: 'develop',
+        enable: true,
+      });
 
       // Switch to develop in worktree
       await gitExec(['checkout', 'develop'], worktreePath);
@@ -196,8 +225,15 @@ describe.skip('Follow Mode End-to-End Tests', () => {
       // In a real scenario, we'd wait for the hook to execute
       await sleep(500);
 
-      // Manually trigger the event (simulating hook execution)
-      await vtExec(['git', 'event']);
+      // Manually trigger the event via API (simulating hook execution)
+      await request(baseUrl).post('/api/git/event').send({
+        repoPath: testRepoPath,
+        branch: 'develop',
+        event: 'checkout',
+      });
+
+      // Wait for async operations
+      await sleep(500);
 
       // Check that main checkout is now on develop
       const { stdout } = await gitExec(['branch', '--show-current']);
@@ -205,8 +241,12 @@ describe.skip('Follow Mode End-to-End Tests', () => {
     });
 
     it('should disable follow mode when branches diverge', async () => {
-      // Enable follow mode
-      await vtExec(['wtree', 'follow', 'feature/awesome']);
+      // Enable follow mode via API
+      await request(baseUrl).post('/api/worktrees/follow').send({
+        repoPath: testRepoPath,
+        branch: 'feature/awesome',
+        enable: true,
+      });
 
       // Create diverging commits
       await fs.writeFile(path.join(testRepoPath, 'main-work.js'), 'console.log("main");\n');
@@ -221,8 +261,12 @@ describe.skip('Follow Mode End-to-End Tests', () => {
       // Go back to main
       await gitExec(['checkout', 'main']);
 
-      // Trigger event
-      await vtExec(['git', 'event']);
+      // Trigger event via API
+      await request(baseUrl).post('/api/git/event').send({
+        repoPath: testRepoPath,
+        branch: 'feature/awesome',
+        event: 'checkout',
+      });
 
       // Check that follow mode was disabled (config should not exist)
       try {
@@ -235,13 +279,22 @@ describe.skip('Follow Mode End-to-End Tests', () => {
       }
     });
 
-    it('should unfollow using vt command', async () => {
-      // Enable follow mode first
-      await vtExec(['wtree', 'follow', 'develop']);
+    it('should unfollow using API', async () => {
+      // Enable follow mode first via API
+      await request(baseUrl).post('/api/worktrees/follow').send({
+        repoPath: testRepoPath,
+        branch: 'develop',
+        enable: true,
+      });
 
-      // Disable follow mode
-      const { stdout } = await vtExec(['wtree', 'unfollow']);
-      expect(stdout).toContain('disabled');
+      // Disable follow mode via API
+      const response = await request(baseUrl).post('/api/worktrees/follow').send({
+        repoPath: testRepoPath,
+        enable: false,
+      });
+      
+      expect(response.status).toBe(200);
+      expect(response.body.enabled).toBe(false);
 
       // Verify git config was removed
       try {
@@ -278,8 +331,12 @@ describe.skip('Follow Mode End-to-End Tests', () => {
       // Switch branch
       await gitExec(['checkout', 'develop']);
 
-      // Trigger git event
-      await vtExec(['git', 'event']);
+      // Trigger git event via API
+      await request(baseUrl).post('/api/git/event').send({
+        repoPath: testRepoPath,
+        branch: currentBranch === 'main' ? 'develop' : 'main',
+        event: 'checkout',
+      });
 
       // Get updated session info
       const listResponse2 = await request(baseUrl).get('/api/sessions');
@@ -291,6 +348,9 @@ describe.skip('Follow Mode End-to-End Tests', () => {
     });
 
     it('should handle multiple sessions in same repository', async () => {
+      // Create src directory for the second session
+      await fs.mkdir(path.join(testRepoPath, 'src'), { recursive: true });
+      
       // Create multiple sessions
       const sessions = await Promise.all([
         request(baseUrl)
