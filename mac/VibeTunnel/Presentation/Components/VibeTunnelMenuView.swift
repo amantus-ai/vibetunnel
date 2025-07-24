@@ -108,6 +108,8 @@ struct VibeTunnelMenuView: View {
         }
         .frame(width: MenuStyles.menuWidth)
         .background(Color.clear)
+        .focusable() // Enable keyboard focus
+        .focusEffectDisabled() // Remove blue focus ring
         .onKeyPress { keyPress in
             // Handle Tab key for focus indication
             if keyPress.key == .tab && !hasStartedKeyboardNavigation {

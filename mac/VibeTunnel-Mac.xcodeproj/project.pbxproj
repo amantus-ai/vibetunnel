@@ -230,7 +230,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/zsh;
-			shellScript = "# Calculate hash of web content\necho \"Calculating web content hash...\"\n\n# Try optimized version first\nif [ -f \"${SRCROOT}/scripts/calculate-web-hash.js\" ] && command -v node >/dev/null 2>&1; then\n    # Use Node.js parallel version if available\n    \"${SRCROOT}/scripts/calculate-web-hash.js\"\nelif [ -f \"${SRCROOT}/scripts/calculate-web-hash-fast.sh\" ]; then\n    # Use optimized shell version\n    \"${SRCROOT}/scripts/calculate-web-hash-fast.sh\"\nelse\n    # Fall back to original version\n    \"${SRCROOT}/scripts/calculate-web-hash.sh\"\nfi\n\nif [ $? -ne 0 ]; then\n    echo \"error: Failed to calculate web hash\"\n    exit 1\nfi\n";
+			shellScript = "# Calculate hash of web content\necho \"Calculating web content hash...\"\n\n# Ensure we're in the web directory and have dependencies\ncd \"${SRCROOT}/../web\"\n\n# Install xxhash if not present (for build machines)\nif [ ! -d \"node_modules/xxhash\" ]; then\n    echo \"Installing xxhash dependency...\"\n    npm install xxhash --no-save --silent || {\n        echo \"error: Failed to install xxhash\"\n        exit 1\n    }\nfi\n\n# Run the hash calculation\n\"${SRCROOT}/scripts/calculate-web-hash.js\"\n\nif [ $? -ne 0 ]; then\n    echo \"error: Failed to calculate web hash\"\n    exit 1\nfi\n";
 		};
 		B2C3D4E5F6A7B8C9D0E1F234 /* Build Web Frontend */ = {
 			isa = PBXShellScriptBuildPhase;

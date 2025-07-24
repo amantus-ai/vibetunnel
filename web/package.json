@@ -84,7 +84,8 @@
       "authenticate-pam",
       "esbuild",
       "node-pty",
-      "puppeteer"
+      "puppeteer",
+      "xxhash"
     ]
   },
   "dependencies": {
@@ -154,7 +155,8 @@
     "typescript": "^5.8.3",
     "uuid": "^11.1.0",
     "vitest": "^3.2.4",
-    "ws-mock": "^0.1.0"
+    "ws-mock": "^0.1.0",
+    "xxhash-wasm": "^1.1.0"
   },
   "keywords": [
     "terminal",

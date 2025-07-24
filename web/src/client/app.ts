@@ -92,6 +92,7 @@ export class VibeTunnelApp extends LitElement {
   private resizeCleanupFunctions: (() => void)[] = [];
   private sessionLoadingState: 'idle' | 'loading' | 'loaded' | 'not-found' = 'idle';
   private controlEventService?: ReturnType<typeof getControlEventService>;
+  private gitService?: GitService;
 
   connectedCallback() {
     super.connectedCallback();

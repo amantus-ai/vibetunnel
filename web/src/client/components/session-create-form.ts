@@ -95,10 +95,6 @@ export class SessionCreateForm extends LitElement {
   @state() private followMode = false;
   @state() private followBranch: string | null = null;
   @state() private showFollowMode = false;
-  @state() private isCheckingGit = false;
-  @state() private isCheckingFollowMode = false;
-  @state() private isDiscovering = false;
-  @state() private selectedQuickStart: string | null = null;
 
   @state() private quickStartCommands: QuickStartItem[] = [
     { label: '✨ claude', command: 'claude' },
@@ -698,11 +694,11 @@ export class SessionCreateForm extends LitElement {
       this.selectedWorktree = branchName;
 
       // Clear the isCreatingWorktree state in git-branch-selector
-      const gitBranchSelector = this.querySelector('git-branch-selector');
+      const gitBranchSelector = this.querySelector('git-branch-selector') as any;
       if (gitBranchSelector) {
-        (gitBranchSelector as any).isCreatingWorktree = false;
-        (gitBranchSelector as any).showCreateWorktree = false;
-        (gitBranchSelector as any).newBranchName = '';
+        gitBranchSelector.isCreatingWorktree = false;
+        gitBranchSelector.showCreateWorktree = false;
+        gitBranchSelector.newBranchName = '';
       }
 
       // Show success message
@@ -717,9 +713,9 @@ export class SessionCreateForm extends LitElement {
       logger.error('Failed to create worktree:', error);
 
       // Clear the isCreatingWorktree state in git-branch-selector on error too
-      const gitBranchSelector = this.querySelector('git-branch-selector');
+      const gitBranchSelector = this.querySelector('git-branch-selector') as any;
       if (gitBranchSelector) {
-        (gitBranchSelector as any).isCreatingWorktree = false;
+        gitBranchSelector.isCreatingWorktree = false;
       }
 
       // Determine specific error message
