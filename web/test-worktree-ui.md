@@ -9,7 +9,7 @@
 ### 1. Create a Session in a Git Repository
 ```bash
 # Navigate to a Git repository (e.g., the VibeTunnel project itself)
-cd /Users/steipete/Projects/vibetunnel
+cd ~/Projects/your-repo
 
 # Create a new VibeTunnel session
 vt --shell
