@@ -40,7 +40,7 @@ import os.log
 final class ApplicationMover {
     // MARK: - Properties
 
-    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "ApplicationMover")
+    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "ApplicationMover")
 
     // MARK: - Public Interface
 
