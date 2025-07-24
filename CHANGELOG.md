@@ -1,5 +1,21 @@
 # Changelog
 
+## [Unreleased]
+
+### ✨ Features
+
+- **Mac Menu Bar Keyboard Navigation**
+  - Navigate sessions with arrow keys (↑/↓) with wraparound support
+  - Press Enter to focus terminal windows or open web sessions
+  - Visual focus indicators appear automatically when using keyboard
+  - Menu closes after selecting a session or opening settings
+
+### 🎨 UI Improvements
+
+- **Mac Menu Bar Enhancement**
+  - Increased height of bottom action bar for better clickability
+  - Larger button padding provides more comfortable click targets
+
 ## [1.0.0-beta.14] - 2025-07-21
 
 ### ✨ Major Features
