@@ -2,7 +2,7 @@ import { type Request, type Response, Router } from 'express';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { createLogger, logFromModule } from '../utils/logger.js';
+import { createLogger, flushLogger, logFromModule } from '../utils/logger.js';
 
 const logger = createLogger('logs');
 
@@ -116,6 +116,17 @@ export function createLogRoutes(_config?: LogRoutesConfig): Router {
     } catch (error) {
       logger.error('Failed to clear log file:', error);
       res.status(500).json({ error: 'Failed to clear log file' });
+    }
+  });
+
+  // Flush log buffer (for testing)
+  router.post('/logs/flush', async (_req: Request, res: Response) => {
+    try {
+      await flushLogger();
+      res.status(204).send();
+    } catch (error) {
+      logger.error('Failed to flush log buffer:', error);
+      res.status(500).json({ error: 'Failed to flush log buffer' });
     }
   });
 

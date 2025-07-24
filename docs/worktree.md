@@ -135,63 +135,58 @@ curl -X DELETE "http://localhost:4020/api/worktrees/feature-branch?repoPath=/pat
 
 ## Follow Mode
 
-Follow mode keeps your main repository in sync with worktree operations:
+Follow mode automatically switches your VibeTunnel terminal to the Git worktree that matches the branch you're working on in your editor or IDE. When you switch branches in your editor, VibeTunnel follows along.
 
 ### How It Works
 
-1. Enable follow mode for a worktree branch
-2. When you switch branches in the worktree, the main repository follows
-3. Git hooks automatically notify VibeTunnel of branch changes
-4. Sessions show [checkout: branch] tags during transitions
+1. Enable follow mode for a specific branch or the current branch
+2. When Git detects branch changes (via hooks), VibeTunnel automatically switches to the corresponding worktree
+3. Sessions show [checkout: branch] tags during transitions
+4. The main repository stays in sync with your active work
 
 Follow mode state is stored in the repository's git config:
 ```bash
 # Check current follow mode
 git config vibetunnel.followBranch
 
-# Manually set follow mode
-git config vibetunnel.followBranch feature/my-branch
-
-# Disable follow mode
-git config --unset vibetunnel.followBranch
+# The vt command handles this automatically
 ```
 
-### Enabling Follow Mode
+### Using Follow Mode with vt
 
 ```bash
-# Via API
-curl -X POST http://localhost:4020/api/worktrees/follow \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "repoPath": "/path/to/repo",
-    "branch": "feature/branch",
-    "enable": true
-  }'
+# Enable follow mode for current branch
+vt follow
+
+# Switch to a branch and enable follow mode
+vt follow feature/new-feature
+
+# Disable follow mode
+vt unfollow
 ```
+
+The `vt follow` command is smart:
+- Without arguments: enables follow mode for your current branch
+- With a branch name: switches to that branch AND enables follow mode
+- This eliminates the need for separate switch and follow operations
 
 ### Checking Follow Mode Status
 
 ```bash
-# Check if follow mode is enabled for a repository
-curl "http://localhost:4020/api/git/follow?path=/path/to/repo" \
-  -H "Authorization: Bearer YOUR_TOKEN"
+# Check current follow mode in git config
+git config vibetunnel.followBranch
 
-# Response:
-{
-  "isGitRepo": true,
-  "repoPath": "/path/to/repo",
-  "followMode": true,
-  "followBranch": "feature/branch",
-  "currentBranch": "main"
-}
+# If output shows a branch name, follow mode is enabled for that branch
+# If no output, follow mode is disabled
 ```
 
 ### Use Cases
 
+- **IDE Integration**: Your terminal automatically follows your IDE's branch switches
 - **Paired Programming**: Keep multiple views in sync
 - **Testing**: Run tests in main while developing in worktree
 - **Code Review**: Follow along as someone switches between branches
+- **Context Switching**: Instantly jump to the right worktree when changing tasks
 
 ## Best Practices
 
@@ -228,33 +223,73 @@ Regularly clean up unused worktrees:
 
 ## Common Workflows
 
+### Quick Start with Follow Mode
+
+```bash
+# Start working on a feature
+git worktree add ../myproject-feature feature/awesome
+cd ../myproject-feature
+vt follow  # Enable follow mode for this feature
+
+# Now when you switch branches in your IDE, VibeTunnel follows
+```
+
 ### Feature Development
 
 1. Create a worktree for your feature branch
+   ```bash
+   git worktree add ../project-feature feature/new-ui
+   cd ../project-feature
+   vt follow  # Terminal will now track this feature
+   ```
 2. Open VibeTunnel session in the worktree
 3. Develop without affecting main branch
 4. Run tests in main while developing
 5. Merge and remove worktree when done
 
+### Quick Branch Switching
+
+```bash
+# Currently on main, want to work on a feature
+vt follow feature/api-update
+# This switches to the branch AND enables follow mode
+
+# Done with the feature, go back to main
+vt follow main
+
+# Stop following branches
+vt unfollow
+```
+
 ### Bug Fixes
 
 1. Create worktree from production branch
-2. Reproduce and fix the bug
-3. Cherry-pick to other branches if needed
-4. Clean up worktree after merge
+   ```bash
+   git worktree add ../project-hotfix hotfix/critical-bug
+   ```
+2. Switch to it with follow mode
+   ```bash
+   vt follow hotfix/critical-bug
+   ```
+3. Fix the bug and test
+4. Cherry-pick to other branches if needed
+5. Clean up worktree after merge
 
 ### Code Review
 
-1. Create worktree for the PR branch
-2. Enable follow mode
-3. Review code while author demonstrates
-4. Switch between different PR branches easily
+1. Reviewer enables follow mode
+   ```bash
+   vt follow  # Follow current branch
+   ```
+2. Author switches between branches in their IDE
+3. Reviewer's terminal automatically follows along
+4. No manual switching needed
 
 ### Parallel Development
 
 1. Keep main worktree on stable branch
 2. Create feature worktrees for each task
-3. Switch between tasks instantly
+3. Use `vt follow <branch>` to instantly switch context
 4. No stashing or context switching needed
 
 ## Troubleshooting
@@ -333,15 +368,25 @@ Use worktrees for CI/CD workflows:
 - Test multiple branches simultaneously
 - Isolate deployment branches
 
-## API Reference
+## Command Reference
+
+### vt Commands
+- `vt follow` - Enable follow mode for current branch
+- `vt follow <branch>` - Switch to branch and enable follow mode
+- `vt unfollow` - Disable follow mode
+- `vt git event` - Used internally by Git hooks
+
+### Git Commands
+- `git worktree add <path> <branch>` - Create a new worktree
+- `git worktree list` - List all worktrees
+- `git worktree remove <path>` - Remove a worktree
+
+### API Reference
 
 For detailed API documentation, see the main [API specification](./spec.md#worktree-endpoints).
 
 Key endpoints:
 - `GET /api/worktrees` - List worktrees with current follow mode status
-- `POST /api/worktrees` - Create worktree
-- `DELETE /api/worktrees/:branch` - Remove worktree
-- `POST /api/worktrees/switch` - Switch branch and enable follow mode
 - `POST /api/worktrees/follow` - Enable/disable follow mode for a branch
 - `GET /api/git/follow` - Check follow mode status for a repository
 - `POST /api/git/event` - Internal endpoint used by git hooks

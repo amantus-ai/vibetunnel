@@ -206,10 +206,10 @@ describe('SessionView Binary Mode', () => {
     testElement.uiStateManager.setTerminalTheme('dark' as TerminalThemeId);
 
     await element.updateComplete;
-    
+
     const binaryTerminal = element.querySelector('vibe-terminal-binary') as any;
     expect(binaryTerminal).toBeTruthy();
-    
+
     // Properties are bound through lit's property binding in the template
     // The values may not be immediately reflected in the element's properties
     // but they are correctly passed through the render. We can verify this
@@ -218,7 +218,7 @@ describe('SessionView Binary Mode', () => {
     expect(state.terminalFontSize).toBe(16);
     expect(state.terminalMaxCols).toBe(120);
     expect(state.terminalTheme).toBe('dark');
-    
+
     // Verify the terminal got the session ID
     expect(binaryTerminal.sessionId).toBe('test-session');
   });
@@ -229,7 +229,7 @@ describe('SessionView Binary Mode', () => {
 
     // Test with standard terminal
     await element.updateComplete;
-    
+
     let terminal = element.querySelector('vibe-terminal');
     terminal?.dispatchEvent(
       new CustomEvent('terminal-input', {
@@ -268,7 +268,7 @@ describe('SessionView Binary Mode', () => {
     // Test standard mode
     testElement.uiStateManager.setUseBinaryMode(false);
     await element.updateComplete;
-    
+
     const standardResult = testElement.getTerminalElement();
     // getTerminalElement looks for terminals directly in session-view
     expect(standardResult).toBe(element.querySelector('vibe-terminal'));
@@ -276,7 +276,7 @@ describe('SessionView Binary Mode', () => {
     // Test binary mode
     testElement.uiStateManager.setUseBinaryMode(true);
     await element.updateComplete;
-    
+
     const binaryResult = testElement.getTerminalElement();
     expect(binaryResult).toBe(element.querySelector('vibe-terminal-binary'));
   });
@@ -333,7 +333,7 @@ describe('SessionView Binary Mode', () => {
 
   it('should only update on actual binary mode change', async () => {
     const testElement = element as SessionViewTestInterface;
-    
+
     // Test that the component correctly handles binary mode changes
     expect(testElement.uiStateManager.getState().useBinaryMode).toBe(false);
 
@@ -346,7 +346,7 @@ describe('SessionView Binary Mode', () => {
     // Dispatching same value shouldn't trigger update
     const requestUpdateSpy = vi.spyOn(element, 'requestUpdate');
     requestUpdateSpy.mockClear();
-    
+
     window.dispatchEvent(new CustomEvent('terminal-binary-mode-changed', { detail: true }));
     expect(requestUpdateSpy).not.toHaveBeenCalled();
 

@@ -128,6 +128,22 @@ export function initLogger(debug: boolean = false, verbosity?: VerbosityLevel): 
 }
 
 /**
+ * Flush the log file buffer
+ */
+export function flushLogger(): Promise<void> {
+  return new Promise((resolve) => {
+    if (logFileHandle && !logFileHandle.destroyed) {
+      // Force a write of any buffered data
+      logFileHandle.write('', () => {
+        resolve();
+      });
+    } else {
+      resolve();
+    }
+  });
+}
+
+/**
  * Close the logger
  */
 export function closeLogger(): void {

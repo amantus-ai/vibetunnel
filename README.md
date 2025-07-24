@@ -41,6 +41,7 @@
 - [Features](#features)
 - [Architecture](#architecture)
 - [Remote Access Options](#remote-access-options)
+- [Git Follow Mode](#git-follow-mode)
 - [Terminal Title Management](#terminal-title-management)
 - [Authentication](#authentication)
 - [npm Package](#npm-package)
@@ -130,6 +131,11 @@ vt claude-danger   # Custom aliases are resolved
 # Open an interactive shell
 vt --shell         # or vt -i
 
+# Git follow mode
+vt follow          # Follow current branch
+vt follow main     # Switch to main and follow
+vt unfollow       # Stop following
+
 # For more examples and options, see "The vt Forwarding Command" section below
 ```
 
@@ -153,6 +159,7 @@ Visit [http://localhost:4020](http://localhost:4020) to see all your terminal se
 - **🚀 Zero Configuration** - No SSH keys, no port forwarding, no complexity
 - **🤖 AI Agent Friendly** - Perfect for monitoring Claude Code, ChatGPT, or any terminal-based AI tools
 - **📊 Dynamic Terminal Titles** - Real-time activity tracking shows what's happening in each session
+- **🔄 Git Follow Mode** - Terminal automatically follows your IDE's branch switching
 - **⌨️ Smart Keyboard Handling** - Intelligent shortcut routing with toggleable capture modes
 - **🔒 Secure by Design** - Multiple authentication modes, localhost-only mode, or secure tunneling via Tailscale/ngrok
 - **📱 Mobile Ready** - Native iOS app and responsive web interface for phones and tablets
@@ -227,6 +234,95 @@ The server runs as a standalone Node.js executable with embedded modules, provid
 1. Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
 2. Run `cloudflared tunnel --url http://localhost:4020`
 3. Access via the generated `*.trycloudflare.com` URL
+
+## Git Follow Mode
+
+Git Follow Mode automatically switches your VibeTunnel terminal to the Git worktree that matches the branch you're working on in your editor or IDE. When you switch branches in VSCode, IntelliJ, or your favorite editor, VibeTunnel follows along.
+
+### What is Follow Mode?
+
+Follow mode creates a seamless workflow between your code editor and terminal:
+- Switch branches in your IDE → Terminal automatically follows
+- Work on multiple features → Each gets its own terminal context
+- No manual directory switching → Stay focused on coding
+
+### Quick Start
+
+```bash
+# Enable follow mode for your current branch
+vt follow
+
+# Switch to a branch and enable follow mode
+vt follow feature/new-api
+
+# Disable follow mode
+vt unfollow
+```
+
+### How It Works
+
+1. **Git Hooks**: VibeTunnel installs lightweight Git hooks that detect branch changes
+2. **Automatic Switching**: When you switch branches, the terminal updates to match
+3. **Worktree Support**: Works seamlessly with Git worktrees for parallel development
+4. **IDE Integration**: Any editor that uses Git will trigger the follow behavior
+
+### Common Workflows
+
+#### Single Repository Development
+```bash
+# Start working on a feature
+vt follow feature/user-auth
+# Your terminal is now following this branch
+
+# Switch to another branch in your IDE
+# Terminal automatically switches too!
+
+# Stop following when done
+vt unfollow
+```
+
+#### Multiple Worktree Setup
+```bash
+# Create worktrees for different features
+git worktree add ../project-auth feature/auth
+git worktree add ../project-api feature/api
+
+# Enable follow mode in each worktree
+cd ../project-auth && vt follow
+cd ../project-api && vt follow
+
+# Now switching branches in your IDE switches to the right worktree!
+```
+
+#### Code Review Workflow
+```bash
+# Reviewer enables follow mode
+vt follow
+
+# As the author switches between PR branches
+# The reviewer's terminal follows along
+# Perfect for live code reviews!
+```
+
+### Best Practices
+
+- **One follow per repository**: Only one branch can be followed at a time
+- **Use with worktrees**: Combine with Git worktrees for the best experience
+- **IDE agnostic**: Works with any editor that changes Git branches
+- **Lightweight**: Minimal overhead, hooks only notify on actual branch changes
+
+### Technical Details
+
+Follow mode stores its state in your repository's Git config:
+```bash
+# Check current follow status
+git config vibetunnel.followBranch
+
+# Manually set (not recommended, use vt instead)
+git config vibetunnel.followBranch feature/my-branch
+```
+
+For more advanced Git worktree workflows, see our [detailed worktree documentation](docs/worktree.md).
 
 ## Terminal Title Management
 

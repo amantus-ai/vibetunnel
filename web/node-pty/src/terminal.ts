@@ -22,13 +22,13 @@ const FLOW_CONTROL_PAUSE =  '\x13';   // defaults to XOFF
 const FLOW_CONTROL_RESUME = '\x11';   // defaults to XON
 
 export abstract class Terminal implements ITerminal {
-  protected _socket!: Socket; // HACK: This is unsafe
+  protected _socket!: Socket; // Initialized in platform-specific subclass constructor
   protected _pid: number = 0;
   protected _fd: number = 0;
   protected _pty: any;
 
-  protected _file!: string; // HACK: This is unsafe
-  protected _name!: string; // HACK: This is unsafe
+  protected _file!: string; // Initialized in platform-specific subclass constructor
+  protected _name!: string; // Initialized in platform-specific subclass constructor
   protected _cols: number = 0;
   protected _rows: number = 0;
 

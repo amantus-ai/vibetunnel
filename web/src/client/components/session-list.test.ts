@@ -278,9 +278,6 @@ describe('SessionList', () => {
       }
     });
 
-    // Cleanup tests commented out - handleCleanupExited method no longer exists
-    // TODO: Update these tests to work with the new component architecture
-    /*
     it('should handle cleanup of exited sessions', async () => {
       // Mock successful cleanup
       fetchMock.mockResponse('/api/cleanup-exited', { removed: 2 });
@@ -288,7 +285,31 @@ describe('SessionList', () => {
       const refreshHandler = vi.fn();
       element.addEventListener('refresh', refreshHandler);
 
+      // Add some exited sessions
+      element.sessions = [
+        createMockSession({ id: 'session-1', status: 'running' }),
+        createMockSession({ id: 'session-2', status: 'exited' }),
+        createMockSession({ id: 'session-3', status: 'exited' }),
+      ];
+      element.hideExited = false; // Show exited sessions
+      await element.updateComplete;
+
+      // Mock querySelectorAll to return session cards
+      const mockSessionCards = [
+        { session: { id: 'session-2', status: 'exited' }, classList: { add: vi.fn() } },
+        { session: { id: 'session-3', status: 'exited' }, classList: { add: vi.fn() } },
+      ];
+      vi.spyOn(element, 'querySelectorAll').mockReturnValue(mockSessionCards as any);
+
       await element.handleCleanupExited();
+
+      // Should apply black-hole animation to exited sessions
+      expect(mockSessionCards[0].classList.add).toHaveBeenCalledWith('black-hole-collapsing');
+      expect(mockSessionCards[1].classList.add).toHaveBeenCalledWith('black-hole-collapsing');
+
+      // Should remove exited sessions from list
+      expect(element.sessions).toHaveLength(1);
+      expect(element.sessions[0].status).toBe('running');
 
       // Should trigger refresh after cleanup
       expect(refreshHandler).toHaveBeenCalled();
@@ -306,11 +327,34 @@ describe('SessionList', () => {
 
       expect(errorHandler).toHaveBeenCalledWith(
         expect.objectContaining({
-          detail: expect.stringContaining('Failed to clean'),
+          detail: 'Failed to cleanup exited sessions',
         })
       );
     });
-    */
+
+    it('should prevent concurrent cleanup operations', async () => {
+      // Mock successful cleanup with delay
+      fetchMock.mockResponse(
+        '/api/cleanup-exited',
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => resolve({ body: JSON.stringify({ removed: 1 }) }), 100)
+          )
+      );
+
+      // Start first cleanup
+      const promise1 = element.handleCleanupExited();
+
+      // Try to start second cleanup immediately
+      const promise2 = element.handleCleanupExited();
+
+      // Second call should return immediately without making a fetch
+      await promise2;
+      expect(fetchMock.count()).toBe(1); // Only one fetch call
+
+      // Wait for first cleanup to complete
+      await promise1;
+    });
 
     it('should handle kill all sessions', async () => {
       // Skip this test as kill-all functionality may not be implemented

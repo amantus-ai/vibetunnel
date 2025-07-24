@@ -4,7 +4,6 @@
  * Manages mobile-specific input handling for terminal sessions,
  * including keyboard overlays and direct input modes.
  */
-import type { Terminal } from '../terminal.js';
 import type { InputManager } from './input-manager.js';
 
 // Forward declaration for SessionView to avoid circular dependency
@@ -35,10 +34,6 @@ export class MobileInputManager {
 
   setInputManager(inputManager: InputManager | null) {
     this.inputManager = inputManager;
-  }
-
-  setTerminal(_terminal: Terminal | null) {
-    // Terminal is passed but not currently used
   }
 
   handleMobileInputToggle() {
