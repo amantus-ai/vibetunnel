@@ -187,19 +187,67 @@ export class ApiSocketServer {
       // Check follow mode status
       let followMode: StatusResponse['followMode'];
       try {
-        const { stdout } = await execGit(['config', 'vibetunnel.followBranch'], { cwd });
-        const followBranch = stdout.trim();
-        if (followBranch) {
-          // Get repo path
-          const { stdout: repoPath } = await execGit(['rev-parse', '--show-toplevel'], { cwd });
-          followMode = {
-            enabled: true,
-            branch: followBranch,
-            repoPath: repoPath.trim(),
-          };
+        // Check if we're in a git repo
+        const { stdout: repoPathOutput } = await execGit(['rev-parse', '--show-toplevel'], { cwd });
+        const repoPath = repoPathOutput.trim();
+
+        // Check if this is a worktree
+        const { stdout: gitDirOutput } = await execGit(['rev-parse', '--git-dir'], { cwd });
+        const gitDir = gitDirOutput.trim();
+        const isWorktree = gitDir.includes('/.git/worktrees/');
+
+        // Find main repo path
+        let mainRepoPath = repoPath;
+        if (isWorktree) {
+          mainRepoPath = gitDir.replace(/\/\.git\/worktrees\/.*$/, '');
+        }
+
+        // Check for new worktree-based follow mode
+        try {
+          const { stdout } = await execGit(['config', 'vibetunnel.followWorktree'], {
+            cwd: mainRepoPath,
+          });
+          const followWorktree = stdout.trim();
+          if (followWorktree) {
+            // Get branch name from worktree for display
+            let branchName = path.basename(followWorktree);
+            try {
+              const { stdout: branchOutput } = await execGit(['branch', '--show-current'], {
+                cwd: followWorktree,
+              });
+              if (branchOutput.trim()) {
+                branchName = branchOutput.trim();
+              }
+            } catch (_e) {
+              // Use directory name as fallback
+            }
+
+            followMode = {
+              enabled: true,
+              branch: branchName,
+              repoPath: prettifyPath(followWorktree),
+            };
+          }
+        } catch (_e) {
+          // Check for legacy follow mode
+          try {
+            const { stdout } = await execGit(['config', 'vibetunnel.followBranch'], {
+              cwd: mainRepoPath,
+            });
+            const followBranch = stdout.trim();
+            if (followBranch) {
+              followMode = {
+                enabled: true,
+                branch: followBranch,
+                repoPath: prettifyPath(mainRepoPath),
+              };
+            }
+          } catch (_e2) {
+            // No follow mode configured
+          }
         }
       } catch (_error) {
-        // Not in a git repo or follow mode not configured
+        // Not in a git repo
       }
 
       const response: StatusResponse = {
@@ -225,13 +273,13 @@ export class ApiSocketServer {
   ): Promise<void> {
     try {
       const { repoPath, branch, enable, worktreePath, mainRepoPath } = request;
-      
+
       // Use new fields if available, otherwise fall back to old fields
       const targetMainRepo = mainRepoPath || repoPath;
       if (!targetMainRepo) {
         throw new Error('No repository path provided');
       }
-      
+
       const absoluteMainRepo = path.resolve(targetMainRepo);
       const absoluteWorktreePath = worktreePath ? path.resolve(worktreePath) : undefined;
 
@@ -241,12 +289,12 @@ export class ApiSocketServer {
 
       if (enable) {
         // Check if Git hooks are already installed
-        const hooksAlreadyInstalled = await areHooksInstalled(absoluteRepoPath);
+        const hooksAlreadyInstalled = await areHooksInstalled(absoluteMainRepo);
 
         if (!hooksAlreadyInstalled) {
           // Install Git hooks
           logger.info('Installing Git hooks for follow mode');
-          const installResult = await installGitHooks(absoluteRepoPath);
+          const installResult = await installGitHooks(absoluteMainRepo);
 
           if (!installResult.success) {
             const response: GitFollowResponse = {
@@ -261,11 +309,11 @@ export class ApiSocketServer {
         // If we have a worktree path, use that. Otherwise try to find worktree from branch
         let followPath: string;
         let displayName: string;
-        
+
         if (absoluteWorktreePath) {
           // Direct worktree path provided
           followPath = absoluteWorktreePath;
-          
+
           // Get the branch name from the worktree for display
           try {
             const { stdout } = await execGit(['branch', '--show-current'], {
@@ -281,10 +329,10 @@ export class ApiSocketServer {
             const { stdout } = await execGit(['worktree', 'list', '--porcelain'], {
               cwd: absoluteMainRepo,
             });
-            
+
             const lines = stdout.split('\n');
             let foundWorktree: string | undefined;
-            
+
             for (let i = 0; i < lines.length; i++) {
               if (lines[i].startsWith('worktree ')) {
                 const worktreePath = lines[i].substring(9);
@@ -297,15 +345,17 @@ export class ApiSocketServer {
                 }
               }
             }
-            
+
             if (!foundWorktree) {
               throw new Error(`No worktree found for branch '${branch}'`);
             }
-            
+
             followPath = foundWorktree;
             displayName = branch;
           } catch (error) {
-            throw new Error(`Failed to find worktree: ${error instanceof Error ? error.message : String(error)}`);
+            throw new Error(
+              `Failed to find worktree: ${error instanceof Error ? error.message : String(error)}`
+            );
           }
         } else {
           // No branch or worktree specified - try current branch
@@ -314,26 +364,28 @@ export class ApiSocketServer {
               cwd: absoluteMainRepo,
             });
             const currentBranch = stdout.trim();
-            
+
             if (!currentBranch) {
               throw new Error('Not on a branch (detached HEAD)');
             }
-            
+
             // Recursively call with the current branch
             return this.handleGitFollowRequest(socket, {
               ...request,
               branch: currentBranch,
             });
           } catch (error) {
-            throw new Error(`Failed to get current branch: ${error instanceof Error ? error.message : String(error)}`);
+            throw new Error(
+              `Failed to get current branch: ${error instanceof Error ? error.message : String(error)}`
+            );
           }
         }
-        
+
         // Set the follow mode config with worktree path
         await execGit(['config', '--local', 'vibetunnel.followWorktree', followPath], {
           cwd: absoluteMainRepo,
         });
-        
+
         // Install hooks in both locations
         const mainRepoHooksInstalled = await areHooksInstalled(absoluteMainRepo);
         if (!mainRepoHooksInstalled) {
@@ -343,7 +395,7 @@ export class ApiSocketServer {
             throw new Error('Failed to install Git hooks in main repository');
           }
         }
-        
+
         const worktreeHooksInstalled = await areHooksInstalled(followPath);
         if (!worktreeHooksInstalled) {
           logger.info('Installing Git hooks in worktree');
@@ -373,7 +425,7 @@ export class ApiSocketServer {
         await execGit(['config', '--local', '--unset', 'vibetunnel.followWorktree'], {
           cwd: absoluteMainRepo,
         });
-        
+
         // Also try to unset the old config for backward compatibility
         try {
           await execGit(['config', '--local', '--unset', 'vibetunnel.followBranch'], {
@@ -393,22 +445,28 @@ export class ApiSocketServer {
         } catch {
           // No worktree was being followed
         }
-        
+
         // Uninstall Git hooks from main repo
         logger.info('Uninstalling Git hooks from main repository');
         const mainUninstallResult = await uninstallGitHooks(absoluteMainRepo);
-        
+
         // Also uninstall from worktree if we know which one was being followed
         if (followedWorktree && followedWorktree !== absoluteMainRepo) {
           logger.info('Uninstalling Git hooks from worktree');
           const worktreeUninstallResult = await uninstallGitHooks(followedWorktree);
           if (!worktreeUninstallResult.success) {
-            logger.warn('Failed to uninstall some Git hooks from worktree:', worktreeUninstallResult.errors);
+            logger.warn(
+              'Failed to uninstall some Git hooks from worktree:',
+              worktreeUninstallResult.errors
+            );
           }
         }
 
         if (!mainUninstallResult.success) {
-          logger.warn('Failed to uninstall some Git hooks from main repo:', mainUninstallResult.errors);
+          logger.warn(
+            'Failed to uninstall some Git hooks from main repo:',
+            mainUninstallResult.errors
+          );
           // Continue anyway - follow mode is still disabled
         } else {
           logger.info('Git hooks uninstalled successfully from main repository');
@@ -442,14 +500,45 @@ export class ApiSocketServer {
    * Handle Git event notification
    */
   private async handleGitEventNotify(socket: net.Socket, event: GitEventNotify): Promise<void> {
-    // For now, just acknowledge receipt
-    // The git hooks will continue to use the HTTP endpoint directly
     logger.debug(`Git event notification received: ${event.type} for ${event.repoPath}`);
 
-    const ack: GitEventAck = {
-      handled: true,
-    };
-    socket.write(MessageBuilder.gitEventAck(ack));
+    try {
+      // Forward the event to the HTTP endpoint which contains the sync logic
+      const port = this.serverPort || 4020;
+      const url = `http://localhost:${port}/api/git/event`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          repoPath: event.repoPath,
+          event: event.type,
+          // Branch information would need to be extracted from git hooks
+          // For now, we'll let the endpoint handle branch detection
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP endpoint returned ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      logger.debug('Git event processed successfully:', result);
+
+      const ack: GitEventAck = {
+        handled: true,
+      };
+      socket.write(MessageBuilder.gitEventAck(ack));
+    } catch (error) {
+      logger.error('Failed to forward git event to HTTP endpoint:', error);
+
+      const ack: GitEventAck = {
+        handled: false,
+      };
+      socket.write(MessageBuilder.gitEventAck(ack));
+    }
   }
 
   /**

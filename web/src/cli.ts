@@ -143,7 +143,7 @@ async function handleSocketCommand(command: string): Promise<void> {
             console.log(`  Enabled: ${status.followMode.enabled ? 'Yes' : 'No'}`);
             if (status.followMode.enabled && status.followMode.branch) {
               console.log(`  Following branch: ${status.followMode.branch}`);
-              console.log(`  Repository: ${status.followMode.repoPath || 'Unknown'}`);
+              console.log(`  Worktree: ${status.followMode.repoPath || 'Unknown'}`);
             }
           } else {
             console.log('\nGit Follow Mode: Not in a git repository');
@@ -157,13 +157,12 @@ async function handleSocketCommand(command: string): Promise<void> {
         const args = process.argv.slice(3);
         let worktreePath: string | undefined;
         let mainRepoPath: string | undefined;
-        let fromWorktree = false;
-        
+
         // Parse flags
         for (let i = 0; i < args.length; i++) {
           switch (args[i]) {
             case '--from-worktree':
-              fromWorktree = true;
+              // Flag handled by vt script
               break;
             case '--worktree-path':
               worktreePath = args[++i];
@@ -173,7 +172,7 @@ async function handleSocketCommand(command: string): Promise<void> {
               break;
           }
         }
-        
+
         const response = await client.setFollowMode({
           enable: true,
           worktreePath,

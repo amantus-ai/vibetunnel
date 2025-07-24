@@ -71,15 +71,16 @@ export class KeyboardCaptureIndicator extends LitElement {
   }
 
   private handleClick() {
-    this.active = !this.active;
+    // Don't toggle local state - let parent control it
+    const newActive = !this.active;
     this.dispatchEvent(
       new CustomEvent('capture-toggled', {
-        detail: { active: this.active },
+        detail: { active: newActive },
         bubbles: true,
         composed: true,
       })
     );
-    logger.log(`Keyboard capture ${this.active ? 'enabled' : 'disabled'}`);
+    logger.log(`Keyboard capture toggle requested: ${newActive ? 'enable' : 'disable'}`);
   }
 
   private getOSSpecificShortcuts() {

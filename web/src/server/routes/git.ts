@@ -224,21 +224,39 @@ export function createGitRoutes(): Router {
       const updatedSessionIds: string[] = [];
 
       // Check follow mode status
-      let followBranch: string | undefined;
+      let followWorktree: string | undefined;
       let currentBranch: string | undefined;
       let followMode = false;
+      let isMainRepo = false;
+      let isWorktreeRepo = false;
 
       try {
-        // Get follow branch setting
-        const { stdout: followBranchOutput } = await execGit(
-          ['config', 'vibetunnel.followBranch'],
+        // Check if this is a worktree
+        const { stdout: gitDirOutput } = await execGit(['rev-parse', '--git-dir'], {
+          cwd: repoPath,
+        });
+        const gitDir = gitDirOutput.trim();
+        isWorktreeRepo = gitDir.includes('/.git/worktrees/');
+
+        // If this is a worktree, find the main repo
+        let mainRepoPath = repoPath;
+        if (isWorktreeRepo) {
+          // Extract main repo from git dir (e.g., /path/to/main/.git/worktrees/branch)
+          mainRepoPath = gitDir.replace(/\/\.git\/worktrees\/.*$/, '');
+          logger.debug(`Worktree detected, main repo: ${mainRepoPath}`);
+        } else {
+          isMainRepo = true;
+        }
+
+        // Get follow worktree setting from main repo
+        const { stdout: followWorktreeOutput } = await execGit(
+          ['config', 'vibetunnel.followWorktree'],
           {
-            cwd: repoPath,
+            cwd: mainRepoPath,
           }
         );
-        followBranch = followBranchOutput.trim();
-        // Follow mode is active when a branch name is set (not just 'true')
-        followMode = !!followBranch;
+        followWorktree = followWorktreeOutput.trim();
+        followMode = !!followWorktree;
 
         // Get current branch
         const { stdout: branchOutput } = await execGit(['branch', '--show-current'], {
@@ -247,7 +265,7 @@ export function createGitRoutes(): Router {
         currentBranch = branchOutput.trim();
       } catch (error) {
         // Config not set or git command failed - follow mode is disabled
-        logger.debug('Follow branch check failed or not configured:', error);
+        logger.debug('Follow worktree check failed or not configured:', error);
       }
 
       // Extract repository name from path
@@ -295,93 +313,61 @@ export function createGitRoutes(): Router {
       }
 
       // Handle follow mode sync logic
-      if (
-        followMode &&
-        followBranch &&
-        event === 'checkout' &&
-        branch === followBranch &&
-        currentBranch !== followBranch
-      ) {
-        logger.info(`Follow mode active: syncing from ${currentBranch} to ${followBranch}`);
+      if (followMode && followWorktree) {
+        logger.info(`Follow mode active: processing event from ${repoPath}`);
 
-        try {
-          // Check if branches have diverged
-          const { stdout: divergeCheck } = await execGit(
-            ['rev-list', '--count', `${followBranch}..HEAD`],
-            { cwd: repoPath }
-          );
+        // Determine which repo we're in and which direction to sync
+        if (repoPath === followWorktree && isWorktreeRepo) {
+          // Event from worktree - sync to main repo
+          logger.info(`Syncing from worktree to main repo`);
 
-          const divergedCommits = Number.parseInt(divergeCheck.trim(), 10);
-
-          if (divergedCommits > 0) {
-            logger.warn(`Branch has diverged by ${divergedCommits} commits, disabling follow mode`);
-
-            // Disable follow mode
-            await execGit(['config', '--local', '--unset', 'vibetunnel.followBranch'], {
-              cwd: repoPath,
-            });
-
-            followMode = false;
-            followBranch = undefined;
-
-            // Send notification about follow mode being disabled
-            const divergeNotif = {
-              level: 'error' as const,
-              title: 'Follow Mode Disabled',
-              message: `Branches have diverged by ${divergedCommits} commits. Follow mode has been disabled.`,
-            };
-
-            if (controlUnixHandler.isMacAppConnected()) {
-              const divergeNotification = createControlEvent(
-                'system',
-                'notification',
-                divergeNotif
-              );
-              controlUnixHandler.sendToMac(divergeNotification);
-            } else {
-              pendingNotifications.push({
-                timestamp: Date.now(),
-                notification: divergeNotif,
-              });
-            }
-          } else {
-            // Perform the sync (checkout to the followed branch)
-            logger.info(`Checking out branch: ${followBranch}`);
-            await execGit(['checkout', followBranch], { cwd: repoPath });
-
-            // Send sync success notification
-            const syncNotif = {
-              level: 'info' as const,
-              title: 'Repository Synced',
-              message: `Successfully synced to branch '${followBranch}'`,
-            };
-
-            if (controlUnixHandler.isMacAppConnected()) {
-              const syncNotification = createControlEvent('system', 'notification', syncNotif);
-              controlUnixHandler.sendToMac(syncNotification);
-            } else {
-              pendingNotifications.push({
-                timestamp: Date.now(),
-                notification: syncNotif,
-              });
-            }
-          }
-        } catch (error) {
-          logger.error('Failed to sync branches:', error);
-
-          // Disable follow mode on error
           try {
-            await execGit(['config', '--local', '--unset', 'vibetunnel.followBranch'], {
+            // Find the main repo path
+            const { stdout: gitDirOutput } = await execGit(['rev-parse', '--git-dir'], {
               cwd: repoPath,
             });
-            followMode = false;
-            followBranch = undefined;
+            const gitDir = gitDirOutput.trim();
+            const mainRepoPath = gitDir.replace(/\/\.git\/worktrees\/.*$/, '');
+
+            // Get the current branch in worktree
+            const { stdout: worktreeBranchOutput } = await execGit(['branch', '--show-current'], {
+              cwd: repoPath,
+            });
+            const worktreeBranch = worktreeBranchOutput.trim();
+
+            if (worktreeBranch) {
+              // Sync main repo to worktree's branch
+              logger.info(`Syncing main repo to branch: ${worktreeBranch}`);
+              await execGit(['checkout', worktreeBranch], { cwd: mainRepoPath });
+
+              // Pull latest changes in main repo
+              await execGit(['pull', '--ff-only'], { cwd: mainRepoPath });
+
+              // Send sync success notification
+              const syncNotif = {
+                level: 'info' as const,
+                title: 'Main Repository Synced',
+                message: `Main repository synced to branch '${worktreeBranch}'`,
+              };
+
+              if (controlUnixHandler.isMacAppConnected()) {
+                const syncNotification = createControlEvent('system', 'notification', syncNotif);
+                controlUnixHandler.sendToMac(syncNotification);
+              } else {
+                pendingNotifications.push({
+                  timestamp: Date.now(),
+                  notification: syncNotif,
+                });
+              }
+            }
+          } catch (error) {
+            logger.error('Failed to sync from worktree to main:', error);
 
             // Send error notification
             const errorNotif = {
               level: 'error' as const,
               title: 'Sync Failed',
-              message: `Failed to sync repository: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              message: `Failed to sync main repository: ${error instanceof Error ? error.message : 'Unknown error'}`,
             };
 
             if (controlUnixHandler.isMacAppConnected()) {
@@ -393,8 +379,68 @@ export function createGitRoutes(): Router {
                 notification: errorNotif,
               });
             }
-          } catch (configError) {
-            logger.error('Failed to disable follow mode:', configError);
+          }
+        } else if (isMainRepo && event === 'commit') {
+          // Event from main repo (commit only) - sync to worktree
+          logger.info(`Syncing commit from main repo to worktree`);
+
+          try {
+            // Pull latest changes in worktree
+            await execGit(['pull', '--ff-only'], { cwd: followWorktree });
+
+            // Send sync success notification
+            const syncNotif = {
+              level: 'info' as const,
+              title: 'Worktree Synced',
+              message: `Worktree synced with latest commits`,
+            };
+
+            if (controlUnixHandler.isMacAppConnected()) {
+              const syncNotification = createControlEvent('system', 'notification', syncNotif);
+              controlUnixHandler.sendToMac(syncNotification);
+            } else {
+              pendingNotifications.push({
+                timestamp: Date.now(),
+                notification: syncNotif,
+              });
+            }
+          } catch (error) {
+            logger.error('Failed to sync commit to worktree:', error);
+          }
+        } else if (isMainRepo && event === 'checkout') {
+          // Branch switch in main repo - disable follow mode
+          logger.info('Branch switched in main repo, disabling follow mode');
+
+          try {
+            await execGit(['config', '--local', '--unset', 'vibetunnel.followWorktree'], {
+              cwd: repoPath,
+            });
+
+            followMode = false;
+            followWorktree = undefined;
+
+            // Send notification about follow mode being disabled
+            const disableNotif = {
+              level: 'info' as const,
+              title: 'Follow Mode Disabled',
+              message: `Follow mode disabled due to branch switch in main repository`,
+            };
+
+            if (controlUnixHandler.isMacAppConnected()) {
+              const disableNotification = createControlEvent(
+                'system',
+                'notification',
+                disableNotif
+              );
+              controlUnixHandler.sendToMac(disableNotification);
+            } else {
+              pendingNotifications.push({
+                timestamp: Date.now(),
+                notification: disableNotif,
+              });
+            }
+          } catch (error) {
+            logger.error('Failed to disable follow mode:', error);
           }
         }
       }
@@ -417,11 +463,12 @@ export function createGitRoutes(): Router {
       }> = [];
 
       // Add specific follow mode notifications
-      if (followMode && followBranch) {
+      if (followMode && followWorktree) {
+        const worktreeName = path.basename(followWorktree);
         notificationsToSend.push({
           level: 'info',
           title: 'Follow Mode Active',
-          message: `Following branch '${followBranch}' in ${path.basename(repoPath)}`,
+          message: `Following worktree '${worktreeName}' in ${path.basename(repoPath)}`,
         });
       }
 
