@@ -255,16 +255,17 @@ vt follow
 # Switch to a branch and enable follow mode
 vt follow feature/new-api
 
-# Disable follow mode
+# Disable follow mode (removes Git hooks automatically)
 vt unfollow
 ```
 
 ### How It Works
 
-1. **Git Hooks**: VibeTunnel installs lightweight Git hooks that detect branch changes
+1. **Git Hooks**: VibeTunnel installs lightweight Git hooks (post-commit, post-checkout) that detect branch changes
 2. **Automatic Switching**: When you switch branches, the terminal updates to match
 3. **Worktree Support**: Works seamlessly with Git worktrees for parallel development
 4. **IDE Integration**: Any editor that uses Git will trigger the follow behavior
+5. **Clean Uninstall**: When you run `vt unfollow`, Git hooks are automatically removed and any original hooks are restored
 
 ### Common Workflows
 

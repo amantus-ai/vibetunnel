@@ -165,6 +165,13 @@ The server provides a comprehensive API for terminal session management with sup
 - `POST /api/remotes/register` - Register remote
 - `DELETE /api/remotes/:id` - Unregister remote
 
+#### Git Integration
+- `GET /api/worktrees` - List worktrees
+- `POST /api/worktrees` - Create worktree
+- `POST /api/worktrees/follow` - Enable/disable follow mode
+- `GET /api/worktrees/follow` - Get follow mode status
+- `POST /api/git/events` - Git hook notifications
+
 ### WebSocket Protocols
 
 #### Binary Buffer Protocol (`/buffers`)
@@ -339,6 +346,32 @@ pnpm run lint          # ESLint
 pnpm run format        # Prettier
 pnpm run typecheck     # TypeScript
 ```
+
+## Git Follow Mode
+
+VibeTunnel supports "follow mode" for Git repositories, which automatically switches terminal sessions to match branch changes in your Git workflow.
+
+**Key Components**:
+- **Git Hooks** (`src/server/utils/git-hooks.ts`): Manages post-commit and post-checkout hooks
+- **Follow Mode Routes** (`src/server/routes/worktrees.ts:557`): HTTP API for follow mode
+- **Socket API** (`src/server/api-socket-server.ts:217`): Socket-based follow mode control
+
+**Hook Installation**:
+- When follow mode is enabled, VibeTunnel installs Git hooks (post-commit, post-checkout)
+- Hooks are placed in the repository's `.git/hooks/` directory
+- Existing hooks are backed up with `.vtbak` extension
+- Hooks execute `vt git-event` command when Git events occur
+
+**Hook Removal**:
+- When follow mode is disabled (`vt unfollow`), hooks are automatically removed
+- Original hooks (if any) are restored from backup files
+- Clean removal ensures no artifacts remain in the repository
+
+**Follow Mode Workflow**:
+1. Enable: `vt follow [branch]` - Installs hooks and sets config
+2. Git events trigger hooks which notify VibeTunnel server
+3. Server sends notifications to connected clients
+4. Disable: `vt unfollow` - Removes hooks and clears config
 
 ## Architecture Principles
 
