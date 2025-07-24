@@ -3,7 +3,7 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-describe.skip('vt command', () => {
+describe('vt command', () => {
   const projectRoot = join(__dirname, '../../..');
   const vtScriptPath = join(projectRoot, 'bin/vt');
   const packageJsonPath = join(projectRoot, 'package.json');
@@ -29,10 +29,11 @@ describe.skip('vt command', () => {
     expect(stats.mode & 0o111).toBeTruthy(); // Check execute permissions
   });
 
-  it('should be included in package.json bin section', () => {
+  it('should NOT be included in package.json bin section', () => {
     const packageJson = JSON.parse(require('fs').readFileSync(packageJsonPath, 'utf8'));
     expect(packageJson.bin).toBeDefined();
-    expect(packageJson.bin.vt).toBe('./bin/vt');
+    // vt should NOT be in bin section to avoid conflicts with other tools
+    expect(packageJson.bin.vt).toBeUndefined();
     expect(packageJson.bin.vibetunnel).toBe('./bin/vibetunnel');
   });
 
