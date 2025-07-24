@@ -1,5 +1,4 @@
 import type { PtyManager } from '../../server/pty/pty-manager.js';
-import type { SessionManager } from '../../server/pty/session-manager.js';
 
 /**
  * Helper class for managing sessions in tests.
@@ -11,10 +10,7 @@ import type { SessionManager } from '../../server/pty/session-manager.js';
 export class SessionTestHelper {
   private createdSessionIds = new Set<string>();
 
-  constructor(
-    private ptyManager: PtyManager,
-    private sessionManager?: SessionManager
-  ) {}
+  constructor(private ptyManager: PtyManager) {}
 
   /**
    * Track a session ID that was created by this test

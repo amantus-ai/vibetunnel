@@ -68,8 +68,6 @@ export class MockTerminal {
 
   private _onDataCallback?: (data: string) => void;
   private _onResizeCallback?: (size: { cols: number; rows: number }) => void;
-  private _onTitleChangeCallback?: (title: string) => void;
-  private _onKeyCallback?: (event: { key: string; domEvent: KeyboardEvent }) => void;
 
   constructor() {
     this.element = document.createElement('div');

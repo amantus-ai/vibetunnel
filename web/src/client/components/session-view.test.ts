@@ -69,6 +69,7 @@ describe('SessionView', () => {
     // Import components to register custom elements
     await import('./session-view');
     await import('./terminal');
+    await import('./vibe-terminal-binary');
   });
 
   beforeEach(async () => {
@@ -81,9 +82,10 @@ describe('SessionView', () => {
     // Clear localStorage to prevent test pollution
     localStorage.clear();
 
-    // Mock matchMedia if it doesn't exist
-    if (!window.matchMedia) {
-      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    // Reset matchMedia mock for consistent behavior
+    if (vi.isMockFunction(window.matchMedia)) {
+      vi.mocked(window.matchMedia).mockReset();
+      vi.mocked(window.matchMedia).mockImplementation((query: string) => ({
         matches: false,
         media: query,
         onchange: null,
@@ -116,6 +118,8 @@ describe('SessionView', () => {
     fetchMock.clear();
     // Clear all EventSource instances
     MockEventSource.instances.clear();
+    // Clear all spy/mock calls but don't restore globals
+    vi.clearAllMocks();
   });
 
   describe('initialization', () => {
@@ -1024,31 +1028,35 @@ describe('SessionView', () => {
       }
     );
 
-    it.skip('should only apply quick keys height adjustment on mobile', { timeout: 10000 }, async () => {
-      vi.useFakeTimers();
+    it.skip(
+      'should only apply quick keys height adjustment on mobile',
+      { timeout: 10000 },
+      async () => {
+        vi.useFakeTimers();
 
-      // Set desktop mode but show quick keys
-      const testElement = element as SessionViewTestInterface;
-      testElement.uiStateManager.setIsMobile(false);
-      testElement.uiStateManager.setShowQuickKeys(true);
-      testElement.uiStateManager.setKeyboardHeight(0);
+        // Set desktop mode but show quick keys
+        const testElement = element as SessionViewTestInterface;
+        testElement.uiStateManager.setIsMobile(false);
+        testElement.uiStateManager.setShowQuickKeys(true);
+        testElement.uiStateManager.setKeyboardHeight(0);
 
-      // Call updateTerminalTransform
-      (element as SessionViewTestInterface).updateTerminalTransform();
+        // Call updateTerminalTransform
+        (element as SessionViewTestInterface).updateTerminalTransform();
 
-      // Advance timers past debounce
-      vi.advanceTimersByTime(110);
-      await vi.runAllTimersAsync();
-      await element.updateComplete;
+        // Advance timers past debounce
+        vi.advanceTimersByTime(110);
+        await vi.runAllTimersAsync();
+        await element.updateComplete;
 
-      // On desktop, CSS variables should be set (no keyboard height)
-      const containerElement = element.querySelector('.session-view-grid');
-      expect(containerElement).toBeTruthy();
-      // Check that the CSS variable is set in the inline style attribute
-      expect(containerElement?.getAttribute('style')).toContain('--keyboard-height: 0px');
+        // On desktop, CSS variables should be set (no keyboard height)
+        const containerElement = element.querySelector('.session-view-grid');
+        expect(containerElement).toBeTruthy();
+        // Check that the CSS variable is set in the inline style attribute
+        expect(containerElement?.getAttribute('style')).toContain('--keyboard-height: 0px');
 
-      vi.useRealTimers();
-    });
+        vi.useRealTimers();
+      }
+    );
 
     it.skip(
       'should reset terminal container height when keyboard is hidden',
@@ -1122,38 +1130,42 @@ describe('SessionView', () => {
       vi.useRealTimers();
     });
 
-    it.skip('should handle successive calls with different parameters', { timeout: 10000 }, async () => {
-      vi.useFakeTimers();
+    it.skip(
+      'should handle successive calls with different parameters',
+      { timeout: 10000 },
+      async () => {
+        vi.useFakeTimers();
 
-      // First call with keyboard height
-      const testElement = element as SessionViewTestInterface;
-      testElement.uiStateManager.setIsMobile(true);
-      testElement.uiStateManager.setKeyboardHeight(200);
-      (element as SessionViewTestInterface).updateTerminalTransform();
+        // First call with keyboard height
+        const testElement = element as SessionViewTestInterface;
+        testElement.uiStateManager.setIsMobile(true);
+        testElement.uiStateManager.setKeyboardHeight(200);
+        (element as SessionViewTestInterface).updateTerminalTransform();
 
-      // Second call with different height before debounce
-      testElement.uiStateManager.setKeyboardHeight(300);
-      (element as SessionViewTestInterface).updateTerminalTransform();
+        // Second call with different height before debounce
+        testElement.uiStateManager.setKeyboardHeight(300);
+        (element as SessionViewTestInterface).updateTerminalTransform();
 
-      // Third call with quick keys enabled
-      testElement.uiStateManager.setShowQuickKeys(true);
-      (element as SessionViewTestInterface).updateTerminalTransform();
+        // Third call with quick keys enabled
+        testElement.uiStateManager.setShowQuickKeys(true);
+        (element as SessionViewTestInterface).updateTerminalTransform();
 
-      // Advance timers past debounce
-      vi.advanceTimersByTime(110);
-      await vi.runAllTimersAsync();
-      await element.updateComplete;
+        // Advance timers past debounce
+        vi.advanceTimersByTime(110);
+        await vi.runAllTimersAsync();
+        await element.updateComplete;
 
-      // On mobile with quick keys and keyboard, CSS variables should be set
-      const containerElement = element.querySelector('.session-view-grid');
-      expect(containerElement).toBeTruthy();
-      // Check that the CSS variable is set in the inline style attribute
-      expect(containerElement?.getAttribute('style')).toContain('--keyboard-height: 300px');
+        // On mobile with quick keys and keyboard, CSS variables should be set
+        const containerElement = element.querySelector('.session-view-grid');
+        expect(containerElement).toBeTruthy();
+        // Check that the CSS variable is set in the inline style attribute
+        expect(containerElement?.getAttribute('style')).toContain('--keyboard-height: 300px');
 
-      // fitTerminal should be called on mobile for height changes
-      expect(fitTerminalSpy).toHaveBeenCalledTimes(1);
+        // fitTerminal should be called on mobile for height changes
+        expect(fitTerminalSpy).toHaveBeenCalledTimes(1);
 
-      vi.useRealTimers();
-    });
+        vi.useRealTimers();
+      }
+    );
   });
 });

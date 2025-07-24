@@ -119,6 +119,8 @@ describe('SessionView Drag & Drop and Paste', () => {
   beforeEach(async () => {
     // Import component to register custom element
     await import('./session-view.js');
+    await import('./terminal.js');
+    await import('./vibe-terminal-binary.js');
     // Create mock file picker
     mockFilePicker = {
       uploadFile: vi.fn().mockResolvedValue(undefined),
@@ -151,6 +153,7 @@ describe('SessionView Drag & Drop and Paste', () => {
   });
 
   afterEach(() => {
+    element.remove();
     vi.clearAllMocks();
   });
 

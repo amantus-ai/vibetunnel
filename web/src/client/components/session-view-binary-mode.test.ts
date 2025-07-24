@@ -4,6 +4,8 @@ import { fixture, waitUntil } from '@open-wc/testing';
 import { html } from 'lit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import './session-view.js';
+import './terminal.js';
+import './vibe-terminal-binary.js';
 import type { Session } from '../../shared/types.js';
 import type { UIState } from './session-view/ui-state-manager.js';
 import type { SessionView } from './session-view.js';
@@ -26,7 +28,7 @@ describe('SessionView Binary Mode', () => {
   // biome-ignore lint/suspicious/noExplicitAny: mock type
   let _getItemMock: any;
   // biome-ignore lint/suspicious/noExplicitAny: mock type
-  let originalMatchMedia: any;
+  let _originalMatchMedia: any;
 
   const mockSession: Session = {
     id: 'test-session',
@@ -53,18 +55,23 @@ describe('SessionView Binary Mode', () => {
     // Mock fetch for session API calls
     vi.spyOn(window, 'fetch').mockResolvedValue(new Response(JSON.stringify({ status: 'ok' })));
 
-    // Mock matchMedia for orientation checks
-    originalMatchMedia = window.matchMedia;
-    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
+    // Save original matchMedia
+    _originalMatchMedia = window.matchMedia;
+
+    // Reset the global mock if it exists
+    if (vi.isMockFunction(window.matchMedia)) {
+      vi.mocked(window.matchMedia).mockReset();
+      vi.mocked(window.matchMedia).mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+    }
 
     element = await fixture<SessionView>(html`
       <session-view .session=${mockSession}></session-view>
@@ -72,9 +79,9 @@ describe('SessionView Binary Mode', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
     localStorage.clear();
-    window.matchMedia = originalMatchMedia;
+    // Don't restore matchMedia - it's globally mocked
   });
 
   it('should render standard terminal by default', async () => {
