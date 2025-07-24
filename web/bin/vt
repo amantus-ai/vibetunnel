@@ -145,22 +145,6 @@ json_escape() {
     printf '%s' "$str"
 }
 
-# Function to make API request to VibeTunnel server
-make_api_request() {
-    local endpoint="$1"
-    local method="${2:-GET}"
-    local data="$3"
-    
-    # Get VibeTunnel server port (default 4020)
-    local port="${VIBETUNNEL_PORT:-4020}"
-    local url="http://localhost:${port}${endpoint}"
-    
-    if [[ "$method" == "POST" && -n "$data" ]]; then
-        curl -s -X POST -H "Content-Type: application/json" -d "$data" "$url" 2>/dev/null
-    else
-        curl -s -X "$method" "$url" 2>/dev/null
-    fi
-}
 
 # Function to show help
 show_help() {

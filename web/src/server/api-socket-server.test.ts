@@ -30,7 +30,7 @@ vi.mock('./utils/git-hooks.js', () => ({
 }));
 
 vi.mock('./utils/git-error.js', () => ({
-  createGitError: (error: any, message: string) => new Error(`${message}: ${error.message}`),
+  createGitError: (error: Error, message: string) => new Error(`${message}: ${error.message}`),
 }));
 
 vi.mock('./websocket/control-unix-handler.js', () => ({
@@ -55,7 +55,7 @@ vi.mock('util', () => ({
 }));
 
 describe('ApiSocketServer', () => {
-  let apiSocketServer: any;
+  let apiSocketServer: ApiSocketServer;
   let client: net.Socket;
 
   beforeEach(async () => {

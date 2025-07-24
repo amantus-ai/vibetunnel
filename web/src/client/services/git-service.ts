@@ -347,25 +347,36 @@ export class GitService {
   /**
    * Switch to a branch and enable follow mode
    *
-   * Switches the current session to track a different branch's worktree.
-   * This enables "follow mode" where the terminal session automatically
-   * changes directory to the worktree of the selected branch.
+   * Performs a Git checkout to switch the main repository to a different branch
+   * and enables follow mode for that branch. This operation affects the main
+   * repository, not worktrees.
+   *
+   * **What this does:**
+   * 1. Attempts to checkout the specified branch in the main repository
+   * 2. If successful, enables follow mode for that branch
+   * 3. If checkout fails (e.g., uncommitted changes), the operation is aborted
+   *
+   * **Follow mode behavior:**
+   * - Once enabled, the main repository will automatically follow any checkout
+   *   operations performed in worktrees of the followed branch
+   * - Follow mode state is stored in Git config as `vibetunnel.followBranch`
    *
    * @param repoPath - Absolute path to the repository root
-   * @param branch - Branch name to switch to (must have an existing worktree)
+   * @param branch - Branch name to switch to (must exist in the repository)
    *
    * @example
    * ```typescript
-   * // Switch to a different branch's worktree
+   * // Switch main repository to feature branch and enable follow mode
    * await gitService.switchBranch('/path/to/repo', 'feature/new-ui');
    *
-   * // The terminal session will now be in the worktree directory
-   * // for the 'feature/new-ui' branch
+   * // Now the main repository is on 'feature/new-ui' branch
+   * // and will follow any checkout operations in its worktrees
    * ```
    *
    * @throws Error if:
-   * - The branch doesn't have a worktree
-   * - The worktree path is invalid or inaccessible
+   * - The branch doesn't exist
+   * - There are uncommitted changes preventing the switch
+   * - The repository path is invalid
    * - The API request fails
    */
   async switchBranch(repoPath: string, branch: string): Promise<void> {
@@ -394,10 +405,10 @@ export class GitService {
    * Controls automatic synchronization between the main repository and worktrees.
    * When follow mode is enabled for a branch, the main repository will automatically
    * checkout that branch whenever any of its worktrees perform a checkout operation.
-   * 
+   *
    * This feature uses Git hooks (post-checkout, post-commit) and stores state in
    * the Git config as `vibetunnel.followBranch`.
-   * 
+   *
    * **Important behaviors:**
    * - Only one branch can have follow mode enabled at a time
    * - Follow mode is automatically disabled if uncommitted changes prevent switching

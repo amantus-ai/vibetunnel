@@ -104,7 +104,7 @@ struct GitRepositoryInfoResponse: Codable {
 
     /// Whether this branch has an upstream tracking branch.
     let hasUpstream: Bool?
-    
+
     /// Whether this repository is a Git worktree.
     let isWorktree: Bool?
 }
@@ -463,7 +463,6 @@ public final class GitRepositoryMonitor {
             return nil
         }
     }
-
 
     /// Fetch GitHub URL in background and cache it
     @MainActor

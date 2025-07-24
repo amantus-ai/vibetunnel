@@ -35,11 +35,12 @@ describe.skip('Follow Mode End-to-End Tests', () => {
         env: { ...process.env, VIBETUNNEL_PORT: String(serverPort) },
       });
       return { stdout: stdout.toString().trim(), stderr: stderr.toString().trim() };
-    } catch (error: any) {
+    } catch (error) {
       // If vt command fails, return error info for debugging
+      const err = error as { stdout?: Buffer; stderr?: Buffer; message: string };
       return {
-        stdout: error.stdout?.toString().trim() || '',
-        stderr: error.stderr?.toString().trim() || error.message,
+        stdout: err.stdout?.toString().trim() || '',
+        stderr: err.stderr?.toString().trim() || err.message,
       };
     }
   }
@@ -332,13 +333,11 @@ describe.skip('Follow Mode End-to-End Tests', () => {
       await gitExec(['checkout', 'develop']);
 
       // Trigger git event via API
-      await request(baseUrl)
-        .post('/api/git/event')
-        .send({
-          repoPath: testRepoPath,
-          branch: currentBranch === 'main' ? 'develop' : 'main',
-          event: 'checkout',
-        });
+      await request(baseUrl).post('/api/git/event').send({
+        repoPath: testRepoPath,
+        branch: 'develop',
+        event: 'checkout',
+      });
 
       // Get updated session info
       const listResponse2 = await request(baseUrl).get('/api/sessions');
