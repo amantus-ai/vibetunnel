@@ -26,7 +26,7 @@ struct MenuActionBar: View {
                 Label("New Session", systemImage: "plus.circle")
                     .font(.system(size: 12))
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 3)
+                    .padding(.vertical, 6)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
                             .fill(isHoveringNewSession ? AppColors.Fallback.controlBackground(for: colorScheme)
@@ -58,7 +58,7 @@ struct MenuActionBar: View {
                 Label("Settings", systemImage: "gearshape")
                     .font(.system(size: 12))
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 3)
+                    .padding(.vertical, 6)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
                             .fill(isHoveringSettings ? AppColors.Fallback.controlBackground(for: colorScheme)
@@ -92,7 +92,7 @@ struct MenuActionBar: View {
                 Label("Quit", systemImage: "power")
                     .font(.system(size: 12))
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 3)
+                    .padding(.vertical, 6)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
                             .fill(isHoveringQuit ? AppColors.Fallback.controlBackground(for: colorScheme)
@@ -119,6 +119,6 @@ struct MenuActionBar: View {
             )
         }
         .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(.vertical, 12)
     }
 }
