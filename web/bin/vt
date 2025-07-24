@@ -174,7 +174,8 @@ USAGE:
     vt --no-shell-wrap [command] [args...]
     vt -S [command] [args...]
     vt title <new title>    # Inside a VibeTunnel session only
-    vt wtree <subcommand>   # Git worktree management
+    vt follow [branch]      # Enable follow mode for current or specified branch
+    vt unfollow            # Disable follow mode
     vt git event           # Git hook notifications
     vt --help
 
@@ -192,12 +193,9 @@ DESCRIPTION:
 
     Inside a VibeTunnel session, use 'vt title' to update the session name.
     
-    The 'vt wtree' commands provide Git worktree integration:
-    - switch: Switch to a branch and enable follow mode
-    - follow: Enable follow mode for a specific branch
-    - unfollow: Disable follow mode
-    - list: List all Git worktrees
-    - create: Create a new worktree for a branch
+    Follow mode automatically switches your VibeTunnel terminal to the Git
+    worktree that matches the branch you're working on in your editor/IDE.
+    When you switch branches in your editor, VibeTunnel follows along.
     
     The 'vt git event' command is used by Git hooks to notify VibeTunnel
     of repository changes for automatic worktree switching.
@@ -213,13 +211,10 @@ EXAMPLES:
     vt -q npm test          # Run with minimal output (errors only)
     vt -vv npm run dev      # Run with verbose output
     
-    # Git worktree commands:
-    vt wtree switch main    # Switch to main branch and enable follow mode
-    vt wtree follow feature # Enable follow mode for feature branch
-    vt wtree unfollow       # Disable follow mode
-    vt wtree list           # List all worktrees
-    vt wtree create feature ~/work/feature    # Create worktree for feature branch
-    vt wtree create hotfix ~/work/hotfix main # Create new hotfix branch from main
+    # Git follow mode:
+    vt follow               # Enable follow mode for current branch
+    vt follow main          # Switch to main branch and enable follow mode
+    vt unfollow            # Disable follow mode
     
     # Git event command (typically called by Git hooks):
     vt git event            # Notify VibeTunnel of Git changes

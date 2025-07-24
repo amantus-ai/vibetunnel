@@ -30,11 +30,11 @@ interface WebSocketInputHandlerOptions {
 
 /**
  * Handles WebSocket connections for real-time terminal input transmission.
- * 
+ *
  * Provides ultra-low-latency input handling for terminal sessions with support
  * for both local and remote sessions in HQ mode. Uses a fire-and-forget approach
  * with minimal parsing overhead for maximum performance.
- * 
+ *
  * Features:
  * - Direct WebSocket-to-PTY input forwarding
  * - Special key detection with null-byte markers
@@ -42,12 +42,12 @@ interface WebSocketInputHandlerOptions {
  * - No acknowledgment overhead (fire-and-forget)
  * - Automatic connection cleanup
  * - Support for all input types (text, special keys)
- * 
+ *
  * Protocol:
  * - Regular text: sent as-is
  * - Special keys: wrapped in null bytes (e.g., "\x00enter\x00")
  * - Remote mode: raw passthrough without parsing
- * 
+ *
  * @example
  * ```typescript
  * const handler = new WebSocketInputHandler({
@@ -58,14 +58,14 @@ interface WebSocketInputHandlerOptions {
  *   authService,
  *   isHQMode: true
  * });
- * 
+ *
  * // Handle incoming WebSocket connection
  * wss.on('connection', (ws, req) => {
  *   const { sessionId, userId } = parseQuery(req.url);
  *   handler.handleConnection(ws, sessionId, userId);
  * });
  * ```
- * 
+ *
  * @see PtyManager - Handles actual terminal input processing
  * @see RemoteRegistry - Manages remote server connections in HQ mode
  * @see web/src/client/components/session-view/input-manager.ts - Client-side input handling

@@ -21,6 +21,11 @@ export enum MessageType {
   // Reserved for future use
   STDOUT_SUBSCRIBE = 0x10,
   METRICS = 0x11,
+  // Git operations
+  GIT_FOLLOW_REQUEST = 0x30, // Enable/disable Git follow mode
+  GIT_FOLLOW_RESPONSE = 0x31, // Response to follow request
+  GIT_EVENT_NOTIFY = 0x32, // Git event notification
+  GIT_EVENT_ACK = 0x33, // Git event acknowledgment
 }
 
 /**
@@ -68,6 +73,40 @@ export interface ErrorMessage {
   code: string;
   message: string;
   details?: unknown;
+}
+
+/**
+ * Git follow mode request
+ */
+export interface GitFollowRequest {
+  repoPath: string;
+  branch?: string; // Optional - if not provided, use current branch
+  enable: boolean;
+}
+
+/**
+ * Git follow mode response
+ */
+export interface GitFollowResponse {
+  success: boolean;
+  currentBranch?: string;
+  previousBranch?: string;
+  error?: string;
+}
+
+/**
+ * Git event notification
+ */
+export interface GitEventNotify {
+  repoPath: string;
+  type: 'checkout' | 'commit' | 'merge' | 'rebase' | 'other';
+}
+
+/**
+ * Git event acknowledgment
+ */
+export interface GitEventAck {
+  handled: boolean;
 }
 
 /**
@@ -170,6 +209,22 @@ export const MessageBuilder = {
   error(code: string, message: string, details?: unknown): Buffer {
     return frameMessage(MessageType.ERROR, { code, message, details });
   },
+
+  gitFollowRequest(request: GitFollowRequest): Buffer {
+    return frameMessage(MessageType.GIT_FOLLOW_REQUEST, request);
+  },
+
+  gitFollowResponse(response: GitFollowResponse): Buffer {
+    return frameMessage(MessageType.GIT_FOLLOW_RESPONSE, response);
+  },
+
+  gitEventNotify(event: GitEventNotify): Buffer {
+    return frameMessage(MessageType.GIT_EVENT_NOTIFY, event);
+  },
+
+  gitEventAck(ack: GitEventAck): Buffer {
+    return frameMessage(MessageType.GIT_EVENT_ACK, ack);
+  },
 } as const;
 
 /**
@@ -183,6 +238,10 @@ export function parsePayload(type: MessageType, payload: Buffer): unknown {
     case MessageType.CONTROL_CMD:
     case MessageType.STATUS_UPDATE:
     case MessageType.ERROR:
+    case MessageType.GIT_FOLLOW_REQUEST:
+    case MessageType.GIT_FOLLOW_RESPONSE:
+    case MessageType.GIT_EVENT_NOTIFY:
+    case MessageType.GIT_EVENT_ACK:
       return JSON.parse(payload.toString('utf8'));
 
     case MessageType.HEARTBEAT:

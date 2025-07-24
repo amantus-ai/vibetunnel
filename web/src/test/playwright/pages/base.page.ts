@@ -4,12 +4,12 @@ import { WaitUtils } from '../utils/test-utils';
 
 /**
  * Base page object class that provides common functionality for all page objects.
- * 
+ *
  * This class serves as the foundation for the Page Object Model pattern in Playwright tests,
  * providing shared utilities for navigation, element interaction, and state management.
  * It handles common tasks like navigating to pages, waiting for app initialization,
  * dismissing errors, and closing modals.
- * 
+ *
  * @example
  * ```typescript
  * // Create a custom page object extending BasePage
@@ -19,7 +19,7 @@ import { WaitUtils } from '../utils/test-utils';
  *     await this.waitForText('Success!');
  *   }
  * }
- * 
+ *
  * // Use in a test
  * const myPage = new MyCustomPage(page);
  * await myPage.navigate('/my-route');

@@ -26,18 +26,18 @@ export interface SocketClientEvents {
 
 /**
  * Unix socket client for communication between VibeTunnel web server and terminal processes.
- * 
+ *
  * This class provides a robust client for connecting to Unix domain sockets with automatic
  * reconnection, heartbeat support, and message parsing using the VibeTunnel socket protocol.
  * It handles terminal control operations like stdin input, resizing, and process management.
- * 
+ *
  * Key features:
  * - Automatic reconnection with configurable delay
  * - Heartbeat mechanism to detect connection health
  * - Binary message protocol with length-prefixed framing
  * - Event-based API for handling connection state and messages
  * - macOS socket path length validation (104 char limit)
- * 
+ *
  * @example
  * ```typescript
  * // Create a client for a terminal session
@@ -45,18 +45,18 @@ export interface SocketClientEvents {
  *   autoReconnect: true,
  *   heartbeatInterval: 30000
  * });
- * 
+ *
  * // Listen for events
  * client.on('connect', () => console.log('Connected to terminal'));
  * client.on('status', (status) => console.log('Terminal status:', status));
  * client.on('error', (error) => console.error('Socket error:', error));
- * 
+ *
  * // Connect and send commands
  * await client.connect();
  * client.sendStdin('ls -la\n');
  * client.resize(80, 24);
  * ```
- * 
+ *
  * @extends EventEmitter
  */
 export class VibeTunnelSocketClient extends EventEmitter {

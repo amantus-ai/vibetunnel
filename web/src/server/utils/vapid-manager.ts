@@ -19,19 +19,19 @@ export interface VapidConfig {
 
 /**
  * Manages VAPID (Voluntary Application Server Identification) keys for web push notifications.
- * 
+ *
  * This class handles the generation, storage, validation, and rotation of VAPID keys
  * used for authenticating push notifications sent from the VibeTunnel server to web clients.
  * It provides a complete lifecycle management system for VAPID credentials with secure
  * file-based persistence.
- * 
+ *
  * Key features:
  * - Automatic key generation with secure storage (0600 permissions)
  * - Key rotation support for security best practices
  * - Validation of keys and email format
  * - Integration with web-push library for sending notifications
  * - Persistent storage in ~/.vibetunnel/vapid/keys.json
- * 
+ *
  * @example
  * ```typescript
  * // Initialize VAPID manager with automatic key generation
@@ -40,16 +40,16 @@ export interface VapidConfig {
  *   contactEmail: 'admin@example.com',
  *   generateIfMissing: true
  * });
- * 
+ *
  * // Get public key for client registration
  * const publicKey = manager.getPublicKey();
- * 
+ *
  * // Send a push notification
  * await manager.sendNotification(subscription, JSON.stringify({
  *   title: 'New Terminal Session',
  *   body: 'A new session has been created'
  * }));
- * 
+ *
  * // Rotate keys for security
  * await manager.rotateKeys('admin@example.com');
  * ```

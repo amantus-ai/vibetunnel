@@ -4,12 +4,12 @@ import { BasePage } from './base.page';
 
 /**
  * Page object for the terminal session view, providing terminal interaction capabilities.
- * 
+ *
  * This class handles all interactions within an active terminal session, including
  * command execution, output verification, terminal control operations, and navigation.
  * It wraps terminal-specific utilities to provide a clean interface for test scenarios
  * that need to interact with the terminal emulator.
- * 
+ *
  * Key features:
  * - Command execution with automatic Enter key handling
  * - Terminal output reading and waiting for specific text
@@ -17,7 +17,7 @@ import { BasePage } from './base.page';
  * - Copy/paste functionality
  * - Session navigation (back to list)
  * - Terminal state verification
- * 
+ *
  * @example
  * ```typescript
  * // Execute commands and verify output
@@ -25,12 +25,12 @@ import { BasePage } from './base.page';
  * await sessionView.waitForTerminalReady();
  * await sessionView.typeCommand('echo "Hello World"');
  * await sessionView.waitForOutput('Hello World');
- * 
+ *
  * // Control terminal
  * await sessionView.clearTerminal();
  * await sessionView.sendInterrupt(); // Ctrl+C
  * await sessionView.resizeTerminal(800, 600);
- * 
+ *
  * // Navigate back
  * await sessionView.navigateBack();
  * ```
