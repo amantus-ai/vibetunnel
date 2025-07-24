@@ -49,6 +49,7 @@ export const Z_INDEX = {
 
   // Modals and overlays (100-199)
   MODAL_BACKDROP: 100,
+  MODAL: 105,
   FILE_PICKER: 110,
   SESSION_EXITED_OVERLAY: 120,
   NOTIFICATION: 150, // Notifications appear above modals but below file browser
