@@ -44,8 +44,8 @@ import {
 } from './session-view/terminal-lifecycle-manager.js';
 import { TerminalSettingsManager } from './session-view/terminal-settings-manager.js';
 import { UIStateManager } from './session-view/ui-state-manager.js';
-import type { AppPreferences } from './unified-settings.js';
-import { STORAGE_KEY } from './unified-settings.js';
+import type { AppPreferences } from './settings.js';
+import { STORAGE_KEY } from './settings.js';
 
 // Components
 import './session-view/terminal-renderer.js';
