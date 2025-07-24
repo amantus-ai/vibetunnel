@@ -3,8 +3,8 @@
 import { fixture } from '@open-wc/testing';
 import { html } from 'lit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import '../terminal-settings-modal.js';
-import type { TerminalSettingsModal } from '../terminal-settings-modal.js';
+import './width-selector.js';
+import type { TerminalSettingsModal } from './width-selector.js';
 
 describe('TerminalSettingsModal Binary Mode', () => {
   let element: TerminalSettingsModal;

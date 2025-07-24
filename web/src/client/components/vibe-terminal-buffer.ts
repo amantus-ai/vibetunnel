@@ -36,7 +36,7 @@ export class VibeTerminalBuffer extends LitElement {
 
   @state() private buffer: BufferSnapshot | null = null;
   @state() private error: string | null = null;
-  @state() private displayedFontSize = 14;
+  @state() private displayedFontSize = 16;
   @state() private visibleRows = 0;
 
   private container: HTMLElement | null = null;

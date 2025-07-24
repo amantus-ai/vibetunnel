@@ -1,0 +1,211 @@
+import { expect, test } from '../fixtures/test.fixture';
+import { assertTerminalReady } from '../helpers/assertion.helper';
+import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
+import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { ensureCleanState } from '../helpers/test-isolation.helper';
+import { SessionViewPage } from '../pages/session-view.page';
+import { TestDataFactory } from '../utils/test-utils';
+
+// Use a unique prefix for this test suite
+const TEST_PREFIX = TestDataFactory.getTestSpecificPrefix('keyboard-capture');
+
+test.describe('Keyboard Capture Toggle', () => {
+  let sessionManager: TestSessionManager;
+  let sessionViewPage: SessionViewPage;
+
+  test.beforeEach(async ({ page }) => {
+    sessionManager = new TestSessionManager(page, TEST_PREFIX);
+    sessionViewPage = new SessionViewPage(page);
+
+    // Ensure clean state for each test
+    await ensureCleanState(page);
+  });
+
+  test.afterEach(async () => {
+    await sessionManager.cleanupAllSessions();
+  });
+
+  test('should toggle keyboard capture with double Escape', async ({ page }) => {
+    // Create a session
+    await createAndNavigateToSession(page, {
+      name: sessionManager.generateSessionName('capture-toggle'),
+    });
+
+    await assertTerminalReady(page);
+    await sessionViewPage.clickTerminal();
+
+    // Find the keyboard capture indicator
+    const captureIndicator = page.locator('keyboard-capture-indicator');
+    await expect(captureIndicator).toBeVisible();
+
+    // Check initial state (should be ON by default)
+    const initialButtonState = await captureIndicator.locator('button').getAttribute('class');
+    expect(initialButtonState).toContain('text-primary');
+
+    // Add event listener to capture the custom event
+    const captureToggledPromise = page.evaluate(() => {
+      return new Promise<boolean>((resolve) => {
+        document.addEventListener(
+          'capture-toggled',
+          (e: any) => {
+            console.log('🎯 capture-toggled event received:', e.detail);
+            resolve(e.detail.active);
+          },
+          { once: true }
+        );
+      });
+    });
+
+    // Press Escape twice quickly (double-tap)
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(100); // Small delay between presses
+    await page.keyboard.press('Escape');
+
+    // Wait for the capture-toggled event
+    const newState = await Promise.race([
+      captureToggledPromise,
+      page.waitForTimeout(1000).then(() => null),
+    ]);
+
+    if (newState === null) {
+      // Event didn't fire - let's check if the UI updated anyway
+      console.log('capture-toggled event did not fire within timeout');
+    } else {
+      expect(newState).toBe(false); // Should toggle from ON to OFF
+    }
+
+    // Verify the indicator shows OFF state
+    await page.waitForTimeout(200); // Allow UI to update
+    const updatedButtonState = await captureIndicator.locator('button').getAttribute('class');
+    expect(updatedButtonState).toContain('text-muted');
+
+    // Toggle back ON with another double Escape
+    const secondTogglePromise = page.evaluate(() => {
+      return new Promise<boolean>((resolve) => {
+        document.addEventListener(
+          'capture-toggled',
+          (e: any) => {
+            console.log('🎯 capture-toggled event received (2nd):', e.detail);
+            resolve(e.detail.active);
+          },
+          { once: true }
+        );
+      });
+    });
+
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(100);
+    await page.keyboard.press('Escape');
+
+    const secondNewState = await Promise.race([
+      secondTogglePromise,
+      page.waitForTimeout(1000).then(() => null),
+    ]);
+
+    if (secondNewState !== null) {
+      expect(secondNewState).toBe(true); // Should toggle from OFF to ON
+    }
+
+    // Verify the indicator shows ON state again
+    await page.waitForTimeout(200);
+    const finalButtonState = await captureIndicator.locator('button').getAttribute('class');
+    expect(finalButtonState).toContain('text-primary');
+  });
+
+  test('should show captured shortcuts in indicator tooltip', async ({ page }) => {
+    // Create a session
+    await createAndNavigateToSession(page, {
+      name: sessionManager.generateSessionName('capture-tooltip'),
+    });
+
+    await assertTerminalReady(page);
+    await sessionViewPage.clickTerminal();
+
+    // Find the keyboard capture indicator
+    const captureIndicator = page.locator('keyboard-capture-indicator');
+    await expect(captureIndicator).toBeVisible();
+
+    // Hover over the indicator to show tooltip
+    await captureIndicator.hover();
+
+    // Wait for tooltip to appear
+    await page.waitForTimeout(200);
+
+    // Check tooltip content
+    const tooltip = page.locator('keyboard-capture-indicator >> text="Keyboard Capture ON"');
+    await expect(tooltip).toBeVisible();
+
+    // Verify it mentions double-tap Escape
+    const escapeInstruction = page.locator('keyboard-capture-indicator >> text="Double-tap"');
+    await expect(escapeInstruction).toBeVisible();
+
+    const escapeText = page.locator('keyboard-capture-indicator >> text="Escape"');
+    await expect(escapeText).toBeVisible();
+
+    // Check for some captured shortcuts
+    const isMac = process.platform === 'darwin';
+    if (isMac) {
+      await expect(page.locator('keyboard-capture-indicator >> text="Cmd+A"')).toBeVisible();
+      await expect(
+        page.locator('keyboard-capture-indicator >> text="Line start (not select all)"')
+      ).toBeVisible();
+    } else {
+      await expect(page.locator('keyboard-capture-indicator >> text="Ctrl+A"')).toBeVisible();
+      await expect(
+        page.locator('keyboard-capture-indicator >> text="Line start (not select all)"')
+      ).toBeVisible();
+    }
+  });
+
+  test('should respect keyboard capture state for shortcuts', async ({ page }) => {
+    // Create a session
+    await createAndNavigateToSession(page, {
+      name: sessionManager.generateSessionName('capture-shortcuts'),
+    });
+
+    await assertTerminalReady(page);
+    await sessionViewPage.clickTerminal();
+
+    // Type some text first
+    await page.keyboard.type('echo "test"');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(500);
+
+    // With capture ON, Cmd/Ctrl+A should go to terminal (move to line start)
+    const isMac = process.platform === 'darwin';
+    await page.keyboard.type('hello world');
+    await page.keyboard.press(isMac ? 'Meta+a' : 'Control+a');
+
+    // Type something at the beginning of line
+    await page.keyboard.type('START ');
+    await page.keyboard.press('Enter');
+
+    // Should see "START hello world"
+    await expect(page.locator('text="START hello world"')).toBeVisible({ timeout: 2000 });
+
+    // Now toggle capture OFF
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(100);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+
+    // Verify capture is OFF
+    const captureIndicator = page.locator('keyboard-capture-indicator');
+    const buttonState = await captureIndicator.locator('button').getAttribute('class');
+    expect(buttonState).toContain('text-muted');
+
+    // With capture OFF, Cmd/Ctrl+A should select all (browser behavior)
+    // Type some text
+    await page.keyboard.type('another test');
+
+    // Press Cmd/Ctrl+A - should select all
+    await page.keyboard.press(isMac ? 'Meta+a' : 'Control+a');
+
+    // Type replacement text - should replace all selected text
+    await page.keyboard.type('replaced');
+    await page.keyboard.press('Enter');
+
+    // Should see "replaced" (not "another test")
+    await expect(page.locator('text="replaced"')).toBeVisible({ timeout: 2000 });
+  });
+});

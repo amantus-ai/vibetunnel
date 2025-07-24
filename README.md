@@ -270,19 +270,6 @@ vt unfollow
 
 ### Common Workflows
 
-#### Single Repository Development
-```bash
-# Start working on a feature
-vt follow feature/user-auth
-# Your terminal is now following this branch
-
-# Switch to another branch in your IDE
-# Terminal automatically switches too!
-
-# Stop following when done
-vt unfollow
-```
-
 #### Agent Development with Worktrees
 ```bash
 # Create a worktree for agent development

@@ -1398,6 +1398,7 @@ export class VibeTunnelApp extends LitElement {
   };
 
   private handleCaptureToggled = (e: CustomEvent) => {
+    logger.log(`🎯 handleCaptureToggled called with:`, e.detail);
     this.keyboardCaptureActive = e.detail.active;
     logger.log(
       `Keyboard capture ${this.keyboardCaptureActive ? 'enabled' : 'disabled'} via indicator`

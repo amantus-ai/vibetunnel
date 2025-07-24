@@ -15,7 +15,7 @@ import './ctrl-alpha-overlay.js';
 import '../terminal-quick-keys.js';
 import '../file-browser.js';
 import '../file-picker.js';
-import '../terminal-settings-modal.js';
+import './width-selector.js';
 
 export interface OverlaysCallbacks {
   // Mobile input callbacks
