@@ -765,7 +765,7 @@ export class MultiplexerModal extends LitElement {
 
                           ${
                             isExpanded
-                              ? session.type === 'tmux' && sessionWindows.length > 0
+                              ? (session.type === 'tmux' && sessionWindows.length > 0
                                 ? html`
                                   <div class="windows-list">
                                   ${repeat(
@@ -856,7 +856,8 @@ export class MultiplexerModal extends LitElement {
                                     </button>
                                   </div>
                                 `
-                                : null
+                                : null)
+                              : null
                           }
                         </div>
                       `;
