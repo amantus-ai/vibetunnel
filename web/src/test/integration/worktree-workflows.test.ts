@@ -268,15 +268,6 @@ describe('Worktree Workflows Integration Tests', () => {
 
       expect(session).toBeDefined();
       expect(session.gitRepoPath).toBeTruthy();
-      
-      // Debug output
-      console.log('Session git info:', {
-        gitRepoPath: session.gitRepoPath,
-        gitBranch: session.gitBranch,
-        gitIsWorktree: session.gitIsWorktree,
-        workingDir: session.workingDir,
-      });
-      
       expect(session.gitBranch).toBe('main');
 
       // Clean up immediately
