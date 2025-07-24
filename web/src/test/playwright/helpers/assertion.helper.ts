@@ -294,7 +294,7 @@ export async function assertTerminalReady(page: Page, timeout = 15000): Promise<
   // Check for prompt - with more robust detection and debugging
   await page.waitForFunction(
     () => {
-      const term = document.querySelector('vibe-terminal');
+      const term = document.querySelector('#session-terminal');
       if (!term) {
         console.warn('[assertTerminalReady] Terminal element not found');
         return false;

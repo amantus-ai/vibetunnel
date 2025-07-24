@@ -280,7 +280,7 @@ struct GitBranchWorktreeSelector: View {
 
     private func getCurrentBranch() -> String {
         // Get the actual current branch from GitRepositoryMonitor
-        gitMonitor.repository(for: repoPath)?.currentBranch ?? selectedBranch
+        gitMonitor.getCachedRepository(for: repoPath)?.currentBranch ?? selectedBranch
     }
 
     private func loadGitData() async {
