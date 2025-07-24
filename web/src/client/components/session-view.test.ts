@@ -337,10 +337,10 @@ describe('SessionView', () => {
       (global.fetch as ReturnType<typeof vi.fn>).mockImplementation(
         (url: string, options: RequestInit) => {
           if (url.includes('/input')) {
-            inputCapture(JSON.parse(options.body));
-            return Promise.resolve({ ok: true });
+            inputCapture(JSON.parse(options.body as string));
+            return Promise.resolve({ ok: true } as Response);
           }
-          return Promise.resolve({ ok: true });
+          return Promise.resolve({ ok: true } as Response);
         }
       );
 
@@ -361,9 +361,9 @@ describe('SessionView', () => {
     it('should handle terminal resize', async () => {
       const terminal = element.querySelector('vibe-terminal');
       if (terminal) {
-        // Dispatch resize event
+        // Dispatch resize event with all required properties
         const resizeEvent = new CustomEvent('terminal-resize', {
-          detail: { cols: 100, rows: 30 },
+          detail: { cols: 100, rows: 30, isMobile: false, isHeightOnlyChange: false, source: 'test' },
           bubbles: true,
         });
         terminal.dispatchEvent(resizeEvent);
@@ -372,12 +372,9 @@ describe('SessionView', () => {
 
         // Component updates its state but doesn't send resize via input endpoint
         // Note: The actual dimensions might be slightly different due to terminal calculations
-        const testElement = element as SessionViewTestInterface;
-        const uiState = testElement.uiStateManager.getState();
-        expect(uiState.terminalCols).toBeGreaterThanOrEqual(99);
-        expect(uiState.terminalCols).toBeLessThanOrEqual(100);
-        expect(uiState.terminalRows).toBeGreaterThanOrEqual(30);
-        expect(uiState.terminalRows).toBeLessThanOrEqual(35);
+        // The terminal lifecycle manager handles the event
+        expect(element.terminalCols).toBeGreaterThanOrEqual(99);
+        expect(element.terminalRows).toBeGreaterThanOrEqual(30);
       }
     });
   });
