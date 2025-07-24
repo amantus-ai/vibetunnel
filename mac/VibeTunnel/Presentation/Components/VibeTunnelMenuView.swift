@@ -22,20 +22,13 @@ struct VibeTunnelMenuView: View {
     @State private var hoveredSessionId: String?
     @State private var hasStartedKeyboardNavigation = false
     @State private var showingNewSession = false
-    @FocusState private var focusedField: FocusField?
+    @FocusState private var focusedField: MenuFocusField?
 
     /// Binding to allow external control of new session state
     @Binding var isNewSessionActive: Bool
 
     init(isNewSessionActive: Binding<Bool> = .constant(false)) {
         self._isNewSessionActive = isNewSessionActive
-    }
-
-    enum FocusField: Hashable {
-        case sessionRow(String)
-        case settingsButton
-        case newSessionButton
-        case quitButton
     }
 
     var body: some View {
@@ -156,7 +149,7 @@ struct VibeTunnelMenuView: View {
     
     private func handleArrowKeyNavigation(_ isUpArrow: Bool) -> KeyPress.Result {
         let allSessions = activeSessions + idleSessions
-        let focusableFields: [FocusField] = allSessions.map { .sessionRow($0.key) } + 
+        let focusableFields: [MenuFocusField] = allSessions.map { .sessionRow($0.key) } + 
             [.newSessionButton, .settingsButton, .quitButton]
         
         guard let currentFocus = focusedField,

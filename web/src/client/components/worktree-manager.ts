@@ -32,6 +32,12 @@ export class WorktreeManager extends LitElement {
   @state() private showDeleteConfirm = false;
   @state() private deleteTargetBranch = '';
   @state() private deleteHasChanges = false;
+  @state() private showCreateWorktree = false;
+  @state() private newBranchName = '';
+  @state() private newWorktreePath = '';
+  @state() private useCustomPath = false;
+  @state() private isCreatingWorktree = false;
+  @state() private availableBranches: string[] = [];
 
   connectedCallback() {
     super.connectedCallback();
@@ -174,6 +180,127 @@ export class WorktreeManager extends LitElement {
 
   private formatPath(path: string): string {
     return formatPathForDisplay(path);
+  }
+
+  private async handleCreateWorktree() {
+    const branchName = this.newBranchName.trim();
+    
+    if (!branchName || !this.gitService || !this.repoPath) {
+      return;
+    }
+
+    // Validate branch name
+    const validationError = this.validateBranchName(branchName);
+    if (validationError) {
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: { message: validationError },
+          bubbles: true,
+          composed: true,
+        })
+      );
+      return;
+    }
+
+    this.isCreatingWorktree = true;
+    try {
+      // Use custom path if provided, otherwise generate default
+      const worktreePath = this.useCustomPath && this.newWorktreePath.trim() 
+        ? this.newWorktreePath.trim()
+        : this.generateWorktreePath(branchName);
+
+      await this.gitService.createWorktree(
+        this.repoPath,
+        branchName,
+        worktreePath,
+        this.baseBranch
+      );
+
+      // Reset form
+      this.showCreateWorktree = false;
+      this.newBranchName = '';
+      this.newWorktreePath = '';
+      this.useCustomPath = false;
+
+      // Reload worktrees
+      await this.loadWorktrees();
+
+      this.dispatchEvent(
+        new CustomEvent('success', {
+          detail: { message: `Created worktree for branch '${branchName}'` },
+          bubbles: true,
+          composed: true,
+        })
+      );
+    } catch (err) {
+      logger.error('Failed to create worktree:', err);
+      
+      let errorMessage = 'Failed to create worktree';
+      if (err instanceof Error) {
+        if (err.message.includes('already exists')) {
+          errorMessage = `Worktree path already exists. Try a different branch name or path.`;
+        } else if (err.message.includes('already checked out')) {
+          errorMessage = `Branch '${branchName}' is already checked out in another worktree`;
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: { message: errorMessage },
+          bubbles: true,
+          composed: true,
+        })
+      );
+    } finally {
+      this.isCreatingWorktree = false;
+    }
+  }
+
+  private validateBranchName(name: string): string | null {
+    // Check if branch already exists
+    const existingBranches = this.worktrees.map(wt => wt.branch.replace(/^refs\/heads\//, ''));
+    if (existingBranches.includes(name)) {
+      return `Branch '${name}' already exists`;
+    }
+
+    // Git branch name validation rules
+    if (name.startsWith('-') || name.endsWith('-')) {
+      return 'Branch name cannot start or end with a hyphen';
+    }
+    
+    if (name.includes('..') || name.includes('~') || name.includes('^') || name.includes(':')) {
+      return 'Branch name contains invalid characters (.. ~ ^ :)';
+    }
+    
+    if (name.endsWith('.lock')) {
+      return 'Branch name cannot end with .lock';
+    }
+    
+    if (name.includes('//') || name.includes('\\')) {
+      return 'Branch name cannot contain consecutive slashes';
+    }
+
+    // Reserved names
+    const reserved = ['HEAD', 'FETCH_HEAD', 'ORIG_HEAD', 'MERGE_HEAD'];
+    if (reserved.includes(name.toUpperCase())) {
+      return `'${name}' is a reserved Git name`;
+    }
+
+    return null;
+  }
+
+  private generateWorktreePath(branchName: string): string {
+    const branchSlug = branchName.trim().replace(/[^a-zA-Z0-9-_]/g, '-');
+    return `${this.repoPath}-${branchSlug}`;
+  }
+
+  private handleCancelCreateWorktree() {
+    this.showCreateWorktree = false;
+    this.newBranchName = '';
+    this.newWorktreePath = '';
+    this.useCustomPath = false;
   }
 
   render() {

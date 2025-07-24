@@ -43,6 +43,8 @@ export class GitBranchSelector extends LitElement {
   @state() private showCreateWorktree = false;
   @state() private newBranchName = '';
   @state() private isCreatingWorktree = false;
+  @state() private customPath = '';
+  @state() private useCustomPath = false;
 
   private handleBaseBranchChange(e: Event) {
     const select = e.target as HTMLSelectElement;
@@ -94,6 +96,7 @@ export class GitBranchSelector extends LitElement {
         detail: {
           branchName: branchName,
           baseBranch: this.selectedBaseBranch || 'main',
+          customPath: this.useCustomPath ? this.customPath.trim() : null,
         },
         bubbles: true,
         composed: true,
@@ -140,6 +143,8 @@ export class GitBranchSelector extends LitElement {
   private handleCancelCreateWorktree() {
     this.showCreateWorktree = false;
     this.newBranchName = '';
+    this.customPath = '';
+    this.useCustomPath = false;
   }
 
   render() {
@@ -317,6 +322,55 @@ export class GitBranchSelector extends LitElement {
                       }
                     }}
                   />
+                  
+                  <!-- Path customization toggle -->
+                  <label class="flex items-center gap-2 text-xs text-text-muted cursor-pointer">
+                    <input
+                      type="checkbox"
+                      .checked=${this.useCustomPath}
+                      @change=${(e: Event) => {
+                        this.useCustomPath = (e.target as HTMLInputElement).checked;
+                        if (!this.useCustomPath) {
+                          this.customPath = '';
+                        }
+                      }}
+                      ?disabled=${this.disabled || this.isCreating || this.isCreatingWorktree}
+                      class="rounded"
+                    />
+                    <span>Customize worktree path</span>
+                  </label>
+                  
+                  <!-- Custom path input -->
+                  ${
+                    this.useCustomPath
+                      ? html`
+                      <div class="space-y-1">
+                        <input
+                          type="text"
+                          .value=${this.customPath}
+                          @input=${(e: InputEvent) => {
+                            this.customPath = (e.target as HTMLInputElement).value;
+                          }}
+                          placeholder="/path/to/worktree"
+                          class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm"
+                          ?disabled=${this.disabled || this.isCreating || this.isCreatingWorktree}
+                        />
+                        <div class="text-[10px] text-text-dim">
+                          ${
+                            this.customPath.trim()
+                              ? `Will create at: ${this.customPath.trim()}`
+                              : 'Enter absolute path for the worktree'
+                          }
+                        </div>
+                      </div>
+                    `
+                      : html`
+                      <div class="text-[10px] text-text-dim">
+                        Will use default path: ${this.gitRepoInfo?.repoPath || ''}-${this.newBranchName.trim().replace(/[^a-zA-Z0-9-_]/g, '-') || 'branch'}
+                      </div>
+                    `
+                  }
+                  
                   <div class="flex items-center gap-2">
                     <button
                       type="button"
@@ -330,7 +384,7 @@ export class GitBranchSelector extends LitElement {
                       type="button"
                       @click=${this.handleCreateWorktree}
                       class="text-[10px] sm:text-xs px-2 py-1 bg-primary text-bg-elevated rounded hover:bg-primary-dark transition-colors disabled:opacity-50"
-                      ?disabled=${!this.newBranchName.trim() || this.disabled || this.isCreating || this.isCreatingWorktree}
+                      ?disabled=${!this.newBranchName.trim() || (this.useCustomPath && !this.customPath.trim()) || this.disabled || this.isCreating || this.isCreatingWorktree}
                     >
                       ${this.isCreatingWorktree ? 'Creating...' : 'Create'}
                     </button>

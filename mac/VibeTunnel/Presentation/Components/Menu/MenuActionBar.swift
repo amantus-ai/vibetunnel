@@ -1,12 +1,20 @@
 import SwiftUI
 
+/// Focus field enum that matches the one in VibeTunnelMenuView
+enum MenuFocusField: Hashable {
+    case sessionRow(String)
+    case settingsButton
+    case newSessionButton
+    case quitButton
+}
+
 /// Bottom action bar for the menu with New Session, Settings, and Quit buttons.
 ///
 /// Provides quick access to common actions with keyboard navigation support
 /// and visual feedback for hover and focus states.
 struct MenuActionBar: View {
     @Binding var showingNewSession: Bool
-    @Binding var focusedField: VibeTunnelMenuView.FocusField?
+    @Binding var focusedField: MenuFocusField?
     let hasStartedKeyboardNavigation: Bool
 
     @Environment(\.openWindow)

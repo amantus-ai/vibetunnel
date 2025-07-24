@@ -43,7 +43,7 @@ import {
   AutocompleteManager,
   type Repository,
 } from './autocomplete-manager.js';
-import type { WorktreeInfo } from './session-create-form/git-branch-selector.js';
+import { type WorktreeInfo, type GitBranchSelector } from './session-create-form/git-branch-selector.js';
 import {
   checkFollowMode,
   enableFollowMode,
@@ -664,13 +664,14 @@ export class SessionCreateForm extends LitElement {
   }
 
   private async handleCreateWorktreeRequest(e: CustomEvent) {
-    const { branchName, baseBranch } = e.detail;
+    const { branchName, baseBranch, customPath } = e.detail;
     if (!this.gitRepoInfo?.repoPath || !this.gitService) {
       return;
     }
 
     try {
-      const worktreePath = generateWorktreePath(this.gitRepoInfo.repoPath, branchName);
+      // Use custom path if provided, otherwise generate default
+      const worktreePath = customPath || generateWorktreePath(this.gitRepoInfo.repoPath, branchName);
 
       // Create the worktree
       await this.gitService.createWorktree(
@@ -698,11 +699,13 @@ export class SessionCreateForm extends LitElement {
       this.selectedWorktree = branchName;
 
       // Clear the isCreatingWorktree state in git-branch-selector
-      const gitBranchSelector = this.querySelector('git-branch-selector') as any;
+      const gitBranchSelector = this.querySelector('git-branch-selector') as GitBranchSelector;
       if (gitBranchSelector) {
         gitBranchSelector.isCreatingWorktree = false;
         gitBranchSelector.showCreateWorktree = false;
         gitBranchSelector.newBranchName = '';
+        gitBranchSelector.customPath = '';
+        gitBranchSelector.useCustomPath = false;
       }
 
       // Show success message
@@ -717,7 +720,7 @@ export class SessionCreateForm extends LitElement {
       logger.error('Failed to create worktree:', error);
 
       // Clear the isCreatingWorktree state in git-branch-selector on error too
-      const gitBranchSelector = this.querySelector('git-branch-selector') as any;
+      const gitBranchSelector = this.querySelector('git-branch-selector') as GitBranchSelector;
       if (gitBranchSelector) {
         gitBranchSelector.isCreatingWorktree = false;
       }

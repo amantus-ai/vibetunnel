@@ -36,8 +36,6 @@ export class GitNotificationHandler extends LitElement {
       this.unsubscribe();
     }
 
-    this.controlEventService = service;
-
     // Subscribe to control events
     this.unsubscribe = service.onEvent((event) => {
       if (event.category === 'git' && event.action === 'notification') {

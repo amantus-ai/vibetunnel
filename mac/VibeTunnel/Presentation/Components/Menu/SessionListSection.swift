@@ -34,10 +34,10 @@ struct SessionListSection: View {
     let activeSessions: [(key: String, value: ServerSessionInfo)]
     let idleSessions: [(key: String, value: ServerSessionInfo)]
     let hoveredSessionId: String?
-    let focusedField: VibeTunnelMenuView.FocusField?
+    let focusedField: MenuFocusField?
     let hasStartedKeyboardNavigation: Bool
     let onHover: (String?) -> Void
-    let onFocus: (VibeTunnelMenuView.FocusField?) -> Void
+    let onFocus: (MenuFocusField?) -> Void
 
     var body: some View {
         VStack(spacing: 1) {
