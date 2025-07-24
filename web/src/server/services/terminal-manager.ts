@@ -687,7 +687,37 @@ export class TerminalManager {
   }
 
   /**
-   * Encode buffer snapshot to binary format - optimized for minimal data transmission
+   * Encode buffer snapshot to binary format
+   *
+   * Converts a buffer snapshot into an optimized binary format for
+   * efficient transmission over WebSocket. The encoding uses various
+   * compression techniques:
+   *
+   * - Empty rows are marked with 2-byte markers
+   * - Spaces with default styling use 1 byte
+   * - ASCII characters with colors use 2-8 bytes
+   * - Unicode characters use variable length encoding
+   *
+   * The binary format is designed for fast decoding on the client
+   * while minimizing bandwidth usage.
+   *
+   * @param snapshot - Terminal buffer snapshot to encode
+   * @returns Binary buffer ready for transmission
+   *
+   * @example
+   * ```typescript
+   * const snapshot = await manager.getBufferSnapshot('session-123');
+   * const binary = manager.encodeSnapshot(snapshot);
+   *
+   * // Send over WebSocket with session ID
+   * const packet = Buffer.concat([
+   *   Buffer.from([0xBF]), // Magic byte
+   *   Buffer.from(sessionId.length.toString(16), 'hex'),
+   *   Buffer.from(sessionId),
+   *   binary
+   * ]);
+   * ws.send(packet);
+   * ```
    */
   encodeSnapshot(snapshot: BufferSnapshot): Buffer {
     const startTime = Date.now();
