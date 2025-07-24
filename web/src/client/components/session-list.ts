@@ -454,8 +454,8 @@ export class SessionList extends LitElement {
     }
   }
 
-  private toggleFollowDropdown(repoPath: string) {
-    const isOpen = this.showFollowDropdown.get(repoPath) || false;
+  private toggleFollowDropdown(dropdownKey: string) {
+    const isOpen = this.showFollowDropdown.get(dropdownKey) || false;
 
     // Create new maps to avoid intermediate states during update
     const newFollowDropdown = new Map<string, boolean>();
@@ -463,7 +463,9 @@ export class SessionList extends LitElement {
 
     // Only set the clicked dropdown if it wasn't already open
     if (!isOpen) {
-      newFollowDropdown.set(repoPath, true);
+      newFollowDropdown.set(dropdownKey, true);
+      // Extract repo path from dropdown key for loading
+      const repoPath = dropdownKey.split(':')[0];
       // Load follow mode if not already loaded
       this.loadFollowModeForRepo(repoPath);
     }
@@ -475,11 +477,12 @@ export class SessionList extends LitElement {
     this.requestUpdate();
   }
 
-  private renderFollowModeSelector(repoPath: string) {
+  private renderFollowModeSelector(repoPath: string, sectionType: string = '') {
     const worktrees = this.repoWorktrees.get(repoPath) || [];
     const followMode = this.repoFollowMode.get(repoPath);
     const isLoading = this.loadingFollowMode.has(repoPath);
-    const isDropdownOpen = this.showFollowDropdown.get(repoPath) || false;
+    const dropdownKey = `${repoPath}:${sectionType}`;
+    const isDropdownOpen = this.showFollowDropdown.get(dropdownKey) || false;
 
     // Only show if there are worktrees
     if (worktrees.length === 0) {
@@ -492,8 +495,8 @@ export class SessionList extends LitElement {
       <div class="relative">
         <button
           class="flex items-center gap-1 px-2 py-1 text-xs bg-bg-secondary hover:bg-bg-tertiary rounded-md border border-border transition-colors"
-          @click=${() => this.toggleFollowDropdown(repoPath)}
-          id="follow-selector-${repoPath.replace(/[^a-zA-Z0-9]/g, '-')}"
+          @click=${() => this.toggleFollowDropdown(dropdownKey)}
+          id="follow-selector-${dropdownKey.replace(/[^a-zA-Z0-9]/g, '-')}"
         >
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
@@ -577,8 +580,8 @@ export class SessionList extends LitElement {
     }
   }
 
-  private toggleWorktreeDropdown(repoPath: string) {
-    const isOpen = this.showWorktreeDropdown.get(repoPath) || false;
+  private toggleWorktreeDropdown(dropdownKey: string) {
+    const isOpen = this.showWorktreeDropdown.get(dropdownKey) || false;
 
     // Create new maps to avoid intermediate states during update
     const newFollowDropdown = new Map<string, boolean>();
@@ -586,7 +589,9 @@ export class SessionList extends LitElement {
 
     // Only set the clicked dropdown if it wasn't already open
     if (!isOpen) {
-      newWorktreeDropdown.set(repoPath, true);
+      newWorktreeDropdown.set(dropdownKey, true);
+      // Extract repo path from dropdown key for loading
+      const repoPath = dropdownKey.split(':')[0];
       // Load worktrees if not already loaded
       this.loadWorktreesForRepo(repoPath);
     }
@@ -640,17 +645,18 @@ export class SessionList extends LitElement {
     }
   }
 
-  private renderWorktreeSelector(repoPath: string) {
+  private renderWorktreeSelector(repoPath: string, sectionType: string = '') {
     const worktrees = this.repoWorktrees.get(repoPath) || [];
     const isLoading = this.loadingWorktrees.has(repoPath);
-    const isDropdownOpen = this.showWorktreeDropdown.get(repoPath) || false;
+    const dropdownKey = `${repoPath}:${sectionType}`;
+    const isDropdownOpen = this.showWorktreeDropdown.get(dropdownKey) || false;
 
     return html`
       <div class="relative">
         <button
           class="flex items-center gap-1 px-2 py-1 text-xs bg-bg-secondary hover:bg-bg-tertiary rounded-md border border-border transition-colors"
-          @click=${() => this.toggleWorktreeDropdown(repoPath)}
-          id="worktree-selector-${repoPath.replace(/[^a-zA-Z0-9]/g, '-')}"
+          @click=${() => this.toggleWorktreeDropdown(dropdownKey)}
+          id="worktree-selector-${dropdownKey.replace(/[^a-zA-Z0-9]/g, '-')}"
           title="Worktrees"
         >
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

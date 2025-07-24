@@ -300,8 +300,9 @@ export class SessionHeader extends LitElement {
                 }
               </div>
             </div>
-            <div class="text-xs opacity-75 mt-0.5 truncate flex items-center gap-2">
+            <div class="text-xs opacity-75 mt-0.5 flex items-center gap-2 min-w-0">
               <clickable-path 
+                class="truncate"
                 .path=${this.session.workingDir} 
                 .iconSize=${12}
               ></clickable-path>
@@ -309,6 +310,7 @@ export class SessionHeader extends LitElement {
                 this.session.gitRepoPath
                   ? html`
                     <git-status-badge
+                      class="flex-shrink-0"
                       .session=${this.session}
                       .detailed=${false}
                     ></git-status-badge>

@@ -322,6 +322,30 @@ export class ActivityDetector {
         logger.error(`Error in ${this.detector.name} status parser:`, error);
         // Continue with unfiltered data if parsing fails
       }
+    } else {
+      // Even without a specific detector, try to parse Claude status
+      // This handles cases where Claude is run inside a shell session
+      try {
+        const claudeStatus = parseClaudeStatus(data);
+        if (claudeStatus) {
+          this.currentStatus = claudeStatus;
+          this.lastStatusTime = Date.now();
+          this.lastActivityTime = Date.now();
+          return {
+            filteredData: claudeStatus.filteredData,
+            activity: {
+              isActive: true,
+              lastActivityTime: this.lastActivityTime,
+              specificStatus: {
+                app: 'claude',
+                status: claudeStatus.displayText,
+              },
+            },
+          };
+        }
+      } catch (_error) {
+        // Silently ignore parsing errors for opportunistic detection
+      }
     }
 
     // Generic activity detection - use getActivityState for consistent time-based checking
@@ -349,13 +373,12 @@ export class ActivityDetector {
     return {
       isActive,
       lastActivityTime: this.lastActivityTime,
-      specificStatus:
-        this.currentStatus && this.detector
-          ? {
-              app: this.detector.name,
-              status: this.currentStatus.displayText,
-            }
-          : undefined,
+      specificStatus: this.currentStatus
+        ? {
+            app: this.detector?.name || 'claude', // Default to 'claude' for opportunistic detection
+            status: this.currentStatus.displayText,
+          }
+        : undefined,
     };
   }
 

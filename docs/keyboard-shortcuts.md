@@ -77,7 +77,7 @@ These shortcuts always work, regardless of keyboard capture state:
 ### Session Switching (When Keyboard Capture Active)
 | macOS | Windows/Linux | Action | Context |
 |-------|---------------|--------|---------|
-| ⌘1-9 | Ctrl+1-9 | Switch to session 1-9 | Session view with capture ON |
+| ⌘1...9 | Ctrl+1...9 | Switch to session 1 to 9 | Session view with capture ON |
 | ⌘0 | Ctrl+0 | Switch to session 10 | Session view with capture ON |
 
 **Note**: When keyboard capture is active in session view, number shortcuts switch between VibeTunnel sessions instead of browser tabs. The session numbers correspond to the numbers shown in the session list. This allows quick navigation between active sessions without leaving the keyboard.
