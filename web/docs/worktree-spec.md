@@ -16,6 +16,7 @@ VibeTunnel's worktree support is built on three main components:
 
 **GitService** (`web/src/server/services/git-service.ts`)
 - Not implemented as a service, Git operations are embedded in routes
+- Client-side GitService exists at `web/src/client/services/git-service.ts`
 
 **Worktree Routes** (`web/src/server/routes/worktrees.ts`)
 - `GET /api/worktrees` - List all worktrees with stats and follow mode status
@@ -103,7 +104,8 @@ Follow mode uses Git hooks and git config for state management:
 **WorktreeManager** (`web/src/client/components/worktree-manager.ts`)
 - Dedicated worktree management UI
 - Follow mode controls
-- Worktree creation/deletion
+- Worktree deletion and branch switching
+- **Note**: Does not include UI for creating new worktrees
 
 ### State Management
 
@@ -181,26 +183,29 @@ async function installGitHooks(repoPath: string): Promise<void> {
 
 ### Hook Script
 
-The actual hook implementation uses the `vt` command:
+The hook implementation uses the `vt` command:
 
 ```bash
 #!/bin/sh
 # VibeTunnel Git hook - post-checkout
+# This hook notifies VibeTunnel when Git events occur
 
-# Execute vt git event command if available
+# Check if vt command is available
 if command -v vt >/dev/null 2>&1; then
-  vt git event checkout "$@" >/dev/null 2>&1 || true
+  # Run in background to avoid blocking Git operations
+  vt git event &
 fi
 
-# Always exit successfully to not interfere with git operations
+# Always exit successfully
 exit 0
 ```
 
 The `vt git event` command:
-- Processes the git event type (checkout, commit, etc.)
-- Reads repository state and follow mode configuration
+- Sends the repository path to the server via `POST /api/git/event`
+- Server determines what changed by examining current git state
 - Triggers branch synchronization if follow mode is enabled
 - Sends notifications to connected sessions
+- Runs in background to avoid blocking git operations
 
 ### Follow Mode Logic
 
@@ -228,6 +233,9 @@ if (followBranch && event === 'checkout') {
 
 ### Worktree
 
+The Worktree interface differs between backend and frontend:
+
+**Backend** (`web/src/server/routes/worktrees.ts`):
 ```typescript
 interface Worktree {
   path: string;
@@ -243,11 +251,19 @@ interface Worktree {
   insertions?: number;
   deletions?: number;
   hasUncommittedChanges?: boolean;
-  // UI helpers
+}
+```
+
+**Frontend** (`web/src/client/services/git-service.ts`):
+```typescript
+interface Worktree extends BackendWorktree {
+  // UI helpers - added dynamically by routes
   isMainWorktree?: boolean;
   isCurrentWorktree?: boolean;
 }
 ```
+
+The UI helper fields are computed dynamically in the worktree routes based on the current repository path and are not stored in the backend data model.
 
 ### Session with Git Info
 
@@ -257,7 +273,7 @@ interface Session {
   name: string;
   command: string[];
   workingDir: string;
-  // Git information
+  // Git information (from shared/types.ts)
   gitRepoPath?: string;
   gitBranch?: string;
   gitAheadCount?: number;
@@ -344,6 +360,29 @@ if (!absolutePath.startsWith(allowedBasePath)) {
   throw new Error('Invalid repository path');
 }
 ```
+
+## Worktree Creation
+
+Currently, worktree creation is handled through terminal commands rather than UI:
+
+```bash
+# Create a new worktree for an existing branch
+git worktree add ../feature-branch feature-branch
+
+# Create a new worktree with a new branch
+git worktree add -b new-feature ../new-feature main
+```
+
+### UI Support Status
+
+1. **WorktreeManager** - No creation UI, only management of existing worktrees
+2. **SessionCreateForm** - Has partial support for creating worktrees through the git-branch-selector component, but incomplete:
+   - Creates worktrees but doesn't properly update UI state afterward
+   - Uses simplistic path generation (appends to repo path)
+   - No path customization or validation
+   - Missing proper error handling for common cases
+   - The `isCreatingWorktree` state is never cleared after completion
+3. **Recommended approach** - Use terminal commands for worktree creation, then manage via UI
 
 ## Testing
 

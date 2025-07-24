@@ -130,10 +130,6 @@ export class WorktreeManager extends LitElement {
     this.deleteHasChanges = false;
   }
 
-  private handleBack() {
-    this.dispatchEvent(new CustomEvent('back'));
-  }
-
   private async handleToggleFollow(branch: string, enable: boolean) {
     if (!this.gitService) {
       return;

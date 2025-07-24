@@ -91,7 +91,6 @@ export class VibeTunnelApp extends LitElement {
   private responsiveUnsubscribe?: () => void;
   private resizeCleanupFunctions: (() => void)[] = [];
   private sessionLoadingState: 'idle' | 'loading' | 'loaded' | 'not-found' = 'idle';
-  private gitService?: GitService;
   private controlEventService?: ReturnType<typeof getControlEventService>;
 
   connectedCallback() {
@@ -528,15 +527,6 @@ export class VibeTunnelApp extends LitElement {
     }
   }
 
-  private clearSuccess() {
-    // Clear the timeout if active
-    if (this.successTimeoutId !== null) {
-      clearTimeout(this.successTimeoutId);
-      this.successTimeoutId = null;
-    }
-    this.successMessage = '';
-  }
-
   private async loadSessions() {
     // Only show loading state on initial load, not on refreshes
     if (!this.initialLoadComplete) {
@@ -751,10 +741,6 @@ export class VibeTunnelApp extends LitElement {
 
   private handleError(e: CustomEvent) {
     this.showError(e.detail.message || e.detail);
-  }
-
-  private handleSuccess(e: CustomEvent) {
-    this.showSuccess(e.detail.message || e.detail);
   }
 
   private async handleHideExitedChange(e: CustomEvent) {
@@ -1412,15 +1398,6 @@ export class VibeTunnelApp extends LitElement {
 
   private handleOpenFileBrowser = () => {
     this.handleNavigateToFileBrowser();
-  };
-
-  private handleNotificationEnabled = (e: CustomEvent) => {
-    const { success, reason } = e.detail;
-    if (success) {
-      this.showSuccess('Notifications enabled successfully');
-    } else {
-      this.showError(`Failed to enable notifications: ${reason || 'Unknown error'}`);
-    }
   };
 
   private handleCaptureToggled = (e: CustomEvent) => {

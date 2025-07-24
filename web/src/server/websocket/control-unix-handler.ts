@@ -74,8 +74,6 @@ class TerminalHandler implements MessageHandler {
 }
 
 class SystemHandler implements MessageHandler {
-  constructor(private controlUnixHandler: ControlUnixHandler) {}
-
   async handleMessage(message: ControlMessage): Promise<ControlMessage | null> {
     logger.log(`System handler: ${message.action}, type: ${message.type}, id: ${message.id}`);
 
