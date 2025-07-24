@@ -27,7 +27,7 @@ import { VERSION } from './version.js';
 // Import components
 import './components/app-header.js';
 import './components/session-create-form.js';
-import './components/tmux-session-modal.js';
+import './components/multiplexer-modal.js';
 import './components/session-list.js';
 import './components/session-view.js';
 import './components/session-card.js';
@@ -1710,15 +1710,15 @@ export class VibeTunnelApp extends LitElement {
         @error=${this.handleError}
       ></session-create-form>
 
-      <!-- Tmux Session Modal -->
-      <tmux-session-modal
+      <!-- Multiplexer Modal (tmux/Zellij) -->
+      <multiplexer-modal
         .open=${this.showTmuxModal}
         @close=${() => {
           this.showTmuxModal = false;
         }}
         @navigate-to-session=${this.handleNavigateToSession}
         @create-session=${this.handleCreateSession}
-      ></tmux-session-modal>
+      ></multiplexer-modal>
 
       <!-- Version and logs link with smart positioning -->
       ${

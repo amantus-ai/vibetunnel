@@ -48,7 +48,7 @@ export class TmuxManager {
       return stdout
         .trim()
         .split('\n')
-        .filter((line) => line && line.includes('|'))
+        .filter((line) => line?.includes('|'))
         .map((line) => {
           // Handle potential shell output pollution
           const pipeIndex = line.indexOf('|');
