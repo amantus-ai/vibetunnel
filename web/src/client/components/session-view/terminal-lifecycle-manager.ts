@@ -101,7 +101,24 @@ export class TerminalLifecycleManager {
       return;
     }
 
-    const terminalElement = this.domElement.querySelector('vibe-terminal') as Terminal;
+    // First try to find terminal inside terminal-renderer, then fallback to direct query
+    const terminalElement = (this.domElement.querySelector('terminal-renderer vibe-terminal') ||
+      this.domElement.querySelector('terminal-renderer vibe-terminal-binary') ||
+      this.domElement.querySelector('vibe-terminal') ||
+      this.domElement.querySelector('vibe-terminal-binary')) as Terminal;
+
+    logger.debug('Terminal search results:', {
+      hasTerminalRenderer: !!this.domElement.querySelector('terminal-renderer'),
+      hasDirectTerminal: !!this.domElement.querySelector('vibe-terminal'),
+      hasDirectBinaryTerminal: !!this.domElement.querySelector('vibe-terminal-binary'),
+      hasNestedTerminal: !!this.domElement.querySelector('terminal-renderer vibe-terminal'),
+      hasNestedBinaryTerminal: !!this.domElement.querySelector(
+        'terminal-renderer vibe-terminal-binary'
+      ),
+      foundElement: !!terminalElement,
+      sessionId: this.session?.id,
+    });
+
     if (!terminalElement || !this.session) {
       logger.warn(`Cannot initialize terminal - missing element or session`);
       return;
@@ -147,6 +164,11 @@ export class TerminalLifecycleManager {
     // Use setTimeout to ensure we're still connected after all synchronous updates
     setTimeout(() => {
       if (this.connected && this.connectionManager) {
+        logger.debug('Connecting to stream for terminal', {
+          terminalElement: !!this.terminal,
+          sessionId: this.session?.id,
+          connected: this.connected,
+        });
         this.connectionManager.connectToStream();
       } else {
         logger.warn(`Component disconnected before stream connection`);

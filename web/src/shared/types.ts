@@ -48,6 +48,12 @@ export interface SessionInfo {
   gitHasChanges?: boolean; // Has uncommitted changes
   gitIsWorktree?: boolean; // Is a worktree (not main repo)
   gitMainRepoPath?: string; // Main repository path (same as gitRepoPath if not worktree)
+  // Git status details (not persisted to disk, fetched dynamically)
+  gitModifiedCount?: number; // Number of modified files
+  gitUntrackedCount?: number; // Number of untracked files
+  gitStagedCount?: number; // Number of staged files
+  gitAddedCount?: number; // Number of added files
+  gitDeletedCount?: number; // Number of deleted files
 }
 
 /**

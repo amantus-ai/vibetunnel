@@ -107,5 +107,5 @@ export async function clickSessionCard(page: Page, sessionName: string): Promise
   await sessionCard.click();
 
   // Wait for navigation
-  await page.waitForURL(/\?session=/);
+  await page.waitForURL(/\/session\//);
 }

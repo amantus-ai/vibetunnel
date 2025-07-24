@@ -11,6 +11,7 @@ import '../clickable-path.js';
 import '../inline-edit.js';
 import '../notification-status.js';
 import '../keyboard-capture-indicator.js';
+import '../git-status-badge.js';
 import { authClient } from '../../services/auth-client.js';
 import { isAIAssistantSession, sendAIPrompt } from '../../utils/ai-sessions.js';
 import { createLogger } from '../../utils/logger.js';
@@ -74,6 +75,10 @@ export class SessionHeader extends LitElement {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }
+  }
+
+  updated(changedProperties: Map<string | number | symbol, unknown>) {
+    super.updated(changedProperties);
   }
 
   private setupResizeObserver() {
@@ -283,11 +288,12 @@ export class SessionHeader extends LitElement {
                 .iconSize=${12}
               ></clickable-path>
               ${
-                this.session.gitBranch
+                this.session.gitRepoPath
                   ? html`
-                    <span class="flex-shrink-0 text-xs">
-                      [${this.session.gitBranch}]
-                    </span>
+                    <git-status-badge
+                      .session=${this.session}
+                      .detailed=${false}
+                    ></git-status-badge>
                   `
                   : ''
               }

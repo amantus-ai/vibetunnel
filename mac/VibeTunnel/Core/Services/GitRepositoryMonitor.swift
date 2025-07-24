@@ -221,38 +221,76 @@ public final class GitRepositoryMonitor {
         // Check cache first
         if let cached = getCachedRepository(for: filePath) {
             logger.debug("📦 Found cached repository for: \(filePath)")
-            return cached
+            
+            // Check if this was recently checked (within 30 seconds)
+            if let lastCheck = recentRepositoryChecks[filePath],
+               Date().timeIntervalSince(lastCheck) < recentCheckThreshold {
+                logger.debug("⏭️ Skipping redundant check for: \(filePath) (checked \(Int(Date().timeIntervalSince(lastCheck)))s ago)")
+                return cached
+            }
         }
 
-        // Find the Git repository root
-        guard let repoPath = await findGitRoot(from: filePath) else {
-            logger.info("❌ No Git root found for: \(filePath)")
-            return nil
+        // Check if there's already a pending request for this exact path
+        if let pendingTask = pendingRepositoryRequests[filePath] {
+            logger.debug("🔄 Waiting for existing request for: \(filePath)")
+            return await pendingTask.value
         }
 
-        logger.info("✅ Found Git root at: \(repoPath)")
+        // Create a new task for this request
+        let task = Task<GitRepository?, Never> { [weak self] in
+            guard let self else { return nil }
+            
+            // Find the Git repository root
+            guard let repoPath = await self.findGitRoot(from: filePath) else {
+                logger.info("❌ No Git root found for: \(filePath)")
+                // Mark as recently checked even for non-git paths to avoid repeated checks
+                await MainActor.run {
+                    self.recentRepositoryChecks[filePath] = Date()
+                }
+                return nil
+            }
 
-        // Check if we already have this repository cached
-        let cachedRepo = repositoryCache[repoPath]
-        if let cachedRepo {
-            // Cache the file->repo mapping
-            fileToRepoCache[filePath] = repoPath
-            logger.debug("📦 Using cached repo data for: \(repoPath)")
-            return cachedRepo
+            logger.info("✅ Found Git root at: \(repoPath)")
+
+            // Check if we already have this repository cached
+            let cachedRepo = await MainActor.run { self.repositoryCache[repoPath] }
+            if let cachedRepo {
+                // Cache the file->repo mapping
+                await MainActor.run {
+                    self.fileToRepoCache[filePath] = repoPath
+                    self.recentRepositoryChecks[filePath] = Date()
+                }
+                logger.debug("📦 Using cached repo data for: \(repoPath)")
+                return cachedRepo
+            }
+
+            // Get repository status
+            let repository = await self.getRepositoryStatus(at: repoPath)
+
+            // Cache the result by repository path
+            if let repository {
+                await MainActor.run {
+                    self.cacheRepository(repository, originalFilePath: filePath)
+                    self.recentRepositoryChecks[filePath] = Date()
+                }
+                logger.info("✅ Repository status obtained and cached for: \(repoPath)")
+            } else {
+                logger.error("❌ Failed to get repository status for: \(repoPath)")
+            }
+
+            return repository
         }
 
-        // Get repository status
-        let repository = await getRepositoryStatus(at: repoPath)
+        // Store the pending task
+        pendingRepositoryRequests[filePath] = task
 
-        // Cache the result by repository path
-        if let repository {
-            cacheRepository(repository, originalFilePath: filePath)
-            logger.info("✅ Repository status obtained and cached for: \(repoPath)")
-        } else {
-            logger.error("❌ Failed to get repository status for: \(repoPath)")
-        }
+        // Get the result
+        let result = await task.value
 
-        return repository
+        // Clean up the pending task
+        pendingRepositoryRequests[filePath] = nil
+
+        return result
     }
 
     /// Clear the repository cache
@@ -261,6 +299,8 @@ public final class GitRepositoryMonitor {
         fileToRepoCache.removeAll()
         githubURLCache.removeAll()
         githubURLFetchesInProgress.removeAll()
+        pendingRepositoryRequests.removeAll()
+        recentRepositoryChecks.removeAll()
     }
 
     /// Start monitoring and refreshing all cached repositories
@@ -291,6 +331,18 @@ public final class GitRepositoryMonitor {
                 repositoryCache[repoPath] = fresh
             }
         }
+        
+        // Clean up stale entries from recent checks cache
+        cleanupRecentChecks()
+    }
+    
+    /// Remove old entries from the recent checks cache
+    private func cleanupRecentChecks() {
+        let cutoffDate = Date().addingTimeInterval(-recentCheckThreshold * 2) // Remove entries older than 60 seconds
+        recentRepositoryChecks = recentRepositoryChecks.filter { _, checkDate in
+            checkDate > cutoffDate
+        }
+        logger.debug("🧹 Cleaned up recent checks cache, \(self.recentRepositoryChecks.count) entries remaining")
     }
 
     // MARK: - Private Properties
@@ -309,6 +361,15 @@ public final class GitRepositoryMonitor {
 
     /// Timer for periodic monitoring
     private var monitoringTimer: Timer?
+
+    /// Tracks in-flight requests for repository lookups to prevent duplicates
+    private var pendingRepositoryRequests: [String: Task<GitRepository?, Never>] = [:]
+
+    /// Tracks recent repository checks with timestamps to skip redundant checks
+    private var recentRepositoryChecks: [String: Date] = [:] 
+    
+    /// Duration to consider a repository check as "recent" (30 seconds)
+    private let recentCheckThreshold: TimeInterval = 30.0
 
     // MARK: - Private Methods
 

@@ -48,7 +48,7 @@ export class TestSessionManager {
         }
 
         // Extract session ID from path-based URL
-        const match = url.match(/\/session\/([^\/\?]+)/);
+        const match = url.match(/\/session\/([^/?]+)/);
         sessionId = match ? match[1] : '';
         if (!sessionId) {
           throw new Error(`No session ID found in URL: ${url}`);

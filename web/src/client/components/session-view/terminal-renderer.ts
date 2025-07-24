@@ -18,6 +18,15 @@ export class TerminalRenderer extends LitElement {
     return this;
   }
 
+  constructor() {
+    super();
+    // Bind event handlers to ensure proper context
+    this.handleClick = this.handleClick.bind(this);
+    this.handleTerminalInput = this.handleTerminalInput.bind(this);
+    this.handleTerminalResize = this.handleTerminalResize.bind(this);
+    this.handleTerminalReady = this.handleTerminalReady.bind(this);
+  }
+
   @property({ type: Object }) session: Session | null = null;
   @property({ type: Boolean }) useBinaryMode = false;
   @property({ type: Number }) terminalFontSize = 14;
@@ -37,62 +46,66 @@ export class TerminalRenderer extends LitElement {
       return html``;
     }
 
-    const commonProps = {
-      '.sessionId': this.session.id || '',
-      '.sessionStatus': this.session.status || 'running',
-      '.cols': 80,
-      '.rows': 24,
-      '.fontSize': this.terminalFontSize,
-      '.fitHorizontally': false,
-      '.maxCols': this.terminalMaxCols,
-      '.theme': this.terminalTheme,
-      '.initialCols': this.session.initialCols || 0,
-      '.initialRows': this.session.initialRows || 0,
-      '.disableClick': this.disableClick,
-      '.hideScrollButton': this.hideScrollButton,
-      class: 'w-full h-full p-0 m-0 terminal-container',
-      '@click': this.handleClick,
-      '@terminal-input': this.handleTerminalInput,
-    };
-
     if (this.useBinaryMode) {
       return html`
         <vibe-terminal-binary
-          ...=${commonProps}
-          @terminal-resize=${this.handleTerminalResize}
-          @terminal-ready=${this.handleTerminalReady}
+          .sessionId=${this.session.id || ''}
+          .sessionStatus=${this.session.status || 'running'}
+          .cols=${80}
+          .rows=${24}
+          .fontSize=${this.terminalFontSize}
+          .fitHorizontally=${false}
+          .maxCols=${this.terminalMaxCols}
+          .theme=${this.terminalTheme}
+          .initialCols=${this.session.initialCols || 0}
+          .initialRows=${this.session.initialRows || 0}
+          .disableClick=${this.disableClick}
+          .hideScrollButton=${this.hideScrollButton}
+          class="w-full h-full p-0 m-0 terminal-container"
+          @click=${(e: Event) => this.handleClick(e)}
+          @terminal-input=${(e: Event) => this.handleTerminalInput(e)}
+          @terminal-resize=${(e: Event) => this.handleTerminalResize(e)}
+          @terminal-ready=${(e: Event) => this.handleTerminalReady(e)}
         ></vibe-terminal-binary>
       `;
     } else {
       return html`
         <vibe-terminal
-          ...=${commonProps}
+          .sessionId=${this.session.id || ''}
+          .sessionStatus=${this.session.status || 'running'}
+          .cols=${80}
+          .rows=${24}
+          .fontSize=${this.terminalFontSize}
+          .fitHorizontally=${false}
+          .maxCols=${this.terminalMaxCols}
+          .theme=${this.terminalTheme}
+          .initialCols=${this.session.initialCols || 0}
+          .initialRows=${this.session.initialRows || 0}
+          .disableClick=${this.disableClick}
+          .hideScrollButton=${this.hideScrollButton}
+          class="w-full h-full p-0 m-0 terminal-container"
+          @click=${(e: Event) => this.handleClick(e)}
+          @terminal-input=${(e: Event) => this.handleTerminalInput(e)}
+          @terminal-resize=${(e: Event) => this.handleTerminalResize(e)}
+          @terminal-ready=${(e: Event) => this.handleTerminalReady(e)}
         ></vibe-terminal>
       `;
     }
   }
 
   private handleClick(e: Event) {
-    if (this.onTerminalClick) {
-      this.onTerminalClick(e);
-    }
+    this.onTerminalClick?.(e);
   }
 
   private handleTerminalInput(e: Event) {
-    if (this.onTerminalInput) {
-      this.onTerminalInput(e as CustomEvent);
-    }
+    this.onTerminalInput?.(e as CustomEvent);
   }
 
   private handleTerminalResize(e: Event) {
-    if (this.onTerminalResize) {
-      this.onTerminalResize(e as CustomEvent);
-    }
+    this.onTerminalResize?.(e as CustomEvent);
   }
 
   private handleTerminalReady(e: Event) {
-    if (this.onTerminalReady) {
-      this.onTerminalReady(e as CustomEvent);
-    }
+    this.onTerminalReady?.(e as CustomEvent);
   }
 }

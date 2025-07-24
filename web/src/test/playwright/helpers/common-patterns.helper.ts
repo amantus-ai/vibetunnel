@@ -273,14 +273,14 @@ export async function refreshAndVerifySession(page: Page, sessionName: string): 
   await page.waitForLoadState('domcontentloaded');
 
   const currentUrl = page.url();
-  if (currentUrl.includes('?session=')) {
+  if (currentUrl.includes('/session/')) {
     await page.waitForSelector('vibe-terminal', { state: 'visible', timeout: 4000 });
   } else {
     // We got redirected to list, reconnect
     await page.waitForSelector('session-card', { state: 'visible' });
     const sessionListPage = new SessionListPage(page);
     await sessionListPage.clickSession(sessionName);
-    await expect(page).toHaveURL(/\?session=/);
+    await expect(page).toHaveURL(/\/session\//);
   }
 }
 

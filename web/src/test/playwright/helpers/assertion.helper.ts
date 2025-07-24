@@ -11,7 +11,7 @@ export async function assertSessionInList(
   const { timeout = 5000, status } = options;
 
   // Ensure we're on the session list page
-  if (page.url().includes('?session=')) {
+  if (page.url().includes('/session/')) {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     // Extra wait for navigation to complete
     await page.waitForLoadState('networkidle');
@@ -176,16 +176,16 @@ export async function assertTerminalNotContains(
 export async function assertUrlHasSession(page: Page, sessionId?: string): Promise<void> {
   const url = page.url();
 
-  // Check if URL has session parameter
-  const hasSessionParam = url.includes('?session=') || url.includes('&session=');
-  if (!hasSessionParam) {
-    throw new Error(`Expected URL to contain session parameter, but got: ${url}`);
+  // Check if URL has session path
+  const hasSessionPath = url.includes('/session/');
+  if (!hasSessionPath) {
+    throw new Error(`Expected URL to contain session path, but got: ${url}`);
   }
 
   if (sessionId) {
-    // Parse URL to get session ID
-    const urlObj = new URL(url);
-    const actualSessionId = urlObj.searchParams.get('session');
+    // Extract session ID from path-based URL
+    const match = url.match(/\/session\/([^/?]+)/);
+    const actualSessionId = match ? match[1] : null;
 
     if (actualSessionId !== sessionId) {
       throw new Error(
@@ -239,7 +239,7 @@ export async function assertSessionCount(
   const { timeout = 5000, operator = 'exact' } = options;
 
   // Ensure we're on the session list page
-  if (page.url().includes('?session=')) {
+  if (page.url().includes('/session/')) {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
   }
 
@@ -311,8 +311,9 @@ export async function assertTerminalReady(page: Page, timeout = 15000): Promise<
         return false;
       }
 
-      // Log content in CI for debugging (last 200 chars)
-      if (process.env.CI && content) {
+      // Log content for debugging (last 200 chars)
+      // Note: process.env is not available in browser context
+      if (content && window.location.hostname === 'localhost') {
         console.log(
           '[assertTerminalReady] Terminal content (last 200 chars):',
           content.slice(-200)

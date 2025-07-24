@@ -96,6 +96,12 @@ export class SessionView extends LitElement {
   private boundHandleDragLeave?: (e: DragEvent) => void;
   private boundHandleDrop?: (e: DragEvent) => void;
   private boundHandlePaste?: (e: ClipboardEvent) => void;
+  
+  // Bound terminal event handlers
+  private boundHandleTerminalClick = this.handleTerminalClick.bind(this);
+  private boundHandleTerminalInput = this.handleTerminalInput.bind(this);
+  private boundHandleTerminalResize = this.handleTerminalResize.bind(this);
+  private boundHandleTerminalReady = this.handleTerminalReady.bind(this);
 
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
   private _updateTerminalTransformTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -289,6 +295,9 @@ export class SessionView extends LitElement {
       }
     );
     this.connectionManager.setConnected(true);
+    
+    // Set connected state in UI state manager
+    this.uiStateManager.setConnected(true);
 
     // Initialize input manager
     this.inputManager = new InputManager();
@@ -541,6 +550,15 @@ export class SessionView extends LitElement {
   };
 
   private getTerminalElement(): Terminal | VibeTerminalBinary | null {
+    // Look for terminal inside terminal-renderer (no shadow DOM, so direct descendant selector works)
+    const terminalRenderer = this.querySelector('terminal-renderer');
+    if (terminalRenderer) {
+      return this.uiStateManager.getState().useBinaryMode
+        ? (terminalRenderer.querySelector('vibe-terminal-binary') as VibeTerminalBinary | null)
+        : (terminalRenderer.querySelector('vibe-terminal') as Terminal | null);
+    }
+    
+    // Fallback to direct search (shouldn't happen with new structure)
     return this.uiStateManager.getState().useBinaryMode
       ? (this.querySelector('vibe-terminal-binary') as VibeTerminalBinary | null)
       : (this.querySelector('vibe-terminal') as Terminal | null);
@@ -612,6 +630,12 @@ export class SessionView extends LitElement {
     ) {
       this.ensureTerminalInitialized();
     }
+
+    // Update UIStateManager when keyboardCaptureActive prop changes
+    if (changedProperties.has('keyboardCaptureActive')) {
+      this.uiStateManager.setKeyboardCaptureActive(this.keyboardCaptureActive);
+      logger.log(`Keyboard capture state updated to: ${this.keyboardCaptureActive}`);
+    }
   }
 
   /**
@@ -634,10 +658,12 @@ export class SessionView extends LitElement {
     const terminalElement = this.getTerminalElement();
     if (!terminalElement) {
       logger.log('Terminal element not found in DOM, deferring initialization');
-      // Retry after next render cycle
-      requestAnimationFrame(() => {
-        this.ensureTerminalInitialized();
-      });
+      // Retry after next render cycle with a small delay to ensure terminal-renderer has rendered
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          this.ensureTerminalInitialized();
+        });
+      }, 100);
       return;
     }
 
@@ -1117,7 +1143,6 @@ export class SessionView extends LitElement {
             // Add safe area padding for landscape mode on mobile to handle notch
             uiState.isMobile && uiState.isLandscape ? 'safe-area-left safe-area-right' : ''
           }"
-          id="terminal-container"
           data-quickkeys-visible="${uiState.showQuickKeys && uiState.keyboardHeight > 0}"
         >
           ${
@@ -1149,51 +1174,20 @@ export class SessionView extends LitElement {
               : uiState.viewMode === 'terminal'
                 ? html`
               <!-- Enhanced Terminal Component -->
-              ${
-                uiState.useBinaryMode
-                  ? html`
-              <vibe-terminal-binary
+              <terminal-renderer
                 id="session-terminal"
-                .sessionId=${this.session?.id || ''}
-                .sessionStatus=${this.session?.status || 'running'}
-                .cols=${80}
-                .rows=${24}
-                .fontSize=${uiState.terminalFontSize}
-                .fitHorizontally=${false}
-                .maxCols=${uiState.terminalMaxCols}
-                .theme=${uiState.terminalTheme}
-                .initialCols=${this.session?.initialCols || 0}
-                .initialRows=${this.session?.initialRows || 0}
+                .session=${this.session}
+                .useBinaryMode=${uiState.useBinaryMode}
+                .terminalFontSize=${uiState.terminalFontSize}
+                .terminalMaxCols=${uiState.terminalMaxCols}
+                .terminalTheme=${uiState.terminalTheme}
                 .disableClick=${uiState.isMobile && uiState.useDirectKeyboard}
                 .hideScrollButton=${uiState.showQuickKeys}
-                class="w-full h-full p-0 m-0 terminal-container"
-                @click=${this.handleTerminalClick}
-                @terminal-input=${this.handleTerminalInput}
-                @terminal-resize=${this.handleTerminalResize}
-                @terminal-ready=${this.handleTerminalReady}
-              ></vibe-terminal-binary>
-            `
-                  : html`
-              <vibe-terminal
-                id="session-terminal"
-                .sessionId=${this.session?.id || ''}
-                .sessionStatus=${this.session?.status || 'running'}
-                .cols=${80}
-                .rows=${24}
-                .fontSize=${uiState.terminalFontSize}
-                .fitHorizontally=${false}
-                .maxCols=${uiState.terminalMaxCols}
-                .theme=${uiState.terminalTheme}
-                .initialCols=${this.session?.initialCols || 0}
-                .initialRows=${this.session?.initialRows || 0}
-                .disableClick=${uiState.isMobile && uiState.useDirectKeyboard}
-                .hideScrollButton=${uiState.showQuickKeys}
-                class="w-full h-full p-0 m-0 terminal-container"
-                @click=${this.handleTerminalClick}
-                @terminal-input=${this.handleTerminalInput}
-              ></vibe-terminal>
-            `
-              }
+                .onTerminalClick=${this.boundHandleTerminalClick}
+                .onTerminalInput=${this.boundHandleTerminalInput}
+                .onTerminalResize=${this.boundHandleTerminalResize}
+                .onTerminalReady=${this.boundHandleTerminalReady}
+              ></terminal-renderer>
             `
                 : ''
           }

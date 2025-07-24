@@ -106,6 +106,7 @@ export class Terminal extends LitElement {
     logger.debug('Requesting render buffer update');
     this.queueRenderOperation(() => {
       logger.debug('Executing render operation');
+      this.renderBuffer();
     });
   }
 
@@ -450,6 +451,7 @@ export class Terminal extends LitElement {
 
   private async initializeTerminal() {
     try {
+      logger.debug('initializeTerminal starting');
       this.requestUpdate();
 
       this.container = this.querySelector('#terminal-container') as HTMLElement;
@@ -459,6 +461,8 @@ export class Terminal extends LitElement {
         logger.error('terminal container not found', error);
         throw error;
       }
+
+      logger.debug('Terminal container found, proceeding with setup');
 
       await this.setupTerminal();
       this.setupResize();
@@ -517,6 +521,9 @@ export class Terminal extends LitElement {
 
       // Set terminal size - don't call .open() to keep it headless
       this.terminal.resize(this.cols, this.rows);
+
+      // Force initial render of the buffer
+      this.requestRenderBuffer();
     } catch (error) {
       logger.error('failed to create terminal:', error);
       throw error;
@@ -1025,7 +1032,15 @@ export class Terminal extends LitElement {
   }
 
   private renderBuffer() {
-    if (!this.terminal || !this.container) return;
+    if (!this.terminal || !this.container) {
+      logger.warn('renderBuffer called but missing terminal or container', {
+        hasTerminal: !!this.terminal,
+        hasContainer: !!this.container,
+      });
+      return;
+    }
+
+    logger.debug('renderBuffer executing');
 
     const startTime = this.debugMode ? performance.now() : 0;
 
@@ -1257,7 +1272,12 @@ export class Terminal extends LitElement {
    * @param followCursor - If true, automatically scroll to keep cursor visible (default: true)
    */
   public write(data: string, followCursor: boolean = true) {
-    if (!this.terminal) return;
+    if (!this.terminal) {
+      logger.warn('Terminal.write called but no terminal instance exists');
+      return;
+    }
+
+    logger.debug(`Terminal.write called with ${data.length} chars, followCursor=${followCursor}`);
 
     // Check for cursor visibility sequences
     if (data.includes('\x1b[?25l')) {

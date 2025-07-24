@@ -58,7 +58,7 @@ export async function createAndNavigateToSession(
     const timeout = process.env.CI ? 15000 : 8000;
 
     try {
-      await page.waitForURL(/\?session=/, { timeout });
+      await page.waitForURL(/\/session\//, { timeout });
     } catch (_error) {
       // If navigation didn't happen automatically, check if we can extract session ID and navigate manually
       const currentUrl = page.url();
@@ -76,7 +76,7 @@ export async function createAndNavigateToSession(
 
       if (sessionResponse?.sessionId) {
         console.log(`Found session ID ${sessionResponse.sessionId}, navigating manually`);
-        await page.goto(`/?session=${sessionResponse.sessionId}`, {
+        await page.goto(`/session/${sessionResponse.sessionId}`, {
           waitUntil: 'domcontentloaded',
         });
       } else {
@@ -84,7 +84,9 @@ export async function createAndNavigateToSession(
       }
     }
 
-    const sessionId = new URL(page.url()).searchParams.get('session') || '';
+    // Extract session ID from path-based URL
+    const match = page.url().match(/\/session\/([^/?]+)/);
+    const sessionId = match ? match[1] : '';
     if (!sessionId) {
       throw new Error('No session ID found in URL after navigation');
     }
@@ -107,7 +109,7 @@ export async function verifySessionStatus(
   expectedStatus: 'RUNNING' | 'EXITED' | 'KILLED'
 ): Promise<boolean> {
   // Navigate to list if needed
-  if (page.url().includes('?session=')) {
+  if (page.url().includes('/session/')) {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
   }
 
@@ -133,7 +135,7 @@ export async function reconnectToSession(page: Page, sessionName: string): Promi
   const sessionViewPage = new SessionViewPage(page);
 
   // Navigate to list if needed
-  if (page.url().includes('?session=')) {
+  if (page.url().includes('/session/')) {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
   }
 
@@ -141,7 +143,7 @@ export async function reconnectToSession(page: Page, sessionName: string): Promi
   await sessionListPage.clickSession(sessionName);
 
   // Wait for session view to load
-  await page.waitForURL(/\?session=/, { timeout: 4000 });
+  await page.waitForURL(/\/session\//, { timeout: 4000 });
   await sessionViewPage.waitForTerminalReady();
 }
 

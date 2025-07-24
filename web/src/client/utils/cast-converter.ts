@@ -345,6 +345,7 @@ export function connectToStream(
   eventSource.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
+      logger.debug('SSE message received:', { type: Array.isArray(data) ? data[1] : 'header' });
 
       // Check if this is a header message with terminal dimensions
       if (data.version && data.width && data.height) {
