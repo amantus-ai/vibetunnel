@@ -634,20 +634,22 @@ extension ServerManager {
         body: Encodable? = nil,
         queryItems: [URLQueryItem]? = nil,
         responseType: T.Type
-    ) async throws -> T {
+    )
+        async throws -> T
+    {
         let request = try makeRequest(
             endpoint: endpoint,
             method: method,
             body: body,
             queryItems: queryItems
         )
-        
+
         let (data, response) = try await URLSession.shared.data(for: request)
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
-        
+
         guard (200...299).contains(httpResponse.statusCode) else {
             let errorData = try? JSONDecoder().decode(ErrorResponse.self, from: data)
             throw NetworkError.serverError(
@@ -655,10 +657,10 @@ extension ServerManager {
                 message: errorData?.error ?? "Request failed with status \(httpResponse.statusCode)"
             )
         }
-        
+
         return try JSONDecoder().decode(T.self, from: data)
     }
-    
+
     /// Perform a network request that returns no body (void response)
     /// - Parameters:
     ///   - endpoint: The API endpoint path
@@ -671,20 +673,22 @@ extension ServerManager {
         method: String = "POST",
         body: Encodable? = nil,
         queryItems: [URLQueryItem]? = nil
-    ) async throws {
+    )
+        async throws
+    {
         let request = try makeRequest(
             endpoint: endpoint,
             method: method,
             body: body,
             queryItems: queryItems
         )
-        
+
         let (data, response) = try await URLSession.shared.data(for: request)
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
-        
+
         guard (200...299).contains(httpResponse.statusCode) else {
             let errorData = try? JSONDecoder().decode(ErrorResponse.self, from: data)
             throw NetworkError.serverError(

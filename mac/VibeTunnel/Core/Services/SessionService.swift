@@ -65,19 +65,11 @@ final class SessionService {
         }
 
         let body = ["name": trimmedName]
-        let request = try serverManager.makeRequest(
+        try await serverManager.performVoidRequest(
             endpoint: "\(APIEndpoints.sessions)/\(sessionId)",
             method: "PATCH",
             body: body
         )
-
-        let (_, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200
-        else {
-            throw SessionServiceError.requestFailed(statusCode: (response as? HTTPURLResponse)?.statusCode ?? -1)
-        }
 
         // Force refresh the session monitor to see the update immediately
         await sessionMonitor.refresh()

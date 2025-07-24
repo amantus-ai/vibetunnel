@@ -7,7 +7,7 @@ public struct ErrorResponse: Codable, Sendable {
     public let error: String
     public let code: String?
     public let details: String?
-    
+
     public init(error: String, code: String? = nil, details: String? = nil) {
         self.error = error
         self.code = code
@@ -23,7 +23,7 @@ public enum NetworkError: LocalizedError {
     case serverError(statusCode: Int, message: String)
     case decodingError(Error)
     case noData
-    
+
     public var errorDescription: String? {
         switch self {
         case .invalidResponse:

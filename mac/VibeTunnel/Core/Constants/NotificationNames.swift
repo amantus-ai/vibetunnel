@@ -15,7 +15,10 @@ extension Notification.Name {
     static let showWelcomeScreen = Notification.Name("showWelcomeScreen")
 }
 
-/// Notification categories
+/// Notification categories for user notifications.
+///
+/// Contains category identifiers used when registering and handling
+/// notifications in the Notification Center.
 enum NotificationCategories {
     static let updateReminder = "UPDATE_REMINDER"
 }

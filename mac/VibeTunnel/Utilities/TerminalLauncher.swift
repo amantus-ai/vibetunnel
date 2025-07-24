@@ -4,7 +4,10 @@ import Observation
 import os.log
 import SwiftUI
 
-/// Terminal launch result with window/tab information
+/// Terminal launch result with window/tab information.
+///
+/// Contains information about the launched terminal session, including
+/// the terminal application used and identifiers for the created window or tab.
 struct TerminalLaunchResult {
     let terminal: Terminal
     let tabReference: String?
@@ -12,7 +15,10 @@ struct TerminalLaunchResult {
     let windowID: CGWindowID?
 }
 
-/// Terminal launch configuration
+/// Terminal launch configuration.
+///
+/// Encapsulates the parameters needed to launch a terminal command,
+/// including the command to execute, working directory, and target terminal application.
 struct TerminalLaunchConfig {
     let command: String
     let workingDirectory: String?

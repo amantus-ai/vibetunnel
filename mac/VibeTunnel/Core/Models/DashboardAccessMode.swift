@@ -1,6 +1,6 @@
 import Foundation
 
-/// Dashboard access mode.
+/// Dashboard access mode for the VibeTunnel server.
 ///
 /// Determines the network binding configuration for the VibeTunnel server.
 /// Controls whether the web interface is accessible only locally or

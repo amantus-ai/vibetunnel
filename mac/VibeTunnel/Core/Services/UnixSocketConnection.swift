@@ -50,7 +50,10 @@ final class UnixSocketConnection {
     /// Connection state change callback
     var onStateChange: ((ConnectionState) -> Void)?
 
-    /// Connection states similar to NWConnection.State
+    /// Connection states for the Unix socket.
+    ///
+    /// Represents the various states of the socket connection lifecycle,
+    /// similar to `NWConnection.State` for consistency with Network framework patterns.
     enum ConnectionState {
         case setup
         case preparing
@@ -870,6 +873,10 @@ final class UnixSocketConnection {
 
 // MARK: - Errors
 
+/// Errors specific to Unix socket operations.
+///
+/// Provides detailed error information for Unix socket connection failures,
+/// data transmission issues, and connection state problems.
 enum UnixSocketError: LocalizedError {
     case notConnected
     case connectionFailed(Error)

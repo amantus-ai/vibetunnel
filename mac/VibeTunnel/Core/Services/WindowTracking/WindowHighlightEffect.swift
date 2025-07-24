@@ -2,7 +2,10 @@ import AppKit
 import Foundation
 import OSLog
 
-/// Configuration for window highlight effects
+/// Configuration for window highlight effects.
+///
+/// Defines the visual properties of the highlight effect applied to windows,
+/// including color, animation duration, border width, and glow intensity.
 struct WindowHighlightConfig {
     /// The color of the highlight border
     let color: NSColor
