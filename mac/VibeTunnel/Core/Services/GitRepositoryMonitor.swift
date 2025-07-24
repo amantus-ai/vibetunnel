@@ -65,15 +65,10 @@ public final class GitRepositoryMonitor {
     private let gitOperationQueue = OperationQueue()
 
     /// Server port for API requests
-    private let serverPort: Int = {
-        // Get port from environment or use default
-        if let portString = ProcessInfo.processInfo.environment["SERVER_PORT"],
-           let port = Int(portString)
-        {
-            return port
-        }
-        return 4_020
-    }()
+    private var serverPort: Int {
+        // Get port from ServerManager (which reads from UserDefaults)
+        Int(ServerManager.shared.port) ?? NetworkConstants.defaultPort
+    }
 
     // MARK: - Public Methods
 
@@ -93,48 +88,38 @@ public final class GitRepositoryMonitor {
     /// - Parameter repoPath: Path to the Git repository
     /// - Returns: Array of branch names (without refs/heads/ prefix)
     public func getBranches(for repoPath: String) async -> [String] {
-        // For now, keep using git directly for branch listing
-        // This is called by the UI and we don't have a branch listing endpoint yet
-        await withCheckedContinuation { continuation in
-            gitOperationQueue.addOperation {
-                // Sanitize the path before using it
-                guard let sanitizedPath = self.sanitizePath(repoPath) else {
-                    continuation.resume(returning: [])
-                    return
-                }
+        // Use the server endpoint to get branches
+        guard let url = URL(
+            string: "http://localhost:\(serverPort)/api/repositories/branches?path=\(repoPath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+        ) else {
+            logger.error("Failed to construct branches URL")
+            return []
+        }
 
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-                process.arguments = ["branch", "--format=%(refname:short)"]
-                process.currentDirectoryURL = URL(fileURLWithPath: sanitizedPath)
-
-                let outputPipe = Pipe()
-                process.standardOutput = outputPipe
-                process.standardError = Pipe() // Suppress error output
-
-                do {
-                    try process.run()
-                    process.waitUntilExit()
-
-                    guard process.terminationStatus == 0 else {
-                        continuation.resume(returning: [])
-                        return
-                    }
-
-                    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-                    let output = String(data: outputData, encoding: .utf8) ?? ""
-
-                    // Parse branch names (one per line)
-                    let branches = output
-                        .split(separator: "\n")
-                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                        .filter { !$0.isEmpty }
-
-                    continuation.resume(returning: branches)
-                } catch {
-                    continuation.resume(returning: [])
-                }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let decoder = JSONDecoder()
+            
+            // Define the branch structure we expect from the server
+            struct Branch: Codable {
+                let name: String
+                let current: Bool
+                let remote: Bool
+                let worktreePath: String?
             }
+            
+            let branches = try decoder.decode([Branch].self, from: data)
+            
+            // Filter to local branches only and extract names
+            let localBranchNames = branches
+                .filter { !$0.remote }
+                .map { $0.name }
+            
+            logger.debug("Retrieved \(localBranchNames.count) local branches from server")
+            return localBranchNames
+        } catch {
+            logger.error("Failed to get branches from server: \(error)")
+            return []
         }
     }
 
@@ -394,127 +379,6 @@ public final class GitRepositoryMonitor {
         return false
     }
 
-    /// Parse git status --porcelain output
-    private nonisolated static func parseGitStatus(output: String, repoPath: String) -> GitRepository {
-        let lines = output.split(separator: "\n")
-        var currentBranch: String?
-        var aheadCount: Int?
-        var behindCount: Int?
-        var trackingBranch: String?
-        var modifiedCount = 0
-        var addedCount = 0
-        var deletedCount = 0
-        var untrackedCount = 0
-
-        for line in lines {
-            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
-
-            // Parse branch information (first line with --branch flag)
-            if trimmedLine.hasPrefix("##") {
-                let branchInfo = trimmedLine.dropFirst(2).trimmingCharacters(in: .whitespaces)
-
-                // Parse branch line format:
-                // ## branch
-                // ## branch...origin/branch
-                // ## branch...origin/branch [ahead 2]
-                // ## branch...origin/branch [behind 1]
-                // ## branch...origin/branch [ahead 2, behind 1]
-                // ## HEAD (no branch)
-                // ## Initial commit on branch
-
-                if branchInfo == "HEAD (no branch)" {
-                    currentBranch = "HEAD"
-                } else if branchInfo.hasPrefix("Initial commit on ") {
-                    currentBranch = String(branchInfo.dropFirst("Initial commit on ".count))
-                } else if branchInfo.hasPrefix("No commits yet on ") {
-                    currentBranch = String(branchInfo.dropFirst("No commits yet on ".count))
-                } else {
-                    // Extract branch and tracking info
-                    if let dotsRange = branchInfo.range(of: "...") {
-                        currentBranch = String(branchInfo[..<dotsRange.lowerBound])
-
-                        // Extract tracking branch and ahead/behind info
-                        let afterDots = String(branchInfo[dotsRange.upperBound...])
-
-                        if let bracketRange = afterDots.range(of: " [") {
-                            // Has ahead/behind info
-                            trackingBranch = String(afterDots[..<bracketRange.lowerBound])
-
-                            let trackingInfo = String(afterDots[bracketRange.upperBound...])
-                            if let closeBracket = trackingInfo.firstIndex(of: "]") {
-                                let statusInfo = String(trackingInfo[..<closeBracket])
-
-                                // Parse ahead/behind counts
-                                let parts = statusInfo.split(separator: ",")
-                                    .map { $0.trimmingCharacters(in: .whitespaces) }
-                                for part in parts {
-                                    if part.hasPrefix("ahead ") {
-                                        aheadCount = Int(part.dropFirst("ahead ".count))
-                                    } else if part.hasPrefix("behind ") {
-                                        behindCount = Int(part.dropFirst("behind ".count))
-                                    }
-                                }
-                            }
-                        } else {
-                            // No ahead/behind info
-                            trackingBranch = afterDots
-                        }
-                    } else {
-                        // No tracking branch
-                        currentBranch = branchInfo
-                    }
-                }
-                continue
-            }
-
-            // Skip empty lines
-            guard trimmedLine.count >= 2 else { continue }
-
-            // Get status code (first two characters)
-            let statusCode = trimmedLine.prefix(2)
-
-            // Count files based on status codes
-            // ?? = untracked
-            // M_ or _M = modified
-            // A_ or _A = added to index
-            // D_ or _D = deleted
-            // R_ = renamed
-            // C_ = copied
-            // U_ = unmerged
-            if statusCode == "??" {
-                untrackedCount += 1
-            } else if statusCode.contains("M") {
-                modifiedCount += 1
-            } else if statusCode.contains("A") {
-                addedCount += 1
-            } else if statusCode.contains("D") {
-                deletedCount += 1
-            } else if statusCode.contains("R") || statusCode.contains("C") {
-                // Renamed/copied files count as modified
-                modifiedCount += 1
-            } else if statusCode.contains("U") {
-                // Unmerged files count as modified
-                modifiedCount += 1
-            }
-        }
-
-        // Check if this is a worktree by looking for .git file instead of directory
-        let isWorktree = checkIfWorktree(at: repoPath)
-
-        return GitRepository(
-            path: repoPath,
-            modifiedCount: modifiedCount,
-            addedCount: addedCount,
-            deletedCount: deletedCount,
-            untrackedCount: untrackedCount,
-            currentBranch: currentBranch,
-            aheadCount: aheadCount,
-            behindCount: behindCount,
-            trackingBranch: trackingBranch,
-            isWorktree: isWorktree
-        )
-    }
-
     /// Fetch GitHub URL in background and cache it
     @MainActor
     private func fetchGitHubURLInBackground(for repoPath: String) async {
@@ -539,11 +403,12 @@ public final class GitRepositoryMonitor {
                     let isGitRepo: Bool
                     let repoPath: String?
                     let remoteUrl: String?
+                    let githubUrl: String?
                 }
                 let response = try decoder.decode(RemoteResponse.self, from: data)
 
-                if let remoteUrlString = response.remoteUrl,
-                   let githubURL = GitRepository.parseGitHubURL(from: remoteUrlString)
+                if let githubUrlString = response.githubUrl,
+                   let githubURL = URL(string: githubUrlString)
                 {
                     self.githubURLCache[repoPath] = githubURL
 
@@ -566,34 +431,8 @@ public final class GitRepositoryMonitor {
                     }
                 }
             } catch {
-                // Fall back to using GitRepository.getGitHubURL if HTTP endpoint fails
-                Task {
-                    gitOperationQueue.addOperation {
-                        if let githubURL = GitRepository.getGitHubURL(for: repoPath) {
-                            Task { @MainActor in
-                                self.githubURLCache[repoPath] = githubURL
-
-                                // Update cached repository with GitHub URL
-                                if var cachedRepo = self.repositoryCache[repoPath] {
-                                    cachedRepo = GitRepository(
-                                        path: cachedRepo.path,
-                                        modifiedCount: cachedRepo.modifiedCount,
-                                        addedCount: cachedRepo.addedCount,
-                                        deletedCount: cachedRepo.deletedCount,
-                                        untrackedCount: cachedRepo.untrackedCount,
-                                        currentBranch: cachedRepo.currentBranch,
-                                        aheadCount: cachedRepo.aheadCount,
-                                        behindCount: cachedRepo.behindCount,
-                                        trackingBranch: cachedRepo.trackingBranch,
-                                        isWorktree: cachedRepo.isWorktree,
-                                        githubURL: githubURL
-                                    )
-                                    self.repositoryCache[repoPath] = cachedRepo
-                                }
-                            }
-                        }
-                    }
-                }
+                // HTTP endpoint failed, log the error but don't fallback to direct git
+                logger.debug("Failed to fetch GitHub URL from server: \(error)")
             }
         }
 

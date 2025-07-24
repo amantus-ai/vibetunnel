@@ -761,10 +761,26 @@ export function createGitRoutes(): Router {
         });
         const remoteUrl = remoteOutput.trim();
 
+        // Parse GitHub URL from remote URL
+        let githubUrl: string | null = null;
+        if (remoteUrl) {
+          // Handle HTTPS URLs: https://github.com/user/repo.git
+          if (remoteUrl.startsWith('https://github.com/')) {
+            githubUrl = remoteUrl.endsWith('.git') ? remoteUrl.slice(0, -4) : remoteUrl;
+          }
+          // Handle SSH URLs: git@github.com:user/repo.git
+          else if (remoteUrl.startsWith('git@github.com:')) {
+            const pathPart = remoteUrl.substring('git@github.com:'.length);
+            const cleanPath = pathPart.endsWith('.git') ? pathPart.slice(0, -4) : pathPart;
+            githubUrl = `https://github.com/${cleanPath}`;
+          }
+        }
+
         return res.json({
           isGitRepo: true,
           repoPath,
           remoteUrl,
+          githubUrl,
         });
       } catch (error) {
         if (isNotGitRepositoryError(error)) {
@@ -779,6 +795,7 @@ export function createGitRoutes(): Router {
           return res.json({
             isGitRepo: true,
             remoteUrl: null,
+            githubUrl: null,
           });
         }
 

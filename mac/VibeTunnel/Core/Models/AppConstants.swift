@@ -137,79 +137,9 @@ enum AppConstants {
     }
 }
 
-// MARK: - Configuration Helpers
+// MARK: - Convenience Methods
 
 extension AppConstants {
-    /// Development server configuration
-    struct DevServerConfig {
-        let useDevServer: Bool
-        let devServerPath: String
-
-        static func current() -> Self {
-            Self(
-                useDevServer: boolValue(for: UserDefaultsKeys.useDevServer),
-                devServerPath: stringValue(for: UserDefaultsKeys.devServerPath)
-            )
-        }
-    }
-
-    /// Authentication configuration
-    struct AuthConfig {
-        let mode: String
-
-        static func current() -> Self {
-            Self(
-                mode: stringValue(for: UserDefaultsKeys.authenticationMode)
-            )
-        }
-    }
-
-    /// Debug configuration
-    struct DebugConfig {
-        let debugMode: Bool
-        let logLevel: String
-
-        static func current() -> Self {
-            Self(
-                debugMode: boolValue(for: UserDefaultsKeys.debugMode),
-                logLevel: stringValue(for: UserDefaultsKeys.logLevel)
-            )
-        }
-    }
-
-    /// Server configuration
-    struct ServerConfig {
-        let port: Int
-        let dashboardAccessMode: String
-        let cleanupOnStartup: Bool
-
-        static func current() -> Self {
-            Self(
-                port: intValue(for: UserDefaultsKeys.serverPort),
-                dashboardAccessMode: stringValue(for: UserDefaultsKeys.dashboardAccessMode),
-                cleanupOnStartup: boolValue(for: UserDefaultsKeys.cleanupOnStartup)
-            )
-        }
-    }
-
-    /// Application preferences
-    struct AppPreferences {
-        let preferredGitApp: String?
-        let preferredTerminal: String?
-        let showInDock: Bool
-        let updateChannel: String
-
-        static func current() -> Self {
-            Self(
-                preferredGitApp: UserDefaults.standard.string(forKey: UserDefaultsKeys.preferredGitApp),
-                preferredTerminal: UserDefaults.standard.string(forKey: UserDefaultsKeys.preferredTerminal),
-                showInDock: boolValue(for: UserDefaultsKeys.showInDock),
-                updateChannel: stringValue(for: UserDefaultsKeys.updateChannel)
-            )
-        }
-    }
-
-    // MARK: - Convenience Methods
 
     /// Check if the app is in development mode (debug or dev server enabled)
     static func isInDevelopmentMode() -> Bool {

@@ -37,15 +37,6 @@ struct NgrokTunnelStatus: Codable {
     let publicUrl: String
     let metrics: TunnelMetrics
     let startedAt: Date
-
-    /// Traffic metrics for the ngrok tunnel.
-    ///
-    /// Tracks connection count and bandwidth usage.
-    struct TunnelMetrics: Codable {
-        let connectionsCount: Int
-        let bytesIn: Int64
-        let bytesOut: Int64
-    }
 }
 
 /// Protocol for ngrok tunnel operations.
@@ -284,7 +275,7 @@ final class NgrokService: NgrokTunnelProtocol {
             if tunnelStatus == nil {
                 tunnelStatus = NgrokTunnelStatus(
                     publicUrl: publicUrl ?? "",
-                    metrics: .init(connectionsCount: 0, bytesIn: 0, bytesOut: 0),
+                    metrics: TunnelMetrics(connectionsCount: 0, bytesIn: 0, bytesOut: 0),
                     startedAt: Date()
                 )
             }

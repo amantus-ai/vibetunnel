@@ -1,4 +1,5 @@
 import AppKit
+import CoreGraphics
 import Foundation
 import OSLog
 
@@ -10,22 +11,6 @@ final class WindowEnumerator {
         category: "WindowEnumerator"
     )
 
-    /// Information about a tracked terminal window
-    struct WindowInfo {
-        let windowID: CGWindowID
-        let ownerPID: pid_t
-        let terminalApp: Terminal
-        let sessionID: String
-        let createdAt: Date
-
-        // Tab-specific information
-        let tabReference: String? // AppleScript reference for Terminal.app tabs
-        let tabID: String? // Tab identifier for iTerm2
-
-        // Window properties from Accessibility APIs
-        let bounds: CGRect?
-        let title: String?
-    }
 
     /// Gets all terminal windows currently visible on screen using Accessibility APIs.
     static func getAllTerminalWindows() -> [WindowInfo] {

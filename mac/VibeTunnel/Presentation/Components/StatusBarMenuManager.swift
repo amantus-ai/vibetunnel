@@ -68,17 +68,7 @@ final class StatusBarMenuManager: NSObject {
 
     // MARK: - Configuration
 
-    struct Configuration {
-        let sessionMonitor: SessionMonitor
-        let serverManager: ServerManager
-        let ngrokService: NgrokService
-        let tailscaleService: TailscaleService
-        let terminalLauncher: TerminalLauncher
-        let gitRepositoryMonitor: GitRepositoryMonitor
-        let repositoryDiscovery: RepositoryDiscoveryService
-        let configManager: ConfigManager
-        let worktreeService: WorktreeService
-    }
+    typealias Configuration = StatusBarMenuConfiguration
 
     // MARK: - Setup
 

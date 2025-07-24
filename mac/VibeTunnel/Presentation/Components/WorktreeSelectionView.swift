@@ -19,7 +19,7 @@ struct WorktreeSelectionView: View {
         case baseBranch
     }
 
-    private let logger = Logger(subsystem: "ai.vibe.VibeTunnel", category: "WorktreeSelectionView")
+    private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "WorktreeSelectionView")
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
