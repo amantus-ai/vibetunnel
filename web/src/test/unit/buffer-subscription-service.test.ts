@@ -21,11 +21,12 @@ class MockWebSocket {
 
   constructor(url: string) {
     this.url = url;
-    // Simulate connection after a tick
-    setTimeout(() => {
-      this.readyState = MockWebSocket.OPEN;
+    // Simulate connection immediately
+    this.readyState = MockWebSocket.OPEN;
+    // Trigger onopen asynchronously
+    Promise.resolve().then(() => {
       this.onopen?.(new Event('open'));
-    }, 0);
+    });
   }
 
   send(_data: string | ArrayBuffer) {
@@ -43,7 +44,7 @@ class MockWebSocket {
 // Mock dynamic import of terminal-renderer
 vi.mock('../../client/utils/terminal-renderer.js', () => ({
   TerminalRenderer: {
-    decodeBinaryBuffer: (_data: ArrayBuffer) => ({
+    decodeBinaryBuffer: vi.fn().mockReturnValue({
       cols: 80,
       rows: 24,
       viewportY: 0,
@@ -59,9 +60,21 @@ describe('BufferSubscriptionService', () => {
   let mockWebSocket: MockWebSocket;
   let sentMessages: string[] = [];
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.useFakeTimers();
     // Reset sent messages
     sentMessages = [];
+
+    // Mock fetch for auth config
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url === '/api/auth/config') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ noAuth: true }),
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    }) as unknown as typeof fetch;
 
     // Replace global WebSocket with our mock
     global.WebSocket = vi.fn().mockImplementation((url: string) => {
@@ -79,6 +92,13 @@ describe('BufferSubscriptionService', () => {
       return mockWebSocket;
     }) as unknown as MockWebSocketConstructor;
 
+    // Add WebSocket constants to global
+    const ws = global.WebSocket as MockWebSocketConstructor;
+    ws.CONNECTING = MockWebSocket.CONNECTING;
+    ws.OPEN = MockWebSocket.OPEN;
+    ws.CLOSING = MockWebSocket.CLOSING;
+    ws.CLOSED = MockWebSocket.CLOSED;
+
     // Mock window.location
     Object.defineProperty(window, 'location', {
       value: { host: 'localhost:8080', protocol: 'http:' },
@@ -88,13 +108,23 @@ describe('BufferSubscriptionService', () => {
     // Create service
     service = new BufferSubscriptionService();
 
-    // Wait for connection
-    return new Promise((resolve) => setTimeout(resolve, 10));
+    // Initialize the service to trigger connection
+    await service.initialize();
+
+    // Advance only the initialize timeout (100ms)
+    await vi.advanceTimersByTimeAsync(100);
+
+    // Wait for the WebSocket connection promise
+    await vi.waitFor(() => {
+      return mockWebSocket && mockWebSocket.readyState === MockWebSocket.OPEN;
+    });
   });
 
   afterEach(() => {
     service.dispose();
     vi.clearAllMocks();
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   describe('Connection Management', () => {
@@ -103,11 +133,13 @@ describe('BufferSubscriptionService', () => {
       expect(mockWebSocket.readyState).toBe(MockWebSocket.OPEN);
     });
 
-    it('should use wss for https', () => {
+    it('should use wss for https', async () => {
       service.dispose();
 
       window.location.protocol = 'https:';
       service = new BufferSubscriptionService();
+      await service.initialize();
+      await vi.advanceTimersByTimeAsync(100);
 
       expect(global.WebSocket).toHaveBeenCalledWith('wss://localhost:8080/buffers');
     });
@@ -125,27 +157,25 @@ describe('BufferSubscriptionService', () => {
       }) as unknown as typeof WebSocket;
 
       // Should not throw
-      expect(() => {
-        service = new BufferSubscriptionService();
-      }).not.toThrow();
+      service = new BufferSubscriptionService();
+      await expect(service.initialize()).resolves.not.toThrow();
     });
 
     it('should reconnect on disconnect', async () => {
-      const connectSpy = vi.spyOn(global, 'WebSocket');
+      // Reset call count
+      vi.clearAllMocks();
 
       // Force disconnect
       mockWebSocket.close();
 
-      // Wait for reconnect attempt
-      await new Promise((resolve) => setTimeout(resolve, 1100));
+      // Advance timer for reconnect attempt (1000ms)
+      await vi.advanceTimersByTimeAsync(1100);
 
       // Should have attempted to reconnect
-      expect(connectSpy).toHaveBeenCalledTimes(2);
+      expect(global.WebSocket).toHaveBeenCalledTimes(1);
     });
 
     it('should use exponential backoff for reconnection', async () => {
-      vi.useFakeTimers();
-
       // First disconnect
       mockWebSocket.close();
 
@@ -227,8 +257,8 @@ describe('BufferSubscriptionService', () => {
       // Force disconnect and reconnect
       mockWebSocket.close();
 
-      // Wait for reconnection
-      await new Promise((resolve) => setTimeout(resolve, 1100));
+      // Advance timer for reconnection
+      await vi.advanceTimersByTimeAsync(1100);
 
       // Should have resubscribed
       expect(sentMessages).toContainEqual(
@@ -262,8 +292,9 @@ describe('BufferSubscriptionService', () => {
       // Send message
       mockWebSocket.onmessage?.(new MessageEvent('message', { data: message }));
 
-      // Wait for dynamic import
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      // Wait for dynamic import and message processing
+      await vi.runAllTimersAsync();
+      await vi.waitFor(() => handler.mock.calls.length > 0, { timeout: 1000 });
 
       expect(handler).toHaveBeenCalledWith({
         cols: 80,
@@ -329,7 +360,8 @@ describe('BufferSubscriptionService', () => {
 
       mockWebSocket.onmessage?.(new MessageEvent('message', { data: message }));
 
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      // Process the message
+      await vi.runAllTimersAsync();
 
       expect(handler).not.toHaveBeenCalled();
     });
@@ -379,7 +411,7 @@ describe('BufferSubscriptionService', () => {
       service.subscribe('session789', vi.fn());
 
       // Wait for reconnect
-      await new Promise((resolve) => setTimeout(resolve, 1100));
+      await vi.advanceTimersByTimeAsync(1100);
 
       // Should have sent both subscriptions
       expect(sentMessages).toContainEqual(
@@ -411,7 +443,10 @@ describe('BufferSubscriptionService', () => {
 
       mockWebSocket.onmessage?.(new MessageEvent('message', { data: message }));
 
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.runAllTimersAsync();
+      await vi.waitFor(() => handler1.mock.calls.length > 0 && handler2.mock.calls.length > 0, {
+        timeout: 1000,
+      });
 
       expect(handler1).toHaveBeenCalled();
       expect(handler2).toHaveBeenCalled();
@@ -440,7 +475,11 @@ describe('BufferSubscriptionService', () => {
 
       mockWebSocket.onmessage?.(new MessageEvent('message', { data: message }));
 
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await vi.runAllTimersAsync();
+      await vi.waitFor(
+        () => errorHandler.mock.calls.length > 0 && goodHandler.mock.calls.length > 0,
+        { timeout: 1000 }
+      );
 
       // Both handlers should have been called
       expect(errorHandler).toHaveBeenCalled();
@@ -460,33 +499,31 @@ describe('BufferSubscriptionService', () => {
       expect(mockWebSocket.readyState).toBe(MockWebSocket.CLOSED);
     });
 
-    it('should clear all subscriptions on dispose', () => {
+    it('should clear all subscriptions on dispose', async () => {
       const handler1 = vi.fn();
       const handler2 = vi.fn();
 
       service.subscribe('session1', handler1);
       service.subscribe('session2', handler2);
 
+      // Verify we have subscribe messages
+      expect(sentMessages).toHaveLength(2);
+
       service.dispose();
+
+      // Clear sent messages to test new service
+      sentMessages = [];
 
       // Create new service
       service = new BufferSubscriptionService();
+      await service.initialize();
+      await vi.advanceTimersByTimeAsync(100);
 
-      // Should not have any subscriptions
-      const subscribeMessages = sentMessages.filter((msg) => {
-        const parsed = JSON.parse(msg);
-        return (
-          parsed.type === 'subscribe' &&
-          (parsed.sessionId === 'session1' || parsed.sessionId === 'session2')
-        );
-      });
-
-      expect(subscribeMessages).toHaveLength(0);
+      // Should not have any subscription messages from the new service
+      expect(sentMessages).toHaveLength(0);
     });
 
     it('should cancel reconnect timer on dispose', async () => {
-      vi.useFakeTimers();
-
       // Force disconnect
       mockWebSocket.close();
 
