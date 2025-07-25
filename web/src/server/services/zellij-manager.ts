@@ -25,7 +25,7 @@ export class ZellijManager {
    * Strip ANSI escape codes from text
    */
   private stripAnsiCodes(text: string): string {
-    // eslint-disable-next-line no-control-regex
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape codes contain control characters
     return text.replace(/\x1b\[[0-9;]*m/g, '');
   }
 
@@ -70,19 +70,19 @@ export class ZellijManager {
       for (const line of lines) {
         // Strip ANSI codes first
         const cleanLine = this.stripAnsiCodes(line).trim();
-        
+
         if (!cleanLine) continue;
 
         // Parse session info
         // Format: "session-name [Created 15s ago]" or "session-name [EXITED] [Created 1h ago]"
         const exited = cleanLine.includes('[EXITED]');
-        
+
         // Extract session name (everything before the first [)
-        const nameMatch = cleanLine.match(/^([^\[]+)/);
+        const nameMatch = cleanLine.match(/^([^[]+)/);
         if (!nameMatch) continue;
-        
+
         const name = nameMatch[1].trim();
-        
+
         // Extract created time if available
         const createdMatch = cleanLine.match(/\[Created ([^\]]+)\]/);
         const created = createdMatch ? createdMatch[1] : 'unknown';
@@ -125,7 +125,7 @@ export class ZellijManager {
     // Zellij can't create detached sessions like tmux
     // Sessions are created when attaching to them
     logger.info('Zellij session will be created on first attach', { name, layout });
-    
+
     // Store the layout preference if provided
     if (layout) {
       // We could store this in a temporary map or config file
@@ -143,11 +143,11 @@ export class ZellijManager {
   ): Promise<string> {
     // Zellij attach command with -c flag to create if doesn't exist
     const zellijCommand = ['zellij', 'attach', '-c', sessionName];
-    
+
     // Add layout if provided and session doesn't exist yet
     if (options?.layout) {
       const sessions = await this.listSessions();
-      const sessionExists = sessions.some(s => s.name === sessionName && !s.exited);
+      const sessionExists = sessions.some((s) => s.name === sessionName && !s.exited);
       if (!sessionExists) {
         zellijCommand.push('-l', options.layout);
       }
