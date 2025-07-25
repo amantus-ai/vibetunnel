@@ -81,7 +81,15 @@ export async function waitForTerminalPrompt(page: Page, timeout = 5000): Promise
   await page.waitForFunction(
     () => {
       const terminal = document.querySelector('vibe-terminal');
-      const text = terminal?.textContent || '';
+      if (!terminal) return false;
+
+      // Check the terminal container first
+      const container = terminal.querySelector('#terminal-container');
+      const containerText = container?.textContent || '';
+
+      // Fall back to terminal content
+      const text = terminal?.textContent || containerText;
+
       // Terminal is ready when it ends with a prompt character
       return text.trim().endsWith('$') || text.trim().endsWith('>') || text.trim().endsWith('#');
     },
@@ -96,7 +104,15 @@ export async function waitForTerminalBusy(page: Page, timeout = 2000): Promise<v
   await page.waitForFunction(
     () => {
       const terminal = document.querySelector('vibe-terminal');
-      const text = terminal?.textContent || '';
+      if (!terminal) return false;
+
+      // Check the terminal container first
+      const container = terminal.querySelector('#terminal-container');
+      const containerText = container?.textContent || '';
+
+      // Fall back to terminal content
+      const text = terminal?.textContent || containerText;
+
       // Terminal is busy when it doesn't end with prompt
       return !text.trim().endsWith('$') && !text.trim().endsWith('>') && !text.trim().endsWith('#');
     },
@@ -311,6 +327,15 @@ export async function waitForTerminalText(
   await page.waitForFunction(
     (text) => {
       const terminal = document.querySelector('vibe-terminal');
+      if (!terminal) return false;
+
+      // Check the terminal container first
+      const container = terminal.querySelector('#terminal-container');
+      if (container?.textContent?.includes(text)) {
+        return true;
+      }
+
+      // Fall back to terminal content
       return terminal?.textContent?.includes(text);
     },
     searchText,
@@ -328,9 +353,14 @@ export async function waitForTerminalReady(page: Page, timeout = 4000): Promise<
   await page.waitForFunction(
     () => {
       const terminal = document.querySelector('vibe-terminal');
+      if (!terminal) return false;
+
+      // Check the terminal container for content
+      const container = terminal.querySelector('#terminal-container');
       return (
         terminal &&
-        (terminal.textContent?.trim().length > 0 ||
+        ((container?.textContent?.trim().length || 0) > 0 ||
+          terminal.textContent?.trim().length > 0 ||
           !!terminal.shadowRoot ||
           !!terminal.querySelector('.xterm'))
       );

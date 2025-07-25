@@ -350,10 +350,10 @@ test.describe('Keyboard Shortcuts', () => {
     // Type partial command and press Tab
     await page.keyboard.type('ech');
     await page.keyboard.press('Tab');
-    
+
     // Wait for a bit to let tab completion process
     await page.waitForTimeout(1000);
-    
+
     // Log terminal state after tab
     await page.evaluate(() => {
       const terminal = document.querySelector('vibe-terminal');
@@ -361,7 +361,7 @@ test.describe('Keyboard Shortcuts', () => {
       console.log('After tab - Terminal content:', terminal?.textContent);
       console.log('After tab - Container content:', container?.textContent);
     });
-    
+
     // Wait for tab completion to process
     await page.waitForFunction(
       () => {

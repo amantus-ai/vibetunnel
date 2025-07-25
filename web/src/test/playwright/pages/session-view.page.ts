@@ -61,11 +61,15 @@ export class SessionViewPage extends BasePage {
         if (!terminal) return false;
 
         // Terminal is ready if it has content, shadow root, or xterm element
+        // Check the terminal container first
+        const container = terminal.querySelector('#terminal-container');
+        const hasContainerContent =
+          container && container.textContent && container.textContent.trim().length > 0;
         const hasContent = terminal.textContent && terminal.textContent.trim().length > 0;
         const hasShadowRoot = !!terminal.shadowRoot;
         const hasXterm = !!terminal.querySelector('.xterm');
 
-        return hasContent || hasShadowRoot || hasXterm;
+        return hasContainerContent || hasContent || hasShadowRoot || hasXterm;
       },
       { timeout }
     );
