@@ -7,7 +7,8 @@ import { waitForModalClosed } from '../helpers/wait-strategies.helper';
 // These tests create their own sessions and can run in parallel
 test.describe.configure({ mode: 'parallel' });
 
-test.describe('File Browser', () => {
+// Skip all file browser tests since the feature has been removed
+test.describe.skip('File Browser', () => {
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {

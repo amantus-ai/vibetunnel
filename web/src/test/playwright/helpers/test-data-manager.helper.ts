@@ -66,17 +66,8 @@ export class TestSessionManager {
           });
 
         // Additional wait to ensure session is saved to backend
-        await this.page
-          .waitForResponse(
-            (response) => response.url().includes('/api/sessions') && response.status() === 200,
-            { timeout: 5000 }
-          )
-          .catch(() => {
-            console.warn('No session list refresh detected, session might not be fully saved');
-          });
-
-        // Extra wait for file system to flush - critical for CI environments
-        await this.page.waitForTimeout(1000);
+        // Skip this wait since we've already verified the session is created and loaded
+        console.log('Session created and loaded, skipping additional waits');
       }
 
       // Track the session

@@ -337,6 +337,7 @@ export class SessionListPage extends BasePage {
           } else {
             // Track this session for cleanup
             TestSessionTracker.getInstance().trackSession(sessionId);
+            console.log(`Web session created, waiting for navigation to session view...`);
           }
         } else {
           // Check if a session was actually created by looking for it in the DOM
@@ -355,8 +356,30 @@ export class SessionListPage extends BasePage {
         // Don't throw yet, check if we navigated anyway
       }
 
-      // Give the app time to process the session and navigate
-      await this.page.waitForTimeout(2000);
+      // Wait for the session to appear in the app's session list before navigation
+      // This is important to avoid race conditions where we navigate before the app knows about the session
+      if (sessionId) {
+        await this.page.waitForFunction(
+          ({ id }) => {
+            // Check if the app has loaded this session
+            const app = document.querySelector('vibetunnel-app') as HTMLElement & {
+              sessions?: Array<{ id: string }>;
+            };
+            if (app?.sessions) {
+              return app.sessions.some((s) => s.id === id);
+            }
+            return false;
+          },
+          { id: sessionId },
+          { timeout: 10000, polling: 100 }
+        );
+
+        // Give the app a moment to process after the session appears
+        await this.page.waitForTimeout(500);
+      } else {
+        // Give the app time to process the session and navigate
+        await this.page.waitForTimeout(2000);
+      }
 
       // Wait for modal to close - check if the form's visible property is false
       await this.page
@@ -415,13 +438,40 @@ export class SessionListPage extends BasePage {
       const debugUrl = this.page.url();
       console.log(`[DEBUG] Current URL after navigation: ${debugUrl}`);
 
+      // Wait for the session view to be properly rendered with session data
+      await this.page.waitForFunction(
+        () => {
+          const sessionView = document.querySelector('session-view') as HTMLElement & {
+            session?: { id: string };
+            shadowRoot?: ShadowRoot;
+          };
+          if (!sessionView) return false;
+
+          // Check if session-view has the session prop set
+          if (!sessionView.session) return false;
+
+          // Check if loading animation is complete
+          const loadingElement = sessionView.shadowRoot?.querySelector('.text-2xl');
+          if (loadingElement?.textContent?.includes('Loading')) {
+            return false;
+          }
+
+          // Session view is ready
+          return true;
+        },
+        { timeout: 15000, polling: 100 }
+      );
+
       // Debug: Check if session view component exists
       const sessionViewExists = await this.page.evaluate(() => {
-        const sessionView = document.querySelector('session-view');
+        const sessionView = document.querySelector('session-view') as HTMLElement & {
+          session?: { id: string };
+        };
         return {
           exists: !!sessionView,
           visible: sessionView ? window.getComputedStyle(sessionView).display !== 'none' : false,
-          innerHTML: sessionView ? sessionView.innerHTML.substring(0, 200) : 'N/A',
+          hasSession: !!sessionView?.session,
+          sessionId: sessionView?.session?.id,
         };
       });
       console.log('[DEBUG] Session view state:', sessionViewExists);

@@ -23,7 +23,8 @@ test.describe('UI Features', () => {
     await sessionManager.cleanupAllSessions();
   });
 
-  test('should open and close file browser', async ({ page }) => {
+  // Skip file browser tests since the feature has been removed
+  test.skip('should open and close file browser', async ({ page }) => {
     // Create a session using helper
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser'),
@@ -60,7 +61,8 @@ test.describe('UI Features', () => {
     );
   });
 
-  test('should navigate directories in file browser', async ({ page }) => {
+  // Skip file browser tests since the feature has been removed
+  test.skip('should navigate directories in file browser', async ({ page }) => {
     // Create a session using helper
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-nav'),
