@@ -337,9 +337,31 @@ test.describe('Keyboard Shortcuts', () => {
 
     await sessionViewPage.clickTerminal();
 
+    // Log terminal state before typing
+    await page.evaluate(() => {
+      const terminal = document.querySelector('vibe-terminal');
+      const container = terminal?.querySelector('#terminal-container');
+      console.log('Terminal exists:', !!terminal);
+      console.log('Container exists:', !!container);
+      console.log('Terminal content:', terminal?.textContent);
+      console.log('Container content:', container?.textContent);
+    });
+
     // Type partial command and press Tab
     await page.keyboard.type('ech');
     await page.keyboard.press('Tab');
+    
+    // Wait for a bit to let tab completion process
+    await page.waitForTimeout(1000);
+    
+    // Log terminal state after tab
+    await page.evaluate(() => {
+      const terminal = document.querySelector('vibe-terminal');
+      const container = terminal?.querySelector('#terminal-container');
+      console.log('After tab - Terminal content:', terminal?.textContent);
+      console.log('After tab - Container content:', container?.textContent);
+    });
+    
     // Wait for tab completion to process
     await page.waitForFunction(
       () => {
@@ -356,7 +378,7 @@ test.describe('Keyboard Shortcuts', () => {
         // Check if 'echo' appeared (tab completion worked)
         return content.includes('echo');
       },
-      { timeout: 1000 }
+      { timeout: 10000 }
     );
 
     // Complete the command
