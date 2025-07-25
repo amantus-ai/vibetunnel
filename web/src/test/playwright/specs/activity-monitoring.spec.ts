@@ -2,7 +2,6 @@ import { expect, test } from '../fixtures/test.fixture';
 import { assertTerminalReady } from '../helpers/assertion.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
-import { SessionListPage } from '../pages/session-list.page';
 
 // These tests create their own sessions and can run in parallel
 test.describe.configure({ mode: 'parallel' });
@@ -21,10 +20,10 @@ test.describe('Activity Monitoring', () => {
   test('should show session activity status in session list', async ({ page }) => {
     // Simply create a session and check if it shows any activity indicators
     const { sessionName } = await sessionManager.createTrackedSession();
-    
+
     // Navigate back to home to see the session list
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    
+
     // Wait for session cards to load
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
@@ -54,7 +53,7 @@ test.describe('Activity Monitoring', () => {
     // Check if any activity-related element exists
     let hasActivityIndicator = false;
     for (const element of possibleActivityElements) {
-      if (await element.count() > 0) {
+      if ((await element.count()) > 0) {
         hasActivityIndicator = true;
         break;
       }
@@ -66,7 +65,7 @@ test.describe('Activity Monitoring', () => {
       const cardHtml = await sessionCard.innerHTML();
       console.log('Session card HTML:', cardHtml);
     }
-    
+
     // The test passes if we can create a session and it appears in the list
     // Activity monitoring features might not be fully implemented yet
     expect(await sessionCard.isVisible()).toBeTruthy();
