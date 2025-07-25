@@ -313,8 +313,12 @@ describe('PushNotificationService', () => {
       // Mock fetch to fail for this test
       fetchMock.mockRejectedValueOnce(new Error('Fetch failed'));
 
+      // Create a rejected promise but handle it immediately to avoid unhandled rejection
+      const rejectedPromise = Promise.reject(new Error('Service worker failed'));
+      rejectedPromise.catch(() => {}); // Handle rejection to prevent warning
+      
       const failingServiceWorker = {
-        ready: Promise.reject(new Error('Service worker failed')),
+        ready: rejectedPromise,
         register: vi.fn(),
       };
 
