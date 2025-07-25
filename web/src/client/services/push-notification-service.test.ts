@@ -310,17 +310,11 @@ describe('PushNotificationService', () => {
     });
 
     it('should handle service worker errors', async () => {
-      // Create a promise that we can control
-      let rejectPromise: (error: Error) => void;
-      const readyPromise = new Promise<ServiceWorkerRegistration>((_, reject) => {
-        rejectPromise = reject;
-      });
+      // Mock fetch to fail for this test
+      fetchMock.mockRejectedValueOnce(new Error('Fetch failed'));
 
       const failingServiceWorker = {
-        ready: readyPromise.catch(() => {
-          // Prevent unhandled rejection
-          throw new Error('Service worker failed');
-        }),
+        ready: Promise.reject(new Error('Service worker failed')),
         register: vi.fn(),
       };
 
@@ -333,14 +327,8 @@ describe('PushNotificationService', () => {
 
       const serviceWithError = new PushNotificationService();
 
-      // Trigger the rejection after initialization starts
-      const initPromise = serviceWithError.initialize();
-
-      // Reject the promise now
-      rejectPromise?.(new Error('Service worker failed'));
-
       // initialize() doesn't throw, it catches errors
-      await initPromise;
+      await serviceWithError.initialize();
       expect(serviceWithError.getSubscription()).toBeNull();
     });
   });
