@@ -1,0 +1,161 @@
+# Page snapshot
+
+```yaml
+- button "Collapse sidebar" [expanded]:
+  - img
+- button "Go to root":
+  - img
+- button "VibeTunnel VibeTunnel 0 sessions":
+  - img "VibeTunnel"
+  - heading "VibeTunnel" [level=1]
+  - paragraph: 0 sessions
+- button "Create New Session (⌘K)":
+  - img
+- heading "Exited (40)" [level=3]
+- img
+- heading "vibetunnel" [level=4]
+- button "Standalone":
+  - img
+  - text: Standalone
+  - img
+- button "1":
+  - img
+  - text: "1"
+  - img
+- text: 1 terminal-test-1753415368150-1s8bao ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 2 tab-completion-1753415361743-8o9kco ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 3 terminal-test-1753415358429-z135bx ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 4 terminal-test-1753415349555-0w1msu ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 5 tab-completion-1753415345610-6wjuo8 ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 6 enter-test-1753415343105-zuz36a ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 7 terminal-test-1753415339235-mphemk ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 8 terminal-test-1753415330315-8110ja ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 9 keyboard-test-1753415329661-ckoksj ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 10 quick-start-1753415319308-nskuhh ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 11 long-running-1753415290122-4i1cjg ~/_work/vibetunnel/vibetunnel/web 2s
+- button "Clean up session":
+  - img
+- text: 12 kill-test ~/_work/vibetunnel/vibetunnel/web 24s
+- button "Clean up session":
+  - img
+- text: 13 kill-test ~/_work/vibetunnel/vibetunnel/web 11s
+- button "Clean up session":
+  - img
+- text: 14 kill-test ~/_work/vibetunnel/vibetunnel/web 6s
+- button "Clean up session":
+  - img
+- text: 15 custom-1753415179092-1u6uya ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 16 test-session-1753415177283-n78xhqpkv-w87 ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 17 nav-test-1 ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 18 nav-test-1 ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 19 nav-test-1 ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 20 basic-test-1753415032745-jfvnmf ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 21 switch-activity-2-1753415009493-1bd5qz ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 22 switch-activity-1-1753415009493-i863ul ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 23 multi-activity-2-1753415004446-us05na ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 24 multi-activity-1-1753415004446-u3cqhd ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 25 activity-interaction-1753414990446-go3ytu ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 26 switch-activity-2-1753414982934-cilol5 ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 27 multi-activity-2-1753414980240-r7r8nx ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 28 switch-activity-1-1753414982934-37qgiy ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 29 multi-activity-1-1753414980240-n5rpl4 ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 30 activity-interaction-1753414974532-hcrlqy ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 31 activity-aggregation-1753414964447-w1nj8r ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 32 multi-activity-2-1753414956945-x298ff ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 33 switch-activity-2-1753414956898-hlwpkx ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 34 switch-activity-1-1753414956898-bs2tr4 ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 35 activity-interaction-1753414956949-99ntag ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 36 multi-activity-1-1753414956945-bw9oba ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 37 long-running-activity-1753414956951-axwrat ~/_work/vibetunnel/vibetunnel/web 1s
+- button "Clean up session":
+  - img
+- text: 38 last-activity-1753414956947-3nsera ~/_work/vibetunnel/vibetunnel/web 1s
+- button "Clean up session":
+  - img
+- text: 39 websocket-activity-1753414956913-j23l0w ~/_work/vibetunnel/vibetunnel/web 1s
+- button "Clean up session":
+  - img
+- text: 40 activity-idle-1753414956847-flfz7b ~/_work/vibetunnel/vibetunnel/web 2s
+- button "Clean up session":
+  - img
+- text: 40 Exited
+- checkbox "Show" [checked]
+- text: Show
+- button "Clean"
+- text: tab-completion-1753415361743-8o9kco
+- img
+- text: ~/_work/vibetunnel/vibetunnel/web
+- img
+- text: "[git]"
+- button "Show Worktrees":
+  - img
+- button:
+  - img
+- button "More actions menu":
+  - img
+- text: "Command 'zsh' not found, but can be installed with: sudo apt install zsh SESSION EXITED"
+```

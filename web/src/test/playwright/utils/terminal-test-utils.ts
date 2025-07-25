@@ -42,6 +42,12 @@ export class TerminalTestUtils {
       const terminal = document.querySelector('vibe-terminal');
       if (!terminal) return '';
 
+      // Look for the terminal container where content is rendered
+      const container = terminal.querySelector('#terminal-container');
+      if (container?.textContent) {
+        return container.textContent;
+      }
+
       // Try multiple selectors for terminal content
       // 1. Look for xterm screen
       const screen = terminal.querySelector('.xterm-screen');
@@ -71,7 +77,12 @@ export class TerminalTestUtils {
         const terminal = document.querySelector('vibe-terminal');
         if (!terminal) return false;
 
-        const content = terminal.textContent || '';
+        // Check the terminal container first
+        const container = terminal.querySelector('#terminal-container');
+        const containerContent = container?.textContent || '';
+
+        // Fall back to terminal content
+        const content = terminal.textContent || containerContent;
 
         // Look for common prompt patterns
         // Match $ at end of line, or common prompt indicators
@@ -113,7 +124,13 @@ export class TerminalTestUtils {
         const terminal = document.querySelector('vibe-terminal');
         if (!terminal) return false;
 
-        // Get all text content from terminal
+        // Check the terminal container first
+        const container = terminal.querySelector('#terminal-container');
+        if (container?.textContent?.includes(searchText)) {
+          return true;
+        }
+
+        // Fall back to checking all terminal content
         const content = terminal.textContent || '';
         return content.includes(searchText);
       },

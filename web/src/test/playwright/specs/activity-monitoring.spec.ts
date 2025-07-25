@@ -96,7 +96,16 @@ test.describe('Activity Monitoring', () => {
     await page.waitForFunction(
       () => {
         const term = document.querySelector('vibe-terminal');
-        return term?.textContent?.includes('Testing activity monitoring');
+        if (!term) return false;
+
+        // Check the terminal container first
+        const container = term.querySelector('#terminal-container');
+        const containerContent = container?.textContent || '';
+
+        // Fall back to terminal content
+        const content = term.textContent || containerContent;
+
+        return content.includes('Testing activity monitoring');
       },
       { timeout: 5000 }
     );

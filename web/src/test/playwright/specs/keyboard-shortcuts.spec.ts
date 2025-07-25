@@ -285,7 +285,16 @@ test.describe('Keyboard Shortcuts', () => {
     await page.waitForFunction(
       () => {
         const terminal = document.querySelector('vibe-terminal');
-        return terminal?.textContent?.includes('sleep 10');
+        if (!terminal) return false;
+
+        // Check the terminal container first
+        const container = terminal.querySelector('#terminal-container');
+        const containerContent = container?.textContent || '';
+
+        // Fall back to terminal content
+        const content = terminal.textContent || containerContent;
+
+        return content.includes('sleep 10');
       },
       { timeout: 1000 }
     );
@@ -335,7 +344,15 @@ test.describe('Keyboard Shortcuts', () => {
     await page.waitForFunction(
       () => {
         const terminal = document.querySelector('vibe-terminal');
-        const content = terminal?.textContent || '';
+        if (!terminal) return false;
+
+        // Check the terminal container first
+        const container = terminal.querySelector('#terminal-container');
+        const containerContent = container?.textContent || '';
+
+        // Fall back to terminal content
+        const content = terminal.textContent || containerContent;
+
         // Check if 'echo' appeared (tab completion worked)
         return content.includes('echo');
       },

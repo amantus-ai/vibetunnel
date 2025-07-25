@@ -15,7 +15,15 @@ export async function waitForShellPrompt(page: Page): Promise<void> {
   await page.waitForFunction(
     () => {
       const terminal = document.querySelector('vibe-terminal');
-      const content = terminal?.textContent || '';
+      if (!terminal) return false;
+
+      // Check the terminal container first
+      const container = terminal.querySelector('#terminal-container');
+      const containerContent = container?.textContent || '';
+
+      // Fall back to terminal content
+      const content = terminal.textContent || containerContent;
+
       // Match common shell prompts: $, #, >, %, ❯ at end of line
       return /[$>#%❯]\s*$/.test(content);
     },

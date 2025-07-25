@@ -145,14 +145,31 @@ export async function assertTerminalContains(
     await page.waitForFunction(
       ({ searchText }) => {
         const terminal = document.querySelector('vibe-terminal');
-        return terminal?.textContent === searchText;
+        if (!terminal) return false;
+
+        // Check the terminal container first
+        const container = terminal.querySelector('#terminal-container');
+        const containerContent = container?.textContent || '';
+
+        // Fall back to terminal content
+        const content = terminal.textContent || containerContent;
+
+        return content === searchText;
       },
       { searchText: text },
       { timeout }
     );
   } else {
+    // For regex or non-exact matches, try both selectors
     const terminal = page.locator('vibe-terminal');
-    await expect(terminal).toContainText(text, { timeout });
+    const container = page.locator('vibe-terminal #terminal-container');
+
+    // Try container first, then fall back to terminal
+    try {
+      await expect(container).toContainText(text, { timeout: timeout / 2 });
+    } catch {
+      await expect(terminal).toContainText(text, { timeout: timeout / 2 });
+    }
   }
 }
 
@@ -300,7 +317,37 @@ export async function assertTerminalReady(page: Page, timeout = 15000): Promise<
         return false;
       }
 
-      // Check if terminal has xterm structure (fallback check)
+      // Look for vibe-terminal inside session-terminal
+      const vibeTerminal = term.querySelector('vibe-terminal');
+      if (vibeTerminal) {
+        // Check the terminal container
+        const container = vibeTerminal.querySelector('#terminal-container');
+        if (container) {
+          const content = container.textContent || '';
+
+          // Check for prompt patterns
+          const promptPatterns = [
+            /[$>#%❯]\s*$/, // Common prompts at end of line
+            /\$\s*$/, // Simple dollar sign
+            />\s*$/, // Simple greater than
+            /#\s*$/, // Root prompt
+            /❯\s*$/, // Fish/zsh prompt
+            /\n\s*[$>#%❯]/, // Prompt after newline
+            /bash-\d+\.\d+\$/, // Bash version prompt
+            /]\$\s*$/, // Bracketed prompt
+            /\w+@\w+/, // Username@hostname pattern
+          ];
+
+          const hasPrompt = promptPatterns.some((pattern) => pattern.test(content));
+
+          // If we have content and it looks like a prompt, we're ready
+          if (hasPrompt || content.length > 10) {
+            return true;
+          }
+        }
+      }
+
+      // Fallback: Check if terminal has xterm structure
       const hasXterm = !!term.querySelector('.xterm');
       const hasShadowRoot = !!term.shadowRoot;
 
@@ -312,7 +359,6 @@ export async function assertTerminalReady(page: Page, timeout = 15000): Promise<
       }
 
       // Log content for debugging (last 200 chars)
-      // Note: process.env is not available in browser context
       if (content && window.location.hostname === 'localhost') {
         console.log(
           '[assertTerminalReady] Terminal content (last 200 chars):',

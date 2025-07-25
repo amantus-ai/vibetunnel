@@ -1,0 +1,83 @@
+# Page snapshot
+
+```yaml
+- button "Collapse sidebar" [expanded]:
+  - img
+- button "Go to root":
+  - img
+- button "VibeTunnel VibeTunnel 0 sessions":
+  - img "VibeTunnel"
+  - heading "VibeTunnel" [level=1]
+  - paragraph: 0 sessions
+- button "Create New Session (⌘K)":
+  - img
+- heading "Exited (14)" [level=3]
+- img
+- heading "vibetunnel" [level=4]
+- button "Standalone":
+  - img
+  - text: Standalone
+  - img
+- button "1":
+  - img
+  - text: "1"
+  - img
+- text: 1 multi-activity-2-1753414980240-r7r8nx ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 2 switch-activity-1-1753414982934-37qgiy ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 3 multi-activity-1-1753414980240-n5rpl4 ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 4 activity-interaction-1753414974532-hcrlqy ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 5 activity-aggregation-1753414964447-w1nj8r ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 6 multi-activity-2-1753414956945-x298ff ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 7 switch-activity-2-1753414956898-hlwpkx ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 8 switch-activity-1-1753414956898-bs2tr4 ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 9 activity-interaction-1753414956949-99ntag ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 10 multi-activity-1-1753414956945-bw9oba ~/_work/vibetunnel/vibetunnel/web 0s
+- button "Clean up session":
+  - img
+- text: 11 long-running-activity-1753414956951-axwrat ~/_work/vibetunnel/vibetunnel/web 1s
+- button "Clean up session":
+  - img
+- text: 12 last-activity-1753414956947-3nsera ~/_work/vibetunnel/vibetunnel/web 1s
+- button "Clean up session":
+  - img
+- text: 13 websocket-activity-1753414956913-j23l0w ~/_work/vibetunnel/vibetunnel/web 1s
+- button "Clean up session":
+  - img
+- text: 14 activity-idle-1753414956847-flfz7b ~/_work/vibetunnel/vibetunnel/web 2s
+- button "Clean up session":
+  - img
+- text: 14 Exited
+- checkbox "Show" [checked]
+- text: Show
+- button "Clean"
+- text: activity-interaction-1753414974532-hcrlqy
+- img
+- text: ~/_work/vibetunnel/vibetunnel/web
+- img
+- text: "[git]"
+- button "Show Worktrees":
+  - img
+- button:
+  - img
+- button "More actions menu":
+  - img
+- text: "Command 'zsh' not found, but can be installed with: sudo apt install zsh SESSION EXITED"
+```
