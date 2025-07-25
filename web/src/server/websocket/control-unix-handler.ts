@@ -490,6 +490,11 @@ export class ControlUnixHandler {
   }
 
   async sendControlMessage(message: ControlMessage): Promise<ControlMessage | null> {
+    // If Mac is not connected, return null immediately
+    if (!this.isMacAppConnected()) {
+      return null;
+    }
+
     return new Promise((resolve) => {
       // Store the pending request
       this.pendingRequests.set(message.id, resolve);

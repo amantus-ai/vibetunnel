@@ -316,7 +316,7 @@ describe('PushNotificationService', () => {
       // Create a rejected promise but handle it immediately to avoid unhandled rejection
       const rejectedPromise = Promise.reject(new Error('Service worker failed'));
       rejectedPromise.catch(() => {}); // Handle rejection to prevent warning
-      
+
       const failingServiceWorker = {
         ready: rejectedPromise,
         register: vi.fn(),
