@@ -41,19 +41,25 @@ class MockWebSocket {
   }
 }
 
+// Store mock function reference for tests
+const mockDecodeBinaryBuffer = vi.fn().mockReturnValue({
+  cols: 80,
+  rows: 24,
+  viewportY: 0,
+  cursorX: 0,
+  cursorY: 0,
+  cells: [],
+});
+
 // Mock dynamic import of terminal-renderer
-vi.mock('../../client/utils/terminal-renderer.js', () => ({
-  TerminalRenderer: {
-    decodeBinaryBuffer: vi.fn().mockReturnValue({
-      cols: 80,
-      rows: 24,
-      viewportY: 0,
-      cursorX: 0,
-      cursorY: 0,
-      cells: [],
-    }),
-  },
-}));
+vi.doMock('../../client/utils/terminal-renderer.js', () => {
+  return {
+    default: {},
+    TerminalRenderer: {
+      decodeBinaryBuffer: mockDecodeBinaryBuffer,
+    },
+  };
+});
 
 describe('BufferSubscriptionService', () => {
   let service: BufferSubscriptionService;
@@ -293,8 +299,13 @@ describe('BufferSubscriptionService', () => {
       mockWebSocket.onmessage?.(new MessageEvent('message', { data: message }));
 
       // Wait for dynamic import and message processing
-      await vi.runAllTimersAsync();
-      await vi.waitFor(() => handler.mock.calls.length > 0, { timeout: 1000 });
+      // Use real timers briefly to allow the promise to resolve
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      vi.useFakeTimers();
+
+      // Wait for handler to be called
+      await vi.waitFor(() => handler.mock.calls.length > 0, { timeout: 100 });
 
       expect(handler).toHaveBeenCalledWith({
         cols: 80,
@@ -360,8 +371,11 @@ describe('BufferSubscriptionService', () => {
 
       mockWebSocket.onmessage?.(new MessageEvent('message', { data: message }));
 
-      // Process the message
-      await vi.runAllTimersAsync();
+      // Wait for dynamic import and message processing
+      // Use real timers briefly to allow the promise to resolve
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      vi.useFakeTimers();
 
       expect(handler).not.toHaveBeenCalled();
     });
@@ -443,9 +457,15 @@ describe('BufferSubscriptionService', () => {
 
       mockWebSocket.onmessage?.(new MessageEvent('message', { data: message }));
 
-      await vi.runAllTimersAsync();
+      // Wait for dynamic import and message processing
+      // Use real timers briefly to allow the promise to resolve
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      vi.useFakeTimers();
+
+      // Wait for handlers to be called
       await vi.waitFor(() => handler1.mock.calls.length > 0 && handler2.mock.calls.length > 0, {
-        timeout: 1000,
+        timeout: 100,
       });
 
       expect(handler1).toHaveBeenCalled();
@@ -475,10 +495,16 @@ describe('BufferSubscriptionService', () => {
 
       mockWebSocket.onmessage?.(new MessageEvent('message', { data: message }));
 
-      await vi.runAllTimersAsync();
+      // Wait for dynamic import and message processing
+      // Use real timers briefly to allow the promise to resolve
+      vi.useRealTimers();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      vi.useFakeTimers();
+
+      // Wait for handlers to be called
       await vi.waitFor(
         () => errorHandler.mock.calls.length > 0 && goodHandler.mock.calls.length > 0,
-        { timeout: 1000 }
+        { timeout: 100 }
       );
 
       // Both handlers should have been called
