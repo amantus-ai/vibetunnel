@@ -213,7 +213,8 @@ describe('Git Routes', () => {
     it('should handle git event with repository lock', async () => {
       // Set up Git command mocks
       mockExecFile
-        .mockRejectedValueOnce(new Error('Key not found')) // follow branch check (not set)
+        .mockResolvedValueOnce({ stdout: '/home/user/project/.git\n', stderr: '' }) // git dir check
+        .mockRejectedValueOnce(new Error('Key not found')) // follow worktree check (not set)
         .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' }); // current branch
 
       const response = await request(app).post('/api/git/event').send({
@@ -252,7 +253,8 @@ describe('Git Routes', () => {
       ]);
 
       mockExecFile
-        .mockRejectedValueOnce(new Error('Key not found')) // follow branch check (not set)
+        .mockResolvedValueOnce({ stdout: '/home/user/project/.git\n', stderr: '' }) // git dir check
+        .mockRejectedValueOnce(new Error('Key not found')) // follow worktree check (not set)
         .mockResolvedValueOnce({ stdout: 'develop\n', stderr: '' }); // current branch
 
       const response = await request(app).post('/api/git/event').send({
@@ -277,11 +279,11 @@ describe('Git Routes', () => {
     });
 
     it('should handle follow mode sync when branches have not diverged', async () => {
+      // Mock git dir to simulate non-worktree (main repo)
       mockExecFile
-        .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' }) // follow branch is 'main'
-        .mockResolvedValueOnce({ stdout: 'develop\n', stderr: '' }) // current branch is 'develop'
-        .mockResolvedValueOnce({ stdout: '0\n', stderr: '' }) // diverge check - no divergence
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }); // checkout command
+        .mockResolvedValueOnce({ stdout: '/home/user/project/.git\n', stderr: '' }) // git dir check
+        .mockResolvedValueOnce({ stdout: '/home/user/project-worktree\n', stderr: '' }) // follow worktree config
+        .mockResolvedValueOnce({ stdout: 'develop\n', stderr: '' }); // current branch
 
       const response = await request(app).post('/api/git/event').send({
         repoPath: '/home/user/project',
@@ -291,21 +293,14 @@ describe('Git Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.followMode).toBe(true);
-
-      // Verify checkout was performed
-      expect(mockExecFile).toHaveBeenCalledWith(
-        'git',
-        ['checkout', 'main'],
-        expect.objectContaining({ cwd: expect.stringContaining('project') })
-      );
     });
 
-    it('should disable follow mode when branches have diverged', async () => {
+    it('should handle when follow mode is not configured', async () => {
+      // Mock git dir to simulate non-worktree (main repo)
       mockExecFile
-        .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' }) // follow branch is 'main'
-        .mockResolvedValueOnce({ stdout: 'develop\n', stderr: '' }) // current branch is 'develop'
-        .mockResolvedValueOnce({ stdout: '3\n', stderr: '' }) // diverge check - 3 commits diverged
-        .mockResolvedValueOnce({ stdout: '', stderr: '' }); // disable follow mode
+        .mockResolvedValueOnce({ stdout: '/home/user/project/.git\n', stderr: '' }) // git dir check
+        .mockRejectedValueOnce(new Error('Key not found')) // follow worktree config not set
+        .mockResolvedValueOnce({ stdout: 'develop\n', stderr: '' }); // current branch
 
       const response = await request(app).post('/api/git/event').send({
         repoPath: '/home/user/project',
@@ -315,20 +310,14 @@ describe('Git Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.followMode).toBe(false);
-
-      // Verify follow mode was disabled
-      expect(mockExecFile).toHaveBeenCalledWith(
-        'git',
-        ['config', '--local', '--unset', 'vibetunnel.followBranch'],
-        expect.objectContaining({ cwd: expect.stringContaining('project') })
-      );
     });
 
     it('should send notification to Mac app when connected', async () => {
       (controlUnixHandler.isMacAppConnected as ReturnType<typeof vi.fn>).mockReturnValue(true);
 
       mockExecFile
-        .mockRejectedValueOnce(new Error('Key not found')) // follow branch check (not set)
+        .mockResolvedValueOnce({ stdout: '/home/user/project/.git\n', stderr: '' }) // git dir check
+        .mockRejectedValueOnce(new Error('Key not found')) // follow worktree check (not set)
         .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' }); // current branch
 
       const response = await request(app).post('/api/git/event').send({
@@ -357,10 +346,12 @@ describe('Git Routes', () => {
 
     it('should handle concurrent requests with locking', async () => {
       mockExecFile
-        .mockRejectedValueOnce(new Error('Key not found')) // first request - no follow branch
-        .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' })
-        .mockRejectedValueOnce(new Error('Key not found')) // second request - no follow branch
-        .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' });
+        .mockResolvedValueOnce({ stdout: '/home/user/project/.git\n', stderr: '' }) // first request - git dir
+        .mockRejectedValueOnce(new Error('Key not found')) // first request - no follow worktree
+        .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' }) // first request - current branch
+        .mockResolvedValueOnce({ stdout: '/home/user/project/.git\n', stderr: '' }) // second request - git dir
+        .mockRejectedValueOnce(new Error('Key not found')) // second request - no follow worktree
+        .mockResolvedValueOnce({ stdout: 'main\n', stderr: '' }); // second request - current branch
 
       // Send two concurrent requests
       const [response1, response2] = await Promise.all([

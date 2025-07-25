@@ -17,12 +17,17 @@ const mockPushManager = {
   subscribe: vi.fn(),
 };
 
+// Mock service worker registration
+const mockServiceWorkerRegistration = {
+  pushManager: mockPushManager,
+  showNotification: vi.fn(),
+  getNotifications: vi.fn(),
+};
+
 // Mock navigator.serviceWorker
 const mockServiceWorker = {
-  ready: Promise.resolve({
-    pushManager: mockPushManager,
-  }),
-  register: vi.fn(),
+  ready: Promise.resolve(mockServiceWorkerRegistration),
+  register: vi.fn().mockResolvedValue(mockServiceWorkerRegistration),
 };
 
 describe('PushNotificationService', () => {
@@ -52,6 +57,21 @@ describe('PushNotificationService', () => {
     // Mock window.PushManager
     vi.stubGlobal('PushManager', function PushManager() {});
 
+    // Mock window.matchMedia
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }))
+    );
+
     // Reset mocks
     mockPushManager.getSubscription.mockReset();
     mockPushManager.subscribe.mockReset();
@@ -80,7 +100,7 @@ describe('PushNotificationService', () => {
         userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
         vendor: 'Apple Computer, Inc.',
         standalone: false,
-        serviceWorker: undefined,
+        // Don't include serviceWorker property at all
       };
       vi.stubGlobal('navigator', navigatorWithoutSW);
 
@@ -89,15 +109,27 @@ describe('PushNotificationService', () => {
     });
 
     it('should return false when PushManager is not available', () => {
-      vi.stubGlobal('PushManager', undefined);
+      // Remove PushManager from window
+      const originalPushManager = window.PushManager;
+      delete (window as any).PushManager;
+
       const serviceWithoutPush = new PushNotificationService();
       expect(serviceWithoutPush.isSupported()).toBe(false);
+
+      // Restore PushManager
+      (window as any).PushManager = originalPushManager;
     });
 
     it('should return false when Notification is not available', () => {
-      vi.stubGlobal('Notification', undefined);
+      // Remove Notification from window
+      const originalNotification = window.Notification;
+      delete (window as any).Notification;
+
       const serviceWithoutNotification = new PushNotificationService();
       expect(serviceWithoutNotification.isSupported()).toBe(false);
+
+      // Restore Notification
+      (window as any).Notification = originalNotification;
     });
   });
 
@@ -110,6 +142,21 @@ describe('PushNotificationService', () => {
         standalone: true,
       };
       vi.stubGlobal('navigator', iOSNavigator);
+
+      // Mock matchMedia to return true for standalone mode
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn((query: string) => ({
+          matches: query === '(display-mode: standalone)',
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        }))
+      );
 
       const iOSService = new PushNotificationService();
       expect(iOSService.isSupported()).toBe(true);
@@ -124,6 +171,21 @@ describe('PushNotificationService', () => {
       };
       vi.stubGlobal('navigator', iOSNavigator);
 
+      // Mock matchMedia to return false for standalone mode
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn((query: string) => ({
+          matches: false,
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        }))
+      );
+
       const iOSService = new PushNotificationService();
       expect(iOSService.isSupported()).toBe(false);
     });
@@ -136,6 +198,21 @@ describe('PushNotificationService', () => {
         standalone: true,
       };
       vi.stubGlobal('navigator', iPadNavigator);
+
+      // Mock matchMedia to return true for standalone mode
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn((query: string) => ({
+          matches: query === '(display-mode: standalone)',
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        }))
+      );
 
       const iPadService = new PushNotificationService();
       expect(iPadService.isSupported()).toBe(true);

@@ -87,7 +87,7 @@ describe('Control Unix Handler', () => {
       expect(mockWs.on).toHaveBeenCalledWith('error', expect.any(Function));
     });
 
-    it('should send control messages when Mac is connected', async () => {
+    it('should return null when Mac is not connected', async () => {
       const message = {
         id: 'test-123',
         type: 'request' as const,
@@ -96,17 +96,9 @@ describe('Control Unix Handler', () => {
         payload: { test: true },
       };
 
-      // When Mac is not connected, should resolve to null quickly
-      // Use a shorter timeout for the test
-      const resultPromise = controlUnixHandler.sendControlMessage(message);
-
-      // Advance timers to trigger the timeout
-      vi.useFakeTimers();
-      vi.advanceTimersByTime(10000);
-      vi.useRealTimers();
-
-      const result = await resultPromise;
+      // When Mac is not connected, sendControlMessage should return null immediately
+      const result = await controlUnixHandler.sendControlMessage(message);
       expect(result).toBe(null);
-    });
+    }, 1000);
   });
 });
