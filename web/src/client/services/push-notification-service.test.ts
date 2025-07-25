@@ -4,6 +4,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PushNotificationService } from './push-notification-service';
 
+// Type for the mocked Notification global
+type MockNotification = {
+  permission: NotificationPermission;
+  requestPermission: ReturnType<typeof vi.fn>;
+};
+
 // Mock the auth client
 vi.mock('./auth-client', () => ({
   authClient: {
@@ -28,6 +34,8 @@ const mockServiceWorkerRegistration = {
 const mockServiceWorker = {
   ready: Promise.resolve(mockServiceWorkerRegistration),
   register: vi.fn().mockResolvedValue(mockServiceWorkerRegistration),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
 };
 
 describe('PushNotificationService', () => {
@@ -111,25 +119,25 @@ describe('PushNotificationService', () => {
     it('should return false when PushManager is not available', () => {
       // Remove PushManager from window
       const originalPushManager = window.PushManager;
-      delete (window as any).PushManager;
+      delete (window as unknown as Record<string, unknown>).PushManager;
 
       const serviceWithoutPush = new PushNotificationService();
       expect(serviceWithoutPush.isSupported()).toBe(false);
 
       // Restore PushManager
-      (window as any).PushManager = originalPushManager;
+      (window as unknown as Record<string, unknown>).PushManager = originalPushManager;
     });
 
     it('should return false when Notification is not available', () => {
       // Remove Notification from window
       const originalNotification = window.Notification;
-      delete (window as any).Notification;
+      delete (window as unknown as Record<string, unknown>).Notification;
 
       const serviceWithoutNotification = new PushNotificationService();
       expect(serviceWithoutNotification.isSupported()).toBe(false);
 
       // Restore Notification
-      (window as any).Notification = originalNotification;
+      (window as unknown as Record<string, unknown>).Notification = originalNotification;
     });
   });
 
@@ -304,7 +312,7 @@ describe('PushNotificationService', () => {
     it('should handle service worker errors', async () => {
       // Create a promise that we can control
       let rejectPromise: (error: Error) => void;
-      const readyPromise = new Promise<any>((_, reject) => {
+      const readyPromise = new Promise<ServiceWorkerRegistration>((_, reject) => {
         rejectPromise = reject;
       });
 
@@ -326,7 +334,7 @@ describe('PushNotificationService', () => {
       const initPromise = serviceWithError.initialize();
 
       // Reject the promise now
-      rejectPromise!(new Error('Service worker failed'));
+      rejectPromise?.(new Error('Service worker failed'));
 
       // initialize() doesn't throw, it catches errors
       await initPromise;
@@ -335,7 +343,12 @@ describe('PushNotificationService', () => {
   });
 
   describe('subscribe', () => {
+    let subscribeService: PushNotificationService;
+
     beforeEach(async () => {
+      // Create a new service instance for subscribe tests
+      subscribeService = new PushNotificationService();
+
       // Set up successful VAPID config fetch
       fetchMock.mockResolvedValueOnce({
         ok: true,
@@ -343,13 +356,13 @@ describe('PushNotificationService', () => {
       });
 
       // Initialize the service to set up service worker registration
-      await service.initialize();
+      await subscribeService.initialize();
     });
 
     it('should request permission and subscribe successfully', async () => {
-      // Mock permission granted
-      (global.Notification as any).requestPermission.mockResolvedValueOnce('granted');
-      (global.Notification as any).permission = 'granted';
+      // Mock permission as default initially, so it will request permission
+      (global.Notification as MockNotification).permission = 'default';
+      (global.Notification as MockNotification).requestPermission.mockResolvedValueOnce('granted');
 
       // Mock successful subscription
       const mockSubscription = {
@@ -367,14 +380,16 @@ describe('PushNotificationService', () => {
       mockPushManager.subscribe.mockResolvedValueOnce(mockSubscription);
 
       // Mock successful server registration
+      // The fetch mock must be set up AFTER the initialization fetch in beforeEach
       fetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ success: true }),
+        headers: new Headers(),
       });
 
-      const result = await service.subscribe();
+      const result = await subscribeService.subscribe();
 
-      expect((global.Notification as any).requestPermission).toHaveBeenCalled();
+      expect((global.Notification as MockNotification).requestPermission).toHaveBeenCalled();
       expect(mockPushManager.subscribe).toHaveBeenCalledWith({
         userVisibleOnly: true,
         applicationServerKey: expect.any(Uint8Array),
@@ -390,26 +405,28 @@ describe('PushNotificationService', () => {
     });
 
     it('should handle permission denied', async () => {
-      (global.Notification as any).requestPermission.mockResolvedValueOnce('denied');
-      (global.Notification as any).permission = 'denied';
+      (global.Notification as MockNotification).requestPermission.mockResolvedValueOnce('denied');
+      (global.Notification as MockNotification).permission = 'denied';
 
-      await expect(service.subscribe()).rejects.toThrow('Notification permission denied');
+      await expect(subscribeService.subscribe()).rejects.toThrow('Notification permission denied');
     });
 
     it('should handle subscription failure', async () => {
-      (global.Notification as any).requestPermission.mockResolvedValueOnce('granted');
-      (global.Notification as any).permission = 'granted';
+      (global.Notification as MockNotification).requestPermission.mockResolvedValueOnce('granted');
+      (global.Notification as MockNotification).permission = 'granted';
 
       mockPushManager.subscribe.mockRejectedValueOnce(
         new Error('Failed to subscribe to push service')
       );
 
-      await expect(service.subscribe()).rejects.toThrow('Failed to subscribe to push service');
+      await expect(subscribeService.subscribe()).rejects.toThrow(
+        'Failed to subscribe to push service'
+      );
     });
 
     it('should handle server registration failure', async () => {
-      (global.Notification as any).requestPermission.mockResolvedValueOnce('granted');
-      (global.Notification as any).permission = 'granted';
+      (global.Notification as MockNotification).requestPermission.mockResolvedValueOnce('granted');
+      (global.Notification as MockNotification).permission = 'granted';
 
       const mockSubscription = {
         endpoint: 'https://push.example.com/sub/789',
@@ -428,7 +445,9 @@ describe('PushNotificationService', () => {
         statusText: 'Bad Request',
       });
 
-      await expect(service.subscribe()).rejects.toThrow('Server responded with 400: Bad Request');
+      await expect(subscribeService.subscribe()).rejects.toThrow(
+        'Server responded with 400: Bad Request'
+      );
     });
   });
 
@@ -539,7 +558,7 @@ describe('PushNotificationService', () => {
 
       const status = await service.getServerStatus();
 
-      expect(fetchMock).toHaveBeenCalledWith('/api/push/status', expect.any(Object));
+      expect(fetchMock).toHaveBeenCalledWith('/api/push/status');
       expect(status).toEqual(mockStatus);
     });
 

@@ -73,7 +73,12 @@ export class PushNotificationService {
       logger.log('service worker registered successfully');
 
       // Wait for service worker to be ready
-      await navigator.serviceWorker.ready;
+      const registration = await navigator.serviceWorker.ready;
+
+      // Use the ready registration if our registration failed
+      if (!this.serviceWorkerRegistration) {
+        this.serviceWorkerRegistration = registration;
+      }
 
       // Get existing subscription if any
       this.pushSubscription = await this.serviceWorkerRegistration.pushManager.getSubscription();
