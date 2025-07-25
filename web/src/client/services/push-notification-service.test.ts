@@ -317,7 +317,10 @@ describe('PushNotificationService', () => {
       });
 
       const failingServiceWorker = {
-        ready: readyPromise,
+        ready: readyPromise.catch(() => {
+          // Prevent unhandled rejection
+          throw new Error('Service worker failed');
+        }),
         register: vi.fn(),
       };
 
