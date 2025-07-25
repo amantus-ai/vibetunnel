@@ -18,10 +18,12 @@ import { createConfigRoutes } from './routes/config.js';
 import { createFileRoutes } from './routes/files.js';
 import { createFilesystemRoutes } from './routes/filesystem.js';
 import { createLogRoutes } from './routes/logs.js';
+import { createMultiplexerRoutes } from './routes/multiplexer.js';
 import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createRepositoryRoutes } from './routes/repositories.js';
 import { createSessionRoutes } from './routes/sessions.js';
+import { createTmuxRoutes } from './routes/tmux.js';
 import { WebSocketInputHandler } from './routes/websocket-input.js';
 import { ActivityMonitor } from './services/activity-monitor.js';
 import { AuthService } from './services/auth-service.js';
@@ -750,6 +752,14 @@ export async function createApp(): Promise<AppInstance> {
     })
   );
   logger.debug('Mounted config routes');
+
+  // Mount tmux routes
+  app.use('/api/tmux', createTmuxRoutes({ ptyManager }));
+  logger.debug('Mounted tmux routes');
+
+  // Mount multiplexer routes (unified tmux/zellij interface)
+  app.use('/api/multiplexer', createMultiplexerRoutes({ ptyManager }));
+  logger.debug('Mounted multiplexer routes');
 
   // Mount push notification routes
   if (vapidManager) {
