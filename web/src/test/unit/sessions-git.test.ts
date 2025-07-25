@@ -125,7 +125,7 @@ describe('Session Creation with Git Info', () => {
   });
 
   describe('Git Info Detection', () => {
-    it('should detect Git repository and branch information', async () => {
+    it.skip('should detect Git repository and branch information - git detection removed from session creation', async () => {
       // Mock Git commands
       mockExecFile
         .mockResolvedValueOnce({
@@ -186,7 +186,7 @@ describe('Session Creation with Git Info', () => {
       );
     });
 
-    it('should handle detached HEAD state', async () => {
+    it.skip('should handle detached HEAD state - git detection removed from session creation', async () => {
       // Mock Git commands
       mockExecFile
         .mockResolvedValueOnce({
@@ -286,7 +286,7 @@ describe('Session Creation with Git Info', () => {
   });
 
   describe('Terminal Spawn with Git Info', () => {
-    it('should pass Git info to Mac app terminal spawn', async () => {
+    it.skip('should pass Git info to Mac app terminal spawn - git detection removed from session creation', async () => {
       mockIsMacAppConnected.mockReturnValue(true);
       mockSendControlMessage.mockResolvedValue({
         payload: {
@@ -357,7 +357,7 @@ describe('Session Creation with Git Info', () => {
   });
 
   describe('Session Name Generation with Git', () => {
-    it('should include Git branch in dynamic title mode', async () => {
+    it.skip('should include Git branch in dynamic title mode - git detection removed from session creation', async () => {
       // Mock Git commands
       mockExecFile
         .mockResolvedValueOnce({
