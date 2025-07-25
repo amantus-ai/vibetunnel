@@ -142,10 +142,10 @@ describe.sequential('Frontend Logger', () => {
       logger.log('log message');
       // Small delay between calls to ensure they're processed separately
       await new Promise((resolve) => setTimeout(resolve, 10));
-      
+
       logger.warn('warn message');
       await new Promise((resolve) => setTimeout(resolve, 10));
-      
+
       logger.error('error message');
 
       // Wait a bit for the dynamic import and async operations
@@ -223,7 +223,7 @@ describe.sequential('Frontend Logger', () => {
       logger.log('message 1');
       // Small delay to ensure first auth check completes before other logs
       await new Promise((resolve) => setTimeout(resolve, 50));
-      
+
       logger.log('message 2');
       logger.log('message 3');
 

@@ -298,12 +298,7 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      if (
-        createRoute &&
-        createRoute.route &&
-        createRoute.route.stack &&
-        createRoute.route.stack[0]
-      ) {
+      if (createRoute?.route?.stack?.[0]) {
         await createRoute.route.stack[0].handle(mockReq, mockRes);
       } else {
         throw new Error('Could not find POST /sessions route handler');
@@ -370,12 +365,7 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      if (
-        createRoute &&
-        createRoute.route &&
-        createRoute.route.stack &&
-        createRoute.route.stack[0]
-      ) {
+      if (createRoute?.route?.stack?.[0]) {
         await createRoute.route.stack[0].handle(mockReq, mockRes);
       } else {
         throw new Error('Could not find POST /sessions route handler');
@@ -437,12 +427,7 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      if (
-        createRoute &&
-        createRoute.route &&
-        createRoute.route.stack &&
-        createRoute.route.stack[0]
-      ) {
+      if (createRoute?.route?.stack?.[0]) {
         await createRoute.route.stack[0].handle(mockReq, mockRes);
       } else {
         throw new Error('Could not find POST /sessions route handler');
@@ -507,12 +492,7 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      if (
-        createRoute &&
-        createRoute.route &&
-        createRoute.route.stack &&
-        createRoute.route.stack[0]
-      ) {
+      if (createRoute?.route?.stack?.[0]) {
         await createRoute.route.stack[0].handle(mockReq, mockRes);
       } else {
         throw new Error('Could not find POST /sessions route handler');
@@ -578,12 +558,7 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      if (
-        createRoute &&
-        createRoute.route &&
-        createRoute.route.stack &&
-        createRoute.route.stack[0]
-      ) {
+      if (createRoute?.route?.stack?.[0]) {
         await createRoute.route.stack[0].handle(mockReq, mockRes);
       } else {
         throw new Error('Could not find POST /sessions route handler');
