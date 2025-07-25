@@ -63,9 +63,10 @@ describe('PushNotificationService', () => {
   });
 
   afterEach(() => {
-    // Restore all global stubs
-    vi.unstubAllGlobals();
+    // Restore all mocks first
     vi.restoreAllMocks();
+    // Then restore all global stubs
+    vi.unstubAllGlobals();
   });
 
   describe('isSupported', () => {
@@ -164,7 +165,7 @@ describe('PushNotificationService', () => {
       fetchMock.mockRejectedValueOnce(new Error('Network error'));
 
       // refreshVapidConfig doesn't throw, it logs errors
-      await service.refreshVapidConfig();
+      await expect(service.refreshVapidConfig()).resolves.toBeUndefined();
       // No error thrown, just logged
     });
 
@@ -176,7 +177,7 @@ describe('PushNotificationService', () => {
       });
 
       // refreshVapidConfig doesn't throw, it logs errors
-      await service.refreshVapidConfig();
+      await expect(service.refreshVapidConfig()).resolves.toBeUndefined();
       // No error thrown, just logged
     });
   });
@@ -224,9 +225,14 @@ describe('PushNotificationService', () => {
     });
 
     it('should handle service worker errors', async () => {
-      // Override the ready promise to reject
+      // Create a promise that we can control
+      let rejectPromise: (error: Error) => void;
+      const readyPromise = new Promise<any>((_, reject) => {
+        rejectPromise = reject;
+      });
+
       const failingServiceWorker = {
-        ready: Promise.reject(new Error('Service worker failed')),
+        ready: readyPromise,
         register: vi.fn(),
       };
 
@@ -239,8 +245,14 @@ describe('PushNotificationService', () => {
 
       const serviceWithError = new PushNotificationService();
 
+      // Trigger the rejection after initialization starts
+      const initPromise = serviceWithError.initialize();
+
+      // Reject the promise now
+      rejectPromise!(new Error('Service worker failed'));
+
       // initialize() doesn't throw, it catches errors
-      await serviceWithError.initialize();
+      await initPromise;
       expect(serviceWithError.getSubscription()).toBeNull();
     });
   });
@@ -259,8 +271,8 @@ describe('PushNotificationService', () => {
 
     it('should request permission and subscribe successfully', async () => {
       // Mock permission granted
-      global.Notification.requestPermission.mockResolvedValueOnce('granted');
-      global.Notification.permission = 'granted';
+      (global.Notification as any).requestPermission.mockResolvedValueOnce('granted');
+      (global.Notification as any).permission = 'granted';
 
       // Mock successful subscription
       const mockSubscription = {
@@ -285,7 +297,7 @@ describe('PushNotificationService', () => {
 
       const result = await service.subscribe();
 
-      expect(global.Notification.requestPermission).toHaveBeenCalled();
+      expect((global.Notification as any).requestPermission).toHaveBeenCalled();
       expect(mockPushManager.subscribe).toHaveBeenCalledWith({
         userVisibleOnly: true,
         applicationServerKey: expect.any(Uint8Array),
@@ -301,15 +313,15 @@ describe('PushNotificationService', () => {
     });
 
     it('should handle permission denied', async () => {
-      global.Notification.requestPermission.mockResolvedValueOnce('denied');
-      global.Notification.permission = 'denied';
+      (global.Notification as any).requestPermission.mockResolvedValueOnce('denied');
+      (global.Notification as any).permission = 'denied';
 
       await expect(service.subscribe()).rejects.toThrow('Notification permission denied');
     });
 
     it('should handle subscription failure', async () => {
-      global.Notification.requestPermission.mockResolvedValueOnce('granted');
-      global.Notification.permission = 'granted';
+      (global.Notification as any).requestPermission.mockResolvedValueOnce('granted');
+      (global.Notification as any).permission = 'granted';
 
       mockPushManager.subscribe.mockRejectedValueOnce(
         new Error('Failed to subscribe to push service')
@@ -319,8 +331,8 @@ describe('PushNotificationService', () => {
     });
 
     it('should handle server registration failure', async () => {
-      global.Notification.requestPermission.mockResolvedValueOnce('granted');
-      global.Notification.permission = 'granted';
+      (global.Notification as any).requestPermission.mockResolvedValueOnce('granted');
+      (global.Notification as any).permission = 'granted';
 
       const mockSubscription = {
         endpoint: 'https://push.example.com/sub/789',

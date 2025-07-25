@@ -143,6 +143,9 @@ describe.sequential('Frontend Logger', () => {
       logger.warn('warn message');
       logger.error('error message');
 
+      // Wait a bit for the dynamic import and async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // Wait for all async operations to complete
       await vi.waitFor(
         () => {
@@ -216,6 +219,9 @@ describe.sequential('Frontend Logger', () => {
       logger.log('message 2');
       logger.log('message 3');
 
+      // Wait a bit for the dynamic import and async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // Wait for all operations to complete
       await vi.waitFor(
         () => {
@@ -240,6 +246,9 @@ describe.sequential('Frontend Logger', () => {
       // First log - should fetch auth config
       logger.log('message 1');
 
+      // Wait a bit for the dynamic import and async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       await vi.waitFor(
         () => {
           const logCalls = mockFetch.mock.calls.filter((call) => call[0] === '/api/logs/client');
@@ -253,6 +262,9 @@ describe.sequential('Frontend Logger', () => {
 
       // Second log - should fetch auth config again
       logger.log('message 2');
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       await vi.waitFor(
         () => {
@@ -291,6 +303,9 @@ describe.sequential('Frontend Logger', () => {
     it('should not send logs when not authenticated and auth is required', async () => {
       const logger = createLogger('test-module');
       logger.log('test message');
+
+      // Wait a bit for the dynamic import and async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Wait for auth config to be fetched
       await vi.waitFor(

@@ -96,8 +96,16 @@ describe('Control Unix Handler', () => {
         payload: { test: true },
       };
 
-      // When Mac is not connected, should resolve to null
-      const result = await controlUnixHandler.sendControlMessage(message);
+      // When Mac is not connected, should resolve to null quickly
+      // Use a shorter timeout for the test
+      const resultPromise = controlUnixHandler.sendControlMessage(message);
+
+      // Advance timers to trigger the timeout
+      vi.useFakeTimers();
+      vi.advanceTimersByTime(10000);
+      vi.useRealTimers();
+
+      const result = await resultPromise;
       expect(result).toBe(null);
     });
   });

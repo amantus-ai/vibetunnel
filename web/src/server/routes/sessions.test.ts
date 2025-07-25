@@ -20,16 +20,9 @@ vi.mock('../utils/logger', () => ({
   }),
 }));
 
+const mockDetectGitInfo = vi.fn();
 vi.mock('../utils/git-info', () => ({
-  detectGitInfo: vi.fn().mockResolvedValue({
-    gitRepoPath: undefined,
-    gitBranch: undefined,
-    gitAheadCount: 0,
-    gitBehindCount: 0,
-    gitHasChanges: false,
-    gitIsWorktree: false,
-    gitMainRepoPath: undefined,
-  }),
+  detectGitInfo: mockDetectGitInfo,
 }));
 
 vi.mock('../websocket/control-unix-utils', () => ({
@@ -39,6 +32,7 @@ vi.mock('../websocket/control-unix-utils', () => ({
 describe('sessions routes', () => {
   let mockPtyManager: {
     getSessions: ReturnType<typeof vi.fn>;
+    createSession: ReturnType<typeof vi.fn>;
   };
   let mockTerminalManager: {
     getTerminal: ReturnType<typeof vi.fn>;
@@ -54,9 +48,25 @@ describe('sessions routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    // Set default mock return value
+    mockDetectGitInfo.mockResolvedValue({
+      gitRepoPath: undefined,
+      gitBranch: undefined,
+      gitAheadCount: 0,
+      gitBehindCount: 0,
+      gitHasChanges: false,
+      gitIsWorktree: false,
+      gitMainRepoPath: undefined,
+    });
+
     // Create minimal mocks for required services
     mockPtyManager = {
       getSessions: vi.fn(() => []),
+      createSession: vi.fn().mockResolvedValue({
+        id: 'test-session-id',
+        command: ['bash'],
+        cwd: '/test/dir',
+      }),
     };
 
     mockTerminalManager = {
@@ -288,7 +298,16 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      await createRoute.route.stack[0].handle(mockReq, mockRes);
+      if (
+        createRoute &&
+        createRoute.route &&
+        createRoute.route.stack &&
+        createRoute.route.stack[0]
+      ) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
 
       // Verify Git detection was called
       expect(mockDetectGitInfo).toHaveBeenCalledWith('/test/repo');
@@ -351,7 +370,16 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      await createRoute.route.stack[0].handle(mockReq, mockRes);
+      if (
+        createRoute &&
+        createRoute.route &&
+        createRoute.route.stack &&
+        createRoute.route.stack[0]
+      ) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
 
       // Verify worktree detection
       expect(mockPtyManager.createSession).toHaveBeenCalledWith(
@@ -409,7 +437,16 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      await createRoute.route.stack[0].handle(mockReq, mockRes);
+      if (
+        createRoute &&
+        createRoute.route &&
+        createRoute.route.stack &&
+        createRoute.route.stack[0]
+      ) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
 
       // Verify session was created without Git info
       expect(mockPtyManager.createSession).toHaveBeenCalledWith(
@@ -470,7 +507,16 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      await createRoute.route.stack[0].handle(mockReq, mockRes);
+      if (
+        createRoute &&
+        createRoute.route &&
+        createRoute.route.stack &&
+        createRoute.route.stack[0]
+      ) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
 
       // Should still have repo path but no branch
       expect(mockPtyManager.createSession).toHaveBeenCalledWith(
@@ -532,7 +578,16 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      await createRoute.route.stack[0].handle(mockReq, mockRes);
+      if (
+        createRoute &&
+        createRoute.route &&
+        createRoute.route.stack &&
+        createRoute.route.stack[0]
+      ) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
 
       // Verify terminal spawn was called with Git info
       expect(requestTerminalSpawn).toHaveBeenCalledWith(

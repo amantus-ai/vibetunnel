@@ -34,20 +34,23 @@ describe('SessionList', () => {
     // Setup fetch mock
     originalFetch = global.fetch;
     fetchMock = { calls: new Map() };
-    global.fetch = vi.fn((url: string, options?: RequestInit) => {
+    global.fetch = vi.fn((url: string, _options?: RequestInit) => {
       const urlString = typeof url === 'string' ? url : url.toString();
       fetchMock.calls.set(urlString, (fetchMock.calls.get(urlString) || 0) + 1);
-      
+
       // Default responses
       if (urlString.includes('/api/sessions')) {
         return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
       }
       if (urlString.includes('/api/cleanup-exited')) {
         return new Promise((resolve) =>
-          setTimeout(() => resolve(new Response(JSON.stringify({ removed: 1 }), { status: 200 })), 100)
+          setTimeout(
+            () => resolve(new Response(JSON.stringify({ removed: 1 }), { status: 200 })),
+            100
+          )
         );
       }
-      
+
       return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
     }) as typeof fetch;
 
@@ -340,7 +343,7 @@ describe('SessionList', () => {
 
     it('should handle cleanup error', async () => {
       // Mock cleanup error
-      global.fetch = vi.fn(() => 
+      global.fetch = vi.fn(() =>
         Promise.resolve(new Response(JSON.stringify({ error: 'Cleanup failed' }), { status: 500 }))
       ) as typeof fetch;
 
@@ -359,7 +362,7 @@ describe('SessionList', () => {
     it('should prevent concurrent cleanup operations', async () => {
       // Reset fetch mock calls tracking
       fetchMock.calls.clear();
-      
+
       // Mock successful cleanup with delay (already set up in beforeEach)
       // The default mock already has a 100ms delay for /api/cleanup-exited
 

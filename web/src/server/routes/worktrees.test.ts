@@ -33,7 +33,16 @@ vi.mock('util', () => ({
 // Mock git-hooks module
 vi.mock('../utils/git-hooks.js', () => ({
   areHooksInstalled: vi.fn().mockResolvedValue(true),
-  installGitHooks: vi.fn().mockResolvedValue([]),
+  installGitHooks: vi.fn().mockResolvedValue({ success: true, errors: [] }),
+  uninstallGitHooks: vi.fn().mockResolvedValue({ success: true, errors: [] }),
+}));
+
+// Mock control unix handler
+vi.mock('../websocket/control-unix-handler.js', () => ({
+  controlUnixHandler: {
+    isMacAppConnected: vi.fn().mockReturnValue(false),
+    sendToMac: vi.fn(),
+  },
 }));
 
 // Import after mocks are set up
@@ -102,10 +111,17 @@ detached
 
       expect(response.status).toBe(200);
       expect(response.body.baseBranch).toBe('main');
-      // The API filters out the main repository, so we expect only 2 worktrees
-      expect(response.body.worktrees).toHaveLength(2);
+      // The API now returns all worktrees including the main repository
+      expect(response.body.worktrees).toHaveLength(3);
 
-      // Check each worktree (main repository is filtered out)
+      // Check each worktree
+
+      const mainWorktree = response.body.worktrees.find(
+        (w: Worktree) => w.path === '/home/user/project'
+      );
+      expect(mainWorktree).toBeDefined();
+      expect(mainWorktree.branch).toBe('refs/heads/main');
+      expect(mainWorktree.detached).toBe(false);
 
       const featureWorktree = response.body.worktrees.find(
         (w: Worktree) => w.path === '/home/user/project-feature-branch'
@@ -140,8 +156,8 @@ detached
       // Mock git worktree list
       mockExecFile.mockResolvedValueOnce({ stdout: mockWorktreeListOutput, stderr: '' });
 
-      // Mock stats for worktrees (main repo is filtered out, so only 2 worktrees)
-      for (let i = 0; i < 2; i++) {
+      // Mock stats for all 3 worktrees (including main)
+      for (let i = 0; i < 3; i++) {
         mockExecFile.mockResolvedValueOnce({ stdout: '0\n', stderr: '' });
         mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
         mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
@@ -168,8 +184,8 @@ detached
       // Mock git worktree list
       mockExecFile.mockResolvedValueOnce({ stdout: mockWorktreeListOutput, stderr: '' });
 
-      // Mock stats for worktrees (main repo is filtered out, so only 2 worktrees)
-      for (let i = 0; i < 2; i++) {
+      // Mock stats for all 3 worktrees (including main)
+      for (let i = 0; i < 3; i++) {
         mockExecFile.mockResolvedValueOnce({ stdout: '0\n', stderr: '' });
         mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
         mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });

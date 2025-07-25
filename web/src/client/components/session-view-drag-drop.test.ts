@@ -172,12 +172,14 @@ describe('SessionView Drag & Drop and Paste', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     // Mock the file picker element
+    const originalQuerySelector = element.querySelector.bind(element);
     vi.spyOn(element, 'querySelector').mockImplementation((selector: string) => {
       if (selector === 'file-picker') {
         return mockFilePicker as unknown as Element;
       }
       // For the drag overlay tests, return the actual element
-      return element.shadowRoot?.querySelector(selector) || null;
+      // Note: session-view doesn't use shadow DOM
+      return originalQuerySelector(selector) || null;
     });
   });
 

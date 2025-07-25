@@ -522,11 +522,11 @@ describe('SessionView', () => {
 
       // The mobile input is rendered conditionally based on showMobileInput state
       // Check overlays-container which contains all overlays
-      const overlaysContainer = element.shadowRoot?.querySelector('overlays-container');
+      const overlaysContainer = element.querySelector('overlays-container');
 
-      // Or check for any mobile-related element in the shadow DOM
-      const mobileInputOverlay = element.shadowRoot?.querySelector('mobile-input-overlay');
-      const mobileOverlayDiv = element.shadowRoot?.querySelector('.mobile-overlay');
+      // Or check for any mobile-related element in the DOM (no shadow DOM)
+      const mobileInputOverlay = element.querySelector('mobile-input-overlay');
+      const mobileOverlayDiv = element.querySelector('.mobile-overlay');
 
       // Check the UI state is correctly set
       expect(testElement.uiStateManager.getState().showMobileInput).toBe(true);
