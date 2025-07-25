@@ -221,11 +221,15 @@ public final class GitRepositoryMonitor {
         // Check cache first
         if let cached = getCachedRepository(for: filePath) {
             logger.debug("📦 Found cached repository for: \(filePath)")
-            
+
             // Check if this was recently checked (within 30 seconds)
             if let lastCheck = recentRepositoryChecks[filePath],
-               Date().timeIntervalSince(lastCheck) < recentCheckThreshold {
-                logger.debug("⏭️ Skipping redundant check for: \(filePath) (checked \(Int(Date().timeIntervalSince(lastCheck)))s ago)")
+               Date().timeIntervalSince(lastCheck) < recentCheckThreshold
+            {
+                logger
+                    .debug(
+                        "⏭️ Skipping redundant check for: \(filePath) (checked \(Int(Date().timeIntervalSince(lastCheck)))s ago)"
+                    )
                 return cached
             }
         }
@@ -239,7 +243,7 @@ public final class GitRepositoryMonitor {
         // Create a new task for this request
         let task = Task<GitRepository?, Never> { [weak self] in
             guard let self else { return nil }
-            
+
             // Find the Git repository root
             guard let repoPath = await self.findGitRoot(from: filePath) else {
                 logger.info("❌ No Git root found for: \(filePath)")
@@ -331,11 +335,11 @@ public final class GitRepositoryMonitor {
                 repositoryCache[repoPath] = fresh
             }
         }
-        
+
         // Clean up stale entries from recent checks cache
         cleanupRecentChecks()
     }
-    
+
     /// Remove old entries from the recent checks cache
     private func cleanupRecentChecks() {
         let cutoffDate = Date().addingTimeInterval(-recentCheckThreshold * 2) // Remove entries older than 60 seconds
@@ -366,8 +370,8 @@ public final class GitRepositoryMonitor {
     private var pendingRepositoryRequests: [String: Task<GitRepository?, Never>] = [:]
 
     /// Tracks recent repository checks with timestamps to skip redundant checks
-    private var recentRepositoryChecks: [String: Date] = [:] 
-    
+    private var recentRepositoryChecks: [String: Date] = [:]
+
     /// Duration to consider a repository check as "recent" (30 seconds)
     private let recentCheckThreshold: TimeInterval = 30.0
 
