@@ -708,7 +708,8 @@ export class MultiplexerModal extends LitElement {
                         <div class="session-item ${session.type === 'tmux' && isExpanded ? 'expanded' : ''}">
                           <div
                             class="session-header"
-                            @click=${() => session.type === 'tmux' ? this.toggleSession(session.name) : null}
+                            @click=${() =>
+                              session.type === 'tmux' ? this.toggleSession(session.name) : null}
                             style="cursor: ${session.type === 'tmux' ? 'pointer' : 'default'}"
                           >
                             <div class="session-info">
