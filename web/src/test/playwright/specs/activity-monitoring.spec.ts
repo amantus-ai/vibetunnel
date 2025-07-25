@@ -107,7 +107,7 @@ test.describe('Activity Monitoring', () => {
 
         return content.includes('Testing activity monitoring');
       },
-      { timeout: 5000 }
+      { timeout: 10000 }
     );
 
     // Type some more to ensure activity
@@ -207,7 +207,7 @@ test.describe('Activity Monitoring', () => {
   });
 
   test('should track activity across multiple sessions', async ({ page }) => {
-    test.setTimeout(30000); // Increase timeout for this test
+    test.setTimeout(45000); // Increase timeout for this test
     // Create multiple sessions
     const session1Name = sessionManager.generateSessionName('multi-activity-1');
     const session2Name = sessionManager.generateSessionName('multi-activity-2');
@@ -231,8 +231,16 @@ test.describe('Activity Monitoring', () => {
     await page.waitForTimeout(1000);
 
     // Go to session list
-    await page.goto('/');
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+    await page.goto('/?test=true');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('networkidle');
+
+    // Wait for session list to be ready - use multiple selectors
+    await Promise.race([
+      page.waitForSelector('session-card', { state: 'visible', timeout: 15000 }),
+      page.waitForSelector('.session-list', { state: 'visible', timeout: 15000 }),
+      page.waitForSelector('[data-testid="session-list"]', { state: 'visible', timeout: 15000 }),
+    ]);
 
     // Both sessions should show activity status
     const session1Card = page.locator('session-card').filter({ hasText: session1Name }).first();

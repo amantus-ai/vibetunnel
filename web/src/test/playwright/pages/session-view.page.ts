@@ -64,7 +64,7 @@ export class SessionViewPage extends BasePage {
         // Check the terminal container first
         const container = terminal.querySelector('#terminal-container');
         const hasContainerContent =
-          container && container.textContent && container.textContent.trim().length > 0;
+          container?.textContent && container.textContent.trim().length > 0;
         const hasContent = terminal.textContent && terminal.textContent.trim().length > 0;
         const hasShadowRoot = !!terminal.shadowRoot;
         const hasXterm = !!terminal.querySelector('.xterm');
