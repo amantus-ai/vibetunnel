@@ -1,8 +1,8 @@
 import type { Request, Response } from 'express';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { detectGitInfo } from '../utils/git-info';
 import { controlUnixHandler } from '../websocket/control-unix-handler';
 import { createSessionRoutes, requestTerminalSpawn } from './sessions';
-import { detectGitInfo } from '../utils/git-info';
 
 // Mock dependencies
 vi.mock('../websocket/control-unix-handler', () => ({
