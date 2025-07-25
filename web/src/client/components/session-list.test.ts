@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { fixture, html } from '@open-wc/testing';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { setupFetchMock } from '@/test/utils/component-helpers';
+// import { setupFetchMock } from '@/test/utils/component-helpers'; // Removed - doesn't exist
 import { createMockSession } from '@/test/utils/lit-test-utils';
 import type { AuthClient } from '../services/auth-client';
 
@@ -19,8 +19,9 @@ function getAllElements<T extends Element>(parent: Element, selector: string): T
 
 describe('SessionList', () => {
   let element: SessionList;
-  let fetchMock: ReturnType<typeof setupFetchMock>;
+  let fetchMock: { calls: Map<string, number> };
   let mockAuthClient: AuthClient;
+  let originalFetch: typeof global.fetch;
 
   beforeAll(async () => {
     // Import components to register custom elements
@@ -31,7 +32,24 @@ describe('SessionList', () => {
 
   beforeEach(async () => {
     // Setup fetch mock
-    fetchMock = setupFetchMock();
+    originalFetch = global.fetch;
+    fetchMock = { calls: new Map() };
+    global.fetch = vi.fn((url: string, options?: RequestInit) => {
+      const urlString = typeof url === 'string' ? url : url.toString();
+      fetchMock.calls.set(urlString, (fetchMock.calls.get(urlString) || 0) + 1);
+      
+      // Default responses
+      if (urlString.includes('/api/sessions')) {
+        return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+      }
+      if (urlString.includes('/api/cleanup-exited')) {
+        return new Promise((resolve) =>
+          setTimeout(() => resolve(new Response(JSON.stringify({ removed: 1 }), { status: 200 })), 100)
+        );
+      }
+      
+      return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
+    }) as typeof fetch;
 
     // Create mock auth client
     mockAuthClient = {
@@ -48,7 +66,8 @@ describe('SessionList', () => {
 
   afterEach(() => {
     element.remove();
-    fetchMock.clear();
+    global.fetch = originalFetch;
+    vi.clearAllMocks();
   });
 
   describe('initialization', () => {
@@ -279,8 +298,9 @@ describe('SessionList', () => {
     });
 
     it('should handle cleanup of exited sessions', async () => {
-      // Mock successful cleanup
-      fetchMock.mockResponse('/api/cleanup-exited', { removed: 2 });
+      // Mock successful cleanup - already handled in beforeEach
+      // Reset call tracking
+      fetchMock.calls.clear();
 
       const refreshHandler = vi.fn();
       element.addEventListener('refresh', refreshHandler);
@@ -320,7 +340,9 @@ describe('SessionList', () => {
 
     it('should handle cleanup error', async () => {
       // Mock cleanup error
-      fetchMock.mockResponse('/api/cleanup-exited', { error: 'Cleanup failed' }, { status: 500 });
+      global.fetch = vi.fn(() => 
+        Promise.resolve(new Response(JSON.stringify({ error: 'Cleanup failed' }), { status: 500 }))
+      ) as typeof fetch;
 
       const errorHandler = vi.fn();
       element.addEventListener('error', errorHandler);
@@ -335,14 +357,11 @@ describe('SessionList', () => {
     });
 
     it('should prevent concurrent cleanup operations', async () => {
-      // Mock successful cleanup with delay
-      fetchMock.mockResponse(
-        '/api/cleanup-exited',
-        () =>
-          new Promise((resolve) =>
-            setTimeout(() => resolve({ body: JSON.stringify({ removed: 1 }) }), 100)
-          )
-      );
+      // Reset fetch mock calls tracking
+      fetchMock.calls.clear();
+      
+      // Mock successful cleanup with delay (already set up in beforeEach)
+      // The default mock already has a 100ms delay for /api/cleanup-exited
 
       // Start first cleanup
       const promise1 = element.handleCleanupExited();
@@ -352,7 +371,7 @@ describe('SessionList', () => {
 
       // Second call should return immediately without making a fetch
       await promise2;
-      expect(fetchMock.calls('/api/cleanup-exited').length).toBe(1); // Only one fetch call
+      expect(fetchMock.calls.get('/api/cleanup-exited') || 0).toBe(1); // Only one fetch call
 
       // Wait for first cleanup to complete
       await promise1;
