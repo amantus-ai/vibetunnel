@@ -928,6 +928,8 @@ describe('SessionView', () => {
       terminalElement = {
         fitTerminal: vi.fn(),
         scrollToBottom: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
       };
 
       fitTerminalSpy = terminalElement.fitTerminal;

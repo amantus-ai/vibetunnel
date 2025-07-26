@@ -158,8 +158,10 @@ describe('vt title Command Integration', () => {
 
     for (const title of specialTitles) {
       // Run vibetunnel directly
+      // Use single quotes for shell safety and escape any single quotes in the title
+      const escapedTitle = title.replace(/'/g, "'\"'\"'");
       const { stderr } = await execAsync(
-        `${vibetunnelPath} fwd --update-title "${title.replace(/"/g, '\\"')}" --session-id "${sessionId}"`,
+        `${vibetunnelPath} fwd --update-title '${escapedTitle}' --session-id "${sessionId}"`,
         { env }
       );
 

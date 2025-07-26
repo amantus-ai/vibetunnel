@@ -265,6 +265,23 @@ afterAll(() => {
   console.warn = originalWarn;
 });
 
+// Patch addEventListener for custom elements in test environment
+// This is to handle cases where vibe-terminal is created but doesn't have addEventListener
+if (typeof window !== 'undefined') {
+  const originalCreateElement = document.createElement;
+  document.createElement = function(tagName: string) {
+    const element = originalCreateElement.call(this, tagName);
+    
+    // Add addEventListener if it's missing for vibe-terminal elements
+    if (tagName === 'vibe-terminal' && !element.addEventListener) {
+      element.addEventListener = vi.fn();
+      element.removeEventListener = vi.fn();
+    }
+    
+    return element;
+  };
+}
+
 // Clean up any hanging processes before each test suite
 beforeAll(async () => {
   // Kill any leftover vibetunnel server processes
