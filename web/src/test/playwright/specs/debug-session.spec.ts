@@ -24,7 +24,7 @@ test.describe('Debug Session Tests', () => {
 
     // Navigate back to list
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check if session exists in the API
     const sessions = await page.evaluate(async () => {

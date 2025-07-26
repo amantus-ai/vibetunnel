@@ -39,7 +39,7 @@ export default defineConfig({
     return process.env.CI ? 4 : undefined;
   })(),
   /* Test timeout */
-  timeout: process.env.CI ? 60 * 1000 : 30 * 1000, // 60s on CI, 30s locally
+  timeout: process.env.CI ? 30 * 1000 : 15 * 1000, // 30s on CI, 15s locally
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { open: 'never' }],
@@ -60,10 +60,10 @@ export default defineConfig({
     video: process.env.CI ? 'retain-on-failure' : 'off',
 
     /* Maximum time each action can take */
-    actionTimeout: 15000, // Increased to 15s
+    actionTimeout: 5000, // 5s for actions
 
-    /* Give browser more time to start on CI */
-    navigationTimeout: process.env.CI ? 30000 : 20000, // Increased timeouts
+    /* Navigation timeout */
+    navigationTimeout: 10000, // 10s for navigation
 
     /* Run in headless mode for better performance */
     headless: true,
@@ -99,9 +99,6 @@ export default defineConfig({
         '**/ui-features.spec.ts',
         '**/test-session-persistence.spec.ts',
         '**/session-navigation.spec.ts',
-        '**/session-management.spec.ts',
-        '**/session-management-advanced.spec.ts',
-        '**/file-browser-basic.spec.ts',
         '**/ssh-key-manager.spec.ts',
         '**/push-notifications.spec.ts',
         '**/authentication.spec.ts',
@@ -113,11 +110,14 @@ export default defineConfig({
       name: 'chromium-serial',
       use: { ...devices['Desktop Chrome'] },
       testMatch: [
+        '**/session-management.spec.ts',
+        '**/session-management-advanced.spec.ts',
         '**/session-management-global.spec.ts',
         '**/keyboard-shortcuts.spec.ts',
         '**/keyboard-capture-toggle.spec.ts',
         '**/terminal-interaction.spec.ts',
         '**/activity-monitoring.spec.ts',
+        '**/file-browser-basic.spec.ts',
       ],
       fullyParallel: false, // Override global setting for serial tests
     },
@@ -125,12 +125,12 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: `pnpm exec tsx watch src/cli.ts --no-auth --port ${testConfig.port}`, // Use tsx watch like dev server
+    command: `node scripts/test-server.js --no-auth --port ${testConfig.port}`, // Use test server script
     port: testConfig.port,
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
     stdout: process.env.CI ? 'inherit' : 'pipe', // Show output in CI for debugging
     stderr: process.env.CI ? 'inherit' : 'pipe', // Show errors in CI for debugging
-    timeout: 60 * 1000, // 1 minute for server startup (reduced from 3 minutes)
+    timeout: 30 * 1000, // 30 seconds for server startup
     cwd: process.cwd(), // Ensure we're in the right directory
     env: (() => {
       // Create a copy of env vars without VIBETUNNEL_SEA

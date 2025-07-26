@@ -14,7 +14,7 @@ export async function assertSessionInList(
   if (page.url().includes('/session/')) {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     // Extra wait for navigation to complete
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   }
 
   // Wait for session list to be ready - check for cards or "no sessions" message

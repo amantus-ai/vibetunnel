@@ -7,7 +7,7 @@ export async function ensureCleanState(page: Page): Promise<void> {
   // If we're on a session page, navigate to root first
   if (page.url().includes('/session/')) {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   }
 
   // Clear any open modals
@@ -105,7 +105,7 @@ export async function waitForAppReady(page: Page): Promise<void> {
 export async function navigateToSessionList(page: Page): Promise<void> {
   if (!page.url().endsWith('/')) {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   }
 
   await waitForAppReady(page);

@@ -5,16 +5,16 @@ test.describe.configure({ mode: 'parallel' });
 
 test.describe('Authentication', () => {
   test.beforeEach(async ({ page }) => {
-    // Start from login page for most auth tests
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
-
-    // Skip auth tests if server is in no-auth mode
+    // Check auth config first before navigation
     const response = await page.request.get('/api/auth/config');
     const config = await response.json();
     if (config.noAuth) {
       test.skip(true, 'Skipping auth tests in no-auth mode');
+      return; // Don't navigate if we're skipping
     }
+    
+    // Only navigate if we're actually running auth tests
+    await page.goto('/', { waitUntil: 'commit' });
   });
 
   test('should display login form with SSH and password options', async ({ page }) => {
@@ -477,7 +477,7 @@ test.describe('Authentication', () => {
     });
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Look for logout button/option
     const logoutButton = page
@@ -554,7 +554,7 @@ test.describe('Authentication', () => {
     });
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Try to make an authenticated request (like creating a session)
     const createSessionButton = page
@@ -621,7 +621,7 @@ test.describe('Authentication', () => {
 
       // Reload page
       await page.reload();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Should remain authenticated (not show login form)
       const stillAuthenticated = !(await page.locator('auth-form, login-form').isVisible());

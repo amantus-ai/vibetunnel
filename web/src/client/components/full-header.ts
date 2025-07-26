@@ -51,6 +51,7 @@ export class FullHeader extends HeaderBase {
               class="p-2 bg-bg-tertiary text-muted border border-border hover:border-primary hover:text-primary hover:bg-surface-hover rounded-lg transition-all duration-200"
               @click=${() => this.dispatchEvent(new CustomEvent('open-file-browser'))}
               title="Browse Files (⌘O)"
+              data-testid="file-browser-button"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path

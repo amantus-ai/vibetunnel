@@ -3,6 +3,7 @@ import { SessionListPage } from '../pages/session-list.page';
 import { SessionViewPage } from '../pages/session-view.page';
 import { waitForButtonReady } from './common-patterns.helper';
 import { generateTestSessionName } from './terminal.helper';
+import { quickCreateSession, navigateToHome } from './test-optimization.helper';
 
 export interface SessionOptions {
   name?: string;
@@ -45,17 +46,15 @@ export async function createAndNavigateToSession(
   const command = options.command || 'zsh';
 
   // Navigate to list if not already there
-  if (!page.url().endsWith('/')) {
-    await sessionListPage.navigate();
-  }
+  await navigateToHome(page);
 
   // Create the session
   await sessionListPage.createNewSession(sessionName, spawnWindow, command);
 
   // For web sessions, wait for navigation and get session ID
   if (!spawnWindow) {
-    // In CI, navigation might be slower
-    const timeout = process.env.CI ? 15000 : 8000;
+    // Optimized timeout
+    const timeout = 5000;
 
     try {
       await page.waitForURL(/\/session\//, { timeout });
@@ -168,16 +167,13 @@ export async function createMultipleSessions(
 
     // Navigate back to list for next creation (except last one)
     if (i < count - 1) {
-      await page.goto('/', { waitUntil: 'networkidle' });
-
-      // Wait for session list to be visible
+      await navigateToHome(page);
+      
+      // Quick wait for session list
       await page.waitForSelector('session-card', {
         state: 'visible',
-        timeout: 5000,
+        timeout: 2000,
       });
-
-      // Wait for app to be ready before creating next session
-      await waitForButtonReady(page, '[data-testid="create-session-button"]', { timeout: 5000 });
     }
   }
 

@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { expect, test } from '../fixtures/test.fixture';
 import { assertTerminalReady } from '../helpers/assertion.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
@@ -7,8 +8,70 @@ import { waitForModalClosed } from '../helpers/wait-strategies.helper';
 // These tests create their own sessions and can run in parallel
 test.describe.configure({ mode: 'parallel' });
 
-// Skip all file browser tests since the feature has been removed
-test.describe.skip('File Browser', () => {
+// Helper function to open file browser through image upload menu or compact menu
+async function openFileBrowser(page: Page) {
+  // Look for session view first
+  const sessionView = page.locator('session-view').first();
+  await expect(sessionView).toBeVisible({ timeout: 10000 });
+
+  // Check if we're in compact mode by looking for the compact menu
+  const compactMenuButton = sessionView.locator('compact-menu button').first();
+  const imageUploadButton = sessionView.locator('[data-testid="image-upload-button"]').first();
+
+  // Try to detect which mode we're in
+  const isCompactMode = await compactMenuButton.isVisible({ timeout: 1000 }).catch(() => false);
+  const isFullMode = await imageUploadButton.isVisible({ timeout: 1000 }).catch(() => false);
+
+  if (!isCompactMode && !isFullMode) {
+    // Wait a bit more and check again
+    await page.waitForTimeout(2000);
+    const isCompactModeRetry = await compactMenuButton
+      .isVisible({ timeout: 1000 })
+      .catch(() => false);
+    const isFullModeRetry = await imageUploadButton.isVisible({ timeout: 1000 }).catch(() => false);
+
+    if (!isCompactModeRetry && !isFullModeRetry) {
+      throw new Error(
+        'Neither compact menu nor image upload button is visible. Session header may not be loaded properly.'
+      );
+    }
+
+    if (isCompactModeRetry) {
+      // Compact mode after retry
+      await compactMenuButton.click({ force: true });
+      await page.waitForTimeout(500);
+      const compactFileBrowser = page.locator('[data-testid="compact-file-browser"]');
+      await expect(compactFileBrowser).toBeVisible({ timeout: 5000 });
+      await compactFileBrowser.click();
+    } else {
+      // Full mode after retry
+      await imageUploadButton.click();
+      await page.waitForTimeout(500);
+      const browseFilesButton = page.locator('button[data-action="browse"]');
+      await expect(browseFilesButton).toBeVisible({ timeout: 5000 });
+      await browseFilesButton.click();
+    }
+  } else if (isCompactMode) {
+    // Compact mode: open compact menu and click file browser
+    await compactMenuButton.click({ force: true });
+    await page.waitForTimeout(500); // Wait for menu to open
+    const compactFileBrowser = page.locator('[data-testid="compact-file-browser"]');
+    await expect(compactFileBrowser).toBeVisible({ timeout: 5000 });
+    await compactFileBrowser.click();
+  } else {
+    // Full mode: use image upload menu
+    await imageUploadButton.click();
+    await page.waitForTimeout(500); // Wait for menu to open
+    const browseFilesButton = page.locator('button[data-action="browse"]');
+    await expect(browseFilesButton).toBeVisible({ timeout: 5000 });
+    await browseFilesButton.click();
+  }
+
+  // Wait for file browser to appear
+  await page.waitForTimeout(500);
+}
+
+test.describe('File Browser', () => {
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
@@ -26,12 +89,8 @@ test.describe.skip('File Browser', () => {
     });
     await assertTerminalReady(page);
 
-    // Look for file browser button in session header
-    const fileBrowserButton = page.locator('[data-testid="file-browser-button"]');
-    await expect(fileBrowserButton).toBeVisible({ timeout: 10000 });
-
-    // Open file browser
-    await fileBrowserButton.click();
+    // Open file browser through image upload menu
+    await openFileBrowser(page);
     await expect(page.locator('[data-testid="file-browser"]').first()).toBeVisible({
       timeout: 5000,
     });
@@ -62,8 +121,7 @@ test.describe.skip('File Browser', () => {
     await assertTerminalReady(page);
 
     // Open file browser
-    const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]');
-    await fileBrowserButton.click();
+    await openFileBrowser(page);
     await expect(page.locator('[data-testid="file-browser"]').first()).toBeVisible();
 
     // Close with escape key
@@ -79,8 +137,7 @@ test.describe.skip('File Browser', () => {
     await assertTerminalReady(page);
 
     // Open file browser
-    const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]');
-    await fileBrowserButton.click();
+    await openFileBrowser(page);
     await expect(page.locator('[data-testid="file-browser"]').first()).toBeVisible();
 
     // Verify file list is populated
@@ -110,8 +167,7 @@ test.describe.skip('File Browser', () => {
     await assertTerminalReady(page);
 
     // Open file browser
-    const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]');
-    await fileBrowserButton.click();
+    await openFileBrowser(page);
     await expect(page.locator('file-browser').first()).toBeVisible();
 
     // Look for a text file to select (common files like .txt, .md, .js, etc.)
@@ -148,8 +204,7 @@ test.describe.skip('File Browser', () => {
     await assertTerminalReady(page);
 
     // Open file browser
-    const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]');
-    await fileBrowserButton.click();
+    await openFileBrowser(page);
     await expect(page.locator('file-browser').first()).toBeVisible();
 
     // Look for a directory (items with folder icon or specific styling)
@@ -178,8 +233,7 @@ test.describe.skip('File Browser', () => {
     await assertTerminalReady(page);
 
     // Open file browser
-    const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]');
-    await fileBrowserButton.click();
+    await openFileBrowser(page);
     await expect(page.locator('file-browser').first()).toBeVisible();
 
     // Click on the path to edit it
@@ -206,8 +260,7 @@ test.describe.skip('File Browser', () => {
     await assertTerminalReady(page);
 
     // Open file browser
-    const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]');
-    await fileBrowserButton.click();
+    await openFileBrowser(page);
     await expect(page.locator('file-browser').first()).toBeVisible();
 
     // Look for hidden files toggle
@@ -236,8 +289,7 @@ test.describe.skip('File Browser', () => {
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 
     // Open file browser
-    const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]');
-    await fileBrowserButton.click();
+    await openFileBrowser(page);
     await expect(page.locator('file-browser').first()).toBeVisible();
 
     // Select a file
@@ -265,8 +317,7 @@ test.describe.skip('File Browser', () => {
     await assertTerminalReady(page);
 
     // Open file browser
-    const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]');
-    await fileBrowserButton.click();
+    await openFileBrowser(page);
     await expect(page.locator('file-browser').first()).toBeVisible();
 
     // Look for git changes toggle
@@ -297,8 +348,7 @@ test.describe.skip('File Browser', () => {
     await assertTerminalReady(page);
 
     // Open file browser
-    const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]');
-    await fileBrowserButton.click();
+    await openFileBrowser(page);
     await expect(page.locator('file-browser').first()).toBeVisible();
 
     // Look for modified files (yellow badge)
@@ -334,8 +384,7 @@ test.describe.skip('File Browser', () => {
     await assertTerminalReady(page);
 
     // Open file browser
-    const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]');
-    await fileBrowserButton.click();
+    await openFileBrowser(page);
     await expect(page.locator('file-browser').first()).toBeVisible();
 
     // Select a file to trigger mobile preview mode
@@ -361,8 +410,7 @@ test.describe.skip('File Browser', () => {
     await assertTerminalReady(page);
 
     // Open file browser
-    const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]');
-    await fileBrowserButton.click();
+    await openFileBrowser(page);
     await expect(page.locator('file-browser').first()).toBeVisible();
 
     // Look for binary files (images, executables, etc.)
@@ -390,8 +438,7 @@ test.describe.skip('File Browser', () => {
     await assertTerminalReady(page);
 
     // Open file browser
-    const fileBrowserButton = page.locator('[title="Browse Files (⌘O)"]');
-    await fileBrowserButton.click();
+    await openFileBrowser(page);
     await expect(page.locator('file-browser').first()).toBeVisible();
 
     // Try to navigate to a non-existent path

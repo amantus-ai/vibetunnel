@@ -14,7 +14,7 @@ test.describe('Push Notifications', () => {
 
     // Navigate to the page first
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check if push notifications are available
     const notificationStatus = page.locator('notification-status');
@@ -37,7 +37,7 @@ test.describe('Push Notifications', () => {
 
   test('should display notification status component', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Look for notification status component in header
     const notificationStatus = page.locator('notification-status');
@@ -56,7 +56,7 @@ test.describe('Push Notifications', () => {
   test('should handle notification permission request', async ({ page }) => {
     test.setTimeout(30000); // Increase timeout for this test
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Find notification enable button/component
     const notificationTrigger = page
@@ -112,7 +112,7 @@ test.describe('Push Notifications', () => {
 
   test('should show notification settings and subscription status', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const notificationStatus = page.locator('notification-status');
     if (await notificationStatus.isVisible()) {
@@ -159,7 +159,7 @@ test.describe('Push Notifications', () => {
 
   test('should handle notification subscription lifecycle', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Mock service worker registration
     await page.addInitScript(() => {
@@ -297,7 +297,7 @@ test.describe('Push Notifications', () => {
   test('should handle VAPID key management', async ({ page }) => {
     // This test checks if VAPID keys are properly handled in the client
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check if VAPID public key is available in the page
     const vapidKey = await page.evaluate(() => {
@@ -329,7 +329,7 @@ test.describe('Push Notifications', () => {
     });
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const notificationStatus = page.locator('notification-status');
     if (await notificationStatus.isVisible()) {
@@ -354,7 +354,7 @@ test.describe('Push Notifications', () => {
 
   test('should handle notification clicks and actions', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Mock notification with actions
     await page.addInitScript(() => {
@@ -418,7 +418,7 @@ test.describe('Push Notifications', () => {
 
   test('should handle service worker registration for notifications', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check if service worker is registered
     const serviceWorkerRegistered = await page.evaluate(async () => {
@@ -441,7 +441,7 @@ test.describe('Push Notifications', () => {
 
   test('should handle notification settings persistence', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check if notification preferences are stored
     const notificationPrefs = await page.evaluate(() => {

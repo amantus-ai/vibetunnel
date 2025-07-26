@@ -62,7 +62,7 @@ test.describe('Session Persistence Tests', () => {
 
     // Navigate back to home
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Wait for multiple auto-refresh cycles to ensure status update
     await page.waitForTimeout(5000);

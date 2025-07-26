@@ -280,7 +280,7 @@ export class WaitUtils {
   ): Promise<void> {
     const { timeout = 4000, maxInflightRequests = 0 } = options;
 
-    await page.waitForLoadState('networkidle', { timeout });
+    await page.waitForLoadState('domcontentloaded', { timeout });
 
     // Additional check for any pending XHR/fetch requests
     await page.waitForFunction(

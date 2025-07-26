@@ -316,6 +316,20 @@ export function createWorktreeRoutes(): Router {
     } catch (error) {
       logger.error('Error listing worktrees:', error);
       const gitError = error as GitError;
+
+      // Check if it's a "not a git repository" error or git not found
+      if (
+        gitError.code === 'ENOENT' ||
+        (gitError.stderr && gitError.stderr.includes('not a git repository'))
+      ) {
+        // Return empty worktrees list for non-git directories or when git is not available
+        return res.json({
+          worktrees: [],
+          baseBranch: 'main',
+          followBranch: undefined,
+        });
+      }
+
       return res.status(500).json({
         error: 'Failed to list worktrees',
         details: gitError.stderr || gitError.message,

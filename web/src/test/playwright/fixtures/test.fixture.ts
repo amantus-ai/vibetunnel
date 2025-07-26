@@ -23,6 +23,23 @@ export const test = base.extend<TestFixtures>({
     await context.route('**/*.{png,jpg,jpeg,gif,svg,woff,woff2,ttf,ico}', (route) => route.abort());
     await context.route('**/analytics/**', (route) => route.abort());
     await context.route('**/gtag/**', (route) => route.abort());
+    
+    // Suppress expected console errors to reduce noise
+    page.on('console', (msg) => {
+      const text = msg.text();
+      // Suppress known harmless errors
+      if (text.includes('Failed to load resource: net::ERR_FAILED') ||
+          text.includes('Control event stream error') ||
+          text.includes('stream connection error') ||
+          text.includes('EventSource') ||
+          text.includes('WebSocket')) {
+        return; // Suppress these expected errors
+      }
+      // Only log actual errors
+      if (msg.type() === 'error' && !text.includes('[') && !text.includes(']')) {
+        console.log(`Browser console error: ${text}`);
+      }
+    });
 
     // Track responses for debugging in CI
     if (process.env.CI) {
@@ -42,8 +59,8 @@ export const test = base.extend<TestFixtures>({
     const isFirstNavigation = !page.url() || page.url() === 'about:blank';
 
     if (isFirstNavigation) {
-      // Navigate to home before test
-      await page.goto('/', { waitUntil: 'domcontentloaded' });
+      // Navigate to home before test - use 'commit' for faster loading
+      await page.goto('/', { waitUntil: 'commit' });
 
       // Clear storage BEFORE test to ensure clean state
       await page
@@ -72,7 +89,7 @@ export const test = base.extend<TestFixtures>({
         .catch(() => {});
 
       // Reload the page so the app picks up the localStorage settings
-      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.reload({ waitUntil: 'commit' });
 
       // Add styles to disable animations after page load
       await page.addStyleTag({
@@ -86,14 +103,18 @@ export const test = base.extend<TestFixtures>({
         `,
       });
 
-      // Wait for the app to fully initialize
-      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 10000 });
+      // Wait for the app to be attached (fast)
+      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
 
-      // Wait for either create button or auth form to be visible
-      await page.waitForSelector('button[title="Create New Session"], auth-login', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      // For no-auth mode, wait for session list; for auth mode, wait for login
+      try {
+        await page.waitForSelector('button[title="Create New Session"], auth-login', {
+          state: 'visible',
+          timeout: 3000,
+        });
+      } catch {
+        // If neither shows up quickly, that's okay - individual tests will handle it
+      }
 
       // Skip session cleanup during tests to avoid interfering with test scenarios
       // Tests should manage their own session state

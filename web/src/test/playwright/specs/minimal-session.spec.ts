@@ -44,7 +44,7 @@ test.describe('Minimal Session Tests', () => {
 
       // Navigate back to home after each creation
       await page.goto('/');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Wait for auto-refresh to update the list (happens every 1 second)
       await page.waitForTimeout(2000);

@@ -56,7 +56,7 @@ export async function waitForNetworkSettled(
   const { timeout = 5000, idleTime = 500 } = options;
 
   try {
-    await page.waitForLoadState('networkidle', { timeout });
+    await page.waitForLoadState('domcontentloaded', { timeout });
   } catch {
     // Fallback: wait for no network activity for idleTime
     let lastRequestTime = Date.now();

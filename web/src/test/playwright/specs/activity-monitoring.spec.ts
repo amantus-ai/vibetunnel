@@ -246,7 +246,7 @@ test.describe('Activity Monitoring', () => {
     // Go to session list
     await page.goto('/?test=true');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Wait for session list to be ready - use multiple selectors
     await Promise.race([

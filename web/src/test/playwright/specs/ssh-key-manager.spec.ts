@@ -8,7 +8,7 @@ test.describe('SSH Key Manager', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to login page where SSH key manager should be accessible
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Skip SSH key tests if server is in no-auth mode
     const response = await page.request.get('/api/auth/config');

@@ -45,7 +45,7 @@ test.describe('Basic Session Tests', () => {
 
     // Go back to session list
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify session appears in list
     await assertSessionInList(page, sessionName);
@@ -69,7 +69,7 @@ test.describe('Basic Session Tests', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Verify both sessions are visible
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
     const sessionCards = await page.locator('session-card').count();
     expect(sessionCards).toBeGreaterThanOrEqual(2);

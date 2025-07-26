@@ -34,7 +34,7 @@ export async function clickSessionCardWithRetry(page: Page, sessionName: string)
   // Wait for card to be stable
   await sessionCard.waitFor({ state: 'visible' });
   await sessionCard.scrollIntoViewIfNeeded();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   try {
     await sessionCard.click();
@@ -125,7 +125,7 @@ export async function waitForTerminalBusy(page: Page, timeout = 2000): Promise<v
  */
 export async function waitForPageReady(page: Page): Promise<void> {
   await page.waitForLoadState('domcontentloaded');
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   // Also wait for app-specific ready state
   await page.waitForSelector('body.ready', { state: 'attached', timeout: 5000 }).catch(() => {

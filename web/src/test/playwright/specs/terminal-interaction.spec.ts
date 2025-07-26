@@ -1,18 +1,21 @@
 import { expect, test } from '../fixtures/test.fixture';
-import { assertTerminalContains, assertTerminalReady } from '../helpers/assertion.helper';
-import {
-  getTerminalDimensions,
-  waitForTerminalBusy,
-  waitForTerminalResize,
-} from '../helpers/common-patterns.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import {
+  waitForTerminalReady,
+  executeCommand,
+  assertTerminalContains,
+  clearTerminal,
+  typeCommand,
+  waitForOutput,
   executeAndVerifyCommand,
-  executeCommandSequence,
-  executeCommandWithRetry,
-  getCommandOutput,
+  waitForTerminalBusy,
   interruptCommand,
-} from '../helpers/terminal-commands.helper';
+  executeCommandSequence,
+  getCommandOutput,
+  getTerminalDimensions,
+  waitForTerminalResize,
+  executeCommandWithRetry,
+} from '../helpers/terminal-optimization.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
 test.describe('Terminal Interaction', () => {
@@ -25,7 +28,7 @@ test.describe('Terminal Interaction', () => {
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('terminal-test'),
     });
-    await assertTerminalReady(page, 15000);
+    await waitForTerminalReady(page, 5000);
   });
 
   test.afterEach(async () => {
@@ -33,26 +36,30 @@ test.describe('Terminal Interaction', () => {
   });
 
   test('should execute basic commands', async ({ page }) => {
-    // Simple one-liner to execute and verify
-    await executeAndVerifyCommand(page, 'echo "Hello VibeTunnel"', 'Hello VibeTunnel');
-
-    // Verify using assertion helper
+    // Execute echo command
+    await executeCommand(page, 'echo "Hello VibeTunnel"');
+    
+    // Verify output
     await assertTerminalContains(page, 'Hello VibeTunnel');
   });
 
   test('should handle command with special characters', async ({ page }) => {
     const specialText = 'Test with spaces and numbers 123';
-
-    // Execute with automatic output verification
-    await executeAndVerifyCommand(page, `echo "${specialText}"`, specialText);
+    
+    // Execute command
+    await executeCommand(page, `echo "${specialText}"`);
+    
+    // Verify output
+    await assertTerminalContains(page, specialText);
   });
 
   test('should execute multiple commands in sequence', async ({ page }) => {
-    // Execute sequence with expected outputs
-    await executeCommandSequence(page, ['echo "Test 1"', 'echo "Test 2"']);
-
-    // Both outputs should be visible
+    // Execute first command
+    await executeCommand(page, 'echo "Test 1"');
     await assertTerminalContains(page, 'Test 1');
+    
+    // Execute second command
+    await executeCommand(page, 'echo "Test 2"');
     await assertTerminalContains(page, 'Test 2');
   });
 
@@ -111,14 +118,34 @@ test.describe('Terminal Interaction', () => {
   test('should handle file system navigation', async ({ page }) => {
     const testDir = `test-dir-${Date.now()}`;
 
-    // Execute directory operations as a sequence
-    await executeCommandSequence(page, ['pwd', `mkdir ${testDir}`, `cd ${testDir}`, 'pwd']);
+    try {
+      // Execute directory operations one by one for better control
+      await executeCommand(page, 'pwd');
+      await page.waitForTimeout(200);
+      
+      await executeCommand(page, `mkdir ${testDir}`);
+      await page.waitForTimeout(200);
+      
+      await executeCommand(page, `cd ${testDir}`);
+      await page.waitForTimeout(200);
+      
+      await executeCommand(page, 'pwd');
+      await page.waitForTimeout(200);
 
-    // Verify we're in the new directory
-    await assertTerminalContains(page, testDir);
+      // Verify we're in the new directory
+      await assertTerminalContains(page, testDir);
 
-    // Cleanup
-    await executeCommandSequence(page, ['cd ..', `rmdir ${testDir}`]);
+      // Cleanup
+      await executeCommand(page, 'cd ..');
+      await page.waitForTimeout(200);
+      
+      await executeCommand(page, `rmdir ${testDir}`);
+    } catch (error) {
+      // Get terminal content for debugging
+      const content = await page.locator('vibe-terminal').textContent();
+      console.log('Terminal content on error:', content);
+      throw error;
+    }
   });
 
   test('should handle environment variables', async ({ page }) => {

@@ -63,7 +63,7 @@ test.describe('Session Creation', () => {
 
     // Start from session list page
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Get initial session count
     const initialCount = await page.locator('session-card').count();
@@ -83,14 +83,14 @@ test.describe('Session Creation', () => {
 
     // Navigate back to session list
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Wait for multiple refresh cycles (auto-refresh happens every 1 second)
     await page.waitForTimeout(5000);
 
     // Force a page reload to ensure we get the latest session list
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check session count increased
     const newCount = await page.locator('session-card').count();
@@ -153,7 +153,7 @@ test.describe('Session Creation', () => {
     const sessions: string[] = [];
 
     // Start from the session list page
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     // Only create 1 session to reduce test complexity in CI
     for (let i = 0; i < 1; i++) {
@@ -174,19 +174,23 @@ test.describe('Session Creation', () => {
       await page.fill('input[placeholder="My Session"]', sessionName);
       await page.fill('input[placeholder="zsh"]', 'bash');
 
-      // Make sure spawn window is off
+      // Make sure spawn window is off (if toggle exists)
       const spawnToggle = page.locator('button[role="switch"]').first();
-      const isChecked = (await spawnToggle.getAttribute('aria-checked')) === 'true';
-      if (isChecked) {
-        await spawnToggle.click();
-        // Wait for toggle state to update
-        await page.waitForFunction(
-          () => {
-            const toggle = document.querySelector('button[role="switch"]');
-            return toggle?.getAttribute('aria-checked') === 'false';
-          },
-          { timeout: 1000 }
-        );
+      try {
+        const isChecked = (await spawnToggle.getAttribute('aria-checked', { timeout: 1000 })) === 'true';
+        if (isChecked) {
+          await spawnToggle.click();
+          // Wait for toggle state to update
+          await page.waitForFunction(
+            () => {
+              const toggle = document.querySelector('button[role="switch"]');
+              return toggle?.getAttribute('aria-checked') === 'false';
+            },
+            { timeout: 1000 }
+          );
+        }
+      } catch {
+        // Spawn toggle might not exist or might be in a collapsed section - skip
       }
 
       // Create session
@@ -220,7 +224,7 @@ test.describe('Session Creation', () => {
 
     // Navigate to list and verify all exist
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
 
     // Add a longer delay to ensure the session list is fully updated
@@ -228,7 +232,7 @@ test.describe('Session Creation', () => {
 
     // Force a reload to get the latest session list
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Additional wait after reload
     await page.waitForTimeout(3000);

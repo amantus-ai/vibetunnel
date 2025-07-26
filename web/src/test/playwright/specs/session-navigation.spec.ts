@@ -64,7 +64,7 @@ test.describe('Session Navigation', () => {
     });
 
     // Wait for any animations or transitions to complete
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Ensure no modals are open that might block clicks
     await closeModalIfOpen(page);

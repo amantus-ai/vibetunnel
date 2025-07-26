@@ -113,13 +113,14 @@ export class SessionListPage extends BasePage {
       // Wait for button to be visible and stable before clicking
       await createButton.waitFor({ state: 'visible', timeout: 5000 });
 
-      // Scroll button into view if needed
-      await createButton.scrollIntoViewIfNeeded();
+      // Add a small delay to ensure page is stable
+      await this.page.waitForTimeout(500);
 
-      // Try regular click first
+      // Try regular click first, then force click if needed
       try {
         await createButton.click({ timeout: 5000 });
       } catch (_clickError) {
+        // If regular click fails, try force click
         await createButton.click({ force: true, timeout: 5000 });
       }
 
@@ -394,11 +395,11 @@ export class SessionListPage extends BasePage {
           { timeout: 10000, polling: 100 }
         );
 
-        // Give the app a moment to process after the session appears
-        await this.page.waitForTimeout(500);
+        // Brief wait for session to appear
+        await this.page.waitForTimeout(200);
       } else {
-        // Give the app time to process the session and navigate
-        await this.page.waitForTimeout(2000);
+        // Brief wait for processing
+        await this.page.waitForTimeout(500);
       }
 
       // Wait for modal to close - check if the form's visible property is false
@@ -523,7 +524,7 @@ export class SessionListPage extends BasePage {
     // First ensure we're on the session list page
     if (this.page.url().includes('/session/')) {
       await this.page.goto('/', { waitUntil: 'domcontentloaded' });
-      await this.page.waitForLoadState('networkidle');
+      await this.page.waitForLoadState('domcontentloaded');
     }
 
     // Wait for session cards to load

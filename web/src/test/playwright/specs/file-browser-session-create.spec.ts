@@ -1,8 +1,7 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
-// Skip all file browser tests since the feature has been removed
-test.describe.skip('File Browser in Session Create Form', () => {
+test.describe('File Browser in Session Create Form', () => {
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {

@@ -4,7 +4,7 @@ test.describe('Git Status Badge Debugging', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the app (test server runs on 4022)
     await page.goto('http://localhost:4022');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   });
 
   test('investigate Git status badge flashing and disappearing', async ({ page }) => {
