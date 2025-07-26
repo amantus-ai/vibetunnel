@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NotificationPreferences } from './push-notification-service.js';
 import { pushNotificationService } from './push-notification-service.js';
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../types/config.js';
 
 // Mock the auth client
 vi.mock('./auth-client', () => ({
@@ -112,7 +113,6 @@ global.fetch = vi.fn();
 describe('PushNotificationService', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
-    localStorage.clear();
 
     // Ensure any pending promises are resolved
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -151,10 +151,12 @@ describe('PushNotificationService', () => {
             }),
         });
       }
-      if (url === '/api/preferences/notifications') {
+      if (url === '/api/config') {
         return Promise.resolve({
-          ok: false,
-          status: 404,
+          ok: true,
+          json: () => Promise.resolve({ 
+            notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES 
+          }),
         });
       }
       return Promise.resolve({
@@ -188,9 +190,6 @@ describe('PushNotificationService', () => {
 
     // Wait for any pending async operations
     await new Promise((resolve) => setTimeout(resolve, 0));
-
-    // Clear localStorage
-    localStorage.clear();
 
     // Clear all mocks
     vi.clearAllMocks();
@@ -284,41 +283,58 @@ describe('PushNotificationService', () => {
   });
 
   describe('initialize', () => {
-    it('should load preferences from localStorage', async () => {
-      const savedPrefs: NotificationPreferences = {
+    it('should complete initialization without error', async () => {
+      await pushNotificationService.initialize();
+
+      // Just verify initialization completes without error
+      expect(pushNotificationService.isSupported()).toBeDefined();
+    });
+
+    it('should load preferences from server config', async () => {
+      const serverPrefs: NotificationPreferences = {
         enabled: true,
         sessionExit: false,
         sessionStart: true,
         commandError: false,
         commandCompletion: true,
         bell: false,
+        claudeTurn: false,
         soundEnabled: true,
         vibrationEnabled: false,
       };
-      localStorage.setItem('vibetunnel-notification-preferences', JSON.stringify(savedPrefs));
+
+      // Mock the config API response
+      global.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url === '/api/push/vapid-public-key') {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                publicKey: 'test-vapid-key',
+                enabled: true,
+              }),
+          });
+        }
+        if (url === '/api/config') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ 
+              notificationPreferences: serverPrefs 
+            }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({}),
+        });
+      });
 
       await pushNotificationService.initialize();
 
-      // Just verify initialization completes without error
-      expect(pushNotificationService.isSupported()).toBeDefined();
-
-      // Verify preferences were loaded
+      // Verify preferences can be loaded from server
       const prefs = await pushNotificationService.loadPreferences();
       expect(prefs.sessionStart).toBe(true);
       expect(prefs.sessionExit).toBe(false);
-    });
-
-    it('should use default preferences when localStorage is empty', async () => {
-      localStorage.clear();
-
-      await pushNotificationService.initialize();
-
-      // Just verify initialization completes without error
-      expect(pushNotificationService.isSupported()).toBeDefined();
-
-      // Verify default preferences
-      const prefs = await pushNotificationService.loadPreferences();
-      expect(prefs).toBeDefined();
     });
 
     it('should get existing subscription', async () => {
@@ -470,7 +486,7 @@ describe('PushNotificationService', () => {
   });
 
   describe('savePreferences', () => {
-    it('should save preferences to localStorage and server', async () => {
+    it('should save preferences to server config', async () => {
       const preferences: NotificationPreferences = {
         enabled: true,
         sessionExit: false,
@@ -478,23 +494,28 @@ describe('PushNotificationService', () => {
         commandError: true,
         commandCompletion: false,
         bell: true,
+        claudeTurn: false,
         soundEnabled: false,
         vibrationEnabled: true,
       };
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ success: true }),
+        json: () => Promise.resolve({ 
+          notificationPreferences: preferences 
+        }),
       });
 
       await pushNotificationService.savePreferences(preferences);
 
-      const saved = localStorage.getItem('vibetunnel-notification-preferences');
-      expect(saved).toBeTruthy();
-      if (saved) {
-        expect(JSON.parse(saved)).toEqual(preferences);
-      }
-      expect(fetch).toHaveBeenCalledWith('/api/preferences/notifications', expect.any(Object));
+      // Since we're now using serverConfigService, we expect a config API call
+      expect(fetch).toHaveBeenCalledWith('/api/config', expect.objectContaining({
+        method: 'PUT',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+        }),
+        body: expect.stringContaining('notificationPreferences'),
+      }));
     });
 
     it('should handle save failure gracefully', async () => {
@@ -505,17 +526,15 @@ describe('PushNotificationService', () => {
         commandError: true,
         commandCompletion: true,
         bell: true,
+        claudeTurn: false,
         soundEnabled: true,
         vibrationEnabled: true,
       };
 
       global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
-      await pushNotificationService.savePreferences(preferences);
-
-      // Should still save to localStorage even if server fails
-      const saved = localStorage.getItem('vibetunnel-notification-preferences');
-      expect(saved).toBeTruthy();
+      // Should throw error now since we don't fallback to localStorage
+      await expect(pushNotificationService.savePreferences(preferences)).rejects.toThrow('Network error');
     });
   });
 
