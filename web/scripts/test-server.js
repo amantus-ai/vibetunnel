@@ -7,19 +7,35 @@ const fs = require('fs');
 
 const projectRoot = path.join(__dirname, '..');
 
-// Build server TypeScript files
-console.log('Building server TypeScript files for tests...');
-try {
-  execSync('pnpm exec tsc -p tsconfig.server.json', { 
-    stdio: 'inherit',
-    cwd: projectRoot
-  });
-  console.log('TypeScript build completed successfully');
-} catch (error) {
-  console.error('Failed to build server TypeScript files:', error);
-  console.error('Build command exit code:', error.status);
-  console.error('Build command signal:', error.signal);
-  process.exit(1);
+// Check if we're in VIBETUNNEL_SEA mode and have the native executable
+const nativeExecutable = path.join(projectRoot, 'native/vibetunnel');
+const distCliPath = path.join(projectRoot, 'dist/cli.js');
+let cliPath;
+let useNode = true;
+
+if (process.env.VIBETUNNEL_SEA === 'true' && fs.existsSync(nativeExecutable)) {
+  console.log('Using native executable for tests (VIBETUNNEL_SEA mode)');
+  cliPath = nativeExecutable;
+  useNode = false;
+} else if (fs.existsSync(distCliPath)) {
+  console.log('Using TypeScript compiled version for tests');
+  cliPath = distCliPath;
+} else {
+  // Fallback: build TypeScript files if needed
+  console.log('Building server TypeScript files for tests...');
+  try {
+    execSync('pnpm exec tsc -p tsconfig.server.json', { 
+      stdio: 'inherit',
+      cwd: projectRoot
+    });
+    console.log('TypeScript build completed successfully');
+    cliPath = distCliPath;
+  } catch (error) {
+    console.error('Failed to build server TypeScript files:', error);
+    console.error('Build command exit code:', error.status);
+    console.error('Build command signal:', error.signal);
+    process.exit(1);
+  }
 }
 
 // Ensure native modules are available
@@ -28,28 +44,33 @@ execSync('node scripts/ensure-native-modules.js', {
   cwd: projectRoot
 });
 
-// Forward all arguments to the built JavaScript version
-const cliPath = path.join(projectRoot, 'dist/cli.js');
-
-// Check if the built file exists
+// Check if the CLI file exists
 if (!fs.existsSync(cliPath)) {
-  console.error(`Built CLI not found at ${cliPath}`);
-  console.error('Contents of dist directory:');
-  try {
-    const distPath = path.join(projectRoot, 'dist');
-    if (fs.existsSync(distPath)) {
-      const files = fs.readdirSync(distPath);
-      files.forEach(file => console.error(`  - ${file}`));
-    } else {
-      console.error('  dist directory does not exist!');
-    }
-  } catch (e) {
-    console.error('  Error listing dist directory:', e.message);
+  console.error(`CLI not found at ${cliPath}`);
+  console.error('Available files:');
+  
+  // Check native directory
+  const nativePath = path.join(projectRoot, 'native');
+  if (fs.existsSync(nativePath)) {
+    console.error('Native directory contents:');
+    const files = fs.readdirSync(nativePath);
+    files.forEach(file => console.error(`  - ${file}`));
   }
+  
+  // Check dist directory
+  const distPath = path.join(projectRoot, 'dist');
+  if (fs.existsSync(distPath)) {
+    console.error('Dist directory contents:');
+    const files = fs.readdirSync(distPath);
+    files.forEach(file => console.error(`  - ${file}`));
+  }
+  
   process.exit(1);
 }
 
-const args = [cliPath, ...process.argv.slice(2)];
+// Prepare arguments based on whether we're using node or native executable
+const args = useNode ? [cliPath, ...process.argv.slice(2)] : process.argv.slice(2);
+const command = useNode ? 'node' : cliPath;
 
 // Extract port from arguments
 let port = 4022; // default test port
@@ -58,18 +79,18 @@ if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
   port = process.argv[portArgIndex + 1];
 }
 
-// Spawn node with the built CLI
-console.log(`Starting test server: node ${args.join(' ')}`);
+// Spawn the server
+console.log(`Starting test server: ${command} ${args.join(' ')}`);
 console.log(`Working directory: ${projectRoot}`);
 console.log(`Port: ${port}`);
 
-const child = spawn('node', args, {
+const child = spawn(command, args, {
   stdio: 'inherit',
   cwd: projectRoot,
   env: {
     ...process.env,
-    // Ensure we're not in SEA mode for tests
-    VIBETUNNEL_SEA: '',
+    // Ensure we're not in SEA mode for tests (unless we're already using the native executable)
+    VIBETUNNEL_SEA: useNode ? '' : 'true',
     PORT: port.toString()
   }
 });
