@@ -35,8 +35,8 @@ export default defineConfig({
       }
       console.warn(`Invalid PLAYWRIGHT_WORKERS value: "${process.env.PLAYWRIGHT_WORKERS}". Using default.`);
     }
-    // Default: 8 workers in CI, auto-detect locally
-    return process.env.CI ? 8 : undefined;
+    // Default: 4 workers in CI (reduced from 8 to avoid server overload), auto-detect locally
+    return process.env.CI ? 4 : undefined;
   })(),
   /* Test timeout */
   timeout: process.env.CI ? 60 * 1000 : 30 * 1000, // 60s on CI, 30s locally

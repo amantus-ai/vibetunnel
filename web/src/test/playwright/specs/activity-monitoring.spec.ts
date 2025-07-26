@@ -72,11 +72,24 @@ test.describe('Activity Monitoring', () => {
   });
 
   test('should update activity status when user interacts with terminal', async ({ page }) => {
-    // Create session and navigate to it
-    await createAndNavigateToSession(page, {
-      name: sessionManager.generateSessionName('activity-interaction'),
-    });
-    await assertTerminalReady(page, 15000);
+    // Add retry logic for session creation
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        // Create session and navigate to it
+        await createAndNavigateToSession(page, {
+          name: sessionManager.generateSessionName('activity-interaction'),
+        });
+        await assertTerminalReady(page, 15000);
+        break;
+      } catch (error) {
+        console.error(`Session creation failed (${retries} retries left):`, error);
+        retries--;
+        if (retries === 0) throw error;
+        await page.reload();
+        await page.waitForTimeout(2000);
+      }
+    }
 
     // Get initial activity status (if visible)
     const activityStatus = page
