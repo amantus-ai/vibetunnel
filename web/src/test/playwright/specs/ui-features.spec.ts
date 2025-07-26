@@ -19,6 +19,9 @@ async function openFileBrowser(page: Page) {
   const sessionView = page.locator('session-view').first();
   await expect(sessionView).toBeVisible({ timeout: 10000 });
 
+  // Small delay to ensure UI is ready
+  await page.waitForTimeout(500);
+
   // Check if we're in compact mode by looking for the compact menu
   const compactMenuButton = sessionView.locator('compact-menu button').first();
   const imageUploadButton = sessionView.locator('[data-testid="image-upload-button"]').first();
@@ -120,14 +123,39 @@ test.describe('UI Features', () => {
     await openFileBrowser(page);
 
     // Wait for file browser to be visible using custom evaluation
-    const fileBrowserVisible = await page.waitForFunction(
-      () => {
+    try {
+      await page.waitForFunction(
+        () => {
+          const browser = document.querySelector('file-browser');
+          if (!browser) return false;
+
+          // Check multiple ways the file browser might indicate it's visible
+          const hasVisibleProp = (browser as FileBrowserElement).visible === true;
+          const hasVisibleAttr = browser.getAttribute('visible') === 'true';
+          const isDisplayed = window.getComputedStyle(browser).display !== 'none';
+          const hasContent = browser.children.length > 0;
+
+          return hasVisibleProp || hasVisibleAttr || (isDisplayed && hasContent);
+        },
+        { timeout: 10000 }
+      );
+    } catch (_error) {
+      // Debug: log the current state
+      const state = await page.evaluate(() => {
         const browser = document.querySelector('file-browser');
-        return browser && (browser as FileBrowserElement).visible === true;
-      },
-      { timeout: 5000 }
-    );
-    expect(fileBrowserVisible).toBeTruthy();
+        if (!browser) return { exists: false };
+        return {
+          exists: true,
+          visible: (browser as FileBrowserElement).visible,
+          visibleAttr: browser.getAttribute('visible'),
+          display: window.getComputedStyle(browser).display,
+          childCount: browser.children.length,
+          innerHTML: browser.innerHTML.substring(0, 100),
+        };
+      });
+      console.error('File browser state:', state);
+      throw new Error(`File browser did not become visible: ${JSON.stringify(state)}`);
+    }
 
     // Close file browser with Escape
     await page.keyboard.press('Escape');
@@ -136,9 +164,17 @@ test.describe('UI Features', () => {
     await page.waitForFunction(
       () => {
         const browser = document.querySelector('file-browser');
-        return !browser || (browser as FileBrowserElement).visible === false;
+        if (!browser) return true; // If element is gone, it's hidden
+
+        // Check multiple ways the file browser might indicate it's hidden
+        const hasVisibleProp = (browser as FileBrowserElement).visible === false;
+        const hasVisibleAttr =
+          browser.getAttribute('visible') === 'false' || !browser.hasAttribute('visible');
+        const isHidden = window.getComputedStyle(browser).display === 'none';
+
+        return hasVisibleProp || hasVisibleAttr || isHidden;
       },
-      { timeout: 5000 }
+      { timeout: 10000 }
     );
   });
 

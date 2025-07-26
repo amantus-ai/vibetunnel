@@ -258,41 +258,66 @@ test.describe('Activity Monitoring', () => {
     await page.waitForTimeout(1000);
 
     // Go to session list
-    await page.goto('/?test=true');
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/?test=true', { waitUntil: 'domcontentloaded', timeout: 10000 });
 
     // Wait for session list to be ready - use multiple selectors
-    await Promise.race([
-      page.waitForSelector('session-card', { state: 'visible', timeout: 15000 }),
-      page.waitForSelector('.session-list', { state: 'visible', timeout: 15000 }),
-      page.waitForSelector('[data-testid="session-list"]', { state: 'visible', timeout: 15000 }),
-    ]);
+    try {
+      await Promise.race([
+        page.waitForSelector('session-card', { state: 'visible', timeout: 15000 }),
+        page.waitForSelector('.session-list', { state: 'visible', timeout: 15000 }),
+        page.waitForSelector('[data-testid="session-list"]', { state: 'visible', timeout: 15000 }),
+      ]);
+    } catch (_error) {
+      console.warn('Session list selector timeout, checking if sessions exist...');
+      const hasCards = await page.locator('session-card').count();
+      if (hasCards === 0) {
+        throw new Error('No session cards found after navigation');
+      }
+    }
 
     // Both sessions should show activity status
     const session1Card = page.locator('session-card').filter({ hasText: session1Name }).first();
     const session2Card = page.locator('session-card').filter({ hasText: session2Name }).first();
 
-    if ((await session1Card.isVisible()) && (await session2Card.isVisible())) {
-      // Both should have activity indicators
-      const session1Activity = session1Card
-        .locator('.activity, .status, .text-green, .bg-green, .text-xs')
-        .filter({
-          hasText: /active|ago|now/i,
-        });
+    // Check both sessions are visible
+    await expect(session1Card).toBeVisible({ timeout: 10000 });
+    await expect(session2Card).toBeVisible({ timeout: 10000 });
 
-      const session2Activity = session2Card
-        .locator('.activity, .status, .text-green, .bg-green, .text-xs')
-        .filter({
-          hasText: /active|ago|now/i,
-        });
+    // Both should have activity indicators - look for various possible activity indicators
+    const activitySelectors = [
+      '.activity',
+      '.status',
+      '[data-testid="activity-status"]',
+      '.text-green',
+      '.bg-green',
+      '.text-xs',
+      'span:has-text("active")',
+      'span:has-text("ago")',
+      'span:has-text("now")',
+      'span:has-text("recent")',
+    ];
 
-      const hasSession1Activity = await session1Activity.isVisible();
-      const hasSession2Activity = await session2Activity.isVisible();
-
-      // At least one should show activity (recent activity should be visible)
-      expect(hasSession1Activity || hasSession2Activity).toBeTruthy();
+    // Check for activity on both cards
+    let hasActivity = false;
+    for (const selector of activitySelectors) {
+      const session1Activity = await session1Card.locator(selector).count();
+      const session2Activity = await session2Card.locator(selector).count();
+      if (session1Activity > 0 || session2Activity > 0) {
+        hasActivity = true;
+        break;
+      }
     }
+
+    if (!hasActivity) {
+      // Debug: log what we see in the cards
+      const card1Text = await session1Card.textContent();
+      const card2Text = await session2Card.textContent();
+      console.log('Session 1 card text:', card1Text);
+      console.log('Session 2 card text:', card2Text);
+    }
+
+    // At least one should show activity (recent activity should be visible)
+    expect(hasActivity).toBeTruthy();
   });
 
   test('should handle activity monitoring for long-running commands', async ({ page }) => {

@@ -38,8 +38,10 @@ test.describe('Advanced Session Management', () => {
     );
 
     // Go back to session list
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 10000 });
+
+    // Wait for the page to be ready
+    await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
 
     // Check if we need to show exited sessions
     const showExitedCheckbox = page.locator('input[type="checkbox"][role="checkbox"]');
@@ -59,7 +61,14 @@ test.describe('Advanced Session Management', () => {
     }
 
     // Now wait for session cards to be visible
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
+    try {
+      await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+    } catch (_error) {
+      // Debug: Check what's on the page
+      const pageText = await page.textContent('body');
+      console.log('Page text when no session cards found:', pageText?.substring(0, 500));
+      throw new Error('No session cards visible after navigation');
+    }
 
     // Kill the session using page object
     await sessionListPage.killSession(sessionName);
