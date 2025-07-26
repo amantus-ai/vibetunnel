@@ -58,6 +58,8 @@ jobs:
       - name: Build application
         working-directory: ./web
         run: pnpm run build
+        env:
+          VIBETUNNEL_SEA: "true"
         
       - name: Install Playwright browsers
         working-directory: ./web
@@ -84,8 +86,8 @@ jobs:
           CI: true
           TERM: xterm
           SHELL: /bin/bash
-          # Explicitly unset VIBETUNNEL_SEA to prevent node-pty SEA mode issues
-          VIBETUNNEL_SEA: ""
+          # Set VIBETUNNEL_SEA to enable SEA mode for CI
+          VIBETUNNEL_SEA: "true"
           
       - name: Upload test results
         uses: actions/upload-artifact@v4
