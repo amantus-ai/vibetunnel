@@ -8,7 +8,7 @@
  */
 import { DEFAULT_REPOSITORY_BASE_PATH } from '../../shared/constants.js';
 import { HttpMethod } from '../../shared/types.js';
-import type { QuickStartCommand } from '../../types/config.js';
+import type { NotificationPreferences, QuickStartCommand } from '../../types/config.js';
 import { createLogger } from '../utils/logger.js';
 import type { AuthClient } from './auth-client.js';
 
@@ -18,15 +18,7 @@ export interface ServerConfig {
   repositoryBasePath: string;
   serverConfigured?: boolean;
   quickStartCommands?: QuickStartCommand[];
-  notificationPreferences?: {
-    enabled: boolean;
-    sessionStart: boolean;
-    sessionExit: boolean;
-    commandCompletion: boolean;
-    commandError: boolean;
-    bell: boolean;
-    claudeTurn: boolean;
-  };
+  notificationPreferences?: NotificationPreferences;
 }
 
 export class ServerConfigService {
@@ -209,9 +201,7 @@ export class ServerConfigService {
   /**
    * Update notification preferences
    */
-  async updateNotificationPreferences(
-    preferences: NonNullable<ServerConfig['notificationPreferences']>
-  ): Promise<void> {
+  async updateNotificationPreferences(preferences: NotificationPreferences): Promise<void> {
     await this.updateConfig({ notificationPreferences: preferences });
   }
 }

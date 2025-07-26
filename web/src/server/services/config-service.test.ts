@@ -463,9 +463,9 @@ describe('ConfigService', () => {
       );
 
       // Verify the saved config includes preferences (get the last write call)
-      const writeCalls = vi.mocked(fs.writeFileSync).mock.calls.filter(
-        (call) => call[0] === mockConfigPath
-      );
+      const writeCalls = vi
+        .mocked(fs.writeFileSync)
+        .mock.calls.filter((call) => call[0] === mockConfigPath);
       const lastWriteCall = writeCalls[writeCalls.length - 1];
       const savedConfig = JSON.parse(lastWriteCall?.[1] as string);
       expect(savedConfig.preferences?.notifications).toEqual(preferences);

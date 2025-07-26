@@ -235,9 +235,8 @@ final class SessionMonitor {
     )
         async
     {
-        // Check if Claude notifications are enabled (default to true if not set)
-        let claudeNotificationsEnabled = UserDefaults.standard
-            .object(forKey: "notifications.claudeTurn") as? Bool ?? true
+        // Check if Claude notifications are enabled using ConfigManager
+        let claudeNotificationsEnabled = ConfigManager.shared.notificationClaudeTurn
         guard claudeNotificationsEnabled else { return }
 
         for (id, newSession) in new {

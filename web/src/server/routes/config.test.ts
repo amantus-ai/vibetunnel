@@ -333,7 +333,9 @@ describe('Config Routes', () => {
           notificationPreferences: newPreferences,
         });
 
-        expect(mockConfigService.updateNotificationPreferences).toHaveBeenCalledWith(newPreferences);
+        expect(mockConfigService.updateNotificationPreferences).toHaveBeenCalledWith(
+          newPreferences
+        );
       });
 
       it('should update notification preferences along with other settings', async () => {
@@ -348,12 +350,10 @@ describe('Config Routes', () => {
           claudeTurn: false,
         };
 
-        const response = await request(app)
-          .put('/api/config')
-          .send({
-            repositoryBasePath: newPath,
-            notificationPreferences: newPreferences,
-          });
+        const response = await request(app).put('/api/config').send({
+          repositoryBasePath: newPath,
+          notificationPreferences: newPreferences,
+        });
 
         expect(response.status).toBe(200);
         expect(response.body).toEqual({
@@ -363,7 +363,9 @@ describe('Config Routes', () => {
         });
 
         expect(mockConfigService.updateRepositoryBasePath).toHaveBeenCalledWith(newPath);
-        expect(mockConfigService.updateNotificationPreferences).toHaveBeenCalledWith(newPreferences);
+        expect(mockConfigService.updateNotificationPreferences).toHaveBeenCalledWith(
+          newPreferences
+        );
       });
 
       it('should reject invalid notification preferences', async () => {

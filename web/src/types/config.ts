@@ -5,6 +5,23 @@ export interface QuickStartCommand {
   command: string; // The actual command to execute
 }
 
+/**
+ * Unified notification preferences used across Mac and Web
+ * This is the single source of truth for notification settings
+ */
+export interface NotificationPreferences {
+  enabled: boolean;
+  sessionStart: boolean;
+  sessionExit: boolean;
+  commandCompletion: boolean;
+  commandError: boolean;
+  bell: boolean;
+  claudeTurn: boolean;
+  // UI preferences
+  soundEnabled: boolean;
+  vibrationEnabled: boolean;
+}
+
 export interface VibeTunnelConfig {
   version: number;
   quickStartCommands: QuickStartCommand[];
@@ -29,15 +46,7 @@ export interface VibeTunnelConfig {
     updateChannel: string;
     showInDock: boolean;
     preventSleepWhenRunning: boolean;
-    notifications?: {
-      enabled: boolean;
-      sessionStart: boolean;
-      sessionExit: boolean;
-      commandCompletion: boolean;
-      commandError: boolean;
-      bell: boolean;
-      claudeTurn: boolean;
-    };
+    notifications?: NotificationPreferences;
   };
   remoteAccess?: {
     ngrokEnabled: boolean;
@@ -59,6 +68,18 @@ export const DEFAULT_QUICK_START_COMMANDS: QuickStartCommand[] = [
   { command: 'node' },
   { name: '▶️ pnpm run dev', command: 'pnpm run dev' },
 ];
+
+export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  enabled: true,
+  sessionStart: true,
+  sessionExit: true,
+  commandCompletion: true,
+  commandError: true,
+  bell: true,
+  claudeTurn: false,
+  soundEnabled: true,
+  vibrationEnabled: true,
+};
 
 export const DEFAULT_CONFIG: VibeTunnelConfig = {
   version: 2,

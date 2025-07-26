@@ -21,7 +21,7 @@ final class GeneralSettingsViewTests: XCTestCase {
 
     func testNotificationPreferencesDefaultValues() {
         // Initialize preferences
-        _ = NotificationService.NotificationPreferences()
+        _ = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
 
         // Check defaults are set to true
         XCTAssertTrue(UserDefaults.standard.bool(forKey: "notifications.sessionStart"))
@@ -46,12 +46,12 @@ final class GeneralSettingsViewTests: XCTestCase {
         XCTAssertTrue(UserDefaults.standard.bool(forKey: "notifications.sessionStart"))
 
         // Test that NotificationService reads the updated preferences
-        let prefs = NotificationService.NotificationPreferences()
+        let prefs = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
         XCTAssertTrue(prefs.sessionStart)
     }
 
     func testNotificationPreferencesSave() {
-        var prefs = NotificationService.NotificationPreferences()
+        var prefs = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
         prefs.sessionStart = false
         prefs.sessionExit = false
         prefs.commandCompletion = true

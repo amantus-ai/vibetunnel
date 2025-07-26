@@ -22,22 +22,26 @@ final class NotificationService: NSObject {
 
     /// Notification types that can be enabled/disabled
     struct NotificationPreferences {
-        var sessionStart: Bool = true
-        var sessionExit: Bool = true
-        var commandCompletion: Bool = true
-        var commandError: Bool = true
-        var bell: Bool = true
-        var claudeTurn: Bool = true
+        var sessionStart: Bool
+        var sessionExit: Bool
+        var commandCompletion: Bool
+        var commandError: Bool
+        var bell: Bool
+        var claudeTurn: Bool
+        var soundEnabled: Bool
+        var vibrationEnabled: Bool
 
         @MainActor
         init(fromConfig configManager: ConfigManager) {
-            // Load from ConfigManager
+            // Load from ConfigManager - ConfigManager provides the defaults
             self.sessionStart = configManager.notificationSessionStart
             self.sessionExit = configManager.notificationSessionExit
             self.commandCompletion = configManager.notificationCommandCompletion
             self.commandError = configManager.notificationCommandError
             self.bell = configManager.notificationBell
             self.claudeTurn = configManager.notificationClaudeTurn
+            self.soundEnabled = configManager.notificationSoundEnabled
+            self.vibrationEnabled = configManager.notificationVibrationEnabled
         }
     }
 
@@ -95,7 +99,7 @@ final class NotificationService: NSObject {
                     let content = UNMutableNotificationContent()
                     content.title = "VibeTunnel Notifications"
                     content.body = "Notifications are now enabled! You'll receive alerts for terminal events."
-                    content.sound = .default
+                    content.sound = getNotificationSound()
 
                     deliverNotification(content, identifier: "permission-granted-\(UUID().uuidString)")
 
@@ -122,7 +126,7 @@ final class NotificationService: NSObject {
             let content = UNMutableNotificationContent()
             content.title = "VibeTunnel Notifications"
             content.body = "Notifications are enabled! You'll receive alerts for terminal events."
-            content.sound = .default
+            content.sound = getNotificationSound()
 
             deliverNotification(content, identifier: "permission-test-\(UUID().uuidString)")
 
@@ -142,7 +146,7 @@ final class NotificationService: NSObject {
         let content = UNMutableNotificationContent()
         content.title = "Session Started"
         content.body = sessionName
-        content.sound = .default
+        content.sound = getNotificationSound()
         content.categoryIdentifier = "SESSION"
         content.interruptionLevel = .passive
 
@@ -156,7 +160,7 @@ final class NotificationService: NSObject {
         let content = UNMutableNotificationContent()
         content.title = "Session Ended"
         content.body = sessionName
-        content.sound = .default
+        content.sound = getNotificationSound()
         content.categoryIdentifier = "SESSION"
 
         if exitCode != 0 {
@@ -173,7 +177,7 @@ final class NotificationService: NSObject {
         let content = UNMutableNotificationContent()
         content.title = "Your Turn"
         content.body = command
-        content.sound = .default
+        content.sound = getNotificationSound()
         content.categoryIdentifier = "COMMAND"
         content.interruptionLevel = .active
 
@@ -194,7 +198,7 @@ final class NotificationService: NSObject {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
-        content.sound = .default
+        content.sound = getNotificationSound()
         content.categoryIdentifier = "GENERAL"
 
         deliverNotification(content, identifier: "generic-\(UUID().uuidString)")
@@ -218,8 +222,16 @@ final class NotificationService: NSObject {
             commandCompletion: prefs.commandCompletion,
             commandError: prefs.commandError,
             bell: prefs.bell,
-            claudeTurn: prefs.claudeTurn
+            claudeTurn: prefs.claudeTurn,
+            soundEnabled: prefs.soundEnabled,
+            vibrationEnabled: prefs.vibrationEnabled
         )
+    }
+    
+    /// Get notification sound based on user preferences
+    private func getNotificationSound(critical: Bool = false) -> UNNotificationSound? {
+        guard preferences.soundEnabled else { return nil }
+        return critical ? .defaultCritical : .default
     }
 
     /// Listen for config changes
@@ -459,7 +471,7 @@ final class NotificationService: NSObject {
         let content = UNMutableNotificationContent()
         content.title = "Session Started"
         content.body = sessionName
-        content.sound = .default
+        content.sound = getNotificationSound()
         content.categoryIdentifier = "SESSION"
         content.interruptionLevel = .passive // Less intrusive for auto-dismiss
 
@@ -481,7 +493,7 @@ final class NotificationService: NSObject {
         let content = UNMutableNotificationContent()
         content.title = "Session Ended"
         content.body = sessionName
-        content.sound = .default
+        content.sound = getNotificationSound()
         content.categoryIdentifier = "SESSION"
 
         if let sessionId = data["sessionId"] as? String {
@@ -501,7 +513,7 @@ final class NotificationService: NSObject {
         let content = UNMutableNotificationContent()
         content.title = "Command Completed"
         content.body = command
-        content.sound = .default
+        content.sound = getNotificationSound()
         content.categoryIdentifier = "COMMAND"
 
         if let sessionId = data["sessionId"] as? String {
@@ -526,7 +538,7 @@ final class NotificationService: NSObject {
         let content = UNMutableNotificationContent()
         content.title = "Command Failed"
         content.body = command
-        content.sound = .defaultCritical
+        content.sound = getNotificationSound(critical: true)
         content.categoryIdentifier = "COMMAND"
 
         if let sessionId = data["sessionId"] as? String {
@@ -546,7 +558,7 @@ final class NotificationService: NSObject {
         let content = UNMutableNotificationContent()
         content.title = "Terminal Bell"
         content.body = sessionName
-        content.sound = .default
+        content.sound = getNotificationSound()
         content.categoryIdentifier = "BELL"
 
         if let sessionId = data["sessionId"] as? String {
@@ -567,7 +579,7 @@ final class NotificationService: NSObject {
         content.title = "Your Turn"
         content.body = "Claude has finished responding"
         content.subtitle = sessionName
-        content.sound = .default
+        content.sound = getNotificationSound()
         content.categoryIdentifier = "CLAUDE_TURN"
         content.interruptionLevel = .active
 

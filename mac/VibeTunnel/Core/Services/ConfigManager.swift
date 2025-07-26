@@ -45,6 +45,8 @@ final class ConfigManager {
     var notificationCommandError: Bool = true
     var notificationBell: Bool = true
     var notificationClaudeTurn: Bool = false
+    var notificationSoundEnabled: Bool = true
+    var notificationVibrationEnabled: Bool = true
 
     // Remote access
     var ngrokEnabled: Bool = false
@@ -103,6 +105,8 @@ final class ConfigManager {
         var commandError: Bool
         var bell: Bool
         var claudeTurn: Bool
+        var soundEnabled: Bool
+        var vibrationEnabled: Bool
     }
 
     private struct RemoteAccessConfig: Codable {
@@ -187,6 +191,8 @@ final class ConfigManager {
                         self.notificationCommandError = notif.commandError
                         self.notificationBell = notif.bell
                         self.notificationClaudeTurn = notif.claudeTurn
+                        self.notificationSoundEnabled = notif.soundEnabled
+                        self.notificationVibrationEnabled = notif.vibrationEnabled
                     }
                 }
 
@@ -218,6 +224,18 @@ final class ConfigManager {
     private func useDefaults() {
         self.quickStartCommands = defaultCommands
         self.repositoryBasePath = FilePathConstants.defaultRepositoryBasePath
+        
+        // Set notification defaults to match TypeScript defaults
+        self.notificationsEnabled = true
+        self.notificationSessionStart = true
+        self.notificationSessionExit = true
+        self.notificationCommandCompletion = true
+        self.notificationCommandError = true
+        self.notificationBell = true
+        self.notificationClaudeTurn = false
+        self.notificationSoundEnabled = true
+        self.notificationVibrationEnabled = true
+        
         saveConfiguration()
     }
 
@@ -260,7 +278,9 @@ final class ConfigManager {
                 commandCompletion: notificationCommandCompletion,
                 commandError: notificationCommandError,
                 bell: notificationBell,
-                claudeTurn: notificationClaudeTurn
+                claudeTurn: notificationClaudeTurn,
+                soundEnabled: notificationSoundEnabled,
+                vibrationEnabled: notificationVibrationEnabled
             )
         )
 
@@ -419,7 +439,9 @@ final class ConfigManager {
         commandCompletion: Bool? = nil,
         commandError: Bool? = nil,
         bell: Bool? = nil,
-        claudeTurn: Bool? = nil
+        claudeTurn: Bool? = nil,
+        soundEnabled: Bool? = nil,
+        vibrationEnabled: Bool? = nil
     ) {
         // Update only the provided values
         if let enabled { self.notificationsEnabled = enabled }
@@ -429,6 +451,8 @@ final class ConfigManager {
         if let commandError { self.notificationCommandError = commandError }
         if let bell { self.notificationBell = bell }
         if let claudeTurn { self.notificationClaudeTurn = claudeTurn }
+        if let soundEnabled { self.notificationSoundEnabled = soundEnabled }
+        if let vibrationEnabled { self.notificationVibrationEnabled = vibrationEnabled }
 
         saveConfiguration()
         logger.info("Updated notification preferences")

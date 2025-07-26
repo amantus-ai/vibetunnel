@@ -5,19 +5,15 @@ import UserNotifications
 
 @Suite("NotificationService - Claude Turn")
 struct NotificationServiceClaudeTurnTests {
-    @Test("Should have claude turn preference enabled by default")
+    @Test("Should have claude turn preference disabled by default")
     @MainActor
     func claudeTurnDefaultPreference() async throws {
-        // Given - Clear UserDefaults to simulate fresh install
-        let defaults = UserDefaults.standard
-        defaults.removeObject(forKey: "notifications.initialized")
-        defaults.removeObject(forKey: "notifications.claudeTurn")
-        defaults.synchronize()
+        // Given - Get default preferences from ConfigManager
+        let configManager = ConfigManager.shared
+        let preferences = NotificationService.NotificationPreferences(fromConfig: configManager)
 
-        let preferences = NotificationService.NotificationPreferences()
-
-        // Then
-        #expect(preferences.claudeTurn == true)
+        // Then - Should match TypeScript default (false)
+        #expect(preferences.claudeTurn == false)
     }
 
     @Test("Should respect claude turn notification preference")
@@ -25,7 +21,7 @@ struct NotificationServiceClaudeTurnTests {
     func claudeTurnPreferenceRespected() async throws {
         // Given
         let notificationService = NotificationService.shared
-        var preferences = NotificationService.NotificationPreferences()
+        var preferences = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
         preferences.claudeTurn = false
         notificationService.updatePreferences(preferences)
 
@@ -41,7 +37,7 @@ struct NotificationServiceClaudeTurnTests {
         let notificationService = NotificationService.shared
 
         // When - enable claude turn notifications
-        var preferences = NotificationService.NotificationPreferences()
+        var preferences = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
         preferences.claudeTurn = true
         notificationService.updatePreferences(preferences)
 
@@ -59,7 +55,7 @@ struct NotificationServiceClaudeTurnTests {
     @Test("Claude turn is included in preference structure")
     func claudeTurnInPreferences() async throws {
         // Given
-        var preferences = NotificationService.NotificationPreferences()
+        var preferences = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
 
         // When
         preferences.claudeTurn = true
@@ -70,7 +66,7 @@ struct NotificationServiceClaudeTurnTests {
         #expect(defaults.bool(forKey: "notifications.claudeTurn") == true)
 
         // When - create new preferences instance
-        let loadedPreferences = NotificationService.NotificationPreferences()
+        let loadedPreferences = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
 
         // Then - verify it loads the saved value
         #expect(loadedPreferences.claudeTurn == true)

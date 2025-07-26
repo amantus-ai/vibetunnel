@@ -1,6 +1,7 @@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { DEFAULT_REPOSITORY_BASE_PATH } from '../../shared/constants.js';
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../types/config.js';
 import type { AuthClient } from '../services/auth-client.js';
 import {
   type NotificationPreferences,
@@ -39,16 +40,8 @@ export class Settings extends LitElement {
   @property({ type: Object }) authClient?: AuthClient;
 
   // Notification settings state
-  @state() private notificationPreferences: NotificationPreferences = {
-    enabled: false,
-    sessionExit: true,
-    sessionStart: false,
-    sessionError: true,
-    commandNotifications: true,
-    systemAlerts: true,
-    soundEnabled: true,
-    vibrationEnabled: true,
-  };
+  @state() private notificationPreferences: NotificationPreferences =
+    DEFAULT_NOTIFICATION_PREFERENCES;
   @state() private permission: NotificationPermission = 'default';
   @state() private subscription: PushSubscription | null = null;
   @state() private isLoading = false;
@@ -484,9 +477,9 @@ export class Settings extends LitElement {
                         <div class="space-y-2 bg-base rounded-lg p-3">
                           ${this.renderNotificationToggle('sessionExit', 'Session Exit', 'When a session terminates')}
                           ${this.renderNotificationToggle('sessionStart', 'Session Start', 'When a new session starts')}
-                          ${this.renderNotificationToggle('sessionError', 'Session Errors', 'When errors occur in sessions')}
-                          ${this.renderNotificationToggle('commandNotifications', 'Command Completion', 'When long-running commands finish')}
-                          ${this.renderNotificationToggle('systemAlerts', 'System Alerts', 'Important system notifications')}
+                          ${this.renderNotificationToggle('commandError', 'Session Errors', 'When errors occur in sessions')}
+                          ${this.renderNotificationToggle('commandCompletion', 'Command Completion', 'When long-running commands finish')}
+                          ${this.renderNotificationToggle('bell', 'System Alerts', 'Important system notifications')}
                         </div>
                       </div>
 

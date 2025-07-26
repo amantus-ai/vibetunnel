@@ -1,12 +1,13 @@
-import type { PushNotificationPreferences, PushSubscription } from '../../shared/types';
+import type { PushSubscription } from '../../shared/types';
 import { HttpMethod } from '../../shared/types';
+import type { NotificationPreferences } from '../../types/config';
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../types/config';
 import { createLogger } from '../utils/logger';
 import { authClient } from './auth-client';
 import { serverConfigService } from './server-config-service';
 
 // Re-export types for components
-export type { PushSubscription, PushNotificationPreferences };
-export type NotificationPreferences = PushNotificationPreferences;
+export type { PushSubscription, NotificationPreferences };
 
 const logger = createLogger('push-notification-service');
 
@@ -386,21 +387,10 @@ export class PushNotificationService {
   /**
    * Save notification preferences
    */
-  async savePreferences(preferences: PushNotificationPreferences): Promise<void> {
+  async savePreferences(preferences: NotificationPreferences): Promise<void> {
     try {
-      // Map from PushNotificationPreferences to config format
-      const configPreferences = {
-        enabled: preferences.enabled,
-        sessionStart: preferences.sessionStart,
-        sessionExit: preferences.sessionExit,
-        commandCompletion: preferences.commandNotifications,
-        commandError: preferences.sessionError,
-        bell: preferences.systemAlerts,
-        claudeTurn: preferences.claudeTurn ?? false,
-      };
-
-      // Save to config service (which syncs to config.json)
-      await serverConfigService.updateNotificationPreferences(configPreferences);
+      // Save directly - no mapping needed with unified type
+      await serverConfigService.updateNotificationPreferences(preferences);
       logger.debug('saved notification preferences to config');
     } catch (error) {
       logger.error('failed to save notification preferences:', error);
@@ -411,46 +401,23 @@ export class PushNotificationService {
   /**
    * Load notification preferences
    */
-  async loadPreferences(): Promise<PushNotificationPreferences> {
+  async loadPreferences(): Promise<NotificationPreferences> {
     try {
       // Load from config service
       const configPreferences = await serverConfigService.getNotificationPreferences();
-
-      if (configPreferences) {
-        // Map from config format to PushNotificationPreferences
-        return {
-          enabled: configPreferences.enabled,
-          sessionExit: configPreferences.sessionExit,
-          sessionStart: configPreferences.sessionStart,
-          sessionError: configPreferences.commandError,
-          commandNotifications: configPreferences.commandCompletion,
-          systemAlerts: configPreferences.bell,
-          claudeTurn: configPreferences.claudeTurn ?? false,
-          soundEnabled: true,
-          vibrationEnabled: true,
-        };
-      }
+      // Return preferences directly - no mapping needed
+      return configPreferences || this.getDefaultPreferences();
     } catch (error) {
       logger.error('failed to load notification preferences from config:', error);
+      return this.getDefaultPreferences();
     }
-
-    return this.getDefaultPreferences();
   }
 
   /**
    * Get default notification preferences
    */
-  private getDefaultPreferences(): PushNotificationPreferences {
-    return {
-      enabled: false,
-      sessionExit: true,
-      sessionStart: false,
-      sessionError: true,
-      commandNotifications: true,
-      systemAlerts: true,
-      soundEnabled: true,
-      vibrationEnabled: true,
-    };
+  private getDefaultPreferences(): NotificationPreferences {
+    return DEFAULT_NOTIFICATION_PREFERENCES;
   }
 
   /**

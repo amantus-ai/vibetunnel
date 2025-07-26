@@ -4,7 +4,12 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { z } from 'zod';
-import { DEFAULT_CONFIG, type VibeTunnelConfig } from '../../types/config.js';
+import {
+  DEFAULT_CONFIG,
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  type NotificationPreferences,
+  type VibeTunnelConfig,
+} from '../../types/config.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('config-service');
@@ -52,6 +57,8 @@ const ConfigSchema = z.object({
           commandError: z.boolean(),
           bell: z.boolean(),
           claudeTurn: z.boolean(),
+          soundEnabled: z.boolean(),
+          vibrationEnabled: z.boolean(),
         })
         .optional(),
     })
@@ -183,6 +190,9 @@ export class ConfigService {
       logger.info('Saved configuration to disk');
     } catch (error) {
       logger.error('Failed to save config:', error);
+      throw new Error(
+        `Failed to save configuration: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -281,27 +291,48 @@ export class ConfigService {
     return this.configPath;
   }
 
-  public getNotificationPreferences():
-    | NonNullable<VibeTunnelConfig['preferences']>['notifications']
-    | undefined {
-    return this.config.preferences?.notifications;
+  public getNotificationPreferences(): NotificationPreferences {
+    return this.config.preferences?.notifications || DEFAULT_NOTIFICATION_PREFERENCES;
   }
 
-  public updateNotificationPreferences(
-    notifications: NonNullable<NonNullable<VibeTunnelConfig['preferences']>['notifications']>
-  ): void {
-    // Ensure preferences object exists
-    if (!this.config.preferences) {
-      this.config.preferences = {
-        updateChannel: 'stable',
-        showInDock: false,
-        preventSleepWhenRunning: true,
-      };
-    }
+  public updateNotificationPreferences(notifications: NotificationPreferences): void {
+    // Validate the notifications object
+    try {
+      const NotificationPreferencesSchema = z.object({
+        enabled: z.boolean(),
+        sessionStart: z.boolean(),
+        sessionExit: z.boolean(),
+        commandCompletion: z.boolean(),
+        commandError: z.boolean(),
+        bell: z.boolean(),
+        claudeTurn: z.boolean(),
+        soundEnabled: z.boolean(),
+        vibrationEnabled: z.boolean(),
+      });
 
-    // Update notifications
-    this.config.preferences.notifications = notifications;
-    this.saveConfig();
-    this.notifyConfigChange();
+      const validatedNotifications = NotificationPreferencesSchema.parse(notifications);
+
+      // Ensure preferences object exists
+      if (!this.config.preferences) {
+        this.config.preferences = {
+          updateChannel: 'stable',
+          showInDock: false,
+          preventSleepWhenRunning: true,
+        };
+      }
+
+      // Update notifications
+      this.config.preferences.notifications = validatedNotifications;
+      this.saveConfig();
+      this.notifyConfigChange();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        logger.error('Invalid notification preferences:', error.issues);
+        throw new Error(
+          `Invalid notification preferences: ${error.issues.map((e) => e.message).join(', ')}`
+        );
+      }
+      throw error;
+    }
   }
 }

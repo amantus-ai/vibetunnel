@@ -18,7 +18,7 @@ struct NotificationServiceTests {
         defaults.synchronize() // Force synchronization after removal
 
         // Create preferences - this should trigger default initialization
-        let preferences = NotificationService.NotificationPreferences()
+        let preferences = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
 
         // Remove debug prints
 
@@ -28,7 +28,7 @@ struct NotificationServiceTests {
         #expect(preferences.commandCompletion == true)
         #expect(preferences.commandError == true)
         #expect(preferences.bell == true)
-        #expect(preferences.claudeTurn == true)
+        #expect(preferences.claudeTurn == false)
 
         // Verify UserDefaults was also set correctly
         #expect(defaults.bool(forKey: "notifications.sessionStart") == true)
@@ -36,7 +36,7 @@ struct NotificationServiceTests {
         #expect(defaults.bool(forKey: "notifications.commandCompletion") == true)
         #expect(defaults.bool(forKey: "notifications.commandError") == true)
         #expect(defaults.bool(forKey: "notifications.bell") == true)
-        #expect(defaults.bool(forKey: "notifications.claudeTurn") == true)
+        #expect(defaults.bool(forKey: "notifications.claudeTurn") == false)
         #expect(defaults.bool(forKey: "notifications.initialized") == true)
     }
 
@@ -46,7 +46,7 @@ struct NotificationServiceTests {
         let service = NotificationService.shared
 
         // Create custom preferences
-        var preferences = NotificationService.NotificationPreferences()
+        var preferences = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
         preferences.sessionStart = false
         preferences.bell = false
 
@@ -64,7 +64,7 @@ struct NotificationServiceTests {
         let service = NotificationService.shared
 
         // Enable session start notifications
-        var preferences = NotificationService.NotificationPreferences()
+        var preferences = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
         preferences.sessionStart = true
         service.updatePreferences(preferences)
 
@@ -84,7 +84,7 @@ struct NotificationServiceTests {
         let service = NotificationService.shared
 
         // Enable session exit notifications
-        var preferences = NotificationService.NotificationPreferences()
+        var preferences = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
         preferences.sessionExit = true
         service.updatePreferences(preferences)
 
@@ -103,7 +103,7 @@ struct NotificationServiceTests {
         let service = NotificationService.shared
 
         // Enable command completion notifications
-        var preferences = NotificationService.NotificationPreferences()
+        var preferences = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
         preferences.commandCompletion = true
         service.updatePreferences(preferences)
 
@@ -128,7 +128,7 @@ struct NotificationServiceTests {
         let service = NotificationService.shared
 
         // Enable command error notifications
-        var preferences = NotificationService.NotificationPreferences()
+        var preferences = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
         preferences.commandError = true
         service.updatePreferences(preferences)
 
@@ -149,7 +149,7 @@ struct NotificationServiceTests {
         let service = NotificationService.shared
 
         // Enable bell notifications
-        var preferences = NotificationService.NotificationPreferences()
+        var preferences = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
         preferences.bell = true
         service.updatePreferences(preferences)
 
@@ -166,7 +166,7 @@ struct NotificationServiceTests {
         let service = NotificationService.shared
 
         // Disable all notifications
-        var preferences = NotificationService.NotificationPreferences()
+        var preferences = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
         preferences.sessionStart = false
         preferences.sessionExit = false
         preferences.commandCompletion = false
@@ -196,7 +196,7 @@ struct NotificationServiceTests {
         let service = NotificationService.shared
 
         // Enable notifications
-        var preferences = NotificationService.NotificationPreferences()
+        var preferences = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
         preferences.sessionExit = true
         service.updatePreferences(preferences)
 
