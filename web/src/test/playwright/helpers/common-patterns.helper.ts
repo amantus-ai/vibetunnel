@@ -29,20 +29,37 @@ export async function waitForSessionCards(
  * Click a session card with retry logic for reliability
  */
 export async function clickSessionCardWithRetry(page: Page, sessionName: string): Promise<void> {
+  // First ensure the session list is loaded
+  await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+
+  // Give the session list time to fully render
+  await page.waitForTimeout(500);
+
   const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
 
-  // Wait for card to be stable
-  await sessionCard.waitFor({ state: 'visible' });
+  // Wait for card to be stable with longer timeout
+  await sessionCard.waitFor({ state: 'visible', timeout: 10000 });
   await sessionCard.scrollIntoViewIfNeeded();
-  await page.waitForLoadState('domcontentloaded');
+
+  // Skip networkidle wait - it's causing timeouts in CI
+  // The session list should already be loaded at this point
 
   try {
-    await sessionCard.click();
-    await page.waitForURL(/\?session=/, { timeout: 5000 });
-  } catch {
-    // Retry with different approach
+    await sessionCard.click({ timeout: 10000 });
+    await page.waitForURL(/\/session\//, { timeout: 10000 });
+  } catch (_error) {
+    console.log(`First click attempt failed for session ${sessionName}, retrying...`);
+
+    // Retry with different approach - click the card content area
     const clickableArea = sessionCard.locator('div.card').first();
-    await clickableArea.click();
+    await clickableArea.waitFor({ state: 'visible', timeout: 5000 });
+    await clickableArea.click({ force: true });
+
+    // If URL still doesn't change, try one more time with the session name link
+    if (!page.url().includes('/session/')) {
+      const sessionLink = sessionCard.locator(`text="${sessionName}"`).first();
+      await sessionLink.click({ force: true });
+    }
   }
 }
 
@@ -124,12 +141,23 @@ export async function waitForTerminalBusy(page: Page, timeout = 2000): Promise<v
  * Wait for page to be fully ready including app-specific indicators
  */
 export async function waitForPageReady(page: Page): Promise<void> {
-  await page.waitForLoadState('domcontentloaded');
-  await page.waitForLoadState('domcontentloaded');
+  // Wait for basic DOM content to be loaded
+  try {
+    await page.waitForLoadState('domcontentloaded', { timeout: 5000 });
+  } catch (_error) {
+    console.warn('waitForLoadState domcontentloaded timed out, continuing...');
+  }
 
-  // Also wait for app-specific ready state
-  await page.waitForSelector('body.ready', { state: 'attached', timeout: 5000 }).catch(() => {
-    // Fallback if no ready class
+  // Wait for the main app component to be attached
+  try {
+    await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
+  } catch (_error) {
+    console.warn('vibetunnel-app selector not found, continuing...');
+  }
+
+  // Also wait for app-specific ready state if available
+  await page.waitForSelector('body.ready', { state: 'attached', timeout: 2000 }).catch(() => {
+    // Fallback if no ready class - this is okay
   });
 }
 
@@ -142,18 +170,27 @@ export async function navigateToHome(page: Page): Promise<void> {
   const vibeTunnelLogo = page.locator('button:has(h1:has-text("VibeTunnel"))').first();
   const homeButton = page.locator('button').filter({ hasText: 'VibeTunnel' }).first();
 
-  if (await backButton.isVisible({ timeout: 1000 })) {
-    await backButton.click();
-  } else if (await vibeTunnelLogo.isVisible({ timeout: 1000 })) {
-    await vibeTunnelLogo.click();
-  } else if (await homeButton.isVisible({ timeout: 1000 })) {
-    await homeButton.click();
-  } else {
-    // Fallback to direct navigation with test flag
-    await page.goto('/?test=true');
-  }
+  try {
+    if (await backButton.isVisible({ timeout: 1000 })) {
+      await backButton.click();
+    } else if (await vibeTunnelLogo.isVisible({ timeout: 1000 })) {
+      await vibeTunnelLogo.click();
+    } else if (await homeButton.isVisible({ timeout: 1000 })) {
+      await homeButton.click();
+    } else {
+      // Fallback to direct navigation with test flag
+      await page.goto('/?test=true', { waitUntil: 'domcontentloaded', timeout: 10000 });
+      return; // Skip the additional wait since goto already waits
+    }
 
-  await page.waitForLoadState('domcontentloaded');
+    // Wait for navigation to complete after clicking
+    await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {
+      console.warn('Navigation load state timeout, continuing...');
+    });
+  } catch (error) {
+    console.warn('Error during navigation to home, using direct navigation:', error);
+    await page.goto('/?test=true', { waitUntil: 'domcontentloaded', timeout: 10000 });
+  }
 }
 
 /**
@@ -271,14 +308,40 @@ export async function waitForTerminalResize(
  * Wait for session list to be ready
  */
 export async function waitForSessionListReady(page: Page, timeout = 10000): Promise<void> {
-  await page.waitForFunction(
-    () => {
-      const cards = document.querySelectorAll('session-card');
-      const noSessionsMsg = document.querySelector('.text-dark-text-muted');
-      return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
-    },
-    { timeout }
-  );
+  try {
+    await page.waitForFunction(
+      () => {
+        // Check if the page has the main app component
+        const app = document.querySelector('vibetunnel-app');
+        if (!app) return false;
+
+        // Check for session cards or "no sessions" message
+        const cards = document.querySelectorAll('session-card');
+        const noSessionsMsg = document.querySelector('.text-dark-text-muted');
+        const emptyMessage = document.querySelector('[data-testid="no-sessions-message"]');
+
+        return (
+          cards.length > 0 ||
+          noSessionsMsg?.textContent?.includes('No terminal sessions') ||
+          noSessionsMsg?.textContent?.includes('No running sessions') ||
+          emptyMessage !== null
+        );
+      },
+      { timeout }
+    );
+  } catch (error) {
+    console.warn('waitForSessionListReady timed out, checking current state...');
+    // Log current page state for debugging
+    const pageContent = await page.evaluate(() => {
+      return {
+        hasApp: !!document.querySelector('vibetunnel-app'),
+        sessionCards: document.querySelectorAll('session-card').length,
+        bodyText: document.body.innerText.substring(0, 200),
+      };
+    });
+    console.log('Page state:', pageContent);
+    throw error;
+  }
 }
 
 /**

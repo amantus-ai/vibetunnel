@@ -61,11 +61,16 @@ test.describe('Git Status Badge Debugging', () => {
     await page.click('[data-testid="create-session-button"]');
 
     // Fill in the session dialog
-    await page.waitForSelector('[data-testid="session-dialog"]');
+    await page.waitForSelector('[data-testid="session-create-modal"]');
 
-    // Set working directory
+    // Set working directory - use the parent directory which should be the git repo
     const workingDirInput = page.locator('input[placeholder*="working directory"]');
-    await workingDirInput.fill('/Users/steipete/Projects/vibetunnel');
+    const gitRepoPath = process.env.CI
+      ? '/home/runner/_work/vibetunnel/vibetunnel'
+      : process.cwd().includes('/web')
+        ? process.cwd().replace('/web', '')
+        : process.cwd();
+    await workingDirInput.fill(gitRepoPath);
 
     // Set command
     const commandInput = page.locator('input[placeholder*="command to run"]');

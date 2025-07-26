@@ -261,6 +261,17 @@ export class SessionListPage extends BasePage {
       }
     }
 
+    // Fill in the working directory for CI environments
+    if (process.env.CI) {
+      try {
+        // Use a temp directory for CI to ensure PTY can spawn properly
+        const tempDir = require('os').tmpdir();
+        await this.page.fill('[data-testid="working-dir-input"]', tempDir, { force: true });
+      } catch {
+        // Working dir input might not exist in all forms
+      }
+    }
+
     // Fill in the command if provided
     if (command) {
       // Validate command for security
@@ -615,7 +626,8 @@ export class SessionListPage extends BasePage {
     const dialogPromise = this.page.waitForEvent('dialog', { timeout: 2000 });
 
     // Click the button (this might or might not trigger a dialog)
-    const clickPromise = killButton.click();
+    // Use force:true to bypass any overlapping elements like sticky footers
+    const clickPromise = killButton.click({ force: true });
 
     // Wait for either dialog or click to complete
     try {

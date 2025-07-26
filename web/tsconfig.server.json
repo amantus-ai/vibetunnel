@@ -17,8 +17,7 @@
     "src/server/**/*",
     "src/shared/**/*",
     "src/types/**/*",
-    "src/cli.ts",
-    "src/index.ts"
+    "src/cli.ts"
   ],
   "exclude": [
     "node_modules",

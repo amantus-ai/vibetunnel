@@ -491,7 +491,8 @@ export function getUserShell(): string {
     }
 
     // Check common shell paths in order of preference
-    const commonShells = ['/bin/zsh', '/bin/bash', '/usr/bin/zsh', '/usr/bin/bash', '/bin/sh'];
+    // Prefer bash over zsh to avoid first-run configuration issues in CI
+    const commonShells = ['/bin/bash', '/usr/bin/bash', '/bin/zsh', '/usr/bin/zsh', '/bin/sh'];
     for (const shell of commonShells) {
       try {
         // Just check if the shell exists and is executable

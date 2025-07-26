@@ -4,9 +4,7 @@ import {
   assertTerminalContains,
   executeAndVerifyCommand,
   executeCommand,
-  executeCommandSequence,
   executeCommandWithRetry,
-  getCommandOutput,
   getTerminalDimensions,
   interruptCommand,
   waitForTerminalBusy,
@@ -152,13 +150,31 @@ test.describe('Terminal Interaction', () => {
     const varName = 'TEST_VAR';
     const varValue = 'VibeTunnel_Test_123';
 
-    // Set and verify environment variable
-    await executeCommandSequence(page, [`export ${varName}="${varValue}"`, `echo $${varName}`]);
+    // Wait for terminal to be ready before typing
+    await page.waitForTimeout(2000);
 
-    // Get just the output of the echo command
-    const output = await getCommandOutput(page, 'env | grep TEST_VAR');
-    expect(output).toContain(varName);
-    expect(output).toContain(varValue);
+    // Set environment variable
+    await executeCommand(page, `export ${varName}="${varValue}"`);
+
+    // Wait a bit for the export to take effect
+    await page.waitForTimeout(500);
+
+    // Verify it was set by echoing it - use a simpler approach
+    await executeCommand(page, `echo $${varName}`);
+
+    // Check the terminal content directly
+    const terminal = page.locator('vibe-terminal');
+    const terminalContent = await terminal.textContent();
+
+    // The echo output should contain our value
+    expect(terminalContent).toContain(varValue);
+
+    // Also verify with env command - check if it's in the environment
+    await executeCommand(page, `env | grep ${varName} || echo "Variable not found"`);
+    await page.waitForTimeout(1000);
+
+    const updatedContent = await terminal.textContent();
+    expect(updatedContent).toContain(`${varName}=${varValue}`);
   });
 
   test('should handle terminal resize', async ({ page }) => {

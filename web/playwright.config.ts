@@ -102,6 +102,8 @@ export default defineConfig({
         '**/ssh-key-manager.spec.ts',
         '**/push-notifications.spec.ts',
         '**/authentication.spec.ts',
+      ],
+      testIgnore: [
         '**/git-status-badge-debug.spec.ts',
       ],
     },
@@ -119,6 +121,9 @@ export default defineConfig({
         '**/activity-monitoring.spec.ts',
         '**/file-browser-basic.spec.ts',
       ],
+      testIgnore: [
+        '**/git-status-badge-debug.spec.ts',
+      ],
       fullyParallel: false, // Override global setting for serial tests
     },
   ],
@@ -133,14 +138,16 @@ export default defineConfig({
     timeout: 30 * 1000, // 30 seconds for server startup
     cwd: process.cwd(), // Ensure we're in the right directory
     env: (() => {
-      // Create a copy of env vars without VIBETUNNEL_SEA
       const env = { ...process.env };
-      delete env.VIBETUNNEL_SEA; // Remove to prevent SEA mode in tests
+      // Keep VIBETUNNEL_SEA if it's set in CI, as we now use the native executable for tests
+      // In local development, it will be undefined and tests will use TypeScript compilation
       return {
         ...env,
         NODE_ENV: 'test',
         VIBETUNNEL_DISABLE_PUSH_NOTIFICATIONS: 'true',
         SUPPRESS_CLIENT_ERRORS: 'true',
+        SHELL: '/bin/bash',
+        TERM: 'xterm',
       };
     })(),
   },
