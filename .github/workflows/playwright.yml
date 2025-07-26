@@ -63,11 +63,44 @@ jobs:
         working-directory: ./web
         run: pnpm exec playwright install --with-deps chromium
         
+      - name: Start test server
+        working-directory: ./web
+        run: |
+          # Start the server in the background with test port
+          PORT=4022 pnpm run dev:server &
+          SERVER_PID=$!
+          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+          
+          # Wait for server to be ready
+          echo "Waiting for server to start on port 4022..."
+          for i in {1..30}; do
+            if curl -s http://localhost:4022/api/health > /dev/null 2>&1; then
+              echo "Server is ready!"
+              break
+            fi
+            echo "Waiting for server... attempt $i/30"
+            sleep 1
+          done
+          
+          # Verify server is running
+          if ! curl -s http://localhost:4022/api/health > /dev/null 2>&1; then
+            echo "Server failed to start!"
+            exit 1
+          fi
+        
       - name: Run Playwright tests
         working-directory: ./web
         run: xvfb-run -a pnpm test:e2e
         env:
           CI: true
+          
+      - name: Stop test server
+        if: always()
+        working-directory: ./web
+        run: |
+          if [ ! -z "$SERVER_PID" ]; then
+            kill $SERVER_PID || true
+          fi
           
       - name: Upload test results
         uses: actions/upload-artifact@v4
