@@ -36,6 +36,13 @@ if (!fs.existsSync(cliPath)) {
 
 const args = [cliPath, ...process.argv.slice(2)];
 
+// Extract port from arguments
+let port = 4022; // default test port
+const portArgIndex = process.argv.indexOf('--port');
+if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+  port = process.argv[portArgIndex + 1];
+}
+
 // Spawn node with the built CLI
 const child = spawn('node', args, {
   stdio: 'inherit',
@@ -43,9 +50,30 @@ const child = spawn('node', args, {
   env: {
     ...process.env,
     // Ensure we're not in SEA mode for tests
-    VIBETUNNEL_SEA: ''
+    VIBETUNNEL_SEA: '',
+    PORT: port.toString()
   }
 });
+
+// Wait for server to be ready before allowing parent process to continue
+if (process.env.CI || process.env.WAIT_FOR_SERVER) {
+  const waitChild = spawn('node', [path.join(projectRoot, 'scripts/wait-for-server.js')], {
+    stdio: 'inherit',
+    cwd: projectRoot,
+    env: {
+      ...process.env,
+      PORT: port.toString()
+    }
+  });
+  
+  waitChild.on('exit', (code) => {
+    if (code !== 0) {
+      console.error('Server failed to become ready');
+      child.kill();
+      process.exit(1);
+    }
+  });
+}
 
 child.on('exit', (code) => {
   process.exit(code || 0);

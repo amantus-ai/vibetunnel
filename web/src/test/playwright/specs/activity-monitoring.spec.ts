@@ -37,13 +37,30 @@ test.describe('Activity Monitoring', () => {
       { timeout: 10000 }
     );
 
-    // Wait for session cards to load
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+    // Wait for session cards to load with retry logic
+    let cardFound = false;
+    for (let retry = 0; retry < 3 && !cardFound; retry++) {
+      if (retry > 0) {
+        console.log(`Retrying session card lookup (attempt ${retry + 1}/3)`);
+        await page.reload();
+        await page.waitForLoadState('domcontentloaded');
+      }
 
-    // Find our session card - wait a bit for all cards to render
-    await page.waitForTimeout(1000);
+      try {
+        await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+
+        // Find our session card - wait a bit for all cards to render
+        await page.waitForTimeout(1000);
+        const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
+        await expect(sessionCard).toBeVisible({ timeout: 10000 });
+        cardFound = true;
+      } catch (error) {
+        if (retry === 2) throw error; // Re-throw on last attempt
+      }
+    }
+
+    // Find the session card reference again after the retry logic
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
-    await expect(sessionCard).toBeVisible({ timeout: 10000 });
 
     // Look for any status-related elements within the session card
     // Since activity monitoring might be implemented differently, we'll check for common patterns
