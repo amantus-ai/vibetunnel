@@ -68,6 +68,22 @@ if (!fs.existsSync(cliPath)) {
   process.exit(1);
 }
 
+// Verify executable permissions for native executable
+if (!useNode) {
+  try {
+    fs.accessSync(cliPath, fs.constants.X_OK);
+    console.log('Native executable has execute permissions');
+  } catch (error) {
+    console.error('Native executable is not executable! Attempting to fix...');
+    try {
+      fs.chmodSync(cliPath, 0o755);
+      console.log('Fixed executable permissions');
+    } catch (chmodError) {
+      console.error('Failed to fix permissions:', chmodError.message);
+    }
+  }
+}
+
 // Prepare arguments based on whether we're using node or native executable
 const args = useNode ? [cliPath, ...process.argv.slice(2)] : process.argv.slice(2);
 const command = useNode ? 'node' : cliPath;
@@ -84,8 +100,11 @@ console.log(`Starting test server: ${command} ${args.join(' ')}`);
 console.log(`Working directory: ${projectRoot}`);
 console.log(`Port: ${port}`);
 
+// Capture output for debugging in CI
+const stdio = process.env.CI ? ['inherit', 'pipe', 'pipe'] : 'inherit';
+
 const child = spawn(command, args, {
-  stdio: 'inherit',
+  stdio: stdio,
   cwd: projectRoot,
   env: {
     ...process.env,
@@ -95,9 +114,33 @@ const child = spawn(command, args, {
   }
 });
 
+// Capture output in CI for debugging
+let stdout = '';
+let stderr = '';
+let hasExited = false;
+
+if (process.env.CI) {
+  child.stdout.on('data', (data) => {
+    const str = data.toString();
+    stdout += str;
+    process.stdout.write(str);
+  });
+  
+  child.stderr.on('data', (data) => {
+    const str = data.toString();
+    stderr += str;
+    process.stderr.write(str);
+  });
+}
+
 // Add error handling
 child.on('error', (error) => {
   console.error('Failed to start server process:', error);
+  if (error.code === 'ENOENT') {
+    console.error('The executable was not found. Path:', command);
+  } else if (error.code === 'EACCES') {
+    console.error('The executable does not have execute permissions');
+  }
   process.exit(1);
 });
 
@@ -106,10 +149,45 @@ child.on('spawn', () => {
   console.log('Server process spawned successfully');
 });
 
+// Handle early exit
+child.on('exit', (code, signal) => {
+  hasExited = true;
+  if (code !== 0 || signal) {
+    console.error(`\nServer process exited unexpectedly with code ${code}, signal ${signal}`);
+    if (stderr) {
+      console.error('Last stderr output:', stderr.slice(-1000));
+    }
+    if (stdout) {
+      console.error('Last stdout output:', stdout.slice(-1000));
+    }
+    
+    // If using native executable, try to diagnose the issue
+    if (!useNode && process.env.CI) {
+      console.error('\nAttempting to diagnose native executable issue...');
+      try {
+        // Try running with --version to see if it works at all
+        const versionResult = require('child_process').spawnSync(cliPath, ['--version'], {
+          encoding: 'utf8',
+          env: { ...process.env, NODE_ENV: 'test' }
+        });
+        console.error('Version test result:', versionResult);
+      } catch (e) {
+        console.error('Failed to run version test:', e.message);
+      }
+    }
+  }
+  process.exit(code || 0);
+});
+
 // Wait for server to be ready before allowing parent process to continue
 if (process.env.CI || process.env.WAIT_FOR_SERVER) {
   // Give server a moment to start
   setTimeout(() => {
+    if (hasExited) {
+      console.error('Server exited before we could check if it was ready');
+      return;
+    }
+    
     const waitChild = spawn('node', [path.join(projectRoot, 'scripts/wait-for-server.js')], {
       stdio: 'inherit',
       cwd: projectRoot,
@@ -130,7 +208,3 @@ if (process.env.CI || process.env.WAIT_FOR_SERVER) {
     });
   }, 2000); // Wait 2 seconds before checking
 }
-
-child.on('exit', (code) => {
-  process.exit(code || 0);
-});

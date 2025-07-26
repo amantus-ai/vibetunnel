@@ -336,11 +336,20 @@ if (typeof process !== 'undefined' && process.versions && process.versions.node)
 
     // 7. Strip the executable first (before signing)
     console.log('Stripping final executable...');
-    execSync(`strip -S ${targetExe} 2>&1 | grep -v "warning: changes being made" || true`, {
-      stdio: 'inherit',
-      shell: true
-    });
+    try {
+      execSync(`strip -S ${targetExe} 2>&1 | grep -v "warning: changes being made" || true`, {
+        stdio: 'inherit',
+        shell: true
+      });
+    } catch (error) {
+      console.warn('Strip command had warnings (this is normal):', error.message);
+    }
 
+    // Ensure executable permissions after stripping
+    if (process.platform !== 'win32') {
+      fs.chmodSync(targetExe, 0o755);
+    }
+    
     // 8. Sign on macOS (after stripping)
     if (process.platform === 'darwin') {
       console.log('Signing executable...');
@@ -410,6 +419,17 @@ if (typeof process !== 'undefined' && process.versions && process.versions.node)
     console.log(`  - authenticate_pam.node`);
     console.log('\nAll files must be kept together in the same directory.');
     console.log('This bundle will work on any machine with the same OS/architecture.');
+    
+    // Verify the executable works
+    if (process.env.CI || process.argv.includes('--verify')) {
+      console.log('\nVerifying native executable...');
+      try {
+        execSync('node scripts/verify-native.js', { stdio: 'inherit', cwd: __dirname });
+      } catch (error) {
+        console.error('Native executable verification failed!');
+        process.exit(1);
+      }
+    }
 
   } catch (error) {
     console.error('\n❌ Build failed:', error.message);

@@ -16,7 +16,7 @@ permissions:
 jobs:
   test:
     name: Playwright E2E Tests
-    runs-on: blacksmith-16vcpu-ubuntu-2204-arm
+    runs-on: blacksmith-16vcpu-ubuntu-2404-arm
     timeout-minutes: 30
     
     steps:
@@ -60,6 +60,21 @@ jobs:
         run: pnpm run build
         env:
           VIBETUNNEL_SEA: "true"
+          
+      - name: Verify native executable
+        working-directory: ./web
+        run: |
+          echo "Verifying native executable..."
+          ls -la native/ || echo "Native directory not found"
+          if [ -f native/vibetunnel ]; then
+            echo "Native executable found"
+            file native/vibetunnel
+            ldd native/vibetunnel || echo "ldd failed"
+            ./native/vibetunnel --version || echo "Version test failed with exit code: $?"
+          else
+            echo "ERROR: Native executable not found!"
+            exit 1
+          fi
         
       - name: Install Playwright browsers
         working-directory: ./web
