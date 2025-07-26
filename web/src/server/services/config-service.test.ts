@@ -270,10 +270,10 @@ describe('ConfigService', () => {
         throw new Error('Disk full');
       });
 
-      // Should not throw
+      // Should throw with proper error message
       expect(() => {
         configService.updateQuickStartCommands([{ command: 'test' }]);
-      }).not.toThrow();
+      }).toThrow('Failed to save configuration: Disk full');
 
       // Config should still be updated in memory
       expect(configService.getConfig().quickStartCommands).toEqual([{ command: 'test' }]);
@@ -421,9 +421,20 @@ describe('ConfigService', () => {
   });
 
   describe('notification preferences', () => {
-    it('should return undefined when no preferences are set', () => {
+    it('should return default notification preferences when no preferences are set', () => {
       const preferences = configService.getNotificationPreferences();
-      expect(preferences).toBeUndefined();
+      // Should return DEFAULT_NOTIFICATION_PREFERENCES instead of undefined
+      expect(preferences).toEqual({
+        enabled: true,
+        sessionStart: true,
+        sessionExit: true,
+        commandCompletion: true,
+        commandError: true,
+        bell: true,
+        claudeTurn: false,
+        soundEnabled: true,
+        vibrationEnabled: true,
+      });
     });
 
     it('should update notification preferences', () => {
@@ -435,12 +446,43 @@ describe('ConfigService', () => {
         commandError: true,
         bell: true,
         claudeTurn: false,
+        soundEnabled: true,
+        vibrationEnabled: false,
       };
 
       configService.updateNotificationPreferences(newPreferences);
 
       const savedPreferences = configService.getNotificationPreferences();
       expect(savedPreferences).toEqual(newPreferences);
+    });
+
+    it('should support partial notification preference updates', () => {
+      // First set some initial preferences
+      const initialPreferences = {
+        enabled: true,
+        sessionStart: true,
+        sessionExit: true,
+        commandCompletion: true,
+        commandError: true,
+        bell: true,
+        claudeTurn: false,
+        soundEnabled: true,
+        vibrationEnabled: true,
+      };
+      configService.updateNotificationPreferences(initialPreferences);
+
+      // Now update only some fields
+      const partialUpdate = {
+        enabled: false,
+        sessionStart: false,
+      };
+      configService.updateNotificationPreferences(partialUpdate);
+
+      const savedPreferences = configService.getNotificationPreferences();
+      expect(savedPreferences).toEqual({
+        ...initialPreferences,
+        ...partialUpdate,
+      });
     });
 
     it('should save notification preferences to file', () => {
@@ -452,6 +494,8 @@ describe('ConfigService', () => {
         commandError: false,
         bell: false,
         claudeTurn: true,
+        soundEnabled: true,
+        vibrationEnabled: true,
       };
 
       configService.updateNotificationPreferences(preferences);
@@ -483,6 +527,8 @@ describe('ConfigService', () => {
         commandError: true,
         bell: true,
         claudeTurn: false,
+        soundEnabled: false,
+        vibrationEnabled: true,
       };
 
       configService.updateNotificationPreferences(preferences);
@@ -514,6 +560,8 @@ describe('ConfigService', () => {
         commandError: true,
         bell: true,
         claudeTurn: false,
+        soundEnabled: false,
+        vibrationEnabled: false,
       };
 
       service.updateNotificationPreferences(preferences);

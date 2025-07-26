@@ -80,20 +80,33 @@ export function createConfigRoutes(options: ConfigRouteOptions): Router {
       const updates: { [key: string]: unknown } = {};
 
       if (quickStartCommands !== undefined) {
-        try {
-          // Validate commands array
-          const validatedCommands = z.array(QuickStartCommandSchema).parse(quickStartCommands);
+        // First check if it's an array
+        if (!Array.isArray(quickStartCommands)) {
+          logger.error('[PUT /api/config] Invalid quick start commands: not an array');
+          // Don't return immediately - let it fall through to "No valid updates"
+        } else {
+          // Filter and validate commands, keeping only valid ones
+          const validatedCommands: QuickStartCommand[] = [];
+
+          for (const cmd of quickStartCommands) {
+            try {
+              // Skip null/undefined entries
+              if (cmd == null) continue;
+
+              const validated = QuickStartCommandSchema.parse(cmd);
+              // Skip empty commands
+              if (validated.command.trim()) {
+                validatedCommands.push(validated);
+              }
+            } catch {
+              // Skip invalid commands
+            }
+          }
 
           // Update config
           configService.updateQuickStartCommands(validatedCommands);
           updates.quickStartCommands = validatedCommands;
           logger.debug('[PUT /api/config] Updated quick start commands:', validatedCommands);
-        } catch (validationError) {
-          logger.error('[PUT /api/config] Invalid quick start commands:', validationError);
-          return res.status(400).json({
-            error: 'Invalid quick start commands',
-            details: validationError instanceof z.ZodError ? validationError.issues : undefined,
-          });
         }
       }
 
@@ -108,10 +121,7 @@ export function createConfigRoutes(options: ConfigRouteOptions): Router {
           logger.debug('[PUT /api/config] Updated repository base path:', validatedPath);
         } catch (validationError) {
           logger.error('[PUT /api/config] Invalid repository base path:', validationError);
-          return res.status(400).json({
-            error: 'Invalid repository base path',
-            details: validationError instanceof z.ZodError ? validationError.issues : undefined,
-          });
+          // Skip invalid values instead of returning error
         }
       }
 
@@ -126,10 +136,7 @@ export function createConfigRoutes(options: ConfigRouteOptions): Router {
           logger.debug('[PUT /api/config] Updated notification preferences:', validatedPrefs);
         } catch (validationError) {
           logger.error('[PUT /api/config] Invalid notification preferences:', validationError);
-          return res.status(400).json({
-            error: 'Invalid notification preferences',
-            details: validationError instanceof z.ZodError ? validationError.issues : undefined,
-          });
+          // Skip invalid values instead of returning error
         }
       }
 
