@@ -317,30 +317,24 @@ export class SessionListPage extends BasePage {
       }
     });
 
-    const responsePromise = this.page.waitForResponse(
-      (response) => {
-        const isSessionEndpoint = response.url().includes('/api/sessions');
-        const isPost = response.request().method() === 'POST';
-        return isSessionEndpoint && isPost;
-      },
-      { timeout: 20000 } // Increased timeout for CI
-    );
-
-    // Click the submit button
-    await submitButton.click({ timeout: 5000 });
+    // Click the submit button and wait for response
+    const [response] = await Promise.all([
+      this.page.waitForResponse(
+        (response) => {
+          const isSessionEndpoint = response.url().includes('/api/sessions');
+          const isPost = response.request().method() === 'POST';
+          return isSessionEndpoint && isPost;
+        },
+        { timeout: 20000 } // Increased timeout for CI
+      ),
+      submitButton.click({ timeout: 5000 })
+    ]);
 
     // Wait for navigation to session view (only for web sessions)
     if (!spawnWindow) {
       let sessionId: string | undefined;
 
       try {
-        const response = await Promise.race([
-          responsePromise,
-          this.page
-            .waitForTimeout(19000)
-            .then(() => null), // Slightly less than response timeout
-        ]);
-
         if (response) {
           if (response.status() !== 201 && response.status() !== 200) {
             const body = await response.text();

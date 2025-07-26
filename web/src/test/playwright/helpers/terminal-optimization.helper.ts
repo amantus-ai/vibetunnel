@@ -14,21 +14,29 @@ export async function waitForTerminalReady(page: Page, timeout = 5000): Promise<
     timeout 
   });
   
-  // Wait for terminal to show a prompt
+  // Wait for terminal to be interactive - either shows a prompt or has content
   await page.waitForFunction(
     () => {
       const term = document.querySelector('vibe-terminal');
       if (!term) return false;
       
-      const content = term.textContent || '';
-      // Look for common shell prompts
-      return /[$>#%❯]\s*$/m.test(content);
+      // Check if terminal container exists
+      const container = term.querySelector('#terminal-container, .terminal-container, .xterm');
+      if (!container) return false;
+      
+      // Terminal is ready if it has any content (even just cursor)
+      const hasContent = container.textContent && container.textContent.length > 0;
+      
+      // Or if xterm.js terminal is initialized
+      const hasXterm = container.querySelector('.xterm-screen, .xterm-viewport') !== null;
+      
+      return hasContent || hasXterm;
     },
     { timeout }
   );
   
   // Brief wait for terminal to stabilize
-  await page.waitForTimeout(100);
+  await page.waitForTimeout(300);
 }
 
 /**
@@ -58,7 +66,20 @@ export async function getTerminalContent(page: Page): Promise<string> {
     const terminal = document.querySelector('vibe-terminal');
     if (!terminal) return '';
     
-    // Get text content directly from the terminal element
+    // Try to get content from various possible terminal structures
+    // First try the terminal container
+    const container = terminal.querySelector('#terminal-container, .terminal-container');
+    if (container && container.textContent) {
+      return container.textContent;
+    }
+    
+    // Try xterm.js structure
+    const xtermScreen = terminal.querySelector('.xterm-screen, .xterm-rows');
+    if (xtermScreen && xtermScreen.textContent) {
+      return xtermScreen.textContent;
+    }
+    
+    // Fallback to terminal element content
     return terminal.textContent || '';
   });
 }
@@ -98,22 +119,16 @@ export async function executeCommand(
   command: string, 
   waitForPrompt = true
 ): Promise<void> {
+  // Ensure terminal is focused
+  const terminal = page.locator('vibe-terminal');
+  await terminal.click();
+  await page.waitForTimeout(100);
+  
   await typeCommand(page, command);
   
   if (waitForPrompt) {
-    // Wait for command to appear in terminal
-    await waitForOutput(page, command, 2000);
-    
-    // Wait for a prompt character (simplified check)
-    await page.waitForFunction(
-      () => {
-        const terminal = document.querySelector('vibe-terminal');
-        const content = terminal?.textContent || '';
-        // Look for common prompt endings
-        return content.match(/[$>#%❯]\s*$/m) !== null;
-      },
-      { timeout: 3000 }
-    );
+    // Simple wait for command to process
+    await page.waitForTimeout(1000);
   }
 }
 

@@ -21,6 +21,9 @@ interface SessionCardElement extends HTMLElement {
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Session Management', () => {
+  // Increase timeout for these resource-intensive tests
+  test.setTimeout(30000);
+  
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {

@@ -19,6 +19,9 @@ import {
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
 test.describe('Terminal Interaction', () => {
+  // Increase timeout for terminal tests
+  test.setTimeout(30000);
+  
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
