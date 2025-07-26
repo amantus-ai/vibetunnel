@@ -359,6 +359,27 @@ export class PtyManager extends EventEmitter {
         }
 
         ptyProcess = pty.spawn(finalCommand, finalArgs, spawnOptions);
+
+        // Add immediate exit handler to catch CI issues
+        const exitHandler = (event: { exitCode: number; signal?: number }) => {
+          if (Date.now() - Date.parse(sessionInfo.startedAt) < 100) {
+            logger.error(
+              `PTY process exited immediately after spawn! Exit code: ${event.exitCode}, signal: ${event.signal}`
+            );
+            logger.error(
+              'This often happens in CI when PTY allocation fails or shell is misconfigured'
+            );
+            logger.error('Environment:', {
+              SHELL: process.env.SHELL,
+              TERM: process.env.TERM,
+              CI: process.env.CI,
+              command: finalCommand,
+              args: finalArgs,
+              cwd: workingDir,
+            });
+          }
+        };
+        ptyProcess.onExit(exitHandler);
       } catch (spawnError) {
         // Debug log the raw error first
         logger.debug('Raw spawn error:', {
