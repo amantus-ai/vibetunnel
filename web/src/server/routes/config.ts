@@ -8,17 +8,19 @@ import { createLogger } from '../utils/logger.js';
 const logger = createLogger('config');
 
 // Validation schemas
-const NotificationPreferencesSchema = z.object({
-  enabled: z.boolean(),
-  sessionStart: z.boolean(),
-  sessionExit: z.boolean(),
-  commandCompletion: z.boolean(),
-  commandError: z.boolean(),
-  bell: z.boolean(),
-  claudeTurn: z.boolean(),
-  soundEnabled: z.boolean(),
-  vibrationEnabled: z.boolean(),
-}).partial();
+const NotificationPreferencesSchema = z
+  .object({
+    enabled: z.boolean(),
+    sessionStart: z.boolean(),
+    sessionExit: z.boolean(),
+    commandCompletion: z.boolean(),
+    commandError: z.boolean(),
+    bell: z.boolean(),
+    claudeTurn: z.boolean(),
+    soundEnabled: z.boolean(),
+    vibrationEnabled: z.boolean(),
+  })
+  .partial();
 
 const QuickStartCommandSchema = z.object({
   name: z.string().optional(),

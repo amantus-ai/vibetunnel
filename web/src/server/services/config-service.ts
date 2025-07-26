@@ -298,22 +298,25 @@ export class ConfigService {
   public updateNotificationPreferences(notifications: Partial<NotificationPreferences>): void {
     // Validate the notifications object
     try {
-      const NotificationPreferencesSchema = z.object({
-        enabled: z.boolean(),
-        sessionStart: z.boolean(),
-        sessionExit: z.boolean(),
-        commandCompletion: z.boolean(),
-        commandError: z.boolean(),
-        bell: z.boolean(),
-        claudeTurn: z.boolean(),
-        soundEnabled: z.boolean(),
-        vibrationEnabled: z.boolean(),
-      }).partial();
+      const NotificationPreferencesSchema = z
+        .object({
+          enabled: z.boolean(),
+          sessionStart: z.boolean(),
+          sessionExit: z.boolean(),
+          commandCompletion: z.boolean(),
+          commandError: z.boolean(),
+          bell: z.boolean(),
+          claudeTurn: z.boolean(),
+          soundEnabled: z.boolean(),
+          vibrationEnabled: z.boolean(),
+        })
+        .partial();
 
       const validatedNotifications = NotificationPreferencesSchema.parse(notifications);
-      
+
       // Merge with existing notifications or defaults
-      const currentNotifications = this.config.preferences?.notifications || DEFAULT_NOTIFICATION_PREFERENCES;
+      const currentNotifications =
+        this.config.preferences?.notifications || DEFAULT_NOTIFICATION_PREFERENCES;
       const mergedNotifications = { ...currentNotifications, ...validatedNotifications };
 
       // Ensure preferences object exists
