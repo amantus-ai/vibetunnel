@@ -3,8 +3,8 @@ import { assertTerminalReady } from '../helpers/assertion.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
-// These tests create their own sessions and can run in parallel
-test.describe.configure({ mode: 'parallel' });
+// These tests create their own sessions - run serially to avoid server overload
+test.describe.configure({ mode: 'serial' });
 
 test.describe('Activity Monitoring', () => {
   let sessionManager: TestSessionManager;

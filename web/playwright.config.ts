@@ -105,7 +105,6 @@ export default defineConfig({
         '**/ssh-key-manager.spec.ts',
         '**/push-notifications.spec.ts',
         '**/authentication.spec.ts',
-        '**/activity-monitoring.spec.ts',
         '**/git-status-badge-debug.spec.ts',
       ],
     },
@@ -118,6 +117,7 @@ export default defineConfig({
         '**/keyboard-shortcuts.spec.ts',
         '**/keyboard-capture-toggle.spec.ts',
         '**/terminal-interaction.spec.ts',
+        '**/activity-monitoring.spec.ts',
       ],
       fullyParallel: false, // Override global setting for serial tests
     },
