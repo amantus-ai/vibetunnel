@@ -78,6 +78,8 @@ jobs:
         run: xvfb-run -a pnpm test:e2e
         env:
           CI: true
+          # Explicitly unset VIBETUNNEL_SEA to prevent node-pty SEA mode issues
+          VIBETUNNEL_SEA: ""
           
       - name: Upload test results
         uses: actions/upload-artifact@v4

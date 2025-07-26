@@ -125,19 +125,23 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: `pnpm exec tsx src/cli.ts --no-auth --port ${testConfig.port}`, // Use tsx everywhere
+    command: `pnpm exec tsx watch src/cli.ts --no-auth --port ${testConfig.port}`, // Use tsx watch like dev server
     port: testConfig.port,
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
     stdout: process.env.CI ? 'inherit' : 'pipe', // Show output in CI for debugging
     stderr: process.env.CI ? 'inherit' : 'pipe', // Show errors in CI for debugging
     timeout: 60 * 1000, // 1 minute for server startup (reduced from 3 minutes)
     cwd: process.cwd(), // Ensure we're in the right directory
-    env: {
-      ...process.env, // Include all existing env vars
-      NODE_ENV: 'test',
-      VIBETUNNEL_DISABLE_PUSH_NOTIFICATIONS: 'true',
-      SUPPRESS_CLIENT_ERRORS: 'true',
-      VIBETUNNEL_SEA: '', // Explicitly set to empty to disable SEA loader
-    },
+    env: (() => {
+      // Create a copy of env vars without VIBETUNNEL_SEA
+      const env = { ...process.env };
+      delete env.VIBETUNNEL_SEA; // Remove to prevent SEA mode in tests
+      return {
+        ...env,
+        NODE_ENV: 'test',
+        VIBETUNNEL_DISABLE_PUSH_NOTIFICATIONS: 'true',
+        SUPPRESS_CLIENT_ERRORS: 'true',
+      };
+    })(),
   },
 });
