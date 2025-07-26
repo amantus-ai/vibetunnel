@@ -712,13 +712,13 @@ private final class EventSource: NSObject, URLSessionDataDelegate, @unchecked Se
         completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
     ) {
         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.onOpen?()
             }
             completionHandler(.allow)
         } else {
             completionHandler(.cancel)
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.onError?(nil)
             }
         }
@@ -728,47 +728,49 @@ private final class EventSource: NSObject, URLSessionDataDelegate, @unchecked Se
 
     nonisolated func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         guard let text = String(data: data, encoding: .utf8) else { return }
-        buffer += text
-
-        // Process complete events
-        let lines = buffer.components(separatedBy: "\n")
-        buffer = lines.last ?? ""
-
-        var currentEvent = Event(id: nil, event: nil, data: nil)
-        var dataLines: [String] = []
-
-        for line in lines.dropLast() {
-            if line.isEmpty {
-                // End of event
-                if !dataLines.isEmpty {
-                    let data = dataLines.joined(separator: "\n")
-                    let event = Event(id: currentEvent.id, event: currentEvent.event, data: data)
-                    DispatchQueue.main.async {
+        
+        // Process on background queue to avoid blocking
+        Task { @MainActor in
+            self.buffer += text
+            
+            // Process complete events
+            let lines = self.buffer.components(separatedBy: "\n")
+            self.buffer = lines.last ?? ""
+            
+            var currentEvent = Event(id: nil, event: nil, data: nil)
+            var dataLines: [String] = []
+            
+            for line in lines.dropLast() {
+                if line.isEmpty {
+                    // End of event
+                    if !dataLines.isEmpty {
+                        let data = dataLines.joined(separator: "\n")
+                        let event = Event(id: currentEvent.id, event: currentEvent.event, data: data)
                         self.onMessage?(event)
                     }
+                    currentEvent = Event(id: nil, event: nil, data: nil)
+                    dataLines = []
+                } else if line.hasPrefix("id:") {
+                    currentEvent = Event(
+                        id: line.dropFirst(3).trimmingCharacters(in: .whitespaces),
+                        event: currentEvent.event,
+                        data: currentEvent.data
+                    )
+                } else if line.hasPrefix("event:") {
+                    currentEvent = Event(
+                        id: currentEvent.id,
+                        event: line.dropFirst(6).trimmingCharacters(in: .whitespaces),
+                        data: currentEvent.data
+                    )
+                } else if line.hasPrefix("data:") {
+                    dataLines.append(String(line.dropFirst(5).trimmingCharacters(in: .whitespaces)))
                 }
-                currentEvent = Event(id: nil, event: nil, data: nil)
-                dataLines = []
-            } else if line.hasPrefix("id:") {
-                currentEvent = Event(
-                    id: line.dropFirst(3).trimmingCharacters(in: .whitespaces),
-                    event: currentEvent.event,
-                    data: currentEvent.data
-                )
-            } else if line.hasPrefix("event:") {
-                currentEvent = Event(
-                    id: currentEvent.id,
-                    event: line.dropFirst(6).trimmingCharacters(in: .whitespaces),
-                    data: currentEvent.data
-                )
-            } else if line.hasPrefix("data:") {
-                dataLines.append(String(line.dropFirst(5).trimmingCharacters(in: .whitespaces)))
             }
         }
     }
 
     nonisolated func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.onError?(error)
         }
     }
