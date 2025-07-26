@@ -260,6 +260,9 @@ test.describe('Activity Monitoring', () => {
     // Go to session list
     await page.goto('/?test=true', { waitUntil: 'domcontentloaded', timeout: 10000 });
 
+    // Wait for page to stabilize after navigation
+    await page.waitForTimeout(1000);
+
     // Wait for session list to be ready - use multiple selectors
     try {
       await Promise.race([
@@ -269,19 +272,42 @@ test.describe('Activity Monitoring', () => {
       ]);
     } catch (_error) {
       console.warn('Session list selector timeout, checking if sessions exist...');
+
+      // Try refreshing the page once if no cards found
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(1000);
+
       const hasCards = await page.locator('session-card').count();
       if (hasCards === 0) {
-        throw new Error('No session cards found after navigation');
+        throw new Error('No session cards found after navigation and reload');
       }
     }
+
+    // Wait a bit more for all cards to render
+    await page.waitForTimeout(500);
 
     // Both sessions should show activity status
     const session1Card = page.locator('session-card').filter({ hasText: session1Name }).first();
     const session2Card = page.locator('session-card').filter({ hasText: session2Name }).first();
 
-    // Check both sessions are visible
-    await expect(session1Card).toBeVisible({ timeout: 10000 });
-    await expect(session2Card).toBeVisible({ timeout: 10000 });
+    // Check both sessions are visible with retry
+    try {
+      await expect(session1Card).toBeVisible({ timeout: 10000 });
+      await expect(session2Card).toBeVisible({ timeout: 10000 });
+    } catch (error) {
+      // Log current state for debugging
+      const cardCount = await page.locator('session-card').count();
+      console.log(`Found ${cardCount} session cards total`);
+
+      // Try to find cards with partial text match
+      const cards = await page.locator('session-card').all();
+      for (const card of cards) {
+        const text = await card.textContent();
+        console.log(`Card text: ${text}`);
+      }
+
+      throw error;
+    }
 
     // Both should have activity indicators - look for various possible activity indicators
     const activitySelectors = [

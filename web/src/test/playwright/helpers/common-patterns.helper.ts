@@ -40,7 +40,9 @@ export async function clickSessionCardWithRetry(page: Page, sessionName: string)
   // Wait for card to be stable with longer timeout
   await sessionCard.waitFor({ state: 'visible', timeout: 10000 });
   await sessionCard.scrollIntoViewIfNeeded();
-  await page.waitForLoadState('networkidle');
+
+  // Skip networkidle wait - it's causing timeouts in CI
+  // The session list should already be loaded at this point
 
   try {
     await sessionCard.click({ timeout: 10000 });
