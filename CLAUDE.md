@@ -294,6 +294,82 @@ VibeTunnel includes a powerful log viewing utility for debugging and monitoring:
 - `[SRV]` - Server-side logs from Node.js/Bun
 - `[ServerManager]`, `[SessionService]`, etc. - Native Mac app components
 
+## GitHub CLI Usage
+
+### Quick CI Debugging Commands
+
+When told to "fix CI", use these commands to quickly identify and access errors:
+
+**Step 1: Find Failed Runs**
+```bash
+# List recent CI runs and see their status
+gh run list --branch <branch-name> --limit 10
+
+# Quick check for failures on current branch
+git_branch=$(git branch --show-current) && gh run list --branch "$git_branch" --limit 5
+```
+
+**Step 2: Identify Failed Jobs**
+```bash
+# Find which job failed in a run
+gh run view <run-id> --json jobs | jq -r '.jobs[] | select(.conclusion == "failure") | .name'
+
+# Get all job statuses at a glance
+gh run view <run-id> --json jobs | jq -r '.jobs[] | "\(.name): \(.conclusion // .status)"'
+```
+
+**Step 3: Find Failed Steps**
+```bash
+# Find the exact failed step in a job
+gh run view <run-id> --json jobs | jq '.jobs[] | select(.conclusion == "failure") | .steps[] | select(.conclusion == "failure") | {name: .name, number: .number}'
+
+# Get failed step from a specific job
+gh run view <run-id> --json jobs | jq '.jobs[] | select(.name == "Mac CI / Build, Lint, and Test macOS") | .steps[] | select(.conclusion == "failure") | .name'
+```
+
+**Step 4: View Error Logs**
+```bash
+# View full logs (opens in browser)
+gh run view <run-id> --web
+
+# Download logs for a specific job
+gh run download <run-id> -n <job-name>
+
+# View logs in terminal (if run is complete)
+gh run view <run-id> --log
+
+# Watch a running job
+gh run watch <run-id>
+```
+
+**All-in-One Error Finder**
+```bash
+# This command finds and displays all failures in the latest run
+run_id=$(gh run list --branch "$(git branch --show-current)" --limit 1 --json databaseId -q '.[0].databaseId') && \
+echo "=== Failed Jobs ===" && \
+gh run view $run_id --json jobs | jq -r '.jobs[] | select(.conclusion == "failure") | "Job: \(.name)"' && \
+echo -e "\n=== Failed Steps ===" && \
+gh run view $run_id --json jobs | jq -r '.jobs[] | select(.conclusion == "failure") | .steps[] | select(.conclusion == "failure") | "  Step: \(.name)"'
+```
+
+**Common Failure Patterns**:
+- **Mac CI Build Failures**: Usually actool errors (Xcode beta issue), SwiftFormat violations, or missing dependencies
+- **Playwright Test Failures**: Often timeout issues, missing VIBETUNNEL_SEA env var, or tsx/node-pty conflicts
+- **iOS CI Failures**: Simulator boot issues, certificate problems, or test failures
+- **Web CI Failures**: TypeScript errors, linting issues, or test failures
+
+**Quick Actions**:
+```bash
+# Rerun only failed jobs
+gh run rerun <run-id> --failed
+
+# Cancel a stuck run
+gh run cancel <run-id>
+
+# View PR checks status
+gh pr checks <pr-number>
+```
+
 
 
 ## Key Files Quick Reference

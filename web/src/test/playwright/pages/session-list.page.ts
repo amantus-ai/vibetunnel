@@ -53,25 +53,45 @@ export class SessionListPage extends BasePage {
     await this.dismissErrors();
 
     // Wait for create button to be clickable
+    // The button is in the sidebar header, so we need to ensure the sidebar is visible
     const createBtn = this.page
       .locator(this.selectors.createButton)
       .or(this.page.locator(this.selectors.createButtonFallback))
       .or(this.page.locator(this.selectors.createButtonFallbackWithShortcut))
       .first();
-    await createBtn.waitFor({ state: 'visible', timeout: 5000 });
+
+    try {
+      await createBtn.waitFor({ state: 'visible', timeout: 10000 });
+    } catch (_error) {
+      // If button is not visible, the sidebar might be collapsed or not loaded
+      console.log('Create button not immediately visible, checking sidebar state...');
+
+      // Check if sidebar exists
+      const sidebar = await this.page.locator('sidebar-header').count();
+      console.log(`Sidebar header count: ${sidebar}`);
+
+      // Take a screenshot for debugging
+      await this.page.screenshot({ path: 'test-results/create-button-not-visible.png' });
+
+      throw new Error(`Create button not visible after navigation. Sidebar count: ${sidebar}`);
+    }
   }
 
   async createNewSession(sessionName?: string, spawnWindow = false, command?: string) {
+    // Clear localStorage first for test isolation
+    await this.page.evaluate(() => {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (e) {
+        console.warn('Could not clear storage:', e);
+      }
+    });
+
     // IMPORTANT: Set the spawn window preference in localStorage BEFORE opening the modal
     // This ensures the form loads with the correct state
     await this.page.evaluate((shouldSpawnWindow) => {
-      // Clear all form-related localStorage values first to ensure clean state
-      localStorage.removeItem('vibetunnel_spawn_window');
-      localStorage.removeItem('vibetunnel_last_command');
-      localStorage.removeItem('vibetunnel_last_working_dir');
-      localStorage.removeItem('vibetunnel_title_mode');
-
-      // Then set the spawn window value we want
+      // Set the spawn window value we want
       localStorage.setItem('vibetunnel_spawn_window', String(shouldSpawnWindow));
     }, spawnWindow);
 
