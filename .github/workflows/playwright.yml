@@ -70,7 +70,11 @@ jobs:
             echo "Native executable found"
             file native/vibetunnel
             ldd native/vibetunnel || echo "ldd failed"
-            ./native/vibetunnel --version || echo "Version test failed with exit code: $?"
+            # Known issue: Node.js SEA executables segfault on ARM64 Linux
+            # This affects both Node.js 20 and 24. The executable will be built
+            # but we skip the version test and use TypeScript compilation for tests
+            echo "⚠️  Skipping --version test on ARM64 Linux due to known Node.js SEA segfault"
+            echo "The executable has been built but will not be used for tests"
           else
             echo "ERROR: Native executable not found!"
             exit 1
@@ -101,8 +105,9 @@ jobs:
           CI: true
           TERM: xterm
           SHELL: /bin/bash
-          # Set VIBETUNNEL_SEA to enable SEA mode for CI
-          VIBETUNNEL_SEA: "true"
+          # Disable VIBETUNNEL_SEA on ARM64 Linux due to Node.js SEA segfault issues
+          # The test-server.js will fall back to TypeScript compilation
+          # VIBETUNNEL_SEA: "true"
           
       - name: Upload test results
         uses: actions/upload-artifact@v4
