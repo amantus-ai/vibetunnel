@@ -18,7 +18,7 @@ const NotificationPreferencesSchema = z.object({
   claudeTurn: z.boolean(),
   soundEnabled: z.boolean(),
   vibrationEnabled: z.boolean(),
-});
+}).partial();
 
 const QuickStartCommandSchema = z.object({
   name: z.string().optional(),

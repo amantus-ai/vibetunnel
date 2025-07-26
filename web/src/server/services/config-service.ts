@@ -295,7 +295,7 @@ export class ConfigService {
     return this.config.preferences?.notifications || DEFAULT_NOTIFICATION_PREFERENCES;
   }
 
-  public updateNotificationPreferences(notifications: NotificationPreferences): void {
+  public updateNotificationPreferences(notifications: Partial<NotificationPreferences>): void {
     // Validate the notifications object
     try {
       const NotificationPreferencesSchema = z.object({
@@ -308,9 +308,13 @@ export class ConfigService {
         claudeTurn: z.boolean(),
         soundEnabled: z.boolean(),
         vibrationEnabled: z.boolean(),
-      });
+      }).partial();
 
       const validatedNotifications = NotificationPreferencesSchema.parse(notifications);
+      
+      // Merge with existing notifications or defaults
+      const currentNotifications = this.config.preferences?.notifications || DEFAULT_NOTIFICATION_PREFERENCES;
+      const mergedNotifications = { ...currentNotifications, ...validatedNotifications };
 
       // Ensure preferences object exists
       if (!this.config.preferences) {
@@ -321,8 +325,8 @@ export class ConfigService {
         };
       }
 
-      // Update notifications
-      this.config.preferences.notifications = validatedNotifications;
+      // Update notifications with merged values
+      this.config.preferences.notifications = mergedNotifications;
       this.saveConfig();
       this.notifyConfigChange();
     } catch (error) {
