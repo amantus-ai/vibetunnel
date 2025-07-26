@@ -52,8 +52,8 @@ export async function createAndNavigateToSession(
 
   // For web sessions, wait for navigation and get session ID
   if (!spawnWindow) {
-    // Optimized timeout
-    const timeout = 5000;
+    // Increased timeout for CI stability
+    const timeout = process.env.CI ? 15000 : 5000;
 
     try {
       await page.waitForURL(/\/session\//, { timeout });
@@ -112,7 +112,7 @@ export async function verifySessionStatus(
   }
 
   // Wait for session cards to load
-  await page.waitForSelector('session-card', { state: 'visible', timeout: 4000 });
+  await page.waitForSelector('session-card', { state: 'visible', timeout: process.env.CI ? 10000 : 4000 });
 
   // Find the session card
   const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
@@ -141,7 +141,7 @@ export async function reconnectToSession(page: Page, sessionName: string): Promi
   await sessionListPage.clickSession(sessionName);
 
   // Wait for session view to load
-  await page.waitForURL(/\/session\//, { timeout: 4000 });
+  await page.waitForURL(/\/session\//, { timeout: process.env.CI ? 10000 : 4000 });
   await sessionViewPage.waitForTerminalReady();
 }
 
@@ -171,7 +171,7 @@ export async function createMultipleSessions(
       // Quick wait for session list
       await page.waitForSelector('session-card', {
         state: 'visible',
-        timeout: 2000,
+        timeout: process.env.CI ? 5000 : 2000,
       });
     }
   }
@@ -188,7 +188,7 @@ export async function waitForSessionState(
   targetState: 'RUNNING' | 'EXITED' | 'KILLED' | 'running' | 'exited' | 'killed',
   options: { timeout?: number } = {}
 ): Promise<void> {
-  const { timeout = 5000 } = options;
+  const { timeout = process.env.CI ? 15000 : 5000 } = options;
   const _startTime = Date.now();
 
   // Use waitForFunction instead of polling loop

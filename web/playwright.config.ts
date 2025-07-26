@@ -60,10 +60,10 @@ export default defineConfig({
     video: process.env.CI ? 'retain-on-failure' : 'off',
 
     /* Maximum time each action can take */
-    actionTimeout: 5000, // 5s for actions
+    actionTimeout: process.env.CI ? 10000 : 5000, // 10s on CI, 5s locally
 
     /* Navigation timeout */
-    navigationTimeout: 10000, // 10s for navigation
+    navigationTimeout: process.env.CI ? 15000 : 10000, // 15s on CI, 10s locally
 
     /* Run in headless mode for better performance */
     headless: true,

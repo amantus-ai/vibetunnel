@@ -61,7 +61,7 @@ export class SessionListPage extends BasePage {
       .first();
 
     try {
-      await createBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await createBtn.waitFor({ state: 'visible', timeout: process.env.CI ? 15000 : 10000 });
     } catch (_error) {
       // If button is not visible, the sidebar might be collapsed or not loaded
       console.log('Create button not immediately visible, checking sidebar state...');
@@ -111,30 +111,30 @@ export class SessionListPage extends BasePage {
 
     try {
       // Wait for button to be visible and stable before clicking
-      await createButton.waitFor({ state: 'visible', timeout: 5000 });
+      await createButton.waitFor({ state: 'visible', timeout: process.env.CI ? 10000 : 5000 });
 
       // Add a small delay to ensure page is stable
       await this.page.waitForTimeout(500);
 
       // Try regular click first, then force click if needed
       try {
-        await createButton.click({ timeout: 5000 });
+        await createButton.click({ timeout: process.env.CI ? 10000 : 5000 });
       } catch (_clickError) {
         // If regular click fails, try force click
-        await createButton.click({ force: true, timeout: 5000 });
+        await createButton.click({ force: true, timeout: process.env.CI ? 10000 : 5000 });
       }
 
       // Wait for modal to exist first
       await this.page.waitForSelector('session-create-form', {
         state: 'attached',
-        timeout: 10000,
+        timeout: process.env.CI ? 15000 : 10000,
       });
 
       // Wait for the session name input to be visible - this is what we actually need
       // This approach is more reliable than waiting for the modal wrapper
       await this.page.waitForSelector('[data-testid="session-name-input"]', {
         state: 'visible',
-        timeout: 15000,
+        timeout: process.env.CI ? 20000 : 15000,
       });
 
       // Additional wait to ensure modal is fully interactive
@@ -171,14 +171,14 @@ export class SessionListPage extends BasePage {
     try {
       await this.page.waitForSelector('[data-testid="session-name-input"]', {
         state: 'visible',
-        timeout: 5000,
+        timeout: process.env.CI ? 10000 : 5000,
       });
       inputSelector = '[data-testid="session-name-input"]';
     } catch {
       // Fallback to placeholder if data-testid is not found
       await this.page.waitForSelector('input[placeholder="My Session"]', {
         state: 'visible',
-        timeout: 5000,
+        timeout: process.env.CI ? 10000 : 5000,
       });
       inputSelector = 'input[placeholder="My Session"]';
     }
@@ -302,7 +302,7 @@ export class SessionListPage extends BasePage {
       .or(this.page.locator('button:has-text("Create")'));
 
     // Make sure button is not disabled
-    await submitButton.waitFor({ state: 'visible', timeout: 5000 });
+    await submitButton.waitFor({ state: 'visible', timeout: process.env.CI ? 10000 : 5000 });
     const isDisabled = await submitButton.isDisabled();
     if (isDisabled) {
       throw new Error('Create button is disabled - form may not be valid');
@@ -327,7 +327,7 @@ export class SessionListPage extends BasePage {
         },
         { timeout: 20000 } // Increased timeout for CI
       ),
-      submitButton.click({ timeout: 5000 }),
+      submitButton.click({ timeout: process.env.CI ? 10000 : 5000 }),
     ]);
 
     // Wait for navigation to session view (only for web sessions)
@@ -434,7 +434,7 @@ export class SessionListPage extends BasePage {
         } else {
           // Wait for automatic navigation
           try {
-            await this.page.waitForURL(/\/session\//, { timeout: 10000 });
+            await this.page.waitForURL(/\/session\//, { timeout: process.env.CI ? 15000 : 10000 });
           } catch (error) {
             const finalUrl = this.page.url();
             console.error(`Failed to navigate to session. Current URL: ${finalUrl}`);
@@ -474,7 +474,7 @@ export class SessionListPage extends BasePage {
           // Session view is ready
           return true;
         },
-        { timeout: 15000, polling: 100 }
+        { timeout: process.env.CI ? 20000 : 15000, polling: 100 }
       );
 
       // Debug: Check if session view component exists
@@ -492,14 +492,14 @@ export class SessionListPage extends BasePage {
       console.log('[DEBUG] Session view state:', sessionViewExists);
 
       // Wait for terminal-renderer to be visible first
-      await this.page.waitForSelector('#session-terminal', { state: 'visible', timeout: 10000 });
+      await this.page.waitForSelector('#session-terminal', { state: 'visible', timeout: process.env.CI ? 15000 : 10000 });
 
       // Then wait for the actual terminal component inside to be visible
       await this.page.waitForSelector(
         '#session-terminal vibe-terminal, #session-terminal vibe-terminal-binary',
         {
           state: 'visible',
-          timeout: 10000,
+          timeout: process.env.CI ? 15000 : 10000,
         }
       );
     } else {
@@ -528,7 +528,7 @@ export class SessionListPage extends BasePage {
         const noSessionsMsg = document.querySelector('.text-dark-text-muted');
         return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
       },
-      { timeout: 10000 }
+      { timeout: process.env.CI ? 15000 : 10000 }
     );
 
     // Check if we have any session cards
@@ -541,7 +541,7 @@ export class SessionListPage extends BasePage {
     const sessionCard = (await this.getSessionCard(sessionName)).first();
 
     // Wait for the specific session card to be visible
-    await sessionCard.waitFor({ state: 'visible', timeout: 10000 });
+    await sessionCard.waitFor({ state: 'visible', timeout: process.env.CI ? 15000 : 10000 });
 
     // Scroll into view if needed
     await sessionCard.scrollIntoViewIfNeeded();
@@ -550,7 +550,7 @@ export class SessionListPage extends BasePage {
     await sessionCard.click();
 
     // Wait for navigation to session view
-    await this.page.waitForURL(/\/session\//, { timeout: 5000 });
+    await this.page.waitForURL(/\/session\//, { timeout: process.env.CI ? 10000 : 5000 });
   }
 
   async isSessionActive(sessionName: string): Promise<boolean> {

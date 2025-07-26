@@ -8,7 +8,7 @@ export async function assertSessionInList(
   sessionName: string,
   options: { timeout?: number; status?: 'running' | 'exited' } = {}
 ): Promise<void> {
-  const { timeout = 5000, status } = options;
+  const { timeout = process.env.CI ? 10000 : 5000, status } = options;
 
   // Ensure we're on the session list page
   if (page.url().includes('/session/')) {
@@ -139,7 +139,7 @@ export async function assertTerminalContains(
   text: string | RegExp,
   options: { timeout?: number; exact?: boolean } = {}
 ): Promise<void> {
-  const { timeout = 5000, exact = false } = options;
+  const { timeout = process.env.CI ? 10000 : 5000, exact = false } = options;
 
   if (typeof text === 'string' && exact) {
     await page.waitForFunction(
@@ -181,7 +181,7 @@ export async function assertTerminalNotContains(
   text: string | RegExp,
   options: { timeout?: number } = {}
 ): Promise<void> {
-  const { timeout = 5000 } = options;
+  const { timeout = process.env.CI ? 10000 : 5000 } = options;
 
   const terminal = page.locator('vibe-terminal');
   await expect(terminal).not.toContainText(text, { timeout });
@@ -219,7 +219,7 @@ export async function assertElementState(
   page: Page,
   selector: string,
   state: 'visible' | 'hidden' | 'enabled' | 'disabled' | 'checked' | 'unchecked',
-  timeout = 5000
+  timeout = process.env.CI ? 10000 : 5000
 ): Promise<void> {
   const element = page.locator(selector);
 
@@ -253,7 +253,7 @@ export async function assertSessionCount(
   expectedCount: number,
   options: { timeout?: number; operator?: 'exact' | 'minimum' | 'maximum' } = {}
 ): Promise<void> {
-  const { timeout = 5000, operator = 'exact' } = options;
+  const { timeout = process.env.CI ? 10000 : 5000, operator = 'exact' } = options;
 
   // Ensure we're on the session list page
   if (page.url().includes('/session/')) {
@@ -300,7 +300,7 @@ export async function assertSessionCount(
 /**
  * Asserts terminal is ready and responsive
  */
-export async function assertTerminalReady(page: Page, timeout = 15000): Promise<void> {
+export async function assertTerminalReady(page: Page, timeout = process.env.CI ? 20000 : 15000): Promise<void> {
   // Check terminal element exists (using ID selector for reliability)
   const terminal = page.locator('#session-terminal');
   await expect(terminal).toBeVisible({ timeout });
@@ -410,7 +410,7 @@ export async function assertModalOpen(
   page: Page,
   options: { title?: string; content?: string; timeout?: number } = {}
 ): Promise<void> {
-  const { title, content, timeout = 5000 } = options;
+  const { title, content, timeout = process.env.CI ? 10000 : 5000 } = options;
 
   const modal = page.locator('.modal-content');
   await expect(modal).toBeVisible({ timeout });
@@ -471,7 +471,7 @@ export async function assertRequestMade(
   urlPattern: string | RegExp,
   options: { method?: string; timeout?: number } = {}
 ): Promise<void> {
-  const { method, timeout = 5000 } = options;
+  const { method, timeout = process.env.CI ? 10000 : 5000 } = options;
 
   const requestPromise = page.waitForRequest(
     (request) => {

@@ -49,7 +49,7 @@ export class SessionViewPage extends BasePage {
 
   async waitForTerminalReady() {
     // Wait for terminal element to be visible
-    await this.page.waitForSelector(this.selectors.terminal, { state: 'visible', timeout: 4000 });
+    await this.page.waitForSelector(this.selectors.terminal, { state: 'visible', timeout: process.env.CI ? 10000 : 4000 });
 
     // Wait for terminal to be fully initialized (has content or structure)
     // Determine timeout based on CI environment before passing to browser context
@@ -84,7 +84,7 @@ export class SessionViewPage extends BasePage {
   }
 
   async waitForOutput(text: string, options?: { timeout?: number }) {
-    await TerminalTestUtils.waitForText(this.page, text, options?.timeout || 2000);
+    await TerminalTestUtils.waitForText(this.page, text, options?.timeout || (process.env.CI ? 5000 : 2000));
   }
 
   async getTerminalOutput(): Promise<string> {
@@ -137,7 +137,7 @@ export class SessionViewPage extends BasePage {
     const backButton = this.page.locator(this.selectors.backButton).first();
     if (await backButton.isVisible({ timeout: 1000 })) {
       await backButton.click();
-      await this.page.waitForURL('/', { timeout: 5000 });
+      await this.page.waitForURL('/', { timeout: process.env.CI ? 10000 : 5000 });
       return;
     }
 

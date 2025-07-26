@@ -9,7 +9,7 @@ import type { Page } from '@playwright/test';
  */
 export async function waitForAppReady(page: Page): Promise<void> {
   // Wait for app element
-  await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 3000 });
+  await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: process.env.CI ? 5000 : 3000 });
 
   // Quick check if we're in auth or no-auth mode
   const hasCreateButton = await page
@@ -26,7 +26,7 @@ export async function waitForAppReady(page: Page): Promise<void> {
     await page
       .waitForSelector('[data-testid="create-session-button"], auth-login', {
         state: 'visible',
-        timeout: 2000,
+        timeout: process.env.CI ? 5000 : 2000,
       })
       .catch(() => {
         // If neither appears, that's okay - let individual tests handle it
@@ -73,7 +73,7 @@ export async function quickCreateSession(
   await createButton.click();
 
   // Wait for form to be ready
-  await page.waitForSelector('session-create-form[visible="true"]', { timeout: 2000 });
+  await page.waitForSelector('session-create-form[visible="true"]', { timeout: process.env.CI ? 5000 : 2000 });
 
   // Fill name
   const nameInput = page.locator('input[placeholder*="Session name"]');
@@ -93,7 +93,7 @@ export async function quickCreateSession(
   // For web sessions, wait for navigation
   if (!spawnWindow) {
     try {
-      await page.waitForURL(/\/session\//, { timeout: 3000 });
+      await page.waitForURL(/\/session\//, { timeout: process.env.CI ? 5000 : 3000 });
       const match = page.url().match(/\/session\/([^/?]+)/);
       return match ? match[1] : null;
     } catch {
@@ -141,7 +141,7 @@ export async function waitForElementWithRetry(
   selector: string,
   options: { timeout?: number; state?: 'attached' | 'visible' | 'hidden' | 'detached' } = {}
 ): Promise<void> {
-  const { timeout = 5000, state = 'visible' } = options;
+  const { timeout = process.env.CI ? 10000 : 5000, state = 'visible' } = options;
   const delays = [100, 200, 400, 800, 1600];
   let lastError: Error | null = null;
 

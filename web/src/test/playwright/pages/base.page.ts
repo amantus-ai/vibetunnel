@@ -39,15 +39,15 @@ export class BasePage {
     url.searchParams.set('test', 'true');
     const finalPath = url.pathname + url.search;
 
-    await this.page.goto(finalPath, { waitUntil: 'domcontentloaded', timeout: 10000 });
+    await this.page.goto(finalPath, { waitUntil: 'domcontentloaded', timeout: process.env.CI ? 15000 : 10000 });
 
     // Wait for app to attach
-    await this.page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
+    await this.page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: process.env.CI ? 10000 : 5000 });
   }
 
   async waitForLoadComplete() {
     // Wait for the main app to be loaded
-    await this.page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
+    await this.page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: process.env.CI ? 10000 : 5000 });
 
     // Check if we're on auth screen
     const authForm = await this.page.locator('auth-login').count();
@@ -56,7 +56,7 @@ export class BasePage {
       console.log('Auth form detected, waiting for automatic bypass...');
 
       // Wait for auth to be bypassed and session list to appear
-      await this.page.waitForSelector('session-list', { state: 'attached', timeout: 10000 });
+      await this.page.waitForSelector('session-list', { state: 'attached', timeout: process.env.CI ? 15000 : 10000 });
     }
 
     // Wait for app to be fully initialized
@@ -67,7 +67,7 @@ export class BasePage {
         '[data-testid="create-session-button"], button[title="Create New Session"], button[title="Create New Session (⌘K)"]',
         {
           state: 'visible',
-          timeout: 10000,
+          timeout: process.env.CI ? 15000 : 10000,
         }
       );
     } catch (_error) {
@@ -81,7 +81,7 @@ export class BasePage {
 
       // Wait for the button to become visible - this automatically retries
       try {
-        await createBtn.waitFor({ state: 'visible', timeout: 10000 });
+        await createBtn.waitFor({ state: 'visible', timeout: process.env.CI ? 15000 : 10000 });
       } catch (_waitError) {
         // Log current page state for debugging
         const currentUrl = this.page.url();
