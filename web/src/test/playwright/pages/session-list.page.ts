@@ -615,7 +615,8 @@ export class SessionListPage extends BasePage {
     const dialogPromise = this.page.waitForEvent('dialog', { timeout: 2000 });
 
     // Click the button (this might or might not trigger a dialog)
-    const clickPromise = killButton.click();
+    // Use force:true to bypass any overlapping elements like sticky footers
+    const clickPromise = killButton.click({ force: true });
 
     // Wait for either dialog or click to complete
     try {

@@ -44,7 +44,7 @@ export async function clickSessionCardWithRetry(page: Page, sessionName: string)
 
   try {
     await sessionCard.click({ timeout: 10000 });
-    await page.waitForURL(/\?session=/, { timeout: 10000 });
+    await page.waitForURL(/\/session\//, { timeout: 10000 });
   } catch (_error) {
     console.log(`First click attempt failed for session ${sessionName}, retrying...`);
 
@@ -54,7 +54,7 @@ export async function clickSessionCardWithRetry(page: Page, sessionName: string)
     await clickableArea.click({ force: true });
 
     // If URL still doesn't change, try one more time with the session name link
-    if (!page.url().includes('?session=')) {
+    if (!page.url().includes('/session/')) {
       const sessionLink = sessionCard.locator(`text="${sessionName}"`).first();
       await sessionLink.click({ force: true });
     }

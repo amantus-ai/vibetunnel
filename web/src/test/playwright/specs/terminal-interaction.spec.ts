@@ -151,6 +151,9 @@ test.describe('Terminal Interaction', () => {
     const varName = 'TEST_VAR';
     const varValue = 'VibeTunnel_Test_123';
 
+    // Wait for terminal to be ready before typing
+    await page.waitForTimeout(1000);
+
     // Set environment variable
     await executeCommand(page, `export ${varName}="${varValue}"`);
 

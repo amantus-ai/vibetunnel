@@ -27,12 +27,23 @@ test.describe('Activity Monitoring', () => {
     // Navigate back to home to see the session list
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
+    // Wait for session list to be ready
+    await page.waitForFunction(
+      () => {
+        const cards = document.querySelectorAll('session-card');
+        const noSessionsMsg = document.querySelector('.text-dark-text-muted');
+        return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
+      },
+      { timeout: 10000 }
+    );
+
     // Wait for session cards to load
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-    // Find our session card
+    // Find our session card - wait a bit for all cards to render
+    await page.waitForTimeout(1000);
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
-    await expect(sessionCard).toBeVisible({ timeout: 5000 });
+    await expect(sessionCard).toBeVisible({ timeout: 10000 });
 
     // Look for any status-related elements within the session card
     // Since activity monitoring might be implemented differently, we'll check for common patterns

@@ -63,9 +63,6 @@ test.describe('Session Navigation', () => {
       timeout: 10000,
     });
 
-    // Wait for any animations or transitions to complete
-    await page.waitForLoadState('domcontentloaded');
-
     // Ensure no modals are open that might block clicks
     await closeModalIfOpen(page);
 

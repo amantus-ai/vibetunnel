@@ -44,7 +44,18 @@ async function openFileBrowser(page: Page) {
     if (isCompactModeRetry) {
       // Compact mode after retry
       await compactMenuButton.click({ force: true });
-      await page.waitForTimeout(500);
+
+      // Wait for menu to be visible by checking for any menu item
+      await page.waitForFunction(
+        () => {
+          const menuItems = document.querySelectorAll('button[data-testid]');
+          return Array.from(menuItems).some((item) =>
+            item.getAttribute('data-testid')?.includes('compact-')
+          );
+        },
+        { timeout: 5000 }
+      );
+
       const compactFileBrowser = page.locator('[data-testid="compact-file-browser"]');
       await expect(compactFileBrowser).toBeVisible({ timeout: 5000 });
       await compactFileBrowser.click();
@@ -59,7 +70,18 @@ async function openFileBrowser(page: Page) {
   } else if (isCompactMode) {
     // Compact mode: open compact menu and click file browser
     await compactMenuButton.click({ force: true });
-    await page.waitForTimeout(500); // Wait for menu to open
+
+    // Wait for menu to be visible by checking for any menu item
+    await page.waitForFunction(
+      () => {
+        const menuItems = document.querySelectorAll('button[data-testid]');
+        return Array.from(menuItems).some((item) =>
+          item.getAttribute('data-testid')?.includes('compact-')
+        );
+      },
+      { timeout: 5000 }
+    );
+
     const compactFileBrowser = page.locator('[data-testid="compact-file-browser"]');
     await expect(compactFileBrowser).toBeVisible({ timeout: 5000 });
     await compactFileBrowser.click();

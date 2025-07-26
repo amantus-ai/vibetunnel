@@ -284,8 +284,11 @@ test.describe('Session Management', () => {
       name: sessionManager.generateSessionName('long-output'),
     });
 
-    // Generate long output using a single command with multiple lines
-    await page.keyboard.type('for i in {1..20}; do echo "Line $i of output"; done');
+    // Wait for terminal to be ready
+    await page.waitForTimeout(1000);
+
+    // Generate long output using seq command which is more reliable
+    await page.keyboard.type('seq 1 20 | while read i; do echo "Line $i of output"; done');
     await page.keyboard.press('Enter');
 
     // Wait for the last line to appear
