@@ -112,7 +112,10 @@ export async function verifySessionStatus(
   }
 
   // Wait for session cards to load
-  await page.waitForSelector('session-card', { state: 'visible', timeout: process.env.CI ? 10000 : 4000 });
+  await page.waitForSelector('session-card', {
+    state: 'visible',
+    timeout: process.env.CI ? 10000 : 4000,
+  });
 
   // Find the session card
   const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);

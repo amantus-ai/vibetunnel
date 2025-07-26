@@ -9,7 +9,10 @@ import type { Page } from '@playwright/test';
  */
 export async function waitForAppReady(page: Page): Promise<void> {
   // Wait for app element
-  await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: process.env.CI ? 5000 : 3000 });
+  await page.waitForSelector('vibetunnel-app', {
+    state: 'attached',
+    timeout: process.env.CI ? 5000 : 3000,
+  });
 
   // Quick check if we're in auth or no-auth mode
   const hasCreateButton = await page
@@ -73,7 +76,9 @@ export async function quickCreateSession(
   await createButton.click();
 
   // Wait for form to be ready
-  await page.waitForSelector('session-create-form[visible="true"]', { timeout: process.env.CI ? 5000 : 2000 });
+  await page.waitForSelector('session-create-form[visible="true"]', {
+    timeout: process.env.CI ? 5000 : 2000,
+  });
 
   // Fill name
   const nameInput = page.locator('input[placeholder*="Session name"]');

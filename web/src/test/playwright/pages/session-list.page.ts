@@ -492,7 +492,10 @@ export class SessionListPage extends BasePage {
       console.log('[DEBUG] Session view state:', sessionViewExists);
 
       // Wait for terminal-renderer to be visible first
-      await this.page.waitForSelector('#session-terminal', { state: 'visible', timeout: process.env.CI ? 15000 : 10000 });
+      await this.page.waitForSelector('#session-terminal', {
+        state: 'visible',
+        timeout: process.env.CI ? 15000 : 10000,
+      });
 
       // Then wait for the actual terminal component inside to be visible
       await this.page.waitForSelector(

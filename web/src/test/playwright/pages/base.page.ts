@@ -39,15 +39,24 @@ export class BasePage {
     url.searchParams.set('test', 'true');
     const finalPath = url.pathname + url.search;
 
-    await this.page.goto(finalPath, { waitUntil: 'domcontentloaded', timeout: process.env.CI ? 15000 : 10000 });
+    await this.page.goto(finalPath, {
+      waitUntil: 'domcontentloaded',
+      timeout: process.env.CI ? 15000 : 10000,
+    });
 
     // Wait for app to attach
-    await this.page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: process.env.CI ? 10000 : 5000 });
+    await this.page.waitForSelector('vibetunnel-app', {
+      state: 'attached',
+      timeout: process.env.CI ? 10000 : 5000,
+    });
   }
 
   async waitForLoadComplete() {
     // Wait for the main app to be loaded
-    await this.page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: process.env.CI ? 10000 : 5000 });
+    await this.page.waitForSelector('vibetunnel-app', {
+      state: 'attached',
+      timeout: process.env.CI ? 10000 : 5000,
+    });
 
     // Check if we're on auth screen
     const authForm = await this.page.locator('auth-login').count();
@@ -56,7 +65,10 @@ export class BasePage {
       console.log('Auth form detected, waiting for automatic bypass...');
 
       // Wait for auth to be bypassed and session list to appear
-      await this.page.waitForSelector('session-list', { state: 'attached', timeout: process.env.CI ? 15000 : 10000 });
+      await this.page.waitForSelector('session-list', {
+        state: 'attached',
+        timeout: process.env.CI ? 15000 : 10000,
+      });
     }
 
     // Wait for app to be fully initialized

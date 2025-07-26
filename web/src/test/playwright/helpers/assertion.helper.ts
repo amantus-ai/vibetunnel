@@ -300,7 +300,10 @@ export async function assertSessionCount(
 /**
  * Asserts terminal is ready and responsive
  */
-export async function assertTerminalReady(page: Page, timeout = process.env.CI ? 20000 : 15000): Promise<void> {
+export async function assertTerminalReady(
+  page: Page,
+  timeout = process.env.CI ? 20000 : 15000
+): Promise<void> {
   // Check terminal element exists (using ID selector for reliability)
   const terminal = page.locator('#session-terminal');
   await expect(terminal).toBeVisible({ timeout });
