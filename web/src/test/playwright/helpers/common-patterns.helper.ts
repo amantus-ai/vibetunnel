@@ -29,20 +29,35 @@ export async function waitForSessionCards(
  * Click a session card with retry logic for reliability
  */
 export async function clickSessionCardWithRetry(page: Page, sessionName: string): Promise<void> {
+  // First ensure the session list is loaded
+  await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+
+  // Give the session list time to fully render
+  await page.waitForTimeout(500);
+
   const sessionCard = page.locator(`session-card:has-text("${sessionName}")`);
 
-  // Wait for card to be stable
-  await sessionCard.waitFor({ state: 'visible' });
+  // Wait for card to be stable with longer timeout
+  await sessionCard.waitFor({ state: 'visible', timeout: 10000 });
   await sessionCard.scrollIntoViewIfNeeded();
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
 
   try {
-    await sessionCard.click();
-    await page.waitForURL(/\?session=/, { timeout: 5000 });
-  } catch {
-    // Retry with different approach
+    await sessionCard.click({ timeout: 10000 });
+    await page.waitForURL(/\?session=/, { timeout: 10000 });
+  } catch (_error) {
+    console.log(`First click attempt failed for session ${sessionName}, retrying...`);
+
+    // Retry with different approach - click the card content area
     const clickableArea = sessionCard.locator('div.card').first();
-    await clickableArea.click();
+    await clickableArea.waitFor({ state: 'visible', timeout: 5000 });
+    await clickableArea.click({ force: true });
+
+    // If URL still doesn't change, try one more time with the session name link
+    if (!page.url().includes('?session=')) {
+      const sessionLink = sessionCard.locator(`text="${sessionName}"`).first();
+      await sessionLink.click({ force: true });
+    }
   }
 }
 

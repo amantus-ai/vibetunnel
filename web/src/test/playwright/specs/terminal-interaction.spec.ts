@@ -4,7 +4,6 @@ import {
   assertTerminalContains,
   executeAndVerifyCommand,
   executeCommand,
-  executeCommandSequence,
   executeCommandWithRetry,
   getCommandOutput,
   getTerminalDimensions,
@@ -152,13 +151,16 @@ test.describe('Terminal Interaction', () => {
     const varName = 'TEST_VAR';
     const varValue = 'VibeTunnel_Test_123';
 
-    // Set and verify environment variable
-    await executeCommandSequence(page, [`export ${varName}="${varValue}"`, `echo $${varName}`]);
+    // Set environment variable
+    await executeCommand(page, `export ${varName}="${varValue}"`);
 
-    // Get just the output of the echo command
-    const output = await getCommandOutput(page, 'env | grep TEST_VAR');
-    expect(output).toContain(varName);
-    expect(output).toContain(varValue);
+    // Verify it was set by echoing it
+    const echoOutput = await getCommandOutput(page, `echo $${varName}`);
+    expect(echoOutput.trim()).toBe(varValue);
+
+    // Also verify with env command - use a more robust approach
+    const envOutput = await getCommandOutput(page, `env`);
+    expect(envOutput).toContain(`${varName}=${varValue}`);
   });
 
   test('should handle terminal resize', async ({ page }) => {

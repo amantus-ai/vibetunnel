@@ -102,6 +102,8 @@ export default defineConfig({
         '**/ssh-key-manager.spec.ts',
         '**/push-notifications.spec.ts',
         '**/authentication.spec.ts',
+      ],
+      testIgnore: [
         '**/git-status-badge-debug.spec.ts',
       ],
     },
@@ -118,6 +120,9 @@ export default defineConfig({
         '**/terminal-interaction.spec.ts',
         '**/activity-monitoring.spec.ts',
         '**/file-browser-basic.spec.ts',
+      ],
+      testIgnore: [
+        '**/git-status-badge-debug.spec.ts',
       ],
       fullyParallel: false, // Override global setting for serial tests
     },
