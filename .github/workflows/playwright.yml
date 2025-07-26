@@ -49,7 +49,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libpam0g-dev xvfb
+          sudo apt-get install -y libpam0g-dev xvfb zsh
           
       - name: Install dependencies
         working-directory: ./web
