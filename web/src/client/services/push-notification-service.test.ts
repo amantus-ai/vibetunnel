@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../types/config.js';
 import type { NotificationPreferences } from './push-notification-service.js';
 import { pushNotificationService } from './push-notification-service.js';
-import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../types/config.js';
 
 // Mock the auth client
 vi.mock('./auth-client', () => ({
@@ -154,9 +154,10 @@ describe('PushNotificationService', () => {
       if (url === '/api/config') {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ 
-            notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES 
-          }),
+          json: () =>
+            Promise.resolve({
+              notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
+            }),
         });
       }
       return Promise.resolve({
@@ -318,9 +319,10 @@ describe('PushNotificationService', () => {
         if (url === '/api/config') {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ 
-              notificationPreferences: serverPrefs 
-            }),
+            json: () =>
+              Promise.resolve({
+                notificationPreferences: serverPrefs,
+              }),
           });
         }
         return Promise.resolve({
@@ -501,21 +503,25 @@ describe('PushNotificationService', () => {
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ 
-          notificationPreferences: preferences 
-        }),
+        json: () =>
+          Promise.resolve({
+            notificationPreferences: preferences,
+          }),
       });
 
       await pushNotificationService.savePreferences(preferences);
 
       // Since we're now using serverConfigService, we expect a config API call
-      expect(fetch).toHaveBeenCalledWith('/api/config', expect.objectContaining({
-        method: 'PUT',
-        headers: expect.objectContaining({
-          'Content-Type': 'application/json',
-        }),
-        body: expect.stringContaining('notificationPreferences'),
-      }));
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/config',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+          body: expect.stringContaining('notificationPreferences'),
+        })
+      );
     });
 
     it('should handle save failure gracefully', async () => {
@@ -534,7 +540,9 @@ describe('PushNotificationService', () => {
       global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
       // Should throw error now since we don't fallback to localStorage
-      await expect(pushNotificationService.savePreferences(preferences)).rejects.toThrow('Network error');
+      await expect(pushNotificationService.savePreferences(preferences)).rejects.toThrow(
+        'Network error'
+      );
     });
   });
 
