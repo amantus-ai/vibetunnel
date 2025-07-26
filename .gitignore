@@ -135,8 +135,22 @@ web/test-results/
 test-results/
 test-results-*.json
 playwright-report/
+web/playwright-videos/
+playwright-videos/
 *.png
 !src/**/*.png
+*.webm
+*.trace.zip
+trace.zip
+error-context.md
+
+# Coverage reports
+coverage/
+web/coverage/
+*.lcov
+coverage-*.json
+coverage-final.json
+.nyc_output/
 .claude/settings.local.json
 buildServer.json
 /temp
