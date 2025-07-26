@@ -1,7 +1,7 @@
 import type { PushSubscription } from '../../shared/types';
 import { HttpMethod } from '../../shared/types';
-import type { NotificationPreferences } from '../../types/config';
-import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../types/config';
+import type { NotificationPreferences } from '../../types/config.js';
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../types/config.js';
 import { createLogger } from '../utils/logger';
 import { authClient } from './auth-client';
 import { serverConfigService } from './server-config-service';
