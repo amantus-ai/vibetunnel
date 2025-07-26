@@ -23,16 +23,18 @@ export const test = base.extend<TestFixtures>({
     await context.route('**/*.{png,jpg,jpeg,gif,svg,woff,woff2,ttf,ico}', (route) => route.abort());
     await context.route('**/analytics/**', (route) => route.abort());
     await context.route('**/gtag/**', (route) => route.abort());
-    
+
     // Suppress expected console errors to reduce noise
     page.on('console', (msg) => {
       const text = msg.text();
       // Suppress known harmless errors
-      if (text.includes('Failed to load resource: net::ERR_FAILED') ||
-          text.includes('Control event stream error') ||
-          text.includes('stream connection error') ||
-          text.includes('EventSource') ||
-          text.includes('WebSocket')) {
+      if (
+        text.includes('Failed to load resource: net::ERR_FAILED') ||
+        text.includes('Control event stream error') ||
+        text.includes('stream connection error') ||
+        text.includes('EventSource') ||
+        text.includes('WebSocket')
+      ) {
         return; // Suppress these expected errors
       }
       // Only log actual errors

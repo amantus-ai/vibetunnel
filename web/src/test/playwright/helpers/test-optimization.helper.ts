@@ -10,26 +10,38 @@ import type { Page } from '@playwright/test';
 export async function waitForAppReady(page: Page): Promise<void> {
   // Wait for app element
   await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 3000 });
-  
+
   // Quick check if we're in auth or no-auth mode
-  const hasCreateButton = await page.locator('[data-testid="create-session-button"]').isVisible({ timeout: 100 }).catch(() => false);
-  const hasAuthForm = await page.locator('auth-login').isVisible({ timeout: 100 }).catch(() => false);
-  
+  const hasCreateButton = await page
+    .locator('[data-testid="create-session-button"]')
+    .isVisible({ timeout: 100 })
+    .catch(() => false);
+  const hasAuthForm = await page
+    .locator('auth-login')
+    .isVisible({ timeout: 100 })
+    .catch(() => false);
+
   if (!hasCreateButton && !hasAuthForm) {
     // Wait a bit more for one of them to appear
-    await page.waitForSelector('[data-testid="create-session-button"], auth-login', {
-      state: 'visible',
-      timeout: 2000,
-    }).catch(() => {
-      // If neither appears, that's okay - let individual tests handle it
-    });
+    await page
+      .waitForSelector('[data-testid="create-session-button"], auth-login', {
+        state: 'visible',
+        timeout: 2000,
+      })
+      .catch(() => {
+        // If neither appears, that's okay - let individual tests handle it
+      });
   }
 }
 
 /**
  * Fast element visibility check with short timeout
  */
-export async function isElementVisible(page: Page, selector: string, timeout = 500): Promise<boolean> {
+export async function isElementVisible(
+  page: Page,
+  selector: string,
+  timeout = 500
+): Promise<boolean> {
   try {
     await page.waitForSelector(selector, { state: 'visible', timeout });
     return true;
@@ -59,14 +71,14 @@ export async function quickCreateSession(
   // Click create button
   const createButton = page.locator('[data-testid="create-session-button"]');
   await createButton.click();
-  
+
   // Wait for form to be ready
   await page.waitForSelector('session-create-form[visible="true"]', { timeout: 2000 });
-  
+
   // Fill name
   const nameInput = page.locator('input[placeholder*="Session name"]');
   await nameInput.fill(name);
-  
+
   // Set spawn window if needed
   if (spawnWindow) {
     const spawnToggle = page.locator('[data-testid="spawn-window-toggle"]');
@@ -74,10 +86,10 @@ export async function quickCreateSession(
       await spawnToggle.click();
     }
   }
-  
+
   // Submit form
   await page.keyboard.press('Enter');
-  
+
   // For web sessions, wait for navigation
   if (!spawnWindow) {
     try {
@@ -88,7 +100,7 @@ export async function quickCreateSession(
       return null;
     }
   }
-  
+
   return null;
 }
 
@@ -109,11 +121,11 @@ export function suppressConsoleNoise(page: Page): void {
       '[control-event-service]',
       '[cast-converter]',
     ];
-    
-    if (suppressPatterns.some(pattern => text.includes(pattern))) {
+
+    if (suppressPatterns.some((pattern) => text.includes(pattern))) {
       return; // Suppress these
     }
-    
+
     // Only log real errors
     if (msg.type() === 'error') {
       console.log(`Console error: ${text}`);
@@ -132,7 +144,7 @@ export async function waitForElementWithRetry(
   const { timeout = 5000, state = 'visible' } = options;
   const delays = [100, 200, 400, 800, 1600];
   let lastError: Error | null = null;
-  
+
   for (const delay of delays) {
     try {
       await page.waitForSelector(selector, { state, timeout: delay });
@@ -144,10 +156,13 @@ export async function waitForElementWithRetry(
       }
     }
   }
-  
+
   // Final attempt with remaining timeout
   try {
-    await page.waitForSelector(selector, { state, timeout: Math.max(timeout - delays.reduce((a, b) => a + b, 0), 1000) });
+    await page.waitForSelector(selector, {
+      state,
+      timeout: Math.max(timeout - delays.reduce((a, b) => a + b, 0), 1000),
+    });
   } catch {
     throw lastError;
   }

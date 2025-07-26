@@ -12,7 +12,7 @@ test.describe('Authentication', () => {
       test.skip(true, 'Skipping auth tests in no-auth mode');
       return; // Don't navigate if we're skipping
     }
-    
+
     // Only navigate if we're actually running auth tests
     await page.goto('/', { waitUntil: 'commit' });
   });

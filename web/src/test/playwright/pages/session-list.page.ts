@@ -327,7 +327,7 @@ export class SessionListPage extends BasePage {
         },
         { timeout: 20000 } // Increased timeout for CI
       ),
-      submitButton.click({ timeout: 5000 })
+      submitButton.click({ timeout: 5000 }),
     ]);
 
     // Wait for navigation to session view (only for web sessions)

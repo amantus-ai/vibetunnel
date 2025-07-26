@@ -141,7 +141,7 @@ test.describe('Keyboard Shortcuts', () => {
 
   test('should close modals with Escape', async ({ page }) => {
     test.setTimeout(30000); // Increase timeout for this test
-    
+
     // Ensure we're on the session list page
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
@@ -305,7 +305,7 @@ test.describe('Keyboard Shortcuts', () => {
 
   test('should handle tab completion in terminal', async ({ page }) => {
     test.setTimeout(30000); // Increase timeout for this test
-    
+
     // Create a session
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('tab-completion'),
@@ -317,23 +317,23 @@ test.describe('Keyboard Shortcuts', () => {
     // Type a command that doesn't rely on tab completion
     // Tab completion might not work in all test environments
     await page.keyboard.type('echo "testing tab key"');
-    
+
     // Press Tab to verify it doesn't break anything
     await page.keyboard.press('Tab');
     await page.waitForTimeout(500);
-    
+
     // Complete the command
     await page.keyboard.press('Enter');
 
     // Should see the output
     await expect(page.locator('text=testing tab key').first()).toBeVisible({ timeout: 5000 });
-    
+
     // Test passes if tab key doesn't break terminal functionality
   });
 
   test('should handle arrow keys for command history', async ({ page }) => {
     test.setTimeout(30000); // Increase timeout for this test
-    
+
     // Create a session
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('history-test'),
@@ -345,10 +345,10 @@ test.describe('Keyboard Shortcuts', () => {
     // Execute a simple command
     await page.keyboard.type('echo "arrow key test"');
     await page.keyboard.press('Enter');
-    
+
     // Wait for output
     await expect(page.locator('text=arrow key test').first()).toBeVisible({ timeout: 5000 });
-    
+
     // Wait a bit for prompt to appear
     await page.waitForTimeout(1000);
 
@@ -368,7 +368,7 @@ test.describe('Keyboard Shortcuts', () => {
 
     // Verify terminal is still functional
     await expect(page.locator('text=still working').first()).toBeVisible({ timeout: 5000 });
-    
+
     // Test passes if arrow keys don't break terminal functionality
   });
 });

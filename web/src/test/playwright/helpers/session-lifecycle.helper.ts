@@ -1,9 +1,8 @@
 import type { Page } from '@playwright/test';
 import { SessionListPage } from '../pages/session-list.page';
 import { SessionViewPage } from '../pages/session-view.page';
-import { waitForButtonReady } from './common-patterns.helper';
 import { generateTestSessionName } from './terminal.helper';
-import { quickCreateSession, navigateToHome } from './test-optimization.helper';
+import { navigateToHome } from './test-optimization.helper';
 
 export interface SessionOptions {
   name?: string;
@@ -168,7 +167,7 @@ export async function createMultipleSessions(
     // Navigate back to list for next creation (except last one)
     if (i < count - 1) {
       await navigateToHome(page);
-      
+
       // Quick wait for session list
       await page.waitForSelector('session-card', {
         state: 'visible',

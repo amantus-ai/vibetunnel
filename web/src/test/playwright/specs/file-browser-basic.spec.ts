@@ -16,19 +16,19 @@ async function openFileBrowser(page: Page) {
   } else {
     await page.keyboard.press('Control+o');
   }
-  
+
   // Wait for file browser to potentially open
   await page.waitForTimeout(1000);
-  
+
   // Check if file browser opened
   const fileBrowser = page.locator('file-browser').first();
   const isVisible = await fileBrowser.isVisible({ timeout: 1000 }).catch(() => false);
-  
+
   // If keyboard shortcut didn't work, try finding a file browser button
   if (!isVisible) {
     // Look for the file browser button in the header
     const fileBrowserButton = page.locator('[data-testid="file-browser-button"]').first();
-    
+
     if (await fileBrowserButton.isVisible({ timeout: 2000 }).catch(() => false)) {
       await fileBrowserButton.click();
       await page.waitForTimeout(500);
@@ -67,20 +67,20 @@ test.describe('File Browser - Basic Functionality', () => {
     } else {
       await page.keyboard.press('Control+o');
     }
-    
+
     // Wait for potential file browser opening
     await page.waitForTimeout(1000);
-    
+
     // Verify file browser can be opened (either it opens or we can find a way to open it)
     const fileBrowser = page.locator('file-browser').first();
     const isFileBrowserVisible = await fileBrowser.isVisible({ timeout: 1000 }).catch(() => false);
-    
+
     // Close if opened
     if (isFileBrowserVisible) {
       await page.keyboard.press('Escape');
       await page.waitForTimeout(500);
     }
-    
+
     // Test passes if keyboard shortcut is available or file browser is accessible
     expect(true).toBe(true);
   });
@@ -98,7 +98,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await page.waitForFunction(
       () => {
         const browser = document.querySelector('file-browser');
-        return browser && (browser as any).visible === true;
+        return browser && (browser as unknown as { visible: boolean }).visible === true;
       },
       { timeout: 5000 }
     );
@@ -120,7 +120,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await page.waitForFunction(
       () => {
         const browser = document.querySelector('file-browser');
-        return browser && (browser as any).visible === true;
+        return browser && (browser as unknown as { visible: boolean }).visible === true;
       },
       { timeout: 5000 }
     );
@@ -151,7 +151,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await page.waitForFunction(
       () => {
         const browser = document.querySelector('file-browser');
-        return browser && (browser as any).visible === true;
+        return browser && (browser as unknown as { visible: boolean }).visible === true;
       },
       { timeout: 5000 }
     );
@@ -175,7 +175,7 @@ test.describe('File Browser - Basic Functionality', () => {
 
   test('should respond to keyboard shortcut for opening file browser', async ({ page }) => {
     test.setTimeout(30000); // Increase timeout for this test
-    
+
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-shortcut'),
     });
@@ -215,7 +215,7 @@ test.describe('File Browser - Basic Functionality', () => {
     await page.waitForFunction(
       () => {
         const browser = document.querySelector('file-browser');
-        return browser && (browser as any).visible === true;
+        return browser && (browser as unknown as { visible: boolean }).visible === true;
       },
       { timeout: 5000 }
     );
@@ -226,7 +226,7 @@ test.describe('File Browser - Basic Functionality', () => {
 
   test('should maintain file browser button across navigation', async ({ page }) => {
     test.setTimeout(30000); // Increase timeout for navigation test
-    
+
     // Create session
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-navigation'),
@@ -264,15 +264,15 @@ test.describe('File Browser - Basic Functionality', () => {
     } else {
       await page.keyboard.press('Control+o');
     }
-    
+
     await page.waitForTimeout(1000);
-    
+
     // Check if file browser still works
     const isOpenAfterReload = await fileBrowser.isVisible({ timeout: 1000 }).catch(() => false);
-    
+
     // Test passes if keyboard shortcut works before and after navigation
     expect(true).toBe(true);
-    
+
     // Close file browser if it opened
     if (isOpenAfterReload) {
       await page.keyboard.press('Escape');
@@ -288,7 +288,7 @@ test.describe('File Browser - Basic Functionality', () => {
 
     // Try to open file browser multiple times rapidly
     const isMac = process.platform === 'darwin';
-    
+
     // Open and close file browser 3 times
     for (let i = 0; i < 3; i++) {
       // Open file browser
@@ -298,7 +298,7 @@ test.describe('File Browser - Basic Functionality', () => {
         await page.keyboard.press('Control+o');
       }
       await page.waitForTimeout(500);
-      
+
       // Close file browser
       await page.keyboard.press('Escape');
       await page.waitForTimeout(500);
@@ -307,7 +307,7 @@ test.describe('File Browser - Basic Functionality', () => {
     // Terminal should still be accessible and page responsive
     const terminal = page.locator('vibe-terminal, .terminal').first();
     await expect(terminal).toBeVisible();
-    
+
     // Can still type in terminal
     await page.keyboard.type('echo test');
     await page.keyboard.press('Enter');
@@ -315,7 +315,7 @@ test.describe('File Browser - Basic Functionality', () => {
 
   test('should handle file browser when terminal is busy', async ({ page }) => {
     test.setTimeout(30000); // Increase timeout for this test
-    
+
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-busy'),
     });
@@ -330,22 +330,24 @@ test.describe('File Browser - Basic Functionality', () => {
 
     // Should be able to open file browser even when terminal is busy
     await openFileBrowser(page);
-    
+
     // Wait for file browser to potentially be visible
-    await page.waitForFunction(
-      () => {
-        const browser = document.querySelector('file-browser');
-        return browser && (browser as any).visible === true;
-      },
-      { timeout: 5000 }
-    ).catch(() => {
-      // If file browser doesn't open, that's ok - we're testing it doesn't crash
-    });
+    await page
+      .waitForFunction(
+        () => {
+          const browser = document.querySelector('file-browser');
+          return browser && (browser as unknown as { visible: boolean }).visible === true;
+        },
+        { timeout: 5000 }
+      )
+      .catch(() => {
+        // If file browser doesn't open, that's ok - we're testing it doesn't crash
+      });
 
     // Verify page is still responsive
     const terminal = page.locator('vibe-terminal, .terminal').first();
     await expect(terminal).toBeVisible();
-    
+
     // Close file browser if it opened
     const fileBrowser = page.locator('file-browser').first();
     if (await fileBrowser.isVisible({ timeout: 1000 }).catch(() => false)) {
@@ -356,7 +358,7 @@ test.describe('File Browser - Basic Functionality', () => {
 
   test('should have accessibility attributes on file browser button', async ({ page }) => {
     test.setTimeout(30000); // Increase timeout for this test
-    
+
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-a11y'),
     });
@@ -364,13 +366,13 @@ test.describe('File Browser - Basic Functionality', () => {
 
     // Look for file browser button in the header
     const fileBrowserButton = page.locator('[data-testid="file-browser-button"]').first();
-    
+
     // Check if button exists and has accessibility attributes
     if (await fileBrowserButton.isVisible({ timeout: 2000 }).catch(() => false)) {
       // Check title attribute
       const title = await fileBrowserButton.getAttribute('title');
       expect(title).toContain('Browse Files');
-      
+
       // Button should be keyboard accessible
       await fileBrowserButton.focus();
       const focused = await fileBrowserButton.evaluate((el) => el === document.activeElement);
@@ -383,19 +385,19 @@ test.describe('File Browser - Basic Functionality', () => {
       } else {
         await page.keyboard.press('Control+o');
       }
-      
+
       await page.waitForTimeout(1000);
-      
+
       // File browser should be accessible via keyboard
       const fileBrowser = page.locator('file-browser').first();
       const isVisible = await fileBrowser.isVisible({ timeout: 1000 }).catch(() => false);
-      
+
       // Close if opened
       if (isVisible) {
         await page.keyboard.press('Escape');
         await page.waitForTimeout(500);
       }
-      
+
       // Test passes if keyboard shortcut works
       expect(true).toBe(true);
     }

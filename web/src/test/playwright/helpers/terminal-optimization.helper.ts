@@ -9,32 +9,32 @@ import type { Page } from '@playwright/test';
  */
 export async function waitForTerminalReady(page: Page, timeout = 5000): Promise<void> {
   // First, wait for the terminal element
-  const terminal = await page.waitForSelector('vibe-terminal', { 
-    state: 'attached', 
-    timeout 
+  await page.waitForSelector('vibe-terminal', {
+    state: 'attached',
+    timeout,
   });
-  
+
   // Wait for terminal to be interactive - either shows a prompt or has content
   await page.waitForFunction(
     () => {
       const term = document.querySelector('vibe-terminal');
       if (!term) return false;
-      
+
       // Check if terminal container exists
       const container = term.querySelector('#terminal-container, .terminal-container, .xterm');
       if (!container) return false;
-      
+
       // Terminal is ready if it has any content (even just cursor)
       const hasContent = container.textContent && container.textContent.length > 0;
-      
+
       // Or if xterm.js terminal is initialized
       const hasXterm = container.querySelector('.xterm-screen, .xterm-viewport') !== null;
-      
+
       return hasContent || hasXterm;
     },
     { timeout }
   );
-  
+
   // Brief wait for terminal to stabilize
   await page.waitForTimeout(300);
 }
@@ -46,14 +46,14 @@ export async function typeCommand(page: Page, command: string): Promise<void> {
   // Focus terminal first
   const terminal = page.locator('vibe-terminal');
   await terminal.click();
-  
+
   // Type command character by character for reliability
   for (const char of command) {
     await page.keyboard.type(char);
     // Very brief pause between characters
     await page.waitForTimeout(10);
   }
-  
+
   // Press Enter
   await page.keyboard.press('Enter');
 }
@@ -65,20 +65,20 @@ export async function getTerminalContent(page: Page): Promise<string> {
   return await page.evaluate(() => {
     const terminal = document.querySelector('vibe-terminal');
     if (!terminal) return '';
-    
+
     // Try to get content from various possible terminal structures
     // First try the terminal container
     const container = terminal.querySelector('#terminal-container, .terminal-container');
-    if (container && container.textContent) {
+    if (container?.textContent) {
       return container.textContent;
     }
-    
+
     // Try xterm.js structure
     const xtermScreen = terminal.querySelector('.xterm-screen, .xterm-rows');
-    if (xtermScreen && xtermScreen.textContent) {
+    if (xtermScreen?.textContent) {
       return xtermScreen.textContent;
     }
-    
+
     // Fallback to terminal element content
     return terminal.textContent || '';
   });
@@ -88,24 +88,24 @@ export async function getTerminalContent(page: Page): Promise<string> {
  * Wait for specific output with fallback strategies
  */
 export async function waitForOutput(
-  page: Page, 
-  expected: string | RegExp, 
+  page: Page,
+  expected: string | RegExp,
   timeout = 3000
 ): Promise<void> {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < timeout) {
     const content = await getTerminalContent(page);
-    
+
     if (typeof expected === 'string') {
       if (content.includes(expected)) return;
     } else {
       if (expected.test(content)) return;
     }
-    
+
     await page.waitForTimeout(50);
   }
-  
+
   // If we get here, output wasn't found
   const currentContent = await getTerminalContent(page);
   throw new Error(`Expected output not found. Current content: ${currentContent.slice(-200)}`);
@@ -115,17 +115,17 @@ export async function waitForOutput(
  * Execute command and wait for completion (optimized)
  */
 export async function executeCommand(
-  page: Page, 
-  command: string, 
+  page: Page,
+  command: string,
   waitForPrompt = true
 ): Promise<void> {
   // Ensure terminal is focused
   const terminal = page.locator('vibe-terminal');
   await terminal.click();
   await page.waitForTimeout(100);
-  
+
   await typeCommand(page, command);
-  
+
   if (waitForPrompt) {
     // Simple wait for command to process
     await page.waitForTimeout(1000);
@@ -138,7 +138,7 @@ export async function executeCommand(
 export async function clearTerminal(page: Page): Promise<void> {
   const terminal = page.locator('vibe-terminal');
   await terminal.click();
-  
+
   // Use Ctrl+L to clear
   await page.keyboard.press('Control+l');
   await page.waitForTimeout(100);
@@ -148,13 +148,13 @@ export async function clearTerminal(page: Page): Promise<void> {
  * Verify terminal contains expected text
  */
 export async function assertTerminalContains(
-  page: Page, 
+  page: Page,
   expected: string,
   timeout = 2000
 ): Promise<void> {
   try {
     await waitForOutput(page, expected, timeout);
-  } catch (error) {
+  } catch (_error) {
     const content = await getTerminalContent(page);
     throw new Error(`Terminal does not contain "${expected}". Content: ${content}`);
   }
@@ -170,7 +170,7 @@ export async function executeAndVerifyCommand(
   timeout = 3000
 ): Promise<void> {
   await executeCommand(page, command);
-  
+
   if (expectedOutput) {
     await waitForOutput(page, expectedOutput, timeout);
   }
@@ -225,32 +225,32 @@ export async function getCommandOutput(page: Page, command: string): Promise<str
   // Mark current position
   const marker = `===MARKER-${Date.now()}===`;
   await executeCommand(page, `echo "${marker}"`);
-  
+
   // Execute actual command
   await executeCommand(page, command);
-  
+
   // Get terminal content
   const content = await getTerminalContent(page);
-  
+
   // Extract output between marker and next prompt
   const markerIndex = content.indexOf(marker);
   if (markerIndex === -1) return '';
-  
+
   // Find the command after the marker
   const afterMarker = content.substring(markerIndex + marker.length);
   const commandIndex = afterMarker.indexOf(command);
   if (commandIndex === -1) return '';
-  
+
   // Start after the command
   const afterCommand = afterMarker.substring(commandIndex + command.length);
-  
+
   // Find the next prompt (look for common prompt patterns)
   const promptMatch = afterCommand.match(/\s+([$>#%❯])\s+/);
   if (!promptMatch) return afterCommand.trim();
-  
+
   // Extract text between command and next prompt
   const output = afterCommand.substring(0, promptMatch.index).trim();
-  
+
   // Clean up any leading/trailing whitespace or prompt characters
   return output.replace(/^[$>#%❯]\s*/, '').trim();
 }
@@ -269,18 +269,18 @@ export async function getTerminalDimensions(page: Page): Promise<{
     if (!terminal) {
       return { cols: 0, rows: 0, actualCols: 0, actualRows: 0 };
     }
-    
+
     // Get terminal content and estimate dimensions
     const content = terminal.textContent || '';
     const lines = content.split('\n');
     const rows = lines.length || 24;
-    const cols = Math.max(...lines.map(l => l.length)) || 80;
-    
+    const cols = Math.max(...lines.map((l) => l.length)) || 80;
+
     return {
       cols,
       rows,
       actualCols: cols,
-      actualRows: rows
+      actualRows: rows,
     };
   });
 }
@@ -294,18 +294,20 @@ export async function waitForTerminalResize(
   timeout = 3000
 ): Promise<{ cols: number; rows: number; actualCols: number; actualRows: number }> {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < timeout) {
     const currentDimensions = await getTerminalDimensions(page);
-    
-    if (currentDimensions.cols !== initialDimensions.cols ||
-        currentDimensions.rows !== initialDimensions.rows) {
+
+    if (
+      currentDimensions.cols !== initialDimensions.cols ||
+      currentDimensions.rows !== initialDimensions.rows
+    ) {
       return currentDimensions;
     }
-    
+
     await page.waitForTimeout(100);
   }
-  
+
   // Return current dimensions even if no change detected
   return await getTerminalDimensions(page);
 }
@@ -320,7 +322,7 @@ export async function executeCommandWithRetry(
   maxRetries = 3
 ): Promise<void> {
   let lastError: Error | undefined;
-  
+
   for (let i = 0; i < maxRetries; i++) {
     try {
       await clearTerminal(page);
@@ -333,6 +335,6 @@ export async function executeCommandWithRetry(
       }
     }
   }
-  
+
   throw new Error(`Command failed after ${maxRetries} retries: ${lastError?.message}`);
 }

@@ -1,6 +1,5 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
-import { getExitedSessionsVisibility } from '../helpers/ui-state.helper';
 
 // These tests need to run in serial mode to avoid session state conflicts
 test.describe.configure({ mode: 'serial' });
@@ -10,14 +9,14 @@ test.describe('Advanced Session Management', () => {
 
   test.beforeEach(async ({ page }) => {
     sessionManager = new TestSessionManager(page);
-    
+
     // Ensure we're on the home page at the start of each test
     try {
       if (!page.url().includes('localhost') || page.url().includes('/session/')) {
         await page.goto('/', { timeout: 10000 });
         await page.waitForLoadState('domcontentloaded');
       }
-    } catch (error) {
+    } catch (_error) {
       console.log('Navigation error in beforeEach, attempting recovery...');
       // Try to recover by going to blank page first
       await page.goto('about:blank');
@@ -32,7 +31,7 @@ test.describe('Advanced Session Management', () => {
   test('should kill individual sessions', async ({ page, sessionListPage }) => {
     // Create a tracked session with unique name
     const uniqueName = `kill-test-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
-    const { sessionName, sessionId } = await sessionManager.createTrackedSession(
+    const { sessionName } = await sessionManager.createTrackedSession(
       uniqueName,
       false,
       undefined // Use default shell command which stays active
@@ -44,8 +43,11 @@ test.describe('Advanced Session Management', () => {
 
     // Check if we need to show exited sessions
     const showExitedCheckbox = page.locator('input[type="checkbox"][role="checkbox"]');
-    const exitedSessionsHidden = await page.locator('text=/No running sessions/i').isVisible({ timeout: 2000 }).catch(() => false);
-    
+    const exitedSessionsHidden = await page
+      .locator('text=/No running sessions/i')
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+
     if (exitedSessionsHidden) {
       // Check if checkbox exists and is not already checked
       const isChecked = await showExitedCheckbox.isChecked().catch(() => false);
@@ -68,10 +70,10 @@ test.describe('Advanced Session Management', () => {
         // Look for the session in all sections
         const cards = document.querySelectorAll('session-card');
         const sessionCard = Array.from(cards).find((card) => card.textContent?.includes(name));
-        
+
         // If card not found, it was removed (killed successfully)
         if (!sessionCard) return true;
-        
+
         // If found, check if it's in the exited state
         const cardText = sessionCard.textContent || '';
         return cardText.includes('exited');
@@ -83,7 +85,7 @@ test.describe('Advanced Session Management', () => {
     // Verify the session is either gone or showing as exited
     const exitedCard = page.locator('session-card').filter({ hasText: sessionName });
     const isVisible = await exitedCard.isVisible({ timeout: 1000 }).catch(() => false);
-    
+
     if (isVisible) {
       // If still visible, it should show as exited
       await expect(exitedCard).toContainText('exited');
@@ -97,9 +99,9 @@ test.describe('Advanced Session Management', () => {
       await page.goto('/', { timeout: 10000 });
       await page.waitForLoadState('domcontentloaded');
     }
-    
+
     // Create a tracked session
-    const { sessionName } = await sessionManager.createTrackedSession();
+    await sessionManager.createTrackedSession();
 
     // Should see copy button for path
     await expect(page.locator('[title="Click to copy path"]')).toBeVisible();
@@ -109,7 +111,7 @@ test.describe('Advanced Session Management', () => {
 
     // Visual feedback would normally appear (toast notification)
     // We can't test clipboard content directly in Playwright
-    
+
     // Verify the clickable-path component exists and has the right behavior
     const clickablePath = page.locator('clickable-path').first();
     await expect(clickablePath).toBeVisible();
@@ -130,7 +132,7 @@ test.describe('Advanced Session Management', () => {
 
     // Check that we're in the session view
     await expect(page.locator('vibe-terminal')).toBeVisible({ timeout: 10000 });
-    
+
     // The session should be active - be more specific to avoid strict mode violation
     await expect(page.locator('session-header').getByText(sessionName)).toBeVisible();
   });

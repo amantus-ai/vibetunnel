@@ -33,7 +33,11 @@ async function globalSetup(config: FullConfig) {
 
   // Clean up sessions if requested or on CI
   if (process.env.CLEAN_TEST_SESSIONS === 'true' || process.env.CI) {
-    console.log(process.env.CI ? 'Running on CI - cleaning up ALL sessions...' : 'Cleaning up old test sessions...');
+    console.log(
+      process.env.CI
+        ? 'Running on CI - cleaning up ALL sessions...'
+        : 'Cleaning up old test sessions...'
+    );
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -59,7 +63,7 @@ async function globalSetup(config: FullConfig) {
       if (process.env.CI) {
         // On CI: Clean up ALL sessions for a fresh start
         console.log('CI environment detected - removing ALL sessions for clean test environment');
-        
+
         for (const session of sessions) {
           try {
             await page.evaluate(async (sessionId) => {
@@ -69,7 +73,7 @@ async function globalSetup(config: FullConfig) {
             console.log(`Failed to kill session ${session.id}:`, error);
           }
         }
-        
+
         console.log(`Cleaned up all ${sessions.length} sessions`);
       } else {
         // Not on CI: Only clean up old test sessions

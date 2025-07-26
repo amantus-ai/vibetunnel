@@ -1,27 +1,24 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import {
-  waitForTerminalReady,
-  executeCommand,
   assertTerminalContains,
-  clearTerminal,
-  typeCommand,
-  waitForOutput,
   executeAndVerifyCommand,
-  waitForTerminalBusy,
-  interruptCommand,
+  executeCommand,
   executeCommandSequence,
+  executeCommandWithRetry,
   getCommandOutput,
   getTerminalDimensions,
+  interruptCommand,
+  waitForTerminalBusy,
+  waitForTerminalReady,
   waitForTerminalResize,
-  executeCommandWithRetry,
 } from '../helpers/terminal-optimization.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
 test.describe('Terminal Interaction', () => {
   // Increase timeout for terminal tests
   test.setTimeout(30000);
-  
+
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
@@ -41,17 +38,17 @@ test.describe('Terminal Interaction', () => {
   test('should execute basic commands', async ({ page }) => {
     // Execute echo command
     await executeCommand(page, 'echo "Hello VibeTunnel"');
-    
+
     // Verify output
     await assertTerminalContains(page, 'Hello VibeTunnel');
   });
 
   test('should handle command with special characters', async ({ page }) => {
     const specialText = 'Test with spaces and numbers 123';
-    
+
     // Execute command
     await executeCommand(page, `echo "${specialText}"`);
-    
+
     // Verify output
     await assertTerminalContains(page, specialText);
   });
@@ -60,7 +57,7 @@ test.describe('Terminal Interaction', () => {
     // Execute first command
     await executeCommand(page, 'echo "Test 1"');
     await assertTerminalContains(page, 'Test 1');
-    
+
     // Execute second command
     await executeCommand(page, 'echo "Test 2"');
     await assertTerminalContains(page, 'Test 2');
@@ -125,13 +122,13 @@ test.describe('Terminal Interaction', () => {
       // Execute directory operations one by one for better control
       await executeCommand(page, 'pwd');
       await page.waitForTimeout(200);
-      
+
       await executeCommand(page, `mkdir ${testDir}`);
       await page.waitForTimeout(200);
-      
+
       await executeCommand(page, `cd ${testDir}`);
       await page.waitForTimeout(200);
-      
+
       await executeCommand(page, 'pwd');
       await page.waitForTimeout(200);
 
@@ -141,7 +138,7 @@ test.describe('Terminal Interaction', () => {
       // Cleanup
       await executeCommand(page, 'cd ..');
       await page.waitForTimeout(200);
-      
+
       await executeCommand(page, `rmdir ${testDir}`);
     } catch (error) {
       // Get terminal content for debugging

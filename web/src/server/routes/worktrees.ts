@@ -318,10 +318,7 @@ export function createWorktreeRoutes(): Router {
       const gitError = error as GitError;
 
       // Check if it's a "not a git repository" error or git not found
-      if (
-        gitError.code === 'ENOENT' ||
-        (gitError.stderr && gitError.stderr.includes('not a git repository'))
-      ) {
+      if (gitError.code === 'ENOENT' || gitError.stderr?.includes('not a git repository')) {
         // Return empty worktrees list for non-git directories or when git is not available
         return res.json({
           worktrees: [],

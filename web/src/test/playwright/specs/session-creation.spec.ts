@@ -177,7 +177,8 @@ test.describe('Session Creation', () => {
       // Make sure spawn window is off (if toggle exists)
       const spawnToggle = page.locator('button[role="switch"]').first();
       try {
-        const isChecked = (await spawnToggle.getAttribute('aria-checked', { timeout: 1000 })) === 'true';
+        const isChecked =
+          (await spawnToggle.getAttribute('aria-checked', { timeout: 1000 })) === 'true';
         if (isChecked) {
           await spawnToggle.click();
           // Wait for toggle state to update

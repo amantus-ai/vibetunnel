@@ -9,21 +9,13 @@ import { takeDebugScreenshot } from '../helpers/screenshot.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 
-// Type for session card web component
-interface SessionCardElement extends HTMLElement {
-  session?: {
-    name?: string;
-    command?: string[];
-  };
-}
-
 // These tests need to run in serial mode to avoid interference
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Session Management', () => {
   // Increase timeout for these resource-intensive tests
   test.setTimeout(30000);
-  
+
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
@@ -37,11 +29,15 @@ test.describe('Session Management', () => {
       // Check if there are exited sessions to clean
       const cleanButton = page.locator('button:has-text("Clean")');
       const exitedCount = await page.locator('text=/Exited \(\d+\)/').textContent();
-      
-      if (exitedCount && exitedCount.includes('Exited') && parseInt(exitedCount.match(/\d+/)?.[0] || '0') > 50 && await cleanButton.isVisible({ timeout: 1000 })) {
+
+      if (
+        exitedCount?.includes('Exited') &&
+        Number.parseInt(exitedCount.match(/\d+/)?.[0] || '0') > 50 &&
+        (await cleanButton.isVisible({ timeout: 1000 }))
+      ) {
         // Only clean if there are more than 50 exited sessions to avoid unnecessary cleanup
         await cleanButton.click();
-        
+
         // Wait briefly for cleanup to start
         await page.waitForTimeout(500);
       }
@@ -66,18 +62,24 @@ test.describe('Session Management', () => {
     // Navigate back to list
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
-    
+
     // Check if we need to show exited sessions
-    const exitedSessionsHidden = await page.locator('text=/No running sessions/i').isVisible({ timeout: 2000 }).catch(() => false);
-    
+    const exitedSessionsHidden = await page
+      .locator('text=/No running sessions/i')
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+
     if (exitedSessionsHidden) {
       // Look for the checkbox next to "Show" text
-      const showExitedCheckbox = page.locator('checkbox:near(:text("Show"))').or(page.locator('input[type="checkbox"]')).first();
-      
+      const showExitedCheckbox = page
+        .locator('checkbox:near(:text("Show"))')
+        .or(page.locator('input[type="checkbox"]'))
+        .first();
+
       try {
         // Wait for checkbox to be visible
         await showExitedCheckbox.waitFor({ state: 'visible', timeout: 3000 });
-        
+
         // Check if it's already checked
         const isChecked = await showExitedCheckbox.isChecked().catch(() => false);
         if (!isChecked) {
@@ -90,7 +92,7 @@ test.describe('Session Management', () => {
         // Continue anyway - sessions might be visible
       }
     }
-    
+
     await waitForSessionCards(page);
 
     // Scroll to find the session card if there are many sessions
@@ -155,7 +157,7 @@ test.describe('Session Management', () => {
     // Wait for terminal to be ready
     const terminal = page.locator('vibe-terminal');
     await expect(terminal).toBeVisible({ timeout: 2000 });
-    
+
     // Wait a moment for the exit command to process
     await page.waitForTimeout(1500);
 
@@ -166,14 +168,14 @@ test.describe('Session Management', () => {
     // Look for the session in the exited section
     // First, check if exited sessions are visible
     const exitedSection = page.locator('h3:has-text("Exited")');
-    
+
     if (await exitedSection.isVisible({ timeout: 2000 })) {
       // Find our session among exited sessions
       const exitedSessionCard = page.locator('session-card').filter({ hasText: sessionName });
-      
+
       // The session should be visible in the exited section
       await expect(exitedSessionCard).toBeVisible({ timeout: 5000 });
-      
+
       // Verify it shows exited status
       const statusText = exitedSessionCard.locator('text=/exited/i');
       await expect(statusText).toBeVisible({ timeout: 2000 });

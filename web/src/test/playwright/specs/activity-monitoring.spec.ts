@@ -9,7 +9,7 @@ test.describe.configure({ mode: 'serial' });
 test.describe('Activity Monitoring', () => {
   // Increase timeout for these tests
   test.setTimeout(30000);
-  
+
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
