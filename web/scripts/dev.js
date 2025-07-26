@@ -90,9 +90,14 @@ async function startBuilding() {
 
     // Start other processes
     const processes = commands.map(([cmd, args], index) => {
+      // Create env without VIBETUNNEL_SEA for development mode
+      const env = { ...process.env };
+      delete env.VIBETUNNEL_SEA;
+      
       const proc = spawn(cmd, args, { 
         stdio: 'inherit',
-        shell: process.platform === 'win32'
+        shell: process.platform === 'win32',
+        env: env
       });
       
       proc.on('error', (err) => {

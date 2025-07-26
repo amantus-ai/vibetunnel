@@ -277,7 +277,13 @@ export function parsePayload(type: MessageType, payload: Buffer): unknown {
     case MessageType.GIT_FOLLOW_RESPONSE:
     case MessageType.GIT_EVENT_NOTIFY:
     case MessageType.GIT_EVENT_ACK:
-      return JSON.parse(payload.toString('utf8'));
+      try {
+        return JSON.parse(payload.toString('utf8'));
+      } catch (e) {
+        throw new Error(
+          `Failed to parse JSON payload for message type ${type}: ${e instanceof Error ? e.message : String(e)}`
+        );
+      }
 
     case MessageType.HEARTBEAT:
       return null;

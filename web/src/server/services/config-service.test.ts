@@ -270,10 +270,10 @@ describe('ConfigService', () => {
         throw new Error('Disk full');
       });
 
-      // Should not throw
+      // Should throw with proper error message
       expect(() => {
         configService.updateQuickStartCommands([{ command: 'test' }]);
-      }).not.toThrow();
+      }).toThrow('Failed to save configuration: Disk full');
 
       // Config should still be updated in memory
       expect(configService.getConfig().quickStartCommands).toEqual([{ command: 'test' }]);
@@ -417,6 +417,158 @@ describe('ConfigService', () => {
 
       configService.updateQuickStartCommands(unicodeCommands);
       expect(configService.getConfig().quickStartCommands).toEqual(unicodeCommands);
+    });
+  });
+
+  describe('notification preferences', () => {
+    it('should return default notification preferences when no preferences are set', () => {
+      const preferences = configService.getNotificationPreferences();
+      // Should return DEFAULT_NOTIFICATION_PREFERENCES instead of undefined
+      expect(preferences).toEqual({
+        enabled: true,
+        sessionStart: true,
+        sessionExit: true,
+        commandCompletion: true,
+        commandError: true,
+        bell: true,
+        claudeTurn: false,
+        soundEnabled: true,
+        vibrationEnabled: true,
+      });
+    });
+
+    it('should update notification preferences', () => {
+      const newPreferences = {
+        enabled: true,
+        sessionStart: false,
+        sessionExit: true,
+        commandCompletion: true,
+        commandError: true,
+        bell: true,
+        claudeTurn: false,
+        soundEnabled: true,
+        vibrationEnabled: false,
+      };
+
+      configService.updateNotificationPreferences(newPreferences);
+
+      const savedPreferences = configService.getNotificationPreferences();
+      expect(savedPreferences).toEqual(newPreferences);
+    });
+
+    it('should support partial notification preference updates', () => {
+      // First set some initial preferences
+      const initialPreferences = {
+        enabled: true,
+        sessionStart: true,
+        sessionExit: true,
+        commandCompletion: true,
+        commandError: true,
+        bell: true,
+        claudeTurn: false,
+        soundEnabled: true,
+        vibrationEnabled: true,
+      };
+      configService.updateNotificationPreferences(initialPreferences);
+
+      // Now update only some fields
+      const partialUpdate = {
+        enabled: false,
+        sessionStart: false,
+      };
+      configService.updateNotificationPreferences(partialUpdate);
+
+      const savedPreferences = configService.getNotificationPreferences();
+      expect(savedPreferences).toEqual({
+        ...initialPreferences,
+        ...partialUpdate,
+      });
+    });
+
+    it('should save notification preferences to file', () => {
+      const preferences = {
+        enabled: false,
+        sessionStart: true,
+        sessionExit: false,
+        commandCompletion: false,
+        commandError: false,
+        bell: false,
+        claudeTurn: true,
+        soundEnabled: true,
+        vibrationEnabled: true,
+      };
+
+      configService.updateNotificationPreferences(preferences);
+
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        mockConfigPath,
+        expect.stringContaining('"notifications"'),
+        'utf8'
+      );
+
+      // Verify the saved config includes preferences (get the last write call)
+      const writeCalls = vi
+        .mocked(fs.writeFileSync)
+        .mock.calls.filter((call) => call[0] === mockConfigPath);
+      const lastWriteCall = writeCalls[writeCalls.length - 1];
+      const savedConfig = JSON.parse(lastWriteCall?.[1] as string);
+      expect(savedConfig.preferences?.notifications).toEqual(preferences);
+    });
+
+    it('should notify listeners when preferences change', () => {
+      const callback = vi.fn();
+      configService.onConfigChange(callback);
+
+      const preferences = {
+        enabled: true,
+        sessionStart: true,
+        sessionExit: true,
+        commandCompletion: true,
+        commandError: true,
+        bell: true,
+        claudeTurn: false,
+        soundEnabled: false,
+        vibrationEnabled: true,
+      };
+
+      configService.updateNotificationPreferences(preferences);
+
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          preferences: expect.objectContaining({
+            notifications: preferences,
+          }),
+        })
+      );
+    });
+
+    it('should create preferences object if it does not exist', () => {
+      // Start with a config without preferences
+      vi.mocked(fs.readFileSync).mockReturnValue(
+        JSON.stringify({
+          version: 2,
+          quickStartCommands: [],
+        })
+      );
+
+      const service = new ConfigService();
+      const preferences = {
+        enabled: true,
+        sessionStart: false,
+        sessionExit: true,
+        commandCompletion: true,
+        commandError: true,
+        bell: true,
+        claudeTurn: false,
+        soundEnabled: false,
+        vibrationEnabled: false,
+      };
+
+      service.updateNotificationPreferences(preferences);
+
+      const config = service.getConfig();
+      expect(config.preferences).toBeDefined();
+      expect(config.preferences?.notifications).toEqual(preferences);
     });
   });
 });

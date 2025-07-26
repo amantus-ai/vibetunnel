@@ -8,7 +8,7 @@
  */
 import { DEFAULT_REPOSITORY_BASE_PATH } from '../../shared/constants.js';
 import { HttpMethod } from '../../shared/types.js';
-import type { QuickStartCommand } from '../../types/config.js';
+import type { NotificationPreferences, QuickStartCommand } from '../../types/config.js';
 import { createLogger } from '../utils/logger.js';
 import type { AuthClient } from './auth-client.js';
 
@@ -18,6 +18,7 @@ export interface ServerConfig {
   repositoryBasePath: string;
   serverConfigured?: boolean;
   quickStartCommands?: QuickStartCommand[];
+  notificationPreferences?: NotificationPreferences;
 }
 
 export class ServerConfigService {
@@ -187,6 +188,21 @@ export class ServerConfigService {
       logger.error('Failed to update server config:', error);
       throw error;
     }
+  }
+
+  /**
+   * Get notification preferences
+   */
+  async getNotificationPreferences(): Promise<ServerConfig['notificationPreferences']> {
+    const config = await this.loadConfig();
+    return config.notificationPreferences;
+  }
+
+  /**
+   * Update notification preferences
+   */
+  async updateNotificationPreferences(preferences: NotificationPreferences): Promise<void> {
+    await this.updateConfig({ notificationPreferences: preferences });
   }
 }
 

@@ -1,6 +1,7 @@
 import { type Request, type Response, Router } from 'express';
 import type { BellEventHandler } from '../services/bell-event-handler.js';
 import type { PushNotificationService } from '../services/push-notification-service.js';
+import { PushNotificationStatusService } from '../services/push-notification-status-service.js';
 import { createLogger } from '../utils/logger.js';
 import type { VapidManager } from '../utils/vapid-manager.js';
 
@@ -197,6 +198,10 @@ export function createPushRoutes(options: CreatePushRoutesOptions): Router {
         hasVapidKeys: !!vapidManager.getPublicKey(),
         totalSubscriptions: subscriptions.length,
         activeSubscriptions: subscriptions.filter((sub) => sub.isActive).length,
+        status: new PushNotificationStatusService(
+          vapidManager,
+          pushNotificationService
+        ).getStatus(),
       });
     } catch (error) {
       logger.error('Failed to get push status:', error);

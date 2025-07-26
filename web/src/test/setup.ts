@@ -164,7 +164,6 @@ patchCustomElements();
 beforeEach(() => {
   patchCustomElements();
 });
-
 // Mock matchMedia (only if window exists - for browser tests)
 if (typeof window !== 'undefined') {
   Object.defineProperty(window, 'matchMedia', {

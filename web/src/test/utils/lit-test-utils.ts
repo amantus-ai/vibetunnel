@@ -73,6 +73,7 @@ export class MockWebSocket extends EventTarget {
   static OPEN = 1;
   static CLOSING = 2;
   static CLOSED = 3;
+  static instances = new Set<MockWebSocket>();
 
   url: string;
   readyState: number = MockWebSocket.CONNECTING;
@@ -86,11 +87,17 @@ export class MockWebSocket extends EventTarget {
   constructor(url: string) {
     super();
     this.url = url;
+    MockWebSocket.instances.add(this);
+  }
+
+  static reset(): void {
+    MockWebSocket.instances.clear();
   }
 
   send = vi.fn();
   close = vi.fn(() => {
     this.readyState = MockWebSocket.CLOSED;
+    MockWebSocket.instances.delete(this);
     const event = new CloseEvent('close');
     this.dispatchEvent(event);
     this.onclose?.(event);

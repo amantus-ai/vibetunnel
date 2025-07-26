@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import os.log
+import UserNotifications
 
 /// Server session information returned by the API.
 ///
@@ -69,6 +70,32 @@ struct SpecificStatus: Codable {
 final class SessionMonitor {
     static let shared = SessionMonitor()
 
+    /// Previous session states for exit detection
+    private var previousSessions: [String: ServerSessionInfo] = [:]
+    private var firstFetchDone = false
+
+    /// Track last known activity state per session for Claude transition detection
+    private var lastActivityState: [String: Bool] = [:]
+    /// Sessions that have already triggered a "Your Turn" alert
+    private var claudeIdleNotified: Set<String> = []
+
+    /// Detect sessions that transitioned from running to not running
+    static func detectEndedSessions(
+        from old: [String: ServerSessionInfo],
+        to new: [String: ServerSessionInfo]
+    )
+        -> [ServerSessionInfo]
+    {
+        old.compactMap { id, oldSession in
+            if oldSession.isRunning,
+               let updated = new[id], !updated.isRunning
+            {
+                return oldSession
+            }
+            return nil
+        }
+    }
+
     private(set) var sessions: [String: ServerSessionInfo] = [:]
     private(set) var lastError: Error?
 
@@ -117,6 +144,9 @@ final class SessionMonitor {
 
     private func fetchSessions() async {
         do {
+            // Snapshot previous sessions for exit notifications
+            let oldSessions = sessions
+
             let sessionsArray = try await serverManager.performRequest(
                 endpoint: APIEndpoints.sessions,
                 method: "GET",
@@ -131,6 +161,35 @@ final class SessionMonitor {
 
             self.sessions = sessionsDict
             self.lastError = nil
+
+            // Notify for sessions that have just ended
+            if firstFetchDone && UserDefaults.standard.bool(forKey: "showNotifications") {
+                let ended = Self.detectEndedSessions(from: oldSessions, to: sessionsDict)
+                for session in ended {
+                    let id = session.id
+                    let title = "Session Completed"
+                    let displayName = session.name ?? session.command.joined(separator: " ")
+                    let content = UNMutableNotificationContent()
+                    content.title = title
+                    content.body = displayName
+                    content.sound = .default
+                    let request = UNNotificationRequest(identifier: "session_\(id)", content: content, trigger: nil)
+                    do {
+                        try await UNUserNotificationCenter.current().add(request)
+                    } catch {
+                        self.logger
+                            .error(
+                                "Failed to deliver session notification: \(error.localizedDescription, privacy: .public)"
+                            )
+                    }
+                }
+
+                // Detect Claude "Your Turn" transitions
+                await detectAndNotifyClaudeTurns(from: oldSessions, to: sessionsDict)
+            }
+
+            // Set firstFetchDone AFTER detecting ended sessions
+            firstFetchDone = true
             self.lastFetch = Date()
 
             // Update WindowTracker
@@ -165,6 +224,64 @@ final class SessionMonitor {
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 await self?.refresh()
+            }
+        }
+    }
+
+    /// Detect and notify when Claude sessions transition from active to inactive ("Your Turn")
+    private func detectAndNotifyClaudeTurns(
+        from old: [String: ServerSessionInfo],
+        to new: [String: ServerSessionInfo]
+    )
+        async
+    {
+        // Check if Claude notifications are enabled using ConfigManager
+        let claudeNotificationsEnabled = ConfigManager.shared.notificationClaudeTurn
+        guard claudeNotificationsEnabled else { return }
+
+        for (id, newSession) in new {
+            // Only process running sessions
+            guard newSession.isRunning else { continue }
+
+            // Check if this is a Claude session
+            let isClaudeSession = newSession.activityStatus?.specificStatus?.app.lowercased()
+                .contains("claude") ?? false ||
+                newSession.command.joined(separator: " ").lowercased().contains("claude")
+
+            guard isClaudeSession else { continue }
+
+            // Get current activity state
+            let currentActive = newSession.activityStatus?.isActive ?? false
+
+            // Get previous activity state (from our tracking or old session data)
+            let previousActive = lastActivityState[id] ?? (old[id]?.activityStatus?.isActive ?? false)
+
+            // Reset when Claude speaks again
+            if !previousActive && currentActive {
+                claudeIdleNotified.remove(id)
+            }
+
+            // First active ➜ idle transition ⇒ alert
+            let alreadyNotified = claudeIdleNotified.contains(id)
+            if previousActive && !currentActive && !alreadyNotified {
+                logger.info("🔔 Detected Claude transition to idle for session: \(id)")
+                let sessionName = newSession.name ?? newSession.command.joined(separator: " ")
+                await NotificationService.shared.sendCommandCompletionNotification(
+                    command: sessionName,
+                    duration: 0
+                )
+                claudeIdleNotified.insert(id)
+            }
+
+            // Update tracking *after* detection logic
+            lastActivityState[id] = currentActive
+        }
+
+        // Clean up tracking for ended/closed sessions
+        for id in lastActivityState.keys {
+            if new[id] == nil || !(new[id]?.isRunning ?? false) {
+                lastActivityState.removeValue(forKey: id)
+                claudeIdleNotified.remove(id)
             }
         }
     }
