@@ -57,22 +57,27 @@ const child = spawn('node', args, {
 
 // Wait for server to be ready before allowing parent process to continue
 if (process.env.CI || process.env.WAIT_FOR_SERVER) {
-  const waitChild = spawn('node', [path.join(projectRoot, 'scripts/wait-for-server.js')], {
-    stdio: 'inherit',
-    cwd: projectRoot,
-    env: {
-      ...process.env,
-      PORT: port.toString()
-    }
-  });
-  
-  waitChild.on('exit', (code) => {
-    if (code !== 0) {
-      console.error('Server failed to become ready');
-      child.kill();
-      process.exit(1);
-    }
-  });
+  // Give server a moment to start
+  setTimeout(() => {
+    const waitChild = spawn('node', [path.join(projectRoot, 'scripts/wait-for-server.js')], {
+      stdio: 'inherit',
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        PORT: port.toString()
+      }
+    });
+    
+    waitChild.on('exit', (code) => {
+      if (code !== 0) {
+        console.error('Server failed to become ready');
+        child.kill();
+        process.exit(1);
+      } else {
+        console.log('Server is ready, tests can proceed');
+      }
+    });
+  }, 2000); // Wait 2 seconds before checking
 }
 
 child.on('exit', (code) => {

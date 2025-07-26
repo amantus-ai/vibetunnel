@@ -130,7 +130,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: `node scripts/test-server.js --no-auth --port ${testConfig.port}`, // Use test server script
+    command: `node scripts/test-server.js --no-auth --port ${testConfig.port} --verbosity verbose`, // Use test server script with verbose logging
     port: testConfig.port,
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
     stdout: process.env.CI ? 'inherit' : 'pipe', // Show output in CI for debugging
@@ -146,6 +146,8 @@ export default defineConfig({
         NODE_ENV: 'test',
         VIBETUNNEL_DISABLE_PUSH_NOTIFICATIONS: 'true',
         SUPPRESS_CLIENT_ERRORS: 'true',
+        SHELL: '/bin/bash',
+        TERM: 'xterm',
       };
     })(),
   },
