@@ -162,6 +162,7 @@ jobs:
           PROVISIONING_PROFILE_SPECIFIER="" \
           DEVELOPMENT_TEAM="" \
           ONLY_ACTIVE_ARCH=NO \
+          ENABLE_TESTABILITY=YES \
           archive | xcbeautify
         
         echo "Release build completed successfully"
@@ -182,7 +183,8 @@ jobs:
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
-          COMPILER_INDEX_STORE_ENABLE=NO | xcbeautify || {
+          COMPILER_INDEX_STORE_ENABLE=NO \
+          ENABLE_TESTABILITY=YES | xcbeautify || {
           echo "::error::Release configuration tests failed"
           # Try to get more detailed error information
           echo "=== Attempting to get test failure details ==="
