@@ -893,7 +893,7 @@ export async function createApp(): Promise<AppInstance> {
   logger.debug('Mounted control routes');
 
   // Mount preferences routes
-  app.use('/api', createPreferencesRouter());
+  app.use('/api', createPreferencesRouter(configService));
   logger.debug('Mounted preferences routes');
 
   // Mount push notification routes

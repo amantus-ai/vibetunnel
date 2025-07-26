@@ -197,6 +197,7 @@ export interface PushNotificationPreferences {
   systemAlerts: boolean;
   soundEnabled: boolean;
   vibrationEnabled: boolean;
+  claudeTurn?: boolean;
 }
 
 /**

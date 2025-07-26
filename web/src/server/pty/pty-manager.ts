@@ -72,10 +72,6 @@ const PROCESS_POLL_INTERVAL_MS = 500; // How often to check foreground process
 const MIN_COMMAND_DURATION_MS = 3000; // Minimum duration for command completion notifications (3 seconds)
 const SHELL_COMMANDS = new Set(['cd', 'ls', 'pwd', 'echo', 'export', 'alias', 'unset']); // Built-in commands to ignore
 
-// Bell detection constants
-const BELL_CHAR = '\x07'; // ASCII bell character
-const BELL_DEBOUNCE_MS = 100; // Debounce multiple bells within this window
-
 /**
  * PtyManager handles the lifecycle and I/O operations of pseudo-terminal (PTY) sessions.
  *
@@ -137,9 +133,6 @@ export class PtyManager extends EventEmitter {
   >();
   private static initialized = false;
   private sessionEventListeners = new Map<string, Set<(...args: unknown[]) => void>>();
-  private lastBellTime = new Map<string, number>(); // Track last bell time per session
-  private pgidPollingIntervals = new Map<string, NodeJS.Timeout>();
-  private lastKnownPgids = new Map<string, number | null>();
   private sessionExitTimes = new Map<string, number>(); // Track session exit times to avoid false bells
   private processTreeAnalyzer = new ProcessTreeAnalyzer(); // Process tree analysis for bell source identification
   private activityFileWarningsLogged = new Set<string>(); // Track which sessions we've logged warnings for
@@ -2310,16 +2303,6 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
-   * Stop tracking foreground process
-   */
-  private stopForegroundProcessTracking(session: PtySession): void {
-    if (session.processPollingInterval) {
-      clearInterval(session.processPollingInterval);
-      session.processPollingInterval = undefined;
-    }
-  }
-
-  /**
    * Get process group ID for a process
    */
   private async getProcessPgid(pid: number): Promise<number | null> {
@@ -2631,44 +2614,4 @@ export class PtyManager extends EventEmitter {
    * Import necessary exec function
    */
   private execAsync = promisify(exec);
-
-  /**
-   * Handle bell character in PTY output
-   */
-  private handleBell(session: PtySession): void {
-    const now = Date.now();
-    const sessionId = session.id;
-
-    // Check if session has recently exited to avoid false bells
-    const sessionExitTime = this.sessionExitTimes.get(sessionId);
-    if (sessionExitTime && now - sessionExitTime < 1000) {
-      logger.debug(`Ignoring bell for recently exited session ${sessionId}`);
-      return;
-    }
-
-    // Get session info for the event
-    const sessionName = session.sessionInfo.name || session.sessionInfo.command.join(' ');
-
-    logger.debug(`Bell detected in session ${sessionId}: ${sessionName}`);
-
-    // Send notification to Mac app
-    if (controlUnixHandler.isMacAppConnected()) {
-      controlUnixHandler.sendNotification('Your Turn', sessionName, {
-        type: 'your-turn',
-        sessionId: sessionId,
-        sessionName: sessionName,
-      });
-    }
-
-    // Emit bell event for other listeners
-    this.emit('bell', {
-      sessionInfo: {
-        id: sessionId,
-        name: sessionName,
-        command: session.sessionInfo.command,
-      },
-      bellCount: 1,
-      timestamp: new Date().toISOString(),
-    });
-  }
 }

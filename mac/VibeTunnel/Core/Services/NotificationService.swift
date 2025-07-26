@@ -9,11 +9,13 @@ import os.log
 /// command completions, and errors, then displays them as native macOS notifications.
 @MainActor
 final class NotificationService: NSObject {
+    @MainActor
     static let shared = NotificationService()
 
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "NotificationService")
     private var eventSource: EventSource?
     private let serverManager = ServerManager.shared
+    private let configManager = ConfigManager.shared
     private var isConnected = false
     private var recentlyNotifiedSessions = Set<String>()
     private var notificationCleanupTimer: Timer?
@@ -27,72 +29,30 @@ final class NotificationService: NSObject {
         var bell: Bool = true
         var claudeTurn: Bool = true
 
-        init() {
-            let defaults = UserDefaults.standard
-
-            // Check if this is first initialization
-            let isInitialized = defaults.object(forKey: "notifications.initialized") != nil
-
-            if !isInitialized {
-                // First time - register defaults and use them
-                let defaultPrefs: [String: Any] = [
-                    "notifications.sessionStart": true,
-                    "notifications.sessionExit": true,
-                    "notifications.commandCompletion": true,
-                    "notifications.commandError": true,
-                    "notifications.bell": true,
-                    "notifications.claudeTurn": true,
-                    "notifications.initialized": true
-                ]
-
-                // Register defaults
-                defaults.register(defaults: defaultPrefs)
-
-                // Set the values explicitly
-                for (key, value) in defaultPrefs {
-                    defaults.set(value, forKey: key)
-                }
-                defaults.synchronize()
-
-                // Use the default true values
-                self.sessionStart = true
-                self.sessionExit = true
-                self.commandCompletion = true
-                self.commandError = true
-                self.bell = true
-                self.claudeTurn = true
-            } else {
-                // Load existing preferences from UserDefaults
-                self.sessionStart = defaults.bool(forKey: "notifications.sessionStart")
-                self.sessionExit = defaults.bool(forKey: "notifications.sessionExit")
-                self.commandCompletion = defaults.bool(forKey: "notifications.commandCompletion")
-                self.commandError = defaults.bool(forKey: "notifications.commandError")
-                self.bell = defaults.bool(forKey: "notifications.bell")
-                self.claudeTurn = defaults.bool(forKey: "notifications.claudeTurn")
-            }
-        }
-
-        func save() {
-            let defaults = UserDefaults.standard
-            defaults.set(sessionStart, forKey: "notifications.sessionStart")
-            defaults.set(sessionExit, forKey: "notifications.sessionExit")
-            defaults.set(commandCompletion, forKey: "notifications.commandCompletion")
-            defaults.set(commandError, forKey: "notifications.commandError")
-            defaults.set(bell, forKey: "notifications.bell")
-            defaults.set(claudeTurn, forKey: "notifications.claudeTurn")
+        @MainActor
+        init(fromConfig configManager: ConfigManager) {
+            // Load from ConfigManager
+            self.sessionStart = configManager.notificationSessionStart
+            self.sessionExit = configManager.notificationSessionExit
+            self.commandCompletion = configManager.notificationCommandCompletion
+            self.commandError = configManager.notificationCommandError
+            self.bell = configManager.notificationBell
+            self.claudeTurn = configManager.notificationClaudeTurn
         }
     }
 
-    private var preferences = NotificationPreferences()
+    private var preferences: NotificationPreferences
 
+    @MainActor
     override private init() {
+        // Load preferences from ConfigManager
+        self.preferences = NotificationPreferences(fromConfig: configManager)
+
         super.init()
         setupNotifications()
 
-        // Load preferences from API on startup
-        Task {
-            await syncPreferencesFromAPI()
-        }
+        // Listen for config changes
+        listenForConfigChanges()
     }
 
     /// Start monitoring server events
@@ -250,12 +210,23 @@ final class NotificationService: NSObject {
     /// Update notification preferences
     func updatePreferences(_ prefs: NotificationPreferences) {
         self.preferences = prefs
-        prefs.save()
 
-        // Sync to API
-        Task {
-            await syncPreferencesToAPI(prefs)
-        }
+        // Update ConfigManager
+        configManager.updateNotificationPreferences(
+            sessionStart: prefs.sessionStart,
+            sessionExit: prefs.sessionExit,
+            commandCompletion: prefs.commandCompletion,
+            commandError: prefs.commandError,
+            bell: prefs.bell,
+            claudeTurn: prefs.claudeTurn
+        )
+    }
+
+    /// Listen for config changes
+    private func listenForConfigChanges() {
+        // ConfigManager is @Observable, so we can observe its properties
+        // For now, we'll rely on the UI to call updatePreferences when settings change
+        // In the future, we could add a proper observation mechanism
     }
 
     // MARK: - Private Methods
@@ -778,78 +749,4 @@ private final class EventSource: NSObject, URLSessionDataDelegate, @unchecked Se
 
 extension Notification.Name {
     static let serverStateChanged = Notification.Name("serverStateChanged")
-}
-
-// MARK: - API Sync
-
-extension NotificationService {
-    /// Sync preferences from the API
-    private func syncPreferencesFromAPI() async {
-        guard serverManager.isRunning else { return }
-
-        let port = serverManager.port
-        guard let url = URL(string: "http://localhost:\(port)/api/preferences/notifications") else {
-            return
-        }
-
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Bool] {
-                // Map API preferences to our format
-                var prefs = NotificationPreferences()
-                prefs.sessionStart = json["sessionStart"] ?? true
-                prefs.sessionExit = json["sessionExit"] ?? true
-                prefs.commandCompletion = json["commandNotifications"] ?? true
-                prefs.commandError = json["sessionError"] ?? true
-                prefs.bell = json["systemAlerts"] ?? true
-                prefs.claudeTurn = json["claudeTurn"] ?? true
-
-                // Update local preferences
-                self.preferences = prefs
-                prefs.save()
-
-                logger.info("Synced notification preferences from API")
-            }
-        } catch {
-            logger.debug("Failed to sync preferences from API: \(error)")
-            // Not critical - we have local defaults
-        }
-    }
-
-    /// Sync preferences to the API
-    private func syncPreferencesToAPI(_ prefs: NotificationPreferences) async {
-        guard serverManager.isRunning else { return }
-
-        let port = serverManager.port
-        guard let url = URL(string: "http://localhost:\(port)/api/preferences/notifications") else {
-            return
-        }
-
-        // Map our preferences to API format
-        let apiPrefs: [String: Any] = [
-            "enabled": true, // Always true for native notifications
-            "sessionStart": prefs.sessionStart,
-            "sessionExit": prefs.sessionExit,
-            "commandNotifications": prefs.commandCompletion,
-            "sessionError": prefs.commandError,
-            "systemAlerts": prefs.bell,
-            "claudeTurn": prefs.claudeTurn,
-            "soundEnabled": true,
-            "vibrationEnabled": false
-        ]
-
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: apiPrefs)
-            var request = URLRequest(url: url)
-            request.httpMethod = "PUT"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = jsonData
-
-            let (_, _) = try await URLSession.shared.data(for: request)
-            logger.info("Synced notification preferences to API")
-        } catch {
-            logger.error("Failed to sync preferences to API: \(error)")
-            // Not critical - changes are saved locally
-        }
-    }
 }

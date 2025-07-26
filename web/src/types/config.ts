@@ -9,6 +9,46 @@ export interface VibeTunnelConfig {
   version: number;
   quickStartCommands: QuickStartCommand[];
   repositoryBasePath?: string;
+
+  // Extended configuration sections - matches Mac ConfigManager
+  server?: {
+    port: number;
+    dashboardAccessMode: string;
+    cleanupOnStartup: boolean;
+    authenticationMode: string;
+  };
+  development?: {
+    debugMode: boolean;
+    useDevServer: boolean;
+    devServerPath: string;
+    logLevel: string;
+  };
+  preferences?: {
+    preferredGitApp?: string;
+    preferredTerminal?: string;
+    updateChannel: string;
+    showInDock: boolean;
+    preventSleepWhenRunning: boolean;
+    notifications?: {
+      enabled: boolean;
+      sessionStart: boolean;
+      sessionExit: boolean;
+      commandCompletion: boolean;
+      commandError: boolean;
+      bell: boolean;
+      claudeTurn: boolean;
+    };
+  };
+  remoteAccess?: {
+    ngrokEnabled: boolean;
+    ngrokTokenPresent: boolean;
+  };
+  sessionDefaults?: {
+    command: string;
+    workingDirectory: string;
+    spawnWindow: boolean;
+    titleMode: string;
+  };
 }
 
 export const DEFAULT_QUICK_START_COMMANDS: QuickStartCommand[] = [
@@ -21,7 +61,7 @@ export const DEFAULT_QUICK_START_COMMANDS: QuickStartCommand[] = [
 ];
 
 export const DEFAULT_CONFIG: VibeTunnelConfig = {
-  version: 1,
+  version: 2,
   quickStartCommands: DEFAULT_QUICK_START_COMMANDS,
   repositoryBasePath: DEFAULT_REPOSITORY_BASE_PATH,
 };

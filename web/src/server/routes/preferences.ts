@@ -1,7 +1,6 @@
 import { type Request, type Response, Router } from 'express';
-import * as fs from 'fs/promises';
-import * as path from 'path';
 import type { PushNotificationPreferences } from '../../shared/types.js';
+import type { ConfigService } from '../services/config-service.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('preferences');
@@ -20,28 +19,39 @@ const DEFAULT_PREFERENCES: PushNotificationPreferences = {
 
 /**
  * API routes for managing notification preferences
- * These preferences are synced between the web UI and macOS app
+ * These preferences are now stored in config.json via ConfigService
  */
-export function createPreferencesRouter(): Router {
+export function createPreferencesRouter(configService: ConfigService): Router {
   const router = Router();
-  // Store preferences in a temp directory for now
-  const preferencesPath = path.join(
-    process.env.HOME || '/tmp',
-    '.vibetunnel',
-    'notification-preferences.json'
-  );
 
   // Get notification preferences
   router.get('/preferences/notifications', async (_req: Request, res: Response) => {
     try {
-      // Try to read from file
-      const data = await fs.readFile(preferencesPath, 'utf-8');
-      const preferences = JSON.parse(data) as PushNotificationPreferences;
-      res.json(preferences);
-    } catch {
-      // File doesn't exist or is invalid, return defaults
-      logger.debug('No preferences file found, returning defaults');
-      res.json(DEFAULT_PREFERENCES);
+      // Get preferences from config.json
+      const notifConfig = configService.getNotificationPreferences();
+
+      if (notifConfig) {
+        // Map from config format to API format
+        const preferences: PushNotificationPreferences = {
+          enabled: notifConfig.enabled,
+          sessionExit: notifConfig.sessionExit,
+          sessionStart: notifConfig.sessionStart,
+          sessionError: notifConfig.commandError,
+          commandNotifications: notifConfig.commandCompletion,
+          systemAlerts: notifConfig.bell,
+          claudeTurn: notifConfig.claudeTurn ?? false,
+          soundEnabled: true,
+          vibrationEnabled: false,
+        };
+        res.json(preferences);
+      } else {
+        // No preferences in config yet, return defaults
+        logger.debug('No notification preferences in config, returning defaults');
+        res.json(DEFAULT_PREFERENCES);
+      }
+    } catch (error) {
+      logger.error('Failed to get preferences:', error);
+      res.status(500).json({ error: 'Failed to get preferences' });
     }
   });
 
@@ -50,27 +60,38 @@ export function createPreferencesRouter(): Router {
     try {
       const preferences = req.body as Partial<PushNotificationPreferences>;
 
-      // Merge with existing preferences
-      let existingPreferences = DEFAULT_PREFERENCES;
-      try {
-        const data = await fs.readFile(preferencesPath, 'utf-8');
-        existingPreferences = JSON.parse(data) as PushNotificationPreferences;
-      } catch {
-        // Ignore read errors, use defaults
-      }
+      // Get existing preferences from config
+      const existingConfig = configService.getNotificationPreferences();
 
-      const updatedPreferences: PushNotificationPreferences = {
-        ...existingPreferences,
-        ...preferences,
+      // Map API format to config format
+      const notificationConfig = {
+        enabled: preferences.enabled ?? existingConfig?.enabled ?? true,
+        sessionStart: preferences.sessionStart ?? existingConfig?.sessionStart ?? true,
+        sessionExit: preferences.sessionExit ?? existingConfig?.sessionExit ?? true,
+        commandCompletion:
+          preferences.commandNotifications ?? existingConfig?.commandCompletion ?? true,
+        commandError: preferences.sessionError ?? existingConfig?.commandError ?? true,
+        bell: preferences.systemAlerts ?? existingConfig?.bell ?? true,
+        claudeTurn: preferences.claudeTurn ?? existingConfig?.claudeTurn ?? false,
       };
 
-      // Ensure directory exists
-      await fs.mkdir(path.dirname(preferencesPath), { recursive: true });
+      // Update config
+      configService.updateNotificationPreferences(notificationConfig);
 
-      // Save to file
-      await fs.writeFile(preferencesPath, JSON.stringify(updatedPreferences, null, 2), 'utf-8');
+      // Return updated preferences in API format
+      const updatedPreferences: PushNotificationPreferences = {
+        enabled: notificationConfig.enabled,
+        sessionExit: notificationConfig.sessionExit,
+        sessionStart: notificationConfig.sessionStart,
+        sessionError: notificationConfig.commandError,
+        commandNotifications: notificationConfig.commandCompletion,
+        systemAlerts: notificationConfig.bell,
+        claudeTurn: notificationConfig.claudeTurn,
+        soundEnabled: true,
+        vibrationEnabled: false,
+      };
 
-      logger.log('Updated notification preferences');
+      logger.log('Updated notification preferences in config.json');
       res.json(updatedPreferences);
     } catch (error) {
       logger.error('Failed to update preferences:', error);

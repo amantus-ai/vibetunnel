@@ -19,6 +19,57 @@ const ConfigSchema = z.object({
     })
   ),
   repositoryBasePath: z.string().optional(),
+  // Extended configuration sections - we parse but don't use most of these yet
+  server: z
+    .object({
+      port: z.number(),
+      dashboardAccessMode: z.string(),
+      cleanupOnStartup: z.boolean(),
+      authenticationMode: z.string(),
+    })
+    .optional(),
+  development: z
+    .object({
+      debugMode: z.boolean(),
+      useDevServer: z.boolean(),
+      devServerPath: z.string(),
+      logLevel: z.string(),
+    })
+    .optional(),
+  preferences: z
+    .object({
+      preferredGitApp: z.string().optional(),
+      preferredTerminal: z.string().optional(),
+      updateChannel: z.string(),
+      showInDock: z.boolean(),
+      preventSleepWhenRunning: z.boolean(),
+      notifications: z
+        .object({
+          enabled: z.boolean(),
+          sessionStart: z.boolean(),
+          sessionExit: z.boolean(),
+          commandCompletion: z.boolean(),
+          commandError: z.boolean(),
+          bell: z.boolean(),
+          claudeTurn: z.boolean(),
+        })
+        .optional(),
+    })
+    .optional(),
+  remoteAccess: z
+    .object({
+      ngrokEnabled: z.boolean(),
+      ngrokTokenPresent: z.boolean(),
+    })
+    .optional(),
+  sessionDefaults: z
+    .object({
+      command: z.string(),
+      workingDirectory: z.string(),
+      spawnWindow: z.boolean(),
+      titleMode: z.string(),
+    })
+    .optional(),
 });
 
 /**
@@ -228,5 +279,29 @@ export class ConfigService {
 
   public getConfigPath(): string {
     return this.configPath;
+  }
+
+  public getNotificationPreferences():
+    | NonNullable<VibeTunnelConfig['preferences']>['notifications']
+    | undefined {
+    return this.config.preferences?.notifications;
+  }
+
+  public updateNotificationPreferences(
+    notifications: NonNullable<NonNullable<VibeTunnelConfig['preferences']>['notifications']>
+  ): void {
+    // Ensure preferences object exists
+    if (!this.config.preferences) {
+      this.config.preferences = {
+        updateChannel: 'stable',
+        showInDock: false,
+        preventSleepWhenRunning: true,
+      };
+    }
+
+    // Update notifications
+    this.config.preferences.notifications = notifications;
+    this.saveConfig();
+    this.notifyConfigChange();
   }
 }

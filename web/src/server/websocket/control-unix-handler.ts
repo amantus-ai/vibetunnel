@@ -163,7 +163,7 @@ export class ControlUnixHandler {
 
     // Initialize handlers
     this.handlers.set('terminal', new TerminalHandler());
-    this.handlers.set('system', new SystemHandler(this));
+    this.handlers.set('system', new SystemHandler());
   }
 
   async start(): Promise<void> {

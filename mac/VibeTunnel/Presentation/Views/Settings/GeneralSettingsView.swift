@@ -39,8 +39,8 @@ struct GeneralSettingsView: View {
     }
 
     private func updateNotificationPreferences() {
-        // Load current preferences and notify the service
-        let prefs = NotificationService.NotificationPreferences()
+        // Load current preferences from ConfigManager and notify the service
+        let prefs = NotificationService.NotificationPreferences(fromConfig: configManager)
         NotificationService.shared.updatePreferences(prefs)
     }
 
@@ -138,35 +138,59 @@ struct GeneralSettingsView: View {
                                     .padding(.top, 4)
 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    NotificationCheckbox(
-                                        title: "Session starts",
-                                        key: "notifications.sessionStart",
-                                        updateAction: updateNotificationPreferences
-                                    )
+                                    Toggle("Session starts", isOn: Binding(
+                                        get: { configManager.notificationSessionStart },
+                                        set: { newValue in
+                                            configManager.notificationSessionStart = newValue
+                                            updateNotificationPreferences()
+                                        }
+                                    ))
+                                    .toggleStyle(.checkbox)
 
-                                    NotificationCheckbox(
-                                        title: "Session ends",
-                                        key: "notifications.sessionExit",
-                                        updateAction: updateNotificationPreferences
-                                    )
+                                    Toggle("Session ends", isOn: Binding(
+                                        get: { configManager.notificationSessionExit },
+                                        set: { newValue in
+                                            configManager.notificationSessionExit = newValue
+                                            updateNotificationPreferences()
+                                        }
+                                    ))
+                                    .toggleStyle(.checkbox)
 
-                                    NotificationCheckbox(
-                                        title: "Commands complete (> 3 seconds)",
-                                        key: "notifications.commandCompletion",
-                                        updateAction: updateNotificationPreferences
-                                    )
+                                    Toggle("Commands complete (> 3 seconds)", isOn: Binding(
+                                        get: { configManager.notificationCommandCompletion },
+                                        set: { newValue in
+                                            configManager.notificationCommandCompletion = newValue
+                                            updateNotificationPreferences()
+                                        }
+                                    ))
+                                    .toggleStyle(.checkbox)
 
-                                    NotificationCheckbox(
-                                        title: "Commands fail",
-                                        key: "notifications.commandError",
-                                        updateAction: updateNotificationPreferences
-                                    )
+                                    Toggle("Commands fail", isOn: Binding(
+                                        get: { configManager.notificationCommandError },
+                                        set: { newValue in
+                                            configManager.notificationCommandError = newValue
+                                            updateNotificationPreferences()
+                                        }
+                                    ))
+                                    .toggleStyle(.checkbox)
 
-                                    NotificationCheckbox(
-                                        title: "Terminal bell (\u{0007})",
-                                        key: "notifications.bell",
-                                        updateAction: updateNotificationPreferences
-                                    )
+                                    Toggle("Terminal bell (\u{0007})", isOn: Binding(
+                                        get: { configManager.notificationBell },
+                                        set: { newValue in
+                                            configManager.notificationBell = newValue
+                                            updateNotificationPreferences()
+                                        }
+                                    ))
+                                    .toggleStyle(.checkbox)
+
+                                    Toggle("Claude turn notifications", isOn: Binding(
+                                        get: { configManager.notificationClaudeTurn },
+                                        set: { newValue in
+                                            configManager.notificationClaudeTurn = newValue
+                                            updateNotificationPreferences()
+                                        }
+                                    ))
+                                    .toggleStyle(.checkbox)
                                 }
                                 .padding(.leading, 20)
                             }
@@ -266,82 +290,6 @@ struct GeneralSettingsView: View {
     private func updateLocalIPAddress() {
         Task {
             localIPAddress = await ServerConfigurationHelpers.updateLocalIPAddress(accessMode: accessMode)
-        }
-    }
-}
-
-// MARK: - Notification Checkbox Component
-
-private struct NotificationCheckbox: View {
-    let title: String
-    let key: String
-    let updateAction: () -> Void
-
-    @State private var isChecked: Bool
-
-    init(title: String, key: String, updateAction: @escaping () -> Void) {
-        self.title = title
-        self.key = key
-        self.updateAction = updateAction
-        self._isChecked = State(initialValue: UserDefaults.standard.bool(forKey: key))
-    }
-
-    var body: some View {
-        Button(action: toggleCheck) {
-            HStack(spacing: 6) {
-                Image(systemName: isChecked ? "checkmark.square.fill" : "square")
-                    .foregroundStyle(isChecked ? Color.accentColor : Color.secondary)
-                    .font(.system(size: 14))
-                    .animation(.easeInOut(duration: 0.15), value: isChecked)
-
-                Text(title)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.primary)
-
-                Spacer()
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onAppear {
-            // Sync with UserDefaults on appear
-            isChecked = UserDefaults.standard.bool(forKey: key)
-        }
-    }
-
-    private func toggleCheck() {
-        // If enabling any notification checkbox and main notifications are off, request permissions first
-        if !isChecked && !UserDefaults.standard.bool(forKey: "showNotifications") {
-            Task { @MainActor in
-                // Request permissions and enable main toggle
-                let granted = await NotificationService.shared.requestPermissionAndShowTestNotification()
-
-                if granted {
-                    // Enable main notifications toggle
-                    UserDefaults.standard.set(true, forKey: "showNotifications")
-
-                    // Enable this specific checkbox
-                    isChecked = true
-                    UserDefaults.standard.set(isChecked, forKey: key)
-                    updateAction()
-
-                    // Start notification service
-                    await NotificationService.shared.start()
-                } else {
-                    // Show alert if permission was denied
-                    let alert = NSAlert()
-                    alert.messageText = "Notification Permission Required"
-                    alert.informativeText = "VibeTunnel needs permission to show notifications. Please enable notifications for VibeTunnel in System Settings."
-                    alert.alertStyle = .informational
-                    alert.addButton(withTitle: "OK")
-                    alert.runModal()
-                }
-            }
-        } else {
-            // Normal toggle behavior
-            isChecked.toggle()
-            UserDefaults.standard.set(isChecked, forKey: key)
-            updateAction()
         }
     }
 }
