@@ -27,18 +27,6 @@ public struct GitRepository: Sendable, Equatable, Hashable {
     /// Current branch name
     public let currentBranch: String?
 
-    /// Number of commits ahead of upstream
-    public let aheadCount: Int?
-
-    /// Number of commits behind upstream
-    public let behindCount: Int?
-
-    /// Name of the tracking branch (e.g., "origin/main")
-    public let trackingBranch: String?
-
-    /// Whether this is a worktree (not the main repository)
-    public let isWorktree: Bool
-
     /// GitHub URL for the repository (cached, not computed)
     public let githubURL: URL?
 
@@ -90,10 +78,6 @@ public struct GitRepository: Sendable, Equatable, Hashable {
         deletedCount: Int = 0,
         untrackedCount: Int = 0,
         currentBranch: String? = nil,
-        aheadCount: Int? = nil,
-        behindCount: Int? = nil,
-        trackingBranch: String? = nil,
-        isWorktree: Bool = false,
         githubURL: URL? = nil
     ) {
         self.path = path
@@ -102,16 +86,12 @@ public struct GitRepository: Sendable, Equatable, Hashable {
         self.deletedCount = deletedCount
         self.untrackedCount = untrackedCount
         self.currentBranch = currentBranch
-        self.aheadCount = aheadCount
-        self.behindCount = behindCount
-        self.trackingBranch = trackingBranch
-        self.isWorktree = isWorktree
         self.githubURL = githubURL
     }
 
     // MARK: - Internal Methods
 
-    /// Get GitHub URL for a repository path
+    /// Extract GitHub URL from a repository path
     static func getGitHubURL(for repoPath: String) -> URL? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
@@ -143,27 +123,16 @@ public struct GitRepository: Sendable, Equatable, Hashable {
     /// Parse GitHub URL from git remote output
     static func parseGitHubURL(from remoteURL: String) -> URL? {
         // Handle HTTPS URLs: https://github.com/user/repo.git
-        if remoteURL.starts(with: "https://github.com/") {
-            let cleanedURL = remoteURL
-                .replacingOccurrences(of: ".git", with: "")
-                .replacingOccurrences(of: "https://", with: "https://")
-            return URL(string: cleanedURL)
+        if remoteURL.hasPrefix("https://github.com/") {
+            let cleanURL = remoteURL.hasSuffix(".git") ? String(remoteURL.dropLast(4)) : remoteURL
+            return URL(string: cleanURL)
         }
 
         // Handle SSH URLs: git@github.com:user/repo.git
-        if remoteURL.starts(with: "git@github.com:") {
-            let repoPath = remoteURL
-                .replacingOccurrences(of: "git@github.com:", with: "")
-                .replacingOccurrences(of: ".git", with: "")
-            return URL(string: "https://github.com/\(repoPath)")
-        }
-
-        // Handle SSH format: ssh://git@github.com/user/repo.git
-        if remoteURL.starts(with: "ssh://git@github.com/") {
-            let repoPath = remoteURL
-                .replacingOccurrences(of: "ssh://git@github.com/", with: "")
-                .replacingOccurrences(of: ".git", with: "")
-            return URL(string: "https://github.com/\(repoPath)")
+        if remoteURL.hasPrefix("git@github.com:") {
+            let pathPart = String(remoteURL.dropFirst("git@github.com:".count))
+            let cleanPath = pathPart.hasSuffix(".git") ? String(pathPart.dropLast(4)) : pathPart
+            return URL(string: "https://github.com/\(cleanPath)")
         }
 
         return nil

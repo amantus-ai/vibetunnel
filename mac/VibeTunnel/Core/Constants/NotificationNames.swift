@@ -4,7 +4,7 @@ import Foundation
 extension Notification.Name {
     // MARK: - Settings
 
-    static let showSettings = Notification.Name("\(BundleIdentifiers.vibeTunnel).showSettings")
+    static let showSettings = Notification.Name("sh.vibetunnel.vibetunnel.showSettings")
 
     // MARK: - Updates
 
@@ -15,10 +15,7 @@ extension Notification.Name {
     static let showWelcomeScreen = Notification.Name("showWelcomeScreen")
 }
 
-/// Notification categories for user notifications.
-///
-/// Contains category identifiers used when registering and handling
-/// notifications in the Notification Center.
+/// Notification categories
 enum NotificationCategories {
     static let updateReminder = "UPDATE_REMINDER"
 }
