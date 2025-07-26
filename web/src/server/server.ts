@@ -22,7 +22,6 @@ import { createFileRoutes } from './routes/files.js';
 import { createFilesystemRoutes } from './routes/filesystem.js';
 import { createGitRoutes } from './routes/git.js';
 import { createLogRoutes } from './routes/logs.js';
-import { createPreferencesRouter } from './routes/preferences.js';
 import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createRepositoryRoutes } from './routes/repositories.js';
@@ -891,10 +890,6 @@ export async function createApp(): Promise<AppInstance> {
   // Mount control routes
   app.use('/api', createControlRoutes());
   logger.debug('Mounted control routes');
-
-  // Mount preferences routes
-  app.use('/api', createPreferencesRouter(configService));
-  logger.debug('Mounted preferences routes');
 
   // Mount push notification routes
   if (vapidManager) {

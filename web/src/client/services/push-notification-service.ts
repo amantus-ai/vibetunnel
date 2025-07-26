@@ -2,6 +2,7 @@ import type { PushNotificationPreferences, PushSubscription } from '../../shared
 import { HttpMethod } from '../../shared/types';
 import { createLogger } from '../utils/logger';
 import { authClient } from './auth-client';
+import { serverConfigService } from './server-config-service';
 
 // Re-export types for components
 export type { PushSubscription, PushNotificationPreferences };
@@ -387,30 +388,23 @@ export class PushNotificationService {
    */
   async savePreferences(preferences: PushNotificationPreferences): Promise<void> {
     try {
-      // Save to API for sync with macOS app
-      const response = await fetch('/api/preferences/notifications', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(preferences),
-      });
+      // Map from PushNotificationPreferences to config format
+      const configPreferences = {
+        enabled: preferences.enabled,
+        sessionStart: preferences.sessionStart,
+        sessionExit: preferences.sessionExit,
+        commandCompletion: preferences.commandNotifications,
+        commandError: preferences.sessionError,
+        bell: preferences.systemAlerts,
+        claudeTurn: preferences.claudeTurn ?? false,
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to save preferences');
-      }
-
-      // Also save to localStorage as fallback
-      localStorage.setItem('vibetunnel-notification-preferences', JSON.stringify(preferences));
-      logger.debug('saved notification preferences');
+      // Save to config service (which syncs to config.json)
+      await serverConfigService.updateNotificationPreferences(configPreferences);
+      logger.debug('saved notification preferences to config');
     } catch (error) {
       logger.error('failed to save notification preferences:', error);
-      // Fall back to localStorage only
-      try {
-        localStorage.setItem('vibetunnel-notification-preferences', JSON.stringify(preferences));
-      } catch (localError) {
-        logger.error('failed to save to localStorage:', localError);
-      }
+      throw error;
     }
   }
 
@@ -419,27 +413,27 @@ export class PushNotificationService {
    */
   async loadPreferences(): Promise<PushNotificationPreferences> {
     try {
-      // Try to load from API first
-      const response = await fetch('/api/preferences/notifications');
-      if (response.ok) {
-        const preferences = await response.json();
-        // Update localStorage with server values
-        localStorage.setItem('vibetunnel-notification-preferences', JSON.stringify(preferences));
-        return preferences;
+      // Load from config service
+      const configPreferences = await serverConfigService.getNotificationPreferences();
+
+      if (configPreferences) {
+        // Map from config format to PushNotificationPreferences
+        return {
+          enabled: configPreferences.enabled,
+          sessionExit: configPreferences.sessionExit,
+          sessionStart: configPreferences.sessionStart,
+          sessionError: configPreferences.commandError,
+          commandNotifications: configPreferences.commandCompletion,
+          systemAlerts: configPreferences.bell,
+          claudeTurn: configPreferences.claudeTurn ?? false,
+          soundEnabled: true,
+          vibrationEnabled: true,
+        };
       }
     } catch (error) {
-      logger.error('failed to load notification preferences from API:', error);
+      logger.error('failed to load notification preferences from config:', error);
     }
 
-    // Fall back to localStorage
-    try {
-      const saved = localStorage.getItem('vibetunnel-notification-preferences');
-      if (saved) {
-        return { ...this.getDefaultPreferences(), ...JSON.parse(saved) };
-      }
-    } catch (error) {
-      logger.error('failed to load notification preferences from localStorage:', error);
-    }
     return this.getDefaultPreferences();
   }
 

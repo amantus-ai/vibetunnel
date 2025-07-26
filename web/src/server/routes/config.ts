@@ -10,6 +10,15 @@ export interface AppConfig {
   repositoryBasePath: string;
   serverConfigured?: boolean;
   quickStartCommands?: QuickStartCommand[];
+  notificationPreferences?: {
+    enabled: boolean;
+    sessionStart: boolean;
+    sessionExit: boolean;
+    commandCompletion: boolean;
+    commandError: boolean;
+    bell: boolean;
+    claudeTurn: boolean;
+  };
 }
 
 interface ConfigRouteOptions {
@@ -37,6 +46,7 @@ export function createConfigRoutes(options: ConfigRouteOptions): Router {
         repositoryBasePath: repositoryBasePath,
         serverConfigured: true, // Always configured when server is running
         quickStartCommands: vibeTunnelConfig.quickStartCommands,
+        notificationPreferences: configService.getNotificationPreferences(),
       };
 
       logger.debug('[GET /api/config] Returning app config:', config);
@@ -53,7 +63,7 @@ export function createConfigRoutes(options: ConfigRouteOptions): Router {
    */
   router.put('/config', (req, res) => {
     try {
-      const { quickStartCommands, repositoryBasePath } = req.body;
+      const { quickStartCommands, repositoryBasePath, notificationPreferences } = req.body;
       const updates: { [key: string]: unknown } = {};
 
       if (quickStartCommands && Array.isArray(quickStartCommands)) {
@@ -73,6 +83,16 @@ export function createConfigRoutes(options: ConfigRouteOptions): Router {
         configService.updateRepositoryBasePath(repositoryBasePath);
         updates.repositoryBasePath = repositoryBasePath;
         logger.debug('[PUT /api/config] Updated repository base path:', repositoryBasePath);
+      }
+
+      if (notificationPreferences && typeof notificationPreferences === 'object') {
+        // Update notification preferences
+        configService.updateNotificationPreferences(notificationPreferences);
+        updates.notificationPreferences = notificationPreferences;
+        logger.debug(
+          '[PUT /api/config] Updated notification preferences:',
+          notificationPreferences
+        );
       }
 
       if (Object.keys(updates).length > 0) {

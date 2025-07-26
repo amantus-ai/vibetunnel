@@ -18,6 +18,15 @@ export interface ServerConfig {
   repositoryBasePath: string;
   serverConfigured?: boolean;
   quickStartCommands?: QuickStartCommand[];
+  notificationPreferences?: {
+    enabled: boolean;
+    sessionStart: boolean;
+    sessionExit: boolean;
+    commandCompletion: boolean;
+    commandError: boolean;
+    bell: boolean;
+    claudeTurn: boolean;
+  };
 }
 
 export class ServerConfigService {
@@ -187,6 +196,23 @@ export class ServerConfigService {
       logger.error('Failed to update server config:', error);
       throw error;
     }
+  }
+
+  /**
+   * Get notification preferences
+   */
+  async getNotificationPreferences(): Promise<ServerConfig['notificationPreferences']> {
+    const config = await this.loadConfig();
+    return config.notificationPreferences;
+  }
+
+  /**
+   * Update notification preferences
+   */
+  async updateNotificationPreferences(
+    preferences: NonNullable<ServerConfig['notificationPreferences']>
+  ): Promise<void> {
+    await this.updateConfig({ notificationPreferences: preferences });
   }
 }
 
