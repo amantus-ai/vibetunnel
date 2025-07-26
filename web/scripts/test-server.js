@@ -14,8 +14,11 @@ try {
     stdio: 'inherit',
     cwd: projectRoot
   });
+  console.log('TypeScript build completed successfully');
 } catch (error) {
   console.error('Failed to build server TypeScript files:', error);
+  console.error('Build command exit code:', error.status);
+  console.error('Build command signal:', error.signal);
   process.exit(1);
 }
 
@@ -31,6 +34,18 @@ const cliPath = path.join(projectRoot, 'dist/cli.js');
 // Check if the built file exists
 if (!fs.existsSync(cliPath)) {
   console.error(`Built CLI not found at ${cliPath}`);
+  console.error('Contents of dist directory:');
+  try {
+    const distPath = path.join(projectRoot, 'dist');
+    if (fs.existsSync(distPath)) {
+      const files = fs.readdirSync(distPath);
+      files.forEach(file => console.error(`  - ${file}`));
+    } else {
+      console.error('  dist directory does not exist!');
+    }
+  } catch (e) {
+    console.error('  Error listing dist directory:', e.message);
+  }
   process.exit(1);
 }
 
@@ -44,6 +59,10 @@ if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
 }
 
 // Spawn node with the built CLI
+console.log(`Starting test server: node ${args.join(' ')}`);
+console.log(`Working directory: ${projectRoot}`);
+console.log(`Port: ${port}`);
+
 const child = spawn('node', args, {
   stdio: 'inherit',
   cwd: projectRoot,
@@ -53,6 +72,17 @@ const child = spawn('node', args, {
     VIBETUNNEL_SEA: '',
     PORT: port.toString()
   }
+});
+
+// Add error handling
+child.on('error', (error) => {
+  console.error('Failed to start server process:', error);
+  process.exit(1);
+});
+
+// Log when process starts
+child.on('spawn', () => {
+  console.log('Server process spawned successfully');
 });
 
 // Wait for server to be ready before allowing parent process to continue
