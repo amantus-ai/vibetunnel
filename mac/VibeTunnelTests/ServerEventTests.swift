@@ -1,11 +1,15 @@
-import XCTest
+import Testing
+import Foundation
 @testable import VibeTunnel
 
-final class ServerEventTests: XCTestCase {
+@Suite("ServerEvent")
+struct ServerEventTests {
     
     // MARK: - Codable Tests
+    // These are valuable - testing JSON encoding/decoding with optional fields
     
-    func testServerEventCodableRoundTrip() throws {
+    @Test("Codable round-trip with multiple optional fields")
+    func codableRoundTrip() throws {
         let originalEvent = ServerEvent(
             type: .sessionStart,
             sessionId: "test-session-123",
@@ -17,20 +21,18 @@ final class ServerEventTests: XCTestCase {
             message: "Session started successfully"
         )
         
-        let encoder = JSONEncoder()
-        let decoder = JSONDecoder()
+        let data = try JSONEncoder().encode(originalEvent)
+        let decodedEvent = try JSONDecoder().decode(ServerEvent.self, from: data)
         
-        let data = try encoder.encode(originalEvent)
-        let decodedEvent = try decoder.decode(ServerEvent.self, from: data)
-        
-        XCTAssertEqual(originalEvent.type, decodedEvent.type)
-        XCTAssertEqual(originalEvent.sessionId, decodedEvent.sessionId)
-        XCTAssertEqual(originalEvent.sessionName, decodedEvent.sessionName)
-        XCTAssertEqual(originalEvent.command, decodedEvent.command)
-        XCTAssertEqual(originalEvent.message, decodedEvent.message)
+        #expect(originalEvent.type == decodedEvent.type)
+        #expect(originalEvent.sessionId == decodedEvent.sessionId)
+        #expect(originalEvent.sessionName == decodedEvent.sessionName)
+        #expect(originalEvent.command == decodedEvent.command)
+        #expect(originalEvent.message == decodedEvent.message)
     }
     
-    func testServerEventWithAllFields() throws {
+    @Test("Codable with all fields populated")
+    func codableWithAllFields() throws {
         let event = ServerEvent(
             type: .commandFinished,
             sessionId: "session-456",
@@ -45,85 +47,67 @@ final class ServerEventTests: XCTestCase {
         let data = try JSONEncoder().encode(event)
         let decoded = try JSONDecoder().decode(ServerEvent.self, from: data)
         
-        XCTAssertEqual(decoded.type, .commandFinished)
-        XCTAssertEqual(decoded.sessionId, "session-456")
-        XCTAssertEqual(decoded.sessionName, "Long Running Command")
-        XCTAssertEqual(decoded.command, "npm install")
-        XCTAssertEqual(decoded.exitCode, 0)
-        XCTAssertEqual(decoded.duration, 15000)
-        XCTAssertEqual(decoded.processInfo, "Node.js process")
-        XCTAssertEqual(decoded.message, "Command completed successfully")
+        #expect(decoded.type == .commandFinished)
+        #expect(decoded.sessionId == "session-456")
+        #expect(decoded.sessionName == "Long Running Command")
+        #expect(decoded.command == "npm install")
+        #expect(decoded.exitCode == 0)
+        #expect(decoded.duration == 15000)
+        #expect(decoded.processInfo == "Node.js process")
+        #expect(decoded.message == "Command completed successfully")
     }
     
-    func testServerEventWithMinimalFields() throws {
+    @Test("Codable with minimal fields preserves nils")
+    func codableWithMinimalFields() throws {
         let event = ServerEvent(type: .bell)
         
         let data = try JSONEncoder().encode(event)
         let decoded = try JSONDecoder().decode(ServerEvent.self, from: data)
         
-        XCTAssertEqual(decoded.type, .bell)
-        XCTAssertNil(decoded.sessionId)
-        XCTAssertNil(decoded.sessionName)
-        XCTAssertNil(decoded.command)
-        XCTAssertNil(decoded.exitCode)
-        XCTAssertNil(decoded.duration)
-        XCTAssertNil(decoded.processInfo)
-        XCTAssertNil(decoded.message)
-        XCTAssertNotNil(decoded.timestamp)
+        #expect(decoded.type == .bell)
+        #expect(decoded.sessionId == nil)
+        #expect(decoded.sessionName == nil)
+        #expect(decoded.command == nil)
+        #expect(decoded.exitCode == nil)
+        #expect(decoded.duration == nil)
+        #expect(decoded.processInfo == nil)
+        #expect(decoded.message == nil)
+        #expect(decoded.timestamp != nil)
     }
     
-    // MARK: - Event Type Tests
+    // MARK: - Event Type Logic Tests
+    // Testing actual business logic, not Swift's enum implementation
     
-    func testAllEventTypes() {
-        let eventTypes: [ServerEventType] = [
-            .sessionStart,
-            .sessionExit,
-            .commandFinished,
-            .commandError,
-            .bell,
-            .claudeTurn,
-            .connected
-        ]
+    @Test("Event type descriptions are user-friendly")
+    func eventTypeDescriptions() {
+        #expect(ServerEventType.sessionStart.description == "Session Started")
+        #expect(ServerEventType.sessionExit.description == "Session Ended")
+        #expect(ServerEventType.commandFinished.description == "Command Completed")
+        #expect(ServerEventType.commandError.description == "Command Error")
+        #expect(ServerEventType.bell.description == "Terminal Bell")
+        #expect(ServerEventType.claudeTurn.description == "Your Turn")
+        #expect(ServerEventType.connected.description == "Connected")
+    }
+    
+    @Test("shouldNotify returns correct values for notification logic")
+    func eventTypeShouldNotify() {
+        // These events should trigger notifications
+        #expect(ServerEventType.sessionStart.shouldNotify)
+        #expect(ServerEventType.sessionExit.shouldNotify)
+        #expect(ServerEventType.claudeTurn.shouldNotify)
         
-        for eventType in eventTypes {
-            let event = ServerEvent(type: eventType)
-            XCTAssertEqual(event.type, eventType)
-        }
-    }
-    
-    func testEventTypeRawValues() {
-        XCTAssertEqual(ServerEventType.sessionStart.rawValue, "session-start")
-        XCTAssertEqual(ServerEventType.sessionExit.rawValue, "session-exit")
-        XCTAssertEqual(ServerEventType.commandFinished.rawValue, "command-finished")
-        XCTAssertEqual(ServerEventType.commandError.rawValue, "command-error")
-        XCTAssertEqual(ServerEventType.bell.rawValue, "bell")
-        XCTAssertEqual(ServerEventType.claudeTurn.rawValue, "claude-turn")
-        XCTAssertEqual(ServerEventType.connected.rawValue, "connected")
-    }
-    
-    func testEventTypeDescriptions() {
-        XCTAssertEqual(ServerEventType.sessionStart.description, "Session Started")
-        XCTAssertEqual(ServerEventType.sessionExit.description, "Session Ended")
-        XCTAssertEqual(ServerEventType.commandFinished.description, "Command Completed")
-        XCTAssertEqual(ServerEventType.commandError.description, "Command Error")
-        XCTAssertEqual(ServerEventType.bell.description, "Terminal Bell")
-        XCTAssertEqual(ServerEventType.claudeTurn.description, "Your Turn")
-        XCTAssertEqual(ServerEventType.connected.description, "Connected")
-    }
-    
-    func testEventTypeShouldNotify() {
-        XCTAssertTrue(ServerEventType.sessionStart.shouldNotify)
-        XCTAssertTrue(ServerEventType.sessionExit.shouldNotify)
-        XCTAssertTrue(ServerEventType.claudeTurn.shouldNotify)
-        XCTAssertFalse(ServerEventType.commandFinished.shouldNotify)
-        XCTAssertFalse(ServerEventType.commandError.shouldNotify)
-        XCTAssertFalse(ServerEventType.bell.shouldNotify)
-        XCTAssertFalse(ServerEventType.connected.shouldNotify)
+        // These events should not trigger notifications
+        #expect(!ServerEventType.commandFinished.shouldNotify)
+        #expect(!ServerEventType.commandError.shouldNotify)
+        #expect(!ServerEventType.bell.shouldNotify)
+        #expect(!ServerEventType.connected.shouldNotify)
     }
     
     // MARK: - Edge Cases
+    // These test important edge cases for data integrity
     
-    func testServerEventWithEmptyStrings() throws {
+    @Test("Handles empty strings correctly")
+    func handlesEmptyStrings() throws {
         let event = ServerEvent(
             type: .sessionStart,
             sessionId: "",
@@ -135,13 +119,15 @@ final class ServerEventTests: XCTestCase {
         let data = try JSONEncoder().encode(event)
         let decoded = try JSONDecoder().decode(ServerEvent.self, from: data)
         
-        XCTAssertEqual(decoded.sessionId, "")
-        XCTAssertEqual(decoded.sessionName, "")
-        XCTAssertEqual(decoded.command, "")
-        XCTAssertEqual(decoded.message, "")
+        // Empty strings should be preserved, not converted to nil
+        #expect(decoded.sessionId == "")
+        #expect(decoded.sessionName == "")
+        #expect(decoded.command == "")
+        #expect(decoded.message == "")
     }
     
-    func testServerEventWithSpecialCharacters() throws {
+    @Test("Handles special characters in JSON encoding")
+    func handlesSpecialCharacters() throws {
         let event = ServerEvent(
             type: .commandError,
             sessionId: "session-123",
@@ -154,79 +140,46 @@ final class ServerEventTests: XCTestCase {
         let data = try JSONEncoder().encode(event)
         let decoded = try JSONDecoder().decode(ServerEvent.self, from: data)
         
-        XCTAssertEqual(decoded.sessionName, "Test Session with \"quotes\" and 'apostrophes'")
-        XCTAssertEqual(decoded.command, "echo 'Hello, World!' && echo \"Test\"")
-        XCTAssertEqual(decoded.message, "Error: Command failed with special chars: <>&\"'")
+        #expect(decoded.sessionName == "Test Session with \"quotes\" and 'apostrophes'")
+        #expect(decoded.command == "echo 'Hello, World!' && echo \"Test\"")
+        #expect(decoded.message == "Error: Command failed with special chars: <>&\"'")
     }
     
-    // MARK: - Performance Tests
+    // MARK: - Convenience Initializers
+    // These test that convenience initializers create properly configured events
     
-    func testServerEventEncodingPerformance() throws {
-        let event = ServerEvent(
-            type: .sessionStart,
-            sessionId: "performance-test-session",
-            sessionName: "Performance Test Session",
-            command: "long command with many arguments",
-            duration: 5000,
-            message: "Performance test message"
-        )
-        
-        measure {
-            for _ in 0..<1000 {
-                _ = try? JSONEncoder().encode(event)
-            }
-        }
-    }
-    
-    func testServerEventDecodingPerformance() throws {
-        let event = ServerEvent(
-            type: .commandFinished,
-            sessionId: "perf-session",
-            sessionName: "Performance Session",
-            command: "test command",
-            duration: 1000
-        )
-        
-        let data = try JSONEncoder().encode(event)
-        
-        measure {
-            for _ in 0..<1000 {
-                _ = try? JSONDecoder().decode(ServerEvent.self, from: data)
-            }
-        }
-    }
-    
-    // MARK: - Convenience Initializers Tests
-    
-    func testSessionStartConvenienceInitializer() {
+    @Test("sessionStart convenience initializer sets correct fields")
+    func sessionStartInitializer() {
         let event = ServerEvent.sessionStart(
             sessionId: "test-123",
             sessionName: "Test Session",
             command: "ls -la"
         )
         
-        XCTAssertEqual(event.type, .sessionStart)
-        XCTAssertEqual(event.sessionId, "test-123")
-        XCTAssertEqual(event.sessionName, "Test Session")
-        XCTAssertEqual(event.command, "ls -la")
-        XCTAssertTrue(event.shouldNotify)
+        #expect(event.type == .sessionStart)
+        #expect(event.sessionId == "test-123")
+        #expect(event.sessionName == "Test Session")
+        #expect(event.command == "ls -la")
+        #expect(event.shouldNotify)
     }
     
-    func testSessionExitConvenienceInitializer() {
+    @Test("sessionExit convenience initializer sets correct fields")
+    func sessionExitInitializer() {
         let event = ServerEvent.sessionExit(
             sessionId: "test-456",
             sessionName: "Test Session",
             exitCode: 0
         )
         
-        XCTAssertEqual(event.type, .sessionExit)
-        XCTAssertEqual(event.sessionId, "test-456")
-        XCTAssertEqual(event.sessionName, "Test Session")
-        XCTAssertEqual(event.exitCode, 0)
-        XCTAssertTrue(event.shouldNotify)
+        #expect(event.type == .sessionExit)
+        #expect(event.sessionId == "test-456")
+        #expect(event.sessionName == "Test Session")
+        #expect(event.exitCode == 0)
+        #expect(event.shouldNotify)
     }
     
-    func testCommandFinishedConvenienceInitializer() {
+    @Test("commandFinished convenience initializer sets correct fields")
+    func commandFinishedInitializer() {
         let event = ServerEvent.commandFinished(
             sessionId: "test-789",
             command: "npm install",
@@ -234,67 +187,79 @@ final class ServerEventTests: XCTestCase {
             exitCode: 0
         )
         
-        XCTAssertEqual(event.type, .commandFinished)
-        XCTAssertEqual(event.sessionId, "test-789")
-        XCTAssertEqual(event.command, "npm install")
-        XCTAssertEqual(event.duration, 15000)
-        XCTAssertEqual(event.exitCode, 0)
-        XCTAssertFalse(event.shouldNotify)
+        #expect(event.type == .commandFinished)
+        #expect(event.sessionId == "test-789")
+        #expect(event.command == "npm install")
+        #expect(event.duration == 15000)
+        #expect(event.exitCode == 0)
+        #expect(!event.shouldNotify)
     }
     
-    func testClaudeTurnConvenienceInitializer() {
+    @Test("claudeTurn convenience initializer includes default message")
+    func claudeTurnInitializer() {
         let event = ServerEvent.claudeTurn(
             sessionId: "claude-session",
             sessionName: "Claude Chat"
         )
         
-        XCTAssertEqual(event.type, .claudeTurn)
-        XCTAssertEqual(event.sessionId, "claude-session")
-        XCTAssertEqual(event.sessionName, "Claude Chat")
-        XCTAssertEqual(event.message, "Claude has finished responding")
-        XCTAssertTrue(event.shouldNotify)
+        #expect(event.type == .claudeTurn)
+        #expect(event.sessionId == "claude-session")
+        #expect(event.sessionName == "Claude Chat")
+        #expect(event.message == "Claude has finished responding")
+        #expect(event.shouldNotify)
     }
     
-    func testBellConvenienceInitializer() {
+    @Test("bell convenience initializer includes default message")
+    func bellInitializer() {
         let event = ServerEvent.bell(sessionId: "bell-session")
         
-        XCTAssertEqual(event.type, .bell)
-        XCTAssertEqual(event.sessionId, "bell-session")
-        XCTAssertEqual(event.message, "Terminal bell")
-        XCTAssertFalse(event.shouldNotify)
+        #expect(event.type == .bell)
+        #expect(event.sessionId == "bell-session")
+        #expect(event.message == "Terminal bell")
+        #expect(!event.shouldNotify)
     }
     
-    // MARK: - Computed Properties Tests
+    // MARK: - Computed Properties with Logic
+    // These test actual business logic in computed properties
     
-    func testDisplayName() {
+    @Test("displayName fallback logic works correctly")
+    func displayNameLogic() {
+        // Priority 1: Session name
         let event1 = ServerEvent(type: .sessionStart, sessionName: "My Session")
-        XCTAssertEqual(event1.displayName, "My Session")
+        #expect(event1.displayName == "My Session")
         
+        // Priority 2: Command (when no session name)
         let event2 = ServerEvent(type: .sessionStart, command: "ls -la")
-        XCTAssertEqual(event2.displayName, "ls -la")
+        #expect(event2.displayName == "ls -la")
         
+        // Priority 3: Session ID (when no name or command)
         let event3 = ServerEvent(type: .sessionStart, sessionId: "session-123")
-        XCTAssertEqual(event3.displayName, "session-123")
+        #expect(event3.displayName == "session-123")
         
+        // Fallback: Unknown Session
         let event4 = ServerEvent(type: .sessionStart)
-        XCTAssertEqual(event4.displayName, "Unknown Session")
+        #expect(event4.displayName == "Unknown Session")
     }
     
-    func testFormattedDuration() {
-        let event1 = ServerEvent(type: .commandFinished, duration: 500)
-        XCTAssertEqual(event1.formattedDuration, "500ms")
-        
-        let event2 = ServerEvent(type: .commandFinished, duration: 2500)
-        XCTAssertEqual(event2.formattedDuration, "2.5s")
-        
-        let event3 = ServerEvent(type: .commandFinished, duration: 125000)
-        XCTAssertEqual(event3.formattedDuration, "2m 5s")
-        
-        let event4 = ServerEvent(type: .sessionStart)
-        XCTAssertNil(event4.formattedDuration)
+    @Test("formattedDuration handles different time ranges", arguments: [
+        (500, "500ms"),
+        (2500, "2.5s"),
+        (125000, "2m 5s"),
+        (3661000, "1h 1m 1s")
+    ])
+    func formattedDurationLogic(duration: Int, expected: String) {
+        let event = ServerEvent(type: .commandFinished, duration: duration)
+        #expect(event.formattedDuration == expected)
     }
     
-    func testFormattedTimestamp() {
+    @Test("formattedDuration returns nil when duration is nil")
+    func formattedDurationNil() {
+        let event = ServerEvent(type: .sessionStart)
+        #expect(event.formattedDuration == nil)
+    }
+    
+    @Test("formattedTimestamp uses correct format")
+    func formattedTimestampFormat() {
         let timestamp = Date()
         let event = ServerEvent(type: .sessionStart, timestamp: timestamp)
         
@@ -302,25 +267,6 @@ final class ServerEventTests: XCTestCase {
         formatter.timeStyle = .medium
         let expected = formatter.string(from: timestamp)
         
-        XCTAssertEqual(event.formattedTimestamp, expected)
+        #expect(event.formattedTimestamp == expected)
     }
-    
-    func testIdentifiable() {
-        let event1 = ServerEvent(type: .sessionStart)
-        let event2 = ServerEvent(type: .sessionStart)
-        
-        XCTAssertNotEqual(event1.id, event2.id)
-        XCTAssertNotNil(event1.id)
-        XCTAssertNotNil(event2.id)
-    }
-    
-    func testEquatable() {
-        let timestamp = Date()
-        let event1 = ServerEvent(type: .sessionStart, sessionId: "test", timestamp: timestamp)
-        let event2 = ServerEvent(type: .sessionStart, sessionId: "test", timestamp: timestamp)
-        let event3 = ServerEvent(type: .sessionExit, sessionId: "test", timestamp: timestamp)
-        
-        XCTAssertEqual(event1, event2)
-        XCTAssertNotEqual(event1, event3)
-    }
-} 
+}

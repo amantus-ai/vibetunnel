@@ -1,162 +1,80 @@
-import XCTest
+import Testing
+import Foundation
 @testable import VibeTunnel
 
-final class TunnelSessionTests: XCTestCase {
+@Suite("TunnelSession & Related Types")
+struct TunnelSessionTests {
     
-    // MARK: - TunnelSession Tests
+    // MARK: - TunnelSession Logic Tests
+    // Only testing actual logic, not property synthesis
     
-    func testTunnelSessionInitialization() {
-        let session = TunnelSession()
-        
-        XCTAssertNotNil(session.id)
-        XCTAssertTrue(session.isActive)
-        XCTAssertNil(session.processID)
-        XCTAssertEqual(session.createdAt.timeIntervalSince1970, session.lastActivity.timeIntervalSince1970, accuracy: 1.0)
-    }
-    
-    func testTunnelSessionWithProcessID() {
-        let processID: Int32 = 12345
-        let session = TunnelSession(processID: processID)
-        
-        XCTAssertEqual(session.processID, processID)
-        XCTAssertTrue(session.isActive)
-    }
-    
-    func testTunnelSessionUpdateActivity() {
+    @Test("updateActivity updates lastActivity timestamp")
+    func updateActivityLogic() async throws {
         var session = TunnelSession()
         let originalActivity = session.lastActivity
         
-        // Wait a bit to ensure time difference
-        Thread.sleep(forTimeInterval: 0.1)
+        // Use async sleep instead of Thread.sleep
+        try await Task.sleep(for: .milliseconds(100))
         
         session.updateActivity()
         
-        XCTAssertGreaterThan(session.lastActivity.timeIntervalSince1970, originalActivity.timeIntervalSince1970)
+        #expect(session.lastActivity > originalActivity)
     }
     
-    func testTunnelSessionCodableRoundTrip() throws {
-        let originalSession = TunnelSession(processID: 67890)
+    @Test("TunnelSession is Codable with all fields")
+    func tunnelSessionCodable() throws {
+        var originalSession = TunnelSession(processID: 67890)
         originalSession.updateActivity()
         
-        let encoder = JSONEncoder()
-        let decoder = JSONDecoder()
+        let data = try JSONEncoder().encode(originalSession)
+        let decodedSession = try JSONDecoder().decode(TunnelSession.self, from: data)
         
-        let data = try encoder.encode(originalSession)
-        let decodedSession = try decoder.decode(TunnelSession.self, from: data)
-        
-        XCTAssertEqual(originalSession.id, decodedSession.id)
-        XCTAssertEqual(originalSession.processID, decodedSession.processID)
-        XCTAssertEqual(originalSession.isActive, decodedSession.isActive)
-        XCTAssertEqual(originalSession.createdAt.timeIntervalSince1970, decodedSession.createdAt.timeIntervalSince1970, accuracy: 1.0)
-        XCTAssertEqual(originalSession.lastActivity.timeIntervalSince1970, decodedSession.lastActivity.timeIntervalSince1970, accuracy: 1.0)
-    }
-    
-    func testTunnelSessionIdentifiable() {
-        let session = TunnelSession()
-        
-        // Test that it conforms to Identifiable
-        let id: UUID = session.id
-        XCTAssertNotNil(id)
+        #expect(originalSession.id == decodedSession.id)
+        #expect(originalSession.processID == decodedSession.processID)
+        #expect(originalSession.isActive == decodedSession.isActive)
+        // Using approximate comparison for dates due to encoding precision
+        #expect(abs(originalSession.createdAt.timeIntervalSince(decodedSession.createdAt)) < 0.001)
+        #expect(abs(originalSession.lastActivity.timeIntervalSince(decodedSession.lastActivity)) < 0.001)
     }
     
     // MARK: - CreateSessionRequest Tests
+    // Testing optional field handling in Codable
     
-    func testCreateSessionRequestInitialization() {
-        let request = CreateSessionRequest()
-        
-        XCTAssertNil(request.workingDirectory)
-        XCTAssertNil(request.environment)
-        XCTAssertNil(request.shell)
-    }
-    
-    func testCreateSessionRequestWithAllFields() {
-        let workingDirectory = "/path/to/working/dir"
-        let environment = ["PATH": "/usr/bin", "HOME": "/home/user"]
-        let shell = "/bin/zsh"
-        
-        let request = CreateSessionRequest(
-            workingDirectory: workingDirectory,
-            environment: environment,
-            shell: shell
-        )
-        
-        XCTAssertEqual(request.workingDirectory, workingDirectory)
-        XCTAssertEqual(request.environment, environment)
-        XCTAssertEqual(request.shell, shell)
-    }
-    
-    func testCreateSessionRequestCodableRoundTrip() throws {
+    @Test("CreateSessionRequest encodes/decodes with all optional fields")
+    func createSessionRequestFullCodable() throws {
         let originalRequest = CreateSessionRequest(
             workingDirectory: "/test/dir",
-            environment: ["TEST": "value"],
+            environment: ["TEST": "value", "PATH": "/usr/bin"],
             shell: "/bin/bash"
         )
         
-        let encoder = JSONEncoder()
-        let decoder = JSONDecoder()
+        let data = try JSONEncoder().encode(originalRequest)
+        let decodedRequest = try JSONDecoder().decode(CreateSessionRequest.self, from: data)
         
-        let data = try encoder.encode(originalRequest)
-        let decodedRequest = try decoder.decode(CreateSessionRequest.self, from: data)
-        
-        XCTAssertEqual(originalRequest.workingDirectory, decodedRequest.workingDirectory)
-        XCTAssertEqual(originalRequest.environment, decodedRequest.environment)
-        XCTAssertEqual(originalRequest.shell, decodedRequest.shell)
+        #expect(originalRequest.workingDirectory == decodedRequest.workingDirectory)
+        #expect(originalRequest.environment == decodedRequest.environment)
+        #expect(originalRequest.shell == decodedRequest.shell)
     }
     
-    func testCreateSessionRequestWithEmptyEnvironment() throws {
-        let request = CreateSessionRequest(environment: [:])
+    @Test("CreateSessionRequest handles empty and nil values correctly")
+    func createSessionRequestEdgeCases() throws {
+        // Test with empty environment (not nil)
+        let requestWithEmpty = CreateSessionRequest(environment: [:])
+        let data1 = try JSONEncoder().encode(requestWithEmpty)
+        let decoded1 = try JSONDecoder().decode(CreateSessionRequest.self, from: data1)
+        #expect(decoded1.environment == [:])
         
-        let data = try JSONEncoder().encode(request)
-        let decoded = try JSONDecoder().decode(CreateSessionRequest.self, from: data)
-        
-        XCTAssertEqual(decoded.environment, [:])
+        // Test with all nils
+        let requestWithNils = CreateSessionRequest()
+        let data2 = try JSONEncoder().encode(requestWithNils)
+        let decoded2 = try JSONDecoder().decode(CreateSessionRequest.self, from: data2)
+        #expect(decoded2.workingDirectory == nil)
+        #expect(decoded2.environment == nil)
+        #expect(decoded2.shell == nil)
     }
     
-    // MARK: - CreateSessionResponse Tests
-    
-    func testCreateSessionResponseInitialization() {
-        let sessionId = "test-session-123"
-        let createdAt = Date()
-        
-        let response = CreateSessionResponse(sessionId: sessionId, createdAt: createdAt)
-        
-        XCTAssertEqual(response.sessionId, sessionId)
-        XCTAssertEqual(response.createdAt, createdAt)
-    }
-    
-    func testCreateSessionResponseCodableRoundTrip() throws {
-        let originalResponse = CreateSessionResponse(
-            sessionId: "response-test-456",
-            createdAt: Date()
-        )
-        
-        let encoder = JSONEncoder()
-        let decoder = JSONDecoder()
-        
-        let data = try encoder.encode(originalResponse)
-        let decodedResponse = try decoder.decode(CreateSessionResponse.self, from: data)
-        
-        XCTAssertEqual(originalResponse.sessionId, decodedResponse.sessionId)
-        XCTAssertEqual(originalResponse.createdAt.timeIntervalSince1970, decodedResponse.createdAt.timeIntervalSince1970, accuracy: 1.0)
-    }
-    
-    // MARK: - Edge Cases
-    
-    func testTunnelSessionWithSpecialCharacters() throws {
-        let session = TunnelSession()
-        
-        let data = try JSONEncoder().encode(session)
-        let jsonString = String(data: data, encoding: .utf8)!
-        
-        // Verify JSON contains expected fields
-        XCTAssertTrue(jsonString.contains("id"))
-        XCTAssertTrue(jsonString.contains("createdAt"))
-        XCTAssertTrue(jsonString.contains("lastActivity"))
-        XCTAssertTrue(jsonString.contains("processID"))
-        XCTAssertTrue(jsonString.contains("isActive"))
-    }
-    
-    func testCreateSessionRequestWithSpecialCharacters() throws {
+    @Test("CreateSessionRequest handles special characters in paths and environment")
+    func createSessionRequestSpecialCharacters() throws {
         let request = CreateSessionRequest(
             workingDirectory: "/path/with spaces/and\"quotes\"",
             environment: ["PATH": "/usr/bin:/usr/local/bin", "HOME": "/home/user with spaces"],
@@ -166,46 +84,27 @@ final class TunnelSessionTests: XCTestCase {
         let data = try JSONEncoder().encode(request)
         let decoded = try JSONDecoder().decode(CreateSessionRequest.self, from: data)
         
-        XCTAssertEqual(decoded.workingDirectory, "/path/with spaces/and\"quotes\"")
-        XCTAssertEqual(decoded.environment?["PATH"], "/usr/bin:/usr/local/bin")
-        XCTAssertEqual(decoded.environment?["HOME"], "/home/user with spaces")
-        XCTAssertEqual(decoded.shell, "/bin/bash -l")
+        #expect(decoded.workingDirectory == "/path/with spaces/and\"quotes\"")
+        #expect(decoded.environment?["PATH"] == "/usr/bin:/usr/local/bin")
+        #expect(decoded.environment?["HOME"] == "/home/user with spaces")
+        #expect(decoded.shell == "/bin/bash -l")
     }
     
-    // MARK: - Performance Tests
+    // MARK: - CreateSessionResponse Tests
+    // Simple type but worth testing Codable with Date precision
     
-    func testTunnelSessionEncodingPerformance() throws {
-        let session = TunnelSession(processID: 12345)
-        
-        measure {
-            for _ in 0..<1000 {
-                _ = try? JSONEncoder().encode(session)
-            }
-        }
-    }
-    
-    func testTunnelSessionDecodingPerformance() throws {
-        let session = TunnelSession()
-        let data = try JSONEncoder().encode(session)
-        
-        measure {
-            for _ in 0..<1000 {
-                _ = try? JSONDecoder().decode(TunnelSession.self, from: data)
-            }
-        }
-    }
-    
-    func testCreateSessionRequestEncodingPerformance() throws {
-        let request = CreateSessionRequest(
-            workingDirectory: "/test/dir",
-            environment: ["VAR1": "value1", "VAR2": "value2"],
-            shell: "/bin/zsh"
+    @Test("CreateSessionResponse handles date encoding correctly")
+    func createSessionResponseDateHandling() throws {
+        let originalResponse = CreateSessionResponse(
+            sessionId: "response-test-456",
+            createdAt: Date()
         )
         
-        measure {
-            for _ in 0..<1000 {
-                _ = try? JSONEncoder().encode(request)
-            }
-        }
+        let data = try JSONEncoder().encode(originalResponse)
+        let decodedResponse = try JSONDecoder().decode(CreateSessionResponse.self, from: data)
+        
+        #expect(originalResponse.sessionId == decodedResponse.sessionId)
+        // Date encoding/decoding can lose some precision
+        #expect(abs(originalResponse.createdAt.timeIntervalSince(decodedResponse.createdAt)) < 0.001)
     }
-} 
+}

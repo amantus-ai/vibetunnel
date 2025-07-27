@@ -31,10 +31,8 @@ let package = Package(
                 "VibeTunnel.entitlements",
                 "Shared.xcconfig",
                 "version.xcconfig",
-                "version.xcconfig.bak",
                 "sparkle-public-ed-key.txt",
                 "Assets.xcassets",
-                "AppIcon.icon",
                 "VibeTunnelApp.swift"
             ]
         ),
