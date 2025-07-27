@@ -626,7 +626,13 @@ final class NotificationService: NSObject {
 
 // MARK: - EventSource
 
-/// Simple Server-Sent Events client
+/// A lightweight Server-Sent Events (SSE) client for receiving real-time notifications.
+///
+/// `EventSource` establishes a persistent HTTP connection to receive server-sent events
+/// from the VibeTunnel server. It handles connection management, event parsing, and
+/// automatic reconnection on failure.
+///
+/// - Note: This is a private implementation detail of `NotificationService`.
 private final class EventSource: NSObject, URLSessionDataDelegate, @unchecked Sendable {
     private let url: URL
     private var session: URLSession?
@@ -637,9 +643,13 @@ private final class EventSource: NSObject, URLSessionDataDelegate, @unchecked Se
     var onMessage: ((Event) -> Void)?
     var onError: ((Error?) -> Void)?
 
+    /// Represents a single Server-Sent Event.
     struct Event {
+        /// Optional event identifier.
         let id: String?
+        /// Optional event type.
         let event: String?
+        /// The event data payload.
         let data: String?
     }
 
