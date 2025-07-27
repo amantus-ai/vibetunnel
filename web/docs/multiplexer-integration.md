@@ -1,14 +1,14 @@
 # Terminal Multiplexer Integration
 
-VibeTunnel supports seamless integration with terminal multiplexers like tmux and Zellij, allowing you to attach to existing sessions and manage them through the web interface.
+VibeTunnel supports seamless integration with terminal multiplexers like tmux, Zellij, and GNU Screen, allowing you to attach to existing sessions and manage them through the web interface.
 
 ## Overview
 
 The multiplexer integration allows you to:
-- List and attach to existing tmux/Zellij sessions
+- List and attach to existing tmux/Zellij/Screen sessions
 - Navigate between windows and panes (tmux)
 - Create new sessions
-- Kill sessions
+- Kill sessions, windows (tmux), and panes (tmux)
 - Maintain persistent terminal sessions across connections
 
 ## Supported Multiplexers
@@ -18,12 +18,21 @@ The multiplexer integration allows you to:
 - Shows session details including creation time, attached status, and window count
 - Navigate to specific windows and panes
 - Create sessions with optional initial commands
+- Kill individual panes, windows, or entire sessions
 
 ### Zellij
 - Session management with creation time tracking
 - Automatic session creation on first attach
 - Layout support for new sessions
 - ANSI color code handling in session names
+- Proper cleanup of exited sessions
+
+### GNU Screen
+- Session listing and management
+- Shows session status (attached/detached)
+- Create new sessions with optional commands
+- Attach to existing sessions
+- Kill sessions
 
 ## Usage
 
@@ -58,6 +67,17 @@ POST /api/multiplexer/sessions
 }
 ```
 
+#### GNU Screen
+```bash
+# Create a new session
+POST /api/multiplexer/sessions
+{
+  "type": "screen",
+  "name": "dev-session",
+  "command": "vim"  // optional initial command
+}
+```
+
 ### API Endpoints
 
 #### Get Multiplexer Status
@@ -82,7 +102,7 @@ Returns panes in a session or specific window.
 ```bash
 POST /api/multiplexer/attach
 {
-  "type": "tmux|zellij",
+  "type": "tmux|zellij|screen",
   "sessionName": "main",
   "windowIndex": 0,      // tmux only, optional
   "paneIndex": 1,        // tmux only, optional
@@ -93,7 +113,17 @@ POST /api/multiplexer/attach
 
 #### Kill Session
 ```bash
-DELETE /api/multiplexer/sessions/:type/:sessionName
+DELETE /api/multiplexer/:type/sessions/:sessionName
+```
+
+#### Kill Window (tmux only)
+```bash
+DELETE /api/multiplexer/tmux/sessions/:sessionName/windows/:windowIndex
+```
+
+#### Kill Pane (tmux only)
+```bash
+DELETE /api/multiplexer/tmux/sessions/:sessionName/panes/:paneId
 ```
 
 ### Legacy tmux API Compatibility
@@ -110,13 +140,17 @@ The multiplexer integration consists of:
 - `MultiplexerManager` - Unified interface for all multiplexers
 - `TmuxManager` - tmux-specific implementation
 - `ZellijManager` - Zellij-specific implementation
+- `ScreenManager` - GNU Screen-specific implementation
 - `multiplexer-modal` - LitElement component for the UI
 
 ### Session Attachment
 
 When attaching to a multiplexer session:
 1. A new VibeTunnel PTY session is created
-2. The session runs the appropriate attach command (e.g., `tmux attach-session -t main`)
+2. The session runs the appropriate attach command:
+   - tmux: `tmux attach-session -t main`
+   - Zellij: `zellij attach main`
+   - Screen: `screen -r 12345.main`
 3. The multiplexer takes over the terminal, providing its own UI
 4. Users can navigate within the multiplexer using native keybindings
 
@@ -129,10 +163,16 @@ The system automatically detects installed multiplexers and only shows available
 Multiplexer sessions persist even when VibeTunnel is restarted, allowing you to maintain long-running processes.
 
 #### Native Experience
-Once attached, you interact with the multiplexer using its native keybindings (e.g., Ctrl-B for tmux).
+Once attached, you interact with the multiplexer using its native keybindings:
+- tmux: `Ctrl-B` (default prefix)
+- Zellij: `Ctrl-G` (default prefix)
+- Screen: `Ctrl-A` (default prefix)
 
 #### Clean Session Names
 Zellij session names are automatically cleaned of ANSI escape codes for better display.
+
+#### Kill Confirmation
+All destructive actions (killing sessions, windows, panes) require confirmation to prevent accidental data loss.
 
 ## Best Practices
 
@@ -144,8 +184,11 @@ Zellij session names are automatically cleaned of ANSI escape codes for better d
 ## Troubleshooting
 
 ### Sessions Not Showing
-- Ensure tmux/Zellij is installed on the system
-- Check that sessions exist by running `tmux ls` or `zellij list-sessions`
+- Ensure tmux/Zellij/Screen is installed on the system
+- Check that sessions exist by running:
+  - tmux: `tmux ls`
+  - Zellij: `zellij list-sessions`
+  - Screen: `screen -ls`
 
 ### Cannot Attach to Session
 - Verify the session name is correct
@@ -154,3 +197,8 @@ Zellij session names are automatically cleaned of ANSI escape codes for better d
 ### Display Issues
 - Ensure terminal dimensions match between client and server
 - Try resizing the browser window to trigger a resize event
+
+### Screen-Specific Issues
+- Screen returns exit code 1 when sessions exist (this is normal behavior)
+- Session names include PID prefix (e.g., `12345.session-name`)
+- Use `screen -R` instead of `screen -r` for more forgiving reattachment
