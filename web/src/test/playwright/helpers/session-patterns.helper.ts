@@ -44,6 +44,10 @@ export async function navigateToSessionList(page: Page): Promise<void> {
  * Wait for session card to appear
  */
 export async function waitForSessionCard(page: Page, sessionName: string): Promise<void> {
+  // First ensure all sessions are visible (including exited ones)
+  const { ensureAllSessionsVisible } = await import('./ui-state.helper');
+  await ensureAllSessionsVisible(page);
+
   await page.waitForSelector(`session-card:has-text("${sessionName}")`, {
     state: 'visible',
   });

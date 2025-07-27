@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 import { TIMEOUTS } from '../constants/timeouts';
 import { SessionListPage } from '../pages/session-list.page';
+import { ensureAllSessionsVisible } from './ui-state.helper';
 
 /**
  * Terminal-related interfaces
@@ -29,7 +30,10 @@ export async function waitForSessionCards(
  * Click a session card with retry logic for reliability
  */
 export async function clickSessionCardWithRetry(page: Page, sessionName: string): Promise<void> {
-  // First ensure the session list is loaded
+  // First ensure all sessions are visible (including exited ones)
+  await ensureAllSessionsVisible(page);
+
+  // Then ensure the session list is loaded
   await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
   // Give the session list time to fully render

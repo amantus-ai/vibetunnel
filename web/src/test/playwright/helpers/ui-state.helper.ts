@@ -99,3 +99,32 @@ export async function ensureExitedSessionsHidden(page: Page): Promise<void> {
     );
   }
 }
+
+/**
+ * Ensure all sessions (including exited) are visible for test assertions
+ * This is useful when tests need to verify sessions that might have exited
+ */
+export async function ensureAllSessionsVisible(page: Page): Promise<void> {
+  // First check if there's a "Show Exited" button, which indicates exited sessions are hidden
+  const showExitedButton = page
+    .locator('button')
+    .filter({ hasText: /Show Exited/i })
+    .first();
+
+  if (await showExitedButton.isVisible({ timeout: 1000 })) {
+    console.log('Found "Show Exited" button, clicking to reveal all sessions');
+    await showExitedButton.click();
+
+    // Wait for the button to change to "Hide Exited"
+    await page.waitForFunction(
+      () => {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        return buttons.some((btn) => btn.textContent?.match(/Hide Exited/i));
+      },
+      { timeout: TIMEOUTS.UI_UPDATE }
+    );
+
+    // Additional wait for UI to update
+    await page.waitForTimeout(500);
+  }
+}
