@@ -509,8 +509,6 @@ export class MultiplexerModal extends LitElement {
   }
 
   private formatPaneInfo(pane: TmuxPane): string {
-    console.log('formatPaneInfo called with:', pane);
-
     // If we have a meaningful title that's not just the hostname, use it
     if (pane.title && !pane.title.includes('< /dev/null') && !pane.title.match(/^[\w.-]+$/)) {
       return pane.title;
@@ -534,8 +532,8 @@ export class MultiplexerModal extends LitElement {
         sessionName: target.session,
         windowIndex: target.window,
         paneIndex: target.pane,
-        cols: 80, // TODO: Get actual terminal dimensions
-        rows: 24,
+        cols: window.innerWidth > 768 ? 120 : 80,
+        rows: window.innerHeight > 600 ? 30 : 24,
         titleMode: 'dynamic',
         metadata: {
           source: 'multiplexer-modal',

@@ -6,6 +6,9 @@ import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { createLogger } from '../utils/logger.js';
 
+/**
+ * Represents a running code-server instance associated with a VibeTunnel session
+ */
 interface CodeServerInstance {
   sessionId: string;
   workingDir: string;
@@ -17,6 +20,19 @@ interface CodeServerInstance {
 
 const logger = createLogger('code-server-manager');
 
+/**
+ * Manages code-server (VS Code in the browser) instances for VibeTunnel sessions.
+ * 
+ * This service allows users to run VS Code in their browser for each terminal session.
+ * Each session gets its own isolated code-server instance running on a unique port.
+ * 
+ * Key features:
+ * - Spawns code-server processes on demand
+ * - Manages port allocation to avoid conflicts
+ * - Creates proxy middleware to route requests to the correct code-server instance
+ * - Handles cleanup when sessions are terminated
+ * - Stores configuration in .vibetunnel-config directory
+ */
 export class CodeServerManager {
   private instances = new Map<string, CodeServerInstance>();
   private portCounter = 8100; // Start from 8100 to avoid conflicts

@@ -3,15 +3,19 @@ import { authClient } from './auth-client.js';
 
 const logger = createLogger('api-client');
 
+/**
+ * Standard error response structure from the API
+ */
 interface ErrorResponse {
   message?: string;
   error?: string;
 }
 
+/**
+ * HTTP client for making authenticated API requests to the VibeTunnel backend.
+ * Automatically includes authentication headers and handles error responses.
+ */
 class ApiClient {
-  /**
-   * Make a GET request
-   */
   async get<T = any>(path: string): Promise<T> {
     try {
       const response = await fetch(`/api${path}`, {
@@ -33,9 +37,6 @@ class ApiClient {
     }
   }
 
-  /**
-   * Make a POST request
-   */
   async post<T = any>(path: string, data?: any): Promise<T> {
     try {
       const response = await fetch(`/api${path}`, {
@@ -59,9 +60,6 @@ class ApiClient {
     }
   }
 
-  /**
-   * Make a PUT request
-   */
   async put<T = any>(path: string, data: any): Promise<T> {
     try {
       const response = await fetch(`/api${path}`, {
@@ -85,9 +83,6 @@ class ApiClient {
     }
   }
 
-  /**
-   * Make a DELETE request
-   */
   async delete<T = any>(path: string): Promise<T> {
     try {
       const response = await fetch(`/api${path}`, {
@@ -103,17 +98,14 @@ class ApiClient {
         throw new Error(error.message || `Request failed: ${response.statusText}`);
       }
 
-      return await response.json();
+      const text = await response.text();
+      return text ? JSON.parse(text) : ({} as T);
     } catch (error) {
       logger.error(`DELETE ${path} failed:`, error);
       throw error;
     }
   }
 
-  /**
-   * Parse error response
-   * @private
-   */
   private async parseError(response: Response): Promise<ErrorResponse> {
     try {
       const contentType = response.headers.get('content-type');
@@ -127,5 +119,4 @@ class ApiClient {
   }
 }
 
-// Export singleton instance
 export const apiClient = new ApiClient();
