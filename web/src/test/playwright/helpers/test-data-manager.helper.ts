@@ -79,6 +79,21 @@ export class TestSessionManager {
         );
       } else {
         console.log('Created web session which should appear in the session list');
+
+        // For web sessions, ensure it appears in the session list before returning
+        // This prevents race conditions when tests navigate away immediately
+        await this.page.goto('/', { waitUntil: 'domcontentloaded' });
+
+        // Import the helper function
+        const { waitForSessionCard } = await import('./test-optimization.helper');
+
+        try {
+          await waitForSessionCard(this.page, name, { timeout: 20000 });
+          console.log(`Session ${name} confirmed to be in session list`);
+        } catch (error) {
+          console.error(`Session ${name} did not appear in session list within timeout`);
+          // Continue anyway - the session was created successfully
+        }
       }
 
       return { sessionName: name, sessionId };
