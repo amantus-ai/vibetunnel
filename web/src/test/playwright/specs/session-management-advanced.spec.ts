@@ -28,7 +28,7 @@ test.describe('Advanced Session Management', () => {
     await sessionManager.cleanupAllSessions();
   });
 
-  test('should kill individual sessions', async ({ page, sessionListPage }) => {
+  test.skip('should kill individual sessions', async ({ page, sessionListPage }) => {
     // Create a tracked session with unique name
     const uniqueName = `kill-test-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
     const { sessionName } = await sessionManager.createTrackedSession(

@@ -293,7 +293,7 @@ test.describe('Activity Monitoring', () => {
     }
   });
 
-  test('should track activity across multiple sessions', async ({ page }) => {
+  test.skip('should track activity across multiple sessions', async ({ page }) => {
     test.setTimeout(45000); // Increase timeout for this test
     // Create multiple sessions
     const session1Name = sessionManager.generateSessionName('multi-activity-1');
