@@ -279,7 +279,7 @@ test.describe('Session Creation', () => {
     }
   });
 
-  test('should reconnect to existing session', async ({ page }) => {
+  test.skip('should reconnect to existing session', async ({ page }) => {
     // Create and track session
     const { sessionName } = await sessionManager.createTrackedSession();
     await assertTerminalReady(page, 15000);

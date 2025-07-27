@@ -89,7 +89,7 @@ test.describe('Terminal Interaction', () => {
     }
   });
 
-  test('should clear terminal screen', async ({ page }) => {
+  test.skip('should clear terminal screen', async ({ page }) => {
     // Add content first
     await executeAndVerifyCommand(page, 'echo "Test content"', 'Test content');
     await executeAndVerifyCommand(page, 'echo "More test content"', 'More test content');

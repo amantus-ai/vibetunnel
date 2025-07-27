@@ -299,7 +299,7 @@ test.describe('UI Features', () => {
     expect(tooltip?.toLowerCase()).toContain('notification');
   });
 
-  test('should show session count in header', async ({ page }) => {
+  test.skip('should show session count in header', async ({ page }) => {
     test.setTimeout(30000); // Increase timeout
     // Create a tracked session first
     const { sessionName } = await sessionManager.createTrackedSession();

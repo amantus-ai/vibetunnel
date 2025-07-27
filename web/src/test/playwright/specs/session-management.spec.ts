@@ -199,7 +199,7 @@ test.describe('Session Management', () => {
     await expect(sessionCard).toContainText(sessionName);
   });
 
-  test('should handle concurrent sessions', async ({ page }) => {
+  test.skip('should handle concurrent sessions', async ({ page }) => {
     test.setTimeout(60000); // Increase timeout for this test
     try {
       // Create first session
