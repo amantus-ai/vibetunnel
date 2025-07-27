@@ -119,7 +119,7 @@ export function createMultiplexerRoutes(options: { ptyManager: PtyManager }): Ro
   /**
    * Kill a session
    */
-  router.delete('/sessions/:type/:sessionName', async (req, res) => {
+  router.delete('/:type/sessions/:sessionName', async (req, res) => {
     try {
       const { type, sessionName } = req.params;
       await multiplexerManager.killSession(type as MultiplexerType, sessionName);
@@ -127,6 +127,34 @@ export function createMultiplexerRoutes(options: { ptyManager: PtyManager }): Ro
     } catch (error) {
       logger.error('Failed to kill session', { error });
       res.status(500).json({ error: 'Failed to kill session' });
+    }
+  });
+
+  /**
+   * Kill a tmux window
+   */
+  router.delete('/tmux/sessions/:sessionName/windows/:windowIndex', async (req, res) => {
+    try {
+      const { sessionName, windowIndex } = req.params;
+      await multiplexerManager.killTmuxWindow(sessionName, Number.parseInt(windowIndex, 10));
+      res.json({ success: true });
+    } catch (error) {
+      logger.error('Failed to kill window', { error });
+      res.status(500).json({ error: 'Failed to kill window' });
+    }
+  });
+
+  /**
+   * Kill a tmux pane
+   */
+  router.delete('/tmux/sessions/:sessionName/panes/:paneId', async (req, res) => {
+    try {
+      const { sessionName, paneId } = req.params;
+      await multiplexerManager.killTmuxPane(sessionName, paneId);
+      res.json({ success: true });
+    } catch (error) {
+      logger.error('Failed to kill pane', { error });
+      res.status(500).json({ error: 'Failed to kill pane' });
     }
   });
 

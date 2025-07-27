@@ -242,6 +242,73 @@ export class MultiplexerModal extends LitElement {
     }
   }
 
+  private async killSession(type: MultiplexerType, sessionName: string) {
+    if (
+      !confirm(
+        `Are you sure you want to kill session "${sessionName}"? This will terminate all windows and panes.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await apiClient.delete(`/multiplexer/${type}/sessions/${sessionName}`);
+      if (response.success) {
+        await this.loadMultiplexerStatus();
+      }
+    } catch (error) {
+      console.error(`Failed to kill ${type} session:`, error);
+      this.error = `Failed to kill ${type} session`;
+    }
+  }
+
+  private async killWindow(sessionName: string, windowIndex: number) {
+    if (
+      !confirm(
+        `Are you sure you want to kill window ${windowIndex}? This will terminate all panes in this window.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await apiClient.delete(
+        `/multiplexer/tmux/sessions/${sessionName}/windows/${windowIndex}`
+      );
+      if (response.success) {
+        await this.loadMultiplexerStatus();
+      }
+    } catch (error) {
+      console.error(`Failed to kill window:`, error);
+      this.error = `Failed to kill window`;
+    }
+  }
+
+  private async killPane(sessionName: string, paneId: string) {
+    if (!confirm(`Are you sure you want to kill this pane?`)) {
+      return;
+    }
+
+    try {
+      const response = await apiClient.delete(
+        `/multiplexer/tmux/sessions/${sessionName}/panes/${paneId}`
+      );
+      if (response.success) {
+        // Reload panes for the affected window
+        this.panes.clear();
+        this.expandedWindows.forEach((key) => {
+          const [session, windowStr] = key.split(':');
+          if (session === sessionName) {
+            this.loadPanesForWindow(session, Number.parseInt(windowStr, 10));
+          }
+        });
+      }
+    } catch (error) {
+      console.error(`Failed to kill pane:`, error);
+      this.error = `Failed to kill pane`;
+    }
+  }
+
   private handleClose() {
     this.dispatchEvent(new CustomEvent('close'));
   }
@@ -270,12 +337,12 @@ export class MultiplexerModal extends LitElement {
                     status.tmux.available
                       ? html`
                       <button
-                        class="px-4 py-2 border-none bg-transparent text-text-muted cursor-pointer relative transition-colors hover:text-text ${this.activeTab === 'tmux' ? 'text-accent-green' : ''}"
+                        class="px-4 py-2 border-none bg-transparent text-text-muted cursor-pointer relative transition-colors hover:text-text ${this.activeTab === 'tmux' ? 'text-primary' : ''}"
                         @click=${() => this.switchTab('tmux')}
                       >
                         tmux
                         <span class="ml-2 text-xs px-1.5 py-0.5 bg-bg-tertiary rounded-full">${status.tmux.sessions.length}</span>
-                        ${this.activeTab === 'tmux' ? html`<div class="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-accent-green"></div>` : ''}
+                        ${this.activeTab === 'tmux' ? html`<div class="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-primary"></div>` : ''}
                       </button>
                     `
                       : null
@@ -284,12 +351,12 @@ export class MultiplexerModal extends LitElement {
                     status.zellij.available
                       ? html`
                       <button
-                        class="px-4 py-2 border-none bg-transparent text-text-muted cursor-pointer relative transition-colors hover:text-text ${this.activeTab === 'zellij' ? 'text-accent-green' : ''}"
+                        class="px-4 py-2 border-none bg-transparent text-text-muted cursor-pointer relative transition-colors hover:text-text ${this.activeTab === 'zellij' ? 'text-primary' : ''}"
                         @click=${() => this.switchTab('zellij')}
                       >
                         Zellij
                         <span class="ml-2 text-xs px-1.5 py-0.5 bg-bg-tertiary rounded-full">${status.zellij.sessions.length}</span>
-                        ${this.activeTab === 'zellij' ? html`<div class="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-accent-green"></div>` : ''}
+                        ${this.activeTab === 'zellij' ? html`<div class="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-primary"></div>` : ''}
                       </button>
                     `
                       : null
@@ -327,7 +394,7 @@ export class MultiplexerModal extends LitElement {
                             <div class="text-center py-12 text-text-muted">
                               <h3 class="m-0 mb-2 text-text">No ${this.activeTab} Sessions</h3>
                               <p>There are no active ${this.activeTab} sessions.</p>
-                              <button class="mt-4 px-6 py-3 bg-accent-green text-white border-none rounded-md text-sm cursor-pointer transition-colors hover:bg-accent-green/80" @click=${this.createNewSession}>
+                              <button class="mt-4 px-6 py-3 bg-primary text-white border-none rounded-md text-sm cursor-pointer transition-colors hover:bg-primary-hover" @click=${this.createNewSession}>
                                 Create New Session
                               </button>
                             </div>
@@ -342,7 +409,7 @@ export class MultiplexerModal extends LitElement {
                                   const isExpanded = this.expandedSessions.has(session.name);
 
                                   return html`
-                          <div class="mb-2 border border-border rounded-lg overflow-hidden transition-all hover:border-accent-green hover:shadow-md">
+                          <div class="mb-2 border border-border rounded-lg overflow-hidden transition-all hover:border-primary hover:shadow-md">
                             <div
                               class="px-4 py-3 bg-bg-secondary cursor-pointer flex items-center justify-between transition-colors hover:bg-bg-tertiary"
                               @click=${() =>
@@ -372,45 +439,40 @@ export class MultiplexerModal extends LitElement {
                               <div class="flex items-center gap-2">
                                 ${
                                   session.attached
-                                    ? html`<div class="w-2 h-2 rounded-full bg-accent-green" title="Attached"></div>`
+                                    ? html`<div class="w-2 h-2 rounded-full bg-primary" title="Attached"></div>`
                                     : null
                                 }
                                 ${
                                   session.current
-                                    ? html`<div class="w-2 h-2 rounded-full bg-accent-green" title="Current"></div>`
+                                    ? html`<div class="w-2 h-2 rounded-full bg-primary" title="Current"></div>`
                                     : null
                                 }
+                                <button
+                                  class="px-3 py-1.5 bg-primary text-white border-none rounded text-xs font-medium cursor-pointer transition-colors hover:bg-primary-hover active:scale-95"
+                                  @click=${(e: Event) => {
+                                    e.stopPropagation();
+                                    this.attachToSession({
+                                      type: session.type,
+                                      session: session.name,
+                                    });
+                                  }}
+                                >
+                                  Attach
+                                </button>
+                                <button
+                                  class="px-3 py-1.5 bg-red-500 text-white border-none rounded text-xs font-medium cursor-pointer transition-colors hover:bg-red-600 active:scale-95"
+                                  @click=${(e: Event) => {
+                                    e.stopPropagation();
+                                    this.killSession(session.type, session.name);
+                                  }}
+                                  title="Kill session"
+                                >
+                                  Kill
+                                </button>
                                 ${
                                   session.type === 'tmux'
-                                    ? html`
-                                      <button
-                                        class="px-3 py-1 bg-accent-green text-white border-none rounded text-xs font-medium cursor-pointer transition-colors hover:bg-accent-green/80 active:scale-95"
-                                        @click=${(e: Event) => {
-                                          e.stopPropagation();
-                                          this.attachToSession({
-                                            type: session.type,
-                                            session: session.name,
-                                          });
-                                        }}
-                                      >
-                                        Attach
-                                      </button>
-                                      <span class="transition-transform ${isExpanded ? 'rotate-90' : ''}">▶</span>
-                                    `
-                                    : html`
-                                      <button
-                                        class="px-3 py-1 bg-accent-green text-white border-none rounded text-xs font-medium cursor-pointer transition-colors hover:bg-accent-green/80 active:scale-95"
-                                        @click=${(e: Event) => {
-                                          e.stopPropagation();
-                                          this.attachToSession({
-                                            type: session.type,
-                                            session: session.name,
-                                          });
-                                        }}
-                                      >
-                                        Attach to Session
-                                      </button>
-                                    `
+                                    ? html`<span class="transition-transform ${isExpanded ? 'rotate-90' : ''}">▶</span>`
+                                    : null
                                 }
                               </div>
                             </div>
@@ -449,10 +511,22 @@ export class MultiplexerModal extends LitElement {
                                                 <span class="font-mono text-sm text-text-muted">${window.index}:</span>
                                                 <span>${window.name}</span>
                                               </div>
-                                              <span class="text-xs text-text-dim">
-                                                ${window.panes} pane${window.panes !== 1 ? 's' : ''}
-                                                ${window.panes > 1 ? html`<span class="ml-2 transition-transform ${isWindowExpanded ? 'rotate-90' : ''}">▶</span>` : ''}
-                                              </span>
+                                              <div class="flex items-center gap-2">
+                                                <button
+                                                  class="px-2 py-0.5 bg-red-500 text-white border-none rounded text-xs font-medium cursor-pointer transition-colors hover:bg-red-600 active:scale-95"
+                                                  @click=${(e: Event) => {
+                                                    e.stopPropagation();
+                                                    this.killWindow(session.name, window.index);
+                                                  }}
+                                                  title="Kill window"
+                                                >
+                                                  Kill
+                                                </button>
+                                                <span class="text-xs text-text-dim">
+                                                  ${window.panes} pane${window.panes !== 1 ? 's' : ''}
+                                                  ${window.panes > 1 ? html`<span class="ml-2 transition-transform ${isWindowExpanded ? 'rotate-90' : ''}">▶</span>` : ''}
+                                                </span>
+                                              </div>
                                             </div>
                                             
                                             ${
@@ -480,7 +554,22 @@ export class MultiplexerModal extends LitElement {
                                                             <span class="font-mono text-xs text-text-muted">%${pane.index}</span>
                                                             <span class="text-text">${this.formatPaneInfo(pane)}</span>
                                                           </div>
-                                                          <span class="text-xs text-text-dim">${pane.width}×${pane.height}</span>
+                                                          <div class="flex items-center gap-2">
+                                                            <button
+                                                              class="px-2 py-0.5 bg-red-500 text-white border-none rounded text-xs font-medium cursor-pointer transition-colors hover:bg-red-600 active:scale-95"
+                                                              @click=${(e: Event) => {
+                                                                e.stopPropagation();
+                                                                this.killPane(
+                                                                  session.name,
+                                                                  `${session.name}:${window.index}.${pane.index}`
+                                                                );
+                                                              }}
+                                                              title="Kill pane"
+                                                            >
+                                                              Kill
+                                                            </button>
+                                                            <span class="text-xs text-text-dim">${pane.width}×${pane.height}</span>
+                                                          </div>
                                                         </div>
                                                       `
                                                     )}
@@ -505,11 +594,11 @@ export class MultiplexerModal extends LitElement {
             }
 
             <div class="mt-4 flex gap-2 justify-end">
-              <button class="px-4 py-2 border border-border rounded-md bg-bg-secondary text-text text-sm cursor-pointer transition-all hover:bg-bg-tertiary hover:border-accent-green" @click=${this.handleClose}>Cancel</button>
+              <button class="px-4 py-2 border border-border rounded-md bg-bg-secondary text-text text-sm cursor-pointer transition-all hover:bg-bg-tertiary hover:border-primary" @click=${this.handleClose}>Cancel</button>
               ${
                 !this.loading && activeMultiplexer?.available
                   ? html`
-                    <button class="px-4 py-2 bg-accent-green text-white border border-accent-green rounded-md text-sm cursor-pointer transition-colors hover:bg-accent-green/80" @click=${this.createNewSession}>
+                    <button class="px-4 py-2 bg-primary text-white border border-primary rounded-md text-sm cursor-pointer transition-colors hover:bg-primary-hover" @click=${this.createNewSession}>
                       New Session
                     </button>
                   `

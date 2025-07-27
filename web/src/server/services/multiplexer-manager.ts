@@ -159,6 +159,20 @@ export class MultiplexerManager {
   }
 
   /**
+   * Kill a tmux window
+   */
+  async killTmuxWindow(sessionName: string, windowIndex: number): Promise<void> {
+    await this.tmuxManager.killWindow(sessionName, windowIndex);
+  }
+
+  /**
+   * Kill a tmux pane
+   */
+  async killTmuxPane(sessionName: string, paneId: string): Promise<void> {
+    await this.tmuxManager.killPane(sessionName, paneId);
+  }
+
+  /**
    * Check which multiplexer we're currently inside
    */
   getCurrentMultiplexer(): { type: MultiplexerType; session: string } | null {

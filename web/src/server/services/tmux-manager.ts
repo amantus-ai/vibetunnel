@@ -236,6 +236,32 @@ export class TmuxManager {
   }
 
   /**
+   * Kill a tmux window
+   */
+  async killWindow(sessionName: string, windowIndex: number): Promise<void> {
+    try {
+      await execAsync(`tmux kill-window -t '${sessionName}:${windowIndex}'`);
+      logger.info('Killed tmux window', { sessionName, windowIndex });
+    } catch (error) {
+      logger.error('Failed to kill tmux window', { sessionName, windowIndex, error });
+      throw error;
+    }
+  }
+
+  /**
+   * Kill a tmux pane
+   */
+  async killPane(sessionName: string, paneId: string): Promise<void> {
+    try {
+      await execAsync(`tmux kill-pane -t '${paneId}'`);
+      logger.info('Killed tmux pane', { sessionName, paneId });
+    } catch (error) {
+      logger.error('Failed to kill tmux pane', { sessionName, paneId, error });
+      throw error;
+    }
+  }
+
+  /**
    * Check if inside a tmux session
    */
   isInsideTmux(): boolean {
