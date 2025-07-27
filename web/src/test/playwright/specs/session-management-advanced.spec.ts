@@ -43,22 +43,9 @@ test.describe('Advanced Session Management', () => {
     // Wait for the page to be ready
     await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
 
-    // Check if we need to show exited sessions
-    const showExitedCheckbox = page.locator('input[type="checkbox"][role="checkbox"]');
-    const exitedSessionsHidden = await page
-      .locator('text=/No running sessions/i')
-      .isVisible({ timeout: 2000 })
-      .catch(() => false);
-
-    if (exitedSessionsHidden) {
-      // Check if checkbox exists and is not already checked
-      const isChecked = await showExitedCheckbox.isChecked().catch(() => false);
-      if (!isChecked) {
-        // Click the checkbox to show exited sessions
-        await showExitedCheckbox.click();
-        await page.waitForTimeout(500); // Wait for UI update
-      }
-    }
+    // Ensure all sessions are visible (including exited ones)
+    const { ensureAllSessionsVisible } = await import('../helpers/ui-state.helper');
+    await ensureAllSessionsVisible(page);
 
     // Now wait for session cards to be visible
     try {
@@ -96,8 +83,8 @@ test.describe('Advanced Session Management', () => {
     const isVisible = await exitedCard.isVisible({ timeout: 1000 }).catch(() => false);
 
     if (isVisible) {
-      // If still visible, it should show as exited
-      await expect(exitedCard).toContainText('exited');
+      // If still visible, it should show as exited (with longer timeout for CI)
+      await expect(exitedCard).toContainText('exited', { timeout: 10000 });
     }
     // If not visible, that's also valid - session was cleaned up
   });
