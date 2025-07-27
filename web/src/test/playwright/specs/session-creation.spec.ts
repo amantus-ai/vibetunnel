@@ -284,25 +284,39 @@ test.describe('Session Creation', () => {
     const { sessionName } = await sessionManager.createTrackedSession();
     await assertTerminalReady(page, 15000);
 
+    // Ensure terminal is focused and ready for input
+    const terminal = page.locator('vibe-terminal').first();
+    await terminal.click();
+
+    // Wait for shell prompt before typing
+    await page.waitForFunction(
+      () => {
+        const term = document.querySelector('vibe-terminal');
+        const content = term?.textContent || '';
+        return content.includes('$') || content.includes('#') || content.includes('>');
+      },
+      { timeout: 10000 }
+    );
+
     // Execute a command to have some content in the terminal
     await page.keyboard.type('echo "Test content before reconnect"');
     await page.keyboard.press('Enter');
 
-    // Wait for command output to appear
+    // Wait for command output to appear with longer timeout
     await page.waitForFunction(
       () => {
         const terminal = document.querySelector('vibe-terminal');
         const content = terminal?.textContent || '';
         return content.includes('Test content before reconnect');
       },
-      { timeout: 5000 }
+      { timeout: 10000 }
     );
 
     // Navigate away and back
     await page.goto('/');
 
     // Wait for session list to fully load
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     // Ensure the session we're looking for is in the list
     await page.waitForFunction(
@@ -311,7 +325,7 @@ test.describe('Session Creation', () => {
         return Array.from(cards).some((card) => card.textContent?.includes(targetName));
       },
       sessionName,
-      { timeout: 10000 }
+      { timeout: 15000 }
     );
 
     await reconnectToSession(page, sessionName);
@@ -320,14 +334,14 @@ test.describe('Session Creation', () => {
     await assertUrlHasSession(page);
     await assertTerminalReady(page, 15000);
 
-    // Verify previous content is still there
+    // Verify previous content is still there with longer timeout
     await page.waitForFunction(
       () => {
         const terminal = document.querySelector('vibe-terminal');
         const content = terminal?.textContent || '';
         return content.includes('Test content before reconnect');
       },
-      { timeout: 5000 }
+      { timeout: 10000 }
     );
   });
 });

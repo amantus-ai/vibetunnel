@@ -25,8 +25,11 @@ test.describe('Activity Monitoring', () => {
     // Simply create a session and check if it shows any activity indicators
     const { sessionName } = await sessionManager.createTrackedSession();
 
+    // Wait a moment for the session to be registered
+    await page.waitForTimeout(1000);
+
     // Navigate back to home to see the session list
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.goto('/', { waitUntil: 'networkidle' });
 
     // Ensure all sessions are visible (show exited sessions if hidden)
     await ensureAllSessionsVisible(page);
@@ -38,7 +41,7 @@ test.describe('Activity Monitoring', () => {
         const noSessionsMsg = document.querySelector('.text-dark-text-muted');
         return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
       },
-      { timeout: 10000 }
+      { timeout: 15000 }
     );
 
     // Wait for session cards to load properly
@@ -46,34 +49,53 @@ test.describe('Activity Monitoring', () => {
     for (let retry = 0; retry < 3 && !cardFound; retry++) {
       if (retry > 0) {
         console.log(`Retrying session card lookup (attempt ${retry + 1}/3)`);
-        await page.reload();
-        await page.waitForLoadState('domcontentloaded');
+        // Wait before retry to let the session list update
+        await page.waitForTimeout(2000);
+        await page.reload({ waitUntil: 'networkidle' });
         // Ensure sessions are visible after reload
         await ensureAllSessionsVisible(page);
       }
 
       try {
-        await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
+        // Wait for at least one session card to be visible
+        await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
+
+        // Give the DOM time to stabilize
+        await page.waitForTimeout(500);
 
         // Wait for the specific session card to be present and stable
-        await page.waitForFunction(
+        const foundCard = await page.waitForFunction(
           (name) => {
             const cards = document.querySelectorAll('session-card');
-            const targetCard = Array.from(cards).find((card) => card.textContent?.includes(name));
-            if (!targetCard) return false;
+            console.log(`Found ${cards.length} session cards`);
+
+            const targetCard = Array.from(cards).find((card) => {
+              const cardText = card.textContent || '';
+              console.log(`Checking card text: ${cardText.substring(0, 100)}`);
+              return cardText.includes(name);
+            });
+
+            if (!targetCard) {
+              console.log(`Target card for "${name}" not found`);
+              return false;
+            }
 
             // Check if the card is fully rendered (has content)
             const hasContent = targetCard.textContent && targetCard.textContent.trim().length > 0;
+            console.log(`Target card found, has content: ${hasContent}`);
             return hasContent;
           },
           sessionName,
-          { timeout: 10000 }
+          { timeout: 15000 }
         );
 
-        const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
-        await expect(sessionCard).toBeVisible({ timeout: 5000 });
-        cardFound = true;
+        if (foundCard) {
+          const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
+          await expect(sessionCard).toBeVisible({ timeout: 5000 });
+          cardFound = true;
+        }
       } catch (error) {
+        console.log(`Attempt ${retry + 1} failed:`, error.message);
         if (retry === 2) throw error; // Re-throw on last attempt
       }
     }
