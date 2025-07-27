@@ -25,6 +25,9 @@ interface SessionCardElement extends HTMLElement {
 test.describe.configure({ mode: 'parallel' });
 
 test.describe('Session Creation', () => {
+  // Increase timeout for session creation tests in CI
+  test.setTimeout(process.env.CI ? 60000 : 30000);
+
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {

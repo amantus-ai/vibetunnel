@@ -219,9 +219,15 @@ export async function waitForSessionCard(
         // Not the last attempt - try recovery strategies
 
         // Check if we need to reload the page
-        const hasSessionCards = await page.evaluate(() => {
-          return document.querySelectorAll('session-card').length > 0;
-        });
+        const hasSessionCards = await page
+          .evaluate(() => {
+            return document.querySelectorAll('session-card').length > 0;
+          })
+          .catch(() => {
+            // Page might be closed due to timeout
+            console.error('Page closed while checking for session cards');
+            return false;
+          });
 
         if (!hasSessionCards) {
           console.log('No session cards found, reloading page...');
@@ -234,17 +240,22 @@ export async function waitForSessionCard(
         }
       } else {
         // Last attempt failed - log current state for debugging
-        const currentState = await page.evaluate(() => {
-          const cards = document.querySelectorAll('session-card');
-          const sessionNames = Array.from(cards).map(
-            (card) => card.textContent?.trim() || 'unknown'
-          );
-          return {
-            sessionCount: cards.length,
-            sessionNames,
-            url: window.location.href,
-          };
-        });
+        const currentState = await page
+          .evaluate(() => {
+            const cards = document.querySelectorAll('session-card');
+            const sessionNames = Array.from(cards).map(
+              (card) => card.textContent?.trim() || 'unknown'
+            );
+            return {
+              sessionCount: cards.length,
+              sessionNames,
+              url: window.location.href,
+            };
+          })
+          .catch((evalError) => {
+            console.error('Failed to evaluate page state:', evalError.message);
+            return { sessionCount: 'unknown', sessionNames: [], url: 'unknown' };
+          });
         console.error('Failed to find session. Current state:', currentState);
         throw error;
       }

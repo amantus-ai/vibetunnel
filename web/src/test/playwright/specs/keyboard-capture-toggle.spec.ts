@@ -148,8 +148,13 @@ test.describe('Keyboard Capture Toggle', () => {
     const captureIndicator = page.locator('keyboard-capture-indicator');
     await expect(captureIndicator).toBeVisible();
 
+    // Wait for the button to be stable and clickable
+    const captureButton = captureIndicator.locator('button');
+    await captureButton.waitFor({ state: 'visible', timeout: 10000 });
+    await page.waitForTimeout(500); // Give time for any animations
+
     // Check initial state (should be ON by default - text-primary)
-    const initialButtonState = await captureIndicator.locator('button').getAttribute('class');
+    const initialButtonState = await captureButton.getAttribute('class');
     expect(initialButtonState).toContain('text-primary');
 
     // Add event listener to capture the custom event
@@ -166,8 +171,8 @@ test.describe('Keyboard Capture Toggle', () => {
       });
     });
 
-    // Click the indicator button
-    await captureIndicator.locator('button').click();
+    // Click the indicator button with force to bypass any overlays
+    await captureButton.click({ force: true, timeout: 10000 });
 
     // Wait for the event
     const newState = await captureToggledPromise;

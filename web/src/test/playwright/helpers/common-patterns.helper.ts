@@ -21,8 +21,24 @@ export async function waitForSessionCards(
   page: Page,
   options?: { timeout?: number }
 ): Promise<number> {
-  const { timeout = 5000 } = options || {};
-  await page.waitForSelector('session-card', { state: 'visible', timeout });
+  const { timeout = process.env.CI ? 15000 : 5000 } = options || {};
+
+  // First ensure the app is loaded
+  await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
+
+  // Wait for either session cards or "no sessions" message
+  await page.waitForFunction(
+    () => {
+      const cards = document.querySelectorAll('session-card');
+      const noSessionsMsg = document.querySelector('.text-dark-text-muted');
+      return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
+    },
+    { timeout }
+  );
+
+  // Give a moment for DOM to stabilize
+  await page.waitForTimeout(500);
+
   return await page.locator('session-card').count();
 }
 

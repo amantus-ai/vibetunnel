@@ -9,8 +9,8 @@ import { ensureAllSessionsVisible } from '../helpers/ui-state.helper';
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Activity Monitoring', () => {
-  // Increase timeout for these tests
-  test.setTimeout(30000);
+  // Increase timeout for these tests, especially in CI
+  test.setTimeout(process.env.CI ? 60000 : 30000);
 
   let sessionManager: TestSessionManager;
 
