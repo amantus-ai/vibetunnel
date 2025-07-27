@@ -56,13 +56,42 @@ test.describe('Terminal Interaction', () => {
   });
 
   test('should execute multiple commands in sequence', async ({ page }) => {
-    // Execute first command
-    await executeCommand(page, 'echo "Test 1"');
-    await assertTerminalContains(page, 'Test 1');
+    // Execute first command and wait for it to complete
+    await page.keyboard.type('echo "Test 1"');
+    await page.keyboard.press('Enter');
+    
+    // Wait for the output and prompt
+    await page.waitForFunction(
+      () => {
+        const terminal = document.querySelector('vibe-terminal');
+        const content = terminal?.textContent || '';
+        return content.includes('Test 1') && content.match(/[$>#%❯]\s*$/);
+      },
+      { timeout: 5000 }
+    );
+
+    // Small delay to ensure terminal is ready for next command
+    await page.waitForTimeout(500);
 
     // Execute second command
-    await executeCommand(page, 'echo "Test 2"');
-    await assertTerminalContains(page, 'Test 2');
+    await page.keyboard.type('echo "Test 2"');
+    await page.keyboard.press('Enter');
+    
+    // Wait for the second output
+    await page.waitForFunction(
+      () => {
+        const terminal = document.querySelector('vibe-terminal');
+        const content = terminal?.textContent || '';
+        return content.includes('Test 2');
+      },
+      { timeout: 5000 }
+    );
+    
+    // Verify both outputs are present
+    const finalContent = await getTerminalContent(page);
+    if (!finalContent.includes('Test 1') || !finalContent.includes('Test 2')) {
+      throw new Error(`Missing expected output. Terminal content: ${finalContent}`);
+    }
   });
 
   test('should handle long-running commands', async ({ page }) => {

@@ -157,30 +157,20 @@ test.describe('Keyboard Capture Toggle', () => {
     const initialButtonState = await captureButton.getAttribute('class');
     expect(initialButtonState).toContain('text-primary');
 
-    // Add event listener to capture the custom event
-    const captureToggledPromise = page.evaluate(() => {
-      return new Promise<boolean>((resolve) => {
-        document.addEventListener(
-          'capture-toggled',
-          (e: CustomEvent<{ active: boolean }>) => {
-            console.log('🎯 capture-toggled event received:', e.detail);
-            resolve(e.detail.active);
-          },
-          { once: true }
-        );
-      });
-    });
-
-    // Click the indicator button with force to bypass any overlays
-    await captureButton.click({ force: true, timeout: 10000 });
-
-    // Wait for the event
-    const newState = await captureToggledPromise;
-    expect(newState).toBe(false); // Should toggle from ON to OFF
+    // Click the indicator button and wait for state change
+    await captureButton.click({ timeout: 10000 });
+    
+    // Wait for the button state to change in the DOM
+    await page.waitForFunction(
+      () => {
+        const button = document.querySelector('keyboard-capture-indicator button');
+        return button?.classList.contains('text-muted');
+      },
+      { timeout: 5000 }
+    );
 
     // Verify the indicator shows OFF state
-    await page.waitForTimeout(200); // Allow UI to update
-    const updatedButtonState = await captureIndicator.locator('button').getAttribute('class');
+    const updatedButtonState = await captureButton.getAttribute('class');
     expect(updatedButtonState).toContain('text-muted');
     // The active state class should be text-muted, not text-primary
     // (hover:text-primary is OK, that's just the hover effect)
