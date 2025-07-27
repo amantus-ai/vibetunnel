@@ -1901,6 +1901,21 @@ export class VibeTunnelApp extends LitElement {
         @navigate-to-session=${this.handleNavigateToSession}
         @create-session=${this.handleCreateSession}
       ></multiplexer-modal>
+
+      <!-- Git Notification Handler -->
+      <git-notification-handler></git-notification-handler>
+
+      <!-- Version and logs link with smart positioning -->
+      ${
+        this.showLogLink
+          ? html`
+        <div class="fixed ${this.getLogButtonPosition()} right-4 text-muted text-xs font-mono bg-secondary px-3 py-1.5 rounded-lg border border-border/30 shadow-sm transition-all duration-200" style="z-index: ${Z_INDEX.LOG_BUTTON};">
+          <a href="/logs" class="hover:text-text transition-colors">Logs</a>
+          <span class="ml-2 opacity-75">v${VERSION}</span>
+        </div>
+      `
+          : ''
+      }
     `;
   }
 }

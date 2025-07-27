@@ -22,10 +22,10 @@ const logger = createLogger('code-server-manager');
 
 /**
  * Manages code-server (VS Code in the browser) instances for VibeTunnel sessions.
- * 
+ *
  * This service allows users to run VS Code in their browser for each terminal session.
  * Each session gets its own isolated code-server instance running on a unique port.
- * 
+ *
  * Key features:
  * - Spawns code-server processes on demand
  * - Manages port allocation to avoid conflicts

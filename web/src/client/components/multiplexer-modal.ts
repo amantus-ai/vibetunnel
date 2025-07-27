@@ -1,5 +1,5 @@
 import type { PropertyValues } from 'lit';
-import { css, html, LitElement } from 'lit';
+import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import type {
@@ -10,377 +10,14 @@ import type {
   TmuxWindow,
 } from '../../shared/multiplexer-types.js';
 import { apiClient } from '../services/api-client.js';
-import { Z_INDEX } from '../utils/constants.js';
 import './modal-wrapper.js';
 
 @customElement('multiplexer-modal')
 export class MultiplexerModal extends LitElement {
-  static styles = css`
-    :host {
-      position: fixed;
-      inset: 0;
-      z-index: ${Z_INDEX.MODAL};
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;
-    }
-
-    :host([open]) {
-      display: flex;
-    }
-
-    .content {
-      width: 100%;
-      max-width: 600px;
-      max-height: 80vh;
-      display: flex;
-      flex-direction: column;
-      background: rgb(var(--color-bg-secondary));
-      border: 1px solid rgb(var(--color-border));
-      border-radius: 0.75rem;
-      padding: 1.5rem;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    }
-
-    h2 {
-      margin: 0 0 1rem 0;
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: rgb(var(--color-text));
-    }
-
-    .multiplexer-tabs {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-      border-bottom: 1px solid rgb(var(--color-border));
-    }
-
-    .tab {
-      padding: 0.5rem 1rem;
-      border: none;
-      background: none;
-      color: rgb(var(--color-text-muted));
-      cursor: pointer;
-      position: relative;
-      transition: color 0.2s ease;
-    }
-
-    .tab:hover {
-      color: rgb(var(--color-text));
-    }
-
-    .tab.active {
-      color: #10B981;
-    }
-
-    .tab.active::after {
-      content: '';
-      position: absolute;
-      bottom: -1px;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: #10B981;
-    }
-
-    .tab-count {
-      margin-left: 0.5rem;
-      font-size: 0.75rem;
-      padding: 0.125rem 0.375rem;
-      background: rgb(var(--color-bg-tertiary));
-      border-radius: 9999px;
-    }
-
-    .status-message {
-      margin-bottom: 1rem;
-      padding: 0.75rem;
-      background: rgb(var(--color-bg-tertiary));
-      border-radius: 0.5rem;
-      color: rgb(var(--color-text-muted));
-      text-align: center;
-    }
-
-    .session-list {
-      flex: 1;
-      overflow-y: auto;
-      margin: 0 -1rem;
-      padding: 0 1rem;
-    }
-
-    .session-item {
-      margin-bottom: 0.5rem;
-      border: 1px solid rgb(var(--color-border));
-      border-radius: 0.5rem;
-      overflow: hidden;
-      transition: all 0.2s ease;
-    }
-
-    .session-item:hover {
-      border-color: #10B981;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .session-header {
-      padding: 0.75rem 1rem;
-      background: rgb(var(--color-bg-secondary));
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      transition: background-color 0.2s ease;
-      position: relative;
-    }
-
-    .session-header:hover {
-      background: rgb(var(--color-bg-tertiary));
-    }
-
-    .session-info {
-      flex: 1;
-    }
-
-    .session-name {
-      font-weight: 600;
-      color: rgb(var(--color-text));
-      margin-bottom: 0.25rem;
-    }
-
-    .session-meta {
-      font-size: 0.875rem;
-      color: rgb(var(--color-text-muted));
-      display: flex;
-      gap: 1rem;
-    }
-
-    .session-status {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .status-indicator {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: rgb(var(--color-text-dim));
-    }
-
-    .status-indicator.attached {
-      background: #10B981;
-    }
-
-    .status-indicator.current {
-      background: #10B981;
-    }
-
-    .exited-badge {
-      background: #EF4444;
-      color: white;
-      padding: 0.125rem 0.375rem;
-      border-radius: 0.25rem;
-      font-size: 0.625rem;
-      font-weight: 600;
-    }
-
-    .windows-list {
-      padding: 0.5rem 1rem 0.75rem 2rem;
-      background: rgb(var(--color-bg));
-      border-top: 1px solid rgb(var(--color-border));
-    }
-
-    .attach-button {
-      padding: 0.5rem 1rem;
-      background: rgb(var(--color-accent-green));
-      color: rgb(var(--color-bg));
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.875rem;
-      font-weight: 500;
-      transition: background-color 0.2s;
-    }
-
-    .attach-button:hover {
-      background: rgb(var(--color-accent-green) / 0.8);
-    }
-
-    .window-item {
-      padding: 0.5rem;
-      margin-bottom: 0.25rem;
-      border-radius: 0.25rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      transition: background-color 0.2s ease;
-    }
-
-    .window-item:hover {
-      background: rgb(var(--color-bg-secondary));
-    }
-
-    .window-item.active {
-      background: rgb(var(--color-bg-tertiary));
-      font-weight: 500;
-    }
-
-    .window-info {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .window-index {
-      font-family: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
-      font-size: 0.875rem;
-      color: rgb(var(--color-text-muted));
-    }
-
-    .panes-count {
-      font-size: 0.75rem;
-      color: rgb(var(--color-text-dim));
-    }
-
-    .panes-list {
-      padding: 0.25rem 0.5rem 0.5rem 1.5rem;
-      background: rgb(var(--color-bg));
-      border-top: 1px solid rgb(var(--color-border));
-    }
-
-    .pane-item {
-      padding: 0.375rem 0.5rem;
-      margin-bottom: 0.125rem;
-      border-radius: 0.25rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 0.875rem;
-      transition: background-color 0.2s ease;
-    }
-
-    .pane-item:hover {
-      background: rgb(var(--color-bg-secondary));
-    }
-
-    .pane-item.active {
-      background: rgb(var(--color-bg-tertiary));
-      font-weight: 500;
-    }
-
-    .pane-info {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .pane-index {
-      font-family: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
-      font-size: 0.75rem;
-      color: rgb(var(--color-text-muted));
-    }
-
-    .pane-command {
-      color: rgb(var(--color-text));
-    }
-
-    .pane-size {
-      font-size: 0.75rem;
-      color: rgb(var(--color-text-dim));
-    }
-
-    .actions {
-      margin-top: 1rem;
-      display: flex;
-      gap: 0.5rem;
-      justify-content: flex-end;
-    }
-
-    .action-button {
-      padding: 0.5rem 1rem;
-      border: 1px solid rgb(var(--color-border));
-      border-radius: 0.375rem;
-      background: rgb(var(--color-bg-secondary));
-      color: rgb(var(--color-text));
-      font-size: 0.875rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .action-button:hover {
-      background: rgb(var(--color-bg-tertiary));
-      border-color: #10B981;
-    }
-
-    .action-button.primary {
-      background: #10B981;
-      color: white;
-      border-color: #10B981;
-    }
-
-    .action-button.primary:hover {
-      background: #059669;
-      border-color: #059669;
-    }
-
-    .expand-icon {
-      transition: transform 0.2s ease;
-    }
-
-    .expanded .expand-icon {
-      transform: rotate(90deg);
-    }
-
-    .attach-button {
-      padding: 0.25rem 0.75rem;
-      margin-right: 0.5rem;
-      background: #10B981;
-      color: white;
-      border: none;
-      border-radius: 0.25rem;
-      font-size: 0.75rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-
-    .attach-button:hover {
-      background: #059669;
-    }
-
-    .attach-button:active {
-      transform: scale(0.95);
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 3rem 1rem;
-      color: rgb(var(--color-text-muted));
-    }
-
-    .empty-state h3 {
-      margin: 0 0 0.5rem 0;
-      color: rgb(var(--color-text));
-    }
-
-    .create-button {
-      margin-top: 1rem;
-      padding: 0.75rem 1.5rem;
-      background: #10B981;
-      color: white;
-      border: none;
-      border-radius: 0.375rem;
-      font-size: 0.875rem;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-
-    .create-button:hover {
-      background: #059669;
-    }
-  `;
+  // Disable shadow DOM to use Tailwind classes
+  createRenderRoot() {
+    return this;
+  }
 
   @property({ type: Boolean, reflect: true })
   open = false;
@@ -487,7 +124,6 @@ export class MultiplexerModal extends LitElement {
       const response = await apiClient.get(
         `/multiplexer/tmux/sessions/${sessionName}/panes?window=${windowIndex}`
       );
-      console.log(`Loaded panes for ${key}:`, response.panes);
       this.panes.set(key, response.panes);
       this.requestUpdate();
     } catch (error) {
@@ -581,8 +217,8 @@ export class MultiplexerModal extends LitElement {
       const attachResponse = await apiClient.post('/multiplexer/attach', {
         type: this.activeTab,
         sessionName: sessionName,
-        cols: 80, // TODO: Get actual terminal dimensions
-        rows: 24,
+        cols: window.innerWidth > 768 ? 120 : 80,
+        rows: window.innerHeight > 600 ? 30 : 24,
         titleMode: 'dynamic',
         metadata: {
           source: 'multiplexer-modal-new',
@@ -621,263 +257,268 @@ export class MultiplexerModal extends LitElement {
     const activeMultiplexer = status ? status[this.activeTab] : null;
 
     return html`
-      <modal-wrapper .open=${this.open} @close=${this.handleClose}>
-        <div class="content">
-          <h2>Terminal Sessions</h2>
+      <div class="fixed inset-0 z-50 ${this.open ? 'flex' : 'hidden'} items-center justify-center p-4">
+        <modal-wrapper .open=${this.open} @close=${this.handleClose}>
+          <div class="w-full max-w-2xl max-h-[80vh] flex flex-col bg-bg-secondary border border-border rounded-xl p-6 shadow-xl">
+            <h2 class="m-0 mb-4 text-xl font-semibold text-text">Terminal Sessions</h2>
 
-          ${
-            status && (status.tmux.available || status.zellij.available)
-              ? html`
-              <div class="multiplexer-tabs">
-                ${
-                  status.tmux.available
-                    ? html`
-                    <button
-                      class="tab ${this.activeTab === 'tmux' ? 'active' : ''}"
-                      @click=${() => this.switchTab('tmux')}
-                    >
-                      tmux
-                      <span class="tab-count">${status.tmux.sessions.length}</span>
-                    </button>
-                  `
-                    : null
-                }
-                ${
-                  status.zellij.available
-                    ? html`
-                    <button
-                      class="tab ${this.activeTab === 'zellij' ? 'active' : ''}"
-                      @click=${() => this.switchTab('zellij')}
-                    >
-                      Zellij
-                      <span class="tab-count">${status.zellij.sessions.length}</span>
-                    </button>
-                  `
-                    : null
-                }
-              </div>
-            `
-              : null
-          }
+            ${
+              status && (status.tmux.available || status.zellij.available)
+                ? html`
+                <div class="flex gap-2 mb-4 border-b border-border">
+                  ${
+                    status.tmux.available
+                      ? html`
+                      <button
+                        class="px-4 py-2 border-none bg-transparent text-text-muted cursor-pointer relative transition-colors hover:text-text ${this.activeTab === 'tmux' ? 'text-accent-green' : ''}"
+                        @click=${() => this.switchTab('tmux')}
+                      >
+                        tmux
+                        <span class="ml-2 text-xs px-1.5 py-0.5 bg-bg-tertiary rounded-full">${status.tmux.sessions.length}</span>
+                        ${this.activeTab === 'tmux' ? html`<div class="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-accent-green"></div>` : ''}
+                      </button>
+                    `
+                      : null
+                  }
+                  ${
+                    status.zellij.available
+                      ? html`
+                      <button
+                        class="px-4 py-2 border-none bg-transparent text-text-muted cursor-pointer relative transition-colors hover:text-text ${this.activeTab === 'zellij' ? 'text-accent-green' : ''}"
+                        @click=${() => this.switchTab('zellij')}
+                      >
+                        Zellij
+                        <span class="ml-2 text-xs px-1.5 py-0.5 bg-bg-tertiary rounded-full">${status.zellij.sessions.length}</span>
+                        ${this.activeTab === 'zellij' ? html`<div class="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-accent-green"></div>` : ''}
+                      </button>
+                    `
+                      : null
+                  }
+                </div>
+              `
+                : null
+            }
 
-          ${
-            this.loading
-              ? html`<div class="status-message">Loading terminal sessions...</div>`
-              : !status
-                ? html`<div class="status-message">No multiplexer status available</div>`
-                : !status.tmux.available && !status.zellij.available
-                  ? html`
-                    <div class="empty-state">
-                      <h3>No Terminal Multiplexer Available</h3>
-                      <p>Neither tmux nor Zellij is installed on this system.</p>
-                      <p>Install tmux or Zellij to use this feature.</p>
-                    </div>
-                  `
-                  : !activeMultiplexer?.available
+            ${
+              this.loading
+                ? html`<div class="mb-4 p-3 bg-bg-tertiary rounded-lg text-text-muted text-center">Loading terminal sessions...</div>`
+                : !status
+                  ? html`<div class="mb-4 p-3 bg-bg-tertiary rounded-lg text-text-muted text-center">No multiplexer status available</div>`
+                  : !status.tmux.available && !status.zellij.available
                     ? html`
-                      <div class="empty-state">
-                        <h3>${this.activeTab} Not Available</h3>
-                        <p>${this.activeTab} is not installed or not available on this system.</p>
-                        <p>Install ${this.activeTab} to use this feature.</p>
+                      <div class="text-center py-12 text-text-muted">
+                        <h3 class="m-0 mb-2 text-text">No Terminal Multiplexer Available</h3>
+                        <p>Neither tmux nor Zellij is installed on this system.</p>
+                        <p>Install tmux or Zellij to use this feature.</p>
                       </div>
                     `
-                    : this.error
-                      ? html`<div class="status-message">${this.error}</div>`
-                      : activeMultiplexer.sessions.length === 0
-                        ? html`
-                          <div class="empty-state">
-                            <h3>No ${this.activeTab} Sessions</h3>
-                            <p>There are no active ${this.activeTab} sessions.</p>
-                            <button class="create-button" @click=${this.createNewSession}>
-                              Create New Session
-                            </button>
-                          </div>
-                        `
-                        : html`
-                          <div class="session-list">
-                            ${repeat(
-                              activeMultiplexer.sessions,
-                              (session) => `${session.type}-${session.name}`,
-                              (session) => {
-                                const sessionWindows = this.windows.get(session.name) || [];
-                                const isExpanded = this.expandedSessions.has(session.name);
+                    : !activeMultiplexer?.available
+                      ? html`
+                        <div class="text-center py-12 text-text-muted">
+                          <h3 class="m-0 mb-2 text-text">${this.activeTab} Not Available</h3>
+                          <p>${this.activeTab} is not installed or not available on this system.</p>
+                          <p>Install ${this.activeTab} to use this feature.</p>
+                        </div>
+                      `
+                      : this.error
+                        ? html`<div class="mb-4 p-3 bg-bg-tertiary rounded-lg text-text-muted text-center">${this.error}</div>`
+                        : activeMultiplexer.sessions.length === 0
+                          ? html`
+                            <div class="text-center py-12 text-text-muted">
+                              <h3 class="m-0 mb-2 text-text">No ${this.activeTab} Sessions</h3>
+                              <p>There are no active ${this.activeTab} sessions.</p>
+                              <button class="mt-4 px-6 py-3 bg-accent-green text-white border-none rounded-md text-sm cursor-pointer transition-colors hover:bg-accent-green/80" @click=${this.createNewSession}>
+                                Create New Session
+                              </button>
+                            </div>
+                          `
+                          : html`
+                            <div class="flex-1 overflow-y-auto -mx-4 px-4">
+                              ${repeat(
+                                activeMultiplexer.sessions,
+                                (session) => `${session.type}-${session.name}`,
+                                (session) => {
+                                  const sessionWindows = this.windows.get(session.name) || [];
+                                  const isExpanded = this.expandedSessions.has(session.name);
 
-                                return html`
-                        <div class="session-item ${session.type === 'tmux' && isExpanded ? 'expanded' : ''}">
-                          <div
-                            class="session-header"
-                            @click=${() =>
-                              session.type === 'tmux' ? this.toggleSession(session.name) : null}
-                            style="cursor: ${session.type === 'tmux' ? 'pointer' : 'default'}"
-                          >
-                            <div class="session-info">
-                              <div class="session-name">${session.name}</div>
-                              <div class="session-meta">
+                                  return html`
+                          <div class="mb-2 border border-border rounded-lg overflow-hidden transition-all hover:border-accent-green hover:shadow-md">
+                            <div
+                              class="px-4 py-3 bg-bg-secondary cursor-pointer flex items-center justify-between transition-colors hover:bg-bg-tertiary"
+                              @click=${() =>
+                                session.type === 'tmux' ? this.toggleSession(session.name) : null}
+                              style="cursor: ${session.type === 'tmux' ? 'pointer' : 'default'}"
+                            >
+                              <div class="flex-1">
+                                <div class="font-semibold text-text mb-1">${session.name}</div>
+                                <div class="text-sm text-text-muted flex gap-4">
+                                  ${
+                                    session.windows !== undefined
+                                      ? html`<span>${session.windows} window${session.windows !== 1 ? 's' : ''}</span>`
+                                      : null
+                                  }
+                                  ${
+                                    session.exited
+                                      ? html`<span class="bg-red-500 text-white px-1.5 py-0.5 rounded text-xs font-semibold">EXITED</span>`
+                                      : null
+                                  }
+                                  ${
+                                    session.activity
+                                      ? html`<span>Last activity: ${this.formatTimestamp(session.activity)}</span>`
+                                      : null
+                                  }
+                                </div>
+                              </div>
+                              <div class="flex items-center gap-2">
                                 ${
-                                  session.windows !== undefined
-                                    ? html`<span>${session.windows} window${session.windows !== 1 ? 's' : ''}</span>`
+                                  session.attached
+                                    ? html`<div class="w-2 h-2 rounded-full bg-accent-green" title="Attached"></div>`
                                     : null
                                 }
                                 ${
-                                  session.exited
-                                    ? html`<span class="exited-badge">EXITED</span>`
+                                  session.current
+                                    ? html`<div class="w-2 h-2 rounded-full bg-accent-green" title="Current"></div>`
                                     : null
                                 }
                                 ${
-                                  session.activity
-                                    ? html`<span>Last activity: ${this.formatTimestamp(session.activity)}</span>`
-                                    : null
+                                  session.type === 'tmux'
+                                    ? html`
+                                      <button
+                                        class="px-3 py-1 bg-accent-green text-white border-none rounded text-xs font-medium cursor-pointer transition-colors hover:bg-accent-green/80 active:scale-95"
+                                        @click=${(e: Event) => {
+                                          e.stopPropagation();
+                                          this.attachToSession({
+                                            type: session.type,
+                                            session: session.name,
+                                          });
+                                        }}
+                                      >
+                                        Attach
+                                      </button>
+                                      <span class="transition-transform ${isExpanded ? 'rotate-90' : ''}">▶</span>
+                                    `
+                                    : html`
+                                      <button
+                                        class="px-3 py-1 bg-accent-green text-white border-none rounded text-xs font-medium cursor-pointer transition-colors hover:bg-accent-green/80 active:scale-95"
+                                        @click=${(e: Event) => {
+                                          e.stopPropagation();
+                                          this.attachToSession({
+                                            type: session.type,
+                                            session: session.name,
+                                          });
+                                        }}
+                                      >
+                                        Attach to Session
+                                      </button>
+                                    `
                                 }
                               </div>
                             </div>
-                            <div class="session-status">
-                              ${
-                                session.attached
-                                  ? html`<div class="status-indicator attached" title="Attached"></div>`
-                                  : null
-                              }
-                              ${
-                                session.current
-                                  ? html`<div class="status-indicator current" title="Current"></div>`
-                                  : null
-                              }
-                              ${
-                                session.type === 'tmux'
-                                  ? html`
-                                    <button
-                                      class="attach-button"
-                                      @click=${(e: Event) => {
-                                        e.stopPropagation();
-                                        this.attachToSession({
-                                          type: session.type,
-                                          session: session.name,
-                                        });
-                                      }}
-                                    >
-                                      Attach
-                                    </button>
-                                    <span class="expand-icon">▶</span>
-                                  `
-                                  : html`
-                                    <button
-                                      class="attach-button"
-                                      @click=${(e: Event) => {
-                                        e.stopPropagation();
-                                        this.attachToSession({
-                                          type: session.type,
-                                          session: session.name,
-                                        });
-                                      }}
-                                    >
-                                      Attach to Session
-                                    </button>
-                                  `
-                              }
-                            </div>
-                          </div>
 
-                          ${
-                            session.type === 'tmux' && isExpanded && sessionWindows.length > 0
-                              ? html`
-                                <div class="windows-list">
-                                  ${repeat(
-                                    sessionWindows,
-                                    (window) => `${session.name}-${window.index}`,
-                                    (window) => {
-                                      const windowKey = `${session.name}:${window.index}`;
-                                      const isWindowExpanded = this.expandedWindows.has(windowKey);
-                                      const windowPanes = this.panes.get(windowKey) || [];
+                            ${
+                              session.type === 'tmux' && isExpanded && sessionWindows.length > 0
+                                ? html`
+                                  <div class="px-2 py-2 pl-8 bg-bg border-t border-border">
+                                    ${repeat(
+                                      sessionWindows,
+                                      (window) => `${session.name}-${window.index}`,
+                                      (window) => {
+                                        const windowKey = `${session.name}:${window.index}`;
+                                        const isWindowExpanded =
+                                          this.expandedWindows.has(windowKey);
+                                        const windowPanes = this.panes.get(windowKey) || [];
 
-                                      return html`
-                                        <div>
-                                          <div
-                                            class="window-item ${window.active ? 'active' : ''}"
-                                            @click=${(e: Event) => {
-                                              e.stopPropagation();
-                                              if (window.panes > 1) {
-                                                this.toggleWindow(session.name, window.index);
-                                              } else {
-                                                this.attachToSession({
-                                                  type: session.type,
-                                                  session: session.name,
-                                                  window: window.index,
-                                                });
-                                              }
-                                            }}
-                                          >
-                                            <div class="window-info">
-                                              <span class="window-index">${window.index}:</span>
-                                              <span>${window.name}</span>
+                                        return html`
+                                          <div>
+                                            <div
+                                              class="p-2 mb-1 rounded cursor-pointer flex items-center justify-between transition-colors hover:bg-bg-secondary ${window.active ? 'bg-bg-tertiary font-medium' : ''}"
+                                              @click=${(e: Event) => {
+                                                e.stopPropagation();
+                                                if (window.panes > 1) {
+                                                  this.toggleWindow(session.name, window.index);
+                                                } else {
+                                                  this.attachToSession({
+                                                    type: session.type,
+                                                    session: session.name,
+                                                    window: window.index,
+                                                  });
+                                                }
+                                              }}
+                                            >
+                                              <div class="flex items-center gap-2">
+                                                <span class="font-mono text-sm text-text-muted">${window.index}:</span>
+                                                <span>${window.name}</span>
+                                              </div>
+                                              <span class="text-xs text-text-dim">
+                                                ${window.panes} pane${window.panes !== 1 ? 's' : ''}
+                                                ${window.panes > 1 ? html`<span class="ml-2 transition-transform ${isWindowExpanded ? 'rotate-90' : ''}">▶</span>` : ''}
+                                              </span>
                                             </div>
-                                            <span class="panes-count">
-                                              ${window.panes} pane${window.panes !== 1 ? 's' : ''}
-                                              ${window.panes > 1 ? html`<span class="expand-icon" style="margin-left: 0.5rem;">${isWindowExpanded ? '▼' : '▶'}</span>` : ''}
-                                            </span>
-                                          </div>
-                                          
-                                          ${
-                                            isWindowExpanded && windowPanes.length > 0
-                                              ? html`
-                                                <div class="panes-list">
-                                                  ${repeat(
-                                                    windowPanes,
-                                                    (pane) =>
-                                                      `${session.name}:${window.index}.${pane.index}`,
-                                                    (pane) => html`
-                                                      <div
-                                                        class="pane-item ${pane.active ? 'active' : ''}"
-                                                        @click=${(e: Event) => {
-                                                          e.stopPropagation();
-                                                          this.attachToSession({
-                                                            type: session.type,
-                                                            session: session.name,
-                                                            window: window.index,
-                                                            pane: pane.index,
-                                                          });
-                                                        }}
-                                                      >
-                                                        <div class="pane-info">
-                                                          <span class="pane-index">%${pane.index}</span>
-                                                          <span class="pane-command">${this.formatPaneInfo(pane)}</span>
+                                            
+                                            ${
+                                              isWindowExpanded && windowPanes.length > 0
+                                                ? html`
+                                                  <div class="px-1 py-1 pl-6 bg-bg border-t border-border">
+                                                    ${repeat(
+                                                      windowPanes,
+                                                      (pane) =>
+                                                        `${session.name}:${window.index}.${pane.index}`,
+                                                      (pane) => html`
+                                                        <div
+                                                          class="px-2 py-1.5 mb-0.5 rounded cursor-pointer flex items-center justify-between text-sm transition-colors hover:bg-bg-secondary ${pane.active ? 'bg-bg-tertiary font-medium' : ''}"
+                                                          @click=${(e: Event) => {
+                                                            e.stopPropagation();
+                                                            this.attachToSession({
+                                                              type: session.type,
+                                                              session: session.name,
+                                                              window: window.index,
+                                                              pane: pane.index,
+                                                            });
+                                                          }}
+                                                        >
+                                                          <div class="flex items-center gap-2">
+                                                            <span class="font-mono text-xs text-text-muted">%${pane.index}</span>
+                                                            <span class="text-text">${this.formatPaneInfo(pane)}</span>
+                                                          </div>
+                                                          <span class="text-xs text-text-dim">${pane.width}×${pane.height}</span>
                                                         </div>
-                                                        <span class="pane-size">${pane.width}×${pane.height}</span>
-                                                      </div>
-                                                    `
-                                                  )}
-                                                </div>
-                                              `
-                                              : null
-                                          }
-                                        </div>
-                                      `;
-                                    }
-                                  )}
-                                </div>
-                              `
-                              : null
-                          }
-                        </div>
-                      `;
-                              }
-                            )}
-                </div>
-              `
-          }
-
-          <div class="actions">
-            <button class="action-button" @click=${this.handleClose}>Cancel</button>
-            ${
-              !this.loading && activeMultiplexer?.available
-                ? html`
-                  <button class="action-button primary" @click=${this.createNewSession}>
-                    New Session
-                  </button>
+                                                      `
+                                                    )}
+                                                  </div>
+                                                `
+                                                : null
+                                            }
+                                          </div>
+                                        `;
+                                      }
+                                    )}
+                                  </div>
+                                `
+                                : null
+                            }
+                          </div>
+                        `;
+                                }
+                              )}
+                  </div>
                 `
-                : null
             }
+
+            <div class="mt-4 flex gap-2 justify-end">
+              <button class="px-4 py-2 border border-border rounded-md bg-bg-secondary text-text text-sm cursor-pointer transition-all hover:bg-bg-tertiary hover:border-accent-green" @click=${this.handleClose}>Cancel</button>
+              ${
+                !this.loading && activeMultiplexer?.available
+                  ? html`
+                    <button class="px-4 py-2 bg-accent-green text-white border border-accent-green rounded-md text-sm cursor-pointer transition-colors hover:bg-accent-green/80" @click=${this.createNewSession}>
+                      New Session
+                    </button>
+                  `
+                  : null
+              }
+            </div>
           </div>
-        </div>
-      </modal-wrapper>
+        </modal-wrapper>
+      </div>
     `;
   }
 }
