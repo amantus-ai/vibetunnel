@@ -110,6 +110,12 @@ export interface PtySession {
   };
   // Connected socket clients for broadcasting
   connectedClients?: Set<net.Socket>;
+  // Foreground process tracking
+  shellPgid?: number; // Process group ID of the shell
+  currentForegroundPgid?: number; // Current foreground process group
+  currentCommand?: string; // Command line of current foreground process
+  commandStartTime?: number; // When current command started (timestamp)
+  processPollingInterval?: NodeJS.Timeout; // Interval for checking process state
 }
 
 export class PtyError extends Error {

@@ -3,7 +3,7 @@
  */
 
 export type ControlMessageType = 'request' | 'response' | 'event';
-export type ControlCategory = 'terminal' | 'git' | 'system';
+export type ControlCategory = 'terminal' | 'git' | 'system' | 'notification';
 
 export interface ControlMessage {
   id: string;

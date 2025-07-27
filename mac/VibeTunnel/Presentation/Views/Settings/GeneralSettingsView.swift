@@ -38,6 +38,12 @@ struct GeneralSettingsView: View {
         UpdateChannel(rawValue: updateChannelRaw) ?? .stable
     }
 
+    private func updateNotificationPreferences() {
+        // Load current preferences from ConfigManager and notify the service
+        let prefs = NotificationService.NotificationPreferences(fromConfig: configManager)
+        NotificationService.shared.updatePreferences(prefs)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -80,6 +86,114 @@ struct GeneralSettingsView: View {
                             Text("The dock icon is always displayed when the Settings dialog is visible.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    // Show Session Notifications
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle("Show Session Notifications", isOn: $showNotifications)
+                            .onChange(of: showNotifications) { _, newValue in
+                                // Ensure NotificationService starts/stops based on the toggle
+                                if newValue {
+                                    Task {
+                                        // Request permissions and show test notification
+                                        let granted = await NotificationService.shared
+                                            .requestPermissionAndShowTestNotification()
+
+                                        if granted {
+                                            await NotificationService.shared.start()
+                                        } else {
+                                            // If permission denied, turn toggle back off
+                                            await MainActor.run {
+                                                showNotifications = false
+
+                                                // Show alert explaining the situation
+                                                let alert = NSAlert()
+                                                alert.messageText = "Notification Permission Required"
+                                                alert.informativeText = "VibeTunnel needs permission to show notifications. Please enable notifications for VibeTunnel in System Settings."
+                                                alert.alertStyle = .informational
+                                                alert.addButton(withTitle: "Open System Settings")
+                                                alert.addButton(withTitle: "Cancel")
+
+                                                if alert.runModal() == .alertFirstButtonReturn {
+                                                    // Settings will already be open from the service
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    NotificationService.shared.stop()
+                                }
+                            }
+                        Text("Display native macOS notifications for session and command events.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        if showNotifications {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Notify me for:")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.leading, 20)
+                                    .padding(.top, 4)
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Toggle("Session starts", isOn: Binding(
+                                        get: { configManager.notificationSessionStart },
+                                        set: { newValue in
+                                            configManager.notificationSessionStart = newValue
+                                            updateNotificationPreferences()
+                                        }
+                                    ))
+                                    .toggleStyle(.checkbox)
+
+                                    Toggle("Session ends", isOn: Binding(
+                                        get: { configManager.notificationSessionExit },
+                                        set: { newValue in
+                                            configManager.notificationSessionExit = newValue
+                                            updateNotificationPreferences()
+                                        }
+                                    ))
+                                    .toggleStyle(.checkbox)
+
+                                    Toggle("Commands complete (> 3 seconds)", isOn: Binding(
+                                        get: { configManager.notificationCommandCompletion },
+                                        set: { newValue in
+                                            configManager.notificationCommandCompletion = newValue
+                                            updateNotificationPreferences()
+                                        }
+                                    ))
+                                    .toggleStyle(.checkbox)
+
+                                    Toggle("Commands fail", isOn: Binding(
+                                        get: { configManager.notificationCommandError },
+                                        set: { newValue in
+                                            configManager.notificationCommandError = newValue
+                                            updateNotificationPreferences()
+                                        }
+                                    ))
+                                    .toggleStyle(.checkbox)
+
+                                    Toggle("Terminal bell (\u{0007})", isOn: Binding(
+                                        get: { configManager.notificationBell },
+                                        set: { newValue in
+                                            configManager.notificationBell = newValue
+                                            updateNotificationPreferences()
+                                        }
+                                    ))
+                                    .toggleStyle(.checkbox)
+
+                                    Toggle("Claude turn notifications", isOn: Binding(
+                                        get: { configManager.notificationClaudeTurn },
+                                        set: { newValue in
+                                            configManager.notificationClaudeTurn = newValue
+                                            updateNotificationPreferences()
+                                        }
+                                    ))
+                                    .toggleStyle(.checkbox)
+                                }
+                                .padding(.leading, 20)
+                            }
                         }
                     }
 

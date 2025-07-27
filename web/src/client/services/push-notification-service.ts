@@ -1,11 +1,13 @@
-import type { PushNotificationPreferences, PushSubscription } from '../../shared/types';
+import type { PushSubscription } from '../../shared/types';
 import { HttpMethod } from '../../shared/types';
+import type { NotificationPreferences } from '../../types/config.js';
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../types/config.js';
 import { createLogger } from '../utils/logger';
 import { authClient } from './auth-client';
+import { serverConfigService } from './server-config-service';
 
 // Re-export types for components
-export type { PushSubscription, PushNotificationPreferences };
-export type NotificationPreferences = PushNotificationPreferences;
+export type { PushSubscription, NotificationPreferences };
 
 const logger = createLogger('push-notification-service');
 
@@ -385,43 +387,37 @@ export class PushNotificationService {
   /**
    * Save notification preferences
    */
-  savePreferences(preferences: PushNotificationPreferences): void {
+  async savePreferences(preferences: NotificationPreferences): Promise<void> {
     try {
-      localStorage.setItem('vibetunnel-notification-preferences', JSON.stringify(preferences));
-      logger.debug('saved notification preferences');
+      // Save directly - no mapping needed with unified type
+      await serverConfigService.updateNotificationPreferences(preferences);
+      logger.debug('saved notification preferences to config');
     } catch (error) {
       logger.error('failed to save notification preferences:', error);
+      throw error;
     }
   }
 
   /**
    * Load notification preferences
    */
-  loadPreferences(): PushNotificationPreferences {
+  async loadPreferences(): Promise<NotificationPreferences> {
     try {
-      const saved = localStorage.getItem('vibetunnel-notification-preferences');
-      if (saved) {
-        return { ...this.getDefaultPreferences(), ...JSON.parse(saved) };
-      }
+      // Load from config service
+      const configPreferences = await serverConfigService.getNotificationPreferences();
+      // Return preferences directly - no mapping needed
+      return configPreferences || this.getDefaultPreferences();
     } catch (error) {
-      logger.error('failed to load notification preferences:', error);
+      logger.error('failed to load notification preferences from config:', error);
+      return this.getDefaultPreferences();
     }
-    return this.getDefaultPreferences();
   }
 
   /**
    * Get default notification preferences
    */
-  private getDefaultPreferences(): PushNotificationPreferences {
-    return {
-      enabled: false,
-      sessionExit: true,
-      sessionStart: false,
-      sessionError: true,
-      systemAlerts: true,
-      soundEnabled: true,
-      vibrationEnabled: true,
-    };
+  private getDefaultPreferences(): NotificationPreferences {
+    return DEFAULT_NOTIFICATION_PREFERENCES;
   }
 
   /**
@@ -485,6 +481,9 @@ export class PushNotificationService {
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          endpoint: this.pushSubscription?.endpoint,
+        }),
       });
 
       if (!response.ok) {

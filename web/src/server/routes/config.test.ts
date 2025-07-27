@@ -34,6 +34,8 @@ describe('Config Routes', () => {
       stopWatching: vi.fn(),
       onConfigChange: vi.fn(),
       getConfigPath: vi.fn(() => '/home/user/.vibetunnel/config.json'),
+      getNotificationPreferences: vi.fn(),
+      updateNotificationPreferences: vi.fn(),
     } as unknown as ConfigService;
 
     // Create routes
@@ -270,6 +272,114 @@ describe('Config Routes', () => {
       });
 
       expect(mockConfigService.updateRepositoryBasePath).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('notification preferences', () => {
+    describe('GET /api/config with notification preferences', () => {
+      it('should include notification preferences in response', async () => {
+        const notificationPreferences = {
+          enabled: true,
+          sessionStart: false,
+          sessionExit: true,
+          commandCompletion: true,
+          commandError: true,
+          bell: true,
+          claudeTurn: false,
+        };
+
+        mockConfigService.getNotificationPreferences = vi.fn(() => notificationPreferences);
+
+        const response = await request(app).get('/api/config');
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({
+          repositoryBasePath: '/home/user/repos',
+          serverConfigured: true,
+          quickStartCommands: defaultConfig.quickStartCommands,
+          notificationPreferences,
+        });
+      });
+
+      it('should handle missing notification preferences', async () => {
+        mockConfigService.getNotificationPreferences = vi.fn(() => undefined);
+
+        const response = await request(app).get('/api/config');
+
+        expect(response.status).toBe(200);
+        expect(response.body.notificationPreferences).toBeUndefined();
+      });
+    });
+
+    describe('PUT /api/config with notification preferences', () => {
+      it('should update notification preferences', async () => {
+        const newPreferences = {
+          enabled: false,
+          sessionStart: true,
+          sessionExit: false,
+          commandCompletion: false,
+          commandError: false,
+          bell: false,
+          claudeTurn: true,
+        };
+
+        const response = await request(app)
+          .put('/api/config')
+          .send({ notificationPreferences: newPreferences });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({
+          success: true,
+          notificationPreferences: newPreferences,
+        });
+
+        expect(mockConfigService.updateNotificationPreferences).toHaveBeenCalledWith(
+          newPreferences
+        );
+      });
+
+      it('should update notification preferences along with other settings', async () => {
+        const newPath = '/new/repository/path';
+        const newPreferences = {
+          enabled: true,
+          sessionStart: true,
+          sessionExit: true,
+          commandCompletion: true,
+          commandError: true,
+          bell: true,
+          claudeTurn: false,
+        };
+
+        const response = await request(app).put('/api/config').send({
+          repositoryBasePath: newPath,
+          notificationPreferences: newPreferences,
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({
+          success: true,
+          repositoryBasePath: newPath,
+          notificationPreferences: newPreferences,
+        });
+
+        expect(mockConfigService.updateRepositoryBasePath).toHaveBeenCalledWith(newPath);
+        expect(mockConfigService.updateNotificationPreferences).toHaveBeenCalledWith(
+          newPreferences
+        );
+      });
+
+      it('should reject invalid notification preferences', async () => {
+        const response = await request(app)
+          .put('/api/config')
+          .send({ notificationPreferences: 'invalid' }); // Not an object
+
+        expect(response.status).toBe(400);
+        expect(response.body).toEqual({
+          error: 'No valid updates provided',
+        });
+
+        expect(mockConfigService.updateNotificationPreferences).not.toHaveBeenCalled();
+      });
     });
   });
 });

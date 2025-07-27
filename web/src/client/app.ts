@@ -22,8 +22,6 @@ import { isIOS } from './utils/mobile-utils.js';
 import { type MediaQueryState, responsiveObserver } from './utils/responsive-utils.js';
 import { triggerTerminalResize } from './utils/terminal-utils.js';
 import { titleManager } from './utils/title-manager.js';
-// Import version
-import { VERSION } from './version.js';
 
 // Import components
 import './components/app-header.js';
@@ -77,7 +75,6 @@ export class VibeTunnelApp extends LitElement {
   @state() private sidebarWidth = this.loadSidebarWidth();
   @state() private isResizing = false;
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
-  @state() private showLogLink = false;
   @state() private hasActiveOverlay = false;
   @state() private keyboardCaptureActive = true;
   private initialLoadComplete = false;
@@ -1477,17 +1474,16 @@ export class VibeTunnelApp extends LitElement {
     try {
       const stored = localStorage.getItem('vibetunnel_app_preferences');
       if (stored) {
-        const preferences = JSON.parse(stored);
-        this.showLogLink = preferences.showLogLink || false;
+        JSON.parse(stored); // Parse to validate JSON
+        // Preferences loaded but showLogLink removed
       }
     } catch (error) {
       logger.error('Failed to load app preferences', error);
     }
 
     // Listen for preference changes
-    window.addEventListener('app-preferences-changed', (e: Event) => {
-      const event = e as CustomEvent;
-      this.showLogLink = event.detail.showLogLink;
+    window.addEventListener('app-preferences-changed', () => {
+      // Preference changes handled but showLogLink removed
     });
   }
 
@@ -1600,54 +1596,6 @@ export class VibeTunnelApp extends LitElement {
       return `flex h-screen overflow-hidden relative ${iosClass}`;
     }
     return 'min-h-screen';
-  }
-
-  private getLogButtonPosition(): string {
-    // Check if we're in grid view and not in split view
-    const isGridView = !this.showSplitView && this.currentView === 'list';
-
-    if (isGridView) {
-      // Calculate if we need to move the button up
-      const runningSessions = this.sessions.filter((s) => s.status === 'running');
-      const viewportHeight = window.innerHeight;
-
-      // Grid layout: auto-fill with 360px min width, 400px height, 1.25rem gap
-      const gridItemHeight = 400;
-      const gridGap = 20; // 1.25rem
-      const containerPadding = 16; // Approximate padding
-      const headerHeight = 200; // Approximate header + controls height
-
-      // Calculate available height for grid
-      const availableHeight = viewportHeight - headerHeight;
-
-      // Calculate how many rows can fit
-      const rowsCanFit = Math.floor(
-        (availableHeight - containerPadding) / (gridItemHeight + gridGap)
-      );
-
-      // Calculate grid columns based on viewport width
-      const viewportWidth = window.innerWidth;
-      const gridItemMinWidth = 360;
-      const sidebarWidth = this.sidebarCollapsed
-        ? 0
-        : this.mediaState.isMobile
-          ? 0
-          : this.sidebarWidth;
-      const availableWidth = viewportWidth - sidebarWidth - containerPadding * 2;
-      const columnsCanFit = Math.floor(availableWidth / (gridItemMinWidth + gridGap));
-
-      // Calculate total items that can fit in viewport
-      const itemsInViewport = rowsCanFit * columnsCanFit;
-
-      // If we have more running sessions than can fit in viewport, items will be at bottom
-      if (runningSessions.length >= itemsInViewport && itemsInViewport > 0) {
-        // Move button up to avoid overlapping with kill buttons
-        return 'bottom-20'; // ~80px up
-      }
-    }
-
-    // Default position with equal margins
-    return 'bottom-4';
   }
 
   private get isInSidebarDismissMode(): boolean {
@@ -1894,17 +1842,6 @@ export class VibeTunnelApp extends LitElement {
       <!-- Git Notification Handler -->
       <git-notification-handler></git-notification-handler>
 
-      <!-- Version and logs link with smart positioning -->
-      ${
-        this.showLogLink
-          ? html`
-        <div class="fixed ${this.getLogButtonPosition()} right-4 text-muted text-xs font-mono bg-secondary px-3 py-1.5 rounded-lg border border-border/30 shadow-sm transition-all duration-200" style="z-index: ${Z_INDEX.LOG_BUTTON};">
-          <a href="/logs" class="hover:text-text transition-colors">Logs</a>
-          <span class="ml-2 opacity-75">v${VERSION}</span>
-        </div>
-      `
-          : ''
-      }
     `;
   }
 }

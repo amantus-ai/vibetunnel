@@ -1,6 +1,7 @@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { DEFAULT_REPOSITORY_BASE_PATH } from '../../shared/constants.js';
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../types/config.js';
 import type { AuthClient } from '../services/auth-client.js';
 import {
   type NotificationPreferences,
@@ -11,19 +12,18 @@ import { RepositoryService } from '../services/repository-service.js';
 import { ServerConfigService } from '../services/server-config-service.js';
 import { createLogger } from '../utils/logger.js';
 import { type MediaQueryState, responsiveObserver } from '../utils/responsive-utils.js';
+import { VERSION } from '../version.js';
 
 const logger = createLogger('settings');
 
 export interface AppPreferences {
   useDirectKeyboard: boolean;
   useBinaryMode: boolean;
-  showLogLink: boolean;
 }
 
 const DEFAULT_APP_PREFERENCES: AppPreferences = {
   useDirectKeyboard: true, // Default to modern direct keyboard for new users
   useBinaryMode: false, // Default to SSE/RSC mode for compatibility
-  showLogLink: false,
 };
 
 export const STORAGE_KEY = 'vibetunnel_app_preferences';
@@ -39,15 +39,8 @@ export class Settings extends LitElement {
   @property({ type: Object }) authClient?: AuthClient;
 
   // Notification settings state
-  @state() private notificationPreferences: NotificationPreferences = {
-    enabled: false,
-    sessionExit: true,
-    sessionStart: false,
-    sessionError: true,
-    systemAlerts: true,
-    soundEnabled: true,
-    vibrationEnabled: true,
-  };
+  @state() private notificationPreferences: NotificationPreferences =
+    DEFAULT_NOTIFICATION_PREFERENCES;
   @state() private permission: NotificationPermission = 'default';
   @state() private subscription: PushSubscription | null = null;
   @state() private isLoading = false;
@@ -134,7 +127,7 @@ export class Settings extends LitElement {
 
     this.permission = pushNotificationService.getPermission();
     this.subscription = pushNotificationService.getSubscription();
-    this.notificationPreferences = pushNotificationService.loadPreferences();
+    this.notificationPreferences = await pushNotificationService.loadPreferences();
 
     // Listen for changes
     this.permissionChangeUnsubscribe = pushNotificationService.onPermissionChange((permission) => {
@@ -248,7 +241,7 @@ export class Settings extends LitElement {
         // Disable notifications
         await pushNotificationService.unsubscribe();
         this.notificationPreferences = { ...this.notificationPreferences, enabled: false };
-        pushNotificationService.savePreferences(this.notificationPreferences);
+        await pushNotificationService.savePreferences(this.notificationPreferences);
         this.dispatchEvent(new CustomEvent('notifications-disabled'));
       } else {
         // Enable notifications
@@ -257,7 +250,7 @@ export class Settings extends LitElement {
           const subscription = await pushNotificationService.subscribe();
           if (subscription) {
             this.notificationPreferences = { ...this.notificationPreferences, enabled: true };
-            pushNotificationService.savePreferences(this.notificationPreferences);
+            await pushNotificationService.savePreferences(this.notificationPreferences);
             this.dispatchEvent(new CustomEvent('notifications-enabled'));
           } else {
             this.dispatchEvent(
@@ -303,7 +296,7 @@ export class Settings extends LitElement {
     value: boolean
   ) {
     this.notificationPreferences = { ...this.notificationPreferences, [key]: value };
-    pushNotificationService.savePreferences(this.notificationPreferences);
+    await pushNotificationService.savePreferences(this.notificationPreferences);
   }
 
   private handleAppPreferenceChange(key: keyof AppPreferences, value: boolean | string) {
@@ -334,9 +327,9 @@ export class Settings extends LitElement {
   }
 
   private get isNotificationsEnabled(): boolean {
-    return (
-      this.notificationPreferences.enabled && this.permission === 'granted' && !!this.subscription
-    );
+    // Show as enabled if the preference is set, regardless of subscription state
+    // This allows the toggle to properly reflect user intent
+    return this.notificationPreferences.enabled;
   }
 
   private renderSubscriptionStatus() {
@@ -408,6 +401,16 @@ export class Settings extends LitElement {
             ${this.renderNotificationSettings()}
             ${this.renderAppSettings()}
           </div>
+
+          <!-- Footer -->
+          <div class="p-4 pt-3 border-t border-border/50 flex-shrink-0">
+            <div class="flex items-center justify-between text-xs font-mono">
+              <span class="text-muted">v${VERSION}</span>
+              <a href="/logs" class="text-primary hover:text-primary-hover transition-colors" target="_blank">
+                View Logs
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -458,16 +461,16 @@ export class Settings extends LitElement {
                 </div>
                 <button
                   role="switch"
-                  aria-checked="${this.isNotificationsEnabled}"
+                  aria-checked="${this.notificationPreferences.enabled}"
                   @click=${this.handleToggleNotifications}
                   ?disabled=${this.isLoading}
                   class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base ${
-                    this.isNotificationsEnabled ? 'bg-primary' : 'bg-border'
+                    this.notificationPreferences.enabled ? 'bg-primary' : 'bg-border'
                   }"
                 >
                   <span
                     class="inline-block h-5 w-5 transform rounded-full bg-bg-elevated transition-transform ${
-                      this.isNotificationsEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                      this.notificationPreferences.enabled ? 'translate-x-5' : 'translate-x-0.5'
                     }"
                   ></span>
                 </button>
@@ -483,8 +486,9 @@ export class Settings extends LitElement {
                         <div class="space-y-2 bg-base rounded-lg p-3">
                           ${this.renderNotificationToggle('sessionExit', 'Session Exit', 'When a session terminates')}
                           ${this.renderNotificationToggle('sessionStart', 'Session Start', 'When a new session starts')}
-                          ${this.renderNotificationToggle('sessionError', 'Session Errors', 'When errors occur in sessions')}
-                          ${this.renderNotificationToggle('systemAlerts', 'System Alerts', 'Important system notifications')}
+                          ${this.renderNotificationToggle('commandError', 'Session Errors', 'When errors occur in sessions')}
+                          ${this.renderNotificationToggle('commandCompletion', 'Command Completion', 'When long-running commands finish')}
+                          ${this.renderNotificationToggle('bell', 'System Alerts', 'Important system notifications')}
                         </div>
                       </div>
 
@@ -585,29 +589,6 @@ export class Settings extends LitElement {
             : ''
         }
 
-        <!-- Show log link -->
-        <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-border/50">
-          <div class="flex-1">
-            <label class="text-primary font-medium">Show Log Link</label>
-            <p class="text-muted text-xs mt-1">
-              Display log link for debugging
-            </p>
-          </div>
-          <button
-            role="switch"
-            aria-checked="${this.appPreferences.showLogLink}"
-            @click=${() => this.handleAppPreferenceChange('showLogLink', !this.appPreferences.showLogLink)}
-            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base ${
-              this.appPreferences.showLogLink ? 'bg-primary' : 'bg-border'
-            }"
-          >
-            <span
-              class="inline-block h-5 w-5 transform rounded-full bg-bg-elevated transition-transform ${
-                this.appPreferences.showLogLink ? 'translate-x-5' : 'translate-x-0.5'
-              }"
-            ></span>
-          </button>
-        </div>
 
         <!-- Repository Base Path -->
         <div class="p-4 bg-tertiary rounded-lg border border-border/50">

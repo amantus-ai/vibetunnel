@@ -229,22 +229,25 @@ struct ServerStatusBadge: View {
     var body: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : AppColors.Fallback
-                    .destructive(for: colorScheme)
+                .fill(
+                    isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : AppColors.Fallback
+                        .destructive(for: colorScheme)
                 )
                 .frame(width: 6, height: 6)
             Text(isRunning ? "Running" : "Stopped")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundColor(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : AppColors.Fallback
-                    .destructive(for: colorScheme)
+                .foregroundColor(
+                    isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : AppColors.Fallback
+                        .destructive(for: colorScheme)
                 )
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(
             Capsule()
-                .fill(isRunning ? AppColors.Fallback.serverRunning(for: colorScheme).opacity(0.1) : AppColors.Fallback
-                    .destructive(for: colorScheme).opacity(0.1)
+                .fill(
+                    isRunning ? AppColors.Fallback.serverRunning(for: colorScheme).opacity(0.1) : AppColors.Fallback
+                        .destructive(for: colorScheme).opacity(0.1)
                 )
                 .overlay(
                     Capsule()

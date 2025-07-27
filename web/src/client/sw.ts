@@ -43,7 +43,31 @@ interface SystemAlertData {
   timestamp: number;
 }
 
-type NotificationData = SessionExitData | SessionStartData | SessionErrorData | SystemAlertData;
+interface CommandFinishedData {
+  type: 'command-finished';
+  sessionId: string;
+  command: string;
+  exitCode: number;
+  duration: number;
+  timestamp: string;
+}
+
+interface CommandErrorData {
+  type: 'command-error';
+  sessionId: string;
+  command: string;
+  exitCode: number;
+  duration: number;
+  timestamp: string;
+}
+
+type NotificationData =
+  | SessionExitData
+  | SessionStartData
+  | SessionErrorData
+  | SystemAlertData
+  | CommandFinishedData
+  | CommandErrorData;
 
 interface PushNotificationPayload {
   title: string;
@@ -174,7 +198,9 @@ function getDefaultActions(data: NotificationData): NotificationAction[] {
   switch (data.type) {
     case 'session-exit':
     case 'session-error':
-    case 'session-start': {
+    case 'session-start':
+    case 'command-finished':
+    case 'command-error': {
       return [
         {
           action: 'view-session',
@@ -200,11 +226,14 @@ function getDefaultActions(data: NotificationData): NotificationAction[] {
 function getVibrationPattern(notificationType: string): number[] {
   switch (notificationType) {
     case 'session-error':
+    case 'command-error':
       return [200, 100, 200, 100, 200]; // Urgent pattern
     case 'session-exit':
       return [100, 50, 100]; // Short notification
     case 'session-start':
       return [50]; // Very brief
+    case 'command-finished':
+      return [75, 50, 75]; // Medium notification
     case 'system-alert':
       return [150, 75, 150]; // Moderate pattern
     default:
@@ -246,7 +275,9 @@ async function handleNotificationClick(action: string, data: NotificationData): 
       if (
         data.type === 'session-exit' ||
         data.type === 'session-error' ||
-        data.type === 'session-start'
+        data.type === 'session-start' ||
+        data.type === 'command-finished' ||
+        data.type === 'command-error'
       ) {
         url += `/session/${data.sessionId}`;
       }

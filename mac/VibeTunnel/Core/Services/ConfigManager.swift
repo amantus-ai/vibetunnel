@@ -37,6 +37,17 @@ final class ConfigManager {
     var showInDock: Bool = false
     var preventSleepWhenRunning: Bool = true
 
+    // Notification preferences
+    var notificationsEnabled: Bool = true
+    var notificationSessionStart: Bool = true
+    var notificationSessionExit: Bool = true
+    var notificationCommandCompletion: Bool = true
+    var notificationCommandError: Bool = true
+    var notificationBell: Bool = true
+    var notificationClaudeTurn: Bool = false
+    var notificationSoundEnabled: Bool = true
+    var notificationVibrationEnabled: Bool = true
+
     // Remote access
     var ngrokEnabled: Bool = false
     var ngrokTokenPresent: Bool = false
@@ -83,6 +94,19 @@ final class ConfigManager {
         var updateChannel: String
         var showInDock: Bool
         var preventSleepWhenRunning: Bool
+        var notifications: NotificationConfig?
+    }
+
+    private struct NotificationConfig: Codable {
+        var enabled: Bool
+        var sessionStart: Bool
+        var sessionExit: Bool
+        var commandCompletion: Bool
+        var commandError: Bool
+        var bell: Bool
+        var claudeTurn: Bool
+        var soundEnabled: Bool
+        var vibrationEnabled: Bool
     }
 
     private struct RemoteAccessConfig: Codable {
@@ -99,7 +123,7 @@ final class ConfigManager {
 
     /// Default commands matching web/src/types/config.ts
     private let defaultCommands = [
-        QuickStartCommand(name: "✨ claude", command: "claude"),
+        QuickStartCommand(name: "✨ claude", command: "claude --dangerously-skip-permissions"),
         QuickStartCommand(name: "✨ gemini", command: "gemini"),
         QuickStartCommand(name: nil, command: "zsh"),
         QuickStartCommand(name: nil, command: "python3"),
@@ -157,6 +181,19 @@ final class ConfigManager {
                     self.updateChannel = UpdateChannel(rawValue: prefs.updateChannel) ?? .stable
                     self.showInDock = prefs.showInDock
                     self.preventSleepWhenRunning = prefs.preventSleepWhenRunning
+
+                    // Notification preferences
+                    if let notif = prefs.notifications {
+                        self.notificationsEnabled = notif.enabled
+                        self.notificationSessionStart = notif.sessionStart
+                        self.notificationSessionExit = notif.sessionExit
+                        self.notificationCommandCompletion = notif.commandCompletion
+                        self.notificationCommandError = notif.commandError
+                        self.notificationBell = notif.bell
+                        self.notificationClaudeTurn = notif.claudeTurn
+                        self.notificationSoundEnabled = notif.soundEnabled
+                        self.notificationVibrationEnabled = notif.vibrationEnabled
+                    }
                 }
 
                 // Remote access
@@ -187,6 +224,18 @@ final class ConfigManager {
     private func useDefaults() {
         self.quickStartCommands = defaultCommands
         self.repositoryBasePath = FilePathConstants.defaultRepositoryBasePath
+
+        // Set notification defaults to match TypeScript defaults
+        self.notificationsEnabled = true
+        self.notificationSessionStart = true
+        self.notificationSessionExit = true
+        self.notificationCommandCompletion = true
+        self.notificationCommandError = true
+        self.notificationBell = true
+        self.notificationClaudeTurn = false
+        self.notificationSoundEnabled = true
+        self.notificationVibrationEnabled = true
+
         saveConfiguration()
     }
 
@@ -221,7 +270,18 @@ final class ConfigManager {
             preferredTerminal: preferredTerminal,
             updateChannel: updateChannel.rawValue,
             showInDock: showInDock,
-            preventSleepWhenRunning: preventSleepWhenRunning
+            preventSleepWhenRunning: preventSleepWhenRunning,
+            notifications: NotificationConfig(
+                enabled: notificationsEnabled,
+                sessionStart: notificationSessionStart,
+                sessionExit: notificationSessionExit,
+                commandCompletion: notificationCommandCompletion,
+                commandError: notificationCommandError,
+                bell: notificationBell,
+                claudeTurn: notificationClaudeTurn,
+                soundEnabled: notificationSoundEnabled,
+                vibrationEnabled: notificationVibrationEnabled
+            )
         )
 
         // Remote access
@@ -369,6 +429,33 @@ final class ConfigManager {
         self.repositoryBasePath = path
         saveConfiguration()
         logger.info("Updated repository base path to: \(path)")
+    }
+
+    /// Update notification preferences
+    func updateNotificationPreferences(
+        enabled: Bool? = nil,
+        sessionStart: Bool? = nil,
+        sessionExit: Bool? = nil,
+        commandCompletion: Bool? = nil,
+        commandError: Bool? = nil,
+        bell: Bool? = nil,
+        claudeTurn: Bool? = nil,
+        soundEnabled: Bool? = nil,
+        vibrationEnabled: Bool? = nil
+    ) {
+        // Update only the provided values
+        if let enabled { self.notificationsEnabled = enabled }
+        if let sessionStart { self.notificationSessionStart = sessionStart }
+        if let sessionExit { self.notificationSessionExit = sessionExit }
+        if let commandCompletion { self.notificationCommandCompletion = commandCompletion }
+        if let commandError { self.notificationCommandError = commandError }
+        if let bell { self.notificationBell = bell }
+        if let claudeTurn { self.notificationClaudeTurn = claudeTurn }
+        if let soundEnabled { self.notificationSoundEnabled = soundEnabled }
+        if let vibrationEnabled { self.notificationVibrationEnabled = vibrationEnabled }
+
+        saveConfiguration()
+        logger.info("Updated notification preferences")
     }
 
     /// Get the configuration file path for debugging

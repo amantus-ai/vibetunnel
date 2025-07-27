@@ -30,7 +30,7 @@ final class WorktreeService {
             let worktreeResponse = try await serverManager.performRequest(
                 endpoint: "/api/worktrees",
                 method: "GET",
-                queryItems: [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)],
+                queryItems: [URLQueryItem(name: "repoPath", value: gitRepoPath)],
                 responseType: WorktreeListResponse.self
             )
             self.worktrees = worktreeResponse.worktrees
@@ -48,17 +48,21 @@ final class WorktreeService {
     func createWorktree(
         gitRepoPath: String,
         branch: String,
-        createBranch: Bool,
+        worktreePath: String,
         baseBranch: String? = nil
     )
         async throws
     {
-        let request = CreateWorktreeRequest(branch: branch, createBranch: createBranch, baseBranch: baseBranch)
+        let request = CreateWorktreeRequest(
+            repoPath: gitRepoPath,
+            branch: branch,
+            path: worktreePath,
+            baseBranch: baseBranch
+        )
         try await serverManager.performVoidRequest(
             endpoint: "/api/worktrees",
             method: "POST",
-            body: request,
-            queryItems: [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)]
+            body: request
         )
 
         // Refresh the worktree list
@@ -71,7 +75,7 @@ final class WorktreeService {
             endpoint: "/api/worktrees/\(branch)",
             method: "DELETE",
             queryItems: [
-                URLQueryItem(name: "gitRepoPath", value: gitRepoPath),
+                URLQueryItem(name: "repoPath", value: gitRepoPath),
                 URLQueryItem(name: "force", value: String(force))
             ]
         )
@@ -81,13 +85,12 @@ final class WorktreeService {
     }
 
     /// Switch to a different branch
-    func switchBranch(gitRepoPath: String, branch: String, createBranch: Bool = false) async throws {
-        let request = SwitchBranchRequest(branch: branch, createBranch: createBranch)
+    func switchBranch(gitRepoPath: String, branch: String) async throws {
+        let request = SwitchBranchRequest(repoPath: gitRepoPath, branch: branch)
         try await serverManager.performVoidRequest(
             endpoint: "/api/worktrees/switch",
             method: "POST",
-            body: request,
-            queryItems: [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)]
+            body: request
         )
 
         // Refresh the worktree list
@@ -96,12 +99,11 @@ final class WorktreeService {
 
     /// Toggle follow mode
     func toggleFollowMode(gitRepoPath: String, enabled: Bool, targetBranch: String? = nil) async throws {
-        let request = FollowModeRequest(enabled: enabled, targetBranch: targetBranch)
+        let request = FollowModeRequest(repoPath: gitRepoPath, branch: targetBranch, enable: enabled)
         try await serverManager.performVoidRequest(
             endpoint: "/api/worktrees/follow",
             method: "POST",
-            body: request,
-            queryItems: [URLQueryItem(name: "gitRepoPath", value: gitRepoPath)]
+            body: request
         )
 
         // Refresh the worktree list

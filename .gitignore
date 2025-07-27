@@ -160,3 +160,4 @@ buildServer.json
 # OpenCode local development state
 .opencode/
 mac/build-test/
+.env

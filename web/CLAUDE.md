@@ -1,29 +1,9 @@
 # Claude Development Notes
 
-## Updating spec.md
-As code changes, the spec.md might get outdated. If you detect outdated information, ask the user if they want to regenerate the spec.md file.
-
-### How to regenerate spec.md:
-1. Create a todo list to track the analysis tasks
-2. Use multiple parallel Task tool calls to analyze:
-   - Server architecture (src/server/, authentication, session management)
-   - Client architecture (src/client/, components, services)
-   - fwd.ts application functionality
-   - API endpoints and protocols
-   - Binary buffer format and WebSocket implementation
-   - HQ mode and distributed architecture
-   - Activity tracking
-   - Anything else not covered above
-3. Focus on capturing:
-   - File locations with key line numbers for important functions
-   - Component responsibilities and data flow
-   - Protocol specifications and message formats
-   - Configuration options and CLI arguments
-4. Write a concise spec.md that serves as a navigation map, keeping descriptions brief to minimize token usage
-5. Include a "Key Files Quick Reference" section for fast lookup
-
 ## Build Process
-- **Never run build commands** - the user has `pnpm run dev` running which handles automatic rebuilds
+- **Never run build commands**
+- the user has `pnpm run dev` running which handles automatic rebuilds, either directly or via the mac app
+- Never manually run the server. The user does that
 - Changes to TypeScript files are automatically compiled and watched
 - Do not run `pnpm run build` or similar build commands
 
@@ -54,10 +34,6 @@ When referencing code locations, you MUST use clickable format that VS Code reco
   - `web/src/client/app.ts:15` - when in parent directory
 
 NEVER give a code reference or location in any other format.
-
-## CRITICAL
-**IMPORTANT**: BEFORE YOU DO ANYTHING, READ spec.md IN FULL USING THE READ TOOL!
-**IMPORTANT**: NEVER USE GREP. ALWAYS USE RIPGREP!
 
 ## Git Commands
 When asked to "commit and push", "commit + push", "/cp", or "c+p", use a single command:
@@ -97,22 +73,6 @@ Do NOT use three separate commands (add, commit, push) as this is slow.
 
 ## CRITICAL: Playwright Test UI Changes
 **IMPORTANT: When tests fail looking for UI elements, investigate the actual UI structure!**
-
-### Common Pattern: Collapsible Sections
-Many UI elements are now inside collapsible sections that need to be expanded first:
-
-Example: The spawn window toggle is now inside an "Options" section
-```typescript
-// WRONG - Just increasing timeout won't help if element is hidden
-await page.locator('[data-testid="spawn-window-toggle"]').waitFor({ timeout: 10000 });
-
-// CORRECT - First expand the section, then access the element
-const optionsButton = page.locator('#session-options-button');
-await optionsButton.click(); // Expand the options section
-await page.waitForTimeout(300); // Wait for animation
-const toggle = page.locator('[data-testid="spawn-window-toggle"]');
-await toggle.waitFor({ state: 'visible' });
-```
 
 ### Best Practices for Test Stability
 1. **Always use semantic IDs and data-testid attributes** - These are more stable than CSS selectors

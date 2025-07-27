@@ -148,6 +148,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
     var app: VibeTunnelApp?
     private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "AppDelegate")
     private(set) var statusBarController: StatusBarController?
+    private let notificationService = NotificationService.shared
 
     /// Distributed notification name used to ask an existing instance to show the Settings window.
     private static let showSettingsNotification = Notification.Name.showSettings
@@ -199,20 +200,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
 
         // Set up notification center delegate
         UNUserNotificationCenter.current().delegate = self
-
-        // Request notification permissions
-        Task {
-            do {
-                let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [
-                    .alert,
-                    .sound,
-                    .badge
-                ])
-                logger.info("Notification permission granted: \(granted)")
-            } catch {
-                logger.error("Failed to request notification permissions: \(error)")
-            }
-        }
 
         // Initialize dock icon visibility through DockIconManager
         DockIconManager.shared.updateDockVisibility()
@@ -305,6 +292,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
                 statusBarController?.updateStatusItemDisplay()
 
                 // Session monitoring starts automatically
+
+                // Start native notification service
+                await notificationService.start()
             } else {
                 logger.error("HTTP server failed to start")
                 if let error = serverManager.lastError {

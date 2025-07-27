@@ -179,19 +179,23 @@ struct FollowModeStatus: Codable {
 ///
 /// ```swift
 /// let request = CreateWorktreeRequest(
+///     repoPath: "/path/to/repo",
 ///     branch: "feature/new-feature",
-///     createBranch: true,
+///     path: "/path/to/worktree",
 ///     baseBranch: "main"
 /// )
 /// ```
 struct CreateWorktreeRequest: Codable {
+    /// The repository path where the worktree will be created.
+    let repoPath: String
+    
     /// The branch name for the new worktree.
     let branch: String
+    
+    /// The file system path where the worktree will be created.
+    let path: String
 
-    /// Whether to create the branch if it doesn't exist.
-    let createBranch: Bool
-
-    /// The base branch to create from when `createBranch` is true.
+    /// The base branch to create from when creating a new branch.
     ///
     /// If nil, uses the repository's default branch.
     let baseBranch: String?
@@ -202,11 +206,11 @@ struct CreateWorktreeRequest: Codable {
 /// This allows changing the checked-out branch without creating
 /// a new worktree, useful for quick context switches.
 struct SwitchBranchRequest: Codable {
+    /// The repository path where the branch switch will occur.
+    let repoPath: String
+    
     /// The branch to switch to.
     let branch: String
-
-    /// Whether to create the branch if it doesn't exist.
-    let createBranch: Bool
 }
 
 /// Request payload for toggling follow mode.
@@ -215,19 +219,22 @@ struct SwitchBranchRequest: Codable {
 ///
 /// ```swift
 /// // Enable follow mode
-/// let enableRequest = FollowModeRequest(enabled: true, targetBranch: "develop")
+/// let enableRequest = FollowModeRequest(repoPath: "/path/to/repo", branch: "develop", enable: true)
 ///
 /// // Disable follow mode
-/// let disableRequest = FollowModeRequest(enabled: false, targetBranch: nil)
+/// let disableRequest = FollowModeRequest(repoPath: "/path/to/repo", branch: nil, enable: false)
 /// ```
 struct FollowModeRequest: Codable {
-    /// Whether to enable or disable follow mode.
-    let enabled: Bool
-
+    /// The repository path where follow mode will be configured.
+    let repoPath: String
+    
     /// The branch to follow when enabling.
     ///
-    /// Required when `enabled` is true, ignored otherwise.
-    let targetBranch: String?
+    /// Required when `enable` is true, ignored otherwise.
+    let branch: String?
+    
+    /// Whether to enable or disable follow mode.
+    let enable: Bool
 }
 
 /// Represents a Git branch in the repository.

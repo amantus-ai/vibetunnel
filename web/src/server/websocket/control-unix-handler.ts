@@ -2,6 +2,7 @@ import * as child_process from 'node:child_process';
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
+import { v4 as uuidv4 } from 'uuid';
 import type { WebSocket } from 'ws';
 import { createLogger } from '../utils/logger.js';
 import type {
@@ -510,6 +511,39 @@ export class ControlUnixHandler {
         }
       }, 10000); // 10 second timeout
     });
+  }
+
+  /**
+   * Send a notification to the Mac app via the Unix socket
+   */
+  sendNotification(
+    title: string,
+    body: string,
+    options?: {
+      type?: 'session-start' | 'session-exit' | 'your-turn';
+      sessionId?: string;
+      sessionName?: string;
+    }
+  ): void {
+    if (!this.macSocket) {
+      logger.warn('[ControlUnixHandler] Cannot send notification - Mac app not connected');
+      return;
+    }
+
+    const message: ControlMessage = {
+      id: uuidv4(),
+      type: 'event',
+      category: 'notification',
+      action: 'show',
+      payload: {
+        title,
+        body,
+        ...options,
+      },
+    };
+
+    this.sendToMac(message);
+    logger.info('[ControlUnixHandler] Sent notification:', { title, body, options });
   }
 
   sendToMac(message: ControlMessage): void {

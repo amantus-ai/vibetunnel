@@ -274,6 +274,36 @@ describe('SessionList', () => {
       }
     });
 
+    it('should re-dispatch session-killed event to parent components', async () => {
+      const sessionKilledHandler = vi.fn();
+      element.addEventListener('session-killed', sessionKilledHandler);
+
+      const mockSessions = [
+        createMockSession({ id: 'session-1' }),
+        createMockSession({ id: 'session-2' }),
+      ];
+      element.sessions = mockSessions;
+      await element.updateComplete;
+
+      // Dispatch kill event from session card
+      const sessionCard = element.querySelector('session-card');
+      if (sessionCard) {
+        sessionCard.dispatchEvent(
+          new CustomEvent('session-killed', {
+            detail: { sessionId: 'session-1' },
+            bubbles: true,
+          })
+        );
+
+        // Should re-dispatch session-killed event with just the sessionId
+        expect(sessionKilledHandler).toHaveBeenCalledWith(
+          expect.objectContaining({
+            detail: 'session-1', // Just the sessionId, not an object
+          })
+        );
+      }
+    });
+
     it('should handle session kill error', async () => {
       const errorHandler = vi.fn();
       element.addEventListener('error', errorHandler);

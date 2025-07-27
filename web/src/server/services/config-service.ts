@@ -4,7 +4,12 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { z } from 'zod';
-import { DEFAULT_CONFIG, type VibeTunnelConfig } from '../../types/config.js';
+import {
+  DEFAULT_CONFIG,
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  type NotificationPreferences,
+  type VibeTunnelConfig,
+} from '../../types/config.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('config-service');
@@ -19,6 +24,59 @@ const ConfigSchema = z.object({
     })
   ),
   repositoryBasePath: z.string().optional(),
+  // Extended configuration sections - we parse but don't use most of these yet
+  server: z
+    .object({
+      port: z.number(),
+      dashboardAccessMode: z.string(),
+      cleanupOnStartup: z.boolean(),
+      authenticationMode: z.string(),
+    })
+    .optional(),
+  development: z
+    .object({
+      debugMode: z.boolean(),
+      useDevServer: z.boolean(),
+      devServerPath: z.string(),
+      logLevel: z.string(),
+    })
+    .optional(),
+  preferences: z
+    .object({
+      preferredGitApp: z.string().optional(),
+      preferredTerminal: z.string().optional(),
+      updateChannel: z.string(),
+      showInDock: z.boolean(),
+      preventSleepWhenRunning: z.boolean(),
+      notifications: z
+        .object({
+          enabled: z.boolean(),
+          sessionStart: z.boolean(),
+          sessionExit: z.boolean(),
+          commandCompletion: z.boolean(),
+          commandError: z.boolean(),
+          bell: z.boolean(),
+          claudeTurn: z.boolean(),
+          soundEnabled: z.boolean(),
+          vibrationEnabled: z.boolean(),
+        })
+        .optional(),
+    })
+    .optional(),
+  remoteAccess: z
+    .object({
+      ngrokEnabled: z.boolean(),
+      ngrokTokenPresent: z.boolean(),
+    })
+    .optional(),
+  sessionDefaults: z
+    .object({
+      command: z.string(),
+      workingDirectory: z.string(),
+      spawnWindow: z.boolean(),
+      titleMode: z.string(),
+    })
+    .optional(),
 });
 
 /**
@@ -132,6 +190,9 @@ export class ConfigService {
       logger.info('Saved configuration to disk');
     } catch (error) {
       logger.error('Failed to save config:', error);
+      throw new Error(
+        `Failed to save configuration: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -228,5 +289,57 @@ export class ConfigService {
 
   public getConfigPath(): string {
     return this.configPath;
+  }
+
+  public getNotificationPreferences(): NotificationPreferences {
+    return this.config.preferences?.notifications || DEFAULT_NOTIFICATION_PREFERENCES;
+  }
+
+  public updateNotificationPreferences(notifications: Partial<NotificationPreferences>): void {
+    // Validate the notifications object
+    try {
+      const NotificationPreferencesSchema = z
+        .object({
+          enabled: z.boolean(),
+          sessionStart: z.boolean(),
+          sessionExit: z.boolean(),
+          commandCompletion: z.boolean(),
+          commandError: z.boolean(),
+          bell: z.boolean(),
+          claudeTurn: z.boolean(),
+          soundEnabled: z.boolean(),
+          vibrationEnabled: z.boolean(),
+        })
+        .partial();
+
+      const validatedNotifications = NotificationPreferencesSchema.parse(notifications);
+
+      // Merge with existing notifications or defaults
+      const currentNotifications =
+        this.config.preferences?.notifications || DEFAULT_NOTIFICATION_PREFERENCES;
+      const mergedNotifications = { ...currentNotifications, ...validatedNotifications };
+
+      // Ensure preferences object exists
+      if (!this.config.preferences) {
+        this.config.preferences = {
+          updateChannel: 'stable',
+          showInDock: false,
+          preventSleepWhenRunning: true,
+        };
+      }
+
+      // Update notifications with merged values
+      this.config.preferences.notifications = mergedNotifications;
+      this.saveConfig();
+      this.notifyConfigChange();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        logger.error('Invalid notification preferences:', error.issues);
+        throw new Error(
+          `Invalid notification preferences: ${error.issues.map((e) => e.message).join(', ')}`
+        );
+      }
+      throw error;
+    }
   }
 }
