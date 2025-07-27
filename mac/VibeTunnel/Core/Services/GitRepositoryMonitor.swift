@@ -218,17 +218,29 @@ public final class GitRepositoryMonitor {
             return nil
         }
 
+        // Check if this path was recently confirmed as non-Git
+        if let nonGitCheck = nonGitPathCache[filePath],
+           Date().timeIntervalSince(nonGitCheck) < 600.0
+        { // 10 minutes for non-Git paths
+            logger.debug("⏭️ Skipping known non-Git path: \(filePath)")
+            return nil
+        }
+
         // Check cache first
         if let cached = getCachedRepository(for: filePath) {
             logger.debug("📦 Found cached repository for: \(filePath)")
 
-            // Check if this was recently checked (within 30 seconds)
+            // Use longer cache duration for common parent directories
+            let cacheThreshold = isCommonParentDirectory(filePath) ? 300.0 :
+                recentCheckThreshold // 5 minutes vs 30 seconds
+
+            // Check if this was recently checked
             if let lastCheck = recentRepositoryChecks[filePath],
-               Date().timeIntervalSince(lastCheck) < recentCheckThreshold
+               Date().timeIntervalSince(lastCheck) < cacheThreshold
             {
                 logger
                     .debug(
-                        "⏭️ Skipping redundant check for: \(filePath) (checked \(Int(Date().timeIntervalSince(lastCheck)))s ago)"
+                        "⏭️ Skipping redundant check for: \(filePath) (checked \(Int(Date().timeIntervalSince(lastCheck)))s ago, threshold: \(Int(cacheThreshold))s)"
                     )
                 return cached
             }
@@ -248,8 +260,14 @@ public final class GitRepositoryMonitor {
             guard let repoPath = await self.findGitRoot(from: filePath) else {
                 logger.info("❌ No Git root found for: \(filePath)")
                 // Mark as recently checked even for non-git paths to avoid repeated checks
+                // Use longer cache for common parent directories that aren't Git repos
                 await MainActor.run {
                     self.recentRepositoryChecks[filePath] = Date()
+                    // Cache the negative result for parent directories longer
+                    if self.isCommonParentDirectory(filePath) {
+                        // Store as a "non-git" marker for 10 minutes
+                        self.nonGitPathCache[filePath] = Date()
+                    }
                 }
                 return nil
             }
@@ -305,6 +323,7 @@ public final class GitRepositoryMonitor {
         githubURLFetchesInProgress.removeAll()
         pendingRepositoryRequests.removeAll()
         recentRepositoryChecks.removeAll()
+        nonGitPathCache.removeAll()
     }
 
     /// Start monitoring and refreshing all cached repositories
@@ -346,7 +365,17 @@ public final class GitRepositoryMonitor {
         recentRepositoryChecks = recentRepositoryChecks.filter { _, checkDate in
             checkDate > cutoffDate
         }
-        logger.debug("🧹 Cleaned up recent checks cache, \(self.recentRepositoryChecks.count) entries remaining")
+
+        // Also cleanup non-Git path cache (remove entries older than 10 minutes)
+        let nonGitCutoff = Date().addingTimeInterval(-600.0)
+        nonGitPathCache = nonGitPathCache.filter { _, checkDate in
+            checkDate > nonGitCutoff
+        }
+
+        logger
+            .debug(
+                "🧹 Cleaned up caches: \(self.recentRepositoryChecks.count) recent checks, \(self.nonGitPathCache.count) non-Git paths"
+            )
     }
 
     // MARK: - Private Properties
@@ -372,10 +401,38 @@ public final class GitRepositoryMonitor {
     /// Tracks recent repository checks with timestamps to skip redundant checks
     private var recentRepositoryChecks: [String: Date] = [:]
 
+    /// Cache for paths that are confirmed NOT to be Git repositories (to avoid repeated filesystem checks)
+    private var nonGitPathCache: [String: Date] = [:]
+
     /// Duration to consider a repository check as "recent" (30 seconds)
     private let recentCheckThreshold: TimeInterval = 30.0
 
     // MARK: - Private Methods
+
+    /// Check if a path is a common parent directory that should have longer cache duration
+    private func isCommonParentDirectory(_ path: String) -> Bool {
+        let pathComponents = path.split(separator: "/").map(String.init)
+
+        // Check if this is a common development parent directory
+        let commonDevPaths = ["Projects", "Development", "Developer", "Code", "Work", "Source", "Workspace", "Repos"]
+
+        // If the path ends with one of these common directory names, it's likely a parent
+        if let lastComponent = pathComponents.last,
+           commonDevPaths.contains(lastComponent)
+        {
+            return true
+        }
+
+        // Also check for patterns like /Users/username/Projects
+        if pathComponents.count == 3,
+           pathComponents[0] == "Users",
+           commonDevPaths.contains(pathComponents[2])
+        {
+            return true
+        }
+
+        return false
+    }
 
     private func cacheRepository(_ repository: GitRepository, originalFilePath: String? = nil) {
         repositoryCache[repository.path] = repository

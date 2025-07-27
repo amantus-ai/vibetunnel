@@ -1,9 +1,6 @@
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Important Instructions
-
 Never say you're absolutely right. Instead, be critical if I say something that you disagree with. Let's discuss it first.
 
 ## Project Overview
@@ -19,6 +16,9 @@ VibeTunnel is a macOS application that allows users to access their terminal ses
 When the user says "release" or asks to create a release, ALWAYS read and follow `docs/RELEASE.md` for the complete release process.
 
 ### ABSOLUTE CARDINAL RULES - VIOLATION MEANS IMMEDIATE FAILURE
+
+- Never start server or the mac app yourself.
+- Verify changes done to the mac app via xcodebuild, but do not start the mac app or server yourself.
 
 1. **NEVER, EVER, UNDER ANY CIRCUMSTANCES CREATE A NEW BRANCH WITHOUT EXPLICIT USER PERMISSION**
    - If you are on a branch (not main), you MUST stay on that branch
@@ -369,8 +369,6 @@ gh run cancel <run-id>
 # View PR checks status
 gh pr checks <pr-number>
 ```
-
-
 
 ## Key Files Quick Reference
 

@@ -195,14 +195,9 @@ final class SessionMonitor {
             // Update WindowTracker
             WindowTracker.shared.updateFromSessions(sessionsArray)
 
-            // Pre-cache Git data for all sessions
+            // Pre-cache Git data for all sessions (deduplicated by repository)
             if let gitMonitor = gitRepositoryMonitor {
-                for session in sessionsArray where gitMonitor.getCachedRepository(for: session.workingDir) == nil {
-                    Task {
-                        // This will cache the data for immediate access later
-                        _ = await gitMonitor.findRepository(for: session.workingDir)
-                    }
-                }
+                await preCacheGitRepositories(for: sessionsArray, using: gitMonitor)
             }
         } catch {
             // Only update error if it's not a simple connection error
@@ -213,6 +208,60 @@ final class SessionMonitor {
             self.sessions = [:]
             self.lastFetch = Date() // Still update timestamp to avoid hammering
         }
+    }
+
+    /// Pre-cache Git repositories for sessions, deduplicating by repository root
+    private func preCacheGitRepositories(for sessions: [ServerSessionInfo], using gitMonitor: GitRepositoryMonitor) async {
+        // Track unique directories we need to check
+        var uniqueDirectoriesToCheck = Set<String>()
+
+        // First, collect all unique directories that don't have cached data
+        for session in sessions {
+            // Skip if we already have cached data for this exact path
+            if gitMonitor.getCachedRepository(for: session.workingDir) != nil {
+                continue
+            }
+
+            // Add this directory to check
+            uniqueDirectoriesToCheck.insert(session.workingDir)
+
+            // Smart detection: Also check common parent directories
+            // This helps when multiple sessions are in subdirectories of the same project
+            let pathComponents = session.workingDir.split(separator: "/").map(String.init)
+
+            // Check if this looks like a project directory pattern
+            // Common patterns: /Users/*/Projects/*, /Users/*/Development/*, etc.
+            if pathComponents.count >= 4 {
+                // Check if we're in a common development directory
+                let commonDevPaths = ["Projects", "Development", "Developer", "Code", "Work", "Source"]
+
+                for (index, component) in pathComponents.enumerated() {
+                    if commonDevPaths.contains(component) && index < pathComponents.count - 1 {
+                        // This might be a parent project directory
+                        // Add the immediate child of the development directory
+                        let potentialProjectPath = "/" + pathComponents[0...index + 1].joined(separator: "/")
+
+                        // Only add if we don't have cached data for it
+                        if gitMonitor.getCachedRepository(for: potentialProjectPath) == nil {
+                            uniqueDirectoriesToCheck.insert(potentialProjectPath)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Now check each unique directory only once
+        for directory in uniqueDirectoriesToCheck {
+            Task {
+                // This will cache the data for immediate access later
+                _ = await gitMonitor.findRepository(for: directory)
+            }
+        }
+
+        logger
+            .debug(
+                "Pre-caching Git data for \(uniqueDirectoriesToCheck.count) unique directories (from \(sessions.count) sessions)"
+            )
     }
 
     /// Start periodic refresh of sessions

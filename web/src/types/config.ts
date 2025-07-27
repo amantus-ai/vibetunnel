@@ -70,7 +70,7 @@ export const DEFAULT_QUICK_START_COMMANDS: QuickStartCommand[] = [
 ];
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
-  enabled: true,
+  enabled: false,
   sessionStart: true,
   sessionExit: true,
   commandCompletion: true,

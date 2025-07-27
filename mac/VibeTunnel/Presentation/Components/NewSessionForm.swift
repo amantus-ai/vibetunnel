@@ -209,11 +209,22 @@ struct NewSessionForm: View {
                                 }
                             },
                             onCreateWorktree: { branchName, baseBranch in
+                                // Generate worktree path by slugifying branch name
+                                let slugifiedBranch = branchName
+                                    .replacingOccurrences(of: "/", with: "-")
+                                    .replacingOccurrences(of: " ", with: "-")
+                                    .lowercased()
+                                
+                                // Create worktree path in a 'worktrees' subdirectory
+                                let repoURL = URL(fileURLWithPath: repoPath)
+                                let worktreesDir = repoURL.appendingPathComponent("worktrees")
+                                let worktreePath = worktreesDir.appendingPathComponent(slugifiedBranch).path
+                                
                                 // Create the worktree
                                 try await service.createWorktree(
                                     gitRepoPath: repoPath,
                                     branch: branchName,
-                                    createBranch: true,
+                                    worktreePath: worktreePath,
                                     baseBranch: baseBranch
                                 )
 

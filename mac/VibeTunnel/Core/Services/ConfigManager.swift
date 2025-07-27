@@ -224,7 +224,7 @@ final class ConfigManager {
     private func useDefaults() {
         self.quickStartCommands = defaultCommands
         self.repositoryBasePath = FilePathConstants.defaultRepositoryBasePath
-        
+
         // Set notification defaults to match TypeScript defaults
         self.notificationsEnabled = true
         self.notificationSessionStart = true
@@ -235,7 +235,7 @@ final class ConfigManager {
         self.notificationClaudeTurn = false
         self.notificationSoundEnabled = true
         self.notificationVibrationEnabled = true
-        
+
         saveConfiguration()
     }
 

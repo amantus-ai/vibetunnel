@@ -221,7 +221,7 @@ final class NotificationService: NSObject {
             vibrationEnabled: prefs.vibrationEnabled
         )
     }
-    
+
     /// Get notification sound based on user preferences
     private func getNotificationSound(critical: Bool = false) -> UNNotificationSound? {
         guard preferences.soundEnabled else { return nil }
