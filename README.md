@@ -5,7 +5,7 @@
 
 <p align="center">
   <strong>Turn any browser into your Mac terminal.</strong><br>
-  VibeTunnel proxies your terminals right into the browser, so you can vibe-code anywhere!
+  VibeTunnel proxies your terminals right into the browser, so you can vibe-code anywhere.
 </p>
 
 <p align="center">
