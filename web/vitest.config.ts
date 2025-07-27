@@ -1,5 +1,10 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
+import { readFileSync } from 'fs';
+
+// Get version from package.json for __APP_VERSION__ definition
+const packageJson = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'));
+const version = packageJson.version;
 
 // For Vitest 3.x, we need to use workspace configuration instead of projects
 // Create separate configs that can be selected via CLI flags
@@ -35,6 +40,9 @@ export default defineConfig(({ mode }) => {
     : ['default'];
 
   return {
+    define: {
+      __APP_VERSION__: JSON.stringify(version),
+    },
     test: {
       globals: true,
       include: testInclude,
