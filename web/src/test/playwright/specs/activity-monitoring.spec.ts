@@ -27,7 +27,7 @@ test.describe('Activity Monitoring', () => {
 
     // Navigate back to home to see the session list
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    
+
     // Ensure all sessions are visible (show exited sessions if hidden)
     await ensureAllSessionsVisible(page);
 
@@ -282,7 +282,7 @@ test.describe('Activity Monitoring', () => {
 
     // Go to session list
     await page.goto('/?test=true', { waitUntil: 'domcontentloaded', timeout: 10000 });
-    
+
     // Ensure all sessions are visible
     await ensureAllSessionsVisible(page);
 
