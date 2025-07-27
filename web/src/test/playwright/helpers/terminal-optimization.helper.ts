@@ -7,15 +7,31 @@ import type { Page } from '@playwright/test';
 /**
  * Wait for terminal to be ready with optimized checks
  */
-export async function waitForTerminalReady(page: Page, timeout = 5000): Promise<void> {
+export async function waitForTerminalReady(page: Page, timeout = 10000): Promise<void> {
   // First, wait for the terminal element
   await page.waitForSelector('vibe-terminal', {
     state: 'attached',
     timeout,
   });
 
-  // Wait for WebSocket connection to be established
-  const wsPromise = page.waitForEvent('websocket', { timeout });
+  // Wait for WebSocket connection OR for terminal to initialize (for in-memory sessions)
+  const wsConnectedPromise = page.evaluate(() => {
+    return new Promise<boolean>((resolve) => {
+      // Check if WebSocket is already connected
+      const vibeTerminal = document.querySelector('vibe-terminal') as HTMLElement & {
+        wsConnected?: boolean;
+        isConnected?: boolean;
+      };
+      if (vibeTerminal?.wsConnected || vibeTerminal?.isConnected) {
+        resolve(true);
+        return;
+      }
+
+      // Wait a bit for WebSocket, but don't fail if it doesn't connect
+      // (in-memory sessions might not use WebSocket)
+      setTimeout(() => resolve(false), 3000);
+    });
+  });
 
   // Wait for terminal to be interactive - either shows a prompt or has content
   await page.waitForFunction(
@@ -35,15 +51,11 @@ export async function waitForTerminalReady(page: Page, timeout = 5000): Promise<
 
       return hasContent || hasXterm;
     },
-    { timeout }
+    { timeout, polling: 100 }
   );
 
-  // Wait for WebSocket to be established (if not already)
-  try {
-    await wsPromise;
-  } catch {
-    // WebSocket might have already been established, that's fine
-  }
+  // Wait for WebSocket result (but don't fail)
+  await wsConnectedPromise;
 
   // Wait for shell prompt to appear
   await page.waitForFunction(

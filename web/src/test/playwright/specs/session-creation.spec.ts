@@ -9,6 +9,7 @@ import {
   reconnectToSession,
 } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { waitForSessionCard } from '../helpers/test-optimization.helper';
 import { waitForElementStable } from '../helpers/wait-strategies.helper';
 import { SessionListPage } from '../pages/session-list.page';
 
@@ -315,18 +316,8 @@ test.describe('Session Creation', () => {
     // Navigate away and back
     await page.goto('/');
 
-    // Wait for session list to fully load
-    await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
-
-    // Ensure the session we're looking for is in the list
-    await page.waitForFunction(
-      (targetName) => {
-        const cards = document.querySelectorAll('session-card');
-        return Array.from(cards).some((card) => card.textContent?.includes(targetName));
-      },
-      sessionName,
-      { timeout: 15000 }
-    );
+    // Wait for session list to fully load and the specific session to appear
+    await waitForSessionCard(page, sessionName);
 
     await reconnectToSession(page, sessionName);
 

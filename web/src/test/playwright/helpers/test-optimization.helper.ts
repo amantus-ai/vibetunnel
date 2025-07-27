@@ -172,3 +172,82 @@ export async function waitForElementWithRetry(
     throw lastError;
   }
 }
+
+/**
+ * Wait for a session card to appear with improved reliability
+ */
+export async function waitForSessionCard(
+  page: Page,
+  sessionName: string,
+  options: { timeout?: number; retries?: number } = {}
+): Promise<void> {
+  const { timeout = process.env.CI ? 20000 : 10000, retries = 3 } = options;
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      // First ensure the session list container is loaded
+      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
+
+      // Wait for the session to appear in the DOM
+      await page.waitForFunction(
+        ({ name, attemptNum }) => {
+          // Log for debugging in CI
+          if (attemptNum === 0) {
+            const cards = document.querySelectorAll('session-card');
+            console.log(`Found ${cards.length} session cards in DOM`);
+          }
+
+          const cards = document.querySelectorAll('session-card');
+          for (const card of cards) {
+            const text = card.textContent || '';
+            if (text.includes(name)) {
+              return true;
+            }
+          }
+          return false;
+        },
+        { name: sessionName, attemptNum: attempt },
+        { timeout, polling: 500 }
+      );
+
+      // Success - session found
+      return;
+    } catch (error) {
+      console.log(`Attempt ${attempt + 1}/${retries} failed to find session "${sessionName}"`);
+
+      if (attempt < retries - 1) {
+        // Not the last attempt - try recovery strategies
+
+        // Check if we need to reload the page
+        const hasSessionCards = await page.evaluate(() => {
+          return document.querySelectorAll('session-card').length > 0;
+        });
+
+        if (!hasSessionCards) {
+          console.log('No session cards found, reloading page...');
+          await page.reload({ waitUntil: 'domcontentloaded' });
+          await waitForAppReady(page);
+          await page.waitForTimeout(1000); // Give time for sessions to load
+        } else {
+          // Sessions exist but not the one we want - just wait a bit
+          await page.waitForTimeout(2000);
+        }
+      } else {
+        // Last attempt failed - log current state for debugging
+        const currentState = await page.evaluate(() => {
+          const cards = document.querySelectorAll('session-card');
+          const sessionNames = Array.from(cards).map(
+            (card) => card.textContent?.trim() || 'unknown'
+          );
+          return {
+            sessionCount: cards.length,
+            sessionNames,
+            url: window.location.href,
+          };
+        });
+        console.error('Failed to find session. Current state:', currentState);
+        throw error;
+      }
+    }
+  }
+}

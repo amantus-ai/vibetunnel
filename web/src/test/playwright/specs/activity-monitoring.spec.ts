@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test.fixture';
 import { assertTerminalReady } from '../helpers/assertion.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { waitForSessionCard } from '../helpers/test-optimization.helper';
 import { ensureAllSessionsVisible } from '../helpers/ui-state.helper';
 
 // These tests create their own sessions - run serially to avoid server overload
@@ -44,61 +45,8 @@ test.describe('Activity Monitoring', () => {
       { timeout: 15000 }
     );
 
-    // Wait for session cards to load properly
-    let cardFound = false;
-    for (let retry = 0; retry < 3 && !cardFound; retry++) {
-      if (retry > 0) {
-        console.log(`Retrying session card lookup (attempt ${retry + 1}/3)`);
-        // Wait before retry to let the session list update
-        await page.waitForTimeout(2000);
-        await page.reload({ waitUntil: 'networkidle' });
-        // Ensure sessions are visible after reload
-        await ensureAllSessionsVisible(page);
-      }
-
-      try {
-        // Wait for at least one session card to be visible
-        await page.waitForSelector('session-card', { state: 'visible', timeout: 15000 });
-
-        // Give the DOM time to stabilize
-        await page.waitForTimeout(500);
-
-        // Wait for the specific session card to be present and stable
-        const foundCard = await page.waitForFunction(
-          (name) => {
-            const cards = document.querySelectorAll('session-card');
-            console.log(`Found ${cards.length} session cards`);
-
-            const targetCard = Array.from(cards).find((card) => {
-              const cardText = card.textContent || '';
-              console.log(`Checking card text: ${cardText.substring(0, 100)}`);
-              return cardText.includes(name);
-            });
-
-            if (!targetCard) {
-              console.log(`Target card for "${name}" not found`);
-              return false;
-            }
-
-            // Check if the card is fully rendered (has content)
-            const hasContent = targetCard.textContent && targetCard.textContent.trim().length > 0;
-            console.log(`Target card found, has content: ${hasContent}`);
-            return hasContent;
-          },
-          sessionName,
-          { timeout: 15000 }
-        );
-
-        if (foundCard) {
-          const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
-          await expect(sessionCard).toBeVisible({ timeout: 5000 });
-          cardFound = true;
-        }
-      } catch (error) {
-        console.log(`Attempt ${retry + 1} failed:`, error.message);
-        if (retry === 2) throw error; // Re-throw on last attempt
-      }
-    }
+    // Wait for the specific session card using our improved helper
+    await waitForSessionCard(page, sessionName);
 
     // Find the session card reference again after the retry logic
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
