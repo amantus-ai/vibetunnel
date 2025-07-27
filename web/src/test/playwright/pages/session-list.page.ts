@@ -441,7 +441,10 @@ export class SessionListPage extends BasePage {
       } else {
         // If we have a session ID, navigate to the session page
         if (sessionId) {
-          await this.page.goto(`/session/${sessionId}`, { waitUntil: 'domcontentloaded' });
+          await this.page.goto(`/session/${sessionId}`, {
+            waitUntil: 'domcontentloaded',
+            timeout: 15000, // Increase timeout for CI
+          });
         } else {
           // Wait for automatic navigation
           try {

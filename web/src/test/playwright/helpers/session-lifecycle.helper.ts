@@ -72,7 +72,11 @@ export async function createAndNavigateToSession(
         return sessionResponse?.data;
       });
 
-      if (sessionResponse?.sessionId) {
+      // Check if we're already on a session page
+      if (currentUrl.match(/\/session\/[^/?]+/)) {
+        console.log(`Already on session page: ${currentUrl}`);
+        // We're already on a session page, continue
+      } else if (sessionResponse?.sessionId) {
         console.log(`Found session ID ${sessionResponse.sessionId}, navigating manually`);
         await page.goto(`/session/${sessionResponse.sessionId}`, {
           waitUntil: 'domcontentloaded',

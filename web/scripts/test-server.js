@@ -206,5 +206,5 @@ if (process.env.CI || process.env.WAIT_FOR_SERVER) {
         console.log('Server is ready, tests can proceed');
       }
     });
-  }, 2000); // Wait 2 seconds before checking
+  }, 3000); // Wait 3 seconds before checking
 }

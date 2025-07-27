@@ -94,16 +94,24 @@ export const test = base.extend<TestFixtures>({
       await page.reload({ waitUntil: 'commit' });
 
       // Add styles to disable animations after page load
-      await page.addStyleTag({
-        content: `
-          *, *::before, *::after {
-            animation-duration: 0s !important;
-            animation-delay: 0s !important;
-            transition-duration: 0s !important;
-            transition-delay: 0s !important;
-          }
-        `,
-      });
+      // Wrap in try-catch to handle CSP issues gracefully
+      try {
+        await page.addStyleTag({
+          content: `
+            *, *::before, *::after {
+              animation-duration: 0s !important;
+              animation-delay: 0s !important;
+              transition-duration: 0s !important;
+              transition-delay: 0s !important;
+            }
+          `,
+        });
+      } catch {
+        // CSP might block inline styles in some environments
+        console.log(
+          'Could not inject animation-disabling styles (CSP restriction), continuing without them'
+        );
+      }
 
       // Wait for the app to be attached (fast)
       await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });

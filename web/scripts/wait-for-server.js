@@ -13,9 +13,9 @@ const retryDelay = 1000; // 1 second between retries
 
 async function checkServerReady() {
   return new Promise((resolve) => {
-    const req = http.get(`http://localhost:${port}/api/server/status`, (res) => {
-      if (res.statusCode === 200 || res.statusCode === 401) {
-        // 200 = server ready, 401 = auth required but server is responding
+    const req = http.get(`http://localhost:${port}/api/health`, (res) => {
+      if (res.statusCode === 200) {
+        // 200 = server ready and health endpoint responding
         resolve(true);
       } else {
         resolve(false);

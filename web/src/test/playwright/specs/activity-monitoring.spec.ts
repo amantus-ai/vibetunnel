@@ -21,7 +21,7 @@ test.describe('Activity Monitoring', () => {
     await sessionManager.cleanupAllSessions();
   });
 
-  test.skip('should show session activity status in session list', async ({ page }) => {
+  test('should show session activity status in session list', async ({ page }) => {
     // Simply create a session and check if it shows any activity indicators
     const { sessionName } = await sessionManager.createTrackedSession();
 
