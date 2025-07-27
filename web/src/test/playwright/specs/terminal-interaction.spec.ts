@@ -20,7 +20,8 @@ test.describe('Terminal Interaction', () => {
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
-    sessionManager = new TestSessionManager(page);
+    // Use unique prefix for this test file to prevent session conflicts
+    sessionManager = new TestSessionManager(page, 'termint');
 
     // Create a session for all tests using the session manager to ensure proper tracking
     const sessionData = await sessionManager.createTrackedSession('terminal-test');

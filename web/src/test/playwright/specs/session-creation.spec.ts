@@ -31,7 +31,8 @@ test.describe('Session Creation', () => {
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
-    sessionManager = new TestSessionManager(page);
+    // Use unique prefix for this test file to prevent session conflicts
+    sessionManager = new TestSessionManager(page, 'sesscreate');
   });
 
   test.afterEach(async () => {

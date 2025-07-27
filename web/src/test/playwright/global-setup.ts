@@ -31,13 +31,9 @@ async function globalSetup(config: FullConfig) {
   // Set up any global test data or configuration
   process.env.PLAYWRIGHT_TEST_BASE_URL = config.use?.baseURL || testConfig.baseURL;
 
-  // Clean up sessions if requested or on CI
-  if (process.env.CLEAN_TEST_SESSIONS === 'true' || process.env.CI) {
-    console.log(
-      process.env.CI
-        ? 'Running on CI - cleaning up ALL sessions...'
-        : 'Cleaning up old test sessions...'
-    );
+  // Clean up sessions if explicitly requested
+  if (process.env.CLEAN_TEST_SESSIONS === 'true') {
+    console.log('Cleaning up old test sessions...');
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -60,9 +56,9 @@ async function globalSetup(config: FullConfig) {
 
       console.log(`Found ${sessions.length} sessions`);
 
-      if (process.env.CI) {
-        // On CI: Clean up ALL sessions for a fresh start
-        console.log('CI environment detected - removing ALL sessions for clean test environment');
+      if (process.env.CI && process.env.FORCE_CLEAN_ALL_SESSIONS === 'true') {
+        // On CI: Only clean ALL sessions if explicitly forced
+        console.log('FORCE_CLEAN_ALL_SESSIONS enabled - removing ALL sessions');
 
         for (const session of sessions) {
           try {
@@ -76,13 +72,17 @@ async function globalSetup(config: FullConfig) {
 
         console.log(`Cleaned up all ${sessions.length} sessions`);
       } else {
-        // Not on CI: Only clean up old test sessions
+        // Clean up old test sessions (both CI and local)
         const oneHourAgo = Date.now() - 60 * 60 * 1000;
         const testSessions = sessions.filter((s: Session) => {
           const isTestSession =
             s.name?.includes('test-') ||
             s.name?.includes('nav-test') ||
-            s.name?.includes('keyboard-test');
+            s.name?.includes('keyboard-test') ||
+            s.name?.includes('sesscreate-') ||
+            s.name?.includes('actmon-') ||
+            s.name?.includes('termint-') ||
+            s.name?.includes('uifeat-');
           const isOld = new Date(s.startedAt).getTime() < oneHourAgo;
           return isTestSession && isOld;
         });

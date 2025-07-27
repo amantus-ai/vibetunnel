@@ -15,7 +15,8 @@ test.describe('Activity Monitoring', () => {
   let sessionManager: TestSessionManager;
 
   test.beforeEach(async ({ page }) => {
-    sessionManager = new TestSessionManager(page);
+    // Use unique prefix for this test file to prevent session conflicts
+    sessionManager = new TestSessionManager(page, 'actmon');
   });
 
   test.afterEach(async () => {
