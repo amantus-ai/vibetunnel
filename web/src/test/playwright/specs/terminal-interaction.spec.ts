@@ -163,6 +163,9 @@ test.describe('Terminal Interaction', () => {
     // Verify it was set by echoing it - use a simpler approach
     await executeCommand(page, `echo $${varName}`);
 
+    // Wait for the command to complete
+    await page.waitForTimeout(500);
+
     // Check the terminal content directly using the proper helper
     const terminalContent = await getTerminalContent(page);
 
@@ -170,10 +173,12 @@ test.describe('Terminal Interaction', () => {
     expect(terminalContent).toContain(varValue);
 
     // Also verify with env command - check if it's in the environment
-    await executeCommand(page, `env | grep ${varName} || echo "Variable not found"`);
+    await executeCommand(page, `env | grep ${varName}`);
     await page.waitForTimeout(1000);
 
     const updatedContent = await getTerminalContent(page);
+
+    // The env command should show TEST_VAR=VibeTunnel_Test_123
     expect(updatedContent).toContain(`${varName}=${varValue}`);
   });
 

@@ -303,6 +303,9 @@ test.describe('Activity Monitoring', () => {
       await page.reload({ waitUntil: 'domcontentloaded' });
       await page.waitForTimeout(1000);
 
+      // Ensure all sessions are visible after reload
+      await ensureAllSessionsVisible(page);
+
       const hasCards = await page.locator('session-card').count();
       if (hasCards === 0) {
         throw new Error('No session cards found after navigation and reload');

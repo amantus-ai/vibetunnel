@@ -198,6 +198,19 @@ test.describe('Keyboard Capture Toggle', () => {
     const captureIndicator = page.locator('keyboard-capture-indicator');
     await expect(captureIndicator).toBeVisible();
 
+    // Wait for any notifications to disappear
+    await page.waitForTimeout(1000);
+
+    // Check if there are any overlaying elements and wait for them to disappear
+    const notification = page.locator('.bg-status-success, .fixed.top-4.right-4').first();
+    if (await notification.isVisible()) {
+      await notification.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {
+        // If notification doesn't disappear, try clicking it to dismiss
+        notification.click().catch(() => {});
+      });
+      await page.waitForTimeout(500);
+    }
+
     // Hover over the indicator to show tooltip
     await captureIndicator.hover();
 
