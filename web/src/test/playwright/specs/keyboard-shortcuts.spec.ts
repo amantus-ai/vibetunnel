@@ -3,6 +3,10 @@ import { assertTerminalReady } from '../helpers/assertion.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import { waitForShellPrompt } from '../helpers/terminal.helper';
 import { interruptCommand } from '../helpers/terminal-commands.helper';
+import {
+  assertTerminalContains,
+  getTerminalContent,
+} from '../helpers/terminal-optimization.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 import { ensureCleanState } from '../helpers/test-isolation.helper';
 import { SessionListPage } from '../pages/session-list.page';
@@ -304,8 +308,6 @@ test.describe('Keyboard Shortcuts', () => {
   });
 
   test('should handle tab completion in terminal', async ({ page }) => {
-    test.setTimeout(30000); // Increase timeout for this test
-
     // Create a session
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('tab-completion'),
@@ -314,19 +316,37 @@ test.describe('Keyboard Shortcuts', () => {
 
     await sessionViewPage.clickTerminal();
 
-    // Type a command that doesn't rely on tab completion
-    // Tab completion might not work in all test environments
-    await page.keyboard.type('echo "testing tab key"');
+    // Type a partial command for tab completion
+    await page.keyboard.type('ec');
 
-    // Press Tab to verify it doesn't break anything
+    // Get terminal content before tab
+    const beforeTab = await getTerminalContent(page);
+
+    // Press Tab for completion
     await page.keyboard.press('Tab');
-    await page.waitForTimeout(500);
 
-    // Complete the command
+    // Wait for tab completion to process - check if content changed
+    await page.waitForFunction(
+      (beforeContent) => {
+        const terminal = document.querySelector('vibe-terminal');
+        const currentContent = terminal?.textContent || '';
+        // Either content changed (completion happened) or stayed same (no completion)
+        return (
+          currentContent !== beforeContent ||
+          currentContent.includes('echo') ||
+          currentContent.includes('ec')
+        );
+      },
+      beforeTab,
+      { timeout: 3000 }
+    );
+
+    // Type the rest of the command
+    await page.keyboard.type('ho "testing tab completion"');
     await page.keyboard.press('Enter');
 
-    // Should see the output
-    await expect(page.locator('text=testing tab key').first()).toBeVisible({ timeout: 5000 });
+    // Wait for command output
+    await assertTerminalContains(page, 'testing tab completion', 5000);
 
     // Test passes if tab key doesn't break terminal functionality
   });
@@ -349,18 +369,51 @@ test.describe('Keyboard Shortcuts', () => {
     // Wait for output
     await expect(page.locator('text=arrow key test').first()).toBeVisible({ timeout: 5000 });
 
-    // Wait a bit for prompt to appear
-    await page.waitForTimeout(1000);
+    // Wait for prompt to reappear by checking for prompt characters
+    await page.waitForFunction(
+      () => {
+        const terminal = document.querySelector('vibe-terminal');
+        const content = terminal?.textContent || '';
+        // Look for the command output and then a new prompt after it
+        const outputIndex = content.lastIndexOf('arrow key test');
+        if (outputIndex === -1) return false;
+        const afterOutput = content.substring(outputIndex + 'arrow key test'.length);
+        // Check if there's a prompt character after the output
+        return afterOutput.includes('$') || afterOutput.includes('#') || afterOutput.includes('>');
+      },
+      { timeout: 5000 }
+    );
+
+    // Get current terminal content before arrow keys
+    const beforeArrows = await getTerminalContent(page);
 
     // Press arrow keys to verify they don't break terminal
     await page.keyboard.press('ArrowUp');
-    await page.waitForTimeout(500);
+    // Wait for history navigation to complete
+    await page.waitForFunction(
+      (beforeContent) => {
+        const terminal = document.querySelector('vibe-terminal');
+        const currentContent = terminal?.textContent || '';
+        // Content should change when navigating history (previous command appears)
+        return currentContent !== beforeContent && currentContent.includes('echo "arrow key test"');
+      },
+      beforeArrows,
+      { timeout: 2000 }
+    );
+
     await page.keyboard.press('ArrowDown');
-    await page.waitForTimeout(500);
+    // Small wait for arrow down
+    await page.waitForFunction(
+      () => {
+        const terminal = document.querySelector('vibe-terminal');
+        return terminal?.textContent || '';
+      },
+      { timeout: 500 }
+    );
+
+    // Arrow left/right should work without breaking terminal
     await page.keyboard.press('ArrowLeft');
-    await page.waitForTimeout(200);
     await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(200);
 
     // Type another command to verify terminal still works
     await page.keyboard.type('echo "still working"');

@@ -198,28 +198,35 @@ test.describe('Keyboard Capture Toggle', () => {
     const captureIndicator = page.locator('keyboard-capture-indicator');
     await expect(captureIndicator).toBeVisible();
 
-    // Wait for any notifications to disappear
-    await page.waitForTimeout(1000);
+    // Wait for any overlaying notifications to disappear
+    await page.waitForFunction(
+      () => {
+        // Check if any notification elements are visible
+        const notifications = document.querySelectorAll('.bg-status-success, .fixed.top-4.right-4');
+        return Array.from(notifications).every((el) => {
+          const styles = window.getComputedStyle(el);
+          return (
+            styles.display === 'none' || styles.opacity === '0' || styles.visibility === 'hidden'
+          );
+        });
+      },
+      { timeout: 5000 }
+    );
 
-    // Check if there are any overlaying elements and wait for them to disappear
-    const notification = page.locator('.bg-status-success, .fixed.top-4.right-4').first();
-    if (await notification.isVisible()) {
-      await notification.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {
-        // If notification doesn't disappear, try clicking it to dismiss
-        notification.click().catch(() => {});
-      });
-      await page.waitForTimeout(500);
-    }
+    // Ensure the capture indicator is not obstructed
+    await page.evaluate(() => {
+      const indicator = document.querySelector('keyboard-capture-indicator');
+      if (indicator) {
+        indicator.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'center' });
+      }
+    });
 
     // Hover over the indicator to show tooltip
-    await captureIndicator.hover();
+    await captureIndicator.hover({ force: true });
 
-    // Wait for tooltip to appear
-    await page.waitForTimeout(200);
-
-    // Check tooltip content
+    // Wait for tooltip to appear using proper assertion
     const tooltip = page.locator('keyboard-capture-indicator >> text="Keyboard Capture ON"');
-    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toBeVisible({ timeout: 5000 });
 
     // Verify it mentions double-tap Escape
     const escapeInstruction = page.locator('keyboard-capture-indicator >> text="Double-tap"');

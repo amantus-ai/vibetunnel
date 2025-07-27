@@ -119,26 +119,47 @@ test.describe('Terminal Interaction', () => {
 
     try {
       // Execute directory operations one by one for better control
-      await executeCommand(page, 'pwd');
-      await page.waitForTimeout(200);
+      await executeAndVerifyCommand(page, 'pwd', '/');
 
       await executeCommand(page, `mkdir ${testDir}`);
-      await page.waitForTimeout(200);
+      // Wait for directory to be created by checking it doesn't show error
+      await page.waitForFunction(
+        (dir) => {
+          const terminal = document.querySelector('vibe-terminal');
+          const content = terminal?.textContent || '';
+          // Check that mkdir succeeded (no error message)
+          return (
+            !content.includes(`mkdir: ${dir}: File exists`) &&
+            !content.includes(`mkdir: cannot create directory`)
+          );
+        },
+        testDir,
+        { timeout: 2000 }
+      );
 
-      await executeCommand(page, `cd ${testDir}`);
-      await page.waitForTimeout(200);
-
-      await executeCommand(page, 'pwd');
-      await page.waitForTimeout(200);
+      await executeAndVerifyCommand(page, `cd ${testDir}`, '');
 
       // Verify we're in the new directory
-      await assertTerminalContains(page, testDir);
+      await executeAndVerifyCommand(page, 'pwd', testDir);
 
-      // Cleanup
-      await executeCommand(page, 'cd ..');
-      await page.waitForTimeout(200);
+      // Cleanup - go back and remove directory
+      await executeAndVerifyCommand(page, 'cd ..', '');
 
       await executeCommand(page, `rmdir ${testDir}`);
+      // Wait for rmdir to complete
+      await page.waitForFunction(
+        (dir) => {
+          const terminal = document.querySelector('vibe-terminal');
+          const content = terminal?.textContent || '';
+          // Check that rmdir succeeded (no error message)
+          return (
+            !content.includes(`rmdir: ${dir}: No such file or directory`) &&
+            !content.includes(`rmdir: failed to remove`)
+          );
+        },
+        testDir,
+        { timeout: 2000 }
+      );
     } catch (error) {
       // Get terminal content for debugging
       const content = await getTerminalContent(page);
@@ -151,8 +172,16 @@ test.describe('Terminal Interaction', () => {
     const varName = 'TEST_VAR';
     const varValue = 'VibeTunnel_Test_123';
 
-    // Wait for terminal to be ready before typing
-    await page.waitForTimeout(2000);
+    // Wait for terminal to be properly ready - check for prompt
+    await page.waitForFunction(
+      () => {
+        const terminal = document.querySelector('vibe-terminal');
+        const content = terminal?.textContent || '';
+        // Look for shell prompt indicators
+        return content.includes('$') || content.includes('#') || content.includes('>');
+      },
+      { timeout: 10000 }
+    );
 
     // Set environment variable and verify in a single command chain
     // This ensures the variable is available in the same shell context
@@ -161,8 +190,8 @@ test.describe('Terminal Interaction', () => {
       `export ${varName}="${varValue}" && echo "Variable set: $${varName}" && env | grep ${varName} || echo "${varName} not found in env"`
     );
 
-    // Wait for the command to complete
-    await page.waitForTimeout(1000);
+    // Wait for the command output to appear
+    await assertTerminalContains(page, 'Variable set:', 5000);
 
     // Check the terminal content directly using the proper helper
     const terminalContent = await getTerminalContent(page);

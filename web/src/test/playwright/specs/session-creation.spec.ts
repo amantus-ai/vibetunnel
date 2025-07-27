@@ -284,12 +284,50 @@ test.describe('Session Creation', () => {
     const { sessionName } = await sessionManager.createTrackedSession();
     await assertTerminalReady(page, 15000);
 
+    // Execute a command to have some content in the terminal
+    await page.keyboard.type('echo "Test content before reconnect"');
+    await page.keyboard.press('Enter');
+
+    // Wait for command output to appear
+    await page.waitForFunction(
+      () => {
+        const terminal = document.querySelector('vibe-terminal');
+        const content = terminal?.textContent || '';
+        return content.includes('Test content before reconnect');
+      },
+      { timeout: 5000 }
+    );
+
     // Navigate away and back
     await page.goto('/');
+
+    // Wait for session list to fully load
+    await page.waitForSelector('session-card', { state: 'visible', timeout: 5000 });
+
+    // Ensure the session we're looking for is in the list
+    await page.waitForFunction(
+      (targetName) => {
+        const cards = document.querySelectorAll('session-card');
+        return Array.from(cards).some((card) => card.textContent?.includes(targetName));
+      },
+      sessionName,
+      { timeout: 10000 }
+    );
+
     await reconnectToSession(page, sessionName);
 
-    // Verify reconnected
+    // Verify reconnected - wait for terminal to be ready
     await assertUrlHasSession(page);
     await assertTerminalReady(page, 15000);
+
+    // Verify previous content is still there
+    await page.waitForFunction(
+      () => {
+        const terminal = document.querySelector('vibe-terminal');
+        const content = terminal?.textContent || '';
+        return content.includes('Test content before reconnect');
+      },
+      { timeout: 5000 }
+    );
   });
 });

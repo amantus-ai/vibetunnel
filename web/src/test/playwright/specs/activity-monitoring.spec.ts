@@ -41,22 +41,37 @@ test.describe('Activity Monitoring', () => {
       { timeout: 10000 }
     );
 
-    // Wait for session cards to load with retry logic
+    // Wait for session cards to load properly
     let cardFound = false;
     for (let retry = 0; retry < 3 && !cardFound; retry++) {
       if (retry > 0) {
         console.log(`Retrying session card lookup (attempt ${retry + 1}/3)`);
         await page.reload();
         await page.waitForLoadState('domcontentloaded');
+        // Ensure sessions are visible after reload
+        await ensureAllSessionsVisible(page);
       }
 
       try {
         await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
-        // Find our session card - wait a bit for all cards to render
-        await page.waitForTimeout(1000);
+        // Wait for the specific session card to be present and stable
+        await page.waitForFunction(
+          (name) => {
+            const cards = document.querySelectorAll('session-card');
+            const targetCard = Array.from(cards).find((card) => card.textContent?.includes(name));
+            if (!targetCard) return false;
+
+            // Check if the card is fully rendered (has content)
+            const hasContent = targetCard.textContent && targetCard.textContent.trim().length > 0;
+            return hasContent;
+          },
+          sessionName,
+          { timeout: 10000 }
+        );
+
         const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
-        await expect(sessionCard).toBeVisible({ timeout: 10000 });
+        await expect(sessionCard).toBeVisible({ timeout: 5000 });
         cardFound = true;
       } catch (error) {
         if (retry === 2) throw error; // Re-throw on last attempt
