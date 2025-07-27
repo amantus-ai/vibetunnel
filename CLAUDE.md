@@ -338,6 +338,12 @@ gh run download <run-id> -n <job-name>
 # View logs in terminal (if run is complete)
 gh run view <run-id> --log
 
+# View only failed logs (most useful for CI debugging)
+gh run view <run-id> --log-failed
+
+# View logs for specific job
+gh run view <run-id> --log --job <job-id>
+
 # Watch a running job
 gh run watch <run-id>
 ```
@@ -368,6 +374,18 @@ gh run cancel <run-id>
 
 # View PR checks status
 gh pr checks <pr-number>
+```
+
+**Filtering and Searching Logs**:
+```bash
+# Search for specific errors in logs (remove network errors)
+gh run view <run-id> --log-failed | grep -v "Failed to load resource" | grep -v "ERR_FAILED"
+
+# Find actual test failures
+gh run view <run-id> --log | grep -E "×|failed|Failed" | grep -v "Failed to load resource"
+
+# Get test summary at end
+gh run view <run-id> --log | tail -200 | grep -E "failed|passed|Test results|Summary" -A 5 -B 5
 ```
 
 

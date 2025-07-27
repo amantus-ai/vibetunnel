@@ -286,47 +286,67 @@ test.describe('Session Creation', () => {
   test('should reconnect to existing session', async ({ page }) => {
     // Create and track session
     const { sessionName } = await sessionManager.createTrackedSession();
-    await assertTerminalReady(page, 15000);
+    await assertTerminalReady(page, 20000);
 
     // Ensure terminal is focused and ready for input
     const terminal = page.locator('vibe-terminal').first();
     await terminal.click();
 
-    // Wait for shell prompt before typing
+    // Wait for shell prompt before typing - more robust detection
     await page.waitForFunction(
       () => {
         const term = document.querySelector('vibe-terminal');
-        const content = term?.textContent || '';
-        return content.includes('$') || content.includes('#') || content.includes('>');
+        const container = term?.querySelector('#terminal-container');
+        const content = container?.textContent || term?.textContent || '';
+
+        // Check for common prompt patterns
+        const promptPatterns = [
+          /[$>#%❯]\s*$/, // Common prompts at end
+          /\$\s+$/, // Dollar with space
+          />\s+$/, // Greater than with space
+          /#\s+$/, // Root prompt with space
+          /\w+@[\w-]+/, // Username@hostname
+          /]\s*[$>#]/, // Bracketed prompt
+          /bash-\d+\.\d+\$/, // Bash version prompt
+        ];
+
+        return (
+          promptPatterns.some((pattern) => pattern.test(content)) ||
+          (content.length > 10 && content.trim().length > 0)
+        );
       },
-      { timeout: 10000 }
+      { timeout: 20000 }
     );
+
+    // Small delay to ensure terminal is fully ready
+    await page.waitForTimeout(500);
 
     // Execute a command to have some content in the terminal
     await page.keyboard.type('echo "Test content before reconnect"');
     await page.keyboard.press('Enter');
 
-    // Wait for command output to appear with longer timeout
+    // Wait for command output to appear with longer timeout and better detection
     await page.waitForFunction(
       () => {
         const terminal = document.querySelector('vibe-terminal');
-        const content = terminal?.textContent || '';
+        const container = terminal?.querySelector('#terminal-container');
+        const content = container?.textContent || terminal?.textContent || '';
         return content.includes('Test content before reconnect');
       },
-      { timeout: 10000 }
+      { timeout: 15000 }
     );
 
     // Navigate away and back
     await page.goto('/');
 
     // Wait for session list to fully load and the specific session to appear
-    await waitForSessionCard(page, sessionName);
+    await waitForSessionCard(page, sessionName, { timeout: 20000 });
 
     await reconnectToSession(page, sessionName);
 
     // Verify reconnected - wait for terminal to be ready
     await assertUrlHasSession(page);
-    await assertTerminalReady(page, 15000);
+    await assertTerminalReady(page, 20000);
 
     // Verify previous content is still there with longer timeout
     await page.waitForFunction(

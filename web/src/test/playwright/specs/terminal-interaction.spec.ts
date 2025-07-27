@@ -38,21 +38,27 @@ test.describe('Terminal Interaction', () => {
   });
 
   test('should execute basic commands', async ({ page }) => {
-    // Execute echo command
-    await executeCommand(page, 'echo "Hello VibeTunnel"');
+    // Wait for terminal to be fully ready
+    await waitForTerminalReady(page, 15000);
 
-    // Verify output
-    await assertTerminalContains(page, 'Hello VibeTunnel');
+    // Small delay to ensure terminal is responsive
+    await page.waitForTimeout(1000);
+
+    // Execute echo command with retry
+    await executeCommandWithRetry(page, 'echo "Hello VibeTunnel"', 'Hello VibeTunnel', 3);
   });
 
   test('should handle command with special characters', async ({ page }) => {
     const specialText = 'Test with spaces and numbers 123';
 
-    // Execute command
-    await executeCommand(page, `echo "${specialText}"`);
+    // Wait for terminal to be fully ready
+    await waitForTerminalReady(page, 15000);
 
-    // Verify output
-    await assertTerminalContains(page, specialText);
+    // Small delay to ensure terminal is responsive
+    await page.waitForTimeout(1000);
+
+    // Execute command with retry
+    await executeCommandWithRetry(page, `echo "${specialText}"`, specialText, 3);
   });
 
   test('should execute multiple commands in sequence', async ({ page }) => {

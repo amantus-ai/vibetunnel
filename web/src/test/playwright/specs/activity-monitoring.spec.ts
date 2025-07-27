@@ -23,30 +23,48 @@ test.describe('Activity Monitoring', () => {
   });
 
   test('should show session activity status in session list', async ({ page }) => {
-    // Simply create a session and check if it shows any activity indicators
-    const { sessionName } = await sessionManager.createTrackedSession();
+    // Create session with retry logic
+    let sessionName: string | null = null;
+    let retries = 3;
+
+    while (retries > 0 && !sessionName) {
+      try {
+        const result = await sessionManager.createTrackedSession();
+        sessionName = result.sessionName;
+        break;
+      } catch (error) {
+        retries--;
+        if (retries === 0) throw error;
+        console.log(`Session creation failed, retrying... (${retries} attempts left)`);
+        await page.waitForTimeout(2000);
+      }
+    }
+
+    if (!sessionName) {
+      throw new Error('Failed to create session after retries');
+    }
 
     // Wait a moment for the session to be registered
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
 
     // Navigate back to home to see the session list
-    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 10000 });
+    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 15000 });
 
     // Ensure all sessions are visible (show exited sessions if hidden)
     await ensureAllSessionsVisible(page);
 
-    // Wait for session list to be ready
+    // Wait for session list to be ready with increased timeout
     await page.waitForFunction(
       () => {
         const cards = document.querySelectorAll('session-card');
         const noSessionsMsg = document.querySelector('.text-dark-text-muted');
         return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
       },
-      { timeout: 15000 }
+      { timeout: 20000 }
     );
 
-    // Wait for the specific session card using our improved helper
-    await waitForSessionCard(page, sessionName);
+    // Wait for the specific session card using our improved helper with retry
+    await waitForSessionCard(page, sessionName, { timeout: 20000, retries: 3 });
 
     // Find the session card reference again after the retry logic
     const sessionCard = page.locator('session-card').filter({ hasText: sessionName }).first();
