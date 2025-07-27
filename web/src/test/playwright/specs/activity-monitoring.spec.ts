@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test.fixture';
 import { assertTerminalReady } from '../helpers/assertion.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { ensureAllSessionsVisible } from '../helpers/ui-state.helper';
 
 // These tests create their own sessions - run serially to avoid server overload
 test.describe.configure({ mode: 'serial' });
@@ -26,6 +27,9 @@ test.describe('Activity Monitoring', () => {
 
     // Navigate back to home to see the session list
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    
+    // Ensure all sessions are visible (show exited sessions if hidden)
+    await ensureAllSessionsVisible(page);
 
     // Wait for session list to be ready
     await page.waitForFunction(
@@ -173,6 +177,7 @@ test.describe('Activity Monitoring', () => {
 
     // Go back to session list to check activity there
     await page.goto('/');
+    await ensureAllSessionsVisible(page);
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     // Session should show recent activity
@@ -223,6 +228,7 @@ test.describe('Activity Monitoring', () => {
 
     // Go to session list to check idle status
     await page.goto('/');
+    await ensureAllSessionsVisible(page);
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     const sessionCard = page
@@ -276,6 +282,9 @@ test.describe('Activity Monitoring', () => {
 
     // Go to session list
     await page.goto('/?test=true', { waitUntil: 'domcontentloaded', timeout: 10000 });
+    
+    // Ensure all sessions are visible
+    await ensureAllSessionsVisible(page);
 
     // Wait for page to stabilize after navigation
     await page.waitForTimeout(1000);
@@ -395,6 +404,7 @@ test.describe('Activity Monitoring', () => {
 
     // Go to session list to check status there
     await page.goto('/');
+    await ensureAllSessionsVisible(page);
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     const sessionCard = page
@@ -439,6 +449,7 @@ test.describe('Activity Monitoring', () => {
 
     // Go to session list
     await page.goto('/');
+    await ensureAllSessionsVisible(page);
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     const sessionCard = page
@@ -509,6 +520,7 @@ test.describe('Activity Monitoring', () => {
 
     // Check session list for activity tracking
     await page.goto('/');
+    await ensureAllSessionsVisible(page);
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     // Both sessions should show their respective activity
@@ -563,6 +575,7 @@ test.describe('Activity Monitoring', () => {
 
     // Activity monitoring should still work
     await page.goto('/');
+    await ensureAllSessionsVisible(page);
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     const sessionCard = page
@@ -603,6 +616,7 @@ test.describe('Activity Monitoring', () => {
 
     // Check aggregated activity status
     await page.goto('/');
+    await ensureAllSessionsVisible(page);
     await page.waitForSelector('session-card', { state: 'visible', timeout: 10000 });
 
     const sessionCard = page

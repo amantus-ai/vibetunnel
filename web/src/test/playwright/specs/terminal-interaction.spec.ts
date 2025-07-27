@@ -5,6 +5,7 @@ import {
   executeAndVerifyCommand,
   executeCommand,
   executeCommandWithRetry,
+  getTerminalContent,
   getTerminalDimensions,
   interruptCommand,
   waitForTerminalBusy,
@@ -140,7 +141,7 @@ test.describe('Terminal Interaction', () => {
       await executeCommand(page, `rmdir ${testDir}`);
     } catch (error) {
       // Get terminal content for debugging
-      const content = await page.locator('vibe-terminal').textContent();
+      const content = await getTerminalContent(page);
       console.log('Terminal content on error:', content);
       throw error;
     }
@@ -162,9 +163,8 @@ test.describe('Terminal Interaction', () => {
     // Verify it was set by echoing it - use a simpler approach
     await executeCommand(page, `echo $${varName}`);
 
-    // Check the terminal content directly
-    const terminal = page.locator('vibe-terminal');
-    const terminalContent = await terminal.textContent();
+    // Check the terminal content directly using the proper helper
+    const terminalContent = await getTerminalContent(page);
 
     // The echo output should contain our value
     expect(terminalContent).toContain(varValue);
@@ -173,7 +173,7 @@ test.describe('Terminal Interaction', () => {
     await executeCommand(page, `env | grep ${varName} || echo "Variable not found"`);
     await page.waitForTimeout(1000);
 
-    const updatedContent = await terminal.textContent();
+    const updatedContent = await getTerminalContent(page);
     expect(updatedContent).toContain(`${varName}=${varValue}`);
   });
 
