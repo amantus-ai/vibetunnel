@@ -94,10 +94,6 @@ jobs:
             echo "No process found on port 4022"
           fi
         
-      - name: Debug CI Environment
-        working-directory: ./web
-        run: node scripts/debug-ci-environment.js || true
-        
       - name: Run Playwright tests
         working-directory: ./web
         run: xvfb-run -a pnpm test:e2e
