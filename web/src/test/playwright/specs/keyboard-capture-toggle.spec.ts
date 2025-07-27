@@ -159,7 +159,7 @@ test.describe('Keyboard Capture Toggle', () => {
 
     // Click the indicator button and wait for state change
     await captureButton.click({ timeout: 10000 });
-    
+
     // Wait for the button state to change in the DOM
     await page.waitForFunction(
       () => {

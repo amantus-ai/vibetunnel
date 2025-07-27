@@ -59,7 +59,7 @@ test.describe('Terminal Interaction', () => {
     // Execute first command and wait for it to complete
     await page.keyboard.type('echo "Test 1"');
     await page.keyboard.press('Enter');
-    
+
     // Wait for the output and prompt
     await page.waitForFunction(
       () => {
@@ -76,7 +76,7 @@ test.describe('Terminal Interaction', () => {
     // Execute second command
     await page.keyboard.type('echo "Test 2"');
     await page.keyboard.press('Enter');
-    
+
     // Wait for the second output
     await page.waitForFunction(
       () => {
@@ -86,7 +86,7 @@ test.describe('Terminal Interaction', () => {
       },
       { timeout: 5000 }
     );
-    
+
     // Verify both outputs are present
     const finalContent = await getTerminalContent(page);
     if (!finalContent.includes('Test 1') || !finalContent.includes('Test 2')) {
