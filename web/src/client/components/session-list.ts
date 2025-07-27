@@ -235,6 +235,15 @@ export class SessionList extends LitElement {
     // Remove the session from the local state
     this.sessions = this.sessions.filter((session) => session.id !== sessionId);
 
+    // Re-dispatch the event for parent components
+    this.dispatchEvent(
+      new CustomEvent('session-killed', {
+        detail: sessionId,
+        bubbles: true,
+        composed: true,
+      })
+    );
+
     // Then trigger a refresh to get the latest server state
     this.dispatchEvent(new CustomEvent('refresh'));
   }

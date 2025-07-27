@@ -61,7 +61,7 @@ export interface VibeTunnelConfig {
 }
 
 export const DEFAULT_QUICK_START_COMMANDS: QuickStartCommand[] = [
-  { name: '✨ claude', command: 'claude' },
+  { name: '✨ claude', command: 'claude --dangerously-skip-permissions' },
   { name: '✨ gemini', command: 'gemini' },
   { command: 'zsh' },
   { command: 'python3' },

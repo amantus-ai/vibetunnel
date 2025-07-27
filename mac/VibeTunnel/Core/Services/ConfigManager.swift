@@ -123,7 +123,7 @@ final class ConfigManager {
 
     /// Default commands matching web/src/types/config.ts
     private let defaultCommands = [
-        QuickStartCommand(name: "✨ claude", command: "claude"),
+        QuickStartCommand(name: "✨ claude", command: "claude --dangerously-skip-permissions"),
         QuickStartCommand(name: "✨ gemini", command: "gemini"),
         QuickStartCommand(name: nil, command: "zsh"),
         QuickStartCommand(name: nil, command: "python3"),

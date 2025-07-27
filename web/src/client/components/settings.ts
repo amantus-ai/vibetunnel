@@ -12,19 +12,18 @@ import { RepositoryService } from '../services/repository-service.js';
 import { ServerConfigService } from '../services/server-config-service.js';
 import { createLogger } from '../utils/logger.js';
 import { type MediaQueryState, responsiveObserver } from '../utils/responsive-utils.js';
+import { VERSION } from '../version.js';
 
 const logger = createLogger('settings');
 
 export interface AppPreferences {
   useDirectKeyboard: boolean;
   useBinaryMode: boolean;
-  showLogLink: boolean;
 }
 
 const DEFAULT_APP_PREFERENCES: AppPreferences = {
   useDirectKeyboard: true, // Default to modern direct keyboard for new users
   useBinaryMode: false, // Default to SSE/RSC mode for compatibility
-  showLogLink: false,
 };
 
 export const STORAGE_KEY = 'vibetunnel_app_preferences';
@@ -402,6 +401,16 @@ export class Settings extends LitElement {
             ${this.renderNotificationSettings()}
             ${this.renderAppSettings()}
           </div>
+
+          <!-- Footer -->
+          <div class="p-4 pt-3 border-t border-border/50 flex-shrink-0">
+            <div class="flex items-center justify-between text-xs font-mono">
+              <span class="text-muted">v${VERSION}</span>
+              <a href="/logs" class="text-primary hover:text-primary-hover transition-colors" target="_blank">
+                View Logs
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -580,29 +589,6 @@ export class Settings extends LitElement {
             : ''
         }
 
-        <!-- Show log link -->
-        <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-border/50">
-          <div class="flex-1">
-            <label class="text-primary font-medium">Show Log Link</label>
-            <p class="text-muted text-xs mt-1">
-              Display log link for debugging
-            </p>
-          </div>
-          <button
-            role="switch"
-            aria-checked="${this.appPreferences.showLogLink}"
-            @click=${() => this.handleAppPreferenceChange('showLogLink', !this.appPreferences.showLogLink)}
-            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base ${
-              this.appPreferences.showLogLink ? 'bg-primary' : 'bg-border'
-            }"
-          >
-            <span
-              class="inline-block h-5 w-5 transform rounded-full bg-bg-elevated transition-transform ${
-                this.appPreferences.showLogLink ? 'translate-x-5' : 'translate-x-0.5'
-              }"
-            ></span>
-          </button>
-        </div>
 
         <!-- Repository Base Path -->
         <div class="p-4 bg-tertiary rounded-lg border border-border/50">
