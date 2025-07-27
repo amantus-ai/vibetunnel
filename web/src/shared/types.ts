@@ -16,6 +16,36 @@ export enum HttpMethod {
 }
 
 /**
+ * Types of server events that can be received via Server-Sent Events (SSE).
+ * Matches the Swift ServerEventType enum for type safety across platforms.
+ */
+export enum ServerEventType {
+  SessionStart = 'session-start',
+  SessionExit = 'session-exit',
+  CommandFinished = 'command-finished',
+  CommandError = 'command-error',
+  Bell = 'bell',
+  ClaudeTurn = 'claude-turn',
+  Connected = 'connected',
+}
+
+/**
+ * Server event received via Server-Sent Events (SSE).
+ * Matches the Swift ServerEvent struct for cross-platform compatibility.
+ */
+export interface ServerEvent {
+  type: ServerEventType;
+  sessionId?: string;
+  sessionName?: string;
+  command?: string;
+  exitCode?: number;
+  duration?: number;
+  processInfo?: string;
+  message?: string;
+  timestamp: string; // ISO 8601 format
+}
+
+/**
  * Session status enum
  */
 export type SessionStatus = 'starting' | 'running' | 'exited';

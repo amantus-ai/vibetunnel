@@ -133,69 +133,99 @@ final class NotificationService: NSObject {
 
     // MARK: - Public Notification Methods
 
-    /// Send a session start notification
-    func sendSessionStartNotification(sessionName: String) async {
-        guard preferences.sessionStart else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = "Session Started"
-        content.body = sessionName
-        content.sound = getNotificationSound()
-        content.categoryIdentifier = "SESSION"
-        content.interruptionLevel = .passive
-
-        deliverNotificationWithAutoDismiss(content, identifier: "session-start-\(UUID().uuidString)", dismissAfter: 5.0)
-    }
-
-    /// Send a session exit notification
-    func sendSessionExitNotification(sessionName: String, exitCode: Int) async {
-        guard preferences.sessionExit else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = "Session Ended"
-        content.body = sessionName
-        content.sound = getNotificationSound()
-        content.categoryIdentifier = "SESSION"
-
-        if exitCode != 0 {
-            content.subtitle = "Exit code: \(exitCode)"
+    /// Send a notification for a server event
+    /// - Parameter event: The server event to create a notification for
+    func sendNotification(for event: ServerEvent) async {
+        // Check preferences based on event type
+        switch event.type {
+        case .sessionStart:
+            guard preferences.sessionStart else { return }
+        case .sessionExit:
+            guard preferences.sessionExit else { return }
+        case .commandFinished:
+            guard preferences.commandCompletion else { return }
+        case .commandError:
+            guard preferences.commandError else { return }
+        case .bell:
+            guard preferences.bell else { return }
+        case .claudeTurn:
+            guard preferences.claudeTurn else { return }
+        case .connected:
+            // Connected events don't trigger notifications
+            return
         }
 
-        deliverNotification(content, identifier: "session-exit-\(UUID().uuidString)")
-    }
-
-    /// Send a command completion notification (also used for "Your Turn")
-    func sendCommandCompletionNotification(command: String, duration: Int) async {
-        guard preferences.commandCompletion else { return }
-
         let content = UNMutableNotificationContent()
-        content.title = "Your Turn"
-        content.body = command
-        content.sound = getNotificationSound()
-        content.categoryIdentifier = "COMMAND"
-        content.interruptionLevel = .active
-
-        if duration > 0 {
-            let seconds = duration / 1_000
-            if seconds > 60 {
-                content.subtitle = "Duration: \(seconds / 60)m \(seconds % 60)s"
-            } else {
-                content.subtitle = "Duration: \(seconds)s"
+        
+        // Configure notification based on event type
+        switch event.type {
+        case .sessionStart:
+            content.title = "Session Started"
+            content.body = event.displayName
+            content.categoryIdentifier = "SESSION"
+            content.interruptionLevel = .passive
+            
+        case .sessionExit:
+            content.title = "Session Ended"
+            content.body = event.displayName
+            content.categoryIdentifier = "SESSION"
+            if let exitCode = event.exitCode, exitCode != 0 {
+                content.subtitle = "Exit code: \(exitCode)"
             }
+            
+        case .commandFinished:
+            content.title = "Your Turn"
+            content.body = event.command ?? event.displayName
+            content.categoryIdentifier = "COMMAND"
+            content.interruptionLevel = .active
+            if let duration = event.duration, duration > 0, let formattedDuration = event.formattedDuration {
+                content.subtitle = formattedDuration
+            }
+            
+        case .commandError:
+            content.title = "Command Failed"
+            content.body = event.command ?? event.displayName
+            content.categoryIdentifier = "COMMAND"
+            if let exitCode = event.exitCode {
+                content.subtitle = "Exit code: \(exitCode)"
+            }
+            
+        case .bell:
+            content.title = "Terminal Bell"
+            content.body = event.displayName
+            content.categoryIdentifier = "BELL"
+            if let message = event.message {
+                content.subtitle = message
+            }
+            
+        case .claudeTurn:
+            content.title = event.type.description
+            content.body = event.message ?? "Claude has finished responding"
+            content.subtitle = event.displayName
+            content.categoryIdentifier = "CLAUDE_TURN"
+            content.interruptionLevel = .active
+            
+        case .connected:
+            return // Already handled above
         }
-
-        deliverNotification(content, identifier: "command-\(UUID().uuidString)")
-    }
-
-    /// Send a generic notification
-    func sendGenericNotification(title: String, body: String) async {
-        let content = UNMutableNotificationContent()
-        content.title = title
-        content.body = body
-        content.sound = getNotificationSound()
-        content.categoryIdentifier = "GENERAL"
-
-        deliverNotification(content, identifier: "generic-\(UUID().uuidString)")
+        
+        // Set sound based on event type
+        content.sound = event.type == .commandError ? getNotificationSound(critical: true) : getNotificationSound()
+        
+        // Add session ID to user info if available
+        if let sessionId = event.sessionId {
+            content.userInfo = ["sessionId": sessionId, "type": event.type.rawValue]
+        }
+        
+        // Generate identifier
+        let identifier = "\(event.type.rawValue)-\(event.sessionId ?? UUID().uuidString)"
+        
+        // Deliver notification with appropriate method
+        if event.type == .sessionStart {
+            deliverNotificationWithAutoDismiss(content, identifier: identifier, dismissAfter: 5.0)
+        } else {
+            deliverNotification(content, identifier: identifier)
+        }
     }
 
     /// Open System Settings to the Notifications pane
@@ -331,18 +361,18 @@ final class NotificationService: NSObject {
                 let sessions = await SessionMonitor.shared.getSessions()
 
                 for (sessionId, session) in sessions where session.isRunning {
-                    let sessionName = session.name ?? session.command.joined(separator: " ")
+                    let sessionName = session.name
                     self.logger.info("📨 Sending synthetic session-start event for existing session: \(sessionId)")
 
-                    // Create synthetic event data
-                    let eventData: [String: Any] = [
-                        "type": "session-start",
-                        "sessionId": sessionId,
-                        "sessionName": sessionName
-                    ]
+                    // Create synthetic ServerEvent
+                    let syntheticEvent = ServerEvent.sessionStart(
+                        sessionId: sessionId,
+                        sessionName: sessionName,
+                        command: session.command.joined(separator: " ")
+                    )
 
                     // Handle as if it was a real event
-                    self.handleSessionStart(eventData)
+                    self.handleSessionStart(syntheticEvent)
                 }
             }
         }
@@ -382,72 +412,72 @@ final class NotificationService: NSObject {
         }
 
         do {
-            guard let jsonData = data.data(using: .utf8),
-                  let json = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
-                  let type = json["type"] as? String
-            else {
-                logger.error("🔴 Invalid event data format: \(data)")
+            guard let jsonData = data.data(using: .utf8) else {
+                logger.error("🔴 Failed to convert event data to UTF-8")
                 return
             }
+            
+            // Decode the JSON into a dictionary
+            guard let json = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                  let typeString = json["type"] as? String,
+                  let eventType = ServerEventType(rawValue: typeString) else {
+                logger.error("🔴 Invalid event type or format: \(data)")
+                return
+            }
+            
+            // Create ServerEvent from the JSON data
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            
+            // Map the JSON to ServerEvent structure
+            var serverEvent = ServerEvent(
+                type: eventType,
+                sessionId: json["sessionId"] as? String,
+                sessionName: json["sessionName"] as? String,
+                command: json["command"] as? String,
+                exitCode: json["exitCode"] as? Int,
+                duration: json["duration"] as? Int,
+                message: json["message"] as? String,
+                timestamp: Date()
+            )
+            
+            // Parse timestamp if available
+            if let timestampString = json["timestamp"] as? String,
+               let timestampData = timestampString.data(using: .utf8),
+               let timestamp = try? decoder.decode(Date.self, from: timestampData) {
+                serverEvent = ServerEvent(
+                    type: eventType,
+                    sessionId: serverEvent.sessionId,
+                    sessionName: serverEvent.sessionName,
+                    command: serverEvent.command,
+                    exitCode: serverEvent.exitCode,
+                    duration: serverEvent.duration,
+                    message: serverEvent.message,
+                    timestamp: timestamp
+                )
+            }
 
-            logger.info("📨 Received event: \(type)")
+            logger.info("📨 Received event: \(serverEvent.type.rawValue)")
 
-            switch type {
-            case "session-start":
-                logger.info("🚀 Processing session-start event")
-                if preferences.sessionStart {
-                    handleSessionStart(json)
-                } else {
-                    logger.debug("Session start notifications disabled")
+            // Special handling for session start events
+            if serverEvent.type == .sessionStart {
+                handleSessionStart(serverEvent)
+            } else if serverEvent.type == .connected {
+                logger.debug("📡 Connected event received")
+            } else {
+                // Send notification for all other event types
+                Task {
+                    await sendNotification(for: serverEvent)
                 }
-            case "session-exit":
-                logger.info("🏁 Processing session-exit event")
-                if preferences.sessionExit {
-                    handleSessionExit(json)
-                } else {
-                    logger.debug("Session exit notifications disabled")
-                }
-            case "command-finished":
-                logger.info("✅ Processing command-finished event")
-                if preferences.commandCompletion {
-                    handleCommandFinished(json)
-                } else {
-                    logger.debug("Command completion notifications disabled")
-                }
-            case "command-error":
-                logger.info("❌ Processing command-error event")
-                if preferences.commandError {
-                    handleCommandError(json)
-                } else {
-                    logger.debug("Command error notifications disabled")
-                }
-            case "bell":
-                logger.info("🔔 Processing bell event")
-                if preferences.bell {
-                    handleBell(json)
-                } else {
-                    logger.debug("Bell notifications disabled")
-                }
-            case "claude-turn":
-                logger.info("💬 Processing claude-turn event")
-                if preferences.claudeTurn {
-                    handleClaudeTurn(json)
-                } else {
-                    logger.debug("Claude turn notifications disabled")
-                }
-            default:
-                logger.debug("⚠️ Unhandled event type: \(type)")
             }
         } catch {
             logger.error("🔴 Failed to parse event: \(error)")
         }
     }
 
-    private func handleSessionStart(_ data: [String: Any]) {
-        guard let sessionName = data["sessionName"] as? String else { return }
-
+    private func handleSessionStart(_ event: ServerEvent) {
         // Check for duplicate notifications
-        if let sessionId = data["sessionId"] as? String {
+        if let sessionId = event.sessionId {
             if recentlyNotifiedSessions.contains(sessionId) {
                 logger.debug("Skipping duplicate notification for session \(sessionId)")
                 return
@@ -461,126 +491,10 @@ final class NotificationService: NSObject {
             }
         }
 
-        let content = UNMutableNotificationContent()
-        content.title = "Session Started"
-        content.body = sessionName
-        content.sound = getNotificationSound()
-        content.categoryIdentifier = "SESSION"
-        content.interruptionLevel = .passive // Less intrusive for auto-dismiss
-
-        let identifier: String
-        if let sessionId = data["sessionId"] as? String {
-            content.userInfo = ["sessionId": sessionId, "type": "session-start"]
-            identifier = "session-start-\(sessionId)"
-        } else {
-            identifier = "session-start-\(UUID().uuidString)"
+        // Use the consolidated notification method
+        Task {
+            await sendNotification(for: event)
         }
-
-        // Deliver notification with auto-dismiss
-        deliverNotificationWithAutoDismiss(content, identifier: identifier, dismissAfter: 5.0)
-    }
-
-    private func handleSessionExit(_ data: [String: Any]) {
-        guard let sessionName = data["sessionName"] as? String else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = "Session Ended"
-        content.body = sessionName
-        content.sound = getNotificationSound()
-        content.categoryIdentifier = "SESSION"
-
-        if let sessionId = data["sessionId"] as? String {
-            content.userInfo = ["sessionId": sessionId, "type": "session-exit"]
-        }
-
-        if let exitCode = data["exitCode"] as? Int, exitCode != 0 {
-            content.subtitle = "Exit code: \(exitCode)"
-        }
-
-        deliverNotification(content, identifier: "session-exit-\(UUID().uuidString)")
-    }
-
-    private func handleCommandFinished(_ data: [String: Any]) {
-        guard let command = data["command"] as? String else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = "Command Completed"
-        content.body = command
-        content.sound = getNotificationSound()
-        content.categoryIdentifier = "COMMAND"
-
-        if let sessionId = data["sessionId"] as? String {
-            content.userInfo = ["sessionId": sessionId, "type": "command-finished"]
-        }
-
-        if let duration = data["duration"] as? Int {
-            let seconds = duration / 1_000
-            if seconds > 60 {
-                content.subtitle = "Duration: \(seconds / 60)m \(seconds % 60)s"
-            } else {
-                content.subtitle = "Duration: \(seconds)s"
-            }
-        }
-
-        deliverNotification(content, identifier: "command-\(UUID().uuidString)")
-    }
-
-    private func handleCommandError(_ data: [String: Any]) {
-        guard let command = data["command"] as? String else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = "Command Failed"
-        content.body = command
-        content.sound = getNotificationSound(critical: true)
-        content.categoryIdentifier = "COMMAND"
-
-        if let sessionId = data["sessionId"] as? String {
-            content.userInfo = ["sessionId": sessionId, "type": "command-error"]
-        }
-
-        if let exitCode = data["exitCode"] as? Int {
-            content.subtitle = "Exit code: \(exitCode)"
-        }
-
-        deliverNotification(content, identifier: "command-error-\(UUID().uuidString)")
-    }
-
-    private func handleBell(_ data: [String: Any]) {
-        guard let sessionName = data["sessionName"] as? String else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = "Terminal Bell"
-        content.body = sessionName
-        content.sound = getNotificationSound()
-        content.categoryIdentifier = "BELL"
-
-        if let sessionId = data["sessionId"] as? String {
-            content.userInfo = ["sessionId": sessionId, "type": "bell"]
-        }
-
-        if let processInfo = data["processInfo"] as? String {
-            content.subtitle = processInfo
-        }
-
-        deliverNotification(content, identifier: "bell-\(UUID().uuidString)")
-    }
-
-    private func handleClaudeTurn(_ data: [String: Any]) {
-        guard let sessionName = data["sessionName"] as? String else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = "Your Turn"
-        content.body = "Claude has finished responding"
-        content.subtitle = sessionName
-        content.sound = getNotificationSound()
-        content.categoryIdentifier = "CLAUDE_TURN"
-        content.interruptionLevel = .active
-
-        if let sessionId = data["sessionId"] as? String {
-            content.userInfo = ["sessionId": sessionId, "type": "claude-turn"]
-        }
-
-        deliverNotification(content, identifier: "claude-turn-\(UUID().uuidString)")
     }
 
     private func deliverNotification(_ content: UNMutableNotificationContent, identifier: String) {

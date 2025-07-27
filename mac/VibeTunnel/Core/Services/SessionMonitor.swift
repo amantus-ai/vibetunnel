@@ -315,10 +315,13 @@ final class SessionMonitor {
             if previousActive && !currentActive && !alreadyNotified {
                 logger.info("🔔 Detected Claude transition to idle for session: \(id)")
                 let sessionName = newSession.name ?? newSession.command.joined(separator: " ")
-                await NotificationService.shared.sendCommandCompletionNotification(
-                    command: sessionName,
-                    duration: 0
+                
+                // Create a claude-turn event for the notification
+                let claudeTurnEvent = ServerEvent.claudeTurn(
+                    sessionId: id,
+                    sessionName: sessionName
                 )
+                await NotificationService.shared.sendNotification(for: claudeTurnEvent)
                 claudeIdleNotified.insert(id)
             }
 

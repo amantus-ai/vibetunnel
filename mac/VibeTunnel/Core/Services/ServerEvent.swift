@@ -254,6 +254,26 @@ struct ServerEvent: Codable, Identifiable, Equatable {
         )
     }
     
+    /// Creates a command error event.
+    ///
+    /// Use this convenience method when a command fails with a non-zero exit code.
+    ///
+    /// - Parameters:
+    ///   - sessionId: The unique identifier for the session.
+    ///   - command: The command that failed.
+    ///   - exitCode: The process exit code.
+    ///   - duration: Optional execution time in milliseconds.
+    /// - Returns: A configured `ServerEvent` of type ``ServerEventType/commandError``.
+    static func commandError(sessionId: String, command: String, exitCode: Int, duration: Int? = nil) -> ServerEvent {
+        ServerEvent(
+            type: .commandError,
+            sessionId: sessionId,
+            command: command,
+            exitCode: exitCode,
+            duration: duration
+        )
+    }
+    
     /// Creates a Claude turn event.
     ///
     /// Use this convenience method when Claude (AI assistant) finishes responding

@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
 import { type Request, type Response, Router } from 'express';
+import { type ServerEvent, ServerEventType } from '../../shared/types.js';
 import type { PtyManager } from '../pty/pty-manager.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -77,15 +78,19 @@ export function createEventsRouter(ptyManager: PtyManager): Router {
     }, 30000);
 
     // Event handlers
-    const sendEvent = (type: string, data: Record<string, unknown>) => {
-      const event = {
+    const sendEvent = (type: ServerEventType, data: Omit<ServerEvent, 'type' | 'timestamp'>) => {
+      const event: ServerEvent = {
         type,
         timestamp: new Date().toISOString(),
         ...data,
       };
 
       // Enhanced logging for all notification events
-      if (type === 'command-finished' || type === 'command-error' || type === 'claude-turn') {
+      if (
+        type === ServerEventType.CommandFinished ||
+        type === ServerEventType.CommandError ||
+        type === ServerEventType.ClaudeTurn
+      ) {
         logger.info(
           `🔔 NOTIFICATION DEBUG: Actually sending SSE event - type: ${type}, sessionId: ${data.sessionId}`
         );
@@ -93,9 +98,9 @@ export function createEventsRouter(ptyManager: PtyManager): Router {
 
       // Enhanced logging for Claude-related events
       if (
-        (type === 'command-finished' || type === 'command-error') &&
+        (type === ServerEventType.CommandFinished || type === ServerEventType.CommandError) &&
         data.command &&
-        (data.command as string).toLowerCase().includes('claude')
+        data.command.toLowerCase().includes('claude')
       ) {
         logger.log(`🚀 SSE: Sending Claude ${type} event for session ${data.sessionId}`);
       }
@@ -114,11 +119,11 @@ export function createEventsRouter(ptyManager: PtyManager): Router {
 
     // Listen for session events
     onSessionStarted = (sessionId: string, sessionName: string) => {
-      sendEvent('session-start', { sessionId, sessionName });
+      sendEvent(ServerEventType.SessionStart, { sessionId, sessionName });
     };
 
     onSessionExited = (sessionId: string, sessionName: string, exitCode?: number) => {
-      sendEvent('session-exit', { sessionId, sessionName, exitCode });
+      sendEvent(ServerEventType.SessionExit, { sessionId, sessionName, exitCode });
     };
 
     onCommandFinished = (data: CommandFinishedEvent) => {
@@ -134,14 +139,14 @@ export function createEventsRouter(ptyManager: PtyManager): Router {
       );
 
       if (data.exitCode === 0) {
-        sendEvent('command-finished', {
+        sendEvent(ServerEventType.CommandFinished, {
           sessionId: data.sessionId,
           command: data.command,
           duration: data.duration,
           exitCode: data.exitCode,
         });
       } else {
-        sendEvent('command-error', {
+        sendEvent(ServerEventType.CommandError, {
           sessionId: data.sessionId,
           command: data.command,
           duration: data.duration,
@@ -154,7 +159,7 @@ export function createEventsRouter(ptyManager: PtyManager): Router {
       logger.info(
         `🔔 NOTIFICATION DEBUG: SSE forwarding claude-turn event - sessionId: ${sessionId}, sessionName: "${sessionName}"`
       );
-      sendEvent('claude-turn', {
+      sendEvent(ServerEventType.ClaudeTurn, {
         sessionId,
         sessionName,
         message: 'Claude has finished responding',

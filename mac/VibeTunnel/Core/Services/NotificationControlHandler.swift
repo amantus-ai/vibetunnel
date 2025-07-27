@@ -58,34 +58,35 @@ final class NotificationControlHandler {
             return nil
         }
 
-        let type = payload["type"] as? String
+        // Try to parse as ServerEvent-compatible structure
+        let typeString = payload["type"] as? String
+        let sessionId = payload["sessionId"] as? String
         let sessionName = payload["sessionName"] as? String
+        let exitCode = payload["exitCode"] as? Int
+        let duration = payload["duration"] as? Int
+        let command = payload["command"] as? String
 
-        logger.info("Received notification: \(title) - \(body) (type: \(type ?? "unknown"))")
+        logger.info("Received notification: \(title) - \(body) (type: \(typeString ?? "unknown"))")
 
-        // Check notification type and send appropriate notification
-        switch type {
-        case "session-start":
-            await notificationService.sendSessionStartNotification(
-                sessionName: sessionName ?? "New Session"
+        // Map type string to ServerEventType and create ServerEvent
+        if let typeString = typeString,
+           let eventType = ServerEventType(rawValue: typeString) {
+            
+            let serverEvent = ServerEvent(
+                type: eventType,
+                sessionId: sessionId,
+                sessionName: sessionName ?? title,
+                command: command,
+                exitCode: exitCode,
+                duration: duration,
+                message: body
             )
-        case "session-exit":
-            await notificationService.sendSessionExitNotification(
-                sessionName: sessionName ?? "Session",
-                exitCode: 0
-            )
-        case "your-turn":
-            // For "your turn" notifications, use command completion notification
-            await notificationService.sendCommandCompletionNotification(
-                command: sessionName ?? "Command",
-                duration: 0
-            )
-        default:
-            // Fallback to generic notification
-            await notificationService.sendGenericNotification(
-                title: title,
-                body: body
-            )
+            
+            // Use the consolidated notification method
+            await notificationService.sendNotification(for: serverEvent)
+        } else {
+            // Unknown event type - log and ignore
+            logger.warning("Unknown event type '\(typeString ?? "nil")' - ignoring notification request")
         }
 
         return nil
@@ -94,10 +95,14 @@ final class NotificationControlHandler {
 
 // MARK: - Supporting Types
 
+/// Notification payload that can be converted to ServerEvent
 private struct NotificationPayload: Codable {
     let title: String
     let body: String
     let type: String?
     let sessionId: String?
     let sessionName: String?
+    let command: String?
+    let exitCode: Int?
+    let duration: Int?
 }
