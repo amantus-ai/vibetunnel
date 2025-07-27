@@ -1,10 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
-import type { Server } from 'http';
 import type { Express } from 'express';
+import type { Server } from 'http';
 import request from 'supertest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestServer } from '../utils/test-server.js';
-import { TEST_CONFIG } from '../utils/test-config.js';
-import { MultiplexerManager } from '../../server/services/multiplexer-manager.js';
 
 describe('Multiplexer API Tests', () => {
   let app: Express;
@@ -15,7 +13,7 @@ describe('Multiplexer API Tests', () => {
     // Create test server
     const testSetup = await createTestServer({
       disableAuth: true,
-      customSetup: (app, container) => {
+      customSetup: (_app, container) => {
         // Mock MultiplexerManager
         mockMultiplexerManager = {
           getAvailableMultiplexers: vi.fn(),
@@ -25,7 +23,7 @@ describe('Multiplexer API Tests', () => {
           attachToSession: vi.fn(),
           killSession: vi.fn(),
         };
-        
+
         // Replace the real MultiplexerManager with our mock
         container.register('multiplexerManager', { useValue: mockMultiplexerManager });
       },
@@ -65,9 +63,7 @@ describe('Multiplexer API Tests', () => {
 
       mockMultiplexerManager.getAvailableMultiplexers.mockResolvedValue(mockStatus);
 
-      const response = await request(app)
-        .get('/api/multiplexer/status')
-        .expect(200);
+      const response = await request(app).get('/api/multiplexer/status').expect(200);
 
       expect(response.body).toEqual(mockStatus);
     });
@@ -77,9 +73,7 @@ describe('Multiplexer API Tests', () => {
         new Error('Failed to get status')
       );
 
-      const response = await request(app)
-        .get('/api/multiplexer/status')
-        .expect(500);
+      const response = await request(app).get('/api/multiplexer/status').expect(500);
 
       expect(response.body).toEqual({
         error: 'Failed to get multiplexer status',
@@ -107,9 +101,7 @@ describe('Multiplexer API Tests', () => {
     it('should handle session name with special characters', async () => {
       mockMultiplexerManager.getTmuxWindows.mockResolvedValue([]);
 
-      await request(app)
-        .get('/api/multiplexer/tmux/sessions/my-session-123/windows')
-        .expect(200);
+      await request(app).get('/api/multiplexer/tmux/sessions/my-session-123/windows').expect(200);
 
       expect(mockMultiplexerManager.getTmuxWindows).toHaveBeenCalledWith('my-session-123');
     });
@@ -134,9 +126,7 @@ describe('Multiplexer API Tests', () => {
     });
 
     it('should return panes for specific window', async () => {
-      const mockPanes = [
-        { sessionName: 'main', windowIndex: 1, paneIndex: 0, active: true },
-      ];
+      const mockPanes = [{ sessionName: 'main', windowIndex: 1, paneIndex: 0, active: true }];
 
       mockMultiplexerManager.getTmuxPanes.mockResolvedValue(mockPanes);
 
@@ -163,11 +153,9 @@ describe('Multiplexer API Tests', () => {
         .expect(200);
 
       expect(response.body).toEqual({ success: true });
-      expect(mockMultiplexerManager.createSession).toHaveBeenCalledWith(
-        'tmux',
-        'new-session',
-        { command: 'vim' }
-      );
+      expect(mockMultiplexerManager.createSession).toHaveBeenCalledWith('tmux', 'new-session', {
+        command: 'vim',
+      });
     });
 
     it('should create zellij session', async () => {
@@ -183,11 +171,9 @@ describe('Multiplexer API Tests', () => {
         .expect(200);
 
       expect(response.body).toEqual({ success: true });
-      expect(mockMultiplexerManager.createSession).toHaveBeenCalledWith(
-        'zellij',
-        'new-session',
-        { layout: 'compact' }
-      );
+      expect(mockMultiplexerManager.createSession).toHaveBeenCalledWith('zellij', 'new-session', {
+        layout: 'compact',
+      });
     });
 
     it('should require type and name', async () => {
@@ -221,15 +207,11 @@ describe('Multiplexer API Tests', () => {
         success: true,
         sessionId: 'vt-123',
       });
-      expect(mockMultiplexerManager.attachToSession).toHaveBeenCalledWith(
-        'tmux',
-        'main',
-        {
-          cols: 120,
-          rows: 40,
-          metadata: { source: 'test' },
-        }
-      );
+      expect(mockMultiplexerManager.attachToSession).toHaveBeenCalledWith('tmux', 'main', {
+        cols: 120,
+        rows: 40,
+        metadata: { source: 'test' },
+      });
     });
 
     it('should attach to tmux window and pane', async () => {
@@ -249,14 +231,10 @@ describe('Multiplexer API Tests', () => {
         success: true,
         sessionId: 'vt-456',
       });
-      expect(mockMultiplexerManager.attachToSession).toHaveBeenCalledWith(
-        'tmux',
-        'main',
-        {
-          windowIndex: 1,
-          paneIndex: 2,
-        }
-      );
+      expect(mockMultiplexerManager.attachToSession).toHaveBeenCalledWith('tmux', 'main', {
+        windowIndex: 1,
+        paneIndex: 2,
+      });
     });
 
     it('should attach to zellij session', async () => {
@@ -312,9 +290,7 @@ describe('Multiplexer API Tests', () => {
     });
 
     it('should handle errors', async () => {
-      mockMultiplexerManager.killSession.mockRejectedValue(
-        new Error('Session not found')
-      );
+      mockMultiplexerManager.killSession.mockRejectedValue(new Error('Session not found'));
 
       const response = await request(app)
         .delete('/api/multiplexer/sessions/tmux/nonexistent')
@@ -339,9 +315,7 @@ describe('Multiplexer API Tests', () => {
 
       mockMultiplexerManager.getAvailableMultiplexers.mockResolvedValue(mockStatus);
 
-      const response = await request(app)
-        .get('/api/tmux/sessions')
-        .expect(200);
+      const response = await request(app).get('/api/tmux/sessions').expect(200);
 
       expect(response.body).toEqual({
         available: true,
@@ -367,16 +341,12 @@ describe('Multiplexer API Tests', () => {
         success: true,
         sessionId: 'vt-legacy',
       });
-      expect(mockMultiplexerManager.attachToSession).toHaveBeenCalledWith(
-        'tmux',
-        'main',
-        {
-          windowIndex: 0,
-          paneIndex: 1,
-          cols: 80,
-          rows: 24,
-        }
-      );
+      expect(mockMultiplexerManager.attachToSession).toHaveBeenCalledWith('tmux', 'main', {
+        windowIndex: 0,
+        paneIndex: 1,
+        cols: 80,
+        rows: 24,
+      });
     });
   });
 });

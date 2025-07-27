@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PtyManager } from '../../server/pty/pty-manager.js';
 
 // Mock util.promisify to return a mock function
@@ -11,9 +11,9 @@ vi.mock('child_process', () => ({
   exec: vi.fn(),
 }));
 
+import { promisify } from 'util';
 // Import after mocks are set up
 import { ZellijManager } from '../../server/services/zellij-manager.js';
-import { promisify } from 'util';
 
 // Get the mocked execAsync function
 const mockExecAsync = vi.mocked(promisify((() => {}) as any));
@@ -63,7 +63,7 @@ describe('ZellijManager', () => {
       mockExecAsync.mockResolvedValue({ stdout: mockOutput, stderr: '' });
 
       const sessions = await zellijManager.listSessions();
-      
+
       expect(sessions).toHaveLength(3);
       expect(sessions[0]).toEqual({
         name: 'main',
@@ -88,7 +88,7 @@ describe('ZellijManager', () => {
       mockExecAsync.mockResolvedValue({ stdout: mockOutput, stderr: '' });
 
       const sessions = await zellijManager.listSessions();
-      
+
       expect(sessions).toHaveLength(1);
       expect(sessions[0].name).toBe('color-session');
       expect(sessions[0].name).not.toContain('\x1b');
@@ -112,12 +112,12 @@ describe('ZellijManager', () => {
   describe('getSessionTabs', () => {
     it('should return empty array and log warning', async () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      
+
       const tabs = await zellijManager.getSessionTabs('main');
-      
+
       expect(tabs).toEqual([]);
       expect(warnSpy).toHaveBeenCalled();
-      
+
       warnSpy.mockRestore();
     });
   });
@@ -125,28 +125,28 @@ describe('ZellijManager', () => {
   describe('createSession', () => {
     it('should log that session will be created on attach', async () => {
       const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
-      
+
       await zellijManager.createSession('new-session');
-      
+
       expect(mockExecAsync).not.toHaveBeenCalled();
       expect(infoSpy).toHaveBeenCalledWith(
         expect.stringContaining('Zellij session will be created on first attach'),
         expect.any(Object)
       );
-      
+
       infoSpy.mockRestore();
     });
 
     it('should log layout preference if provided', async () => {
       const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
-      
+
       await zellijManager.createSession('new-session', 'compact');
-      
+
       expect(infoSpy).toHaveBeenCalledWith(
         expect.stringContaining('Layout preference noted'),
         expect.objectContaining({ name: 'new-session', layout: 'compact' })
       );
-      
+
       infoSpy.mockRestore();
     });
   });
@@ -158,7 +158,7 @@ describe('ZellijManager', () => {
       mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' }); // No sessions exist
 
       const sessionId = await zellijManager.attachToZellij('main');
-      
+
       expect(sessionId).toBe('vt-123');
       expect(mockPtyManager.createSession).toHaveBeenCalledWith(
         ['zellij', 'attach', '-c', 'main'],
@@ -177,7 +177,7 @@ describe('ZellijManager', () => {
       mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' }); // No sessions exist
 
       const sessionId = await zellijManager.attachToZellij('dev', { layout: 'compact' });
-      
+
       expect(sessionId).toBe('vt-456');
       expect(mockPtyManager.createSession).toHaveBeenCalledWith(
         ['zellij', 'attach', '-c', 'dev', '-l', 'compact'],
@@ -197,7 +197,7 @@ describe('ZellijManager', () => {
       });
 
       const sessionId = await zellijManager.attachToZellij('dev', { layout: 'compact' });
-      
+
       expect(sessionId).toBe('vt-789');
       expect(mockPtyManager.createSession).toHaveBeenCalledWith(
         ['zellij', 'attach', '-c', 'dev'], // No layout flag
@@ -211,11 +211,10 @@ describe('ZellijManager', () => {
       mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' });
 
       await zellijManager.killSession('old-session');
-      
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        "zellij kill-session 'old-session'",
-        { shell: '/bin/sh' }
-      );
+
+      expect(mockExecAsync).toHaveBeenCalledWith("zellij kill-session 'old-session'", {
+        shell: '/bin/sh',
+      });
     });
   });
 
@@ -224,11 +223,10 @@ describe('ZellijManager', () => {
       mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' });
 
       await zellijManager.deleteSession('old-session');
-      
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        "zellij delete-session 'old-session'",
-        { shell: '/bin/sh' }
-      );
+
+      expect(mockExecAsync).toHaveBeenCalledWith("zellij delete-session 'old-session'", {
+        shell: '/bin/sh',
+      });
     });
   });
 
@@ -248,7 +246,7 @@ describe('ZellijManager', () => {
     it('should return current session name when inside zellij', () => {
       process.env.ZELLIJ = '1';
       process.env.ZELLIJ_SESSION_NAME = 'main';
-      
+
       const session = zellijManager.getCurrentSession();
       expect(session).toBe('main');
     });
@@ -256,7 +254,7 @@ describe('ZellijManager', () => {
     it('should return null when not inside zellij', () => {
       delete process.env.ZELLIJ;
       delete process.env.ZELLIJ_SESSION_NAME;
-      
+
       const session = zellijManager.getCurrentSession();
       expect(session).toBeNull();
     });
@@ -264,7 +262,7 @@ describe('ZellijManager', () => {
     it('should return null when inside zellij but no session name', () => {
       process.env.ZELLIJ = '1';
       delete process.env.ZELLIJ_SESSION_NAME;
-      
+
       const session = zellijManager.getCurrentSession();
       expect(session).toBeNull();
     });
@@ -274,7 +272,7 @@ describe('ZellijManager', () => {
     it('should strip ANSI escape codes', () => {
       const input = '\x1b[32;1mGreen Bold Text\x1b[0m Normal \x1b[31mRed\x1b[0m';
       const result = (zellijManager as any).stripAnsiCodes(input);
-      
+
       expect(result).toBe('Green Bold Text Normal Red');
       expect(result).not.toContain('\x1b');
     });

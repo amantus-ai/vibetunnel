@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PtyManager } from '../../server/pty/pty-manager.js';
 
 // Mock util.promisify to return a mock function
@@ -12,9 +12,9 @@ vi.mock('child_process', () => ({
   execSync: vi.fn(),
 }));
 
+import { promisify } from 'util';
 // Import after mocks are set up
 import { TmuxManager } from '../../server/services/tmux-manager.js';
-import { promisify } from 'util';
 
 // Get the mocked execAsync function
 const mockExecAsync = vi.mocked(promisify((() => {}) as any));
@@ -64,7 +64,7 @@ test: 1 windows (created Thu Jul 25 12:00:00 2024) [80x24]`;
       mockExecAsync.mockResolvedValue({ stdout: mockOutput, stderr: '' });
 
       const sessions = await tmuxManager.listSessions();
-      
+
       expect(sessions).toHaveLength(3);
       expect(sessions[0]).toEqual({
         name: 'main',
@@ -93,7 +93,7 @@ dev: 2 windows (created Thu Jul 25 11:00:00 2024) [80x24]`;
       mockExecAsync.mockResolvedValue({ stdout: mockOutput, stderr: '' });
 
       const sessions = await tmuxManager.listSessions();
-      
+
       expect(sessions).toHaveLength(2);
       expect(sessions[0].name).toBe('main');
       expect(sessions[1].name).toBe('dev');
@@ -117,7 +117,7 @@ dev: 2 windows (created Thu Jul 25 11:00:00 2024) [80x24]`;
       mockExecAsync.mockResolvedValue({ stdout: mockOutput, stderr: '' });
 
       const windows = await tmuxManager.listWindows('main');
-      
+
       expect(windows).toHaveLength(3);
       expect(windows[0]).toEqual({
         index: 0,
@@ -147,7 +147,7 @@ dev: 2 windows (created Thu Jul 25 11:00:00 2024) [80x24]`;
       mockExecAsync.mockResolvedValue({ stdout: mockOutput, stderr: '' });
 
       const panes = await tmuxManager.listPanes('main');
-      
+
       expect(panes).toHaveLength(3);
       expect(panes[0]).toEqual({
         sessionName: 'main',
@@ -176,7 +176,7 @@ dev: 2 windows (created Thu Jul 25 11:00:00 2024) [80x24]`;
       mockExecAsync.mockResolvedValue({ stdout: mockOutput, stderr: '' });
 
       const panes = await tmuxManager.listPanes('main', 1);
-      
+
       expect(panes).toHaveLength(2);
       expect(panes[0].windowIndex).toBe(1);
       expect(panes[1].windowIndex).toBe(1);
@@ -188,18 +188,17 @@ dev: 2 windows (created Thu Jul 25 11:00:00 2024) [80x24]`;
       mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' });
 
       await tmuxManager.createSession('new-session');
-      
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        "tmux new-session -d -s 'new-session'",
-        { shell: '/bin/sh' }
-      );
+
+      expect(mockExecAsync).toHaveBeenCalledWith("tmux new-session -d -s 'new-session'", {
+        shell: '/bin/sh',
+      });
     });
 
     it('should create a session with initial command', async () => {
       mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' });
 
       await tmuxManager.createSession('dev-session', 'npm run dev');
-      
+
       expect(mockExecAsync).toHaveBeenCalledWith(
         "tmux new-session -d -s 'dev-session' 'npm run dev'",
         { shell: '/bin/sh' }
@@ -212,11 +211,10 @@ dev: 2 windows (created Thu Jul 25 11:00:00 2024) [80x24]`;
       mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' });
 
       await tmuxManager.killSession('old-session');
-      
-      expect(mockExecAsync).toHaveBeenCalledWith(
-        "tmux kill-session -t 'old-session'",
-        { shell: '/bin/sh' }
-      );
+
+      expect(mockExecAsync).toHaveBeenCalledWith("tmux kill-session -t 'old-session'", {
+        shell: '/bin/sh',
+      });
     });
   });
 
@@ -226,7 +224,7 @@ dev: 2 windows (created Thu Jul 25 11:00:00 2024) [80x24]`;
       mockPtyManager.createSession.mockResolvedValue(mockSession);
 
       const sessionId = await tmuxManager.attachToTmux('main');
-      
+
       expect(sessionId).toBe('vt-123');
       expect(mockPtyManager.createSession).toHaveBeenCalledWith(
         ['tmux', 'attach-session', '-t', 'main'],
@@ -244,7 +242,7 @@ dev: 2 windows (created Thu Jul 25 11:00:00 2024) [80x24]`;
       mockPtyManager.createSession.mockResolvedValue(mockSession);
 
       const sessionId = await tmuxManager.attachToTmux('main', 2);
-      
+
       expect(sessionId).toBe('vt-456');
       expect(mockPtyManager.createSession).toHaveBeenCalledWith(
         ['tmux', 'attach-session', '-t', 'main:2'],
@@ -257,7 +255,7 @@ dev: 2 windows (created Thu Jul 25 11:00:00 2024) [80x24]`;
       mockPtyManager.createSession.mockResolvedValue(mockSession);
 
       const sessionId = await tmuxManager.attachToTmux('main', 1, 2);
-      
+
       expect(sessionId).toBe('vt-789');
       expect(mockPtyManager.createSession).toHaveBeenCalledWith(
         ['tmux', 'attach-session', '-t', 'main:1.2'],
@@ -282,7 +280,7 @@ dev: 2 windows (created Thu Jul 25 11:00:00 2024) [80x24]`;
     it('should return current session name when inside tmux', async () => {
       process.env.TMUX = '/tmp/tmux-1000/default,12345,0';
       process.env.TMUX_PANE = '%0';
-      
+
       mockExecAsync.mockResolvedValue({ stdout: 'main', stderr: '' });
 
       const session = await tmuxManager.getCurrentSession();
