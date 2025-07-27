@@ -83,6 +83,28 @@ test.describe('Advanced Session Management', () => {
     const isVisible = await exitedCard.isVisible({ timeout: 1000 }).catch(() => false);
 
     if (isVisible) {
+      // Log the card content for debugging
+      const cardText = await exitedCard.textContent();
+      console.log(`Session card for ${sessionName} text:`, cardText);
+
+      // Check for various exit indicators
+      const hasExitIndicator =
+        cardText?.toLowerCase().includes('exited') ||
+        cardText?.toLowerCase().includes('killed') ||
+        cardText?.toLowerCase().includes('terminated') ||
+        cardText?.toLowerCase().includes('stopped');
+
+      if (!hasExitIndicator) {
+        // Check if it has a specific status attribute
+        const statusAttr = await exitedCard.getAttribute('data-status');
+        console.log('Session card status attribute:', statusAttr);
+
+        // Also check inner elements
+        const statusElement = exitedCard.locator('[data-status="exited"]');
+        const hasStatusElement = (await statusElement.count()) > 0;
+        console.log('Has exited status element:', hasStatusElement);
+      }
+
       // If still visible, it should show as exited (with longer timeout for CI)
       await expect(exitedCard).toContainText('exited', { timeout: 10000 });
     }
