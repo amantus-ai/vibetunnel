@@ -1,7 +1,8 @@
 import { Router } from 'express';
+import type { MultiplexerType } from '../../shared/multiplexer-types.js';
 import type { SessionCreateOptions } from '../../shared/types.js';
 import type { PtyManager } from '../pty/pty-manager.js';
-import { MultiplexerManager, type MultiplexerType } from '../services/multiplexer-manager.js';
+import { MultiplexerManager } from '../services/multiplexer-manager.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('multiplexer-routes');

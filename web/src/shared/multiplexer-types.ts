@@ -1,7 +1,7 @@
 // Re-export tmux types for compatibility
 export type { TmuxPane, TmuxSession, TmuxTarget, TmuxWindow } from './tmux-types.js';
 
-export type MultiplexerType = 'tmux' | 'zellij';
+export type MultiplexerType = 'tmux' | 'zellij' | 'screen';
 
 export interface MultiplexerSession {
   name: string;
@@ -21,6 +21,11 @@ export interface MultiplexerStatus {
     sessions: MultiplexerSession[];
   };
   zellij: {
+    available: boolean;
+    type: MultiplexerType;
+    sessions: MultiplexerSession[];
+  };
+  screen: {
     available: boolean;
     type: MultiplexerType;
     sessions: MultiplexerSession[];

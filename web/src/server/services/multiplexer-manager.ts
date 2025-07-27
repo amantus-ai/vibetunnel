@@ -1,39 +1,32 @@
-import type { TmuxPane, TmuxWindow } from '../../shared/tmux-types.js';
+import type {
+  MultiplexerSession,
+  MultiplexerStatus,
+  MultiplexerType,
+  TmuxPane,
+  TmuxWindow,
+} from '../../shared/multiplexer-types.js';
 import type { SessionCreateOptions } from '../../shared/types.js';
+import { TitleMode } from '../../shared/types.js';
 import type { PtyManager } from '../pty/pty-manager.js';
 import { createLogger } from '../utils/logger.js';
+import { ScreenManager } from './screen-manager.js';
 import { TmuxManager } from './tmux-manager.js';
 import { ZellijManager } from './zellij-manager.js';
 
 const logger = createLogger('MultiplexerManager');
 
-export type MultiplexerType = 'tmux' | 'zellij';
-
-export interface MultiplexerSession {
-  name: string;
-  type: MultiplexerType;
-  windows?: number; // tmux specific
-  created?: string;
-  attached?: boolean; // tmux specific
-  exited?: boolean; // zellij specific
-  activity?: string; // tmux specific
-  current?: boolean; // tmux specific
-}
-
-export interface MultiplexerInfo {
-  available: boolean;
-  type: MultiplexerType;
-  sessions: MultiplexerSession[];
-}
-
 export class MultiplexerManager {
   private static instance: MultiplexerManager;
   private tmuxManager: TmuxManager;
   private zellijManager: ZellijManager;
+  private screenManager: ScreenManager;
+  private ptyManager: PtyManager;
 
   private constructor(ptyManager: PtyManager) {
+    this.ptyManager = ptyManager;
     this.tmuxManager = TmuxManager.getInstance(ptyManager);
     this.zellijManager = ZellijManager.getInstance(ptyManager);
+    this.screenManager = ScreenManager.getInstance();
   }
 
   static getInstance(ptyManager: PtyManager): MultiplexerManager {
@@ -46,16 +39,14 @@ export class MultiplexerManager {
   /**
    * Get available multiplexers and their sessions
    */
-  async getAvailableMultiplexers(): Promise<{
-    tmux: MultiplexerInfo;
-    zellij: MultiplexerInfo;
-  }> {
-    const [tmuxAvailable, zellijAvailable] = await Promise.all([
+  async getAvailableMultiplexers(): Promise<MultiplexerStatus> {
+    const [tmuxAvailable, zellijAvailable, screenAvailable] = await Promise.all([
       this.tmuxManager.isAvailable(),
       this.zellijManager.isAvailable(),
+      this.screenManager.isAvailable(),
     ]);
 
-    const result = {
+    const result: MultiplexerStatus = {
       tmux: {
         available: tmuxAvailable,
         type: 'tmux' as MultiplexerType,
@@ -64,6 +55,11 @@ export class MultiplexerManager {
       zellij: {
         available: zellijAvailable,
         type: 'zellij' as MultiplexerType,
+        sessions: [] as MultiplexerSession[],
+      },
+      screen: {
+        available: screenAvailable,
+        type: 'screen' as MultiplexerType,
         sessions: [] as MultiplexerSession[],
       },
     };
@@ -93,6 +89,18 @@ export class MultiplexerManager {
       }
     }
 
+    if (screenAvailable) {
+      try {
+        const screenSessions = await this.screenManager.listSessions();
+        result.screen.sessions = screenSessions.map((session) => ({
+          ...session,
+          type: 'screen' as MultiplexerType,
+        }));
+      } catch (error) {
+        logger.error('Failed to list screen sessions', { error });
+      }
+    }
+
     return result;
   }
 
@@ -118,6 +126,8 @@ export class MultiplexerManager {
       await this.tmuxManager.createSession(name, options?.command);
     } else if (type === 'zellij') {
       await this.zellijManager.createSession(name, options?.layout);
+    } else if (type === 'screen') {
+      await this.screenManager.createSession(name, options?.command);
     } else {
       throw new Error(`Unknown multiplexer type: ${type}`);
     }
@@ -140,6 +150,20 @@ export class MultiplexerManager {
       );
     } else if (type === 'zellij') {
       return this.zellijManager.attachToZellij(sessionName, options);
+    } else if (type === 'screen') {
+      // Screen doesn't support programmatic attach like tmux/zellij
+      // We need to create a new session that runs the attach command
+      const attachCmd = await this.screenManager.attachToSession(sessionName);
+      // Parse the command string into array format
+      // Use a more sophisticated parser to handle quoted strings
+      const commandParts = attachCmd.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+      const cleanParts = commandParts.map((part) => part.replace(/^['"]|['"]$/g, ''));
+      // Create a new PTY session that will run the screen attach command
+      const result = await this.ptyManager.createSession(cleanParts, {
+        ...options,
+        titleMode: TitleMode.DYNAMIC,
+      });
+      return result.sessionId;
     } else {
       throw new Error(`Unknown multiplexer type: ${type}`);
     }
@@ -153,6 +177,8 @@ export class MultiplexerManager {
       await this.tmuxManager.killSession(sessionName);
     } else if (type === 'zellij') {
       await this.zellijManager.killSession(sessionName);
+    } else if (type === 'screen') {
+      await this.screenManager.killSession(sessionName);
     } else {
       throw new Error(`Unknown multiplexer type: ${type}`);
     }
@@ -187,6 +213,13 @@ export class MultiplexerManager {
       const session = this.zellijManager.getCurrentSession();
       if (session) {
         return { type: 'zellij', session };
+      }
+    }
+
+    if (this.screenManager.isInsideScreen()) {
+      const session = this.screenManager.getCurrentSession();
+      if (session) {
+        return { type: 'screen', session };
       }
     }
 

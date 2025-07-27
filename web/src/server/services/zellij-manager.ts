@@ -171,7 +171,8 @@ export class ZellijManager {
    */
   async killSession(sessionName: string): Promise<void> {
     try {
-      await execAsync(`zellij kill-session '${sessionName}'`, { shell: '/bin/sh' });
+      // Use delete-session with --force flag to handle both running and exited sessions
+      await execAsync(`zellij delete-session --force ${sessionName}`, { shell: '/bin/sh' });
       logger.info('Killed zellij session', { sessionName });
     } catch (error) {
       logger.error('Failed to kill zellij session', { sessionName, error });

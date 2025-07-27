@@ -69,8 +69,12 @@ export class MultiplexerModal extends LitElement {
       this.multiplexerStatus = statusResponse;
 
       // Set active tab to first available multiplexer
-      if (!statusResponse.tmux.available && statusResponse.zellij.available) {
-        this.activeTab = 'zellij';
+      if (!statusResponse.tmux.available) {
+        if (statusResponse.zellij.available) {
+          this.activeTab = 'zellij';
+        } else if (statusResponse.screen.available) {
+          this.activeTab = 'screen';
+        }
       }
 
       // Load windows for tmux sessions
@@ -200,19 +204,19 @@ export class MultiplexerModal extends LitElement {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const sessionName = `session-${timestamp}`;
 
-      if (this.activeTab === 'tmux') {
-        // For tmux, create the session first
+      if (this.activeTab === 'tmux' || this.activeTab === 'screen') {
+        // For tmux and screen, create the session first
         const createResponse = await apiClient.post('/multiplexer/sessions', {
           type: this.activeTab,
           name: sessionName,
         });
 
         if (!createResponse.success) {
-          throw new Error('Failed to create tmux session');
+          throw new Error(`Failed to create ${this.activeTab} session`);
         }
       }
 
-      // For both tmux and zellij, attach to the session
+      // For all multiplexers, attach to the session
       // Zellij will create the session automatically with the -c flag
       const attachResponse = await apiClient.post('/multiplexer/attach', {
         type: this.activeTab,
@@ -330,7 +334,8 @@ export class MultiplexerModal extends LitElement {
             <h2 class="m-0 mb-4 text-xl font-semibold text-text">Terminal Sessions</h2>
 
             ${
-              status && (status.tmux.available || status.zellij.available)
+              status &&
+              (status.tmux.available || status.zellij.available || status.screen.available)
                 ? html`
                 <div class="flex gap-2 mb-4 border-b border-border">
                   ${
@@ -361,6 +366,20 @@ export class MultiplexerModal extends LitElement {
                     `
                       : null
                   }
+                  ${
+                    status.screen.available
+                      ? html`
+                      <button
+                        class="px-4 py-2 border-none bg-transparent text-text-muted cursor-pointer relative transition-colors hover:text-text ${this.activeTab === 'screen' ? 'text-primary' : ''}"
+                        @click=${() => this.switchTab('screen')}
+                      >
+                        Screen
+                        <span class="ml-2 text-xs px-1.5 py-0.5 bg-bg-tertiary rounded-full">${status.screen.sessions.length}</span>
+                        ${this.activeTab === 'screen' ? html`<div class="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-primary"></div>` : ''}
+                      </button>
+                    `
+                      : null
+                  }
                 </div>
               `
                 : null
@@ -371,12 +390,12 @@ export class MultiplexerModal extends LitElement {
                 ? html`<div class="mb-4 p-3 bg-bg-tertiary rounded-lg text-text-muted text-center">Loading terminal sessions...</div>`
                 : !status
                   ? html`<div class="mb-4 p-3 bg-bg-tertiary rounded-lg text-text-muted text-center">No multiplexer status available</div>`
-                  : !status.tmux.available && !status.zellij.available
+                  : !status.tmux.available && !status.zellij.available && !status.screen.available
                     ? html`
                       <div class="text-center py-12 text-text-muted">
                         <h3 class="m-0 mb-2 text-text">No Terminal Multiplexer Available</h3>
-                        <p>Neither tmux nor Zellij is installed on this system.</p>
-                        <p>Install tmux or Zellij to use this feature.</p>
+                        <p>No terminal multiplexer (tmux, Zellij, or Screen) is installed on this system.</p>
+                        <p>Install tmux, Zellij, or GNU Screen to use this feature.</p>
                       </div>
                     `
                     : !activeMultiplexer?.available
