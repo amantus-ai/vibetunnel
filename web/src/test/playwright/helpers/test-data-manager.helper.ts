@@ -90,7 +90,7 @@ export class TestSessionManager {
         try {
           await waitForSessionCard(this.page, name, { timeout: 20000 });
           console.log(`Session ${name} confirmed to be in session list`);
-        } catch (error) {
+        } catch {
           console.error(`Session ${name} did not appear in session list within timeout`);
           // Continue anyway - the session was created successfully
         }
