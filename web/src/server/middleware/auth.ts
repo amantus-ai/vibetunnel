@@ -53,6 +53,12 @@ function isLocalRequest(req: Request): boolean {
   return ipIsLocal && noForwardedFor && noRealIP && noForwardedHost && hostIsLocal;
 }
 
+// Helper function to check if request is from localhost (for reverse proxy scenarios)
+function isFromLocalhostAddress(req: Request): boolean {
+  const remoteAddr = req.socket.remoteAddress;
+  return remoteAddr === '127.0.0.1' || remoteAddr === '::1' || remoteAddr === '::ffff:127.0.0.1';
+}
+
 // Helper function to check if request has valid Tailscale headers
 function getTailscaleUser(
   req: Request
@@ -111,12 +117,10 @@ export function createAuthMiddleware(config: AuthConfig) {
       const tailscaleUser = getTailscaleUser(req);
       if (tailscaleUser) {
         // Security check: Ensure request is from localhost (Tailscale Serve proxy)
-        const remoteAddr = req.socket.remoteAddress;
-        const isLocalhost =
-          remoteAddr === '127.0.0.1' || remoteAddr === '::1' || remoteAddr === '::ffff:127.0.0.1';
-
-        if (!isLocalhost) {
-          logger.warn(`Tailscale headers present but request not from localhost: ${remoteAddr}`);
+        if (!isFromLocalhostAddress(req)) {
+          logger.warn(
+            `Tailscale headers present but request not from localhost: ${req.socket.remoteAddress}`
+          );
           return res.status(401).json({ error: 'Invalid request origin' });
         }
 
