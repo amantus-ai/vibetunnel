@@ -85,7 +85,7 @@ struct AccessModeView: View {
     let localIPAddress: String?
     let restartServerWithNewBindAddress: () -> Void
     
-    @AppStorage("tailscaleServeEnabled")
+    @AppStorage(AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
     private var tailscaleServeEnabled = false
 
     var body: some View {

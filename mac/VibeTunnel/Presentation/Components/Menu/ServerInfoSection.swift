@@ -68,24 +68,21 @@ struct ServerInfoHeader: View {
                     }
 
                     if tailscaleService.isRunning, let hostname = tailscaleService.tailscaleHostname {
-                        // Check if Tailscale Serve integration is enabled
-                        if UserDefaults.standard.bool(forKey: "tailscaleServeEnabled") {
-                            // When Tailscale Serve is enabled, show HTTPS URL without port
-                            ServerAddressRow(
-                                icon: "shield",
-                                label: "Tailscale:",
-                                address: hostname,
-                                url: URL(string: "https://\(hostname)")
+                        let isTailscaleServeEnabled = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
+                        ServerAddressRow(
+                            icon: "shield",
+                            label: "Tailscale:",
+                            address: TailscaleURLHelper.displayAddress(
+                                hostname: hostname,
+                                port: serverManager.port,
+                                isTailscaleServeEnabled: isTailscaleServeEnabled
+                            ),
+                            url: TailscaleURLHelper.constructURL(
+                                hostname: hostname,
+                                port: serverManager.port,
+                                isTailscaleServeEnabled: isTailscaleServeEnabled
                             )
-                        } else {
-                            // When Tailscale Serve is disabled, show HTTP URL with port
-                            ServerAddressRow(
-                                icon: "shield",
-                                label: "Tailscale:",
-                                address: "\(hostname):\(serverManager.port)",
-                                url: URL(string: "http://\(hostname):\(serverManager.port)")
-                            )
-                        }
+                        )
                     }
                 }
             }

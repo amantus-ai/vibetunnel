@@ -112,9 +112,8 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
 
           this.serveProcess.once('exit', (code) => {
             clearTimeout(timeout);
-            if (code !== 0) {
-              reject(new Error(`Tailscale Serve exited with code ${code}`));
-            }
+            // Any exit during startup is considered a failure
+            reject(new Error(`Tailscale Serve exited unexpectedly with code ${code}`));
           });
         }
       });
@@ -207,24 +206,37 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
   }
 
   private async checkTailscaleAvailable(): Promise<void> {
-    // On macOS, check for Tailscale app locations first
+    const fs = await import('fs/promises');
+
+    // Platform-specific paths to check
+    let tailscalePaths: string[] = [];
+
     if (process.platform === 'darwin') {
-      const fs = await import('fs/promises');
-      const tailscalePaths = [
+      // macOS paths
+      tailscalePaths = [
         '/Applications/Tailscale.app/Contents/MacOS/Tailscale',
         '/usr/local/bin/tailscale',
         '/opt/homebrew/bin/tailscale',
       ];
+    } else if (process.platform === 'linux') {
+      // Linux paths
+      tailscalePaths = [
+        '/usr/bin/tailscale',
+        '/usr/local/bin/tailscale',
+        '/opt/tailscale/bin/tailscale',
+        '/snap/bin/tailscale',
+      ];
+    }
 
-      for (const path of tailscalePaths) {
-        try {
-          await fs.access(path, fs.constants.X_OK);
-          this.tailscaleExecutable = path;
-          logger.debug(`Found Tailscale at: ${path}`);
-          return;
-        } catch {
-          // Continue checking other paths
-        }
+    // Check platform-specific paths first
+    for (const path of tailscalePaths) {
+      try {
+        await fs.access(path, fs.constants.X_OK);
+        this.tailscaleExecutable = path;
+        logger.debug(`Found Tailscale at: ${path}`);
+        return;
+      } catch {
+        // Continue checking other paths
       }
     }
 

@@ -212,7 +212,7 @@ final class DevServerManager: ObservableObject {
         }
 
         // Add Tailscale Serve integration if enabled
-        let tailscaleServeEnabled = UserDefaults.standard.bool(forKey: "tailscaleServeEnabled")
+        let tailscaleServeEnabled = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
         if tailscaleServeEnabled {
             args.append("--enable-tailscale-serve")
             logger.info("Tailscale Serve integration enabled")

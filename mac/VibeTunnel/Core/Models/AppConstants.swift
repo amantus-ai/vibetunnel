@@ -32,6 +32,9 @@ enum AppConstants {
         static let preferredTerminal = "preferredTerminal"
         static let showInDock = "showInDock"
         static let updateChannel = "updateChannel"
+        
+        // Remote Access Settings
+        static let tailscaleServeEnabled = "tailscaleServeEnabled"
 
         // New Session keys
         static let newSessionCommand = "NewSession.command"

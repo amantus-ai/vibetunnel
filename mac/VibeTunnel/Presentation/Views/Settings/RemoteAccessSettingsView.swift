@@ -235,7 +235,7 @@ private struct TailscaleIntegrationSection: View {
     let serverManager: ServerManager
 
     @State private var statusCheckTimer: Timer?
-    @AppStorage("tailscaleServeEnabled")
+    @AppStorage(AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
     private var tailscaleServeEnabled = false
 
     private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "TailscaleIntegrationSection")
@@ -325,7 +325,11 @@ private struct TailscaleIntegrationSection: View {
                     if let hostname = tailscaleService.tailscaleHostname {
                         InlineClickableURLView(
                             label: "Access VibeTunnel at:",
-                            url: tailscaleServeEnabled ? "https://\(hostname)" : "http://\(hostname):\(serverPort)"
+                            url: TailscaleURLHelper.constructURL(
+                                hostname: hostname,
+                                port: serverPort,
+                                isTailscaleServeEnabled: tailscaleServeEnabled
+                            )?.absoluteString ?? ""
                         )
 
                         // Show warning if in localhost-only mode

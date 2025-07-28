@@ -217,7 +217,7 @@ final class BunServer {
         // No CLI argument needed
 
         // Add Tailscale Serve integration if enabled
-        let tailscaleServeEnabled = UserDefaults.standard.bool(forKey: "tailscaleServeEnabled")
+        let tailscaleServeEnabled = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
         if tailscaleServeEnabled {
             vibetunnelArgs.append("--enable-tailscale-serve")
             logger.info("Tailscale Serve integration enabled")
@@ -424,7 +424,7 @@ final class BunServer {
         var effectiveBindAddress = bindAddress
         
         // Check if Tailscale Serve is enabled and force localhost binding
-        let tailscaleServeEnabled = UserDefaults.standard.bool(forKey: "tailscaleServeEnabled")
+        let tailscaleServeEnabled = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
         if tailscaleServeEnabled && bindAddress == "0.0.0.0" {
             logger.warning("Overriding bind address to localhost for Tailscale Serve security")
             effectiveBindAddress = "127.0.0.1"
