@@ -91,10 +91,8 @@ interface Config {
   // Local bypass configuration
   allowLocalBypass: boolean;
   localAuthToken: string | null;
-  // Tailscale authentication
-  allowTailscaleAuth: boolean;
-  // Tailscale Serve integration
-  useTailscaleServe: boolean;
+  // Tailscale Serve integration (manages auth and proxy)
+  enableTailscaleServe: boolean;
   // HQ auth bypass for testing
   noHqAuth: boolean;
   // mDNS advertisement
@@ -118,9 +116,7 @@ Options:
   --no-auth             Disable authentication (auto-login as current user)
   --allow-local-bypass  Allow localhost connections to bypass authentication
   --local-auth-token <token>  Token for localhost authentication bypass
-  --allow-tailscale-auth  Allow Tailscale identity headers for authentication
-  --enable-tailscale-serve  Enable Tailscale Serve integration (implies --allow-tailscale-auth)
-  --use-tailscale-serve  Same as --enable-tailscale-serve (alias)
+  --enable-tailscale-serve  Enable Tailscale Serve integration (auto-manages proxy and auth)
   --debug               Enable debug logging
 
 Push Notification Options:
@@ -191,10 +187,8 @@ function parseArgs(): Config {
     // Local bypass configuration
     allowLocalBypass: false,
     localAuthToken: null as string | null,
-    // Tailscale authentication
-    allowTailscaleAuth: false,
-    // Tailscale Serve integration
-    useTailscaleServe: false,
+    // Tailscale Serve integration (manages auth and proxy)
+    enableTailscaleServe: false,
     // HQ auth bypass for testing
     noHqAuth: false,
     // mDNS advertisement
@@ -260,11 +254,8 @@ function parseArgs(): Config {
     } else if (args[i] === '--local-auth-token' && i + 1 < args.length) {
       config.localAuthToken = args[i + 1];
       i++; // Skip the token value in next iteration
-    } else if (args[i] === '--allow-tailscale-auth') {
-      config.allowTailscaleAuth = true;
-    } else if (args[i] === '--use-tailscale-serve' || args[i] === '--enable-tailscale-serve') {
-      config.useTailscaleServe = true;
-      config.allowTailscaleAuth = true; // Implied
+    } else if (args[i] === '--enable-tailscale-serve') {
+      config.enableTailscaleServe = true;
     } else if (args[i] === '--no-hq-auth') {
       config.noHqAuth = true;
     } else if (args[i] === '--no-mdns') {
@@ -333,10 +324,10 @@ function validateConfig(config: ReturnType<typeof parseArgs>) {
   }
 
   // Validate Tailscale configuration
-  if ((config.useTailscaleServe || config.allowTailscaleAuth) && config.bind === '0.0.0.0') {
-    logger.error('Security Error: Cannot bind to 0.0.0.0 when using Tailscale features');
-    logger.error('Tailscale authentication requires binding to localhost (127.0.0.1)');
-    logger.error('Use --bind 127.0.0.1 or disable Tailscale features');
+  if (config.enableTailscaleServe && config.bind === '0.0.0.0') {
+    logger.error('Security Error: Cannot bind to 0.0.0.0 when using Tailscale Serve');
+    logger.error('Tailscale Serve requires binding to localhost (127.0.0.1)');
+    logger.error('Use --bind 127.0.0.1 or disable Tailscale Serve');
     process.exit(1);
   }
 
@@ -587,7 +578,7 @@ export async function createApp(): Promise<AppInstance> {
     authService, // Add enhanced auth service for JWT tokens
     allowLocalBypass: config.allowLocalBypass,
     localAuthToken: config.localAuthToken || undefined,
-    allowTailscaleAuth: config.allowTailscaleAuth,
+    allowTailscaleAuth: config.enableTailscaleServe,
   });
 
   // Serve static files with .html extension handling and caching headers
@@ -1200,7 +1191,7 @@ export async function createApp(): Promise<AppInstance> {
 
     // Regular TCP mode
     logger.log(`Starting server on port ${requestedPort}`);
-    const bindAddress = config.bind || (config.useTailscaleServe ? '127.0.0.1' : '0.0.0.0');
+    const bindAddress = config.bind || (config.enableTailscaleServe ? '127.0.0.1' : '0.0.0.0');
     server.listen(requestedPort, bindAddress, () => {
       const address = server.address();
       const actualPort =
@@ -1230,20 +1221,17 @@ export async function createApp(): Promise<AppInstance> {
         }
       }
 
-      // Log Tailscale authentication status
-      if (config.allowTailscaleAuth) {
-        logger.log(chalk.green('Tailscale Authentication: ENABLED'));
-        logger.log(chalk.gray('Users will be auto-authenticated via Tailscale identity headers'));
-      }
-
       // Start Tailscale Serve if requested
-      if (config.useTailscaleServe) {
+      if (config.enableTailscaleServe) {
         logger.log(chalk.blue('Starting Tailscale Serve integration...'));
 
         tailscaleServeService
           .start(actualPort)
           .then(() => {
             logger.log(chalk.green('Tailscale Serve: ENABLED'));
+            logger.log(
+              chalk.gray('Users will be auto-authenticated via Tailscale identity headers')
+            );
             logger.log(
               chalk.gray(
                 `Access via HTTPS on your Tailscale hostname (e.g., https://hostname.tailnet.ts.net)`
@@ -1468,7 +1456,7 @@ export async function startVibeTunnelServer() {
       }
 
       // Stop Tailscale Serve if it was started
-      if (config.useTailscaleServe && tailscaleServeService.isRunning()) {
+      if (config.enableTailscaleServe && tailscaleServeService.isRunning()) {
         logger.log('Stopping Tailscale Serve...');
         await tailscaleServeService.stop();
         logger.debug('Stopped Tailscale Serve service');

@@ -219,7 +219,7 @@ final class BunServer {
         // Add Tailscale Serve integration if enabled
         let tailscaleServeEnabled = UserDefaults.standard.bool(forKey: "tailscaleServeEnabled")
         if tailscaleServeEnabled {
-            vibetunnelArgs.append("--use-tailscale-serve")
+            vibetunnelArgs.append("--enable-tailscale-serve")
             logger.info("Tailscale Serve integration enabled")
             
             // Force localhost binding for security when using Tailscale Serve
