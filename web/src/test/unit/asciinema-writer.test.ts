@@ -28,8 +28,20 @@ describe('AsciinemaWriter byte position tracking', () => {
   it('should track byte position correctly for header', async () => {
     writer = AsciinemaWriter.create(testFile, 80, 24, 'test command', 'Test Title');
 
-    // Give the header time to be written
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    // Wait for the header to be written with a polling mechanism
+    let attempts = 0;
+    const maxAttempts = 50; // 50 * 10ms = 500ms max wait
+    
+    while (attempts < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      
+      const position = writer.getPosition();
+      if (position.written > 0 && position.pending === 0) {
+        // Header has been written
+        break;
+      }
+      attempts++;
+    }
 
     const position = writer.getPosition();
     expect(position.written).toBeGreaterThan(0);
