@@ -41,20 +41,20 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
       // Check if tailscale command is available
       await this.checkTailscaleAvailable();
 
-      // First, clear any existing serve configuration
+      // First, reset any existing serve configuration
       try {
-        logger.debug('Clearing existing Tailscale Serve configuration...');
-        const clearProcess = spawn(this.tailscaleExecutable, ['serve', '--remove'], {
+        logger.debug('Resetting Tailscale Serve configuration...');
+        const resetProcess = spawn(this.tailscaleExecutable, ['serve', 'reset'], {
           stdio: ['ignore', 'pipe', 'pipe'],
         });
 
         await new Promise<void>((resolve) => {
-          clearProcess.on('exit', () => resolve());
-          clearProcess.on('error', () => resolve()); // Continue even if clear fails
+          resetProcess.on('exit', () => resolve());
+          resetProcess.on('error', () => resolve()); // Continue even if reset fails
           setTimeout(resolve, 1000); // Timeout after 1 second
         });
       } catch (_error) {
-        logger.debug('Failed to clear existing serve config (this is normal if none exists)');
+        logger.debug('Failed to reset serve config (this is normal if none exists)');
       }
 
       // TCP port: tailscale serve port
@@ -130,17 +130,24 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
     // First try to remove the serve configuration
     try {
       logger.debug('Removing Tailscale Serve configuration...');
-      const removeProcess = spawn(this.tailscaleExecutable, ['serve', '--remove'], {
+
+      // Use 'reset' to completely clear all serve configuration
+      const resetProcess = spawn(this.tailscaleExecutable, ['serve', 'reset'], {
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 
       await new Promise<void>((resolve) => {
-        removeProcess.on('exit', () => resolve());
-        removeProcess.on('error', () => resolve());
-        setTimeout(resolve, 1000); // Timeout after 1 second
+        resetProcess.on('exit', (code) => {
+          if (code === 0) {
+            logger.debug('Tailscale Serve configuration reset successfully');
+          }
+          resolve();
+        });
+        resetProcess.on('error', () => resolve());
+        setTimeout(resolve, 2000); // Timeout after 2 seconds
       });
     } catch (_error) {
-      logger.debug('Failed to remove serve config during stop');
+      logger.debug('Failed to reset serve config during stop');
     }
 
     if (!this.serveProcess) {
