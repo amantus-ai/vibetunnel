@@ -25,17 +25,47 @@ const { values, positionals } = parseArgs({
     },
   },
   allowPositionals: true,
+  strict: false, // Allow unknown options to be passed through
 });
 
 const watchServer = !values['client-only'];
 
-// Build server args from parsed values
+// Build server args from parsed values and pass through all unknown args
 const serverArgs = [];
 if (values.port) {
   serverArgs.push('--port', values.port);
 }
 if (values.bind) {
   serverArgs.push('--bind', values.bind);
+}
+
+// Pass through all command line args except the ones we handle
+const allArgs = process.argv.slice(2);
+const handledArgs = new Set(['--client-only']);
+if (values.port) {
+  handledArgs.add('--port');
+  handledArgs.add(values.port);
+}
+if (values.bind) {
+  handledArgs.add('--bind');
+  handledArgs.add(values.bind);
+}
+
+// Add any args that weren't handled by parseArgs
+for (let i = 0; i < allArgs.length; i++) {
+  const arg = allArgs[i];
+  // Skip the '--' separator that pnpm adds
+  if (arg === '--') {
+    continue;
+  }
+  if (!handledArgs.has(arg) && !serverArgs.includes(arg)) {
+    serverArgs.push(arg);
+    // If this arg has a value (next arg doesn't start with --), include it too
+    if (i + 1 < allArgs.length && !allArgs[i + 1].startsWith('--')) {
+      serverArgs.push(allArgs[i + 1]);
+      i++; // Skip the value in next iteration
+    }
+  }
 }
 
 // Initial build of assets and CSS

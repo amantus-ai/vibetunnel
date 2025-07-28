@@ -68,12 +68,24 @@ struct ServerInfoHeader: View {
                     }
 
                     if tailscaleService.isRunning, let hostname = tailscaleService.tailscaleHostname {
-                        ServerAddressRow(
-                            icon: "shield",
-                            label: "Tailscale:",
-                            address: hostname,
-                            url: URL(string: "http://\(hostname):\(serverManager.port)")
-                        )
+                        // Check if Tailscale Serve integration is enabled
+                        if UserDefaults.standard.bool(forKey: "tailscaleServeEnabled") {
+                            // When Tailscale Serve is enabled, show HTTPS URL without port
+                            ServerAddressRow(
+                                icon: "shield",
+                                label: "Tailscale:",
+                                address: hostname,
+                                url: URL(string: "https://\(hostname)")
+                            )
+                        } else {
+                            // When Tailscale Serve is disabled, show HTTP URL with port
+                            ServerAddressRow(
+                                icon: "shield",
+                                label: "Tailscale:",
+                                address: "\(hostname):\(serverManager.port)",
+                                url: URL(string: "http://\(hostname):\(serverManager.port)")
+                            )
+                        }
                     }
                 }
             }

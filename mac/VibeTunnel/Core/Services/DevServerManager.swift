@@ -211,6 +211,13 @@ final class DevServerManager: ObservableObject {
             args.append(contentsOf: ["--allow-local-bypass", "--local-auth-token", token])
         }
 
+        // Add Tailscale Serve integration if enabled
+        let tailscaleServeEnabled = UserDefaults.standard.bool(forKey: "tailscaleServeEnabled")
+        if tailscaleServeEnabled {
+            args.append("--use-tailscale-serve")
+            logger.info("Tailscale Serve integration enabled")
+        }
+
         return args
     }
 }

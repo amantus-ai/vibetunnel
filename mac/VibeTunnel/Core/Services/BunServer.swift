@@ -216,6 +216,22 @@ final class BunServer {
         // Repository base path is now loaded from config.json by the server
         // No CLI argument needed
 
+        // Add Tailscale Serve integration if enabled
+        let tailscaleServeEnabled = UserDefaults.standard.bool(forKey: "tailscaleServeEnabled")
+        if tailscaleServeEnabled {
+            vibetunnelArgs.append("--use-tailscale-serve")
+            logger.info("Tailscale Serve integration enabled")
+            
+            // Force localhost binding for security when using Tailscale Serve
+            if bindAddress == "0.0.0.0" {
+                logger.warning("Overriding bind address to localhost for Tailscale Serve security")
+                // Update the vibetunnelArgs that were already set above
+                if let bindIndex = vibetunnelArgs.firstIndex(of: "--bind") {
+                    vibetunnelArgs[bindIndex + 1] = "127.0.0.1"
+                }
+            }
+        }
+
         // Create wrapper to run vibetunnel with parent death monitoring AND crash detection
         let parentPid = ProcessInfo.processInfo.processIdentifier
 
@@ -405,9 +421,18 @@ final class BunServer {
         let authConfig = AuthConfig.current()
 
         // Build the dev server arguments
+        var effectiveBindAddress = bindAddress
+        
+        // Check if Tailscale Serve is enabled and force localhost binding
+        let tailscaleServeEnabled = UserDefaults.standard.bool(forKey: "tailscaleServeEnabled")
+        if tailscaleServeEnabled && bindAddress == "0.0.0.0" {
+            logger.warning("Overriding bind address to localhost for Tailscale Serve security")
+            effectiveBindAddress = "127.0.0.1"
+        }
+        
         let devArgs = devServerManager.buildDevServerArguments(
             port: port,
-            bindAddress: bindAddress,
+            bindAddress: effectiveBindAddress,
             authMode: authConfig.mode,
             localToken: localToken
         )

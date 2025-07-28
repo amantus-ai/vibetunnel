@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { promisify } from 'util';
+import type { AuthenticatedRequest } from '../middleware/auth.js';
 import type { AuthService } from '../services/auth-service.js';
 
 interface AuthRoutesConfig {
@@ -169,13 +170,35 @@ export function createAuthRoutes(config: AuthRoutesConfig): Router {
    * Get authentication configuration
    * GET /api/auth/config
    */
-  router.get('/config', (_req, res) => {
+  router.get('/config', (req: AuthenticatedRequest, res) => {
     try {
-      res.json({
+      interface AuthConfigResponse {
+        enableSSHKeys: boolean;
+        disallowUserPassword: boolean;
+        noAuth: boolean;
+        tailscaleAuth?: boolean;
+        authenticatedUser?: string;
+        tailscaleUser?: {
+          login: string;
+          name: string;
+          profilePic?: string;
+        };
+      }
+
+      const response: AuthConfigResponse = {
         enableSSHKeys: config.enableSSHKeys || false,
         disallowUserPassword: config.disallowUserPassword || false,
         noAuth: config.noAuth || false,
-      });
+      };
+
+      // If user is authenticated via Tailscale, indicate this
+      if (req.authMethod === 'tailscale' && req.userId) {
+        response.tailscaleAuth = true;
+        response.authenticatedUser = req.userId;
+        response.tailscaleUser = req.tailscaleUser;
+      }
+
+      res.json(response);
     } catch (error) {
       console.error('Error getting auth config:', error);
       res.status(500).json({ error: 'Failed to get auth config' });

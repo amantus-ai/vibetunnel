@@ -84,6 +84,9 @@ struct AccessModeView: View {
     let serverPort: String
     let localIPAddress: String?
     let restartServerWithNewBindAddress: () -> Void
+    
+    @AppStorage("tailscaleServeEnabled")
+    private var tailscaleServeEnabled = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -91,15 +94,37 @@ struct AccessModeView: View {
                 Text("Access Mode")
                     .font(.callout)
                 Spacer()
-                Picker("", selection: $accessModeString) {
-                    ForEach(DashboardAccessMode.allCases, id: \.rawValue) { mode in
-                        Text(mode.displayName)
-                            .tag(mode.rawValue)
+                
+                if tailscaleServeEnabled {
+                    // When Tailscale Serve is enabled, force localhost mode
+                    Text("Localhost")
+                        .foregroundColor(.secondary)
+                    
+                    Image(systemName: "lock.shield.fill")
+                        .foregroundColor(.blue)
+                        .help("Tailscale Serve requires localhost binding for security")
+                } else {
+                    Picker("", selection: $accessModeString) {
+                        ForEach(DashboardAccessMode.allCases, id: \.rawValue) { mode in
+                            Text(mode.displayName)
+                                .tag(mode.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .onChange(of: accessModeString) { _, _ in
+                        restartServerWithNewBindAddress()
                     }
                 }
-                .labelsHidden()
-                .onChange(of: accessModeString) { _, _ in
-                    restartServerWithNewBindAddress()
+            }
+            
+            if tailscaleServeEnabled && accessMode == .network {
+                HStack(spacing: 4) {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundColor(.blue)
+                        .font(.caption)
+                    Text("Tailscale Serve active - using localhost binding for security")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
         }

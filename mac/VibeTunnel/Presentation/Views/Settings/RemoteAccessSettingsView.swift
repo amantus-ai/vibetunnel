@@ -58,7 +58,8 @@ struct RemoteAccessSettingsView: View {
                 TailscaleIntegrationSection(
                     tailscaleService: tailscaleService,
                     serverPort: serverPort,
-                    accessMode: accessMode
+                    accessMode: accessMode,
+                    serverManager: serverManager
                 )
 
                 CloudflareIntegrationSection(
@@ -231,8 +232,11 @@ private struct TailscaleIntegrationSection: View {
     let tailscaleService: TailscaleService
     let serverPort: String
     let accessMode: DashboardAccessMode
+    let serverManager: ServerManager
 
     @State private var statusCheckTimer: Timer?
+    @AppStorage("tailscaleServeEnabled")
+    private var tailscaleServeEnabled = false
 
     private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "TailscaleIntegrationSection")
 
@@ -297,16 +301,35 @@ private struct TailscaleIntegrationSection: View {
                         .controlSize(.small)
                     }
                 } else if tailscaleService.isRunning {
+                    // Tailscale Serve toggle
+                    HStack {
+                        Toggle("Enable Tailscale Serve Integration", isOn: $tailscaleServeEnabled)
+                            .onChange(of: tailscaleServeEnabled) { _, newValue in
+                                logger.info("Tailscale Serve integration \(newValue ? "enabled" : "disabled")")
+                                // Restart server to apply the new setting
+                                Task {
+                                    await serverManager.restart()
+                                }
+                            }
+                        
+                        if tailscaleServeEnabled {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("Enabled")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
                     // Show dashboard URL when running
                     if let hostname = tailscaleService.tailscaleHostname {
-                        let urlString = "http://\(hostname):\(serverPort)"
                         InlineClickableURLView(
                             label: "Access VibeTunnel at:",
-                            url: urlString
+                            url: tailscaleServeEnabled ? "https://\(hostname)" : "http://\(hostname):\(serverPort)"
                         )
 
                         // Show warning if in localhost-only mode
-                        if accessMode == .localhost {
+                        if accessMode == .localhost && !tailscaleServeEnabled {
                             HStack(spacing: 6) {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundColor(.orange)
@@ -317,6 +340,14 @@ private struct TailscaleIntegrationSection: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             }
+                        }
+                        
+                        // Help text about Tailscale Serve
+                        if tailscaleServeEnabled {
+                            Text("Tailscale Serve provides secure access with automatic authentication using Tailscale identity headers.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.top, 4)
                         }
                     }
                 }

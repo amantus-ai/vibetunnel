@@ -440,6 +440,18 @@ export class VibeTunnelApp extends LitElement {
           this.initialLoadComplete = true;
           return;
         }
+
+        // Check if user is authenticated via Tailscale
+        if (authConfig.tailscaleAuth && authConfig.authenticatedUser) {
+          logger.log('🔒 Authenticated via Tailscale:', authConfig.authenticatedUser);
+          this.isAuthenticated = true;
+          this.currentView = 'list';
+          await this.initializeServices(noAuthEnabled); // Initialize services with no-auth flag
+          await this.loadSessions(); // Wait for sessions to load
+          this.startAutoRefresh();
+          this.initialLoadComplete = true;
+          return;
+        }
       }
     } catch (error) {
       logger.warn('⚠️ Could not fetch auth config:', error);

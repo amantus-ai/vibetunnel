@@ -75,6 +75,29 @@ npm run dev -- --no-auth
 
 **Best for:** Local development, trusted networks, or demo environments
 
+### 5. Tailscale Authentication Mode
+
+**Usage:** Enable Tailscale identity header authentication
+```bash
+npm run dev -- --allow-tailscale-auth
+# or
+./vibetunnel --allow-tailscale-auth
+```
+
+**Behavior:**
+- Accepts Tailscale identity headers for authentication
+- Requires VibeTunnel to be behind Tailscale Serve proxy
+- Automatically authenticates users based on Tailscale identity
+- No login page shown for authenticated Tailscale users
+- Headers used: `tailscale-user-login`, `tailscale-user-name`, `tailscale-user-profile-pic`
+
+**Security Requirements:**
+- **MUST** only be used when VibeTunnel is listening on localhost
+- **MUST** be accessed through Tailscale Serve proxy
+- Direct access would allow header spoofing
+
+**Best for:** Organizations using Tailscale for secure networking
+
 ## User Avatar System
 
 ### macOS Integration
@@ -102,6 +125,7 @@ On non-macOS systems:
 --enable-ssh-keys         Enable SSH key authentication UI and functionality
 --disallow-user-password  Disable password auth, SSH keys only (auto-enables --enable-ssh-keys)
 --no-auth                 Disable authentication (auto-login as current user)
+--allow-tailscale-auth    Allow Tailscale identity headers for authentication
 
 # Other options
 --port <number>       Server port (default: 4020)
@@ -129,6 +153,10 @@ npm run dev -- --no-auth
 
 # High-security production (SSH keys only)
 ./vibetunnel --disallow-user-password --port 8080
+
+# Tailscale network with automatic authentication
+./vibetunnel --allow-tailscale-auth --bind 127.0.0.1 --port 3000
+# Then: tailscale serve 3000
 ```
 
 ## Security Considerations
@@ -150,6 +178,12 @@ npm run dev -- --no-auth
 - **⚠️ Security Warning:** Only use in trusted environments
 - Suitable for local development or demo purposes
 - Not recommended for production or public networks
+
+### Tailscale Authentication
+- **⚠️ Security Warning:** Only use when bound to localhost
+- Requires Tailscale Serve proxy for header injection
+- Provides SSO-like experience for Tailscale users
+- Headers are trusted only from Tailscale proxy
 
 ## Configuration API
 
@@ -235,6 +269,57 @@ This allows the UI to:
 - Regularly rotate SSH keys (recommended: every 90 days)
 - Remove unused keys from authorized_keys
 - Monitor authentication logs for suspicious activity
+
+## Tailscale Authentication Details
+
+### How Tailscale Serve Works
+
+Tailscale Serve acts as a reverse proxy that:
+1. Receives requests from your tailnet
+2. Adds identity headers based on the authenticated Tailscale user
+3. Forwards requests to your local service
+
+### Identity Headers
+
+When a request comes through Tailscale Serve, these headers are added:
+- `tailscale-user-login`: The user's email address or login
+- `tailscale-user-name`: The user's display name
+- `tailscale-user-profile-pic`: URL to the user's profile picture
+
+### Setup Instructions
+
+1. **Start VibeTunnel with Tailscale auth enabled:**
+   ```bash
+   ./vibetunnel --allow-tailscale-auth --bind 127.0.0.1 --port 3000
+   ```
+
+2. **Configure Tailscale Serve:**
+   ```bash
+   tailscale serve 3000
+   ```
+
+3. **Access via Tailscale:**
+   ```
+   https://[your-machine-name].[tailnet-name].ts.net
+   ```
+
+### Security Model
+
+- VibeTunnel trusts identity headers ONLY from localhost connections
+- Tailscale Serve ensures headers cannot be spoofed by external users
+- Direct access to VibeTunnel port would allow header forgery
+- Always bind to `127.0.0.1` when using Tailscale authentication
+
+### Integration with Other Auth Modes
+
+Tailscale auth can be combined with other authentication modes:
+```bash
+# Tailscale auth + SSH keys as fallback
+./vibetunnel --allow-tailscale-auth --enable-ssh-keys
+
+# Tailscale auth + local bypass for scripts
+./vibetunnel --allow-tailscale-auth --allow-local-bypass
+```
 
 ## Implementation Details
 
