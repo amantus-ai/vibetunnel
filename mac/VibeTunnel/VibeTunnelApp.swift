@@ -10,6 +10,7 @@ import UserNotifications
 /// across all windows and handles deep linking for terminal session URLs.
 ///
 /// This application runs on macOS 14.0+ and requires Swift 6.
+/// The app provides terminal access through web browsers.
 @main
 struct VibeTunnelApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self)

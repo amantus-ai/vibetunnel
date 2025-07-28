@@ -1,3 +1,4 @@
+// VibeTunnel server entry point
 import chalk from 'chalk';
 import compression from 'compression';
 import type { Response as ExpressResponse } from 'express';
