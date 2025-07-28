@@ -76,7 +76,8 @@ class ServerManager {
             // Log for debugging
             // logger
             //     .debug(
-            //         "bindAddress getter: rawValue='\(rawValue)', mode=\(mode.rawValue), bindAddress=\(mode.bindAddress)"
+            //         "bindAddress getter: rawValue='\(rawValue)', mode=\(mode.rawValue),
+            //         bindAddress=\(mode.bindAddress)"
             //     )
 
             return mode.bindAddress

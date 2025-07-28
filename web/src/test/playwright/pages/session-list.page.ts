@@ -443,7 +443,7 @@ export class SessionListPage extends BasePage {
         if (sessionId) {
           await this.page.goto(`/session/${sessionId}`, {
             waitUntil: 'domcontentloaded',
-            timeout: 15000, // Increase timeout for CI
+            timeout: process.env.CI ? 30000 : 15000, // Increase timeout for CI
           });
         } else {
           // Wait for automatic navigation

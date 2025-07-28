@@ -209,7 +209,7 @@ struct AutocompleteTextField: View {
     @State private var keyboardNavigating = false
 
     @State private var textFieldSize: CGSize = .zero
-    
+
     var body: some View {
         TextField(placeholder, text: $text)
             .textFieldStyle(.roundedBorder)
@@ -266,10 +266,10 @@ struct AutocompleteTextField: View {
                     )
                 )
             )
-        .onAppear {
-            // Initialize autocompleteService with GitRepositoryMonitor
-            autocompleteService = AutocompleteService(gitMonitor: gitMonitor)
-        }
+            .onAppear {
+                // Initialize autocompleteService with GitRepositoryMonitor
+                autocompleteService = AutocompleteService(gitMonitor: gitMonitor)
+            }
     }
 
     private func handleKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {

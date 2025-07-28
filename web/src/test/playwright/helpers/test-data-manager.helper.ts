@@ -40,7 +40,34 @@ export class TestSessionManager {
       let sessionId = '';
       if (!spawnWindow) {
         console.log(`Web session created, waiting for navigation to session view...`);
-        await this.page.waitForURL(/\/session\//, { timeout: 10000 });
+        // Increase timeout for CI and add retry logic
+        const timeout = process.env.CI ? 30000 : 15000;
+
+        // Add a small delay to ensure navigation starts
+        await this.page.waitForTimeout(500);
+
+        try {
+          await this.page.waitForURL(/\/session\//, { timeout });
+        } catch (error) {
+          // If waitForURL times out, check if we're already on a session page
+          const currentUrl = this.page.url();
+          if (!currentUrl.includes('/session/')) {
+            // Try to wait for any navigation
+            try {
+              await this.page.waitForLoadState('domcontentloaded', { timeout: 5000 });
+            } catch (_loadError) {
+              // Ignore load state error
+            }
+            const finalUrl = this.page.url();
+            if (!finalUrl.includes('/session/')) {
+              console.error(
+                `Navigation failed. Initial URL: ${currentUrl}, Final URL: ${finalUrl}`
+              );
+              throw error;
+            }
+          }
+          console.log(`Already on session page: ${currentUrl}`);
+        }
         const url = this.page.url();
 
         if (!url.includes('/session/')) {

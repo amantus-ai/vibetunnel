@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 /// Simple NSWindow-based dropdown for autocomplete
 struct AutocompleteWindowView: NSViewRepresentable {
@@ -9,13 +9,13 @@ struct AutocompleteWindowView: NSViewRepresentable {
     let onSelect: (String) -> Void
     let width: CGFloat
     @Binding var isShowing: Bool
-    
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         view.wantsLayer = true
         return view
     }
-    
+
     func updateNSView(_ nsView: NSView, context: Context) {
         if isShowing && !suggestions.isEmpty {
             context.coordinator.showDropdown(
@@ -29,11 +29,11 @@ struct AutocompleteWindowView: NSViewRepresentable {
             context.coordinator.hideDropdown()
         }
     }
-    
+
     func makeCoordinator() -> Coordinator {
         Coordinator(onSelect: onSelect, isShowing: $isShowing, selectedIndex: $selectedIndex)
     }
-    
+
     @MainActor
     class Coordinator: NSObject {
         private var dropdownWindow: NSWindow?
@@ -41,15 +41,15 @@ struct AutocompleteWindowView: NSViewRepresentable {
         private let onSelect: (String) -> Void
         @Binding var isShowing: Bool
         @Binding var selectedIndex: Int
-        nonisolated(unsafe) private var clickMonitor: Any?
-        
+        private nonisolated(unsafe) var clickMonitor: Any?
+
         init(onSelect: @escaping (String) -> Void, isShowing: Binding<Bool>, selectedIndex: Binding<Int>) {
             self.onSelect = onSelect
             self._isShowing = isShowing
             self._selectedIndex = selectedIndex
             super.init()
         }
-        
+
         deinit {
             if let monitor = clickMonitor {
                 DispatchQueue.main.async {
@@ -57,7 +57,7 @@ struct AutocompleteWindowView: NSViewRepresentable {
                 }
             }
         }
-        
+
         @MainActor
         private func cleanupClickMonitor() {
             if let monitor = clickMonitor {
@@ -65,7 +65,7 @@ struct AutocompleteWindowView: NSViewRepresentable {
                 clickMonitor = nil
             }
         }
-        
+
         @MainActor
         func showDropdown(
             on view: NSView,
@@ -75,7 +75,7 @@ struct AutocompleteWindowView: NSViewRepresentable {
             width: CGFloat
         ) {
             guard let parentWindow = view.window else { return }
-            
+
             // Create window if needed
             if dropdownWindow == nil {
                 let window = NSWindow(
@@ -84,23 +84,23 @@ struct AutocompleteWindowView: NSViewRepresentable {
                     backing: .buffered,
                     defer: false
                 )
-                
+
                 window.isOpaque = false
                 window.backgroundColor = .clear
                 window.hasShadow = true
                 window.level = .floating
                 window.isReleasedWhenClosed = false
-                
+
                 let hostingView = NSHostingView(rootView: AnyView(EmptyView()))
                 window.contentView = hostingView
-                
+
                 self.dropdownWindow = window
                 self.hostingView = hostingView
             }
-            
+
             guard let window = dropdownWindow,
-                  let hostingView = hostingView else { return }
-            
+                  let hostingView else { return }
+
             // Update content with proper binding
             let content = VStack(spacing: 0) {
                 AutocompleteViewWithKeyboard(
@@ -120,13 +120,13 @@ struct AutocompleteWindowView: NSViewRepresentable {
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(Color.primary.opacity(0.1), lineWidth: 1)
             )
-            
+
             hostingView.rootView = AnyView(content)
-            
+
             // Position window below the text field
             let viewFrame = view.convert(view.bounds, to: nil)
             let screenFrame = parentWindow.convertToScreen(viewFrame)
-            
+
             // Calculate window position
             let windowFrame = NSRect(
                 x: screenFrame.minX,
@@ -134,15 +134,15 @@ struct AutocompleteWindowView: NSViewRepresentable {
                 width: width,
                 height: 200
             )
-            
+
             window.setFrame(windowFrame, display: false)
-            
+
             // Show window
             if window.parent == nil {
                 parentWindow.addChildWindow(window, ordered: .above)
             }
             window.makeKeyAndOrderFront(nil)
-            
+
             // Setup click monitoring
             if clickMonitor == nil {
                 clickMonitor = NSEvent.addLocalMonitorForEvents(
@@ -155,11 +155,11 @@ struct AutocompleteWindowView: NSViewRepresentable {
                 }
             }
         }
-        
+
         @MainActor
         func hideDropdown() {
             cleanupClickMonitor()
-            
+
             if let window = dropdownWindow {
                 if let parent = window.parent {
                     parent.removeChildWindow(window)

@@ -23,14 +23,22 @@ test.describe('Terminal Interaction', () => {
     // Use unique prefix for this test file to prevent session conflicts
     sessionManager = new TestSessionManager(page, 'termint');
 
+    // Add network error logging for debugging
+    page.on('requestfailed', (request) => {
+      console.error(`Request failed: ${request.url()} - ${request.failure()?.errorText}`);
+    });
+
     // Create a session for all tests using the session manager to ensure proper tracking
     const sessionData = await sessionManager.createTrackedSession('terminal-test');
 
-    // Navigate to the created session
-    await page.goto(`/session/${sessionData.sessionId}`, { waitUntil: 'domcontentloaded' });
+    // Navigate to the created session with increased timeout for CI
+    await page.goto(`/session/${sessionData.sessionId}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: process.env.CI ? 30000 : 15000,
+    });
 
     // Wait for terminal with proper WebSocket handling
-    await waitForTerminalReady(page, 10000);
+    await waitForTerminalReady(page, process.env.CI ? 20000 : 10000);
   });
 
   test.afterEach(async () => {

@@ -147,6 +147,7 @@ child.on('error', (error) => {
 // Log when process starts
 child.on('spawn', () => {
   console.log('Server process spawned successfully');
+  console.log(`Server PID: ${child.pid}`);
 });
 
 // Handle early exit
@@ -204,6 +205,25 @@ if (process.env.CI || process.env.WAIT_FOR_SERVER) {
         process.exit(1);
       } else {
         console.log('Server is ready, tests can proceed');
+        
+        // In CI, add periodic health checks
+        if (process.env.CI) {
+          const healthCheckInterval = setInterval(() => {
+            if (hasExited) {
+              clearInterval(healthCheckInterval);
+              return;
+            }
+            
+            const http = require('http');
+            http.get(`http://localhost:${port}/api/health`, (res) => {
+              if (res.statusCode !== 200) {
+                console.error(`Health check failed with status ${res.statusCode}`);
+              }
+            }).on('error', (err) => {
+              console.error(`Health check error: ${err.message}`);
+            });
+          }, 10000); // Check every 10 seconds
+        }
       }
     });
   }, 3000); // Wait 3 seconds before checking
