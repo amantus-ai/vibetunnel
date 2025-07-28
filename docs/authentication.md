@@ -98,6 +98,35 @@ npm run dev -- --allow-tailscale-auth
 
 **Best for:** Organizations using Tailscale for secure networking
 
+### 6. Tailscale Serve Integration Mode
+
+**Usage:** Enable integrated Tailscale Serve support
+```bash
+npm run dev -- --enable-tailscale-serve
+# or
+./vibetunnel --enable-tailscale-serve
+```
+
+**Behavior:**
+- Automatically starts `tailscale serve` as a background process
+- Forces server to bind to localhost (127.0.0.1) for security
+- Enables Tailscale identity header authentication
+- Provides HTTPS access without exposing ports
+- No manual Tailscale configuration required
+
+**macOS App Integration:**
+- Toggle available in Settings → Remote Access → Tailscale Integration
+- Shows HTTPS URL in menu bar when enabled
+- Automatically manages the Tailscale Serve process lifecycle
+
+**Security Model:**
+- Server only listens on localhost when enabled
+- All external access goes through Tailscale's secure proxy
+- Identity headers are automatically validated
+- No risk of header spoofing from external sources
+
+**Best for:** Easy, secure remote access through Tailscale network
+
 ## User Avatar System
 
 ### macOS Integration
@@ -126,6 +155,7 @@ On non-macOS systems:
 --disallow-user-password  Disable password auth, SSH keys only (auto-enables --enable-ssh-keys)
 --no-auth                 Disable authentication (auto-login as current user)
 --allow-tailscale-auth    Allow Tailscale identity headers for authentication
+--enable-tailscale-serve  Enable Tailscale Serve integration (auto-starts proxy, forces localhost)
 
 # Other options
 --port <number>       Server port (default: 4020)
@@ -154,9 +184,13 @@ npm run dev -- --no-auth
 # High-security production (SSH keys only)
 ./vibetunnel --disallow-user-password --port 8080
 
-# Tailscale network with automatic authentication
+# Tailscale network with automatic authentication (manual setup)
 ./vibetunnel --allow-tailscale-auth --bind 127.0.0.1 --port 3000
 # Then: tailscale serve 3000
+
+# Tailscale Serve integration (automatic setup - recommended)
+./vibetunnel --enable-tailscale-serve --port 4020
+# No manual tailscale serve needed - handled automatically
 ```
 
 ## Security Considerations
@@ -288,6 +322,22 @@ When a request comes through Tailscale Serve, these headers are added:
 
 ### Setup Instructions
 
+#### Option 1: Integrated Mode (Recommended)
+
+1. **Start VibeTunnel with integrated Tailscale Serve:**
+   ```bash
+   ./vibetunnel --enable-tailscale-serve --port 4020
+   ```
+   
+   Or use the macOS app and enable the toggle in Settings → Remote Access
+
+2. **Access via Tailscale:**
+   ```
+   https://[your-machine-name].[tailnet-name].ts.net
+   ```
+
+#### Option 2: Manual Setup
+
 1. **Start VibeTunnel with Tailscale auth enabled:**
    ```bash
    ./vibetunnel --allow-tailscale-auth --bind 127.0.0.1 --port 3000
@@ -319,7 +369,12 @@ Tailscale auth can be combined with other authentication modes:
 
 # Tailscale auth + local bypass for scripts
 ./vibetunnel --allow-tailscale-auth --allow-local-bypass
+
+# Integrated Tailscale Serve (includes tailscale auth automatically)
+./vibetunnel --enable-tailscale-serve
 ```
+
+**Note**: The `--enable-tailscale-serve` flag automatically includes Tailscale authentication support and manages the proxy for you.
 
 ## Implementation Details
 

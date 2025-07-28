@@ -193,11 +193,6 @@ struct ServerAddressRow: View {
             return providedUrl.absoluteString
         }
 
-        // For Tailscale, return the full URL
-        if label == "Tailscale:" && !address.isEmpty {
-            return "http://\(address):\(serverManager.port)"
-        }
-
         // For local addresses, build the full URL
         if computedAddress.starts(with: "127.0.0.1:") {
             return "http://\(computedAddress)"
