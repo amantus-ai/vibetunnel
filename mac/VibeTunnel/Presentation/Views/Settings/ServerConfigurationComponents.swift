@@ -84,7 +84,7 @@ struct AccessModeView: View {
     let serverPort: String
     let localIPAddress: String?
     let restartServerWithNewBindAddress: () -> Void
-    
+
     @AppStorage(AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
     private var tailscaleServeEnabled = false
 
@@ -94,12 +94,12 @@ struct AccessModeView: View {
                 Text("Access Mode")
                     .font(.callout)
                 Spacer()
-                
+
                 if tailscaleServeEnabled {
                     // When Tailscale Serve is enabled, force localhost mode
                     Text("Localhost")
                         .foregroundColor(.secondary)
-                    
+
                     Image(systemName: "lock.shield.fill")
                         .foregroundColor(.blue)
                         .help("Tailscale Serve requires localhost binding for security")
@@ -116,7 +116,7 @@ struct AccessModeView: View {
                     }
                 }
             }
-            
+
             if tailscaleServeEnabled && accessMode == .network {
                 HStack(spacing: 4) {
                     Image(systemName: "info.circle.fill")

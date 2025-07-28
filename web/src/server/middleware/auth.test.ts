@@ -56,7 +56,7 @@ describe('Auth Middleware', () => {
       const middleware = createAuthMiddleware({ noAuth: true });
 
       app.use('/api', middleware);
-      app.get('/api/test', (req, res) => res.json({ success: true }));
+      app.get('/api/test', (_req, res) => res.json({ success: true }));
 
       const response = await request(app).get('/api/test');
 
@@ -111,7 +111,7 @@ describe('Auth Middleware', () => {
       });
 
       app.use('/api', middleware);
-      app.get('/api/test', (req, res) => res.json({ success: true }));
+      app.get('/api/test', (_req, res) => res.json({ success: true }));
 
       const response = await request(app)
         .get('/api/test')
@@ -157,7 +157,7 @@ describe('Auth Middleware', () => {
       });
 
       app.use('/api', middleware);
-      app.get('/api/test', (req, res) => res.json({ success: true }));
+      app.get('/api/test', (_req, res) => res.json({ success: true }));
 
       const response = await request(app)
         .get('/api/test')
@@ -235,7 +235,7 @@ describe('Auth Middleware', () => {
       });
 
       app.use('/api', middleware);
-      app.get('/api/test', (req, res) => res.json({ success: true }));
+      app.get('/api/test', (_req, res) => res.json({ success: true }));
 
       // Without token
       const response1 = await request(app).get('/api/test');
@@ -261,7 +261,7 @@ describe('Auth Middleware', () => {
       });
 
       app.use('/api', middleware);
-      app.get('/api/test', (req, res) => res.json({ success: true }));
+      app.get('/api/test', (_req, res) => res.json({ success: true }));
 
       const response = await request(app).get('/api/test').set('X-Forwarded-For', '192.168.1.100');
 
@@ -308,7 +308,7 @@ describe('Auth Middleware', () => {
       });
 
       app.use('/api', middleware);
-      app.get('/api/test', (req, res) => res.json({ success: true }));
+      app.get('/api/test', (_req, res) => res.json({ success: true }));
 
       const response = await request(app)
         .get('/api/test')
@@ -325,8 +325,8 @@ describe('Auth Middleware', () => {
       });
 
       app.use(middleware);
-      app.post('/api/auth/login', (req, res) => res.json({ success: true }));
-      app.post('/auth/login', (req, res) => res.json({ success: true }));
+      app.post('/api/auth/login', (_req, res) => res.json({ success: true }));
+      app.post('/auth/login', (_req, res) => res.json({ success: true }));
 
       const response1 = await request(app).post('/api/auth/login');
       expect(response1.status).toBe(200);
@@ -341,7 +341,7 @@ describe('Auth Middleware', () => {
       });
 
       app.use(middleware);
-      app.post('/logs', (req, res) => res.json({ success: true }));
+      app.post('/logs', (_req, res) => res.json({ success: true }));
 
       const response = await request(app).post('/logs');
       expect(response.status).toBe(200);
@@ -353,7 +353,7 @@ describe('Auth Middleware', () => {
       });
 
       app.use(middleware);
-      app.post('/push/subscribe', (req, res) => res.json({ success: true }));
+      app.post('/push/subscribe', (_req, res) => res.json({ success: true }));
 
       const response = await request(app).post('/push/subscribe');
       expect(response.status).toBe(200);
@@ -365,7 +365,7 @@ describe('Auth Middleware', () => {
       });
 
       app.use('/api', middleware);
-      app.get('/api/sessions', (req, res) => res.json({ success: true }));
+      app.get('/api/sessions', (_req, res) => res.json({ success: true }));
 
       const response = await request(app).get('/api/sessions');
       expect(response.status).toBe(401);

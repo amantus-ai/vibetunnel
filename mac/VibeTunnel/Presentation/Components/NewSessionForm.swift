@@ -272,8 +272,9 @@ struct NewSessionForm: View {
                                 })
                                 .background(
                                     RoundedRectangle(cornerRadius: 6)
-                                        .fill(command == cmd.command ? Color.accentColor.opacity(0.15) : Color.primary
-                                            .opacity(0.05)
+                                        .fill(
+                                            command == cmd.command ? Color.accentColor.opacity(0.15) : Color.primary
+                                                .opacity(0.05)
                                         )
                                 )
                                 .overlay(
@@ -498,8 +499,10 @@ struct NewSessionForm: View {
 
                             await MainActor.run {
                                 branchSwitchWarning = isUncommittedChanges
-                                    ? "Cannot switch to \(selectedBaseBranch) due to uncommitted changes. Creating session on \(currentBranch)."
-                                    : "Failed to switch to \(selectedBaseBranch): \(errorMessage). Creating session on \(currentBranch)."
+                                    ?
+                                    "Cannot switch to \(selectedBaseBranch) due to uncommitted changes. Creating session on \(currentBranch)."
+                                    :
+                                    "Failed to switch to \(selectedBaseBranch): \(errorMessage). Creating session on \(currentBranch)."
                             }
                         }
                     }

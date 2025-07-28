@@ -82,19 +82,16 @@ function getTailscaleUser(
 
 export function createAuthMiddleware(config: AuthConfig) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    // Skip auth for auth endpoints, client logging, and push notifications
+    // Skip auth for auth endpoints, client logging, push notifications, and Tailscale status
     if (
-      req.path.startsWith('/api/auth') ||
       req.path.startsWith('/auth') ||
       req.path.startsWith('/logs') ||
+      req.path === '/sessions/tailscale/status' ||
       req.path.startsWith('/push')
     ) {
       // Special case: If Tailscale auth is enabled and we have valid headers,
       // set the auth info even for /auth endpoints so the client knows we're authenticated
-      if (
-        config.allowTailscaleAuth &&
-        (req.path.startsWith('/api/auth') || req.path.startsWith('/auth'))
-      ) {
+      if (config.allowTailscaleAuth && req.path.startsWith('/auth')) {
         const tailscaleUser = getTailscaleUser(req);
         if (tailscaleUser) {
           req.authMethod = 'tailscale';

@@ -11,13 +11,13 @@ enum TailscaleURLHelper {
     static func constructURL(hostname: String, port: String, isTailscaleServeEnabled: Bool) -> URL? {
         if isTailscaleServeEnabled {
             // When Tailscale Serve is enabled, use HTTPS without port
-            return URL(string: "https://\(hostname)")
+            URL(string: "https://\(hostname)")
         } else {
             // When Tailscale Serve is disabled, use HTTP with port
-            return URL(string: "http://\(hostname):\(port)")
+            URL(string: "http://\(hostname):\(port)")
         }
     }
-    
+
     /// Gets the display address for Tailscale based on configuration
     /// - Parameters:
     ///   - hostname: The Tailscale hostname
@@ -27,10 +27,10 @@ enum TailscaleURLHelper {
     static func displayAddress(hostname: String, port: String, isTailscaleServeEnabled: Bool) -> String {
         if isTailscaleServeEnabled {
             // When Tailscale Serve is enabled, show hostname only
-            return hostname
+            hostname
         } else {
             // When Tailscale Serve is disabled, show hostname:port
-            return "\(hostname):\(port)"
+            "\(hostname):\(port)"
         }
     }
 }

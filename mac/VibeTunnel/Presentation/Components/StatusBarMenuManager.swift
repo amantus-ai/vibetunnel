@@ -13,8 +13,9 @@ import SwiftUI
             self.highlight(true)
             DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100)) {
                 self
-                    .highlight(AppDelegate.shared?.statusBarController?.menuManager.customWindow?
-                        .isWindowVisible ?? false
+                    .highlight(
+                        AppDelegate.shared?.statusBarController?.menuManager.customWindow?
+                            .isWindowVisible ?? false
                     )
             }
         }

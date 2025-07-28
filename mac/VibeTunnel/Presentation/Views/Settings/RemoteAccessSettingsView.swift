@@ -23,6 +23,8 @@ struct RemoteAccessSettingsView: View {
     private var tailscaleService
     @Environment(CloudflareService.self)
     private var cloudflareService
+    @Environment(TailscaleServeStatusService.self)
+    private var tailscaleServeStatus
     @Environment(ServerManager.self)
     private var serverManager
 
@@ -94,6 +96,12 @@ struct RemoteAccessSettingsView: View {
                 // Initialize authentication mode from stored value
                 let storedMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.authenticationMode) ?? "os"
                 authMode = AuthenticationMode(rawValue: storedMode) ?? .osAuth
+                // Start monitoring Tailscale Serve status
+                tailscaleServeStatus.startMonitoring()
+            }
+            .onDisappear {
+                // Stop monitoring when view disappears
+                tailscaleServeStatus.stopMonitoring()
             }
         }
         .alert("ngrok Authentication Required", isPresented: $showingAuthTokenAlert) {
@@ -237,6 +245,8 @@ private struct TailscaleIntegrationSection: View {
     @State private var statusCheckTimer: Timer?
     @AppStorage(AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
     private var tailscaleServeEnabled = false
+    @Environment(TailscaleServeStatusService.self)
+    private var tailscaleServeStatus
 
     private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "TailscaleIntegrationSection")
 
@@ -311,16 +321,40 @@ private struct TailscaleIntegrationSection: View {
                                     await serverManager.restart()
                                 }
                             }
-                        
+
+                        Spacer()
+
                         if tailscaleServeEnabled {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                            Text("Enabled")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            // Show status indicator - fixed height to prevent jumping
+                            HStack(spacing: 4) {
+                                if tailscaleServeStatus.isLoading {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                } else if tailscaleServeStatus.isRunning {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.green)
+                                    Text("Running")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                } else if let error = tailscaleServeStatus.lastError {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                        .help("Error: \(error)")
+                                    Text("Error")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                } else {
+                                    Image(systemName: "circle")
+                                        .foregroundColor(.gray)
+                                    Text("Starting...")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .frame(height: 16) // Fixed height prevents UI jumping
                         }
                     }
-                    
+
                     // Show dashboard URL when running
                     if let hostname = tailscaleService.tailscaleHostname {
                         InlineClickableURLView(
@@ -345,13 +379,32 @@ private struct TailscaleIntegrationSection: View {
                                 .foregroundStyle(.secondary)
                             }
                         }
-                        
+
+                        // Show error details if any
+                        if tailscaleServeEnabled, let error = tailscaleServeStatus.lastError {
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.system(size: 12))
+                                Text("Error: \(error)")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                                    .lineLimit(2)
+                            }
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 8)
+                            .background(Color.orange.opacity(0.1))
+                            .cornerRadius(4)
+                        }
+
                         // Help text about Tailscale Serve
-                        if tailscaleServeEnabled {
-                            Text("Tailscale Serve provides secure access with automatic authentication using Tailscale identity headers.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .padding(.top, 4)
+                        if tailscaleServeEnabled && tailscaleServeStatus.isRunning {
+                            Text(
+                                "Tailscale Serve provides secure access with automatic authentication using Tailscale identity headers."
+                            )
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
                         }
                     }
                 }

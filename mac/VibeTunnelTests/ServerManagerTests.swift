@@ -169,14 +169,16 @@ final class ServerManagerTests {
 
         // Test setting via bind address
         manager.bindAddress = "127.0.0.1"
-        #expect(UserDefaults.standard.string(forKey: "dashboardAccessMode") == AppConstants.DashboardAccessModeRawValues
-            .localhost
+        #expect(
+            UserDefaults.standard.string(forKey: "dashboardAccessMode") == AppConstants.DashboardAccessModeRawValues
+                .localhost
         )
         #expect(manager.bindAddress == "127.0.0.1")
 
         manager.bindAddress = "0.0.0.0"
-        #expect(UserDefaults.standard.string(forKey: "dashboardAccessMode") == AppConstants.DashboardAccessModeRawValues
-            .network
+        #expect(
+            UserDefaults.standard.string(forKey: "dashboardAccessMode") == AppConstants.DashboardAccessModeRawValues
+                .network
         )
         #expect(manager.bindAddress == "0.0.0.0")
 
@@ -218,8 +220,9 @@ final class ServerManagerTests {
 
         // Bind address should persist
         #expect(manager.bindAddress == "127.0.0.1")
-        #expect(UserDefaults.standard.string(forKey: "dashboardAccessMode") == AppConstants.DashboardAccessModeRawValues
-            .localhost
+        #expect(
+            UserDefaults.standard.string(forKey: "dashboardAccessMode") == AppConstants.DashboardAccessModeRawValues
+                .localhost
         )
 
         // Change to network mode

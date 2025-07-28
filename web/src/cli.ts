@@ -12,6 +12,12 @@ import { closeLogger, createLogger, initLogger, VerbosityLevel } from './server/
 import { parseVerbosityFromEnv } from './server/utils/verbosity-parser.js';
 import { VERSION } from './server/version.js';
 
+// Check for version command early - before logger initialization
+if (process.argv[2] === 'version') {
+  console.log(`VibeTunnel Server v${VERSION}`);
+  process.exit(0);
+}
+
 // Initialize logger before anything else
 // Parse verbosity from environment variables
 const verbosityLevel = parseVerbosityFromEnv();

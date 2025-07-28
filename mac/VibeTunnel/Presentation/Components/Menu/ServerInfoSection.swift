@@ -68,7 +68,8 @@ struct ServerInfoHeader: View {
                     }
 
                     if tailscaleService.isRunning, let hostname = tailscaleService.tailscaleHostname {
-                        let isTailscaleServeEnabled = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
+                        let isTailscaleServeEnabled = UserDefaults.standard
+                            .bool(forKey: AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
                         ServerAddressRow(
                             icon: "shield",
                             label: "Tailscale:",

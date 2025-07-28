@@ -186,8 +186,9 @@ struct GitBranchWorktreeSelector: View {
                             }
                             .font(.system(size: 11))
                             .buttonStyle(.borderedProminent)
-                            .disabled(newBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
-                                .isEmpty || isCreatingWorktree
+                            .disabled(
+                                newBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    .isEmpty || isCreatingWorktree
                             )
                         }
 

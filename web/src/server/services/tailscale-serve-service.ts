@@ -14,6 +14,8 @@ export interface TailscaleServeStatus {
   isRunning: boolean;
   port?: number;
   error?: string;
+  lastError?: string;
+  startTime?: Date;
 }
 
 /**
@@ -24,6 +26,8 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
   private currentPort: number | null = null;
   private isStarting = false;
   private tailscaleExecutable = 'tailscale'; // Default to PATH lookup
+  private lastError: string | undefined;
+  private startTime: Date | undefined;
 
   async start(port: number): Promise<void> {
     if (this.isStarting) {
@@ -36,6 +40,7 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
     }
 
     this.isStarting = true;
+    this.lastError = undefined; // Clear previous errors
 
     try {
       // Check if tailscale command is available
@@ -72,11 +77,15 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
       // Handle process events
       this.serveProcess.on('error', (error) => {
         logger.error(`Tailscale Serve process error: ${error.message}`);
+        this.lastError = error.message;
         this.cleanup();
       });
 
       this.serveProcess.on('exit', (code, signal) => {
         logger.info(`Tailscale Serve process exited with code ${code}, signal ${signal}`);
+        if (code !== 0) {
+          this.lastError = `Process exited with code ${code}`;
+        }
         this.cleanup();
       });
 
@@ -89,7 +98,12 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
 
       if (this.serveProcess.stderr) {
         this.serveProcess.stderr.on('data', (data) => {
-          logger.debug(`Tailscale Serve stderr: ${data.toString().trim()}`);
+          const stderr = data.toString().trim();
+          logger.debug(`Tailscale Serve stderr: ${stderr}`);
+          // Capture common error patterns
+          if (stderr.includes('error') || stderr.includes('failed')) {
+            this.lastError = stderr;
+          }
         });
       }
 
@@ -98,9 +112,11 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
         const timeout = setTimeout(() => {
           if (this.serveProcess && !this.serveProcess.killed) {
             logger.info('Tailscale Serve started successfully');
+            this.startTime = new Date();
             resolve();
           } else {
-            reject(new Error('Tailscale Serve failed to start'));
+            const error = this.lastError || 'Tailscale Serve failed to start';
+            reject(new Error(error));
           }
         }, 3000); // Wait 3 seconds
 
@@ -118,6 +134,7 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
         }
       });
     } catch (error) {
+      this.lastError = error instanceof Error ? error.message : String(error);
       this.cleanup();
       throw error;
     } finally {
@@ -193,9 +210,19 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
   async getStatus(): Promise<TailscaleServeStatus> {
     const isRunning = this.isRunning();
 
+    // Debug mode: simulate errors based on environment variable
+    if (process.env.VIBETUNNEL_TAILSCALE_ERROR) {
+      return {
+        isRunning: false,
+        lastError: process.env.VIBETUNNEL_TAILSCALE_ERROR,
+      };
+    }
+
     return {
       isRunning,
       port: isRunning ? (this.currentPort ?? undefined) : undefined,
+      lastError: this.lastError,
+      startTime: this.startTime,
     };
   }
 
@@ -203,6 +230,8 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
     this.serveProcess = null;
     this.currentPort = null;
     this.isStarting = false;
+    this.startTime = undefined;
+    // Keep lastError for debugging
   }
 
   private async checkTailscaleAvailable(): Promise<void> {

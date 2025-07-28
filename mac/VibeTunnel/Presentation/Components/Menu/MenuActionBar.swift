@@ -37,8 +37,9 @@ struct MenuActionBar: View {
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(isHoveringNewSession ? AppColors.Fallback.controlBackground(for: colorScheme)
-                                .opacity(colorScheme == .light ? 0.6 : 0.7) : Color.clear
+                            .fill(
+                                isHoveringNewSession ? AppColors.Fallback.controlBackground(for: colorScheme)
+                                    .opacity(colorScheme == .light ? 0.6 : 0.7) : Color.clear
                             )
                             .scaleEffect(isHoveringNewSession ? 1.08 : 1.0)
                             .animation(.easeInOut(duration: 0.15), value: isHoveringNewSession)
@@ -69,8 +70,9 @@ struct MenuActionBar: View {
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(isHoveringSettings ? AppColors.Fallback.controlBackground(for: colorScheme)
-                                .opacity(colorScheme == .light ? 0.6 : 0.7) : Color.clear
+                            .fill(
+                                isHoveringSettings ? AppColors.Fallback.controlBackground(for: colorScheme)
+                                    .opacity(colorScheme == .light ? 0.6 : 0.7) : Color.clear
                             )
                             .scaleEffect(isHoveringSettings ? 1.08 : 1.0)
                             .animation(.easeInOut(duration: 0.15), value: isHoveringSettings)
@@ -103,8 +105,9 @@ struct MenuActionBar: View {
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(isHoveringQuit ? AppColors.Fallback.controlBackground(for: colorScheme)
-                                .opacity(colorScheme == .light ? 0.6 : 0.7) : Color.clear
+                            .fill(
+                                isHoveringQuit ? AppColors.Fallback.controlBackground(for: colorScheme)
+                                    .opacity(colorScheme == .light ? 0.6 : 0.7) : Color.clear
                             )
                             .scaleEffect(isHoveringQuit ? 1.08 : 1.0)
                             .animation(.easeInOut(duration: 0.15), value: isHoveringQuit)

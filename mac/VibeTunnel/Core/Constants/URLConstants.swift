@@ -32,7 +32,8 @@ enum URLConstants {
 
     static let cloudflareFormula = "https://formulae.brew.sh/formula/cloudflared"
     static let cloudflareReleases = "https://github.com/cloudflare/cloudflared/releases/latest"
-    static let cloudflareDocs = "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/"
+    static let cloudflareDocs =
+        "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/"
 
     // MARK: - Update Feed
 
@@ -45,7 +46,8 @@ enum URLConstants {
 
     // MARK: - Regular Expressions
 
-    static let cloudflareURLPattern = #"https://[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.trycloudflare\.com/?(?:\s|$)"#
+    static let cloudflareURLPattern =
+        #"https://[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.trycloudflare\.com/?(?:\s|$)"#
 
     // MARK: - Local Server Base
 

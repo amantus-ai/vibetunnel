@@ -28,6 +28,7 @@ struct VibeTunnelApp: App {
     @State var worktreeService = WorktreeService(serverManager: ServerManager.shared)
     @State var configManager = ConfigManager.shared
     @State var notificationService = NotificationService.shared
+    @State var tailscaleServeStatusService = TailscaleServeStatusService.shared
 
     init() {
         // Connect the app delegate to this app instance
@@ -113,6 +114,7 @@ struct VibeTunnelApp: App {
                 ))
                 .environment(worktreeService)
                 .environment(notificationService)
+                .environment(tailscaleServeStatusService)
         }
         .commands {
             CommandGroup(after: .appInfo) {

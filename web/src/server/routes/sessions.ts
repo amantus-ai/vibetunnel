@@ -10,6 +10,7 @@ import { PtyError, type PtyManager } from '../pty/index.js';
 import type { ActivityMonitor } from '../services/activity-monitor.js';
 import type { RemoteRegistry } from '../services/remote-registry.js';
 import type { StreamWatcher } from '../services/stream-watcher.js';
+import { tailscaleServeService } from '../services/tailscale-serve-service.js';
 import type { TerminalManager } from '../services/terminal-manager.js';
 import { detectGitInfo } from '../utils/git-info.js';
 import { getDetailedGitStatus } from '../utils/git-status.js';
@@ -66,6 +67,18 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
     } catch (error) {
       logger.error('Failed to get server status:', error);
       res.status(500).json({ error: 'Failed to get server status' });
+    }
+  });
+
+  // Tailscale Serve status endpoint
+  router.get('/sessions/tailscale/status', async (_req, res) => {
+    logger.debug('[GET /sessions/tailscale/status] Getting Tailscale Serve status');
+    try {
+      const status = await tailscaleServeService.getStatus();
+      res.json(status);
+    } catch (error) {
+      logger.error('Failed to get Tailscale Serve status:', error);
+      res.status(500).json({ error: 'Failed to get Tailscale Serve status' });
     }
   });
 

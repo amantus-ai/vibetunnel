@@ -14,7 +14,8 @@ enum ErrorMessages {
     static let operationTimeout = "Operation timed out"
     static let invalidRequest = "Invalid request"
     static let sessionNameEmpty = "Session name cannot be empty"
-    static let terminalWindowNotFound = "Could not find a terminal window for this session. The window may have been closed or the session was started outside VibeTunnel."
+    static let terminalWindowNotFound =
+        "Could not find a terminal window for this session. The window may have been closed or the session was started outside VibeTunnel."
     static func windowNotFoundForSession(_ sessionID: String) -> String {
         "Could not find window for session \(sessionID)"
     }
@@ -49,7 +50,8 @@ enum ErrorMessages {
 
     // MARK: - Keychain Errors
 
-    static let keychainSaveError = "Failed to save the auth token to the keychain. Please check your keychain permissions and try again."
+    static let keychainSaveError =
+        "Failed to save the auth token to the keychain. Please check your keychain permissions and try again."
     static let keychainRetrieveError = "Failed to retrieve token from keychain"
     static let keychainAccessError = "Failed to access auth token. Please try again."
     static let keychainSaveTokenError = "Failed to save token to keychain"
@@ -80,7 +82,8 @@ enum ErrorMessages {
         "Failed to start ngrok: \(error.localizedDescription)"
     }
 
-    static let ngrokNotInstalled = "ngrok is not installed. Please install it using 'brew install ngrok' or download from ngrok.com"
+    static let ngrokNotInstalled =
+        "ngrok is not installed. Please install it using 'brew install ngrok' or download from ngrok.com"
     static let ngrokAuthTokenMissing = "ngrok auth token is missing. Please add it in Settings"
     static let invalidNgrokConfiguration = "Invalid ngrok configuration"
 

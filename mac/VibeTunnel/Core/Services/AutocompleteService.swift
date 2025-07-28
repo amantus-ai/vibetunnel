@@ -353,8 +353,9 @@ class AutocompleteService {
             for (index, suggestion) in suggestions.enumerated() where suggestion.type == .directory {
                 group.addTask { [gitMonitor = self.gitMonitor] in
                     // Expand path for Git lookup
-                    let expandedPath = NSString(string: suggestion.suggestion
-                        .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                    let expandedPath = NSString(
+                        string: suggestion.suggestion
+                            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
                     ).expandingTildeInPath
                     let gitInfo = await gitMonitor.findRepository(for: expandedPath).map { repo in
                         GitInfo(
