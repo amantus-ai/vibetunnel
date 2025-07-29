@@ -1,22 +1,38 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PtyManager } from '../../server/pty/pty-manager.js';
 
-// Mock util.promisify to return a mock function
-vi.mock('util', () => ({
-  promisify: vi.fn(() => vi.fn()),
-}));
+// Hoist mock declarations
+const { mockExecFileAsync, mockLogger } = vi.hoisted(() => {
+  const mockLogger = {
+    log: vi.fn(),
+    debug: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+  };
+  return {
+    mockExecFileAsync: vi.fn(),
+    mockLogger,
+  };
+});
 
 // Mock child_process
 vi.mock('child_process', () => ({
-  exec: vi.fn(),
+  execFile: vi.fn(),
 }));
 
-import { promisify } from 'util';
+// Mock util.promisify to return our mock
+vi.mock('util', () => ({
+  promisify: vi.fn(() => mockExecFileAsync),
+}));
+
+// Mock logger
+vi.mock('../../server/utils/logger.js', () => ({
+  createLogger: () => mockLogger,
+}));
+
 // Import after mocks are set up
 import { ZellijManager } from '../../server/services/zellij-manager.js';
-
-// Get the mocked execAsync function
-const mockExecAsync = vi.mocked(promisify((() => {}) as any));
 
 // Mock PtyManager
 const mockPtyManager = {
@@ -39,15 +55,15 @@ describe('ZellijManager', () => {
 
   describe('isAvailable', () => {
     it('should return true when zellij is installed', async () => {
-      mockExecAsync.mockResolvedValue({ stdout: '/usr/local/bin/zellij', stderr: '' });
+      mockExecFileAsync.mockResolvedValue({ stdout: '/usr/local/bin/zellij', stderr: '' });
 
       const result = await zellijManager.isAvailable();
       expect(result).toBe(true);
-      expect(mockExecAsync).toHaveBeenCalledWith('which zellij', { shell: '/bin/sh' });
+      expect(mockExecFileAsync).toHaveBeenCalledWith('which', ['zellij']);
     });
 
     it('should return false when zellij is not installed', async () => {
-      mockExecAsync.mockRejectedValue(new Error('zellij not found'));
+      mockExecFileAsync.mockRejectedValue(new Error('zellij not found'));
 
       const result = await zellijManager.isAvailable();
       expect(result).toBe(false);
@@ -60,7 +76,7 @@ describe('ZellijManager', () => {
 \x1b[32;1mdev-session [Created 30m ago]\x1b[0m
 \x1b[31;1mold-session [EXITED] [Created 1d ago]\x1b[0m`;
 
-      mockExecAsync.mockResolvedValue({ stdout: mockOutput, stderr: '' });
+      mockExecFileAsync.mockResolvedValue({ stdout: mockOutput, stderr: '' });
 
       const sessions = await zellijManager.listSessions();
 
@@ -85,7 +101,7 @@ describe('ZellijManager', () => {
     it('should strip ANSI codes from session names', async () => {
       const mockOutput = `\x1b[32;1mcolor-session [Created 15s ago]\x1b[0m`;
 
-      mockExecAsync.mockResolvedValue({ stdout: mockOutput, stderr: '' });
+      mockExecFileAsync.mockResolvedValue({ stdout: mockOutput, stderr: '' });
 
       const sessions = await zellijManager.listSessions();
 
@@ -95,14 +111,17 @@ describe('ZellijManager', () => {
     });
 
     it('should return empty array when no sessions exist', async () => {
-      mockExecAsync.mockResolvedValue({ stdout: 'No active zellij sessions found', stderr: '' });
+      mockExecFileAsync.mockResolvedValue({
+        stdout: 'No active zellij sessions found',
+        stderr: '',
+      });
 
       const sessions = await zellijManager.listSessions();
       expect(sessions).toEqual([]);
     });
 
     it('should handle error with "No active zellij sessions" message', async () => {
-      mockExecAsync.mockRejectedValue(new Error('No active zellij sessions found'));
+      mockExecFileAsync.mockRejectedValue(new Error('No active zellij sessions found'));
 
       const sessions = await zellijManager.listSessions();
       expect(sessions).toEqual([]);
@@ -111,43 +130,31 @@ describe('ZellijManager', () => {
 
   describe('getSessionTabs', () => {
     it('should return empty array and log warning', async () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
       const tabs = await zellijManager.getSessionTabs('main');
 
       expect(tabs).toEqual([]);
-      expect(warnSpy).toHaveBeenCalled();
-
-      warnSpy.mockRestore();
+      expect(mockLogger.warn).toHaveBeenCalled();
     });
   });
 
   describe('createSession', () => {
     it('should log that session will be created on attach', async () => {
-      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
-
       await zellijManager.createSession('new-session');
 
-      expect(mockExecAsync).not.toHaveBeenCalled();
-      expect(infoSpy).toHaveBeenCalledWith(
+      expect(mockExecFileAsync).not.toHaveBeenCalled();
+      expect(mockLogger.info).toHaveBeenCalledWith(
         expect.stringContaining('Zellij session will be created on first attach'),
         expect.any(Object)
       );
-
-      infoSpy.mockRestore();
     });
 
     it('should log layout preference if provided', async () => {
-      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
-
       await zellijManager.createSession('new-session', 'compact');
 
-      expect(infoSpy).toHaveBeenCalledWith(
+      expect(mockLogger.info).toHaveBeenCalledWith(
         expect.stringContaining('Layout preference noted'),
         expect.objectContaining({ name: 'new-session', layout: 'compact' })
       );
-
-      infoSpy.mockRestore();
     });
   });
 
@@ -155,7 +162,7 @@ describe('ZellijManager', () => {
     it('should create a PTY session for zellij attach with -c flag', async () => {
       const mockSession = { sessionId: 'vt-123' };
       mockPtyManager.createSession.mockResolvedValue(mockSession);
-      mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' }); // No sessions exist
+      mockExecFileAsync.mockResolvedValue({ stdout: '', stderr: '' }); // No sessions exist
 
       const sessionId = await zellijManager.attachToZellij('main');
 
@@ -174,7 +181,7 @@ describe('ZellijManager', () => {
     it('should add layout for new session', async () => {
       const mockSession = { sessionId: 'vt-456' };
       mockPtyManager.createSession.mockResolvedValue(mockSession);
-      mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' }); // No sessions exist
+      mockExecFileAsync.mockResolvedValue({ stdout: '', stderr: '' }); // No sessions exist
 
       const sessionId = await zellijManager.attachToZellij('dev', { layout: 'compact' });
 
@@ -188,8 +195,8 @@ describe('ZellijManager', () => {
     it('should not add layout for existing session', async () => {
       const mockSession = { sessionId: 'vt-789' };
       mockPtyManager.createSession.mockResolvedValue(mockSession);
-      mockExecAsync.mockImplementation((cmd) => {
-        if (cmd === 'zellij list-sessions') {
+      mockExecFileAsync.mockImplementation((cmd, args) => {
+        if (cmd === 'zellij' && args[0] === 'list-sessions') {
           return Promise.resolve({ stdout: 'dev [Created 10m ago]', stderr: '' });
         } else {
           return Promise.resolve({ stdout: '', stderr: '' });
@@ -208,25 +215,25 @@ describe('ZellijManager', () => {
 
   describe('killSession', () => {
     it('should kill a zellij session', async () => {
-      mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' });
+      mockExecFileAsync.mockResolvedValue({ stdout: '', stderr: '' });
 
       await zellijManager.killSession('old-session');
 
-      expect(mockExecAsync).toHaveBeenCalledWith("zellij kill-session 'old-session'", {
-        shell: '/bin/sh',
-      });
+      expect(mockExecFileAsync).toHaveBeenCalledWith('zellij', [
+        'delete-session',
+        '--force',
+        'old-session',
+      ]);
     });
   });
 
   describe('deleteSession', () => {
     it('should delete a zellij session', async () => {
-      mockExecAsync.mockResolvedValue({ stdout: '', stderr: '' });
+      mockExecFileAsync.mockResolvedValue({ stdout: '', stderr: '' });
 
       await zellijManager.deleteSession('old-session');
 
-      expect(mockExecAsync).toHaveBeenCalledWith("zellij delete-session 'old-session'", {
-        shell: '/bin/sh',
-      });
+      expect(mockExecFileAsync).toHaveBeenCalledWith('zellij', ['delete-session', 'old-session']);
     });
   });
 

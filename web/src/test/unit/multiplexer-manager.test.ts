@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PtyManager } from '../../server/pty/pty-manager.js';
 import { MultiplexerManager } from '../../server/services/multiplexer-manager.js';
+import { ScreenManager } from '../../server/services/screen-manager.js';
 import { TmuxManager } from '../../server/services/tmux-manager.js';
 import { ZellijManager } from '../../server/services/zellij-manager.js';
+import { TitleMode } from '../../shared/types.js';
 
 // Mock the managers
 vi.mock('../../server/services/tmux-manager.js');
 vi.mock('../../server/services/zellij-manager.js');
+vi.mock('../../server/services/screen-manager.js');
 
 // Mock PtyManager
 const mockPtyManager = {
@@ -17,6 +20,7 @@ describe('MultiplexerManager', () => {
   let multiplexerManager: MultiplexerManager;
   let mockTmuxManager: any;
   let mockZellijManager: any;
+  let mockScreenManager: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -47,9 +51,20 @@ describe('MultiplexerManager', () => {
       getCurrentSession: vi.fn(),
     };
 
+    mockScreenManager = {
+      isAvailable: vi.fn(),
+      listSessions: vi.fn(),
+      createSession: vi.fn(),
+      attachToSession: vi.fn(),
+      killSession: vi.fn(),
+      isInsideScreen: vi.fn(),
+      getCurrentSession: vi.fn(),
+    };
+
     // Mock getInstance methods
     vi.mocked(TmuxManager.getInstance).mockReturnValue(mockTmuxManager);
     vi.mocked(ZellijManager.getInstance).mockReturnValue(mockZellijManager);
+    vi.mocked(ScreenManager.getInstance).mockReturnValue(mockScreenManager);
 
     multiplexerManager = MultiplexerManager.getInstance(mockPtyManager);
   });
@@ -59,9 +74,10 @@ describe('MultiplexerManager', () => {
   });
 
   describe('getAvailableMultiplexers', () => {
-    it('should return status for both multiplexers', async () => {
+    it('should return status for all multiplexers', async () => {
       mockTmuxManager.isAvailable.mockResolvedValue(true);
       mockZellijManager.isAvailable.mockResolvedValue(false);
+      mockScreenManager.isAvailable.mockResolvedValue(false);
       mockTmuxManager.listSessions.mockResolvedValue([
         { name: 'main', windows: 2 },
         { name: 'dev', windows: 1 },
@@ -83,12 +99,18 @@ describe('MultiplexerManager', () => {
           type: 'zellij',
           sessions: [],
         },
+        screen: {
+          available: false,
+          type: 'screen',
+          sessions: [],
+        },
       });
     });
 
     it('should handle errors when listing sessions', async () => {
       mockTmuxManager.isAvailable.mockResolvedValue(true);
       mockZellijManager.isAvailable.mockResolvedValue(true);
+      mockScreenManager.isAvailable.mockResolvedValue(false);
       mockTmuxManager.listSessions.mockRejectedValue(new Error('tmux error'));
       mockZellijManager.listSessions.mockResolvedValue([
         { name: 'main', created: '1h ago', exited: false },
@@ -100,6 +122,7 @@ describe('MultiplexerManager', () => {
       expect(result.zellij.sessions).toEqual([
         { name: 'main', created: '1h ago', exited: false, type: 'zellij' },
       ]);
+      expect(result.screen.sessions).toEqual([]);
     });
   });
 
@@ -158,10 +181,18 @@ describe('MultiplexerManager', () => {
       expect(mockTmuxManager.createSession).not.toHaveBeenCalled();
     });
 
+    it('should create screen session', async () => {
+      await multiplexerManager.createSession('screen', 'new-session');
+
+      expect(mockScreenManager.createSession).toHaveBeenCalledWith('new-session', undefined);
+      expect(mockTmuxManager.createSession).not.toHaveBeenCalled();
+      expect(mockZellijManager.createSession).not.toHaveBeenCalled();
+    });
+
     it('should throw error for unknown multiplexer type', async () => {
       await expect(
-        multiplexerManager.createSession('screen' as any, 'new-session')
-      ).rejects.toThrow('Unknown multiplexer type: screen');
+        multiplexerManager.createSession('unknown' as any, 'new-session')
+      ).rejects.toThrow('Unknown multiplexer type: unknown');
     });
   });
 
@@ -204,9 +235,23 @@ describe('MultiplexerManager', () => {
       expect(mockZellijManager.attachToZellij).toHaveBeenCalledWith('main', undefined);
     });
 
+    it('should attach to screen session', async () => {
+      mockScreenManager.attachToSession.mockResolvedValue('screen -r main');
+      mockPtyManager.createSession.mockResolvedValue({ sessionId: 'vt-999' });
+
+      const sessionId = await multiplexerManager.attachToSession('screen', 'main');
+
+      expect(sessionId).toBe('vt-999');
+      expect(mockScreenManager.attachToSession).toHaveBeenCalledWith('main');
+      expect(mockPtyManager.createSession).toHaveBeenCalledWith(
+        ['screen', '-r', 'main'],
+        expect.objectContaining({ titleMode: TitleMode.DYNAMIC })
+      );
+    });
+
     it('should throw error for unknown multiplexer type', async () => {
-      await expect(multiplexerManager.attachToSession('screen' as any, 'main')).rejects.toThrow(
-        'Unknown multiplexer type: screen'
+      await expect(multiplexerManager.attachToSession('unknown' as any, 'main')).rejects.toThrow(
+        'Unknown multiplexer type: unknown'
       );
     });
   });
@@ -226,9 +271,17 @@ describe('MultiplexerManager', () => {
       expect(mockTmuxManager.killSession).not.toHaveBeenCalled();
     });
 
+    it('should kill screen session', async () => {
+      await multiplexerManager.killSession('screen', 'old-session');
+
+      expect(mockScreenManager.killSession).toHaveBeenCalledWith('old-session');
+      expect(mockTmuxManager.killSession).not.toHaveBeenCalled();
+      expect(mockZellijManager.killSession).not.toHaveBeenCalled();
+    });
+
     it('should throw error for unknown multiplexer type', async () => {
-      await expect(multiplexerManager.killSession('screen' as any, 'old-session')).rejects.toThrow(
-        'Unknown multiplexer type: screen'
+      await expect(multiplexerManager.killSession('unknown' as any, 'old-session')).rejects.toThrow(
+        'Unknown multiplexer type: unknown'
       );
     });
   });
@@ -248,15 +301,28 @@ describe('MultiplexerManager', () => {
       mockTmuxManager.isInsideTmux.mockReturnValue(false);
       mockZellijManager.isInsideZellij.mockReturnValue(true);
       mockZellijManager.getCurrentSession.mockReturnValue('dev');
+      mockScreenManager.isInsideScreen.mockReturnValue(false);
 
       const result = multiplexerManager.getCurrentMultiplexer();
 
       expect(result).toEqual({ type: 'zellij', session: 'dev' });
     });
 
+    it('should return screen when inside screen', () => {
+      mockTmuxManager.isInsideTmux.mockReturnValue(false);
+      mockZellijManager.isInsideZellij.mockReturnValue(false);
+      mockScreenManager.isInsideScreen.mockReturnValue(true);
+      mockScreenManager.getCurrentSession.mockReturnValue('myscreen');
+
+      const result = multiplexerManager.getCurrentMultiplexer();
+
+      expect(result).toEqual({ type: 'screen', session: 'myscreen' });
+    });
+
     it('should return null when not inside any multiplexer', () => {
       mockTmuxManager.isInsideTmux.mockReturnValue(false);
       mockZellijManager.isInsideZellij.mockReturnValue(false);
+      mockScreenManager.isInsideScreen.mockReturnValue(false);
 
       const result = multiplexerManager.getCurrentMultiplexer();
 
