@@ -548,7 +548,7 @@ describe('PushNotificationService', () => {
       await new Promise((resolve) => setTimeout(resolve, 100)); // allow time for listener to be registered
 
       expect(testNotificationHandler!).toBeDefined();
-      testNotificationHandler!({
+      testNotificationHandler?.({
         title: 'VibeTunnel Test',
         body: 'Push notifications are working correctly!',
       });
@@ -589,7 +589,7 @@ describe('PushNotificationService', () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(testNotificationHandler!).toBeDefined();
-      testNotificationHandler!({});
+      testNotificationHandler?.({});
 
       await testPromise;
 

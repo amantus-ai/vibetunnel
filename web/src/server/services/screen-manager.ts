@@ -33,7 +33,9 @@ export class ScreenManager {
     }
     // Allow dots for screen sessions (PID.name format), but still restrict dangerous chars
     if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
-      throw new Error('Session name can only contain letters, numbers, dots, dashes, and underscores');
+      throw new Error(
+        'Session name can only contain letters, numbers, dots, dashes, and underscores'
+      );
     }
     if (name.length > 100) {
       throw new Error('Session name too long (max 100 characters)');
@@ -99,7 +101,7 @@ export class ScreenManager {
       return sessions;
     } catch (error: any) {
       // If no sessions exist, screen returns "No Sockets found"
-      if (error.stdout && error.stdout.includes('No Sockets found')) {
+      if (error.stdout?.includes('No Sockets found')) {
         return [];
       }
       logger.error('Failed to list screen sessions', { error });
@@ -112,7 +114,7 @@ export class ScreenManager {
    */
   async createSession(sessionName: string, command?: string): Promise<void> {
     this.validateSessionName(sessionName);
-    
+
     try {
       // Remove PID prefix if present (for creating new sessions)
       const cleanName = sessionName.includes('.')
@@ -120,7 +122,7 @@ export class ScreenManager {
         : sessionName;
 
       const args = ['screen', '-dmS', cleanName];
-      
+
       // If command is provided, validate and add it
       if (command) {
         if (typeof command !== 'string') {
@@ -189,7 +191,7 @@ export class ScreenManager {
    */
   async killSession(sessionName: string): Promise<void> {
     this.validateSessionName(sessionName);
-    
+
     try {
       // Screen can be killed using the full name with PID or just the PID
       await execFileAsync('screen', ['-S', sessionName, '-X', 'quit']);
@@ -244,7 +246,7 @@ export class ScreenManager {
    */
   async createWindow(sessionName: string, windowName?: string, command?: string): Promise<void> {
     this.validateSessionName(sessionName);
-    
+
     try {
       const args = ['screen', '-S', sessionName, '-X', 'screen'];
 
@@ -277,7 +279,7 @@ export class ScreenManager {
   async killWindow(sessionName: string, windowIndex: number): Promise<void> {
     this.validateSessionName(sessionName);
     this.validateWindowIndex(windowIndex);
-    
+
     try {
       // First select the window, then kill it
       await execFileAsync('screen', ['-S', sessionName, '-p', String(windowIndex), '-X', 'kill']);

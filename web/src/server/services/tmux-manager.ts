@@ -25,7 +25,9 @@ export class TmuxManager {
     }
     // Only allow alphanumeric, dash, underscore, and dot
     if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
-      throw new Error('Session name can only contain letters, numbers, dots, dashes, and underscores');
+      throw new Error(
+        'Session name can only contain letters, numbers, dots, dashes, and underscores'
+      );
     }
     if (name.length > 100) {
       throw new Error('Session name too long (max 100 characters)');
@@ -77,7 +79,7 @@ export class TmuxManager {
       const { stdout } = await execFileAsync('tmux', [
         'list-sessions',
         '-F',
-        '#{session_name}|#{session_windows}|#{session_created}|#{?session_attached,attached,detached}|#{session_activity}|#{?session_active,active,}'
+        '#{session_name}|#{session_windows}|#{session_created}|#{?session_attached,attached,detached}|#{session_activity}|#{?session_active,active,}',
       ]);
 
       return stdout
@@ -108,14 +110,14 @@ export class TmuxManager {
    */
   async listWindows(sessionName: string): Promise<TmuxWindow[]> {
     this.validateSessionName(sessionName);
-    
+
     try {
       const { stdout } = await execFileAsync('tmux', [
         'list-windows',
         '-t',
         sessionName,
         '-F',
-        '#{session_name}|#{window_index}|#{window_name}|#{?window_active,active,}|#{window_panes}'
+        '#{session_name}|#{window_index}|#{window_name}|#{?window_active,active,}|#{window_panes}',
       ]);
 
       return stdout
@@ -146,18 +148,17 @@ export class TmuxManager {
     if (windowIndex !== undefined) {
       this.validateWindowIndex(windowIndex);
     }
-    
+
     try {
-      const targetArgs = windowIndex !== undefined 
-        ? [sessionName, String(windowIndex)].join(':')
-        : sessionName;
+      const targetArgs =
+        windowIndex !== undefined ? [sessionName, String(windowIndex)].join(':') : sessionName;
 
       const { stdout } = await execFileAsync('tmux', [
         'list-panes',
         '-t',
         targetArgs,
         '-F',
-        '#{session_name}|#{window_index}|#{pane_index}|#{?pane_active,active,}|#{pane_title}|#{pane_pid}|#{pane_current_command}|#{pane_width}|#{pane_height}|#{pane_current_path}'
+        '#{session_name}|#{window_index}|#{pane_index}|#{?pane_active,active,}|#{pane_title}|#{pane_pid}|#{pane_current_command}|#{pane_width}|#{pane_height}|#{pane_current_path}',
       ]);
 
       return stdout
@@ -191,10 +192,10 @@ export class TmuxManager {
    */
   async createSession(name: string, command?: string[]): Promise<void> {
     this.validateSessionName(name);
-    
+
     try {
       const args = ['new-session', '-d', '-s', name];
-      
+
       // If command is provided, add it as separate arguments
       if (command && command.length > 0) {
         // Validate command arguments
@@ -205,7 +206,7 @@ export class TmuxManager {
         }
         args.push(...command);
       }
-      
+
       await execFileAsync('tmux', args);
       logger.info('Created tmux session', { name, command });
     } catch (error) {
@@ -265,7 +266,7 @@ export class TmuxManager {
     if (paneIndex !== undefined) {
       this.validatePaneIndex(paneIndex);
     }
-    
+
     if (typeof command !== 'string') {
       throw new Error('Command must be a string');
     }
@@ -293,7 +294,7 @@ export class TmuxManager {
    */
   async killSession(sessionName: string): Promise<void> {
     this.validateSessionName(sessionName);
-    
+
     try {
       await execFileAsync('tmux', ['kill-session', '-t', sessionName]);
       logger.info('Killed tmux session', { sessionName });
@@ -309,7 +310,7 @@ export class TmuxManager {
   async killWindow(sessionName: string, windowIndex: number): Promise<void> {
     this.validateSessionName(sessionName);
     this.validateWindowIndex(windowIndex);
-    
+
     try {
       const target = `${sessionName}:${windowIndex}`;
       await execFileAsync('tmux', ['kill-window', '-t', target]);
@@ -328,12 +329,12 @@ export class TmuxManager {
     if (!paneId || typeof paneId !== 'string') {
       throw new Error('Pane ID must be a non-empty string');
     }
-    
+
     // Basic validation for pane ID format
     if (!/^[a-zA-Z0-9._:-]+$/.test(paneId)) {
       throw new Error('Invalid pane ID format');
     }
-    
+
     try {
       await execFileAsync('tmux', ['kill-pane', '-t', paneId]);
       logger.info('Killed tmux pane', { sessionName, paneId });
@@ -358,7 +359,9 @@ export class TmuxManager {
       return null;
     }
     try {
-      const result = execFileSync('tmux', ['display-message', '-p', '#{session_name}'], { encoding: 'utf8' });
+      const result = execFileSync('tmux', ['display-message', '-p', '#{session_name}'], {
+        encoding: 'utf8',
+      });
       return result.trim();
     } catch {
       return null;

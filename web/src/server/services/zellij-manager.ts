@@ -30,7 +30,9 @@ export class ZellijManager {
     }
     // Only allow alphanumeric, dash, underscore, and dot
     if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
-      throw new Error('Session name can only contain letters, numbers, dots, dashes, and underscores');
+      throw new Error(
+        'Session name can only contain letters, numbers, dots, dashes, and underscores'
+      );
     }
     if (name.length > 100) {
       throw new Error('Session name too long (max 100 characters)');
@@ -187,7 +189,7 @@ export class ZellijManager {
    */
   async killSession(sessionName: string): Promise<void> {
     this.validateSessionName(sessionName);
-    
+
     try {
       // Use delete-session with --force flag to handle both running and exited sessions
       await execFileAsync('zellij', ['delete-session', '--force', sessionName]);
@@ -203,7 +205,7 @@ export class ZellijManager {
    */
   async deleteSession(sessionName: string): Promise<void> {
     this.validateSessionName(sessionName);
-    
+
     try {
       await execFileAsync('zellij', ['delete-session', sessionName]);
       logger.info('Deleted zellij session', { sessionName });
