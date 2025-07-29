@@ -94,6 +94,9 @@ export class PushNotificationService {
       // Monitor permission changes
       this.monitorPermissionChanges();
 
+      // Auto-resubscribe if notifications were previously enabled
+      await this.autoResubscribe();
+
       this.initialized = true;
       logger.log('push notification service initialized');
     } catch (error) {
@@ -157,6 +160,38 @@ export class PushNotificationService {
         logger.error('error in subscription change callback:', error);
       }
     });
+  }
+
+  /**
+   * Auto-resubscribe if notifications were previously enabled
+   */
+  private async autoResubscribe(): Promise<void> {
+    try {
+      // Load saved preferences
+      const preferences = await this.loadPreferences();
+
+      // Check if notifications were previously enabled
+      if (preferences.enabled) {
+        // Check if we have permission but no subscription
+        const permission = this.getPermission();
+        if (permission === 'granted' && !this.pushSubscription) {
+          logger.log('Auto-resubscribing to push notifications based on saved preferences');
+
+          // Attempt to resubscribe
+          const subscription = await this.subscribe();
+          if (subscription) {
+            logger.log('Successfully auto-resubscribed to push notifications');
+          } else {
+            logger.warn('Failed to auto-resubscribe, user will need to manually enable');
+            // Update preferences to reflect the failed state
+            preferences.enabled = false;
+            await this.savePreferences(preferences);
+          }
+        }
+      }
+    } catch (error) {
+      logger.error('Error during auto-resubscribe:', error);
+    }
   }
 
   /**
@@ -327,36 +362,90 @@ export class PushNotificationService {
 
   /**
    * Test notification functionality
+   * Sends a test notification through the server to verify the full flow:
+   * Web → Server → SSE → Mac app
    */
   async testNotification(): Promise<void> {
-    if (!this.serviceWorkerRegistration) {
-      throw new Error('Service worker not initialized');
-    }
-
-    const permission = this.getPermission();
-    if (permission !== 'granted') {
-      throw new Error('Notification permission not granted');
-    }
+    logger.log('🔔 Testing notification system...');
 
     try {
-      await this.serviceWorkerRegistration.showNotification('VibeTunnel Test', {
-        body: 'Push notifications are working correctly!',
-        icon: '/apple-touch-icon.png',
-        badge: '/favicon-32.png',
-        tag: 'vibetunnel-test',
-        requireInteraction: false,
-        // Remove actions property as it's not standard in all browsers
-        // actions: [
-        //   {
-        //     action: 'dismiss',
-        //     title: 'Dismiss',
-        //   },
-        // ],
+      // Set up SSE listener for test notifications before sending the request
+      const eventSource = new EventSource('/api/events');
+      let receivedNotification = false;
+
+      // Promise that resolves when we receive the test notification
+      const notificationPromise = new Promise<void>((resolve) => {
+        const timeout = setTimeout(() => {
+          if (!receivedNotification) {
+            logger.warn('⏱️ Timeout waiting for SSE test notification');
+            eventSource.close();
+            resolve();
+          }
+        }, 5000); // 5 second timeout
+
+        eventSource.addEventListener('test-notification', async (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            logger.log('📨 Received test notification via SSE:', data);
+            receivedNotification = true;
+            clearTimeout(timeout);
+
+            // Show notification if we have permission
+            if (this.serviceWorkerRegistration && this.getPermission() === 'granted') {
+              await this.serviceWorkerRegistration.showNotification(
+                data.title || 'VibeTunnel Test',
+                {
+                  body: data.body || 'Test notification received via SSE!',
+                  icon: '/apple-touch-icon.png',
+                  badge: '/favicon-32.png',
+                  tag: 'vibetunnel-test-sse',
+                  requireInteraction: false,
+                }
+              );
+              logger.log('✅ Displayed SSE test notification');
+            }
+
+            eventSource.close();
+            resolve();
+          } catch (error) {
+            logger.error('Failed to handle SSE test notification:', error);
+            eventSource.close();
+            resolve();
+          }
+        });
+
+        eventSource.onerror = () => {
+          logger.error('SSE connection error');
+          eventSource.close();
+          resolve();
+        };
       });
 
-      logger.log('test notification sent');
+      // Send the test notification request to server
+      logger.log('📤 Sending test notification request to server...');
+      const response = await fetch('/api/test-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        logger.error('❌ Server test notification failed:', error);
+        eventSource.close();
+        throw new Error(error.error || 'Failed to send test notification');
+      }
+
+      const result = await response.json();
+      logger.log('✅ Server test notification sent successfully:', result);
+
+      // Wait for the SSE notification
+      await notificationPromise;
+
+      logger.log('🎉 Test notification complete - notification sent to all connected clients');
     } catch (error) {
-      logger.error('failed to send test notification:', error);
+      logger.error('❌ Test notification failed:', error);
       throw error;
     }
   }

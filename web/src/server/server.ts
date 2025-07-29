@@ -27,6 +27,7 @@ import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createRepositoryRoutes } from './routes/repositories.js';
 import { createSessionRoutes } from './routes/sessions.js';
+import { createTestNotificationRouter } from './routes/test-notification.js';
 import { WebSocketInputHandler } from './routes/websocket-input.js';
 import { createWorktreeRoutes } from './routes/worktrees.js';
 import { ActivityMonitor } from './services/activity-monitor.js';
@@ -412,12 +413,12 @@ export async function createApp(): Promise<AppInstance> {
   logger.debug('Configured security headers with helmet');
 
   // Add compression middleware with Brotli support
-  // Skip compression for SSE streams (asciicast)
+  // Skip compression for SSE streams (asciicast and events)
   app.use(
     compression({
       filter: (req, res) => {
-        // Skip compression for Server-Sent Events (asciicast streams)
-        if (req.path.match(/\/api\/sessions\/[^/]+\/stream$/)) {
+        // Skip compression for Server-Sent Events
+        if (req.path.match(/\/api\/sessions\/[^/]+\/stream$/) || req.path === '/api/events') {
           return false;
         }
         // Use default filter for other requests
@@ -427,7 +428,7 @@ export async function createApp(): Promise<AppInstance> {
       level: 6, // Balanced compression level
     })
   );
-  logger.debug('Configured compression middleware (with asciicast exclusion)');
+  logger.debug('Configured compression middleware (with SSE exclusion)');
 
   // Add JSON body parser middleware with size limit
   app.use(express.json({ limit: '10mb' }));
@@ -931,8 +932,12 @@ export async function createApp(): Promise<AppInstance> {
   }
 
   // Mount events router for SSE streaming
-  app.use('/api', createEventsRouter(ptyManager, sessionMonitor));
+  app.use('/api', createEventsRouter(sessionMonitor));
   logger.debug('Mounted events routes');
+
+  // Mount test notification router
+  app.use('/api', createTestNotificationRouter(sessionMonitor));
+  logger.debug('Mounted test notification routes');
 
   // Initialize control socket
   try {

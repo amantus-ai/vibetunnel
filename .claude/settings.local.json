@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(pnpm test:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(./scripts/vtlog.sh:*)",
+      "Bash(ls:*)"
     ],
     "deny": []
   },

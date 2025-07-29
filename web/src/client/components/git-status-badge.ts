@@ -2,7 +2,7 @@
  * Git Status Badge Component
  *
  * Displays git repository status information in a compact badge format.
- * Shows counts for modified, untracked, staged files, and ahead/behind commits.
+ * Shows counts for added, modified, deleted files, and ahead/behind commits.
  */
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
@@ -46,8 +46,8 @@ export class GitStatusBadge extends LitElement {
 
     const _hasLocalChanges =
       (this.session?.gitModifiedCount ?? 0) > 0 ||
-      (this.session?.gitUntrackedCount ?? 0) > 0 ||
-      (this.session?.gitStagedCount ?? 0) > 0;
+      (this.session?.gitAddedCount ?? 0) > 0 ||
+      (this.session?.gitDeletedCount ?? 0) > 0;
 
     const _hasRemoteChanges =
       (this.session?.gitAheadCount ?? 0) > 0 || (this.session?.gitBehindCount ?? 0) > 0;
@@ -79,10 +79,10 @@ export class GitStatusBadge extends LitElement {
   private renderLocalChanges() {
     if (!this.session) return null;
 
+    const addedCount = this.session?.gitAddedCount ?? 0;
     const modifiedCount = this.session?.gitModifiedCount ?? 0;
-    const untrackedCount = this.session?.gitUntrackedCount ?? 0;
-    const stagedCount = this.session?.gitStagedCount ?? 0;
-    const totalChanges = modifiedCount + untrackedCount + stagedCount;
+    const deletedCount = this.session?.gitDeletedCount ?? 0;
+    const totalChanges = addedCount + modifiedCount + deletedCount;
 
     if (totalChanges === 0 && !this.detailed) return null;
 
@@ -91,10 +91,10 @@ export class GitStatusBadge extends LitElement {
       return html`
         <span class="flex items-center gap-1">
           ${
-            stagedCount > 0
+            addedCount > 0
               ? html`
-            <span class="text-green-600 dark:text-green-400" title="Staged files">
-              +${stagedCount}
+            <span class="text-green-600 dark:text-green-400" title="New files">
+              +${addedCount}
             </span>
           `
               : null
@@ -109,10 +109,10 @@ export class GitStatusBadge extends LitElement {
               : null
           }
           ${
-            untrackedCount > 0
+            deletedCount > 0
               ? html`
-            <span class="text-blue-600 dark:text-blue-400" title="Untracked files">
-              ?${untrackedCount}
+            <span class="text-red-600 dark:text-red-400" title="Deleted files">
+              -${deletedCount}
             </span>
           `
               : null
@@ -122,7 +122,7 @@ export class GitStatusBadge extends LitElement {
     } else {
       // Compact view shows total with an indicator
       return html`
-        <span class="text-yellow-600 dark:text-yellow-400" title="${modifiedCount} modified, ${untrackedCount} untracked, ${stagedCount} staged">
+        <span class="text-yellow-600 dark:text-yellow-400" title="${addedCount} new, ${modifiedCount} modified, ${deletedCount} deleted">
           ●${totalChanges}
         </span>
       `;

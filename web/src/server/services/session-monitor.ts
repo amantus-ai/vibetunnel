@@ -10,6 +10,7 @@ import { EventEmitter } from 'events';
 import { ServerEventType } from '../../shared/types.js';
 import type { PtyManager } from '../pty/pty-manager.js';
 import { createLogger } from '../utils/logger.js';
+import type { SessionMonitorEvent } from '../websocket/control-protocol.js';
 
 const logger = createLogger('session-monitor');
 
@@ -138,7 +139,8 @@ export class SessionMonitor extends EventEmitter {
 
     // Detect bell character
     if (data.includes('\x07')) {
-      this.emit('bell', {
+      this.emitNotificationEvent({
+        type: 'bell',
         sessionId,
         sessionName: session.name,
         timestamp: new Date().toISOString(),
@@ -149,6 +151,38 @@ export class SessionMonitor extends EventEmitter {
     if (this.isClaudeSession(session)) {
       this.detectClaudePatterns(sessionId, session, data);
     }
+  }
+
+  /**
+   * Emit notification event for all clients (browsers and Mac app) via SSE
+   */
+  private emitNotificationEvent(event: SessionMonitorEvent) {
+    // Emit notification for all clients via SSE endpoint
+    this.emit('notification', {
+      type: this.mapActionToServerEventType(event.type),
+      sessionId: event.sessionId,
+      sessionName: event.sessionName,
+      timestamp: event.timestamp,
+      exitCode: event.exitCode,
+      command: event.command,
+      duration: event.duration,
+      message: event.type === 'claude-turn' ? 'Claude has finished responding' : undefined,
+    });
+  }
+
+  /**
+   * Map session monitor action to ServerEventType
+   */
+  private mapActionToServerEventType(action: SessionMonitorEvent['type']): ServerEventType {
+    const mapping = {
+      'session-start': ServerEventType.SessionStart,
+      'session-exit': ServerEventType.SessionExit,
+      'command-finished': ServerEventType.CommandFinished,
+      'command-error': ServerEventType.CommandError,
+      bell: ServerEventType.Bell,
+      'claude-turn': ServerEventType.ClaudeTurn,
+    };
+    return mapping[action];
   }
 
   /**
@@ -187,22 +221,24 @@ export class SessionMonitor extends EventEmitter {
 
       // Emit appropriate event based on exit code
       if (exitCode === 0) {
-        this.emit('notification', {
-          type: ServerEventType.CommandFinished,
+        this.emitNotificationEvent({
+          type: 'command-finished',
           sessionId,
           sessionName: session.name,
           command: session.lastCommand,
           duration,
           exitCode,
+          timestamp: new Date().toISOString(),
         });
       } else {
-        this.emit('notification', {
-          type: ServerEventType.CommandError,
+        this.emitNotificationEvent({
+          type: 'command-error',
           sessionId,
           sessionName: session.name,
           command: session.lastCommand,
           duration,
           exitCode,
+          timestamp: new Date().toISOString(),
         });
       }
     }
@@ -232,8 +268,8 @@ export class SessionMonitor extends EventEmitter {
     logger.info(`Session started: ${sessionId} - ${sessionName}`);
 
     // Emit notification event
-    this.emit('notification', {
-      type: ServerEventType.SessionStart,
+    this.emitNotificationEvent({
+      type: 'session-start',
       sessionId,
       sessionName,
       timestamp: new Date().toISOString(),
@@ -259,8 +295,8 @@ export class SessionMonitor extends EventEmitter {
     }
 
     // Emit notification event
-    this.emit('notification', {
-      type: ServerEventType.SessionExit,
+    this.emitNotificationEvent({
+      type: 'session-exit',
       sessionId,
       sessionName,
       exitCode,
@@ -317,12 +353,15 @@ export class SessionMonitor extends EventEmitter {
         if (currentSession?.activityStatus && !currentSession.activityStatus.isActive) {
           logger.info(`🔔 Claude turn detected for session: ${sessionId}`);
 
-          this.emit('notification', {
-            type: ServerEventType.ClaudeTurn,
+          this.emitNotificationEvent({
+            type: 'claude-turn',
             sessionId,
             sessionName: session.name,
-            message: 'Claude has finished responding',
             timestamp: new Date().toISOString(),
+            activityStatus: {
+              isActive: false,
+              app: 'claude',
+            },
           });
 
           this.claudeIdleNotified.add(sessionId);

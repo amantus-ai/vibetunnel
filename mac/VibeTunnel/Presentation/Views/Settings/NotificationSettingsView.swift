@@ -14,6 +14,7 @@ struct NotificationSettingsView: View {
 
     @State private var isTestingNotification = false
     @State private var showingPermissionAlert = false
+    @State private var sseConnectionStatus = false
 
     private func updateNotificationPreferences() {
         // Load current preferences from ConfigManager and notify the service
@@ -62,6 +63,36 @@ struct NotificationSettingsView: View {
                         Text("Display native macOS notifications for session and command events")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        
+                        // SSE Connection Status Row
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(sseConnectionStatus ? Color.green : Color.red)
+                                .frame(width: 8, height: 8)
+                            Text("Event Stream:")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(sseConnectionStatus ? "Connected" : "Disconnected")
+                                .font(.caption)
+                                .foregroundStyle(sseConnectionStatus ? .green : .red)
+                                .fontWeight(.medium)
+                            Spacer()
+                        }
+                        .help(sseConnectionStatus 
+                            ? "Real-time notification stream is connected" 
+                            : "Real-time notification stream is disconnected. Check if the server is running.")
+                        
+                        // Show warning when disconnected
+                        if showNotifications && !sseConnectionStatus {
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.yellow)
+                                    .font(.caption)
+                                Text("Real-time notifications are unavailable. The server connection may be down.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                     .padding(.vertical, 8)
                 }
@@ -152,10 +183,8 @@ struct NotificationSettingsView: View {
                                 Button("Test Notification") {
                                     Task {
                                         isTestingNotification = true
-                                        await notificationService.sendGenericNotification(
-                                            title: "VibeTunnel Test",
-                                            body: "This is a test notification to verify your settings are working correctly."
-                                        )
+                                        // Use server test notification to verify the full flow
+                                        await notificationService.sendServerTestNotification()
                                         // Reset button state after a delay
                                         try? await Task.sleep(nanoseconds: 1_000_000_000)
                                         isTestingNotification = false
@@ -194,6 +223,14 @@ struct NotificationSettingsView: View {
             .onAppear {
                 // Sync the AppStorage value with ConfigManager on first load
                 showNotifications = configManager.notificationsEnabled
+                
+                // Update initial connection status
+                sseConnectionStatus = notificationService.isSSEConnected
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .notificationServiceConnectionChanged)) { _ in
+                // Update connection status when it changes
+                sseConnectionStatus = notificationService.isSSEConnected
+                logger.debug("SSE connection status changed: \(sseConnectionStatus)")
             }
         }
         .alert("Notification Permission Required", isPresented: $showingPermissionAlert) {

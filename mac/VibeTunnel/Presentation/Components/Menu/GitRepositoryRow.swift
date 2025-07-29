@@ -36,12 +36,12 @@ struct GitRepositoryRow: View {
                                 .foregroundColor(AppColors.Fallback.gitModified(for: colorScheme))
                         }
                     }
-                    if repository.addedCount > 0 {
+                    if repository.untrackedCount > 0 {
                         HStack(spacing: 1) {
                             Image(systemName: "plus")
                                 .font(.system(size: 8, weight: .medium))
                                 .foregroundColor(AppColors.Fallback.gitAdded(for: colorScheme))
-                            Text("\(repository.addedCount)")
+                            Text("\(repository.untrackedCount)")
                                 .font(.system(size: 9, weight: .medium))
                                 .foregroundColor(AppColors.Fallback.gitAdded(for: colorScheme))
                         }
@@ -54,16 +54,6 @@ struct GitRepositoryRow: View {
                             Text("\(repository.deletedCount)")
                                 .font(.system(size: 9, weight: .medium))
                                 .foregroundColor(AppColors.Fallback.gitDeleted(for: colorScheme))
-                        }
-                    }
-                    if repository.untrackedCount > 0 {
-                        HStack(spacing: 1) {
-                            Image(systemName: "questionmark")
-                                .font(.system(size: 8))
-                                .foregroundColor(AppColors.Fallback.gitUntracked(for: colorScheme))
-                            Text("\(repository.untrackedCount)")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(AppColors.Fallback.gitUntracked(for: colorScheme))
                         }
                     }
                 }

@@ -12,7 +12,7 @@ const execFileAsync = promisify(execFile);
 
 export interface GitStatusCounts {
   modified: number;
-  untracked: number;
+  added: number;
   staged: number;
   deleted: number;
   ahead: number;
@@ -42,7 +42,7 @@ export async function getDetailedGitStatus(workingDir: string): Promise<GitStatu
     let aheadCount = 0;
     let behindCount = 0;
     let modifiedCount = 0;
-    let untrackedCount = 0;
+    let addedCount = 0;
     let stagedCount = 0;
     let deletedCount = 0;
 
@@ -80,15 +80,15 @@ export async function getDetailedGitStatus(workingDir: string): Promise<GitStatu
         deletedCount++;
       }
 
-      // Untracked files
+      // Added files (untracked)
       if (indexStatus === '?' && workingStatus === '?') {
-        untrackedCount++;
+        addedCount++;
       }
     }
 
     return {
       modified: modifiedCount,
-      untracked: untrackedCount,
+      added: addedCount,
       staged: stagedCount,
       deleted: deletedCount,
       ahead: aheadCount,
@@ -98,7 +98,7 @@ export async function getDetailedGitStatus(workingDir: string): Promise<GitStatu
     // Not a git repository or git command failed
     return {
       modified: 0,
-      untracked: 0,
+      added: 0,
       staged: 0,
       deleted: 0,
       ahead: 0,

@@ -27,6 +27,7 @@ export enum ServerEventType {
   Bell = 'bell',
   ClaudeTurn = 'claude-turn',
   Connected = 'connected',
+  TestNotification = 'test-notification',
 }
 
 /**
@@ -43,6 +44,9 @@ export interface ServerEvent {
   processInfo?: string;
   message?: string;
   timestamp: string; // ISO 8601 format
+  // Test notification specific fields
+  title?: string;
+  body?: string;
 }
 
 /**

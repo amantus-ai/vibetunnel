@@ -204,9 +204,19 @@ export class DirectKeyboardManager {
       // Focus synchronously - critical for iOS Safari
       this.hiddenInput.focus();
 
-      // Also click synchronously to help trigger keyboard
-      this.hiddenInput.click();
-      logger.log('Focused and clicked hidden input synchronously');
+      // Set a dummy value and select it to help trigger iOS keyboard
+      // This helps iOS recognize that we want to show the keyboard
+      this.hiddenInput.value = ' ';
+      this.hiddenInput.setSelectionRange(0, 1);
+
+      // Clear the dummy value after a short delay
+      setTimeout(() => {
+        if (this.hiddenInput) {
+          this.hiddenInput.value = '';
+        }
+      }, 50);
+
+      logger.log('Focused hidden input with dummy value trick');
     }
   }
 

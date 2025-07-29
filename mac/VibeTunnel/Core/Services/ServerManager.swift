@@ -65,6 +65,11 @@ class ServerManager {
         bunServer?.localToken
     }
 
+    /// The current authentication mode of the server
+    var authMode: String {
+        bunServer?.authMode ?? "os"
+    }
+
     var bindAddress: String {
         get {
             // Get the raw value from UserDefaults, defaulting to the app default
@@ -100,6 +105,11 @@ class ServerManager {
     private(set) var isRunning = false
     private(set) var isRestarting = false
     private(set) var lastError: Error?
+
+    /// The process ID of the running server, if available
+    var serverProcessId: Int32? {
+        bunServer?.processIdentifier
+    }
 
     /// Track if we're in the middle of handling a crash to prevent multiple restarts
     private var isHandlingCrash = false
@@ -268,9 +278,6 @@ class ServerManager {
             // The handler registers itself with SharedUnixSocketManager during init
             _ = TerminalControlHandler.shared
 
-            // Initialize notification control handler
-            _ = NotificationControlHandler.shared
-
             // Note: SystemControlHandler is initialized in AppDelegate via
             // SharedUnixSocketManager.initializeSystemHandler()
 
@@ -307,8 +314,7 @@ class ServerManager {
 
         isRunning = false
 
-        // Post notification that server state has changed
-        NotificationCenter.default.post(name: .serverStateChanged, object: nil)
+        // Notification service connection is now handled explicitly via start() method
 
         // Clear the auth token from SessionMonitor
         SessionMonitor.shared.setLocalAuthToken(nil)
@@ -379,9 +385,9 @@ class ServerManager {
 
             if let httpResponse = response as? HTTPURLResponse {
                 if httpResponse.statusCode == 200 {
-                    // Try to parse the response
+                    // Parse the server response
                     if let jsonData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let cleanedCount = jsonData["cleaned_count"] as? Int
+                       let cleanedCount = jsonData["localCleaned"] as? Int
                     {
                         logger.info("Initial cleanup completed: cleaned \(cleanedCount) exited sessions")
                     } else {

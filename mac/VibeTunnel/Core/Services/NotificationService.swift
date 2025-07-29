@@ -21,6 +21,9 @@ final class NotificationService: NSObject {
     private var isConnected = false
     private var recentlyNotifiedSessions = Set<String>()
     private var notificationCleanupTimer: Timer?
+    
+    /// Public property to check SSE connection status
+    var isSSEConnected: Bool { isConnected }
 
     /// Notification types that can be enabled/disabled
     struct NotificationPreferences {
@@ -63,14 +66,57 @@ final class NotificationService: NSObject {
 
     /// Start monitoring server events
     func start() async {
+        logger.info("🚀 NotificationService.start() called")
+        
+        // Check if notifications are enabled in config
+        guard configManager.notificationsEnabled else {
+            logger.info("📴 Notifications are disabled in config, skipping SSE connection")
+            return
+        }
+        
         guard serverManager.isRunning else {
             logger.warning("🔴 Server not running, cannot start notification service")
             return
         }
 
-        logger.info("🔔 Starting notification service...")
+        logger.info("🔔 Starting notification service - server is running on port \(self.serverManager.port)")
 
-        connect()
+        // Wait for Unix socket to be ready before connecting SSE
+        // This ensures the server is fully ready to accept connections
+        await MainActor.run {
+            waitForUnixSocketAndConnect()
+        }
+    }
+    
+    /// Wait for Unix socket ready notification then connect
+    private func waitForUnixSocketAndConnect() {
+        logger.info("⏳ Waiting for Unix socket ready notification...")
+        
+        // Check if Unix socket is already connected
+        if SharedUnixSocketManager.shared.isConnected {
+            logger.info("✅ Unix socket already connected, connecting to SSE immediately")
+            connect()
+            return
+        }
+        
+        // Listen for Unix socket ready notification
+        NotificationCenter.default.addObserver(
+            forName: SharedUnixSocketManager.unixSocketReadyNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.logger.info("✅ Unix socket ready notification received, connecting to SSE")
+                self?.connect()
+                
+                // Remove observer after first notification to prevent duplicate connections
+                NotificationCenter.default.removeObserver(
+                    self as Any,
+                    name: SharedUnixSocketManager.unixSocketReadyNotification,
+                    object: nil
+                )
+            }
+        }
     }
 
     /// Stop monitoring server events
@@ -372,59 +418,48 @@ final class NotificationService: NSObject {
     // MARK: - Private Methods
 
     private func setupNotifications() {
-        // Listen for server state changes
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(serverStateChanged),
-            name: .serverStateChanged,
-            object: nil
-        )
+        // Note: We do NOT listen for server state changes here
+        // Connection is managed explicitly via start() and stop() methods
+        // This prevents dual-path connection attempts
     }
 
-    @objc
-    private func serverStateChanged(_ notification: Notification) {
-        if serverManager.isRunning {
-            logger.info("🔔 Server started, initializing notification service...")
-            // Delay connection to ensure server is ready
-            Task {
-                try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds (increased delay)
-                await MainActor.run {
-                    if serverManager.isRunning {
-                        logger.info("🔔 Server ready, connecting notification service...")
-                        connect()
-                    } else {
-                        logger.warning("🔴 Server stopped before notification service could connect")
-                    }
-                }
-            }
-        } else {
-            logger.info("🔔 Server stopped, disconnecting notification service...")
-            disconnect()
-        }
-    }
 
     private func connect() {
+        logger.info("🔌 NotificationService.connect() called - isConnected: \(self.isConnected)")
         guard !isConnected else {
             logger.info("Already connected to notification service")
             return
         }
 
-        guard let authToken = serverManager.localAuthToken else {
-            logger.error("No auth token available for notification service")
+        // When auth mode is "none", we can connect without a token.
+        // In any other auth mode, a token is required for the local Mac app to connect.
+        if serverManager.authMode != "none", serverManager.localAuthToken == nil {
+            logger.error("No auth token available for notification service in auth mode '\(self.serverManager.authMode)'")
             return
         }
 
-        guard let url = URL(string: "http://localhost:\(serverManager.port)/events") else {
-            logger.error("Invalid events URL")
+        let eventsURL = "http://localhost:\(self.serverManager.port)/api/events"
+        logger.info("📡 Attempting to connect to SSE endpoint: \(eventsURL)")
+        
+        guard let url = URL(string: eventsURL) else {
+            logger.error("Invalid events URL: \(eventsURL)")
             return
         }
 
         // Create headers
         var headers: [String: String] = [
-            "Authorization": "Bearer \(authToken)",
             "Accept": "text/event-stream",
             "Cache-Control": "no-cache"
         ]
+
+        // Add authorization header if auth token is available.
+        // When auth mode is "none", there's no token, and that's okay.
+        if let authToken = serverManager.localAuthToken {
+            headers["Authorization"] = "Bearer \(authToken)"
+            logger.info("🔑 Using auth token for SSE connection")
+        } else {
+            logger.info("🔓 Connecting to SSE without an auth token (auth mode: '\(self.serverManager.authMode)')")
+        }
 
         // Add custom header to indicate this is the Mac app
         headers["X-VibeTunnel-Client"] = "mac-app"
@@ -435,6 +470,8 @@ final class NotificationService: NSObject {
             Task { @MainActor in
                 self?.logger.info("✅ Connected to notification event stream")
                 self?.isConnected = true
+                // Post notification for UI update
+                NotificationCenter.default.post(name: .notificationServiceConnectionChanged, object: nil)
             }
         }
 
@@ -444,12 +481,15 @@ final class NotificationService: NSObject {
                     self?.logger.error("❌ EventSource error: \(error)")
                 }
                 self?.isConnected = false
+                // Post notification for UI update
+                NotificationCenter.default.post(name: .notificationServiceConnectionChanged, object: nil)
                 // Don't reconnect here - let server state changes trigger reconnection
             }
         }
 
         eventSource?.onMessage = { [weak self] event in
             Task { @MainActor in
+                self?.logger.info("🎯 EventSource onMessage fired! Event type: \(event.event ?? "default"), Has data: \(event.data != nil)")
                 self?.handleEvent(event)
             }
         }
@@ -462,12 +502,19 @@ final class NotificationService: NSObject {
         eventSource = nil
         isConnected = false
         logger.info("Disconnected from notification service")
+        // Post notification for UI update
+        NotificationCenter.default.post(name: .notificationServiceConnectionChanged, object: nil)
     }
 
     private func handleEvent(_ event: Event) {
-        guard let data = event.data else { return }
+        guard let data = event.data else { 
+            logger.warning("Received event with no data")
+            return 
+        }
 
-        logger.debug("📨 Received event: \(data)")
+        // Log event details for debugging
+        logger.debug("📨 Received SSE event - Type: \(event.event ?? "message"), ID: \(event.id ?? "none")")
+        logger.debug("📨 Event data: \(data)")
 
         do {
             guard let jsonData = data.data(using: .utf8) else {
@@ -528,6 +575,9 @@ final class NotificationService: NSObject {
                 }
             case "connected":
                 logger.info("🔗 Received connected event from server")
+            case "test-notification":
+                logger.info("🧪 Processing test-notification event")
+                handleTestNotification(json)
             // No notification for connected events
             default:
                 logger.warning("Unknown event type: \(type)")
@@ -673,6 +723,27 @@ final class NotificationService: NSObject {
         deliverNotification(content, identifier: "bell-\(sessionId)-\(Date().timeIntervalSince1970)")
     }
 
+    private func handleTestNotification(_ json: [String: Any]) {
+        logger.info("🧪 Handling test notification from server")
+        
+        let title = json["title"] as? String ?? "VibeTunnel Test"
+        let body = json["body"] as? String ?? "Server-side notifications are working correctly!"
+        let message = json["message"] as? String
+        
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        if let message = message {
+            content.subtitle = message
+        }
+        content.sound = getNotificationSound()
+        content.categoryIdentifier = "TEST"
+        content.userInfo = ["type": "test-notification"]
+        
+        logger.info("📤 Delivering test notification: \(title) - \(body)")
+        deliverNotification(content, identifier: "test-\(UUID().uuidString)")
+    }
+    
     private func handleClaudeTurn(_ json: [String: Any]) {
         guard let sessionId = json["sessionId"] as? String else {
             logger.error("Claude turn event missing sessionId")
@@ -729,6 +800,70 @@ final class NotificationService: NSObject {
         }
     }
 
+    /// Send a test notification through the server to verify the full flow
+    func sendServerTestNotification() async {
+        logger.info("🧪 Sending test notification through server...")
+        
+        // Check if server is running
+        guard serverManager.isRunning else {
+            logger.error("❌ Cannot send test notification - server is not running")
+            return
+        }
+        
+        // If not connected to SSE, try to connect first
+        if !isConnected {
+            logger.warning("⚠️ Not connected to SSE endpoint, attempting to connect...")
+            await MainActor.run {
+                connect()
+            }
+            // Give it a moment to connect
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        }
+        
+        // Log server info
+        logger.info("Server info - Port: \(self.serverManager.port), Running: \(self.serverManager.isRunning), SSE Connected: \(self.isConnected)")
+        
+        guard let url = serverManager.buildURL(endpoint: "/api/test-notification") else {
+            logger.error("❌ Failed to build test notification URL")
+            return
+        }
+        
+        logger.info("📤 Sending POST request to: \(url)")
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Add auth token if available
+        if let authToken = serverManager.localAuthToken {
+            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+            logger.debug("Added auth token to request")
+        }
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                logger.info("📥 Received response - Status: \(httpResponse.statusCode)")
+                
+                if httpResponse.statusCode == 200 {
+                    logger.info("✅ Server test notification sent successfully")
+                    if let responseData = String(data: data, encoding: .utf8) {
+                        logger.debug("Response data: \(responseData)")
+                    }
+                } else {
+                    logger.error("❌ Server test notification failed with status: \(httpResponse.statusCode)")
+                    if let errorData = String(data: data, encoding: .utf8) {
+                        logger.error("Error response: \(errorData)")
+                    }
+                }
+            }
+        } catch {
+            logger.error("❌ Failed to send server test notification: \(error)")
+            logger.error("Error details: \(error.localizedDescription)")
+        }
+    }
+
     deinit {
         // Note: We can't call disconnect() here because it's @MainActor isolated
         // The cleanup will happen when the EventSource is deallocated
@@ -736,8 +871,3 @@ final class NotificationService: NSObject {
     }
 }
 
-// MARK: - Extensions
-
-extension Notification.Name {
-    static let serverStateChanged = Notification.Name("ServerStateChanged")
-}

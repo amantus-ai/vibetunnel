@@ -1,99 +1,14 @@
+import SwiftUI
 import AppKit
 import os.log
-import SwiftUI
 
-/// Security & Permissions settings tab for authentication and system permissions
-struct SecurityPermissionsSettingsView: View {
-    @AppStorage(AppConstants.UserDefaultsKeys.authenticationMode)
-    private var authModeString = "os"
-
-    @State private var authMode: AuthenticationMode = .osAuth
-
-    @Environment(SystemPermissionManager.self)
-    private var permissionManager
-    @Environment(ServerManager.self)
-    private var serverManager
-
-    @State private var permissionUpdateTrigger = 0
-
-    private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "SecurityPermissionsSettings")
-
-    // MARK: - Helper Properties
-
-    // IMPORTANT: These computed properties ensure the UI always shows current permission state.
-    // The permissionUpdateTrigger dependency forces SwiftUI to re-evaluate these properties
-    // when permissions change. Without this, the UI would not update when permissions are
-    // granted in System Settings while this view is visible.
-    //
-    // We use computed properties instead of @State to avoid UI flashing - the initial
-    // permission check in .task happens before the first render, ensuring correct state
-    // from the start.
-    private var hasAppleScriptPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.appleScript)
-    }
-
-    private var hasAccessibilityPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.accessibility)
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                SecuritySection(
-                    authMode: $authMode,
-                    enableSSHKeys: .constant(authMode == .sshKeys || authMode == .both),
-                    logger: logger,
-                    serverManager: serverManager
-                )
-
-                PermissionsSection(
-                    hasAppleScriptPermission: hasAppleScriptPermission,
-                    hasAccessibilityPermission: hasAccessibilityPermission,
-                    permissionManager: permissionManager
-                )
-            }
-            .formStyle(.grouped)
-            .frame(minWidth: 500, idealWidth: 600)
-            .scrollContentBackground(.hidden)
-            .navigationTitle("Security")
-            .onAppear {
-                onAppearSetup()
-                // Register for continuous monitoring
-                permissionManager.registerForMonitoring()
-            }
-            .task {
-                // Check permissions before first render to avoid UI flashing
-                await permissionManager.checkAllPermissions()
-            }
-            .onDisappear {
-                permissionManager.unregisterFromMonitoring()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .permissionsUpdated)) { _ in
-                // Increment trigger to force computed property re-evaluation
-                permissionUpdateTrigger += 1
-            }
-        }
-    }
-
-    // MARK: - Private Methods
-
-    private func onAppearSetup() {
-        // Initialize authentication mode from stored value
-        let storedMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.authenticationMode) ?? "os"
-        authMode = AuthenticationMode(rawValue: storedMode) ?? .osAuth
-    }
-}
-
-// MARK: - Security Section
-
-private struct SecuritySection: View {
+/// Authentication configuration section for remote access settings
+struct AuthenticationSection: View {
     @Binding var authMode: AuthenticationMode
     @Binding var enableSSHKeys: Bool
     let logger: Logger
     let serverManager: ServerManager
-
+    
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 16) {
@@ -118,21 +33,19 @@ private struct SecuritySection: View {
                                 newValue.rawValue,
                                 forKey: AppConstants.UserDefaultsKeys.authenticationMode
                             )
-
                             Task {
                                 logger.info("Authentication mode changed to: \(newValue.rawValue)")
                                 await serverManager.restart()
                             }
                         }
                     }
-
                     Text(authMode.description)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-
+                
                 // Additional info based on selected mode
                 if authMode == .osAuth || authMode == .both {
                     HStack(alignment: .center, spacing: 6) {
@@ -146,7 +59,7 @@ private struct SecuritySection: View {
                         Spacer()
                     }
                 }
-
+                
                 if authMode == .sshKeys || authMode == .both {
                     HStack(alignment: .center, spacing: 6) {
                         Image(systemName: "key.fill")
@@ -188,10 +101,22 @@ private struct SecuritySection: View {
     }
 }
 
-// MARK: - Previews
-
-#Preview("Security & Permissions Settings") {
-    SecurityPermissionsSettingsView()
-        .frame(width: 500, height: 600)
-        .environment(SystemPermissionManager.shared)
+#Preview {
+    struct PreviewWrapper: View {
+        @State var authMode = AuthenticationMode.osAuth
+        @State var enableSSHKeys = false
+        
+        var body: some View {
+            AuthenticationSection(
+                authMode: $authMode,
+                enableSSHKeys: $enableSSHKeys,
+                logger: Logger(subsystem: "preview", category: "auth"),
+                serverManager: ServerManager.shared
+            )
+            .frame(width: 500)
+            .padding()
+        }
+    }
+    
+    return PreviewWrapper()
 }

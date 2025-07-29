@@ -282,12 +282,18 @@ VibeTunnel includes a powerful log viewing utility for debugging and monitoring:
 
 **Common usage**:
 ```bash
-./scripts/vtlog.sh -f              # Follow logs in real-time
+# View recent logs (RECOMMENDED for debugging):
 ./scripts/vtlog.sh -n 200           # Show last 200 lines
+./scripts/vtlog.sh -n 500 -s "error" # Search last 500 lines for "error"
 ./scripts/vtlog.sh -e               # Show only errors
 ./scripts/vtlog.sh -c ServerManager # Show logs from specific component
 ./scripts/vtlog.sh --server -e      # Show server errors
+
+# Follow logs in real-time (AVOID in Claude Code - causes timeouts):
+./scripts/vtlog.sh -f              # Follow logs in real-time - DO NOT USE for checking existing logs
 ```
+
+**Important for Claude Code**: Always use `-n` to check a specific number of recent log lines. Do NOT use `-f` (follow mode) as it will block and timeout after 2 minutes. Follow mode is only useful when monitoring logs in a separate terminal while performing actions.
 
 **Log prefixes**:
 - `[FE]` - Frontend (browser) logs
@@ -406,6 +412,18 @@ The agent will:
 4. Resolve any warning messages
 5. Verify the build succeeds after fixes
 
+## NO BACKWARDS COMPATIBILITY - EVER!
+
+**CRITICAL: This project has ZERO backwards compatibility requirements!**
+- The Mac app and web server are ALWAYS shipped together as a single unit
+- There is NEVER a scenario where different versions talk to each other
+- When fixing bugs or changing APIs:
+  - Just change both sides to match
+  - Delete old code completely
+  - Don't add compatibility layers
+  - Don't check for "old format" vs "new format"
+  - Don't add fallbacks for older versions
+- If you suggest backwards compatibility in any form, you have failed to understand this project
 ## Key Files Quick Reference
 
 - Architecture Details: `docs/ARCHITECTURE.md`

@@ -46,12 +46,12 @@ public struct GitRepository: Sendable, Equatable, Hashable {
 
     /// Whether the repository has uncommitted changes
     public var hasChanges: Bool {
-        modifiedCount > 0 || addedCount > 0 || deletedCount > 0 || untrackedCount > 0
+        modifiedCount > 0 || deletedCount > 0 || untrackedCount > 0
     }
 
     /// Total number of files with changes
     public var totalChangedFiles: Int {
-        modifiedCount + addedCount + deletedCount + untrackedCount
+        modifiedCount + deletedCount + untrackedCount
     }
 
     /// Folder name for display
@@ -66,17 +66,14 @@ public struct GitRepository: Sendable, Equatable, Hashable {
         }
 
         var parts: [String] = []
+        if untrackedCount > 0 {
+            parts.append("\(untrackedCount)N")
+        }
         if modifiedCount > 0 {
             parts.append("\(modifiedCount)M")
         }
-        if addedCount > 0 {
-            parts.append("\(addedCount)A")
-        }
         if deletedCount > 0 {
             parts.append("\(deletedCount)D")
-        }
-        if untrackedCount > 0 {
-            parts.append("\(untrackedCount)U")
         }
         return parts.joined(separator: " ")
     }

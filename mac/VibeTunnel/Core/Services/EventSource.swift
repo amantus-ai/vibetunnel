@@ -1,6 +1,12 @@
 import Foundation
 import os.log
 
+extension Data {
+    var hexString: String {
+        map { String(format: "%02hhx", $0) }.joined()
+    }
+}
+
 /// Event received from an EventSource (Server-Sent Events) stream
 struct Event {
     let id: String?
@@ -46,13 +52,18 @@ final class EventSource: NSObject {
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = 0 // No timeout for SSE
         configuration.timeoutIntervalForResource = 0
+        // Disable automatic decompression for SSE streaming
+        configuration.httpAdditionalHeaders = ["Accept-Encoding": "identity"]
         self.urlSession = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
     }
 
     // MARK: - Connection Management
 
     func connect() {
-        guard !isConnected else { return }
+        guard !isConnected else { 
+            logger.warning("Already connected, ignoring connect request")
+            return 
+        }
 
         var request = URLRequest(url: url)
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
@@ -68,10 +79,13 @@ final class EventSource: NSObject {
             request.setValue(lastEventId, forHTTPHeaderField: "Last-Event-ID")
         }
 
-        logger.debug("Connecting to EventSource: \(self.url)")
+        logger.info("🔌 Connecting to EventSource: \(self.url)")
+        logger.debug("Headers: \(request.allHTTPHeaderFields ?? [:])")
 
         dataTask = urlSession?.dataTask(with: request)
         dataTask?.resume()
+        
+        logger.info("📡 EventSource dataTask started")
     }
 
     func disconnect() {
@@ -85,6 +99,7 @@ final class EventSource: NSObject {
     // MARK: - Event Parsing
 
     private func processBuffer() {
+        logger.debug("🔄 Processing buffer with \(self.buffer.count) characters")
         let lines = buffer.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         var eventData: [String] = []
         var eventType: String?
@@ -121,6 +136,7 @@ final class EventSource: NSObject {
                     }
 
                     // Dispatch event
+                    logger.debug("🎯 Dispatching event - type: \(event.event ?? "default"), data: \(event.data ?? "none")")
                     DispatchQueue.main.async {
                         self.onMessage?(event)
                     }
@@ -180,13 +196,19 @@ extension EventSource: URLSessionDataDelegate {
         didReceive response: URLResponse,
         completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
     ) {
+        logger.info("📥 URLSession didReceive response")
+        
         guard let httpResponse = response as? HTTPURLResponse else {
+            logger.error("Response is not HTTPURLResponse")
             completionHandler(.cancel)
             return
         }
 
+        logger.info("Response status: \(httpResponse.statusCode), headers: \(httpResponse.allHeaderFields)")
+
         if httpResponse.statusCode == 200 {
             isConnected = true
+            logger.info("✅ EventSource connected successfully")
             DispatchQueue.main.async {
                 self.onOpen?()
             }
@@ -201,8 +223,23 @@ extension EventSource: URLSessionDataDelegate {
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-        guard let text = String(data: data, encoding: .utf8) else { return }
+        logger.debug("📨 EventSource received \(data.count) bytes of data")
+        
+        // Check if data might be compressed
+        if data.count > 2 {
+            let header = [UInt8](data.prefix(2))
+            if header[0] == 0x1f && header[1] == 0x8b {
+                logger.error("❌ Received gzip compressed data! SSE should not be compressed.")
+                return
+            }
+        }
+        
+        guard let text = String(data: data, encoding: .utf8) else { 
+            logger.error("Failed to decode data as UTF-8. First 20 bytes: \(data.prefix(20).hexString)")
+            return 
+        }
 
+        logger.debug("📨 EventSource received text: \(text)")
         buffer += text
         processBuffer()
     }

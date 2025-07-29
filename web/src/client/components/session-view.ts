@@ -990,9 +990,13 @@ export class SessionView extends LitElement {
           grid-template-columns: 1fr;
           height: 100vh;
           height: 100dvh;
+          width: 100%;
+          max-width: 100vw;
           position: relative;
           background-color: rgb(var(--color-bg));
           font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+          overflow: hidden;
+          box-sizing: border-box;
         }
         
         /* Adjust grid when keyboard is visible */

@@ -2,11 +2,19 @@
  * Git File Watcher Service
  *
  * Monitors git repositories for file changes and broadcasts git status updates via SSE.
- * Simply watches for any file system changes and lets Git determine what's important.
+ *
+ * Uses a shallow watch strategy to prevent EMFILE errors:
+ * - Watches repository root at depth 0 (immediate children only)
+ * - Watches specific .git files that affect status
+ * - Combined with periodic polling to catch any missed changes
+ *
+ * This approach prevents watching thousands of files in large repos while still
+ * detecting both tracked and untracked file changes.
  */
 
 import * as chokidar from 'chokidar';
 import type { Response } from 'express';
+import { accessSync } from 'fs';
 import { type GitStatusCounts, getDetailedGitStatus } from '../utils/git-status.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -19,6 +27,7 @@ interface WatcherInfo {
   gitRepoPath: string;
   lastStatus?: GitStatusCounts;
   debounceTimer?: NodeJS.Timeout;
+  periodicCheckTimer?: NodeJS.Timeout;
   clients: Set<Response>;
 }
 
@@ -37,31 +46,56 @@ export class GitWatcher {
 
     logger.debug(`Starting git watcher for session ${sessionId} at ${gitRepoPath}`);
 
-    // Watch the repository root, but ignore performance-killing directories
+    // Watch strategy:
+    // 1. Watch the repository root at depth 0 (only immediate files/folders)
+    // 2. Watch .git directory separately for git operations
+    // This gives us file change detection without watching thousands of files
+
     const watcher = chokidar.watch(gitRepoPath, {
       ignoreInitial: true,
       ignored: [
-        // Ignore directories that would kill performance
+        // Always ignore these to prevent performance issues
         '**/node_modules/**',
-        '**/.git/objects/**', // Git's object database - huge and changes don't matter
-        '**/.git/logs/**', // Git's log files - not relevant for status
+        '**/.git/objects/**', // Git's object database - huge
+        '**/.git/logs/**', // Git's log files
         '**/dist/**',
         '**/build/**',
         '**/.next/**',
         '**/coverage/**',
         '**/.turbo/**',
         '**/*.log',
+        '**/.DS_Store',
       ],
+      // CRITICAL: Only watch immediate children, not recursive
+      depth: 0,
       // Don't follow symlinks to avoid infinite loops
       followSymlinks: false,
       // Use native events for better performance
       usePolling: false,
-      // Optimize for performance
-      awaitWriteFinish: {
-        stabilityThreshold: 200,
-        pollInterval: 100,
-      },
+      // Don't wait for write to finish - we'll debounce anyway
+      awaitWriteFinish: false,
     });
+
+    // Also watch specific git files that affect status
+    const gitPaths = [
+      `${gitRepoPath}/.git/index`,
+      `${gitRepoPath}/.git/HEAD`,
+      `${gitRepoPath}/.git/refs/heads`,
+    ].filter((path) => {
+      try {
+        accessSync(path);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+
+    if (gitPaths.length > 0) {
+      // Add git paths to the watcher
+      watcher.add(gitPaths);
+    }
+
+    logger.debug(`Git watcher started for session ${sessionId} with shallow directory watching`);
 
     const watcherInfo: WatcherInfo = {
       watcher,
@@ -101,6 +135,12 @@ export class GitWatcher {
 
     // Get initial status
     this.checkAndBroadcastStatus(watcherInfo);
+
+    // Start periodic check every 2 seconds to catch working directory changes
+    // This complements the git file watching and ensures we don't miss changes
+    watcherInfo.periodicCheckTimer = setInterval(() => {
+      this.checkAndBroadcastStatus(watcherInfo);
+    }, 2000);
   }
 
   /**
@@ -160,6 +200,11 @@ export class GitWatcher {
       clearTimeout(watcherInfo.debounceTimer);
     }
 
+    // Clear periodic check timer
+    if (watcherInfo.periodicCheckTimer) {
+      clearInterval(watcherInfo.periodicCheckTimer);
+    }
+
     // Close watcher
     watcherInfo.watcher.close();
 
@@ -198,8 +243,9 @@ export class GitWatcher {
 
     return (
       oldStatus.modified !== newStatus.modified ||
-      oldStatus.untracked !== newStatus.untracked ||
+      oldStatus.added !== newStatus.added ||
       oldStatus.staged !== newStatus.staged ||
+      oldStatus.deleted !== newStatus.deleted ||
       oldStatus.ahead !== newStatus.ahead ||
       oldStatus.behind !== newStatus.behind
     );
@@ -223,8 +269,8 @@ export class GitWatcher {
         type: 'git-status-update',
         sessionId,
         gitModifiedCount: status.modified,
-        gitUntrackedCount: status.untracked,
-        gitStagedCount: status.staged,
+        gitAddedCount: status.added,
+        gitDeletedCount: status.deleted,
         gitAheadCount: status.ahead,
         gitBehindCount: status.behind,
       };

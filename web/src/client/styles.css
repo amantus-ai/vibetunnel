@@ -473,6 +473,17 @@
 
 /* Micro-interactions and animations */
 @layer utilities {
+  /* Hide scrollbar for webkit browsers */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Hide scrollbar for Firefox */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
   /* Smooth transitions for interactive elements */
   .interactive {
     @apply transition-all duration-200 ease-out;

@@ -103,8 +103,8 @@ export class ConnectionManager {
           const updatedSession = {
             ...this.session,
             gitModifiedCount: data.gitModifiedCount,
-            gitUntrackedCount: data.gitUntrackedCount,
-            gitStagedCount: data.gitStagedCount,
+            gitAddedCount: data.gitAddedCount,
+            gitDeletedCount: data.gitDeletedCount,
             gitAheadCount: data.gitAheadCount,
             gitBehindCount: data.gitBehindCount,
           };

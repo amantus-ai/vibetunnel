@@ -42,17 +42,17 @@ struct DashboardSettingsView: View {
                     serverManager: serverManager
                 )
 
-                ActiveSessionsSection(
-                    activeSessions: activeSessions,
-                    sessionService: sessionService
-                )
-
                 RemoteAccessStatusSection(
                     ngrokStatus: ngrokStatus,
                     tailscaleStatus: tailscaleStatus,
                     cloudflareService: cloudflareService,
                     serverPort: serverPort,
                     accessMode: accessMode
+                )
+
+                ActiveSessionsSection(
+                    activeSessions: activeSessions,
+                    sessionService: sessionService
                 )
             }
             .formStyle(.grouped)
@@ -216,6 +216,13 @@ private struct ServerStatusSection: View {
                                 .font(.system(.body, design: .monospaced))
                         }
                     }
+
+                    if let pid = serverManager.serverProcessId {
+                        LabeledContent("Process ID") {
+                            Text("\(pid)")
+                                .font(.system(.body, design: .monospaced))
+                        }
+                    }
                 }
 
                 Divider()
@@ -223,14 +230,6 @@ private struct ServerStatusSection: View {
                 // Server Control
                 LabeledContent("HTTP Server") {
                     HStack {
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(isServerRunning ? .green : .red)
-                                .frame(width: 8, height: 8)
-                            Text(isServerRunning ? "Running" : "Stopped")
-                                .foregroundStyle(isServerRunning ? .primary : .secondary)
-                        }
-
                         Spacer()
 
                         if serverStatus == .stopped {
