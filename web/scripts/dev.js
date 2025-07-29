@@ -42,27 +42,64 @@ if (values.bind) {
 // Pass through all command line args except the ones we handle
 const allArgs = process.argv.slice(2);
 const handledArgs = new Set(['--client-only']);
-if (values.port) {
-  handledArgs.add('--port');
-  handledArgs.add(values.port);
+
+// Track which indices we've already processed to avoid duplicates
+const processedIndices = new Set();
+
+// Add indices of handled args to processedIndices
+for (let i = 0; i < allArgs.length; i++) {
+  const arg = allArgs[i];
+  if (arg === '--client-only') {
+    processedIndices.add(i);
+  } else if (arg === '--port' && values.port) {
+    processedIndices.add(i);
+    if (i + 1 < allArgs.length && allArgs[i + 1] === values.port) {
+      processedIndices.add(i + 1);
+    }
+  } else if (arg === '--bind' && values.bind) {
+    processedIndices.add(i);
+    if (i + 1 < allArgs.length && allArgs[i + 1] === values.bind) {
+      processedIndices.add(i + 1);
+    }
+  }
 }
-if (values.bind) {
-  handledArgs.add('--bind');
-  handledArgs.add(values.bind);
-}
+
+// Known boolean flags that don't take values
+const booleanFlags = new Set([
+  '--verbose', '-v',
+  '--debug', '-d',
+  '--quiet', '-q',
+  '--force', '-f',
+  '--help', '-h',
+  '--version',
+  '--no-auth',
+  '--inspect',
+  '--trace-warnings'
+]);
 
 // Add any args that weren't handled by parseArgs
 for (let i = 0; i < allArgs.length; i++) {
   const arg = allArgs[i];
+  
   // Skip the '--' separator that pnpm adds
   if (arg === '--') {
     continue;
   }
-  if (!handledArgs.has(arg) && !serverArgs.includes(arg)) {
-    serverArgs.push(arg);
-    // If this arg has a value (next arg doesn't start with --), include it too
-    if (i + 1 < allArgs.length && !allArgs[i + 1].startsWith('--')) {
+  
+  // Skip if we've already processed this index
+  if (processedIndices.has(i)) {
+    continue;
+  }
+  
+  // Add the argument
+  serverArgs.push(arg);
+  
+  // Check if this is a flag that takes a value
+  if (arg.startsWith('-') && !booleanFlags.has(arg)) {
+    // If next arg exists and doesn't start with -, treat it as a value
+    if (i + 1 < allArgs.length && !allArgs[i + 1].startsWith('-')) {
       serverArgs.push(allArgs[i + 1]);
+      processedIndices.add(i + 1);
       i++; // Skip the value in next iteration
     }
   }
