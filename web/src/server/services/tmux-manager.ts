@@ -1,11 +1,11 @@
-import { exec, execSync } from 'child_process';
+import { execFile, execFileSync } from 'child_process';
 import { promisify } from 'util';
 import type { TmuxPane, TmuxSession, TmuxWindow } from '../../shared/tmux-types.js';
 import { type SessionCreateOptions, TitleMode } from '../../shared/types.js';
 import type { PtyManager } from '../pty/pty-manager.js';
 import { createLogger } from '../utils/logger.js';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 const logger = createLogger('TmuxManager');
 
 export class TmuxManager {
@@ -14,6 +14,40 @@ export class TmuxManager {
 
   private constructor(ptyManager: PtyManager) {
     this.ptyManager = ptyManager;
+  }
+
+  /**
+   * Validate session name to prevent command injection
+   */
+  private validateSessionName(name: string): void {
+    if (!name || typeof name !== 'string') {
+      throw new Error('Session name must be a non-empty string');
+    }
+    // Only allow alphanumeric, dash, underscore, and dot
+    if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
+      throw new Error('Session name can only contain letters, numbers, dots, dashes, and underscores');
+    }
+    if (name.length > 100) {
+      throw new Error('Session name too long (max 100 characters)');
+    }
+  }
+
+  /**
+   * Validate window index
+   */
+  private validateWindowIndex(index: number): void {
+    if (!Number.isInteger(index) || index < 0 || index > 999) {
+      throw new Error('Window index must be an integer between 0 and 999');
+    }
+  }
+
+  /**
+   * Validate pane index
+   */
+  private validatePaneIndex(index: number): void {
+    if (!Number.isInteger(index) || index < 0 || index > 999) {
+      throw new Error('Pane index must be an integer between 0 and 999');
+    }
   }
 
   static getInstance(ptyManager: PtyManager): TmuxManager {
@@ -28,7 +62,7 @@ export class TmuxManager {
    */
   async isAvailable(): Promise<boolean> {
     try {
-      await execAsync('which tmux', { shell: '/bin/sh' });
+      await execFileAsync('which', ['tmux']);
       return true;
     } catch {
       return false;
@@ -40,26 +74,17 @@ export class TmuxManager {
    */
   async listSessions(): Promise<TmuxSession[]> {
     try {
-      const { stdout } = await execAsync(
-        "tmux list-sessions -F '#{session_name}|#{session_windows}|#{session_created}|#{?session_attached,attached,detached}|#{session_activity}|#{?session_active,active,}'",
-        { shell: '/bin/sh' }
-      );
+      const { stdout } = await execFileAsync('tmux', [
+        'list-sessions',
+        '-F',
+        '#{session_name}|#{session_windows}|#{session_created}|#{?session_attached,attached,detached}|#{session_activity}|#{?session_active,active,}'
+      ]);
 
       return stdout
         .trim()
         .split('\n')
         .filter((line) => line?.includes('|'))
         .map((line) => {
-          // Handle potential shell output pollution
-          const pipeIndex = line.indexOf('|');
-          if (pipeIndex > 0 && !line.substring(0, pipeIndex).match(/^[a-zA-Z0-9_-]+$/)) {
-            // If there's non-alphanumeric content before the first pipe, find the session name
-            const match = line.match(/([a-zA-Z0-9_-]+)\|/);
-            if (match) {
-              line = line.substring(line.indexOf(match[0]));
-            }
-          }
-
           const [name, windows, created, attached, activity, current] = line.split('|');
           return {
             name,
@@ -82,11 +107,16 @@ export class TmuxManager {
    * List windows in a tmux session
    */
   async listWindows(sessionName: string): Promise<TmuxWindow[]> {
+    this.validateSessionName(sessionName);
+    
     try {
-      const { stdout } = await execAsync(
-        `tmux list-windows -t '${sessionName}' -F '#{session_name}|#{window_index}|#{window_name}|#{?window_active,active,}|#{window_panes}'`,
-        { shell: '/bin/sh' }
-      );
+      const { stdout } = await execFileAsync('tmux', [
+        'list-windows',
+        '-t',
+        sessionName,
+        '-F',
+        '#{session_name}|#{window_index}|#{window_name}|#{?window_active,active,}|#{window_panes}'
+      ]);
 
       return stdout
         .trim()
@@ -112,13 +142,23 @@ export class TmuxManager {
    * List panes in a window
    */
   async listPanes(sessionName: string, windowIndex?: number): Promise<TmuxPane[]> {
+    this.validateSessionName(sessionName);
+    if (windowIndex !== undefined) {
+      this.validateWindowIndex(windowIndex);
+    }
+    
     try {
-      const target = windowIndex !== undefined ? `${sessionName}:${windowIndex}` : sessionName;
+      const targetArgs = windowIndex !== undefined 
+        ? [sessionName, String(windowIndex)].join(':')
+        : sessionName;
 
-      const { stdout } = await execAsync(
-        `tmux list-panes -t '${target}' -F '#{session_name}|#{window_index}|#{pane_index}|#{?pane_active,active,}|#{pane_title}|#{pane_pid}|#{pane_current_command}|#{pane_width}|#{pane_height}|#{pane_current_path}'`,
-        { shell: '/bin/sh' }
-      );
+      const { stdout } = await execFileAsync('tmux', [
+        'list-panes',
+        '-t',
+        targetArgs,
+        '-F',
+        '#{session_name}|#{window_index}|#{pane_index}|#{?pane_active,active,}|#{pane_title}|#{pane_pid}|#{pane_current_command}|#{pane_width}|#{pane_height}|#{pane_current_path}'
+      ]);
 
       return stdout
         .trim()
@@ -150,9 +190,23 @@ export class TmuxManager {
    * Create a new tmux session
    */
   async createSession(name: string, command?: string[]): Promise<void> {
+    this.validateSessionName(name);
+    
     try {
-      const cmd = command ? command.join(' ') : '';
-      await execAsync(`tmux new-session -d -s '${name}' ${cmd}`);
+      const args = ['new-session', '-d', '-s', name];
+      
+      // If command is provided, add it as separate arguments
+      if (command && command.length > 0) {
+        // Validate command arguments
+        for (const arg of command) {
+          if (typeof arg !== 'string') {
+            throw new Error('Command arguments must be strings');
+          }
+        }
+        args.push(...command);
+      }
+      
+      await execFileAsync('tmux', args);
       logger.info('Created tmux session', { name, command });
     } catch (error) {
       logger.error('Failed to create tmux session', { name, error });
@@ -204,20 +258,32 @@ export class TmuxManager {
     windowIndex?: number,
     paneIndex?: number
   ): Promise<void> {
-    let target = sessionName;
+    this.validateSessionName(sessionName);
     if (windowIndex !== undefined) {
-      target = `${sessionName}:${windowIndex}`;
+      this.validateWindowIndex(windowIndex);
+    }
+    if (paneIndex !== undefined) {
+      this.validatePaneIndex(paneIndex);
+    }
+    
+    if (typeof command !== 'string') {
+      throw new Error('Command must be a string');
+    }
+
+    let targetArgs = sessionName;
+    if (windowIndex !== undefined) {
+      targetArgs = `${sessionName}:${windowIndex}`;
       if (paneIndex !== undefined) {
-        target = `${target}.${paneIndex}`;
+        targetArgs = `${targetArgs}.${paneIndex}`;
       }
     }
 
     try {
       // Use send-keys to send the command
-      await execAsync(`tmux send-keys -t '${target}' '${command}' Enter`);
-      logger.info('Sent command to tmux pane', { target, command });
+      await execFileAsync('tmux', ['send-keys', '-t', targetArgs, command, 'Enter']);
+      logger.info('Sent command to tmux pane', { target: targetArgs, command });
     } catch (error) {
-      logger.error('Failed to send command to tmux pane', { target, command, error });
+      logger.error('Failed to send command to tmux pane', { target: targetArgs, command, error });
       throw error;
     }
   }
@@ -226,8 +292,10 @@ export class TmuxManager {
    * Kill a tmux session
    */
   async killSession(sessionName: string): Promise<void> {
+    this.validateSessionName(sessionName);
+    
     try {
-      await execAsync(`tmux kill-session -t '${sessionName}'`);
+      await execFileAsync('tmux', ['kill-session', '-t', sessionName]);
       logger.info('Killed tmux session', { sessionName });
     } catch (error) {
       logger.error('Failed to kill tmux session', { sessionName, error });
@@ -239,8 +307,12 @@ export class TmuxManager {
    * Kill a tmux window
    */
   async killWindow(sessionName: string, windowIndex: number): Promise<void> {
+    this.validateSessionName(sessionName);
+    this.validateWindowIndex(windowIndex);
+    
     try {
-      await execAsync(`tmux kill-window -t '${sessionName}:${windowIndex}'`);
+      const target = `${sessionName}:${windowIndex}`;
+      await execFileAsync('tmux', ['kill-window', '-t', target]);
       logger.info('Killed tmux window', { sessionName, windowIndex });
     } catch (error) {
       logger.error('Failed to kill tmux window', { sessionName, windowIndex, error });
@@ -252,8 +324,18 @@ export class TmuxManager {
    * Kill a tmux pane
    */
   async killPane(sessionName: string, paneId: string): Promise<void> {
+    // Validate paneId format (should be session:window.pane)
+    if (!paneId || typeof paneId !== 'string') {
+      throw new Error('Pane ID must be a non-empty string');
+    }
+    
+    // Basic validation for pane ID format
+    if (!/^[a-zA-Z0-9._:-]+$/.test(paneId)) {
+      throw new Error('Invalid pane ID format');
+    }
+    
     try {
-      await execAsync(`tmux kill-pane -t '${paneId}'`);
+      await execFileAsync('tmux', ['kill-pane', '-t', paneId]);
       logger.info('Killed tmux pane', { sessionName, paneId });
     } catch (error) {
       logger.error('Failed to kill tmux pane', { sessionName, paneId, error });
@@ -276,7 +358,7 @@ export class TmuxManager {
       return null;
     }
     try {
-      const result = execSync('tmux display-message -p "#{session_name}"', { encoding: 'utf8' });
+      const result = execFileSync('tmux', ['display-message', '-p', '#{session_name}'], { encoding: 'utf8' });
       return result.trim();
     } catch {
       return null;

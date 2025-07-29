@@ -1,10 +1,10 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { type SessionCreateOptions, TitleMode } from '../../shared/types.js';
 import type { PtyManager } from '../pty/pty-manager.js';
 import { createLogger } from '../utils/logger.js';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 const logger = createLogger('ZellijManager');
 
 export interface ZellijSession {
@@ -19,6 +19,22 @@ export class ZellijManager {
 
   private constructor(ptyManager: PtyManager) {
     this.ptyManager = ptyManager;
+  }
+
+  /**
+   * Validate session name to prevent command injection
+   */
+  private validateSessionName(name: string): void {
+    if (!name || typeof name !== 'string') {
+      throw new Error('Session name must be a non-empty string');
+    }
+    // Only allow alphanumeric, dash, underscore, and dot
+    if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
+      throw new Error('Session name can only contain letters, numbers, dots, dashes, and underscores');
+    }
+    if (name.length > 100) {
+      throw new Error('Session name too long (max 100 characters)');
+    }
   }
 
   /**
@@ -41,7 +57,7 @@ export class ZellijManager {
    */
   async isAvailable(): Promise<boolean> {
     try {
-      await execAsync('which zellij', { shell: '/bin/sh' });
+      await execFileAsync('which', ['zellij']);
       return true;
     } catch {
       return false;
@@ -53,7 +69,7 @@ export class ZellijManager {
    */
   async listSessions(): Promise<ZellijSession[]> {
     try {
-      const { stdout } = await execAsync('zellij list-sessions', { shell: '/bin/sh' });
+      const { stdout } = await execFileAsync('zellij', ['list-sessions']);
 
       if (stdout.includes('No active zellij sessions found')) {
         return [];
@@ -170,9 +186,11 @@ export class ZellijManager {
    * Kill a zellij session
    */
   async killSession(sessionName: string): Promise<void> {
+    this.validateSessionName(sessionName);
+    
     try {
       // Use delete-session with --force flag to handle both running and exited sessions
-      await execAsync(`zellij delete-session --force ${sessionName}`, { shell: '/bin/sh' });
+      await execFileAsync('zellij', ['delete-session', '--force', sessionName]);
       logger.info('Killed zellij session', { sessionName });
     } catch (error) {
       logger.error('Failed to kill zellij session', { sessionName, error });
@@ -184,8 +202,10 @@ export class ZellijManager {
    * Delete a zellij session
    */
   async deleteSession(sessionName: string): Promise<void> {
+    this.validateSessionName(sessionName);
+    
     try {
-      await execAsync(`zellij delete-session '${sessionName}'`, { shell: '/bin/sh' });
+      await execFileAsync('zellij', ['delete-session', sessionName]);
       logger.info('Deleted zellij session', { sessionName });
     } catch (error) {
       logger.error('Failed to delete zellij session', { sessionName, error });

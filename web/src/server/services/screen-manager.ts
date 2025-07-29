@@ -1,9 +1,9 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import type { MultiplexerSession } from '../../shared/multiplexer-types.js';
 import { createLogger } from '../utils/logger.js';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 const logger = createLogger('screen-manager');
 
 /**
@@ -25,11 +25,36 @@ export class ScreenManager {
   }
 
   /**
+   * Validate session name to prevent command injection
+   */
+  private validateSessionName(name: string): void {
+    if (!name || typeof name !== 'string') {
+      throw new Error('Session name must be a non-empty string');
+    }
+    // Allow dots for screen sessions (PID.name format), but still restrict dangerous chars
+    if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
+      throw new Error('Session name can only contain letters, numbers, dots, dashes, and underscores');
+    }
+    if (name.length > 100) {
+      throw new Error('Session name too long (max 100 characters)');
+    }
+  }
+
+  /**
+   * Validate window index
+   */
+  private validateWindowIndex(index: number): void {
+    if (!Number.isInteger(index) || index < 0 || index > 999) {
+      throw new Error('Window index must be an integer between 0 and 999');
+    }
+  }
+
+  /**
    * Check if screen is available
    */
   async isAvailable(): Promise<boolean> {
     try {
-      await execAsync('which screen');
+      await execFileAsync('which', ['screen']);
       return true;
     } catch {
       return false;
@@ -43,7 +68,7 @@ export class ScreenManager {
    */
   async listSessions(): Promise<MultiplexerSession[]> {
     try {
-      const { stdout } = await execAsync('screen -ls').catch((error) => {
+      const { stdout } = await execFileAsync('screen', ['-ls']).catch((error) => {
         // Screen returns exit code 1 when there are sessions (non-zero means "has sessions")
         // We need to check the output to determine if it's a real error
         if (error.stdout && !error.stdout.includes('No Sockets found')) {
@@ -86,15 +111,27 @@ export class ScreenManager {
    * Create a new screen session
    */
   async createSession(sessionName: string, command?: string): Promise<void> {
+    this.validateSessionName(sessionName);
+    
     try {
       // Remove PID prefix if present (for creating new sessions)
       const cleanName = sessionName.includes('.')
         ? sessionName.split('.').slice(1).join('.')
         : sessionName;
 
-      const cmd = command ? `screen -dmS '${cleanName}' ${command}` : `screen -dmS '${cleanName}'`;
+      const args = ['screen', '-dmS', cleanName];
+      
+      // If command is provided, validate and add it
+      if (command) {
+        if (typeof command !== 'string') {
+          throw new Error('Command must be a string');
+        }
+        // For screen, we need to pass the command as a single argument
+        // Screen expects the command and its args as separate elements
+        args.push(command);
+      }
 
-      await execAsync(cmd);
+      await execFileAsync(args[0], args.slice(1));
       logger.info('Created screen session', { sessionName: cleanName });
     } catch (error) {
       logger.error('Failed to create screen session', { sessionName, error });
@@ -132,7 +169,10 @@ export class ScreenManager {
 
       // Create a new window in the session if command is provided
       if (command) {
-        await execAsync(`screen -S ${sessionName} -X screen ${command}`);
+        if (typeof command !== 'string') {
+          throw new Error('Command must be a string');
+        }
+        await execFileAsync('screen', ['-S', sessionName, '-X', 'screen', command]);
       }
 
       // Return a command that can be used to attach
@@ -148,9 +188,11 @@ export class ScreenManager {
    * Kill a screen session
    */
   async killSession(sessionName: string): Promise<void> {
+    this.validateSessionName(sessionName);
+    
     try {
       // Screen can be killed using the full name with PID or just the PID
-      await execAsync(`screen -S ${sessionName} -X quit`);
+      await execFileAsync('screen', ['-S', sessionName, '-X', 'quit']);
       logger.info('Killed screen session', { sessionName });
     } catch (error) {
       logger.error('Failed to kill screen session', { sessionName, error });
@@ -201,18 +243,26 @@ export class ScreenManager {
    * Create a new window in a screen session
    */
   async createWindow(sessionName: string, windowName?: string, command?: string): Promise<void> {
+    this.validateSessionName(sessionName);
+    
     try {
-      let cmd = `screen -S '${sessionName}' -X screen`;
+      const args = ['screen', '-S', sessionName, '-X', 'screen'];
 
       if (windowName) {
-        cmd += ` -t '${windowName}'`;
+        if (typeof windowName !== 'string' || windowName.length > 50) {
+          throw new Error('Window name must be a string (max 50 characters)');
+        }
+        args.push('-t', windowName);
       }
 
       if (command) {
-        cmd += ` ${command}`;
+        if (typeof command !== 'string') {
+          throw new Error('Command must be a string');
+        }
+        args.push(command);
       }
 
-      await execAsync(cmd);
+      await execFileAsync(args[0], args.slice(1));
       logger.info('Created window in screen session', { sessionName, windowName });
     } catch (error) {
       logger.error('Failed to create window', { sessionName, windowName, error });
@@ -225,9 +275,12 @@ export class ScreenManager {
    * Note: Screen uses window numbers, not names for targeting
    */
   async killWindow(sessionName: string, windowIndex: number): Promise<void> {
+    this.validateSessionName(sessionName);
+    this.validateWindowIndex(windowIndex);
+    
     try {
       // First select the window, then kill it
-      await execAsync(`screen -S '${sessionName}' -p ${windowIndex} -X kill`);
+      await execFileAsync('screen', ['-S', sessionName, '-p', String(windowIndex), '-X', 'kill']);
       logger.info('Killed window in screen session', { sessionName, windowIndex });
     } catch (error) {
       logger.error('Failed to kill window', { sessionName, windowIndex, error });
