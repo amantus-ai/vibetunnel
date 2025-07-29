@@ -109,27 +109,49 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
 
       // Wait a moment to see if it starts successfully
       await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          if (this.serveProcess && !this.serveProcess.killed) {
+        let settled = false;
+
+        const settlePromise = (isSuccess: boolean, error?: Error | string) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+
+          if (isSuccess) {
             logger.info('Tailscale Serve started successfully');
             this.startTime = new Date();
             resolve();
           } else {
-            const error = this.lastError || 'Tailscale Serve failed to start';
-            reject(new Error(error));
+            const errorMessage =
+              error instanceof Error ? error.message : error || 'Tailscale Serve failed to start';
+            this.lastError = errorMessage;
+            reject(new Error(errorMessage));
+          }
+        };
+
+        const timeout = setTimeout(() => {
+          if (this.serveProcess && !this.serveProcess.killed) {
+            settlePromise(true);
+          } else {
+            settlePromise(false, this.lastError);
           }
         }, 3000); // Wait 3 seconds
 
         if (this.serveProcess) {
           this.serveProcess.once('error', (error) => {
-            clearTimeout(timeout);
-            reject(error);
+            settlePromise(false, error);
           });
 
           this.serveProcess.once('exit', (code) => {
-            clearTimeout(timeout);
-            // Any exit during startup is considered a failure
-            reject(new Error(`Tailscale Serve exited unexpectedly with code ${code}`));
+            // Exit code 0 during startup might indicate success for some commands
+            // But for 'tailscale serve', it usually means it couldn't start
+            if (code === 0) {
+              settlePromise(
+                false,
+                `Tailscale Serve exited immediately with code 0 - likely already configured or invalid state`
+              );
+            } else {
+              settlePromise(false, `Tailscale Serve exited unexpectedly with code ${code}`);
+            }
           });
         }
       });
@@ -227,6 +249,23 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
   }
 
   private cleanup(): void {
+    // Kill the process if it's still running
+    if (this.serveProcess && !this.serveProcess.killed) {
+      logger.debug('Terminating orphaned Tailscale Serve process');
+      try {
+        this.serveProcess.kill('SIGTERM');
+        // Give it a moment to terminate gracefully
+        setTimeout(() => {
+          if (this.serveProcess && !this.serveProcess.killed) {
+            logger.warn('Force killing Tailscale Serve process');
+            this.serveProcess.kill('SIGKILL');
+          }
+        }, 1000);
+      } catch (error) {
+        logger.error('Failed to kill Tailscale Serve process:', error);
+      }
+    }
+
     this.serveProcess = null;
     this.currentPort = null;
     this.isStarting = false;
