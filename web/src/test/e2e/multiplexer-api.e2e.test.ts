@@ -2,9 +2,7 @@ import type { Express } from 'express';
 import express from 'express';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { MultiplexerManager } from '../../server/services/multiplexer-manager.js';
 import { PtyManager } from '../../server/pty/pty-manager.js';
-import { createLogger } from '../../server/utils/logger.js';
 
 // Mock logger to reduce noise
 vi.mock('../../server/utils/logger.js', () => ({
@@ -17,14 +15,26 @@ vi.mock('../../server/utils/logger.js', () => ({
   }),
 }));
 
+interface MockMultiplexerManager {
+  getAvailableMultiplexers: ReturnType<typeof vi.fn>;
+  getTmuxWindows: ReturnType<typeof vi.fn>;
+  getTmuxPanes: ReturnType<typeof vi.fn>;
+  createSession: ReturnType<typeof vi.fn>;
+  attachToSession: ReturnType<typeof vi.fn>;
+  killSession: ReturnType<typeof vi.fn>;
+  getCurrentMultiplexer: ReturnType<typeof vi.fn>;
+  killTmuxWindow: ReturnType<typeof vi.fn>;
+  killTmuxPane: ReturnType<typeof vi.fn>;
+}
+
 describe('Multiplexer API Tests', () => {
   let app: Express;
-  let mockMultiplexerManager: any;
+  let mockMultiplexerManager: MockMultiplexerManager;
 
   beforeAll(async () => {
     // Initialize PtyManager
     await PtyManager.initialize();
-    
+
     // Create Express app
     app = express();
     app.use(express.json());
@@ -43,7 +53,7 @@ describe('Multiplexer API Tests', () => {
     };
 
     // Create a mock PtyManager
-    const mockPtyManager = {} as PtyManager;
+    const _mockPtyManager = {} as PtyManager;
 
     // Import and create routes with our mock
     const { Router } = await import('express');
@@ -56,7 +66,7 @@ describe('Multiplexer API Tests', () => {
       try {
         const status = await mockMultiplexerManager.getAvailableMultiplexers();
         res.json(status);
-      } catch (error) {
+      } catch (_error) {
         res.status(500).json({ error: 'Failed to get multiplexer status' });
       }
     });
@@ -66,7 +76,7 @@ describe('Multiplexer API Tests', () => {
         const { sessionName } = req.params;
         const windows = await mockMultiplexerManager.getTmuxWindows(sessionName);
         res.json({ windows });
-      } catch (error) {
+      } catch (_error) {
         res.status(500).json({ error: 'Failed to list tmux windows' });
       }
     });
@@ -79,7 +89,7 @@ describe('Multiplexer API Tests', () => {
           : undefined;
         const panes = await mockMultiplexerManager.getTmuxPanes(sessionName, windowIndex);
         res.json({ panes });
-      } catch (error) {
+      } catch (_error) {
         res.status(500).json({ error: 'Failed to list tmux panes' });
       }
     });
@@ -92,18 +102,19 @@ describe('Multiplexer API Tests', () => {
         }
         await mockMultiplexerManager.createSession(type, name, options);
         res.json({ success: true, type, name });
-      } catch (error) {
+      } catch (_error) {
         res.status(500).json({ error: 'Failed to create session' });
       }
     });
 
     router.post('/attach', async (req, res) => {
       try {
-        const { type, sessionName, windowIndex, paneIndex, cols, rows, workingDir, titleMode } = req.body;
+        const { type, sessionName, windowIndex, paneIndex, cols, rows, workingDir, titleMode } =
+          req.body;
         if (!type || !sessionName) {
           return res.status(400).json({ error: 'Type and session name are required' });
         }
-        
+
         const options = {
           cols,
           rows,
@@ -112,9 +123,9 @@ describe('Multiplexer API Tests', () => {
           windowIndex,
           paneIndex,
         };
-        
+
         const sessionId = await mockMultiplexerManager.attachToSession(type, sessionName, options);
-        
+
         res.json({
           success: true,
           sessionId,
@@ -125,7 +136,7 @@ describe('Multiplexer API Tests', () => {
             pane: paneIndex,
           },
         });
-      } catch (error) {
+      } catch (_error) {
         res.status(500).json({ error: 'Failed to attach to session' });
       }
     });
@@ -135,7 +146,7 @@ describe('Multiplexer API Tests', () => {
         const { type, sessionName } = req.params;
         await mockMultiplexerManager.killSession(type, sessionName);
         res.json({ success: true });
-      } catch (error) {
+      } catch (_error) {
         res.status(500).json({ error: 'Failed to kill session' });
       }
     });
@@ -150,7 +161,7 @@ describe('Multiplexer API Tests', () => {
         const { sessionName, windowIndex } = req.params;
         await mockMultiplexerManager.killTmuxWindow(sessionName, Number.parseInt(windowIndex, 10));
         res.json({ success: true });
-      } catch (error) {
+      } catch (_error) {
         res.status(500).json({ error: 'Failed to kill window' });
       }
     });
@@ -160,7 +171,7 @@ describe('Multiplexer API Tests', () => {
         const { sessionName, paneId } = req.params;
         await mockMultiplexerManager.killTmuxPane(sessionName, paneId);
         res.json({ success: true });
-      } catch (error) {
+      } catch (_error) {
         res.status(500).json({ error: 'Failed to kill pane' });
       }
     });
@@ -176,7 +187,7 @@ describe('Multiplexer API Tests', () => {
           available: status.tmux.available,
           sessions: status.tmux.sessions,
         });
-      } catch (error) {
+      } catch (_error) {
         res.status(500).json({ error: 'Failed to get tmux status' });
       }
     });
@@ -194,7 +205,7 @@ describe('Multiplexer API Tests', () => {
           rows,
         });
         res.json({ success: true, sessionId });
-      } catch (error) {
+      } catch (_error) {
         res.status(500).json({ error: 'Failed to attach to tmux session' });
       }
     });
