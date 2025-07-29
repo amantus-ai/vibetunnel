@@ -121,13 +121,19 @@ export class MultiplexerManager {
   /**
    * Create a new session
    */
-  async createSession(type: MultiplexerType, name: string, options?: any): Promise<void> {
+  async createSession(
+    type: MultiplexerType,
+    name: string,
+    options?: { command?: string[]; layout?: string }
+  ): Promise<void> {
     if (type === 'tmux') {
       await this.tmuxManager.createSession(name, options?.command);
     } else if (type === 'zellij') {
       await this.zellijManager.createSession(name, options?.layout);
     } else if (type === 'screen') {
-      await this.screenManager.createSession(name, options?.command);
+      // Screen expects a single command string, not an array
+      const command = options?.command ? options.command.join(' ') : undefined;
+      await this.screenManager.createSession(name, command);
     } else {
       throw new Error(`Unknown multiplexer type: ${type}`);
     }

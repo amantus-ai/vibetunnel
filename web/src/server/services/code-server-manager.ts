@@ -1,7 +1,7 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { Router } from 'express';
+import type { RequestHandler, Router } from 'express';
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { createLogger } from '../utils/logger.js';
@@ -15,7 +15,7 @@ interface CodeServerInstance {
   port: number;
   process: ChildProcess;
   router: Router;
-  proxy: any; // Store reference to the proxy middleware
+  proxy: RequestHandler; // Store reference to the proxy middleware
 }
 
 const logger = createLogger('code-server-manager');
@@ -35,7 +35,7 @@ const logger = createLogger('code-server-manager');
  */
 export class CodeServerManager {
   private instances = new Map<string, CodeServerInstance>();
-  private portCounter = 8100; // Start from 8100 to avoid conflicts
+  private nextPort = 8100; // Port counter
 
   constructor() {
     logger.debug('CodeServerManager initialized');
@@ -51,7 +51,7 @@ export class CodeServerManager {
       return existing.router;
     }
 
-    const port = this.portCounter++;
+    const port = this.nextPort++;
     const router = express.Router();
 
     try {
@@ -184,7 +184,7 @@ disable-update-check: true
     return this.instances.get(sessionId)?.port;
   }
 
-  getProxy(sessionId: string): any | undefined {
+  getProxy(sessionId: string): RequestHandler | undefined {
     return this.instances.get(sessionId)?.proxy;
   }
 

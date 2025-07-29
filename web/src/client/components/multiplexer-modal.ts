@@ -82,7 +82,7 @@ export class MultiplexerModal extends LitElement {
       if (statusResponse.tmux.available) {
         for (const session of statusResponse.tmux.sessions) {
           try {
-            const windowsResponse = await apiClient.get(
+            const windowsResponse = await apiClient.get<{ windows: TmuxWindow[] }>(
               `/multiplexer/tmux/sessions/${session.name}/windows`
             );
             this.windows.set(session.name, windowsResponse.windows);
@@ -125,7 +125,7 @@ export class MultiplexerModal extends LitElement {
     if (this.panes.has(key)) return; // Already loaded
 
     try {
-      const response = await apiClient.get(
+      const response = await apiClient.get<{ panes: TmuxPane[] }>(
         `/multiplexer/tmux/sessions/${sessionName}/panes?window=${windowIndex}`
       );
       this.panes.set(key, response.panes);
@@ -167,7 +167,11 @@ export class MultiplexerModal extends LitElement {
 
   private async attachToSession(target: MultiplexerTarget) {
     try {
-      const response = await apiClient.post('/multiplexer/attach', {
+      const response = await apiClient.post<{
+        success: boolean;
+        sessionId?: string;
+        command?: string;
+      }>('/multiplexer/attach', {
         type: target.type,
         sessionName: target.session,
         windowIndex: target.window,
@@ -206,7 +210,7 @@ export class MultiplexerModal extends LitElement {
 
       if (this.activeTab === 'tmux' || this.activeTab === 'screen') {
         // For tmux and screen, create the session first
-        const createResponse = await apiClient.post('/multiplexer/sessions', {
+        const createResponse = await apiClient.post<{ success: boolean }>('/multiplexer/sessions', {
           type: this.activeTab,
           name: sessionName,
         });
@@ -218,7 +222,11 @@ export class MultiplexerModal extends LitElement {
 
       // For all multiplexers, attach to the session
       // Zellij will create the session automatically with the -c flag
-      const attachResponse = await apiClient.post('/multiplexer/attach', {
+      const attachResponse = await apiClient.post<{
+        success: boolean;
+        sessionId?: string;
+        command?: string;
+      }>('/multiplexer/attach', {
         type: this.activeTab,
         sessionName: sessionName,
         cols: window.innerWidth > 768 ? 120 : 80,
@@ -256,7 +264,9 @@ export class MultiplexerModal extends LitElement {
     }
 
     try {
-      const response = await apiClient.delete(`/multiplexer/${type}/sessions/${sessionName}`);
+      const response = await apiClient.delete<{ success: boolean }>(
+        `/multiplexer/${type}/sessions/${sessionName}`
+      );
       if (response.success) {
         await this.loadMultiplexerStatus();
       }
@@ -276,7 +286,7 @@ export class MultiplexerModal extends LitElement {
     }
 
     try {
-      const response = await apiClient.delete(
+      const response = await apiClient.delete<{ success: boolean }>(
         `/multiplexer/tmux/sessions/${sessionName}/windows/${windowIndex}`
       );
       if (response.success) {
@@ -294,7 +304,7 @@ export class MultiplexerModal extends LitElement {
     }
 
     try {
-      const response = await apiClient.delete(
+      const response = await apiClient.delete<{ success: boolean }>(
         `/multiplexer/tmux/sessions/${sessionName}/panes/${paneId}`
       );
       if (response.success) {

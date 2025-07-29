@@ -99,9 +99,14 @@ export class ScreenManager {
       }
 
       return sessions;
-    } catch (error: any) {
+    } catch (error) {
       // If no sessions exist, screen returns "No Sockets found"
-      if (error.stdout?.includes('No Sockets found')) {
+      if (
+        error instanceof Error &&
+        'stdout' in error &&
+        typeof error.stdout === 'string' &&
+        error.stdout.includes('No Sockets found')
+      ) {
         return [];
       }
       logger.error('Failed to list screen sessions', { error });

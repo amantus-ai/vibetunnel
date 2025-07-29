@@ -16,7 +16,7 @@ interface ErrorResponse {
  * Automatically includes authentication headers and handles error responses.
  */
 class ApiClient {
-  async get<T = any>(path: string): Promise<T> {
+  async get<T = unknown>(path: string): Promise<T> {
     try {
       const response = await fetch(`/api${path}`, {
         headers: {
@@ -37,7 +37,7 @@ class ApiClient {
     }
   }
 
-  async post<T = any>(path: string, data?: any): Promise<T> {
+  async post<T = unknown>(path: string, data?: unknown): Promise<T> {
     try {
       const response = await fetch(`/api${path}`, {
         method: 'POST',
@@ -60,7 +60,7 @@ class ApiClient {
     }
   }
 
-  async put<T = any>(path: string, data: any): Promise<T> {
+  async put<T = unknown>(path: string, data: unknown): Promise<T> {
     try {
       const response = await fetch(`/api${path}`, {
         method: 'PUT',
@@ -83,7 +83,7 @@ class ApiClient {
     }
   }
 
-  async delete<T = any>(path: string): Promise<T> {
+  async delete<T = unknown>(path: string): Promise<T> {
     try {
       const response = await fetch(`/api${path}`, {
         method: 'DELETE',
