@@ -13,6 +13,7 @@ export function createEventsRouter(sessionMonitor?: SessionMonitor): Router {
 
   // SSE endpoint for event streaming
   router.get('/events', (req: Request, res: Response) => {
+    logger.info('📡 SSE connection attempt received');
     logger.debug('Client connected to event stream');
 
     // Set headers for SSE
@@ -20,6 +21,7 @@ export function createEventsRouter(sessionMonitor?: SessionMonitor): Router {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable proxy buffering
 
     // Event ID counter
     let eventId = 0;
@@ -27,7 +29,6 @@ export function createEventsRouter(sessionMonitor?: SessionMonitor): Router {
     let keepAlive: NodeJS.Timeout;
 
     // Forward-declare event handlers for cleanup
-    // biome-ignore lint/style/useConst: These are assigned later in the code
     let onNotification: (event: ServerEvent) => void;
 
     // Cleanup function to remove event listeners
@@ -42,7 +43,7 @@ export function createEventsRouter(sessionMonitor?: SessionMonitor): Router {
 
     // Send initial connection event as default message event
     try {
-      res.write('data: {"type": "connected"}\n\n');
+      res.write('event: connected\ndata: {"type": "connected"}\n\n');
     } catch (error) {
       logger.debug('Failed to send initial connection event:', error);
       return;
@@ -69,16 +70,15 @@ export function createEventsRouter(sessionMonitor?: SessionMonitor): Router {
           logger.info('🧪 Forwarding test notification through SSE:', event);
         }
 
-        // Send as default message event (not named event) for compatibility with Mac EventSource
         // The event type is already included in the data payload
-        const sseMessage = `id: ${++eventId}\ndata: ${JSON.stringify(event)}\n\n`;
-
         try {
+          const sseMessage = `id: ${++eventId}\nevent: ${
+            event.type
+          }\ndata: ${JSON.stringify(event)}\n\n`;
           res.write(sseMessage);
           logger.debug(`✅ SSE event written: ${event.type}`);
         } catch (error) {
-          logger.debug('Failed to write SSE event:', error);
-          cleanup();
+          logger.error('Failed to write SSE event:', error);
         }
       };
 

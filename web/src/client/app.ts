@@ -41,6 +41,7 @@ import type { GitNotificationHandler } from './components/git-notification-handl
 import { authClient } from './services/auth-client.js';
 import { bufferSubscriptionService } from './services/buffer-subscription-service.js';
 import { getControlEventService } from './services/control-event-service.js';
+import { notificationEventService } from './services/notification-event-service.js';
 import { pushNotificationService } from './services/push-notification-service.js';
 
 const logger = createLogger('app');
@@ -473,6 +474,19 @@ export class VibeTunnelApp extends LitElement {
 
   private async handleAuthSuccess() {
     logger.log('✅ Authentication successful');
+
+    // If already authenticated (e.g., in no-auth mode), don't re-initialize
+    if (this.isAuthenticated && this.initialLoadComplete) {
+      logger.debug('Already authenticated and initialized, skipping re-initialization');
+      return;
+    }
+
+    // If services are already being initialized, skip
+    if (this.servicesInitialized || this.isAuthenticated) {
+      logger.debug('Services already initialized or being initialized, skipping');
+      return;
+    }
+
     this.isAuthenticated = true;
     this.currentView = 'list';
     await this.initializeServices(false); // Initialize services after auth (auth is enabled)
@@ -494,23 +508,33 @@ export class VibeTunnelApp extends LitElement {
     }
   }
 
-  private async initializeServices(noAuthEnabled = false) {
+  private servicesInitialized = false;
+
+  private async initializeServices(_noAuthEnabled = false) {
+    if (this.servicesInitialized) {
+      logger.debug('Services already initialized, skipping');
+      return;
+    }
+
     logger.log('🚀 Initializing services...');
     try {
       // Initialize buffer subscription service for WebSocket connections
       await bufferSubscriptionService.initialize();
 
-      // Initialize push notification service only if auth is enabled
-      if (!noAuthEnabled) {
-        await pushNotificationService.initialize();
-      } else {
-        logger.log('⏭️ Skipping push notification service initialization (no-auth mode)');
-      }
+      // Initialize push notification service always
+      // It handles its own permission checks and user preferences
+      await pushNotificationService.initialize();
 
       // Initialize control event service for real-time notifications
       this.controlEventService = getControlEventService(authClient);
       this.controlEventService.connect();
 
+      // Initialize notification event service to monitor /api/events SSE connection
+      // This is used by the Mac app for notifications
+      notificationEventService.setAuthClient(authClient);
+      await notificationEventService.connect();
+
+      this.servicesInitialized = true;
       logger.log('✅ Services initialized successfully');
     } catch (error) {
       logger.error('❌ Failed to initialize services:', error);
@@ -1828,8 +1852,16 @@ export class VibeTunnelApp extends LitElement {
         .visible=${this.showSettings}
         .authClient=${authClient}
         @close=${this.handleCloseSettings}
-        @notifications-enabled=${() => this.showSuccess('Notifications enabled')}
-        @notifications-disabled=${() => this.showSuccess('Notifications disabled')}
+        @notifications-enabled=${async () => {
+          this.showSuccess('Notifications enabled');
+          // Reconnect SSE when notifications are enabled
+          await notificationEventService.connect();
+        }}
+        @notifications-disabled=${() => {
+          this.showSuccess('Notifications disabled');
+          // Disconnect SSE when notifications are disabled
+          notificationEventService.disconnect();
+        }}
         @success=${(e: CustomEvent) => this.showSuccess(e.detail)}
         @error=${(e: CustomEvent) => this.showError(e.detail)}
       ></vt-settings>

@@ -1,12 +1,9 @@
 import { html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import {
-  type PushSubscription,
-  pushNotificationService,
-} from '../services/push-notification-service.js';
+import { notificationEventService } from '../services/notification-event-service.js';
 import { createLogger } from '../utils/logger.js';
 
-const _logger = createLogger('notification-status');
+const logger = createLogger('notification-status');
 
 @customElement('notification-status')
 export class NotificationStatus extends LitElement {
@@ -15,12 +12,9 @@ export class NotificationStatus extends LitElement {
     return this;
   }
 
-  @state() private permission: NotificationPermission = 'default';
-  @state() private subscription: PushSubscription | null = null;
-  @state() private isSupported = false;
+  @state() private isSSEConnected = false;
 
-  private permissionChangeUnsubscribe?: () => void;
-  private subscriptionChangeUnsubscribe?: () => void;
+  private connectionStateUnsubscribe?: () => void;
 
   connectedCallback() {
     super.connectedCallback();
@@ -29,35 +23,21 @@ export class NotificationStatus extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    if (this.permissionChangeUnsubscribe) {
-      this.permissionChangeUnsubscribe();
-    }
-    if (this.subscriptionChangeUnsubscribe) {
-      this.subscriptionChangeUnsubscribe();
+    if (this.connectionStateUnsubscribe) {
+      this.connectionStateUnsubscribe();
     }
   }
 
-  private async initializeComponent(): Promise<void> {
-    this.isSupported = pushNotificationService.isSupported();
+  private initializeComponent(): void {
+    // Get initial connection state
+    this.isSSEConnected = notificationEventService.getConnectionStatus();
+    logger.debug('Initial SSE connection status:', this.isSSEConnected);
 
-    if (!this.isSupported) {
-      return;
-    }
-
-    // Wait for the push notification service to be fully initialized
-    await pushNotificationService.waitForInitialization();
-
-    this.permission = pushNotificationService.getPermission();
-    this.subscription = pushNotificationService.getSubscription();
-
-    // Listen for changes
-    this.permissionChangeUnsubscribe = pushNotificationService.onPermissionChange((permission) => {
-      this.permission = permission;
-    });
-
-    this.subscriptionChangeUnsubscribe = pushNotificationService.onSubscriptionChange(
-      (subscription) => {
-        this.subscription = subscription;
+    // Listen for connection state changes
+    this.connectionStateUnsubscribe = notificationEventService.onConnectionStateChange(
+      (connected) => {
+        logger.log(`SSE connection state changed: ${connected ? 'connected' : 'disconnected'}`);
+        this.isSSEConnected = connected;
       }
     );
   }
@@ -67,27 +47,18 @@ export class NotificationStatus extends LitElement {
   }
 
   private getStatusConfig() {
-    // Green when notifications are enabled (permission granted AND subscription active)
-    if (this.permission === 'granted' && this.subscription) {
+    // Green when SSE is connected (Mac app notifications are working)
+    if (this.isSSEConnected) {
       return {
         color: 'text-status-success',
-        tooltip: 'Settings (Notifications enabled)',
+        tooltip: 'Settings (Notifications connected)',
       };
     }
 
-    // Default color for all other cases (not red anymore)
-    let tooltip = 'Settings (Notifications disabled)';
-    if (!this.isSupported) {
-      tooltip = 'Settings (Notifications not supported)';
-    } else if (this.permission === 'denied') {
-      tooltip = 'Settings (Notifications blocked)';
-    } else if (!this.subscription) {
-      tooltip = 'Settings (Notifications not subscribed)';
-    }
-
+    // Default color when SSE is not connected
     return {
       color: 'text-muted',
-      tooltip,
+      tooltip: 'Settings (Notifications disconnected)',
     };
   }
 

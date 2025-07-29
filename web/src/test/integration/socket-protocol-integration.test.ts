@@ -260,7 +260,7 @@ describe('Socket Protocol Integration', () => {
 
       // Set up status listener on client2
       let receivedStatus: { app: string; status: string } | null = null;
-      client2.on('status', (status) => {
+      client2.on('STATUS_UPDATE', (status) => {
         receivedStatus = status;
       });
 

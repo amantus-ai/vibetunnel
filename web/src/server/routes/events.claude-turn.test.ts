@@ -16,7 +16,7 @@ vi.mock('../utils/logger', () => ({
 }));
 
 describe('Claude Turn Events', () => {
-  let mockPtyManager: PtyManager & EventEmitter;
+  let mockSessionMonitor: SessionMonitor & EventEmitter;
   let mockRequest: Partial<Request> & {
     headers: Record<string, string>;
     on: ReturnType<typeof vi.fn>;
@@ -26,8 +26,8 @@ describe('Claude Turn Events', () => {
   let eventHandler: (req: Request, res: Response) => void;
 
   beforeEach(() => {
-    // Create a mock PtyManager that extends EventEmitter
-    mockPtyManager = new EventEmitter() as PtyManager & EventEmitter;
+    // Create a mock SessionMonitor that extends EventEmitter
+    mockSessionMonitor = new EventEmitter() as SessionMonitor & EventEmitter;
 
     // Create mock request
     mockRequest = {
@@ -43,7 +43,7 @@ describe('Claude Turn Events', () => {
     } as unknown as Response;
 
     // Create router
-    eventsRouter = createEventsRouter(mockPtyManager);
+    eventsRouter = createEventsRouter(mockSessionMonitor);
 
     // Get the /events handler
     interface RouteLayer {
@@ -75,7 +75,12 @@ describe('Claude Turn Events', () => {
       // Emit claude-turn event
       const sessionId = 'claude-session-123';
       const sessionName = 'Claude Code Session';
-      mockPtyManager.emit('claudeTurn', sessionId, sessionName);
+      mockSessionMonitor.emit('notification', {
+        type: 'claude-turn',
+        sessionId,
+        sessionName,
+        message: 'Claude has finished responding',
+      });
 
       // Verify SSE was sent
       expect(mockResponse.write).toHaveBeenCalledWith(
@@ -97,9 +102,9 @@ describe('Claude Turn Events', () => {
       vi.clearAllMocks();
 
       // Emit multiple claude-turn events
-      mockPtyManager.emit('claudeTurn', 'session-1', 'First Claude Session');
-      mockPtyManager.emit('claudeTurn', 'session-2', 'Second Claude Session');
-      mockPtyManager.emit('claudeTurn', 'session-3', 'Third Claude Session');
+      mockSessionMonitor.emit('notification', { type: 'claude-turn', sessionId: 'session-1' });
+      mockSessionMonitor.emit('notification', { type: 'claude-turn', sessionId: 'session-2' });
+      mockSessionMonitor.emit('notification', { type: 'claude-turn', sessionId: 'session-3' });
 
       // Should have written 3 events
       const writeCalls = (mockResponse.write as ReturnType<typeof vi.fn>).mock.calls;
@@ -111,9 +116,13 @@ describe('Claude Turn Events', () => {
       await eventHandler(mockRequest, mockResponse);
       vi.clearAllMocks();
 
-      const beforeTime = new Date().toISOString();
-      mockPtyManager.emit('claudeTurn', 'test-session', 'Test Session');
-      const afterTime = new Date().toISOString();
+      const beforeTime = new Date();
+      mockSessionMonitor.emit('notification', {
+        type: 'claude-turn',
+        sessionId: 'test-session',
+        timestamp: new Date().toISOString(),
+      });
+      const afterTime = new Date();
 
       // Get the event data
       const writeCall = (mockResponse.write as ReturnType<typeof vi.fn>).mock.calls[0][0];
@@ -121,8 +130,8 @@ describe('Claude Turn Events', () => {
 
       expect(eventData.timestamp).toBeDefined();
       expect(new Date(eventData.timestamp).toISOString()).toEqual(eventData.timestamp);
-      expect(eventData.timestamp >= beforeTime).toBe(true);
-      expect(eventData.timestamp <= afterTime).toBe(true);
+      expect(new Date(eventData.timestamp).getTime()).toBeGreaterThanOrEqual(beforeTime.getTime());
+      expect(new Date(eventData.timestamp).getTime()).toBeLessThanOrEqual(afterTime.getTime());
     });
 
     it('should unsubscribe from claude-turn events on disconnect', async () => {
@@ -135,13 +144,13 @@ describe('Claude Turn Events', () => {
       expect(closeHandler).toBeTruthy();
 
       // Verify claude-turn listener is attached
-      expect(mockPtyManager.listenerCount('claudeTurn')).toBe(1);
+      expect(mockSessionMonitor.listenerCount('notification')).toBe(1);
 
       // Simulate client disconnect
       closeHandler();
 
       // Verify listener is removed
-      expect(mockPtyManager.listenerCount('claudeTurn')).toBe(0);
+      expect(mockSessionMonitor.listenerCount('notification')).toBe(0);
     });
 
     it('should handle claude-turn alongside other events', async () => {
@@ -149,15 +158,13 @@ describe('Claude Turn Events', () => {
       vi.clearAllMocks();
 
       // Emit various events including claude-turn
-      mockPtyManager.emit('sessionStarted', 'session-1', 'New Session');
-      mockPtyManager.emit('claudeTurn', 'session-1', 'New Session');
-      mockPtyManager.emit('commandFinished', {
+      mockSessionMonitor.emit('notification', { type: 'session-start', sessionId: 'session-1' });
+      mockSessionMonitor.emit('notification', { type: 'claude-turn', sessionId: 'session-1' });
+      mockSessionMonitor.emit('notification', {
+        type: 'command-finished',
         sessionId: 'session-1',
-        command: 'echo test',
-        duration: 100,
-        exitCode: 0,
       });
-      mockPtyManager.emit('sessionExited', 'session-1', 'New Session', 0);
+      mockSessionMonitor.emit('notification', { type: 'session-exit', sessionId: 'session-1' });
 
       // Verify all events were sent
       const writeCalls = (mockResponse.write as ReturnType<typeof vi.fn>).mock.calls;
@@ -180,7 +187,13 @@ describe('Claude Turn Events', () => {
       await eventHandler(mockRequest, mockResponse);
       vi.clearAllMocks();
 
-      mockPtyManager.emit('claudeTurn', 'session-123', 'My Claude Session');
+      mockSessionMonitor.emit('notification', {
+        type: 'claude-turn',
+        sessionId: 'session-123',
+        sessionName: 'My Claude Session',
+        message: 'Claude has finished responding',
+        timestamp: new Date().toISOString(),
+      });
 
       const writeCall = (mockResponse.write as ReturnType<typeof vi.fn>).mock.calls[0][0];
 

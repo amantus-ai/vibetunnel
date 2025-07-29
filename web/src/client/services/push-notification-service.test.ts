@@ -2,6 +2,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../types/config.js';
 import type { NotificationPreferences } from './push-notification-service.js';
 import { pushNotificationService } from './push-notification-service.js';
+import { notificationEventService } from './notification-event-service.js';
+import { serverConfigService } from './server-config-service.js';
+
+// Mock notification event service
+vi.mock('./notification-event-service', () => ({
+  notificationEventService: {
+    on: vi.fn(),
+    off: vi.fn(),
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    getConnectionStatus: vi.fn(() => true),
+  },
+}));
+
+// Mock server config service
+vi.mock('./server-config-service', () => ({
+  serverConfigService: {
+    getNotificationPreferences: vi.fn(),
+    updateNotificationPreferences: vi.fn(),
+  },
+}));
 
 // Mock the auth client
 vi.mock('./auth-client', () => ({
@@ -303,33 +324,7 @@ describe('PushNotificationService', () => {
         soundEnabled: true,
         vibrationEnabled: false,
       };
-
-      // Mock the config API response
-      global.fetch = vi.fn().mockImplementation((url: string) => {
-        if (url === '/api/push/vapid-public-key') {
-          return Promise.resolve({
-            ok: true,
-            json: () =>
-              Promise.resolve({
-                publicKey: 'test-vapid-key',
-                enabled: true,
-              }),
-          });
-        }
-        if (url === '/api/config') {
-          return Promise.resolve({
-            ok: true,
-            json: () =>
-              Promise.resolve({
-                notificationPreferences: serverPrefs,
-              }),
-          });
-        }
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({}),
-        });
-      });
+      (serverConfigService.getNotificationPreferences as vi.Mock).mockResolvedValue(serverPrefs);
 
       await pushNotificationService.initialize();
 
@@ -501,27 +496,9 @@ describe('PushNotificationService', () => {
         vibrationEnabled: true,
       };
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            notificationPreferences: preferences,
-          }),
-      });
-
       await pushNotificationService.savePreferences(preferences);
 
-      // Since we're now using serverConfigService, we expect a config API call
-      expect(fetch).toHaveBeenCalledWith(
-        '/api/config',
-        expect.objectContaining({
-          method: 'PUT',
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-          }),
-          body: expect.stringContaining('notificationPreferences'),
-        })
-      );
+      expect(serverConfigService.updateNotificationPreferences).toHaveBeenCalledWith(preferences);
     });
 
     it('should handle save failure gracefully', async () => {
@@ -537,9 +514,8 @@ describe('PushNotificationService', () => {
         vibrationEnabled: true,
       };
 
-      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+      (serverConfigService.updateNotificationPreferences as vi.Mock).mockRejectedValue(new Error('Network error'));
 
-      // Should throw error now since we don't fallback to localStorage
       await expect(pushNotificationService.savePreferences(preferences)).rejects.toThrow(
         'Network error'
       );
@@ -555,7 +531,27 @@ describe('PushNotificationService', () => {
 
       await pushNotificationService.initialize();
 
-      await pushNotificationService.testNotification();
+      // Capture the event handler
+      let testNotificationHandler: (data: any) => void;
+      (notificationEventService.on as vi.Mock).mockImplementation((event, handler) => {
+        if (event === 'test-notification') {
+          testNotificationHandler = handler;
+        }
+        return () => {}; // Return an unsubscribe function
+      });
+
+      const testPromise = pushNotificationService.testNotification();
+
+      // Simulate receiving the event
+      await new Promise(resolve => setTimeout(resolve, 100)); // allow time for listener to be registered
+      
+      expect(testNotificationHandler!).toBeDefined();
+      testNotificationHandler!({
+        title: 'VibeTunnel Test',
+        body: 'Push notifications are working correctly!',
+      });
+
+      await testPromise;
 
       expect(mockServiceWorkerRegistration.showNotification).toHaveBeenCalledWith(
         'VibeTunnel Test',
@@ -563,7 +559,7 @@ describe('PushNotificationService', () => {
           body: 'Push notifications are working correctly!',
           icon: '/apple-touch-icon.png',
           badge: '/favicon-32.png',
-          tag: 'vibetunnel-test',
+          tag: 'vibetunnel-test-sse',
         })
       );
     });
@@ -576,9 +572,24 @@ describe('PushNotificationService', () => {
 
       await pushNotificationService.initialize();
 
-      await expect(pushNotificationService.testNotification()).rejects.toThrow(
-        'Notification permission not granted'
-      );
+      // Capture the event handler
+      let testNotificationHandler: (data: any) => void;
+      (notificationEventService.on as vi.Mock).mockImplementation((event, handler) => {
+        if (event === 'test-notification') {
+          testNotificationHandler = handler;
+        }
+        return () => {}; // Return an unsubscribe function
+      });
+
+      const testPromise = pushNotificationService.testNotification();
+
+      // Simulate receiving the event
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      expect(testNotificationHandler!).toBeDefined();
+      testNotificationHandler!({});
+
+      await testPromise;
 
       expect(mockServiceWorkerRegistration.showNotification).not.toHaveBeenCalled();
     });

@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import type { Response } from 'express';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PtyManager } from '../pty/index.js';
+import type { SessionMonitor } from '../services/session-monitor.js';
 import { createEventsRouter } from './events.js';
 
 // Mock dependencies
@@ -27,7 +27,7 @@ interface RouteLayer {
 type ExpressRouter = { stack: RouteLayer[] };
 
 describe('Events Router', () => {
-  let mockPtyManager: PtyManager & EventEmitter;
+  let mockSessionMonitor: SessionMonitor & EventEmitter;
   let mockRequest: Partial<Request> & {
     headers: Record<string, string>;
     on: ReturnType<typeof vi.fn>;
@@ -36,8 +36,8 @@ describe('Events Router', () => {
   let eventsRouter: ReturnType<typeof createEventsRouter>;
 
   beforeEach(() => {
-    // Create a mock PtyManager that extends EventEmitter
-    mockPtyManager = new EventEmitter() as PtyManager & EventEmitter;
+    // Create a mock SessionMonitor that extends EventEmitter
+    mockSessionMonitor = new EventEmitter() as SessionMonitor & EventEmitter;
 
     // Create mock request
     mockRequest = {
@@ -57,7 +57,7 @@ describe('Events Router', () => {
     } as unknown as Response;
 
     // Create router
-    eventsRouter = createEventsRouter(mockPtyManager);
+    eventsRouter = createEventsRouter(mockSessionMonitor);
   });
 
   afterEach(() => {
@@ -120,16 +120,13 @@ describe('Events Router', () => {
 
       // Emit a sessionExit event
       const eventData = {
+        type: 'session-exit',
         sessionId: 'test-123',
         sessionName: 'Test Session',
         exitCode: 0,
+        timestamp: new Date().toISOString(),
       };
-      mockPtyManager.emit(
-        'sessionExited',
-        eventData.sessionId,
-        eventData.sessionName,
-        eventData.exitCode
-      );
+      mockSessionMonitor.emit('notification', eventData);
 
       // Verify SSE was sent - check that the data contains our expected fields
       const writeCall = (mockResponse.write as ReturnType<typeof vi.fn>).mock.calls[0][0];
@@ -165,12 +162,14 @@ describe('Events Router', () => {
 
       // Emit a commandFinished event
       const eventData = {
+        type: 'command-finished',
         sessionId: 'test-123',
         command: 'npm test',
         exitCode: 0,
         duration: 5432,
+        timestamp: new Date().toISOString(),
       };
-      mockPtyManager.emit('commandFinished', eventData);
+      mockSessionMonitor.emit('notification', eventData);
 
       // Verify SSE was sent - check that the data contains our expected fields
       const writeCall = (mockResponse.write as ReturnType<typeof vi.fn>).mock.calls[0][0];
@@ -206,9 +205,13 @@ describe('Events Router', () => {
       vi.clearAllMocks();
 
       // Emit multiple events
-      mockPtyManager.emit('sessionExited', 'session-1');
-      mockPtyManager.emit('commandFinished', { sessionId: 'session-2', command: 'ls' });
-      mockPtyManager.emit('claudeTurn', 'session-3', 'Session 3');
+      mockSessionMonitor.emit('notification', { type: 'session-exit', sessionId: 'session-1' });
+      mockSessionMonitor.emit('notification', {
+        type: 'command-finished',
+        sessionId: 'session-2',
+        command: 'ls',
+      });
+      mockSessionMonitor.emit('notification', { type: 'claude-turn', sessionId: 'session-3' });
 
       // Should have written 3 events
       const writeCalls = (mockResponse.write as ReturnType<typeof vi.fn>).mock.calls;
@@ -255,17 +258,13 @@ describe('Events Router', () => {
       expect(closeHandler).toBeTruthy();
 
       // Verify listeners are attached
-      expect(mockPtyManager.listenerCount('sessionExited')).toBeGreaterThan(0);
-      expect(mockPtyManager.listenerCount('commandFinished')).toBeGreaterThan(0);
-      expect(mockPtyManager.listenerCount('claudeTurn')).toBeGreaterThan(0);
+      expect(mockSessionMonitor.listenerCount('notification')).toBeGreaterThan(0);
 
       // Simulate client disconnect
       closeHandler();
 
       // Verify listeners are removed
-      expect(mockPtyManager.listenerCount('sessionExited')).toBe(0);
-      expect(mockPtyManager.listenerCount('commandFinished')).toBe(0);
-      expect(mockPtyManager.listenerCount('claudeTurn')).toBe(0);
+      expect(mockSessionMonitor.listenerCount('notification')).toBe(0);
     });
 
     it('should handle response errors gracefully', async () => {
@@ -287,7 +286,7 @@ describe('Events Router', () => {
 
       // Should not throw even if write fails
       expect(() => {
-        mockPtyManager.emit('claudeTurn', 'test', 'Test Session');
+        mockSessionMonitor.emit('notification', { type: 'claude-turn', sessionId: 'test' });
       }).not.toThrow();
     });
 
@@ -304,7 +303,7 @@ describe('Events Router', () => {
       vi.clearAllMocks();
 
       // Emit an event
-      mockPtyManager.emit('claudeTurn', 'test-123', 'Test Session');
+      mockSessionMonitor.emit('notification', { type: 'claude-turn', sessionId: 'test-123' });
 
       // Verify SSE format includes id
       const writeCalls = (mockResponse.write as ReturnType<typeof vi.fn>).mock.calls;
@@ -337,11 +336,11 @@ describe('Events Router', () => {
 
       // Should not throw
       expect(() => {
-        mockPtyManager.emit('claudeTurn', 'test-123', 'Test Session');
+        mockSessionMonitor.emit('notification', circularData);
       }).not.toThrow();
 
-      // Should have attempted to write something
-      expect(mockResponse.write).toHaveBeenCalled();
+      // Should not have written anything for the malformed event
+      expect(mockResponse.write).not.toHaveBeenCalled();
     });
   });
 
@@ -378,7 +377,7 @@ describe('Events Router', () => {
       vi.clearAllMocks();
 
       // Emit an event
-      mockPtyManager.emit('claudeTurn', 'test-123', 'Test Session');
+      mockSessionMonitor.emit('notification', { type: 'claude-turn', sessionId: 'test-123' });
 
       // Both clients should receive the event
       expect(client1Response.write).toHaveBeenCalledWith(

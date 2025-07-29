@@ -4,6 +4,7 @@ import type { NotificationPreferences } from '../../types/config.js';
 import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../types/config.js';
 import { createLogger } from '../utils/logger';
 import { authClient } from './auth-client';
+import { notificationEventService } from './notification-event-service';
 import { serverConfigService } from './server-config-service';
 
 // Re-export types for components
@@ -368,57 +369,45 @@ export class PushNotificationService {
   async testNotification(): Promise<void> {
     logger.log('🔔 Testing notification system...');
 
-    try {
-      // Set up SSE listener for test notifications before sending the request
-      const eventSource = new EventSource('/api/events');
-      let receivedNotification = false;
+    if (!this.serviceWorkerRegistration) {
+      throw new Error('Service worker not initialized');
+    }
 
+    try {
       // Promise that resolves when we receive the test notification
       const notificationPromise = new Promise<void>((resolve) => {
+        let receivedNotification = false;
+
         const timeout = setTimeout(() => {
           if (!receivedNotification) {
             logger.warn('⏱️ Timeout waiting for SSE test notification');
-            eventSource.close();
+            unsubscribe();
             resolve();
           }
         }, 5000); // 5 second timeout
 
-        eventSource.addEventListener('test-notification', async (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            logger.log('📨 Received test notification via SSE:', data);
-            receivedNotification = true;
-            clearTimeout(timeout);
+        const unsubscribe = notificationEventService.on('test-notification', async (data: any) => {
+          logger.log('📨 Received test notification via SSE:', data);
+          receivedNotification = true;
+          clearTimeout(timeout);
+          unsubscribe();
 
-            // Show notification if we have permission
-            if (this.serviceWorkerRegistration && this.getPermission() === 'granted') {
-              await this.serviceWorkerRegistration.showNotification(
-                data.title || 'VibeTunnel Test',
-                {
-                  body: data.body || 'Test notification received via SSE!',
-                  icon: '/apple-touch-icon.png',
-                  badge: '/favicon-32.png',
-                  tag: 'vibetunnel-test-sse',
-                  requireInteraction: false,
-                }
-              );
-              logger.log('✅ Displayed SSE test notification');
-            }
-
-            eventSource.close();
-            resolve();
-          } catch (error) {
-            logger.error('Failed to handle SSE test notification:', error);
-            eventSource.close();
-            resolve();
+          // Show notification if we have permission
+          if (this.serviceWorkerRegistration && this.getPermission() === 'granted') {
+            await this.serviceWorkerRegistration.showNotification(
+              data.title || 'VibeTunnel Test',
+              {
+                body: data.body || 'Test notification received via SSE!',
+                icon: '/apple-touch-icon.png',
+                badge: '/favicon-32.png',
+                tag: 'vibetunnel-test-sse',
+                requireInteraction: false,
+              }
+            );
+            logger.log('✅ Displayed SSE test notification');
           }
-        });
-
-        eventSource.onerror = () => {
-          logger.error('SSE connection error');
-          eventSource.close();
           resolve();
-        };
+        });
       });
 
       // Send the test notification request to server
@@ -427,13 +416,13 @@ export class PushNotificationService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...authClient.getAuthHeader(),
         },
       });
 
       if (!response.ok) {
         const error = await response.json();
         logger.error('❌ Server test notification failed:', error);
-        eventSource.close();
         throw new Error(error.error || 'Failed to send test notification');
       }
 

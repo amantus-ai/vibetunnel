@@ -250,7 +250,7 @@ describe('VibeTunnelSocketClient', () => {
       const client = new VibeTunnelSocketClient(socketPath);
       const statusHandler = vi.fn();
 
-      client.on('status', statusHandler);
+      client.on('STATUS_UPDATE', statusHandler);
       await client.connect();
 
       // Send status from server
@@ -274,7 +274,7 @@ describe('VibeTunnelSocketClient', () => {
       const client = new VibeTunnelSocketClient(socketPath);
       const errorHandler = vi.fn();
 
-      client.on('serverError', errorHandler);
+      client.on('ERROR', errorHandler);
       await client.connect();
 
       // Send error from server
@@ -320,7 +320,7 @@ describe('VibeTunnelSocketClient', () => {
       const client = new VibeTunnelSocketClient(socketPath);
       const statusHandler = vi.fn();
 
-      client.on('status', statusHandler);
+      client.on('STATUS_UPDATE', statusHandler);
       await client.connect();
 
       // Send multiple messages at once
@@ -343,7 +343,7 @@ describe('VibeTunnelSocketClient', () => {
       const client = new VibeTunnelSocketClient(socketPath);
       const statusHandler = vi.fn();
 
-      client.on('status', statusHandler);
+      client.on('STATUS_UPDATE', statusHandler);
       await client.connect();
 
       // Create a message and split it

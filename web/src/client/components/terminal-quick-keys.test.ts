@@ -95,7 +95,7 @@ describe('TerminalQuickKeys', () => {
 
       // Should have sent only the 'a' key
       expect(mockOnKeyPress).toHaveBeenCalledOnce();
-      expect(mockOnKeyPress).toHaveBeenCalledWith('a', false, false);
+      expect(mockOnKeyPress).toHaveBeenCalledWith('a', false, false, false);
     });
 
     it('should handle multiple Option+Arrow sequences', () => {
