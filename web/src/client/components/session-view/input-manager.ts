@@ -6,18 +6,23 @@
  */
 
 import type { Session } from '../../../shared/types.js';
-import { HttpMethod } from '../../../shared/types.js';
 import { authClient } from '../../services/auth-client.js';
 import { websocketInputClient } from '../../services/websocket-input-client.js';
 import { isBrowserShortcut, isCopyPasteShortcut } from '../../utils/browser-shortcuts.js';
 import { consumeEvent } from '../../utils/event-utils.js';
+import { isIMEAllowedKey } from '../../utils/ime-constants.js';
 import { createLogger } from '../../utils/logger.js';
+import { detectMobile } from '../../utils/mobile-utils.js';
+import { DesktopIMEInput } from '../ime-input.js';
+import type { Terminal } from '../terminal.js';
+import type { VibeTerminalBinary } from '../vibe-terminal-binary.js';
 
 const logger = createLogger('input-manager');
 
 export interface InputManagerCallbacks {
   requestUpdate(): void;
   getKeyboardCaptureActive?(): boolean;
+  getTerminalElement?(): Terminal | VibeTerminalBinary | null; // For cursor position access
 }
 
 export class InputManager {
@@ -26,9 +31,20 @@ export class InputManager {
   private useWebSocketInput = true; // Feature flag for WebSocket input
   private lastEscapeTime = 0;
   private readonly DOUBLE_ESCAPE_THRESHOLD = 500; // ms
+  private imeInput: DesktopIMEInput | null = null;
 
   setSession(session: Session | null): void {
+    // Clean up IME input when session is null
+    if (!session && this.imeInput) {
+      this.cleanup();
+    }
+
     this.session = session;
+
+    // Setup IME input when session is available
+    if (session && !this.imeInput) {
+      this.setupIMEInput();
+    }
 
     // Check URL parameter for WebSocket input feature flag
     const urlParams = new URLSearchParams(window.location.search);
@@ -52,8 +68,79 @@ export class InputManager {
     this.callbacks = callbacks;
   }
 
+  private setupIMEInput(): void {
+    // Skip IME input setup on mobile devices (they have their own IME handling)
+    if (detectMobile()) {
+      console.log('🔍 Skipping IME input setup on mobile device');
+      logger.log('Skipping IME input setup on mobile device');
+      return;
+    }
+    console.log('🔍 Setting up IME input on desktop device');
+
+    // Find the terminal container to position the IME input correctly
+    const terminalContainer = document.getElementById('terminal-container');
+    if (!terminalContainer) {
+      console.warn('🌏 InputManager: Terminal container not found, cannot setup IME input');
+      return;
+    }
+
+    // Create IME input component
+    this.imeInput = new DesktopIMEInput({
+      container: terminalContainer,
+      onTextInput: (text: string) => {
+        this.sendInputText(text);
+      },
+      onSpecialKey: (key: string) => {
+        this.sendInput(key);
+      },
+      getCursorInfo: () => {
+        if (!this.callbacks?.getTerminalElement) return null;
+
+        const terminalElement = this.callbacks.getTerminalElement();
+        if (!terminalElement) return null;
+
+        try {
+          const cursorInfo = terminalElement.getCursorInfo();
+          if (!cursorInfo) return null;
+
+          const { cursorX, cursorY, cols, rows } = cursorInfo;
+
+          const terminalDOMElement = terminalElement.getDOMElement();
+          if (!terminalDOMElement) return null;
+
+          const containerRect = terminalContainer.getBoundingClientRect();
+          const terminalRect = terminalDOMElement.getBoundingClientRect();
+
+          const charWidth = terminalRect.width / cols;
+          const lineHeight = terminalRect.height / rows;
+
+          const pixelX = terminalRect.left - containerRect.left + cursorX * charWidth;
+          const pixelY = terminalRect.top - containerRect.top + cursorY * lineHeight + lineHeight;
+
+          return { x: pixelX, y: pixelY };
+        } catch (error) {
+          logger.warn('Failed to get cursor position:', error);
+          return null;
+        }
+      },
+      autoFocus: true,
+    });
+  }
+
   async handleKeyboardInput(e: KeyboardEvent): Promise<void> {
     if (!this.session) return;
+
+    // Block keyboard events when IME input is focused, except for editing keys
+    if (this.imeInput?.isFocused()) {
+      if (!isIMEAllowedKey(e)) {
+        return;
+      }
+    }
+
+    // Block keyboard events during IME composition
+    if (this.imeInput?.isComposingText()) {
+      return;
+    }
 
     const { key, ctrlKey, altKey, metaKey, shiftKey } = e;
 
@@ -116,10 +203,6 @@ export class InputManager {
         const now = Date.now();
         const timeSinceLastEscape = now - this.lastEscapeTime;
 
-        logger.log(
-          `🔑 Escape pressed. Time since last: ${timeSinceLastEscape}ms, Threshold: ${this.DOUBLE_ESCAPE_THRESHOLD}ms`
-        );
-
         if (timeSinceLastEscape < this.DOUBLE_ESCAPE_THRESHOLD) {
           // Double escape detected - toggle keyboard capture
           logger.log('🔄 Double Escape detected in input manager - toggling keyboard capture');
@@ -130,10 +213,6 @@ export class InputManager {
             const currentCapture = this.callbacks.getKeyboardCaptureActive?.() ?? true;
             const newCapture = !currentCapture;
 
-            logger.log(
-              `📢 Dispatching capture-toggled event. Current: ${currentCapture}, New: ${newCapture}`
-            );
-
             // Dispatch custom event that will bubble up
             const event = new CustomEvent('capture-toggled', {
               detail: { active: newCapture },
@@ -143,7 +222,6 @@ export class InputManager {
 
             // Dispatch on document to ensure it reaches the app
             document.dispatchEvent(event);
-            logger.log('✅ capture-toggled event dispatched on document');
           }
 
           this.lastEscapeTime = 0; // Reset to prevent triple-tap
@@ -222,7 +300,7 @@ export class InputManager {
       // Fallback to HTTP if WebSocket failed
       logger.debug('WebSocket unavailable, falling back to HTTP');
       const response = await fetch(`/api/sessions/${this.session.id}/input`, {
-        method: HttpMethod.POST,
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...authClient.getAuthHeader(),
@@ -307,12 +385,16 @@ export class InputManager {
       target.tagName === 'TEXTAREA' ||
       target.tagName === 'SELECT' ||
       target.contentEditable === 'true' ||
-      target.closest('.monaco-editor') ||
-      target.closest('[data-keybinding-context]') ||
-      target.closest('.editor-container') ||
-      target.closest('inline-edit') // Allow typing in inline-edit component
+      target.closest?.('.monaco-editor') ||
+      target.closest?.('[data-keybinding-context]') ||
+      target.closest?.('.editor-container') ||
+      target.closest?.('inline-edit') // Allow typing in inline-edit component
     ) {
-      // Allow normal input in form fields and editors
+      // Special exception: allow copy/paste shortcuts even in input fields (like our IME input)
+      if (isCopyPasteShortcut(e)) {
+        return true;
+      }
+      // Allow normal input in form fields and editors for other keys
       return false;
     }
 
@@ -322,13 +404,11 @@ export class InputManager {
     }
 
     // Always allow DevTools shortcuts
+    const isMac = /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent);
     if (
       e.key === 'F12' ||
-      (!navigator.platform.toLowerCase().includes('mac') &&
-        e.ctrlKey &&
-        e.shiftKey &&
-        e.key === 'I') ||
-      (navigator.platform.toLowerCase().includes('mac') && e.metaKey && e.altKey && e.key === 'I')
+      (!isMac && e.ctrlKey && e.shiftKey && e.key === 'I') ||
+      (isMac && e.metaKey && e.altKey && e.key === 'I')
     ) {
       return true;
     }
@@ -343,7 +423,7 @@ export class InputManager {
 
     // If capture is disabled, allow common browser shortcuts
     if (!captureActive) {
-      const isMacOS = navigator.platform.toLowerCase().includes('mac');
+      const isMacOS = /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent);
       const key = e.key.toLowerCase();
 
       // Common browser shortcuts that are normally captured for terminal
@@ -370,6 +450,12 @@ export class InputManager {
   }
 
   cleanup(): void {
+    // Cleanup IME input
+    if (this.imeInput) {
+      this.imeInput.cleanup();
+      this.imeInput = null;
+    }
+
     // Disconnect WebSocket if feature was enabled
     if (this.useWebSocketInput) {
       websocketInputClient.disconnect();
@@ -378,5 +464,10 @@ export class InputManager {
     // Clear references to prevent memory leaks
     this.session = null;
     this.callbacks = null;
+  }
+
+  // For testing purposes only
+  getIMEInputForTesting(): DesktopIMEInput | null {
+    return this.imeInput;
   }
 }

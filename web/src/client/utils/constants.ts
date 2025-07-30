@@ -46,6 +46,7 @@ export const Z_INDEX = {
   // Dropdowns and popovers (50-99)
   WIDTH_SELECTOR_DROPDOWN: 60,
   BRANCH_SELECTOR_DROPDOWN: 65,
+  IME_INPUT: 70, // Invisible IME input for CJK text - needs to be above terminal but below modals
 
   // Modals and overlays (100-199)
   MODAL_BACKDROP: 100,
