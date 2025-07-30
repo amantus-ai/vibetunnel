@@ -14,6 +14,32 @@ use std::io::Read;
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
+use log::{debug, error, info, warn};
+
+// Initialize logging once
+#[cfg(target_os = "macos")]
+lazy_static::lazy_static! {
+  static ref LOGGER_INIT: () = {
+    use oslog::OsLogger;
+    use log::LevelFilter;
+    
+    // Initialize the macOS logger with VibeTunnel's subsystem
+    // This will make logs appear in Console.app and be visible to vtlog
+    if let Err(e) = OsLogger::new("sh.vibetunnel.rust-pty")
+      .level_filter(LevelFilter::Debug)
+      .init() {
+      eprintln!("Failed to initialize oslog: {}", e);
+    }
+  };
+}
+
+// For non-macOS platforms, use env_logger
+#[cfg(not(target_os = "macos"))]
+lazy_static::lazy_static! {
+  static ref LOGGER_INIT: () = {
+    env_logger::init();
+  };
+}
 
 #[napi]
 pub struct NativePty {
@@ -64,11 +90,17 @@ impl NativePty {
     cols: Option<u16>,
     rows: Option<u16>,
   ) -> Result<Self> {
+    // Ensure logger is initialized
+    lazy_static::initialize(&LOGGER_INIT);
+    
+    info!("NativePty::new called with shell={:?}, args={:?}", shell, args);
     let cols = cols.unwrap_or(80);
     let rows = rows.unwrap_or(24);
 
+    info!("Creating native PTY system...");
     let pty_system = native_pty_system();
 
+    info!("Opening PTY with size {}x{}", cols, rows);
     let pty_pair = pty_system
       .openpty(PtySize {
         rows,
@@ -76,7 +108,11 @@ impl NativePty {
         pixel_width: 0,
         pixel_height: 0,
       })
-      .map_err(|e| Error::from_reason(format!("Failed to open PTY: {e}")))?;
+      .map_err(|e| {
+        error!("Failed to open PTY: {}", e);
+        Error::from_reason(format!("Failed to open PTY: {e}"))
+      })?;
+    info!("PTY opened successfully");
 
     let default_shell = if cfg!(windows) {
       "cmd.exe"
@@ -99,22 +135,33 @@ impl NativePty {
       }
     }
 
+    info!("Spawning command...");
     let child = pty_pair
       .slave
       .spawn_command(cmd)
-      .map_err(|e| Error::from_reason(format!("Failed to spawn: {e}")))?;
+      .map_err(|e| {
+        error!("Failed to spawn command: {}", e);
+        Error::from_reason(format!("Failed to spawn: {e}"))
+      })?;
+    info!("Command spawned successfully");
 
     let pid = child
       .process_id()
       .ok_or_else(|| Error::from_reason("Failed to get PID"))?;
 
     let session_id = uuid::Uuid::new_v4().to_string();
+    info!("Created session ID: {}", session_id);
 
     // Take the writer once and store it
+    info!("Taking writer from master PTY...");
     let writer = pty_pair
       .master
       .take_writer()
-      .map_err(|e| Error::from_reason(format!("Failed to take writer: {e}")))?;
+      .map_err(|e| {
+        error!("Failed to take writer: {}", e);
+        Error::from_reason(format!("Failed to take writer: {e}"))
+      })?;
+    info!("Writer obtained successfully");
 
     // Create channels for output and shutdown
     let (output_sender, output_receiver) = bounded::<Vec<u8>>(100); // Bounded channel for backpressure
@@ -130,7 +177,9 @@ impl NativePty {
     let reader_session_id = session_id.clone();
 
     // Spawn reader thread
+    info!("Spawning reader thread for session {}", reader_session_id);
     let reader_thread = thread::spawn(move || {
+      info!("Reader thread started for session {}", reader_session_id);
       let mut buffer = vec![0u8; 4096];
       loop {
         // Check for shutdown signal
@@ -178,6 +227,7 @@ impl NativePty {
     });
 
     // Store in global manager
+    info!("Storing session {} in global PTY manager", session_id);
     {
       let mut manager = PTY_MANAGER.lock();
       manager.sessions.insert(
@@ -194,6 +244,7 @@ impl NativePty {
       );
     }
 
+    info!("NativePty constructor completed successfully for session {}, PID {}", session_id, pid);
     Ok(Self {
       session_id,
       pid: pid as u32,
@@ -449,6 +500,10 @@ impl NativePty {
 // Initialize PTY system (no-op for now, but required for compatibility)
 #[napi]
 pub fn init_pty_system() -> Result<()> {
+  // Ensure logger is initialized
+  lazy_static::initialize(&LOGGER_INIT);
+  
+  info!("init_pty_system called");
   // No initialization needed for portable-pty
   Ok(())
 }
