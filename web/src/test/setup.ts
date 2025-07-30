@@ -326,7 +326,7 @@ afterAll(() => {
 
 // Patch addEventListener for custom elements in test environment
 // This is to handle cases where vibe-terminal is created but doesn't have addEventListener
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   const originalCreateElement = document.createElement;
   document.createElement = function (tagName: string) {
     const element = originalCreateElement.call(this, tagName);
