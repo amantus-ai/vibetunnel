@@ -75,6 +75,17 @@ class TerminalHandler implements MessageHandler {
 }
 
 class SystemHandler implements MessageHandler {
+  private configUpdateCallback: ((config: { repositoryBasePath: string }) => void) | null = null;
+  private repositoryPath: string | null = null;
+
+  setConfigUpdateCallback(callback: (config: { repositoryBasePath: string }) => void): void {
+    this.configUpdateCallback = callback;
+  }
+
+  getRepositoryPath(): string | null {
+    return this.repositoryPath;
+  }
+
   async handleMessage(message: ControlMessage): Promise<ControlMessage | null> {
     logger.log(`System handler: ${message.action}, type: ${message.type}, id: ${message.id}`);
 
@@ -85,6 +96,30 @@ class SystemHandler implements MessageHandler {
 
       case 'ready':
         // Event, no response needed
+        return null;
+
+      case 'repository-path-update':
+        // Handle repository path updates from Mac app
+        if (message.type === 'request') {
+          const payload = message.payload as { path?: string };
+          if (!payload.path) {
+            return createControlResponse(message, null, 'Missing path in payload');
+          }
+
+          // Store the path
+          this.repositoryPath = payload.path;
+
+          // Notify callback if set
+          if (this.configUpdateCallback) {
+            this.configUpdateCallback({ repositoryBasePath: payload.path });
+          }
+
+          // Send success response
+          return createControlResponse(message, {
+            success: true,
+            path: payload.path,
+          });
+        }
         return null;
 
       default:
@@ -163,7 +198,8 @@ export class ControlUnixHandler {
 
     // Initialize handlers
     this.handlers.set('terminal', new TerminalHandler());
-    this.handlers.set('system', new SystemHandler());
+    const systemHandler = new SystemHandler();
+    this.handlers.set('system', systemHandler);
   }
 
   async start(): Promise<void> {
@@ -619,6 +655,27 @@ export class ControlUnixHandler {
       this.macSocket?.destroy();
       this.macSocket = null;
     }
+  }
+
+  /**
+   * Set a callback to be notified when configuration updates are received
+   */
+  setConfigUpdateCallback(callback: (config: { repositoryBasePath: string }) => void): void {
+    const systemHandler = this.handlers.get('system') as SystemHandler;
+    if (systemHandler && 'setConfigUpdateCallback' in systemHandler) {
+      systemHandler.setConfigUpdateCallback(callback);
+    }
+  }
+
+  /**
+   * Get the current repository path from the system handler
+   */
+  getRepositoryPath(): string | null {
+    const systemHandler = this.handlers.get('system') as SystemHandler;
+    if (systemHandler && 'getRepositoryPath' in systemHandler) {
+      return systemHandler.getRepositoryPath();
+    }
+    return null;
   }
 }
 
