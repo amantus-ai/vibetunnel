@@ -201,6 +201,7 @@ export class TerminalQuickKeys extends LitElement {
       this.requestUpdate();
     }
 
+    // Always pass the key press to the handler - let it decide what to do with special keys
     if (this.onKeyPress) {
       this.onKeyPress(key, isModifier, isSpecial, isToggle);
     }

@@ -30,6 +30,7 @@
 import { Z_INDEX } from '../../utils/constants.js';
 import { createLogger } from '../../utils/logger.js';
 import type { InputManager } from './input-manager.js';
+import { ManagerEventEmitter } from './interfaces.js';
 
 const logger = createLogger('direct-keyboard-manager');
 
@@ -47,7 +48,7 @@ export interface DirectKeyboardCallbacks {
   clearCtrlSequence(): void;
 }
 
-export class DirectKeyboardManager {
+export class DirectKeyboardManager extends ManagerEventEmitter {
   private hiddenInput: HTMLInputElement | null = null;
   private focusRetentionInterval: number | null = null;
   private inputManager: InputManager | null = null;
@@ -73,10 +74,12 @@ export class DirectKeyboardManager {
   private compositionBuffer = '';
 
   constructor(instanceId: string) {
+    super();
     this.instanceId = instanceId;
 
     // Add global paste listener for environments where Clipboard API doesn't work
     this.setupGlobalPasteListener();
+    this.ensureHiddenInputVisible();
   }
 
   setInputManager(inputManager: InputManager): void {
@@ -118,11 +121,13 @@ export class DirectKeyboardManager {
   }
 
   focusHiddenInput(): void {
-    logger.log('Entering keyboard mode');
+    logger.log('focusHiddenInput called - entering keyboard mode');
+    logger.log('DEBUG: hiddenInput exists?', !!this.hiddenInput);
+    logger.log('DEBUG: sessionViewElement exists?', !!this.sessionViewElement);
+
     // Enter keyboard mode
     this.keyboardMode = true;
     this.keyboardModeTimestamp = Date.now();
-    this.updateHiddenInputPosition();
 
     // Add capture phase click handler to prevent any clicks from stealing focus
     if (!this.captureClickHandler) {
@@ -182,7 +187,15 @@ export class DirectKeyboardManager {
 
   ensureHiddenInputVisible(): void {
     if (!this.hiddenInput) {
+      logger.log('DEBUG: Creating hidden input');
       this.createHiddenInput();
+    } else {
+      logger.log('DEBUG: Hidden input already exists');
+      // Make sure it's in the DOM
+      if (!this.hiddenInput.parentNode) {
+        logger.log('DEBUG: Hidden input not in DOM, re-adding');
+        document.body.appendChild(this.hiddenInput);
+      }
     }
 
     // Show quick keys immediately when entering keyboard mode
@@ -224,15 +237,18 @@ export class DirectKeyboardManager {
     this.hiddenInput = document.createElement('input');
     this.hiddenInput.type = 'text';
     this.hiddenInput.style.position = 'absolute';
-    this.hiddenInput.style.opacity = '0.01'; // iOS needs non-zero opacity
+
+    // DEBUGGING: Make it fully visible!
+    this.hiddenInput.style.opacity = '1'; // Fully visible
     this.hiddenInput.style.fontSize = '16px'; // Prevent zoom on iOS
-    this.hiddenInput.style.border = 'none';
+    this.hiddenInput.style.border = '3px solid red'; // Red border for debugging
     this.hiddenInput.style.outline = 'none';
-    this.hiddenInput.style.background = 'transparent';
-    this.hiddenInput.style.color = 'transparent';
-    this.hiddenInput.style.caretColor = 'transparent';
-    this.hiddenInput.style.cursor = 'default';
-    this.hiddenInput.style.pointerEvents = 'none'; // Start with pointer events disabled
+    this.hiddenInput.style.background = 'white';
+    this.hiddenInput.style.color = 'black';
+    this.hiddenInput.style.padding = '10px';
+    this.hiddenInput.style.cursor = 'text';
+    this.hiddenInput.style.pointerEvents = 'auto'; // Allow clicking
+    this.hiddenInput.placeholder = 'DEBUG: Tap here for keyboard';
     this.hiddenInput.style.webkitUserSelect = 'text'; // iOS specific
     this.hiddenInput.autocapitalize = 'none'; // More explicit than 'off'
     this.hiddenInput.autocomplete = 'off';
@@ -391,8 +407,9 @@ export class DirectKeyboardManager {
       if (this.keyboardMode) {
         logger.log('In keyboard mode - maintaining focus');
 
-        // Immediately try to refocus
+        // Add a small delay to allow Done button to exit keyboard mode first
         setTimeout(() => {
+          // Re-check keyboard mode after delay - Done button might have exited it
           if (
             this.keyboardMode &&
             this.hiddenInput &&
@@ -401,7 +418,7 @@ export class DirectKeyboardManager {
             logger.log('Refocusing hidden input to maintain keyboard');
             this.hiddenInput.focus();
           }
-        }, 0);
+        }, 50); // 50ms delay to allow Done button processing
 
         // Don't exit keyboard mode or hide quick keys
         return;
@@ -437,11 +454,9 @@ export class DirectKeyboardManager {
       }
     });
 
-    // Add to the terminal container
-    const terminalContainer = this.sessionViewElement?.querySelector('#terminal-container');
-    if (terminalContainer) {
-      terminalContainer.appendChild(this.hiddenInput);
-    }
+    // Add to the body for debugging (so it's always visible)
+    document.body.appendChild(this.hiddenInput);
+    logger.log('DEBUG: Hidden input added to body');
   }
 
   handleQuickKeyPress = async (
@@ -458,6 +473,7 @@ export class DirectKeyboardManager {
     if (isSpecial && key === 'Done') {
       // Dismiss the keyboard
       logger.log('Done button pressed - dismissing keyboard');
+      // Set a flag to prevent refocus attempts
       this.dismissKeyboard();
       return;
     } else if (isModifier && key === 'Control') {
@@ -613,7 +629,13 @@ export class DirectKeyboardManager {
       }
 
       // Send the key to terminal
-      this.inputManager.sendInput(keyToSend.toLowerCase());
+      // For single character keys, send as text
+      if (keyToSend.length === 1) {
+        this.inputManager.sendInputText(keyToSend);
+      } else {
+        // For special keys, send as input command
+        this.inputManager.sendInput(keyToSend.toLowerCase());
+      }
     }
 
     // Always keep focus on hidden input after any key press (except Done)
@@ -689,14 +711,15 @@ export class DirectKeyboardManager {
     if (!this.hiddenInput) return;
 
     if (this.keyboardMode) {
-      // In keyboard mode: cover the terminal to receive input
-      this.hiddenInput.style.position = 'absolute';
-      this.hiddenInput.style.top = '0';
-      this.hiddenInput.style.left = '0';
-      this.hiddenInput.style.width = '100%';
-      this.hiddenInput.style.height = '1px';
-      this.hiddenInput.style.zIndex = String(Z_INDEX.TERMINAL_OVERLAY);
-      this.hiddenInput.style.pointerEvents = 'none';
+      // DEBUGGING: Make it fully visible and centered
+      this.hiddenInput.style.position = 'fixed';
+      this.hiddenInput.style.bottom = '100px'; // Above quick keys
+      this.hiddenInput.style.left = '50%';
+      this.hiddenInput.style.transform = 'translateX(-50%)';
+      this.hiddenInput.style.width = '300px';
+      this.hiddenInput.style.height = '50px';
+      this.hiddenInput.style.zIndex = String(Z_INDEX.TERMINAL_OVERLAY + 100);
+      this.hiddenInput.style.pointerEvents = 'auto'; // Allow clicking!
     } else {
       // In scroll mode: position off-screen
       this.hiddenInput.style.position = 'fixed';
@@ -896,5 +919,62 @@ export class DirectKeyboardManager {
       this.hiddenInput.remove();
       this.hiddenInput = null;
     }
+  }
+
+  getKeyboardMode(): boolean {
+    return this.keyboardMode;
+  }
+
+  isRecentlyEnteredKeyboardMode(): boolean {
+    // Check if we entered keyboard mode within the last 2 seconds
+    // This helps prevent iOS keyboard animation from being interrupted
+    if (!this.keyboardMode) return false;
+
+    const timeSinceEntry = Date.now() - this.keyboardModeTimestamp;
+    return timeSinceEntry < 2000; // 2 seconds
+  }
+
+  showVisibleInputForKeyboard(): void {
+    // Prevent multiple inputs
+    if (document.getElementById('vibe-visible-keyboard-input')) return;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'vibe-visible-keyboard-input';
+    input.placeholder = 'Type here...';
+    input.style.position = 'fixed';
+    input.style.bottom = '80px'; // Just above your "Show Keyboard" button
+    input.style.left = '50%';
+    input.style.transform = 'translateX(-50%)';
+    input.style.zIndex = '9999';
+    input.style.fontSize = '18px';
+    input.style.padding = '0.5em';
+    input.style.background = '#fff';
+    input.style.color = '#000';
+    input.style.border = '1px solid #ccc';
+    input.style.borderRadius = '6px';
+
+    document.body.appendChild(input);
+
+    // Add a slight delay before focusing
+    setTimeout(() => {
+      input.focus();
+      console.log('Input focused:', document.activeElement === input);
+    }, 50);
+
+    // On blur or enter, remove input and send text
+    const cleanup = () => {
+      if (input.value && this.inputManager) {
+        this.inputManager.sendInputText(input.value);
+      }
+      input.remove();
+    };
+
+    input.addEventListener('blur', cleanup);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        cleanup();
+      }
+    });
   }
 }
