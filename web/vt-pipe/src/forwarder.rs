@@ -141,9 +141,8 @@ impl Forwarder {
     let socket_client = connect_with_retry(&socket_path, 10, 100)
       .await
       .context(format!(
-        "Failed to connect to VibeTunnel server socket at {:?}. \
-         Is VibeTunnel running? Try launching it first.",
-        socket_path
+        "Failed to connect to VibeTunnel server socket at {socket_path:?}. \
+         Is VibeTunnel running? Try launching it first."
       ))?;
 
     // Enter raw mode

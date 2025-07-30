@@ -20,7 +20,7 @@ pub struct ApiClient {
 impl ApiClient {
   /// Create a new API client
   pub fn new(port: u16) -> Result<Self> {
-    let base_url = format!("http://localhost:{}", port);
+    let base_url = format!("http://localhost:{port}");
     let client = reqwest::blocking::Client::builder()
       .timeout(std::time::Duration::from_secs(10))
       .build()

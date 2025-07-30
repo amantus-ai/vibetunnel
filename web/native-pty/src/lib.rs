@@ -295,20 +295,19 @@ impl NativePty {
   pub fn write(&self, data: Buffer) -> Result<()> {
     use std::io::Write;
 
+    let data_len = data.len();
     info!(
-      "write() called for session {} with {} bytes",
-      self.session_id,
-      data.len()
+      "write() called for session {} with {data_len} bytes",
+      self.session_id
     );
 
     // Log the actual data for debugging (limit to first 100 bytes)
     let preview = if data.len() <= 100 {
       String::from_utf8_lossy(&data).to_string()
     } else {
+      let preview_str = String::from_utf8_lossy(&data[..100]);
       format!(
-        "{}... ({} bytes total)",
-        String::from_utf8_lossy(&data[..100]),
-        data.len()
+        "{preview_str}... ({data_len} bytes total)"
       )
     };
     debug!("Write data: {:?}", preview);
@@ -328,9 +327,11 @@ impl NativePty {
         Error::from_reason(format!("Flush failed: {e}"))
       })?;
 
-      info!("Write successful for session {}", self.session_id);
+      let session_id = &self.session_id;
+      info!("Write successful for session {session_id}");
     } else {
-      error!("Session {} not found in write()", self.session_id);
+      let session_id = &self.session_id;
+      error!("Session {session_id} not found in write()");
       return Err(Error::from_reason("Session not found"));
     }
 
