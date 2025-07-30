@@ -172,10 +172,22 @@ impl NativePty {
       .try_clone_reader()
       .map_err(|e| Error::from_reason(format!("Failed to clone reader: {e}")))?;
 
-    // Store session ID for reader thread
+    // Create the session Arc first so we can pass it to the reader thread
+    let session = Arc::new(PtySession {
+      master: Mutex::new(pty_pair.master),
+      writer,
+      child: Mutex::new(child),
+      reader_thread: Mutex::new(None), // Will be set after thread creation
+      output_receiver,
+      shutdown_sender,
+      data_callback: Mutex::new(None),
+    });
+
+    // Clone the session Arc for the reader thread
+    let session_for_reader = session.clone();
     let reader_session_id = session_id.clone();
 
-    // Spawn reader thread
+    // Spawn reader thread with direct access to the session Arc
     info!("Spawning reader thread for session {}", reader_session_id);
     let reader_thread = thread::spawn(move || {
       info!("Reader thread started for session {}", reader_session_id);
@@ -204,19 +216,10 @@ impl NativePty {
             );
             let data = buffer[..n].to_vec();
 
-            // Check if we have a callback to call
-            // Note: This is called from the reader thread, so we need to get the session
-            // Arc from the global manager. In the future, we could pass the Arc to the thread
-            // to avoid this lookup entirely.
+            // Check if we have a callback to call - directly from the session Arc
             let callback = {
-              let manager = PTY_MANAGER.lock();
-              manager
-                .sessions
-                .get(&reader_session_id)
-                .and_then(|session| {
-                  let cb_lock = session.data_callback.lock();
-                  cb_lock.clone()
-                })
+              let cb_lock = session_for_reader.data_callback.lock();
+              cb_lock.clone()
             };
 
             // If callback exists, call it directly from this thread
@@ -230,7 +233,7 @@ impl NativePty {
               Ok(_) => {},
               Err(crossbeam_channel::TrySendError::Full(_)) => {
                 // Channel is full, skip this data to prevent blocking
-                eprintln!("PTY output buffer full, dropping data");
+                warn!("PTY output buffer full, dropping data for session {}", reader_session_id);
               },
               Err(crossbeam_channel::TrySendError::Disconnected(_)) => break,
             }
@@ -244,22 +247,17 @@ impl NativePty {
       }
     });
 
+    // Set the reader thread in the session
+    {
+      let mut thread_lock = session.reader_thread.lock();
+      *thread_lock = Some(reader_thread);
+    }
+
     // Store in global manager
     info!("Storing session {} in global PTY manager", session_id);
     {
       let mut manager = PTY_MANAGER.lock();
-      manager.sessions.insert(
-        session_id.clone(),
-        Arc::new(PtySession {
-          master: Mutex::new(pty_pair.master),
-          writer,
-          child: Mutex::new(child),
-          reader_thread: Mutex::new(Some(reader_thread)),
-          output_receiver,
-          shutdown_sender,
-          data_callback: Mutex::new(None),
-        }),
-      );
+      manager.sessions.insert(session_id.clone(), session);
     }
 
     info!(

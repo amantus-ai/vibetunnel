@@ -61,7 +61,7 @@ function loadNativeAddon() {
         logger.log(`Loading PTY addon from SEA path: ${ptyPath}`);
         logger.log(`Process execPath: ${process.execPath}`);
         logger.log(`Exec directory: ${execDir}`);
-        
+
         // Check if file exists
         const fs = require('fs');
         if (fs.existsSync(ptyPath)) {
@@ -70,7 +70,7 @@ function loadNativeAddon() {
           logger.error(`PTY addon file NOT FOUND at ${ptyPath}`);
           throw new Error(`PTY addon not found at ${ptyPath}`);
         }
-        
+
         logger.log('Using process.dlopen to load native addon...');
         // SEA binaries need to use process.dlopen for native modules
         const module = { exports: {} };
@@ -80,7 +80,9 @@ function loadNativeAddon() {
           logger.log('Native addon loaded successfully via process.dlopen');
         } catch (dlopenError) {
           logger.error('Failed to load with process.dlopen:', dlopenError);
-          throw new Error(`Failed to dlopen native addon: ${dlopenError instanceof Error ? dlopenError.message : String(dlopenError)}`);
+          throw new Error(
+            `Failed to dlopen native addon: ${dlopenError instanceof Error ? dlopenError.message : String(dlopenError)}`
+          );
         }
       } else {
         // Development mode - try to load from vibetunnel-pty
@@ -127,7 +129,7 @@ class NativeAddonPty extends EventEmitter implements IPty {
 
   constructor(file?: string, args?: string[], opt?: IPtyOptions) {
     super();
-    
+
     logger.log(`NativeAddonPty constructor called with file=${file}, args=${args?.join(' ')}`);
 
     // Load native addon
