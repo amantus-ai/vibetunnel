@@ -379,7 +379,9 @@ export class InputManager {
     }
 
     // Always allow DevTools shortcuts
-    const isMac = /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent);
+    const isMac =
+      /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent) ||
+      (navigator.platform && navigator.platform.indexOf('Mac') >= 0);
     if (
       e.key === 'F12' ||
       (!isMac && e.ctrlKey && e.shiftKey && e.key === 'I') ||
@@ -394,7 +396,9 @@ export class InputManager {
     }
 
     // Word navigation on macOS should always be allowed (system-wide shortcut)
-    const isMacOS = /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent);
+    const isMacOS =
+      /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent) ||
+      (navigator.platform && navigator.platform.indexOf('Mac') >= 0);
     const key = e.key.toLowerCase();
     if (isMacOS && e.metaKey && e.altKey && ['arrowleft', 'arrowright'].includes(key)) {
       return true;
