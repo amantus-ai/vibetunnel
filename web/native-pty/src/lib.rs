@@ -278,7 +278,7 @@ impl NativePty {
   }
 
   #[napi]
-  pub fn kill(&self, signal: Option<String>) -> Result<()> {
+  pub fn kill(&self, _signal: Option<String>) -> Result<()> {
     let mut manager = PTY_MANAGER.lock();
 
     if let Some(session) = manager.sessions.get_mut(&self.session_id) {
