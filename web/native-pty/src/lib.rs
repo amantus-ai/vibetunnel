@@ -61,6 +61,9 @@ struct PtyManager {
   sessions: HashMap<String, Arc<PtySession>>,
 }
 
+// Type alias for the data callback to simplify complex type
+type DataCallback = Arc<ThreadsafeFunction<Vec<u8>, ErrorStrategy::Fatal>>;
+
 // All fields that need concurrent access are wrapped in Mutex/RwLock
 struct PtySession {
   master: Mutex<Box<dyn portable_pty::MasterPty + Send>>,
@@ -70,7 +73,7 @@ struct PtySession {
   output_receiver: Receiver<Vec<u8>>,
   shutdown_sender: Sender<()>,
   // Event-driven callback for data
-  data_callback: Mutex<Option<Arc<ThreadsafeFunction<Vec<u8>, ErrorStrategy::Fatal>>>>,
+  data_callback: Mutex<Option<DataCallback>>,
 }
 
 impl PtyManager {
