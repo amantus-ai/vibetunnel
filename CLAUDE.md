@@ -433,3 +433,21 @@ The agent will:
 - External Device Testing: `docs/TESTING_EXTERNAL_DEVICES.md`
 - Gemini CLI Instructions: `docs/gemini.md`
 - Release Process: `docs/RELEASE.md`
+
+## VibeTunnel Socket Architecture
+
+VibeTunnel uses Unix domain sockets for local inter-process communication:
+
+- **API Socket** (`~/.vibetunnel/api.sock`) - Used by `vt` command for server communication
+- **Control Socket** (`~/.vibetunnel/control.sock`) - Mac app ↔ Node.js server communication
+- **Session Sockets** (`~/.vibetunnel/control/{session_id}/ipc.sock`) - Per-session terminal I/O
+
+### Claude Code Integration
+
+The warning "Failed to connect to socket" when running `claude` outside VibeTunnel is expected behavior. To run Claude with VibeTunnel integration:
+
+```bash
+vt claude --dangerously-skip-permissions
+```
+
+For detailed socket architecture, protocols, debugging, and troubleshooting, see `docs/sockets.md`
