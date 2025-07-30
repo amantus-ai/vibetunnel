@@ -28,7 +28,7 @@ lazy_static::lazy_static! {
     if let Err(e) = OsLogger::new("sh.vibetunnel.rust-pty")
       .level_filter(LevelFilter::Debug)
       .init() {
-      eprintln!("Failed to initialize oslog: {}", e);
+      eprintln!("Failed to initialize oslog: {e}");
     }
   };
 }
@@ -96,8 +96,7 @@ impl NativePty {
     lazy_static::initialize(&LOGGER_INIT);
 
     info!(
-      "NativePty::new called with shell={:?}, args={:?}",
-      shell, args
+      "NativePty::new called with shell={shell:?}, args={args:?}"
     );
     let cols = cols.unwrap_or(80);
     let rows = rows.unwrap_or(24);
@@ -105,7 +104,7 @@ impl NativePty {
     info!("Creating native PTY system...");
     let pty_system = native_pty_system();
 
-    info!("Opening PTY with size {}x{}", cols, rows);
+    info!("Opening PTY with size {cols}x{rows}");
     let pty_pair = pty_system
       .openpty(PtySize {
         rows,
@@ -114,7 +113,7 @@ impl NativePty {
         pixel_height: 0,
       })
       .map_err(|e| {
-        error!("Failed to open PTY: {}", e);
+        error!("Failed to open PTY: {e}");
         Error::from_reason(format!("Failed to open PTY: {e}"))
       })?;
     info!("PTY opened successfully");
@@ -142,7 +141,7 @@ impl NativePty {
 
     info!("Spawning command...");
     let child = pty_pair.slave.spawn_command(cmd).map_err(|e| {
-      error!("Failed to spawn command: {}", e);
+      error!("Failed to spawn command: {e}");
       Error::from_reason(format!("Failed to spawn: {e}"))
     })?;
     info!("Command spawned successfully");
@@ -152,12 +151,12 @@ impl NativePty {
       .ok_or_else(|| Error::from_reason("Failed to get PID"))?;
 
     let session_id = uuid::Uuid::new_v4().to_string();
-    info!("Created session ID: {}", session_id);
+    info!("Created session ID: {session_id}");
 
     // Take the writer once and store it
     info!("Taking writer from master PTY...");
     let writer = Arc::new(Mutex::new(pty_pair.master.take_writer().map_err(|e| {
-      error!("Failed to take writer: {}", e);
+      error!("Failed to take writer: {e}");
       Error::from_reason(format!("Failed to take writer: {e}"))
     })?));
     info!("Writer obtained successfully");
@@ -188,31 +187,29 @@ impl NativePty {
     let reader_session_id = session_id.clone();
 
     // Spawn reader thread with direct access to the session Arc
-    info!("Spawning reader thread for session {}", reader_session_id);
+    info!("Spawning reader thread for session {reader_session_id}");
     let reader_thread = thread::spawn(move || {
-      info!("Reader thread started for session {}", reader_session_id);
+      info!("Reader thread started for session {reader_session_id}");
       let mut buffer = vec![0u8; 4096];
       let mut total_bytes_read = 0usize;
       loop {
         // Check for shutdown signal
         if shutdown_receiver.try_recv().is_ok() {
           info!(
-            "Reader thread received shutdown signal for session {}",
-            reader_session_id
+            "Reader thread received shutdown signal for session {reader_session_id}"
           );
           break;
         }
 
         match reader.read(&mut buffer) {
           Ok(0) => {
-            info!("Reader thread EOF for session {}", reader_session_id);
+            info!("Reader thread EOF for session {reader_session_id}");
             break; // EOF
           },
           Ok(n) => {
             total_bytes_read += n;
             debug!(
-              "Read {} bytes from PTY (total: {} bytes) for session {}",
-              n, total_bytes_read, reader_session_id
+              "Read {n} bytes from PTY (total: {total_bytes_read} bytes) for session {reader_session_id}"
             );
             let data = buffer[..n].to_vec();
 
@@ -234,8 +231,7 @@ impl NativePty {
               Err(crossbeam_channel::TrySendError::Full(_)) => {
                 // Channel is full, skip this data to prevent blocking
                 warn!(
-                  "PTY output buffer full, dropping data for session {}",
-                  reader_session_id
+                  "PTY output buffer full, dropping data for session {reader_session_id}"
                 );
               },
               Err(crossbeam_channel::TrySendError::Disconnected(_)) => break,
@@ -257,15 +253,14 @@ impl NativePty {
     }
 
     // Store in global manager
-    info!("Storing session {} in global PTY manager", session_id);
+    info!("Storing session {session_id} in global PTY manager");
     {
       let mut manager = PTY_MANAGER.lock();
       manager.sessions.insert(session_id.clone(), session);
     }
 
     info!(
-      "NativePty constructor completed successfully for session {}, PID {}",
-      session_id, pid
+      "NativePty constructor completed successfully for session {session_id}, PID {pid}"
     );
     Ok(Self {
       session_id,
@@ -322,7 +317,7 @@ impl NativePty {
       let preview_str = String::from_utf8_lossy(&data[..100]);
       format!("{preview_str}... ({data_len} bytes total)")
     };
-    debug!("Write data: {:?}", preview);
+    debug!("Write data: {preview:?}");
 
     // Get the writer Arc without holding the global lock during I/O
     let writer = {
@@ -343,12 +338,12 @@ impl NativePty {
       // Lock only the writer, not the entire PTY manager
       let mut writer_lock = writer.lock();
       writer_lock.write_all(&data).map_err(|e| {
-        error!("Write failed: {}", e);
+        error!("Write failed: {e}");
         Error::from_reason(format!("Write failed: {e}"))
       })?;
 
       writer_lock.flush().map_err(|e| {
-        error!("Flush failed: {}", e);
+        error!("Flush failed: {e}");
         Error::from_reason(format!("Flush failed: {e}"))
       })?;
 
@@ -383,7 +378,7 @@ impl NativePty {
           pixel_height: 0,
         })
         .map_err(|e| {
-          error!("Resize failed: {}", e);
+          error!("Resize failed: {e}");
           Error::from_reason(format!("Resize failed: {e}"))
         })?;
       info!("Resize successful for session {}", self.session_id);
@@ -431,7 +426,7 @@ impl NativePty {
           signal, self.pid, self.session_id
         );
         signal::kill(Pid::from_raw(self.pid as i32), signal).map_err(|e| {
-          error!("Kill failed: {}", e);
+          error!("Kill failed: {e}");
           Error::from_reason(format!("Kill failed: {e}"))
         })?;
       }
@@ -589,7 +584,7 @@ impl NativePty {
           Ok(None)
         },
         Err(e) => {
-          error!("Failed to check exit status: {}", e);
+          error!("Failed to check exit status: {e}");
           Err(Error::from_reason(format!(
             "Failed to check exit status: {e}"
           )))
@@ -634,11 +629,11 @@ impl NativePty {
             // Process still running, kill it
             info!("Killing process for session {}", self.session_id);
             if let Err(e) = child_lock.kill() {
-              error!("Failed to kill child process: {}", e);
+              error!("Failed to kill child process: {e}");
             }
           },
           Err(e) => {
-            error!("Failed to check process status: {}", e);
+            error!("Failed to check process status: {e}");
           },
         }
 
@@ -784,8 +779,7 @@ mod tests {
       assert_eq!(
         pattern.is_match(text),
         should_match,
-        "Pattern match failed for: {}",
-        text
+        "Pattern match failed for: {text}"
       );
     }
   }
