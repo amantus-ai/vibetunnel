@@ -62,7 +62,7 @@ struct PtyManager {
 
 struct PtySession {
   master: Box<dyn portable_pty::MasterPty + Send>,
-  writer: Box<dyn std::io::Write + Send>,
+  writer: Arc<Mutex<Box<dyn std::io::Write + Send>>>,
   child: Box<dyn portable_pty::Child + Send>,
   reader_thread: Option<JoinHandle<()>>,
   output_receiver: Receiver<Vec<u8>>,
@@ -154,10 +154,10 @@ impl NativePty {
 
     // Take the writer once and store it
     info!("Taking writer from master PTY...");
-    let writer = pty_pair.master.take_writer().map_err(|e| {
+    let writer = Arc::new(Mutex::new(pty_pair.master.take_writer().map_err(|e| {
       error!("Failed to take writer: {}", e);
       Error::from_reason(format!("Failed to take writer: {e}"))
-    })?;
+    })?));
     info!("Writer obtained successfully");
 
     // Create channels for output and shutdown
@@ -312,27 +312,36 @@ impl NativePty {
     };
     debug!("Write data: {:?}", preview);
 
-    let mut manager = PTY_MANAGER.lock();
+    // Get the writer Arc without holding the global lock during I/O
+    let writer = {
+      let manager = PTY_MANAGER.lock();
+      if let Some(session) = manager.sessions.get(&self.session_id) {
+        // Clone the Arc so we can release the global lock
+        Some(session.writer.clone())
+      } else {
+        let session_id = &self.session_id;
+        error!("Session {session_id} not found in write()");
+        return Err(Error::from_reason("Session not found"));
+      }
+    };
 
-    if let Some(session) = manager.sessions.get_mut(&self.session_id) {
+    // Now we can write without holding the global PTY_MANAGER lock
+    if let Some(writer) = writer {
       info!("Found session, writing to PTY");
-      // Use the stored writer - no need to take it
-      session.writer.write_all(&data).map_err(|e| {
+      // Lock only the writer, not the entire PTY manager
+      let mut writer_lock = writer.lock();
+      writer_lock.write_all(&data).map_err(|e| {
         error!("Write failed: {}", e);
         Error::from_reason(format!("Write failed: {e}"))
       })?;
 
-      session.writer.flush().map_err(|e| {
+      writer_lock.flush().map_err(|e| {
         error!("Flush failed: {}", e);
         Error::from_reason(format!("Flush failed: {e}"))
       })?;
 
       let session_id = &self.session_id;
       info!("Write successful for session {session_id}");
-    } else {
-      let session_id = &self.session_id;
-      error!("Session {session_id} not found in write()");
-      return Err(Error::from_reason("Session not found"));
     }
 
     Ok(())
