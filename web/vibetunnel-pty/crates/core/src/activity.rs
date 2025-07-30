@@ -59,7 +59,7 @@ impl ActivityDetector {
             if captures.get(4).is_some() {
                 let token_prefix = captures.get(4).map(|m| m.as_str()).unwrap_or("");
                 let token_count = captures.get(5).map(|m| m.as_str()).unwrap_or("");
-                tokens = Some(format!("{}{}", token_prefix, token_count));
+                tokens = Some(format!("{token_prefix}{token_count}"));
 
                 details = Some(format!(
                     "{}s · {} tokens",
