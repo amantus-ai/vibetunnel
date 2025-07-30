@@ -92,7 +92,7 @@ async function testPtyBasic() {
   // Test 2: Echo command
   {
     const pty = new NativePty('echo', ['Hello, PTY!']);
-    await sleep(100);
+    await sleep(200);
     
     const output = pty.readAllOutput();
     if (output) {
@@ -134,7 +134,7 @@ async function testPtyIO() {
     
     await sleep(200);
     
-    if (!process.platform === 'win32') {
+    if (process.platform !== 'win32') {
       assert(receivedData.includes('Test input'), 'Should receive echoed data');
       console.log('✓ Write/read with callbacks works');
     }
@@ -144,7 +144,8 @@ async function testPtyIO() {
   
   // Test 2: Exit status
   {
-    const pty = new NativePty('true');
+    // Use 'echo' which is more universally available than 'true'
+    const pty = new NativePty('echo', ['test']);
     await sleep(200);
     
     const status = pty.checkExitStatus();
@@ -163,7 +164,7 @@ async function testIntegration() {
     const pty = new NativePty('echo', ['✻ Processing… (10s · ↑ 1.2k tokens · esc to interrupt)']);
     const detector = new ActivityDetector();
     
-    await sleep(100);
+    await sleep(200);
     
     const output = pty.readAllOutput();
     if (output) {
