@@ -306,8 +306,8 @@ if command -v cargo &> /dev/null && [ -d "${VT_PIPE_DIR}" ]; then
     VERSION=$(node -e "console.log(require('${WEB_DIR}/package.json').version)")
     echo "Using version: $VERSION"
     
-    # Update vt-pipe version to match
-    sed -i '' "s/version = \".*\"/version = \"${VERSION}\"/" "${VT_PIPE_DIR}/Cargo.toml"
+    # Update only the package version in vt-pipe Cargo.toml (not dependency versions)
+    sed -i '' "1,/^version = / s/^version = \".*\"/version = \"${VERSION}\"/" "${VT_PIPE_DIR}/Cargo.toml"
     
     cd "${VT_PIPE_DIR}"
     
