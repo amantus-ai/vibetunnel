@@ -76,6 +76,16 @@ export class SidebarHeader extends HeaderBase {
           
           <!-- Action buttons group with consistent styling -->
           <div class="flex items-center gap-2 flex-shrink-0">
+            <!-- tmux Sessions button -->
+            <button
+              class="p-2 text-primary bg-bg-tertiary border border-border hover:bg-surface-hover hover:border-primary rounded-md transition-all duration-200 flex-shrink-0"
+              @click=${this.handleOpenTmuxSessions}
+              title="tmux Sessions"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M2 2v12h12V2H2zM1 2a1 1 0 011-1h12a1 1 0 011 1v12a1 1 0 01-1 1H2a1 1 0 01-1-1V2zm7 3h5v2H8V5zm0 3h5v2H8V8zm0 3h5v2H8v-2zM3 5h4v2H3V5zm0 3h4v2H3V8zm0 3h4v2H3v-2z"/>
+              </svg>
+            </button>
             <!-- Create Session button with dark theme styling -->
             <button
               class="p-2 text-primary bg-bg-tertiary border border-border hover:bg-surface-hover hover:border-primary rounded-md transition-all duration-200 flex-shrink-0"

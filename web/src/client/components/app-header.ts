@@ -9,6 +9,7 @@
  * @fires kill-all-sessions - When kill all button is clicked
  * @fires clean-exited-sessions - When clean exited button is clicked
  * @fires open-file-browser - When browse button is clicked
+ * @fires open-tmux-sessions - When tmux sessions button is clicked
  * @fires logout - When logout is clicked
  * @fires toggle-sidebar - When sidebar toggle button is clicked
  */
@@ -59,6 +60,7 @@ export class AppHeader extends LitElement {
         @kill-all-sessions=${this.forwardEvent}
         @clean-exited-sessions=${this.forwardEvent}
         @open-file-browser=${this.forwardEvent}
+        @open-tmux-sessions=${this.forwardEvent}
         @open-settings=${this.forwardEvent}
         @logout=${this.forwardEvent}
         @navigate-to-list=${this.forwardEvent}
@@ -79,6 +81,7 @@ export class AppHeader extends LitElement {
         @kill-all-sessions=${this.forwardEvent}
         @clean-exited-sessions=${this.forwardEvent}
         @open-file-browser=${this.forwardEvent}
+        @open-tmux-sessions=${this.forwardEvent}
         @open-settings=${this.forwardEvent}
         @logout=${this.forwardEvent}
         @navigate-to-list=${this.forwardEvent}

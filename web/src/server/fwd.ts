@@ -390,6 +390,7 @@ export async function startVibeTunnelForward(args: string[]) {
     // Variables that need to be accessible in cleanup
     let sessionFileWatcher: fs.FSWatcher | undefined;
     let fileWatchDebounceTimer: NodeJS.Timeout | undefined;
+    let isExitingNormally = false;
 
     const sessionOptions: Parameters<typeof ptyManager.createSession>[1] = {
       sessionId: finalSessionId,
@@ -405,6 +406,9 @@ export async function startVibeTunnelForward(args: string[]) {
       gitIsWorktree: gitInfo.gitIsWorktree,
       gitMainRepoPath: gitInfo.gitMainRepoPath,
       onExit: async (exitCode: number) => {
+        // Mark that we're exiting normally
+        isExitingNormally = true;
+
         // Show exit message
         logger.log(
           chalk.yellow(`\n✓ VibeTunnel session ended`) + chalk.gray(` (exit code: ${exitCode})`)
@@ -737,7 +741,27 @@ export async function startVibeTunnelForward(args: string[]) {
 
     // Handle socket events
     socketClient.on('disconnect', (error) => {
-      logger.error('Socket disconnected:', error?.message || 'Unknown error');
+      // Don't log error if we're exiting normally
+      if (isExitingNormally) {
+        logger.debug('Socket disconnected during normal exit');
+        return;
+      }
+
+      // Check if this is a common disconnect error during normal operation
+      const errorMessage = error?.message || '';
+      const isNormalDisconnect =
+        errorMessage.includes('EPIPE') ||
+        errorMessage.includes('ECONNRESET') ||
+        errorMessage.includes('socket hang up') ||
+        errorMessage === 'Unknown error' || // Common during clean exits
+        !error; // No error object means clean disconnect
+
+      if (isNormalDisconnect) {
+        logger.debug('Socket disconnected (normal termination)');
+      } else {
+        logger.error('Socket disconnected:', error?.message || 'Unknown error');
+      }
+
       process.exit(1);
     });
 

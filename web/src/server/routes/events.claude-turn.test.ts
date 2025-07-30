@@ -1,7 +1,6 @@
 import { EventEmitter } from 'events';
 import type { Request, Response } from 'express';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PtyManager } from '../pty/index.js';
 import { createEventsRouter } from './events.js';
 
 // Mock dependencies

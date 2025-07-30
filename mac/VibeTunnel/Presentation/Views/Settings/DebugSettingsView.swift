@@ -117,8 +117,6 @@ struct DebugSettingsView: View {
 private struct DebugOptionsSection: View {
     @Binding var debugMode: Bool
     @Binding var logLevel: String
-    @AppStorage("verboseStatusCheckLogging")
-    private var verboseStatusCheckLogging = false
 
     var body: some View {
         Section {
@@ -136,13 +134,6 @@ private struct DebugOptionsSection: View {
                     .labelsHidden()
                 }
                 Text("Set the verbosity of application logs.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Toggle("Verbose Status Check Logging", isOn: $verboseStatusCheckLogging)
-                Text("Log detailed information about remote service status checks.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

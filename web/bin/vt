@@ -1,6 +1,17 @@
 #!/bin/bash
 # Unified VibeTunnel CLI wrapper - compatible with both Mac app and npm installations
 
+# Function to convert absolute paths to use ~
+prettify_path() {
+    local path="$1"
+    local home="$HOME"
+    if [[ "$path" == "$home"* ]]; then
+        echo "~${path#$home}"
+    else
+        echo "$path"
+    fi
+}
+
 # Only check for Mac app on macOS
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS symlink resolution function using BSD readlink
@@ -124,20 +135,33 @@ if [ -z "$VIBETUNNEL_BIN" ]; then
     fi
 fi
 
+# Check if this is a command that should suppress wrapper output
+SUPPRESS_OUTPUT=false
+# Debug: echo "First argument at line 139: '$1'" >&2
+if [[ "$1" == "title" || "$1" == "status" || "$1" == "--version" || "$1" == "version" ]]; then
+    SUPPRESS_OUTPUT=true
+fi
+
 # Log VibeTunnel binary info when VIBETUNNEL_PREFER_DERIVED_DATA is set
-if [ -n "$VIBETUNNEL_PREFER_DERIVED_DATA" ] && [ -n "$VIBETUNNEL_BIN" ]; then
+if [ -n "$VIBETUNNEL_PREFER_DERIVED_DATA" ] && [ -n "$VIBETUNNEL_BIN" ] && [ "$SUPPRESS_OUTPUT" != "true" ]; then
     # Get version and build info
     VERSION_OUTPUT=$("$VIBETUNNEL_BIN" --version 2>&1)
     VERSION_LINE=$(echo "$VERSION_OUTPUT" | grep "^VibeTunnel Server" | head -n 1)
     BUILD_LINE=$(echo "$VERSION_OUTPUT" | grep "^Built:" | head -n 1)
     
+    # Gray color (bright black)
+    GRAY='\033[90m'
+    RESET='\033[0m'
+    
     # Always log this info regardless of verbosity level
-    echo "[VibeTunnel] Using binary: $VIBETUNNEL_BIN"
-    if [ -n "$VERSION_LINE" ]; then
-        echo "[VibeTunnel] Version: ${VERSION_LINE#VibeTunnel Server }"
-    fi
-    if [ -n "$BUILD_LINE" ]; then
-        echo "[VibeTunnel] ${BUILD_LINE}"
+    # Shorten path by removing /Contents/Resources/vibetunnel suffix
+    DISPLAY_PATH=$(prettify_path "$VIBETUNNEL_BIN")
+    DISPLAY_PATH=${DISPLAY_PATH%/Contents/Resources/vibetunnel}
+    echo -e "${GRAY}[VibeTunnel] ${DISPLAY_PATH}${RESET}"
+    if [ -n "$VERSION_LINE" ] && [ -n "$BUILD_LINE" ]; then
+        echo -e "${GRAY}[VibeTunnel] Version: ${VERSION_LINE#VibeTunnel Server } (${BUILD_LINE})${RESET}"
+    elif [ -n "$VERSION_LINE" ]; then
+        echo -e "${GRAY}[VibeTunnel] Version: ${VERSION_LINE#VibeTunnel Server }${RESET}"
     fi
 fi
 
@@ -187,17 +211,6 @@ json_escape() {
     str="${str//$'\r'/\\r}"
     str="${str//$'\t'/\\t}"
     printf '%s' "$str"
-}
-
-# Function to convert absolute paths to use ~
-prettify_path() {
-    local path="$1"
-    local home="$HOME"
-    if [[ "$path" == "$home"* ]]; then
-        echo "~${path#$home}"
-    else
-        echo "$path"
-    fi
 }
 
 # Function to show help

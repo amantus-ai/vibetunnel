@@ -394,16 +394,13 @@ export class PushNotificationService {
 
           // Show notification if we have permission
           if (this.serviceWorkerRegistration && this.getPermission() === 'granted') {
-            await this.serviceWorkerRegistration.showNotification(
-              data.title || 'VibeTunnel Test',
-              {
-                body: data.body || 'Test notification received via SSE!',
-                icon: '/apple-touch-icon.png',
-                badge: '/favicon-32.png',
-                tag: 'vibetunnel-test-sse',
-                requireInteraction: false,
-              }
-            );
+            await this.serviceWorkerRegistration.showNotification(data.title || 'VibeTunnel Test', {
+              body: data.body || 'Test notification received via SSE!',
+              icon: '/apple-touch-icon.png',
+              badge: '/favicon-32.png',
+              tag: 'vibetunnel-test-sse',
+              requireInteraction: false,
+            });
             logger.log('✅ Displayed SSE test notification');
           }
           resolve();

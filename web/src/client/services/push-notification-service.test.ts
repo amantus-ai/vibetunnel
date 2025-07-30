@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../types/config.js';
+import { notificationEventService } from './notification-event-service.js';
 import type { NotificationPreferences } from './push-notification-service.js';
 import { pushNotificationService } from './push-notification-service.js';
-import { notificationEventService } from './notification-event-service.js';
 import { serverConfigService } from './server-config-service.js';
 
 // Mock notification event service
@@ -514,7 +514,9 @@ describe('PushNotificationService', () => {
         vibrationEnabled: true,
       };
 
-      (serverConfigService.updateNotificationPreferences as vi.Mock).mockRejectedValue(new Error('Network error'));
+      (serverConfigService.updateNotificationPreferences as vi.Mock).mockRejectedValue(
+        new Error('Network error')
+      );
 
       await expect(pushNotificationService.savePreferences(preferences)).rejects.toThrow(
         'Network error'
@@ -543,10 +545,10 @@ describe('PushNotificationService', () => {
       const testPromise = pushNotificationService.testNotification();
 
       // Simulate receiving the event
-      await new Promise(resolve => setTimeout(resolve, 100)); // allow time for listener to be registered
-      
+      await new Promise((resolve) => setTimeout(resolve, 100)); // allow time for listener to be registered
+
       expect(testNotificationHandler!).toBeDefined();
-      testNotificationHandler!({
+      testNotificationHandler?.({
         title: 'VibeTunnel Test',
         body: 'Push notifications are working correctly!',
       });
@@ -584,10 +586,10 @@ describe('PushNotificationService', () => {
       const testPromise = pushNotificationService.testNotification();
 
       // Simulate receiving the event
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       expect(testNotificationHandler!).toBeDefined();
-      testNotificationHandler!({});
+      testNotificationHandler?.({});
 
       await testPromise;
 

@@ -71,6 +71,10 @@ export abstract class HeaderBase extends LitElement {
     this.dispatchEvent(new CustomEvent('open-file-browser'));
   }
 
+  protected handleOpenTmuxSessions() {
+    this.dispatchEvent(new CustomEvent('open-tmux-sessions'));
+  }
+
   protected handleOpenSettings() {
     this.showUserMenu = false;
     this.dispatchEvent(new CustomEvent('open-settings'));
