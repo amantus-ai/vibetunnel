@@ -73,8 +73,11 @@ if (typeof fetch === 'undefined') {
   });
 }
 
-// Mock the native addon module before any imports
-vi.mock('../server/pty/native-addon-adapter.js', () => {
+// Mock the native addon module before any imports - but only for non-e2e tests
+// E2E tests need the real native addon to create actual PTY sessions
+const isE2ETest = typeof expect !== 'undefined' && expect.getState().testPath?.includes('/e2e/');
+if (!isE2ETest) {
+  vi.mock('../server/pty/native-addon-adapter.js', () => {
   // Create a more complete mock that simulates PTY behavior
   const createMockPty = (command: string, args: string[]) => {
     let dataCallback: ((data: string) => void) | null = null;
@@ -150,6 +153,7 @@ vi.mock('../server/pty/native-addon-adapter.js', () => {
     }),
   };
 });
+}
 
 // Mock global objects that might not exist in test environments
 global.ResizeObserver = class ResizeObserver {
