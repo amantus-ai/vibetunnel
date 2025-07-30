@@ -1,8 +1,12 @@
 use anyhow::Result;
 use std::process::Command;
+use std::sync::Mutex;
 use std::time::Duration;
 use tempfile::TempDir;
 use vt_pipe::{FileSessionStore, Forwarder, TitleMode};
+
+// Ensure tests that modify VIBETUNNEL_SESSIONS_DIR don't run concurrently
+static ENV_MUTEX: Mutex<()> = Mutex::new(());
 
 #[test]
 fn test_title_mode_parsing() {
@@ -30,26 +34,41 @@ fn test_forwarder_creation() -> Result<()> {
 
 #[test]
 fn test_session_store_creation() -> Result<()> {
+    let _guard = ENV_MUTEX.lock().unwrap();
     let temp_dir = TempDir::new()?;
     let session_id = "test-session-123";
+    let original_dir = std::env::var("VIBETUNNEL_SESSIONS_DIR").ok();
 
     // Override the sessions directory for testing
     std::env::set_var("VIBETUNNEL_SESSIONS_DIR", temp_dir.path());
 
-    let store = FileSessionStore::new(session_id)?;
+    let result = (|| -> Result<()> {
+        let store = FileSessionStore::new(session_id)?;
 
-    // Check that paths are created correctly
-    let socket_path = store.socket_path();
-    assert!(socket_path.to_string_lossy().contains(session_id));
+        // Check that paths are created correctly
+        let socket_path = store.socket_path();
+        assert!(socket_path.to_string_lossy().contains(session_id));
 
-    Ok(())
+        Ok(())
+    })();
+
+    // Restore original env var
+    if let Some(dir) = original_dir {
+        std::env::set_var("VIBETUNNEL_SESSIONS_DIR", dir);
+    } else {
+        std::env::remove_var("VIBETUNNEL_SESSIONS_DIR");
+    }
+
+    result
 }
 
 #[test]
 fn test_session_info_serialization() -> Result<()> {
     use vibetunnel_pty_core::{SessionInfo, SessionStore};
 
+    let _guard = ENV_MUTEX.lock().unwrap();
     let temp_dir = TempDir::new()?;
+    let original_dir = std::env::var("VIBETUNNEL_SESSIONS_DIR").ok();
     std::env::set_var("VIBETUNNEL_SESSIONS_DIR", temp_dir.path());
 
     let session_id = "test-session-456";
@@ -80,6 +99,13 @@ fn test_session_info_serialization() -> Result<()> {
     assert_eq!(retrieved.name, session_info.name);
     assert_eq!(retrieved.command, session_info.command);
     assert_eq!(retrieved.pid, session_info.pid);
+
+    // Restore original env var
+    if let Some(dir) = original_dir {
+        std::env::set_var("VIBETUNNEL_SESSIONS_DIR", dir);
+    } else {
+        std::env::remove_var("VIBETUNNEL_SESSIONS_DIR");
+    }
 
     Ok(())
 }
@@ -179,16 +205,29 @@ async fn test_socket_client_connection_retry() {
 
 #[test]
 fn test_environment_variable_handling() -> Result<()> {
+    let _guard = ENV_MUTEX.lock().unwrap();
     let temp_dir = TempDir::new()?;
+    let original_dir = std::env::var("VIBETUNNEL_SESSIONS_DIR").ok();
     std::env::set_var("VIBETUNNEL_SESSIONS_DIR", temp_dir.path());
 
-    // Create a forwarder
-    let forwarder = Forwarder::new(TitleMode::Static)?;
+    let result = (|| -> Result<()> {
+        // Create a forwarder
+        let forwarder = Forwarder::new(TitleMode::Static)?;
 
-    // The session ID should be set
-    assert!(!forwarder.session_id().is_empty());
+        // The session ID should be set
+        assert!(!forwarder.session_id().is_empty());
 
-    Ok(())
+        Ok(())
+    })();
+
+    // Restore original env var
+    if let Some(dir) = original_dir {
+        std::env::set_var("VIBETUNNEL_SESSIONS_DIR", dir);
+    } else {
+        std::env::remove_var("VIBETUNNEL_SESSIONS_DIR");
+    }
+
+    result
 }
 
 // Integration test that actually runs a command (only on Unix)
