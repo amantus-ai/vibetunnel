@@ -51,14 +51,12 @@ export default defineConfig(({ mode }) => {
       testTimeout: 10000, // 10s for tests
       hookTimeout: 10000, // 10s for setup/teardown
       reporters,
-      pool: isClient ? 'threads' : 'forks',
+      pool: 'forks', // Always use forks to avoid thread termination issues
       poolOptions: {
         threads: {
           // Use available CPU cores for parallel execution
           maxThreads: undefined,
           minThreads: 1,
-          // Increase idle timeout to prevent channel closed errors
-          isolate: false,
         },
         forks: {
           // Allow multiple forks for better test isolation
