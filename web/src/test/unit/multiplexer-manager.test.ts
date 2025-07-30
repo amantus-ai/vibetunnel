@@ -191,6 +191,7 @@ describe('MultiplexerManager', () => {
 
     it('should throw error for unknown multiplexer type', async () => {
       await expect(
+        // biome-ignore lint/suspicious/noExplicitAny: Testing invalid input
         multiplexerManager.createSession('unknown' as any, 'new-session')
       ).rejects.toThrow('Unknown multiplexer type: unknown');
     });
@@ -250,6 +251,7 @@ describe('MultiplexerManager', () => {
     });
 
     it('should throw error for unknown multiplexer type', async () => {
+      // biome-ignore lint/suspicious/noExplicitAny: Testing invalid input
       await expect(multiplexerManager.attachToSession('unknown' as any, 'main')).rejects.toThrow(
         'Unknown multiplexer type: unknown'
       );
@@ -280,6 +282,7 @@ describe('MultiplexerManager', () => {
     });
 
     it('should throw error for unknown multiplexer type', async () => {
+      // biome-ignore lint/suspicious/noExplicitAny: Testing invalid input
       await expect(multiplexerManager.killSession('unknown' as any, 'old-session')).rejects.toThrow(
         'Unknown multiplexer type: unknown'
       );
