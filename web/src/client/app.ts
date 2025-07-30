@@ -1892,9 +1892,6 @@ export class VibeTunnelApp extends LitElement {
         @navigate-to-session=${this.handleNavigateToSession}
         @create-session=${this.handleCreateSession}
       ></multiplexer-modal>
-
-      <!-- Git Notification Handler -->
-      <git-notification-handler></git-notification-handler>
     `;
   }
 }

@@ -160,12 +160,8 @@ export class MultiplexerManager {
       // Screen doesn't support programmatic attach like tmux/zellij
       // We need to create a new session that runs the attach command
       const attachCmd = await this.screenManager.attachToSession(sessionName);
-      // Parse the command string into array format
-      // Use a more sophisticated parser to handle quoted strings
-      const commandParts = attachCmd.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
-      const cleanParts = commandParts.map((part) => part.replace(/^['"]|['"]$/g, ''));
       // Create a new PTY session that will run the screen attach command
-      const result = await this.ptyManager.createSession(cleanParts, {
+      const result = await this.ptyManager.createSession(attachCmd, {
         ...options,
         titleMode: TitleMode.DYNAMIC,
       });

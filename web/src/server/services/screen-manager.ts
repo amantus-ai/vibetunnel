@@ -150,7 +150,7 @@ export class ScreenManager {
    * Attach to a screen session
    * For programmatic use, we'll create a new window in the session
    */
-  async attachToSession(sessionName: string, command?: string): Promise<string> {
+  async attachToSession(sessionName: string, command?: string): Promise<string[]> {
     try {
       // For newly created sessions, we might need to wait a bit or handle differently
       // First check if this looks like a full session name with PID
@@ -170,7 +170,7 @@ export class ScreenManager {
           sessionName = session.name;
         } else {
           // Session might have just been created, use -R flag which is more forgiving
-          return `screen -R ${sessionName}`;
+          return ['screen', '-R', sessionName];
         }
       }
 
@@ -182,9 +182,9 @@ export class ScreenManager {
         await execFileAsync('screen', ['-S', sessionName, '-X', 'screen', command]);
       }
 
-      // Return a command that can be used to attach
+      // Return a command array that can be used to attach
       // Use -r for existing sessions with full name
-      return `screen -r ${sessionName}`;
+      return ['screen', '-r', sessionName];
     } catch (error) {
       logger.error('Failed to attach to screen session', { sessionName, error });
       throw error;

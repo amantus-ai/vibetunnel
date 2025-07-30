@@ -236,7 +236,7 @@ describe('MultiplexerManager', () => {
     });
 
     it('should attach to screen session', async () => {
-      mockScreenManager.attachToSession.mockResolvedValue('screen -r main');
+      mockScreenManager.attachToSession.mockResolvedValue(['screen', '-r', 'main']);
       mockPtyManager.createSession.mockResolvedValue({ sessionId: 'vt-999' });
 
       const sessionId = await multiplexerManager.attachToSession('screen', 'main');
