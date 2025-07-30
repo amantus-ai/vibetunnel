@@ -13,7 +13,7 @@ pub struct SessionInfo {
   pub name: String,
   pub command: Vec<String>,
   pub pid: Option<u32>,
-  pub created_at: DateTime<Utc>,
+  pub started_at: DateTime<Utc>,
   pub status: String,
   pub working_dir: String,
   pub cols: u16,

@@ -51,24 +51,26 @@ pub struct NativePty {
   rows: u16,
 }
 
-// Global PTY manager
+// Global PTY manager - only holds the global lock when adding/removing sessions
 lazy_static::lazy_static! {
   static ref PTY_MANAGER: Arc<Mutex<PtyManager>> = Arc::new(Mutex::new(PtyManager::new()));
 }
 
 struct PtyManager {
-  sessions: HashMap<String, PtySession>,
+  // Store Arc references so we can clone them without holding the global lock
+  sessions: HashMap<String, Arc<PtySession>>,
 }
 
+// All fields that need concurrent access are wrapped in Mutex/RwLock
 struct PtySession {
-  master: Box<dyn portable_pty::MasterPty + Send>,
+  master: Mutex<Box<dyn portable_pty::MasterPty + Send>>,
   writer: Arc<Mutex<Box<dyn std::io::Write + Send>>>,
-  child: Box<dyn portable_pty::Child + Send>,
-  reader_thread: Option<JoinHandle<()>>,
+  child: Mutex<Box<dyn portable_pty::Child + Send>>,
+  reader_thread: Mutex<Option<JoinHandle<()>>>,
   output_receiver: Receiver<Vec<u8>>,
   shutdown_sender: Sender<()>,
   // Event-driven callback for data
-  data_callback: Option<Arc<ThreadsafeFunction<Vec<u8>, ErrorStrategy::Fatal>>>,
+  data_callback: Mutex<Option<Arc<ThreadsafeFunction<Vec<u8>, ErrorStrategy::Fatal>>>>,
 }
 
 impl PtyManager {
@@ -203,12 +205,18 @@ impl NativePty {
             let data = buffer[..n].to_vec();
 
             // Check if we have a callback to call
+            // Note: This is called from the reader thread, so we need to get the session
+            // Arc from the global manager. In the future, we could pass the Arc to the thread
+            // to avoid this lookup entirely.
             let callback = {
               let manager = PTY_MANAGER.lock();
               manager
                 .sessions
                 .get(&reader_session_id)
-                .and_then(|session| session.data_callback.clone())
+                .and_then(|session| {
+                  let cb_lock = session.data_callback.lock();
+                  cb_lock.clone()
+                })
             };
 
             // If callback exists, call it directly from this thread
@@ -242,15 +250,15 @@ impl NativePty {
       let mut manager = PTY_MANAGER.lock();
       manager.sessions.insert(
         session_id.clone(),
-        PtySession {
-          master: pty_pair.master,
+        Arc::new(PtySession {
+          master: Mutex::new(pty_pair.master),
           writer,
-          child,
-          reader_thread: Some(reader_thread),
+          child: Mutex::new(child),
+          reader_thread: Mutex::new(Some(reader_thread)),
           output_receiver,
           shutdown_sender,
-          data_callback: None,
-        },
+          data_callback: Mutex::new(None),
+        }),
       );
     }
 
@@ -280,10 +288,15 @@ impl NativePty {
 
     let tsfn = Arc::new(tsfn);
 
-    // Store the callback - the reader thread will call it directly
-    let mut manager = PTY_MANAGER.lock();
-    if let Some(session) = manager.sessions.get_mut(&self.session_id) {
-      session.data_callback = Some(tsfn);
+    // Get session Arc and release global lock immediately
+    let session = {
+      let manager = PTY_MANAGER.lock();
+      manager.sessions.get(&self.session_id).cloned()
+    };
+
+    if let Some(session) = session {
+      let mut callback_lock = session.data_callback.lock();
+      *callback_lock = Some(tsfn);
     } else {
       return Err(Error::from_reason("Session not found"));
     }
@@ -349,19 +362,31 @@ impl NativePty {
 
   #[napi]
   pub fn resize(&self, cols: u16, rows: u16) -> Result<()> {
-    let mut manager = PTY_MANAGER.lock();
+    info!("resize() called for session {} to {}x{}", self.session_id, cols, rows);
+    
+    // Get session Arc and release global lock immediately
+    let session = {
+      let manager = PTY_MANAGER.lock();
+      manager.sessions.get(&self.session_id).cloned()
+    };
 
-    if let Some(session) = manager.sessions.get_mut(&self.session_id) {
-      session
-        .master
+    if let Some(session) = session {
+      // Lock only the master PTY for resize
+      let master_lock = session.master.lock();
+      master_lock
         .resize(PtySize {
           rows,
           cols,
           pixel_width: 0,
           pixel_height: 0,
         })
-        .map_err(|e| Error::from_reason(format!("Resize failed: {e}")))?;
+        .map_err(|e| {
+          error!("Resize failed: {}", e);
+          Error::from_reason(format!("Resize failed: {e}"))
+        })?;
+      info!("Resize successful for session {}", self.session_id);
     } else {
+      error!("Session {} not found in resize()", self.session_id);
       return Err(Error::from_reason("Session not found"));
     }
 
@@ -375,12 +400,17 @@ impl NativePty {
 
   #[napi]
   pub fn kill(&self, _signal: Option<String>) -> Result<()> {
-    let mut manager = PTY_MANAGER.lock();
+    info!("kill() called for session {} with signal {:?}", self.session_id, _signal);
+    
+    // Get session Arc and release global lock immediately
+    let session = {
+      let manager = PTY_MANAGER.lock();
+      manager.sessions.get(&self.session_id).cloned()
+    };
 
-    if let Some(session) = manager.sessions.get_mut(&self.session_id) {
+    if let Some(_session) = session {
       #[cfg(unix)]
       {
-        let _ = session; // Prevent unused variable warning
         use nix::sys::signal::{self, Signal};
         use nix::unistd::Pid;
 
@@ -391,17 +421,29 @@ impl NativePty {
           _ => Signal::SIGTERM,
         };
 
+        info!("Sending signal {:?} to process {} for session {}", signal, self.pid, self.session_id);
         signal::kill(Pid::from_raw(self.pid as i32), signal)
-          .map_err(|e| Error::from_reason(format!("Kill failed: {e}")))?;
+          .map_err(|e| {
+            error!("Kill failed: {}", e);
+            Error::from_reason(format!("Kill failed: {e}"))
+          })?;
       }
 
       #[cfg(windows)]
       {
-        session
-          .child
+        let mut child_lock = _session.child.lock();
+        child_lock
           .kill()
-          .map_err(|e| Error::from_reason(format!("Kill failed: {e}")))?;
+          .map_err(|e| {
+            error!("Kill failed: {}", e);
+            Error::from_reason(format!("Kill failed: {e}"))
+          })?;
       }
+      
+      info!("Kill successful for session {}", self.session_id);
+    } else {
+      error!("Session {} not found in kill()", self.session_id);
+      return Err(Error::from_reason("Session not found"));
     }
 
     Ok(())
@@ -409,9 +451,15 @@ impl NativePty {
 
   #[napi]
   pub fn read_output(&self, timeout_ms: Option<u32>) -> Result<Option<Buffer>> {
-    let manager = PTY_MANAGER.lock();
+    debug!("read_output() called for session {} with timeout {:?}ms", self.session_id, timeout_ms);
+    
+    // Get session Arc and release global lock immediately
+    let session = {
+      let manager = PTY_MANAGER.lock();
+      manager.sessions.get(&self.session_id).cloned()
+    };
 
-    if let Some(session) = manager.sessions.get(&self.session_id) {
+    if let Some(session) = session {
       // Try to receive from the channel
       let result = if let Some(timeout) = timeout_ms {
         // With timeout
@@ -430,13 +478,18 @@ impl NativePty {
       };
 
       match result {
-        Ok(data) => Ok(Some(Buffer::from(data))),
+        Ok(data) => {
+          debug!("Read {} bytes from output for session {}", data.len(), self.session_id);
+          Ok(Some(Buffer::from(data)))
+        },
         Err(crossbeam_channel::RecvTimeoutError::Timeout) => Ok(None),
         Err(crossbeam_channel::RecvTimeoutError::Disconnected) => {
+          error!("Reader thread disconnected for session {}", self.session_id);
           Err(Error::from_reason("Reader thread disconnected"))
         },
       }
     } else {
+      error!("Session {} not found in read_output()", self.session_id);
       Err(Error::from_reason("Session not found"))
     }
   }
@@ -445,13 +498,21 @@ impl NativePty {
   // New code should use set_on_data for event-driven I/O
   #[napi]
   pub fn read_all_output(&self) -> Result<Option<Buffer>> {
-    // Use try_lock to avoid blocking - if we can't get the lock immediately, return None
-    let manager = match PTY_MANAGER.try_lock() {
-      Some(guard) => guard,
-      None => return Ok(None), // Lock is held, return immediately to avoid blocking
+    debug!("read_all_output() called for session {}", self.session_id);
+    
+    // Get session Arc - use try_lock to avoid blocking
+    let session = {
+      let manager = match PTY_MANAGER.try_lock() {
+        Some(guard) => guard,
+        None => {
+          debug!("Global lock held, returning None for session {}", self.session_id);
+          return Ok(None); // Lock is held, return immediately to avoid blocking
+        }
+      };
+      manager.sessions.get(&self.session_id).cloned()
     };
 
-    if let Some(session) = manager.sessions.get(&self.session_id) {
+    if let Some(session) = session {
       let mut all_data = Vec::new();
       let mut bytes_read = 0;
       const MAX_BYTES_PER_CALL: usize = 65536; // 64KB limit per call
@@ -470,72 +531,105 @@ impl NativePty {
       if all_data.is_empty() {
         Ok(None)
       } else {
+        debug!("Read {} total bytes for session {}", all_data.len(), self.session_id);
         Ok(Some(Buffer::from(all_data)))
       }
     } else {
+      error!("Session {} not found in read_all_output()", self.session_id);
       Err(Error::from_reason("Session not found"))
     }
   }
 
   #[napi]
   pub fn check_exit_status(&self) -> Result<Option<i32>> {
-    let mut manager = PTY_MANAGER.lock();
+    debug!("check_exit_status() called for session {}", self.session_id);
+    
+    // Get session Arc and release global lock immediately
+    let session = {
+      let manager = PTY_MANAGER.lock();
+      manager.sessions.get(&self.session_id).cloned()
+    };
 
-    if let Some(session) = manager.sessions.get_mut(&self.session_id) {
+    if let Some(session) = session {
+      // Lock only the child process
+      let mut child_lock = session.child.lock();
       // Try to get exit status without blocking
-      match session.child.try_wait() {
+      match child_lock.try_wait() {
         Ok(Some(status)) => {
           // Process has exited
           let exit_code = status.exit_code() as i32;
+          info!("Process exited with code {} for session {}", exit_code, self.session_id);
           Ok(Some(exit_code))
         },
         Ok(None) => {
           // Process is still running
+          debug!("Process still running for session {}", self.session_id);
           Ok(None)
         },
-        Err(e) => Err(Error::from_reason(format!(
-          "Failed to check exit status: {e}"
-        ))),
+        Err(e) => {
+          error!("Failed to check exit status: {}", e);
+          Err(Error::from_reason(format!(
+            "Failed to check exit status: {e}"
+          )))
+        }
       }
     } else {
+      error!("Session {} not found in check_exit_status()", self.session_id);
       Err(Error::from_reason("Session not found"))
     }
   }
 
   #[napi]
   pub fn destroy(&self) -> Result<()> {
-    let mut manager = PTY_MANAGER.lock();
+    info!("destroy() called for session {}", self.session_id);
+    
+    // Remove session from manager and get the Arc
+    let session = {
+      let mut manager = PTY_MANAGER.lock();
+      manager.sessions.remove(&self.session_id)
+    };
 
-    // Remove session from manager
-    if let Some(mut session) = manager.sessions.remove(&self.session_id) {
+    if let Some(session) = session {
       // Send shutdown signal to reader thread
       let _ = session.shutdown_sender.send(());
+      info!("Sent shutdown signal to reader thread for session {}", self.session_id);
 
       // Check if process is still running before trying to kill
-      match session.child.try_wait() {
-        Ok(Some(_)) => {
-          // Process already exited, nothing to do
-        },
-        Ok(None) => {
-          // Process still running, kill it
-          if let Err(e) = session.child.kill() {
-            eprintln!("Failed to kill child process: {e}");
-          }
-        },
-        Err(e) => {
-          eprintln!("Failed to check process status: {e}");
-        },
-      }
+      {
+        let mut child_lock = session.child.lock();
+        match child_lock.try_wait() {
+          Ok(Some(_)) => {
+            // Process already exited, nothing to do
+            info!("Process already exited for session {}", self.session_id);
+          },
+          Ok(None) => {
+            // Process still running, kill it
+            info!("Killing process for session {}", self.session_id);
+            if let Err(e) = child_lock.kill() {
+              error!("Failed to kill child process: {}", e);
+            }
+          },
+          Err(e) => {
+            error!("Failed to check process status: {}", e);
+          },
+        }
 
-      // Wait for the child to fully exit
-      let _ = session.child.wait();
+        // Wait for the child to fully exit
+        let _ = child_lock.wait();
+      }
 
       // Wait for reader thread to finish
-      if let Some(thread) = session.reader_thread {
-        let _ = thread.join();
+      {
+        let mut thread_lock = session.reader_thread.lock();
+        if let Some(thread) = thread_lock.take() {
+          info!("Waiting for reader thread to finish for session {}", self.session_id);
+          let _ = thread.join();
+        }
       }
 
-      // The session will be dropped here, cleaning up all resources
+      info!("Session {} destroyed successfully", self.session_id);
+    } else {
+      warn!("Session {} not found in destroy()", self.session_id);
     }
 
     Ok(())
