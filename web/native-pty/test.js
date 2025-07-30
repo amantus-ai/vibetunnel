@@ -3,27 +3,8 @@
 // Integration tests for native PTY module
 // Run with: node test.js (after building with npm run build)
 
-// Dynamically load the correct binary for the current platform
-const os = require('os');
-const platform = os.platform();
-const arch = os.arch();
-
-let binaryName;
-if (platform === 'darwin') {
-  binaryName = `./vibetunnel-native-pty.darwin-${arch}.node`;
-} else if (platform === 'linux') {
-  if (arch === 'x64') {
-    binaryName = './vibetunnel-native-pty.linux-x64-gnu.node';
-  } else if (arch === 'arm64') {
-    binaryName = './vibetunnel-native-pty.linux-arm64-gnu.node';
-  }
-} else if (platform === 'win32') {
-  binaryName = './vibetunnel-native-pty.win32-x64-msvc.node';
-} else {
-  throw new Error(`Unsupported platform: ${platform}-${arch}`);
-}
-
-const { NativePty, ActivityDetector, initPtySystem } = require(binaryName);
+// Load the module through index.js which handles platform detection
+const { NativePty, ActivityDetector, initPtySystem } = require('./index.js');
 const assert = require('assert');
 
 async function sleep(ms) {
