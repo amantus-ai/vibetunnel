@@ -14,20 +14,24 @@ use forwarder::Forwarder;
   author,
   version,
   about = "Lightweight terminal forwarder for VibeTunnel",
-  // Allow external subcommands so we can handle options before positional args
-  allow_external_subcommands = true
+  // This allows us to have both subcommands and trailing args
+  args_conflicts_with_subcommands = true
 )]
 struct Cli {
   #[command(subcommand)]
   command: Option<Commands>,
 
   /// Session ID to use (instead of generating a new one)
-  #[arg(long, global = true)]
+  #[arg(long)]
   session_id: Option<String>,
 
   /// Terminal title management mode
-  #[arg(long, value_enum, default_value = "none", global = true)]
+  #[arg(long, value_enum, default_value = "none")]
   title_mode: TitleMode,
+
+  /// Command and arguments to execute (when not using subcommands)
+  #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+  args: Vec<String>,
 }
 
 #[derive(Subcommand)]
@@ -66,64 +70,26 @@ pub enum TitleMode {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-  // Parse args manually to handle the case where we have options before the command
-  let args: Vec<String> = std::env::args().collect();
-  
-  // Try to parse with clap first
-  match Cli::try_parse_from(&args) {
-    Ok(cli) => {
-      // Handle subcommands
-      match cli.command {
-        Some(Commands::Fwd {
-          title_mode,
-          update_title,
-          session_id,
-          command,
-        }) => handle_fwd(title_mode, update_title, session_id, command).await,
-        None => {
-          // This shouldn't happen with external subcommands
-          let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
-          handle_fwd(cli.title_mode, None, cli.session_id, vec![shell]).await
-        }
+  let cli = Cli::parse();
+
+  // Handle both direct execution and subcommand style
+  match cli.command {
+    Some(Commands::Fwd {
+      title_mode,
+      update_title,
+      session_id,
+      command,
+    }) => handle_fwd(title_mode, update_title, session_id, command).await,
+    None => {
+      // Default behavior: treat args as command to forward
+      if cli.args.is_empty() {
+        // No command specified, launch shell
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+        handle_fwd(cli.title_mode, None, cli.session_id, vec![shell]).await
+      } else {
+        handle_fwd(cli.title_mode, None, cli.session_id, cli.args).await
       }
     },
-    Err(_) => {
-      // Manual parsing for external subcommands
-      let mut session_id = None;
-      let mut title_mode = TitleMode::None;
-      let mut command_args = Vec::new();
-      let mut i = 1; // Skip program name
-      
-      while i < args.len() {
-        if args[i] == "--session-id" && i + 1 < args.len() {
-          session_id = Some(args[i + 1].clone());
-          i += 2;
-        } else if args[i] == "--title-mode" && i + 1 < args.len() {
-          title_mode = match args[i + 1].as_str() {
-            "none" => TitleMode::None,
-            "filter" => TitleMode::Filter,
-            "static" => TitleMode::Static,
-            "dynamic" => TitleMode::Dynamic,
-            _ => TitleMode::None,
-          };
-          i += 2;
-        } else if args[i].starts_with("--") {
-          // Unknown option, skip
-          i += 1;
-        } else {
-          // Start of command
-          command_args = args[i..].to_vec();
-          break;
-        }
-      }
-      
-      if command_args.is_empty() {
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
-        command_args = vec![shell];
-      }
-      
-      handle_fwd(title_mode, None, session_id, command_args).await
-    }
   }
 }
 

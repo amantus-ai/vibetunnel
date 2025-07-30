@@ -295,21 +295,24 @@ mkdir -p "${DEST_DIR}"
 echo "Copying web files to app bundle..."
 cp -R "${PUBLIC_DIR}/"* "${DEST_DIR}/"
 
-# Build vt-pipe from unified codebase
-UNIFIED_PTY_DIR="${WEB_DIR}/vibetunnel-pty"
-VT_PIPE_TARGET="${UNIFIED_PTY_DIR}/target/release/vt-pipe"
+# Build vt-pipe from its directory
+VT_PIPE_DIR="${WEB_DIR}/vt-pipe"
+VT_PIPE_TARGET="${VT_PIPE_DIR}/target/release/vt-pipe"
 
-if command -v cargo &> /dev/null && [ -d "${UNIFIED_PTY_DIR}" ]; then
-    echo "Building vt-pipe from unified codebase..."
-    cd "${UNIFIED_PTY_DIR}"
+if command -v cargo &> /dev/null && [ -d "${VT_PIPE_DIR}" ]; then
+    echo "Building vt-pipe..."
     
-    # Build vt-pipe binary through the workspace
-    if [ "$BUILD_CONFIG" = "Release" ]; then
-        cargo build --release -p vt-pipe 2>&1 | filter_build_output
-    else
-        # For debug builds, still use release mode for vt-pipe (it's always performance critical)
-        cargo build --release -p vt-pipe 2>&1 | filter_build_output
-    fi
+    # Get version from package.json
+    VERSION=$(node -e "console.log(require('${WEB_DIR}/package.json').version)")
+    echo "Using version: $VERSION"
+    
+    # Update vt-pipe version to match
+    sed -i '' "s/version = \".*\"/version = \"${VERSION}\"/" "${VT_PIPE_DIR}/Cargo.toml"
+    
+    cd "${VT_PIPE_DIR}"
+    
+    # Always build in release mode for performance
+    cargo build --release 2>&1 | filter_build_output
     
     if [ -f "${VT_PIPE_TARGET}" ]; then
         VT_PIPE_SIZE=$(ls -lh "${VT_PIPE_TARGET}" | awk '{print $5}')
@@ -325,7 +328,7 @@ else
         echo "warning: Rust/cargo not found. vt-pipe will not be built."
         echo "To build vt-pipe, install Rust from https://rustup.rs/"
     else
-        echo "warning: unified PTY directory not found at ${UNIFIED_PTY_DIR}"
+        echo "warning: vt-pipe directory not found at ${VT_PIPE_DIR}"
     fi
 fi
 

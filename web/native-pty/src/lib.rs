@@ -1,6 +1,7 @@
 #![deny(clippy::all)]
 
 use crossbeam_channel::{bounded, Receiver, Sender};
+use log::{debug, error, info, warn};
 use napi::bindgen_prelude::*;
 use napi::{
   threadsafe_function::{ErrorStrategy, ThreadsafeFunction, ThreadsafeFunctionCallMode},
@@ -14,7 +15,6 @@ use std::io::Read;
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
-use log::{debug, error, info, warn};
 
 // Initialize logging once
 #[cfg(target_os = "macos")]
@@ -22,7 +22,7 @@ lazy_static::lazy_static! {
   static ref LOGGER_INIT: () = {
     use oslog::OsLogger;
     use log::LevelFilter;
-    
+
     // Initialize the macOS logger with VibeTunnel's subsystem
     // This will make logs appear in Console.app and be visible to vtlog
     if let Err(e) = OsLogger::new("sh.vibetunnel.rust-pty")
@@ -92,8 +92,11 @@ impl NativePty {
   ) -> Result<Self> {
     // Ensure logger is initialized
     lazy_static::initialize(&LOGGER_INIT);
-    
-    info!("NativePty::new called with shell={:?}, args={:?}", shell, args);
+
+    info!(
+      "NativePty::new called with shell={:?}, args={:?}",
+      shell, args
+    );
     let cols = cols.unwrap_or(80);
     let rows = rows.unwrap_or(24);
 
@@ -136,13 +139,10 @@ impl NativePty {
     }
 
     info!("Spawning command...");
-    let child = pty_pair
-      .slave
-      .spawn_command(cmd)
-      .map_err(|e| {
-        error!("Failed to spawn command: {}", e);
-        Error::from_reason(format!("Failed to spawn: {e}"))
-      })?;
+    let child = pty_pair.slave.spawn_command(cmd).map_err(|e| {
+      error!("Failed to spawn command: {}", e);
+      Error::from_reason(format!("Failed to spawn: {e}"))
+    })?;
     info!("Command spawned successfully");
 
     let pid = child
@@ -154,13 +154,10 @@ impl NativePty {
 
     // Take the writer once and store it
     info!("Taking writer from master PTY...");
-    let writer = pty_pair
-      .master
-      .take_writer()
-      .map_err(|e| {
-        error!("Failed to take writer: {}", e);
-        Error::from_reason(format!("Failed to take writer: {e}"))
-      })?;
+    let writer = pty_pair.master.take_writer().map_err(|e| {
+      error!("Failed to take writer: {}", e);
+      Error::from_reason(format!("Failed to take writer: {e}"))
+    })?;
     info!("Writer obtained successfully");
 
     // Create channels for output and shutdown
@@ -185,7 +182,10 @@ impl NativePty {
       loop {
         // Check for shutdown signal
         if shutdown_receiver.try_recv().is_ok() {
-          info!("Reader thread received shutdown signal for session {}", reader_session_id);
+          info!(
+            "Reader thread received shutdown signal for session {}",
+            reader_session_id
+          );
           break;
         }
 
@@ -196,7 +196,10 @@ impl NativePty {
           },
           Ok(n) => {
             total_bytes_read += n;
-            debug!("Read {} bytes from PTY (total: {} bytes) for session {}", n, total_bytes_read, reader_session_id);
+            debug!(
+              "Read {} bytes from PTY (total: {} bytes) for session {}",
+              n, total_bytes_read, reader_session_id
+            );
             let data = buffer[..n].to_vec();
 
             // Check if we have a callback to call
@@ -251,7 +254,10 @@ impl NativePty {
       );
     }
 
-    info!("NativePty constructor completed successfully for session {}, PID {}", session_id, pid);
+    info!(
+      "NativePty constructor completed successfully for session {}, PID {}",
+      session_id, pid
+    );
     Ok(Self {
       session_id,
       pid: pid as u32,
@@ -289,13 +295,21 @@ impl NativePty {
   pub fn write(&self, data: Buffer) -> Result<()> {
     use std::io::Write;
 
-    info!("write() called for session {} with {} bytes", self.session_id, data.len());
-    
+    info!(
+      "write() called for session {} with {} bytes",
+      self.session_id,
+      data.len()
+    );
+
     // Log the actual data for debugging (limit to first 100 bytes)
     let preview = if data.len() <= 100 {
       String::from_utf8_lossy(&data).to_string()
     } else {
-      format!("{}... ({} bytes total)", String::from_utf8_lossy(&data[..100]), data.len())
+      format!(
+        "{}... ({} bytes total)",
+        String::from_utf8_lossy(&data[..100]),
+        data.len()
+      )
     };
     debug!("Write data: {:?}", preview);
 
@@ -304,22 +318,16 @@ impl NativePty {
     if let Some(session) = manager.sessions.get_mut(&self.session_id) {
       info!("Found session, writing to PTY");
       // Use the stored writer - no need to take it
-      session
-        .writer
-        .write_all(&data)
-        .map_err(|e| {
-          error!("Write failed: {}", e);
-          Error::from_reason(format!("Write failed: {e}"))
-        })?;
+      session.writer.write_all(&data).map_err(|e| {
+        error!("Write failed: {}", e);
+        Error::from_reason(format!("Write failed: {e}"))
+      })?;
 
-      session
-        .writer
-        .flush()
-        .map_err(|e| {
-          error!("Flush failed: {}", e);
-          Error::from_reason(format!("Flush failed: {e}"))
-        })?;
-      
+      session.writer.flush().map_err(|e| {
+        error!("Flush failed: {}", e);
+        Error::from_reason(format!("Flush failed: {e}"))
+      })?;
+
       info!("Write successful for session {}", self.session_id);
     } else {
       error!("Session {} not found in write()", self.session_id);
@@ -529,7 +537,7 @@ impl NativePty {
 pub fn init_pty_system() -> Result<()> {
   // Ensure logger is initialized
   lazy_static::initialize(&LOGGER_INIT);
-  
+
   info!("init_pty_system called");
   // No initialization needed for portable-pty
   Ok(())

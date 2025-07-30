@@ -7,10 +7,7 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use crate::{
-  api_client::ApiClient,
-  session::Session,
-  socket_client::SocketClient,
-  terminal::Terminal,
+  api_client::ApiClient, session::Session, socket_client::SocketClient, terminal::Terminal,
   TitleMode,
 };
 
@@ -21,7 +18,7 @@ async fn connect_with_retry(
   delay_ms: u64,
 ) -> Result<SocketClient> {
   let mut last_error = None;
-  
+
   for attempt in 0..max_retries {
     match SocketClient::connect(socket_path).await {
       Ok(client) => return Ok(client),
@@ -33,8 +30,11 @@ async fn connect_with_retry(
       },
     }
   }
-  
-  Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Failed to connect after {} attempts", max_retries)))
+
+  Err(
+    last_error
+      .unwrap_or_else(|| anyhow::anyhow!("Failed to connect after {} attempts", max_retries)),
+  )
 }
 
 pub struct Forwarder {
@@ -75,28 +75,31 @@ impl Forwarder {
 
     // Get working directory
     let cwd = std::env::current_dir()?;
-    
+
     // Create session via API
     let api_client = ApiClient::new(4020)?;
-    let session_response = api_client.create_session(
-      command.clone(),
-      cwd.to_string_lossy().to_string(),
-      command.join(" "),
-      cols,
-      rows,
-      Some(format!("{:?}", self.title_mode).to_lowercase()),
-    ).context("Failed to create session via API")?;
-    
+    let session_response = api_client
+      .create_session(
+        command.clone(),
+        cwd.to_string_lossy().to_string(),
+        command.join(" "),
+        cols,
+        rows,
+        Some(format!("{:?}", self.title_mode).to_lowercase()),
+      )
+      .context("Failed to create session via API")?;
+
     // Update our session ID to match the server-assigned one
     self.session_id = session_response.session_id.clone();
-    
+
     // Wait for the server to create the session files
-    api_client.wait_for_session(&self.session_id)
+    api_client
+      .wait_for_session(&self.session_id)
       .context("Timeout waiting for server to create session")?;
 
     // Load the session info created by the server
-    let session = Session::load(&self.session_id)
-      .context("Failed to load session created by server")?;
+    let session =
+      Session::load(&self.session_id).context("Failed to load session created by server")?;
 
     // Create PTY for local display
     let pty_system = portable_pty::native_pty_system();
@@ -158,7 +161,14 @@ impl Forwarder {
 
     // Forward I/O
     let result = self
-      .forward_io(writer, reader, pair.master, Some(socket_client), shutdown, child)
+      .forward_io(
+        writer,
+        reader,
+        pair.master,
+        Some(socket_client),
+        shutdown,
+        child,
+      )
       .await;
 
     // Restore terminal
