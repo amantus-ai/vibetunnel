@@ -495,8 +495,6 @@ function validatePackageHybrid() {
     'bin/vt',
     'scripts/postinstall.js',
     'public/index.html',
-    'node-pty/package.json',
-    'node-pty/binding.gyp',
     'package.json'
   ];
   
@@ -619,19 +617,15 @@ async function main() {
     // Public assets
     { src: 'public', dest: 'public' },
     
-    // Node-pty module (bundled)
-    { src: 'node-pty/lib', dest: 'node-pty/lib' },
-    { src: 'node-pty/src', dest: 'node-pty/src' },
-    { src: 'node-pty/binding.gyp', dest: 'node-pty/binding.gyp' },
-    { src: 'node-pty/package.json', dest: 'node-pty/package.json' },
-    { src: 'node-pty/README.md', dest: 'node-pty/README.md' },
+    // Rust PTY modules
+    { src: 'vibetunnel-pty', dest: 'vibetunnel-pty' },
+    { src: 'native-pty', dest: 'native-pty' },
     
     // Prebuilds
     { src: 'prebuilds', dest: 'prebuilds' },
     
     // Scripts
     { src: 'scripts/postinstall-npm.js', dest: 'scripts/postinstall.js' },
-    { src: 'scripts/node-pty-plugin.js', dest: 'scripts/node-pty-plugin.js' },
     { src: 'scripts/install-vt-command.js', dest: 'scripts/install-vt-command.js' }
   ];
   
