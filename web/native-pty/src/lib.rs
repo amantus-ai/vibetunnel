@@ -76,7 +76,7 @@ impl NativePty {
         pixel_width: 0,
         pixel_height: 0,
       })
-      .map_err(|e| Error::from_reason(format!("Failed to open PTY: {}", e)))?;
+      .map_err(|e| Error::from_reason(format!("Failed to open PTY: {e}")))?;
 
     let default_shell = if cfg!(windows) {
       "cmd.exe"
@@ -102,7 +102,7 @@ impl NativePty {
     let child = pty_pair
       .slave
       .spawn_command(cmd)
-      .map_err(|e| Error::from_reason(format!("Failed to spawn: {}", e)))?;
+      .map_err(|e| Error::from_reason(format!("Failed to spawn: {e}")))?;
 
     let pid = child
       .process_id()
@@ -114,7 +114,7 @@ impl NativePty {
     let writer = pty_pair
       .master
       .take_writer()
-      .map_err(|e| Error::from_reason(format!("Failed to take writer: {}", e)))?;
+      .map_err(|e| Error::from_reason(format!("Failed to take writer: {e}")))?;
 
     // Create channels for output and shutdown
     let (output_sender, output_receiver) = bounded::<Vec<u8>>(100); // Bounded channel for backpressure
@@ -124,7 +124,7 @@ impl NativePty {
     let mut reader = pty_pair
       .master
       .try_clone_reader()
-      .map_err(|e| Error::from_reason(format!("Failed to clone reader: {}", e)))?;
+      .map_err(|e| Error::from_reason(format!("Failed to clone reader: {e}")))?;
 
     // Store session ID for reader thread
     let reader_session_id = session_id.clone();
@@ -238,12 +238,12 @@ impl NativePty {
       session
         .writer
         .write_all(&data)
-        .map_err(|e| Error::from_reason(format!("Write failed: {}", e)))?;
+        .map_err(|e| Error::from_reason(format!("Write failed: {e}")))?;
 
       session
         .writer
         .flush()
-        .map_err(|e| Error::from_reason(format!("Flush failed: {}", e)))?;
+        .map_err(|e| Error::from_reason(format!("Flush failed: {e}")))?;
     } else {
       return Err(Error::from_reason("Session not found"));
     }
@@ -264,7 +264,7 @@ impl NativePty {
           pixel_width: 0,
           pixel_height: 0,
         })
-        .map_err(|e| Error::from_reason(format!("Resize failed: {}", e)))?;
+        .map_err(|e| Error::from_reason(format!("Resize failed: {e}")))?;
     } else {
       return Err(Error::from_reason("Session not found"));
     }
@@ -296,7 +296,7 @@ impl NativePty {
         };
 
         signal::kill(Pid::from_raw(self.pid as i32), signal)
-          .map_err(|e| Error::from_reason(format!("Kill failed: {}", e)))?;
+          .map_err(|e| Error::from_reason(format!("Kill failed: {e}")))?;
       }
 
       #[cfg(windows)]
@@ -304,7 +304,7 @@ impl NativePty {
         session
           .child
           .kill()
-          .map_err(|e| Error::from_reason(format!("Kill failed: {}", e)))?;
+          .map_err(|e| Error::from_reason(format!("Kill failed: {e}")))?;
       }
     }
 
@@ -398,8 +398,7 @@ impl NativePty {
           Ok(None)
         },
         Err(e) => Err(Error::from_reason(format!(
-          "Failed to check exit status: {}",
-          e
+          "Failed to check exit status: {e}"
         ))),
       }
     } else {
@@ -424,11 +423,11 @@ impl NativePty {
         Ok(None) => {
           // Process still running, kill it
           if let Err(e) = session.child.kill() {
-            eprintln!("Failed to kill child process: {}", e);
+            eprintln!("Failed to kill child process: {e}");
           }
         },
         Err(e) => {
-          eprintln!("Failed to check process status: {}", e);
+          eprintln!("Failed to check process status: {e}");
         },
       }
 
@@ -499,14 +498,14 @@ impl ActivityDetector {
 
       // Format details based on whether we have token information
       let details = if let (Some(dir), Some(tok)) = (direction, tokens) {
-        Some(format!("{}s, {}{}k", duration, dir, tok))
+        Some(format!("{duration}s, {dir}{tok}k"))
       } else {
-        Some(format!("{}s", duration))
+        Some(format!("{duration}s"))
       };
 
       return Some(Activity {
         timestamp: chrono::Utc::now().timestamp_millis() as f64,
-        status: format!("{} {}", indicator, status),
+        status: format!("{indicator} {status}"),
         details,
       });
     }
@@ -583,7 +582,7 @@ mod tests {
   #[test]
   fn test_buffer_creation() {
     // Test that we can create buffers
-    let data = vec![0x48, 0x65, 0x6C, 0x6C, 0x6F]; // "Hello"
+    let data = [0x48, 0x65, 0x6C, 0x6C, 0x6F]; // "Hello"
     assert_eq!(data.len(), 5);
     assert_eq!(data[0], 0x48);
   }
