@@ -95,9 +95,7 @@ impl NativePty {
     // Ensure logger is initialized
     lazy_static::initialize(&LOGGER_INIT);
 
-    info!(
-      "NativePty::new called with shell={shell:?}, args={args:?}"
-    );
+    info!("NativePty::new called with shell={shell:?}, args={args:?}");
     let cols = cols.unwrap_or(80);
     let rows = rows.unwrap_or(24);
 
@@ -195,9 +193,7 @@ impl NativePty {
       loop {
         // Check for shutdown signal
         if shutdown_receiver.try_recv().is_ok() {
-          info!(
-            "Reader thread received shutdown signal for session {reader_session_id}"
-          );
+          info!("Reader thread received shutdown signal for session {reader_session_id}");
           break;
         }
 
@@ -230,9 +226,7 @@ impl NativePty {
               Ok(_) => {},
               Err(crossbeam_channel::TrySendError::Full(_)) => {
                 // Channel is full, skip this data to prevent blocking
-                warn!(
-                  "PTY output buffer full, dropping data for session {reader_session_id}"
-                );
+                warn!("PTY output buffer full, dropping data for session {reader_session_id}");
               },
               Err(crossbeam_channel::TrySendError::Disconnected(_)) => break,
             }
@@ -259,9 +253,7 @@ impl NativePty {
       manager.sessions.insert(session_id.clone(), session);
     }
 
-    info!(
-      "NativePty constructor completed successfully for session {session_id}, PID {pid}"
-    );
+    info!("NativePty constructor completed successfully for session {session_id}, PID {pid}");
     Ok(Self {
       session_id,
       pid: pid as u32,
