@@ -94,34 +94,9 @@ export class InputManager {
         this.sendInput(key);
       },
       getCursorInfo: () => {
-        if (!this.callbacks?.getTerminalElement) return null;
-
-        const terminalElement = this.callbacks.getTerminalElement();
-        if (!terminalElement) return null;
-
-        try {
-          const cursorInfo = terminalElement.getCursorInfo();
-          if (!cursorInfo) return null;
-
-          const { cursorX, cursorY, cols, rows } = cursorInfo;
-
-          const terminalDOMElement = terminalElement.getDOMElement();
-          if (!terminalDOMElement) return null;
-
-          const containerRect = terminalContainer.getBoundingClientRect();
-          const terminalRect = terminalDOMElement.getBoundingClientRect();
-
-          const charWidth = terminalRect.width / cols;
-          const lineHeight = terminalRect.height / rows;
-
-          const pixelX = terminalRect.left - containerRect.left + cursorX * charWidth;
-          const pixelY = terminalRect.top - containerRect.top + cursorY * lineHeight + lineHeight;
-
-          return { x: pixelX, y: pixelY };
-        } catch (error) {
-          logger.warn('Failed to get cursor position:', error);
-          return null;
-        }
+        // For now, return null to use fallback positioning
+        // TODO: Implement cursor position tracking when Terminal/VibeTerminalBinary support it
+        return null;
       },
       autoFocus: true,
     });

@@ -69,7 +69,7 @@ export interface ManagerAccessCallbacks {
     ensureHiddenInputVisible(): void;
     cleanup(): void;
   };
-  getInputManager(): unknown | null;
+  getInputManager(): { isKeyboardShortcut(e: KeyboardEvent): boolean } | null;
   getTerminalLifecycleManager(): {
     resetTerminalSize(): void;
     cleanup(): void;
