@@ -11,7 +11,6 @@
  * Creates a `native/` directory with just 3 files:
  * - `vibetunnel` - The standalone executable (includes all JS code and sourcemaps)
  * - `pty.node` - Native binding for terminal emulation
- * - `spawn-helper` - Helper binary for spawning processes (Unix only)
  *
  * ## Usage
  * ```bash
@@ -387,9 +386,6 @@ if (typeof process !== 'undefined' && process.versions && process.versions.node)
     fs.copyFileSync(vibetunnelPtyNode, 'native/pty.node');
     console.log('  - Copied VibeTunnel PTY addon as pty.node');
 
-    // Note: Our Rust-based PTY addon doesn't require spawn-helper
-    // It uses portable-pty which handles process spawning internally
-
     // Copy authenticate_pam.node
     const authPamPath = 'node_modules/authenticate-pam/build/Release/authenticate_pam.node';
     if (fs.existsSync(authPamPath)) {
@@ -404,9 +400,6 @@ if (typeof process !== 'undefined' && process.versions && process.versions.node)
     console.log(`\nPortable executable created in native/ directory:`);
     console.log(`  - vibetunnel (executable)`);
     console.log(`  - pty.node`);
-    if (process.platform === 'darwin') {
-      console.log(`  - spawn-helper`);
-    }
     console.log(`  - authenticate_pam.node`);
     console.log('\nAll files must be kept together in the same directory.');
     console.log('This bundle will work on any machine with the same OS/architecture.');

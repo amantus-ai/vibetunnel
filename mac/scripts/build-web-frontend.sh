@@ -56,10 +56,6 @@ if [ "${CI}" = "true" ] && [ -f "${WEB_DIR}/dist/server/server.js" ]; then
         cp "${NATIVE_DIR}/pty.node" "${APP_RESOURCES}/"
     fi
     
-    if [ -f "${NATIVE_DIR}/spawn-helper" ]; then
-        cp "${NATIVE_DIR}/spawn-helper" "${APP_RESOURCES}/"
-        chmod +x "${APP_RESOURCES}/spawn-helper"
-    fi
     
     if [ -f "${NATIVE_DIR}/authenticate_pam.node" ]; then
         cp "${NATIVE_DIR}/authenticate_pam.node" "${APP_RESOURCES}/"
@@ -92,7 +88,7 @@ if [ -f "${PREVIOUS_HASH_FILE}" ]; then
     PREVIOUS_HASH=$(cat "${PREVIOUS_HASH_FILE}")
     if [ "${CURRENT_HASH}" = "${PREVIOUS_HASH}" ]; then
         # Also check if the built files actually exist
-        if [ -d "${DEST_DIR}" ] && [ -f "${APP_RESOURCES}/vibetunnel" ] && [ -f "${APP_RESOURCES}/pty.node" ] && [ -f "${APP_RESOURCES}/spawn-helper" ]; then
+        if [ -d "${DEST_DIR}" ] && [ -f "${APP_RESOURCES}/vibetunnel" ] && [ -f "${APP_RESOURCES}/pty.node" ]; then
             echo "Web content unchanged and build outputs exist. Skipping rebuild."
             NEED_REBUILD=0
         else
@@ -307,12 +303,12 @@ if command -v cargo &> /dev/null && [ -d "${UNIFIED_PTY_DIR}" ]; then
     echo "Building vt-pipe from unified codebase..."
     cd "${UNIFIED_PTY_DIR}"
     
-    # Build in release mode with CLI features only
+    # Build vt-pipe binary through the workspace
     if [ "$BUILD_CONFIG" = "Release" ]; then
-        cargo build --release --no-default-features --features cli --bin vt-pipe 2>&1 | filter_build_output
+        cargo build --release -p vt-pipe 2>&1 | filter_build_output
     else
         # For debug builds, still use release mode for vt-pipe (it's always performance critical)
-        cargo build --release --no-default-features --features cli --bin vt-pipe 2>&1 | filter_build_output
+        cargo build --release -p vt-pipe 2>&1 | filter_build_output
     fi
     
     if [ -f "${VT_PIPE_TARGET}" ]; then
@@ -355,14 +351,6 @@ else
     exit 1
 fi
 
-if [ -f "${NATIVE_DIR}/spawn-helper" ]; then
-    echo "Copying spawn-helper..."
-    cp "${NATIVE_DIR}/spawn-helper" "${APP_RESOURCES}/"
-    chmod +x "${APP_RESOURCES}/spawn-helper"
-else
-    echo "error: spawn-helper not found"
-    exit 1
-fi
 
 # Copy authenticate_pam.node if it exists
 if [ -f "${NATIVE_DIR}/authenticate_pam.node" ]; then
@@ -409,20 +397,12 @@ if [ ! -f "${APP_RESOURCES}/pty.node" ]; then
     MISSING_FILES+=("pty.node native module")
 fi
 
-# Check for spawn-helper (Unix only)
-if [ ! -f "${APP_RESOURCES}/spawn-helper" ]; then
-    MISSING_FILES+=("spawn-helper")
-fi
 
 # Check if vibetunnel is executable
 if [ -f "${APP_RESOURCES}/vibetunnel" ] && [ ! -x "${APP_RESOURCES}/vibetunnel" ]; then
     MISSING_FILES+=("vibetunnel is not executable")
 fi
 
-# Check if spawn-helper is executable
-if [ -f "${APP_RESOURCES}/spawn-helper" ] && [ ! -x "${APP_RESOURCES}/spawn-helper" ]; then
-    MISSING_FILES+=("spawn-helper is not executable")
-fi
 
 # Check for vt script
 if [ ! -f "${APP_RESOURCES}/vt" ]; then
@@ -449,7 +429,7 @@ if [ ${#MISSING_FILES[@]} -gt 0 ]; then
     echo "Build artifacts in ${NATIVE_DIR}:"
     ls -la "${NATIVE_DIR}" || echo "  Directory does not exist"
     echo "App resources in ${APP_RESOURCES}:"
-    ls -la "${APP_RESOURCES}/vibetunnel" "${APP_RESOURCES}/pty.node" "${APP_RESOURCES}/spawn-helper" "${APP_RESOURCES}/vt" "${APP_RESOURCES}/vt-pipe" 2>/dev/null || true
+    ls -la "${APP_RESOURCES}/vibetunnel" "${APP_RESOURCES}/pty.node" "${APP_RESOURCES}/vt" "${APP_RESOURCES}/vt-pipe" 2>/dev/null || true
     exit 1
 fi
 

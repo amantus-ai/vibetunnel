@@ -1,0 +1,11 @@
+/Users/steipete/Projects/vibetunnel/web/native-pty/target/release/deps/napi_build-a8a15de5d9456719.d: /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/lib.rs /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/android.rs /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/macos.rs /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/wasi.rs /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/windows.rs
+
+/Users/steipete/Projects/vibetunnel/web/native-pty/target/release/deps/libnapi_build-a8a15de5d9456719.rlib: /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/lib.rs /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/android.rs /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/macos.rs /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/wasi.rs /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/windows.rs
+
+/Users/steipete/Projects/vibetunnel/web/native-pty/target/release/deps/libnapi_build-a8a15de5d9456719.rmeta: /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/lib.rs /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/android.rs /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/macos.rs /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/wasi.rs /Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/windows.rs
+
+/Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/lib.rs:
+/Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/android.rs:
+/Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/macos.rs:
+/Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/wasi.rs:
+/Users/steipete/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/napi-build-2.2.2/src/windows.rs:

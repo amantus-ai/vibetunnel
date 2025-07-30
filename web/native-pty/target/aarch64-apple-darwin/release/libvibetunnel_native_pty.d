@@ -1,0 +1,1 @@
+/Users/steipete/Projects/vibetunnel/web/native-pty/target/aarch64-apple-darwin/release/libvibetunnel_native_pty.dylib: /Users/steipete/Projects/vibetunnel/web/native-pty/build.rs /Users/steipete/Projects/vibetunnel/web/native-pty/src/lib.rs
