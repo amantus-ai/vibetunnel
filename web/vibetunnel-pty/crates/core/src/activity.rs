@@ -43,7 +43,7 @@ impl ActivityDetector {
 
     pub fn detect(&self, data: &[u8]) -> Option<Activity> {
         let text = String::from_utf8_lossy(data);
-        
+
         // Strip ANSI escape codes for cleaner matching
         let clean_text = self.ansi_escape_pattern.replace_all(&text, "");
 
@@ -51,18 +51,19 @@ impl ActivityDetector {
             let indicator = captures.get(1).map(|m| m.as_str().to_string());
             let status = captures.get(2)?.as_str().trim().to_string();
             let duration = captures.get(3)?.as_str().parse::<u32>().ok();
-            
+
             let details;
             let mut tokens = None;
-            
+
             // If we have the extended format with tokens
             if captures.get(4).is_some() {
                 let token_prefix = captures.get(4).map(|m| m.as_str()).unwrap_or("");
                 let token_count = captures.get(5).map(|m| m.as_str()).unwrap_or("");
                 tokens = Some(format!("{}{}", token_prefix, token_count));
-                
-                details = Some(format!("{}s · {} tokens", 
-                    duration.unwrap_or(0), 
+
+                details = Some(format!(
+                    "{}s · {} tokens",
+                    duration.unwrap_or(0),
                     tokens.as_ref().unwrap()
                 ));
             } else {
@@ -82,7 +83,7 @@ impl ActivityDetector {
 
         None
     }
-    
+
     /// Filter out activity status lines from output
     pub fn filter_status(&self, data: &str) -> String {
         let clean_text = self.ansi_escape_pattern.replace_all(data, "");

@@ -6,7 +6,9 @@ mod tests {
     fn test_activity_detector_default() {
         let detector = ActivityDetector::default();
         // Should compile the regex successfully
-        assert!(detector.claude_pattern.is_match("✻ Crafting… (205s · ↑ 6.0k tokens · press esc to interrupt)"));
+        assert!(detector
+            .claude_pattern
+            .is_match("✻ Crafting… (205s · ↑ 6.0k tokens · press esc to interrupt)"));
     }
 
     #[test]
@@ -21,19 +23,45 @@ mod tests {
 
         let test_cases = vec![
             // Format 1: Full format with tokens and prefix
-            ("✻ Crafting… (205s · ↑ 6.0k tokens · press esc to interrupt)", "Crafting", Some("✻"), Some(205), Some("↑6.0")),
+            (
+                "✻ Crafting… (205s · ↑ 6.0k tokens · press esc to interrupt)",
+                "Crafting",
+                Some("✻"),
+                Some(205),
+                Some("↑6.0"),
+            ),
             // Format 2: Simple format with tokens
-            ("✻ Measuring… (6s · 100 tokens · esc to interrupt)", "Measuring", Some("✻"), Some(6), Some("100")),
+            (
+                "✻ Measuring… (6s · 100 tokens · esc to interrupt)",
+                "Measuring",
+                Some("✻"),
+                Some(6),
+                Some("100"),
+            ),
             // Format 3: Simple format without tokens
             ("⏺ Calculating… (0s)", "Calculating", Some("⏺"), Some(0), None),
             // Format 4: With hammer symbol
-            ("✳ Measuring… (120s · ⚒ 671 tokens · esc to interrupt)", "Measuring", Some("✳"), Some(120), Some("⚒671")),
+            (
+                "✳ Measuring… (120s · ⚒ 671 tokens · esc to interrupt)",
+                "Measuring",
+                Some("✳"),
+                Some(120),
+                Some("⚒671"),
+            ),
             // Various indicators
-            ("● Thinking… (15s · 2.5k tokens · ctrl+c to interrupt)", "Thinking", Some("●"), Some(15), Some("2.5")),
+            (
+                "● Thinking… (15s · 2.5k tokens · ctrl+c to interrupt)",
+                "Thinking",
+                Some("●"),
+                Some(15),
+                Some("2.5"),
+            ),
             ("▶ Processing… (3s)", "Processing", Some("▶"), Some(3), None),
         ];
 
-        for (input, expected_status, expected_indicator, expected_duration, expected_tokens) in test_cases {
+        for (input, expected_status, expected_indicator, expected_duration, expected_tokens) in
+            test_cases
+        {
             let activity = detector.detect(input.as_bytes());
             assert!(activity.is_some(), "Failed to detect activity in: {}", input);
 
@@ -117,7 +145,8 @@ mod tests {
         assert_eq!(filtered.trim(), "Before\n\nAfter");
 
         // Test with ANSI codes
-        let input_ansi = "\x1b[32mBefore\n✻ Processing… (10s · 500 tokens · esc to interrupt)\nAfter\x1b[0m";
+        let input_ansi =
+            "\x1b[32mBefore\n✻ Processing… (10s · 500 tokens · esc to interrupt)\nAfter\x1b[0m";
         let filtered_ansi = detector.filter_status(input_ansi);
         assert_eq!(filtered_ansi.trim(), "Before\n\nAfter");
     }
@@ -253,9 +282,17 @@ mod tests {
         // Test that status text can contain special characters
         let test_cases = vec![
             ("✻ Processing file.rs… (5s)", "Processing file.rs", 5),
-            ("✻ Building key=value… (10s · 1.5k tokens · esc to interrupt)", "Building key=value", 10),
+            (
+                "✻ Building key=value… (10s · 1.5k tokens · esc to interrupt)",
+                "Building key=value",
+                10,
+            ),
             ("✻ Loading 100%… (2s)", "Loading 100%", 2),
-            ("✻ Scanning $HOME/path… (15s · 3k tokens · esc to interrupt)", "Scanning $HOME/path", 15),
+            (
+                "✻ Scanning $HOME/path… (15s · 3k tokens · esc to interrupt)",
+                "Scanning $HOME/path",
+                15,
+            ),
         ];
 
         for (input, expected_status, expected_duration) in test_cases {
@@ -270,8 +307,14 @@ mod tests {
 
     #[test]
     fn test_activity_with_none_details() {
-        let activity =
-            Activity { timestamp: 1234567890.0, status: "Status Only".to_string(), details: None, indicator: None, duration: None, tokens: None };
+        let activity = Activity {
+            timestamp: 1234567890.0,
+            status: "Status Only".to_string(),
+            details: None,
+            indicator: None,
+            duration: None,
+            tokens: None,
+        };
 
         let json = serde_json::to_string(&activity).expect("Failed to serialize");
         let deserialized: Activity = serde_json::from_str(&json).expect("Failed to deserialize");
