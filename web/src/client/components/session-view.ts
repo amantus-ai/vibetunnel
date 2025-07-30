@@ -299,6 +299,7 @@ export class SessionView extends LitElement {
     this.inputManager.setCallbacks({
       requestUpdate: () => this.requestUpdate(),
       getKeyboardCaptureActive: () => this.uiStateManager.getState().keyboardCaptureActive,
+      getTerminalElement: () => this.getTerminalElement(),
     });
 
     // Initialize mobile input manager

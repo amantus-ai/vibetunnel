@@ -6,8 +6,8 @@
  */
 
 import type { Session } from '../../../shared/types.js';
-import { isBrowserShortcut } from '../../utils/browser-shortcuts.js';
 import { consumeEvent } from '../../utils/event-utils.js';
+import { isIMEAllowedKey } from '../../utils/ime-constants.js';
 import { createLogger } from '../../utils/logger.js';
 import { type LifecycleEventManagerCallbacks, ManagerEventEmitter } from './interfaces.js';
 
@@ -30,6 +30,7 @@ const logger = createLogger('lifecycle-event-manager');
 export type { LifecycleEventManagerCallbacks } from './interfaces.js';
 
 export class LifecycleEventManager extends ManagerEventEmitter {
+  private sessionViewElement: HTMLElement | null = null;
   private callbacks: LifecycleEventManagerCallbacks | null = null;
   private session: Session | null = null;
   private touchStartX = 0;
@@ -48,10 +49,6 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     hasFinePointer: boolean;
     hasHover: boolean;
   } | null = null;
-
-  // Session view element reference
-  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used in setSessionViewElement and detectSystemCapabilities
-  private sessionViewElement: HTMLElement | null = null;
 
   constructor() {
     super();
@@ -213,6 +210,35 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       return;
     }
 
+    // Check if IME input is focused - block keyboard events except for editing keys
+    if (document.body.getAttribute('data-ime-input-focused') === 'true') {
+      if (!isIMEAllowedKey(e)) {
+        return;
+      }
+    }
+
+    // Check if IME composition is active - InputManager handles this
+    if (document.body.getAttribute('data-ime-composing') === 'true') {
+      return;
+    }
+
+    // Check if this is a browser shortcut we should allow FIRST before any other processing
+    const inputManager = this.callbacks.getInputManager();
+    if (inputManager?.isKeyboardShortcut(e)) {
+      // Let the browser handle this shortcut - don't call any preventDefault or stopPropagation
+      return;
+    }
+
+    // Handle Cmd+O / Ctrl+O to open file browser
+    if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
+      // Stop propagation to prevent parent handlers from interfering with our file browser
+      consumeEvent(e);
+      this.callbacks.setShowFileBrowser(true);
+      return;
+    }
+
+    if (!this.session) return;
+
     // Check if we're in an inline-edit component
     // Since inline-edit uses Shadow DOM, we need to check the composed path
     const composedPath = e.composedPath();
@@ -223,53 +249,9 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       }
     }
 
-    if (!this.session) return;
-
     // Handle Escape key specially for exited sessions
     if (e.key === 'Escape' && this.session.status === 'exited') {
       this.callbacks.handleBack();
-      return;
-    }
-
-    // Don't capture keyboard input for exited sessions (except Escape handled above)
-    if (this.session.status === 'exited') {
-      // Allow normal browser behavior for exited sessions
-      return;
-    }
-
-    // Get keyboard capture state FIRST
-    const keyboardCaptureActive = this.callbacks.getKeyboardCaptureActive();
-
-    // Special case: Always handle Escape key for double-tap toggle functionality
-    if (e.key === 'Escape') {
-      // Always send Escape to input manager for double-tap detection
-      consumeEvent(e);
-      this.callbacks.handleKeyboardInput(e);
-      return;
-    }
-
-    // If keyboard capture is OFF, allow browser to handle ALL shortcuts
-    if (!keyboardCaptureActive) {
-      // Don't consume the event - let browser handle it
-      logger.log('Keyboard capture OFF - allowing browser to handle key:', e.key);
-      return;
-    }
-
-    // From here on, keyboard capture is ON, so we handle shortcuts
-
-    // Check if this is a critical browser shortcut that should never be captured
-    // Import isBrowserShortcut to check for critical shortcuts
-    if (isBrowserShortcut(e)) {
-      // These are critical shortcuts like Cmd+T, Cmd+W that should always go to browser
-      logger.log('Critical browser shortcut detected, allowing browser to handle:', e.key);
-      return;
-    }
-
-    // Handle Cmd+O / Ctrl+O to open file browser (only when capture is ON)
-    if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
-      // Stop propagation to prevent parent handlers from interfering with our file browser
-      consumeEvent(e);
-      this.callbacks.setShowFileBrowser(true);
       return;
     }
 
@@ -407,6 +389,14 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
         // Store keyboard height in state
         this.callbacks.setKeyboardHeight(keyboardHeight);
+
+        // Update quick keys component if it exists
+        const quickKeys = this.callbacks.querySelector('terminal-quick-keys') as HTMLElement & {
+          keyboardHeight: number;
+        };
+        if (quickKeys) {
+          quickKeys.keyboardHeight = keyboardHeight;
+        }
 
         logger.log(`Visual Viewport keyboard height: ${keyboardHeight}px`);
 
