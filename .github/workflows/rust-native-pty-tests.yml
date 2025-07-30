@@ -51,7 +51,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
       
       - name: Cache Rust dependencies
         uses: actions/cache@v3
@@ -120,7 +120,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
       
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@v2
