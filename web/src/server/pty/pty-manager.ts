@@ -88,6 +88,11 @@ export class PtyManager extends EventEmitter {
   private sessions = new Map<string, PtySession>();
   private sessionManager: SessionManager;
   private sessionMonitor?: SessionMonitor;
+
+  // Static initialization method
+  static async initialize(): Promise<void> {
+    await ensurePtyInitialized();
+  }
   private defaultTerm = 'xterm-256color';
   private inputSocketClients = new Map<string, net.Socket>(); // Cache socket connections
   private lastTerminalSize: { cols: number; rows: number } | null = null;
