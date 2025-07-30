@@ -66,9 +66,9 @@ if [ -f "$PACKAGE_JSON" ]; then
 fi
 
 # Test 7: Basic functionality test (help command)
-# Clear the VIBETUNNEL_SESSION_ID to allow help command to run during tests
+# Unset the VIBETUNNEL_SESSION_ID to allow help command to run during tests
 # (otherwise vt script will refuse to run because we're inside a session)
-export VIBETUNNEL_SESSION_ID=""
+unset VIBETUNNEL_SESSION_ID
 
 # Use gtimeout if available, otherwise skip timeout
 if command -v gtimeout >/dev/null 2>&1; then

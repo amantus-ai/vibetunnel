@@ -86,6 +86,7 @@ const TITLE_INJECTION_CHECK_INTERVAL_MS = 10; // How often to check for quiet pe
 export class PtyManager extends EventEmitter {
   private sessions = new Map<string, PtySession>();
   private sessionManager: SessionManager;
+  private sessionMonitor?: SessionMonitor;
 
   // Static initialization method
   static async initialize(): Promise<void> {
