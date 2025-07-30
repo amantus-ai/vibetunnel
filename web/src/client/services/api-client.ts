@@ -5,6 +5,10 @@ const logger = createLogger('api-client');
 
 /**
  * Standard error response structure from the API
+ *
+ * @interface ErrorResponse
+ * @property {string} [message] - Human-readable error message describing what went wrong
+ * @property {string} [error] - Technical error code or identifier for programmatic handling
  */
 interface ErrorResponse {
   message?: string;
@@ -16,6 +20,11 @@ interface ErrorResponse {
  * Automatically includes authentication headers and handles error responses.
  */
 class ApiClient {
+  /**
+   * Make a GET request to the API
+   * @param path - The API endpoint path (without /api prefix)
+   * @returns Promise resolving to the response data
+   */
   async get<T = unknown>(path: string): Promise<T> {
     try {
       const response = await fetch(`/api${path}`, {
@@ -37,6 +46,12 @@ class ApiClient {
     }
   }
 
+  /**
+   * Make a POST request to the API
+   * @param path - The API endpoint path (without /api prefix)
+   * @param data - Request body data
+   * @returns Promise resolving to the response data
+   */
   async post<T = unknown>(path: string, data?: unknown): Promise<T> {
     try {
       const response = await fetch(`/api${path}`, {
@@ -60,6 +75,12 @@ class ApiClient {
     }
   }
 
+  /**
+   * Make a PUT request to the API
+   * @param path - The API endpoint path (without /api prefix)
+   * @param data - Request body data
+   * @returns Promise resolving to the response data
+   */
   async put<T = unknown>(path: string, data: unknown): Promise<T> {
     try {
       const response = await fetch(`/api${path}`, {
@@ -83,6 +104,11 @@ class ApiClient {
     }
   }
 
+  /**
+   * Make a DELETE request to the API
+   * @param path - The API endpoint path (without /api prefix)
+   * @returns Promise resolving to the response data
+   */
   async delete<T = unknown>(path: string): Promise<T> {
     try {
       const response = await fetch(`/api${path}`, {
