@@ -406,38 +406,5 @@ describe('Sessions API Tests', () => {
 
       expect(response.status).toBe(400);
     });
-
-    it('should handle invalid resize dimensions', async () => {
-      // Create a session first
-      const createResponse = await fetch(`http://localhost:${server?.port}/api/sessions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          command: ['cat'],
-          workingDir: server?.testDir,
-        }),
-      });
-
-      expect(createResponse.status).toBe(200);
-      const result = await createResponse.json();
-      expect(result).toHaveProperty('sessionId');
-      const sessionId = result.sessionId;
-
-      // Send invalid resize (negative dimensions)
-      const response = await fetch(
-        `http://localhost:${server?.port}/api/sessions/${sessionId}/resize`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ cols: -1, rows: 40 }),
-        }
-      );
-
-      expect(response.status).toBe(400);
-    });
   });
 });

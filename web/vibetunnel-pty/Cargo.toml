@@ -1,0 +1,41 @@
+[workspace]
+members = [
+  "crates/core",
+  "crates/napi-addon",
+  "crates/vt-pipe",
+]
+resolver = "2"
+default-members = ["crates/napi-addon"]
+
+[workspace.package]
+rust-version = "1.80.0"
+
+[workspace.dependencies]
+anyhow = "1"
+portable-pty = { version = "0.8", default-features = false }
+bytes = "1.5"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1.10"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+log = "0.4"
+thiserror = "2"
+lazy_static = "1.4"
+
+# NAPI dependencies
+napi = { version = "2", features = ["napi4"] }
+napi-derive = "2"
+
+# CLI dependencies
+tokio = { version = "1.35", features = ["full"] }
+clap = { version = "4.4", features = ["derive"] }
+ctrlc = "3.4"
+dirs = "5.0"
+termios = "0.3"
+
+# Unix dependencies
+nix = { version = "0.27", features = ["signal"] }
+
+[profile.release]
+lto = true

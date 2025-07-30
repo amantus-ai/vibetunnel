@@ -41,17 +41,18 @@ describe('vt command', () => {
     const child = spawn('bash', [vtScriptPath, '--help'], {
       cwd: projectRoot,
       stdio: 'pipe',
+      env: { ...process.env, VIBETUNNEL_SESSION_ID: '' }, // Clear session ID for test
     });
 
     let stdout = '';
-    let stderr = '';
+    let _stderr = '';
 
     child.stdout.on('data', (data) => {
       stdout += data.toString();
     });
 
     child.stderr.on('data', (data) => {
-      stderr += data.toString();
+      _stderr += data.toString();
     });
 
     child.on('close', (code) => {
@@ -70,7 +71,7 @@ describe('vt command', () => {
         expect(stdout).toContain('Path:');
 
         // Should not have errors
-        expect(stderr).toBe('');
+        expect(_stderr).toBe('');
 
         done();
       } catch (error) {
@@ -87,6 +88,7 @@ describe('vt command', () => {
     const child = spawn('bash', [vtScriptPath], {
       cwd: projectRoot,
       stdio: 'pipe',
+      env: { ...process.env, VIBETUNNEL_SESSION_ID: '' }, // Clear session ID for test
     });
 
     let stdout = '';
@@ -128,14 +130,14 @@ describe('vt command', () => {
     });
 
     let _stdout = '';
-    let stderr = '';
+    let _stderr = '';
 
     child.stdout.on('data', (data) => {
       _stdout += data.toString();
     });
 
     child.stderr.on('data', (data) => {
-      stderr += data.toString();
+      _stderr += data.toString();
     });
 
     child.on('close', (code) => {
@@ -144,7 +146,7 @@ describe('vt command', () => {
         expect(code).toBe(1);
 
         // Should show error message
-        expect(stderr).toContain("vt title' can only be used inside a VibeTunnel session");
+        expect(_stderr).toContain("vt title' can only be used inside a VibeTunnel session");
 
         done();
       } catch (error) {

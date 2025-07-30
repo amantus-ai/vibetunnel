@@ -355,22 +355,25 @@ export class InputManager {
   isKeyboardShortcut(e: KeyboardEvent): boolean {
     // Check if we're typing in an input field or editor
     const target = e.target as HTMLElement;
-    if (
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.tagName === 'SELECT' ||
-      target.contentEditable === 'true' ||
-      target.closest?.('.monaco-editor') ||
-      target.closest?.('[data-keybinding-context]') ||
-      target.closest?.('.editor-container') ||
-      target.closest?.('inline-edit') // Allow typing in inline-edit component
-    ) {
-      // Special exception: allow copy/paste shortcuts even in input fields (like our IME input)
-      if (isCopyPasteShortcut(e)) {
-        return true;
+    // Type guard to ensure target has the methods we need
+    if (target && typeof target.closest === 'function') {
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.contentEditable === 'true' ||
+        target.closest('.monaco-editor') ||
+        target.closest('[data-keybinding-context]') ||
+        target.closest('.editor-container') ||
+        target.closest('inline-edit') // Allow typing in inline-edit component
+      ) {
+        // Special exception: allow copy/paste shortcuts even in input fields (like our IME input)
+        if (isCopyPasteShortcut(e)) {
+          return true;
+        }
+        // Allow normal input in form fields and editors for other keys
+        return false;
       }
-      // Allow normal input in form fields and editors for other keys
-      return false;
     }
 
     // Check if this is a critical browser shortcut

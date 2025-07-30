@@ -77,15 +77,15 @@ importers:
       multer:
         specifier: ^2.0.2
         version: 2.0.2
-      node-pty:
-        specifier: file:node-pty
-        version: file:node-pty
       postject:
         specifier: 1.0.0-alpha.6
         version: 1.0.0-alpha.6
       signal-exit:
         specifier: ^4.1.0
         version: 4.1.0
+      vibetunnel-pty:
+        specifier: file:./vibetunnel-pty
+        version: file:vibetunnel-pty
       web-push:
         specifier: ^3.6.7
         version: 3.6.7
@@ -2353,9 +2353,6 @@ packages:
     resolution: {integrity: sha512-dBpDMdxv9Irdq66304OLfEmQ9tbNRFnFTuZiLo+bD+r332bBmMJ8GBLXklIXXgxd3+v9+KUnZaUR5PJMa75Gsg==}
     engines: {node: '>= 0.4.0'}
 
-  node-addon-api@7.1.1:
-    resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}
-
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
@@ -2364,9 +2361,6 @@ packages:
   node-fetch@3.3.2:
     resolution: {integrity: sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
-
-  node-pty@file:node-pty:
-    resolution: {directory: node-pty, type: directory}
 
   node-releases@2.0.19:
     resolution: {integrity: sha512-xxOWJsBKtzAq7DY0J+DTzuz58K8e7sJbdgwkbMWQe8UYB6ekmsQ45q0M/tJDsGaZmbC+l7n57UV8Hl5tHxO9uw==}
@@ -3063,6 +3057,10 @@ packages:
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
+
+  vibetunnel-pty@file:vibetunnel-pty:
+    resolution: {directory: vibetunnel-pty, type: directory}
+    engines: {node: '>= 10'}
 
   vite-node@3.2.4:
     resolution: {integrity: sha512-EbKSKh+bh1E1IFxeO0pg1n4dvoOTt0UDiXMd/qn++r98+jPO1xtJilvXldeuQ8giIB5IkpjCgMleHMNEsGH6pg==}
@@ -5499,8 +5497,6 @@ snapshots:
 
   netmask@2.0.2: {}
 
-  node-addon-api@7.1.1: {}
-
   node-domexception@1.0.0: {}
 
   node-fetch@3.3.2:
@@ -5508,10 +5504,6 @@ snapshots:
       data-uri-to-buffer: 4.0.1
       fetch-blob: 3.2.0
       formdata-polyfill: 4.0.10
-
-  node-pty@file:node-pty:
-    dependencies:
-      node-addon-api: 7.1.1
 
   node-releases@2.0.19: {}
 
@@ -6277,6 +6269,8 @@ snapshots:
   uuid@11.1.0: {}
 
   vary@1.1.2: {}
+
+  vibetunnel-pty@file:vibetunnel-pty: {}
 
   vite-node@3.2.4(@types/node@24.1.0)(jiti@1.21.7)(tsx@4.20.3)(yaml@2.8.0):
     dependencies:

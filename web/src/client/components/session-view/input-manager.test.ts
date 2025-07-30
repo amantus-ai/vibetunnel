@@ -18,6 +18,26 @@ vi.mock('../../services/websocket-input-client.js', () => ({
 // We don't need to mock browser-shortcuts because the tests should verify
 // the actual behavior of the module
 
+// Simple KeyboardEvent polyfill for test environment
+if (typeof KeyboardEvent === 'undefined') {
+  // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
+  (global as any).KeyboardEvent = class KeyboardEvent extends Event {
+    key: string;
+    metaKey: boolean;
+    ctrlKey: boolean;
+    altKey: boolean;
+    shiftKey: boolean;
+
+    constructor(type: string, init?: KeyboardEventInit) {
+      super(type, init);
+      this.key = init?.key || '';
+      this.metaKey = init?.metaKey || false;
+      this.ctrlKey = init?.ctrlKey || false;
+      this.altKey = init?.altKey || false;
+      this.shiftKey = init?.shiftKey || false;
+    }
+  };
+}
 describe('InputManager', () => {
   let inputManager: InputManager;
   let mockSession: Session;
