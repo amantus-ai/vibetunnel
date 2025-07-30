@@ -473,9 +473,9 @@ impl ActivityDetector {
     // Note: We match ANY non-whitespace character as the indicator since Claude uses many symbols
     Ok(Self {
       claude_pattern: regex::Regex::new(r"(\S)\s+(\w+)…\s*\((\d+)s(?:\s*·\s*(\S?)\s*([\d.]+)\s*k?\s*tokens\s*·\s*[^)]+to\s+interrupt)?\)")
-        .map_err(|e| Error::from_reason(format!("Regex error: {}", e)))?,
+        .map_err(|e| Error::from_reason(format!("Regex error: {e}")))?,
       ansi_pattern: regex::Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]")
-        .map_err(|e| Error::from_reason(format!("ANSI regex error: {}", e)))?,
+        .map_err(|e| Error::from_reason(format!("ANSI regex error: {e}")))?,
     })
   }
 
