@@ -27,6 +27,9 @@ struct DashboardSettingsView: View {
     @State private var tailscaleStatus: (isInstalled: Bool, isRunning: Bool, hostname: String?)?
 
     private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "DashboardSettings")
+    
+    // ISO8601DateFormatter needs to be created outside of @Sendable closures
+    private static let iso8601Formatter = ISO8601DateFormatter()
 
     private var accessMode: DashboardAccessMode {
         DashboardAccessMode(rawValue: accessModeString) ?? .localhost
@@ -83,7 +86,7 @@ struct DashboardSettingsView: View {
                 guard session.status == "running" else { return nil }
 
                 // Parse the ISO 8601 date string
-                let createdAt = ISO8601DateFormatter().date(from: session.startedAt) ?? Date()
+                let createdAt = Self.iso8601Formatter.date(from: session.startedAt) ?? Date()
 
                 return DashboardSessionInfo(
                     id: session.id,
