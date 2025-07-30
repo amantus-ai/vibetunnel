@@ -431,8 +431,9 @@ struct CLIInstallerTests {
             fi
         done
         VIBETUNNEL_BIN="$APP_PATH/Contents/Resources/vibetunnel"
+        VT_PIPE_BIN="$APP_PATH/Contents/Resources/vt-pipe"
         TITLE_MODE_ARGS="--title-mode dynamic"
-        exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
+        exec "$VT_PIPE_BIN" $TITLE_MODE_ARGS "$@"
         """
 
         let vtPath = tempDirectory.appendingPathComponent("vt").path

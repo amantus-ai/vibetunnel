@@ -724,8 +724,8 @@ final class TerminalLauncher {
         let escapedWorkingDir = expandedWorkingDir.replacingOccurrences(of: "\"", with: "\\\"")
 
         // Construct the full command for Bun server
-        // For Bun server, use fwd to create sessions
-        logger.info("Using Bun server session creation via fwd")
+        // For Bun server, use vt-pipe to create sessions
+        logger.info("Using Bun server session creation via vt-pipe")
         let bunPath = findBunExecutable()
         let bunCommand = buildBunCommand(
             bunPath: bunPath,
@@ -779,8 +779,8 @@ final class TerminalLauncher {
         let bunServerActive = Bundle.main.path(forResource: "vibetunnel", ofType: nil) != nil &&
             !command.contains("TTY_SESSION_ID=") // If command already has session ID, it's from Go server
         if bunServerActive {
-            // For Bun server, use fwd command
-            logger.info("Using Bun server session creation via fwd")
+            // For Bun server, use vt-pipe command
+            logger.info("Using Bun server session creation via vt-pipe")
 
             // Find the Bun executable path
             let bunPath = findBunExecutable()
@@ -891,13 +891,24 @@ final class TerminalLauncher {
     )
         -> String
     {
-        // Bun executable has fwd command built-in
-        logger.info("Using Bun executable for session creation")
-        if let sessionId {
-            // Pass the pre-generated session ID to fwd
-            return "\"\(bunPath)\" fwd --session-id \(sessionId) \(userCommand)"
+        // We need to use vt-pipe instead of the Bun executable
+        logger.info("Using vt-pipe for session creation")
+        
+        // Find vt-pipe binary (should be in the same directory as vibetunnel)
+        let vtPipePath: String
+        if let bundledPath = Bundle.main.path(forResource: "vt-pipe", ofType: nil) {
+            vtPipePath = bundledPath
         } else {
-            return "\"\(bunPath)\" fwd \(userCommand)"
+            // Fallback to assuming it's in the same directory as vibetunnel
+            let vibetunnelDir = (bunPath as NSString).deletingLastPathComponent
+            vtPipePath = "\(vibetunnelDir)/vt-pipe"
+        }
+        
+        if let sessionId {
+            // Pass the pre-generated session ID to vt-pipe
+            return "\"\(vtPipePath)\" --session-id \(sessionId) \(userCommand)"
+        } else {
+            return "\"\(vtPipePath)\" \(userCommand)"
         }
     }
 }

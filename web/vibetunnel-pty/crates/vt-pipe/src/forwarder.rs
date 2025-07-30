@@ -320,10 +320,10 @@ impl Forwarder {
     fn setup_signal_handlers(&self, shutdown: Arc<Mutex<bool>>) {
         let shutdown_clone = shutdown.clone();
         ctrlc::set_handler(move || {
-            let shutdown = shutdown_clone.clone();
-            tokio::spawn(async move {
-                *shutdown.lock().await = true;
-            });
+            // Use blocking lock since we're not in an async context
+            if let Ok(mut shutdown_guard) = shutdown_clone.try_lock() {
+                *shutdown_guard = true;
+            }
         })
         .expect("Failed to set Ctrl-C handler");
     }
