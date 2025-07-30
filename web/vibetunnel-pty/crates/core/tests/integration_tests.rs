@@ -103,10 +103,10 @@ fn test_session_management_with_pty() {
 fn test_activity_detection_with_real_output() {
     let detector = ActivityDetector::new().expect("Failed to create detector");
 
-    // Create PTY that outputs activity
+    // Create PTY that outputs activity in Claude format
     let config = PtyConfig {
         shell: Some("/bin/sh".to_string()),
-        args: vec!["-c".to_string(), "echo '✻ Running command (test.sh)' && exit".to_string()],
+        args: vec!["-c".to_string(), "echo '✻ Running command… (5s)' && exit".to_string()],
         ..Default::default()
     };
 
@@ -123,7 +123,8 @@ fn test_activity_detection_with_real_output() {
 
     let activity = activity.unwrap();
     assert_eq!(activity.status, "Running command");
-    assert_eq!(activity.details, Some("test.sh".to_string()));
+    assert_eq!(activity.duration, Some(5));
+    assert!(activity.tokens.is_none());
 }
 
 #[test]
