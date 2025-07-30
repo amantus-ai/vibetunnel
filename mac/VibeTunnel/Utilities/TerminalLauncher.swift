@@ -893,7 +893,7 @@ final class TerminalLauncher {
     {
         // We need to use vt-pipe instead of the Bun executable
         logger.info("Using vt-pipe for session creation")
-        
+
         // Find vt-pipe binary (should be in the same directory as vibetunnel)
         let vtPipePath: String
         if let bundledPath = Bundle.main.path(forResource: "vt-pipe", ofType: nil) {
@@ -903,7 +903,7 @@ final class TerminalLauncher {
             let vibetunnelDir = (bunPath as NSString).deletingLastPathComponent
             vtPipePath = "\(vibetunnelDir)/vt-pipe"
         }
-        
+
         if let sessionId {
             // Pass the pre-generated session ID to vt-pipe
             return "\"\(vtPipePath)\" --session-id \(sessionId) \(userCommand)"

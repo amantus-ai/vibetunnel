@@ -16,6 +16,20 @@ final class TailscaleServeStatusService {
     private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "TailscaleServeStatus")
     private var updateTimer: Timer?
 
+    /// Static formatters to avoid capturing non-Sendable types in @Sendable closures
+    /// Use nonisolated to allow access from @Sendable closures
+    private nonisolated(unsafe) static let iso8601FormatterWithFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private nonisolated(unsafe) static let iso8601FormatterStandard: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
     private init() {}
 
     /// Start polling for status updates
@@ -74,20 +88,20 @@ final class TailscaleServeStatusService {
 
             let decoder = JSONDecoder()
             // Use custom date decoder to handle ISO8601 with fractional seconds
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             decoder.dateDecodingStrategy = .custom { decoder in
                 let container = try decoder.singleValueContainer()
                 let dateString = try container.decode(String.self)
-                if let date = formatter.date(from: dateString) {
+                if let date = Self.iso8601FormatterWithFractionalSeconds.date(from: dateString) {
                     return date
                 }
                 // Fallback to standard ISO8601 without fractional seconds
-                formatter.formatOptions = [.withInternetDateTime]
-                if let date = formatter.date(from: dateString) {
+                if let date = Self.iso8601FormatterStandard.date(from: dateString) {
                     return date
                 }
-                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date string \(dateString)")
+                throw DecodingError.dataCorruptedError(
+                    in: container,
+                    debugDescription: "Cannot decode date string \(dateString)"
+                )
             }
 
             let status = try decoder.decode(TailscaleServeStatus.self, from: data)
@@ -98,7 +112,6 @@ final class TailscaleServeStatusService {
             startTime = status.startTime
 
             logger.debug("Tailscale Serve status - Running: \(status.isRunning), Error: \(status.lastError ?? "none")")
-
         } catch {
             logger.error("Failed to fetch Tailscale Serve status: \(error.localizedDescription)")
             // On error, assume not running

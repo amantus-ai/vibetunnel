@@ -317,7 +317,7 @@ final class BunServer {
             environment["NODE_ENV"] = "development"
             logger.info("Running in DEBUG configuration - setting NODE_ENV=development to disable caching")
         #endif
-        
+
         // Mark that we're running as SEA (Single Executable Application)
         environment["VIBETUNNEL_SEA"] = "true"
         logger.info("Setting VIBETUNNEL_SEA=true for native addon loading")

@@ -27,8 +27,8 @@ struct DashboardSettingsView: View {
     @State private var tailscaleStatus: (isInstalled: Bool, isRunning: Bool, hostname: String?)?
 
     private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "DashboardSettings")
-    
-    // ISO8601DateFormatter needs to be created outside of @Sendable closures
+
+    /// ISO8601DateFormatter needs to be created outside of @Sendable closures
     private static let iso8601Formatter = ISO8601DateFormatter()
 
     private var accessMode: DashboardAccessMode {

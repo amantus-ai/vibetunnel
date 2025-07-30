@@ -13,9 +13,9 @@ extension Notification.Name {
     // MARK: - Welcome
 
     static let showWelcomeScreen = Notification.Name("showWelcomeScreen")
-    
+
     // MARK: - Services
-    
+
     static let notificationServiceConnectionChanged = Notification.Name("notificationServiceConnectionChanged")
 }
 

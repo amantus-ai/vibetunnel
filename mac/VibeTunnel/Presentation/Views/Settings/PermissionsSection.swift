@@ -5,7 +5,7 @@ struct PermissionsSection: View {
     let hasAppleScriptPermission: Bool
     let hasAccessibilityPermission: Bool
     let permissionManager: SystemPermissionManager
-    
+
     var body: some View {
         Section {
             // Automation permission
@@ -17,9 +17,9 @@ struct PermissionsSection: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 if hasAppleScriptPermission {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
@@ -47,7 +47,7 @@ struct PermissionsSection: View {
                     .controlSize(.small)
                 }
             }
-            
+
             // Accessibility permission
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
@@ -57,9 +57,9 @@ struct PermissionsSection: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 if hasAccessibilityPermission {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
@@ -115,7 +115,7 @@ struct PermissionsSection: View {
     struct PreviewWrapper: View {
         @State var hasAppleScript = true
         @State var hasAccessibility = false
-        
+
         var body: some View {
             PermissionsSection(
                 hasAppleScriptPermission: hasAppleScript,
@@ -126,6 +126,6 @@ struct PermissionsSection: View {
             .padding()
         }
     }
-    
+
     return PreviewWrapper()
 }

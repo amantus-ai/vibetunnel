@@ -48,16 +48,40 @@ let initPtySystem: () => void;
 
 function loadNativeAddon() {
   if (!NativePty) {
+    logger.log('loadNativeAddon() called, NativePty not loaded yet');
     try {
       let addon: any;
 
       // When running as SEA (Single Executable Application)
       if (process.env.VIBETUNNEL_SEA === 'true') {
+        logger.log('Running in SEA mode, attempting to load native addon');
         const path = require('path');
         const execDir = path.dirname(process.execPath);
         const ptyPath = path.join(execDir, 'pty.node');
         logger.log(`Loading PTY addon from SEA path: ${ptyPath}`);
-        addon = require(ptyPath);
+        logger.log(`Process execPath: ${process.execPath}`);
+        logger.log(`Exec directory: ${execDir}`);
+        
+        // Check if file exists
+        const fs = require('fs');
+        if (fs.existsSync(ptyPath)) {
+          logger.log(`PTY addon file exists at ${ptyPath}`);
+        } else {
+          logger.error(`PTY addon file NOT FOUND at ${ptyPath}`);
+          throw new Error(`PTY addon not found at ${ptyPath}`);
+        }
+        
+        logger.log('Using process.dlopen to load native addon...');
+        // SEA binaries need to use process.dlopen for native modules
+        const module = { exports: {} };
+        try {
+          process.dlopen(module, ptyPath);
+          addon = module.exports;
+          logger.log('Native addon loaded successfully via process.dlopen');
+        } catch (dlopenError) {
+          logger.error('Failed to load with process.dlopen:', dlopenError);
+          throw new Error(`Failed to dlopen native addon: ${dlopenError instanceof Error ? dlopenError.message : String(dlopenError)}`);
+        }
       } else {
         // Development mode - try to load from vibetunnel-pty
         try {
@@ -71,12 +95,18 @@ function loadNativeAddon() {
         }
       }
 
+      logger.log('Extracting exports from addon...');
       NativePty = addon.NativePty;
+      logger.log('NativePty extracted');
       ActivityDetector = addon.ActivityDetector;
+      logger.log('ActivityDetector extracted');
       initPtySystem = addon.initPtySystem;
+      logger.log('initPtySystem extracted');
 
       // Initialize once
+      logger.log('About to call initPtySystem()...');
       initPtySystem();
+      logger.log('initPtySystem() completed');
       logger.log('Native PTY addon loaded successfully');
     } catch (err) {
       throw new Error(
@@ -97,10 +127,13 @@ class NativeAddonPty extends EventEmitter implements IPty {
 
   constructor(file?: string, args?: string[], opt?: IPtyOptions) {
     super();
+    
+    logger.log(`NativeAddonPty constructor called with file=${file}, args=${args?.join(' ')}`);
 
     // Load native addon
     loadNativeAddon();
 
+    logger.log('About to create native PTY instance...');
     // Create native PTY
     this.pty = new NativePty(
       file,

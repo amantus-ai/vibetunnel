@@ -94,7 +94,8 @@ struct RemoteAccessSettingsView: View {
                 onAppearSetup()
                 updateLocalIPAddress()
                 // Initialize authentication mode from stored value
-                let storedMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.authenticationMode) ?? "os"
+                let storedMode = UserDefaults.standard
+                    .string(forKey: AppConstants.UserDefaultsKeys.authenticationMode) ?? "os"
                 authMode = AuthenticationMode(rawValue: storedMode) ?? .osAuth
                 // Start monitoring Tailscale Serve status
                 tailscaleServeStatus.startMonitoring()
@@ -627,7 +628,6 @@ private struct ErrorView: View {
         }
     }
 }
-
 
 // MARK: - Previews
 

@@ -22,9 +22,9 @@ final class SharedUnixSocketManager {
     private init() {
         logger.info("🚀 SharedUnixSocketManager initialized")
     }
-    
+
     // MARK: - Notifications
-    
+
     static let unixSocketReadyNotification = Notification.Name("unixSocketReady")
 
     // MARK: - Public Methods
@@ -45,7 +45,7 @@ final class SharedUnixSocketManager {
                 self?.distributeMessage(data)
             }
         }
-        
+
         // Set up state change handler to notify when socket is ready
         socket.onStateChange = { [weak self] state in
             Task { @MainActor [weak self] in
@@ -56,7 +56,7 @@ final class SharedUnixSocketManager {
         unixSocket = socket
         return socket
     }
-    
+
     /// Handle socket state changes and notify when ready
     private func handleSocketStateChange(_ state: UnixSocketConnection.ConnectionState) {
         switch state {
