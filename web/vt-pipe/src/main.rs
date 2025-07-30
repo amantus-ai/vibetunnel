@@ -19,6 +19,14 @@ struct Cli {
   #[command(subcommand)]
   command: Option<Commands>,
 
+  /// Session ID to use (instead of generating a new one)
+  #[arg(long)]
+  session_id: Option<String>,
+
+  /// Terminal title management mode
+  #[arg(long, value_enum, default_value = "none")]
+  title_mode: TitleMode,
+
   /// Command and arguments to execute (when not using subcommands)
   #[arg(trailing_var_arg = true)]
   args: Vec<String>,
@@ -75,9 +83,9 @@ async fn main() -> Result<()> {
       if cli.args.is_empty() {
         // No command specified, launch shell
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
-        handle_fwd(TitleMode::None, None, None, vec![shell]).await
+        handle_fwd(cli.title_mode, None, cli.session_id, vec![shell]).await
       } else {
-        handle_fwd(TitleMode::None, None, None, cli.args).await
+        handle_fwd(cli.title_mode, None, cli.session_id, cli.args).await
       }
     },
   }
@@ -103,7 +111,11 @@ async fn handle_fwd(
     anyhow::bail!("No command specified");
   }
 
-  let mut forwarder = Forwarder::new(title_mode)?;
+  let mut forwarder = if let Some(sid) = session_id {
+    Forwarder::with_session_id(title_mode, sid)?
+  } else {
+    Forwarder::new(title_mode)?
+  };
   forwarder.run(command).await
 }
 

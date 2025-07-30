@@ -55,6 +55,16 @@ impl Forwarder {
     })
   }
 
+  pub fn with_session_id(title_mode: TitleMode, session_id: String) -> Result<Self> {
+    let terminal = Terminal::new()?;
+
+    Ok(Self {
+      title_mode,
+      session_id,
+      terminal,
+    })
+  }
+
   pub async fn run(&mut self, command: Vec<String>) -> Result<()> {
     // Setup signal handlers
     let shutdown = Arc::new(Mutex::new(false));
