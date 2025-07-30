@@ -906,7 +906,7 @@ final class TerminalLauncher {
 
         if let sessionId {
             // Pass the pre-generated session ID to vt-pipe
-            return "\"\(vtPipePath)\" --session-id \(sessionId) \(userCommand)"
+            return "\"\(vtPipePath)\" --session-id=\(sessionId) \(userCommand)"
         } else {
             return "\"\(vtPipePath)\" \(userCommand)"
         }

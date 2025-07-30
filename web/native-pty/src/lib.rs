@@ -181,15 +181,22 @@ impl NativePty {
     let reader_thread = thread::spawn(move || {
       info!("Reader thread started for session {}", reader_session_id);
       let mut buffer = vec![0u8; 4096];
+      let mut total_bytes_read = 0usize;
       loop {
         // Check for shutdown signal
         if shutdown_receiver.try_recv().is_ok() {
+          info!("Reader thread received shutdown signal for session {}", reader_session_id);
           break;
         }
 
         match reader.read(&mut buffer) {
-          Ok(0) => break, // EOF
+          Ok(0) => {
+            info!("Reader thread EOF for session {}", reader_session_id);
+            break; // EOF
+          },
           Ok(n) => {
+            total_bytes_read += n;
+            debug!("Read {} bytes from PTY (total: {} bytes) for session {}", n, total_bytes_read, reader_session_id);
             let data = buffer[..n].to_vec();
 
             // Check if we have a callback to call
@@ -282,20 +289,40 @@ impl NativePty {
   pub fn write(&self, data: Buffer) -> Result<()> {
     use std::io::Write;
 
+    info!("write() called for session {} with {} bytes", self.session_id, data.len());
+    
+    // Log the actual data for debugging (limit to first 100 bytes)
+    let preview = if data.len() <= 100 {
+      String::from_utf8_lossy(&data).to_string()
+    } else {
+      format!("{}... ({} bytes total)", String::from_utf8_lossy(&data[..100]), data.len())
+    };
+    debug!("Write data: {:?}", preview);
+
     let mut manager = PTY_MANAGER.lock();
 
     if let Some(session) = manager.sessions.get_mut(&self.session_id) {
+      info!("Found session, writing to PTY");
       // Use the stored writer - no need to take it
       session
         .writer
         .write_all(&data)
-        .map_err(|e| Error::from_reason(format!("Write failed: {e}")))?;
+        .map_err(|e| {
+          error!("Write failed: {}", e);
+          Error::from_reason(format!("Write failed: {e}"))
+        })?;
 
       session
         .writer
         .flush()
-        .map_err(|e| Error::from_reason(format!("Flush failed: {e}")))?;
+        .map_err(|e| {
+          error!("Flush failed: {}", e);
+          Error::from_reason(format!("Flush failed: {e}"))
+        })?;
+      
+      info!("Write successful for session {}", self.session_id);
     } else {
+      error!("Session {} not found in write()", self.session_id);
       return Err(Error::from_reason("Session not found"));
     }
 
