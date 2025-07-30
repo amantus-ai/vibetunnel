@@ -49,15 +49,35 @@ let initPtySystem: () => void;
 function loadNativeAddon() {
   if (!NativePty) {
     try {
-      // Try vibetunnel-pty first
-      const addon = require('../../../vibetunnel-pty');
+      let addon: any;
+
+      // When running as SEA (Single Executable Application)
+      if (process.env.VIBETUNNEL_SEA === 'true') {
+        const path = require('path');
+        const execDir = path.dirname(process.execPath);
+        const ptyPath = path.join(execDir, 'pty.node');
+        logger.log(`Loading PTY addon from SEA path: ${ptyPath}`);
+        addon = require(ptyPath);
+      } else {
+        // Development mode - try to load from vibetunnel-pty
+        try {
+          addon = require('../../../vibetunnel-pty');
+        } catch (_err) {
+          // Fallback to relative path for tests
+          const path = require('path');
+          const ptyPath = path.join(__dirname, '../../../native/pty.node');
+          logger.log(`Loading PTY addon from fallback path: ${ptyPath}`);
+          addon = require(ptyPath);
+        }
+      }
+
       NativePty = addon.NativePty;
       ActivityDetector = addon.ActivityDetector;
       initPtySystem = addon.initPtySystem;
 
       // Initialize once
       initPtySystem();
-      logger.log('Native PTY addon loaded successfully from vibetunnel-pty');
+      logger.log('Native PTY addon loaded successfully');
     } catch (err) {
       throw new Error(
         `Failed to load native PTY addon: ${err instanceof Error ? err.message : String(err)}`
