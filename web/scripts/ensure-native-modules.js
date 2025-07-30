@@ -1,66 +1,74 @@
 #!/usr/bin/env node
 
 /**
- * Ensures native modules are built and available for tests
- * This script handles pnpm's symlink structure where node-pty might be in .pnpm directory
+ * Ensures Rust PTY native modules are built and available for tests
  */
 
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-console.log('Ensuring native modules are built for tests...');
+console.log('Ensuring Rust PTY native modules are built for tests...');
 
-// Find the actual node-pty location (could be in .pnpm directory)
-let nodePtyPath;
-try {
-  nodePtyPath = require.resolve('node-pty/package.json');
-} catch (e) {
-  console.error('Could not find node-pty module');
+// Rust PTY implementation directory
+const nativePtyDir = path.join(__dirname, '..', 'native-pty');
+const platform = process.platform;
+const arch = process.arch === 'x64' ? 'x64' : 'arm64';
+const rustPtyNode = path.join(nativePtyDir, `vibetunnel-native-pty.${platform}-${arch}.node`);
+
+if (!fs.existsSync(nativePtyDir)) {
+  console.error('Native PTY directory not found. This branch requires the Rust PTY implementation.');
   process.exit(1);
 }
 
-const nodePtyDir = path.dirname(nodePtyPath);
-const buildDir = path.join(nodePtyDir, 'build');
-const releaseDir = path.join(buildDir, 'Release');
+console.log('Using Rust PTY implementation from native-pty directory');
 
-console.log(`Found node-pty at: ${nodePtyDir}`);
-
-// Check if native modules are built
-if (!fs.existsSync(releaseDir) || !fs.existsSync(path.join(releaseDir, 'pty.node'))) {
-  console.log('Native modules not found, building...');
-  
+// Check if node_modules exists in native-pty (needed for napi build)
+const nativePtyNodeModules = path.join(nativePtyDir, 'node_modules');
+if (!fs.existsSync(nativePtyNodeModules)) {
+  console.log('Installing native-pty dependencies...');
   try {
-    // Build using node-gyp directly to avoid TypeScript issues
-    execSync(`cd "${nodePtyDir}" && npx node-gyp rebuild`, {
-      stdio: 'inherit',
-      shell: true
-    });
+    // Use pnpm if available, otherwise npm
+    try {
+      execSync('pnpm --version', { stdio: 'pipe' });
+      execSync('pnpm install', {
+        cwd: nativePtyDir,
+        stdio: 'inherit'
+      });
+    } catch {
+      execSync('npm install', {
+        cwd: nativePtyDir,
+        stdio: 'inherit'
+      });
+    }
   } catch (e) {
-    console.error('Failed to build native modules:', e.message);
+    console.error('Failed to install native-pty dependencies:', e.message);
     process.exit(1);
   }
 }
 
-// For pnpm, ensure the symlinked node_modules/node-pty has the build directory
-const symlinkNodePty = path.join(__dirname, '../node_modules/node-pty');
-if (fs.existsSync(symlinkNodePty) && fs.lstatSync(symlinkNodePty).isSymbolicLink()) {
-  const symlinkBuildDir = path.join(symlinkNodePty, 'build');
+// Check if the native module is built
+if (!fs.existsSync(rustPtyNode)) {
+  console.log(`Rust PTY native module not found at ${rustPtyNode}, building...`);
   
-  // If the symlinked location doesn't have a build directory, create a symlink to the real one
-  if (!fs.existsSync(symlinkBuildDir) && fs.existsSync(buildDir)) {
-    console.log('Creating symlink for build directory in node_modules/node-pty...');
+  try {
+    // Use pnpm if available, otherwise npm
     try {
-      const symlinkType = process.platform === 'win32' ? 'junction' : 'dir';
-      fs.symlinkSync(buildDir, symlinkBuildDir, symlinkType);
-      console.log('Created build directory symlink');
-    } catch (e) {
-      // If symlink fails, try copying instead
-      console.log('Symlink failed, trying to copy build directory...');
-      fs.cpSync(buildDir, symlinkBuildDir, { recursive: true });
-      console.log('Copied build directory');
+      execSync('pnpm --version', { stdio: 'pipe' });
+      execSync('pnpm run build', {
+        cwd: nativePtyDir,
+        stdio: 'inherit'
+      });
+    } catch {
+      execSync('npm run build', {
+        cwd: nativePtyDir,
+        stdio: 'inherit'
+      });
     }
+  } catch (e) {
+    console.error('Failed to build Rust PTY module:', e.message);
+    process.exit(1);
   }
 }
 
-console.log('Native modules are ready for tests');
+console.log('Rust PTY native module is ready for tests');

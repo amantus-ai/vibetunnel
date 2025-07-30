@@ -72,6 +72,11 @@ When the user says "release" or asks to create a release, ALWAYS read and follow
 - **"Adopt" means REVIEW, not merge!** When asked to "adopt" a PR, switch to its branch and review the changes. NEVER merge without explicit permission.
 - **"Rebase main" means rebase CURRENT branch with main!** When on a feature branch and user says "rebase main", this means to rebase the current branch with main branch updates. NEVER switch to main branch. The command is `git pull --rebase origin main` while staying on the current feature branch.
 
+### Debugging Server Issues
+- To quickly check if the server is responding: `curl -s --max-time 2 http://localhost:4020 || echo "Server not responding"`
+- If the server hangs during session creation, it's often related to native module loading (PTY addon)
+- Check server logs with: `./scripts/vtlog.sh -n 100 -c ServerOutput`
+
 ### Terminal Title Management with VT
 
 When creating pull requests, use the `vt` command to update the terminal title:
@@ -433,3 +438,21 @@ The agent will:
 - External Device Testing: `docs/TESTING_EXTERNAL_DEVICES.md`
 - Gemini CLI Instructions: `docs/gemini.md`
 - Release Process: `docs/RELEASE.md`
+
+## VibeTunnel Socket Architecture
+
+VibeTunnel uses Unix domain sockets for local inter-process communication:
+
+- **API Socket** (`~/.vibetunnel/api.sock`) - Used by `vt` command for server communication
+- **Control Socket** (`~/.vibetunnel/control.sock`) - Mac app ↔ Node.js server communication
+- **Session Sockets** (`~/.vibetunnel/control/{session_id}/ipc.sock`) - Per-session terminal I/O
+
+### Claude Code Integration
+
+The warning "Failed to connect to socket" when running `claude` outside VibeTunnel is expected behavior. To run Claude with VibeTunnel integration:
+
+```bash
+vt claude --dangerously-skip-permissions
+```
+
+For detailed socket architecture, protocols, debugging, and troubleshooting, see `docs/sockets.md`

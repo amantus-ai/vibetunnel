@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const esbuild = require('esbuild');
 const { prodOptions } = require('./esbuild-config.js');
-const { nodePtyPlugin } = require('./node-pty-plugin.js');
 
 async function build() {
   console.log('Starting build process...');
@@ -71,9 +70,7 @@ async function build() {
       target: 'node18',
       format: 'cjs',
       outfile: 'dist/vibetunnel-cli',
-      plugins: [nodePtyPlugin],
       external: [
-        // 'node-pty', // Removed - handled by plugin
         'authenticate-pam',
         'compression',
         'helmet',
@@ -87,6 +84,11 @@ async function build() {
         'multer',
         'mime-types',
         '@xterm/headless',
+        './vibetunnel-pty/vibetunnel-pty.darwin-arm64.node',
+        './vibetunnel-pty/vibetunnel-pty.darwin-x64.node',
+        './vibetunnel-pty/vibetunnel-pty.linux-x64-gnu.node',
+        './vibetunnel-pty/vibetunnel-pty.linux-arm64-gnu.node',
+        '../../../vibetunnel-pty',
       ],
       minify: true,
       sourcemap: false,
@@ -117,6 +119,7 @@ async function build() {
   }
 
 
+
   // Build native executable
   console.log('Building native executable...');
 
@@ -124,13 +127,10 @@ async function build() {
   const nativeDir = path.join(__dirname, '..', 'native');
   const vibetunnelPath = path.join(nativeDir, 'vibetunnel');
   const ptyNodePath = path.join(nativeDir, 'pty.node');
-  const spawnHelperPath = path.join(nativeDir, 'spawn-helper');
-
-  if (fs.existsSync(vibetunnelPath) && fs.existsSync(ptyNodePath) && fs.existsSync(spawnHelperPath)) {
+  if (fs.existsSync(vibetunnelPath) && fs.existsSync(ptyNodePath)) {
     console.log('✅ Native binaries already exist, skipping build...');
     console.log('  - vibetunnel executable: ✓');
     console.log('  - pty.node: ✓');
-    console.log('  - spawn-helper: ✓');
   } else {
     // Check for --custom-node flag
     const useCustomNode = process.argv.includes('--custom-node');

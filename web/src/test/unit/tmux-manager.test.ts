@@ -34,6 +34,7 @@ describe('TmuxManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset singleton instance
+    // biome-ignore lint/suspicious/noExplicitAny: Accessing private property for testing
     (TmuxManager as any).instance = undefined;
     tmuxManager = TmuxManager.getInstance(mockPtyManager);
   });

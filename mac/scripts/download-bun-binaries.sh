@@ -77,7 +77,7 @@ download_bun() {
 # Download ARM64 only
 download_bun "arm64" "aarch64" || echo -e "${YELLOW}Warning: Failed to download arm64 Bun${NC}"
 
-echo -e "\n${BLUE}Note: You still need the native modules (pty.node and spawn-helper).${NC}"
+echo -e "\n${BLUE}Note: You still need the native modules (pty.node).${NC}"
 echo "These must be built on Apple Silicon."
 echo ""
 echo "Current status:"

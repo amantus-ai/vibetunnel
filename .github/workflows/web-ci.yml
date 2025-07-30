@@ -31,7 +31,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.12.1
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -51,9 +51,7 @@ jobs:
       - name: Run linting
         run: pnpm run lint
 
-      - name: Build node-pty for TypeScript
-        run: |
-          cd node-pty && npm install && npm run build
+      # node-pty build step removed - now using native Rust PTY
 
       - name: Run type checking
         run: pnpm run typecheck
@@ -71,7 +69,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.12.1
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -88,9 +86,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build node-pty
-        run: |
-          cd node-pty && npm install && npm run build
+      # node-pty build step removed - now using native Rust PTY
 
       - name: Build project
         run: pnpm run build
@@ -114,7 +110,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.12.1
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

@@ -13,83 +13,147 @@ if (!globalThis.crypto) {
   });
 }
 
-// Mock the native pty module before any imports
-vi.mock('node-pty', () => {
-  // Create a more complete mock that simulates PTY behavior
-  const createMockPty = (command: string, args: string[]) => {
-    let dataCallback: ((data: string) => void) | null = null;
-    let exitCallback: ((exitInfo: { exitCode: number; signal?: number }) => void) | null = null;
-    let isKilled = false;
-    let cols = 80;
-    let rows = 24;
-
-    const mockPty = {
-      pid: Math.floor(Math.random() * 10000) + 1000,
-      cols,
-      rows,
-      process: command,
-      handleFlowControl: false,
-      on: vi.fn(),
-      resize: vi.fn((newCols: number, newRows: number) => {
-        cols = newCols;
-        rows = newRows;
-      }),
-      write: vi.fn((data: string) => {
-        // Simulate echo behavior for 'cat' command
-        if (command === 'sh' && args[0] === '-c' && args[1] === 'cat' && dataCallback) {
-          // Echo back the input
-          setTimeout(() => {
-            if (!isKilled && dataCallback) {
-              dataCallback(data);
-            }
-          }, 10);
-        }
-      }),
-      kill: vi.fn((signal?: string) => {
-        isKilled = true;
-        // Simulate process exit
-        if (exitCallback) {
-          setTimeout(() => {
-            exitCallback({ exitCode: signal === 'SIGTERM' ? 143 : 137, signal: 15 });
-          }, 50);
-        }
-      }),
-      onData: vi.fn((callback: (data: string) => void) => {
-        dataCallback = callback;
-        // For 'echo' command, immediately output but don't exit yet
-        if (command === 'echo' && args[0] === 'test') {
-          setTimeout(() => {
-            if (dataCallback) dataCallback('test\n');
-            // Don't exit immediately - let the test control when to exit
-          }, 10);
-        }
-      }),
-      onExit: vi.fn((callback: (exitInfo: { exitCode: number; signal?: number }) => void) => {
-        exitCallback = callback;
-        // For 'exit' command, exit immediately
-        if (command === 'exit') {
-          setTimeout(() => {
-            if (exitCallback) exitCallback({ exitCode: 0 });
-          }, 10);
-        }
-        // For 'echo' command, exit after a longer delay
-        if (command === 'echo') {
-          setTimeout(() => {
-            if (!isKilled && exitCallback) exitCallback({ exitCode: 0 });
-          }, 2000); // Wait 2 seconds before exiting
-        }
-      }),
-    };
-
-    return mockPty;
-  };
-
-  return {
-    spawn: vi.fn((command: string, args: string[], _options: unknown) => {
-      return createMockPty(command, args);
+// Mock localStorage for client-side tests
+if (typeof localStorage === 'undefined') {
+  const storage: Record<string, string> = {};
+  // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
+  (global as any).localStorage = {
+    getItem: vi.fn((key: string) => storage[key] || null),
+    setItem: vi.fn((key: string, value: string) => {
+      storage[key] = value;
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete storage[key];
+    }),
+    clear: vi.fn(() => {
+      for (const key in storage) {
+        delete storage[key];
+      }
+    }),
+    get length() {
+      return Object.keys(storage).length;
+    },
+    key: vi.fn((index: number) => {
+      return Object.keys(storage)[index] || null;
     }),
   };
-});
+}
+
+// Mock window for client-side tests
+if (typeof window === 'undefined') {
+  // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
+  (global as any).window = {
+    location: {
+      search: '',
+      href: 'http://localhost:3000',
+      origin: 'http://localhost:3000',
+    },
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  };
+}
+
+// Mock fetch for integration tests if not available
+if (typeof fetch === 'undefined') {
+  // Use dynamic import to avoid module resolution issues
+  import('node-fetch').then((module) => {
+    const nodeFetch = module.default;
+    // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
+    (global as any).fetch = nodeFetch;
+    // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
+    (global as any).Headers = module.Headers;
+    // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
+    (global as any).Request = module.Request;
+    // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
+    (global as any).Response = module.Response;
+    // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
+    (global as any).FormData = module.FormData;
+    // biome-ignore lint/suspicious/noExplicitAny: Required for polyfill to extend global object
+    (global as any).Blob = module.Blob;
+  });
+}
+
+// Mock the native addon module before any imports - but only for non-e2e tests
+// E2E tests need the real native addon to create actual PTY sessions
+const isE2ETest = typeof expect !== 'undefined' && expect.getState().testPath?.includes('/e2e/');
+if (!isE2ETest) {
+  vi.mock('../server/pty/native-addon-adapter.js', () => {
+    // Create a more complete mock that simulates PTY behavior
+    const createMockPty = (command: string, args: string[]) => {
+      let dataCallback: ((data: string) => void) | null = null;
+      let exitCallback: ((exitInfo: { exitCode: number; signal?: number }) => void) | null = null;
+      let isKilled = false;
+      let cols = 80;
+      let rows = 24;
+
+      const mockPty = {
+        pid: Math.floor(Math.random() * 10000) + 1000,
+        cols,
+        rows,
+        process: command,
+        handleFlowControl: false,
+        on: vi.fn(),
+        resize: vi.fn((newCols: number, newRows: number) => {
+          cols = newCols;
+          rows = newRows;
+        }),
+        write: vi.fn((data: string) => {
+          // Simulate echo behavior for 'cat' command
+          if (command === 'sh' && args[0] === '-c' && args[1] === 'cat' && dataCallback) {
+            // Echo back the input
+            setTimeout(() => {
+              if (!isKilled && dataCallback) {
+                dataCallback(data);
+              }
+            }, 10);
+          }
+        }),
+        kill: vi.fn((signal?: string) => {
+          isKilled = true;
+          // Simulate process exit
+          if (exitCallback) {
+            setTimeout(() => {
+              exitCallback({ exitCode: signal === 'SIGTERM' ? 143 : 137, signal: 15 });
+            }, 50);
+          }
+        }),
+        onData: vi.fn((callback: (data: string) => void) => {
+          dataCallback = callback;
+          // For 'echo' command, immediately output but don't exit yet
+          if (command === 'echo' && args[0] === 'test') {
+            setTimeout(() => {
+              if (dataCallback) dataCallback('test\n');
+              // Don't exit immediately - let the test control when to exit
+            }, 10);
+          }
+        }),
+        onExit: vi.fn((callback: (exitInfo: { exitCode: number; signal?: number }) => void) => {
+          exitCallback = callback;
+          // For 'exit' command, exit immediately
+          if (command === 'exit') {
+            setTimeout(() => {
+              if (exitCallback) exitCallback({ exitCode: 0 });
+            }, 10);
+          }
+          // For 'echo' command, exit after a longer delay
+          if (command === 'echo') {
+            setTimeout(() => {
+              if (!isKilled && exitCallback) exitCallback({ exitCode: 0 });
+            }, 2000); // Wait 2 seconds before exiting
+          }
+        }),
+      };
+
+      return mockPty;
+    };
+
+    return {
+      spawn: vi.fn((command: string, args: string[], _options: unknown) => {
+        return createMockPty(command, args);
+      }),
+    };
+  });
+}
 
 // Mock global objects that might not exist in test environments
 global.ResizeObserver = class ResizeObserver {
@@ -230,8 +294,8 @@ global.EventSource = class EventSource extends EventTarget {
   }
 } as unknown as typeof EventSource;
 
-// Set up fetch mock (only for non-e2e tests)
-if (typeof window !== 'undefined') {
+// For client-side tests, override with a mock
+if (typeof window !== 'undefined' && !window.location.href.includes('localhost')) {
   global.fetch = vi.fn();
 }
 
@@ -266,7 +330,7 @@ afterAll(() => {
 
 // Patch addEventListener for custom elements in test environment
 // This is to handle cases where vibe-terminal is created but doesn't have addEventListener
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   const originalCreateElement = document.createElement;
   document.createElement = function (tagName: string) {
     const element = originalCreateElement.call(this, tagName);

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Test server runner that builds and runs the JavaScript version to avoid tsx/node-pty issues
+// Test server runner that builds and runs the JavaScript version to avoid tsx compatibility issues
 const { spawn, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');

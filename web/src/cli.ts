@@ -6,7 +6,6 @@ import { suppressXtermErrors } from './shared/suppress-xterm-errors.js';
 
 suppressXtermErrors();
 
-import { startVibeTunnelForward } from './server/fwd.js';
 import { startVibeTunnelServer } from './server/server.js';
 import { closeLogger, createLogger, initLogger, VerbosityLevel } from './server/utils/logger.js';
 import { parseVerbosityFromEnv } from './server/utils/verbosity-parser.js';
@@ -68,7 +67,6 @@ function printHelp(): void {
   console.log('');
   console.log('Usage:');
   console.log('  vibetunnel [options]                    Start VibeTunnel server');
-  console.log('  vibetunnel fwd <session-id> <command>   Forward command to session');
   console.log('  vibetunnel status                       Show server and follow mode status');
   console.log('  vibetunnel follow [branch]              Enable Git follow mode');
   console.log('  vibetunnel unfollow                     Disable Git follow mode');
@@ -84,7 +82,6 @@ function printHelp(): void {
   console.log('');
   console.log('Examples:');
   console.log('  vibetunnel --port 8080 --no-auth');
-  console.log('  vibetunnel fwd abc123 "ls -la"');
   console.log('  vibetunnel systemd');
   console.log('  vibetunnel systemd uninstall');
   console.log('');
@@ -96,19 +93,6 @@ function printHelp(): void {
  */
 function printVersion(): void {
   console.log(`VibeTunnel Server v${VERSION}`);
-}
-
-/**
- * Handle command forwarding to a session
- */
-async function handleForwardCommand(): Promise<void> {
-  try {
-    await startVibeTunnelForward(process.argv.slice(3));
-  } catch (error) {
-    logger.error('Fatal error:', error);
-    closeLogger();
-    process.exit(1);
-  }
 }
 
 /**
@@ -263,10 +247,6 @@ async function parseCommandAndExecute(): Promise<void> {
     case '-h':
       printHelp();
       process.exit(0);
-      break;
-
-    case 'fwd':
-      await handleForwardCommand();
       break;
 
     case 'status':

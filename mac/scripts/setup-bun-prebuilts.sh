@@ -58,11 +58,9 @@ build_current_arch() {
     echo "Copying binaries to prebuilts directory..."
     cp -f native/vibetunnel "$PREBUILTS_DIR/$ARCH_DIR/"
     cp -f native/pty.node "$PREBUILTS_DIR/$ARCH_DIR/"
-    cp -f native/spawn-helper "$PREBUILTS_DIR/$ARCH_DIR/"
     
     # Make executables executable
     chmod +x "$PREBUILTS_DIR/$ARCH_DIR/vibetunnel"
-    chmod +x "$PREBUILTS_DIR/$ARCH_DIR/spawn-helper"
     
     echo -e "${GREEN}✓ Copied $CURRENT_ARCH binaries to prebuilts${NC}"
 }
@@ -74,10 +72,9 @@ check_status() {
     for arch in arm64; do
         echo -n "  $arch: "
         if [ -f "$PREBUILTS_DIR/$arch/vibetunnel" ] && \
-           [ -f "$PREBUILTS_DIR/$arch/pty.node" ] && \
-           [ -f "$PREBUILTS_DIR/$arch/spawn-helper" ]; then
+           [ -f "$PREBUILTS_DIR/$arch/pty.node" ]; then
             echo -e "${GREEN}✓ Complete${NC}"
-            ls -lh "$PREBUILTS_DIR/$arch/" | grep -E "vibetunnel|pty.node|spawn-helper"
+            ls -lh "$PREBUILTS_DIR/$arch/" | grep -E "vibetunnel|pty.node"
         else
             echo -e "${YELLOW}⚠ Missing${NC}"
             if [ -d "$PREBUILTS_DIR/$arch" ]; then

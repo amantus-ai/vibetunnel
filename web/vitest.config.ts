@@ -51,6 +51,7 @@ export default defineConfig(({ mode }) => {
       testTimeout: 10000, // 10s for tests
       hookTimeout: 10000, // 10s for setup/teardown
       reporters,
+      pool: 'forks', // Always use forks to avoid thread termination issues
       poolOptions: {
         threads: {
           // Use available CPU cores for parallel execution

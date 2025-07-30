@@ -30,6 +30,104 @@ jobs:
         version: 10
         run_install: false
 
+    # Skip pnpm cache - testing if fresh installs are faster
+    # The cache was extremely large and might be slower than fresh install
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libpam0g-dev
+
+    - name: Install dependencies
+      working-directory: web
+      run: |
+        pnpm config set network-concurrency 4
+        pnpm config set child-concurrency 2
+        pnpm install --frozen-lockfile --prefer-offline
+
+    - name: Check formatting with Biome
+      id: biome-format
+      working-directory: web
+      continue-on-error: true
+      run: |
+        pnpm run format:check 2>&1 | tee biome-format-output.txt
+        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+
+    - name: Run Biome linting
+      id: biome-lint
+      working-directory: web
+      continue-on-error: true
+      run: |
+        pnpm run lint:biome 2>&1 | tee biome-lint-output.txt
+        echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+
+    - name: Read Biome Format Output
+      if: always()
+      id: biome-format-output
+      working-directory: web
+      run: |
+        if [ -f biome-format-output.txt ]; then
+          echo 'content<<EOF' >> $GITHUB_OUTPUT
+          cat biome-format-output.txt >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+        else
+          echo "content=No output" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Read Biome Lint Output
+      if: always()
+      id: biome-lint-output
+      working-directory: web
+      run: |
+        if [ -f biome-lint-output.txt ]; then
+          echo 'content<<EOF' >> $GITHUB_OUTPUT
+          cat biome-lint-output.txt >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+        else
+          echo "content=No output" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Report Biome Format Results
+      if: always()
+      uses: ./.github/actions/lint-reporter
+      with:
+        title: 'Node.js Biome Formatting'
+        lint-result: ${{ steps.biome-format.outputs.result == '0' && 'success' || 'failure' }}
+        lint-output: ${{ steps.biome-format-output.outputs.content }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Report Biome Lint Results
+      if: always()
+      uses: ./.github/actions/lint-reporter
+      with:
+        title: 'Node.js Biome Linting'
+        lint-result: ${{ steps.biome-lint.outputs.result == '0' && 'success' || 'failure' }}
+        lint-output: ${{ steps.biome-lint-output.outputs.content }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  build-and-test:
+    name: Build and Test
+    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
+    env:
+      GITHUB_REPO_NAME: ${{ github.repository }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10
+        run_install: false
+
+    # Skip pnpm cache - testing if fresh installs are faster
+    # The cache was extremely large and might be slower than fresh install
     - name: Install system dependencies
       run: |
         sudo apt-get update
@@ -54,10 +152,10 @@ jobs:
         pnpm config set child-concurrency 2
         pnpm install --frozen-lockfile --prefer-offline
 
-    - name: Build node-pty
+    - name: Build native modules
       working-directory: web
       run: |
-        cd node-pty && npm install && npm run build
+        node scripts/ensure-native-modules.js
 
     # Run all checks - build first, then tests
     - name: Run all checks

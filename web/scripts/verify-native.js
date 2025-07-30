@@ -39,9 +39,6 @@ console.log(`Mode: ${(stats.mode & parseInt('777', 8)).toString(8)}`);
 // Check if required native modules exist
 console.log('\nChecking required native modules...');
 const requiredModules = ['pty.node', 'authenticate_pam.node'];
-if (process.platform === 'darwin') {
-  requiredModules.push('spawn-helper');
-}
 
 let modulesOk = true;
 for (const module of requiredModules) {

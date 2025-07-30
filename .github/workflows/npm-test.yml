@@ -49,9 +49,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build node-pty
-        run: |
-          cd node-pty && npm install && npm run build
+      # node-pty build step removed - now using native Rust PTY
 
       - name: Build npm package
         run: pnpm run build:npm -- --current-only

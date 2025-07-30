@@ -93,7 +93,7 @@ VibeTunnel is a macOS application that provides browser-based access to Mac term
 1. **Terminal Launch**: User executes `vt` command
 2. **Server Check**: ServerManager ensures Bun server is running
 3. **Session Creation**: HTTP POST to create new terminal session
-4. **PTY Allocation**: Server allocates pseudo-terminal via node-pty
+4. **PTY Allocation**: Server allocates pseudo-terminal via Rust PTY addon
 5. **WebSocket Upgrade**: Client establishes WebSocket connection
 6. **Binary Buffer Protocol**: Optimized terminal data streaming
 7. **Recording**: Session data recorded in asciinema format
@@ -182,7 +182,7 @@ func clearAuthCache() async
 
 **Key Features**:
 - Embedded vibetunnel binary built with Bun
-- Native PTY support via node-pty module
+- Native PTY support via Rust-based vibetunnel-pty
 - Automatic crash recovery
 - Log streaming to ServerManager
 
@@ -237,7 +237,7 @@ func clearAuthCache() async
 **Architecture**:
 The server is built as a standalone Bun executable that embeds:
 - TypeScript server code compiled to JavaScript
-- Native node-pty module for PTY support
+- Native Rust PTY addon for terminal emulation
 - Express.js for HTTP handling
 - ws library for WebSocket support
 - All dependencies bundled into single binary

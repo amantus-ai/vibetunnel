@@ -318,6 +318,10 @@ final class BunServer {
             logger.info("Running in DEBUG configuration - setting NODE_ENV=development to disable caching")
         #endif
 
+        // Mark that we're running as SEA (Single Executable Application)
+        environment["VIBETUNNEL_SEA"] = "true"
+        logger.info("Setting VIBETUNNEL_SEA=true for native addon loading")
+
         // Add Node.js memory settings as command line arguments instead of NODE_OPTIONS
         // NODE_OPTIONS can interfere with SEA binaries
 

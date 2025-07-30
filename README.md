@@ -609,7 +609,7 @@ The npm package is designed to work seamlessly alongside the Mac app:
 The npm package includes:
 - Full VibeTunnel server with web UI
 - CLI tools (`vibetunnel` and `vt` commands)
-- Native PTY support via node-pty
+- Native PTY support via Rust-based vibetunnel-pty
 - Pre-built binaries for common platforms
 - Complete feature parity with macOS app (minus menu bar)
 

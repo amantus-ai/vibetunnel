@@ -18,7 +18,7 @@ struct NotificationPermissionPageView: View {
 
     #if DEBUG
         init(permissionStatus: UNAuthorizationStatus = .notDetermined) {
-            self.permissionStatus = permissionStatus
+            _permissionStatus = State(initialValue: permissionStatus)
         }
     #endif
 
@@ -125,6 +125,7 @@ struct NotificationPermissionPageView: View {
     }
 }
 
+#if DEBUG
 #Preview("Not determined") {
     NotificationPermissionPageView(permissionStatus: .notDetermined)
         .frame(width: 640, height: 480)
@@ -142,3 +143,4 @@ struct NotificationPermissionPageView: View {
         .frame(width: 640, height: 480)
         .background(Color(NSColor.windowBackgroundColor))
 }
+#endif

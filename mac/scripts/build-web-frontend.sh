@@ -56,10 +56,6 @@ if [ "${CI}" = "true" ] && [ -f "${WEB_DIR}/dist/server/server.js" ]; then
         cp "${NATIVE_DIR}/pty.node" "${APP_RESOURCES}/"
     fi
     
-    if [ -f "${NATIVE_DIR}/spawn-helper" ]; then
-        cp "${NATIVE_DIR}/spawn-helper" "${APP_RESOURCES}/"
-        chmod +x "${APP_RESOURCES}/spawn-helper"
-    fi
     
     if [ -f "${NATIVE_DIR}/authenticate_pam.node" ]; then
         cp "${NATIVE_DIR}/authenticate_pam.node" "${APP_RESOURCES}/"
@@ -92,7 +88,7 @@ if [ -f "${PREVIOUS_HASH_FILE}" ]; then
     PREVIOUS_HASH=$(cat "${PREVIOUS_HASH_FILE}")
     if [ "${CURRENT_HASH}" = "${PREVIOUS_HASH}" ]; then
         # Also check if the built files actually exist
-        if [ -d "${DEST_DIR}" ] && [ -f "${APP_RESOURCES}/vibetunnel" ] && [ -f "${APP_RESOURCES}/pty.node" ] && [ -f "${APP_RESOURCES}/spawn-helper" ]; then
+        if [ -d "${DEST_DIR}" ] && [ -f "${APP_RESOURCES}/vibetunnel" ] && [ -f "${APP_RESOURCES}/pty.node" ]; then
             echo "Web content unchanged and build outputs exist. Skipping rebuild."
             NEED_REBUILD=0
         else
@@ -299,6 +295,43 @@ mkdir -p "${DEST_DIR}"
 echo "Copying web files to app bundle..."
 cp -R "${PUBLIC_DIR}/"* "${DEST_DIR}/"
 
+# Build vt-pipe from its directory
+VT_PIPE_DIR="${WEB_DIR}/vt-pipe"
+VT_PIPE_TARGET="${VT_PIPE_DIR}/target/release/vt-pipe"
+
+if command -v cargo &> /dev/null && [ -d "${VT_PIPE_DIR}" ]; then
+    echo "Building vt-pipe..."
+    
+    # Get version from package.json
+    VERSION=$(node -e "console.log(require('${WEB_DIR}/package.json').version)")
+    echo "Using version: $VERSION"
+    
+    # Update only the package version in vt-pipe Cargo.toml (not dependency versions)
+    sed -i '' "1,/^version = / s/^version = \".*\"/version = \"${VERSION}\"/" "${VT_PIPE_DIR}/Cargo.toml"
+    
+    cd "${VT_PIPE_DIR}"
+    
+    # Always build in release mode for performance
+    cargo build --release 2>&1 | filter_build_output
+    
+    if [ -f "${VT_PIPE_TARGET}" ]; then
+        VT_PIPE_SIZE=$(ls -lh "${VT_PIPE_TARGET}" | awk '{print $5}')
+        echo "✓ vt-pipe built successfully (size: $VT_PIPE_SIZE)"
+    else
+        echo "error: vt-pipe build failed"
+        exit 1
+    fi
+    
+    cd "${WEB_DIR}"
+else
+    if ! command -v cargo &> /dev/null; then
+        echo "warning: Rust/cargo not found. vt-pipe will not be built."
+        echo "To build vt-pipe, install Rust from https://rustup.rs/"
+    else
+        echo "warning: vt-pipe directory not found at ${VT_PIPE_DIR}"
+    fi
+fi
+
 # Copy native executable and modules to app bundle
 NATIVE_DIR="${WEB_DIR}/native"
 
@@ -321,14 +354,6 @@ else
     exit 1
 fi
 
-if [ -f "${NATIVE_DIR}/spawn-helper" ]; then
-    echo "Copying spawn-helper..."
-    cp "${NATIVE_DIR}/spawn-helper" "${APP_RESOURCES}/"
-    chmod +x "${APP_RESOURCES}/spawn-helper"
-else
-    echo "error: spawn-helper not found"
-    exit 1
-fi
 
 # Copy authenticate_pam.node if it exists
 if [ -f "${NATIVE_DIR}/authenticate_pam.node" ]; then
@@ -348,7 +373,17 @@ else
     exit 1
 fi
 
-echo "✓ Native executable, modules, and vt script copied successfully"
+# Copy vt-pipe if it was built
+if [ -f "${VT_PIPE_TARGET}" ]; then
+    echo "Copying vt-pipe to app bundle..."
+    cp "${VT_PIPE_TARGET}" "${APP_RESOURCES}/"
+    chmod +x "${APP_RESOURCES}/vt-pipe"
+    echo "✓ vt-pipe copied successfully"
+else
+    echo "warning: vt-pipe not found, vt command will not work"
+fi
+
+echo "✓ Native executable, modules, vt script, and vt-pipe copied successfully"
 
 # Sanity check: Verify all required binaries are present in the app bundle
 echo "Performing final sanity check..."
@@ -365,20 +400,12 @@ if [ ! -f "${APP_RESOURCES}/pty.node" ]; then
     MISSING_FILES+=("pty.node native module")
 fi
 
-# Check for spawn-helper (Unix only)
-if [ ! -f "${APP_RESOURCES}/spawn-helper" ]; then
-    MISSING_FILES+=("spawn-helper")
-fi
 
 # Check if vibetunnel is executable
 if [ -f "${APP_RESOURCES}/vibetunnel" ] && [ ! -x "${APP_RESOURCES}/vibetunnel" ]; then
     MISSING_FILES+=("vibetunnel is not executable")
 fi
 
-# Check if spawn-helper is executable
-if [ -f "${APP_RESOURCES}/spawn-helper" ] && [ ! -x "${APP_RESOURCES}/spawn-helper" ]; then
-    MISSING_FILES+=("spawn-helper is not executable")
-fi
 
 # Check for vt script
 if [ ! -f "${APP_RESOURCES}/vt" ]; then
@@ -390,6 +417,12 @@ if [ -f "${APP_RESOURCES}/vt" ] && [ ! -x "${APP_RESOURCES}/vt" ]; then
     MISSING_FILES+=("vt script is not executable")
 fi
 
+# Check for vt-pipe (optional but recommended)
+if [ ! -f "${APP_RESOURCES}/vt-pipe" ]; then
+    echo "warning: vt-pipe not found in app bundle. The 'vt' command will not work."
+elif [ ! -x "${APP_RESOURCES}/vt-pipe" ]; then
+    MISSING_FILES+=("vt-pipe is not executable")
+fi
 # If any files are missing, fail the build
 if [ ${#MISSING_FILES[@]} -gt 0 ]; then
     echo "error: Build sanity check failed! Missing required files:"
@@ -399,7 +432,7 @@ if [ ${#MISSING_FILES[@]} -gt 0 ]; then
     echo "Build artifacts in ${NATIVE_DIR}:"
     ls -la "${NATIVE_DIR}" || echo "  Directory does not exist"
     echo "App resources in ${APP_RESOURCES}:"
-    ls -la "${APP_RESOURCES}/vibetunnel" "${APP_RESOURCES}/pty.node" "${APP_RESOURCES}/spawn-helper" "${APP_RESOURCES}/vt" 2>/dev/null || true
+    ls -la "${APP_RESOURCES}/vibetunnel" "${APP_RESOURCES}/pty.node" "${APP_RESOURCES}/vt" "${APP_RESOURCES}/vt-pipe" 2>/dev/null || true
     exit 1
 fi
 

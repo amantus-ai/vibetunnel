@@ -134,7 +134,7 @@ final class SessionMonitor {
     private func fetchSessions() async {
         do {
             // Snapshot previous sessions for exit notifications
-            let _ = sessions
+            _ = sessions
 
             let sessionsArray = try await serverManager.performRequest(
                 endpoint: APIEndpoints.sessions,

@@ -107,11 +107,10 @@ cd mac
 - Bun runtime for standalone builds
 
 **Native Modules**:
-- `@homebridge/node-pty-prebuilt-multiarch` - Terminal emulation
 - Platform-specific binaries in `web/native/`:
-  - `pty.node` - Native PTY module
-  - `spawn-helper` - Process spawning helper
-  - `vibetunnel` - Bun executable
+  - `pty.node` - Rust-based PTY module (from vibetunnel-pty)
+  - `vibetunnel` - Node.js SEA executable
+  - `authenticate_pam.node` - PAM authentication module
 
 ### iOS Requirements
 

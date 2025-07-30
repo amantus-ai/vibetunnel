@@ -135,6 +135,31 @@ if [ -z "$VIBETUNNEL_BIN" ]; then
     fi
 fi
 
+# Find vt-pipe binary for command forwarding
+VT_PIPE_BIN=""
+# Check in the same directory as vibetunnel
+if [ -n "$VIBETUNNEL_BIN" ]; then
+    VT_PIPE_DIR="$(dirname "$VIBETUNNEL_BIN")"
+    if [ -f "$VT_PIPE_DIR/vt-pipe" ]; then
+        VT_PIPE_BIN="$VT_PIPE_DIR/vt-pipe"
+    fi
+fi
+# Check in PATH
+if [ -z "$VT_PIPE_BIN" ] && command -v vt-pipe >/dev/null 2>&1; then
+    VT_PIPE_BIN="$(command -v vt-pipe)"
+fi
+# Check Mac app bundle
+if [ -z "$VT_PIPE_BIN" ] && [ -n "$APP_PATH" ]; then
+    if [ -f "$APP_PATH/Contents/Resources/vt-pipe" ]; then
+        VT_PIPE_BIN="$APP_PATH/Contents/Resources/vt-pipe"
+    fi
+fi
+# If still not found, error out when needed
+if [ -z "$VT_PIPE_BIN" ] || [ ! -f "$VT_PIPE_BIN" ]; then
+    # We'll only error when actually trying to forward commands
+    VT_PIPE_BIN=""
+fi
+
 # Check if this is a command that should suppress wrapper output
 SUPPRESS_OUTPUT=false
 # Debug: echo "First argument at line 139: '$1'" >&2
@@ -184,8 +209,13 @@ if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
         shift # Remove 'title' from arguments
         TITLE="$*" # Get all remaining arguments as the title
         
-        # Use the vibetunnel binary's new --update-title flag
-        exec "$VIBETUNNEL_BIN" fwd --update-title "$TITLE" --session-id "$VIBETUNNEL_SESSION_ID"
+        # Use vt-pipe for title updates
+        if [ -n "$VT_PIPE_BIN" ]; then
+            exec "$VT_PIPE_BIN" fwd --update-title "$TITLE" --session-id "$VIBETUNNEL_SESSION_ID"
+        else
+            echo "Error: vt-pipe binary not found. Cannot update title." >&2
+            exit 1
+        fi
         # If exec fails, exit with error
         exit 1
     fi
@@ -364,18 +394,24 @@ resolve_command() {
 
     # Always try through shell first to handle aliases, functions, and builtins
     # The shell will fall back to PATH lookup if no alias/function exists
+    if [ -z "$VT_PIPE_BIN" ]; then
+        echo "Error: vt-pipe binary not found. Cannot forward commands." >&2
+        echo "Please ensure VibeTunnel is properly installed." >&2
+        exit 1
+    fi
+    
     case "$shell_name" in
         zsh)
             # For zsh, we need interactive mode to get aliases
-            exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
+            exec "$VT_PIPE_BIN" ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
             ;;
         bash)
             # For bash, expand aliases in non-interactive mode
-            exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
+            exec "$VT_PIPE_BIN" ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
             ;;
         *)
             # Generic shell handling
-            exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
+            exec "$VT_PIPE_BIN" ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
             ;;
     esac
 }
@@ -554,20 +590,31 @@ fi
 
 # Check if we have arguments and if the first argument is not an option
 if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
+    if [ -z "$VT_PIPE_BIN" ]; then
+        echo "Error: vt-pipe binary not found. Cannot forward commands." >&2
+        echo "Please ensure VibeTunnel is properly installed." >&2
+        exit 1
+    fi
+    
     if [[ "$NO_SHELL_WRAP" == "true" ]]; then
         # Execute directly without shell wrapper
-        exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
+        exec "$VT_PIPE_BIN" ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
     else
         # Check if the first argument is a real binary
         if which "$1" >/dev/null 2>&1; then
             # It's a real binary, execute directly
-            exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
+            exec "$VT_PIPE_BIN" ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
         else
             # Not a real binary, try alias resolution
             resolve_command "$@"
         fi
     fi
 else
-    # Run with fwd command (original behavior for options)
-    exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
+    # Run with vt-pipe (original behavior for options)
+    if [ -z "$VT_PIPE_BIN" ]; then
+        echo "Error: vt-pipe binary not found. Cannot forward commands." >&2
+        echo "Please ensure VibeTunnel is properly installed." >&2
+        exit 1
+    fi
+    exec "$VT_PIPE_BIN" ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
 fi
