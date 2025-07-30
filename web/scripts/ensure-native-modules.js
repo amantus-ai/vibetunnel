@@ -23,16 +23,48 @@ if (!fs.existsSync(nativePtyDir)) {
 
 console.log('Using Rust PTY implementation from native-pty directory');
 
+// Check if node_modules exists in native-pty (needed for napi build)
+const nativePtyNodeModules = path.join(nativePtyDir, 'node_modules');
+if (!fs.existsSync(nativePtyNodeModules)) {
+  console.log('Installing native-pty dependencies...');
+  try {
+    // Use pnpm if available, otherwise npm
+    try {
+      execSync('pnpm --version', { stdio: 'pipe' });
+      execSync('pnpm install', {
+        cwd: nativePtyDir,
+        stdio: 'inherit'
+      });
+    } catch {
+      execSync('npm install', {
+        cwd: nativePtyDir,
+        stdio: 'inherit'
+      });
+    }
+  } catch (e) {
+    console.error('Failed to install native-pty dependencies:', e.message);
+    process.exit(1);
+  }
+}
+
 // Check if the native module is built
 if (!fs.existsSync(rustPtyNode)) {
   console.log(`Rust PTY native module not found at ${rustPtyNode}, building...`);
   
   try {
-    // Build the Rust PTY module
-    execSync('make build', {
-      cwd: nativePtyDir,
-      stdio: 'inherit'
-    });
+    // Use pnpm if available, otherwise npm
+    try {
+      execSync('pnpm --version', { stdio: 'pipe' });
+      execSync('pnpm run build', {
+        cwd: nativePtyDir,
+        stdio: 'inherit'
+      });
+    } catch {
+      execSync('npm run build', {
+        cwd: nativePtyDir,
+        stdio: 'inherit'
+      });
+    }
   } catch (e) {
     console.error('Failed to build Rust PTY module:', e.message);
     process.exit(1);
