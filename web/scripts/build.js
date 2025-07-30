@@ -127,13 +127,10 @@ async function build() {
   const nativeDir = path.join(__dirname, '..', 'native');
   const vibetunnelPath = path.join(nativeDir, 'vibetunnel');
   const ptyNodePath = path.join(nativeDir, 'pty.node');
-  const spawnHelperPath = path.join(nativeDir, 'spawn-helper');
-
-  if (fs.existsSync(vibetunnelPath) && fs.existsSync(ptyNodePath) && fs.existsSync(spawnHelperPath)) {
+  if (fs.existsSync(vibetunnelPath) && fs.existsSync(ptyNodePath)) {
     console.log('✅ Native binaries already exist, skipping build...');
     console.log('  - vibetunnel executable: ✓');
     console.log('  - pty.node: ✓');
-    console.log('  - spawn-helper: ✓');
   } else {
     // Check for --custom-node flag
     const useCustomNode = process.argv.includes('--custom-node');

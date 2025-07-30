@@ -12,10 +12,6 @@
     "bin/",
     "scripts/ensure-native-modules.js",
     "scripts/postinstall-npm.js",
-    "node-pty/lib/",
-    "node-pty/package.json",
-    "node-pty/binding.gyp",
-    "node-pty/src/",
     "prebuilds/",
     "README.md"
   ],

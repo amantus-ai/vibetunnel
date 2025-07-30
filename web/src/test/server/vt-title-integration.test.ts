@@ -9,8 +9,8 @@ import { getVibetunnelBinaryPath, getVtScriptPath } from '../helpers/vt-paths.js
 
 const execAsync = promisify(exec);
 
-// These tests require the real node-pty module, not mocked
-vi.unmock('node-pty');
+// These tests require the real PTY module, not mocked
+vi.unmock('../../../vibetunnel-pty');
 
 describe('vt title Command Integration', () => {
   let testControlDir: string;

@@ -63,14 +63,9 @@ if [ -f "$NATIVE_DIR/pty.node" ]; then
     cp "$NATIVE_DIR/pty.node" "$DEST_RESOURCES/"
 fi
 
-if [ -f "$NATIVE_DIR/spawn-helper" ]; then
-    echo "Copying spawn-helper..."
-    cp "$NATIVE_DIR/spawn-helper" "$DEST_RESOURCES/"
-    chmod +x "$DEST_RESOURCES/spawn-helper"
-fi
 
 echo -e "${GREEN}✓ Executable and native modules copied successfully${NC}"
 
 # Verify the files
 echo "Verifying copied files:"
-ls -la "$DEST_RESOURCES/vibetunnel" "$DEST_RESOURCES/vt-pipe" "$DEST_RESOURCES/pty.node" "$DEST_RESOURCES/spawn-helper" 2>/dev/null || true
+ls -la "$DEST_RESOURCES/vibetunnel" "$DEST_RESOURCES/vt-pipe" "$DEST_RESOURCES/pty.node" 2>/dev/null || true

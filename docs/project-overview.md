@@ -32,7 +32,7 @@ The project provides a native macOS menu bar application that runs a local HTTP 
 - HTTP/WebSocket server: `web/src/server/server.ts`
 - Terminal forwarding: `web/src/server/fwd.ts`
 - Session management: `web/src/server/lib/sessions.ts`
-- PTY integration: `@homebridge/node-pty-prebuilt-multiarch`
+- PTY integration: Rust-based `vibetunnel-pty`
 
 **Web Frontend** - Modern TypeScript/Lit web components  
 - Terminal rendering: `web/src/client/components/terminal-viewer.ts`

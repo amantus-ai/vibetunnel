@@ -37,7 +37,7 @@ if (isDevelopment) {
   return;
 }
 
-// For npm package, node-pty is bundled in the package root
+// For npm package, native modules are handled differently
 // No need to create symlinks as it's accessed directly
 
 // Get Node ABI version
@@ -122,7 +122,7 @@ const compileFromSource = (moduleName, moduleDir) => {
       execSync('npm install -g node-gyp', { stdio: 'inherit' });
     }
     
-    // For node-pty, node-addon-api is included as a dependency in its package.json
+    // For native modules, node-addon-api is included as a dependency
     // npm should handle it automatically during source compilation
     
     execSync('node-gyp rebuild', {
@@ -139,13 +139,6 @@ const compileFromSource = (moduleName, moduleDir) => {
 
 // Handle both native modules
 const modules = [
-  {
-    name: 'node-pty',
-    version: '1.0.0',
-    dir: path.join(__dirname, '..', 'node-pty'),
-    build: path.join(__dirname, '..', 'node-pty', 'build', 'Release', 'pty.node'),
-    essential: true
-  },
   {
     name: 'authenticate-pam',
     version: '1.0.5',

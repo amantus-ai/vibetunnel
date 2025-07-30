@@ -105,7 +105,7 @@ describe.skip('Follow Mode End-to-End Tests', () => {
       baseUrl = `http://localhost:${serverPort}`;
 
       // Use tsx to run the server directly from source
-      // Remove VIBETUNNEL_SEA to prevent node-pty from looking for pty.node next to executable
+      // Remove VIBETUNNEL_SEA to ensure proper module loading in test environment
       const serverEnv = { ...process.env };
       delete serverEnv.VIBETUNNEL_SEA;
 

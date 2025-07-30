@@ -123,9 +123,8 @@ function buildMacOS() {
     execSync('npm install', { stdio: 'inherit' });
   }
   
-  // Build node-pty
-  console.log('  Building node-pty...');
-  const nodePtyDir = path.join(__dirname, '..', 'node-pty');
+  // Note: node-pty has been replaced with Rust-based vibetunnel-pty
+  // The Rust PTY is built separately and included as pty.node
   
   for (const nodeVersion of NODE_VERSIONS) {
     for (const arch of PLATFORMS.darwin || []) {
