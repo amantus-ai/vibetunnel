@@ -393,14 +393,18 @@ export class InputManager {
       return true;
     }
 
+    // Word navigation on macOS should always be allowed (system-wide shortcut)
+    const isMacOS = /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent);
+    const key = e.key.toLowerCase();
+    if (isMacOS && e.metaKey && e.altKey && ['arrowleft', 'arrowright'].includes(key)) {
+      return true;
+    }
+
     // Get keyboard capture state
     const captureActive = this.callbacks?.getKeyboardCaptureActive?.() ?? true;
 
     // If capture is disabled, allow common browser shortcuts
     if (!captureActive) {
-      const isMacOS = /Mac|iPhone|iPod|iPad/i.test(navigator.userAgent);
-      const key = e.key.toLowerCase();
-
       // Common browser shortcuts that are normally captured for terminal
       if (isMacOS && e.metaKey && !e.shiftKey && !e.altKey) {
         if (['a', 'f', 'r', 'l', 'p', 's', 'd'].includes(key)) {
@@ -412,11 +416,6 @@ export class InputManager {
         if (['a', 'f', 'r', 'l', 'p', 's', 'd'].includes(key)) {
           return true;
         }
-      }
-
-      // Word navigation on macOS when capture is disabled
-      if (isMacOS && e.metaKey && e.altKey && ['arrowleft', 'arrowright'].includes(key)) {
-        return true;
       }
     }
 
