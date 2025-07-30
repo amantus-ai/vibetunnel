@@ -288,7 +288,7 @@ impl NativePty {
         use nix::sys::signal::{self, Signal};
         use nix::unistd::Pid;
 
-        let signal = match signal.as_deref() {
+        let signal = match _signal.as_deref() {
           Some("SIGTERM") => Signal::SIGTERM,
           Some("SIGKILL") => Signal::SIGKILL,
           Some("SIGINT") => Signal::SIGINT,
