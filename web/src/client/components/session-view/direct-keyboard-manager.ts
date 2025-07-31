@@ -484,7 +484,7 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
       console.log('[DirectKeyboardManager] showCtrlAlpha after toggle:', showCtrlAlpha);
       if (showCtrlAlpha) {
         // Hide Quick Keys when showing Ctrl+Alpha overlay
-        this.callbacks?.setShowQuickKeys?.(false);
+        this.callbacks?.updateShowQuickKeys(false);
         // Stop focus retention when showing Ctrl overlay
         if (this.focusRetentionInterval) {
           clearInterval(this.focusRetentionInterval);
