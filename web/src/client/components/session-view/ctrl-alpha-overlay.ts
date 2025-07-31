@@ -6,7 +6,6 @@
  */
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import '../modal-wrapper.js';
 
 @customElement('ctrl-alpha-overlay')
 export class CtrlAlphaOverlay extends LitElement {
@@ -31,20 +30,23 @@ export class CtrlAlphaOverlay extends LitElement {
     console.log('[CtrlAlphaOverlay] render called, visible:', this.visible);
     if (!this.visible) return null;
 
+    // Render directly without modal-wrapper to debug the issue
     return html`
-      <modal-wrapper
-        .visible=${this.visible}
-        modalClass="" /* Use modal-wrapper's default z-index */
-        contentClass="modal-content font-mono text-sm max-w-sm" /* Use modal wrapper's content class */
-        ariaLabel="Ctrl key sequence builder"
-        @close=${() => this.onCancel?.()}
-        .closeOnBackdrop=${true}
-        .closeOnEscape=${false}
-        no-autofocus
+      <!-- Direct backdrop -->
+      <div 
+        class="fixed inset-0 bg-bg/80 flex items-center justify-center p-4"
+        style="z-index: 1000; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);"
+        @click=${(e: Event) => {
+          if (e.target === e.currentTarget) {
+            this.onCancel?.();
+          }
+        }}
       >
+        <!-- Modal content -->
         <div
-          class="bg-bg-secondary border border-primary rounded-lg p-4"
-          style="position: relative; z-index: 1002;"
+          class="bg-surface border-2 border-primary rounded-lg p-4 shadow-xl relative"
+          style="z-index: 1001; background-color: rgb(var(--color-bg-secondary)); max-height: 80vh; overflow-y: auto; max-width: 24rem; width: 100%;"
+          @click=${(e: Event) => e.stopPropagation()}
         >
           <div class="text-primary text-center mb-2 font-bold">Ctrl + Key</div>
 
@@ -141,7 +143,7 @@ export class CtrlAlphaOverlay extends LitElement {
             }
           </div>
         </div>
-      </modal-wrapper>
+      </div>
     `;
   }
 }
