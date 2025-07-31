@@ -110,8 +110,8 @@ export class TerminalQuickKeys extends LitElement {
   }
 
   private getButtonSizeClass(_label: string): string {
-    // Use flexible sizing without constraining width
-    return this.isLandscape ? 'px-1 py-1' : 'px-1.5 py-1.5';
+    // Use minimal padding to fit more buttons
+    return this.isLandscape ? 'px-0.5 py-1' : 'px-1 py-1.5';
   }
 
   private getButtonFontClass(label: string): string {
@@ -277,10 +277,14 @@ export class TerminalQuickKeys extends LitElement {
           background-color: rgb(var(--color-bg-secondary) / 0.98);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
-          width: 100%;
+          width: 100vw;
+          max-width: 100vw;
           /* No safe areas needed when above keyboard */
           padding-left: 0;
           padding-right: 0;
+          margin-left: 0;
+          margin-right: 0;
+          box-sizing: border-box;
         }
         
         /* The actual bar with buttons */
@@ -290,6 +294,14 @@ export class TerminalQuickKeys extends LitElement {
           padding: 0.25rem 0;
           width: 100%;
           box-sizing: border-box;
+          overflow: hidden;
+        }
+        
+        /* Button rows - ensure full width */
+        .quick-keys-bar > div {
+          width: 100%;
+          padding-left: 0.125rem;
+          padding-right: 0.125rem;
         }
         
         /* Quick key buttons */
@@ -298,6 +310,8 @@ export class TerminalQuickKeys extends LitElement {
           -webkit-tap-highlight-color: transparent;
           user-select: none;
           -webkit-user-select: none;
+          flex: 1 1 0;
+          min-width: 0;
         }
         
         /* Modifier key styling */
@@ -415,7 +429,7 @@ export class TerminalQuickKeys extends LitElement {
       >
         <div class="quick-keys-bar">
           <!-- Row 1 -->
-          <div class="flex gap-0.5 mb-0.5 overflow-x-auto scrollbar-hide">
+          <div class="flex gap-0.5 mb-0.5">
             ${TERMINAL_QUICK_KEYS.filter((k) => k.row === 1).map(
               ({ key, label, modifier, arrow, toggle }) => html`
                 <button
@@ -467,7 +481,7 @@ export class TerminalQuickKeys extends LitElement {
             this.showCtrlKeys
               ? html`
               <!-- Ctrl shortcuts row -->
-              <div class="flex gap-0.5 mb-0.5 overflow-x-auto scrollbar-hide">
+              <div class="flex gap-0.5 mb-0.5 ">
                 ${CTRL_SHORTCUTS.map(
                   ({ key, label, combo, special }) => html`
                     <button
@@ -502,7 +516,7 @@ export class TerminalQuickKeys extends LitElement {
               : this.showFunctionKeys
                 ? html`
               <!-- Function keys row -->
-              <div class="flex gap-0.5 mb-0.5 overflow-x-auto scrollbar-hide">
+              <div class="flex gap-0.5 mb-0.5 ">
                 ${FUNCTION_KEYS.map(
                   ({ key, label }) => html`
                     <button
@@ -536,7 +550,7 @@ export class TerminalQuickKeys extends LitElement {
             `
                 : html`
               <!-- Regular row 2 -->
-              <div class="flex gap-0.5 mb-0.5 overflow-x-auto scrollbar-hide">
+              <div class="flex gap-0.5 mb-0.5 ">
                 ${TERMINAL_QUICK_KEYS.filter((k) => k.row === 2).map(
                   ({ key, label, modifier, combo, special, toggle }) => html`
                     <button
@@ -575,7 +589,7 @@ export class TerminalQuickKeys extends LitElement {
           }
           
           <!-- Row 3 - Additional special characters (always visible) -->
-          <div class="flex gap-0.5 overflow-x-auto scrollbar-hide">
+          <div class="flex gap-0.5 ">
             ${TERMINAL_QUICK_KEYS.filter((k) => k.row === 3).map(
               ({ key, label, modifier, combo, special }) => html`
                 <button
