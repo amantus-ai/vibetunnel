@@ -1036,11 +1036,11 @@ export class SessionView extends LitElement {
           contain: layout style paint; /* Isolate terminal updates */
         }
         
-        /* Make terminal content 10px larger to prevent clipping */
+        /* Make terminal content 50px larger to prevent clipping */
         .terminal-area vibe-terminal,
         .terminal-area vibe-terminal-binary {
-          height: calc(100% + 10px) !important;
-          margin-bottom: -10px !important;
+          height: calc(100% + 50px) !important;
+          margin-bottom: -50px !important;
         }
         
         /* Transform terminal up when quick keys are visible */
