@@ -1,5 +1,6 @@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { Z_INDEX } from '../utils/constants.js';
 
 // Terminal-specific quick keys for mobile use
 const TERMINAL_QUICK_KEYS = [
@@ -273,7 +274,7 @@ export class TerminalQuickKeys extends LitElement {
           left: 0;
           right: 0;
           bottom: 0;
-          z-index: 999999;
+          z-index: ${Z_INDEX.TERMINAL_QUICK_KEYS};
           background-color: rgb(var(--color-bg-secondary) / 0.98);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
