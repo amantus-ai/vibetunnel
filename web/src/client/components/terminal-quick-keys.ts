@@ -370,7 +370,7 @@ export class TerminalQuickKeys extends LitElement {
         .special-key {
           background-color: rgb(var(--color-primary));
           border-color: rgb(var(--color-primary));
-          color: rgb(var(--color-text-bright));
+          color: white;
         }
         
         .special-key:hover {
@@ -383,6 +383,8 @@ export class TerminalQuickKeys extends LitElement {
           -webkit-tap-highlight-color: transparent;
           user-select: none;
           -webkit-user-select: none;
+          flex: 0 0 auto;
+          min-width: 2.5rem;
         }
         
         /* Toggle button styling */
@@ -411,6 +413,8 @@ export class TerminalQuickKeys extends LitElement {
           -webkit-tap-highlight-color: transparent;
           user-select: none;
           -webkit-user-select: none;
+          flex: 0 0 auto;
+          min-width: 2.5rem;
         }
         
       </style>
@@ -481,7 +485,7 @@ export class TerminalQuickKeys extends LitElement {
             this.showCtrlKeys
               ? html`
               <!-- Ctrl shortcuts row -->
-              <div class="flex gap-0.5 mb-0.5 ">
+              <div class="flex gap-0.5 mb-0.5 overflow-x-auto scrollbar-hide">
                 ${CTRL_SHORTCUTS.map(
                   ({ key, label, combo, special }) => html`
                     <button
@@ -516,7 +520,7 @@ export class TerminalQuickKeys extends LitElement {
               : this.showFunctionKeys
                 ? html`
               <!-- Function keys row -->
-              <div class="flex gap-0.5 mb-0.5 ">
+              <div class="flex gap-0.5 mb-0.5 overflow-x-auto scrollbar-hide">
                 ${FUNCTION_KEYS.map(
                   ({ key, label }) => html`
                     <button
