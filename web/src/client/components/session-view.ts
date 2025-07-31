@@ -1036,24 +1036,24 @@ export class SessionView extends LitElement {
           contain: layout style paint; /* Isolate terminal updates */
         }
         
+        /* Make terminal content 10px larger to prevent clipping */
+        .terminal-area vibe-terminal,
+        .terminal-area vibe-terminal-binary {
+          height: calc(100% + 10px) !important;
+          margin-bottom: -10px !important;
+        }
+        
         /* Transform terminal up when quick keys are visible */
         .terminal-area[data-quickkeys-visible="true"] {
           transform: translateY(-110px);
           transition: transform 0.2s ease-out;
         }
         
-        /* Add padding to terminal content and adjust for clipping */
+        /* Add padding to terminal content when keyboard is visible */
         .terminal-area[data-quickkeys-visible="true"] vibe-terminal,
         .terminal-area[data-quickkeys-visible="true"] vibe-terminal-binary {
           padding-bottom: 70px !important;
-          margin-bottom: -10px !important; /* Compensate for early clipping */
           box-sizing: border-box;
-        }
-        
-        /* Ensure terminal scrolling works properly */
-        .terminal-area vibe-terminal .terminal-scroll-container,
-        .terminal-area vibe-terminal-binary .terminal-scroll-container {
-          padding-bottom: 10px;
         }
         
         .quickkeys-area {
