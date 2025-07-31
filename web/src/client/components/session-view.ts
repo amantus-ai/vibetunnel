@@ -781,9 +781,13 @@ export class SessionView extends LitElement {
     this.uiStateManager.clearCtrlSequence();
     this.uiStateManager.setShowCtrlAlpha(false);
 
-    // Refocus the hidden input
+    // Refocus the hidden input and restart focus retention
     if (this.directKeyboardManager.shouldRefocusHiddenInput()) {
-      this.directKeyboardManager.refocusHiddenInput();
+      // Use a small delay to ensure the modal is fully closed first
+      setTimeout(() => {
+        this.directKeyboardManager.refocusHiddenInput();
+        this.directKeyboardManager.startFocusRetentionPublic();
+      }, 50);
     }
   }
 
@@ -795,9 +799,13 @@ export class SessionView extends LitElement {
     this.uiStateManager.setShowCtrlAlpha(false);
     this.uiStateManager.clearCtrlSequence();
 
-    // Refocus the hidden input
+    // Refocus the hidden input and restart focus retention
     if (this.directKeyboardManager.shouldRefocusHiddenInput()) {
-      this.directKeyboardManager.refocusHiddenInput();
+      // Use a small delay to ensure the modal is fully closed first
+      setTimeout(() => {
+        this.directKeyboardManager.refocusHiddenInput();
+        this.directKeyboardManager.startFocusRetentionPublic();
+      }, 50);
     }
   }
 
@@ -1057,7 +1065,7 @@ export class SessionView extends LitElement {
       <div class="bg-bg-secondary" style="padding-top: env(safe-area-inset-top);">
         <div
           class="session-view-grid"
-          style="outline: none !important; box-shadow: none !important; --keyboard-height: ${uiState.keyboardHeight}px; --quickkeys-height: 0px;"
+          style="outline: none !important; box-shadow: none !important; --keyboard-height: ${uiState.keyboardHeight}px; --quickkeys-height: ${uiState.showQuickKeys ? '150' : '0'}px;"
           data-keyboard-visible="${uiState.keyboardHeight > 0 || uiState.showQuickKeys ? 'true' : 'false'}"
         >
         <!-- Session Header Area -->
