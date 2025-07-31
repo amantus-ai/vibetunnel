@@ -48,8 +48,8 @@ export class ModalWrapper extends LitElement {
       }
     }
 
-    // Focus management
-    if (changedProperties.has('visible') && this.visible) {
+    // Focus management - but not if we have a special attribute to prevent it
+    if (changedProperties.has('visible') && this.visible && !this.hasAttribute('no-autofocus')) {
       requestAnimationFrame(() => {
         const focusable = this.querySelector(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'

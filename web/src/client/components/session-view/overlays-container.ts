@@ -107,15 +107,30 @@ export class OverlaysContainer extends LitElement {
       ></mobile-input-overlay>
       
       <!-- Ctrl+Alpha Overlay -->
-      <ctrl-alpha-overlay
-        .visible=${this.uiState.isMobile && this.uiState.showCtrlAlpha}
-        .ctrlSequence=${this.uiState.ctrlSequence}
-        .keyboardHeight=${this.uiState.keyboardHeight}
-        .onCtrlKey=${this.callbacks.onCtrlKey}
-        .onSendSequence=${this.callbacks.onSendCtrlSequence}
-        .onClearSequence=${this.callbacks.onClearCtrlSequence}
-        .onCancel=${this.callbacks.onCtrlAlphaCancel}
-      ></ctrl-alpha-overlay>
+      ${(() => {
+        const visible = this.uiState.isMobile && this.uiState.showCtrlAlpha;
+        console.log(
+          '[OverlaysContainer] Ctrl+Alpha visible:',
+          visible,
+          'isMobile:',
+          this.uiState.isMobile,
+          'showCtrlAlpha:',
+          this.uiState.showCtrlAlpha,
+          'z-index should be above',
+          Z_INDEX.TERMINAL_QUICK_KEYS
+        );
+        return html`
+          <ctrl-alpha-overlay
+            .visible=${visible}
+            .ctrlSequence=${this.uiState.ctrlSequence}
+            .keyboardHeight=${this.uiState.keyboardHeight}
+            .onCtrlKey=${this.callbacks.onCtrlKey}
+            .onSendSequence=${this.callbacks.onSendCtrlSequence}
+            .onClearSequence=${this.callbacks.onClearCtrlSequence}
+            .onCancel=${this.callbacks.onCtrlAlphaCancel}
+          ></ctrl-alpha-overlay>
+        `;
+      })()}
       
       <!-- Floating Keyboard Button (for direct keyboard mode on mobile) -->
       ${
@@ -124,10 +139,6 @@ export class OverlaysContainer extends LitElement {
             <div
               class="keyboard-button"
               @pointerdown=${(e: PointerEvent) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              @click=${(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
                 this.callbacks?.onKeyboardButtonClick();

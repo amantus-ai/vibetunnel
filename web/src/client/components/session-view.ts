@@ -119,6 +119,9 @@ export class SessionView extends LitElement {
         setShowQuickKeys: (value: boolean) => this.directKeyboardManager.setShowQuickKeys(value),
         ensureHiddenInputVisible: () => this.directKeyboardManager.ensureHiddenInputVisible(),
         cleanup: () => this.directKeyboardManager.cleanup(),
+        getKeyboardMode: () => this.directKeyboardManager.getKeyboardMode(),
+        isRecentlyEnteredKeyboardMode: () =>
+          this.directKeyboardManager.isRecentlyEnteredKeyboardMode(),
       }),
       setShowQuickKeys: (value: boolean) => {
         this.uiStateManager.setShowQuickKeys(value);
@@ -778,9 +781,13 @@ export class SessionView extends LitElement {
     this.uiStateManager.clearCtrlSequence();
     this.uiStateManager.setShowCtrlAlpha(false);
 
-    // Refocus the hidden input
+    // Refocus the hidden input and restart focus retention
     if (this.directKeyboardManager.shouldRefocusHiddenInput()) {
-      this.directKeyboardManager.refocusHiddenInput();
+      // Use a small delay to ensure the modal is fully closed first
+      setTimeout(() => {
+        this.directKeyboardManager.refocusHiddenInput();
+        this.directKeyboardManager.startFocusRetentionPublic();
+      }, 50);
     }
   }
 
@@ -792,9 +799,13 @@ export class SessionView extends LitElement {
     this.uiStateManager.setShowCtrlAlpha(false);
     this.uiStateManager.clearCtrlSequence();
 
-    // Refocus the hidden input
+    // Refocus the hidden input and restart focus retention
     if (this.directKeyboardManager.shouldRefocusHiddenInput()) {
-      this.directKeyboardManager.refocusHiddenInput();
+      // Use a small delay to ensure the modal is fully closed first
+      setTimeout(() => {
+        this.directKeyboardManager.refocusHiddenInput();
+        this.directKeyboardManager.startFocusRetentionPublic();
+      }, 50);
     }
   }
 
@@ -888,6 +899,12 @@ export class SessionView extends LitElement {
             setTimeout(() => {
               if ('scrollToBottom' in terminal) {
                 terminal.scrollToBottom();
+              }
+              
+              // Also ensure the terminal content is scrolled within its container
+              const terminalArea = this.querySelector('.terminal-area');
+              if (terminalArea) {
+                terminalArea.scrollTop = terminalArea.scrollHeight;
               }
             }, 50);
           }
@@ -1019,10 +1036,23 @@ export class SessionView extends LitElement {
           contain: layout style paint; /* Isolate terminal updates */
         }
         
-        /* Add padding to terminal when quick keys are visible */
+        /* Make terminal content 50px larger to prevent clipping */
+        .terminal-area vibe-terminal,
+        .terminal-area vibe-terminal-binary {
+          height: calc(100% + 50px) !important;
+          margin-bottom: -50px !important;
+        }
+        
+        /* Transform terminal up when quick keys are visible */
+        .terminal-area[data-quickkeys-visible="true"] {
+          transform: translateY(-110px);
+          transition: transform 0.2s ease-out;
+        }
+        
+        /* Add padding to terminal content when keyboard is visible */
         .terminal-area[data-quickkeys-visible="true"] vibe-terminal,
         .terminal-area[data-quickkeys-visible="true"] vibe-terminal-binary {
-          padding-bottom: 120px !important;
+          padding-bottom: 70px !important;
           box-sizing: border-box;
         }
         
@@ -1123,7 +1153,7 @@ export class SessionView extends LitElement {
             // Add safe area padding for landscape mode on mobile to handle notch
             uiState.isMobile && uiState.isLandscape ? 'safe-area-left safe-area-right' : ''
           }"
-          data-quickkeys-visible="${uiState.showQuickKeys && uiState.keyboardHeight > 0}"
+          data-quickkeys-visible="${uiState.showQuickKeys}"
         >
           ${
             this.loadingAnimationManager.isLoading()

@@ -1,5 +1,6 @@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { Z_INDEX } from '../utils/constants.js';
 
 // Terminal-specific quick keys for mobile use
 const TERMINAL_QUICK_KEYS = [
@@ -27,7 +28,6 @@ const TERMINAL_QUICK_KEYS = [
   { key: '/', label: '/', row: 2 },
   { key: '\\', label: '\\', row: 2 },
   { key: '-', label: '-', row: 2 },
-  { key: 'Done', label: 'Done', special: true, row: 2 },
   // Third row - additional special characters
   { key: 'Option', label: '⌥', modifier: true, row: 3 },
   { key: 'Command', label: '⌘', modifier: true, row: 3 },
@@ -62,6 +62,9 @@ const FUNCTION_KEYS = Array.from({ length: 12 }, (_, i) => ({
   label: `F${i + 1}`,
   func: true,
 }));
+
+// Done button - always visible
+const DONE_BUTTON = { key: 'Done', label: 'Done', special: true };
 
 @customElement('terminal-quick-keys')
 export class TerminalQuickKeys extends LitElement {
@@ -110,8 +113,8 @@ export class TerminalQuickKeys extends LitElement {
   }
 
   private getButtonSizeClass(_label: string): string {
-    // Use flexible sizing without constraining width
-    return this.isLandscape ? 'px-1 py-1' : 'px-1.5 py-1.5';
+    // Use minimal padding to fit more buttons
+    return this.isLandscape ? 'px-0.5 py-1' : 'px-1 py-1.5';
   }
 
   private getButtonFontClass(label: string): string {
@@ -201,6 +204,7 @@ export class TerminalQuickKeys extends LitElement {
       this.requestUpdate();
     }
 
+    // Always pass the key press to the handler - let it decide what to do with special keys
     if (this.onKeyPress) {
       this.onKeyPress(key, isModifier, isSpecial, isToggle);
     }
@@ -272,21 +276,35 @@ export class TerminalQuickKeys extends LitElement {
           left: 0;
           right: 0;
           bottom: 0;
-          z-index: 999999;
-          background-color: rgb(var(--color-bg-secondary));
-          width: 100%;
-          /* Properly handle safe areas */
-          padding-left: env(safe-area-inset-left);
-          padding-right: env(safe-area-inset-right);
+          z-index: ${Z_INDEX.TERMINAL_QUICK_KEYS};
+          background-color: rgb(var(--color-bg-secondary) / 0.98);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          width: 100vw;
+          max-width: 100vw;
+          /* No safe areas needed when above keyboard */
+          padding-left: 0;
+          padding-right: 0;
+          margin-left: 0;
+          margin-right: 0;
+          box-sizing: border-box;
         }
         
         /* The actual bar with buttons */
         .quick-keys-bar {
-          background: rgb(var(--color-bg-secondary));
-          border-top: 1px solid rgb(var(--color-border-base));
+          background: transparent;
+          border-top: 1px solid rgb(var(--color-border-base) / 0.5);
           padding: 0.25rem 0;
           width: 100%;
           box-sizing: border-box;
+          overflow: hidden;
+        }
+        
+        /* Button rows - ensure full width */
+        .quick-keys-bar > div {
+          width: 100%;
+          padding-left: 0.125rem;
+          padding-right: 0.125rem;
         }
         
         /* Quick key buttons */
@@ -295,6 +313,8 @@ export class TerminalQuickKeys extends LitElement {
           -webkit-tap-highlight-color: transparent;
           user-select: none;
           -webkit-user-select: none;
+          flex: 1 1 0;
+          min-width: 0;
         }
         
         /* Modifier key styling */
@@ -366,6 +386,25 @@ export class TerminalQuickKeys extends LitElement {
           -webkit-tap-highlight-color: transparent;
           user-select: none;
           -webkit-user-select: none;
+          flex: 1 1 0;
+          min-width: 0;
+        }
+        
+        /* Scrollable row styling */
+        .scrollable-row {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scroll-behavior: smooth;
+        }
+        
+        /* Hide scrollbar but keep functionality */
+        .scrollable-row::-webkit-scrollbar {
+          display: none;
+        }
+        
+        .scrollable-row {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
         }
         
         /* Toggle button styling */
@@ -394,6 +433,8 @@ export class TerminalQuickKeys extends LitElement {
           -webkit-tap-highlight-color: transparent;
           user-select: none;
           -webkit-user-select: none;
+          flex: 1 1 0;
+          min-width: 0;
         }
         
       </style>
@@ -412,7 +453,7 @@ export class TerminalQuickKeys extends LitElement {
       >
         <div class="quick-keys-bar">
           <!-- Row 1 -->
-          <div class="flex gap-0.5 mb-0.5 overflow-x-auto scrollbar-hide px-0.5">
+          <div class="flex gap-0.5 mb-0.5">
             ${TERMINAL_QUICK_KEYS.filter((k) => k.row === 1).map(
               ({ key, label, modifier, arrow, toggle }) => html`
                 <button
@@ -459,12 +500,12 @@ export class TerminalQuickKeys extends LitElement {
             )}
           </div>
           
-          <!-- Row 2 or Function Keys or Ctrl Shortcuts -->
+          <!-- Row 2 or Function Keys or Ctrl Shortcuts (with Done button always visible) -->
           ${
             this.showCtrlKeys
               ? html`
-              <!-- Ctrl shortcuts row -->
-              <div class="flex gap-0.5 mb-0.5 overflow-x-auto scrollbar-hide px-0.5">
+              <!-- Ctrl shortcuts row with Done button -->
+              <div class="flex gap-0.5 mb-0.5">
                 ${CTRL_SHORTCUTS.map(
                   ({ key, label, combo, special }) => html`
                     <button
@@ -494,12 +535,38 @@ export class TerminalQuickKeys extends LitElement {
                     </button>
                   `
                 )}
+                <!-- Done button -->
+                <button
+                  type="button"
+                  tabindex="-1"
+                  class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
+                  @mousedown=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  @touchstart=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  @touchend=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
+                  }}
+                  @click=${(e: MouseEvent) => {
+                    if (e.detail !== 0) {
+                      this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
+                    }
+                  }}
+                >
+                  ${DONE_BUTTON.label}
+                </button>
               </div>
             `
               : this.showFunctionKeys
                 ? html`
-              <!-- Function keys row -->
-              <div class="flex gap-0.5 mb-0.5 overflow-x-auto scrollbar-hide px-0.5">
+              <!-- Function keys row with Done button -->
+              <div class="flex gap-0.5 mb-0.5">
                 ${FUNCTION_KEYS.map(
                   ({ key, label }) => html`
                     <button
@@ -529,11 +596,37 @@ export class TerminalQuickKeys extends LitElement {
                     </button>
                   `
                 )}
+                <!-- Done button -->
+                <button
+                  type="button"
+                  tabindex="-1"
+                  class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
+                  @mousedown=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  @touchstart=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  @touchend=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
+                  }}
+                  @click=${(e: MouseEvent) => {
+                    if (e.detail !== 0) {
+                      this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
+                    }
+                  }}
+                >
+                  ${DONE_BUTTON.label}
+                </button>
               </div>
             `
                 : html`
               <!-- Regular row 2 -->
-              <div class="flex gap-0.5 mb-0.5 overflow-x-auto scrollbar-hide px-0.5">
+              <div class="flex gap-0.5 mb-0.5 ">
                 ${TERMINAL_QUICK_KEYS.filter((k) => k.row === 2).map(
                   ({ key, label, modifier, combo, special, toggle }) => html`
                     <button
@@ -567,12 +660,38 @@ export class TerminalQuickKeys extends LitElement {
                     </button>
                   `
                 )}
+                <!-- Done button (in regular row 2) -->
+                <button
+                  type="button"
+                  tabindex="-1"
+                  class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
+                  @mousedown=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  @touchstart=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  @touchend=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
+                  }}
+                  @click=${(e: MouseEvent) => {
+                    if (e.detail !== 0) {
+                      this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
+                    }
+                  }}
+                >
+                  ${DONE_BUTTON.label}
+                </button>
               </div>
             `
           }
           
           <!-- Row 3 - Additional special characters (always visible) -->
-          <div class="flex gap-0.5 overflow-x-auto scrollbar-hide px-0.5">
+          <div class="flex gap-0.5 ">
             ${TERMINAL_QUICK_KEYS.filter((k) => k.row === 3).map(
               ({ key, label, modifier, combo, special }) => html`
                 <button

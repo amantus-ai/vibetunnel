@@ -6,7 +6,6 @@
  */
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import '../modal-wrapper.js';
 
 @customElement('ctrl-alpha-overlay')
 export class CtrlAlphaOverlay extends LitElement {
@@ -28,24 +27,26 @@ export class CtrlAlphaOverlay extends LitElement {
   }
 
   render() {
+    console.log('[CtrlAlphaOverlay] render called, visible:', this.visible);
     if (!this.visible) return null;
 
+    // Render directly without modal-wrapper to debug the issue
     return html`
-      <modal-wrapper
-        .visible=${this.visible}
-        modalClass="" /* Use modal-wrapper's default z-index */
-        contentClass="fixed inset-0 flex flex-col" /* Use modal-wrapper's default z-index */
-        ariaLabel="Ctrl key sequence builder"
-        @close=${() => this.onCancel?.()}
-        .closeOnBackdrop=${true}
-        .closeOnEscape=${false}
+      <!-- Direct backdrop -->
+      <div 
+        class="fixed inset-0 bg-bg/80 flex items-center justify-center p-4"
+        style="z-index: 1000; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);"
+        @click=${(e: Event) => {
+          if (e.target === e.currentTarget) {
+            this.onCancel?.();
+          }
+        }}
       >
-        <!-- Spacer to push content up above keyboard -->
-        <div class="flex-1"></div>
-        
+        <!-- Modal content -->
         <div
-          class="font-mono text-sm mx-4 max-w-sm w-full self-center bg-bg border border-primary rounded-lg p-2.5"
-          style="margin-bottom: ${this.keyboardHeight > 0 ? `${this.keyboardHeight}px` : 'env(keyboard-inset-height, 0px)'};"
+          class="bg-surface border-2 border-primary rounded-lg p-4 shadow-xl relative"
+          style="z-index: 1001; background-color: rgb(var(--color-bg-secondary)); max-height: 80vh; overflow-y: auto; max-width: 24rem; width: 100%;"
+          @click=${(e: Event) => e.stopPropagation()}
         >
           <div class="text-primary text-center mb-2 font-bold">Ctrl + Key</div>
 
@@ -142,7 +143,7 @@ export class CtrlAlphaOverlay extends LitElement {
             }
           </div>
         </div>
-      </modal-wrapper>
+      </div>
     `;
   }
 }

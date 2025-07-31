@@ -413,6 +413,18 @@ export class LifecycleEventManager extends ManagerEventEmitter {
             directKeyboardManager &&
             directKeyboardManager.getShowQuickKeys()
           ) {
+            // Check if we recently entered keyboard mode (within last 2 seconds)
+            // This prevents iOS keyboard animation from being interrupted
+            const isRecentlyEntered =
+              directKeyboardManager.isRecentlyEnteredKeyboardMode?.() ?? false;
+
+            if (isRecentlyEntered) {
+              logger.log(
+                'Ignoring keyboard dismissal - recently entered keyboard mode, likely iOS animation'
+              );
+              return; // Don't hide quick keys during iOS keyboard animation
+            }
+
             // Force hide quick keys when keyboard dismisses
             this.callbacks.setShowQuickKeys(false);
 
