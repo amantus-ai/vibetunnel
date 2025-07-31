@@ -74,11 +74,13 @@ final class TailscaleServeStatusService {
 
             let decoder = JSONDecoder()
             // Use custom date decoder to handle ISO8601 with fractional seconds
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             decoder.dateDecodingStrategy = .custom { decoder in
                 let container = try decoder.singleValueContainer()
                 let dateString = try container.decode(String.self)
+
+                // Create formatter inside the closure to avoid Sendable warning
+                let formatter = ISO8601DateFormatter()
+                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
                 if let date = formatter.date(from: dateString) {
                     return date
                 }
@@ -87,7 +89,10 @@ final class TailscaleServeStatusService {
                 if let date = formatter.date(from: dateString) {
                     return date
                 }
-                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date string \(dateString)")
+                throw DecodingError.dataCorruptedError(
+                    in: container,
+                    debugDescription: "Cannot decode date string \(dateString)"
+                )
             }
 
             let status = try decoder.decode(TailscaleServeStatus.self, from: data)
@@ -98,7 +103,6 @@ final class TailscaleServeStatusService {
             startTime = status.startTime
 
             logger.debug("Tailscale Serve status - Running: \(status.isRunning), Error: \(status.lastError ?? "none")")
-
         } catch {
             logger.error("Failed to fetch Tailscale Serve status: \(error.localizedDescription)")
             // On error, assume not running

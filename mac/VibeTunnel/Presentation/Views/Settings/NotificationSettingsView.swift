@@ -27,7 +27,7 @@ struct NotificationSettingsView: View {
     var body: some View {
         NavigationStack {
             @Bindable var bindableConfig = configManager
-            
+
             Form {
                 // Master toggle section
                 Section {
@@ -37,7 +37,7 @@ struct NotificationSettingsView: View {
                             .onChange(of: showNotifications) { _, newValue in
                                 // Update ConfigManager's notificationsEnabled to match
                                 configManager.notificationsEnabled = newValue
-                                
+
                                 // Ensure NotificationService starts/stops based on the toggle
                                 if newValue {
                                     Task {
@@ -63,7 +63,7 @@ struct NotificationSettingsView: View {
                         Text("Display native macOS notifications for session and command events")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        
+
                         // SSE Connection Status Row
                         HStack(spacing: 6) {
                             Circle()
@@ -78,10 +78,11 @@ struct NotificationSettingsView: View {
                                 .fontWeight(.medium)
                             Spacer()
                         }
-                        .help(sseConnectionStatus 
-                            ? "Real-time notification stream is connected" 
-                            : "Real-time notification stream is disconnected. Check if the server is running.")
-                        
+                        .help(sseConnectionStatus
+                            ? "Real-time notification stream is connected"
+                            : "Real-time notification stream is disconnected. Check if the server is running."
+                        )
+
                         // Show warning when disconnected
                         if showNotifications && !sseConnectionStatus {
                             HStack(spacing: 6) {
@@ -198,7 +199,7 @@ struct NotificationSettingsView: View {
                                         .scaleEffect(0.7)
                                         .frame(width: 16, height: 16)
                                 }
-                                
+
                                 Spacer()
                             }
 
@@ -207,7 +208,7 @@ struct NotificationSettingsView: View {
                                     notificationService.openNotificationSettings()
                                 }
                                 .buttonStyle(.link)
-                                
+
                                 Spacer()
                             }
                         }
@@ -223,7 +224,7 @@ struct NotificationSettingsView: View {
             .onAppear {
                 // Sync the AppStorage value with ConfigManager on first load
                 showNotifications = configManager.notificationsEnabled
-                
+
                 // Update initial connection status
                 sseConnectionStatus = notificationService.isSSEConnected
             }

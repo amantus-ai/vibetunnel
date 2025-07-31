@@ -60,9 +60,9 @@ final class EventSource: NSObject {
     // MARK: - Connection Management
 
     func connect() {
-        guard !isConnected else { 
+        guard !isConnected else {
             logger.warning("Already connected, ignoring connect request")
-            return 
+            return
         }
 
         var request = URLRequest(url: url)
@@ -84,7 +84,7 @@ final class EventSource: NSObject {
 
         dataTask = urlSession?.dataTask(with: request)
         dataTask?.resume()
-        
+
         logger.info("📡 EventSource dataTask started")
     }
 
@@ -136,7 +136,8 @@ final class EventSource: NSObject {
                     }
 
                     // Dispatch event
-                    logger.debug("🎯 Dispatching event - type: \(event.event ?? "default"), data: \(event.data ?? "none")")
+                    logger
+                        .debug("🎯 Dispatching event - type: \(event.event ?? "default"), data: \(event.data ?? "none")")
                     DispatchQueue.main.async {
                         self.onMessage?(event)
                     }
@@ -197,7 +198,7 @@ extension EventSource: URLSessionDataDelegate {
         completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
     ) {
         logger.info("📥 URLSession didReceive response")
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             logger.error("Response is not HTTPURLResponse")
             completionHandler(.cancel)
@@ -224,19 +225,19 @@ extension EventSource: URLSessionDataDelegate {
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         logger.debug("📨 EventSource received \(data.count) bytes of data")
-        
+
         // Check if data might be compressed
         if data.count > 2 {
             let header = [UInt8](data.prefix(2))
-            if header[0] == 0x1f && header[1] == 0x8b {
+            if header[0] == 0x1F && header[1] == 0x8B {
                 logger.error("❌ Received gzip compressed data! SSE should not be compressed.")
                 return
             }
         }
-        
-        guard let text = String(data: data, encoding: .utf8) else { 
+
+        guard let text = String(data: data, encoding: .utf8) else {
             logger.error("Failed to decode data as UTF-8. First 20 bytes: \(data.prefix(20).hexString)")
-            return 
+            return
         }
 
         logger.debug("📨 EventSource received text: \(text)")

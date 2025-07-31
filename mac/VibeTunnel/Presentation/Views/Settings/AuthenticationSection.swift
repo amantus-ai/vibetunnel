@@ -1,6 +1,6 @@
-import SwiftUI
 import AppKit
 import os.log
+import SwiftUI
 
 /// Authentication configuration section for remote access settings
 struct AuthenticationSection: View {
@@ -8,7 +8,7 @@ struct AuthenticationSection: View {
     @Binding var enableSSHKeys: Bool
     let logger: Logger
     let serverManager: ServerManager
-    
+
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 16) {
@@ -45,7 +45,7 @@ struct AuthenticationSection: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                
+
                 // Additional info based on selected mode
                 if authMode == .osAuth || authMode == .both {
                     HStack(alignment: .center, spacing: 6) {
@@ -59,7 +59,7 @@ struct AuthenticationSection: View {
                         Spacer()
                     }
                 }
-                
+
                 if authMode == .sshKeys || authMode == .both {
                     HStack(alignment: .center, spacing: 6) {
                         Image(systemName: "key.fill")
@@ -105,7 +105,7 @@ struct AuthenticationSection: View {
     struct PreviewWrapper: View {
         @State var authMode = AuthenticationMode.osAuth
         @State var enableSSHKeys = false
-        
+
         var body: some View {
             AuthenticationSection(
                 authMode: $authMode,
@@ -117,6 +117,6 @@ struct AuthenticationSection: View {
             .padding()
         }
     }
-    
+
     return PreviewWrapper()
 }
