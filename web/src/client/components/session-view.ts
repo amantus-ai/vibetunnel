@@ -119,6 +119,9 @@ export class SessionView extends LitElement {
         setShowQuickKeys: (value: boolean) => this.directKeyboardManager.setShowQuickKeys(value),
         ensureHiddenInputVisible: () => this.directKeyboardManager.ensureHiddenInputVisible(),
         cleanup: () => this.directKeyboardManager.cleanup(),
+        getKeyboardMode: () => this.directKeyboardManager.getKeyboardMode(),
+        isRecentlyEnteredKeyboardMode: () =>
+          this.directKeyboardManager.isRecentlyEnteredKeyboardMode(),
       }),
       setShowQuickKeys: (value: boolean) => {
         this.uiStateManager.setShowQuickKeys(value);

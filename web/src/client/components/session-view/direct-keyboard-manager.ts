@@ -68,7 +68,6 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
   private instanceId: string;
   // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used for focus state management
   private hiddenInputFocused = false;
-  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used for keyboard mode timing
   private keyboardModeTimestamp = 0;
   // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used for IME composition
   private compositionBuffer = '';
@@ -121,9 +120,7 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
   }
 
   focusHiddenInput(): void {
-    logger.log('focusHiddenInput called - entering keyboard mode');
-    logger.log('DEBUG: hiddenInput exists?', !!this.hiddenInput);
-    logger.log('DEBUG: sessionViewElement exists?', !!this.sessionViewElement);
+    logger.log('Entering keyboard mode');
 
     // Enter keyboard mode
     this.keyboardMode = true;
@@ -187,13 +184,10 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
 
   ensureHiddenInputVisible(): void {
     if (!this.hiddenInput) {
-      logger.log('DEBUG: Creating hidden input');
       this.createHiddenInput();
     } else {
-      logger.log('DEBUG: Hidden input already exists');
       // Make sure it's in the DOM
       if (!this.hiddenInput.parentNode) {
-        logger.log('DEBUG: Hidden input not in DOM, re-adding');
         document.body.appendChild(this.hiddenInput);
       }
     }
@@ -238,17 +232,17 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
     this.hiddenInput.type = 'text';
     this.hiddenInput.style.position = 'absolute';
 
-    // DEBUGGING: Make it fully visible!
-    this.hiddenInput.style.opacity = '1'; // Fully visible
+    // Hidden input that receives keyboard focus
+    this.hiddenInput.style.opacity = '0.01'; // iOS needs non-zero opacity
     this.hiddenInput.style.fontSize = '16px'; // Prevent zoom on iOS
-    this.hiddenInput.style.border = '3px solid red'; // Red border for debugging
+    this.hiddenInput.style.border = 'none';
     this.hiddenInput.style.outline = 'none';
-    this.hiddenInput.style.background = 'white';
-    this.hiddenInput.style.color = 'black';
-    this.hiddenInput.style.padding = '10px';
-    this.hiddenInput.style.cursor = 'text';
-    this.hiddenInput.style.pointerEvents = 'auto'; // Allow clicking
-    this.hiddenInput.placeholder = 'DEBUG: Tap here for keyboard';
+    this.hiddenInput.style.background = 'transparent';
+    this.hiddenInput.style.color = 'transparent';
+    this.hiddenInput.style.caretColor = 'transparent';
+    this.hiddenInput.style.cursor = 'default';
+    this.hiddenInput.style.pointerEvents = 'none'; // Start with pointer events disabled
+    this.hiddenInput.placeholder = '';
     this.hiddenInput.style.webkitUserSelect = 'text'; // iOS specific
     this.hiddenInput.autocapitalize = 'none'; // More explicit than 'off'
     this.hiddenInput.autocomplete = 'off';
@@ -456,7 +450,6 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
 
     // Add to the body for debugging (so it's always visible)
     document.body.appendChild(this.hiddenInput);
-    logger.log('DEBUG: Hidden input added to body');
   }
 
   handleQuickKeyPress = async (
@@ -597,6 +590,10 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
     } else if (key === 'Delete') {
       // Send delete key
       this.inputManager.sendInput('delete');
+    } else if (key === 'Done') {
+      // Safety check - Done should have been handled earlier
+      this.dismissKeyboard();
+      return;
     } else if (key.startsWith('F')) {
       // Handle function keys F1-F12
       const fNum = Number.parseInt(key.substring(1));
@@ -711,15 +708,15 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
     if (!this.hiddenInput) return;
 
     if (this.keyboardMode) {
-      // DEBUGGING: Make it fully visible and centered
+      // In keyboard mode: position at bottom center but invisible
       this.hiddenInput.style.position = 'fixed';
-      this.hiddenInput.style.bottom = '100px'; // Above quick keys
+      this.hiddenInput.style.bottom = '50px'; // Above quick keys
       this.hiddenInput.style.left = '50%';
       this.hiddenInput.style.transform = 'translateX(-50%)';
-      this.hiddenInput.style.width = '300px';
-      this.hiddenInput.style.height = '50px';
+      this.hiddenInput.style.width = '1px';
+      this.hiddenInput.style.height = '1px';
       this.hiddenInput.style.zIndex = String(Z_INDEX.TERMINAL_OVERLAY + 100);
-      this.hiddenInput.style.pointerEvents = 'auto'; // Allow clicking!
+      this.hiddenInput.style.pointerEvents = 'auto'; // Allow focus
     } else {
       // In scroll mode: position off-screen
       this.hiddenInput.style.position = 'fixed';
