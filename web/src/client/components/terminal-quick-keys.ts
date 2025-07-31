@@ -387,6 +387,23 @@ export class TerminalQuickKeys extends LitElement {
           min-width: 2.5rem;
         }
         
+        /* Scrollable row styling */
+        .scrollable-row {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scroll-behavior: smooth;
+        }
+        
+        /* Hide scrollbar but keep functionality */
+        .scrollable-row::-webkit-scrollbar {
+          display: none;
+        }
+        
+        .scrollable-row {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        
         /* Toggle button styling */
         .toggle-key {
           background-color: rgb(var(--color-bg-secondary));
@@ -485,7 +502,7 @@ export class TerminalQuickKeys extends LitElement {
             this.showCtrlKeys
               ? html`
               <!-- Ctrl shortcuts row -->
-              <div class="flex gap-0.5 mb-0.5 overflow-x-auto scrollbar-hide">
+              <div class="flex gap-0.5 mb-0.5 scrollable-row">
                 ${CTRL_SHORTCUTS.map(
                   ({ key, label, combo, special }) => html`
                     <button
@@ -520,7 +537,7 @@ export class TerminalQuickKeys extends LitElement {
               : this.showFunctionKeys
                 ? html`
               <!-- Function keys row -->
-              <div class="flex gap-0.5 mb-0.5 overflow-x-auto scrollbar-hide">
+              <div class="flex gap-0.5 mb-0.5 scrollable-row">
                 ${FUNCTION_KEYS.map(
                   ({ key, label }) => html`
                     <button

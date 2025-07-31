@@ -475,11 +475,13 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
       return;
     } else if (key === 'CtrlFull') {
       // Toggle the full Ctrl+Alpha overlay
+      console.log('[DirectKeyboardManager] CtrlFull pressed, toggling Ctrl+Alpha overlay');
       if (this.callbacks) {
         this.callbacks.toggleCtrlAlpha();
       }
 
       const showCtrlAlpha = this.callbacks?.getShowCtrlAlpha() ?? false;
+      console.log('[DirectKeyboardManager] showCtrlAlpha after toggle:', showCtrlAlpha);
       if (showCtrlAlpha) {
         // Stop focus retention when showing Ctrl overlay
         if (this.focusRetentionInterval) {
