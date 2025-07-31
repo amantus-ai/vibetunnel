@@ -900,6 +900,12 @@ export class SessionView extends LitElement {
               if ('scrollToBottom' in terminal) {
                 terminal.scrollToBottom();
               }
+              
+              // Also ensure the terminal content is scrolled within its container
+              const terminalArea = this.querySelector('.terminal-area');
+              if (terminalArea) {
+                terminalArea.scrollTop = terminalArea.scrollHeight;
+              }
             }, 50);
           }
         }
@@ -1033,7 +1039,7 @@ export class SessionView extends LitElement {
         /* Add padding to terminal when quick keys are visible */
         .terminal-area[data-quickkeys-visible="true"] vibe-terminal,
         .terminal-area[data-quickkeys-visible="true"] vibe-terminal-binary {
-          padding-bottom: 120px !important;
+          padding-bottom: 180px !important;
           box-sizing: border-box;
         }
         
@@ -1065,7 +1071,7 @@ export class SessionView extends LitElement {
       <div class="bg-bg-secondary" style="padding-top: env(safe-area-inset-top);">
         <div
           class="session-view-grid"
-          style="outline: none !important; box-shadow: none !important; --keyboard-height: ${uiState.keyboardHeight}px; --quickkeys-height: ${uiState.showQuickKeys ? '150' : '0'}px;"
+          style="outline: none !important; box-shadow: none !important; --keyboard-height: ${uiState.keyboardHeight}px; --quickkeys-height: 0px;"
           data-keyboard-visible="${uiState.keyboardHeight > 0 || uiState.showQuickKeys ? 'true' : 'false'}"
         >
         <!-- Session Header Area -->
@@ -1134,7 +1140,7 @@ export class SessionView extends LitElement {
             // Add safe area padding for landscape mode on mobile to handle notch
             uiState.isMobile && uiState.isLandscape ? 'safe-area-left safe-area-right' : ''
           }"
-          data-quickkeys-visible="${uiState.showQuickKeys && uiState.keyboardHeight > 0}"
+          data-quickkeys-visible="${uiState.showQuickKeys}"
         >
           ${
             this.loadingAnimationManager.isLoading()
