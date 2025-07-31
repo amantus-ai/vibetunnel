@@ -489,10 +489,8 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
           this.focusRetentionInterval = null;
         }
 
-        // Blur the hidden input to prevent it from capturing input
-        if (this.hiddenInput) {
-          this.hiddenInput.blur();
-        }
+        // DO NOT blur the hidden input - we want to keep the keyboard visible
+        // The Ctrl+Alpha overlay should show above the keyboard
       } else {
         // Clear the Ctrl sequence when closing
         if (this.callbacks) {

@@ -139,10 +139,6 @@ export class OverlaysContainer extends LitElement {
               @pointerdown=${(e: PointerEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
-              }}
-              @click=${(e: MouseEvent) => {
-                e.preventDefault();
-                e.stopPropagation();
                 this.callbacks?.onKeyboardButtonClick();
               }}
               title="Show keyboard"

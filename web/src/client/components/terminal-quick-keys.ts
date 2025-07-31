@@ -28,7 +28,6 @@ const TERMINAL_QUICK_KEYS = [
   { key: '/', label: '/', row: 2 },
   { key: '\\', label: '\\', row: 2 },
   { key: '-', label: '-', row: 2 },
-  { key: 'Done', label: 'Done', special: true, row: 2 },
   // Third row - additional special characters
   { key: 'Option', label: '⌥', modifier: true, row: 3 },
   { key: 'Command', label: '⌘', modifier: true, row: 3 },
@@ -63,6 +62,9 @@ const FUNCTION_KEYS = Array.from({ length: 12 }, (_, i) => ({
   label: `F${i + 1}`,
   func: true,
 }));
+
+// Done button - always visible
+const DONE_BUTTON = { key: 'Done', label: 'Done', special: true };
 
 @customElement('terminal-quick-keys')
 export class TerminalQuickKeys extends LitElement {
@@ -498,11 +500,11 @@ export class TerminalQuickKeys extends LitElement {
             )}
           </div>
           
-          <!-- Row 2 or Function Keys or Ctrl Shortcuts -->
+          <!-- Row 2 or Function Keys or Ctrl Shortcuts (with Done button always visible) -->
           ${
             this.showCtrlKeys
               ? html`
-              <!-- Ctrl shortcuts row -->
+              <!-- Ctrl shortcuts row with Done button -->
               <div class="flex gap-0.5 mb-0.5">
                 ${CTRL_SHORTCUTS.map(
                   ({ key, label, combo, special }) => html`
@@ -533,11 +535,37 @@ export class TerminalQuickKeys extends LitElement {
                     </button>
                   `
                 )}
+                <!-- Done button -->
+                <button
+                  type="button"
+                  tabindex="-1"
+                  class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
+                  @mousedown=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  @touchstart=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  @touchend=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
+                  }}
+                  @click=${(e: MouseEvent) => {
+                    if (e.detail !== 0) {
+                      this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
+                    }
+                  }}
+                >
+                  ${DONE_BUTTON.label}
+                </button>
               </div>
             `
               : this.showFunctionKeys
                 ? html`
-              <!-- Function keys row -->
+              <!-- Function keys row with Done button -->
               <div class="flex gap-0.5 mb-0.5">
                 ${FUNCTION_KEYS.map(
                   ({ key, label }) => html`
@@ -568,6 +596,32 @@ export class TerminalQuickKeys extends LitElement {
                     </button>
                   `
                 )}
+                <!-- Done button -->
+                <button
+                  type="button"
+                  tabindex="-1"
+                  class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
+                  @mousedown=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  @touchstart=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  @touchend=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
+                  }}
+                  @click=${(e: MouseEvent) => {
+                    if (e.detail !== 0) {
+                      this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
+                    }
+                  }}
+                >
+                  ${DONE_BUTTON.label}
+                </button>
               </div>
             `
                 : html`
@@ -606,6 +660,32 @@ export class TerminalQuickKeys extends LitElement {
                     </button>
                   `
                 )}
+                <!-- Done button (in regular row 2) -->
+                <button
+                  type="button"
+                  tabindex="-1"
+                  class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
+                  @mousedown=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  @touchstart=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  @touchend=${(e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
+                  }}
+                  @click=${(e: MouseEvent) => {
+                    if (e.detail !== 0) {
+                      this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
+                    }
+                  }}
+                >
+                  ${DONE_BUTTON.label}
+                </button>
               </div>
             `
           }
