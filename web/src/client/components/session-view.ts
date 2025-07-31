@@ -781,11 +781,6 @@ export class SessionView extends LitElement {
     this.uiStateManager.clearCtrlSequence();
     this.uiStateManager.setShowCtrlAlpha(false);
 
-    // Restore Quick Keys if in direct keyboard mode
-    if (this.uiStateManager.getState().useDirectKeyboard) {
-      this.uiStateManager.setShowQuickKeys(true);
-    }
-
     // Refocus the hidden input
     if (this.directKeyboardManager.shouldRefocusHiddenInput()) {
       this.directKeyboardManager.refocusHiddenInput();
@@ -799,11 +794,6 @@ export class SessionView extends LitElement {
   private handleCtrlAlphaCancel() {
     this.uiStateManager.setShowCtrlAlpha(false);
     this.uiStateManager.clearCtrlSequence();
-
-    // Restore Quick Keys if in direct keyboard mode
-    if (this.uiStateManager.getState().useDirectKeyboard) {
-      this.uiStateManager.setShowQuickKeys(true);
-    }
 
     // Refocus the hidden input
     if (this.directKeyboardManager.shouldRefocusHiddenInput()) {

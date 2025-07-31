@@ -371,7 +371,7 @@ export class TerminalQuickKeys extends LitElement {
         .special-key {
           background-color: rgb(var(--color-primary));
           border-color: rgb(var(--color-primary));
-          color: white;
+          color: rgb(var(--color-text-bright));
         }
         
         .special-key:hover {
