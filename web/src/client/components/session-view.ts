@@ -1036,10 +1036,16 @@ export class SessionView extends LitElement {
           contain: layout style paint; /* Isolate terminal updates */
         }
         
-        /* Add padding to terminal when quick keys are visible */
+        /* Transform terminal up when quick keys are visible */
+        .terminal-area[data-quickkeys-visible="true"] {
+          transform: translateY(-120px);
+          transition: transform 0.2s ease-out;
+        }
+        
+        /* Add padding to terminal content */
         .terminal-area[data-quickkeys-visible="true"] vibe-terminal,
         .terminal-area[data-quickkeys-visible="true"] vibe-terminal-binary {
-          padding-bottom: 180px !important;
+          padding-bottom: 60px !important;
           box-sizing: border-box;
         }
         

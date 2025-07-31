@@ -483,14 +483,9 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
       const showCtrlAlpha = this.callbacks?.getShowCtrlAlpha() ?? false;
       console.log('[DirectKeyboardManager] showCtrlAlpha after toggle:', showCtrlAlpha);
       if (showCtrlAlpha) {
-        // Stop focus retention when showing Ctrl overlay
-        if (this.focusRetentionInterval) {
-          clearInterval(this.focusRetentionInterval);
-          this.focusRetentionInterval = null;
-        }
-
-        // DO NOT blur the hidden input - we want to keep the keyboard visible
+        // Keep focus retention running - we want the keyboard to stay visible
         // The Ctrl+Alpha overlay should show above the keyboard
+        // Don't stop focus retention or blur the input
       } else {
         // Clear the Ctrl sequence when closing
         if (this.callbacks) {
