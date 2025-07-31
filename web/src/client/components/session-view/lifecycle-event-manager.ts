@@ -30,7 +30,6 @@ const logger = createLogger('lifecycle-event-manager');
 export type { LifecycleEventManagerCallbacks } from './interfaces.js';
 
 export class LifecycleEventManager extends ManagerEventEmitter {
-  private sessionViewElement: HTMLElement | null = null;
   private callbacks: LifecycleEventManagerCallbacks | null = null;
   private session: Session | null = null;
   private touchStartX = 0;

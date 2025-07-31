@@ -137,16 +137,18 @@ global.fetch = vi.fn();
 describe('PushNotificationService', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
-    
+
     // Set up default fetch mock for VAPID key
     global.fetch = vi.fn().mockImplementation((url) => {
       if (typeof url === 'string' && url.includes('/api/push/vapid-public-key')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ 
-            publicKey: 'BLhSYXCVq1lX0hQ7T_Qt8-_s9k2jJqnGPtCT3kY_SrUhqG4_7FscqLvX0XkH8DqR6fF0vAl_6nQPYe3xt9zBHUE',
-            enabled: true
-          }),
+          json: () =>
+            Promise.resolve({
+              publicKey:
+                'BLhSYXCVq1lX0hQ7T_Qt8-_s9k2jJqnGPtCT3kY_SrUhqG4_7FscqLvX0XkH8DqR6fF0vAl_6nQPYe3xt9zBHUE',
+              enabled: true,
+            }),
         });
       }
       // Default response for other endpoints
@@ -225,7 +227,7 @@ describe('PushNotificationService', () => {
     testService.preferences = null;
     testService.initializationPromise = null;
     testService.vapidPublicKey = 'test-vapid-key';
-    
+
     // Set up default mock for serverConfigService
     (serverConfigService.getNotificationPreferences as vi.Mock).mockResolvedValue({
       enabled: false,
@@ -649,7 +651,7 @@ describe('PushNotificationService', () => {
         }),
       };
       mockServiceWorkerRegistration.pushManager.getSubscription.mockResolvedValue(mockSubscription);
-      
+
       await pushNotificationService.initialize();
     });
 

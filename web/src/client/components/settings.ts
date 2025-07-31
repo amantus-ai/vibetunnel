@@ -1,10 +1,7 @@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { DEFAULT_REPOSITORY_BASE_PATH } from '../../shared/constants.js';
-import {
-  DEFAULT_NOTIFICATION_PREFERENCES,
-  RECOMMENDED_NOTIFICATION_PREFERENCES,
-} from '../../types/config.js';
+import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../types/config.js';
 import type { AuthClient } from '../services/auth-client.js';
 import {
   type NotificationPreferences,

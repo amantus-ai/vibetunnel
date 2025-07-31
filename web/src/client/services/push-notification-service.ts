@@ -100,7 +100,7 @@ export class PushNotificationService {
 
       logger.log('Existing push subscription found:', {
         hasSubscription: !!this.pushSubscription,
-        endpoint: this.pushSubscription?.endpoint?.substring(0, 50) + '...',
+        endpoint: `${this.pushSubscription?.endpoint?.substring(0, 50)}...`,
       });
 
       // Listen for service worker messages

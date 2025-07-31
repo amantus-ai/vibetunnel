@@ -900,7 +900,7 @@ export class SessionView extends LitElement {
               if ('scrollToBottom' in terminal) {
                 terminal.scrollToBottom();
               }
-              
+
               // Also ensure the terminal content is scrolled within its container
               const terminalArea = this.querySelector('.terminal-area');
               if (terminalArea) {

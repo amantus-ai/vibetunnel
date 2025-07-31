@@ -628,11 +628,11 @@ export class TerminalQuickKeys extends LitElement {
               <!-- Regular row 2 -->
               <div class="flex gap-0.5 mb-0.5 ">
                 ${TERMINAL_QUICK_KEYS.filter((k) => k.row === 2).map(
-                  ({ key, label, modifier, combo, special, toggle }) => html`
+                  ({ key, label, modifier, combo, toggle }) => html`
                     <button
                       type="button"
                       tabindex="-1"
-                      class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && this.showFunctionKeys ? 'active' : ''}"
+                      class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && this.showFunctionKeys ? 'active' : ''}"
                       @mousedown=${(e: Event) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -647,12 +647,12 @@ export class TerminalQuickKeys extends LitElement {
                         if (key === 'Paste') {
                           this.handlePasteImmediate(e);
                         } else {
-                          this.handleKeyPress(key, modifier || combo, special, false, e);
+                          this.handleKeyPress(key, modifier || combo, false, false, e);
                         }
                       }}
                       @click=${(e: MouseEvent) => {
                         if (e.detail !== 0) {
-                          this.handleKeyPress(key, modifier || combo, special, false, e);
+                          this.handleKeyPress(key, modifier || combo, false, false, e);
                         }
                       }}
                     >
@@ -693,11 +693,11 @@ export class TerminalQuickKeys extends LitElement {
           <!-- Row 3 - Additional special characters (always visible) -->
           <div class="flex gap-0.5 ">
             ${TERMINAL_QUICK_KEYS.filter((k) => k.row === 3).map(
-              ({ key, label, modifier, combo, special }) => html`
+              ({ key, label, modifier, combo }) => html`
                 <button
                   type="button"
                   tabindex="-1"
-                  class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
+                  class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
                   @mousedown=${(e: Event) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -709,11 +709,11 @@ export class TerminalQuickKeys extends LitElement {
                   @touchend=${(e: Event) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    this.handleKeyPress(key, modifier || combo, special, false, e);
+                    this.handleKeyPress(key, modifier || combo, false, false, e);
                   }}
                   @click=${(e: MouseEvent) => {
                     if (e.detail !== 0) {
-                      this.handleKeyPress(key, modifier || combo, special, false, e);
+                      this.handleKeyPress(key, modifier || combo, false, false, e);
                     }
                   }}
                 >

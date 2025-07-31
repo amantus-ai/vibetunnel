@@ -1,6 +1,5 @@
 import { type Request, type Response, Router } from 'express';
 import { ServerEventType } from '../../shared/types.js';
-import type { BellEventHandler } from '../services/bell-event-handler.js';
 import type { PushNotificationService } from '../services/push-notification-service.js';
 import { PushNotificationStatusService } from '../services/push-notification-status-service.js';
 import type { SessionMonitor } from '../services/session-monitor.js';
