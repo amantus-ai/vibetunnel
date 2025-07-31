@@ -115,7 +115,9 @@ export class OverlaysContainer extends LitElement {
           'isMobile:',
           this.uiState.isMobile,
           'showCtrlAlpha:',
-          this.uiState.showCtrlAlpha
+          this.uiState.showCtrlAlpha,
+          'z-index should be above',
+          Z_INDEX.TERMINAL_QUICK_KEYS
         );
         return html`
           <ctrl-alpha-overlay

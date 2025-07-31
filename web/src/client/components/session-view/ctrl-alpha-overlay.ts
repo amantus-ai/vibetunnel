@@ -40,9 +40,11 @@ export class CtrlAlphaOverlay extends LitElement {
         @close=${() => this.onCancel?.()}
         .closeOnBackdrop=${true}
         .closeOnEscape=${false}
+        no-autofocus
       >
         <div
-          class="bg-bg border border-primary rounded-lg p-4"
+          class="bg-bg-secondary border border-primary rounded-lg p-4"
+          style="position: relative; z-index: 1002;"
         >
           <div class="text-primary text-center mb-2 font-bold">Ctrl + Key</div>
 
