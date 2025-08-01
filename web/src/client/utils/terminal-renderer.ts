@@ -161,10 +161,7 @@ function getCellStyling(cell: IBufferCell, isCursor: boolean): { classes: string
     }
   }
 
-  // Override background for cursor
-  if (isCursor) {
-    style += `background-color: #23d18b;`;
-  }
+  // Don't set background color for cursor - let CSS animation handle it
 
   // Get text attributes
   if (cell.isBold()) classes += ' bold';
@@ -234,10 +231,7 @@ function getCellStylingFromBuffer(
     }
   }
 
-  // Override background for cursor
-  if (isCursor) {
-    style += `background-color: #23d18b;`;
-  }
+  // Don't set background color for cursor - let CSS animation handle it
 
   // Get text attributes from bit flags
   const attrs = cell.attributes || 0;

@@ -1321,20 +1321,18 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 /* Enhanced cursor styling */
 .terminal-char.cursor {
   animation: cursor-blink 1s infinite;
-  background-color: rgb(var(--color-primary));
-  color: rgb(10 10 10); /* Always dark text on cursor */
+  background-color: #23d18b !important; /* Green cursor */
+  color: #000000 !important; /* Black text on cursor */
 }
 
 @keyframes cursor-blink {
   0%,
   50% {
     opacity: 1;
-    background-color: rgb(var(--color-primary));
   }
   51%,
   100% {
-    opacity: 0.4;
-    background-color: rgb(var(--color-primary));
+    opacity: 0.3;
   }
 }
 

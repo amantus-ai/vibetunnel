@@ -33,6 +33,7 @@ export class VibeTerminalBuffer extends LitElement {
 
   @property({ type: String }) sessionId = '';
   @property({ type: String }) theme: TerminalThemeId = 'auto';
+  @property({ type: String }) sessionStatus = 'running'; // Track session status for cursor control
 
   @state() private buffer: BufferSnapshot | null = null;
   @state() private error: string | null = null;
@@ -316,19 +317,15 @@ export class VibeTerminalBuffer extends LitElement {
     const lineHeight = this.displayedFontSize * 1.2;
     let html = '';
 
-    // Step 3: Show bottom N lines that fit
-    let startIndex = 0;
-    if (this.buffer.cells.length > this.visibleRows) {
-      // More content than visible rows - show bottom portion
-      startIndex = this.buffer.cells.length - this.visibleRows;
-    }
-
-    // Render only the visible rows
-    for (let i = startIndex; i < this.buffer.cells.length; i++) {
+    // The server already sends only the visible terminal area (terminal.rows worth of lines)
+    // We should render all cells sent by the server without additional truncation
+    for (let i = 0; i < this.buffer.cells.length; i++) {
       const row = this.buffer.cells[i];
 
       // Check if cursor is on this line
-      const isCursorLine = i === this.buffer.cursorY;
+      // The server sends cursorY relative to the cells array (0-based)
+      // Only show cursor if session is running
+      const isCursorLine = i === this.buffer.cursorY && this.sessionStatus === 'running';
       const cursorCol = isCursorLine ? this.buffer.cursorX : -1;
       const lineContent = TerminalRenderer.renderLineFromCells(row, cursorCol);
 
