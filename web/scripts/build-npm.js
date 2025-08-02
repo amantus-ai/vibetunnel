@@ -525,18 +525,17 @@ function validatePackageHybrid() {
     console.log('  ⚠️  Prebuilds skipped in current-only mode');
   }
   
-  // Check authenticate-pam (Linux support)
-  const authPamDir = path.join(DIST_DIR, 'node_modules', 'authenticate-pam');
-  if (!fs.existsSync(authPamDir)) {
-    warnings.push('authenticate-pam module not included (Linux PAM auth will not work)');
-  } else {
-    console.log('  ✅ authenticate-pam module included for Linux support');
-  }
-  
   // Validate package.json
   const packageJsonPath = path.join(DIST_DIR, 'package.json');
   if (fs.existsSync(packageJsonPath)) {
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    
+    // Check authenticate-pam is listed as optionalDependency
+    if (packageJson.optionalDependencies && packageJson.optionalDependencies['authenticate-pam']) {
+      console.log('  ✅ authenticate-pam listed as optional dependency');
+    } else {
+      warnings.push('authenticate-pam not listed as optional dependency (Linux PAM auth may not work)');
+    }
     
     // Check postinstall script
     if (!packageJson.scripts || !packageJson.scripts.postinstall) {
@@ -667,8 +666,8 @@ async function main() {
   // Step 4: Bundle node-pty with dependencies
   bundleNodePty();
   
-  // Step 5: Copy authenticate-pam module for Linux support (OUR ENHANCEMENT)
-  copyAuthenticatePam();
+  // Step 5: Don't copy authenticate-pam - it's an optionalDependency that will be installed by npm
+  // copyAuthenticatePam();
   
   // Step 6: Use package.npm.json if available, otherwise create clean package.json
   console.log('\n6️⃣ Creating package.json for npm...\n');
