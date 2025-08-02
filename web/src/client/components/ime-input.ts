@@ -142,6 +142,8 @@ export class DesktopIMEInput {
 
   private handleCompositionUpdate = (e: CompositionEvent) => {
     logger.log('IME composition update:', e.data);
+    // Update position during composition as well
+    this.updatePosition();
   };
 
   private handleCompositionEnd = (e: CompositionEvent) => {
@@ -155,6 +157,11 @@ export class DesktopIMEInput {
 
     this.input.value = '';
     logger.log('IME composition ended:', finalText);
+
+    // Update position after composition ends
+    setTimeout(() => {
+      this.updatePosition();
+    }, 50);
   };
 
   private handleInput = (e: Event) => {
@@ -271,6 +278,7 @@ export class DesktopIMEInput {
   private updatePosition(): void {
     if (!this.options.getCursorInfo) {
       // Fallback to safe positioning when no cursor info provider
+      logger.warn('No getCursorInfo callback provided, using fallback position');
       this.input.style.left = '10px';
       this.input.style.top = '10px';
       return;
@@ -279,14 +287,19 @@ export class DesktopIMEInput {
     const cursorInfo = this.options.getCursorInfo();
     if (!cursorInfo) {
       // Fallback to safe positioning when cursor info unavailable
+      logger.warn('getCursorInfo returned null, using fallback position');
       this.input.style.left = '10px';
       this.input.style.top = '10px';
       return;
     }
 
     // Position IME input at cursor location
-    this.input.style.left = `${Math.max(10, cursorInfo.x)}px`;
-    this.input.style.top = `${Math.max(10, cursorInfo.y)}px`;
+    const x = Math.max(10, cursorInfo.x);
+    const y = Math.max(10, cursorInfo.y);
+
+    logger.log(`Positioning CJK input at x=${x}, y=${y}`);
+    this.input.style.left = `${x}px`;
+    this.input.style.top = `${y}px`;
   }
 
   focus(): void {
@@ -302,6 +315,14 @@ export class DesktopIMEInput {
         });
       }
     });
+  }
+
+  /**
+   * Update the IME input position based on cursor location
+   * Can be called externally when cursor moves
+   */
+  refreshPosition(): void {
+    this.updatePosition();
   }
 
   blur(): void {

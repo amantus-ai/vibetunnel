@@ -880,12 +880,12 @@ describe('SessionCreateForm', () => {
       // Set up working directory and command first
       element.workingDir = '/home/user/project';
       element.command = 'vim';
-      
+
       // Trigger Git repository check which will load currentBranch and selectedBaseBranch
       // @ts-expect-error - accessing private method for testing
       await element.checkGitRepository();
       await element.updateComplete;
-      
+
       // The Git check should have loaded the repository info and set currentBranch to 'main'
       // and selectedBaseBranch should also be 'main' (current branch is selected by default)
       // This ensures the Git info will be included in the session creation request

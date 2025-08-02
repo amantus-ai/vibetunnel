@@ -34,6 +34,46 @@ SessionView
 
 ## Implementation Details
 
+### Cursor Position Tracking
+
+**File**: `cursor-position.ts`
+
+The cursor position tracking system uses a shared utility function that works consistently across both terminal types (XTerm.js and binary buffer modes):
+
+#### Coordinate System
+```typescript
+export function calculateCursorPosition(
+  cursorX: number,        // 0-based column position
+  cursorY: number,        // 0-based row position  
+  fontSize: number,       // Terminal font size in pixels
+  container: Element,     // Terminal container element
+  sessionStatus: string   // Session status for validation
+): { x: number; y: number } | null
+```
+
+#### Position Calculation Process
+1. **Character Measurement**: Dynamically measures actual character width using font metrics
+2. **Absolute Positioning**: Calculates page-absolute cursor coordinates
+3. **Container Relative**: Converts to position relative to `#session-terminal` container
+4. **IME Positioning**: Returns coordinates suitable for IME input placement
+
+#### Terminal Type Support
+- **XTerm Terminal (`vibe-terminal`)**: Uses `terminal.buffer.active.cursorX/Y` from XTerm.js
+- **Binary Terminal (`vibe-terminal-binary`)**: Uses `buffer.cursorX/Y` from WebSocket buffer data
+
+#### Key Features
+- **Precise Alignment**: Accounts for exact character width and line height
+- **Container Aware**: Handles side panels and complex layouts
+- **Font Responsive**: Adapts to different font sizes and families
+- **Platform Consistent**: Same calculation logic across all terminal types
+
+#### Error Handling
+The function includes comprehensive error handling and graceful fallbacks:
+- Returns `null` when session is not running
+- Returns `null` when container element is not found  
+- Returns `null` when character measurement fails
+- Falls back to absolute coordinates if session container is missing
+
 ### Platform Detection
 **File**: `mobile-utils.ts`
 
@@ -244,6 +284,11 @@ OS shows IME candidates → User selects → Text appears in terminal
 ## Code Reference
 
 ### Primary Files
+- `cursor-position.ts` - **Shared cursor position calculation**
+  - `14-20` - Main `calculateCursorPosition()` function signature
+  - `32-46` - Character width measurement using test elements
+  - `48-69` - Coordinate conversion (absolute → container-relative)
+  - `70-72` - Error handling and cleanup
 - `ime-input.ts` - Desktop IME component implementation
   - `32-48` - DesktopIMEInput class definition
   - `50-80` - Invisible input element creation
@@ -259,11 +304,13 @@ OS shows IME candidates → User selects → Text appears in terminal
 - `mobile-utils.ts` - Mobile detection utilities
 
 ### Supporting Files
-- `terminal.ts` - XTerm cursor position API via `getCursorInfo()`
-- `vibe-terminal-binary.ts` - Binary terminal cursor position API
+- `cursor-position.ts` - **Shared cursor position calculation utility**
+- `terminal.ts` - XTerm cursor position API via `getCursorInfo()` (uses shared utility)
+- `vibe-terminal-binary.ts` - Binary terminal cursor position API (uses shared utility)
 - `session-view.ts` - Container element and terminal integration
 - `lifecycle-event-manager.ts` - Event coordination and interception
 - `ime-constants.ts` - IME-related key filtering utilities
+- `terminal-constants.ts` - **Centralized terminal element IDs and selectors**
 
 ## Browser Compatibility
 
@@ -309,7 +356,29 @@ Comprehensive logging available in browser console:
 
 ---
 
+## Recent Improvements (v1.0.0-beta.16+)
+
+### Unified Cursor Position Tracking
+- **Shared Utility**: Created `cursor-position.ts` for consistent cursor calculation across all terminal types
+- **Container-Aware Positioning**: Fixed IME positioning issues with side panels and complex layouts
+- **Precise Alignment**: Improved character width measurement for pixel-perfect cursor alignment
+- **Debug Logging**: Enhanced debug output with comprehensive coordinate information
+
+### Technical Improvements
+- **Code Deduplication**: Eliminated ~120 lines of duplicate cursor calculation code
+- **Maintainability**: Single source of truth for cursor positioning logic
+- **Type Safety**: Improved TypeScript interfaces and error handling
+- **Performance**: More efficient coordinate conversion with optimized calculations
+
+### Element ID Centralization
+- **Constants File**: Created `terminal-constants.ts` to centralize all critical terminal element IDs
+- **Prevention of Breakage**: Changes to IDs like `session-terminal`, `buffer-container`, or `terminal-container` now only require updates in one location
+- **Consistent References**: All components now import `TERMINAL_IDS` constants instead of using hardcoded strings
+- **Type Safety**: Constants are strongly typed to prevent typos and ensure consistent usage across the codebase
+
+---
+
 **Status**: ✅ Production Ready  
 **Platforms**: Desktop (Windows, macOS, Linux) and Mobile (iOS, Android)  
-**Version**: VibeTunnel Web v1.0.0-beta.15+  
-**Last Updated**: 2025-01-22
+**Version**: VibeTunnel Web v1.0.0-beta.16+  
+**Last Updated**: 2025-08-02
