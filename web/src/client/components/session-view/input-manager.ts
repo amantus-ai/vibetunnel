@@ -13,6 +13,7 @@ import { consumeEvent } from '../../utils/event-utils.js';
 import { isIMEAllowedKey } from '../../utils/ime-constants.js';
 import { createLogger } from '../../utils/logger.js';
 import { detectMobile } from '../../utils/mobile-utils.js';
+import { TERMINAL_IDS } from '../../utils/terminal-constants.js';
 import { DesktopIMEInput } from '../ime-input.js';
 import type { Terminal } from '../terminal.js';
 import type { VibeTerminalBinary } from '../vibe-terminal-binary.js';
@@ -71,16 +72,33 @@ export class InputManager {
   private setupIMEInput(): void {
     // Skip IME input setup on mobile devices (they have their own IME handling)
     if (detectMobile()) {
-      console.log('🔍 Skipping IME input setup on mobile device');
       logger.log('Skipping IME input setup on mobile device');
       return;
     }
-    console.log('🔍 Setting up IME input on desktop device');
+
+    // Skip if IME input already exists
+    if (this.imeInput) {
+      logger.log('IME input already exists, skipping setup');
+      return;
+    }
+
+    logger.log('Setting up IME input on desktop device');
+
+    // Check if terminal element exists first - if not, defer setup
+    const terminalElement = this.callbacks?.getTerminalElement?.();
+    if (!terminalElement) {
+      logger.log('Terminal element not ready yet, deferring IME setup');
+      // Retry after a short delay when terminal should be ready
+      setTimeout(() => {
+        this.setupIMEInput();
+      }, 100);
+      return;
+    }
 
     // Find the terminal container to position the IME input correctly
-    const terminalContainer = document.getElementById('terminal-container');
+    const terminalContainer = document.getElementById(TERMINAL_IDS.SESSION_TERMINAL);
     if (!terminalContainer) {
-      console.warn('🌏 InputManager: Terminal container not found, cannot setup IME input');
+      logger.warn('Terminal container not found, cannot setup IME input');
       return;
     }
 
@@ -94,8 +112,20 @@ export class InputManager {
         this.sendInput(key);
       },
       getCursorInfo: () => {
-        // For now, return null to use fallback positioning
-        // TODO: Implement cursor position tracking when Terminal/VibeTerminalBinary support it
+        // Get cursor position from the terminal element
+        const terminalElement = this.callbacks?.getTerminalElement?.();
+        if (!terminalElement) {
+          return null;
+        }
+
+        // Check if the terminal element has getCursorInfo method
+        if (
+          'getCursorInfo' in terminalElement &&
+          typeof terminalElement.getCursorInfo === 'function'
+        ) {
+          return terminalElement.getCursorInfo();
+        }
+
         return null;
       },
       autoFocus: true,
@@ -307,12 +337,18 @@ export class InputManager {
     // sendInputText is used for pasted content - always treat as literal text
     // Never interpret pasted text as special keys to avoid ambiguity
     await this.sendInputInternal({ text }, 'send input to session');
+
+    // Update IME input position after sending text
+    this.refreshIMEPosition();
   }
 
   async sendControlSequence(controlChar: string): Promise<void> {
     // sendControlSequence is for control characters - always send as literal text
     // Control characters like '\x12' (Ctrl+R) should be sent directly
     await this.sendInputInternal({ text: controlChar }, 'send control sequence to session');
+
+    // Update IME input position after sending control sequence
+    this.refreshIMEPosition();
   }
 
   async sendInput(inputText: string): Promise<void> {
@@ -350,6 +386,27 @@ export class InputManager {
 
     const input = specialKeys.includes(inputText) ? { key: inputText } : { text: inputText };
     await this.sendInputInternal(input, 'send input to session');
+
+    // Update IME input position after sending input
+    this.refreshIMEPosition();
+  }
+
+  private refreshIMEPosition(): void {
+    // Update IME input position if it exists
+    if (this.imeInput?.isFocused()) {
+      // Shorter delay and also update immediately
+      this.imeInput?.refreshPosition();
+
+      // Small delay to allow terminal to update cursor position after server response
+      setTimeout(() => {
+        this.imeInput?.refreshPosition();
+      }, 25);
+
+      // Another update after a bit longer delay for good measure
+      setTimeout(() => {
+        this.imeInput?.refreshPosition();
+      }, 100);
+    }
   }
 
   isKeyboardShortcut(e: KeyboardEvent): boolean {
@@ -442,6 +499,16 @@ export class InputManager {
     // Clear references to prevent memory leaks
     this.session = null;
     this.callbacks = null;
+  }
+
+  /**
+   * Retry IME setup - useful when terminal becomes ready after initial setup attempt
+   */
+  retryIMESetup(): void {
+    if (!this.imeInput && !detectMobile()) {
+      logger.log('Retrying IME setup after terminal became ready');
+      this.setupIMEInput();
+    }
   }
 
   // For testing purposes only
