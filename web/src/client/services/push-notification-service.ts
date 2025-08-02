@@ -315,7 +315,7 @@ export class PushNotificationService {
       // Subscribe to push notifications
       this.pushSubscription = await this.serviceWorkerRegistration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: vapidKey,
+        applicationServerKey: vapidKey as BufferSource,
       });
 
       // Convert to our interface format
