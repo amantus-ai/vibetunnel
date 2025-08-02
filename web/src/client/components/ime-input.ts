@@ -52,22 +52,27 @@ export class DesktopIMEInput {
   private createInput(): HTMLInputElement {
     const input = document.createElement('input');
     input.type = 'text';
+    // Use a more standard IME input approach - always visible but positioned
     input.style.position = 'absolute';
-    input.style.top = '0px';
-    input.style.left = '0px';
+    input.style.top = '-9999px'; // Start off-screen
+    input.style.left = '-9999px';
     input.style.transform = 'none';
-    input.style.width = '1px';
-    input.style.height = '1px';
-    input.style.fontSize = '16px';
-    input.style.padding = '0';
+    input.style.width = '200px'; // Fixed width for better IME compatibility
+    input.style.height = '24px';
+    input.style.fontSize = '16px'; // Standard size for IME
+    input.style.padding = '2px 4px';
     input.style.border = 'none';
     input.style.borderRadius = '0';
     input.style.backgroundColor = 'transparent';
-    input.style.color = 'transparent';
+    input.style.color = '#e2e8f0';
     input.style.zIndex = String(this.options.zIndex || Z_INDEX.IME_INPUT);
-    input.style.opacity = '0';
-    input.style.pointerEvents = 'none';
-    input.placeholder = 'CJK Input';
+    input.style.opacity = '1';
+    input.style.visibility = 'visible';
+    input.style.pointerEvents = 'auto';
+    input.style.fontFamily =
+      'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace';
+    input.style.outline = 'none';
+    input.style.caretColor = 'transparent'; // Hide the blinking cursor
     input.autocapitalize = 'off';
     input.setAttribute('autocorrect', 'off');
     input.autocomplete = 'off';
@@ -136,6 +141,8 @@ export class DesktopIMEInput {
   private handleCompositionStart = () => {
     this.isComposing = true;
     document.body.setAttribute('data-ime-composing', 'true');
+    // Keep input visible during composition
+    this.showInput();
     this.updatePosition();
     logger.log('IME composition started');
   };
@@ -158,10 +165,13 @@ export class DesktopIMEInput {
     this.input.value = '';
     logger.log('IME composition ended:', finalText);
 
-    // Update position after composition ends
+    // Hide input after composition if not focused
     setTimeout(() => {
+      if (document.activeElement !== this.input) {
+        this.hideInput();
+      }
       this.updatePosition();
-    }, 50);
+    }, 100);
   };
 
   private handleInput = (e: Event) => {
@@ -177,6 +187,12 @@ export class DesktopIMEInput {
     if (text) {
       this.options.onTextInput(text);
       input.value = '';
+      // Hide input after sending text if not focused
+      setTimeout(() => {
+        if (document.activeElement !== this.input) {
+          this.hideInput();
+        }
+      }, 100);
     }
   };
 
@@ -186,7 +202,7 @@ export class DesktopIMEInput {
       return;
     }
 
-    // During IME composition, let the browser handle ALL keys
+    // During IME composition, let the browser handle ALL keys including Enter
     if (this.isComposing) {
       return;
     }
@@ -195,12 +211,16 @@ export class DesktopIMEInput {
     if (this.options.onSpecialKey) {
       switch (e.key) {
         case 'Enter':
-          e.preventDefault();
           if (this.input.value.trim()) {
+            // Send the text content and clear input
+            e.preventDefault();
             this.options.onTextInput(this.input.value);
             this.input.value = '';
+          } else {
+            // Send Enter key to terminal only if input is empty
+            e.preventDefault();
+            this.options.onSpecialKey('enter');
           }
-          this.options.onSpecialKey('enter');
           break;
         case 'Backspace':
           if (!this.input.value) {
@@ -258,6 +278,9 @@ export class DesktopIMEInput {
     document.body.setAttribute('data-ime-input-focused', 'true');
     logger.log('IME input focused');
 
+    // Show the input when focused
+    this.showInput();
+
     // Start focus retention to prevent losing focus
     this.startFocusRetention();
   };
@@ -271,9 +294,25 @@ export class DesktopIMEInput {
       if (document.activeElement !== this.input) {
         document.body.removeAttribute('data-ime-input-focused');
         this.stopFocusRetention();
+        // Hide the input when not focused and not composing
+        if (!this.isComposing) {
+          this.hideInput();
+        }
       }
     }, 50);
   };
+
+  private showInput(): void {
+    // Position will be updated by updatePosition()
+    logger.log('IME input shown');
+  }
+
+  private hideInput(): void {
+    // Move input off-screen instead of hiding
+    this.input.style.top = '-9999px';
+    this.input.style.left = '-9999px';
+    logger.log('IME input hidden');
+  }
 
   private updatePosition(): void {
     if (!this.options.getCursorInfo) {
@@ -303,10 +342,15 @@ export class DesktopIMEInput {
   }
 
   focus(): void {
+    // Update position first to bring input into view
     this.updatePosition();
+    this.showInput();
+
+    // Use immediate focus
+    this.input.focus();
+
+    // Verify focus worked
     requestAnimationFrame(() => {
-      this.input.focus();
-      // If focus didn't work, try once more
       if (document.activeElement !== this.input) {
         requestAnimationFrame(() => {
           if (document.activeElement !== this.input) {
@@ -347,15 +391,11 @@ export class DesktopIMEInput {
       return;
     }
 
+    // Don't use aggressive focus retention - it interferes with IME
+    // Just ensure focus stays during composition
     if (this.focusRetentionInterval) {
       clearInterval(this.focusRetentionInterval);
     }
-
-    this.focusRetentionInterval = setInterval(() => {
-      if (document.activeElement !== this.input) {
-        this.input.focus();
-      }
-    }, 100) as unknown as number;
   }
 
   private stopFocusRetention(): void {

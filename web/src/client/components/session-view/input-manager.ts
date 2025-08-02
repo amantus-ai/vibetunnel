@@ -69,7 +69,10 @@ export class InputManager {
     this.callbacks = callbacks;
   }
 
-  private setupIMEInput(): void {
+  private setupIMEInput(retryCount = 0): void {
+    const MAX_RETRIES = 10;
+    const IME_SETUP_RETRY_DELAY_MS = 100;
+
     // Skip IME input setup on mobile devices (they have their own IME handling)
     if (detectMobile()) {
       logger.log('Skipping IME input setup on mobile device');
@@ -87,11 +90,17 @@ export class InputManager {
     // Check if terminal element exists first - if not, defer setup
     const terminalElement = this.callbacks?.getTerminalElement?.();
     if (!terminalElement) {
-      logger.log('Terminal element not ready yet, deferring IME setup');
+      if (retryCount >= MAX_RETRIES) {
+        logger.error('Failed to setup IME after maximum retries');
+        return;
+      }
+      logger.log(
+        `Terminal element not ready yet, deferring IME setup (retry ${retryCount + 1}/${MAX_RETRIES})`
+      );
       // Retry after a short delay when terminal should be ready
       setTimeout(() => {
-        this.setupIMEInput();
-      }, 100);
+        this.setupIMEInput(retryCount + 1);
+      }, IME_SETUP_RETRY_DELAY_MS);
       return;
     }
 
@@ -394,18 +403,14 @@ export class InputManager {
   private refreshIMEPosition(): void {
     // Update IME input position if it exists
     if (this.imeInput?.isFocused()) {
-      // Shorter delay and also update immediately
+      // Update immediately first
       this.imeInput?.refreshPosition();
 
-      // Small delay to allow terminal to update cursor position after server response
+      // Debounced update after allowing terminal to update cursor position
+      // Use a single setTimeout to avoid race conditions
       setTimeout(() => {
         this.imeInput?.refreshPosition();
-      }, 25);
-
-      // Another update after a bit longer delay for good measure
-      setTimeout(() => {
-        this.imeInput?.refreshPosition();
-      }, 100);
+      }, 50);
     }
   }
 

@@ -3,6 +3,46 @@
  */
 import { TERMINAL_IDS } from './terminal-constants.js';
 
+// Cache for character width measurements per font size
+const charWidthCache = new Map<number, number>();
+
+/**
+ * Measure character width for a given font size, with caching
+ * @param fontSize - Font size in pixels
+ * @param container - Container element to append test element to
+ * @returns Character width in pixels
+ */
+function measureCharacterWidth(fontSize: number, container: Element): number {
+  // Return cached value if available
+  if (charWidthCache.has(fontSize)) {
+    const cachedWidth = charWidthCache.get(fontSize);
+    if (cachedWidth !== undefined) {
+      return cachedWidth;
+    }
+  }
+
+  // Create test element to measure character width
+  const testElement = document.createElement('span');
+  testElement.style.position = 'absolute';
+  testElement.style.visibility = 'hidden';
+  testElement.style.fontSize = `${fontSize}px`;
+  testElement.style.fontFamily =
+    'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace';
+  testElement.textContent = '0';
+
+  try {
+    container.appendChild(testElement);
+    const charWidth = testElement.getBoundingClientRect().width;
+
+    // Cache the measurement
+    charWidthCache.set(fontSize, charWidth);
+    return charWidth;
+  } finally {
+    // Ensure cleanup even if measurement fails
+    container.removeChild(testElement);
+  }
+}
+
 /**
  * Calculate cursor position for IME input positioning
  * @param cursorX - Cursor column position (0-based)
@@ -31,18 +71,8 @@ export function calculateCursorPosition(
     // Calculate character dimensions based on font size
     const lineHeight = fontSize * 1.2;
 
-    // Measure character width using a test element
-    const testElement = document.createElement('span');
-    testElement.style.position = 'absolute';
-    testElement.style.visibility = 'hidden';
-    testElement.style.fontSize = `${fontSize}px`;
-    testElement.style.fontFamily =
-      'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace';
-    testElement.textContent = '0';
-
-    container.appendChild(testElement);
-    const charWidth = testElement.getBoundingClientRect().width;
-    container.removeChild(testElement);
+    // Get character width with caching
+    const charWidth = measureCharacterWidth(fontSize, container);
 
     // Calculate cursor position within the terminal container
     const terminalRect = container.getBoundingClientRect();
