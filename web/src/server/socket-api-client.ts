@@ -35,19 +35,27 @@ export interface ServerStatus {
  */
 export class SocketApiClient {
   private readonly controlSocketPath: string;
+  private readonly controlDir: string;
 
   constructor() {
     // Use control directory from environment or default
-    const controlDir = process.env.VIBETUNNEL_CONTROL_DIR || path.join(os.homedir(), '.vibetunnel');
+    this.controlDir = process.env.VIBETUNNEL_CONTROL_DIR || path.join(os.homedir(), '.vibetunnel');
     // Use api.sock instead of control.sock to avoid conflicts with Mac app
-    this.controlSocketPath = path.join(controlDir, 'api.sock');
+    this.controlSocketPath = path.join(this.controlDir, 'api.sock');
+
+    logger.debug(`SocketApiClient initialized with control directory: ${this.controlDir}`);
+    logger.debug(`Socket path: ${this.controlSocketPath}`);
   }
 
   /**
    * Check if the control socket exists
    */
   private isSocketAvailable(): boolean {
-    return fs.existsSync(this.controlSocketPath);
+    const available = fs.existsSync(this.controlSocketPath);
+    logger.debug(
+      `Socket availability check: ${this.controlSocketPath} - ${available ? 'available' : 'not available'}`
+    );
+    return available;
   }
 
   /**

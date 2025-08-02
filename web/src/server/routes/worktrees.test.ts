@@ -300,7 +300,6 @@ branch refs/heads/feature
     });
   });
 
-
   describe('POST /api/worktrees/follow', () => {
     it('should enable follow mode', async () => {
       // Mock worktree list to find the path for the branch
@@ -312,13 +311,13 @@ branch refs/heads/main
 `,
         stderr: '',
       });
-      
+
       // Mock setting git config for follow branch
       mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' }); // config set
-      
+
       // Mock branch list check
       mockExecFile.mockResolvedValueOnce({ stdout: '* main\n', stderr: '' });
-      
+
       // Mock checkout
       mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
 
