@@ -40,7 +40,8 @@ test.describe('Terminal Basic Tests', () => {
     await page.waitForTimeout(1000);
 
     // Type a simple command
-    await page.keyboard.type('echo "Terminal Input Test"');
+    await page.keyboard.type('echo "Terminal Input Test"', { delay: 10 });
+    await page.waitForTimeout(500);
     await page.keyboard.press('Enter');
 
     // Wait for command to execute
@@ -67,7 +68,8 @@ test.describe('Terminal Basic Tests', () => {
     await page.waitForTimeout(1000);
 
     // Test basic text input
-    await page.keyboard.type('pwd');
+    await page.keyboard.type('pwd', { delay: 10 });
+    await page.waitForTimeout(500);
     await page.keyboard.press('Enter');
     await page.waitForTimeout(2000);
 
@@ -117,11 +119,13 @@ test.describe('Terminal Basic Tests', () => {
       const command = commands[i];
       console.log(`Executing command ${i + 1}: ${command}`);
 
-      await page.keyboard.type(command);
+      // Type slower in CI environment to avoid command truncation
+      await page.keyboard.type(command, { delay: 10 });
+      await page.waitForTimeout(500); // Wait before pressing Enter
       await page.keyboard.press('Enter');
 
-      // Wait between commands
-      await page.waitForTimeout(2000);
+      // Wait longer between commands in CI
+      await page.waitForTimeout(3000);
     }
 
     // Verify some of the command outputs
@@ -148,13 +152,13 @@ test.describe('Terminal Basic Tests', () => {
     await page.waitForTimeout(1000);
 
     // Generate a lot of output to test scrolling
-    await page.keyboard.type(
-      'for i in {1..20}; do echo "Line $i - Testing terminal scrolling"; done'
-    );
+    const scrollCommand = 'for i in {1..20}; do echo "Line $i - Testing terminal scrolling"; done';
+    await page.keyboard.type(scrollCommand, { delay: 10 });
+    await page.waitForTimeout(500); // Wait before pressing Enter
     await page.keyboard.press('Enter');
 
     // Wait for command to complete
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(8000);
 
     // Verify some of the output
     await expect(terminal).toContainText('Line 1 - Testing terminal scrolling');
