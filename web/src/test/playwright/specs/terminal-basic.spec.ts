@@ -1,9 +1,13 @@
 import { expect, test } from '../fixtures/test.fixture';
 import { assertTerminalReady } from '../helpers/assertion.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
+import {
+  executeCommandIntelligent,
+  executeCommandsWithExpectedOutputs,
+  waitForTerminalReady,
+} from '../helpers/terminal.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 import { TestDataFactory } from '../utils/test-utils';
-import { executeCommandIntelligent, executeCommandsWithExpectedOutputs, waitForTerminalReady } from '../helpers/terminal.helper';
 
 // Use a unique prefix for this test suite
 const TEST_PREFIX = TestDataFactory.getTestSpecificPrefix('terminal-basic');
@@ -66,7 +70,7 @@ test.describe('Terminal Basic Tests', () => {
 
     // Test arrow keys for command history
     await page.keyboard.press('ArrowUp');
-    
+
     // Test backspace
     await page.keyboard.press('Backspace');
     await page.keyboard.press('Backspace');
@@ -92,28 +96,25 @@ test.describe('Terminal Basic Tests', () => {
     await terminal.click();
     await page.waitForTimeout(1000);
 
-    // Execute a series of commands
-    const commands = [
-      'echo "Command 1: Starting test"',
-      'pwd',
-      'echo "Command 2: Working directory shown"',
-      'whoami',
-      'echo "Command 3: User identified"',
-      'date',
-      'echo "Command 4: Date displayed"',
-    ];
+    // Execute a series of commands (defined but used in commandsWithOutputs below)
 
     // Use the new intelligent command sequence execution
     const commandsWithOutputs = [
       { command: 'echo "Command 1: Starting test"', expectedOutput: 'Command 1: Starting test' },
       { command: 'pwd' },
-      { command: 'echo "Command 2: Working directory shown"', expectedOutput: 'Command 2: Working directory shown' },
+      {
+        command: 'echo "Command 2: Working directory shown"',
+        expectedOutput: 'Command 2: Working directory shown',
+      },
       { command: 'whoami' },
-      { command: 'echo "Command 3: User identified"', expectedOutput: 'Command 3: User identified' },
+      {
+        command: 'echo "Command 3: User identified"',
+        expectedOutput: 'Command 3: User identified',
+      },
       { command: 'date' },
       { command: 'echo "Command 4: Date displayed"', expectedOutput: 'Command 4: Date displayed' },
     ];
-    
+
     await executeCommandsWithExpectedOutputs(page, commandsWithOutputs);
 
     // Verify some of the command outputs with longer timeouts
@@ -141,16 +142,16 @@ test.describe('Terminal Basic Tests', () => {
 
     // Generate a lot of output to test scrolling - use simpler commands for CI reliability
     console.log('Generating output for scrolling test...');
-    
+
     // Use multiple simple echo commands instead of a complex loop
     const outputs = [
       'Line 1 - Testing terminal scrolling',
-      'Line 2 - Testing terminal scrolling', 
+      'Line 2 - Testing terminal scrolling',
       'Line 3 - Testing terminal scrolling',
       'Line 4 - Testing terminal scrolling',
-      'Line 5 - Testing terminal scrolling'
+      'Line 5 - Testing terminal scrolling',
     ];
-    
+
     // Use intelligent command execution for scrolling test
     for (const output of outputs) {
       await executeCommandIntelligent(page, `echo "${output}"`, output);
@@ -191,7 +192,11 @@ test.describe('Terminal Basic Tests', () => {
 
     // Execute a command to create identifiable output
     // Execute marker command with intelligent waiting
-    await executeCommandIntelligent(page, 'echo "State persistence test marker"', 'State persistence test marker');
+    await executeCommandIntelligent(
+      page,
+      'echo "State persistence test marker"',
+      'State persistence test marker'
+    );
 
     // Verify the output is there
     await expect(terminal).toContainText('State persistence test marker');

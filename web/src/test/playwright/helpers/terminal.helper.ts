@@ -14,7 +14,8 @@ import { TestDataFactory } from '../utils/test-utils';
 export async function waitForShellPrompt(page: Page): Promise<void> {
   await page.waitForFunction(
     () => {
-      const terminal = document.querySelector('#session-terminal') || document.querySelector('vibe-terminal');
+      const terminal =
+        document.querySelector('#session-terminal') || document.querySelector('vibe-terminal');
       if (!terminal) return false;
 
       // Check the terminal container first
@@ -32,9 +33,11 @@ export async function waitForShellPrompt(page: Page): Promise<void> {
         /][$>#%❯]\s*$/, // Bracketed prompts
         /~\s*[$>#%❯]\s*$/, // Home directory prompts
       ];
-      
-      return promptPatterns.some(pattern => pattern.test(content)) || 
-             (content.length > 10 && /[$>#%❯]/.test(content));
+
+      return (
+        promptPatterns.some((pattern) => pattern.test(content)) ||
+        (content.length > 10 && /[$>#%❯]/.test(content))
+      );
     },
     { timeout: 10000 } // Increased timeout for reliability
   );
@@ -45,21 +48,24 @@ export async function waitForShellPrompt(page: Page): Promise<void> {
  */
 export async function waitForTerminalReady(page: Page): Promise<void> {
   const terminal = page.locator('#session-terminal');
-  
+
   // Ensure terminal is visible and clickable
   await terminal.waitFor({ state: 'visible' });
-  
+
   // Wait for terminal initialization and prompt
-  await page.waitForFunction(() => {
-    const term = document.querySelector('#session-terminal');
-    if (!term) return false;
-    
-    const content = term.textContent || '';
-    const hasContent = content.length > 5;
-    const hasPrompt = /[$>#%❯]/.test(content);
-    
-    return hasContent && hasPrompt;
-  }, { timeout: 15000 });
+  await page.waitForFunction(
+    () => {
+      const term = document.querySelector('#session-terminal');
+      if (!term) return false;
+
+      const content = term.textContent || '';
+      const hasContent = content.length > 5;
+      const hasPrompt = /[$>#%❯]/.test(content);
+
+      return hasContent && hasPrompt;
+    },
+    { timeout: 15000 }
+  );
 }
 
 /**
@@ -87,24 +93,24 @@ export async function executeCommandIntelligent(
     ({ before, expectedText, expectRegex }) => {
       const term = document.querySelector('#session-terminal');
       const current = term?.textContent || '';
-      
+
       // Command must have completed (content changed)
       if (current === before) return false;
-      
+
       // Check for expected output if provided
       if (expectedText && !current.includes(expectedText)) return false;
       if (expectRegex) {
         const regex = new RegExp(expectRegex);
         if (!regex.test(current)) return false;
       }
-      
+
       // Must end with a new prompt (command completed)
       return /[$>#%❯]\s*$/.test(current);
     },
-    { 
-      before: beforeContent, 
+    {
+      before: beforeContent,
       expectedText: typeof expectedOutput === 'string' ? expectedOutput : null,
-      expectRegex: expectedOutput instanceof RegExp ? expectedOutput.source : null
+      expectRegex: expectedOutput instanceof RegExp ? expectedOutput.source : null,
     },
     { timeout: 15000 }
   );
@@ -137,7 +143,7 @@ export async function executeCommandSequence(page: Page, commands: string[]): Pr
  * Execute commands with outputs for verification
  */
 export async function executeCommandsWithExpectedOutputs(
-  page: Page, 
+  page: Page,
   commandsWithOutputs: Array<{ command: string; expectedOutput?: string | RegExp }>
 ): Promise<void> {
   for (let i = 0; i < commandsWithOutputs.length; i++) {

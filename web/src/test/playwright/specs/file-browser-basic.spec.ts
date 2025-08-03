@@ -55,31 +55,43 @@ test.describe('File Browser Basic Tests', () => {
     }
 
     // Intelligent waiting for any file browser interface to appear
-    const fileBrowserDetected = await page.waitForFunction(() => {
-      // Check for multiple possible file browser implementations
-      const fileBrowser = document.querySelector('file-browser, [data-testid="file-browser"]');
-      const fileDialog = document.querySelector('dialog, modal-wrapper, [role="dialog"]');
-      const fileInput = document.querySelector('input[type="file"]');
-      const modalContent = document.querySelector('.modal-content');
-      const browserVisible = fileBrowser && (fileBrowser.offsetParent !== null || fileBrowser.getAttribute('visible') === 'true');
-      
-      return {
-        found: !!(fileBrowser || fileDialog || fileInput || modalContent),
-        visible: !!(browserVisible || fileDialog?.offsetParent || fileInput?.offsetParent || modalContent?.offsetParent),
-        types: {
-          fileBrowser: !!fileBrowser,
-          dialog: !!fileDialog, 
-          input: !!fileInput,
-          modal: !!modalContent
-        }
-      };
-    }, { timeout: 8000 }).catch(() => ({ found: false, visible: false, types: {} }));
-    
+    const fileBrowserDetected = await page
+      .waitForFunction(
+        () => {
+          // Check for multiple possible file browser implementations
+          const fileBrowser = document.querySelector('file-browser, [data-testid="file-browser"]');
+          const fileDialog = document.querySelector('dialog, modal-wrapper, [role="dialog"]');
+          const fileInput = document.querySelector('input[type="file"]');
+          const modalContent = document.querySelector('.modal-content');
+          const browserVisible =
+            fileBrowser &&
+            (fileBrowser.offsetParent !== null || fileBrowser.getAttribute('visible') === 'true');
+
+          return {
+            found: !!(fileBrowser || fileDialog || fileInput || modalContent),
+            visible: !!(
+              browserVisible ||
+              fileDialog?.offsetParent ||
+              fileInput?.offsetParent ||
+              modalContent?.offsetParent
+            ),
+            types: {
+              fileBrowser: !!fileBrowser,
+              dialog: !!fileDialog,
+              input: !!fileInput,
+              modal: !!modalContent,
+            },
+          };
+        },
+        { timeout: 8000 }
+      )
+      .catch(() => ({ found: false, visible: false, types: {} }));
+
     console.log('File browser detection result:', fileBrowserDetected);
-    
+
     if (fileBrowserDetected.found) {
       console.log('✅ File browser interface detected - UI flow working');
-      
+
       // Additional check for visibility if element was found
       if (fileBrowserDetected.visible) {
         console.log('✅ File browser is visible and functional');
@@ -87,7 +99,9 @@ test.describe('File Browser Basic Tests', () => {
         console.log('ℹ️  File browser exists but may be hidden - this is acceptable');
       }
     } else {
-      console.log('ℹ️  File browser not available in this test environment - test passes gracefully');
+      console.log(
+        'ℹ️  File browser not available in this test environment - test passes gracefully'
+      );
     }
   });
 
@@ -109,22 +123,30 @@ test.describe('File Browser Basic Tests', () => {
     const imageUploadButton = sessionView.locator('[data-testid="image-upload-button"]').first();
     if (await imageUploadButton.isVisible({ timeout: 2000 })) {
       await imageUploadButton.click();
-      
+
       // Intelligent waiting for file browser UI elements
-      const uiElementsFound = await page.waitForFunction(() => {
-        const browser = document.querySelector('file-browser, [data-testid="file-browser"]');
-        if (!browser) return false;
-        
-        const pathDisplay = browser.querySelector('.path, [data-testid="current-path"]');
-        const fileList = browser.querySelector('.file-list, .directory-content, [data-testid="file-list"]');
-        
-        return {
-          hasPath: !!pathDisplay,
-          hasFileList: !!fileList,
-          isVisible: browser.offsetParent !== null || browser.getAttribute('visible') === 'true'
-        };
-      }, { timeout: 8000 }).catch(() => ({ hasPath: false, hasFileList: false, isVisible: false }));
-      
+      const uiElementsFound = await page
+        .waitForFunction(
+          () => {
+            const browser = document.querySelector('file-browser, [data-testid="file-browser"]');
+            if (!browser) return false;
+
+            const pathDisplay = browser.querySelector('.path, [data-testid="current-path"]');
+            const fileList = browser.querySelector(
+              '.file-list, .directory-content, [data-testid="file-list"]'
+            );
+
+            return {
+              hasPath: !!pathDisplay,
+              hasFileList: !!fileList,
+              isVisible:
+                browser.offsetParent !== null || browser.getAttribute('visible') === 'true',
+            };
+          },
+          { timeout: 8000 }
+        )
+        .catch(() => ({ hasPath: false, hasFileList: false, isVisible: false }));
+
       if (uiElementsFound.hasPath || uiElementsFound.hasFileList) {
         console.log('✅ File browser UI elements verified');
       } else {
@@ -153,28 +175,41 @@ test.describe('File Browser Basic Tests', () => {
       await imageUploadButton.click();
 
       // Wait for file browser to be fully loaded with navigation elements
-      const navigationReady = await page.waitForFunction(() => {
-        const browser = document.querySelector('file-browser, [data-testid="file-browser"]');
-        if (!browser) return false;
-        
-        const upButton = browser.querySelector('button[data-testid="up-directory"], .up-button, button:has-text("..")') as HTMLElement;
-        const closeButton = browser.querySelector('button[data-testid="close"], .close-button, button:has-text("Close")');
-        
-        return {
-          hasUpButton: !!upButton,
-          hasCloseButton: !!closeButton,
-          upButtonClickable: upButton && !upButton.disabled && upButton.offsetParent !== null
-        };
-      }, { timeout: 8000 }).catch(() => ({ hasUpButton: false, hasCloseButton: false, upButtonClickable: false }));
-      
+      const navigationReady = await page
+        .waitForFunction(
+          () => {
+            const browser = document.querySelector('file-browser, [data-testid="file-browser"]');
+            if (!browser) return false;
+
+            const upButton = browser.querySelector(
+              'button[data-testid="up-directory"], .up-button, button:has-text("..")'
+            ) as HTMLElement;
+            const closeButton = browser.querySelector(
+              'button[data-testid="close"], .close-button, button:has-text("Close")'
+            );
+
+            return {
+              hasUpButton: !!upButton,
+              hasCloseButton: !!closeButton,
+              upButtonClickable: upButton && !upButton.disabled && upButton.offsetParent !== null,
+            };
+          },
+          { timeout: 8000 }
+        )
+        .catch(() => ({ hasUpButton: false, hasCloseButton: false, upButtonClickable: false }));
+
       if (navigationReady.upButtonClickable) {
-        const upButton = page.locator('button[data-testid="up-directory"], .up-button, button:has-text("..")').first();
+        const upButton = page
+          .locator('button[data-testid="up-directory"], .up-button, button:has-text("..")')
+          .first();
         await upButton.click();
         console.log('✅ Directory navigation tested');
       }
 
       if (navigationReady.hasCloseButton) {
-        const closeButton = page.locator('button[data-testid="close"], .close-button, button:has-text("Close")').first();
+        const closeButton = page
+          .locator('button[data-testid="close"], .close-button, button:has-text("Close")')
+          .first();
         await closeButton.click();
         console.log('✅ File browser close tested');
       }
