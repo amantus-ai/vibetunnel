@@ -238,7 +238,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
           return res.status(response.status).json(error);
         }
 
-        const result = (await response.json()) as { sessionId: string };
+        const result = (await response.json()) as { sessionId: string; createdAt?: string };
         logger.debug(`remote session creation took ${Date.now() - startTime}ms`);
 
         // Track the session in the remote's sessionIds
@@ -246,7 +246,8 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
           remoteRegistry.addSessionToRemote(remote.id, result.sessionId);
         }
 
-        res.json(result); // Return sessionId as-is, no namespacing
+        // Forward the complete response (maintains compatibility with newer/older servers)
+        res.json(result);
         return;
       }
 
