@@ -32,7 +32,8 @@ export type { LifecycleEventManagerCallbacks } from './interfaces.js';
 export class LifecycleEventManager extends ManagerEventEmitter {
   private callbacks: LifecycleEventManagerCallbacks | null = null;
   private session: Session | null = null;
-  private sessionViewElement: HTMLElement | null = null; // Used via setSessionViewElement method
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used for element storage via setSessionViewElement
+  private sessionViewElement: HTMLElement | null = null;
   private touchStartX = 0;
   private touchStartY = 0;
 

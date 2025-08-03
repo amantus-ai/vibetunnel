@@ -19,15 +19,30 @@ const mockPtyManager = {
 
 describe('MultiplexerManager', () => {
   let multiplexerManager: MultiplexerManager;
-  let mockTmuxManager: any;
-  let mockZellijManager: any;
-  let mockScreenManager: any;
+  let mockTmuxManager: Partial<{
+    listSessions: () => Promise<unknown[]>;
+    createSession: (options: unknown) => Promise<string>;
+    attachToSession: (sessionId: string) => Promise<void>;
+    killSession: (sessionId: string) => Promise<void>;
+  }>;
+  let mockZellijManager: Partial<{
+    listSessions: () => Promise<unknown[]>;
+    createSession: (options: unknown) => Promise<string>;
+    attachToSession: (sessionId: string) => Promise<void>;
+    killSession: (sessionId: string) => Promise<void>;
+  }>;
+  let mockScreenManager: Partial<{
+    listSessions: () => Promise<unknown[]>;
+    createSession: (options: unknown) => Promise<string>;
+    attachToSession: (sessionId: string) => Promise<void>;
+    killSession: (sessionId: string) => Promise<void>;
+  }>;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
     // Reset singleton instance
-    (MultiplexerManager as any).instance = undefined;
+    (MultiplexerManager as unknown as { instance?: MultiplexerManager }).instance = undefined;
 
     // Setup mock instances
     mockTmuxManager = {

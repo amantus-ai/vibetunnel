@@ -34,7 +34,7 @@ describe('TmuxManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset singleton instance
-    (TmuxManager as any).instance = undefined;
+    (TmuxManager as unknown as { instance?: TmuxManager }).instance = undefined;
     tmuxManager = TmuxManager.getInstance(mockPtyManager);
   });
 

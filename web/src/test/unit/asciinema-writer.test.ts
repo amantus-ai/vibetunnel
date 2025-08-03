@@ -171,9 +171,11 @@ describe('AsciinemaWriter byte position tracking', () => {
 
     // Check that the position tracking math is consistent
     const positionAfterWrites = writer.getPosition();
-    
+
     // The fundamental requirement: written + pending = total
-    expect(positionAfterWrites.total).toBe(positionAfterWrites.written + positionAfterWrites.pending);
+    expect(positionAfterWrites.total).toBe(
+      positionAfterWrites.written + positionAfterWrites.pending
+    );
 
     // Wait for writes to complete
     await new Promise((resolve) => setTimeout(resolve, 200));
