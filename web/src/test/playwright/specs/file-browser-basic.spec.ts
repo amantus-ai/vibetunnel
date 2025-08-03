@@ -23,7 +23,7 @@ test.describe('File Browser Basic Tests', () => {
 
   test('should open file browser from session view', async ({ page }) => {
     test.setTimeout(45000);
-    
+
     // Create and navigate to session
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-test'),
@@ -39,14 +39,16 @@ test.describe('File Browser Basic Tests', () => {
     // Try to find file browser trigger - could be upload button or menu
     const imageUploadButton = sessionView.locator('[data-testid="image-upload-button"]').first();
     const compactMenuButton = sessionView.locator('compact-menu button').first();
-    
+
     // Check which UI mode we're in and click appropriate button
     if (await imageUploadButton.isVisible({ timeout: 2000 })) {
       await imageUploadButton.click();
     } else if (await compactMenuButton.isVisible({ timeout: 2000 })) {
       await compactMenuButton.click();
       // Look for file browser option in menu
-      const fileBrowserOption = page.locator('menu-item[text*="Browse"], menu-item[text*="File"], [data-testid="file-browser-option"]');
+      const fileBrowserOption = page.locator(
+        'menu-item[text*="Browse"], menu-item[text*="File"], [data-testid="file-browser-option"]'
+      );
       if (await fileBrowserOption.isVisible({ timeout: 2000 })) {
         await fileBrowserOption.click();
       }
@@ -61,7 +63,7 @@ test.describe('File Browser Basic Tests', () => {
 
   test('should show file browser elements', async ({ page }) => {
     test.setTimeout(45000);
-    
+
     // Create session and open file browser
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-browser-ui-test'),
@@ -87,7 +89,9 @@ test.describe('File Browser Basic Tests', () => {
       await expect(pathDisplay).toBeVisible({ timeout: 5000 });
 
       // Look for file list or directory content
-      const fileList = fileBrowser.locator('.file-list, .directory-content, [data-testid="file-list"]');
+      const fileList = fileBrowser.locator(
+        '.file-list, .directory-content, [data-testid="file-list"]'
+      );
       await expect(fileList).toBeVisible({ timeout: 5000 });
 
       console.log('✅ File browser UI elements verified');
@@ -98,7 +102,7 @@ test.describe('File Browser Basic Tests', () => {
 
   test('should handle file browser navigation', async ({ page }) => {
     test.setTimeout(45000);
-    
+
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('file-nav-test'),
     });
@@ -109,14 +113,16 @@ test.describe('File Browser Basic Tests', () => {
     // Try to open file browser
     const sessionView = page.locator('session-view').first();
     const imageUploadButton = sessionView.locator('[data-testid="image-upload-button"]').first();
-    
+
     if (await imageUploadButton.isVisible({ timeout: 2000 })) {
       await imageUploadButton.click();
-      
+
       const fileBrowser = page.locator('file-browser, [data-testid="file-browser"]');
       if (await fileBrowser.isVisible({ timeout: 5000 })) {
         // Try to navigate up a directory
-        const upButton = fileBrowser.locator('button[data-testid="up-directory"], .up-button, button:has-text("..")');
+        const upButton = fileBrowser.locator(
+          'button[data-testid="up-directory"], .up-button, button:has-text("..")'
+        );
         if (await upButton.isVisible({ timeout: 3000 })) {
           await upButton.click();
           await page.waitForTimeout(1000);
@@ -124,7 +130,9 @@ test.describe('File Browser Basic Tests', () => {
         }
 
         // Try to close file browser
-        const closeButton = fileBrowser.locator('button[data-testid="close"], .close-button, button:has-text("Close")');
+        const closeButton = fileBrowser.locator(
+          'button[data-testid="close"], .close-button, button:has-text("Close")'
+        );
         if (await closeButton.isVisible({ timeout: 3000 })) {
           await closeButton.click();
           await page.waitForTimeout(1000);

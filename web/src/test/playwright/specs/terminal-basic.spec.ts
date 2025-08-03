@@ -23,7 +23,7 @@ test.describe('Terminal Basic Tests', () => {
 
   test('should display terminal and accept input', async ({ page }) => {
     test.setTimeout(45000);
-    
+
     // Create and navigate to session
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('terminal-input-test'),
@@ -54,7 +54,7 @@ test.describe('Terminal Basic Tests', () => {
 
   test('should handle keyboard interactions', async ({ page }) => {
     test.setTimeout(45000);
-    
+
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('keyboard-test'),
     });
@@ -79,7 +79,7 @@ test.describe('Terminal Basic Tests', () => {
     await page.keyboard.press('Backspace');
     await page.keyboard.press('Backspace');
     await page.keyboard.press('Backspace');
-    
+
     // Type new command
     await page.keyboard.type('ls');
     await page.keyboard.press('Enter');
@@ -90,7 +90,7 @@ test.describe('Terminal Basic Tests', () => {
 
   test('should execute multiple commands sequentially', async ({ page }) => {
     test.setTimeout(60000);
-    
+
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('multi-command-test'),
     });
@@ -110,16 +110,16 @@ test.describe('Terminal Basic Tests', () => {
       'whoami',
       'echo "Command 3: User identified"',
       'date',
-      'echo "Command 4: Date displayed"'
+      'echo "Command 4: Date displayed"',
     ];
 
     for (let i = 0; i < commands.length; i++) {
       const command = commands[i];
       console.log(`Executing command ${i + 1}: ${command}`);
-      
+
       await page.keyboard.type(command);
       await page.keyboard.press('Enter');
-      
+
       // Wait between commands
       await page.waitForTimeout(2000);
     }
@@ -135,7 +135,7 @@ test.describe('Terminal Basic Tests', () => {
 
   test('should handle terminal scrolling', async ({ page }) => {
     test.setTimeout(60000);
-    
+
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('scroll-test'),
     });
@@ -148,9 +148,11 @@ test.describe('Terminal Basic Tests', () => {
     await page.waitForTimeout(1000);
 
     // Generate a lot of output to test scrolling
-    await page.keyboard.type('for i in {1..20}; do echo "Line $i - Testing terminal scrolling"; done');
+    await page.keyboard.type(
+      'for i in {1..20}; do echo "Line $i - Testing terminal scrolling"; done'
+    );
     await page.keyboard.press('Enter');
-    
+
     // Wait for command to complete
     await page.waitForTimeout(5000);
 
@@ -165,7 +167,7 @@ test.describe('Terminal Basic Tests', () => {
       await scrollableArea.hover();
       await page.mouse.wheel(0, -200);
       await page.waitForTimeout(1000);
-      
+
       // Scroll back down
       await page.mouse.wheel(0, 200);
       await page.waitForTimeout(1000);
@@ -176,7 +178,7 @@ test.describe('Terminal Basic Tests', () => {
 
   test('should maintain terminal state during navigation', async ({ page }) => {
     test.setTimeout(45000);
-    
+
     await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('state-test'),
     });
@@ -205,11 +207,15 @@ test.describe('Terminal Basic Tests', () => {
     if (await sessionCard.isVisible({ timeout: 5000 })) {
       await sessionCard.click();
       await assertTerminalReady(page, 15000);
-      
+
       // Check if our marker is still there
-      const terminalAfterReturn = page.locator('.terminal, [data-testid="terminal"], .xterm').first();
-      await expect(terminalAfterReturn).toContainText('State persistence test marker', { timeout: 10000 });
-      
+      const terminalAfterReturn = page
+        .locator('.terminal, [data-testid="terminal"], .xterm')
+        .first();
+      await expect(terminalAfterReturn).toContainText('State persistence test marker', {
+        timeout: 10000,
+      });
+
       console.log('✅ Terminal state preserved during navigation');
     } else {
       console.log('ℹ️  Session card not found, testing basic navigation instead');
