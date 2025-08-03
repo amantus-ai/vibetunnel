@@ -209,9 +209,13 @@ jobs:
       run: |
         echo "Checking iOS simulator availability..."
         
+        # Debug: Show available runtimes
+        echo "Available runtimes:"
+        xcrun simctl list runtimes | grep -E "(iOS|watch|tv)" || echo "No iOS/watchOS/tvOS runtimes found"
+        
         # Check if iOS runtimes are available and working
-        if xcrun simctl list runtimes | grep -q "iOS"; then
-          echo "iOS runtimes found, testing simulator creation..."
+        if xcrun simctl list runtimes | grep -q "iOS.*ready" && xcrun simctl list runtimes | grep -q "iOS.*18\."; then
+          echo "iOS runtimes found and ready, testing simulator creation..."
           
           # Generate unique simulator name to avoid conflicts
           SIMULATOR_NAME="VibeTunnel-iOS-${GITHUB_RUN_ID}-${GITHUB_JOB}-${RANDOM}"
@@ -281,13 +285,18 @@ jobs:
             if xcodebuild -workspace ../VibeTunnel.xcworkspace \
                 -scheme VibeTunnel-iOS \
                 -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
-                -showdestinations 2>/dev/null | grep -q "iOS Simulator.*$SIMULATOR_ID"; then
+                -showdestinations 2>&1 | grep -q "iOS Simulator.*$SIMULATOR_ID"; then
               echo "iOS simulator is working with xcodebuild, proceeding with simulator tests"
               echo "SIMULATOR_ID=$SIMULATOR_ID" >> $GITHUB_ENV
               echo "simulator_id=$SIMULATOR_ID" >> $GITHUB_OUTPUT
               echo "test_platform=ios_simulator" >> $GITHUB_OUTPUT
             else
               echo "xcodebuild cannot use iOS simulator, falling back to Mac Catalyst"
+              echo "xcodebuild destination check output:"
+              xcodebuild -workspace ../VibeTunnel.xcworkspace \
+                -scheme VibeTunnel-iOS \
+                -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+                -showdestinations 2>&1 | head -20
               cleanup_simulator "$SIMULATOR_ID"
               echo "SIMULATOR_ID=" >> $GITHUB_ENV
               echo "simulator_id=" >> $GITHUB_OUTPUT
