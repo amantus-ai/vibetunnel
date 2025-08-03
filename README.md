@@ -1071,4 +1071,3 @@ VibeTunnel is open source software licensed under the MIT License. See [LICENSE]
 ---
 
 **Ready to vibe?** [Download VibeTunnel](https://github.com/amantus-ai/vibetunnel/releases/latest) and start tunneling!
-# Trigger cache refresh for macOS runners

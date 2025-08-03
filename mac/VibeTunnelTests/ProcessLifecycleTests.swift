@@ -56,13 +56,6 @@ struct ProcessLifecycleTests {
     @Test("Shell command execution", .tags(.attachmentTests, .integration))
     func shellCommandExecution() async throws {
         // Test shell command execution patterns used in VibeTunnel
-        // Note: Testing.Attachment API is experimental and not yet stable
-        // Temporarily using print for test configuration recording
-        print("""
-        Test: Shell Command Execution
-        Command: ls /tmp
-        Expected: Successful directory listing
-        """)
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
@@ -80,15 +73,6 @@ struct ProcessLifecycleTests {
         let output = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
         let error = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
 
-        // Note: Testing.Attachment API is experimental and not yet stable
-        // Temporarily using print for shell execution recording
-        print("""
-        Exit Status: \(process.terminationStatus)
-        Standard Output:
-        \(output)
-        Standard Error:
-        \(error.isEmpty ? "(none)" : error)
-        """)
 
         #expect(process.terminationStatus == 0)
     }
@@ -100,13 +84,6 @@ struct ProcessLifecycleTests {
     )
     func networkCommandValidation() async throws {
         // Test network-related commands that VibeTunnel might use
-        // Note: Testing.Attachment API is experimental and not yet stable
-        // Temporarily using print for test configuration recording
-        print("""
-        Test: Network Command Validation
-        Command: ifconfig -a
-        Purpose: Validate network interface enumeration
-        """)
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/sbin/ifconfig")
@@ -120,14 +97,6 @@ struct ProcessLifecycleTests {
 
         let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
 
-        // Note: Testing.Attachment API is experimental and not yet stable
-        // Temporarily using print for network interface recording
-        print("""
-        Exit Status: \(process.terminationStatus)
-        Output Length: \(output.count) characters
-        Contains 'lo0': \(output.contains("lo0"))
-        Contains 'en0': \(output.contains("en0"))
-        """)
 
         #expect(process.terminationStatus == 0)
     }

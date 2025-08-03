@@ -27,17 +27,6 @@ final class ServerManagerTests {
         .disabled(if: TestConditions.isRunningInCI(), "Flaky in CI due to port conflicts and process management")
     )
     func serverLifecycle() async throws {
-        // Attach system information for debugging
-        // Note: Testing.Attachment API is experimental and not yet stable
-        // Temporarily using print for system info recording
-        print("System Info:")
-        print(TestUtilities.captureSystemInfo())
-
-        // Attach initial server state
-        // Note: Testing.Attachment API is experimental and not yet stable
-        // Temporarily using print for server state recording
-        print("Initial Server State:")
-        print(TestUtilities.captureServerState(manager))
 
         // Start the server
         await manager.start()
@@ -46,11 +35,6 @@ final class ServerManagerTests {
         let timeout = TestConditions.isRunningInCI() ? 5_000 : 2_000
         try await Task.sleep(for: .milliseconds(timeout))
 
-        // Attach server state after start attempt
-        // Note: Testing.Attachment API is experimental and not yet stable
-        // Temporarily using print for server state recording
-        print("Post-Start Server State:")
-        print(TestUtilities.captureServerState(manager))
 
         // The server binary must be available for tests
         #expect(ServerBinaryAvailableCondition.isAvailable(), "Server binary must be available for tests to run")
@@ -67,18 +51,9 @@ final class ServerManagerTests {
                 }
             }
 
-            // Note: Testing.Attachment API is experimental and not yet stable
-            // Temporarily using print for server failure recording
-            print("""
-            Server failed to start
-            Error: \(manager.lastError?.localizedDescription ?? "Unknown")
-            """)
         } else {
             // Server is running as expected
             #expect(manager.bunServer != nil)
-            // Note: Testing.Attachment API is experimental and not yet stable
-            // Temporarily using print for server status recording
-            print("Server started successfully")
         }
 
         // Stop should work regardless of state
@@ -87,11 +62,6 @@ final class ServerManagerTests {
         // After stop, server should not be running
         #expect(!manager.isRunning)
 
-        // Attach final state
-        // Note: Testing.Attachment API is experimental and not yet stable
-        // Temporarily using print for server state recording
-        print("Final Server State:")
-        print(TestUtilities.captureServerState(manager))
     }
 
     @Test("Starting server when already running does not create duplicate", .tags(.critical))
@@ -412,68 +382,26 @@ final class ServerManagerTests {
         .enabled(if: ServerBinaryAvailableCondition.isAvailable())
     )
     func serverConfigurationDiagnostics() async throws {
-        // Attach test environment
-        // Note: Testing.Attachment API is experimental and not yet stable
-        // Temporarily using print for test configuration recording
-        print("""
-        Test: Server Configuration Management
-        Binary Available: \(ServerBinaryAvailableCondition.isAvailable())
-        Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
-        """)
 
-        // Record initial state
-        // Note: Testing.Attachment API is experimental and not yet stable
-        // Temporarily using print for server state recording
-        print("Initial State:")
-        print(TestUtilities.captureServerState(manager))
 
         // Test server configuration without actually starting it
         let originalPort = manager.port
         manager.port = "4567"
 
-        // Record configuration change
-        // Note: Testing.Attachment API is experimental and not yet stable
-        // Temporarily using print for configuration change recording
-        print("""
-        Port changed from \(originalPort) to \(manager.port)
-        Bind address: \(manager.bindAddress)
-        """)
 
         #expect(manager.port == "4567")
 
         // Restore original configuration
         manager.port = originalPort
 
-        // Record final state
-        // Note: Testing.Attachment API is experimental and not yet stable
-        // Temporarily using print for server state recording
-        print("Final State:")
-        print(TestUtilities.captureServerState(manager))
     }
 
     @Test("Session model validation with attachments", .tags(.attachmentTests, .sessionManagement))
     func sessionModelValidation() async throws {
-        // Attach test info
-        // Note: Testing.Attachment API is experimental and not yet stable
-        // Temporarily using print for test info recording
-        print("""
-        Test: TunnelSession Model Validation
-        Purpose: Verify session creation and state management
-        """)
 
         // Create test session
         let session = TunnelSession()
 
-        // Record session details
-        // Note: Testing.Attachment API is experimental and not yet stable
-        // Temporarily using print for session details recording
-        print("""
-        Session ID: \(session.id)
-        Created At: \(session.createdAt)
-        Last Activity: \(session.lastActivity)
-        Is Active: \(session.isActive)
-        Process ID: \(session.processID?.description ?? "none")
-        """)
 
         // Validate session properties
         #expect(session.isActive)
