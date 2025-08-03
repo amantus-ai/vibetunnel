@@ -290,7 +290,11 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
 
             // Return the session ID - client will poll for the session to appear
             logger.log(chalk.green(`terminal spawn requested for session ${sessionId}`));
-            res.json({ sessionId, message: 'Terminal spawn requested' });
+            res.json({
+              sessionId,
+              createdAt: new Date().toISOString(),
+              message: 'Terminal spawn requested',
+            });
             return;
           }
         } catch (error) {
@@ -342,7 +346,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
 
       // Stream watcher is set up when clients connect to the stream endpoint
 
-      res.json({ sessionId });
+      res.json({ sessionId, createdAt: new Date().toISOString() });
     } catch (error) {
       logger.error('error creating session:', error);
       if (error instanceof PtyError) {
