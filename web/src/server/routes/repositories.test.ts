@@ -7,11 +7,11 @@ const mockExecAsync = vi.fn();
 
 // Mock child_process and util
 vi.mock('child_process', () => ({
-  exec: mockExecAsync,
+  exec: () => mockExecAsync(),
 }));
 
 vi.mock('util', () => ({
-  promisify: () => mockExecAsync,
+  promisify: () => () => mockExecAsync(),
 }));
 
 // Mock fs/promises

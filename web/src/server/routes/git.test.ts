@@ -7,11 +7,11 @@ const mockExecFile = vi.fn();
 
 // Mock child_process and util
 vi.mock('child_process', () => ({
-  execFile: mockExecFile,
+  execFile: () => mockExecFile(),
 }));
 
 vi.mock('util', () => ({
-  promisify: () => mockExecFile,
+  promisify: () => () => mockExecFile(),
 }));
 
 // Mock logger
