@@ -2,9 +2,14 @@ import type { Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createGitRoutes } from './git';
 
-// Mock child_process
+// Mock child_process and util
+const mockExecFile = vi.fn();
 vi.mock('child_process', () => ({
-  execFile: vi.fn(),
+  execFile: mockExecFile,
+}));
+
+vi.mock('util', () => ({
+  promisify: () => mockExecFile,
 }));
 
 // Mock logger
@@ -75,19 +80,19 @@ describe('git routes', () => {
       json: mockJson,
       status: mockStatus,
     };
+
+    // Reset mocks
+    mockExecFile.mockReset();
   });
 
   describe('GET /git/repository-info', () => {
     it('should return repository info with githubUrl field for Mac compatibility', async () => {
-      const { promisify } = await import('util');
-      const execFile = vi.fn();
-      vi.mocked(promisify).mockImplementation(() => execFile);
 
       const { isWorktree } = await import('../utils/git-utils');
       vi.mocked(isWorktree).mockResolvedValue(false);
 
       // Mock git commands
-      execFile
+      mockExecFile
         .mockResolvedValueOnce({ stdout: '/test/repo', stderr: '' }) // show-toplevel
         .mockResolvedValueOnce({ stdout: 'main', stderr: '' }) // current branch
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // status porcelain
@@ -127,15 +132,12 @@ describe('git routes', () => {
     });
 
     it('should handle SSH GitHub URLs correctly', async () => {
-      const { promisify } = await import('util');
-      const execFile = vi.fn();
-      vi.mocked(promisify).mockImplementation(() => execFile);
 
       const { isWorktree } = await import('../utils/git-utils');
       vi.mocked(isWorktree).mockResolvedValue(false);
 
       // Mock git commands with SSH URL
-      execFile
+      mockExecFile
         .mockResolvedValueOnce({ stdout: '/test/repo', stderr: '' }) // show-toplevel
         .mockResolvedValueOnce({ stdout: 'main', stderr: '' }) // current branch
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // status porcelain
@@ -173,15 +175,12 @@ describe('git routes', () => {
     });
 
     it('should handle non-GitHub remotes gracefully', async () => {
-      const { promisify } = await import('util');
-      const execFile = vi.fn();
-      vi.mocked(promisify).mockImplementation(() => execFile);
 
       const { isWorktree } = await import('../utils/git-utils');
       vi.mocked(isWorktree).mockResolvedValue(false);
 
       // Mock git commands with non-GitHub remote
-      execFile
+      mockExecFile
         .mockResolvedValueOnce({ stdout: '/test/repo', stderr: '' }) // show-toplevel
         .mockResolvedValueOnce({ stdout: 'main', stderr: '' }) // current branch
         .mockResolvedValueOnce({ stdout: '', stderr: '' }) // status porcelain
@@ -237,15 +236,12 @@ describe('git routes', () => {
     });
 
     it('should handle not a git repository', async () => {
-      const { promisify } = await import('util');
-      const execFile = vi.fn();
-      vi.mocked(promisify).mockImplementation(() => execFile);
 
       const { isNotGitRepositoryError } = await import('../utils/git-error');
       vi.mocked(isNotGitRepositoryError).mockReturnValue(true);
 
       // Mock git command failure (not a git repo)
-      execFile.mockRejectedValue(new Error('Not a git repository'));
+      mockExecFile.mockRejectedValue(new Error('Not a git repository'));
 
       mockReq.query = { path: '/test/not-repo' };
 
@@ -302,11 +298,8 @@ describe('git routes', () => {
 
   describe('GET /git/repo-info', () => {
     it('should return basic repo info', async () => {
-      const { promisify } = await import('util');
-      const execFile = vi.fn();
-      vi.mocked(promisify).mockImplementation(() => execFile);
 
-      execFile.mockResolvedValueOnce({ stdout: '/test/repo', stderr: '' });
+      mockExecFile.mockResolvedValueOnce({ stdout: '/test/repo', stderr: '' });
 
       mockReq.query = { path: '/test/repo' };
 
@@ -328,11 +321,8 @@ describe('git routes', () => {
 
   describe('GET /git/remote', () => {
     it('should return remote info with GitHub URL parsing', async () => {
-      const { promisify } = await import('util');
-      const execFile = vi.fn();
-      vi.mocked(promisify).mockImplementation(() => execFile);
 
-      execFile
+      mockExecFile
         .mockResolvedValueOnce({ stdout: '/test/repo', stderr: '' }) // show-toplevel
         .mockResolvedValueOnce({ stdout: 'https://github.com/user/repo.git', stderr: '' }); // remote get-url
 

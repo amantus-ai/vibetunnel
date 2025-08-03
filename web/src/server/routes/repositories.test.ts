@@ -2,9 +2,14 @@ import type { Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepositoryRoutes } from './repositories';
 
-// Mock child_process
+// Mock child_process and util
+const mockExecAsync = vi.fn();
 vi.mock('child_process', () => ({
-  exec: vi.fn(),
+  exec: mockExecAsync,
+}));
+
+vi.mock('util', () => ({
+  promisify: () => mockExecAsync,
 }));
 
 // Mock fs/promises
@@ -49,14 +54,13 @@ describe('repositories routes', () => {
       json: mockJson,
       status: mockStatus,
     };
+
+    // Reset mocks
+    mockExecAsync.mockReset();
   });
 
   describe('GET /repositories/branches', () => {
     it('should return branches with correct property names for Mac compatibility', async () => {
-      const { promisify } = await import('util');
-
-      const mockExecAsync = vi.fn();
-      vi.mocked(promisify).mockImplementation(() => mockExecAsync);
 
       // Mock git branch command
       mockExecAsync
@@ -130,9 +134,6 @@ describe('repositories routes', () => {
     });
 
     it('should handle git command errors gracefully', async () => {
-      const { promisify } = await import('util');
-      const mockExecAsync = vi.fn();
-      vi.mocked(promisify).mockImplementation(() => mockExecAsync);
 
       // Mock git command failure
       mockExecAsync.mockRejectedValue(new Error('Not a git repository'));
