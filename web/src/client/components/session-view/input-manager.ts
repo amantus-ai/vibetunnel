@@ -137,6 +137,20 @@ export class InputManager {
 
         return null;
       },
+      getFontSize: () => {
+        // Get font size from the terminal element
+        const terminalElement = this.callbacks?.getTerminalElement?.();
+        if (!terminalElement) {
+          return 14; // Default font size
+        }
+
+        // Check if the terminal element has fontSize property
+        if ('fontSize' in terminalElement && typeof terminalElement.fontSize === 'number') {
+          return terminalElement.fontSize;
+        }
+
+        return 14; // Default font size
+      },
       autoFocus: true,
     });
   }

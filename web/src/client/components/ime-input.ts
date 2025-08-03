@@ -23,6 +23,8 @@ export interface DesktopIMEInputOptions {
   onSpecialKey?: (key: string) => void;
   /** Optional callback to get cursor position for positioning the input */
   getCursorInfo?: () => { x: number; y: number } | null;
+  /** Optional callback to get font size from terminal */
+  getFontSize?: () => number;
   /** Whether to auto-focus the input on creation */
   autoFocus?: boolean;
   /** Additional class name for the input element */
@@ -59,7 +61,9 @@ export class DesktopIMEInput {
     input.style.transform = 'none';
     input.style.width = '200px'; // Fixed width for better IME compatibility
     input.style.height = '24px';
-    input.style.fontSize = '16px'; // Standard size for IME
+    // Use terminal font size if available, otherwise default to 14px
+    const fontSize = this.options.getFontSize?.() || 14;
+    input.style.fontSize = `${fontSize}px`;
     input.style.padding = '2px 4px';
     input.style.border = 'none';
     input.style.borderRadius = '0';
@@ -332,9 +336,9 @@ export class DesktopIMEInput {
       return;
     }
 
-    // Position IME input at cursor location
+    // Position IME input at cursor location with 2px upward adjustment
     const x = Math.max(10, cursorInfo.x);
-    const y = Math.max(10, cursorInfo.y);
+    const y = Math.max(10, cursorInfo.y - 2); // Move 2px up for better alignment
 
     logger.log(`Positioning CJK input at x=${x}, y=${y}`);
     this.input.style.left = `${x}px`;
@@ -367,6 +371,16 @@ export class DesktopIMEInput {
    */
   refreshPosition(): void {
     this.updatePosition();
+  }
+
+  /**
+   * Update the font size of the IME input
+   * Should be called when terminal font size changes
+   */
+  updateFontSize(): void {
+    const fontSize = this.options.getFontSize?.() || 14;
+    this.input.style.fontSize = `${fontSize}px`;
+    logger.log(`Updated IME input font size to ${fontSize}px`);
   }
 
   blur(): void {
