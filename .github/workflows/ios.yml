@@ -30,6 +30,21 @@ jobs:
     
     - name: Verify Xcode
       run: |
+        # Check available Xcode versions
+        echo "Available Xcode versions:"
+        ls -la /Applications/ | grep -i xcode || true
+        
+        # Check if stable Xcode is available
+        if [ -d "/Applications/Xcode.app" ]; then
+          echo "Stable Xcode found, switching to it..."
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+        elif [ -d "/Applications/Xcode-15.app" ]; then
+          echo "Xcode 15 found, switching to it..."
+          sudo xcode-select -s /Applications/Xcode-15.app/Contents/Developer
+        else
+          echo "Using current Xcode installation with actool workaround..."
+        fi
+        
         xcodebuild -version
         swift --version
     
@@ -112,6 +127,10 @@ jobs:
     
     # BUILD PHASE
     - name: Build iOS app
+      env:
+        # Workaround for Xcode beta actool version info issues
+        ACTOOL_IGNORE_VERSION_CHECK: "1"
+        IBTOOL_IGNORE_VERSION_CHECK: "1"
       run: |
         cd ios
         # Ensure xcbeautify is in PATH
@@ -130,7 +149,9 @@ jobs:
           CODE_SIGNING_REQUIRED=NO \
           ONLY_ACTIVE_ARCH=NO \
           -derivedDataPath build/DerivedData \
-          COMPILER_INDEX_STORE_ENABLE=NO || {
+          COMPILER_INDEX_STORE_ENABLE=NO \
+          ACTOOL_IGNORE_VERSION_CHECK=1 \
+          IBTOOL_IGNORE_VERSION_CHECK=1 || {
             echo "::error::Build failed"
             exit 1
           }
@@ -239,6 +260,10 @@ jobs:
         done
     
     - name: Run iOS tests
+      env:
+        # Workaround for Xcode beta actool version info issues
+        ACTOOL_IGNORE_VERSION_CHECK: "1"
+        IBTOOL_IGNORE_VERSION_CHECK: "1"
       run: |
         cd ios
         # Ensure xcbeautify is in PATH
@@ -295,6 +320,8 @@ jobs:
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
           COMPILER_INDEX_STORE_ENABLE=NO \
+          ACTOOL_IGNORE_VERSION_CHECK=1 \
+          IBTOOL_IGNORE_VERSION_CHECK=1 \
           -quiet \
           2>&1 || {
             echo "::error::iOS tests failed"
