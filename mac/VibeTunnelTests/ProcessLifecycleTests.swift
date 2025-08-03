@@ -8,22 +8,10 @@ import Testing
 struct ProcessLifecycleTests {
     @Test("Basic process spawning validation", .tags(.attachmentTests))
     func basicProcessSpawning() async throws {
-        TestUtilities.recordTestConfiguration(
-            name: "Basic Process Spawning",
-            details: "Command: /bin/echo\nExpected: Clean exit with status 0"
-        )
-
         let result = try await runProcessWithTimeout(
             executablePath: "/bin/echo",
             arguments: ["Hello from VibeTunnel test"],
             timeoutSeconds: 5
-        )
-
-        TestUtilities.recordProcessExecution(
-            command: "/bin/echo",
-            arguments: ["Hello from VibeTunnel test"],
-            exitStatus: result.exitStatus,
-            output: result.output
         )
 
         #expect(result.exitStatus == 0)
@@ -32,21 +20,10 @@ struct ProcessLifecycleTests {
 
     @Test("Process error handling", .tags(.attachmentTests))
     func processErrorHandling() async throws {
-        TestUtilities.recordTestConfiguration(
-            name: "Process Error Handling",
-            details: "Command: /bin/sh -c \"exit 1\"\nExpected: Exit with failure status"
-        )
-
         let result = try await runProcessWithTimeout(
             executablePath: "/bin/sh",
             arguments: ["-c", "exit 1"],
             timeoutSeconds: 5
-        )
-
-        TestUtilities.recordProcessExecution(
-            command: "/bin/sh",
-            arguments: ["-c", "exit 1"],
-            exitStatus: result.exitStatus
         )
 
         // This should fail as intended
@@ -70,9 +47,8 @@ struct ProcessLifecycleTests {
         process.waitUntilExit()
 
         // Capture both output and error streams
-        let output = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        let error = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-
+        let _ = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let _ = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
 
         #expect(process.terminationStatus == 0)
     }
@@ -95,8 +71,7 @@ struct ProcessLifecycleTests {
         try process.run()
         process.waitUntilExit()
 
-        let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-
+        let _ = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
 
         #expect(process.terminationStatus == 0)
     }
