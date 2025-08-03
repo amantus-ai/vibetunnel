@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### 🐛 Bug Fixes
+- Fix session creation "data couldn't be read" error on Mac app (#500)
+
 ## [1.0.0-beta.15] - 2025-08-02
 
 ### ✨ Major Features
