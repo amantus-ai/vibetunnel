@@ -17,7 +17,7 @@ jobs:
   test:
     name: Playwright E2E Tests
     runs-on: blacksmith-16vcpu-ubuntu-2404-arm
-    timeout-minutes: 15
+    timeout-minutes: 20
     
     steps:
       - name: Checkout code
