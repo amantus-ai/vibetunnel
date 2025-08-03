@@ -14,7 +14,7 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", branch: "master"),
+        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.2.5"),
         .package(url: "https://github.com/mhdhejazi/Dynamic.git", from: "1.2.0")
     ],
     targets: [
@@ -23,6 +23,9 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftTerm", package: "SwiftTerm"),
                 .product(name: "Dynamic", package: "Dynamic")
+            ],
+            swiftSettings: [
+                .swiftLanguageVersion(.v5)
             ]
         )
     ]

@@ -19,7 +19,7 @@ struct ServerListView: View {
     }
 
     #if targetEnvironment(macCatalyst)
-        @StateObject private var windowManager = MacCatalystWindowManager.shared
+        @State private var windowManager = MacCatalystWindowManager.shared
     #endif
 
     var body: some View {

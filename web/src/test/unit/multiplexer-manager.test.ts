@@ -4,6 +4,7 @@ import { MultiplexerManager } from '../../server/services/multiplexer-manager.js
 import { ScreenManager } from '../../server/services/screen-manager.js';
 import { TmuxManager } from '../../server/services/tmux-manager.js';
 import { ZellijManager } from '../../server/services/zellij-manager.js';
+import type { MultiplexerType } from '../../shared/multiplexer-types.js';
 import { TitleMode } from '../../shared/types.js';
 
 // Mock the managers
@@ -191,7 +192,7 @@ describe('MultiplexerManager', () => {
 
     it('should throw error for unknown multiplexer type', async () => {
       await expect(
-        multiplexerManager.createSession('unknown' as any, 'new-session')
+        multiplexerManager.createSession('unknown' as unknown as MultiplexerType, 'new-session')
       ).rejects.toThrow('Unknown multiplexer type: unknown');
     });
   });
@@ -250,9 +251,9 @@ describe('MultiplexerManager', () => {
     });
 
     it('should throw error for unknown multiplexer type', async () => {
-      await expect(multiplexerManager.attachToSession('unknown' as any, 'main')).rejects.toThrow(
-        'Unknown multiplexer type: unknown'
-      );
+      await expect(
+        multiplexerManager.attachToSession('unknown' as unknown as MultiplexerType, 'main')
+      ).rejects.toThrow('Unknown multiplexer type: unknown');
     });
   });
 
@@ -280,9 +281,9 @@ describe('MultiplexerManager', () => {
     });
 
     it('should throw error for unknown multiplexer type', async () => {
-      await expect(multiplexerManager.killSession('unknown' as any, 'old-session')).rejects.toThrow(
-        'Unknown multiplexer type: unknown'
-      );
+      await expect(
+        multiplexerManager.killSession('unknown' as unknown as MultiplexerType, 'old-session')
+      ).rejects.toThrow('Unknown multiplexer type: unknown');
     });
   });
 

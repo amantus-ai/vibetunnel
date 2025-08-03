@@ -252,46 +252,68 @@ private struct ServerStatusSection: View {
                     }
                 }
 
-                // Port conflict warning
-                if let conflict = portConflict {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
-                                .font(.caption)
-
-                            Text("Port \(conflict.port) is used by \(conflict.process.name)")
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                        }
-
-                        if !conflict.alternativePorts.isEmpty {
+// Port conflict warning
+                    if let conflict = portConflict {
+                        VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 4) {
-                                Text("Try port:")
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
 
-                                ForEach(conflict.alternativePorts.prefix(3), id: \.self) { port in
-                                    Button(String(port)) {
-                                        Task {
-                                            await ServerConfigurationHelpers.restartServerWithNewPort(
-                                                port,
-                                                serverManager: serverManager
-                                            )
-                                        }
-                                    }
-                                    .buttonStyle(.link)
+                                Text("Port \(conflict.port) is used by \(conflict.process.name)")
                                     .font(.caption)
+                                    .foregroundColor(.orange)
+                            }
+
+                            if !conflict.alternativePorts.isEmpty {
+                                HStack(spacing: 4) {
+                                    Text("Try port:")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+
+                                    ForEach(conflict.alternativePorts.prefix(3), id: \.self) { port in
+                                        Button(String(port)) {
+                                            Task {
+                                                await ServerConfigurationHelpers.restartServerWithNewPort(
+                                                    port,
+                                                    serverManager: serverManager
+                                                )
+                                            }
+                                        }
+                                        .buttonStyle(.link)
+                                        .font(.caption)
+                                    }
                                 }
                             }
+                            
+                            // Add kill button for conflicting processes
+                            HStack {
+                                Button("Kill Process") {
+                                    Task {
+                                        do {
+                                            try await PortConflictResolver.shared.forceKillProcess(conflict)
+                                            // After killing, clear the conflict and restart the server
+                                            portConflict = nil
+                                            await serverManager.start()
+                                        } catch {
+                                            // Handle error - in a real implementation, you might show an alert
+                                            print("Failed to kill process: \(error)")
+                                        }
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                
+                                Spacer()
+                            }
+                            .padding(.top, 8)
                         }
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(6)
                     }
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.orange.opacity(0.1))
-                    .cornerRadius(6)
-                }
             }
             .padding(.vertical, 4)
             .task {

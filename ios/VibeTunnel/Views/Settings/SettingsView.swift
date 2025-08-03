@@ -259,7 +259,7 @@ struct AdvancedSettingsView: View {
     #if targetEnvironment(macCatalyst)
         @AppStorage("macWindowStyle")
         private var macWindowStyleRaw = "standard"
-        @StateObject private var windowManager = MacCatalystWindowManager.shared
+        @State private var windowManager = MacCatalystWindowManager.shared
 
         private var macWindowStyle: MacWindowStyle {
             macWindowStyleRaw == "inline" ? .inline : .standard

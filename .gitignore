@@ -163,3 +163,4 @@ mac/build-test/
 .env
 .aider*
 /.crush
+/.grok

@@ -300,41 +300,26 @@ branch refs/heads/feature
     });
   });
 
-  describe('POST /api/worktrees/switch', () => {
-    it('should switch branch and enable follow mode', async () => {
-      mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' }); // status (no uncommitted changes)
-      mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' }); // checkout
-      mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' }); // config
-
-      const response = await request(app).post('/api/worktrees/switch').send({
-        repoPath: '/home/user/project',
-        branch: 'develop',
-      });
-
-      expect(response.status).toBe(200);
-      expect(response.body.currentBranch).toBe('develop');
-      expect(mockExecFile).toHaveBeenCalledWith(
-        'git',
-        ['checkout', 'develop'],
-        expect.objectContaining({ cwd: '/home/user/project' })
-      );
-      expect(mockExecFile).toHaveBeenCalledWith(
-        'git',
-        ['config', '--local', 'vibetunnel.followWorktree', '/path/to/worktree'],
-        expect.objectContaining({ cwd: '/home/user/project' })
-      );
-    });
-
-    it('should handle missing parameters', async () => {
-      const response = await request(app).post('/api/worktrees/switch').send({});
-      expect(response.status).toBe(400);
-    });
-  });
-
   describe('POST /api/worktrees/follow', () => {
     it('should enable follow mode', async () => {
+      // Mock worktree list to find the path for the branch
+      mockExecFile.mockResolvedValueOnce({
+        stdout: `worktree /home/user/project
+HEAD abc123
+branch refs/heads/main
+
+`,
+        stderr: '',
+      });
+
       // Mock setting git config for follow branch
       mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' }); // config set
+
+      // Mock branch list check
+      mockExecFile.mockResolvedValueOnce({ stdout: '* main\n', stderr: '' });
+
+      // Mock checkout
+      mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
 
       const response = await request(app).post('/api/worktrees/follow').send({
         repoPath: '/home/user/project',

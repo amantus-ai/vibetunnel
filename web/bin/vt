@@ -144,7 +144,7 @@ fi
 # Check if this is a command that should suppress wrapper output
 SUPPRESS_OUTPUT=false
 # Debug: echo "First argument at line 139: '$1'" >&2
-if [[ "$1" == "title" || "$1" == "status" || "$1" == "--version" || "$1" == "version" ]]; then
+if [[ "$1" == "title" || "$1" == "status" || "$1" == "--version" || "$1" == "version" || "$1" == "follow" || "$1" == "unfollow" || ("$1" == "git" && "$2" == "event") ]]; then
     SUPPRESS_OUTPUT=true
 fi
 
