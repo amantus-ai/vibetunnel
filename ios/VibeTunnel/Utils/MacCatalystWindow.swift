@@ -19,7 +19,7 @@
         /// Access the underlying NSWindow in Mac Catalyst
         var nsWindow: NSObject? {
             // Dynamic framework not available, return nil for now
-            return nil
+            nil
         }
     }
 
