@@ -63,7 +63,6 @@ describe('repositories routes', () => {
 
   describe('GET /repositories/branches', () => {
     it('should return branches with correct property names for Mac compatibility', async () => {
-
       // Mock git branch command
       mockExecAsync
         .mockResolvedValueOnce({ stdout: 'main\n' }) // current branch
@@ -136,7 +135,6 @@ describe('repositories routes', () => {
     });
 
     it('should handle git command errors gracefully', async () => {
-
       // Mock git command failure
       mockExecAsync.mockRejectedValue(new Error('Not a git repository'));
 

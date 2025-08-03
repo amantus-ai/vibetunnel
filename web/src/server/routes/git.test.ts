@@ -89,7 +89,6 @@ describe('git routes', () => {
 
   describe('GET /git/repository-info', () => {
     it('should return repository info with githubUrl field for Mac compatibility', async () => {
-
       const { isWorktree } = await import('../utils/git-utils');
       vi.mocked(isWorktree).mockResolvedValue(false);
 
@@ -134,7 +133,6 @@ describe('git routes', () => {
     });
 
     it('should handle SSH GitHub URLs correctly', async () => {
-
       const { isWorktree } = await import('../utils/git-utils');
       vi.mocked(isWorktree).mockResolvedValue(false);
 
@@ -177,7 +175,6 @@ describe('git routes', () => {
     });
 
     it('should handle non-GitHub remotes gracefully', async () => {
-
       const { isWorktree } = await import('../utils/git-utils');
       vi.mocked(isWorktree).mockResolvedValue(false);
 
@@ -238,7 +235,6 @@ describe('git routes', () => {
     });
 
     it('should handle not a git repository', async () => {
-
       const { isNotGitRepositoryError } = await import('../utils/git-error');
       vi.mocked(isNotGitRepositoryError).mockReturnValue(true);
 
@@ -300,7 +296,6 @@ describe('git routes', () => {
 
   describe('GET /git/repo-info', () => {
     it('should return basic repo info', async () => {
-
       mockExecFile.mockResolvedValueOnce({ stdout: '/test/repo', stderr: '' });
 
       mockReq.query = { path: '/test/repo' };
@@ -323,7 +318,6 @@ describe('git routes', () => {
 
   describe('GET /git/remote', () => {
     it('should return remote info with GitHub URL parsing', async () => {
-
       mockExecFile
         .mockResolvedValueOnce({ stdout: '/test/repo', stderr: '' }) // show-toplevel
         .mockResolvedValueOnce({ stdout: 'https://github.com/user/repo.git', stderr: '' }); // remote get-url
