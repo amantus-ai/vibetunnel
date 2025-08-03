@@ -118,7 +118,7 @@ enum TestUtilities {
 
     /// Record standardized test configuration with environment info
     static func recordTestConfiguration(name: String, details: String) {
-        Attachment.record("""
+        Testing.Attachment.record("""
         Test: \(name)
         Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
         \(details)
@@ -127,7 +127,7 @@ enum TestUtilities {
 
     /// Record process execution details
     static func recordProcessExecution(command: String, arguments: [String], exitStatus: Int32, output: String? = nil) {
-        Attachment.record("""
+        Testing.Attachment.record("""
         Command: \(command) \(arguments.joined(separator: " "))
         Exit Status: \(exitStatus)
         Output: \(output ?? "(none)")
