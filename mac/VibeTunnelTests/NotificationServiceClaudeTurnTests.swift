@@ -5,6 +5,7 @@ import UserNotifications
 
 @Suite("NotificationService - Claude Turn")
 struct NotificationServiceClaudeTurnTests {
+    @MainActor
     init() {
         // Reset to default state before any test runs
         ConfigManager.shared.notificationClaudeTurn = false
