@@ -3,6 +3,7 @@ import { assertTerminalReady } from '../helpers/assertion.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import { TestSessionManager } from '../helpers/test-data-manager.helper';
 import { TestDataFactory } from '../utils/test-utils';
+import { executeCommandIntelligent, executeCommandsWithExpectedOutputs, waitForTerminalReady } from '../helpers/terminal.helper';
 
 // Use a unique prefix for this test suite
 const TEST_PREFIX = TestDataFactory.getTestSpecificPrefix('terminal-basic');
@@ -39,16 +40,9 @@ test.describe('Terminal Basic Tests', () => {
     await terminal.click();
     await page.waitForTimeout(1000);
 
-    // Type a simple command
-    await page.keyboard.type('echo "Terminal Input Test"', { delay: 10 });
-    await page.waitForTimeout(500);
-    await page.keyboard.press('Enter');
-
-    // Wait for command to execute
-    await page.waitForTimeout(3000);
-
-    // Verify output appears
-    await expect(terminal).toContainText('Terminal Input Test', { timeout: 8000 });
+    // Use intelligent command execution
+    await waitForTerminalReady(page);
+    await executeCommandIntelligent(page, 'echo "Terminal Input Test"', 'Terminal Input Test');
 
     console.log('✅ Terminal input and output working');
   });
@@ -67,25 +61,19 @@ test.describe('Terminal Basic Tests', () => {
     await terminal.click();
     await page.waitForTimeout(1000);
 
-    // Test basic text input
-    await page.keyboard.type('pwd', { delay: 10 });
-    await page.waitForTimeout(500);
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(2000);
+    // Test basic text input with intelligent waiting
+    await executeCommandIntelligent(page, 'pwd');
 
     // Test arrow keys for command history
     await page.keyboard.press('ArrowUp');
-    await page.waitForTimeout(500);
-
+    
     // Test backspace
     await page.keyboard.press('Backspace');
     await page.keyboard.press('Backspace');
     await page.keyboard.press('Backspace');
 
-    // Type new command
-    await page.keyboard.type('ls');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(2000);
+    // Type new command with intelligent waiting
+    await executeCommandIntelligent(page, 'ls');
 
     console.log('✅ Keyboard interactions tested');
   });
@@ -115,18 +103,18 @@ test.describe('Terminal Basic Tests', () => {
       'echo "Command 4: Date displayed"',
     ];
 
-    for (let i = 0; i < commands.length; i++) {
-      const command = commands[i];
-      console.log(`Executing command ${i + 1}: ${command}`);
-
-      // Type much slower in CI environment to avoid command truncation
-      await page.keyboard.type(command, { delay: 20 }); // Increased delay
-      await page.waitForTimeout(1000); // Longer wait before pressing Enter
-      await page.keyboard.press('Enter');
-
-      // Wait much longer between commands in CI
-      await page.waitForTimeout(4000); // Increased wait time
-    }
+    // Use the new intelligent command sequence execution
+    const commandsWithOutputs = [
+      { command: 'echo "Command 1: Starting test"', expectedOutput: 'Command 1: Starting test' },
+      { command: 'pwd' },
+      { command: 'echo "Command 2: Working directory shown"', expectedOutput: 'Command 2: Working directory shown' },
+      { command: 'whoami' },
+      { command: 'echo "Command 3: User identified"', expectedOutput: 'Command 3: User identified' },
+      { command: 'date' },
+      { command: 'echo "Command 4: Date displayed"', expectedOutput: 'Command 4: Date displayed' },
+    ];
+    
+    await executeCommandsWithExpectedOutputs(page, commandsWithOutputs);
 
     // Verify some of the command outputs with longer timeouts
     await expect(terminal).toContainText('Command 1: Starting test', { timeout: 15000 });
@@ -163,12 +151,9 @@ test.describe('Terminal Basic Tests', () => {
       'Line 5 - Testing terminal scrolling'
     ];
     
-    for (let i = 0; i < outputs.length; i++) {
-      const command = `echo "${outputs[i]}"`;
-      await page.keyboard.type(command, { delay: 15 }); // Slower typing for CI
-      await page.waitForTimeout(800); // Longer wait before Enter
-      await page.keyboard.press('Enter');
-      await page.waitForTimeout(1500); // Wait between commands
+    // Use intelligent command execution for scrolling test
+    for (const output of outputs) {
+      await executeCommandIntelligent(page, `echo "${output}"`, output);
     }
 
     // Verify the output appears
@@ -205,9 +190,8 @@ test.describe('Terminal Basic Tests', () => {
     await page.waitForTimeout(1000);
 
     // Execute a command to create identifiable output
-    await page.keyboard.type('echo "State persistence test marker"');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(2000);
+    // Execute marker command with intelligent waiting
+    await executeCommandIntelligent(page, 'echo "State persistence test marker"', 'State persistence test marker');
 
     // Verify the output is there
     await expect(terminal).toContainText('State persistence test marker');
