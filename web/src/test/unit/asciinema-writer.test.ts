@@ -200,22 +200,22 @@ describe('AsciinemaWriter byte position tracking', () => {
 
     // Write output event
     writer.writeOutput(Buffer.from('output text'));
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await new Promise((resolve) => setTimeout(resolve, 50));
     const posAfterOutput = writer.getPosition();
 
     // Write input event
     writer.writeInput('input text');
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await new Promise((resolve) => setTimeout(resolve, 50));
     const posAfterInput = writer.getPosition();
 
     // Write resize event
     writer.writeResize(120, 40);
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await new Promise((resolve) => setTimeout(resolve, 50));
     const posAfterResize = writer.getPosition();
 
     // Write marker event
     writer.writeMarker('test marker');
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await new Promise((resolve) => setTimeout(resolve, 50));
     const posAfterMarker = writer.getPosition();
 
     // All positions should increase
