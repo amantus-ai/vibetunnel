@@ -197,13 +197,15 @@ struct NetworkUtilityTests {
         let iterations = 50
 
         // Attach system configuration
-        Attachment.record("""
+        // Note: Testing.Attachment API is experimental and not yet stable
+        // Temporarily using print for performance test configuration recording
+        print("""
         Test: IP Address Retrieval Performance
         Iterations: \(iterations)
         Test Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
         System: \(TestUtilities.captureSystemInfo())
         Network: \(TestUtilities.captureNetworkConfig())
-        """, named: "Performance Test Configuration")
+        """)
 
         // Measure individual timings
         for _ in 0..<iterations {
@@ -220,20 +222,25 @@ struct NetworkUtilityTests {
         let stdDev = TestUtilities.calculateStandardDeviation(timings)
 
         // Attach detailed performance metrics
-        Attachment.record("""
+        // Note: Testing.Attachment API is experimental and not yet stable
+        // Temporarily using print for performance metrics recording
+        print("""
         Iterations: \(iterations)
         Average: \(String(format: "%.4f", average * 1_000))ms
         Min: \(String(format: "%.4f", min * 1_000))ms  
         Max: \(String(format: "%.4f", max * 1_000))ms
         Standard Deviation: \(String(format: "%.4f", stdDev * 1_000))ms
         95th Percentile: \(String(format: "%.4f", calculatePercentile95(timings) * 1_000))ms
-        """, named: "Performance Metrics")
+        """)
 
         // Attach timing distribution for analysis
         let timingData = timings.enumerated().map { i, timing in
             "Iteration \(i + 1): \(String(format: "%.4f", timing * 1_000))ms"
         }.joined(separator: "\n")
-        Attachment.record(timingData, named: "Individual Timings")
+        // Note: Testing.Attachment API is experimental and not yet stable
+        // Temporarily using print for individual timings recording
+        print("Individual Timings:")
+        print(timingData)
 
         // Performance assertions
         #expect(
