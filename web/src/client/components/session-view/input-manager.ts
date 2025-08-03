@@ -13,7 +13,7 @@ import { consumeEvent } from '../../utils/event-utils.js';
 import { isIMEAllowedKey } from '../../utils/ime-constants.js';
 import { createLogger } from '../../utils/logger.js';
 import { detectMobile } from '../../utils/mobile-utils.js';
-import { TERMINAL_IDS } from '../../utils/terminal-constants.js';
+import { CJK_LANGUAGE_CODES, TERMINAL_IDS } from '../../utils/terminal-constants.js';
 import { DesktopIMEInput } from '../ime-input.js';
 import type { Terminal } from '../terminal.js';
 import type { VibeTerminalBinary } from '../vibe-terminal-binary.js';
@@ -33,6 +33,7 @@ export class InputManager {
   private lastEscapeTime = 0;
   private readonly DOUBLE_ESCAPE_THRESHOLD = 500; // ms
   private imeInput: DesktopIMEInput | null = null;
+  private globalCompositionListener: ((e: CompositionEvent) => void) | null = null;
 
   setSession(session: Session | null): void {
     // Clean up IME input when session is null
@@ -42,9 +43,14 @@ export class InputManager {
 
     this.session = session;
 
-    // Setup IME input when session is available
+    // Setup IME input when session is available and CJK language is active
     if (session && !this.imeInput) {
       this.setupIMEInput();
+    }
+
+    // Set up global composition event listener to detect CJK input dynamically
+    if (session && !detectMobile()) {
+      this.setupGlobalCompositionListener();
     }
 
     // Check URL parameter for WebSocket input feature flag
@@ -69,6 +75,69 @@ export class InputManager {
     this.callbacks = callbacks;
   }
 
+  /**
+   * Check if a CJK (Chinese, Japanese, Korean) language is currently active
+   * This detects both system language and input method editor (IME) state
+   */
+  private isCJKLanguageActive(): boolean {
+    // Check system/browser language first
+    const languages = [navigator.language, ...(navigator.languages || [])];
+
+    // Check if any of the user's languages are CJK
+    const hasCJKLanguage = languages.some((lang) =>
+      CJK_LANGUAGE_CODES.some((cjkLang) => lang.toLowerCase().startsWith(cjkLang.toLowerCase()))
+    );
+
+    if (hasCJKLanguage) {
+      logger.log('CJK language detected in browser languages:', languages);
+      return true;
+    }
+
+    // Additional check: look for common CJK input method indicators
+    // This is more of a heuristic since there's no direct IME detection API
+    const hasIMEKeyboard = this.hasIMEKeyboard();
+    if (hasIMEKeyboard) {
+      logger.log('IME keyboard detected, likely CJK input method');
+      return true;
+    }
+
+    logger.log('No CJK language or IME detected', { languages, hasIMEKeyboard });
+    return false;
+  }
+
+  /**
+   * Heuristic check for IME keyboard presence
+   * This is not 100% reliable but provides a reasonable fallback
+   */
+  private hasIMEKeyboard(): boolean {
+    // Check for composition events support (indicates IME capability)
+    if (!('CompositionEvent' in window)) {
+      return false;
+    }
+
+    // Check if the virtual keyboard API indicates composition support
+    if ('virtualKeyboard' in navigator) {
+      try {
+        const nav = navigator as Navigator & { virtualKeyboard?: { overlaysContent?: boolean } };
+        const vk = nav.virtualKeyboard;
+        // Some IME keyboards set overlaysContent to true
+        if (vk && vk.overlaysContent !== undefined) {
+          return true;
+        }
+      } catch (_e) {
+        // Ignore errors accessing virtual keyboard API
+      }
+    }
+
+    // Fallback: assume IME is possible if composition events are supported
+    // and we're on a platform that commonly uses IME
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isCommonIMEPlatform =
+      userAgent.includes('windows') || userAgent.includes('mac') || userAgent.includes('linux');
+
+    return isCommonIMEPlatform;
+  }
+
   private setupIMEInput(retryCount = 0): void {
     const MAX_RETRIES = 10;
     const IME_SETUP_RETRY_DELAY_MS = 100;
@@ -85,7 +154,13 @@ export class InputManager {
       return;
     }
 
-    logger.log('Setting up IME input on desktop device');
+    // Only enable IME input for CJK languages
+    if (!this.isCJKLanguageActive()) {
+      logger.log('Skipping IME input setup - no CJK language detected');
+      return;
+    }
+
+    logger.log('Setting up IME input on desktop device for CJK language');
 
     // Check if terminal element exists first - if not, defer setup
     const terminalElement = this.callbacks?.getTerminalElement?.();
@@ -510,6 +585,12 @@ export class InputManager {
       this.imeInput = null;
     }
 
+    // Remove global composition listener
+    if (this.globalCompositionListener) {
+      document.removeEventListener('compositionstart', this.globalCompositionListener);
+      this.globalCompositionListener = null;
+    }
+
     // Disconnect WebSocket if feature was enabled
     if (this.useWebSocketInput) {
       websocketInputClient.disconnect();
@@ -528,6 +609,106 @@ export class InputManager {
       logger.log('Retrying IME setup after terminal became ready');
       this.setupIMEInput();
     }
+  }
+
+  /**
+   * Set up a global composition event listener to detect CJK input dynamically
+   * This allows enabling IME input when the user starts composing CJK text
+   */
+  private setupGlobalCompositionListener(): void {
+    if (this.globalCompositionListener) {
+      return; // Already set up
+    }
+
+    this.globalCompositionListener = (e: CompositionEvent) => {
+      // Only enable IME input if it's not already set up
+      if (!this.imeInput && this.session && !detectMobile()) {
+        logger.log('Composition event detected, enabling IME input:', e.type, e.data);
+        this.enableIMEInput();
+      }
+    };
+
+    // Listen for composition start events globally
+    document.addEventListener('compositionstart', this.globalCompositionListener);
+  }
+
+  /**
+   * Enable IME input dynamically when CJK input is detected
+   * This can be called when composition events are detected or user explicitly enables CJK input
+   */
+  enableIMEInput(): void {
+    if (detectMobile()) {
+      logger.log('Skipping IME input enable on mobile device');
+      return;
+    }
+
+    if (this.imeInput) {
+      logger.log('IME input already enabled');
+      return;
+    }
+
+    if (!this.session) {
+      logger.log('Cannot enable IME input - no session available');
+      return;
+    }
+
+    logger.log('Dynamically enabling IME input for CJK composition');
+    // Force enable by skipping the language check since composition was detected
+    this.forceSetupIMEInput();
+  }
+
+  /**
+   * Force setup IME input without language checks (used when composition is detected)
+   */
+  private forceSetupIMEInput(): void {
+    const terminalContainer = document.getElementById(TERMINAL_IDS.SESSION_TERMINAL);
+    if (!terminalContainer) {
+      logger.warn('Terminal container not found, cannot setup IME input');
+      return;
+    }
+
+    // Create IME input component
+    this.imeInput = new DesktopIMEInput({
+      container: terminalContainer,
+      onTextInput: (text: string) => {
+        this.sendInputText(text);
+      },
+      onSpecialKey: (key: string) => {
+        this.sendInput(key);
+      },
+      getCursorInfo: () => {
+        // Get cursor position from the terminal element
+        const terminalElement = this.callbacks?.getTerminalElement?.();
+        if (!terminalElement) {
+          return null;
+        }
+
+        // Check if the terminal element has getCursorInfo method
+        if (
+          'getCursorInfo' in terminalElement &&
+          typeof terminalElement.getCursorInfo === 'function'
+        ) {
+          return terminalElement.getCursorInfo();
+        }
+
+        return null;
+      },
+      getFontSize: () => {
+        // Get font size from the terminal element
+        const terminalElement = this.callbacks?.getTerminalElement?.();
+        if (!terminalElement) {
+          return 14; // Default font size
+        }
+
+        // Check if the terminal element has fontSize property
+        if ('fontSize' in terminalElement && typeof terminalElement.fontSize === 'number') {
+          return terminalElement.fontSize;
+        }
+
+        return 14; // Default font size
+      },
+      autoFocus: true,
+    });
   }
 
   // For testing purposes only

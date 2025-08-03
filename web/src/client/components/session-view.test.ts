@@ -875,6 +875,13 @@ describe('SessionView', () => {
       element.session = mockSession;
       await element.updateComplete;
 
+      // Ensure we're in desktop mode by setting localStorage preference
+      localStorage.setItem('touchKeyboardPreference', 'never');
+
+      // Force the lifecycle manager to re-evaluate mobile status
+      window.dispatchEvent(new Event('resize'));
+      await waitForAsync();
+
       // Press escape on exited session - dispatch on document since lifecycle manager listens there
       const event = new KeyboardEvent('keydown', {
         key: 'Escape',

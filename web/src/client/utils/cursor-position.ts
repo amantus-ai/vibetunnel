@@ -1,7 +1,7 @@
 /**
  * Shared cursor position calculation utility for terminal components
  */
-import { TERMINAL_IDS } from './terminal-constants.js';
+import { TERMINAL_FONT_FAMILY, TERMINAL_IDS } from './terminal-constants.js';
 
 // Cache for character width measurements per font size
 const charWidthCache = new Map<number, number>();
@@ -26,8 +26,7 @@ function measureCharacterWidth(fontSize: number, container: Element): number {
   testElement.style.position = 'absolute';
   testElement.style.visibility = 'hidden';
   testElement.style.fontSize = `${fontSize}px`;
-  testElement.style.fontFamily =
-    'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace';
+  testElement.style.fontFamily = TERMINAL_FONT_FAMILY;
   testElement.textContent = '0';
 
   try {
@@ -41,6 +40,14 @@ function measureCharacterWidth(fontSize: number, container: Element): number {
     // Ensure cleanup even if measurement fails
     container.removeChild(testElement);
   }
+}
+
+/**
+ * Clear the character width cache
+ * Call when font size changes or on window resize/zoom
+ */
+export function clearCharacterWidthCache(): void {
+  charWidthCache.clear();
 }
 
 /**

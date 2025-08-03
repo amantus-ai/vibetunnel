@@ -6,6 +6,7 @@
  */
 
 import type { Session } from '../../../shared/types.js';
+import { clearCharacterWidthCache } from '../../utils/cursor-position.js';
 import { consumeEvent } from '../../utils/event-utils.js';
 import { isIMEAllowedKey } from '../../utils/ime-constants.js';
 import { createLogger } from '../../utils/logger.js';
@@ -194,6 +195,9 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
   handleWindowResize = (): void => {
     if (!this.callbacks) return;
+
+    // Clear character width cache when window is resized (may affect font rendering)
+    clearCharacterWidthCache();
 
     // Clear cache to re-evaluate capabilities (in case of device mode changes in dev tools)
     this.touchCapabilityCache = null;

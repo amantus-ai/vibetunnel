@@ -11,6 +11,7 @@
 
 import { Z_INDEX } from '../utils/constants.js';
 import { createLogger } from '../utils/logger.js';
+import { IME_VERTICAL_OFFSET_PX, TERMINAL_FONT_FAMILY } from '../utils/terminal-constants.js';
 
 const logger = createLogger('ime-input');
 
@@ -73,8 +74,7 @@ export class DesktopIMEInput {
     input.style.opacity = '1';
     input.style.visibility = 'visible';
     input.style.pointerEvents = 'auto';
-    input.style.fontFamily =
-      'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace';
+    input.style.fontFamily = TERMINAL_FONT_FAMILY;
     input.style.outline = 'none';
     input.style.caretColor = 'transparent'; // Hide the blinking cursor
     input.autocapitalize = 'off';
@@ -336,9 +336,9 @@ export class DesktopIMEInput {
       return;
     }
 
-    // Position IME input at cursor location with 3px upward adjustment
+    // Position IME input at cursor location with upward adjustment for better alignment
     const x = Math.max(10, cursorInfo.x);
-    const y = Math.max(10, cursorInfo.y - 3); // Move 3px up for better alignment
+    const y = Math.max(10, cursorInfo.y - IME_VERTICAL_OFFSET_PX);
 
     logger.log(`Positioning CJK input at x=${x}, y=${y}`);
     this.input.style.left = `${x}px`;
