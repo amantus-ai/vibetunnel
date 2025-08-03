@@ -439,8 +439,11 @@ describe('sessions routes', () => {
       // Verify session was created
       expect(mockPtyManager.createSession).toHaveBeenCalled();
 
-      // Should still create the session successfully
-      expect(mockRes.json).toHaveBeenCalledWith({ sessionId: 'test-session-123' });
+      // Should still create the session successfully with both sessionId and createdAt
+      expect(mockRes.json).toHaveBeenCalledWith({
+        sessionId: 'test-session-123',
+        createdAt: expect.any(String),
+      });
     });
 
     it('should handle detached HEAD state', async () => {
@@ -552,6 +555,508 @@ describe('sessions routes', () => {
 
       // Verify terminal spawn was called
       expect(requestTerminalSpawn).toHaveBeenCalled();
+    });
+  });
+
+  describe('POST /sessions - Response Format Validation', () => {
+    beforeEach(() => {
+      // Reset requestTerminalSpawn mock to default (failed spawn)
+      vi.mocked(requestTerminalSpawn).mockResolvedValue({
+        success: false,
+        error: 'Terminal spawn failed in test',
+      });
+
+      // Setup mock to return session data
+      mockPtyManager.createSession = vi.fn(() => ({
+        sessionId: 'session-abc-123',
+        sessionInfo: {
+          id: 'session-abc-123',
+          pid: 12345,
+          name: 'Test Session',
+          command: ['bash'],
+          workingDir: '/test/dir',
+        },
+      }));
+    });
+
+    it('should return CreateSessionResponse format with sessionId and createdAt for web sessions', async () => {
+      const router = createSessionRoutes({
+        ptyManager: mockPtyManager,
+        terminalManager: mockTerminalManager,
+        streamWatcher: mockStreamWatcher,
+        remoteRegistry: null,
+        isHQMode: false,
+        activityMonitor: mockActivityMonitor,
+      });
+
+      const routes = (
+        router as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { post?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
+      const createRoute = routes.find(
+        (r) => r.route && r.route.path === '/sessions' && r.route.methods.post
+      );
+
+      const mockReq = {
+        body: {
+          command: ['bash'],
+          workingDir: '/test/dir',
+          spawn_terminal: false,
+        },
+      } as Request;
+
+      const mockRes = {
+        json: vi.fn(),
+        status: vi.fn().mockReturnThis(),
+      } as unknown as Response;
+
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
+
+      // Verify response matches Mac app's CreateSessionResponse expectation
+      expect(mockRes.json).toHaveBeenCalledWith({
+        sessionId: 'session-abc-123',
+        createdAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/), // ISO string format
+      });
+    });
+
+    it('should ensure terminal spawn requests still return CreateSessionResponse format', async () => {
+      // Note: Terminal spawn integration is complex and tested elsewhere.
+      // This test ensures the fallback path returns the correct response format.
+
+      const router = createSessionRoutes({
+        ptyManager: mockPtyManager,
+        terminalManager: mockTerminalManager,
+        streamWatcher: mockStreamWatcher,
+        remoteRegistry: null,
+        isHQMode: false,
+        activityMonitor: mockActivityMonitor,
+      });
+
+      const routes = (
+        router as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { post?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
+      const createRoute = routes.find(
+        (r) => r.route && r.route.path === '/sessions' && r.route.methods.post
+      );
+
+      const mockReq = {
+        body: {
+          command: ['zsh'],
+          workingDir: '/test/dir',
+          spawn_terminal: true,
+          titleMode: 'dynamic',
+        },
+      } as Request;
+
+      const mockRes = {
+        json: vi.fn(),
+        status: vi.fn().mockReturnThis(),
+      } as unknown as Response;
+
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
+
+      // Even when terminal spawn falls back to web session,
+      // response must include CreateSessionResponse format
+      expect(mockRes.json).toHaveBeenCalledWith({
+        sessionId: 'session-abc-123',
+        createdAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
+      });
+    });
+
+    it('should fallback to web session with correct format when terminal spawn fails', async () => {
+      // Mock terminal spawn to fail
+      vi.mocked(requestTerminalSpawn).mockResolvedValueOnce({
+        success: false,
+        error: 'Terminal spawn failed',
+      });
+
+      const router = createSessionRoutes({
+        ptyManager: mockPtyManager,
+        terminalManager: mockTerminalManager,
+        streamWatcher: mockStreamWatcher,
+        remoteRegistry: null,
+        isHQMode: false,
+        activityMonitor: mockActivityMonitor,
+      });
+
+      const routes = (
+        router as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { post?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
+      const createRoute = routes.find(
+        (r) => r.route && r.route.path === '/sessions' && r.route.methods.post
+      );
+
+      const mockReq = {
+        body: {
+          command: ['zsh'],
+          workingDir: '/test/dir',
+          spawn_terminal: true,
+        },
+      } as Request;
+
+      const mockRes = {
+        json: vi.fn(),
+        status: vi.fn().mockReturnThis(),
+      } as unknown as Response;
+
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
+
+      // Should fallback to web session with correct format
+      expect(mockRes.json).toHaveBeenCalledWith({
+        sessionId: 'session-abc-123',
+        createdAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
+      });
+    });
+
+    it('should validate createdAt is a valid ISO string', async () => {
+      const router = createSessionRoutes({
+        ptyManager: mockPtyManager,
+        terminalManager: mockTerminalManager,
+        streamWatcher: mockStreamWatcher,
+        remoteRegistry: null,
+        isHQMode: false,
+        activityMonitor: mockActivityMonitor,
+      });
+
+      const routes = (
+        router as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { post?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
+      const createRoute = routes.find(
+        (r) => r.route && r.route.path === '/sessions' && r.route.methods.post
+      );
+
+      const mockReq = {
+        body: {
+          command: ['bash'],
+          workingDir: '/test/dir',
+        },
+      } as Request;
+
+      let capturedResponse: { sessionId: string; createdAt: string };
+      const mockRes = {
+        json: vi.fn((data) => {
+          capturedResponse = data;
+        }),
+        status: vi.fn().mockReturnThis(),
+      } as unknown as Response;
+
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
+
+      // Verify createdAt can be parsed as a valid Date
+      expect(capturedResponse).toBeDefined();
+      expect(capturedResponse.createdAt).toBeDefined();
+      const parsedDate = new Date(capturedResponse.createdAt);
+      expect(parsedDate.toISOString()).toBe(capturedResponse.createdAt);
+      expect(parsedDate.getTime()).toBeCloseTo(Date.now(), -2); // Within ~100ms
+    });
+  });
+
+  describe('POST /sessions - Remote Server Communication', () => {
+    let mockRemoteRegistry: {
+      getRemote: ReturnType<typeof vi.fn>;
+      addSessionToRemote: ReturnType<typeof vi.fn>;
+    };
+
+    beforeEach(() => {
+      mockRemoteRegistry = {
+        getRemote: vi.fn(),
+        addSessionToRemote: vi.fn(),
+      };
+
+      // Mock fetch for remote server communication
+      global.fetch = vi.fn();
+    });
+
+    afterEach(() => {
+      vi.resetAllMocks();
+    });
+
+    it('should handle remote session creation with new response format (sessionId + createdAt)', async () => {
+      // Mock remote registry to return a remote server
+      mockRemoteRegistry.getRemote.mockReturnValue({
+        id: 'remote-1',
+        name: 'Remote Server',
+        url: 'https://remote.example.com',
+        token: 'test-token',
+      });
+
+      // Mock fetch to return new response format
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          sessionId: 'remote-session-123',
+          createdAt: '2023-01-01T12:00:00.000Z',
+        }),
+      } as Response);
+
+      const router = createSessionRoutes({
+        ptyManager: mockPtyManager,
+        terminalManager: mockTerminalManager,
+        streamWatcher: mockStreamWatcher,
+        remoteRegistry: mockRemoteRegistry,
+        isHQMode: true,
+        activityMonitor: mockActivityMonitor,
+      });
+
+      const routes = (
+        router as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { post?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
+      const createRoute = routes.find(
+        (r) => r.route && r.route.path === '/sessions' && r.route.methods.post
+      );
+
+      const mockReq = {
+        body: {
+          command: ['bash'],
+          workingDir: '/test/dir',
+          remoteId: 'remote-1',
+        },
+      } as Request;
+
+      const mockRes = {
+        json: vi.fn(),
+        status: vi.fn().mockReturnThis(),
+      } as unknown as Response;
+
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
+
+      // Verify remote server was called with correct payload
+      expect(fetch).toHaveBeenCalledWith(
+        'https://remote.example.com/api/sessions',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer test-token',
+          }),
+          body: JSON.stringify({
+            command: ['bash'],
+            workingDir: '/test/dir',
+            // remoteId should NOT be forwarded to avoid recursion
+          }),
+        })
+      );
+
+      // Verify response forwards the complete remote response
+      expect(mockRes.json).toHaveBeenCalledWith({
+        sessionId: 'remote-session-123',
+        createdAt: '2023-01-01T12:00:00.000Z',
+      });
+
+      // Verify session was tracked in registry
+      expect(mockRemoteRegistry.addSessionToRemote).toHaveBeenCalledWith(
+        'remote-1',
+        'remote-session-123'
+      );
+    });
+
+    it('should handle remote session creation with legacy response format (sessionId only)', async () => {
+      // Mock remote registry to return a remote server
+      mockRemoteRegistry.getRemote.mockReturnValue({
+        id: 'remote-1',
+        name: 'Legacy Remote Server',
+        url: 'https://legacy-remote.example.com',
+        token: 'test-token',
+      });
+
+      // Mock fetch to return legacy response format (sessionId only)
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          sessionId: 'legacy-session-456',
+          // No createdAt field (legacy format)
+        }),
+      } as Response);
+
+      const router = createSessionRoutes({
+        ptyManager: mockPtyManager,
+        terminalManager: mockTerminalManager,
+        streamWatcher: mockStreamWatcher,
+        remoteRegistry: mockRemoteRegistry,
+        isHQMode: true,
+        activityMonitor: mockActivityMonitor,
+      });
+
+      const routes = (
+        router as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { post?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
+      const createRoute = routes.find(
+        (r) => r.route && r.route.path === '/sessions' && r.route.methods.post
+      );
+
+      const mockReq = {
+        body: {
+          command: ['bash'],
+          workingDir: '/test/dir',
+          remoteId: 'remote-1',
+        },
+      } as Request;
+
+      const mockRes = {
+        json: vi.fn(),
+        status: vi.fn().mockReturnThis(),
+      } as unknown as Response;
+
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
+
+      // Verify response forwards legacy response as-is
+      expect(mockRes.json).toHaveBeenCalledWith({
+        sessionId: 'legacy-session-456',
+        // createdAt will be undefined, which is fine for backward compatibility
+      });
+
+      // Verify session was still tracked
+      expect(mockRemoteRegistry.addSessionToRemote).toHaveBeenCalledWith(
+        'remote-1',
+        'legacy-session-456'
+      );
+    });
+
+    it('should not forward remoteId to prevent recursion', async () => {
+      mockRemoteRegistry.getRemote.mockReturnValue({
+        id: 'remote-1',
+        name: 'Remote Server',
+        url: 'https://remote.example.com',
+        token: 'test-token',
+      });
+
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ sessionId: 'test-session' }),
+      } as Response);
+
+      const router = createSessionRoutes({
+        ptyManager: mockPtyManager,
+        terminalManager: mockTerminalManager,
+        streamWatcher: mockStreamWatcher,
+        remoteRegistry: mockRemoteRegistry,
+        isHQMode: true,
+        activityMonitor: mockActivityMonitor,
+      });
+
+      const routes = (
+        router as {
+          stack: Array<{
+            route?: {
+              path: string;
+              methods: { post?: boolean };
+              stack: Array<{ handle: (req: Request, res: Response) => Promise<void> }>;
+            };
+          }>;
+        }
+      ).stack;
+      const createRoute = routes.find(
+        (r) => r.route && r.route.path === '/sessions' && r.route.methods.post
+      );
+
+      const mockReq = {
+        body: {
+          command: ['bash'],
+          workingDir: '/test/dir',
+          remoteId: 'remote-1',
+          spawn_terminal: true,
+          cols: 80,
+          rows: 24,
+          titleMode: 'dynamic',
+        },
+      } as Request;
+
+      const mockRes = {
+        json: vi.fn(),
+        status: vi.fn().mockReturnThis(),
+      } as unknown as Response;
+
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
+
+      // Verify that remoteId is NOT included in the forwarded request
+      const fetchCall = vi.mocked(fetch).mock.calls[0];
+      const requestBody = JSON.parse(fetchCall[1]?.body as string);
+
+      expect(requestBody).toEqual({
+        command: ['bash'],
+        workingDir: '/test/dir',
+        spawn_terminal: true,
+        cols: 80,
+        rows: 24,
+        titleMode: 'dynamic',
+        // remoteId should be excluded to prevent recursion
+      });
+      expect(requestBody.remoteId).toBeUndefined();
     });
   });
 });

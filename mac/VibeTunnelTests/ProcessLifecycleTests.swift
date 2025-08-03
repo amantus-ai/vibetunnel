@@ -8,22 +8,10 @@ import Testing
 struct ProcessLifecycleTests {
     @Test("Basic process spawning validation", .tags(.attachmentTests))
     func basicProcessSpawning() async throws {
-        TestUtilities.recordTestConfiguration(
-            name: "Basic Process Spawning",
-            details: "Command: /bin/echo\nExpected: Clean exit with status 0"
-        )
-
         let result = try await runProcessWithTimeout(
             executablePath: "/bin/echo",
             arguments: ["Hello from VibeTunnel test"],
             timeoutSeconds: 5
-        )
-
-        TestUtilities.recordProcessExecution(
-            command: "/bin/echo",
-            arguments: ["Hello from VibeTunnel test"],
-            exitStatus: result.exitStatus,
-            output: result.output
         )
 
         #expect(result.exitStatus == 0)
@@ -32,21 +20,10 @@ struct ProcessLifecycleTests {
 
     @Test("Process error handling", .tags(.attachmentTests))
     func processErrorHandling() async throws {
-        TestUtilities.recordTestConfiguration(
-            name: "Process Error Handling",
-            details: "Command: /bin/sh -c \"exit 1\"\nExpected: Exit with failure status"
-        )
-
         let result = try await runProcessWithTimeout(
             executablePath: "/bin/sh",
             arguments: ["-c", "exit 1"],
             timeoutSeconds: 5
-        )
-
-        TestUtilities.recordProcessExecution(
-            command: "/bin/sh",
-            arguments: ["-c", "exit 1"],
-            exitStatus: result.exitStatus
         )
 
         // This should fail as intended
@@ -56,11 +33,6 @@ struct ProcessLifecycleTests {
     @Test("Shell command execution", .tags(.attachmentTests, .integration))
     func shellCommandExecution() async throws {
         // Test shell command execution patterns used in VibeTunnel
-        Attachment.record("""
-        Test: Shell Command Execution
-        Command: ls /tmp
-        Expected: Successful directory listing
-        """, named: "Shell Test Configuration")
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
@@ -75,16 +47,8 @@ struct ProcessLifecycleTests {
         process.waitUntilExit()
 
         // Capture both output and error streams
-        let output = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        let error = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-
-        Attachment.record("""
-        Exit Status: \(process.terminationStatus)
-        Standard Output:
-        \(output)
-        Standard Error:
-        \(error.isEmpty ? "(none)" : error)
-        """, named: "Shell Execution Results")
+        let _ = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let _ = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
 
         #expect(process.terminationStatus == 0)
     }
@@ -96,11 +60,6 @@ struct ProcessLifecycleTests {
     )
     func networkCommandValidation() async throws {
         // Test network-related commands that VibeTunnel might use
-        Attachment.record("""
-        Test: Network Command Validation
-        Command: ifconfig -a
-        Purpose: Validate network interface enumeration
-        """, named: "Network Command Test")
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/sbin/ifconfig")
@@ -112,14 +71,7 @@ struct ProcessLifecycleTests {
         try process.run()
         process.waitUntilExit()
 
-        let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-
-        Attachment.record("""
-        Exit Status: \(process.terminationStatus)
-        Output Length: \(output.count) characters
-        Contains 'lo0': \(output.contains("lo0"))
-        Contains 'en0': \(output.contains("en0"))
-        """, named: "Network Interface Information")
+        let _ = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
 
         #expect(process.terminationStatus == 0)
     }

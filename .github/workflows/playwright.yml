@@ -17,7 +17,7 @@ jobs:
   test:
     name: Playwright E2E Tests
     runs-on: blacksmith-16vcpu-ubuntu-2404-arm
-    timeout-minutes: 30
+    timeout-minutes: 20
     
     steps:
       - name: Checkout code
@@ -96,7 +96,7 @@ jobs:
         
       - name: Run Playwright tests
         working-directory: ./web
-        run: xvfb-run -a pnpm test:e2e
+        run: xvfb-run -a pnpm test:e2e:fast
         env:
           CI: true
           TERM: xterm

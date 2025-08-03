@@ -24,7 +24,7 @@ export interface Branch {
   name: string;
   current: boolean;
   remote: boolean;
-  worktree?: string;
+  worktreePath?: string;
 }
 
 interface RepositorySearchOptions {
@@ -242,7 +242,7 @@ async function listBranches(repoPath: string): Promise<Branch[]> {
             b.name.replace(/^origin\//, '') === worktree.branch
         );
         if (branch) {
-          branch.worktree = worktree.path;
+          branch.worktreePath = worktree.path;
         }
       }
     } catch {

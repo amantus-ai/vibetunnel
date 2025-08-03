@@ -873,6 +873,21 @@ export function createGitRoutes(): Router {
         const remoteUrl =
           remoteResult.status === 'fulfilled' ? remoteResult.value.stdout.trim() : null;
 
+        // Parse GitHub URL from remote URL
+        let githubUrl: string | null = null;
+        if (remoteUrl) {
+          // Handle HTTPS URLs: https://github.com/user/repo.git
+          if (remoteUrl.startsWith('https://github.com/')) {
+            githubUrl = remoteUrl.endsWith('.git') ? remoteUrl.slice(0, -4) : remoteUrl;
+          }
+          // Handle SSH URLs: git@github.com:user/repo.git
+          else if (remoteUrl.startsWith('git@github.com:')) {
+            const pathPart = remoteUrl.substring('git@github.com:'.length);
+            const cleanPath = pathPart.endsWith('.git') ? pathPart.slice(0, -4) : pathPart;
+            githubUrl = `https://github.com/${cleanPath}`;
+          }
+        }
+
         // Ahead/behind counts
         let aheadCount = 0;
         let behindCount = 0;
@@ -893,6 +908,7 @@ export function createGitRoutes(): Router {
           repoPath,
           currentBranch,
           remoteUrl,
+          githubUrl,
           hasChanges,
           modifiedCount,
           untrackedCount,

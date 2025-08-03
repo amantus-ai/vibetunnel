@@ -95,46 +95,14 @@ export default defineConfig({
     },
   },
 
-  /* Configure projects for major browsers */
+  /* Configure single browser project */
   projects: [
-    // Parallel tests - these tests create their own isolated sessions
     {
-      name: 'chromium-parallel',
+      name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: [
-        '**/session-creation.spec.ts',
-        '**/basic-session.spec.ts',
-        '**/minimal-session.spec.ts',
-        '**/debug-session.spec.ts',
-        '**/ui-features.spec.ts',
-        '**/test-session-persistence.spec.ts',
-        '**/session-navigation.spec.ts',
-        '**/ssh-key-manager.spec.ts',
-        '**/push-notifications.spec.ts',
-        '**/authentication.spec.ts',
-      ],
       testIgnore: [
-        '**/git-status-badge-debug.spec.ts',
+        '**/git-status-badge-debug.spec.ts', // Skip debug-only tests
       ],
-    },
-    // Serial tests - these tests perform global operations or modify shared state
-    {
-      name: 'chromium-serial',
-      use: { ...devices['Desktop Chrome'] },
-      testMatch: [
-        '**/session-management.spec.ts',
-        '**/session-management-advanced.spec.ts',
-        '**/session-management-global.spec.ts',
-        '**/keyboard-shortcuts.spec.ts',
-        '**/keyboard-capture-toggle.spec.ts',
-        '**/terminal-interaction.spec.ts',
-        '**/activity-monitoring.spec.ts',
-        '**/file-browser-basic.spec.ts',
-      ],
-      testIgnore: [
-        '**/git-status-badge-debug.spec.ts',
-      ],
-      fullyParallel: false, // Override global setting for serial tests
     },
   ],
 

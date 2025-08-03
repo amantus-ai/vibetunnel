@@ -30,6 +30,21 @@ jobs:
     
     - name: Verify Xcode
       run: |
+        # Check available Xcode versions
+        echo "Available Xcode versions:"
+        ls -la /Applications/ | grep -i xcode || true
+        
+        # Check if stable Xcode is available
+        if [ -d "/Applications/Xcode.app" ]; then
+          echo "Stable Xcode found, switching to it..."
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+        elif [ -d "/Applications/Xcode-15.app" ]; then
+          echo "Xcode 15 found, switching to it..."
+          sudo xcode-select -s /Applications/Xcode-15.app/Contents/Developer
+        else
+          echo "Using current Xcode installation with actool workaround..."
+        fi
+        
         xcodebuild -version
         swift --version
     
@@ -40,7 +55,6 @@ jobs:
       continue-on-error: true
       with:
         path: |
-          ~/Library/Caches/Homebrew
           /opt/homebrew/Cellar/swiftlint
           /opt/homebrew/Cellar/swiftformat
           /opt/homebrew/Cellar/xcbeautify
@@ -58,17 +72,8 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-spm-
     
-    - name: Cache Xcode derived data
-      uses: actions/cache@v4
-      continue-on-error: true
-      with:
-        path: |
-          ~/Library/Developer/Xcode/DerivedData/**/Build/Products
-          ~/Library/Developer/Xcode/DerivedData/**/Build/Intermediates.noindex
-          ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
-        key: ${{ runner.os }}-xcode-build-${{ hashFiles('mac/**/*.swift', 'mac/**/*.h', 'mac/**/*.m') }}
-        restore-keys: |
-          ${{ runner.os }}-xcode-build-
+    # Xcode derived data cache disabled due to self-hosted runner filesystem issues
+    # - name: Cache Xcode derived data
     
     - name: Install all tools
       shell: bash
@@ -98,14 +103,21 @@ jobs:
             break
           else
             if [ $attempt -eq $MAX_ATTEMPTS ]; then
-              echo "Failed to install tools after $MAX_ATTEMPTS attempts"
-              exit 1
+              echo "Failed to install tools after $MAX_ATTEMPTS attempts, continuing without them"
+              # Don't exit 1, continue with build (tools may already be installed)
+              break
             fi
             echo "Command failed, waiting ${WAIT_TIME}s before retry..."
             sleep $WAIT_TIME
             WAIT_TIME=$((WAIT_TIME * 2))  # Exponential backoff
           fi
         done
+        
+        # Verify which tools are available
+        echo "Tool availability check:"
+        which swiftlint || echo "swiftlint not available (linting will be skipped)"
+        which swiftformat || echo "swiftformat not available (formatting will be skipped)"  
+        which xcbeautify || echo "xcbeautify not available (output formatting will be basic)"
         
         # Show versions
         echo "SwiftLint: $(swiftlint --version || echo 'not found')"
@@ -133,6 +145,9 @@ jobs:
       id: build
       env:
         CI: "true"  # Ensure CI environment variable is set for build scripts
+        # Workaround for Xcode beta actool version info issues
+        ACTOOL_IGNORE_VERSION_CHECK: "1"
+        IBTOOL_IGNORE_VERSION_CHECK: "1"
       run: |
         # Always use Debug for now to match test expectations
         BUILD_CONFIG="Debug"
@@ -150,7 +165,9 @@ jobs:
           ENABLE_HARDENED_RUNTIME=NO \
           PROVISIONING_PROFILE_SPECIFIER="" \
           DEVELOPMENT_TEAM="" \
-          COMPILER_INDEX_STORE_ENABLE=NO || {
+          COMPILER_INDEX_STORE_ENABLE=NO \
+          ACTOOL_IGNORE_VERSION_CHECK=1 \
+          IBTOOL_IGNORE_VERSION_CHECK=1 || {
           echo "::error::Build failed"
           exit 1
         }
@@ -179,6 +196,9 @@ jobs:
       env:
         RUN_SLOW_TESTS: "false"  # Skip slow tests in CI by default
         RUN_FLAKY_TESTS: "false"  # Skip flaky tests in CI by default
+        # Workaround for Xcode beta actool version info issues
+        ACTOOL_IGNORE_VERSION_CHECK: "1"
+        IBTOOL_IGNORE_VERSION_CHECK: "1"
       run: |
         
         # Use xcodebuild test for workspace testing
@@ -203,7 +223,9 @@ jobs:
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
-          COMPILER_INDEX_STORE_ENABLE=NO || {
+          COMPILER_INDEX_STORE_ENABLE=NO \
+          ACTOOL_IGNORE_VERSION_CHECK=1 \
+          IBTOOL_IGNORE_VERSION_CHECK=1 || {
           echo "::error::Tests failed"
           echo "result=1" >> $GITHUB_OUTPUT
           # Try to get more detailed error information

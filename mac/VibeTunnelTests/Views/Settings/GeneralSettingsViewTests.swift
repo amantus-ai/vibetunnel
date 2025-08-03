@@ -60,6 +60,9 @@ struct GeneralSettingsViewTests {
         // Test that NotificationService reads the updated preferences
         let prefs = NotificationService.NotificationPreferences(fromConfig: configManager)
         #expect(prefs.sessionStart == true)
+        
+        // Cleanup - ensure defaults are restored (though this test should end with correct value)
+        configManager.notificationSessionStart = true
     }
 
     @Test("Notification preferences save correctly")
@@ -88,6 +91,16 @@ struct GeneralSettingsViewTests {
         #expect(prefs.commandCompletion == true)
         #expect(prefs.commandError == true)
         #expect(prefs.bell == false)
+        
+        // Cleanup - reset to default values to prevent state pollution
+        configManager.notificationSessionStart = true
+        configManager.notificationSessionExit = true
+        configManager.notificationCommandCompletion = true
+        configManager.notificationCommandError = true
+        configManager.notificationBell = true
+        configManager.notificationClaudeTurn = false
+        configManager.notificationSoundEnabled = true
+        configManager.notificationVibrationEnabled = true
     }
 
     @Test("Notification checkboxes visibility logic")

@@ -87,7 +87,7 @@ struct AccessModeView: View {
 
     @AppStorage(AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
     private var tailscaleServeEnabled = false
-    
+
     @Environment(TailscaleService.self)
     private var tailscaleService
     @Environment(TailscaleServeStatusService.self)
@@ -133,7 +133,7 @@ struct AccessModeView: View {
                         .foregroundColor(.secondary)
                 }
             }
-            
+
             // Show info when Tailscale Serve is active and locked
             if shouldLockToLocalhost && accessMode == .network {
                 HStack(spacing: 4) {
@@ -147,12 +147,12 @@ struct AccessModeView: View {
             }
         }
     }
-    
+
     /// Only lock to localhost when Tailscale Serve is enabled AND actually working
     private var shouldLockToLocalhost: Bool {
-        tailscaleServeEnabled && 
-        tailscaleService.isRunning && 
-        tailscaleServeStatus.isRunning
+        tailscaleServeEnabled &&
+            tailscaleService.isRunning &&
+            tailscaleServeStatus.isRunning
     }
 }
 

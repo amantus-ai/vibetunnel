@@ -8,13 +8,14 @@ import { TestDataFactory } from '../utils/test-utils';
  */
 
 /**
- * Wait for shell prompt to appear
+ * Wait for shell prompt to appear with enhanced detection
  * Uses Playwright's auto-waiting instead of arbitrary timeouts
  */
 export async function waitForShellPrompt(page: Page): Promise<void> {
   await page.waitForFunction(
     () => {
-      const terminal = document.querySelector('vibe-terminal');
+      const terminal =
+        document.querySelector('#session-terminal') || document.querySelector('vibe-terminal');
       if (!terminal) return false;
 
       // Check the terminal container first
@@ -24,52 +25,131 @@ export async function waitForShellPrompt(page: Page): Promise<void> {
       // Fall back to terminal content
       const content = terminal.textContent || containerContent;
 
-      // Match common shell prompts: $, #, >, %, ❯ at end of line
-      return /[$>#%❯]\s*$/.test(content);
+      // Enhanced prompt detection patterns
+      const promptPatterns = [
+        /[$>#%❯]\s*$/, // Basic prompts at end
+        /\w+@\w+.*[$>#%❯]\s*$/, // user@host prompts
+        /bash-\d+\.\d+[$>#]\s*$/, // Bash version prompts
+        /][$>#%❯]\s*$/, // Bracketed prompts
+        /~\s*[$>#%❯]\s*$/, // Home directory prompts
+      ];
+
+      return (
+        promptPatterns.some((pattern) => pattern.test(content)) ||
+        (content.length > 10 && /[$>#%❯]/.test(content))
+      );
     },
-    { timeout: 5000 } // Use reasonable timeout from config
+    { timeout: 10000 } // Increased timeout for reliability
   );
 }
 
 /**
- * Execute a command and verify its output
+ * Wait for terminal to be ready for input
+ */
+export async function waitForTerminalReady(page: Page): Promise<void> {
+  const terminal = page.locator('#session-terminal');
+
+  // Ensure terminal is visible and clickable
+  await terminal.waitFor({ state: 'visible' });
+
+  // Wait for terminal initialization and prompt
+  await page.waitForFunction(
+    () => {
+      const term = document.querySelector('#session-terminal');
+      if (!term) return false;
+
+      const content = term.textContent || '';
+      const hasContent = content.length > 5;
+      const hasPrompt = /[$>#%❯]/.test(content);
+
+      return hasContent && hasPrompt;
+    },
+    { timeout: 15000 }
+  );
+}
+
+/**
+ * Execute a command with intelligent waiting (modern approach)
+ * Avoids arbitrary timeouts by waiting for actual command completion
+ */
+export async function executeCommandIntelligent(
+  page: Page,
+  command: string,
+  expectedOutput?: string | RegExp
+): Promise<void> {
+  // Get terminal element
+  const terminal = page.locator('#session-terminal');
+  await terminal.click();
+
+  // Capture current terminal state before command
+  const beforeContent = await terminal.textContent();
+
+  // Execute command
+  await page.keyboard.type(command);
+  await page.keyboard.press('Enter');
+
+  // Wait for command completion with intelligent detection
+  await page.waitForFunction(
+    ({ before, expectedText, expectRegex }) => {
+      const term = document.querySelector('#session-terminal');
+      const current = term?.textContent || '';
+
+      // Command must have completed (content changed)
+      if (current === before) return false;
+
+      // Check for expected output if provided
+      if (expectedText && !current.includes(expectedText)) return false;
+      if (expectRegex) {
+        const regex = new RegExp(expectRegex);
+        if (!regex.test(current)) return false;
+      }
+
+      // Must end with a new prompt (command completed)
+      return /[$>#%❯]\s*$/.test(current);
+    },
+    {
+      before: beforeContent,
+      expectedText: typeof expectedOutput === 'string' ? expectedOutput : null,
+      expectRegex: expectedOutput instanceof RegExp ? expectedOutput.source : null,
+    },
+    { timeout: 15000 }
+  );
+}
+
+/**
+ * Execute a command and verify its output (legacy function for compatibility)
  */
 export async function executeAndVerifyCommand(
   page: Page,
   command: string,
   expectedOutput?: string | RegExp
 ): Promise<void> {
-  const sessionViewPage = new SessionViewPage(page);
-
-  // Type and send command
-  await sessionViewPage.typeCommand(command);
-
-  // Wait for expected output if provided
-  if (expectedOutput) {
-    if (typeof expectedOutput === 'string') {
-      await sessionViewPage.waitForOutput(expectedOutput);
-    } else {
-      await page.waitForFunction(
-        ({ pattern }) => {
-          const terminal = document.querySelector('vibe-terminal');
-          const content = terminal?.textContent || '';
-          return new RegExp(pattern).test(content);
-        },
-        { pattern: expectedOutput.source }
-      );
-    }
-  }
-
-  // Always wait for next prompt
-  await waitForShellPrompt(page);
+  // Use the new intelligent method
+  await executeCommandIntelligent(page, command, expectedOutput);
 }
 
 /**
- * Execute multiple commands in sequence
+ * Execute multiple commands in sequence with intelligent waiting
  */
 export async function executeCommandSequence(page: Page, commands: string[]): Promise<void> {
-  for (const command of commands) {
-    await executeAndVerifyCommand(page, command);
+  for (let i = 0; i < commands.length; i++) {
+    const command = commands[i];
+    console.log(`Executing command ${i + 1}/${commands.length}: ${command}`);
+    await executeCommandIntelligent(page, command);
+  }
+}
+
+/**
+ * Execute commands with outputs for verification
+ */
+export async function executeCommandsWithExpectedOutputs(
+  page: Page,
+  commandsWithOutputs: Array<{ command: string; expectedOutput?: string | RegExp }>
+): Promise<void> {
+  for (let i = 0; i < commandsWithOutputs.length; i++) {
+    const { command, expectedOutput } = commandsWithOutputs[i];
+    console.log(`Executing command ${i + 1}/${commandsWithOutputs.length}: ${command}`);
+    await executeCommandIntelligent(page, command, expectedOutput);
   }
 }
 

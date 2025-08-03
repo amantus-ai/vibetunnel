@@ -27,11 +27,6 @@ final class ServerManagerTests {
         .disabled(if: TestConditions.isRunningInCI(), "Flaky in CI due to port conflicts and process management")
     )
     func serverLifecycle() async throws {
-        // Attach system information for debugging
-        Attachment.record(TestUtilities.captureSystemInfo(), named: "System Info")
-
-        // Attach initial server state
-        Attachment.record(TestUtilities.captureServerState(manager), named: "Initial Server State")
 
         // Start the server
         await manager.start()
@@ -40,8 +35,6 @@ final class ServerManagerTests {
         let timeout = TestConditions.isRunningInCI() ? 5_000 : 2_000
         try await Task.sleep(for: .milliseconds(timeout))
 
-        // Attach server state after start attempt
-        Attachment.record(TestUtilities.captureServerState(manager), named: "Post-Start Server State")
 
         // The server binary must be available for tests
         #expect(ServerBinaryAvailableCondition.isAvailable(), "Server binary must be available for tests to run")
@@ -58,14 +51,9 @@ final class ServerManagerTests {
                 }
             }
 
-            Attachment.record("""
-            Server failed to start
-            Error: \(manager.lastError?.localizedDescription ?? "Unknown")
-            """, named: "Server Startup Failure")
         } else {
             // Server is running as expected
             #expect(manager.bunServer != nil)
-            Attachment.record("Server started successfully", named: "Server Status")
         }
 
         // Stop should work regardless of state
@@ -74,8 +62,6 @@ final class ServerManagerTests {
         // After stop, server should not be running
         #expect(!manager.isRunning)
 
-        // Attach final state
-        Attachment.record(TestUtilities.captureServerState(manager), named: "Final Server State")
     }
 
     @Test("Starting server when already running does not create duplicate", .tags(.critical))
@@ -396,54 +382,26 @@ final class ServerManagerTests {
         .enabled(if: ServerBinaryAvailableCondition.isAvailable())
     )
     func serverConfigurationDiagnostics() async throws {
-        // Attach test environment
-        Attachment.record("""
-        Test: Server Configuration Management
-        Binary Available: \(ServerBinaryAvailableCondition.isAvailable())
-        Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
-        """, named: "Test Configuration")
 
-        // Record initial state
-        Attachment.record(TestUtilities.captureServerState(manager), named: "Initial State")
 
         // Test server configuration without actually starting it
         let originalPort = manager.port
         manager.port = "4567"
 
-        // Record configuration change
-        Attachment.record("""
-        Port changed from \(originalPort) to \(manager.port)
-        Bind address: \(manager.bindAddress)
-        """, named: "Configuration Change")
 
         #expect(manager.port == "4567")
 
         // Restore original configuration
         manager.port = originalPort
 
-        // Record final state
-        Attachment.record(TestUtilities.captureServerState(manager), named: "Final State")
     }
 
     @Test("Session model validation with attachments", .tags(.attachmentTests, .sessionManagement))
     func sessionModelValidation() async throws {
-        // Attach test info
-        Attachment.record("""
-        Test: TunnelSession Model Validation
-        Purpose: Verify session creation and state management
-        """, named: "Test Info")
 
         // Create test session
         let session = TunnelSession()
 
-        // Record session details
-        Attachment.record("""
-        Session ID: \(session.id)
-        Created At: \(session.createdAt)
-        Last Activity: \(session.lastActivity)
-        Is Active: \(session.isActive)
-        Process ID: \(session.processID?.description ?? "none")
-        """, named: "Session Details")
 
         // Validate session properties
         #expect(session.isActive)

@@ -279,7 +279,9 @@ describe('ZellijManager', () => {
   describe('stripAnsiCodes', () => {
     it('should strip ANSI escape codes', () => {
       const input = '\x1b[32;1mGreen Bold Text\x1b[0m Normal \x1b[31mRed\x1b[0m';
-      const result = (zellijManager as any).stripAnsiCodes(input);
+      const result = (
+        zellijManager as ZellijManager & { stripAnsiCodes: (input: string) => string }
+      ).stripAnsiCodes(input);
 
       expect(result).toBe('Green Bold Text Normal Red');
       expect(result).not.toContain('\x1b');

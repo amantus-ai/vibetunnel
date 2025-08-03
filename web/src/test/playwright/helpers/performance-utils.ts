@@ -52,7 +52,7 @@ export async function waitForNetworkIdleWithTimeout(
   } catch {
     // If network doesn't become idle, continue anyway
     const pendingRequests = await page.evaluate(() => {
-      return (window as any).__pendingRequests || 0;
+      return (window as Window & { __pendingRequests?: number }).__pendingRequests || 0;
     });
 
     if (pendingRequests > maxInflightRequests) {
@@ -122,7 +122,7 @@ export async function fastType(page: Page, selector: string, text: string): Prom
  * Wait for any of multiple conditions
  */
 export async function waitForAny(
-  conditions: (() => Promise<any>)[],
+  conditions: (() => Promise<unknown>)[],
   options: { timeout?: number } = {}
 ): Promise<number> {
   const { timeout = 5000 } = options;
