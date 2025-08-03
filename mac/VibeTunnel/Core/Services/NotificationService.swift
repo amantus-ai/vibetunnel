@@ -86,7 +86,7 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
             commandCompletion: true,
             commandError: true,
             bell: true,
-            claudeTurn: true,
+            claudeTurn: false,
             soundEnabled: true,
             vibrationEnabled: true
         )
