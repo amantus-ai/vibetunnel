@@ -103,14 +103,21 @@ jobs:
             break
           else
             if [ $attempt -eq $MAX_ATTEMPTS ]; then
-              echo "Failed to install tools after $MAX_ATTEMPTS attempts"
-              exit 1
+              echo "Failed to install tools after $MAX_ATTEMPTS attempts, continuing without them"
+              # Don't exit 1, continue with build (tools may already be installed)
+              break
             fi
             echo "Command failed, waiting ${WAIT_TIME}s before retry..."
             sleep $WAIT_TIME
             WAIT_TIME=$((WAIT_TIME * 2))  # Exponential backoff
           fi
         done
+        
+        # Verify which tools are available
+        echo "Tool availability check:"
+        which swiftlint || echo "swiftlint not available (linting will be skipped)"
+        which swiftformat || echo "swiftformat not available (formatting will be skipped)"  
+        which xcbeautify || echo "xcbeautify not available (output formatting will be basic)"
         
         # Show versions
         echo "SwiftLint: $(swiftlint --version || echo 'not found')"
