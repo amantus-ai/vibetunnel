@@ -81,7 +81,7 @@ describe('git routes', () => {
     it('should return repository info with githubUrl field for Mac compatibility', async () => {
       const { promisify } = await import('util');
       const execFile = vi.fn();
-      vi.mocked(promisify).mockReturnValue(execFile);
+      vi.mocked(promisify).mockImplementation(() => execFile);
 
       const { isWorktree } = await import('../utils/git-utils');
       vi.mocked(isWorktree).mockResolvedValue(false);
@@ -129,7 +129,7 @@ describe('git routes', () => {
     it('should handle SSH GitHub URLs correctly', async () => {
       const { promisify } = await import('util');
       const execFile = vi.fn();
-      vi.mocked(promisify).mockReturnValue(execFile);
+      vi.mocked(promisify).mockImplementation(() => execFile);
 
       const { isWorktree } = await import('../utils/git-utils');
       vi.mocked(isWorktree).mockResolvedValue(false);
@@ -175,7 +175,7 @@ describe('git routes', () => {
     it('should handle non-GitHub remotes gracefully', async () => {
       const { promisify } = await import('util');
       const execFile = vi.fn();
-      vi.mocked(promisify).mockReturnValue(execFile);
+      vi.mocked(promisify).mockImplementation(() => execFile);
 
       const { isWorktree } = await import('../utils/git-utils');
       vi.mocked(isWorktree).mockResolvedValue(false);
@@ -239,7 +239,7 @@ describe('git routes', () => {
     it('should handle not a git repository', async () => {
       const { promisify } = await import('util');
       const execFile = vi.fn();
-      vi.mocked(promisify).mockReturnValue(execFile);
+      vi.mocked(promisify).mockImplementation(() => execFile);
 
       const { isNotGitRepositoryError } = await import('../utils/git-error');
       vi.mocked(isNotGitRepositoryError).mockReturnValue(true);
@@ -304,7 +304,7 @@ describe('git routes', () => {
     it('should return basic repo info', async () => {
       const { promisify } = await import('util');
       const execFile = vi.fn();
-      vi.mocked(promisify).mockReturnValue(execFile);
+      vi.mocked(promisify).mockImplementation(() => execFile);
 
       execFile.mockResolvedValueOnce({ stdout: '/test/repo', stderr: '' });
 
@@ -330,7 +330,7 @@ describe('git routes', () => {
     it('should return remote info with GitHub URL parsing', async () => {
       const { promisify } = await import('util');
       const execFile = vi.fn();
-      vi.mocked(promisify).mockReturnValue(execFile);
+      vi.mocked(promisify).mockImplementation(() => execFile);
 
       execFile
         .mockResolvedValueOnce({ stdout: '/test/repo', stderr: '' }) // show-toplevel

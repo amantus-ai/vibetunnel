@@ -56,7 +56,7 @@ describe('repositories routes', () => {
       const { promisify } = await import('util');
 
       const mockExecAsync = vi.fn();
-      vi.mocked(promisify).mockReturnValue(mockExecAsync);
+      vi.mocked(promisify).mockImplementation(() => mockExecAsync);
 
       // Mock git branch command
       mockExecAsync
@@ -132,7 +132,7 @@ describe('repositories routes', () => {
     it('should handle git command errors gracefully', async () => {
       const { promisify } = await import('util');
       const mockExecAsync = vi.fn();
-      vi.mocked(promisify).mockReturnValue(mockExecAsync);
+      vi.mocked(promisify).mockImplementation(() => mockExecAsync);
 
       // Mock git command failure
       mockExecAsync.mockRejectedValue(new Error('Not a git repository'));
