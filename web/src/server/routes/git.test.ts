@@ -2,8 +2,10 @@ import type { Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createGitRoutes } from './git';
 
-// Mock child_process and util
+// Mock functions (must be declared before vi.mock calls due to hoisting)
 const mockExecFile = vi.fn();
+
+// Mock child_process and util
 vi.mock('child_process', () => ({
   execFile: mockExecFile,
 }));
