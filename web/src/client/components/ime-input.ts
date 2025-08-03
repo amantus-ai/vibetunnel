@@ -336,9 +336,9 @@ export class DesktopIMEInput {
       return;
     }
 
-    // Position IME input at cursor location with 2px upward adjustment
+    // Position IME input at cursor location with 3px upward adjustment
     const x = Math.max(10, cursorInfo.x);
-    const y = Math.max(10, cursorInfo.y - 2); // Move 2px up for better alignment
+    const y = Math.max(10, cursorInfo.y - 3); // Move 3px up for better alignment
 
     logger.log(`Positioning CJK input at x=${x}, y=${y}`);
     this.input.style.left = `${x}px`;
