@@ -28,10 +28,16 @@ final class ServerManagerTests {
     )
     func serverLifecycle() async throws {
         // Attach system information for debugging
-        Attachment.record(TestUtilities.captureSystemInfo(), named: "System Info")
+        // Note: Testing.Attachment API is experimental and not yet stable
+        // Temporarily using print for system info recording
+        print("System Info:")
+        print(TestUtilities.captureSystemInfo())
 
         // Attach initial server state
-        Attachment.record(TestUtilities.captureServerState(manager), named: "Initial Server State")
+        // Note: Testing.Attachment API is experimental and not yet stable
+        // Temporarily using print for server state recording
+        print("Initial Server State:")
+        print(TestUtilities.captureServerState(manager))
 
         // Start the server
         await manager.start()
@@ -41,7 +47,10 @@ final class ServerManagerTests {
         try await Task.sleep(for: .milliseconds(timeout))
 
         // Attach server state after start attempt
-        Attachment.record(TestUtilities.captureServerState(manager), named: "Post-Start Server State")
+        // Note: Testing.Attachment API is experimental and not yet stable
+        // Temporarily using print for server state recording
+        print("Post-Start Server State:")
+        print(TestUtilities.captureServerState(manager))
 
         // The server binary must be available for tests
         #expect(ServerBinaryAvailableCondition.isAvailable(), "Server binary must be available for tests to run")
@@ -58,14 +67,18 @@ final class ServerManagerTests {
                 }
             }
 
-            Attachment.record("""
+            // Note: Testing.Attachment API is experimental and not yet stable
+            // Temporarily using print for server failure recording
+            print("""
             Server failed to start
             Error: \(manager.lastError?.localizedDescription ?? "Unknown")
-            """, named: "Server Startup Failure")
+            """)
         } else {
             // Server is running as expected
             #expect(manager.bunServer != nil)
-            Attachment.record("Server started successfully", named: "Server Status")
+            // Note: Testing.Attachment API is experimental and not yet stable
+            // Temporarily using print for server status recording
+            print("Server started successfully")
         }
 
         // Stop should work regardless of state
@@ -75,7 +88,10 @@ final class ServerManagerTests {
         #expect(!manager.isRunning)
 
         // Attach final state
-        Attachment.record(TestUtilities.captureServerState(manager), named: "Final Server State")
+        // Note: Testing.Attachment API is experimental and not yet stable
+        // Temporarily using print for server state recording
+        print("Final Server State:")
+        print(TestUtilities.captureServerState(manager))
     }
 
     @Test("Starting server when already running does not create duplicate", .tags(.critical))
@@ -397,24 +413,31 @@ final class ServerManagerTests {
     )
     func serverConfigurationDiagnostics() async throws {
         // Attach test environment
-        Attachment.record("""
+        // Note: Testing.Attachment API is experimental and not yet stable
+        // Temporarily using print for test configuration recording
+        print("""
         Test: Server Configuration Management
         Binary Available: \(ServerBinaryAvailableCondition.isAvailable())
         Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
-        """, named: "Test Configuration")
+        """)
 
         // Record initial state
-        Attachment.record(TestUtilities.captureServerState(manager), named: "Initial State")
+        // Note: Testing.Attachment API is experimental and not yet stable
+        // Temporarily using print for server state recording
+        print("Initial State:")
+        print(TestUtilities.captureServerState(manager))
 
         // Test server configuration without actually starting it
         let originalPort = manager.port
         manager.port = "4567"
 
         // Record configuration change
-        Attachment.record("""
+        // Note: Testing.Attachment API is experimental and not yet stable
+        // Temporarily using print for configuration change recording
+        print("""
         Port changed from \(originalPort) to \(manager.port)
         Bind address: \(manager.bindAddress)
-        """, named: "Configuration Change")
+        """)
 
         #expect(manager.port == "4567")
 
@@ -422,28 +445,35 @@ final class ServerManagerTests {
         manager.port = originalPort
 
         // Record final state
-        Attachment.record(TestUtilities.captureServerState(manager), named: "Final State")
+        // Note: Testing.Attachment API is experimental and not yet stable
+        // Temporarily using print for server state recording
+        print("Final State:")
+        print(TestUtilities.captureServerState(manager))
     }
 
     @Test("Session model validation with attachments", .tags(.attachmentTests, .sessionManagement))
     func sessionModelValidation() async throws {
         // Attach test info
-        Attachment.record("""
+        // Note: Testing.Attachment API is experimental and not yet stable
+        // Temporarily using print for test info recording
+        print("""
         Test: TunnelSession Model Validation
         Purpose: Verify session creation and state management
-        """, named: "Test Info")
+        """)
 
         // Create test session
         let session = TunnelSession()
 
         // Record session details
-        Attachment.record("""
+        // Note: Testing.Attachment API is experimental and not yet stable
+        // Temporarily using print for session details recording
+        print("""
         Session ID: \(session.id)
         Created At: \(session.createdAt)
         Last Activity: \(session.lastActivity)
         Is Active: \(session.isActive)
         Process ID: \(session.processID?.description ?? "none")
-        """, named: "Session Details")
+        """)
 
         // Validate session properties
         #expect(session.isActive)
