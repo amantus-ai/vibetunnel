@@ -31,8 +31,8 @@ test.describe('Terminal Basic Tests', () => {
 
     await assertTerminalReady(page, 15000);
 
-    // Get terminal element
-    const terminal = page.locator('.terminal, [data-testid="terminal"], .xterm').first();
+    // Get terminal element using the correct selector
+    const terminal = page.locator('#session-terminal');
     await expect(terminal).toBeVisible({ timeout: 10000 });
 
     // Click on terminal to focus it
@@ -61,7 +61,7 @@ test.describe('Terminal Basic Tests', () => {
 
     await assertTerminalReady(page, 15000);
 
-    const terminal = page.locator('.terminal, [data-testid="terminal"], .xterm').first();
+    const terminal = page.locator('#session-terminal');
     await expect(terminal).toBeVisible();
     await terminal.click();
     await page.waitForTimeout(1000);
@@ -97,7 +97,7 @@ test.describe('Terminal Basic Tests', () => {
 
     await assertTerminalReady(page, 15000);
 
-    const terminal = page.locator('.terminal, [data-testid="terminal"], .xterm').first();
+    const terminal = page.locator('#session-terminal');
     await expect(terminal).toBeVisible();
     await terminal.click();
     await page.waitForTimeout(1000);
@@ -142,7 +142,7 @@ test.describe('Terminal Basic Tests', () => {
 
     await assertTerminalReady(page, 15000);
 
-    const terminal = page.locator('.terminal, [data-testid="terminal"], .xterm').first();
+    const terminal = page.locator('#session-terminal');
     await expect(terminal).toBeVisible();
     await terminal.click();
     await page.waitForTimeout(1000);
@@ -160,8 +160,8 @@ test.describe('Terminal Basic Tests', () => {
     await expect(terminal).toContainText('Line 1 - Testing terminal scrolling');
     await expect(terminal).toContainText('Line 20 - Testing terminal scrolling');
 
-    // Test scrolling (if scrollbar exists)
-    const scrollableArea = terminal.locator('.xterm-viewport, .terminal-viewport');
+    // Test scrolling (if scrollbar exists) - look inside the terminal container
+    const scrollableArea = terminal.locator('.xterm-viewport, .terminal-viewport, vibe-terminal');
     if (await scrollableArea.isVisible({ timeout: 2000 })) {
       // Try to scroll up
       await scrollableArea.hover();
@@ -185,7 +185,7 @@ test.describe('Terminal Basic Tests', () => {
 
     await assertTerminalReady(page, 15000);
 
-    const terminal = page.locator('.terminal, [data-testid="terminal"], .xterm').first();
+    const terminal = page.locator('#session-terminal');
     await terminal.click();
     await page.waitForTimeout(1000);
 
@@ -209,9 +209,7 @@ test.describe('Terminal Basic Tests', () => {
       await assertTerminalReady(page, 15000);
 
       // Check if our marker is still there
-      const terminalAfterReturn = page
-        .locator('.terminal, [data-testid="terminal"], .xterm')
-        .first();
+      const terminalAfterReturn = page.locator('#session-terminal');
       await expect(terminalAfterReturn).toContainText('State persistence test marker', {
         timeout: 10000,
       });
