@@ -55,7 +55,6 @@ jobs:
       continue-on-error: true
       with:
         path: |
-          ~/Library/Caches/Homebrew
           /opt/homebrew/Cellar/swiftlint
           /opt/homebrew/Cellar/swiftformat
           /opt/homebrew/Cellar/xcbeautify
@@ -73,17 +72,8 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-spm-
     
-    - name: Cache Xcode derived data
-      uses: actions/cache@v4
-      continue-on-error: true
-      with:
-        path: |
-          ~/Library/Developer/Xcode/DerivedData/**/Build/Products
-          ~/Library/Developer/Xcode/DerivedData/**/Build/Intermediates.noindex
-          ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
-        key: ${{ runner.os }}-xcode-build-${{ hashFiles('mac/**/*.swift', 'mac/**/*.h', 'mac/**/*.m') }}
-        restore-keys: |
-          ${{ runner.os }}-xcode-build-
+    # Xcode derived data cache disabled due to self-hosted runner filesystem issues
+    # - name: Cache Xcode derived data
     
     - name: Install all tools
       shell: bash

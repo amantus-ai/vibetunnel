@@ -55,7 +55,6 @@ jobs:
       continue-on-error: true
       with:
         path: |
-          ~/Library/Caches/Homebrew
           /opt/homebrew/Cellar/swiftlint
           /opt/homebrew/Cellar/swiftformat
           /opt/homebrew/Cellar/xcbeautify
@@ -68,7 +67,6 @@ jobs:
       continue-on-error: true
       with:
         path: |
-          ~/Library/Developer/Xcode/DerivedData
           ~/.swiftpm
         key: ${{ runner.os }}-spm-${{ hashFiles('ios/VibeTunnel-iOS.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
         restore-keys: |
