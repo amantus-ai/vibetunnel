@@ -150,14 +150,13 @@ jobs:
           -destination "generic/platform=iOS" \
           -configuration Release \
           -showBuildTimingSummary \
-          -quiet \
           CODE_SIGNING_ALLOWED=NO \
           CODE_SIGNING_REQUIRED=NO \
           ONLY_ACTIVE_ARCH=NO \
           -derivedDataPath build/DerivedData \
           COMPILER_INDEX_STORE_ENABLE=NO \
           ACTOOL_IGNORE_VERSION_CHECK=1 \
-          IBTOOL_IGNORE_VERSION_CHECK=1 2>/dev/null; then
+          IBTOOL_IGNORE_VERSION_CHECK=1; then
           echo "iOS build succeeded"
         else
           echo "iOS build failed, trying Mac Catalyst fallback..."
