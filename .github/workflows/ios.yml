@@ -267,10 +267,6 @@ jobs:
           done
           
           if [ "$SIMULATOR_SUCCESS" = true ]; then
-            echo "iOS simulator is working, proceeding with simulator tests"
-            echo "SIMULATOR_ID=$SIMULATOR_ID" >> $GITHUB_ENV
-            echo "simulator_id=$SIMULATOR_ID" >> $GITHUB_OUTPUT
-            
             # Wait for simulator to be ready
             echo "Waiting for simulator to be ready..."
             for i in {1..30}; do
@@ -281,7 +277,23 @@ jobs:
               sleep 1
             done
             
-            echo "test_platform=ios_simulator" >> $GITHUB_OUTPUT
+            # Test if xcodebuild can actually use this simulator
+            echo "Testing xcodebuild with simulator..."
+            if xcodebuild -workspace ../VibeTunnel.xcworkspace \
+                -scheme VibeTunnel-iOS \
+                -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+                -showdestinations 2>/dev/null | grep -q "iOS Simulator.*$SIMULATOR_ID"; then
+              echo "iOS simulator is working with xcodebuild, proceeding with simulator tests"
+              echo "SIMULATOR_ID=$SIMULATOR_ID" >> $GITHUB_ENV
+              echo "simulator_id=$SIMULATOR_ID" >> $GITHUB_OUTPUT
+              echo "test_platform=ios_simulator" >> $GITHUB_OUTPUT
+            else
+              echo "xcodebuild cannot use iOS simulator, falling back to Mac Catalyst"
+              cleanup_simulator "$SIMULATOR_ID"
+              echo "SIMULATOR_ID=" >> $GITHUB_ENV
+              echo "simulator_id=" >> $GITHUB_OUTPUT
+              echo "test_platform=mac_catalyst" >> $GITHUB_OUTPUT
+            fi
           else
             echo "iOS simulator not working properly, will use Mac Catalyst for testing"
             echo "SIMULATOR_ID=" >> $GITHUB_ENV
