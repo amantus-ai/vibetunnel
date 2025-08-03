@@ -32,6 +32,7 @@ export type { LifecycleEventManagerCallbacks } from './interfaces.js';
 export class LifecycleEventManager extends ManagerEventEmitter {
   private callbacks: LifecycleEventManagerCallbacks | null = null;
   private session: Session | null = null;
+  private sessionViewElement: HTMLElement | null = null;
   private touchStartX = 0;
   private touchStartY = 0;
 
@@ -54,6 +55,9 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     logger.log('LifecycleEventManager initialized');
   }
 
+  setSessionViewElement(element: HTMLElement): void {
+    this.sessionViewElement = element;
+  }
 
   setCallbacks(callbacks: LifecycleEventManagerCallbacks): void {
     this.callbacks = callbacks;
@@ -560,6 +564,7 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     // Clean up click handler reference
     this.clickHandler = null;
 
+    this.sessionViewElement = null;
     this.callbacks = null;
     this.session = null;
   }
