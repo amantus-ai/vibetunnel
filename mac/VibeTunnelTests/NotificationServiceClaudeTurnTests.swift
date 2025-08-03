@@ -5,6 +5,10 @@ import UserNotifications
 
 @Suite("NotificationService - Claude Turn")
 struct NotificationServiceClaudeTurnTests {
+    init() {
+        // Reset to default state before any test runs
+        ConfigManager.shared.notificationClaudeTurn = false
+    }
     @Test("Should have claude turn preference disabled by default")
     @MainActor
     func claudeTurnDefaultPreference() async throws {
@@ -69,5 +73,8 @@ struct NotificationServiceClaudeTurnTests {
 
         // Then - verify it loads the saved value
         #expect(loadedPreferences.claudeTurn == true)
+
+        // Cleanup - reset to default state
+        configManager.notificationClaudeTurn = false
     }
 }
