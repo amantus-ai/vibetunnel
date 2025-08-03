@@ -617,7 +617,11 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      await createRoute!.route!.stack[0].handle(mockReq, mockRes);
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
 
       // Verify response matches Mac app's CreateSessionResponse expectation
       expect(mockRes.json).toHaveBeenCalledWith({
@@ -629,7 +633,7 @@ describe('sessions routes', () => {
     it('should ensure terminal spawn requests still return CreateSessionResponse format', async () => {
       // Note: Terminal spawn integration is complex and tested elsewhere.
       // This test ensures the fallback path returns the correct response format.
-      
+
       const router = createSessionRoutes({
         ptyManager: mockPtyManager,
         terminalManager: mockTerminalManager,
@@ -668,9 +672,13 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      await createRoute!.route!.stack[0].handle(mockReq, mockRes);
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
 
-      // Even when terminal spawn falls back to web session, 
+      // Even when terminal spawn falls back to web session,
       // response must include CreateSessionResponse format
       expect(mockRes.json).toHaveBeenCalledWith({
         sessionId: 'session-abc-123',
@@ -722,7 +730,11 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      await createRoute!.route!.stack[0].handle(mockReq, mockRes);
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
 
       // Should fallback to web session with correct format
       expect(mockRes.json).toHaveBeenCalledWith({
@@ -763,7 +775,7 @@ describe('sessions routes', () => {
         },
       } as Request;
 
-      let capturedResponse: any;
+      let capturedResponse: { sessionId: string; createdAt: string };
       const mockRes = {
         json: vi.fn((data) => {
           capturedResponse = data;
@@ -771,7 +783,11 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      await createRoute!.route!.stack[0].handle(mockReq, mockRes);
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
 
       // Verify createdAt can be parsed as a valid Date
       expect(capturedResponse).toBeDefined();
@@ -818,7 +834,7 @@ describe('sessions routes', () => {
           sessionId: 'remote-session-123',
           createdAt: '2023-01-01T12:00:00.000Z',
         }),
-      } as any);
+      } as Response);
 
       const router = createSessionRoutes({
         ptyManager: mockPtyManager,
@@ -857,7 +873,11 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      await createRoute!.route!.stack[0].handle(mockReq, mockRes);
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
 
       // Verify remote server was called with correct payload
       expect(fetch).toHaveBeenCalledWith(
@@ -905,7 +925,7 @@ describe('sessions routes', () => {
           sessionId: 'legacy-session-456',
           // No createdAt field (legacy format)
         }),
-      } as any);
+      } as Response);
 
       const router = createSessionRoutes({
         ptyManager: mockPtyManager,
@@ -944,7 +964,11 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      await createRoute!.route!.stack[0].handle(mockReq, mockRes);
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
 
       // Verify response forwards legacy response as-is
       expect(mockRes.json).toHaveBeenCalledWith({
@@ -970,7 +994,7 @@ describe('sessions routes', () => {
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
         json: vi.fn().mockResolvedValue({ sessionId: 'test-session' }),
-      } as any);
+      } as Response);
 
       const router = createSessionRoutes({
         ptyManager: mockPtyManager,
@@ -1013,11 +1037,15 @@ describe('sessions routes', () => {
         status: vi.fn().mockReturnThis(),
       } as unknown as Response;
 
-      await createRoute!.route!.stack[0].handle(mockReq, mockRes);
+      if (createRoute?.route?.stack?.[0]) {
+        await createRoute.route.stack[0].handle(mockReq, mockRes);
+      } else {
+        throw new Error('Could not find POST /sessions route handler');
+      }
 
       // Verify that remoteId is NOT included in the forwarded request
       const fetchCall = vi.mocked(fetch).mock.calls[0];
-      const requestBody = JSON.parse(fetchCall[1]!.body as string);
+      const requestBody = JSON.parse(fetchCall[1]?.body as string);
 
       expect(requestBody).toEqual({
         command: ['bash'],
