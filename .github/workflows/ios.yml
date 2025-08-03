@@ -210,9 +210,9 @@ jobs:
       run: |
         echo "Checking iOS simulator availability..."
         
-        # Check if iOS runtimes are available
+        # Check if iOS runtimes are available and working
         if xcrun simctl list runtimes | grep -q "iOS"; then
-          echo "iOS simulators available, proceeding with simulator tests"
+          echo "iOS runtimes found, testing simulator creation..."
           
           # Generate unique simulator name to avoid conflicts
           SIMULATOR_NAME="VibeTunnel-iOS-${GITHUB_RUN_ID}-${GITHUB_JOB}-${RANDOM}"
@@ -239,55 +239,55 @@ jobs:
           RUNTIME=$(xcrun simctl list runtimes | grep "iOS" | tail -1 | awk '{print $NF}')
           echo "Using runtime: $RUNTIME"
         
-        # Create a new simulator with retry logic
-        SIMULATOR_ID=""
-        for attempt in 1 2 3; do
-          echo "Creating simulator (attempt $attempt)..."
-          SIMULATOR_ID=$(xcrun simctl create "$SIMULATOR_NAME" "iPhone 15" "$RUNTIME" 2>/dev/null || \
-                        xcrun simctl create "$SIMULATOR_NAME" "com.apple.CoreSimulator.SimDeviceType.iPhone-15" "$RUNTIME" 2>/dev/null) && break
+          # Try to create and boot a simulator - if this fails, fall back to Mac Catalyst
+          SIMULATOR_ID=""
+          SIMULATOR_SUCCESS=false
           
-          echo "Creation failed, waiting before retry..."
-          sleep $((attempt * 2))
-        done
-        
-        if [ -z "$SIMULATOR_ID" ]; then
-          echo "::error::Failed to create simulator after 3 attempts"
-          exit 1
-        fi
-        
-        echo "Created simulator: $SIMULATOR_ID"
-        echo "SIMULATOR_ID=$SIMULATOR_ID" >> $GITHUB_ENV
-        echo "simulator_id=$SIMULATOR_ID" >> $GITHUB_OUTPUT
-        
-        # Boot the simulator with retry logic
-        echo "Booting simulator..."
-        for attempt in 1 2 3; do
-          if xcrun simctl boot "$SIMULATOR_ID" 2>/dev/null; then
-            echo "Simulator booted successfully"
-            break
-          fi
-          
-          # Check if already booted
-          if xcrun simctl list devices | grep "$SIMULATOR_ID" | grep -q "Booted"; then
-            echo "Simulator already booted"
-            break
-          fi
-          
-          echo "Boot attempt $attempt failed, waiting..."
-          sleep $((attempt * 3))
-        done
-        
-          # Wait for simulator to be ready
-          echo "Waiting for simulator to be ready..."
-          for i in {1..30}; do
-            if xcrun simctl list devices | grep "$SIMULATOR_ID" | grep -q "Booted"; then
-              echo "Simulator is ready"
-              break
+          for attempt in 1 2 3; do
+            echo "Testing simulator creation (attempt $attempt)..."
+            SIMULATOR_ID=$(xcrun simctl create "$SIMULATOR_NAME" "iPhone 15" "$RUNTIME" 2>/dev/null || \
+                          xcrun simctl create "$SIMULATOR_NAME" "com.apple.CoreSimulator.SimDeviceType.iPhone-15" "$RUNTIME" 2>/dev/null)
+            
+            if [ -n "$SIMULATOR_ID" ]; then
+              echo "Simulator created: $SIMULATOR_ID"
+              # Try to boot it
+              if xcrun simctl boot "$SIMULATOR_ID" 2>/dev/null; then
+                echo "Simulator booted successfully"
+                SIMULATOR_SUCCESS=true
+                break
+              else
+                echo "Simulator boot failed, cleaning up..."
+                cleanup_simulator "$SIMULATOR_ID"
+                SIMULATOR_ID=""
+              fi
             fi
-            sleep 1
+            
+            echo "Simulator creation/boot failed, waiting before retry..."
+            sleep $((attempt * 2))
           done
           
-          echo "test_platform=ios_simulator" >> $GITHUB_OUTPUT
+          if [ "$SIMULATOR_SUCCESS" = true ]; then
+            echo "iOS simulator is working, proceeding with simulator tests"
+            echo "SIMULATOR_ID=$SIMULATOR_ID" >> $GITHUB_ENV
+            echo "simulator_id=$SIMULATOR_ID" >> $GITHUB_OUTPUT
+            
+            # Wait for simulator to be ready
+            echo "Waiting for simulator to be ready..."
+            for i in {1..30}; do
+              if xcrun simctl list devices | grep "$SIMULATOR_ID" | grep -q "Booted"; then
+                echo "Simulator is ready"
+                break
+              fi
+              sleep 1
+            done
+            
+            echo "test_platform=ios_simulator" >> $GITHUB_OUTPUT
+          else
+            echo "iOS simulator not working properly, will use Mac Catalyst for testing"
+            echo "SIMULATOR_ID=" >> $GITHUB_ENV
+            echo "simulator_id=" >> $GITHUB_OUTPUT
+            echo "test_platform=mac_catalyst" >> $GITHUB_OUTPUT
+          fi
         else
           echo "No iOS simulators available, will use Mac Catalyst for testing"
           echo "SIMULATOR_ID=" >> $GITHUB_ENV
