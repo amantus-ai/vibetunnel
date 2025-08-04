@@ -379,12 +379,6 @@ export class AsciinemaWriter {
     this.bytesWritten += eventBytes;
     this.pendingBytes -= eventBytes;
 
-    // Validate position periodically
-    if (this.bytesWritten - this.lastValidatedPosition > 1024 * 1024) {
-      // Every 1MB
-      await this.validateFilePosition();
-    }
-
     // Sync to disk asynchronously
     if (this.fd !== null) {
       try {
@@ -392,6 +386,15 @@ export class AsciinemaWriter {
       } catch (err) {
         _logger.debug(`fsync failed for ${this.filePath}:`, err);
       }
+    }
+
+    // Validate position periodically (after fsync to ensure data is on disk)
+    if (this.bytesWritten - this.lastValidatedPosition > 1024 * 1024) {
+      // Every 1MB
+      // Don't await here to avoid blocking the write queue
+      this.validateFilePosition().catch((err) => {
+        _logger.error('Position validation failed:', err);
+      });
     }
   }
 
@@ -582,10 +585,20 @@ export class AsciinemaWriter {
    * Validate that our tracked position matches the actual file size
    */
   private async validateFilePosition(): Promise<void> {
+    // Wait for write queue to complete before validating
+    await this.writeQueue.drain();
+
     try {
       const stats = await fs.promises.stat(this.filePath);
       const actualSize = stats.size;
       const expectedSize = this.bytesWritten;
+      const pendingSize = this.pendingBytes;
+
+      // Check if there are still pending bytes that haven't been written
+      if (pendingSize > 0) {
+        _logger.debug(`Skipping position validation: ${pendingSize} bytes still pending in queue`);
+        return;
+      }
 
       if (actualSize !== expectedSize) {
         this.validationErrors++;
@@ -593,13 +606,14 @@ export class AsciinemaWriter {
           `AsciinemaWriter position mismatch! ` +
             `Expected: ${expectedSize} bytes, Actual: ${actualSize} bytes, ` +
             `Difference: ${actualSize - expectedSize} bytes, ` +
-            `Validation errors: ${this.validationErrors}`
+            `Validation errors: ${this.validationErrors}, ` +
+            `File: ${this.filePath}`
         );
 
         // If the difference is significant, this is a critical error
         if (Math.abs(actualSize - expectedSize) > 100) {
           throw new PtyError(
-            `Critical byte position tracking error: expected ${expectedSize}, actual ${actualSize}`,
+            `Critical byte position tracking error: expected ${expectedSize}, actual ${actualSize} (file: ${this.filePath})`,
             'POSITION_MISMATCH'
           );
         }
@@ -612,7 +626,7 @@ export class AsciinemaWriter {
       if (error instanceof PtyError) {
         throw error;
       }
-      _logger.error(`Failed to validate file position:`, error);
+      _logger.error(`Failed to validate file position for ${this.filePath}:`, error);
     }
   }
 
