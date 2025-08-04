@@ -54,9 +54,24 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
         });
 
         await new Promise<void>((resolve) => {
-          resetProcess.on('exit', () => resolve());
-          resetProcess.on('error', () => resolve()); // Continue even if reset fails
-          setTimeout(resolve, 1000); // Timeout after 1 second
+          resetProcess.on('exit', (code) => {
+            if (code === 0) {
+              logger.debug('Previous Tailscale serve configuration reset successfully');
+            } else {
+              logger.debug(`Tailscale serve reset exited with code ${code} (may be normal if no config exists)`);
+            }
+            resolve();
+          });
+          resetProcess.on('error', (error) => {
+            logger.debug(`Tailscale serve reset error: ${error.message} (may be normal)`);
+            resolve(); // Continue even if reset fails
+          });
+          setTimeout(() => {
+            if (!resetProcess.killed) {
+              resetProcess.kill('SIGTERM');
+            }
+            resolve();
+          }, 3000); // Timeout after 3 seconds
         });
       } catch (_error) {
         logger.debug('Failed to reset serve config (this is normal if none exists)');
@@ -100,9 +115,21 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
         this.serveProcess.stderr.on('data', (data) => {
           const stderr = data.toString().trim();
           logger.debug(`Tailscale Serve stderr: ${stderr}`);
-          // Capture common error patterns
+          
+          // Capture common error patterns and provide helpful hints
           if (stderr.includes('error') || stderr.includes('failed')) {
             this.lastError = stderr;
+            
+            // Provide specific guidance for common issues
+            if (stderr.includes('dns') || stderr.includes('DNS') || stderr.includes('resolve')) {
+              this.lastError += '\nHint: DNS resolution issues detected. Check your network settings, disable ad blockers like AdGuard, or try: sudo dscacheutil -flushcache';
+            } else if (stderr.includes('connection refused') || stderr.includes('connect: connection refused')) {
+              this.lastError += '\nHint: Connection refused. Make sure VibeTunnel is running and accessible on the specified port.';
+            } else if (stderr.includes('permission') || stderr.includes('Permission')) {
+              this.lastError += '\nHint: Permission issue. Try running with appropriate privileges or check Tailscale authentication.';
+            } else if (stderr.includes('tailnet') || stderr.includes('not connected')) {
+              this.lastError += '\nHint: Tailscale connection issue. Make sure you are logged in to Tailscale: tailscale status';
+            }
           }
         });
       }
@@ -134,7 +161,7 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
           } else {
             settlePromise(false, this.lastError);
           }
-        }, 3000); // Wait 3 seconds
+        }, 5000); // Wait 5 seconds for configuration to apply
 
         if (this.serveProcess) {
           this.serveProcess.once('error', (error) => {
@@ -142,15 +169,13 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
           });
 
           this.serveProcess.once('exit', (code) => {
-            // Exit code 0 during startup might indicate success for some commands
-            // But for 'tailscale serve', it usually means it couldn't start
+            // For 'tailscale serve', exit code 0 means success - the serve config was applied
+            // The tailscale serve command configures the serve and then exits
             if (code === 0) {
-              settlePromise(
-                false,
-                `Tailscale Serve exited immediately with code 0 - likely already configured or invalid state`
-              );
+              logger.debug('Tailscale Serve configuration applied successfully');
+              settlePromise(true);
             } else {
-              settlePromise(false, `Tailscale Serve exited unexpectedly with code ${code}`);
+              settlePromise(false, `Tailscale Serve configuration failed with exit code ${code}`);
             }
           });
         }
@@ -203,6 +228,10 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
 
       const cleanup = () => {
         this.cleanup();
+        // Clear configuration state when stopping
+        this.currentPort = null;
+        this.startTime = undefined;
+        this.lastError = undefined;
         resolve();
       };
 
@@ -226,7 +255,9 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
   }
 
   isRunning(): boolean {
-    return this.serveProcess !== null && !this.serveProcess.killed;
+    // Since tailscale serve doesn't run as a persistent process, we consider it
+    // "running" if we have successfully configured it and haven't stopped it
+    return this.currentPort !== null && this.startTime !== undefined && !this.lastError;
   }
 
   async getStatus(): Promise<TailscaleServeStatus> {
@@ -240,6 +271,26 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
       };
     }
 
+    // If we think we're running, verify by checking actual Tailscale serve status
+    if (isRunning && this.currentPort) {
+      try {
+        const verificationResult = await this.verifyServeConfiguration(this.currentPort);
+        if (!verificationResult.isConfigured) {
+          // Configuration is no longer active
+          this.lastError = verificationResult.error || 'Tailscale serve configuration is no longer active';
+          this.currentPort = null;
+          this.startTime = undefined;
+          return {
+            isRunning: false,
+            lastError: this.lastError,
+          };
+        }
+      } catch (error) {
+        logger.debug('Failed to verify Tailscale serve configuration:', error);
+        // Don't fail the status check if verification fails
+      }
+    }
+
     return {
       isRunning,
       port: isRunning ? (this.currentPort ?? undefined) : undefined,
@@ -249,27 +300,26 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
   }
 
   private cleanup(): void {
-    // Kill the process if it's still running
+    // Kill the process if it's still running (usually only during setup/teardown)
     if (this.serveProcess && !this.serveProcess.killed) {
-      logger.debug('Terminating orphaned Tailscale Serve process');
+      logger.debug('Terminating Tailscale Serve configuration process');
       try {
         this.serveProcess.kill('SIGTERM');
         // Give it a moment to terminate gracefully
         setTimeout(() => {
           if (this.serveProcess && !this.serveProcess.killed) {
-            logger.warn('Force killing Tailscale Serve process');
+            logger.warn('Force killing Tailscale Serve configuration process');
             this.serveProcess.kill('SIGKILL');
           }
         }, 1000);
       } catch (error) {
-        logger.error('Failed to kill Tailscale Serve process:', error);
+        logger.error('Failed to kill Tailscale Serve configuration process:', error);
       }
     }
 
     this.serveProcess = null;
-    this.currentPort = null;
     this.isStarting = false;
-    this.startTime = undefined;
+    // Don't clear currentPort and startTime here unless we're actually stopping
     // Keep lastError for debugging
   }
 
@@ -326,6 +376,70 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
       checkProcess.on('error', (error) => {
         reject(new Error(`Failed to check Tailscale availability: ${error.message}`));
       });
+    });
+  }
+
+  /**
+   * Verify that the Tailscale serve configuration is actually active
+   */
+  private async verifyServeConfiguration(port: number): Promise<{isConfigured: boolean, error?: string}> {
+    return new Promise((resolve) => {
+      const checkProcess = spawn(this.tailscaleExecutable, ['serve', 'status'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      if (checkProcess.stdout) {
+        checkProcess.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
+      }
+
+      if (checkProcess.stderr) {
+        checkProcess.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+      }
+
+      checkProcess.on('exit', (code) => {
+        if (code === 0) {
+          // Check if our port is mentioned in the output
+          const portString = port.toString();
+          if (stdout.includes(portString) || stdout.includes(`localhost:${portString}`) || stdout.includes(`127.0.0.1:${portString}`)) {
+            resolve({ isConfigured: true });
+          } else {
+            resolve({ 
+              isConfigured: false, 
+              error: `Port ${port} not found in active Tailscale serve configuration`
+            });
+          }
+        } else {
+          resolve({ 
+            isConfigured: false, 
+            error: `Failed to check Tailscale serve status (exit code ${code}): ${stderr.trim()}`
+          });
+        }
+      });
+
+      checkProcess.on('error', (error) => {
+        resolve({ 
+          isConfigured: false, 
+          error: `Error checking Tailscale serve status: ${error.message}`
+        });
+      });
+
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        if (!checkProcess.killed) {
+          checkProcess.kill('SIGTERM');
+          resolve({ 
+            isConfigured: false, 
+            error: 'Timeout checking Tailscale serve status'
+          });
+        }
+      }, 5000);
     });
   }
 }
