@@ -10,6 +10,7 @@ struct NotificationServiceClaudeTurnTests {
         // Reset to default state before any test runs
         ConfigManager.shared.notificationClaudeTurn = false
     }
+
     @Test("Should have claude turn preference disabled by default")
     @MainActor
     func claudeTurnDefaultPreference() async throws {

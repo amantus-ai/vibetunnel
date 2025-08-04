@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__ide__executeCode",
+      "Bash(find:*)",
+      "Bash(xcodebuild:*)"
+    ],
+    "deny": []
+  }
+}

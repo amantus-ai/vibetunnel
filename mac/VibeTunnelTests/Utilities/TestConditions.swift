@@ -115,5 +115,4 @@ enum TestUtilities {
 
         return sqrt(variance)
     }
-
 }

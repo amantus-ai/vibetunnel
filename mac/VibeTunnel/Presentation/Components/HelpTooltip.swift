@@ -20,17 +20,23 @@ struct HelpTooltip: View {
 
 /// Notification setting descriptions
 enum NotificationHelp {
-    static let sessionStarts = "Get notified when a new terminal session begins. Useful for monitoring when someone starts using your shared terminal."
+    static let sessionStarts =
+        "Get notified when a new terminal session begins. Useful for monitoring when someone starts using your shared terminal."
 
-    static let sessionEnds = "Get notified when a terminal session closes. Shows exit code if the session crashed or exited abnormally."
+    static let sessionEnds =
+        "Get notified when a terminal session closes. Shows exit code if the session crashed or exited abnormally."
 
-    static let commandsComplete = "Get notified when commands that take longer than 3 seconds finish. Perfect for long builds, tests, or data processing tasks."
+    static let commandsComplete =
+        "Get notified when commands that take longer than 3 seconds finish. Perfect for long builds, tests, or data processing tasks."
 
-    static let commandsFail = "Get notified when any command exits with an error (non-zero exit code). Helps you quickly spot and fix problems."
+    static let commandsFail =
+        "Get notified when any command exits with an error (non-zero exit code). Helps you quickly spot and fix problems."
 
-    static let terminalBell = "Get notified when programs output the terminal bell character (^G). Common in vim alerts, IRC mentions, and completion notifications."
+    static let terminalBell =
+        "Get notified when programs output the terminal bell character (^G). Common in vim alerts, IRC mentions, and completion notifications."
 
-    static let claudeTurn = "Get notified when Claude AI finishes responding and is waiting for your input. Automatically detects Claude CLI sessions and tracks activity transitions."
+    static let claudeTurn =
+        "Get notified when Claude AI finishes responding and is waiting for your input. Automatically detects Claude CLI sessions and tracks activity transitions."
 }
 
 #Preview {

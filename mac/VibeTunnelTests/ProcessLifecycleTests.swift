@@ -47,8 +47,8 @@ struct ProcessLifecycleTests {
         process.waitUntilExit()
 
         // Capture both output and error streams
-        let _ = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        let _ = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        _ = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        _ = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
 
         #expect(process.terminationStatus == 0)
     }
@@ -71,7 +71,7 @@ struct ProcessLifecycleTests {
         try process.run()
         process.waitUntilExit()
 
-        let _ = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        _ = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
 
         #expect(process.terminationStatus == 0)
     }

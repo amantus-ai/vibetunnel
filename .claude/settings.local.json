@@ -4,7 +4,19 @@
       "Bash(pnpm test:*)",
       "Bash(rg:*)",
       "Bash(./scripts/vtlog.sh:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(pnpm run check:*)",
+      "Bash(swiftformat:*)",
+      "Bash(swiftlint:*)",
+      "Bash(git add:*)",
+      "Bash(git fetch:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(xcodebuild:*)",
+      "Bash(find:*)",
+      "Bash(./scripts/build.sh:*)",
+      "Bash(swift-syntax-highlight:*)",
+      "Bash(grep:*)",
+      "Bash(swiftc:*)"
     ],
     "deny": []
   },

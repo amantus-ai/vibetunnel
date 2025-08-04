@@ -27,14 +27,12 @@ final class ServerManagerTests {
         .disabled(if: TestConditions.isRunningInCI(), "Flaky in CI due to port conflicts and process management")
     )
     func serverLifecycle() async throws {
-
         // Start the server
         await manager.start()
 
         // Give server time to attempt start (increased for CI stability)
         let timeout = TestConditions.isRunningInCI() ? 5_000 : 2_000
         try await Task.sleep(for: .milliseconds(timeout))
-
 
         // The server binary must be available for tests
         #expect(ServerBinaryAvailableCondition.isAvailable(), "Server binary must be available for tests to run")
@@ -61,7 +59,6 @@ final class ServerManagerTests {
 
         // After stop, server should not be running
         #expect(!manager.isRunning)
-
     }
 
     @Test("Starting server when already running does not create duplicate", .tags(.critical))
@@ -382,26 +379,20 @@ final class ServerManagerTests {
         .enabled(if: ServerBinaryAvailableCondition.isAvailable())
     )
     func serverConfigurationDiagnostics() async throws {
-
-
         // Test server configuration without actually starting it
         let originalPort = manager.port
         manager.port = "4567"
-
 
         #expect(manager.port == "4567")
 
         // Restore original configuration
         manager.port = originalPort
-
     }
 
     @Test("Session model validation with attachments", .tags(.attachmentTests, .sessionManagement))
     func sessionModelValidation() async throws {
-
         // Create test session
         let session = TunnelSession()
-
 
         // Validate session properties
         #expect(session.isActive)
