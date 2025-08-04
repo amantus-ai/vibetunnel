@@ -13,6 +13,7 @@ extension Notification.Name {
     // MARK: - Welcome
 
     static let showWelcomeScreen = Notification.Name("showWelcomeScreen")
+    static let onboardingPageRemoved = Notification.Name("onboardingPageRemoved")
 
     // MARK: - Services
 

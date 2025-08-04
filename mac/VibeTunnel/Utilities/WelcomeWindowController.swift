@@ -57,6 +57,17 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
     func show() {
         guard let window else { return }
 
+        // Update the view with the current mode
+        let welcomeView = WelcomeView()
+            .environment(SessionMonitor.shared)
+            .environment(ServerManager.shared)
+            .environment(NgrokService.shared)
+            .environment(SystemPermissionManager.shared)
+            .environment(TerminalLauncher.shared)
+        let hostingController = NSHostingController(rootView: welcomeView)
+        hostingController.sizingOptions = [.preferredContentSize]
+        window.contentViewController = hostingController
+
         // Ensure dock icon is visible for window activation
         DockIconManager.shared.temporarilyShowDock()
 

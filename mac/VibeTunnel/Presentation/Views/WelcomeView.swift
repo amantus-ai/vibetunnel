@@ -29,6 +29,7 @@ struct WelcomeView: View {
     @State private var cliInstaller = CLIInstaller()
     @Environment(SystemPermissionManager.self)
     private var permissionManager
+    private let onboardingState = OnboardingState.shared
 
     private let pageWidth: CGFloat = 640
     private let contentHeight: CGFloat = 468 // Total height minus navigation area
@@ -49,41 +50,10 @@ struct WelcomeView: View {
             // Scrollable content area
             GeometryReader { _ in
                 HStack(spacing: 0) {
-                    // Page 1: Welcome content (without icon)
-                    WelcomeContentView()
-                        .frame(width: pageWidth)
-
-                    // Page 2: VT Command
-                    VTCommandPageView(cliInstaller: cliInstaller)
-                        .frame(width: pageWidth)
-
-                    // Page 3: Request Permissions
-                    RequestPermissionsPageView(isCurrentPage: currentPage == 2)
-                        .frame(width: pageWidth)
-
-                    // Page 4: Select Terminal
-                    SelectTerminalPageView()
-                        .frame(width: pageWidth)
-
-                    // Page 5: Project Folder
-                    ProjectFolderPageView(currentPage: $currentPage)
-                        .frame(width: pageWidth)
-
-                    // Page 6: Protect Your Dashboard
-                    ProtectDashboardPageView()
-                        .frame(width: pageWidth)
-
-                    // Page 7: Notification Permissions
-                    NotificationPermissionPageView()
-                        .frame(width: pageWidth)
-
-                    // Page 8: Control Your Agent Army
-                    ControlAgentArmyPageView()
-                        .frame(width: pageWidth)
-
-                    // Page 9: Accessing Dashboard
-                    AccessDashboardPageView()
-                        .frame(width: pageWidth)
+                    ForEach(onboardingState.visiblePages, id: \.self) { page in
+                        pageContent(for: page)
+                            .frame(width: pageWidth)
+                    }
                 }
                 .offset(x: CGFloat(-currentPage) * pageWidth)
                 .animation(
@@ -128,7 +98,7 @@ struct WelcomeView: View {
 
                 // Page indicators centered
                 HStack(spacing: 8) {
-                    ForEach(0..<9) { index in
+                    ForEach(0..<onboardingState.visiblePages.count, id: \.self) { index in
                         Button {
                             withAnimation {
                                 currentPage = index
@@ -160,6 +130,16 @@ struct WelcomeView: View {
         .onAppear {
             // Always start at the first page when the view appears
             currentPage = 0
+            // Start smart onboarding analysis
+            onboardingState.startDynamicPageAnalysis()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .onboardingPageRemoved)) { notification in
+            // Adjust current page if a page before the current one was removed
+            if let removedIndex = notification.object as? Int, removedIndex <= currentPage {
+                withAnimation {
+                    currentPage = max(0, currentPage - 1)
+                }
+            }
         }
         .onDisappear {
             // Ensure permission monitoring stops when welcome window closes
@@ -169,7 +149,36 @@ struct WelcomeView: View {
     }
 
     private var buttonTitle: String {
-        currentPage == 8 ? "Finish" : "Next"
+        currentPage == onboardingState.visiblePages.count - 1 ? "Finish" : "Next"
+    }
+
+    @ViewBuilder
+    private func pageContent(for page: OnboardingPage) -> some View {
+        switch page {
+        case .welcome:
+            WelcomeContentView()
+        case .cliInstallation:
+            VTCommandPageView(cliInstaller: cliInstaller)
+        case .permissions:
+            RequestPermissionsPageView(isCurrentPage: isCurrentPage(for: page))
+        case .terminalSelection:
+            SelectTerminalPageView()
+        case .projectFolder:
+            ProjectFolderPageView(currentPage: $currentPage)
+        case .dashboardProtection:
+            ProtectDashboardPageView()
+        case .notifications:
+            NotificationPermissionPageView()
+        case .agentArmy:
+            ControlAgentArmyPageView()
+        case .accessDashboard:
+            AccessDashboardPageView()
+        }
+    }
+
+    private func isCurrentPage(for page: OnboardingPage) -> Bool {
+        guard currentPage < onboardingState.visiblePages.count else { return false }
+        return onboardingState.visiblePages[currentPage] == page
     }
 
     private func handleBackAction() {
@@ -179,7 +188,7 @@ struct WelcomeView: View {
     }
 
     private func handleNextAction() {
-        if currentPage < 8 {
+        if currentPage < onboardingState.visiblePages.count - 1 {
             withAnimation {
                 currentPage += 1
             }

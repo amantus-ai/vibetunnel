@@ -15,8 +15,9 @@ We love your input! We want to make contributing to VibeTunnel as easy and trans
 1. **macOS 14.0+** (Sonoma or later)
 2. **Xcode 16.0+** with Swift 6.0 support
 3. **Node.js 20+**: `brew install node`
-4. **Bun runtime**: `curl -fsSL https://bun.sh/install | bash`
-5. **Git**: For version control
+4. **pnpm package manager**: `curl -fsSL https://get.pnpm.io/install.sh | sh -`
+5. **Bun runtime**: `curl -fsSL https://bun.sh/install | bash`
+6. **Git**: For version control
 
 ### Getting Started
 
@@ -39,11 +40,11 @@ We love your input! We want to make contributing to VibeTunnel as easy and trans
 3. **Open the Xcode project**
    ```bash
    # From the root directory
-   open mac/VibeTunnel-Mac.xcodeproj
+   open mac/VibeTunnel.xcodeproj
    ```
 
 4. **Configure code signing (optional for development)**
-   - Copy `apple/Local.xcconfig.template` to `apple/Local.xcconfig`
+   - Copy `apple/Local.xcconfig.template` to `mac/VibeTunnel/Local.xcconfig`
    - Add your development team ID (or leave empty for ad-hoc signing)
    - This file is gitignored to keep your settings private
 
@@ -79,7 +80,7 @@ pnpm run dev -- --port 4021
 
 ### Working with the macOS App
 
-1. Open `mac/VibeTunnel.xcworkspace` in Xcode
+1. Open `mac/VibeTunnel.xcodeproj` in Xcode
 2. Select the VibeTunnel scheme
 3. Build and run (⌘R)
 
@@ -169,7 +170,7 @@ We use Swift Testing framework:
 
 ```bash
 # Run tests in Xcode
-xcodebuild test -workspace mac/VibeTunnel.xcworkspace -scheme VibeTunnel
+xcodebuild test -project mac/VibeTunnel.xcodeproj -scheme VibeTunnel
 
 # Or use Xcode UI (⌘U)
 ```
@@ -293,7 +294,7 @@ When adding new features:
 
 ## Getting Help
 
-- Join our [Discord server](https://discord.gg/vibetunnel) (if available)
+- Join our [Discord server](https://discord.gg/3Ub3EUwrcR)
 - Check existing issues on GitHub
 - Read the [Technical Specification](spec.md)
 - Ask questions in pull requests
