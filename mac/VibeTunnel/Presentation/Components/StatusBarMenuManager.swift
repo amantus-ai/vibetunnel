@@ -288,10 +288,6 @@ final class StatusBarMenuManager: NSObject {
 
         helpMenu.addItem(NSMenuItem.separator())
 
-        let aboutItem = NSMenuItem(title: "About VibeTunnel", action: #selector(showAbout), keyEquivalent: "")
-        aboutItem.target = self
-        helpMenu.addItem(aboutItem)
-
         let helpMenuItem = NSMenuItem(title: "Help", action: nil, keyEquivalent: "")
         helpMenuItem.submenu = helpMenu
         menu.addItem(helpMenuItem)
@@ -355,18 +351,6 @@ final class StatusBarMenuManager: NSObject {
     @objc
     private func checkForUpdates() {
         SparkleUpdaterManager.shared.checkForUpdates()
-    }
-
-    @objc
-    private func showAbout() {
-        SettingsOpener.openSettings()
-        Task {
-            try? await Task.sleep(for: .milliseconds(100))
-            NotificationCenter.default.post(
-                name: .openSettingsTab,
-                object: SettingsTab.about
-            )
-        }
     }
 
     @objc

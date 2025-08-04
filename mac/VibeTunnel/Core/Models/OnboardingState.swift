@@ -45,33 +45,37 @@ final class OnboardingState {
         // Force permission recheck
         await SystemPermissionManager.shared.checkAllPermissions()
 
-        // Check permissions and remove page if not needed
-        if await shouldSkipPermissionsPage() {
+        // Check each page type and remove if both conditions are met:
+        // 1. Page allows skipping when configured (canSkipWhenConfigured = true)
+        // 2. The actual condition check passes (permissions granted, CLI updated, etc.)
+
+        // Check permissions
+        if OnboardingPage.permissions.canSkipWhenConfigured && await shouldSkipPermissionsPage() {
             removePageIfPresent(.permissions, reason: "permissions already granted")
         }
 
         // Check CLI status
-        if await shouldSkipCLIPage() {
+        if OnboardingPage.cliInstallation.canSkipWhenConfigured && await shouldSkipCLIPage() {
             removePageIfPresent(.cliInstallation, reason: "CLI up to date")
         }
 
         // Check terminal preference
-        if shouldSkipTerminalPage() {
+        if OnboardingPage.terminalSelection.canSkipWhenConfigured && shouldSkipTerminalPage() {
             removePageIfPresent(.terminalSelection, reason: "terminal already configured")
         }
 
         // Check project folder
-        if shouldSkipProjectFolderPage() {
+        if OnboardingPage.projectFolder.canSkipWhenConfigured && shouldSkipProjectFolderPage() {
             removePageIfPresent(.projectFolder, reason: "working directory already set")
         }
 
         // Check dashboard protection
-        if shouldSkipDashboardProtectionPage() {
+        if OnboardingPage.dashboardProtection.canSkipWhenConfigured && shouldSkipDashboardProtectionPage() {
             removePageIfPresent(.dashboardProtection, reason: "security mode already configured")
         }
 
         // Check notifications
-        if await shouldSkipNotificationPage() {
+        if OnboardingPage.notifications.canSkipWhenConfigured && await shouldSkipNotificationPage() {
             removePageIfPresent(.notifications, reason: "notification permissions already granted")
         }
 
@@ -177,6 +181,27 @@ enum OnboardingPage: String, CaseIterable {
             "Agent Army"
         case .accessDashboard:
             "Access Dashboard"
+        }
+    }
+
+    /// Determines if this page can be skipped when already configured
+    /// - Default: `false` (always show)
+    /// - Only specific pages marked as skippable when configured
+    var canSkipWhenConfigured: Bool {
+        switch self {
+        case .cliInstallation,
+             .permissions,
+             .projectFolder,
+             .dashboardProtection,
+             .notifications:
+            true // Skip if already configured
+        case .welcome,
+             .terminalSelection,
+             .agentArmy,
+             .accessDashboard:
+            false // Always show
+        @unknown default:
+            false // Default: always show new pages until explicitly marked skippable
         }
     }
 }
