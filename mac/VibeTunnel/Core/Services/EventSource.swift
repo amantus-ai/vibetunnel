@@ -64,10 +64,20 @@ final class EventSource: NSObject {
             logger.warning("Already connected, ignoring connect request")
             return
         }
+        
+        // Defensive check: ensure URL session is available
+        guard let urlSession = self.urlSession else {
+            logger.error("URLSession is not available for EventSource connection")
+            DispatchQueue.main.async {
+                self.onError?(URLError(.unknown))
+            }
+            return
+        }
 
         var request = URLRequest(url: url)
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+        request.timeoutInterval = 30.0 // Add timeout to prevent hanging connections
 
         // Add custom headers
         for (key, value) in headers {
@@ -82,7 +92,7 @@ final class EventSource: NSObject {
         logger.info("🔌 Connecting to EventSource: \(self.url)")
         logger.debug("Headers: \(request.allHTTPHeaderFields ?? [:])")
 
-        dataTask = urlSession?.dataTask(with: request)
+        dataTask = urlSession.dataTask(with: request)
         dataTask?.resume()
 
         logger.info("📡 EventSource dataTask started")
@@ -93,6 +103,11 @@ final class EventSource: NSObject {
         dataTask?.cancel()
         dataTask = nil
         buffer = ""
+        
+        // Clean up URLSession if it exists
+        urlSession?.invalidateAndCancel()
+        urlSession = nil
+        
         logger.debug("Disconnected from EventSource")
     }
 
@@ -138,8 +153,12 @@ final class EventSource: NSObject {
                     // Dispatch event
                     logger
                         .debug("🎯 Dispatching event - type: \(event.event ?? "default"), data: \(event.data ?? "none")")
-                    DispatchQueue.main.async {
-                        self.onMessage?(event)
+                    
+                    // Defensive check: only dispatch if we have a valid event
+                    if !data.isEmpty {
+                        DispatchQueue.main.async {
+                            self.onMessage?(event)
+                        }
                     }
                 }
 
@@ -202,12 +221,21 @@ extension EventSource: URLSessionDataDelegate {
         guard let httpResponse = response as? HTTPURLResponse else {
             logger.error("Response is not HTTPURLResponse")
             completionHandler(.cancel)
+            DispatchQueue.main.async {
+                self.onError?(URLError(.badServerResponse))
+            }
             return
         }
 
         logger.info("Response status: \(httpResponse.statusCode), headers: \(httpResponse.allHeaderFields)")
 
         if httpResponse.statusCode == 200 {
+            // Verify content type is appropriate for SSE
+            let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type") ?? ""
+            if !contentType.contains("text/event-stream") && !contentType.contains("text/plain") {
+                logger.warning("Unexpected content type: \(contentType)")
+            }
+            
             isConnected = true
             logger.info("✅ EventSource connected successfully")
             DispatchQueue.main.async {
@@ -217,26 +245,63 @@ extension EventSource: URLSessionDataDelegate {
         } else {
             logger.error("EventSource connection failed with status: \(httpResponse.statusCode)")
             completionHandler(.cancel)
+            
+            // Provide more specific error based on status code
+            let error: URLError = switch httpResponse.statusCode {
+            case 401, 403:
+                URLError(.userAuthenticationRequired)
+            case 404:
+                URLError(.fileDoesNotExist)
+            case 500...599:
+                URLError(.badServerResponse)
+            default:
+                URLError(.httpTooManyRedirects)
+            }
+            
             DispatchQueue.main.async {
-                self.onError?(nil)
+                self.onError?(error)
             }
         }
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         logger.debug("📨 EventSource received \(data.count) bytes of data")
+        
+        // Defensive check: ensure we're still connected
+        guard isConnected else {
+            logger.warning("Received data while not connected, ignoring")
+            return
+        }
+        
+        // Defensive check: validate data size
+        guard data.count > 0 else {
+            logger.warning("Received empty data chunk")
+            return
+        }
+        
+        // Check for potential buffer overflow
+        if buffer.count > 1_000_000 { // 1MB limit
+            logger.error("Buffer overflow detected, clearing buffer")
+            buffer = ""
+        }
 
         // Check if data might be compressed
         if data.count > 2 {
             let header = [UInt8](data.prefix(2))
             if header[0] == 0x1F && header[1] == 0x8B {
                 logger.error("❌ Received gzip compressed data! SSE should not be compressed.")
+                DispatchQueue.main.async {
+                    self.onError?(URLError(.cannotDecodeContentData))
+                }
                 return
             }
         }
 
         guard let text = String(data: data, encoding: .utf8) else {
             logger.error("Failed to decode data as UTF-8. First 20 bytes: \(data.prefix(20).hexString)")
+            DispatchQueue.main.async {
+                self.onError?(URLError(.cannotDecodeContentData))
+            }
             return
         }
 
@@ -250,6 +315,24 @@ extension EventSource: URLSessionDataDelegate {
 
         if let error {
             logger.error("EventSource error: \(error)")
+            
+            // Provide user-friendly error context
+            if let urlError = error as? URLError {
+                switch urlError.code {
+                case .cannotConnectToHost:
+                    logger.info("💡 Cannot connect to server - server may not be running")
+                case .timedOut:
+                    logger.info("💡 Connection timed out - server may be overloaded")
+                case .networkConnectionLost:
+                    logger.info("💡 Network connection lost")
+                case .cancelled:
+                    logger.info("💡 Connection was cancelled")
+                default:
+                    logger.error("💡 Network error: \(urlError.localizedDescription)")
+                }
+            }
+        } else {
+            logger.info("EventSource connection completed without error")
         }
 
         DispatchQueue.main.async {

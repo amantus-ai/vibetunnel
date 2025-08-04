@@ -117,13 +117,20 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
         // Debug: Log current delegate to verify it's set
         let currentDelegate = UNUserNotificationCenter.current().delegate
         logger.info("🔍 Current UNUserNotificationCenter delegate: \(String(describing: currentDelegate))")
+        
         // Check if notifications are enabled in config
         guard let configProvider, configProvider.notificationsEnabled else {
             logger.info("📴 Notifications are disabled in config, skipping SSE connection")
             return
         }
 
-        guard let serverProvider, serverProvider.isRunning else {
+        // Defensive check: ensure server provider exists
+        guard let serverProvider = self.serverProvider else {
+            logger.warning("🔴 Server provider not available, cannot start notification service")
+            return
+        }
+        
+        guard serverProvider.isRunning else {
             logger.warning("🔴 Server not running, cannot start notification service")
             return
         }
@@ -518,15 +525,21 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
             return
         }
 
-        // When auth mode is "none", we can connect without a token.
-        // In any other auth mode, a token is required for the local Mac app to connect.
+        // Defensive check: ensure server provider exists and is running
         guard let serverProvider = self.serverProvider else {
-            logger.error("Server provider is not available")
+            logger.error("❌ Server provider is not available, cannot connect to notification service")
+            return
+        }
+        
+        guard serverProvider.isRunning else {
+            logger.error("❌ Server is not running, cannot connect to notification service")
             return
         }
 
+        // When auth mode is "none", we can connect without a token.
+        // In any other auth mode, a token is required for the local Mac app to connect.
         if serverProvider.authMode != "none", serverProvider.localAuthToken == nil {
-            logger.error("No auth token available for notification service in auth mode '\(serverProvider.authMode)'")
+            logger.error("❌ No auth token available for notification service in auth mode '\(serverProvider.authMode)'")
             return
         }
 
@@ -575,7 +588,24 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
                 guard let self else { return }
                 if let error {
                     self.logger.error("❌ EventSource error: \(error)")
+                    
+                    // Provide user-friendly error context based on error type
+                    if let urlError = error as? URLError {
+                        switch urlError.code {
+                        case .cannotConnectToHost:
+                            self.logger.info("💡 Cannot connect to server - server may not be running")
+                        case .timedOut:
+                            self.logger.info("💡 Connection timed out - server may be overloaded or unreachable")
+                        case .networkConnectionLost:
+                            self.logger.info("💡 Network connection lost - will retry when server is available")
+                        default:
+                            self.logger.error("💡 Network error: \(urlError.localizedDescription)")
+                        }
+                    }
+                } else {
+                    self.logger.warning("❌ EventSource connection closed without error")
                 }
+                
                 self.isConnected = false
                 // Post notification for UI update
                 NotificationCenter.default.post(name: .notificationServiceConnectionChanged, object: nil)
@@ -913,8 +943,15 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
         // Show thread details for debugging dispatch issues
         logger.info("🧵 Current thread: \(Thread.current, privacy: .public)")
         logger.info("🧵 Is main thread: \(Thread.isMainThread, privacy: .public)")
+        
+        // Defensive check: ensure server provider exists
+        guard let serverProvider = self.serverProvider else {
+            logger.error("❌ Cannot send test notification - server provider not available")
+            return
+        }
+        
         // Check if server is running
-        guard serverProvider?.isRunning ?? false else {
+        guard serverProvider.isRunning else {
             logger.error("❌ Cannot send test notification - server is not running")
             return
         }
@@ -930,10 +967,10 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
         // Log server info
         logger
             .info(
-                "Server info - Port: \(self.serverProvider?.port ?? "unknown"), Running: \(self.serverProvider?.isRunning ?? false), SSE Connected: \(self.isConnected)"
+                "Server info - Port: \(serverProvider.port), Running: \(serverProvider.isRunning), SSE Connected: \(self.isConnected)"
             )
 
-        guard let url = serverProvider?.buildURL(endpoint: "/api/test-notification") else {
+        guard let url = serverProvider.buildURL(endpoint: "/api/test-notification") else {
             logger.error("❌ Failed to build test notification URL")
             return
         }
@@ -951,6 +988,9 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
         }
 
         do {
+            // Add timeout for network request
+            request.timeoutInterval = 10.0
+            
             let (data, response) = try await URLSession.shared.data(for: request)
 
             if let httpResponse = response as? HTTPURLResponse {
@@ -972,7 +1012,22 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
             }
         } catch {
             logger.error("❌ Failed to send server test notification: \(error)")
-            logger.error("Error details: \(error.localizedDescription)")
+            
+            // Provide user-friendly error context
+            if let urlError = error as? URLError {
+                switch urlError.code {
+                case .cannotConnectToHost:
+                    logger.error("💡 Cannot connect to server - ensure server is running on port \(serverProvider.port)")
+                case .timedOut:
+                    logger.error("💡 Request timed out - server may be overloaded or unreachable")
+                case .networkConnectionLost:
+                    logger.error("💡 Network connection lost during request")
+                default:
+                    logger.error("💡 Network error: \(urlError.localizedDescription)")
+                }
+            } else {
+                logger.error("Error details: \(error.localizedDescription)")
+            }
         }
     }
 

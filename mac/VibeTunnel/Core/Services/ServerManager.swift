@@ -557,9 +557,9 @@ class ServerManager {
 
                 guard let server = bunServer else { continue }
 
-                // Check server state and process health
+                // Check server state and process health with timeout and retry
                 let state = server.getState()
-                let health = await server.checkHealth()
+                let health = await performHealthCheckWithRetry(server: server)
 
                 if (!health || state == .crashed) && isRunning {
                     logger.warning("Server health check failed but state shows running, syncing state")
@@ -573,6 +573,63 @@ class ServerManager {
                 }
             }
         }
+    }
+    
+    /// Perform health check with timeout and retry logic
+    private func performHealthCheckWithRetry(server: BunServer, maxRetries: Int = 3) async -> Bool {
+        for attempt in 1...maxRetries {
+            do {
+                // Create a task with timeout for health check
+                let healthCheckResult = try await withThrowingTaskGroup(of: Bool.self) { group in
+                    group.addTask {
+                        await server.checkHealth()
+                    }
+                    
+                    // Add timeout task
+                    group.addTask {
+                        try await Task.sleep(for: .seconds(10)) // 10 second timeout
+                        throw TimeoutError.healthCheckTimeout
+                    }
+                    
+                    // Return the first result (either health check or timeout)
+                    guard let result = try await group.next() else {
+                        throw TimeoutError.healthCheckTimeout
+                    }
+                    
+                    group.cancelAll()
+                    return result
+                }
+                
+                if healthCheckResult {
+                    // Health check passed
+                    if attempt > 1 {
+                        logger.info("Health check succeeded on attempt \(attempt)")
+                    }
+                    return true
+                } else {
+                    logger.warning("Health check failed on attempt \(attempt)")
+                    if attempt < maxRetries {
+                        // Wait before retry with exponential backoff
+                        let delay = Double(attempt) * 2.0
+                        try? await Task.sleep(for: .seconds(delay))
+                    }
+                }
+            } catch TimeoutError.healthCheckTimeout {
+                logger.warning("Health check timed out on attempt \(attempt)")
+                if attempt < maxRetries {
+                    // Wait before retry
+                    try? await Task.sleep(for: .seconds(2.0))
+                }
+            } catch {
+                logger.error("Health check error on attempt \(attempt): \(error)")
+                if attempt < maxRetries {
+                    try? await Task.sleep(for: .seconds(2.0))
+                }
+            }
+        }
+        
+        logger.error("Health check failed after \(maxRetries) attempts")
+        return false
     }
 
     // MARK: - Authentication
@@ -610,7 +667,8 @@ class ServerManager {
         endpoint: String,
         method: String = "POST",
         body: Encodable? = nil,
-        queryItems: [URLQueryItem]? = nil
+        queryItems: [URLQueryItem]? = nil,
+        timeout: TimeInterval = 30.0
     )
         throws -> URLRequest
     {
@@ -626,6 +684,7 @@ class ServerManager {
 
         var request = URLRequest(url: url)
         request.httpMethod = method
+        request.timeoutInterval = timeout
         request.setValue(NetworkConstants.contentTypeJSON, forHTTPHeaderField: NetworkConstants.contentTypeHeader)
         request.setValue(NetworkConstants.localhost, forHTTPHeaderField: NetworkConstants.hostHeader)
 
@@ -649,6 +708,8 @@ extension ServerManager {
     ///   - body: Optional request body (Encodable)
     ///   - queryItems: Optional query parameters
     ///   - responseType: The expected response type (must be Decodable)
+    ///   - timeout: Request timeout (default: 30 seconds)
+    ///   - retries: Number of retry attempts (default: 1)
     /// - Returns: Decoded response of the specified type
     /// - Throws: NetworkError for various failure cases
     func performRequest<T: Decodable>(
@@ -656,32 +717,69 @@ extension ServerManager {
         method: String = "POST",
         body: Encodable? = nil,
         queryItems: [URLQueryItem]? = nil,
-        responseType: T.Type
+        responseType: T.Type,
+        timeout: TimeInterval = 30.0,
+        retries: Int = 1
     )
         async throws -> T
     {
-        let request = try makeRequest(
-            endpoint: endpoint,
-            method: method,
-            body: body,
-            queryItems: queryItems
-        )
+        var lastError: Error?
+        
+        for attempt in 1...retries {
+            do {
+                let request = try makeRequest(
+                    endpoint: endpoint,
+                    method: method,
+                    body: body,
+                    queryItems: queryItems,
+                    timeout: timeout
+                )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+                let (data, response) = try await URLSession.shared.dataWithErrorBoundary(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NetworkError.invalidResponse
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw NetworkError.invalidResponse
+                }
+
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    let errorData = try? JSONDecoder().decode(ErrorResponse.self, from: data)
+                    let message = errorData?.error ?? "Request failed with status \(httpResponse.statusCode)"
+                    let error = NetworkError.from(statusCode: httpResponse.statusCode, message: message)
+                    
+                    // Don't retry on client errors (4xx)
+                    if (400...499).contains(httpResponse.statusCode) {
+                        throw error
+                    }
+                    
+                    throw error
+                }
+
+                return try JSONDecoder().decode(T.self, from: data)
+            } catch {
+                lastError = error
+                
+                // Don't retry on certain error types
+                if let urlError = error as? URLError {
+                    switch urlError.code {
+                    case .badURL, .unsupportedURL:
+                        throw error // Don't retry URL errors
+                    default:
+                        break // Retry network errors
+                    }
+                }
+                
+                if attempt < retries {
+                    logger.warning("Request attempt \(attempt) failed, retrying... Error: \(error.localizedDescription)")
+                    // Exponential backoff: 1s, 2s, 4s...
+                    let delay = pow(2.0, Double(attempt - 1))
+                    try? await Task.sleep(for: .seconds(delay))
+                } else {
+                    logger.error("Request failed after \(retries) attempts. Final error: \(error.localizedDescription)")
+                }
+            }
         }
-
-        guard (200...299).contains(httpResponse.statusCode) else {
-            let errorData = try? JSONDecoder().decode(ErrorResponse.self, from: data)
-            throw NetworkError.serverError(
-                statusCode: httpResponse.statusCode,
-                message: errorData?.error ?? "Request failed with status \(httpResponse.statusCode)"
-            )
-        }
-
-        return try JSONDecoder().decode(T.self, from: data)
+        
+        throw lastError ?? NetworkError.invalidResponse
     }
 
     /// Perform a network request that returns no body (void response)
@@ -690,34 +788,44 @@ extension ServerManager {
     ///   - method: HTTP method (default: "POST")
     ///   - body: Optional request body (Encodable)
     ///   - queryItems: Optional query parameters
+    ///   - timeout: Request timeout (default: 30 seconds)
+    ///   - retries: Number of retry attempts (default: 1)
     /// - Throws: NetworkError for various failure cases
     func performVoidRequest(
         endpoint: String,
         method: String = "POST",
         body: Encodable? = nil,
-        queryItems: [URLQueryItem]? = nil
+        queryItems: [URLQueryItem]? = nil,
+        timeout: TimeInterval = 30.0,
+        retries: Int = 1
     )
         async throws
     {
-        let request = try makeRequest(
+        let _: EmptyResponse = try await performRequest(
             endpoint: endpoint,
             method: method,
             body: body,
-            queryItems: queryItems
+            queryItems: queryItems,
+            responseType: EmptyResponse.self,
+            timeout: timeout,
+            retries: retries
         )
+    }
+}
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+// MARK: - Supporting Types
 
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NetworkError.invalidResponse
-        }
+/// Empty response type for void requests
+struct EmptyResponse: Codable {}
 
-        guard (200...299).contains(httpResponse.statusCode) else {
-            let errorData = try? JSONDecoder().decode(ErrorResponse.self, from: data)
-            throw NetworkError.serverError(
-                statusCode: httpResponse.statusCode,
-                message: errorData?.error ?? "Request failed with status \(httpResponse.statusCode)"
-            )
+/// Timeout errors for async operations
+enum TimeoutError: LocalizedError {
+    case healthCheckTimeout
+    
+    var errorDescription: String? {
+        switch self {
+        case .healthCheckTimeout:
+            return "Health check timed out"
         }
     }
 }

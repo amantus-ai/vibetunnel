@@ -55,20 +55,27 @@ final class TailscaleServeStatusService {
         }
 
         do {
-            let (data, response) = try await URLSession.shared.data(from: url)
+            // Create request with timeout to prevent hanging
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 5.0 // 5 second timeout
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            
+            let (data, response) = try await URLSession.shared.dataWithErrorBoundary(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 logger.error("Invalid response type")
-                isRunning = false
-                lastError = "Invalid server response"
+                handleServerUnavailable("Invalid server response")
                 return
             }
 
+            // Server is responding, mark as available
+            isServerAvailable = true
+
             guard httpResponse.statusCode == 200 else {
                 logger.error("HTTP error: \(httpResponse.statusCode)")
-                // If we get a non-200 response, there's an issue with the endpoint
+                // If we get a non-200 response, server is available but endpoint has issues
                 isRunning = false
-                lastError = "Unable to check status (HTTP \(httpResponse.statusCode))"
+                lastError = handleHTTPError(httpResponse.statusCode)
                 return
             }
 
@@ -105,14 +112,61 @@ final class TailscaleServeStatusService {
             logger.debug("Tailscale Serve status - Running: \(status.isRunning), Error: \(status.lastError ?? "none")")
         } catch {
             logger.error("Failed to fetch Tailscale Serve status: \(error.localizedDescription)")
-            // On error, assume not running
-            isRunning = false
-            // Keep error messages concise to prevent UI jumping
-            if error.localizedDescription.contains("couldn't be read") {
-                lastError = "Status check failed"
+            
+            // Handle different types of errors gracefully using enhanced NetworkError
+            if let networkError = error as? NetworkError {
+                switch networkError {
+                case .connectionFailed, .serverUnavailable, .timeout, .networkConnectionLost:
+                    handleServerUnavailable(networkError.errorDescription ?? "Server unavailable")
+                case .authenticationRequired, .forbidden:
+                    isRunning = false
+                    isServerAvailable = true
+                    lastError = networkError.errorDescription
+                default:
+                    isRunning = false
+                    isServerAvailable = true
+                    lastError = networkError.errorDescription ?? "Status check failed"
+                }
+            } else if let urlError = error as? URLError {
+                let networkError = NetworkError.from(urlError)
+                switch networkError {
+                case .connectionFailed, .serverUnavailable, .timeout, .networkConnectionLost:
+                    handleServerUnavailable(networkError.errorDescription ?? "Server unavailable")
+                default:
+                    isRunning = false
+                    isServerAvailable = true
+                    lastError = networkError.errorDescription ?? "Status check failed"
+                }
+            } else if error.localizedDescription.contains("couldn't be read") {
+                handleServerUnavailable("Status check failed")
             } else {
-                lastError = error.localizedDescription
+                // Generic error handling
+                isRunning = false
+                isServerAvailable = true // Assume server is available but has other issues
+                lastError = "Status check failed"
             }
+        }
+    }
+    
+    /// Handle server unavailable scenarios
+    private func handleServerUnavailable(_ message: String) {
+        isServerAvailable = false
+        isRunning = false
+        lastError = message
+        logger.info("Server unavailable: \(message)")
+    }
+    
+    /// Handle HTTP error responses with user-friendly messages
+    private func handleHTTPError(_ statusCode: Int) -> String {
+        switch statusCode {
+        case 404:
+            return "Tailscale endpoint not found"
+        case 500...599:
+            return "Server error (\(statusCode))"
+        case 401, 403:
+            return "Authentication required"
+        default:
+            return "Unable to check status (HTTP \(statusCode))"
         }
     }
 }
