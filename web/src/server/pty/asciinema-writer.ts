@@ -85,6 +85,7 @@ export class AsciinemaWriter {
   // Validation tracking
   private lastValidatedPosition: number = 0;
   private validationErrors: number = 0;
+  private validationInProgress: boolean = false;
 
   constructor(
     private filePath: string,
@@ -389,11 +390,26 @@ export class AsciinemaWriter {
     }
 
     // Validate position periodically (after fsync to ensure data is on disk)
-    if (this.bytesWritten - this.lastValidatedPosition > 1024 * 1024) {
-      // Every 1MB
-      // Don't await here to avoid blocking the write queue
-      this.validateFilePosition().catch((err) => {
-        _logger.error('Position validation failed:', err);
+    if (
+      this.bytesWritten - this.lastValidatedPosition > 1024 * 1024 &&
+      !this.validationInProgress
+    ) {
+      // Every 1MB, but only if not already validating
+      // Schedule validation to run after current write completes
+      // This ensures we don't block the write queue but still propagate critical errors
+      this.validationInProgress = true;
+      setImmediate(() => {
+        this.validateFilePosition()
+          .catch((err) => {
+            _logger.error('Position validation failed:', err);
+            // Re-throw PtyError to ensure critical errors are not swallowed
+            if (err instanceof PtyError) {
+              throw err;
+            }
+          })
+          .finally(() => {
+            this.validationInProgress = false;
+          });
       });
     }
   }
