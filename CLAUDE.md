@@ -20,6 +20,8 @@ cd mac
 ./scripts/build.sh                           # Build release version
 ./scripts/build.sh --configuration Debug     # Build debug version
 ./scripts/build.sh --sign                    # Build with code signing
+./scripts/build.sh --reduce-context          # Context-optimized output for Claude
+./scripts/build.sh --reduce-context 3>full.log # Save full output to file
 ```
 
 #### iOS App

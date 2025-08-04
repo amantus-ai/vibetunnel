@@ -693,6 +693,8 @@ pnpm run build
 # Build the macOS app
 cd ../mac
 ./scripts/build.sh --configuration Release
+# For development with Claude context optimization:
+./scripts/build.sh --configuration Debug --reduce-context
 ```
 
 ### Custom Node.js Builds

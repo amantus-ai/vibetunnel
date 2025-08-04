@@ -9,11 +9,13 @@
 # build details including the IS_PRERELEASE_BUILD flag status.
 #
 # USAGE:
-#   ./scripts/build.sh [--configuration Debug|Release] [--sign]
+#   ./scripts/build.sh [--configuration Debug|Release] [--sign] [--reduce-context]
 #
 # ARGUMENTS:
 #   --configuration <Debug|Release>  Build configuration (default: Release)
 #   --sign                          Sign the app after building (requires cert)
+#   --reduce-context                Filter verbose output for Claude context efficiency
+#                                   (full output still available on file descriptor 3)
 #
 # ENVIRONMENT VARIABLES:
 #   IS_PRERELEASE_BUILD=YES|NO      Sets pre-release flag in Info.plist
@@ -35,6 +37,8 @@
 #   ./scripts/build.sh                           # Release build
 #   ./scripts/build.sh --configuration Debug     # Debug build
 #   ./scripts/build.sh --sign                    # Release build with signing
+#   ./scripts/build.sh --reduce-context          # Context-optimized output
+#   ./scripts/build.sh --reduce-context 3>full.log  # Save full output to file
 #   IS_PRERELEASE_BUILD=YES ./scripts/build.sh   # Beta build
 #
 # =============================================================================
@@ -49,6 +53,7 @@ BUILD_DIR="$MAC_DIR/build"
 # Default values
 CONFIGURATION="Release"
 SIGN_APP=false
+REDUCE_CONTEXT=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -61,9 +66,13 @@ while [[ $# -gt 0 ]]; do
             SIGN_APP=true
             shift
             ;;
+        --reduce-context)
+            REDUCE_CONTEXT=true
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--configuration Debug|Release] [--sign]"
+            echo "Usage: $0 [--configuration Debug|Release] [--sign] [--reduce-context]"
             exit 1
             ;;
     esac
@@ -77,6 +86,66 @@ echo "Architecture: ARM64 only"
 # Clean build directory only if it doesn't exist
 mkdir -p "$BUILD_DIR"
 
+# Filtering function for reduced context output
+filter_build_output() {
+    # Filter out verbose lines while preserving errors, warnings, and important status
+    awk '
+    BEGIN { 
+        full_chars = 0
+        filtered_chars = 0
+    }
+    {
+        full_chars += length($0) + 1  # +1 for newline
+        
+        # Always keep: errors, warnings, build results, version info, signing info
+        if (/error:|warning:|Build succeeded|Build failed|✓|⚠|❌|🔨|Signing|Code signing|Version:|Found app at:|Verifying/) {
+            print $0
+            filtered_chars += length($0) + 1
+            next
+        }
+        
+        # Keep concise progress indicators
+        if (/^Building|^Configuration:|^Architecture:|^Using/) {
+            print $0
+            filtered_chars += length($0) + 1
+            next
+        }
+        
+        # Skip verbose compilation commands
+        if (/CompileSwift|CompileC|Ld |ProcessInfoPlistFile|SwiftDriver|SwiftMergeGeneratedHeaders/) {
+            next
+        }
+        
+        # Skip module compilation details
+        if (/Compiling .* swift-frontend|swift-frontend.*-compile/) {
+            next
+        }
+        
+        # Skip framework search paths and linking details
+        if (/-F\/|rpath|framework|\.framework/) {
+            next
+        }
+        
+        # Skip build timing and derived data messages
+        if (/Build Preparation|note: Building targets in dependency order/) {
+            next
+        }
+        
+        # Keep everything else (catch remaining important messages)
+        print $0
+        filtered_chars += length($0) + 1
+    }
+    END {
+        # Calculate token estimates (rough: 4 chars per token)
+        full_tokens = int(full_chars / 4)
+        filtered_tokens = int(filtered_chars / 4)
+        saved_tokens = full_tokens - filtered_tokens
+        saved_percent = int((saved_tokens * 100) / full_tokens)
+        
+        print ""
+        print "[Build output reduced by " saved_percent "% - from ~" full_tokens " to ~" filtered_tokens " estimated tokens (" saved_tokens " saved)]"
+    }'
+}
 
 # Bun server is built by Xcode build phase
 
@@ -113,30 +182,94 @@ fi
 # Check if xcbeautify is available
 if command -v xcbeautify &> /dev/null; then
     echo "🔨 Building ARM64-only binary with xcbeautify..."
-    xcodebuild \
-        -project VibeTunnel.xcodeproj \
-        -scheme VibeTunnel \
-        -configuration "$CONFIGURATION" \
-        $DERIVED_DATA_ARG \
-        -destination "platform=macOS,arch=arm64" \
-        $XCCONFIG_ARG \
-        ARCHS="arm64" \
-        ONLY_ACTIVE_ARCH=NO \
-        $CODE_SIGN_ARGS \
-        build | xcbeautify
+    if [[ "$REDUCE_CONTEXT" == true ]]; then
+        # Dual output: filtered to stdout (fd 1), full to fd 3 (if available)
+        if { true >&3; } 2>/dev/null; then
+            # fd 3 is available - send full output there
+            xcodebuild \
+                -project VibeTunnel.xcodeproj \
+                -scheme VibeTunnel \
+                -configuration "$CONFIGURATION" \
+                $DERIVED_DATA_ARG \
+                -destination "platform=macOS,arch=arm64" \
+                $XCCONFIG_ARG \
+                ARCHS="arm64" \
+                ONLY_ACTIVE_ARCH=NO \
+                $CODE_SIGN_ARGS \
+                build 2>&1 | tee >(cat >&3) | xcbeautify | filter_build_output
+        else
+            # fd 3 not available - just filter output
+            xcodebuild \
+                -project VibeTunnel.xcodeproj \
+                -scheme VibeTunnel \
+                -configuration "$CONFIGURATION" \
+                $DERIVED_DATA_ARG \
+                -destination "platform=macOS,arch=arm64" \
+                $XCCONFIG_ARG \
+                ARCHS="arm64" \
+                ONLY_ACTIVE_ARCH=NO \
+                $CODE_SIGN_ARGS \
+                build 2>&1 | xcbeautify | filter_build_output
+        fi
+    else
+        # Default behavior: use xcbeautify as normal
+        xcodebuild \
+            -project VibeTunnel.xcodeproj \
+            -scheme VibeTunnel \
+            -configuration "$CONFIGURATION" \
+            $DERIVED_DATA_ARG \
+            -destination "platform=macOS,arch=arm64" \
+            $XCCONFIG_ARG \
+            ARCHS="arm64" \
+            ONLY_ACTIVE_ARCH=NO \
+            $CODE_SIGN_ARGS \
+            build | xcbeautify
+    fi
 else
     echo "🔨 Building ARM64-only binary (install xcbeautify for cleaner output)..."
-    xcodebuild \
-        -project VibeTunnel.xcodeproj \
-        -scheme VibeTunnel \
-        -configuration "$CONFIGURATION" \
-        $DERIVED_DATA_ARG \
-        -destination "platform=macOS,arch=arm64" \
-        $XCCONFIG_ARG \
-        ARCHS="arm64" \
-        ONLY_ACTIVE_ARCH=NO \
-        $CODE_SIGN_ARGS \
-        build
+    if [[ "$REDUCE_CONTEXT" == true ]]; then
+        # Dual output: filtered to stdout (fd 1), full to fd 3 (if available)
+        if { true >&3; } 2>/dev/null; then
+            # fd 3 is available - send full output there
+            xcodebuild \
+                -project VibeTunnel.xcodeproj \
+                -scheme VibeTunnel \
+                -configuration "$CONFIGURATION" \
+                $DERIVED_DATA_ARG \
+                -destination "platform=macOS,arch=arm64" \
+                $XCCONFIG_ARG \
+                ARCHS="arm64" \
+                ONLY_ACTIVE_ARCH=NO \
+                $CODE_SIGN_ARGS \
+                build 2>&1 | tee >(cat >&3) | filter_build_output
+        else
+            # fd 3 not available - just filter output
+            xcodebuild \
+                -project VibeTunnel.xcodeproj \
+                -scheme VibeTunnel \
+                -configuration "$CONFIGURATION" \
+                $DERIVED_DATA_ARG \
+                -destination "platform=macOS,arch=arm64" \
+                $XCCONFIG_ARG \
+                ARCHS="arm64" \
+                ONLY_ACTIVE_ARCH=NO \
+                $CODE_SIGN_ARGS \
+                build 2>&1 | filter_build_output
+        fi
+    else
+        # Default behavior: direct output
+        xcodebuild \
+            -project VibeTunnel.xcodeproj \
+            -scheme VibeTunnel \
+            -configuration "$CONFIGURATION" \
+            $DERIVED_DATA_ARG \
+            -destination "platform=macOS,arch=arm64" \
+            $XCCONFIG_ARG \
+            ARCHS="arm64" \
+            ONLY_ACTIVE_ARCH=NO \
+            $CODE_SIGN_ARGS \
+            build
+    fi
 fi
 
 # Find the app in the appropriate location

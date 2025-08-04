@@ -11,6 +11,9 @@ xcodebuild -workspace VibeTunnel.xcworkspace -scheme VibeTunnel build
 
 # Using build script
 ./scripts/build.sh
+
+# Claude-optimized output (reduces context usage by ~80%)
+./scripts/build.sh --reduce-context
 ```
 
 ### Running Tests
@@ -40,7 +43,7 @@ mac/
 
 ## Scripts
 
-- `build.sh` - Build the app with optional signing
+- `build.sh` - Build the app with optional signing and context optimization
 - `create-dmg.sh` - Create a DMG for distribution
 - `release.sh` - Full release process
 - `monitor-ci.sh` - Monitor CI build status

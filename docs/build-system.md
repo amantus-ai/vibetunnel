@@ -15,6 +15,13 @@ cd mac
 ./scripts/build.sh --configuration Debug
 ```
 
+**Claude-Optimized Build** - Reduced output for AI context efficiency:
+```bash
+cd mac
+./scripts/build.sh --configuration Debug --reduce-context
+# Save full output while showing filtered: --reduce-context 3>full.log
+```
+
 **Release Build** - Full build with code signing:
 ```bash
 cd mac
