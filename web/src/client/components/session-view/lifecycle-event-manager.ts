@@ -211,6 +211,25 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       return;
     }
 
+    // Firefox/Safari specific handling - skip IME checks if they're having issues
+    const isFirefoxOrSafari = /Firefox|Safari/i.test(navigator.userAgent);
+    const isMacDesktop = /Mac OS/i.test(navigator.userAgent) && !/Mobile/i.test(navigator.userAgent);
+    
+    if (isFirefoxOrSafari && isMacDesktop) {
+      // For Firefox/Safari on Mac desktop, use direct keyboard handling
+      // Skip IME input checks as they may not work properly
+      const inputManager = this.callbacks.getInputManager();
+      if (inputManager?.isKeyboardShortcut(e)) {
+        // Let the browser handle this shortcut
+        return;
+      }
+      
+      // Only prevent default for keys we're actually going to handle
+      consumeEvent(e);
+      this.callbacks.handleKeyboardInput(e);
+      return;
+    }
+
     // Check if IME input is focused - block keyboard events except for editing keys
     if (document.body.getAttribute('data-ime-input-focused') === 'true') {
       if (!isIMEAllowedKey(e)) {
@@ -450,8 +469,14 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     // Only add listeners if not already added
     if (!isMobile && !this.keyboardListenerAdded) {
       // Don't use capture phase - let browser handle shortcuts naturally
-      document.addEventListener('keydown', this.keyboardHandler);
+      // Use passive: false to ensure we can preventDefault when needed
+      document.addEventListener('keydown', this.keyboardHandler, { passive: false });
       this.keyboardListenerAdded = true;
+      
+      // For Firefox and Safari, ensure the document is focusable to receive keyboard events
+      if (/Firefox|Safari/i.test(navigator.userAgent)) {
+        document.body.tabIndex = -1;
+      }
     } else if (isMobile && !this.touchListenersAdded) {
       // Add touch event listeners for mobile swipe gestures
       document.addEventListener('touchstart', this.touchStartHandler, { passive: true });

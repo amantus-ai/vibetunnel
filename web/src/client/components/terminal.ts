@@ -1653,6 +1653,16 @@ export class Terminal extends LitElement {
     // Focus the terminal container so it can receive paste events
     if (this.container) {
       this.container.focus();
+      
+      // Firefox/Safari may need additional focus handling
+      if (/Firefox|Safari/i.test(navigator.userAgent)) {
+        // Ensure the document body can receive keyboard events
+        document.body.focus();
+        // Then focus back to container
+        setTimeout(() => {
+          this.container?.focus();
+        }, 10);
+      }
     }
   };
 

@@ -10,6 +10,17 @@
  * @returns true if the device is mobile (iPhone, iPad, iPod, Android)
  */
 export function detectMobile(): boolean {
+  // Firefox on Mac may report maxTouchPoints > 0 even on desktop systems
+  // Add more specific checks to avoid false positives
+  const hasWindowsOrMac = /Windows|Mac OS/i.test(navigator.userAgent);
+  const isFirefoxDesktop = /Firefox/i.test(navigator.userAgent) && hasWindowsOrMac;
+  const isSafariDesktop = /Safari/i.test(navigator.userAgent) && /Mac OS/i.test(navigator.userAgent) && !/Mobile/i.test(navigator.userAgent);
+  
+  // Don't treat desktop Firefox/Safari as mobile even if they report touch points
+  if (isFirefoxDesktop || isSafariDesktop) {
+    return false;
+  }
+  
   return (
     /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
     (!!navigator.maxTouchPoints && navigator.maxTouchPoints > 1)

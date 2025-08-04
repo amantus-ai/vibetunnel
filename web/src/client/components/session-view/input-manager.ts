@@ -75,6 +75,17 @@ export class InputManager {
       logger.log('Skipping IME input setup on mobile device');
       return;
     }
+    
+    // Firefox/Safari on Mac may have IME input issues, provide fallback
+    const isFirefoxOrSafari = /Firefox|Safari/i.test(navigator.userAgent);
+    const isMacDesktop = /Mac OS/i.test(navigator.userAgent) && !/Mobile/i.test(navigator.userAgent);
+    
+    if (isFirefoxOrSafari && isMacDesktop) {
+      console.log('🔍 Firefox/Safari on Mac detected - using direct keyboard handling');
+      logger.log('Firefox/Safari on Mac detected - skipping IME input setup, using direct keyboard handling');
+      return;
+    }
+    
     console.log('🔍 Setting up IME input on desktop device');
 
     // Find the terminal container to position the IME input correctly
@@ -105,16 +116,22 @@ export class InputManager {
   async handleKeyboardInput(e: KeyboardEvent): Promise<void> {
     if (!this.session) return;
 
-    // Block keyboard events when IME input is focused, except for editing keys
-    if (this.imeInput?.isFocused()) {
-      if (!isIMEAllowedKey(e)) {
+    // Firefox/Safari on Mac: Skip IME checks as we're using direct keyboard handling
+    const isFirefoxOrSafari = /Firefox|Safari/i.test(navigator.userAgent);
+    const isMacDesktop = /Mac OS/i.test(navigator.userAgent) && !/Mobile/i.test(navigator.userAgent);
+    
+    if (!(isFirefoxOrSafari && isMacDesktop)) {
+      // Block keyboard events when IME input is focused, except for editing keys
+      if (this.imeInput?.isFocused()) {
+        if (!isIMEAllowedKey(e)) {
+          return;
+        }
+      }
+
+      // Block keyboard events during IME composition
+      if (this.imeInput?.isComposingText()) {
         return;
       }
-    }
-
-    // Block keyboard events during IME composition
-    if (this.imeInput?.isComposingText()) {
-      return;
     }
 
     const { key, ctrlKey, altKey, metaKey, shiftKey } = e;

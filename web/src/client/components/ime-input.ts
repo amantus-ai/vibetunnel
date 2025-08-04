@@ -291,17 +291,43 @@ export class DesktopIMEInput {
 
   focus(): void {
     this.updatePosition();
-    requestAnimationFrame(() => {
-      this.input.focus();
-      // If focus didn't work, try once more
-      if (document.activeElement !== this.input) {
-        requestAnimationFrame(() => {
-          if (document.activeElement !== this.input) {
-            this.input.focus();
-          }
-        });
-      }
-    });
+    
+    // Firefox and Safari may need additional focus handling
+    const isFirefoxOrSafari = /Firefox|Safari/i.test(navigator.userAgent);
+    
+    if (isFirefoxOrSafari) {
+      // For Firefox/Safari, ensure the input is visible and focusable
+      this.input.style.opacity = '0.01'; // Barely visible but still focusable
+      this.input.style.pointerEvents = 'auto';
+      
+      // Use a longer delay for Firefox/Safari
+      setTimeout(() => {
+        this.input.focus();
+        // Verify focus was successful
+        if (document.activeElement !== this.input) {
+          // Try alternative focus method for Firefox/Safari
+          this.input.click();
+          this.input.focus();
+        }
+        // Reset visibility after focus
+        setTimeout(() => {
+          this.input.style.opacity = '0';
+          this.input.style.pointerEvents = 'none';
+        }, 10);
+      }, 50);
+    } else {
+      requestAnimationFrame(() => {
+        this.input.focus();
+        // If focus didn't work, try once more
+        if (document.activeElement !== this.input) {
+          requestAnimationFrame(() => {
+            if (document.activeElement !== this.input) {
+              this.input.focus();
+            }
+          });
+        }
+      });
+    }
   }
 
   blur(): void {
