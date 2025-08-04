@@ -1114,7 +1114,18 @@ export class Terminal extends LitElement {
       html += `<div class="terminal-line"${style}>${lineContent || ''}</div>`;
     }
 
-    // Set the complete innerHTML at once
+    // Force complete DOM refresh to prevent Bubbletea dialog fragments
+    // This addresses rendering issues with complex TUI applications that use
+    // alternate screen buffers and partial screen updates
+    const existingContent = this.container.innerHTML;
+    if (existingContent && this.container.children.length > 0) {
+      // Clear all children to eliminate fragment artifacts
+      while (this.container.firstChild) {
+        this.container.removeChild(this.container.firstChild);
+      }
+    }
+
+    // Set the complete innerHTML at once in atomic operation
     this.container.innerHTML = html;
 
     // Process links after rendering
@@ -1315,6 +1326,15 @@ export class Terminal extends LitElement {
       this.cursorVisible = true;
     }
 
+    // Detect alternate screen buffer transitions that can cause fragments
+    // Force a complete render after these sequences to prevent artifacts
+    const hasAlternateScreenSequence = data.includes('\x1b[?1049h') ||  // Enter alternate screen
+                                      data.includes('\x1b[?1049l') ||  // Exit alternate screen
+                                      data.includes('\x1b[?47h') ||    // Save screen (older)
+                                      data.includes('\x1b[?47l') ||    // Restore screen (older)
+                                      data.includes('\x1b[2J') ||      // Clear screen
+                                      data.includes('\x1b[H\x1b[2J'); // Home + clear screen
+
     this.queueRenderOperation(async () => {
       if (!this.terminal) return;
 
@@ -1330,6 +1350,11 @@ export class Terminal extends LitElement {
       // Follow cursor if requested
       if (followCursor && this.followCursorEnabled) {
         this.followCursor();
+      }
+
+      // Force immediate render for alternate screen sequences to prevent fragments
+      if (hasAlternateScreenSequence) {
+        this.renderBuffer();
       }
     });
   }

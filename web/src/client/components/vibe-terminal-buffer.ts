@@ -50,6 +50,10 @@ export class VibeTerminalBuffer extends LitElement {
   private pendingBuffer: BufferSnapshot | null = null;
   private lastTouchTime = 0;
   private isMobileDevice = 'ontouchstart' in window;
+  
+  // Fragment prevention properties
+  private isUpdating = false;
+  private updateQueue: BufferSnapshot[] = [];
 
   // Moved to render() method above
 
@@ -152,18 +156,45 @@ export class VibeTerminalBuffer extends LitElement {
 
     // Subscribe to buffer updates
     this.unsubscribe = bufferSubscriptionService.subscribe(this.sessionId, (snapshot) => {
-      this.buffer = snapshot;
-      this.error = null;
+      // Queue updates to prevent race conditions and fragment artifacts
+      // This is especially important for Bubbletea applications that send
+      // rapid screen updates during modal interactions
+      if (this.isUpdating) {
+        this.updateQueue.push(snapshot);
+        return;
+      }
 
-      // Check for content changes
-      this.checkForContentChange();
-
-      // Recalculate dimensions now that we have the actual cols
-      this.calculateDimensions();
-
-      // Request update which will trigger updated() lifecycle
-      this.requestUpdate();
+      this.processBufferUpdate(snapshot);
     });
+  }
+
+  private processBufferUpdate(snapshot: BufferSnapshot) {
+    this.isUpdating = true;
+    
+    this.buffer = snapshot;
+    this.error = null;
+
+    // Check for content changes
+    this.checkForContentChange();
+
+    // Recalculate dimensions now that we have the actual cols
+    this.calculateDimensions();
+
+    // Request update which will trigger updated() lifecycle
+    this.requestUpdate();
+    
+    // Process any queued updates after a brief delay to ensure DOM is updated
+    setTimeout(() => {
+      this.isUpdating = false;
+      if (this.updateQueue.length > 0) {
+        // Process the most recent queued update (discard older ones to prevent lag)
+        const nextUpdate = this.updateQueue.pop();
+        this.updateQueue = []; // Clear the entire queue
+        if (nextUpdate) {
+          this.processBufferUpdate(nextUpdate);
+        }
+      }
+    }, 0);
   }
 
   private checkForContentChange() {
@@ -318,6 +349,19 @@ export class VibeTerminalBuffer extends LitElement {
     let html = '';
 
     // The server already sends only the visible terminal area (terminal.rows worth of lines)
+    // Clear any potential fragment artifacts before rendering
+    const existingContent = this.container.innerHTML;
+    
+    // Force a complete DOM refresh to prevent Bubbletea dialog fragments
+    // This addresses rendering issues with complex TUI applications that use
+    // alternate screen buffers and partial screen updates
+    if (existingContent && this.container.children.length > 0) {
+      // Clear all children to eliminate fragment artifacts
+      while (this.container.firstChild) {
+        this.container.removeChild(this.container.firstChild);
+      }
+    }
+
     // We should render all cells sent by the server without additional truncation
     for (let i = 0; i < this.buffer.cells.length; i++) {
       const row = this.buffer.cells[i];
@@ -340,7 +384,7 @@ export class VibeTerminalBuffer extends LitElement {
       }
     }
 
-    // Set innerHTML directly like terminal.ts does
+    // Set innerHTML in one atomic operation to prevent rendering artifacts
     this.container.innerHTML = html;
   }
 
