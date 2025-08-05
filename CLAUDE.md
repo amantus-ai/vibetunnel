@@ -10,6 +10,146 @@ VibeTunnel is a macOS application that allows users to access their terminal ses
 - iOS companion app in `ios/`
 - Web frontend (TypeScript/LitElement) and Node.js/Bun server for terminal session management in `web/`
 
+## Common Development Commands
+
+### Building the Project
+
+#### macOS App
+```bash
+cd mac
+./scripts/build.sh                           # Build release version
+./scripts/build.sh --configuration Debug     # Build debug version
+./scripts/build.sh --sign                    # Build with code signing
+```
+
+#### iOS App
+```bash
+cd ios
+xcodebuild -project VibeTunnel-iOS.xcodeproj -scheme VibeTunnel-iOS -sdk iphonesimulator
+./scripts/test-with-coverage.sh              # Run tests with coverage (75% threshold)
+```
+
+#### Web Frontend
+```bash
+cd web
+pnpm install                                 # Install dependencies
+pnpm run build                              # Production build
+pnpm run dev                                # Development server with hot reload
+```
+
+### Code Quality Commands
+
+#### Web (MUST run before committing)
+```bash
+cd web
+pnpm run check                              # Run all checks in parallel (format, lint, typecheck)
+pnpm run check:fix                          # Auto-fix formatting and linting issues
+```
+
+#### macOS
+```bash
+cd mac
+./scripts/lint.sh                           # Run SwiftFormat
+```
+
+#### iOS
+```bash
+cd ios
+./scripts/lint.sh                           # Run SwiftFormat
+```
+
+### Testing Commands
+
+#### Web Tests
+```bash
+cd web
+pnpm run test                               # Run all tests
+pnpm run test:coverage                      # Run with coverage report (80% required)
+pnpm run test:e2e                          # Run Playwright E2E tests
+pnpm run test:e2e:debug                    # Debug E2E tests
+```
+
+#### macOS Tests
+```bash
+# MUST use xcodebuild, NOT swift test!
+cd mac
+xcodebuild test -project VibeTunnel.xcodeproj -scheme VibeTunnel -destination 'platform=macOS'
+```
+
+#### iOS Tests
+```bash
+cd ios
+./scripts/test-with-coverage.sh             # Run with automatic simulator selection
+```
+
+### Debugging and Logs
+
+```bash
+# View VibeTunnel logs (from project root)
+./scripts/vtlog.sh -n 100                  # Last 100 lines
+./scripts/vtlog.sh -e                      # Errors only
+./scripts/vtlog.sh -c ServerManager        # Specific component
+./scripts/vtlog.sh -s "error"              # Search for text
+
+# NEVER use -f (follow mode) in Claude Code - it will timeout!
+```
+
+## High-Level Architecture
+
+### Component Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        macOS Menu Bar App                    │
+│  (Swift/SwiftUI - mac/VibeTunnel/)                         │
+│  - ServerManager: Manages server lifecycle                   │
+│  - SessionMonitor: Tracks active sessions                    │
+│  - TTYForwardManager: Terminal forwarding                    │
+└─────────────────────┬───────────────────────────────────────┘
+                      │ Spawns & Manages
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Node.js/Bun Server                        │
+│  (TypeScript - web/src/server/)                             │
+│  - server.ts: HTTP server & WebSocket handling              │
+│  - pty-manager.ts: Native PTY process management            │
+│  - session-manager.ts: Terminal session lifecycle           │
+└─────────────────────┬───────────────────────────────────────┘
+                      │ WebSocket/HTTP
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      Web Frontend                            │
+│  (TypeScript/LitElement - web/src/client/)                  │
+│  - Terminal rendering with xterm.js                         │
+│  - Real-time updates via WebSocket                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Communication Flows
+
+1. **Session Creation**: Client → POST /api/sessions → Server spawns PTY → Returns session ID
+2. **Terminal I/O**: WebSocket at /api/sessions/:id/ws for bidirectional communication
+3. **Buffer Protocol**: Binary messages with magic byte 0xBF for efficient terminal updates
+4. **Log Aggregation**: Frontend logs → Server → Mac app → macOS unified logging
+
+### Critical File Locations
+
+- **Entry Points**:
+  - Mac app: `mac/VibeTunnel/VibeTunnelApp.swift`
+  - Server: `web/src/server/server.ts`
+  - Web UI: `web/src/client/app.ts`
+  - iOS app: `ios/VibeTunnel/VibeTunnelApp.swift`
+
+- **Configuration**:
+  - Mac version: `mac/VibeTunnel/version.xcconfig`
+  - Web version: `web/package.json`
+  - Build settings: `mac/VibeTunnel/Shared.xcconfig`
+
+- **Terminal Management**:
+  - PTY spawning: `web/src/server/pty/pty-manager.ts`
+  - Session handling: `web/src/server/services/terminal-manager.ts`
+  - Buffer optimization: `web/src/server/services/buffer-aggregator.ts`
+
 ## Critical Development Rules
 
 ### Release Process
@@ -48,6 +188,7 @@ When the user says "release" or asks to create a release, ALWAYS read and follow
      - Mac app runs `pnpm run dev` instead of embedded server
      - Provides hot reload - web changes automatically rebuild without Mac app rebuild
      - Restart VibeTunnel server (not full rebuild) to pick up web changes
+     
 6. **Never kill all sessions**
    - You are running inside a session yourself; killing all sessions would terminate your own process
 
@@ -81,84 +222,6 @@ When creating pull requests, use the `vt` command to update the terminal title:
 - Update the title periodically as work progresses
 - If `vt` command fails (only works inside VibeTunnel), simply ignore the error and continue
 
-## Web Development Commands
-
-**DEVELOPMENT MODES**:
-- **Standalone Development**: `pnpm run dev` runs independently on port 4020
-- **Mac App Integration**: Enable "Development Server" in VibeTunnel settings (recommended)
-  - Mac app automatically runs `pnpm run dev` and manages the process
-  - Provides seamless integration with Mac app features
-  - Hot reload works with full VibeTunnel functionality
-
-In the `web/` directory:
-
-```bash
-# Development
-pnpm run dev                   # Standalone development server (port 4020)
-pnpm run dev --port 4021       # Alternative port for external device testing
-
-# Code quality (MUST run before commit)
-pnpm run check         # Run ALL checks in parallel (format, lint, typecheck)
-pnpm run check:fix     # Auto-fix formatting and linting issues
-
-# Individual commands (rarely needed)
-pnpm run lint          # Check for linting errors
-pnpm run lint:fix      # Auto-fix linting errors
-pnpm run format        # Format with Prettier
-pnpm run typecheck     # Check TypeScript types
-
-# Testing (only when requested)
-pnpm run test
-pnpm run test:coverage
-pnpm run test:e2e
-```
-
-## macOS Development Commands
-
-In the `mac/` directory:
-
-```bash
-# Build commands
-./scripts/build.sh                    # Build release
-./scripts/build.sh --configuration Debug  # Build debug
-./scripts/build.sh --sign            # Build with code signing
-
-# Other scripts
-./scripts/clean.sh                   # Clean build artifacts
-./scripts/lint.sh                    # Run linting
-./scripts/create-dmg.sh             # Create installer
-```
-
-## Architecture Overview
-
-### Terminal Sharing Protocol
-1. **Session Creation**: `POST /api/sessions` spawns new terminal
-2. **Input**: `POST /api/sessions/:id/input` sends keyboard/mouse input
-3. **Output**:
-   - SSE stream at `/api/sessions/:id/stream` (text)
-   - WebSocket at `/buffers` (binary, efficient rendering)
-4. **Resize**: `POST /api/sessions/:id/resize` (missing in some implementations)
-
-### Key Entry Points
-- **Mac App**: `mac/VibeTunnel/VibeTunnelApp.swift`
-- **Web Frontend**: `web/src/client/app.ts`
-- **Server**: `web/src/server/server.ts`
-- **Process spawning and forwarding tool**: `web/src/server/fwd.ts`
-- **Server Management**: `mac/VibeTunnel/Core/Services/ServerManager.swift`
-
-## Testing
-
-- **Never run tests unless explicitly asked**
-- Mac tests: Swift Testing framework in `VibeTunnelTests/`
-- Web tests: Vitest in `web/src/test/`
-
-## CI Pipeline
-
-The CI workflow automatically runs both Node.js and Mac builds:
-- **Node.js CI**: Runs for web OR Mac file changes to ensure web artifacts are always available
-- **Mac CI**: Downloads web artifacts from Node.js CI, with fallback to build locally if missing
-- **Cross-dependency**: Mac builds require web artifacts, so Node.js CI must complete first
-
 ## Testing on External Devices (iPad, Safari, etc.)
 
 When the user reports issues on external devices, use the development server method for testing:
@@ -174,226 +237,6 @@ Then access from the external device using `http://[mac-ip]:4021`
 **Important**: The production server runs on port 4020, so use 4021 for development to avoid conflicts.
 
 For detailed instructions, see `docs/TESTING_EXTERNAL_DEVICES.md`
-
-## MCP (Model Context Protocol) Servers
-
-MCP servers extend Claude Code's capabilities with additional tools. Here's how to add them:
-
-### Installing MCP Servers for Claude Code
-
-**Important**: MCP server configuration for Claude Code is different from Claude Desktop. Claude Code uses CLI commands, not JSON configuration files.
-
-#### Quick Installation Steps:
-
-1. **Open a terminal** (outside of Claude Code)
-2. **Run the add command** with the MCP server you want:
-   ```bash
-   # For Playwright (web testing)
-   claude mcp add playwright -- npx -y @playwright/mcp@latest
-   
-   # For XcodeBuildMCP (iOS/macOS development)
-   claude mcp add XcodeBuildMCP -- npx -y xcodebuildmcp@latest
-   ```
-3. **Restart Claude Code** to load the new MCP servers
-4. **Verify installation** by running `/mcp` in Claude Code
-
-### Adding MCP Servers to Claude Code
-
-```bash
-# Basic syntax for adding a stdio server
-claude mcp add <name> -- <command> [args...]
-
-# Examples:
-# Add playwright MCP (highly recommended for web testing)
-claude mcp add playwright -- npx -y @playwright/mcp@latest
-
-# Add XcodeBuildMCP for macOS development
-claude mcp add XcodeBuildMCP -- npx -y xcodebuildmcp@latest
-
-# Add with environment variables
-claude mcp add my-server -e API_KEY=value -- /path/to/server
-
-# List all configured servers
-claude mcp list
-
-# Remove a server
-claude mcp remove <name>
-```
-
-### Recommended MCP Servers for This Project
-
-1. **Playwright MCP** - Web testing and browser automation
-   - Browser control, screenshots, automated testing
-   - Install: `claude mcp add playwright -- npx -y @playwright/mcp@latest`
-
-2. **XcodeBuildMCP** - macOS/iOS development (Mac only)
-   - Xcode build, test, project management
-   - Install: `claude mcp add XcodeBuildMCP -- npx -y xcodebuildmcp@latest`
-
-3. **Peekaboo MCP** - Visual analysis and screenshots (Mac only)
-   - Take screenshots, analyze visual content with AI
-   - Install: `claude mcp add peekaboo -- npx -y @steipete/peekaboo-mcp`
-
-4. **macOS Automator MCP** - System automation (Mac only)
-   - Control macOS UI, automate system tasks
-   - Install: `claude mcp add macos-automator -- npx -y macos-automator-mcp`
-
-5. **RepoPrompt** - Repository context management
-   - Generate comprehensive codebase summaries
-   - Install: `claude mcp add RepoPrompt -- /path/to/repoprompt_cli`
-
-6. **Zen MCP Server** - Advanced AI reasoning
-   - Multi-model consensus, deep analysis, code review
-   - Install: See setup instructions in zen-mcp-server repository
-
-### Configuration Scopes
-
-- **local** (default): Project-specific, private to you
-- **project**: Shared via `.mcp.json` file in project root
-- **user**: Available across all projects
-
-Use `-s` or `--scope` flag to specify scope:
-```bash
-claude mcp add -s project playwright -- npx -y @playwright/mcp@latest
-```
-
-## Alternative Tools for Complex Tasks
-
-### Gemini CLI
-
-For tasks requiring massive context windows (up to 2M tokens) or full codebase analysis:
-- Analyze entire repositories with `@` syntax for file inclusion
-- Useful for architecture reviews, finding implementations, security audits
-- Example: `gemini -p "@src/ @tests/ Is authentication properly implemented?"`
-- See `docs/gemini.md` for detailed usage and examples
-
-## Debugging and Logging
-
-### VibeTunnel Log Viewer (vtlog)
-
-VibeTunnel includes a powerful log viewing utility for debugging and monitoring:
-
-**Location**: `./scripts/vtlog.sh` (also available in `mac/scripts/vtlog.sh` and `ios/scripts/vtlog.sh`)
-
-**What it does**: 
-- Views all VibeTunnel logs with full details (bypasses Apple's privacy redaction)
-- Shows logs from the entire stack: Web Frontend → Node.js Server → macOS System
-- Provides unified view of all components with clear prefixes
-
-**Common usage**:
-```bash
-# View recent logs (RECOMMENDED for debugging):
-./scripts/vtlog.sh -n 200           # Show last 200 lines
-./scripts/vtlog.sh -n 500 -s "error" # Search last 500 lines for "error"
-./scripts/vtlog.sh -e               # Show only errors
-./scripts/vtlog.sh -c ServerManager # Show logs from specific component
-./scripts/vtlog.sh --server -e      # Show server errors
-
-# Follow logs in real-time (AVOID in Claude Code - causes timeouts):
-./scripts/vtlog.sh -f              # Follow logs in real-time - DO NOT USE for checking existing logs
-```
-
-**Important for Claude Code**: Always use `-n` to check a specific number of recent log lines. Do NOT use `-f` (follow mode) as it will block and timeout after 2 minutes. Follow mode is only useful when monitoring logs in a separate terminal while performing actions.
-
-**Log prefixes**:
-- `[FE]` - Frontend (browser) logs
-- `[SRV]` - Server-side logs from Node.js/Bun
-- `[ServerManager]`, `[SessionService]`, etc. - Native Mac app components
-
-## GitHub CLI Usage
-
-### Quick CI Debugging Commands
-
-When told to "fix CI", use these commands to quickly identify and access errors:
-
-**Step 1: Find Failed Runs**
-```bash
-# List recent CI runs and see their status
-gh run list --branch <branch-name> --limit 10
-
-# Quick check for failures on current branch
-git_branch=$(git branch --show-current) && gh run list --branch "$git_branch" --limit 5
-```
-
-**Step 2: Identify Failed Jobs**
-```bash
-# Find which job failed in a run
-gh run view <run-id> --json jobs | jq -r '.jobs[] | select(.conclusion == "failure") | .name'
-
-# Get all job statuses at a glance
-gh run view <run-id> --json jobs | jq -r '.jobs[] | "\(.name): \(.conclusion // .status)"'
-```
-
-**Step 3: Find Failed Steps**
-```bash
-# Find the exact failed step in a job
-gh run view <run-id> --json jobs | jq '.jobs[] | select(.conclusion == "failure") | .steps[] | select(.conclusion == "failure") | {name: .name, number: .number}'
-
-# Get failed step from a specific job
-gh run view <run-id> --json jobs | jq '.jobs[] | select(.name == "Mac CI / Build, Lint, and Test macOS") | .steps[] | select(.conclusion == "failure") | .name'
-```
-
-**Step 4: View Error Logs**
-```bash
-# View full logs (opens in browser)
-gh run view <run-id> --web
-
-# Download logs for a specific job
-gh run download <run-id> -n <job-name>
-
-# View logs in terminal (if run is complete)
-gh run view <run-id> --log
-
-# View only failed logs (most useful for CI debugging)
-gh run view <run-id> --log-failed
-
-# View logs for specific job
-gh run view <run-id> --log --job <job-id>
-
-# Watch a running job
-gh run watch <run-id>
-```
-
-**All-in-One Error Finder**
-```bash
-# This command finds and displays all failures in the latest run
-run_id=$(gh run list --branch "$(git branch --show-current)" --limit 1 --json databaseId -q '.[0].databaseId') && \
-echo "=== Failed Jobs ===" && \
-gh run view $run_id --json jobs | jq -r '.jobs[] | select(.conclusion == "failure") | "Job: \(.name)"' && \
-echo -e "\n=== Failed Steps ===" && \
-gh run view $run_id --json jobs | jq -r '.jobs[] | select(.conclusion == "failure") | .steps[] | select(.conclusion == "failure") | "  Step: \(.name)"'
-```
-
-**Common Failure Patterns**:
-- **Mac CI Build Failures**: Usually actool errors (Xcode beta issue), SwiftFormat violations, or missing dependencies
-- **Playwright Test Failures**: Often timeout issues, missing VIBETUNNEL_SEA env var, or tsx/node-pty conflicts
-- **iOS CI Failures**: Simulator boot issues, certificate problems, or test failures
-- **Web CI Failures**: TypeScript errors, linting issues, or test failures
-
-**Quick Actions**:
-```bash
-# Rerun only failed jobs
-gh run rerun <run-id> --failed
-
-# Cancel a stuck run
-gh run cancel <run-id>
-
-# View PR checks status
-gh pr checks <pr-number>
-```
-
-**Filtering and Searching Logs**:
-```bash
-# Search for specific errors in logs (remove network errors)
-gh run view <run-id> --log-failed | grep -v "Failed to load resource" | grep -v "ERR_FAILED"
-
-# Find actual test failures
-gh run view <run-id> --log | grep -E "×|failed|Failed" | grep -v "Failed to load resource"
-
-# Get test summary at end
-gh run view <run-id> --log | tail -200 | grep -E "failed|passed|Test results|Summary" -A 5 -B 5
-```
-
 
 ## Slash Commands
 
@@ -424,6 +267,7 @@ The agent will:
   - Don't check for "old format" vs "new format"
   - Don't add fallbacks for older versions
 - If you suggest backwards compatibility in any form, you have failed to understand this project
+
 ## Key Files Quick Reference
 
 - Architecture Details: `docs/ARCHITECTURE.md`
@@ -433,3 +277,9 @@ The agent will:
 - External Device Testing: `docs/TESTING_EXTERNAL_DEVICES.md`
 - Gemini CLI Instructions: `docs/gemini.md`
 - Release Process: `docs/RELEASE.md`
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
