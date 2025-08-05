@@ -58,7 +58,9 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
             if (code === 0) {
               logger.debug('Previous Tailscale serve configuration reset successfully');
             } else {
-              logger.debug(`Tailscale serve reset exited with code ${code} (may be normal if no config exists)`);
+              logger.debug(
+                `Tailscale serve reset exited with code ${code} (may be normal if no config exists)`
+              );
             }
             resolve();
           });
@@ -115,20 +117,27 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
         this.serveProcess.stderr.on('data', (data) => {
           const stderr = data.toString().trim();
           logger.debug(`Tailscale Serve stderr: ${stderr}`);
-          
+
           // Capture common error patterns and provide helpful hints
           if (stderr.includes('error') || stderr.includes('failed')) {
             this.lastError = stderr;
-            
+
             // Provide specific guidance for common issues
             if (stderr.includes('dns') || stderr.includes('DNS') || stderr.includes('resolve')) {
-              this.lastError += '\nHint: DNS resolution issues detected. Check your network settings, disable ad blockers like AdGuard, or try: sudo dscacheutil -flushcache';
-            } else if (stderr.includes('connection refused') || stderr.includes('connect: connection refused')) {
-              this.lastError += '\nHint: Connection refused. Make sure VibeTunnel is running and accessible on the specified port.';
+              this.lastError +=
+                '\nHint: DNS resolution issues detected. Check your network settings, disable ad blockers like AdGuard, or try: sudo dscacheutil -flushcache';
+            } else if (
+              stderr.includes('connection refused') ||
+              stderr.includes('connect: connection refused')
+            ) {
+              this.lastError +=
+                '\nHint: Connection refused. Make sure VibeTunnel is running and accessible on the specified port.';
             } else if (stderr.includes('permission') || stderr.includes('Permission')) {
-              this.lastError += '\nHint: Permission issue. Try running with appropriate privileges or check Tailscale authentication.';
+              this.lastError +=
+                '\nHint: Permission issue. Try running with appropriate privileges or check Tailscale authentication.';
             } else if (stderr.includes('tailnet') || stderr.includes('not connected')) {
-              this.lastError += '\nHint: Tailscale connection issue. Make sure you are logged in to Tailscale: tailscale status';
+              this.lastError +=
+                '\nHint: Tailscale connection issue. Make sure you are logged in to Tailscale: tailscale status';
             }
           }
         });
@@ -277,7 +286,8 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
         const verificationResult = await this.verifyServeConfiguration(this.currentPort);
         if (!verificationResult.isConfigured) {
           // Configuration is no longer active
-          this.lastError = verificationResult.error || 'Tailscale serve configuration is no longer active';
+          this.lastError =
+            verificationResult.error || 'Tailscale serve configuration is no longer active';
           this.currentPort = null;
           this.startTime = undefined;
           return {
@@ -382,7 +392,9 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
   /**
    * Verify that the Tailscale serve configuration is actually active
    */
-  private async verifyServeConfiguration(port: number): Promise<{isConfigured: boolean, error?: string}> {
+  private async verifyServeConfiguration(
+    port: number
+  ): Promise<{ isConfigured: boolean; error?: string }> {
     return new Promise((resolve) => {
       const checkProcess = spawn(this.tailscaleExecutable, ['serve', 'status'], {
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -407,26 +419,30 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
         if (code === 0) {
           // Check if our port is mentioned in the output
           const portString = port.toString();
-          if (stdout.includes(portString) || stdout.includes(`localhost:${portString}`) || stdout.includes(`127.0.0.1:${portString}`)) {
+          if (
+            stdout.includes(portString) ||
+            stdout.includes(`localhost:${portString}`) ||
+            stdout.includes(`127.0.0.1:${portString}`)
+          ) {
             resolve({ isConfigured: true });
           } else {
-            resolve({ 
-              isConfigured: false, 
-              error: `Port ${port} not found in active Tailscale serve configuration`
+            resolve({
+              isConfigured: false,
+              error: `Port ${port} not found in active Tailscale serve configuration`,
             });
           }
         } else {
-          resolve({ 
-            isConfigured: false, 
-            error: `Failed to check Tailscale serve status (exit code ${code}): ${stderr.trim()}`
+          resolve({
+            isConfigured: false,
+            error: `Failed to check Tailscale serve status (exit code ${code}): ${stderr.trim()}`,
           });
         }
       });
 
       checkProcess.on('error', (error) => {
-        resolve({ 
-          isConfigured: false, 
-          error: `Error checking Tailscale serve status: ${error.message}`
+        resolve({
+          isConfigured: false,
+          error: `Error checking Tailscale serve status: ${error.message}`,
         });
       });
 
@@ -434,9 +450,9 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
       setTimeout(() => {
         if (!checkProcess.killed) {
           checkProcess.kill('SIGTERM');
-          resolve({ 
-            isConfigured: false, 
-            error: 'Timeout checking Tailscale serve status'
+          resolve({
+            isConfigured: false,
+            error: 'Timeout checking Tailscale serve status',
           });
         }
       }, 5000);
