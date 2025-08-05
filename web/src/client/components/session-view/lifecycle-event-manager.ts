@@ -6,6 +6,7 @@
  */
 
 import type { Session } from '../../../shared/types.js';
+import { clearCharacterWidthCache } from '../../utils/cursor-position.js';
 import { consumeEvent } from '../../utils/event-utils.js';
 import { isIMEAllowedKey } from '../../utils/ime-constants.js';
 import { createLogger } from '../../utils/logger.js';
@@ -28,6 +29,9 @@ const logger = createLogger('lifecycle-event-manager');
 
 // Re-export the interface for backward compatibility
 export type { LifecycleEventManagerCallbacks } from './interfaces.js';
+
+// Threshold for determining when keyboard is considered visible (in pixels)
+const KEYBOARD_VISIBLE_THRESHOLD = 50;
 
 export class LifecycleEventManager extends ManagerEventEmitter {
   private callbacks: LifecycleEventManagerCallbacks | null = null;
@@ -194,6 +198,9 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
   handleWindowResize = (): void => {
     if (!this.callbacks) return;
+
+    // Clear character width cache when window is resized (may affect font rendering)
+    clearCharacterWidthCache();
 
     // Clear cache to re-evaluate capabilities (in case of device mode changes in dev tools)
     this.touchCapabilityCache = null;
@@ -391,6 +398,16 @@ export class LifecycleEventManager extends ManagerEventEmitter {
         // Store keyboard height in state
         this.callbacks.setKeyboardHeight(keyboardHeight);
 
+        // Set CSS custom property for keyboard height
+        document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`);
+
+        // Add data attribute to body for CSS targeting
+        if (keyboardHeight > KEYBOARD_VISIBLE_THRESHOLD) {
+          document.body.setAttribute('data-keyboard-visible', 'true');
+        } else {
+          document.body.setAttribute('data-keyboard-visible', 'false');
+        }
+
         // Update quick keys component if it exists
         const quickKeys = this.callbacks.querySelector('terminal-quick-keys') as HTMLElement & {
           keyboardHeight: number;
@@ -401,8 +418,32 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
         logger.log(`Visual Viewport keyboard height: ${keyboardHeight}px`);
 
+        // Dispatch custom events that embedded apps can listen to
+        if (
+          keyboardHeight > KEYBOARD_VISIBLE_THRESHOLD &&
+          previousKeyboardHeight <= KEYBOARD_VISIBLE_THRESHOLD
+        ) {
+          window.dispatchEvent(
+            new CustomEvent('vibetunnel:keyboard-shown', {
+              detail: { height: keyboardHeight },
+            })
+          );
+        } else if (
+          keyboardHeight <= KEYBOARD_VISIBLE_THRESHOLD &&
+          previousKeyboardHeight > KEYBOARD_VISIBLE_THRESHOLD
+        ) {
+          window.dispatchEvent(
+            new CustomEvent('vibetunnel:keyboard-hidden', {
+              detail: { height: 0 },
+            })
+          );
+        }
+
         // Detect keyboard dismissal (height drops to 0 or near 0)
-        if (previousKeyboardHeight > 50 && keyboardHeight < 50) {
+        if (
+          previousKeyboardHeight > KEYBOARD_VISIBLE_THRESHOLD &&
+          keyboardHeight < KEYBOARD_VISIBLE_THRESHOLD
+        ) {
           logger.log('Keyboard dismissed detected via viewport change');
 
           // Check if we're using direct keyboard mode

@@ -11,6 +11,7 @@ import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { cellsToText } from '../../shared/terminal-text-formatter.js';
 import { bufferSubscriptionService } from '../services/buffer-subscription-service.js';
+import { TERMINAL_IDS } from '../utils/terminal-constants.js';
 import { type BufferCell, TerminalRenderer } from '../utils/terminal-renderer.js';
 import { TERMINAL_THEMES, type TerminalThemeId } from '../utils/terminal-themes.js';
 import { getCurrentTheme } from '../utils/theme-utils.js';
@@ -35,7 +36,7 @@ export class VibeTerminalBuffer extends LitElement {
   @property({ type: String }) theme: TerminalThemeId = 'auto';
   @property({ type: String }) sessionStatus = 'running'; // Track session status for cursor control
 
-  @state() private buffer: BufferSnapshot | null = null;
+  @state() protected buffer: BufferSnapshot | null = null;
   @state() private error: string | null = null;
   @state() private displayedFontSize = 16;
   @state() private visibleRows = 0;
@@ -70,7 +71,7 @@ export class VibeTerminalBuffer extends LitElement {
   }
 
   firstUpdated() {
-    this.container = this.querySelector('#buffer-container') as HTMLElement;
+    this.container = this.querySelector(`#${TERMINAL_IDS.BUFFER_CONTAINER}`) as HTMLElement;
     if (this.container) {
       this.setupResize();
       if (this.sessionId) {
@@ -250,7 +251,7 @@ export class VibeTerminalBuffer extends LitElement {
             `
             : html`
               <div
-                id="buffer-container"
+                id="${TERMINAL_IDS.BUFFER_CONTAINER}"
                 class="terminal-container w-full h-full overflow-x-auto overflow-y-hidden font-mono antialiased"
               ></div>
             `
