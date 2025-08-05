@@ -87,8 +87,8 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           
-          # Use Claude Opus 4 for more thorough reviews
-          model: "claude-opus-4-20250514"
+          # Use Claude Sonnet 4 (default model)
+          # model: "claude-opus-4-20250514"
           
           # Direct prompt for automated review with detailed instructions
           direct_prompt: |

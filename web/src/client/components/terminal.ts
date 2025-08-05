@@ -13,8 +13,10 @@
 import { type IBufferCell, type IBufferLine, Terminal as XtermTerminal } from '@xterm/headless';
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { calculateCursorPosition } from '../utils/cursor-position.js';
 import { processKeyboardShortcuts } from '../utils/keyboard-shortcut-highlighter.js';
 import { createLogger } from '../utils/logger.js';
+import { TERMINAL_IDS } from '../utils/terminal-constants.js';
 import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
 import { TERMINAL_THEMES, type TerminalThemeId } from '../utils/terminal-themes.js';
 import { getCurrentTheme } from '../utils/theme-utils.js';
@@ -458,7 +460,7 @@ export class Terminal extends LitElement {
       logger.debug('initializeTerminal starting');
       this.requestUpdate();
 
-      this.container = this.querySelector('#terminal-container') as HTMLElement;
+      this.container = this.querySelector(`#${TERMINAL_IDS.TERMINAL_CONTAINER}`) as HTMLElement;
 
       if (!this.container) {
         const error = new Error('Terminal container not found');
@@ -1690,7 +1692,7 @@ export class Terminal extends LitElement {
       </style>
       <div class="relative w-full h-full p-0 m-0">
         <div
-          id="terminal-container"
+          id="${TERMINAL_IDS.TERMINAL_CONTAINER}"
           class="terminal-container w-full h-full overflow-hidden p-0 m-0"
           tabindex="0"
           contenteditable="false"
@@ -1740,5 +1742,29 @@ export class Terminal extends LitElement {
         }
       </div>
     `;
+  }
+
+  /**
+   * Get cursor position information for IME input positioning
+   * Returns null if terminal is not available or cursor is not visible
+   */
+  getCursorInfo(): { x: number; y: number } | null {
+    if (!this.terminal) {
+      return null;
+    }
+
+    // Get cursor position from xterm.js
+    const buffer = this.terminal.buffer.active;
+    const cursorX = buffer.cursorX;
+    const cursorY = buffer.cursorY;
+
+    // Find the terminal container element
+    const container = this.querySelector(`#${TERMINAL_IDS.TERMINAL_CONTAINER}`);
+    if (!container) {
+      return null;
+    }
+
+    // Use shared cursor position calculation
+    return calculateCursorPosition(cursorX, cursorY, this.fontSize, container, this.sessionStatus);
   }
 }

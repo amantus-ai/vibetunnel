@@ -1982,6 +1982,49 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   }
 }
 
+/* Android keyboard fix for embedded applications like Claude Code */
+@media (max-width: 768px) {
+  /* When visualViewport changes due to keyboard, ensure terminal is scrollable */
+  .terminal-container {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Make xterm viewport scrollable when keyboard appears */
+  .xterm-viewport {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    max-height: 100%;
+  }
+
+  /* Ensure the terminal screen can be scrolled to see content behind keyboard */
+  .xterm-screen {
+    position: relative;
+    min-height: 100%;
+  }
+
+  /* When keyboard is visible, adjust the entire view to be scrollable */
+  .session-view-grid[data-keyboard-visible="true"] {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure app content adjusts for keyboard using env() */
+  .app-container,
+  vibe-app,
+  session-view {
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height accounts for keyboard */
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* Additional helper for when keyboard height is detected */
+  .session-view-grid[data-keyboard-visible="true"] .terminal-container {
+    padding-bottom: env(keyboard-inset-height, 0);
+  }
+}
+
 /* Phosphor Terminal Decay effect for exited sessions */
 .session-exited {
   filter: sepia(0.3) hue-rotate(45deg) brightness(0.8) contrast(1.2);
