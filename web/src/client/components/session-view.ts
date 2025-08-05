@@ -22,6 +22,7 @@ import './worktree-manager.js';
 import { authClient } from '../services/auth-client.js';
 import { GitService } from '../services/git-service.js';
 import { createLogger } from '../utils/logger.js';
+import { TERMINAL_IDS } from '../utils/terminal-constants.js';
 import type { TerminalThemeId } from '../utils/terminal-themes.js';
 // Manager imports
 import { ConnectionManager } from './session-view/connection-manager.js';
@@ -1185,7 +1186,7 @@ export class SessionView extends LitElement {
                 ? html`
               <!-- Enhanced Terminal Component -->
               <terminal-renderer
-                id="session-terminal"
+                id="${TERMINAL_IDS.SESSION_TERMINAL}"
                 .session=${this.session}
                 .useBinaryMode=${uiState.useBinaryMode}
                 .terminalFontSize=${uiState.terminalFontSize}

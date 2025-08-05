@@ -503,6 +503,7 @@ describe('SessionView Drag & Drop and Paste', () => {
             getAsFile: () => file,
           },
         ],
+        getData: () => '', // Return empty string for text data
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -535,6 +536,7 @@ describe('SessionView Drag & Drop and Paste', () => {
             getAsFile: () => file2,
           },
         ],
+        getData: () => '', // Return empty string for text data
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -567,6 +569,7 @@ describe('SessionView Drag & Drop and Paste', () => {
             getAsFile: () => file,
           },
         ],
+        getData: () => '', // Return empty string for text data
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -596,6 +599,7 @@ describe('SessionView Drag & Drop and Paste', () => {
             getAsFile: () => file,
           },
         ],
+        getData: () => '', // Return empty string for text data
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -625,6 +629,7 @@ describe('SessionView Drag & Drop and Paste', () => {
             getAsFile: () => file,
           },
         ],
+        getData: () => '', // Return empty string for text data
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -647,6 +652,7 @@ describe('SessionView Drag & Drop and Paste', () => {
             type: 'text/plain',
           },
         ],
+        getData: () => '', // Return empty string for text data
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -673,6 +679,7 @@ describe('SessionView Drag & Drop and Paste', () => {
             getAsFile: () => file,
           },
         ],
+        getData: () => '', // Return empty string for text data
       };
 
       const pasteEvent = new ClipboardEvent('paste', {
@@ -707,6 +714,7 @@ describe('SessionView Drag & Drop and Paste', () => {
           { kind: 'file', getAsFile: () => file2 },
           { kind: 'file', getAsFile: () => file3 },
         ],
+        getData: () => '', // Return empty string for text data
       };
 
       const pasteEvent = new ClipboardEvent('paste', {

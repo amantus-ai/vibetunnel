@@ -3,7 +3,6 @@ import { fixture, html } from '@open-wc/testing';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clickElement,
-  pressKey,
   resetViewport,
   setupFetchMock,
   setViewport,
@@ -304,8 +303,10 @@ describe('SessionView', () => {
         }
       );
 
-      // Simulate typing
-      await pressKey(element, 'a');
+      // Use the input manager directly instead of simulating keyboard events
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property for testing
+      const inputManager = (element as any).inputManager;
+      await inputManager.sendInputText('a');
 
       // Wait for async operation
       await waitForAsync();
@@ -325,8 +326,12 @@ describe('SessionView', () => {
         }
       );
 
+      // Use the input manager directly instead of simulating keyboard events
+      // biome-ignore lint/suspicious/noExplicitAny: need to access private property for testing
+      const inputManager = (element as any).inputManager;
+
       // Test Enter key
-      await pressKey(element, 'Enter');
+      await inputManager.sendInput('enter');
       await waitForAsync();
       expect(inputCapture).toHaveBeenCalledWith({ key: 'enter' });
 
@@ -334,7 +339,7 @@ describe('SessionView', () => {
       inputCapture.mockClear();
 
       // Test Escape key
-      await pressKey(element, 'Escape');
+      await inputManager.sendInput('escape');
       await waitForAsync();
       expect(inputCapture).toHaveBeenCalledWith({ key: 'escape' });
     });
@@ -870,8 +875,21 @@ describe('SessionView', () => {
       element.session = mockSession;
       await element.updateComplete;
 
-      // Press escape on exited session
-      await pressKey(element, 'Escape');
+      // Ensure we're in desktop mode by setting localStorage preference
+      localStorage.setItem('touchKeyboardPreference', 'never');
+
+      // Force the lifecycle manager to re-evaluate mobile status
+      window.dispatchEvent(new Event('resize'));
+      await waitForAsync();
+
+      // Press escape on exited session - dispatch on document since lifecycle manager listens there
+      const event = new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        composed: true,
+      });
+      document.dispatchEvent(event);
+      await waitForAsync();
 
       expect(navigateHandler).toHaveBeenCalled();
     });

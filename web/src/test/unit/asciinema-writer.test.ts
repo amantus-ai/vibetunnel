@@ -8,11 +8,13 @@ describe('AsciinemaWriter byte position tracking', () => {
   let tempDir: string;
   let testFile: string;
   let writer: AsciinemaWriter;
+  let testCounter = 0;
 
   beforeEach(() => {
     // Create a temporary directory for test files
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'asciinema-test-'));
-    testFile = path.join(tempDir, 'test.cast');
+    // Use unique file names to prevent any potential conflicts
+    testFile = path.join(tempDir, `test-${Date.now()}-${testCounter++}.cast`);
   });
 
   afterEach(async () => {

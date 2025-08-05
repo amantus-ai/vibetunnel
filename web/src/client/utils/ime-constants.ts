@@ -5,7 +5,7 @@
 /**
  * Keys that are allowed to be processed even when IME input is focused
  */
-export const IME_ALLOWED_KEYS = ['ArrowLeft', 'ArrowRight', 'Home', 'End'] as const;
+export const IME_ALLOWED_KEYS = ['Home', 'End', 'Escape'] as const;
 
 /**
  * Check if a keyboard event is allowed during IME input focus

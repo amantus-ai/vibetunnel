@@ -8,6 +8,7 @@
  * - Settings persistence via TerminalPreferencesManager
  */
 import type { Session } from '../../../shared/types.js';
+import { clearCharacterWidthCache } from '../../utils/cursor-position.js';
 import { createLogger } from '../../utils/logger.js';
 import {
   COMMON_TERMINAL_WIDTHS,
@@ -169,6 +170,9 @@ export class TerminalSettingsManager {
     this.terminalFontSize = clampedSize;
     this.preferencesManager.setFontSize(clampedSize);
     this.callbacks.setTerminalFontSize(clampedSize);
+
+    // Clear character width cache when font size changes
+    clearCharacterWidthCache();
 
     // Update the terminal lifecycle manager
     const lifecycleManager = this.callbacks.getTerminalLifecycleManager();

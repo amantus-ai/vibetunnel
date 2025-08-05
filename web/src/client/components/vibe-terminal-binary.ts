@@ -14,8 +14,10 @@ import { html, type PropertyValues } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 import { HttpMethod } from '../../shared/types.js';
 import { authClient } from '../services/auth-client.js';
+import { calculateCursorPosition } from '../utils/cursor-position.js';
 import { consumeEvent } from '../utils/event-utils.js';
 import { createLogger } from '../utils/logger.js';
+import { TERMINAL_IDS } from '../utils/terminal-constants.js';
 import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
 import type { TerminalThemeId } from '../utils/terminal-themes.js';
 import { getCurrentTheme } from '../utils/theme-utils.js';
@@ -398,5 +400,28 @@ export class VibeTerminalBinary extends VibeTerminalBuffer {
     if (this.scrollContainer) {
       this.scrollContainer.scrollTop = this.scrollContainer.scrollHeight;
     }
+  }
+
+  /**
+   * Get cursor position information for IME input positioning
+   * Returns null if buffer is not available or session is not running
+   */
+  getCursorInfo(): { x: number; y: number } | null {
+    if (!this.buffer) {
+      return null;
+    }
+
+    // Get cursor position from buffer data
+    const cursorX = this.buffer.cursorX;
+    const cursorY = this.buffer.cursorY;
+
+    // Find the terminal container element
+    const container = this.querySelector(`#${TERMINAL_IDS.BUFFER_CONTAINER}`);
+    if (!container) {
+      return null;
+    }
+
+    // Use shared cursor position calculation
+    return calculateCursorPosition(cursorX, cursorY, this.fontSize, container, this.sessionStatus);
   }
 }
