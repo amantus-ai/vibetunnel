@@ -122,7 +122,8 @@ filter_build_output() {
         }
         
         # Skip framework search paths and linking details
-        if (/-F\/|rpath|framework|\.framework/) {
+        # More defensive patterns to avoid filtering important messages
+        if (/\s-F\/|\s-rpath\s|\s-framework\s|\.framework\//) {
             next
         }
         
@@ -184,6 +185,8 @@ if command -v xcbeautify &> /dev/null; then
     echo "🔨 Building ARM64-only binary with xcbeautify..."
     if [[ "$REDUCE_CONTEXT" == true ]]; then
         # Dual output: filtered to stdout (fd 1), full to fd 3 (if available)
+        # Check if file descriptor 3 is available by attempting to write to it
+        # This allows users to capture full output: ./build.sh --reduce-context 3>full.log
         if { true >&3; } 2>/dev/null; then
             # fd 3 is available - send full output there
             xcodebuild \
@@ -229,6 +232,8 @@ else
     echo "🔨 Building ARM64-only binary (install xcbeautify for cleaner output)..."
     if [[ "$REDUCE_CONTEXT" == true ]]; then
         # Dual output: filtered to stdout (fd 1), full to fd 3 (if available)
+        # Check if file descriptor 3 is available by attempting to write to it
+        # This allows users to capture full output: ./build.sh --reduce-context 3>full.log
         if { true >&3; } 2>/dev/null; then
             # fd 3 is available - send full output there
             xcodebuild \
