@@ -376,7 +376,7 @@ export class SessionCard extends LitElement {
           class="flex justify-between items-center px-3 py-2 border-b border-border bg-gradient-to-r from-bg-secondary to-bg-tertiary"
         >
           <div class="text-xs font-mono pr-2 flex-1 min-w-0 text-primary">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 min-w-0">
               <inline-edit
                 .value=${this.session.name || this.session.command?.join(' ') || ''}
                 .placeholder=${this.session.command?.join(' ') || ''}

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes"
     />
     <title>VibeTunnel - Terminal Multiplexer</title>
     <meta
@@ -51,9 +51,9 @@
         -webkit-tap-highlight-color: transparent;
       }
 
-      /* Only disable touch-action on terminal components */
+      /* Allow pinch-zoom on terminal but prevent pan gestures */
       vibe-terminal {
-        touch-action: none;
+        touch-action: pinch-zoom;
       }
 
       /* Ensure app takes full viewport */
