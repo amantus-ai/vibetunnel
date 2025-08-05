@@ -33,7 +33,7 @@ describe('vt title Command Integration', () => {
 
   beforeEach(async () => {
     if (!binaryExists) return;
-    
+
     // Create test control directory with shorter path
     const shortId = Math.random().toString(36).substring(2, 8);
     testControlDir = path.join(os.tmpdir(), `vt-${shortId}`);
