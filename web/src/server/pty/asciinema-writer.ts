@@ -608,12 +608,13 @@ export class AsciinemaWriter {
       const stats = await fs.promises.stat(this.filePath);
       const actualSize = stats.size;
       const expectedSize = this.bytesWritten;
-      const pendingSize = this.pendingBytes;
 
-      // Check if there are still pending bytes that haven't been written
-      if (pendingSize > 0) {
-        _logger.debug(`Skipping position validation: ${pendingSize} bytes still pending in queue`);
-        return;
+      // After draining the queue, pendingBytes should always be 0
+      // Log warning if this assumption is violated to help debug tracking issues
+      if (this.pendingBytes !== 0) {
+        _logger.warn(
+          `Unexpected state: pendingBytes should be 0 after queue drain, but found ${this.pendingBytes}`
+        );
       }
 
       if (actualSize !== expectedSize) {
