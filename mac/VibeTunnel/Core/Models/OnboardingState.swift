@@ -23,6 +23,13 @@ final class OnboardingState {
     var visiblePages: [OnboardingPage] = []
 
     private init() {}
+    
+    #if DEBUG
+    /// Resets the onboarding state for testing purposes
+    func resetForTesting() {
+        visiblePages = []
+    }
+    #endif
 
     // MARK: - Page State Checking
 
@@ -50,13 +57,17 @@ final class OnboardingState {
         // 2. The actual condition check passes (permissions granted, CLI updated, etc.)
 
         // Check permissions
-        if OnboardingPage.permissions.canSkipWhenConfigured && await shouldSkipPermissionsPage() {
-            removePageIfPresent(.permissions, reason: "permissions already granted")
+        if OnboardingPage.permissions.canSkipWhenConfigured {
+            if await shouldSkipPermissionsPage() {
+                removePageIfPresent(.permissions, reason: "permissions already granted")
+            }
         }
 
         // Check CLI status
-        if OnboardingPage.cliInstallation.canSkipWhenConfigured && await shouldSkipCLIPage() {
-            removePageIfPresent(.cliInstallation, reason: "CLI up to date")
+        if OnboardingPage.cliInstallation.canSkipWhenConfigured {
+            if await shouldSkipCLIPage() {
+                removePageIfPresent(.cliInstallation, reason: "CLI up to date")
+            }
         }
 
         // Check terminal preference
@@ -75,8 +86,10 @@ final class OnboardingState {
         }
 
         // Check notifications
-        if OnboardingPage.notifications.canSkipWhenConfigured && await shouldSkipNotificationPage() {
-            removePageIfPresent(.notifications, reason: "notification permissions already granted")
+        if OnboardingPage.notifications.canSkipWhenConfigured {
+            if await shouldSkipNotificationPage() {
+                removePageIfPresent(.notifications, reason: "notification permissions already granted")
+            }
         }
 
         logger.info("📊 Final page count: \(self.visiblePages.count) (vs 9 in full flow)")

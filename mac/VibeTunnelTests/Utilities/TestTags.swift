@@ -15,4 +15,5 @@ extension Tag {
     @Tag static var sessionManagement: Self
     @Tag static var serverManager: Self
     @Tag static var gitRepository: Self
+    @Tag static var onboarding: Self
 }
