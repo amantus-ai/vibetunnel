@@ -391,6 +391,7 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
 
   /**
    * Verify that the Tailscale serve configuration is actually active
+   * @param port The port to check in the configuration
    */
   private async verifyServeConfiguration(
     port: number
