@@ -401,11 +401,8 @@ export class AsciinemaWriter {
       setImmediate(() => {
         this.validateFilePosition()
           .catch((err) => {
+            // Log validation errors but don't crash the server
             _logger.error('Position validation failed:', err);
-            // Re-throw PtyError to ensure critical errors are not swallowed
-            if (err instanceof PtyError) {
-              throw err;
-            }
           })
           .finally(() => {
             this.validationInProgress = false;
@@ -627,12 +624,20 @@ export class AsciinemaWriter {
             `File: ${this.filePath}`
         );
 
-        // If the difference is significant, this is a critical error
+        // If the difference is significant, log as error but don't crash
         if (Math.abs(actualSize - expectedSize) > 100) {
-          throw new PtyError(
-            `Critical byte position tracking error: expected ${expectedSize}, actual ${actualSize} (file: ${this.filePath})`,
-            'POSITION_MISMATCH'
+          _logger.error(
+            `Critical byte position tracking error: expected ${expectedSize}, actual ${actualSize} (file: ${this.filePath}). ` +
+              `Recording may be corrupted. Attempting to recover by syncing position.`
           );
+
+          // Attempt recovery: sync our tracked position with actual file size
+          // This prevents the error from compounding
+          this.bytesWritten = actualSize;
+          this.lastValidatedPosition = actualSize;
+
+          // Mark that we had a critical error for monitoring
+          this.validationErrors += 10; // Weight critical errors more
         }
       } else {
         _logger.debug(`Position validation passed: ${actualSize} bytes`);
