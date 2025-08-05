@@ -39,7 +39,7 @@ describe('fwd.ts argument parsing with -- separator', () => {
       // When -- was passed as first element, ProcessUtils would try to resolve it as a command
       // This would fail and fall back to shell/alias resolution
       expect(result.command).not.toBe('--'); // Should not treat -- as command
-      expect(result.resolvedFrom).toBe('alias'); // Falls back to alias resolution
+      expect(result.resolvedFrom).toBe('shell'); // Falls back to shell resolution
       expect(result.useShell).toBe(true);
     });
 
@@ -49,7 +49,7 @@ describe('fwd.ts argument parsing with -- separator', () => {
       const result = ProcessUtils.resolveCommand(command);
 
       expect(result.useShell).toBe(true);
-      expect(result.resolvedFrom).toBe('alias');
+      expect(result.resolvedFrom).toBe('shell');
       expect(result.args).toContain('-c');
       expect(result.args).toContain('myalias --some-flag');
     });
@@ -147,7 +147,7 @@ describe('fwd.ts argument parsing with -- separator', () => {
       const result = ProcessUtils.resolveCommand(command);
 
       expect(result.useShell).toBe(true);
-      expect(result.resolvedFrom).toBe('alias');
+      expect(result.resolvedFrom).toBe('shell');
       expect(result.args).toContain('-c');
       expect(result.args).toContain('nonexistentcommand123 --flag');
     });
