@@ -170,3 +170,7 @@ mac/build-test/
 .poltergeist/
 /tmp/poltergeist/
 .watchmanconfig
+
+# Temporary info directories
+info
+mac/info
