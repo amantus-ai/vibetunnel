@@ -9,11 +9,8 @@
       "outputPath": "./mac/build/Build/Products/Debug/VibeTunnel.app",
       "bundleId": "sh.vibetunnel.vibetunnel.debug",
       "watchPaths": [
-        "./**/*.swift",
-        "./**/*.xcodeproj/**",
-        "./**/*.xcconfig",
-        "./**/*.entitlements",
-        "./**/*.plist"
+        "./**/*.{swift,xcconfig,entitlements,plist}",
+        "./**/*.xcodeproj/**"
       ]
     },
     {
@@ -23,11 +20,8 @@
       "outputPath": "./ios/build/Build/Products/Debug-iphonesimulator/VibeTunnel.app",
       "bundleId": "sh.vibetunnel.ios",
       "watchPaths": [
-        "ios/**/*.swift",
-        "ios/**/*.xcodeproj/**",
-        "ios/**/*.xcconfig",
-        "ios/**/*.entitlements",
-        "ios/**/*.plist"
+        "ios/**/*.{swift,xcconfig,entitlements,plist}",
+        "ios/**/*.xcodeproj/**"
       ],
       "enabled": false
     }
