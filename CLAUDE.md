@@ -293,7 +293,7 @@ If Poltergeist is installed:
 1. **Start Poltergeist** in the project root:
    ```bash
    cd /path/to/vibetunnel
-   poltergeist
+   poltergeist haunt
    ```
 
 2. **Monitor build status** via the Poltergeist menu bar app (macOS) or terminal output
