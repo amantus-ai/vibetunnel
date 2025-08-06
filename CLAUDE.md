@@ -20,7 +20,7 @@ If Poltergeist is installed, it will automatically rebuild the app when you make
 
 ```bash
 # First, ensure Poltergeist is running in the project root
-poltergeist
+poltergeist haunt
 
 # The app will automatically rebuild on file changes
 # Check Poltergeist menu bar app for build status
@@ -29,7 +29,6 @@ poltergeist
 #### macOS App without Poltergeist (Fallback)
 
 If Poltergeist is not available, use direct Xcode builds:
-
 ```bash
 cd mac
 # Build using xcodebuild directly
@@ -339,6 +338,70 @@ To enable iOS builds, edit `poltergeist.config.json` and set `"enabled": true` f
   - Don't check for "old format" vs "new format"
   - Don't add fallbacks for older versions
 - If you suggest backwards compatibility in any form, you have failed to understand this project
+
+## Poltergeist Integration
+
+Poltergeist is an intelligent file watcher and auto-builder that can automatically rebuild VibeTunnel when you make changes. When working on VibeTunnel development, check if Poltergeist is available and use it for automatic builds.
+
+### Checking for Poltergeist
+
+```bash
+# Check if Poltergeist is installed
+which poltergeist
+
+# Check if Poltergeist is already running for this project
+ps aux | grep poltergeist | grep -v grep
+```
+
+### Using Poltergeist for Development
+
+If Poltergeist is installed:
+
+1. **Start Poltergeist** in the project root:
+   ```bash
+   cd /path/to/vibetunnel
+   poltergeist haunt
+   ```
+
+2. **Monitor build status** via the Poltergeist menu bar app (macOS) or terminal output:
+   ```bash
+   poltergeist status
+   ```
+
+3. **Make changes** - Poltergeist will automatically rebuild when it detects changes to:
+   - Swift files in `mac/` 
+   - Xcode project files
+   - Configuration files
+
+4. **Run the app** with fresh builds using `polter`:
+   ```bash
+   polter vibetunnel        # Waits for build to complete, then runs
+   polter vibetunnel-2      # Alternative target
+   ```
+
+### Fallback Without Poltergeist
+
+If Poltergeist is not available, fall back to direct Xcode builds:
+
+```bash
+# Debug build
+cd mac
+xcodebuild -project VibeTunnel.xcodeproj -scheme VibeTunnel -configuration Debug build
+
+# Release build
+./scripts/build.sh
+```
+
+### Poltergeist Configuration
+
+The project includes `poltergeist.config.json` which configures:
+- **vibetunnel** target: Builds the macOS app using workspace
+- **vibetunnel-2** target: Alternative build using mac/scripts/build.sh
+- **vibetunnel-ios** target: Builds the iOS app (disabled by default)
+- Intelligent debouncing to prevent excessive rebuilds
+- Build notifications via macOS notification center
+
+To enable iOS builds, edit `poltergeist.config.json` and set `"enabled": true` for the vibetunnel-ios target.
 
 ## Key Files Quick Reference
 
