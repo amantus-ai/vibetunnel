@@ -17,6 +17,7 @@
     "node-pty/package.json",
     "node-pty/binding.gyp",
     "node-pty/src/",
+    "node-pty/tsconfig.json",
     "prebuilds/",
     "README.md"
   ],
@@ -106,6 +107,7 @@
     "chalk": "^5.6.2",
     "compression": "^1.8.1",
     "express": "^5.2.1",
+    "node-addon-api": "^7.1.0",
     "ghostty-web": "^0.4.0",
     "helmet": "^8.1.0",
     "http-proxy-middleware": "^3.0.5",
