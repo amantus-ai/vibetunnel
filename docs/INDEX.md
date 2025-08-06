@@ -1,114 +1,137 @@
-# VibeTunnel Documentation Index
+# VibeTunnel Documentation
 
-This index provides a comprehensive overview of all documentation in the VibeTunnel project, organized by category and purpose.
-
-## 📚 Main Documentation
+## Quick Navigation
 
 ### Getting Started
-- [**README.md**](../README.md) - Project overview, quick start guide, and basic usage
-- [**introduction.mdx**](introduction.mdx) - Mintlify documentation landing page
-- [**docs.json**](../docs.json) - Mintlify documentation configuration
+- [Quickstart](guides/quickstart.md) - Installation, first terminal
+- [Architecture Overview](core/architecture.md) - System design
+- [API Reference](core/api-reference.md) - Endpoints, WebSocket protocol
 
-### Architecture & Design
-- [**ARCHITECTURE.md**](ARCHITECTURE.md) - System architecture, component relationships, data flow
-- [**architecture-mario.md**](architecture-mario.md) - Alternative architecture documentation
-- [**spec.md**](spec.md) - Core technical specifications and protocols
-- [**ios-spec.md**](ios-spec.md) - iOS companion app specification
+### Development
+- [Development Guide](guides/development.md) - Setup, patterns, workflow
+- [Testing Guide](guides/testing.md) - Unit, E2E, external devices
+- [Deployment Guide](guides/deployment.md) - Production setup
 
-### Development Guides
-- [**CONTRIBUTING.md**](CONTRIBUTING.md) - Contributing guidelines and development workflow
-- [**development.md**](development.md) - Development setup, code style, patterns
-- [**build-system.md**](build-system.md) - Build system overview and usage
-- [**deployment.md**](deployment.md) - Deployment and distribution guide
-- [**RELEASE.md**](RELEASE.md) - Comprehensive release process documentation
+### Platform Guides
+- [macOS App](platform/macos.md) - Native app development
+- [iOS Companion](platform/ios.md) - Mobile app guide
+- [Web Frontend](platform/web.md) - TypeScript/Lit development
 
-### Feature Documentation
-- [**authentication.md**](authentication.md) - Authentication system and security
-- [**push-notification.md**](push-notification.md) - Push notification implementation
-- [**security.md**](security.md) - Security configuration and best practices
-- [**keyboard-shortcuts.md**](keyboard-shortcuts.md) - Keyboard shortcut reference
-
-### Testing
-- [**testing.md**](testing.md) - Testing strategy and test suite documentation
-- [**TESTING_EXTERNAL_DEVICES.md**](TESTING_EXTERNAL_DEVICES.md) - Testing on external devices (iPad, etc.)
-
-### Tools & Utilities
-- [**claude.md**](claude.md) - Claude CLI usage guide
-- [**gemini.md**](gemini.md) - Gemini CLI for large codebase analysis
-- [**custom-node.md**](custom-node.md) - Custom Node.js build documentation
+### Features
+- [Authentication](features/authentication.md) - Security, tokens
+- [Push Notifications](features/push-notifications.md) - Remote alerts
+- [Terminal Features](features/terminal-features.md) - CJK, keyboard
 
 ### Reference
-- [**project-overview.md**](project-overview.md) - High-level project overview
-- [**files.md**](files.md) - File catalog and organization
-- [**logging-style-guide.md**](logging-style-guide.md) - Logging conventions and style guide
-- [**CHANGELOG.md**](../CHANGELOG.md) - Project changelog
+- [CLI Tools](reference/cli-tools.md) - vt, claude, gemini commands
+- [Troubleshooting](reference/troubleshooting.md) - Common issues
+- [Release Process](reference/release-process.md) - Publishing updates
 
-## 🍎 Platform-Specific Documentation
+## API Quick Reference
 
-### macOS (`mac/`)
-- [**mac/README.md**](../mac/README.md) - macOS app overview and quick start
-- [**mac/docs/code-signing.md**](../mac/docs/code-signing.md) - Comprehensive code signing guide
-- [**mac/docs/BuildArchitectures.md**](../mac/docs/BuildArchitectures.md) - Build architecture details
-- [**mac/docs/BuildRequirements.md**](../mac/docs/BuildRequirements.md) - Build requirements
-- [**mac/docs/sparkle-keys.md**](../mac/docs/sparkle-keys.md) - Sparkle update framework keys
-- [**mac/docs/sparkle-stats-store.md**](../mac/docs/sparkle-stats-store.md) - Update statistics
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/sessions` | POST | Create terminal session |
+| `/api/sessions` | GET | List active sessions |
+| `/api/sessions/:id` | GET | Session details |
+| `/api/sessions/:id` | DELETE | Kill session |
+| `/api/sessions/:id/ws` | WS | Terminal I/O stream |
+| `/api/sessions/:id/resize` | POST | Resize terminal |
+| `/api/auth/token` | POST | Generate auth token |
+| `/api/health` | GET | Server health check |
 
-### iOS (`ios/`)
-- [**ios/README.md**](../ios/README.md) - iOS app overview
-- [**ios/CLAUDE.md**](../ios/CLAUDE.md) - iOS development guidelines for Claude
+## CLI Commands
 
-### Web (`web/`)
-- [**web/README.md**](../web/README.md) - Web server and frontend overview
-- [**web/docs/spec.md**](../web/docs/spec.md) - Web server implementation specification
-- [**web/docs/performance.md**](../web/docs/performance.md) - Performance optimization guide
-- [**web/docs/playwright-testing.md**](../web/docs/playwright-testing.md) - Playwright E2E testing
-- [**web/docs/socket-protocol.md**](../web/docs/socket-protocol.md) - WebSocket protocol documentation
-- [**web/docs/terminal-titles.md**](../web/docs/terminal-titles.md) - Terminal title management
-- [**web/docs/VT_INSTALLATION.md**](../web/docs/VT_INSTALLATION.md) - VT command installation
-- [**web/docs/npm.md**](../web/docs/npm.md) - NPM package documentation
+| Task | Command | Description |
+|------|---------|-------------|
+| Start terminal | `vt` | Launch new session |
+| View logs | `./scripts/vtlog.sh -n 100` | Last 100 log lines |
+| Error logs | `./scripts/vtlog.sh -e` | Errors only |
+| Run tests | `pnpm test` | Execute test suite |
+| Build Mac | `cd mac && ./scripts/build.sh` | Build release |
+| Build iOS | `cd ios && xcodebuild` | Build iOS app |
+| Dev server | `cd web && pnpm dev` | Start dev server |
 
-### Apple Shared (`apple/`)
-- [**apple/docs/modern-swift.md**](../apple/docs/modern-swift.md) - Modern Swift patterns
-- [**apple/docs/swift-concurrency.md**](../apple/docs/swift-concurrency.md) - Swift concurrency guide
-- [**apple/docs/swift-testing-playbook.md**](../apple/docs/swift-testing-playbook.md) - Swift testing best practices
-- [**apple/docs/swiftui.md**](../apple/docs/swiftui.md) - SwiftUI guidelines
-- [**apple/docs/logging-private-fix.md**](../apple/docs/logging-private-fix.md) - Logging configuration
+## WebSocket Protocol
 
-## 🤖 AI Assistant Guidelines
+### Message Types
 
-### CLAUDE.md Files
-These files provide specific instructions for Claude AI when working with different parts of the codebase:
+| Type | Direction | Format | Purpose |
+|------|-----------|--------|---------|
+| `data` | Server→Client | Binary (0xBF prefix) | Terminal output |
+| `input` | Client→Server | Text/Binary | User keystrokes |
+| `resize` | Client→Server | JSON | Terminal resize |
+| `ping` | Both | Text | Keep-alive |
 
-- [**CLAUDE.md**](../CLAUDE.md) - Main project guidelines for Claude
-- [**web/CLAUDE.md**](../web/CLAUDE.md) - Web development specific instructions
-- [**mac/CLAUDE.md**](../mac/CLAUDE.md) - macOS development guidelines
-- [**ios/CLAUDE.md**](../ios/CLAUDE.md) - iOS development guidelines
+### Binary Buffer Format
+```
+[0xBF][4-byte length][UTF-8 data]
+```
 
-### GEMINI.md
-- [**GEMINI.md**](../GEMINI.md) - Instructions for Gemini AI assistant
+## Project Structure
 
-## 📋 Documentation Standards
+```
+vibetunnel/
+├── mac/           # macOS native app (Swift/SwiftUI)
+├── ios/           # iOS companion app (Swift/SwiftUI)
+├── web/           # Server & frontend (TypeScript)
+│   ├── src/
+│   │   ├── server/   # Node.js/Bun server
+│   │   └── client/   # Web UI (Lit/TypeScript)
+│   └── dist/      # Built artifacts
+├── scripts/       # Build & utility scripts
+└── docs/          # Documentation
+```
 
-When adding new documentation:
+## Key Files
 
-1. **Location**: Place documentation in the most relevant directory
-   - General docs in `/docs`
-   - Platform-specific docs in their respective directories
-   - Keep related documentation together
+| File | Purpose |
+|------|---------|
+| `mac/VibeTunnel/ServerManager.swift` | Server lifecycle |
+| `web/src/server/server.ts` | HTTP/WebSocket server |
+| `web/src/server/pty/pty-manager.ts` | Terminal management |
+| `web/src/client/app.ts` | Web UI entry point |
+| `ios/VibeTunnel/VibeTunnelApp.swift` | iOS app entry |
 
-2. **Naming**: Use clear, descriptive names
-   - UPPERCASE.md for important documents (README, CHANGELOG, etc.)
-   - lowercase-with-hyphens.md for regular documentation
-   - Include platform prefix when needed (ios-spec.md)
+## Common Tasks
 
-3. **Content**: Follow consistent structure
-   - Start with a clear title and overview
-   - Include practical examples
-   - Add cross-references to related docs
-   - Keep content up-to-date with code changes
+### Add New Feature
+1. Check [Architecture](core/architecture.md) for component placement
+2. Follow patterns in [Development Guide](guides/development.md)
+3. Add tests per [Testing Guide](guides/testing.md)
+4. Update API docs if needed
 
-4. **Maintenance**: Regular reviews
-   - Remove outdated documentation
-   - Update when features change
-   - Consolidate duplicate content
-   - Maintain this index when adding/removing docs
+### Debug Issue
+1. Check [Troubleshooting](reference/troubleshooting.md)
+2. View logs: `./scripts/vtlog.sh -e`
+3. Test in dev mode: `pnpm dev`
+4. See [Platform Guides](platform/) for specific issues
+
+### Release Update
+1. Follow [Release Process](reference/release-process.md)
+2. Test on all platforms
+3. Update changelog
+4. Create GitHub release
+
+## Performance Targets
+
+| Metric | Target | Current |
+|--------|--------|---------|
+| Startup time | <2s | 1.5s |
+| WebSocket latency | <10ms | 5ms |
+| Memory usage | <100MB | 80MB |
+| CPU idle | <1% | 0.5% |
+
+## Security Model
+
+- **Authentication**: Token-based with optional password
+- **Transport**: WSS/HTTPS in production
+- **Isolation**: Per-session PTY processes
+- **Updates**: Signed & notarized binaries
+
+## Quick Links
+
+- [GitHub Repository](https://github.com/steipete/vibetunnel)
+- [API Documentation](core/api-reference.md)
+- [Contributing Guide](CONTRIBUTING.md)
+- [License](../LICENSE)
