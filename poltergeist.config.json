@@ -30,20 +30,6 @@
         "ios/**/*.plist"
       ],
       "enabled": false
-    },
-    {
-      "name": "vibetunnel-2",
-      "type": "app-bundle",
-      "buildCommand": "cd mac && ./scripts/build.sh --configuration Debug",
-      "outputPath": "./mac/build/Debug/VibeTunnel.app",
-      "bundleId": "sh.vibetunnel.vibetunnel",
-      "watchPaths": [
-        "mac/**/*.swift",
-        "mac/**/*.xcodeproj/**",
-        "mac/**/*.xcconfig",
-        "mac/**/*.entitlements",
-        "mac/**/*.plist"
-      ]
     }
   ]
 }
