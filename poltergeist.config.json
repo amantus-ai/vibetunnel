@@ -6,8 +6,8 @@
       "name": "vibetunnel",
       "type": "app-bundle",
       "buildCommand": "cd . && xcodebuild -workspace VibeTunnel.xcworkspace -scheme VibeTunnel -configuration Debug build",
-      "outputPath": "././build/Debug/VibeTunnel.app",
-      "bundleId": "sh.vibetunnel.vibetunnel",
+      "outputPath": "./mac/build/Build/Products/Debug/VibeTunnel.app",
+      "bundleId": "sh.vibetunnel.vibetunnel.debug",
       "watchPaths": [
         "./**/*.swift",
         "./**/*.xcodeproj/**",
@@ -20,8 +20,8 @@
       "name": "vibetunnel-ios",
       "type": "app-bundle",
       "buildCommand": "cd ios && xcodebuild -project VibeTunnel-iOS.xcodeproj -scheme VibeTunnel-iOS -configuration Debug build",
-      "outputPath": "./ios/build/Debug/VibeTunnel-iOS.app",
-      "bundleId": "sh.vibetunnel.vibetunnel.ios",
+      "outputPath": "./ios/build/Build/Products/Debug-iphonesimulator/VibeTunnel.app",
+      "bundleId": "sh.vibetunnel.ios",
       "watchPaths": [
         "ios/**/*.swift",
         "ios/**/*.xcodeproj/**",
