@@ -1,34 +1,48 @@
 # VibeTunnel Standalone Server Docker Image
-# Supports running VibeTunnel as a standalone web terminal server
+# Mount your code and get instant web terminal access with tunnels
 
 FROM node:20-slim
 
-# Install system dependencies
+# Install system dependencies and common development tools
 RUN apt-get update && apt-get install -y \
     python3 \
+    python3-pip \
     make \
     g++ \
     git \
     curl \
     wget \
+    vim \
+    nano \
+    htop \
+    tree \
+    jq \
+    unzip \
+    ca-certificates \
+    openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Install ngrok (optional, for tunnel support)
+# Install ngrok
 RUN curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
     && echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | tee /etc/apt/sources.list.d/ngrok.list \
     && apt-get update \
     && apt-get install -y ngrok \
     || echo "Ngrok installation failed, continuing without it"
 
-# Set working directory
+# Install cloudflared
+RUN curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared \
+    && chmod +x /usr/local/bin/cloudflared \
+    || echo "Cloudflared installation failed, continuing without it"
+
+# Install common dev tools
+RUN npm install -g pnpm typescript ts-node nodemon
+
+# Set working directory for VibeTunnel
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 COPY pnpm-lock.yaml ./
-
-# Install pnpm
-RUN npm install -g pnpm
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -39,26 +53,63 @@ COPY . .
 # Build the project
 RUN pnpm run build
 
+# Create workspace directory for mounted code
+RUN mkdir -p /workspace
+WORKDIR /workspace
+
 # Expose default port
 EXPOSE 4020
 
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=4020
+ENV PATH="/workspace/node_modules/.bin:${PATH}"
 
-# Default command - run with no auth for demo purposes
-# Override with your own auth settings in production
-CMD ["node", "dist/cli.js", "--no-auth", "--bind", "0.0.0.0"]
+# Create entrypoint script that handles command passthrough
+RUN echo '#!/bin/bash\n\
+set -e\n\
+# If no arguments provided, show usage\n\
+if [ $# -eq 0 ]; then\n\
+  echo "VibeTunnel Docker Container"\n\
+  echo "Usage: docker run -v /path/to/code:/workspace -p 4020:4020 vibetunnel [OPTIONS]"\n\
+  echo ""\n\
+  echo "Examples:"\n\
+  echo "  docker run -v \\$(pwd):/workspace -p 4020:4020 vibetunnel --ngrok"\n\
+  echo "  docker run -v \\$(pwd):/workspace -p 4020:4020 vibetunnel --cloudflare"\n\
+  echo "  docker run -v \\$(pwd):/workspace -p 4020:4020 vibetunnel --no-auth --ngrok"\n\
+  echo ""\n\
+  echo "Your code will be available at /workspace in the terminal"\n\
+  echo "Access via browser at http://localhost:4020 or the tunnel URL"\n\
+  exit 1\n\
+fi\n\
+# Start VibeTunnel with all provided arguments\n\
+exec node /app/dist/cli.js --bind 0.0.0.0 "$@"' > /entrypoint.sh \
+    && chmod +x /entrypoint.sh
 
-# Example usage:
-# docker build -t vibetunnel .
-# docker run -p 4020:4020 vibetunnel
-# 
-# With ngrok:
-# docker run -p 4020:4020 vibetunnel node dist/cli.js --no-auth --ngrok
+ENTRYPOINT ["/entrypoint.sh"]
+
+# Default arguments (can be overridden)
+CMD ["--no-auth"]
+
+# Example Usage:
 #
-# With authentication:
-# docker run -p 4020:4020 -e VIBETUNNEL_USERNAME=admin -e VIBETUNNEL_PASSWORD=secret vibetunnel
+# Build the image:
+# docker build -f Dockerfile.standalone -t vibetunnel .
+#
+# Mount your code and run with ngrok:
+# docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --ngrok
+#
+# With Cloudflare tunnel:
+# docker run -v /path/to/project:/workspace -p 4020:4020 vibetunnel --cloudflare
 #
 # With ngrok auth token:
-# docker run -p 4020:4020 vibetunnel node dist/cli.js --no-auth --ngrok --ngrok-auth YOUR_TOKEN
+# docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --ngrok --ngrok-auth YOUR_TOKEN
+#
+# Local development (no tunnel):
+# docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --no-auth
+#
+# With authentication:
+# docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --enable-ssh-keys
+#
+# Your mounted code will be available at /workspace in the terminal
+# Access via http://localhost:4020 or the tunnel URL

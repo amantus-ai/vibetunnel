@@ -36,14 +36,16 @@ vibetunnel --no-auth
 ### Docker
 
 ```bash
-# Using pre-built image (coming soon)
-docker run -p 4020:4020 vibetunnel/vibetunnel --no-auth
-
-# Or build from source
+# Build from source
 git clone https://github.com/amantus-ai/vibetunnel.git
 cd vibetunnel/web
 docker build -f Dockerfile.standalone -t vibetunnel .
-docker run -p 4020:4020 vibetunnel
+
+# Mount your code and run with tunnel
+docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --ngrok
+
+# Or with Cloudflare tunnel
+docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --cloudflare
 ```
 
 ## 🌐 Remote Access with Ngrok
@@ -102,10 +104,12 @@ Add terminal access to any container:
 version: '3'
 services:
   app:
-    image: node:20
-    command: npx @vibetunnel/vibetunnel --no-auth
+    image: vibetunnel:latest
+    command: ["--ngrok"]
     ports:
       - "4020:4020"
+    volumes:
+      - "./:/workspace"
 ```
 
 ### Kubernetes Debugging

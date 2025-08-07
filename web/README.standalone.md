@@ -39,17 +39,17 @@ vibetunnel --no-auth
 # Build the image
 docker build -f Dockerfile.standalone -t vibetunnel .
 
-# Run with default settings (no auth, port 4020)
-docker run -p 4020:4020 vibetunnel
+# Mount your code and run with ngrok tunnel
+docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --ngrok
 
-# Run with built-in ngrok tunnel
-docker run -p 4020:4020 vibetunnel node dist/cli.js --no-auth --ngrok
+# With Cloudflare tunnel (no auth needed)
+docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --cloudflare
 
-# Run with Cloudflare tunnel
-docker run -p 4020:4020 vibetunnel node dist/cli.js --no-auth --cloudflare
+# Local development (no tunnel)
+docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --no-auth
 
-# Run with Tailscale tunnel
-docker run -p 4020:4020 vibetunnel node dist/cli.js --no-auth --enable-tailscale-serve
+# With ngrok auth token for custom domain
+docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --ngrok --ngrok-auth YOUR_TOKEN
 ```
 
 ## CLI Options
@@ -105,13 +105,17 @@ npx vibetunnel --no-auth --ngrok --ngrok-auth YOUR_TOKEN --ngrok-domain custom.n
 
 ### Docker Development Environment
 
-Run VibeTunnel in a Docker container for isolated development:
+Mount your project and get instant web terminal access:
 
 ```bash
-docker run -d \
-  --name vibetunnel \
-  -p 4020:4020 \
-  vibetunnel
+# Quick development container with tunnel
+docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --ngrok
+
+# Or for team development
+docker run -v /path/to/project:/workspace -p 4020:4020 vibetunnel --cloudflare
+
+# Your code is available at /workspace in the web terminal
+# Access via the tunnel URL from anywhere
 ```
 
 ### Quick Terminal Sharing
