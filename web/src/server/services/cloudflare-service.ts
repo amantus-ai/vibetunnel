@@ -223,4 +223,3 @@ export class CloudflareService {
     return this.cloudflaredPath !== null;
   }
 }
-

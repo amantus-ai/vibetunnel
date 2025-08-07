@@ -258,4 +258,3 @@ authtoken: ${authToken}
     return this.currentTunnel?.publicUrl || null;
   }
 }
-
