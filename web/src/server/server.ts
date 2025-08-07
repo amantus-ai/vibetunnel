@@ -33,10 +33,12 @@ import { createWorktreeRoutes } from './routes/worktrees.js';
 import { AuthService } from './services/auth-service.js';
 import { CastOutputHub } from './services/cast-output-hub.js';
 import { ConfigService } from './services/config-service.js';
+import { CloudflareService } from './services/cloudflare-service.js';
 import { ControlDirWatcher } from './services/control-dir-watcher.js';
 import { GitStatusHub } from './services/git-status-hub.js';
 import { HQClient } from './services/hq-client.js';
 import { mdnsService } from './services/mdns-service.js';
+import { NgrokService } from './services/ngrok-service.js';
 import { PushNotificationService } from './services/push-notification-service.js';
 import { RemoteRegistry } from './services/remote-registry.js';
 import { SessionMonitor } from './services/session-monitor.js';
@@ -100,6 +102,13 @@ interface Config {
   noHqAuth: boolean;
   // mDNS advertisement
   enableMDNS: boolean;
+  // Ngrok tunnel configuration
+  enableNgrok: boolean;
+  ngrokAuthToken: string | null;
+  ngrokDomain: string | null;
+  ngrokRegion: string | null;
+  // Cloudflare tunnel configuration
+  enableCloudflare: boolean;
 }
 
 // Show help message
@@ -132,6 +141,13 @@ Push Notification Options:
 Network Discovery Options:
   --no-mdns             Disable mDNS/Bonjour advertisement (enabled by default)
 
+Tunnel Options:
+  --ngrok               Enable ngrok tunnel for remote access
+  --ngrok-auth <token>  Ngrok authentication token
+  --ngrok-domain <dom>  Custom ngrok domain (requires paid plan)
+  --ngrok-region <reg>  Ngrok region (us, eu, ap, au, sa, jp, in)
+  --cloudflare          Enable Cloudflare tunnel (Quick Tunnel)
+
 HQ Mode Options:
   --hq                  Run as HQ (headquarters) server
 
@@ -153,6 +169,15 @@ Environment Variables:
 Examples:
   # Run a simple server with authentication
   vibetunnel-server --username admin --password secret
+
+  # Run with ngrok tunnel (no auth)
+  vibetunnel-server --no-auth --ngrok
+
+  # Run with Cloudflare tunnel
+  vibetunnel-server --no-auth --cloudflare
+
+  # Run with ngrok and custom domain
+  vibetunnel-server --ngrok --ngrok-auth TOKEN --ngrok-domain custom.ngrok.io
 
   # Run as HQ server
   vibetunnel-server --hq --username hq-admin --password hq-secret
@@ -199,6 +224,13 @@ function parseArgs(): Config {
     noHqAuth: false,
     // mDNS advertisement
     enableMDNS: true, // Enable mDNS by default
+    // Ngrok tunnel configuration
+    enableNgrok: false,
+    ngrokAuthToken: null as string | null,
+    ngrokDomain: null as string | null,
+    ngrokRegion: null as string | null,
+    // Cloudflare tunnel configuration
+    enableCloudflare: false,
   };
 
   // Check for help flag first
@@ -268,6 +300,22 @@ function parseArgs(): Config {
       config.noHqAuth = true;
     } else if (args[i] === '--no-mdns') {
       config.enableMDNS = false;
+    } else if (args[i] === '--ngrok') {
+      config.enableNgrok = true;
+    } else if (args[i] === '--ngrok-auth' && i + 1 < args.length) {
+      config.ngrokAuthToken = args[i + 1];
+      config.enableNgrok = true;
+      i++; // Skip the token value in next iteration
+    } else if (args[i] === '--ngrok-domain' && i + 1 < args.length) {
+      config.ngrokDomain = args[i + 1];
+      config.enableNgrok = true;
+      i++; // Skip the domain value in next iteration
+    } else if (args[i] === '--ngrok-region' && i + 1 < args.length) {
+      config.ngrokRegion = args[i + 1];
+      config.enableNgrok = true;
+      i++; // Skip the region value in next iteration
+    } else if (args[i] === '--cloudflare') {
+      config.enableCloudflare = true;
     } else if (args[i].startsWith('--')) {
       // Unknown argument
       logger.error(`Unknown argument: ${args[i]}`);
@@ -1377,6 +1425,74 @@ export async function createApp(): Promise<AppInstance> {
           });
       }
 
+      // Start ngrok tunnel if requested
+      if (config.enableNgrok) {
+        logger.log(chalk.blue('Starting ngrok tunnel...'));
+
+        const ngrokService = new NgrokService({
+          port: actualPort,
+          authToken: config.ngrokAuthToken || undefined,
+          domain: config.ngrokDomain || undefined,
+          region: config.ngrokRegion || undefined,
+        });
+
+        ngrokService
+          .start()
+          .then((tunnel) => {
+            logger.log(chalk.green('Ngrok tunnel: ENABLED'));
+            logger.log(chalk.green(`Public URL: ${tunnel.publicUrl}`));
+            logger.log(chalk.gray('Your VibeTunnel server is now accessible from the internet'));
+
+            // Store ngrok service instance for cleanup
+            (global as any).__ngrokService = ngrokService;
+          })
+          .catch((error) => {
+            logger.error(chalk.red('Failed to start ngrok tunnel:'), error.message);
+            logger.warn(
+              chalk.yellow(
+                'VibeTunnel will continue running locally, but ngrok tunnel is not available'
+              )
+            );
+            if (!config.ngrokAuthToken) {
+              logger.log(
+                chalk.blue('Tip: Set an auth token with --ngrok-auth for better reliability')
+              );
+            }
+          });
+      }
+
+      // Start Cloudflare tunnel if requested
+      if (config.enableCloudflare) {
+        logger.log(chalk.blue('Starting Cloudflare tunnel...'));
+
+        const cloudflareService = new CloudflareService(actualPort);
+
+        cloudflareService
+          .start()
+          .then((tunnel) => {
+            logger.log(chalk.green('Cloudflare tunnel: ENABLED'));
+            logger.log(chalk.green(`Public URL: ${tunnel.publicUrl}`));
+            logger.log(chalk.gray('Your VibeTunnel server is now accessible from the internet'));
+            logger.log(chalk.gray('Note: Cloudflare Quick Tunnels have usage limits'));
+
+            // Store cloudflare service instance for cleanup
+            (global as any).__cloudflareService = cloudflareService;
+          })
+          .catch((error) => {
+            logger.error(chalk.red('Failed to start Cloudflare tunnel:'), error.message);
+            logger.warn(
+              chalk.yellow(
+                'VibeTunnel will continue running locally, but Cloudflare tunnel is not available'
+              )
+            );
+            logger.log(
+              chalk.blue(
+                'Install cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/'
+              )
+            );
+          });
+      }
+
       // Log local bypass status
       if (config.allowLocalBypass) {
         logger.log(chalk.yellow('Local Bypass: ENABLED'));
@@ -1578,6 +1694,22 @@ export async function startVibeTunnelServer() {
         logger.log('Stopping Tailscale Serve...');
         await tailscaleServeService.stop();
         logger.debug('Stopped Tailscale Serve service');
+      }
+
+      // Stop ngrok tunnel if it was started
+      const ngrokService = (global as any).__ngrokService;
+      if (ngrokService && ngrokService.isActive()) {
+        logger.log('Stopping ngrok tunnel...');
+        await ngrokService.stop();
+        logger.debug('Stopped ngrok tunnel');
+      }
+
+      // Stop Cloudflare tunnel if it was started
+      const cloudflareService = (global as any).__cloudflareService;
+      if (cloudflareService && cloudflareService.isActive()) {
+        logger.log('Stopping Cloudflare tunnel...');
+        await cloudflareService.stop();
+        logger.debug('Stopped Cloudflare tunnel');
       }
 
       // Stop control directory watcher

@@ -10,6 +10,12 @@ Run VibeTunnel as a standalone web terminal server without the macOS app. Perfec
 # Run with no authentication (demo/testing)
 npx vibetunnel --no-auth
 
+# Run with ngrok tunnel for instant sharing
+npx vibetunnel --no-auth --ngrok
+
+# Run with Cloudflare tunnel (no auth needed)
+npx vibetunnel --no-auth --cloudflare
+
 # Run with Tailscale tunnel
 npx vibetunnel --no-auth --enable-tailscale-serve
 
@@ -36,12 +42,14 @@ docker build -f Dockerfile.standalone -t vibetunnel .
 # Run with default settings (no auth, port 4020)
 docker run -p 4020:4020 vibetunnel
 
+# Run with built-in ngrok tunnel
+docker run -p 4020:4020 vibetunnel node dist/cli.js --no-auth --ngrok
+
+# Run with Cloudflare tunnel
+docker run -p 4020:4020 vibetunnel node dist/cli.js --no-auth --cloudflare
+
 # Run with Tailscale tunnel
 docker run -p 4020:4020 vibetunnel node dist/cli.js --no-auth --enable-tailscale-serve
-
-# Run with manual ngrok (in separate terminal)
-docker run -p 4020:4020 vibetunnel node dist/cli.js --no-auth
-# Then: ngrok http 4020
 ```
 
 ## CLI Options
@@ -55,8 +63,12 @@ docker run -p 4020:4020 vibetunnel node dist/cli.js --no-auth
 
 ### Tunnel Options (for remote access)
 
+- `--ngrok` - Enable ngrok tunnel for instant sharing
+- `--ngrok-auth <token>` - Ngrok authentication token  
+- `--ngrok-domain <domain>` - Custom ngrok domain (paid plan)
+- `--ngrok-region <region>` - Ngrok region (us, eu, ap, au, sa, jp, in)
+- `--cloudflare` - Enable Cloudflare tunnel (Quick Tunnel, no auth)
 - `--enable-tailscale-serve` - Enable Tailscale Serve integration
-- Use external tools: ngrok, cloudflared, reverse proxy
 
 ### Authentication Options
 
@@ -76,17 +88,19 @@ docker run -p 4020:4020 vibetunnel node dist/cli.js --no-auth
 Access a remote server's terminal through a web browser:
 
 ```bash
-# Method 1: With Tailscale (if available)
+# Method 1: Built-in ngrok (easiest!)
+npx vibetunnel --no-auth --ngrok
+# Output: Public URL: https://abc123.ngrok.io
+
+# Method 2: Built-in Cloudflare (no auth needed)
+npx vibetunnel --no-auth --cloudflare  
+# Output: Public URL: https://random-words.trycloudflare.com
+
+# Method 3: With Tailscale (if configured)
 npx vibetunnel --no-auth --enable-tailscale-serve
 
-# Method 2: With external ngrok
-npx vibetunnel --no-auth &
-ngrok http 4020
-# Access the ngrok URL from any browser
-
-# Method 3: With Cloudflare tunnel
-npx vibetunnel --no-auth &
-cloudflared tunnel --url localhost:4020
+# Method 4: With ngrok auth for custom domain
+npx vibetunnel --no-auth --ngrok --ngrok-auth YOUR_TOKEN --ngrok-domain custom.ngrok.io
 ```
 
 ### Docker Development Environment
@@ -102,12 +116,14 @@ docker run -d \
 
 ### Quick Terminal Sharing
 
-Share your terminal session quickly:
+Share your terminal session in one command:
 
 ```bash
-# With external ngrok
-npx vibetunnel --no-auth &
-ngrok http 4020
+# Instant sharing with ngrok
+npx vibetunnel --no-auth --ngrok
+
+# Or with Cloudflare (no signup needed)
+npx vibetunnel --no-auth --cloudflare
 
 # With Tailscale (if configured)
 npx vibetunnel --no-auth --enable-tailscale-serve
