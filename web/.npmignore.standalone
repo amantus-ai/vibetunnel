@@ -1,0 +1,85 @@
+# Source files (only ship compiled)
+src/
+*.ts
+!*.d.ts
+
+# Development files
+.vscode/
+.idea/
+*.log
+*.pid
+*.seed
+.DS_Store
+Thumbs.db
+
+# Test files
+test/
+tests/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Build tools and config
+tsconfig*.json
+biome.json
+prettier.config.js
+.prettierrc
+.eslintrc*
+vite.config.ts
+vitest.config.ts
+playwright.config.ts
+webpack.config.js
+rollup.config.js
+
+# Documentation source
+docs/
+*.md
+!README.md
+!README.npm.md
+!README.standalone.md
+!LICENSE.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+azure-pipelines.yml
+
+# Development scripts
+scripts/
+!scripts/postinstall.js
+!scripts/install-vt-command.js
+
+# Local environment
+.env
+.env.local
+.env.*.local
+node_modules/
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# Mac app files (not needed for standalone)
+mac/
+ios/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*~
+
+# Build artifacts we don't need
+dist/**/*.map
+lib/**/*.map
+
+# Keep only production Dockerfile
+Dockerfile
+!Dockerfile.standalone

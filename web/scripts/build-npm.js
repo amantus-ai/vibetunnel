@@ -800,14 +800,36 @@ child.on('exit', (code, signal) => {
   
   // vt script doesn't need fixing - it dynamically finds the binary
   
-  // Step 7: Copy README from web directory
-  console.log('\n7️⃣ Copying README from web directory...\n');
+  // Step 7: Copy README files
+  console.log('\n7️⃣ Copying README files...\n');
   
+  // Copy main README
   const sourceReadmePath = path.join(ROOT_DIR, 'README.md');
   const destReadmePath = path.join(DIST_DIR, 'README.md');
-  
   fs.copyFileSync(sourceReadmePath, destReadmePath);
-  console.log('  ✓ Copied README.md from web directory');
+  console.log('  ✓ Copied README.md');
+  
+  // Copy npm-specific README if it exists
+  const npmReadmePath = path.join(ROOT_DIR, 'README.npm.md');
+  if (fs.existsSync(npmReadmePath)) {
+    // Use npm README as the main README for the package
+    fs.copyFileSync(npmReadmePath, destReadmePath);
+    console.log('  ✓ Replaced with README.npm.md for npm package');
+  }
+  
+  // Copy standalone README
+  const standaloneReadmePath = path.join(ROOT_DIR, 'README.standalone.md');
+  if (fs.existsSync(standaloneReadmePath)) {
+    fs.copyFileSync(standaloneReadmePath, path.join(DIST_DIR, 'README.standalone.md'));
+    console.log('  ✓ Copied README.standalone.md');
+  }
+  
+  // Copy Dockerfile.standalone
+  const dockerfilePath = path.join(ROOT_DIR, 'Dockerfile.standalone');
+  if (fs.existsSync(dockerfilePath)) {
+    fs.copyFileSync(dockerfilePath, path.join(DIST_DIR, 'Dockerfile.standalone'));
+    console.log('  ✓ Copied Dockerfile.standalone');
+  }
   
   // Step 8: Clean up test files in dist-npm
   console.log('\n8️⃣ Cleaning up test files...\n');

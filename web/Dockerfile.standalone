@@ -1,0 +1,64 @@
+# VibeTunnel Standalone Server Docker Image
+# Supports running VibeTunnel as a standalone web terminal server
+
+FROM node:20-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    git \
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install ngrok (optional, for tunnel support)
+RUN curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
+    && echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | tee /etc/apt/sources.list.d/ngrok.list \
+    && apt-get update \
+    && apt-get install -y ngrok \
+    || echo "Ngrok installation failed, continuing without it"
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY pnpm-lock.yaml ./
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY . .
+
+# Build the project
+RUN pnpm run build
+
+# Expose default port
+EXPOSE 4020
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=4020
+
+# Default command - run with no auth for demo purposes
+# Override with your own auth settings in production
+CMD ["node", "dist/cli.js", "--no-auth", "--bind", "0.0.0.0"]
+
+# Example usage:
+# docker build -t vibetunnel .
+# docker run -p 4020:4020 vibetunnel
+# 
+# With ngrok:
+# docker run -p 4020:4020 vibetunnel node dist/cli.js --no-auth --ngrok
+#
+# With authentication:
+# docker run -p 4020:4020 -e VIBETUNNEL_USERNAME=admin -e VIBETUNNEL_PASSWORD=secret vibetunnel
+#
+# With ngrok auth token:
+# docker run -p 4020:4020 vibetunnel node dist/cli.js --no-auth --ngrok --ngrok-auth YOUR_TOKEN
