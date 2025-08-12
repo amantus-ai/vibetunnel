@@ -83,6 +83,29 @@ struct LoggerTests {
         #expect(true)
     }
 
+    @Test("Logger avoids evaluating filtered messages")
+    func loggerLazyMessages() {
+        let logger = Logger(category: "Test")
+        let originalLogLevel = Logger.globalLevel
+        defer {
+            Logger.globalLevel = originalLogLevel
+        }
+
+        var didEvaluate = false
+        func makeMessage() -> String {
+            didEvaluate = true
+            return "Lazy message"
+        }
+
+        Logger.globalLevel = .error
+        logger.debug(makeMessage())
+        #expect(didEvaluate == false)
+
+        Logger.globalLevel = .verbose
+        logger.debug(makeMessage())
+        #expect(didEvaluate == true)
+    }
+
     @Test("Default log level based on build configuration")
     func defaultLogLevel() {
         // Reset to see what the default is
