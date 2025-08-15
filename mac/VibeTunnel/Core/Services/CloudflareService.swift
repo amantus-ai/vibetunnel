@@ -19,7 +19,9 @@ final class CloudflareService {
         "/usr/local/bin/cloudflared",
         "/opt/homebrew/bin/cloudflared",
         "/usr/bin/cloudflared",
+        "/etc/profiles/per-user/\(NSUserName())/bin/cloudflared",
     ]
+    static var cloudflaredSearchPaths: [String] { cloudflaredPaths }
 
     // MARK: - Constants
 
@@ -67,7 +69,7 @@ final class CloudflareService {
 
     private init() {
         Task {
-            await self.checkCloudflaredStatus()
+            await checkCloudflaredStatus()
         }
     }
 
@@ -98,16 +100,16 @@ final class CloudflareService {
                 if let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
                    !path.isEmpty
                 {
-                    self.cloudflaredPath = path
-                    self.logger.info("Found cloudflared via 'which' at: \(path)")
+                    cloudflaredPath = path
+                    logger.info("Found cloudflared via 'which' at: \(path)")
                     return true
                 }
             }
         } catch {
-            self.logger.debug("Failed to run 'which cloudflared': \(error)")
+            logger.debug("Failed to run 'which cloudflared': \(error)")
         }
 
-        self.logger.info("cloudflared CLI not found")
+        logger.info("cloudflared CLI not found")
         return false
     }
 
@@ -131,7 +133,7 @@ final class CloudflareService {
                 return !output.isNilOrEmpty
             }
         } catch {
-            self.logger.debug("Failed to check running cloudflared processes: \(error)")
+            logger.debug("Failed to check running cloudflared processes: \(error)")
         }
 
         return false
@@ -140,48 +142,48 @@ final class CloudflareService {
     /// Checks the current cloudflared status and updates properties
     func checkCloudflaredStatus() async {
         // First check if CLI is installed
-        self.isInstalled = self.checkCLIInstallation()
+        isInstalled = checkCLIInstallation()
 
-        guard self.isInstalled else {
-            self.isRunning = false
-            self.publicUrl = nil
-            self.statusError = "cloudflared is not installed"
+        guard isInstalled else {
+            isRunning = false
+            publicUrl = nil
+            statusError = "cloudflared is not installed"
             return
         }
 
         // Check if there's a running process
-        let wasRunning = self.isRunning
-        self.isRunning = self.checkRunningProcess()
+        let wasRunning = isRunning
+        isRunning = checkRunningProcess()
 
-        if self.isRunning {
-            self.statusError = nil
-            self.logger.info("cloudflared tunnel is running")
+        if isRunning {
+            statusError = nil
+            logger.info("cloudflared tunnel is running")
 
             // Don't clear publicUrl if we already have it
             // Only clear it if we're transitioning from running to not running
             if !wasRunning {
                 // Tunnel just started, URL will be set by startQuickTunnel
-                self.logger.info("Tunnel detected as running, preserving existing URL: \(self.publicUrl ?? "none")")
+                logger.info("Tunnel detected as running, preserving existing URL: \(self.publicUrl ?? "none")")
             }
         } else {
             // Only clear URL when tunnel is not running
-            self.publicUrl = nil
-            self.statusError = "No active cloudflared tunnel"
-            self.logger.info("No active cloudflared tunnel found")
+            publicUrl = nil
+            statusError = "No active cloudflared tunnel"
+            logger.info("No active cloudflared tunnel found")
         }
     }
 
     /// Starts a Quick Tunnel using cloudflared
     func startQuickTunnel(port: Int) async throws {
-        guard self.isInstalled, let binaryPath = cloudflaredPath else {
+        guard isInstalled, let binaryPath = cloudflaredPath else {
             throw CloudflareError.notInstalled
         }
 
-        guard !self.isRunning else {
+        guard !isRunning else {
             throw CloudflareError.tunnelAlreadyRunning
         }
 
-        self.logger.info("Starting cloudflared Quick Tunnel on port \(port)")
+        logger.info("Starting cloudflared Quick Tunnel on port \(port)")
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: binaryPath)
@@ -195,27 +197,27 @@ final class CloudflareService {
 
         do {
             try process.run()
-            self.cloudflaredProcess = process
+            cloudflaredProcess = process
 
             // Immediately mark as running since process started successfully
-            self.isRunning = true
-            self.statusError = nil
+            isRunning = true
+            statusError = nil
 
             // Start background monitoring for URL extraction
-            self.startTunnelURLMonitoring(outputPipe: outputPipe, errorPipe: errorPipe)
+            startTunnelURLMonitoring(outputPipe: outputPipe, errorPipe: errorPipe)
 
             // Start periodic monitoring
-            self.startPeriodicMonitoring()
+            startPeriodicMonitoring()
 
-            self.logger.info("Cloudflare tunnel process started successfully, URL will be available shortly")
+            logger.info("Cloudflare tunnel process started successfully, URL will be available shortly")
         } catch {
             // Clean up on failure
             if let process = cloudflaredProcess {
                 process.terminate()
-                self.cloudflaredProcess = nil
+                cloudflaredProcess = nil
             }
 
-            self.logger.error("Failed to start cloudflared process: \(error)")
+            logger.error("Failed to start cloudflared process: \(error)")
             throw CloudflareError.tunnelCreationFailed(error.localizedDescription)
         }
     }
@@ -223,17 +225,17 @@ final class CloudflareService {
     /// Sends a termination signal to the cloudflared process without waiting
     /// This is used during app termination for quick cleanup
     func sendTerminationSignal() {
-        self.logger.info("🚀 Quick termination signal requested")
+        logger.info("🚀 Quick termination signal requested")
 
         // Cancel monitoring tasks immediately
-        self.statusMonitoringTask?.cancel()
-        self.statusMonitoringTask = nil
-        self.outputMonitoringTasks.forEach { $0.cancel() }
-        self.outputMonitoringTasks.removeAll()
+        statusMonitoringTask?.cancel()
+        statusMonitoringTask = nil
+        outputMonitoringTasks.forEach { $0.cancel() }
+        outputMonitoringTasks.removeAll()
 
         // Send termination signal to our process if we have one
         if let process = cloudflaredProcess {
-            self.logger.info("🚀 Sending SIGTERM to cloudflared process PID \(process.processIdentifier)")
+            logger.info("🚀 Sending SIGTERM to cloudflared process PID \(process.processIdentifier)")
             process.terminate()
             // Don't wait - let it clean up asynchronously
         }
@@ -246,26 +248,26 @@ final class CloudflareService {
         // Don't wait for pkill to complete
 
         // Update state immediately
-        self.isRunning = false
-        self.publicUrl = nil
-        self.cloudflaredProcess = nil
+        isRunning = false
+        publicUrl = nil
+        cloudflaredProcess = nil
 
-        self.logger.info("🚀 Quick termination signal sent")
+        logger.info("🚀 Quick termination signal sent")
     }
 
     /// Stops the running Quick Tunnel
     func stopQuickTunnel() async {
-        self.logger.info("🛑 Starting cloudflared Quick Tunnel stop process")
+        logger.info("🛑 Starting cloudflared Quick Tunnel stop process")
 
         // Cancel monitoring tasks first
-        self.statusMonitoringTask?.cancel()
-        self.statusMonitoringTask = nil
-        self.outputMonitoringTasks.forEach { $0.cancel() }
-        self.outputMonitoringTasks.removeAll()
+        statusMonitoringTask?.cancel()
+        statusMonitoringTask = nil
+        outputMonitoringTasks.forEach { $0.cancel() }
+        outputMonitoringTasks.removeAll()
 
         // Try to terminate the process we spawned first
         if let process = cloudflaredProcess {
-            self.logger.info("🛑 Found cloudflared process to terminate: PID \(process.processIdentifier)")
+            logger.info("🛑 Found cloudflared process to terminate: PID \(process.processIdentifier)")
 
             // Send terminate signal
             process.terminate()
@@ -275,7 +277,7 @@ final class CloudflareService {
 
             // Check if it's still running and force kill if needed
             if process.isRunning {
-                self.logger.warning("🛑 Process didn't terminate gracefully, sending SIGKILL")
+                logger.warning("🛑 Process didn't terminate gracefully, sending SIGKILL")
                 process.interrupt()
 
                 // Wait for exit with timeout
@@ -296,15 +298,15 @@ final class CloudflareService {
         }
 
         // Clean up any orphaned processes
-        await self.cleanupOrphanedProcessesAsync()
+        await cleanupOrphanedProcessesAsync()
 
         // Clean up state
-        self.cloudflaredProcess = nil
-        self.isRunning = false
-        self.publicUrl = nil
-        self.statusError = nil
+        cloudflaredProcess = nil
+        isRunning = false
+        publicUrl = nil
+        statusError = nil
 
-        self.logger.info("🛑 Cloudflared Quick Tunnel stop completed")
+        logger.info("🛑 Cloudflared Quick Tunnel stop completed")
     }
 
     /// Async version of orphaned process cleanup for normal stops
@@ -348,8 +350,8 @@ final class CloudflareService {
     /// Start background monitoring for tunnel URL extraction
     private func startTunnelURLMonitoring(outputPipe: Pipe, errorPipe: Pipe) {
         // Cancel any existing monitoring tasks
-        self.outputMonitoringTasks.forEach { $0.cancel() }
-        self.outputMonitoringTasks.removeAll()
+        outputMonitoringTasks.forEach { $0.cancel() }
+        outputMonitoringTasks.removeAll()
 
         // Monitor stdout using readabilityHandler
         let stdoutHandle = outputPipe.fileHandleForReading
@@ -398,26 +400,26 @@ final class CloudflareService {
             }
         }
 
-        self.outputMonitoringTasks = [cleanupTask]
+        outputMonitoringTasks = [cleanupTask]
     }
 
     /// Process output from cloudflared (called on MainActor)
     private func processOutput(_ output: String, isError: Bool) async {
         let prefix = isError ? "cloudflared stderr" : "cloudflared output"
-        self.logger.debug("\(prefix): \(output)")
+        logger.debug("\(prefix): \(output)")
 
         if let url = extractTunnelURL(from: output) {
-            self.logger.info("🔗 Setting publicUrl to: \(url)")
+            logger.info("🔗 Setting publicUrl to: \(url)")
             self.publicUrl = url
-            self.logger.info("🔗 publicUrl is now: \(self.publicUrl ?? "nil")")
+            logger.info("🔗 publicUrl is now: \(self.publicUrl ?? "nil")")
         }
     }
 
     /// Start periodic monitoring to check if tunnel is still running
     private func startPeriodicMonitoring() {
-        self.statusMonitoringTask?.cancel()
+        statusMonitoringTask?.cancel()
 
-        self.statusMonitoringTask = Task.detached { @Sendable in
+        statusMonitoringTask = Task.detached { @Sendable in
             while !Task.isCancelled {
                 // Check periodically if the process is still running
                 try? await Task.sleep(nanoseconds: UInt64(Self.statusCheckInterval * 1_000_000_000))
@@ -431,18 +433,18 @@ final class CloudflareService {
     private func checkProcessStatus() async {
         guard let process = cloudflaredProcess else {
             // Process is gone, update status
-            self.isRunning = false
-            self.publicUrl = nil
-            self.statusError = "Tunnel process terminated"
+            isRunning = false
+            publicUrl = nil
+            statusError = "Tunnel process terminated"
             return
         }
 
         if !process.isRunning {
             // Process died, update status
-            self.isRunning = false
-            self.publicUrl = nil
-            self.statusError = "Tunnel process terminated unexpectedly"
-            self.cloudflaredProcess = nil
+            isRunning = false
+            publicUrl = nil
+            statusError = "Tunnel process terminated unexpectedly"
+            cloudflaredProcess = nil
             return
         }
     }
@@ -454,7 +456,7 @@ final class CloudflareService {
         let pattern = #"https://[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.trycloudflare\.com/?(?:\s|$)"#
 
         guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
-            self.logger.error("Failed to create regex for URL extraction")
+            logger.error("Failed to create regex for URL extraction")
             return nil
         }
 
@@ -468,7 +470,7 @@ final class CloudflareService {
                 if url.hasSuffix("/") {
                     url = String(url.dropLast())
                 }
-                self.logger.info("Extracted tunnel URL: \(url)")
+                logger.info("Extracted tunnel URL: \(url)")
                 return url
             }
         }
@@ -479,7 +481,7 @@ final class CloudflareService {
     /// Kills orphaned cloudflared tunnel processes using pkill
     /// This is a simple, reliable cleanup method for processes that may have been orphaned
     private func killOrphanedCloudflaredProcesses() {
-        self.logger.info("🔍 Cleaning up orphaned cloudflared tunnel processes")
+        logger.info("🔍 Cleaning up orphaned cloudflared tunnel processes")
 
         // Use pkill to terminate any cloudflared tunnel processes
         let process = Process()
@@ -491,12 +493,12 @@ final class CloudflareService {
             process.waitUntilExit()
 
             if process.terminationStatus == 0 {
-                self.logger.info("🔍 Successfully cleaned up orphaned cloudflared processes")
+                logger.info("🔍 Successfully cleaned up orphaned cloudflared processes")
             } else {
-                self.logger.debug("🔍 No orphaned cloudflared processes found")
+                logger.debug("🔍 No orphaned cloudflared processes found")
             }
         } catch {
-            self.logger.error("🔍 Failed to run pkill: \(error)")
+            logger.error("🔍 Failed to run pkill: \(error)")
         }
     }
 
@@ -507,7 +509,7 @@ final class CloudflareService {
         pasteboard.declareTypes([.string], owner: nil)
         pasteboard.setString(command, forType: .string)
 
-        self.logger.info("Copied Homebrew install command to clipboard: \(command)")
+        logger.info("Copied Homebrew install command to clipboard: \(command)")
 
         // Optionally open Terminal to run the command
         if !Self.isTestMode, let url = URL(string: "https://formulae.brew.sh/formula/cloudflared") {
@@ -548,9 +550,9 @@ enum CloudflareError: LocalizedError, Equatable {
             "cloudflared is not installed"
         case .tunnelAlreadyRunning:
             "A tunnel is already running"
-        case let .tunnelCreationFailed(message):
+        case .tunnelCreationFailed(let message):
             "Failed to create tunnel: \(message)"
-        case let .networkError(message):
+        case .networkError(let message):
             "Network error: \(message)"
         case .invalidOutput:
             "Invalid output from cloudflared"
