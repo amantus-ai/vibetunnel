@@ -506,22 +506,41 @@ export class InputManager {
   isKeyboardShortcut(e: KeyboardEvent): boolean {
     // Check if we're typing in an input field or editor
     const target = e.target as HTMLElement;
-    if (
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.tagName === 'SELECT' ||
-      target.contentEditable === 'true' ||
-      target.closest?.('.monaco-editor') ||
-      target.closest?.('[data-keybinding-context]') ||
-      target.closest?.('.editor-container') ||
-      target.closest?.('inline-edit') // Allow typing in inline-edit component
-    ) {
-      // Special exception: allow copy/paste shortcuts even in input fields (like our IME input)
-      if (isCopyPasteShortcut(e)) {
-        return true;
+
+    // Check if target exists and has proper properties
+    // In Firefox/Safari, target might be null or not have tagName
+    if (target?.tagName) {
+      // Check for form elements
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.contentEditable === 'true'
+      ) {
+        // Special exception: allow copy/paste shortcuts even in input fields (like our IME input)
+        if (isCopyPasteShortcut(e)) {
+          return true;
+        }
+        // Allow normal input in form fields and editors for other keys
+        return false;
       }
-      // Allow normal input in form fields and editors for other keys
-      return false;
+
+      // Check for parent elements using closest (with fallback for browsers that don't support it)
+      if (typeof target.closest === 'function') {
+        if (
+          target.closest('.monaco-editor') ||
+          target.closest('[data-keybinding-context]') ||
+          target.closest('.editor-container') ||
+          target.closest('inline-edit') // Allow typing in inline-edit component
+        ) {
+          // Special exception: allow copy/paste shortcuts even in input fields
+          if (isCopyPasteShortcut(e)) {
+            return true;
+          }
+          // Allow normal input in form fields and editors for other keys
+          return false;
+        }
+      }
     }
 
     // Check if this is a critical browser shortcut
