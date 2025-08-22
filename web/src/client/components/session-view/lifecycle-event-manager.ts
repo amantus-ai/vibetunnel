@@ -218,6 +218,15 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       return;
     }
 
+    // Log for debugging Firefox/Safari issues
+    const activeElement = document.activeElement;
+    logger.log('Keyboard event received', {
+      key: e.key,
+      target: (e.target as HTMLElement)?.tagName,
+      activeElement: activeElement?.tagName,
+      activeElementId: (activeElement as HTMLElement)?.id,
+    });
+
     // Check if IME input is focused - block keyboard events except for editing keys
     if (document.body.getAttribute('data-ime-input-focused') === 'true') {
       if (!isIMEAllowedKey(e)) {
@@ -325,6 +334,14 @@ export class LifecycleEventManager extends ManagerEventEmitter {
 
     // Make session-view focusable
     this.callbacks.setTabIndex(0);
+
+    // Focus the element immediately for Firefox/Safari compatibility
+    // This ensures keyboard events are properly captured
+    setTimeout(() => {
+      if (!this.callbacks?.getDisableFocusManagement()) {
+        this.callbacks?.focus();
+      }
+    }, 100);
 
     // Store click handler reference for proper cleanup
     this.clickHandler = () => {
@@ -491,7 +508,11 @@ export class LifecycleEventManager extends ManagerEventEmitter {
     // Only add listeners if not already added
     if (!isMobile && !this.keyboardListenerAdded) {
       // Don't use capture phase - let browser handle shortcuts naturally
-      document.addEventListener('keydown', this.keyboardHandler);
+      // Add a slight delay for Firefox/Safari to ensure the DOM is ready
+      setTimeout(() => {
+        document.addEventListener('keydown', this.keyboardHandler);
+        logger.log('Keyboard event listener attached');
+      }, 0);
       this.keyboardListenerAdded = true;
     } else if (isMobile && !this.touchListenersAdded) {
       // Add touch event listeners for mobile swipe gestures

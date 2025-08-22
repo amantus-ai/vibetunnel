@@ -78,7 +78,8 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
 
     // Add global paste listener for environments where Clipboard API doesn't work
     this.setupGlobalPasteListener();
-    this.ensureHiddenInputVisible();
+    // Don't create hidden input on initialization - only create when needed for mobile
+    // This prevents Firefox/Safari keyboard input issues on desktop
   }
 
   setInputManager(inputManager: InputManager): void {
