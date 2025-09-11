@@ -1,4 +1,26 @@
 #!/usr/bin/env node
 
-// Start the CLI - it handles all command routing including 'fwd'
-require('../dist/vibetunnel-cli');
+const { spawn } = require('child_process');
+const path = require('path');
+const os = require('os');
+
+// On Linux, always use Node.js to run the CLI to avoid SEA segfault issues
+// On macOS/Windows, use the existing require method
+if (os.platform() === 'linux') {
+  const cliPath = path.join(__dirname, '..', 'dist', 'vibetunnel-cli');
+  const child = spawn(process.execPath, [cliPath, ...process.argv.slice(2)], {
+    stdio: 'inherit'
+  });
+  
+  child.on('exit', (code) => {
+    process.exit(code || 0);
+  });
+  
+  child.on('error', (err) => {
+    console.error('Failed to start VibeTunnel:', err.message);
+    process.exit(1);
+  });
+} else {
+  // For macOS and Windows, use the existing require method
+  require('../dist/vibetunnel-cli');
+}
