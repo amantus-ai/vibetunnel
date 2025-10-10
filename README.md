@@ -919,7 +919,7 @@ VIBETUNNEL_LOG_LEVEL=silent vt npm test
 
 ## Poltergeist Integration
 
-[Poltergeist](https://github.com/poltergeist/poltergeist) is an intelligent file watcher and auto-builder that can automatically rebuild VibeTunnel as you develop. This is particularly useful for native app development where manual rebuilds can interrupt your flow.
+[Poltergeist](https://github.com/steipete/poltergeist) is an intelligent file watcher and auto-builder that can automatically rebuild VibeTunnel as you develop. This is particularly useful for native app development where manual rebuilds can interrupt your flow.
 
 ### Setting Up Poltergeist
 
