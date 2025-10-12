@@ -40,6 +40,29 @@ struct ServerSessionInfo: Codable {
     var isRunning: Bool {
         status == "running"
     }
+
+    /// Determine whether the session should be considered active for UI purposes.
+    ///
+    /// Prefers the new activity monitor flag when available and gracefully falls back
+    /// to legacy indicators so older servers still display reasonable state.
+    var isActivityActive: Bool {
+        if let isActive = activityStatus?.isActive {
+            return isActive
+        }
+
+        if let specificStatus = activityStatus?.specificStatus?.status {
+            let normalized = specificStatus.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if normalized.isEmpty { return false }
+            if normalized == "idle" { return false }
+            return true
+        }
+
+        if let legacyActive = active {
+            return legacyActive
+        }
+
+        return false
+    }
 }
 
 /// Activity status for a session.

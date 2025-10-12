@@ -31,12 +31,7 @@ final class StatusBarIconController {
 
         // Update session count display
         let sessions = sessionMonitor.sessions.values.filter(\.isRunning)
-        let activeSessions = sessions.filter { session in
-            if let activityStatus = session.activityStatus?.specificStatus?.status {
-                return !activityStatus.isEmpty
-            }
-            return false
-        }
+        let activeSessions = sessions.filter(\.isActivityActive)
 
         let activeCount = activeSessions.count
         let totalCount = sessions.count

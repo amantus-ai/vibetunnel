@@ -128,21 +128,14 @@ struct VibeTunnelMenuView: View {
 
     private var activeSessions: [(key: String, value: ServerSessionInfo)] {
         sessionMonitor.sessions
-            .filter { $0.value.isRunning && hasActivity($0.value) }
+            .filter { $0.value.isRunning && $0.value.isActivityActive }
             .sorted { $0.value.startedAt > $1.value.startedAt }
     }
 
     private var idleSessions: [(key: String, value: ServerSessionInfo)] {
         sessionMonitor.sessions
-            .filter { $0.value.isRunning && !hasActivity($0.value) }
+            .filter { $0.value.isRunning && !$0.value.isActivityActive }
             .sorted { $0.value.startedAt > $1.value.startedAt }
-    }
-
-    private func hasActivity(_ session: ServerSessionInfo) -> Bool {
-        if let activityStatus = session.activityStatus?.specificStatus?.status {
-            return !activityStatus.isEmpty
-        }
-        return false
     }
 
     // MARK: - Keyboard Navigation

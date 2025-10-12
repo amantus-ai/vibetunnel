@@ -52,12 +52,7 @@ enum TooltipProvider {
         // Session info
         let sessions = sessionMonitor.sessions.values.filter(\.isRunning)
         if !sessions.isEmpty {
-            let activeSessions = sessions.filter { session in
-                if let activityStatus = session.activityStatus?.specificStatus?.status {
-                    return !activityStatus.isEmpty
-                }
-                return false
-            }
+            let activeSessions = sessions.filter(\.isActivityActive)
 
             let idleCount = sessions.count - activeSessions.count
             if !activeSessions.isEmpty {
