@@ -13,6 +13,10 @@
 #   app_path      Path to the .app bundle
 #   output_path   Path for output ZIP (optional, defaults to build/VibeTunnel-<version>-<arch>.zip)
 #
+# NOTE:
+#   The architecture suffix is automatically detected from the app bundle binary using lipo.
+#   Supported architectures: arm64, x86_64, universal (both)
+#
 # =============================================================================
 
 set -euo pipefail
@@ -40,7 +44,22 @@ fi
 # Get app name and version info
 APP_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleName" "$APP_PATH/Contents/Info.plist" 2>/dev/null || echo "VibeTunnel")
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP_PATH/Contents/Info.plist")
-ZIP_NAME="${APP_NAME}-${VERSION}.zip"
+
+# Detect architecture from the app bundle binary
+EXECUTABLE_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$APP_PATH/Contents/Info.plist" 2>/dev/null || echo "VibeTunnel")
+ARCHS=$(lipo -archs "$APP_PATH/Contents/MacOS/$EXECUTABLE_NAME" 2>/dev/null || echo "")
+
+# Determine architecture suffix for filename
+ARCH_SUFFIX=""
+if [[ "$ARCHS" == "arm64" ]]; then
+    ARCH_SUFFIX="-arm64"
+elif [[ "$ARCHS" == "x86_64" ]]; then
+    ARCH_SUFFIX="-x86_64"
+elif [[ "$ARCHS" == *"arm64"* ]] && [[ "$ARCHS" == *"x86_64"* ]]; then
+    ARCH_SUFFIX="-universal"
+fi
+
+ZIP_NAME="${APP_NAME}-${VERSION}${ARCH_SUFFIX}.zip"
 
 # Use provided output path or default
 if [[ $# -eq 2 ]]; then

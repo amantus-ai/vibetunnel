@@ -11,7 +11,11 @@
 #
 # ARGUMENTS:
 #   app_path      Path to the .app bundle
-#   output_path   Path for output DMG (optional, defaults to build/VibeTunnel-<version>.dmg)
+#   output_path   Path for output DMG (optional, defaults to build/VibeTunnel-<version>-<arch>.dmg)
+#
+# NOTE:
+#   The architecture suffix is automatically detected from the app bundle binary using lipo.
+#   Supported architectures: arm64, x86_64, universal (both)
 #
 # ENVIRONMENT VARIABLES:
 #   DMG_VOLUME_NAME   Name for the DMG volume (optional, defaults to app name)
@@ -43,7 +47,22 @@ fi
 # Get app name and version info
 APP_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleName" "$APP_PATH/Contents/Info.plist" 2>/dev/null || echo "VibeTunnel")
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP_PATH/Contents/Info.plist")
-DMG_NAME="${APP_NAME}-${VERSION}.dmg"
+
+# Detect architecture from the app bundle binary
+EXECUTABLE_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$APP_PATH/Contents/Info.plist" 2>/dev/null || echo "VibeTunnel")
+ARCHS=$(lipo -archs "$APP_PATH/Contents/MacOS/$EXECUTABLE_NAME" 2>/dev/null || echo "")
+
+# Determine architecture suffix for filename
+ARCH_SUFFIX=""
+if [[ "$ARCHS" == "arm64" ]]; then
+    ARCH_SUFFIX="-arm64"
+elif [[ "$ARCHS" == "x86_64" ]]; then
+    ARCH_SUFFIX="-x86_64"
+elif [[ "$ARCHS" == *"arm64"* ]] && [[ "$ARCHS" == *"x86_64"* ]]; then
+    ARCH_SUFFIX="-universal"
+fi
+
+DMG_NAME="${APP_NAME}-${VERSION}${ARCH_SUFFIX}.dmg"
 DMG_VOLUME_NAME="${DMG_VOLUME_NAME:-$APP_NAME}"
 
 # Use provided output path or default
