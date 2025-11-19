@@ -106,7 +106,8 @@ fi
 # Prepare code signing arguments
 CODE_SIGN_ARGS=""
 if [[ "${CI:-false}" == "true" ]] || [[ "$SIGN_APP" == false ]]; then
-    # In CI or when not signing, disable code signing entirely
+    # In CI or when not signing, disable code signing entirely during build
+    # We will manually apply ad-hoc signing later for local builds
     CODE_SIGN_ARGS="CODE_SIGN_IDENTITY=\"\" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO CODE_SIGN_ENTITLEMENTS=\"\" ENABLE_HARDENED_RUNTIME=NO PROVISIONING_PROFILE_SPECIFIER=\"\" DEVELOPMENT_TEAM=\"\""
 fi
 
@@ -179,6 +180,19 @@ echo "Cleaning up unwanted files from bundle..."
 rm -f "$APP_PATH/Contents/Resources/Local.xcconfig"
 rm -rf "$APP_PATH/Contents/Resources/web/public/tests"
 echo "✓ Removed development files from bundle"
+
+# Apply ad-hoc signature for local builds (if not CI and not signing with cert)
+if [[ "${CI:-false}" != "true" ]] && [[ "$SIGN_APP" == false ]]; then
+    echo "Applying ad-hoc signature for local build..."
+    ENTITLEMENTS_PATH="$MAC_DIR/VibeTunnel/VibeTunnel.entitlements"
+    if [[ -f "$ENTITLEMENTS_PATH" ]]; then
+        codesign --force --deep --sign - --entitlements "$ENTITLEMENTS_PATH" "$APP_PATH"
+        echo "✓ App signed with ad-hoc signature and entitlements"
+    else
+        echo "⚠️ Entitlements file not found at $ENTITLEMENTS_PATH, signing without entitlements"
+        codesign --force --deep --sign - "$APP_PATH"
+    fi
+fi
 
 # Sign the app if requested
 if [[ "$SIGN_APP" == true ]]; then

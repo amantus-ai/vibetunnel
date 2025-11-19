@@ -21,6 +21,9 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
     private var isConnected = false
     private var recentlyNotifiedSessions = Set<String>()
     private var notificationCleanupTimer: Timer?
+    private var reconnectTask: Task<Void, Never>?
+    private var reconnectDelay: TimeInterval = 1.0
+    private let maxReconnectDelay: TimeInterval = 30.0
 
     /// Public property to check SSE connection status
     var isSSEConnected: Bool { isConnected }
@@ -93,6 +96,11 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
 
         super.init()
 
+        // Set delegate immediately on initialization
+        // This ensures it's set before the app finishes launching, which is required for proper notification handling
+        UNUserNotificationCenter.current().delegate = self
+        logger.info("✅ NotificationService set as UNUserNotificationCenter delegate in init()")
+
         // Defer dependency setup to avoid circular initialization
         Task { @MainActor in
             self.serverProvider = ServerManager.shared
@@ -110,11 +118,7 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
     func start() async {
         logger.info("🚀 NotificationService.start() called")
 
-        // Set delegate here to ensure it's done at the right time
-        UNUserNotificationCenter.current().delegate = self
-        logger.info("✅ NotificationService set as UNUserNotificationCenter delegate in start()")
-
-        // Debug: Log current delegate to verify it's set
+        // Delegate is already set in init(), but we can log it for debugging
         let currentDelegate = UNUserNotificationCenter.current().delegate
         logger.info("🔍 Current UNUserNotificationCenter delegate: \(String(describing: currentDelegate))")
         // Check if notifications are enabled in config
@@ -170,6 +174,8 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
 
     /// Stop monitoring server events
     func stop() {
+        reconnectTask?.cancel()
+        reconnectTask = nil
         disconnect()
     }
 
@@ -441,7 +447,10 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
 
     /// Open System Settings to the Notifications pane
     func openNotificationSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
+        // Try to open directly to the app's settings
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=sh.vibetunnel.vibetunnel") {
+            NSWorkspace.shared.open(url)
+        } else if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
             NSWorkspace.shared.open(url)
         }
     }
@@ -547,10 +556,13 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
         // Add authorization header if auth token is available.
         // When auth mode is "none", there's no token, and that's okay.
         if let authToken = serverProvider.localAuthToken {
-            headers["Authorization"] = "Bearer \(authToken)"
+            // Use x-vibetunnel-local header for local bypass authentication
+            // The backend middleware specifically checks this header for localhost requests
+            headers[NetworkConstants.localAuthHeader] = authToken
+            
             // Show token prefix for debugging (first 10 chars only for security)
             let tokenPrefix = String(authToken.prefix(10))
-            logger.info("🔑 Using auth token for SSE connection: \(tokenPrefix, privacy: .public)...")
+            logger.info("🔑 Using local auth token for SSE connection: \(tokenPrefix, privacy: .public)...")
         } else {
             logger.info("🔓 Connecting to SSE without an auth token (auth mode: '\(serverProvider.authMode)')")
         }
@@ -565,6 +577,7 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
                 guard let self else { return }
                 self.logger.info("✅ Connected to notification event stream")
                 self.isConnected = true
+                self.reconnectDelay = 1.0 // Reset backoff
                 // Post notification for UI update
                 NotificationCenter.default.post(name: .notificationServiceConnectionChanged, object: nil)
             }
@@ -579,7 +592,9 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
                 self.isConnected = false
                 // Post notification for UI update
                 NotificationCenter.default.post(name: .notificationServiceConnectionChanged, object: nil)
-                // Don't reconnect here - let server state changes trigger reconnection
+                
+                // Attempt to reconnect if server is running
+                self.scheduleReconnect()
             }
         }
 
@@ -906,6 +921,32 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
         }
     }
 
+    private func scheduleReconnect() {
+        guard configProvider?.notificationsEnabled ?? false else { return }
+        guard serverProvider?.isRunning ?? false else { return }
+        
+        reconnectTask?.cancel()
+        
+        let delay = reconnectDelay
+        logger.info("🔄 Scheduling reconnection in \(delay) seconds...")
+        
+        reconnectTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            
+            guard !Task.isCancelled else { return }
+            
+            // Double check conditions
+            guard self.configProvider?.notificationsEnabled ?? false else { return }
+            guard self.serverProvider?.isRunning ?? false else { return }
+            
+            self.logger.info("🔁 Attempting reconnection...")
+            self.connect()
+            
+            // Increase delay for next attempt
+            self.reconnectDelay = min(self.reconnectDelay * 1.5, self.maxReconnectDelay)
+        }
+    }
+
     /// Send a test notification through the server to verify the full flow
     @MainActor
     func sendServerTestNotification() async {
@@ -946,8 +987,8 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
 
         // Add auth token if available
         if let authToken = serverProvider?.localAuthToken {
-            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
-            logger.debug("Added auth token to request")
+            request.setValue(authToken, forHTTPHeaderField: NetworkConstants.localAuthHeader)
+            logger.debug("Added local auth token to request")
         }
 
         do {
