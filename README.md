@@ -1,3 +1,5 @@
+# VibeTunnel 🚇 - Turn any browser into your terminal; command agents from the road (vt.sh)
+
 <!-- Generated: 2025-07-28 12:35:00 UTC -->
 <p align="center">
   <img src="assets/banner.png" alt="VibeTunnel Banner" />
