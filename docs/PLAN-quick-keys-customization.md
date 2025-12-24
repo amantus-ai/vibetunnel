@@ -15,92 +15,62 @@ Allow users to **reorder** and **show/hide** the mobile quick key buttons.
 
 ## Data Model
 
-### Types
+### Key Definitions (Source of Truth)
 
 ```typescript
 // web/src/client/utils/quick-keys-preferences.ts
 
-interface QuickKeyConfig {
-  key: string;       // Identifier: 'Escape', 'Ctrl+C', 'ArrowUp', etc.
-  enabled: boolean;  // Visible or hidden
-  row: number;       // 1, 2, or 3
-  order: number;     // 0-based position within row
-}
-
-interface QuickKeysPreferences {
-  version: 1;
-  keys: QuickKeyConfig[];  // Only stores overrides, not full list
-}
+export const QUICK_KEY_DEFINITIONS = [
+  // Row 1 (12 keys)
+  { key: 'Escape', label: 'Esc' },
+  { key: 'Control', label: 'Ctrl', modifier: true },
+  { key: 'CtrlExpand', label: '⌃', toggle: true },
+  { key: 'F', label: 'F', toggle: true },
+  { key: 'Tab', label: 'Tab' },
+  { key: 'shift_tab', label: '⇤' },
+  { key: 'ArrowUp', label: '↑', arrow: true },
+  { key: 'ArrowDown', label: '↓', arrow: true },
+  { key: 'ArrowLeft', label: '←', arrow: true },
+  { key: 'ArrowRight', label: '→', arrow: true },
+  { key: 'PageUp', label: 'PgUp' },
+  { key: 'PageDown', label: 'PgDn' },
+  // Row 2 (10 keys)
+  { key: 'Home', label: 'Home' },
+  { key: 'Paste', label: 'Paste' },
+  { key: 'End', label: 'End' },
+  { key: 'Delete', label: 'Del' },
+  { key: '`', label: '`' },
+  { key: '~', label: '~' },
+  { key: '|', label: '|' },
+  { key: '/', label: '/' },
+  { key: '\\', label: '\\' },
+  { key: '-', label: '-' },
+  // Row 3 (12 keys)
+  { key: 'Option', label: '⌥', modifier: true },
+  { key: 'Command', label: '⌘', modifier: true },
+  { key: 'Ctrl+C', label: '^C', combo: true },
+  { key: 'Ctrl+Z', label: '^Z', combo: true },
+  { key: "'", label: "'" },
+  { key: '"', label: '"' },
+  { key: '{', label: '{' },
+  { key: '}', label: '}' },
+  { key: '[', label: '[' },
+  { key: ']', label: ']' },
+  { key: '(', label: '(' },
+  { key: ')', label: ')' },
+] as const;
 ```
 
-### Default Keys (34 total)
-
-**Row 1 (12 keys):**
-| Key | Label | Flags |
-|-----|-------|-------|
-| Escape | Esc | |
-| Control | Ctrl | modifier |
-| CtrlExpand | ⌃ | toggle |
-| F | F | toggle |
-| Tab | Tab | |
-| shift_tab | ⇤ | |
-| ArrowUp | ↑ | arrow |
-| ArrowDown | ↓ | arrow |
-| ArrowLeft | ← | arrow |
-| ArrowRight | → | arrow |
-| PageUp | PgUp | |
-| PageDown | PgDn | |
-
-**Row 2 (10 keys):**
-| Key | Label | Flags |
-|-----|-------|-------|
-| Home | Home | |
-| Paste | Paste | |
-| End | End | |
-| Delete | Del | |
-| ` | ` | |
-| ~ | ~ | |
-| \| | \| | |
-| / | / | |
-| \\ | \\ | |
-| - | - | |
-
-**Row 3 (12 keys):**
-| Key | Label | Flags |
-|-----|-------|-------|
-| Option | ⌥ | modifier |
-| Command | ⌘ | modifier |
-| Ctrl+C | ^C | combo |
-| Ctrl+Z | ^Z | combo |
-| ' | ' | |
-| " | " | |
-| { | { | |
-| } | } | |
-| [ | [ | |
-| ] | ] | |
-| ( | ( | |
-| ) | ) | |
-
-### Storage
-
-- localStorage key: `vibetunnel_quick_keys_preferences`
-- Sparse storage: empty `keys` array = all defaults
-- Only store keys that differ from defaults (position changed or hidden)
-
----
-
-## Preferences Manager
-
-### File: `web/src/client/utils/quick-keys-preferences.ts`
-
-### Exports
+### Types
 
 ```typescript
-// Static key definition (metadata for rendering and behavior)
+// Derived from QUICK_KEY_DEFINITIONS - compile-time safe
+export type QuickKeyId = typeof QUICK_KEY_DEFINITIONS[number]['key'];
+
+// Static definition (from QUICK_KEY_DEFINITIONS)
 export interface QuickKeyDefinition {
-  key: string;
+  key: QuickKeyId;
   label: string;
-  row: number;
   modifier?: boolean;  // Control, Option, Command - held as chord
   arrow?: boolean;     // Arrow keys - support key repeat
   toggle?: boolean;    // F, CtrlExpand - toggle expansion views
@@ -110,44 +80,59 @@ export interface QuickKeyDefinition {
   description?: string; // Tooltip text (used by CTRL_SHORTCUTS)
 }
 
-// Array of all key definitions
-export const QUICK_KEY_DEFINITIONS: QuickKeyDefinition[];
+// Storage format - array of rows, each row is array of key IDs
+export type QuickKeysLayout = QuickKeyId[][];
 
-// User configuration for a key
-export interface QuickKeyConfig {
-  key: string;
-  enabled: boolean;
-  row: number;
-  order: number;
+// In-memory state for rendering
+export interface QuickKeysState {
+  rows: QuickKeyDefinition[][];  // Full definitions, ready to render
+  hidden: QuickKeyDefinition[];  // Keys not in any row
 }
-
-// Full preferences structure
-export interface QuickKeysPreferences {
-  version: number;
-  keys: QuickKeyConfig[];
-}
-
-// Singleton manager
-export class QuickKeysPreferencesManager { ... }
-
-// Convenience singleton export
-export const quickKeysPreferencesManager: QuickKeysPreferencesManager;
 ```
+
+### Storage
+
+- localStorage key: `vibetunnel_quick_keys`
+- Format: `QuickKeysLayout` (JSON array of arrays)
+- Dynamic rows: user can have any number of rows
+- Hidden keys: keys in `QUICK_KEY_DEFINITIONS` not present in any row
+- Invalid/corrupt data: reset to defaults
+
+Example:
+```json
+[
+  ["Escape", "Control", "Tab", "ArrowUp", "ArrowDown"],
+  ["Home", "Paste", "Delete"],
+  ["Option", "Command", "Ctrl+C"]
+]
+```
+
+---
+
+## Preferences Manager
+
+### File: `web/src/client/utils/quick-keys-preferences.ts`
 
 ### Class: QuickKeysPreferencesManager
 
-**Pattern:** Singleton following `TerminalPreferencesManager`
-
 ```typescript
-const STORAGE_KEY = 'vibetunnel_quick_keys_preferences';
+const STORAGE_KEY = 'vibetunnel_quick_keys';
+
+// Default layout: 3 rows as originally defined
+const DEFAULT_LAYOUT: QuickKeysLayout = [
+  ['Escape', 'Control', 'CtrlExpand', 'F', 'Tab', 'shift_tab',
+   'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown'],
+  ['Home', 'Paste', 'End', 'Delete', '`', '~', '|', '/', '\\', '-'],
+  ['Option', 'Command', 'Ctrl+C', 'Ctrl+Z', "'", '"', '{', '}', '[', ']', '(', ')'],
+];
 
 export class QuickKeysPreferencesManager {
   private static instance: QuickKeysPreferencesManager;
-  private preferences: QuickKeysPreferences;
-  private listeners: (() => void)[] = [];
+  private layout: QuickKeysLayout;
+  private listeners = new Set<() => void>();
 
   private constructor() {
-    this.preferences = this.loadPreferences();
+    this.layout = this.load();
   }
 
   static getInstance(): QuickKeysPreferencesManager {
@@ -157,169 +142,71 @@ export class QuickKeysPreferencesManager {
     return QuickKeysPreferencesManager.instance;
   }
 
-  private loadPreferences(): QuickKeysPreferences {
+  private load(): QuickKeysLayout {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        return { version: 1, keys: [], ...parsed };
+        if (this.isValidLayout(parsed)) {
+          return parsed;
+        }
       }
-    } catch (e) {
-      // Corrupted data, use defaults
+    } catch {
+      // Corrupted data
     }
-    return { version: 1, keys: [] };
+    return structuredClone(DEFAULT_LAYOUT);
   }
 
-  private savePreferences(): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.preferences));
-    this.notifyListeners();
+  private isValidLayout(data: unknown): data is QuickKeysLayout {
+    if (!Array.isArray(data)) return false;
+    const validKeys = new Set(QUICK_KEY_DEFINITIONS.map(d => d.key));
+    return data.every(row =>
+      Array.isArray(row) && row.every(key => validKeys.has(key))
+    );
   }
 
-  private notifyListeners(): void {
-    for (const listener of this.listeners) {
-      listener();
-    }
+  private save(): void {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.layout));
+    this.listeners.forEach(fn => fn());
   }
 
-  /**
-   * Subscribe to changes. Returns unsubscribe function.
-   */
   subscribe(listener: () => void): () => void {
-    this.listeners.push(listener);
-    return () => {
-      const i = this.listeners.indexOf(listener);
-      if (i !== -1) this.listeners.splice(i, 1);
-    };
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 
-  /**
-   * Get full config merged with defaults.
-   * Returns all keys with their effective row/order/enabled state.
-   */
-  getEffectiveKeys(): QuickKeyConfig[] {
-    const result: QuickKeyConfig[] = [];
+  /** Get current state with full definitions for rendering */
+  getState(): QuickKeysState {
+    const allKeys = new Set(QUICK_KEY_DEFINITIONS.map(d => d.key));
+    const usedKeys = new Set(this.layout.flat());
 
-    for (let i = 0; i < QUICK_KEY_DEFINITIONS.length; i++) {
-      const def = QUICK_KEY_DEFINITIONS[i];
-      const override = this.preferences.keys.find(k => k.key === def.key);
+    const rows = this.layout.map(row =>
+      row.map(key => QUICK_KEY_DEFINITIONS.find(d => d.key === key)!)
+    );
 
-      if (override) {
-        result.push({ ...override });
-      } else {
-        // Default: enabled, original row, order = index within row
-        const sameRowBefore = QUICK_KEY_DEFINITIONS
-          .slice(0, i)
-          .filter(d => d.row === def.row)
-          .length;
-        result.push({
-          key: def.key,
-          enabled: true,
-          row: def.row,
-          order: sameRowBefore,
-        });
-      }
-    }
+    const hidden = QUICK_KEY_DEFINITIONS.filter(d => !usedKeys.has(d.key));
 
-    return result;
+    return { rows, hidden };
   }
 
-  /**
-   * Get visible keys for a specific row, sorted by order.
-   */
-  getKeysForRow(row: number): QuickKeyConfig[] {
-    return this.getEffectiveKeys()
-      .filter(k => k.row === row && k.enabled)
-      .sort((a, b) => a.order - b.order);
+  /** Get raw layout for editor */
+  getLayout(): QuickKeysLayout {
+    return structuredClone(this.layout);
   }
 
-  /**
-   * Get all hidden keys.
-   */
-  getHiddenKeys(): QuickKeyConfig[] {
-    return this.getEffectiveKeys().filter(k => !k.enabled);
+  /** Save new layout from editor */
+  setLayout(layout: QuickKeysLayout): void {
+    this.layout = structuredClone(layout);
+    this.save();
   }
 
-  /**
-   * Set key visibility.
-   */
-  setKeyEnabled(key: string, enabled: boolean): void {
-    this.ensureOverride(key);
-    const config = this.preferences.keys.find(k => k.key === key);
-    if (config) {
-      config.enabled = enabled;
-      this.savePreferences();
-    }
-  }
-
-  /**
-   * Move key to new position.
-   */
-  moveKey(key: string, toRow: number, toOrder: number): void {
-    const effective = this.getEffectiveKeys();
-    const moving = effective.find(k => k.key === key);
-    if (!moving) return;
-
-    const fromRow = moving.row;
-    const fromOrder = moving.order;
-
-    // No-op if same position
-    if (fromRow === toRow && fromOrder === toOrder) return;
-
-    // Ensure all affected keys have overrides
-    effective.forEach(k => this.ensureOverride(k.key));
-
-    // Remove from source row (decrement orders after it)
-    for (const k of this.preferences.keys) {
-      if (k.row === fromRow && k.order > fromOrder) {
-        k.order--;
-      }
-    }
-
-    // Adjust target if same row and moving forward
-    let targetOrder = toOrder;
-    if (fromRow === toRow && fromOrder < toOrder) {
-      targetOrder--;
-    }
-
-    // Make room in target row (increment orders at and after target)
-    for (const k of this.preferences.keys) {
-      if (k.row === toRow && k.order >= targetOrder && k.key !== key) {
-        k.order++;
-      }
-    }
-
-    // Move the key
-    const config = this.preferences.keys.find(k => k.key === key);
-    if (config) {
-      config.row = toRow;
-      config.order = targetOrder;
-      config.enabled = true; // Restore if was hidden
-    }
-
-    this.savePreferences();
-  }
-
-  /**
-   * Ensure a key has an override entry in preferences.
-   */
-  private ensureOverride(key: string): void {
-    if (this.preferences.keys.find(k => k.key === key)) return;
-
-    const effective = this.getEffectiveKeys();
-    const current = effective.find(k => k.key === key);
-    if (current) {
-      this.preferences.keys.push({ ...current });
-    }
-  }
-
-  /**
-   * Reset to defaults.
-   */
   resetToDefaults(): void {
-    this.preferences = { version: 1, keys: [] };
-    this.savePreferences();
+    this.layout = structuredClone(DEFAULT_LAYOUT);
+    this.save();
   }
 }
+
+export const quickKeysPreferencesManager = QuickKeysPreferencesManager.getInstance();
 ```
 
 ---
@@ -332,60 +219,41 @@ export class QuickKeysPreferencesManager {
 
 **1. Move key definitions to preferences file:**
 
-Remove `TERMINAL_QUICK_KEYS` constant from this file. Import from preferences:
+Remove `TERMINAL_QUICK_KEYS` constant. Import from preferences:
 
 ```typescript
 import {
   QUICK_KEY_DEFINITIONS,
-  type QuickKeyConfig,
   type QuickKeyDefinition,
 } from '../utils/quick-keys-preferences.js';
 ```
 
-**2. Add keyConfig property:**
+**2. Add rows property:**
 
 ```typescript
-@property({ type: Array }) keyConfig?: QuickKeyConfig[];
+// Rows of keys to render (from QuickKeysState.rows)
+@property({ type: Array }) rows?: QuickKeyDefinition[][];
 ```
 
-**3. Add helper method:**
+**3. Update render method:**
 
+Replace hardcoded row filtering:
 ```typescript
-/**
- * Get visible keys for a row, with full metadata for rendering.
- */
-private getVisibleKeysForRow(row: number): QuickKeyDefinition[] {
-  let configs: QuickKeyConfig[];
-
-  if (this.keyConfig) {
-    configs = this.keyConfig
-      .filter(k => k.row === row && k.enabled)
-      .sort((a, b) => a.order - b.order);
-  } else {
-    // No config = use defaults
-    return QUICK_KEY_DEFINITIONS.filter(k => k.row === row);
-  }
-
-  // Map configs back to QuickKeyDefinition for rendering metadata
-  return configs
-    .map(config => QUICK_KEY_DEFINITIONS.find(d => d.key === config.key))
-    .filter((d): d is QuickKeyDefinition => d !== undefined);
-}
-```
-
-**4. Update render method:**
-
-Replace all instances of:
-```typescript
+// Old:
 TERMINAL_QUICK_KEYS.filter((k) => k.row === 1)
+
+// New:
+this.rows?.[0] ?? QUICK_KEY_DEFINITIONS.filter((_, i) => i < 12)
 ```
 
-With:
+Or simpler - render all rows dynamically:
 ```typescript
-this.getVisibleKeysForRow(1)
+${(this.rows ?? DEFAULT_ROWS).map((row, rowIndex) => html`
+  <div class="quick-key-row">
+    ${row.map(key => this.renderKey(key))}
+  </div>
+`)}
 ```
-
-Same for rows 2 and 3.
 
 No other changes needed. Key behavior, toggles, modifiers, arrow repeat all work the same.
 
@@ -405,29 +273,24 @@ Modal component for editing quick keys via drag and drop.
 @customElement('quick-keys-editor')
 export class QuickKeysEditor extends LitElement {
   @property({ type: Boolean }) isOpen = false;
-  @state() private workingConfig: QuickKeyConfig[] = [];
-  @state() private draggedKey: string | null = null;
-  @state() private dropTarget: { row: number; order: number } | 'hidden' | null = null;
+
+  // Draft layout - array of rows, each row is array of key IDs
+  @state() private draftRows: QuickKeyId[][] = [];
+  @state() private draggedKey: QuickKeyId | null = null;
+  @state() private dropTarget: { row: number; index: number } | 'hidden' | null = null;
 
   private dragGhost: HTMLElement | null = null;
-  private dragStartX = 0;
-  private dragStartY = 0;
 }
 ```
 
 ### Lifecycle & Methods
 
 ```typescript
-// Note: import PropertyValues from 'lit'
-
-/**
- * React to isOpen changes - initialize working config when opened.
- */
 updated(changedProperties: PropertyValues) {
   super.updated(changedProperties);
   if (changedProperties.has('isOpen') && this.isOpen) {
-    const manager = QuickKeysPreferencesManager.getInstance();
-    this.workingConfig = manager.getEffectiveKeys();
+    // Clone current layout for editing
+    this.draftRows = quickKeysPreferencesManager.getLayout();
   }
 }
 
@@ -438,37 +301,21 @@ close(): void {
 }
 
 private save(): void {
-  // Apply working config to manager
-  const manager = QuickKeysPreferencesManager.getInstance();
-
-  // Clear and rebuild preferences
-  manager.resetToDefaults();
-
-  for (const config of this.workingConfig) {
-    if (!config.enabled) {
-      manager.setKeyEnabled(config.key, false);
-    } else {
-      manager.moveKey(config.key, config.row, config.order);
-    }
-  }
-
+  quickKeysPreferencesManager.setLayout(this.draftRows);
   this.close();
 }
 
 private reset(): void {
-  // Reset working config to defaults
-  this.workingConfig = QUICK_KEY_DEFINITIONS.map((def, i) => {
-    const sameRowBefore = QUICK_KEY_DEFINITIONS
-      .slice(0, i)
-      .filter(d => d.row === def.row)
-      .length;
-    return {
-      key: def.key,
-      enabled: true,
-      row: def.row,
-      order: sameRowBefore,
-    };
-  });
+  this.draftRows = structuredClone(DEFAULT_LAYOUT);
+}
+
+private getHiddenKeys(): QuickKeyDefinition[] {
+  const usedKeys = new Set(this.draftRows.flat());
+  return QUICK_KEY_DEFINITIONS.filter(d => !usedKeys.has(d.key));
+}
+
+private getDefinition(key: QuickKeyId): QuickKeyDefinition {
+  return QUICK_KEY_DEFINITIONS.find(d => d.key === key)!;
 }
 ```
 
@@ -510,13 +357,11 @@ private reset(): void {
 render() {
   if (!this.isOpen) return html``;
 
-  const row1 = this.getWorkingKeysForRow(1);
-  const row2 = this.getWorkingKeysForRow(2);
-  const row3 = this.getWorkingKeysForRow(3);
-  const hidden = this.workingConfig.filter(k => !k.enabled);
+  const hidden = this.getHiddenKeys();
 
   return html`
-    <div class="editor-overlay" @click=${this.close}>
+    <div class="editor-overlay" style="z-index: ${Z_INDEX.QUICK_KEYS_EDITOR}"
+         @click=${this.close}>
       <div class="editor-modal" @click=${(e: Event) => e.stopPropagation()}>
         <div class="editor-header">
           <h2>Edit Quick Keys</h2>
@@ -526,9 +371,7 @@ render() {
         <p class="editor-hint">Drag to reorder. Drag out to hide.</p>
 
         <div class="rows-container">
-          ${this.renderRow(1, row1)}
-          ${this.renderRow(2, row2)}
-          ${this.renderRow(3, row3)}
+          ${this.draftRows.map((row, rowIndex) => this.renderRow(rowIndex, row))}
         </div>
 
         <div class="hidden-section ${this.dropTarget === 'hidden' ? 'drop-active' : ''}">
@@ -536,7 +379,7 @@ render() {
           <div class="hidden-keys">
             ${hidden.length === 0
               ? html`<span class="empty-hint">Drag keys here to hide</span>`
-              : hidden.map(k => this.renderKeyTile(k, true))}
+              : hidden.map(def => this.renderKeyTile(def.key))}
           </div>
         </div>
 
@@ -549,59 +392,51 @@ render() {
   `;
 }
 
-private renderRow(row: number, keys: QuickKeyConfig[]) {
+private renderRow(rowIndex: number, keys: QuickKeyId[]) {
   const isDropTarget = this.dropTarget &&
     this.dropTarget !== 'hidden' &&
-    this.dropTarget.row === row;
+    this.dropTarget.row === rowIndex;
 
   return html`
-    <div class="key-row ${isDropTarget ? 'drop-active' : ''}" data-row=${row}>
-      <span class="row-label">Row ${row}</span>
+    <div class="key-row ${isDropTarget ? 'drop-active' : ''}" data-row=${rowIndex}>
+      <span class="row-label">Row ${rowIndex + 1}</span>
       <div class="key-tiles">
-        ${keys.map((k, i) => html`
-          ${this.renderDropIndicator(row, i)}
-          ${this.renderKeyTile(k, false)}
+        ${keys.map((key, i) => html`
+          ${this.renderDropIndicator(rowIndex, i)}
+          ${this.renderKeyTile(key)}
         `)}
-        ${this.renderDropIndicator(row, keys.length)}
+        ${this.renderDropIndicator(rowIndex, keys.length)}
       </div>
     </div>
   `;
 }
 
-private renderKeyTile(config: QuickKeyConfig, isHidden: boolean) {
-  const def = QUICK_KEY_DEFINITIONS.find(d => d.key === config.key);
-  const isDragging = this.draggedKey === config.key;
+private renderKeyTile(key: QuickKeyId) {
+  const def = this.getDefinition(key);
+  const isDragging = this.draggedKey === key;
 
   return html`
     <div
       class="key-tile ${isDragging ? 'dragging' : ''}"
-      data-key=${config.key}
-      data-row=${config.row}
-      data-order=${config.order}
-      @touchstart=${(e: TouchEvent) => this.handleDragStart(e, config.key)}
+      data-key=${key}
+      @touchstart=${(e: TouchEvent) => this.handleDragStart(e, key)}
       @touchmove=${this.handleDragMove}
       @touchend=${this.handleDragEnd}
       @touchcancel=${this.handleDragCancel}
-      @mousedown=${(e: MouseEvent) => this.handleDragStart(e, config.key)}
+      @mousedown=${(e: MouseEvent) => this.handleDragStart(e, key)}
     >
-      ${def?.label ?? config.key}
+      ${def.label}
     </div>
   `;
 }
 
-private renderDropIndicator(row: number, order: number) {
+private renderDropIndicator(row: number, index: number) {
   const isActive = this.dropTarget &&
     this.dropTarget !== 'hidden' &&
     this.dropTarget.row === row &&
-    this.dropTarget.order === order;
+    this.dropTarget.index === index;
 
   return html`<div class="drop-indicator ${isActive ? 'active' : ''}"></div>`;
-}
-
-private getWorkingKeysForRow(row: number): QuickKeyConfig[] {
-  return this.workingConfig
-    .filter(k => k.row === row && k.enabled)
-    .sort((a, b) => a.order - b.order);
 }
 ```
 
@@ -610,17 +445,12 @@ private getWorkingKeysForRow(row: number): QuickKeyConfig[] {
 Supports both touch and mouse events as first-class input methods.
 
 ```typescript
-/**
- * Unified drag start handler for both touch and mouse events.
- */
-private handleDragStart(e: TouchEvent | MouseEvent, key: string) {
+private handleDragStart(e: TouchEvent | MouseEvent, key: QuickKeyId) {
   e.preventDefault();
 
   const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
   const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
-  this.dragStartX = clientX;
-  this.dragStartY = clientY;
   this.draggedKey = key;
 
   // Create ghost element
@@ -638,9 +468,6 @@ private handleDragStart(e: TouchEvent | MouseEvent, key: string) {
   }
 }
 
-/**
- * Unified drag move handler for both touch and mouse events.
- */
 private handleDragMove = (e: TouchEvent | MouseEvent) => {
   if (!this.draggedKey || !this.dragGhost) return;
   e.preventDefault();
@@ -648,28 +475,19 @@ private handleDragMove = (e: TouchEvent | MouseEvent) => {
   const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
   const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
-  // Move ghost
   this.dragGhost.style.left = `${clientX - 30}px`;
   this.dragGhost.style.top = `${clientY - 20}px`;
-
-  // Find drop target
   this.dropTarget = this.findDropTarget(clientX, clientY);
 };
 
-/**
- * Unified drag end handler for both touch and mouse events.
- */
 private handleDragEnd = (e: TouchEvent | MouseEvent) => {
   if (!this.draggedKey) return;
   e.preventDefault();
 
   if (this.dropTarget === 'hidden') {
-    // Hide the key
-    const config = this.workingConfig.find(k => k.key === this.draggedKey);
-    if (config) config.enabled = false;
+    this.removeKeyFromRows(this.draggedKey);
   } else if (this.dropTarget) {
-    // Move the key
-    this.moveKeyInWorking(this.draggedKey, this.dropTarget.row, this.dropTarget.order);
+    this.moveKey(this.draggedKey, this.dropTarget.row, this.dropTarget.index);
   }
 
   this.cleanupDrag();
@@ -680,20 +498,15 @@ private handleDragCancel = () => {
 };
 
 private cleanupDrag() {
-  // Remove mouse listeners
   document.removeEventListener('mousemove', this.handleDragMove);
   document.removeEventListener('mouseup', this.handleDragEnd);
-
-  if (this.dragGhost) {
-    this.dragGhost.remove();
-    this.dragGhost = null;
-  }
+  this.dragGhost?.remove();
+  this.dragGhost = null;
   this.draggedKey = null;
   this.dropTarget = null;
 }
 
-private findDropTarget(x: number, y: number): { row: number; order: number } | 'hidden' | null {
-  // Check if over hidden section
+private findDropTarget(x: number, y: number): { row: number; index: number } | 'hidden' | null {
   const hiddenSection = this.renderRoot.querySelector('.hidden-section');
   if (hiddenSection) {
     const rect = hiddenSection.getBoundingClientRect();
@@ -702,64 +515,50 @@ private findDropTarget(x: number, y: number): { row: number; order: number } | '
     }
   }
 
-  // Check each row
   for (const rowEl of this.renderRoot.querySelectorAll('.key-row')) {
     const rect = rowEl.getBoundingClientRect();
     if (y < rect.top || y > rect.bottom) continue;
 
-    const row = parseInt(rowEl.getAttribute('data-row') || '1');
+    const row = parseInt(rowEl.getAttribute('data-row') || '0');
     const tiles = rowEl.querySelectorAll('.key-tile');
 
-    // Find insertion point
     for (let i = 0; i < tiles.length; i++) {
       const tileRect = tiles[i].getBoundingClientRect();
-      const midX = tileRect.left + tileRect.width / 2;
-
-      if (x < midX) {
-        return { row, order: i };
+      if (x < tileRect.left + tileRect.width / 2) {
+        return { row, index: i };
       }
     }
-
-    // After all tiles
-    return { row, order: tiles.length };
+    return { row, index: tiles.length };
   }
 
   return null;
 }
 
-private moveKeyInWorking(key: string, toRow: number, toOrder: number) {
-  const config = this.workingConfig.find(k => k.key === key);
-  if (!config) return;
+/** Remove key from all rows (hide it) */
+private removeKeyFromRows(key: QuickKeyId) {
+  this.draftRows = this.draftRows.map(row => row.filter(k => k !== key));
+  this.requestUpdate();
+}
 
-  const fromRow = config.row;
-  const fromOrder = config.order;
-
-  if (fromRow === toRow && fromOrder === toOrder) return;
-
-  // Remove from source
-  for (const k of this.workingConfig) {
-    if (k.row === fromRow && k.order > fromOrder && k.enabled) {
-      k.order--;
-    }
+/** Move key to new position */
+private moveKey(key: QuickKeyId, toRow: number, toIndex: number) {
+  // Remove from current position
+  let fromRow = -1, fromIndex = -1;
+  for (let r = 0; r < this.draftRows.length; r++) {
+    const i = this.draftRows[r].indexOf(key);
+    if (i !== -1) { fromRow = r; fromIndex = i; break; }
   }
 
-  // Adjust target if same row moving forward
-  let targetOrder = toOrder;
-  if (fromRow === toRow && fromOrder < toOrder) {
-    targetOrder--;
+  // If not found in rows (was hidden), just insert
+  if (fromRow === -1) {
+    this.draftRows[toRow].splice(toIndex, 0, key);
+  } else {
+    // Remove from source
+    this.draftRows[fromRow].splice(fromIndex, 1);
+    // Adjust target index if same row and moving forward
+    const adjustedIndex = (fromRow === toRow && fromIndex < toIndex) ? toIndex - 1 : toIndex;
+    this.draftRows[toRow].splice(adjustedIndex, 0, key);
   }
-
-  // Make room at target
-  for (const k of this.workingConfig) {
-    if (k.row === toRow && k.order >= targetOrder && k.enabled && k.key !== key) {
-      k.order++;
-    }
-  }
-
-  // Move
-  config.row = toRow;
-  config.order = targetOrder;
-  config.enabled = true;
 
   this.requestUpdate();
 }
@@ -975,24 +774,22 @@ ${this.mediaState.isMobile ? html`
 **1. Import:**
 ```typescript
 import {
-  QuickKeysPreferencesManager,
-  type QuickKeyConfig
+  quickKeysPreferencesManager,
+  type QuickKeyDefinition,
 } from '../../utils/quick-keys-preferences.js';
 ```
 
 **2. Add state:**
 ```typescript
-@state() private quickKeysConfig?: QuickKeyConfig[];
+@state() private quickKeysRows?: QuickKeyDefinition[][];
 private quickKeysUnsubscribe?: () => void;
 ```
 
 **3. In connectedCallback:**
 ```typescript
-// Subscribe to quick keys preferences
-const qkManager = QuickKeysPreferencesManager.getInstance();
-this.quickKeysConfig = qkManager.getEffectiveKeys();
-this.quickKeysUnsubscribe = qkManager.subscribe(() => {
-  this.quickKeysConfig = qkManager.getEffectiveKeys();
+this.quickKeysRows = quickKeysPreferencesManager.getState().rows;
+this.quickKeysUnsubscribe = quickKeysPreferencesManager.subscribe(() => {
+  this.quickKeysRows = quickKeysPreferencesManager.getState().rows;
 });
 ```
 
@@ -1006,7 +803,7 @@ this.quickKeysUnsubscribe?.();
 <terminal-quick-keys
   .visible=${this.showQuickKeys}
   .onKeyPress=${this.handleQuickKeyPress}
-  .keyConfig=${this.quickKeysConfig}
+  .rows=${this.quickKeysRows}
 ></terminal-quick-keys>
 ```
 
@@ -1016,11 +813,11 @@ this.quickKeysUnsubscribe?.();
 
 | Case | Handling |
 |------|----------|
-| All keys hidden | Allowed. Quick keys bar renders empty. User can reset via settings. |
-| Empty row | Allowed. Row still renders but with no keys. |
-| New keys in future | Sparse storage means new defaults appear automatically. |
-| Corrupted localStorage | Catch parse error, fall back to defaults. |
-| Done button | Not in configurable list. Always visible. |
+| All keys hidden | Allowed. Quick keys bar renders empty rows. User can reset via settings. |
+| Empty row | Row still renders (allows drop target). Empty rows could be pruned on save. |
+| New keys in future | New keys added to `QUICK_KEY_DEFINITIONS` appear in hidden section automatically. |
+| Corrupted localStorage | `isValidLayout()` catches invalid data, resets to defaults. |
+| Done button | Not in configurable list. Always visible in terminal-quick-keys. |
 
 ---
 
@@ -1028,43 +825,48 @@ this.quickKeysUnsubscribe?.();
 
 | File | Action | Description |
 |------|--------|-------------|
-| `web/src/client/utils/quick-keys-preferences.ts` | Create | Preferences manager + types + key definitions |
+| `web/src/client/utils/quick-keys-preferences.ts` | Create | `QUICK_KEY_DEFINITIONS`, types, manager class |
 | `web/src/client/utils/constants.ts` | Modify | Add `QUICK_KEYS_EDITOR: 115` to Z_INDEX |
 | `web/src/client/components/quick-keys-editor.ts` | Create | Drag-drop editor modal (touch + mouse) |
-| `web/src/client/components/terminal-quick-keys.ts` | Modify | Add keyConfig prop, use for rendering |
+| `web/src/client/components/terminal-quick-keys.ts` | Modify | Add `rows` prop, render dynamically |
 | `web/src/client/components/settings.ts` | Modify | Add Quick Keys section (mobile) |
-| `web/src/client/components/session-view/overlays-container.ts` | Modify | Subscribe and pass config |
+| `web/src/client/components/session-view/overlays-container.ts` | Modify | Subscribe and pass rows |
 
 ---
 
 ## Implementation Order
 
 1. Create `quick-keys-preferences.ts`
-   - Export `QUICK_KEY_DEFINITIONS`, `QuickKeyDefinition`, types, manager class
-   - Export `quickKeysPreferencesManager` singleton convenience
+   - `QUICK_KEY_DEFINITIONS` array with `as const`
+   - `QuickKeyId` type derived from definitions
+   - `QuickKeyDefinition` interface
+   - `QuickKeysLayout` type (`QuickKeyId[][]`)
+   - `QuickKeysState` interface (`rows` + `hidden`)
+   - `QuickKeysPreferencesManager` class
+   - `quickKeysPreferencesManager` singleton export
 
 2. Modify `constants.ts`
    - Add `QUICK_KEYS_EDITOR: 115` to Z_INDEX
 
 3. Modify `terminal-quick-keys.ts`
    - Import from preferences
-   - Add keyConfig property
-   - Add getVisibleKeysForRow method
-   - Update render to use it
+   - Add `rows?: QuickKeyDefinition[][]` property
+   - Render rows dynamically
    - Test: defaults still work, no visual change
 
 4. Modify `overlays-container.ts`
    - Subscribe to manager
-   - Pass keyConfig to terminal-quick-keys
+   - Pass `rows` to terminal-quick-keys
    - Test: still works, no visual change
 
 5. Create `quick-keys-editor.ts`
-   - Build modal UI
-   - Implement drag-drop with touch AND mouse support
-   - Test: can reorder and hide keys (both input methods)
+   - Modal with `draftRows: QuickKeyId[][]` state
+   - Drag-drop with touch AND mouse support
+   - `removeKeyFromRows()`, `moveKey()` using splice
+   - Test: can reorder and hide keys
 
 6. Modify `settings.ts`
-   - Add Quick Keys section
+   - Add Quick Keys section (mobile only)
    - Wire up editor
    - Test: can open editor from settings
 
