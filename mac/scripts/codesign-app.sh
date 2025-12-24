@@ -109,8 +109,9 @@ fi
 
 if [[ -d "$APP_BUNDLE/Contents/Resources" ]]; then
   if [[ -f "$APP_BUNDLE/Contents/Resources/vibetunnel" ]]; then
-    log "Signing embedded vibetunnel binary"
-    sign_plain "$APP_BUNDLE/Contents/Resources/vibetunnel"
+    log "Signing embedded vibetunnel binary with JIT entitlements"
+    VIBETUNNEL_ENTITLEMENTS="$(dirname "$0")/../VibeTunnel/vibetunnel-binary.entitlements"
+    codesign --force --options runtime $TIMESTAMP_FLAG --sign "$SIGN_IDENTITY" --entitlements "$VIBETUNNEL_ENTITLEMENTS" $KEYCHAIN_OPTS "$APP_BUNDLE/Contents/Resources/vibetunnel"
   fi
 
   find "$APP_BUNDLE/Contents/Resources" -maxdepth 1 -type f -name "vibetunnel-*" -perm -111 -print0 2>/dev/null \
