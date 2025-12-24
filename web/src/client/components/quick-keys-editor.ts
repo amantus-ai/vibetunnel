@@ -55,8 +55,10 @@ export class QuickKeysEditor extends LitElement {
   updated(changedProperties: PropertyValues) {
     super.updated(changedProperties);
     if (changedProperties.has('isOpen') && this.isOpen) {
-      // Clone current layout for editing
-      this.draftRows = quickKeysPreferencesManager.getLayout();
+      // Ensure preferences are loaded from server, then get layout for editing
+      quickKeysPreferencesManager.load().then(() => {
+        this.draftRows = quickKeysPreferencesManager.getLayout();
+      });
     }
   }
 
