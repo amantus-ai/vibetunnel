@@ -1,9 +1,55 @@
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const esbuild = require('esbuild');
 const { prodOptions } = require('./esbuild-config.js');
 const { nodePtyPlugin } = require('./node-pty-plugin.js');
+
+/**
+ * Clean old hashed bundle files before building new ones.
+ * Removes files matching patterns like client-bundle-[hash].js and styles-[hash].css
+ */
+function cleanOldBundles() {
+  const bundleDir = path.join(__dirname, '..', 'public', 'bundle');
+  if (!fs.existsSync(bundleDir)) return;
+
+  for (const file of fs.readdirSync(bundleDir)) {
+    if (file.match(/^(client-bundle|styles)-[a-f0-9]{8}\.(js|css)(\.map)?$/)) {
+      fs.unlinkSync(path.join(bundleDir, file));
+      console.log(`  Cleaned old bundle: ${file}`);
+    }
+  }
+}
+
+/**
+ * Update HTML files with new hashed asset filenames.
+ * @param {string} jsFilename - The hashed JS bundle filename
+ * @param {string} cssFilename - The hashed CSS filename
+ */
+function updateHtmlFiles(jsFilename, cssFilename) {
+  const htmlFiles = ['public/index.html', 'public/logs.html'];
+
+  for (const htmlPath of htmlFiles) {
+    const fullPath = path.join(__dirname, '..', htmlPath);
+    let html = fs.readFileSync(fullPath, 'utf8');
+
+    // Update JS reference (handles both hashed and non-hashed patterns)
+    html = html.replace(
+      /\/bundle\/client-bundle(-[a-f0-9]{8})?\.js/g,
+      `/bundle/${jsFilename}`
+    );
+
+    // Update CSS reference (handles both hashed and non-hashed patterns)
+    html = html.replace(
+      /\/bundle\/styles(-[a-f0-9]{8})?\.css/g,
+      `/bundle/${cssFilename}`
+    );
+
+    fs.writeFileSync(fullPath, html);
+    console.log(`  Updated ${htmlPath}`);
+  }
+}
 
 async function build() {
   console.log('Starting build process...');
@@ -16,26 +62,49 @@ async function build() {
   console.log('Creating directories...');
   execSync('node scripts/ensure-dirs.js', { stdio: 'inherit' });
 
+  // Clean old hashed bundles
+  console.log('Cleaning old hashed bundles...');
+  cleanOldBundles();
+
   // Copy assets
   console.log('Copying assets...');
   execSync('node scripts/copy-assets.js', { stdio: 'inherit' });
 
-  // Build CSS
+  // Build CSS (initially without hash)
   console.log('Building CSS...');
   execSync('npx --no-install postcss ./src/client/styles.css -o ./public/bundle/styles.css', { stdio: 'inherit' });
+
+  // Hash CSS file
+  console.log('Hashing CSS...');
+  const cssPath = path.join(__dirname, '..', 'public', 'bundle', 'styles.css');
+  const cssContent = fs.readFileSync(cssPath);
+  const cssHash = crypto.createHash('md5').update(cssContent).digest('hex').slice(0, 8);
+  const hashedCssFilename = `styles-${cssHash}.css`;
+  fs.renameSync(cssPath, path.join(__dirname, '..', 'public', 'bundle', hashedCssFilename));
+  console.log(`  CSS hashed: ${hashedCssFilename}`);
 
   // Bundle client JavaScript
   console.log('Bundling client JavaScript...');
 
+  let hashedJsFilename = '';
+
   try {
-    // Build main app bundle
-    await esbuild.build({
+    // Build main app bundle with content hash
+    const result = await esbuild.build({
       ...prodOptions,
       entryPoints: ['src/client/app-entry.ts'],
-      outfile: 'public/bundle/client-bundle.js',
+      outdir: 'public/bundle',
+      entryNames: 'client-bundle-[hash]',
+      metafile: true,
     });
 
-    // Build test bundle
+    // Extract the hashed filename from metafile
+    const outputs = Object.keys(result.metafile.outputs);
+    const jsOutput = outputs.find(f => f.endsWith('.js') && f.includes('client-bundle'));
+    hashedJsFilename = path.basename(jsOutput);
+    console.log(`  JS hashed: ${hashedJsFilename}`);
+
+    // Build test bundle (no hash needed for test bundle)
     await esbuild.build({
       ...prodOptions,
       entryPoints: ['src/client/test-entry.ts'],
@@ -56,6 +125,10 @@ async function build() {
     console.error('Build failed:', error);
     process.exit(1);
   }
+
+  // Update HTML files with hashed filenames
+  console.log('Updating HTML files with hashed filenames...');
+  updateHtmlFiles(hashedJsFilename, hashedCssFilename);
 
   // Build server TypeScript
   console.log('Building server...');
