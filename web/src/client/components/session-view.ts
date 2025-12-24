@@ -965,10 +965,10 @@ export class SessionView extends LitElement {
           box-sizing: border-box;
         }
         
-        /* Adjust grid when keyboard is visible */
+        /* Adjust grid when native keyboard is visible (quick keys are position:fixed, handled separately) */
         .session-view-grid[data-keyboard-visible="true"] {
-          height: calc(100vh - var(--keyboard-height, 0px) - var(--quickkeys-height, 0px));
-          height: calc(100dvh - var(--keyboard-height, 0px) - var(--quickkeys-height, 0px));
+          height: calc(100vh - var(--keyboard-height, 0px));
+          height: calc(100dvh - var(--keyboard-height, 0px));
           transition: height 0.2s ease-out;
         }
         
@@ -984,22 +984,10 @@ export class SessionView extends LitElement {
           contain: layout style paint; /* Isolate terminal updates */
         }
         
-        /* Make terminal content 50px larger to prevent clipping */
-        .terminal-area vibe-terminal {
-          height: calc(100% + 50px) !important;
-          margin-bottom: -50px !important;
-        }
-        
-        /* Transform terminal up when quick keys are visible */
+        /* When quick keys are visible, reduce terminal area height so terminal resizes */
         .terminal-area[data-quickkeys-visible="true"] {
-          transform: translateY(-110px);
-          transition: transform 0.2s ease-out;
-        }
-        
-        /* Add padding to terminal content when keyboard is visible */
-        .terminal-area[data-quickkeys-visible="true"] vibe-terminal {
-          padding-bottom: 70px !important;
-          box-sizing: border-box;
+          height: calc(100% - var(--quickkeys-height, 110px));
+          transition: height 0.2s ease-out;
         }
         
         .quickkeys-area {
@@ -1030,7 +1018,7 @@ export class SessionView extends LitElement {
       <div class="bg-bg-secondary" style="padding-top: env(safe-area-inset-top);">
         <div
           class="session-view-grid"
-          style="outline: none !important; box-shadow: none !important; --keyboard-height: ${uiState.keyboardHeight}px; --quickkeys-height: 0px;"
+          style="outline: none !important; box-shadow: none !important; --keyboard-height: ${uiState.keyboardHeight}px; --quickkeys-height: ${uiState.showQuickKeys ? '110px' : '0px'};"
           data-keyboard-visible="${uiState.keyboardHeight > 0 || uiState.showQuickKeys ? 'true' : 'false'}"
         >
         <!-- Session Header Area -->
