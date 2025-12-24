@@ -92,19 +92,31 @@ export interface QuickKeysState {
 
 ### Storage
 
-- localStorage key: `vibetunnel_quick_keys`
-- Format: `QuickKeysLayout` (JSON array of arrays)
+**Server-side persistence** via `ConfigService` in `~/.vibetunnel/config.json`:
+
+```typescript
+// Added to VibeTunnelConfig
+quickKeysLayout?: QuickKeyId[][];
+```
+
+- Syncs across all browsers connecting to this server
+- Uses existing config validation (Zod) and file watching
+- API: `GET /api/config` and `PUT /api/config`
 - Dynamic rows: user can have any number of rows
 - Hidden keys: keys in `QUICK_KEY_DEFINITIONS` not present in any row
-- Invalid/corrupt data: reset to defaults
+- Missing/invalid: use default layout
 
-Example:
+Example in config.json:
 ```json
-[
-  ["Escape", "Control", "Tab", "ArrowUp", "ArrowDown"],
-  ["Home", "Paste", "Delete"],
-  ["Option", "Command", "Ctrl+C"]
-]
+{
+  "version": 1,
+  "quickStartCommands": [...],
+  "quickKeysLayout": [
+    ["Escape", "Control", "Tab", "ArrowUp", "ArrowDown"],
+    ["Home", "Paste", "Delete"],
+    ["Option", "Command", "Ctrl+C"]
+  ]
+}
 ```
 
 ---
@@ -116,10 +128,7 @@ Example:
 ### Class: QuickKeysPreferencesManager
 
 ```typescript
-const STORAGE_KEY = 'vibetunnel_quick_keys';
-
-// Default layout: 3 rows as originally defined
-const DEFAULT_LAYOUT: QuickKeysLayout = [
+export const DEFAULT_LAYOUT: QuickKeysLayout = [
   ['Escape', 'Control', 'CtrlExpand', 'F', 'Tab', 'shift_tab',
    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown'],
   ['Home', 'Paste', 'End', 'Delete', '`', '~', '|', '/', '\\', '-'],
@@ -128,11 +137,12 @@ const DEFAULT_LAYOUT: QuickKeysLayout = [
 
 export class QuickKeysPreferencesManager {
   private static instance: QuickKeysPreferencesManager;
-  private layout: QuickKeysLayout;
+  private layout: QuickKeysLayout = structuredClone(DEFAULT_LAYOUT);
   private listeners = new Set<() => void>();
+  private loaded = false;
 
   private constructor() {
-    this.layout = this.load();
+    // Don't load in constructor - call load() explicitly
   }
 
   static getInstance(): QuickKeysPreferencesManager {
@@ -142,19 +152,30 @@ export class QuickKeysPreferencesManager {
     return QuickKeysPreferencesManager.instance;
   }
 
-  private load(): QuickKeysLayout {
+  /** Fetch layout from server */
+  async load(): Promise<void> {
+    if (this.loaded) return;
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (this.isValidLayout(parsed)) {
-          return parsed;
+      const response = await fetch('/api/config');
+      if (response.ok) {
+        const config = await response.json();
+        if (this.isValidLayout(config.quickKeysLayout)) {
+          this.layout = config.quickKeysLayout;
         }
       }
     } catch {
-      // Corrupted data
+      // Use defaults
     }
-    return structuredClone(DEFAULT_LAYOUT);
+    this.loaded = true;
+    this.notify();
+  }
+
+  /** Update layout from server config (called when config changes) */
+  updateFromConfig(config: { quickKeysLayout?: QuickKeysLayout }): void {
+    if (this.isValidLayout(config.quickKeysLayout)) {
+      this.layout = config.quickKeysLayout;
+      this.notify();
+    }
   }
 
   private isValidLayout(data: unknown): data is QuickKeysLayout {
@@ -165,8 +186,20 @@ export class QuickKeysPreferencesManager {
     );
   }
 
-  private save(): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.layout));
+  private async save(): Promise<void> {
+    try {
+      await fetch('/api/config/quick-keys-layout', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(this.layout),
+      });
+    } catch (error) {
+      console.error('Failed to save quick keys layout:', error);
+    }
+    this.notify();
+  }
+
+  private notify(): void {
     this.listeners.forEach(fn => fn());
   }
 
@@ -175,38 +208,68 @@ export class QuickKeysPreferencesManager {
     return () => this.listeners.delete(listener);
   }
 
-  /** Get current state with full definitions for rendering */
   getState(): QuickKeysState {
-    const allKeys = new Set(QUICK_KEY_DEFINITIONS.map(d => d.key));
     const usedKeys = new Set(this.layout.flat());
-
     const rows = this.layout.map(row =>
       row.map(key => QUICK_KEY_DEFINITIONS.find(d => d.key === key)!)
     );
-
     const hidden = QUICK_KEY_DEFINITIONS.filter(d => !usedKeys.has(d.key));
-
     return { rows, hidden };
   }
 
-  /** Get raw layout for editor */
   getLayout(): QuickKeysLayout {
     return structuredClone(this.layout);
   }
 
-  /** Save new layout from editor */
-  setLayout(layout: QuickKeysLayout): void {
+  async setLayout(layout: QuickKeysLayout): Promise<void> {
     this.layout = structuredClone(layout);
-    this.save();
+    await this.save();
   }
 
-  resetToDefaults(): void {
+  async resetToDefaults(): Promise<void> {
     this.layout = structuredClone(DEFAULT_LAYOUT);
-    this.save();
+    await this.save();
   }
 }
 
 export const quickKeysPreferencesManager = QuickKeysPreferencesManager.getInstance();
+```
+
+---
+
+## Server-Side Changes
+
+### 1. Update Types: `web/src/types/config.ts`
+
+```typescript
+// Add to VibeTunnelConfig interface
+quickKeysLayout?: string[][];
+```
+
+### 2. Update Schema: `web/src/server/services/config-service.ts`
+
+```typescript
+// Add to ConfigSchema
+quickKeysLayout: z.array(z.array(z.string())).optional(),
+```
+
+### 3. Add Route: `web/src/server/routes/config.ts`
+
+```typescript
+// PUT /api/config/quick-keys-layout
+router.put('/quick-keys-layout', async (req, res) => {
+  try {
+    const layout = req.body;
+    if (!Array.isArray(layout) || !layout.every(row => Array.isArray(row))) {
+      return res.status(400).json({ error: 'Invalid layout format' });
+    }
+    const config = configService.getConfig();
+    configService.updateConfig({ ...config, quickKeysLayout: layout });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save layout' });
+  }
+});
 ```
 
 ---
@@ -825,7 +888,10 @@ this.quickKeysUnsubscribe?.();
 
 | File | Action | Description |
 |------|--------|-------------|
-| `web/src/client/utils/quick-keys-preferences.ts` | Create | `QUICK_KEY_DEFINITIONS`, types, manager class |
+| `web/src/types/config.ts` | Modify | Add `quickKeysLayout` to `VibeTunnelConfig` |
+| `web/src/server/services/config-service.ts` | Modify | Add `quickKeysLayout` to Zod schema |
+| `web/src/server/routes/config.ts` | Modify | Add `PUT /api/config/quick-keys-layout` |
+| `web/src/client/utils/quick-keys-preferences.ts` | Create | `QUICK_KEY_DEFINITIONS`, types, manager (API-based) |
 | `web/src/client/utils/constants.ts` | Modify | Add `QUICK_KEYS_EDITOR: 115` to Z_INDEX |
 | `web/src/client/components/quick-keys-editor.ts` | Create | Drag-drop editor modal (touch + mouse) |
 | `web/src/client/components/terminal-quick-keys.ts` | Modify | Add `rows` prop, render dynamically |
@@ -836,38 +902,43 @@ this.quickKeysUnsubscribe?.();
 
 ## Implementation Order
 
-1. Create `quick-keys-preferences.ts`
-   - `QUICK_KEY_DEFINITIONS` array with `as const`
-   - `QuickKeyId` type derived from definitions
-   - `QuickKeyDefinition` interface
-   - `QuickKeysLayout` type (`QuickKeyId[][]`)
-   - `QuickKeysState` interface (`rows` + `hidden`)
-   - `QuickKeysPreferencesManager` class
-   - `quickKeysPreferencesManager` singleton export
+1. **Server: Types**
+   - Add `quickKeysLayout?: string[][]` to `VibeTunnelConfig` in `web/src/types/config.ts`
 
-2. Modify `constants.ts`
+2. **Server: Schema**
+   - Add `quickKeysLayout: z.array(z.array(z.string())).optional()` to `ConfigSchema` in `config-service.ts`
+
+3. **Server: Route**
+   - Add `PUT /api/config/quick-keys-layout` endpoint in `config.ts`
+
+4. **Client: Preferences Manager**
+   - Create `quick-keys-preferences.ts`
+   - `QUICK_KEY_DEFINITIONS` with `as const`
+   - `QuickKeyId`, `QuickKeyDefinition`, `QuickKeysLayout`, `QuickKeysState` types
+   - `QuickKeysPreferencesManager` with async `load()`, `setLayout()`, `resetToDefaults()`
+
+5. **Client: Constants**
    - Add `QUICK_KEYS_EDITOR: 115` to Z_INDEX
 
-3. Modify `terminal-quick-keys.ts`
-   - Import from preferences
+6. **Client: Terminal Quick Keys**
    - Add `rows?: QuickKeyDefinition[][]` property
    - Render rows dynamically
-   - Test: defaults still work, no visual change
+   - Test: defaults still work
 
-4. Modify `overlays-container.ts`
-   - Subscribe to manager
+7. **Client: Overlays Container**
+   - Call `quickKeysPreferencesManager.load()` on connect
+   - Subscribe to changes
    - Pass `rows` to terminal-quick-keys
-   - Test: still works, no visual change
 
-5. Create `quick-keys-editor.ts`
-   - Modal with `draftRows: QuickKeyId[][]` state
-   - Drag-drop with touch AND mouse support
-   - `removeKeyFromRows()`, `moveKey()` using splice
-   - Test: can reorder and hide keys
+8. **Client: Editor**
+   - Create `quick-keys-editor.ts`
+   - Drag-drop with touch AND mouse
+   - Async `save()` and `reset()`
 
-6. Modify `settings.ts`
+9. **Client: Settings**
    - Add Quick Keys section (mobile only)
    - Wire up editor
-   - Test: can open editor from settings
 
-7. Run `pnpm run check`
+10. **Verify**
+    - Run `pnpm run check`
+    - Test sync across browsers
