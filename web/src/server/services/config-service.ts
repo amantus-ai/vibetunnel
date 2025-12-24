@@ -24,6 +24,7 @@ const ConfigSchema = z.object({
     })
   ),
   repositoryBasePath: z.string().optional(),
+  quickKeysLayout: z.array(z.array(z.string())).optional(),
   // Extended configuration sections - we parse but don't use most of these yet
   server: z
     .object({
@@ -292,6 +293,18 @@ export class ConfigService {
 
   public getNotificationPreferences(): NotificationPreferences {
     return this.config.preferences?.notifications || DEFAULT_NOTIFICATION_PREFERENCES;
+  }
+
+  public getQuickKeysLayout(): string[][] | undefined {
+    return this.config.quickKeysLayout;
+  }
+
+  public updateQuickKeysLayout(layout: string[][]): void {
+    // Validate the entire config with updated layout
+    const updatedConfig = { ...this.config, quickKeysLayout: layout };
+    this.config = this.validateConfig(updatedConfig);
+    this.saveConfig();
+    this.notifyConfigChange();
   }
 
   public updateNotificationPreferences(notifications: Partial<NotificationPreferences>): void {

@@ -31,6 +31,7 @@ export interface AppConfig {
   serverConfigured?: boolean;
   quickStartCommands?: QuickStartCommand[];
   notificationPreferences?: NotificationPreferences;
+  quickKeysLayout?: string[][];
 }
 
 interface ConfigRouteOptions {
@@ -59,6 +60,7 @@ export function createConfigRoutes(options: ConfigRouteOptions): Router {
         serverConfigured: true, // Always configured when server is running
         quickStartCommands: vibeTunnelConfig.quickStartCommands,
         notificationPreferences: configService.getNotificationPreferences(),
+        quickKeysLayout: configService.getQuickKeysLayout(),
       };
 
       logger.debug('[GET /api/config] Returning app config:', config);
@@ -147,6 +149,37 @@ export function createConfigRoutes(options: ConfigRouteOptions): Router {
     } catch (error) {
       logger.error('[PUT /api/config] Error updating config:', error);
       res.status(500).json({ error: 'Failed to update config' });
+    }
+  });
+
+  /**
+   * Update quick keys layout
+   * PUT /api/config/quick-keys-layout
+   */
+  router.put('/config/quick-keys-layout', (req, res) => {
+    try {
+      const layout = req.body;
+
+      // Validate that layout is an array of arrays
+      if (!Array.isArray(layout) || !layout.every((row) => Array.isArray(row))) {
+        logger.error('[PUT /api/config/quick-keys-layout] Invalid layout format');
+        return res.status(400).json({ error: 'Invalid layout format' });
+      }
+
+      // Validate that all items are strings
+      if (!layout.every((row) => row.every((item) => typeof item === 'string'))) {
+        logger.error(
+          '[PUT /api/config/quick-keys-layout] Invalid layout: all items must be strings'
+        );
+        return res.status(400).json({ error: 'Invalid layout: all items must be strings' });
+      }
+
+      configService.updateQuickKeysLayout(layout);
+      logger.debug('[PUT /api/config/quick-keys-layout] Updated quick keys layout:', layout);
+      res.json({ success: true });
+    } catch (error) {
+      logger.error('[PUT /api/config/quick-keys-layout] Error updating layout:', error);
+      res.status(500).json({ error: 'Failed to save layout' });
     }
   });
 

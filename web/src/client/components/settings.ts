@@ -12,6 +12,7 @@ import { RepositoryService } from '../services/repository-service.js';
 import { ServerConfigService } from '../services/server-config-service.js';
 import { createLogger } from '../utils/logger.js';
 import { VERSION } from '../version.js';
+import './quick-keys-editor.js';
 
 const logger = createLogger('settings');
 
@@ -37,6 +38,7 @@ export class Settings extends LitElement {
   @state() private repositoryBasePath = DEFAULT_REPOSITORY_BASE_PATH;
   @state() private repositoryCount = 0;
   @state() private isDiscoveringRepositories = false;
+  @state() private showQuickKeysEditor = false;
 
   private permissionChangeUnsubscribe?: () => void;
   private subscriptionChangeUnsubscribe?: () => void;
@@ -688,7 +690,33 @@ export class Settings extends LitElement {
     return html`
       <div class="space-y-4">
         <h3 class="text-md font-bold text-primary mb-3">Application</h3>
-        
+
+        <!-- Quick Keys -->
+        <div class="p-4 bg-bg-tertiary rounded-lg border border-border/50">
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <label class="text-primary font-medium">Customize Quick Keys</label>
+              <p class="text-muted text-xs mt-1">
+                Reorder or hide keyboard shortcuts
+              </p>
+            </div>
+            <button
+              class="btn-secondary text-xs px-3 py-1.5"
+              @click=${() => {
+                this.showQuickKeysEditor = true;
+              }}
+            >
+              Edit
+            </button>
+          </div>
+        </div>
+
+        <quick-keys-editor
+          .isOpen=${this.showQuickKeysEditor}
+          @close=${() => {
+            this.showQuickKeysEditor = false;
+          }}
+        ></quick-keys-editor>
         <!-- Repository Base Path -->
         <div class="p-4 bg-bg-tertiary rounded-lg border border-border/50">
           <div class="mb-3">

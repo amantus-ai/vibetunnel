@@ -25,6 +25,7 @@ export interface VibeTunnelConfig {
   version: number;
   quickStartCommands: QuickStartCommand[];
   repositoryBasePath?: string;
+  quickKeysLayout?: string[][];
 
   // Extended configuration sections - matches Mac ConfigManager
   server?: {

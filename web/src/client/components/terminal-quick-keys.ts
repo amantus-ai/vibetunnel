@@ -1,47 +1,22 @@
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { Z_INDEX } from '../utils/constants.js';
+import {
+  DEFAULT_LAYOUT,
+  QUICK_KEY_DEFINITIONS,
+  type QuickKeyDefinition,
+} from '../utils/quick-keys-preferences.js';
 
-// Terminal-specific quick keys for mobile use
-const TERMINAL_QUICK_KEYS = [
-  // First row
-  { key: 'Escape', label: 'Esc', row: 1 },
-  { key: 'Control', label: 'Ctrl', modifier: true, row: 1 },
-  { key: 'CtrlExpand', label: '⌃', toggle: true, row: 1 },
-  { key: 'F', label: 'F', toggle: true, row: 1 },
-  { key: 'Tab', label: 'Tab', row: 1 },
-  { key: 'shift_tab', label: '⇤', row: 1 },
-  { key: 'ArrowUp', label: '↑', arrow: true, row: 1 },
-  { key: 'ArrowDown', label: '↓', arrow: true, row: 1 },
-  { key: 'ArrowLeft', label: '←', arrow: true, row: 1 },
-  { key: 'ArrowRight', label: '→', arrow: true, row: 1 },
-  { key: 'PageUp', label: 'PgUp', row: 1 },
-  { key: 'PageDown', label: 'PgDn', row: 1 },
-  // Second row
-  { key: 'Home', label: 'Home', row: 2 },
-  { key: 'Paste', label: 'Paste', row: 2 },
-  { key: 'End', label: 'End', row: 2 },
-  { key: 'Delete', label: 'Del', row: 2 },
-  { key: '`', label: '`', row: 2 },
-  { key: '~', label: '~', row: 2 },
-  { key: '|', label: '|', row: 2 },
-  { key: '/', label: '/', row: 2 },
-  { key: '\\', label: '\\', row: 2 },
-  { key: '-', label: '-', row: 2 },
-  // Third row - additional special characters
-  { key: 'Option', label: '⌥', modifier: true, row: 3 },
-  { key: 'Command', label: '⌘', modifier: true, row: 3 },
-  { key: 'Ctrl+C', label: '^C', combo: true, row: 3 },
-  { key: 'Ctrl+Z', label: '^Z', combo: true, row: 3 },
-  { key: "'", label: "'", row: 3 },
-  { key: '"', label: '"', row: 3 },
-  { key: '{', label: '{', row: 3 },
-  { key: '}', label: '}', row: 3 },
-  { key: '[', label: '[', row: 3 },
-  { key: ']', label: ']', row: 3 },
-  { key: '(', label: '(', row: 3 },
-  { key: ')', label: ')', row: 3 },
-];
+// Build default rows from DEFAULT_LAYOUT for fallback
+const KEY_DEFINITION_MAP = new Map<string, QuickKeyDefinition>(
+  QUICK_KEY_DEFINITIONS.map((def) => [def.key, def as QuickKeyDefinition])
+);
+
+const DEFAULT_ROWS: QuickKeyDefinition[][] = DEFAULT_LAYOUT.map((row) =>
+  row
+    .map((key) => KEY_DEFINITION_MAP.get(key))
+    .filter((def): def is QuickKeyDefinition => def !== undefined)
+);
 
 // Common Ctrl key combinations
 const CTRL_SHORTCUTS = [
@@ -80,6 +55,7 @@ export class TerminalQuickKeys extends LitElement {
     pasteText?: string
   ) => void;
   @property({ type: Boolean }) visible = false;
+  @property({ type: Array }) rows?: QuickKeyDefinition[][];
 
   @state() private showFunctionKeys = false;
   @state() private showCtrlKeys = false;
@@ -530,7 +506,7 @@ export class TerminalQuickKeys extends LitElement {
         <div class="quick-keys-bar">
           <!-- Row 1 -->
           <div class="flex gap-0.5 mb-0.5">
-            ${TERMINAL_QUICK_KEYS.filter((k) => k.row === 1).map(
+            ${(this.rows ?? DEFAULT_ROWS)[0]?.map(
               ({ key, label, modifier, arrow, toggle }) => html`
                 <button
                   type="button"
@@ -688,7 +664,7 @@ export class TerminalQuickKeys extends LitElement {
                 : html`
               <!-- Regular row 2 -->
               <div class="flex gap-0.5 mb-0.5 ">
-                ${TERMINAL_QUICK_KEYS.filter((k) => k.row === 2).map(
+                ${(this.rows ?? DEFAULT_ROWS)[1]?.map(
                   ({ key, label, modifier, combo, toggle }) => html`
                     <button
                       type="button"
@@ -750,7 +726,7 @@ export class TerminalQuickKeys extends LitElement {
 
           <!-- Row 3 - Additional special characters (always visible) -->
           <div class="flex gap-0.5 ">
-            ${TERMINAL_QUICK_KEYS.filter((k) => k.row === 3).map(
+            ${(this.rows ?? DEFAULT_ROWS)[2]?.map(
               ({ key, label, modifier, combo }) => html`
                 <button
                   type="button"
