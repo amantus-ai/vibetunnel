@@ -50,10 +50,11 @@ export const Z_INDEX = {
   IME_INPUT: 70, // Invisible IME input for CJK text - needs to be above terminal but below modals
 
   // Modals and overlays (100-199)
+  // Note: CSS modal-backdrop uses z-index 1000, modal-content uses 1001
   MODAL_BACKDROP: 100,
   MODAL: 105,
   FILE_PICKER: 110,
-  QUICK_KEYS_EDITOR: 115,
+  QUICK_KEYS_EDITOR: 1010, // Above modal-content (1001) since it opens from within settings modal
   SESSION_EXITED_OVERLAY: 120,
   NOTIFICATION: 150, // Notifications appear above modals but below file browser
 
