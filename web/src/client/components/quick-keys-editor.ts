@@ -396,7 +396,7 @@ export class QuickKeysEditor extends LitElement {
               ${PRESETS.map(
                 (preset) => html`
                   <button
-                    class="px-3 py-2 bg-bg-tertiary border border-border rounded-md hover:bg-bg hover:border-primary text-sm transition-colors"
+                    class="px-2 py-2 bg-bg-tertiary border border-border rounded-md hover:bg-bg hover:border-primary text-sm transition-colors flex items-center justify-center"
                     title="${preset.name}"
                     @click=${() => this.loadPreset(preset.layout)}
                   >
