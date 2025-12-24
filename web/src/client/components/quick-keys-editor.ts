@@ -8,9 +8,11 @@ import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import {
   DEFAULT_LAYOUT,
+  PRESETS,
   QUICK_KEY_DEFINITIONS,
   type QuickKeyDefinition,
   type QuickKeyId,
+  type QuickKeysLayout,
   quickKeysPreferencesManager,
 } from '../utils/quick-keys-preferences.js';
 
@@ -72,6 +74,10 @@ export class QuickKeysEditor extends LitElement {
 
   private reset(): void {
     this.draftRows = structuredClone(DEFAULT_LAYOUT);
+  }
+
+  private loadPreset(layout: QuickKeysLayout): void {
+    this.draftRows = structuredClone(layout);
   }
 
   private addRow(): void {
@@ -380,12 +386,25 @@ export class QuickKeysEditor extends LitElement {
           </div>
 
           <div class="flex justify-between mt-4 pt-4 border-t border-border">
-            <button
-              class="px-4 py-2 bg-bg-tertiary border border-border text-primary rounded-md hover:bg-bg text-sm transition-colors"
-              @click=${this.reset}
-            >
-              Reset to Defaults
-            </button>
+            <div class="flex gap-2">
+              <button
+                class="px-4 py-2 bg-bg-tertiary border border-border text-primary rounded-md hover:bg-bg text-sm transition-colors"
+                @click=${this.reset}
+              >
+                Reset
+              </button>
+              ${PRESETS.map(
+                (preset) => html`
+                  <button
+                    class="px-3 py-2 bg-bg-tertiary border border-border rounded-md hover:bg-bg hover:border-primary text-sm transition-colors"
+                    title="${preset.name}"
+                    @click=${() => this.loadPreset(preset.layout)}
+                  >
+                    ${preset.icon}
+                  </button>
+                `
+              )}
+            </div>
             <button
               class="px-4 py-2 bg-primary border border-primary text-white rounded-md hover:bg-primary-hover text-sm transition-colors"
               @click=${this.save}

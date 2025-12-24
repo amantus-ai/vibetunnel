@@ -13,7 +13,7 @@ export const QUICK_KEY_DEFINITIONS = [
   { key: 'CtrlExpand', label: '\u2303', toggle: true },
   { key: 'F', label: 'F', toggle: true },
   { key: 'Tab', label: 'Tab' },
-  { key: 'shift_tab', label: '\u21e4' },
+  { key: 'shift_tab', label: 'S-Tab' },
   { key: 'ArrowUp', label: '\u2191', arrow: true },
   { key: 'ArrowDown', label: '\u2193', arrow: true },
   { key: 'ArrowLeft', label: '\u2190', arrow: true },
@@ -36,6 +36,10 @@ export const QUICK_KEY_DEFINITIONS = [
   { key: 'Command', label: '\u2318', modifier: true },
   { key: 'Ctrl+C', label: '^C', combo: true },
   { key: 'Ctrl+Z', label: '^Z', combo: true },
+  { key: 'Ctrl+W', label: '^W', combo: true },
+  { key: 'Ctrl+U', label: '^U', combo: true },
+  { key: 'Ctrl+D', label: '^D', combo: true },
+  { key: 'Ctrl+L', label: '^L', combo: true },
   { key: "'", label: "'" },
   { key: '"', label: '"' },
   { key: '{', label: '{' },
@@ -89,6 +93,31 @@ export const DEFAULT_LAYOUT: QuickKeysLayout = [
   ],
   ['Home', 'Paste', 'End', 'Delete', '`', '~', '|', '/', '\\', '-'],
   ['Option', 'Command', 'Ctrl+C', 'Ctrl+Z', "'", '"', '{', '}', '[', ']', '(', ')'],
+];
+
+// Preset definition for quick layout switching
+export interface QuickKeysPreset {
+  id: string;
+  name: string;
+  icon: string;
+  layout: QuickKeysLayout;
+}
+
+// Available presets
+export const PRESETS: QuickKeysPreset[] = [
+  {
+    id: 'claude',
+    name: 'Claude Code',
+    icon: '🤖',
+    layout: [
+      // Row 1: Vim mode essentials - exit insert, editing shortcuts
+      ['Escape', 'Ctrl+C', 'Ctrl+W', 'Ctrl+U', 'shift_tab'],
+      // Row 2: Navigation and completion
+      ['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Delete'],
+      // Row 3: Scrolling and extras
+      ['Home', 'End', 'PageUp', 'PageDown', 'Paste', '/'],
+    ],
+  },
 ];
 
 // Map from key ID to definition for quick lookups
