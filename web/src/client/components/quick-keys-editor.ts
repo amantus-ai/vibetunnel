@@ -64,12 +64,24 @@ export class QuickKeysEditor extends LitElement {
   }
 
   private async save(): Promise<void> {
-    await quickKeysPreferencesManager.setLayout(this.draftRows);
+    // Filter out empty rows before saving
+    const layout = this.draftRows.filter((row) => row.length > 0);
+    await quickKeysPreferencesManager.setLayout(layout);
     this.close();
   }
 
   private reset(): void {
     this.draftRows = structuredClone(DEFAULT_LAYOUT);
+  }
+
+  private addRow(): void {
+    this.draftRows = [...this.draftRows, []];
+  }
+
+  private canAddRow(): boolean {
+    if (this.draftRows.length === 0) return true;
+    const lastRow = this.draftRows[this.draftRows.length - 1];
+    return lastRow.length > 0;
   }
 
   private getHiddenKeys(): QuickKeyDefinition[] {
@@ -225,7 +237,21 @@ export class QuickKeysEditor extends LitElement {
       // Empty row - insert at position 0
       if (tiles.length === 0) return { row, index: 0 };
 
-      // Find insertion point based on X position
+      // Get first and last tile rects
+      const firstRect = tiles[0].getBoundingClientRect();
+      const lastRect = tiles[tiles.length - 1].getBoundingClientRect();
+
+      // Cursor before first tile - place at start
+      if (x < firstRect.left) {
+        return { row, index: 0 };
+      }
+
+      // Cursor after last tile - place at end
+      if (x > lastRect.right) {
+        return { row, index: tiles.length };
+      }
+
+      // Find insertion point by midpoint
       for (let i = 0; i < tiles.length; i++) {
         const rect = tiles[i].getBoundingClientRect();
         const midX = rect.left + rect.width / 2;
@@ -234,7 +260,6 @@ export class QuickKeysEditor extends LitElement {
         }
       }
 
-      // After all tiles - insert at end
       return { row, index: tiles.length };
     }
 
@@ -268,22 +293,30 @@ export class QuickKeysEditor extends LitElement {
       return;
     }
 
-    // Skip if already in the right place
-    if (fromRow === toRow) {
-      const adjustedTarget = fromIndex < toIndex ? toIndex - 1 : toIndex;
-      if (fromIndex === adjustedTarget) {
-        return;
-      }
-    }
+    // toIndex is based on visible tiles (excluding dragged).
+    // Calculate visible count to detect "place at end"
+    const visibleCount = this.draftRows[toRow].length - (fromRow === toRow ? 1 : 0);
+    const isPlacingAtEnd = toIndex >= visibleCount;
 
     // Create a mutable copy and move
     const newRows = this.draftRows.map((row) => [...row]);
     newRows[fromRow].splice(fromIndex, 1);
 
-    // Adjust target index if same row and moving forward
-    let effectiveIndex = toIndex;
-    if (fromRow === toRow && fromIndex < toIndex) {
+    // Calculate effective index
+    let effectiveIndex: number;
+    if (isPlacingAtEnd) {
+      // Place at end of row
+      effectiveIndex = newRows[toRow].length;
+    } else if (fromRow === toRow && fromIndex < toIndex) {
+      // Same row, moving forward - adjust for removal
       effectiveIndex = toIndex - 1;
+    } else {
+      effectiveIndex = toIndex;
+    }
+
+    // Skip if already at target position
+    if (fromRow === toRow && fromIndex === effectiveIndex) {
+      return;
     }
 
     newRows[toRow].splice(effectiveIndex, 0, key);
@@ -321,14 +354,26 @@ export class QuickKeysEditor extends LitElement {
             ${this.draftRows.map((row, rowIndex) => this.renderRow(rowIndex, row))}
           </div>
 
+          <!-- Add Row button - only show if last row has keys -->
+          ${
+            this.canAddRow()
+              ? html`<button
+                  class="w-full mt-2 py-1.5 text-xs border border-dashed border-border text-muted rounded transition-colors hover:border-primary hover:text-primary"
+                  @click=${this.addRow}
+                >
+                  + Add Row
+                </button>`
+              : ''
+          }
+
           <div
-            class="hidden-section mt-4 p-3 rounded-lg bg-bg-tertiary border border-dashed transition-colors ${this.isDraggingOverHidden ? 'border-status-error bg-status-error/10' : 'border-border'}"
+            class="hidden-section mt-3 p-2 rounded-lg bg-bg-tertiary border border-dashed transition-colors ${this.isDraggingOverHidden ? 'border-status-error bg-status-error/10' : 'border-border'}"
           >
-            <h3 class="text-xs text-muted mb-2 font-medium">Hidden</h3>
-            <div class="flex flex-wrap gap-1 min-h-[32px]">
+            <h3 class="text-[10px] text-muted mb-1 font-medium">Hidden</h3>
+            <div class="flex flex-wrap gap-0.5 min-h-[28px]">
               ${
                 hidden.length === 0
-                  ? html`<span class="text-muted text-xs italic py-2">Drag keys here to hide</span>`
+                  ? html`<span class="text-muted text-[10px] italic py-1">Drag keys here to hide</span>`
                   : hidden.map((def) => this.renderHiddenKeyTile(def.key))
               }
             </div>
@@ -375,7 +420,7 @@ export class QuickKeysEditor extends LitElement {
 
     return html`
       <div
-        class="key-tile flex-1 min-w-0 px-0.5 py-1 bg-bg-tertiary border border-border rounded font-mono text-[10px] cursor-grab select-none touch-none text-center truncate transition-colors ${isDragging ? 'dragging opacity-40 border-primary bg-primary/10' : 'text-primary hover:border-primary/50'}"
+        class="key-tile flex-1 min-w-0 px-0.5 py-1 bg-bg-tertiary border border-border rounded font-mono text-[10px] cursor-grab select-none touch-none text-center truncate ${isDragging ? 'dragging opacity-40 border-primary bg-primary/10' : 'text-primary hover:border-primary/50'}"
         data-key=${key}
         @touchstart=${(e: TouchEvent) => this.handleDragStart(e, key)}
         @touchmove=${this.boundHandleDragMove}
@@ -388,13 +433,13 @@ export class QuickKeysEditor extends LitElement {
     `;
   }
 
-  /** Render a key tile in the hidden section - fixed width, wraps */
+  /** Render a key tile in the hidden section - same style as main tiles */
   private renderHiddenKeyTile(key: QuickKeyId) {
     const def = this.getDefinition(key);
 
     return html`
       <div
-        class="key-tile px-2 py-1.5 bg-bg border border-border rounded font-mono text-xs cursor-grab select-none touch-none text-center text-primary hover:border-primary/50 hover:bg-bg-secondary transition-colors"
+        class="key-tile px-2 py-1 bg-bg-tertiary border border-border rounded font-mono text-[10px] cursor-grab select-none touch-none text-center text-primary hover:border-primary/50"
         data-key=${key}
         @touchstart=${(e: TouchEvent) => this.handleDragStart(e, key)}
         @touchmove=${this.boundHandleDragMove}

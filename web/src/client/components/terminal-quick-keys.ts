@@ -724,36 +724,45 @@ export class TerminalQuickKeys extends LitElement {
             `
           }
 
-          <!-- Row 3 - Additional special characters (always visible) -->
-          <div class="flex gap-0.5 ">
-            ${(this.rows ?? DEFAULT_ROWS)[2]?.map(
-              ({ key, label, modifier, combo }) => html`
-                <button
-                  type="button"
-                  tabindex="-1"
-                  class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
-                  data-key="${key}"
-                  ?data-modifier="${modifier}"
-                  ?data-combo="${combo}"
-                  @mousedown=${(e: Event) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  @touchend=${(e: TouchEvent) => {
-                    this.handleTouchEnd(e, () => {
-                      this.handleKeyPress(key, modifier || combo, false, false, e);
-                    });
-                  }}
-                  @click=${(e: MouseEvent) => {
-                    if (e.detail !== 0) {
-                      this.handleKeyPress(key, modifier || combo, false, false, e);
-                    }
-                  }}>
-                  ${label}
-                </button>
-              `
-            )}
-          </div>
+          <!-- Additional rows (2+) - rendered dynamically -->
+          ${(this.rows ?? DEFAULT_ROWS).slice(2).map(
+            (row, idx) => html`
+              <div class="flex gap-0.5 ${idx < (this.rows ?? DEFAULT_ROWS).length - 3 ? 'mb-0.5' : ''}">
+                ${row.map(
+                  ({ key, label, modifier, combo }) => html`
+                    <button
+                      type="button"
+                      tabindex="-1"
+                      class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
+                      data-key="${key}"
+                      ?data-modifier="${modifier}"
+                      ?data-combo="${combo}"
+                      @mousedown=${(e: Event) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      @touchend=${(e: TouchEvent) => {
+                        this.handleTouchEnd(e, () => {
+                          if (key === 'Paste') {
+                            this.handlePasteImmediate(e);
+                          } else {
+                            this.handleKeyPress(key, modifier || combo, false, false, e);
+                          }
+                        });
+                      }}
+                      @click=${(e: MouseEvent) => {
+                        if (e.detail !== 0) {
+                          this.handleKeyPress(key, modifier || combo, false, false, e);
+                        }
+                      }}
+                    >
+                      ${label}
+                    </button>
+                  `
+                )}
+              </div>
+            `
+          )}
         </div>
       </div>
       ${this.renderStyles()}
