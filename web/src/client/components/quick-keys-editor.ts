@@ -2,8 +2,7 @@
  * Quick Keys Editor Component
  *
  * Modal component for editing quick keys via drag and drop.
- * Supports reordering keys within/between rows and hiding keys.
- * Features live reordering as you drag.
+ * Uses flex layout matching the actual keyboard - each row is one line.
  */
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
@@ -19,6 +18,9 @@ import {
 const KEY_DEFINITION_MAP = new Map<string, QuickKeyDefinition>(
   QUICK_KEY_DEFINITIONS.map((def) => [def.key, def as QuickKeyDefinition])
 );
+
+// Throttle interval for drag updates (ms)
+const DRAG_THROTTLE_MS = 80;
 
 @customElement('quick-keys-editor')
 export class QuickKeysEditor extends LitElement {
@@ -37,6 +39,10 @@ export class QuickKeysEditor extends LitElement {
   private dragGhost: HTMLElement | null = null;
   private boundHandleDragMove: (e: TouchEvent | MouseEvent) => void;
   private boundHandleDragEnd: (e: TouchEvent | MouseEvent) => void;
+
+  // Throttling
+  private lastDragUpdate = 0;
+  private pendingDragUpdate: number | null = null;
 
   constructor() {
     super();
@@ -91,9 +97,9 @@ export class QuickKeysEditor extends LitElement {
     const tile = e.currentTarget as HTMLElement;
     this.dragGhost = tile.cloneNode(true) as HTMLElement;
     this.dragGhost.className =
-      'fixed pointer-events-none z-[1100] opacity-90 scale-110 shadow-lg px-3 py-2 bg-bg-tertiary border border-border rounded-md font-mono text-xs text-primary';
-    this.dragGhost.style.left = `${clientX - 30}px`;
-    this.dragGhost.style.top = `${clientY - 20}px`;
+      'fixed pointer-events-none z-[1100] opacity-95 scale-105 shadow-xl px-2 py-1.5 bg-primary/20 border-2 border-primary rounded font-mono text-xs text-primary';
+    this.dragGhost.style.left = `${clientX - 20}px`;
+    this.dragGhost.style.top = `${clientY - 15}px`;
     document.body.appendChild(this.dragGhost);
 
     // For mouse: add document-level listeners
@@ -110,8 +116,9 @@ export class QuickKeysEditor extends LitElement {
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
-    this.dragGhost.style.left = `${clientX - 30}px`;
-    this.dragGhost.style.top = `${clientY - 20}px`;
+    // Always update ghost position immediately
+    this.dragGhost.style.left = `${clientX - 20}px`;
+    this.dragGhost.style.top = `${clientY - 15}px`;
 
     // Check if over hidden section
     const hiddenSection = this.querySelector('.hidden-section');
@@ -128,9 +135,33 @@ export class QuickKeysEditor extends LitElement {
       }
 
       if (isOverHidden) {
-        return; // Don't do live reordering when over hidden section
+        return;
       }
     }
+
+    // Throttle the reorder logic
+    const now = Date.now();
+    if (now - this.lastDragUpdate < DRAG_THROTTLE_MS) {
+      // Schedule an update if we don't have one pending
+      if (this.pendingDragUpdate === null) {
+        this.pendingDragUpdate = window.setTimeout(
+          () => {
+            this.pendingDragUpdate = null;
+            this.processDragMove(clientX, clientY);
+          },
+          DRAG_THROTTLE_MS - (now - this.lastDragUpdate)
+        );
+      }
+      return;
+    }
+
+    this.processDragMove(clientX, clientY);
+  }
+
+  private processDragMove(clientX: number, clientY: number) {
+    if (!this.draggedKey) return;
+
+    this.lastDragUpdate = Date.now();
 
     // Find drop target and do live reordering
     const dropTarget = this.findDropTarget(clientX, clientY);
@@ -143,16 +174,25 @@ export class QuickKeysEditor extends LitElement {
     if (!this.draggedKey) return;
     e.preventDefault();
 
+    // Cancel any pending drag update
+    if (this.pendingDragUpdate !== null) {
+      clearTimeout(this.pendingDragUpdate);
+      this.pendingDragUpdate = null;
+    }
+
     // If dropped on hidden section, remove the key
     if (this.isDraggingOverHidden) {
       this.removeKeyFromRows(this.draggedKey);
     }
-    // Otherwise, the live reordering already placed it in the right spot
 
     this.cleanupDrag();
   }
 
   private handleDragCancel() {
+    if (this.pendingDragUpdate !== null) {
+      clearTimeout(this.pendingDragUpdate);
+      this.pendingDragUpdate = null;
+    }
     this.cleanupDrag();
   }
 
@@ -163,23 +203,38 @@ export class QuickKeysEditor extends LitElement {
     this.dragGhost = null;
     this.draggedKey = null;
     this.isDraggingOverHidden = false;
+    this.lastDragUpdate = 0;
   }
 
+  /**
+   * Find drop target - simple since each row is one visual line (no wrapping).
+   * Just find the row by Y, then find position in row by X.
+   */
   private findDropTarget(x: number, y: number): { row: number; index: number } | null {
     const rowElements = this.querySelectorAll('.key-row');
+
     for (const rowEl of rowElements) {
-      const rect = rowEl.getBoundingClientRect();
-      if (y < rect.top || y > rect.bottom) continue;
-
+      const rowRect = rowEl.getBoundingClientRect();
       const row = Number.parseInt(rowEl.getAttribute('data-row') || '0', 10);
-      const tiles = rowEl.querySelectorAll('.key-tile:not(.dragging)');
 
+      // Check if Y is within this row (with some padding)
+      if (y < rowRect.top - 10 || y > rowRect.bottom + 10) continue;
+
+      const tiles = Array.from(rowEl.querySelectorAll('.key-tile:not(.dragging)'));
+
+      // Empty row - insert at position 0
+      if (tiles.length === 0) return { row, index: 0 };
+
+      // Find insertion point based on X position
       for (let i = 0; i < tiles.length; i++) {
-        const tileRect = tiles[i].getBoundingClientRect();
-        if (x < tileRect.left + tileRect.width / 2) {
+        const rect = tiles[i].getBoundingClientRect();
+        const midX = rect.left + rect.width / 2;
+        if (x < midX) {
           return { row, index: i };
         }
       }
+
+      // After all tiles - insert at end
       return { row, index: tiles.length };
     }
 
@@ -189,7 +244,6 @@ export class QuickKeysEditor extends LitElement {
   /** Remove key from all rows (hide it) */
   private removeKeyFromRows(key: QuickKeyId) {
     this.draftRows = this.draftRows.map((row) => row.filter((k) => k !== key));
-    this.requestUpdate();
   }
 
   /** Live reorder - move key to new position during drag */
@@ -214,18 +268,11 @@ export class QuickKeysEditor extends LitElement {
       return;
     }
 
-    // Calculate effective target index (accounting for the dragged item)
-    let effectiveIndex = toIndex;
-    if (fromRow === toRow && fromIndex < toIndex) {
-      effectiveIndex = toIndex; // Will be adjusted after removal
-    }
-
     // Skip if already in the right place
     if (fromRow === toRow) {
-      // Account for the removal shifting indices
       const adjustedTarget = fromIndex < toIndex ? toIndex - 1 : toIndex;
       if (fromIndex === adjustedTarget) {
-        return; // Already in place
+        return;
       }
     }
 
@@ -234,6 +281,7 @@ export class QuickKeysEditor extends LitElement {
     newRows[fromRow].splice(fromIndex, 1);
 
     // Adjust target index if same row and moving forward
+    let effectiveIndex = toIndex;
     if (fromRow === toRow && fromIndex < toIndex) {
       effectiveIndex = toIndex - 1;
     }
@@ -253,7 +301,7 @@ export class QuickKeysEditor extends LitElement {
         @click=${this.close}
       >
         <div
-          class="bg-bg-secondary border border-border rounded-xl w-[90%] max-w-[500px] max-h-[80vh] overflow-y-auto p-4 shadow-2xl"
+          class="bg-bg-secondary border border-border rounded-xl w-[95%] max-w-[600px] max-h-[80vh] overflow-y-auto p-4 shadow-2xl"
           @click=${(e: Event) => e.stopPropagation()}
         >
           <div class="flex justify-between items-center mb-2">
@@ -268,7 +316,8 @@ export class QuickKeysEditor extends LitElement {
 
           <p class="text-muted text-sm mb-4">Drag to reorder. Drag to Hidden area to hide.</p>
 
-          <div class="space-y-3">
+          <!-- Preview area with minimal padding to match actual keyboard -->
+          <div class="space-y-1 bg-bg-secondary/50 rounded-lg p-1">
             ${this.draftRows.map((row, rowIndex) => this.renderRow(rowIndex, row))}
           </div>
 
@@ -276,11 +325,11 @@ export class QuickKeysEditor extends LitElement {
             class="hidden-section mt-4 p-3 rounded-lg bg-bg-tertiary border border-dashed transition-colors ${this.isDraggingOverHidden ? 'border-status-error bg-status-error/10' : 'border-border'}"
           >
             <h3 class="text-xs text-muted mb-2 font-medium">Hidden</h3>
-            <div class="flex flex-wrap gap-1 min-h-[40px]">
+            <div class="flex flex-wrap gap-1 min-h-[32px]">
               ${
                 hidden.length === 0
-                  ? html`<span class="text-muted text-xs italic">Drag keys here to hide</span>`
-                  : hidden.map((def) => this.renderKeyTile(def.key))
+                  ? html`<span class="text-muted text-xs italic py-2">Drag keys here to hide</span>`
+                  : hidden.map((def) => this.renderHiddenKeyTile(def.key))
               }
             </div>
           </div>
@@ -304,25 +353,48 @@ export class QuickKeysEditor extends LitElement {
     `;
   }
 
+  /** Render a row using flex layout - matches actual keyboard */
   private renderRow(rowIndex: number, keys: QuickKeyId[]) {
     return html`
-      <div class="key-row p-2 rounded-lg bg-bg-tertiary" data-row=${rowIndex}>
-        <span class="text-xs text-muted mb-1 block">Row ${rowIndex + 1}</span>
-        <div class="flex flex-wrap gap-1 min-h-[36px]">
-          ${keys.map((key) => this.renderKeyTile(key))}
-          ${keys.length === 0 ? html`<span class="text-muted text-xs italic py-2">Empty row</span>` : ''}
+      <div class="key-row px-0.5 py-0.5" data-row=${rowIndex}>
+        <div class="flex gap-0.5 min-h-[28px]">
+          ${
+            keys.length === 0
+              ? html`<span class="text-muted/50 text-[10px] italic flex-1 text-center border border-dashed border-border rounded py-1">Empty</span>`
+              : keys.map((key) => this.renderKeyTile(key))
+          }
         </div>
       </div>
     `;
   }
 
+  /** Render a key tile in the main rows - uses flex: 1 like actual keyboard */
   private renderKeyTile(key: QuickKeyId) {
     const def = this.getDefinition(key);
     const isDragging = this.draggedKey === key;
 
     return html`
       <div
-        class="key-tile px-3 py-2 bg-bg border border-border rounded-md font-mono text-xs cursor-grab select-none touch-none transition-opacity ${isDragging ? 'dragging opacity-30' : 'text-primary'}"
+        class="key-tile flex-1 min-w-0 px-0.5 py-1 bg-bg-tertiary border border-border rounded font-mono text-[10px] cursor-grab select-none touch-none text-center truncate transition-colors ${isDragging ? 'dragging opacity-40 border-primary bg-primary/10' : 'text-primary hover:border-primary/50'}"
+        data-key=${key}
+        @touchstart=${(e: TouchEvent) => this.handleDragStart(e, key)}
+        @touchmove=${this.boundHandleDragMove}
+        @touchend=${this.boundHandleDragEnd}
+        @touchcancel=${() => this.handleDragCancel()}
+        @mousedown=${(e: MouseEvent) => this.handleDragStart(e, key)}
+      >
+        ${def.label}
+      </div>
+    `;
+  }
+
+  /** Render a key tile in the hidden section - fixed width, wraps */
+  private renderHiddenKeyTile(key: QuickKeyId) {
+    const def = this.getDefinition(key);
+
+    return html`
+      <div
+        class="key-tile px-2 py-1.5 bg-bg border border-border rounded font-mono text-xs cursor-grab select-none touch-none text-center text-primary hover:border-primary/50 hover:bg-bg-secondary transition-colors"
         data-key=${key}
         @touchstart=${(e: TouchEvent) => this.handleDragStart(e, key)}
         @touchmove=${this.boundHandleDragMove}
