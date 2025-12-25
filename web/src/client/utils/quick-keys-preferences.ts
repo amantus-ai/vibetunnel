@@ -43,6 +43,9 @@ export const QUICK_KEY_DEFINITIONS = [
   { key: 'Ctrl+L', label: '^L', combo: true },
   { key: 'Ctrl+O', label: '^O', combo: true },
   { key: 'Ctrl+E', label: '^E', combo: true },
+  { key: 'Ctrl+X', label: '^X', combo: true },
+  { key: 'Ctrl+P', label: '^P', combo: true },
+  { key: 'Ctrl+K', label: '^K', combo: true },
   { key: "'", label: "'" },
   { key: '"', label: '"' },
   { key: '{', label: '{' },
@@ -128,6 +131,33 @@ export const PRESETS: QuickKeysPreset[] = [
       ['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Delete'],
       // Row 3: Scrolling and extras
       ['Home', 'End', 'PageUp', 'PageDown', 'Paste', '/'],
+    ],
+  },
+  {
+    id: 'opencode',
+    name: 'Open Code',
+    icon: html`<svg
+      width="16"
+      height="16"
+      viewBox="0 0 512 512"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M320 224V352H192V224H320Z" fill="#5A5858" />
+      <path
+        fill-rule="evenodd"
+        clip-rule="evenodd"
+        d="M384 416H128V96H384V416ZM320 160H192V352H320V160Z"
+        fill="white"
+      />
+    </svg>`,
+    layout: [
+      // Row 1: Leader key, command palette, mode switching, interrupts, slash commands
+      ['Escape', 'Control', 'Ctrl+X', 'Ctrl+P', 'Tab', 'Ctrl+C', '/'],
+      // Row 2: Navigation - scrolling through conversations and cursor
+      ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown'],
+      // Row 3: Line editing shortcuts
+      ['Ctrl+W', 'Ctrl+U', 'Ctrl+K', 'Delete', 'Paste', 'Home', 'End'],
     ],
   },
 ];
