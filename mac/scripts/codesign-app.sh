@@ -108,17 +108,17 @@ if [[ -d "$APP_BUNDLE/Contents/Frameworks" ]]; then
 fi
 
 if [[ -d "$APP_BUNDLE/Contents/Resources" ]]; then
+  VIBETUNNEL_ENTITLEMENTS="$(dirname "$0")/../VibeTunnel/vibetunnel-binary.entitlements"
+
   if [[ -f "$APP_BUNDLE/Contents/Resources/vibetunnel" ]]; then
     log "Signing embedded vibetunnel binary with JIT entitlements"
-    VIBETUNNEL_ENTITLEMENTS="$(dirname "$0")/../VibeTunnel/vibetunnel-binary.entitlements"
     codesign --force --options runtime $TIMESTAMP_FLAG --sign "$SIGN_IDENTITY" --entitlements "$VIBETUNNEL_ENTITLEMENTS" $KEYCHAIN_OPTS "$APP_BUNDLE/Contents/Resources/vibetunnel"
   fi
 
-  find "$APP_BUNDLE/Contents/Resources" -maxdepth 1 -type f -name "vibetunnel-*" -perm -111 -print0 2>/dev/null \
-    | while IFS= read -r -d '' exe; do
-      log "Signing embedded helper: $exe"
-      sign_plain "$exe"
-    done
+  if [[ -f "$APP_BUNDLE/Contents/Resources/vibetunnel-fwd" ]]; then
+    log "Signing vibetunnel-fwd with entitlements"
+    codesign --force --options runtime $TIMESTAMP_FLAG --sign "$SIGN_IDENTITY" --entitlements "$VIBETUNNEL_ENTITLEMENTS" $KEYCHAIN_OPTS "$APP_BUNDLE/Contents/Resources/vibetunnel-fwd"
+  fi
 fi
 
 log "Signing main executable"

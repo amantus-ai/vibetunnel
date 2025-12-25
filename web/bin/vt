@@ -133,6 +133,7 @@ if [ -z "$VIBETUNNEL_BIN" ]; then
             VIBETUNNEL_BIN="$(command -v vibetunnel)"
         fi
     fi
+fi
 
 if [ -z "$VIBETUNNEL_BIN" ] || [ ! -f "$VIBETUNNEL_BIN" ]; then
     echo "Error: vibetunnel binary not found. Please ensure vibetunnel is installed." >&2
@@ -150,7 +151,6 @@ if [ -z "$VIBETUNNEL_FWD_BIN" ]; then
             VIBETUNNEL_FWD_BIN="$FWD_CANDIDATE"
         fi
     fi
-fi
 fi
 
 # Check if this is a command that should suppress wrapper output
@@ -461,7 +461,8 @@ exec_fwd() {
     if [ -n "$VIBETUNNEL_FWD_BIN" ] && [ -x "$VIBETUNNEL_FWD_BIN" ]; then
         exec_with_fallback "$VIBETUNNEL_FWD_BIN" "$@"
     else
-        exec_fwd "$@"
+        # Fall back to Node.js forwarder
+        exec_with_fallback "$VIBETUNNEL_BIN" fwd "$@"
     fi
 }
 
