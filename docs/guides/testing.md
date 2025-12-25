@@ -105,16 +105,24 @@ describe('API Integration', () => {
 ```typescript
 // web/tests/integration/websocket.test.ts
 import { WebSocket } from 'ws';
+// Helpers live in `web/src/shared/ws-v3.ts`.
+import { encodeWsV3Frame, encodeWsV3SubscribePayload, WsV3MessageType, WsV3SubscribeFlags } from './ws-v3';
 
 describe('WebSocket Integration', () => {
   it('connects to session', async () => {
-    const ws = new WebSocket('ws://localhost:4020/api/sessions/test/ws');
+    const ws = new WebSocket('ws://localhost:4020/ws?token=JWT_TOKEN');
     
     await new Promise((resolve) => {
       ws.on('open', resolve);
     });
-    
-    ws.send(JSON.stringify({ type: 'input', data: 'echo test\n' }));
+
+    ws.send(
+      encodeWsV3Frame({
+        type: WsV3MessageType.SUBSCRIBE,
+        sessionId: 'test',
+        payload: encodeWsV3SubscribePayload({ flags: WsV3SubscribeFlags.Stdout }),
+      })
+    );
     
     const message = await new Promise((resolve) => {
       ws.on('message', resolve);
@@ -187,11 +195,14 @@ import { check } from 'k6';
 import ws from 'k6/ws';
 
 export default function() {
-  const url = 'ws://localhost:4020/api/sessions/test/ws';
+  const url = 'ws://localhost:4020/ws?token=JWT_TOKEN';
   
   ws.connect(url, {}, function(socket) {
     socket.on('open', () => {
-      socket.send(JSON.stringify({ type: 'input', data: 'ls\n' }));
+      // WebSocket v3 is binary-framed; send `SUBSCRIBE` + `INPUT_TEXT` frames.
+      // (Encode using the layout in `docs/websocket.md`.)
+      //
+      // socket.sendBinary(<Uint8Array>);
     });
     
     socket.on('message', (data) => {
@@ -325,7 +336,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           
       - name: Install dependencies
         run: |

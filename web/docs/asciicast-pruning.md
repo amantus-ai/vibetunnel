@@ -109,14 +109,14 @@ asciinemaWriter.onPruningSequence(async ({ sequence, position }) => {
 
 ### 6. Using Pruning During Playback
 
-When a client connects to stream a session, the `StreamWatcher`:
+When a client connects to follow a session, the `CastOutputHub`:
 
 1. Reads the stored `lastClearOffset` from session info
 2. Starts reading the asciicast file from that position instead of the beginning
 3. This skips all the old content before the last clear
 
 ```typescript
-// In StreamWatcher.sendExistingContent()
+// In CastOutputHub.sendExistingContent()
 const sessionInfo = this.sessionManager.loadSessionInfo(sessionId);
 let startOffset = sessionInfo?.lastClearOffset ?? 0;
 
@@ -128,7 +128,7 @@ const analysisStream = fs.createReadStream(streamPath, {
 
 ### 7. Retroactive Pruning Detection
 
-The `StreamWatcher` also scans for pruning sequences when analyzing existing content:
+The `CastOutputHub` also scans for pruning sequences when analyzing existing content:
 
 ```typescript
 if (isOutputEvent(event) && containsPruningSequence(event[2])) {
@@ -170,8 +170,8 @@ This handles cases where:
    - Updates session info with clear offsets
    - Coordinates between writer and session manager
 
-4. **StreamWatcher** (`services/stream-watcher.ts`)
-   - Uses stored pruning offsets for efficient streaming
+4. **CastOutputHub** (`services/cast-output-hub.ts`)
+   - Uses stored pruning offsets for efficient follow/initial replay
    - Performs retroactive detection on existing content
    - Handles replay from pruning points
 
@@ -190,7 +190,7 @@ AsciinemaWriter (in forwarder process)
             
 When client connects:
     ↓
-StreamWatcher (in server process)
+CastOutputHub (in server process)
     ├─→ Reads lastClearOffset from session.json
     └─→ Starts streaming from that position
 ```

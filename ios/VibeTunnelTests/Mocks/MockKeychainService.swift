@@ -35,14 +35,14 @@ class MockKeychainService: KeychainServiceProtocol {
     /// Set a unique test identifier to isolate storage between tests
     /// - Parameter identifier: Unique identifier for the test
     static func setTestIdentifier(_ identifier: String) {
-        testIdentifier = identifier
+        self.testIdentifier = identifier
     }
 
     /// Reset all stored data and test identifier
     static func reset() {
-        storageQueue.sync {
-            _storage.removeAll()
-            _testIdentifier = ""
+        self.storageQueue.sync {
+            self._storage.removeAll()
+            self._testIdentifier = ""
         }
     }
 
@@ -60,7 +60,7 @@ class MockKeychainService: KeychainServiceProtocol {
 
     /// Generate a storage key with test isolation
     private static func storageKey(for account: String) -> String {
-        testIdentifier.isEmpty ? account : "\(testIdentifier):\(account)"
+        self.testIdentifier.isEmpty ? account : "\(self.testIdentifier):\(account)"
     }
 
     // MARK: - Server Profile Password Management
@@ -126,18 +126,18 @@ class MockKeychainService: KeychainServiceProtocol {
     /// Save a password for a server profile (static version for tests)
     static func savePassword(_ password: String, for profileId: UUID) throws {
         let account = "server-\(profileId.uuidString)"
-        let key = storageKey(for: account)
-        storageQueue.sync {
-            _storage[key] = password
+        let key = self.storageKey(for: account)
+        self.storageQueue.sync {
+            self._storage[key] = password
         }
     }
 
     /// Retrieve a password for a server profile (static version for tests)
     static func getPassword(for profileId: UUID) throws -> String {
         let account = "server-\(profileId.uuidString)"
-        let key = storageKey(for: account)
+        let key = self.storageKey(for: account)
 
-        return try storageQueue.sync {
+        return try self.storageQueue.sync {
             guard let password = _storage[key] else {
                 throw KeychainService.KeychainError.itemNotFound
             }
@@ -148,25 +148,25 @@ class MockKeychainService: KeychainServiceProtocol {
     /// Delete a password for a server profile (static version for tests)
     static func deletePassword(for profileId: UUID) throws {
         let account = "server-\(profileId.uuidString)"
-        let key = storageKey(for: account)
-        _ = storageQueue.sync {
-            _storage.removeValue(forKey: key)
+        let key = self.storageKey(for: account)
+        _ = self.storageQueue.sync {
+            self._storage.removeValue(forKey: key)
         }
     }
 
     /// Delete all passwords for the app (static version for tests)
     static func deleteAllPasswords() throws {
-        storageQueue.sync {
-            let currentTestIdentifier = _testIdentifier
+        self.storageQueue.sync {
+            let currentTestIdentifier = self._testIdentifier
             if currentTestIdentifier.isEmpty {
                 // If no test identifier, clear all
-                _storage.removeAll()
+                self._storage.removeAll()
             } else {
                 // Only clear items for this test identifier
                 let prefix = "\(currentTestIdentifier):"
-                let keysToRemove = _storage.keys.filter { $0.hasPrefix(prefix) }
+                let keysToRemove = self._storage.keys.filter { $0.hasPrefix(prefix) }
                 for key in keysToRemove {
-                    _storage.removeValue(forKey: key)
+                    self._storage.removeValue(forKey: key)
                 }
             }
         }
@@ -175,8 +175,8 @@ class MockKeychainService: KeychainServiceProtocol {
     /// Save a password/token with a generic key (static version for tests)
     static func savePassword(_ password: String, for key: String) throws {
         let storageKey = storageKey(for: key)
-        storageQueue.sync {
-            _storage[storageKey] = password
+        self.storageQueue.sync {
+            self._storage[storageKey] = password
         }
     }
 
@@ -184,7 +184,7 @@ class MockKeychainService: KeychainServiceProtocol {
     static func loadPassword(for key: String) throws -> String {
         let storageKey = storageKey(for: key)
 
-        return try storageQueue.sync {
+        return try self.storageQueue.sync {
             guard let password = _storage[storageKey] else {
                 throw KeychainService.KeychainError.itemNotFound
             }
@@ -195,8 +195,8 @@ class MockKeychainService: KeychainServiceProtocol {
     /// Delete a password/token with a generic key (static version for tests)
     static func deletePassword(for key: String) throws {
         let storageKey = storageKey(for: key)
-        _ = storageQueue.sync {
-            _storage.removeValue(forKey: storageKey)
+        _ = self.storageQueue.sync {
+            self._storage.removeValue(forKey: storageKey)
         }
     }
 }
@@ -207,14 +207,14 @@ extension MockKeychainService {
     /// Check if a password exists for a given profile ID (static version for tests)
     static func hasPassword(for profileId: UUID) -> Bool {
         let account = "server-\(profileId.uuidString)"
-        let key = storageKey(for: account)
-        return storageQueue.sync { _storage[key] != nil }
+        let key = self.storageKey(for: account)
+        return self.storageQueue.sync { self._storage[key] != nil }
     }
 
     /// Check if a password exists for a given key (static version for tests)
     static func hasPassword(for key: String) -> Bool {
         let storageKey = storageKey(for: key)
-        return storageQueue.sync { _storage[storageKey] != nil }
+        return self.storageQueue.sync { self._storage[storageKey] != nil }
     }
 
     /// Get all stored profile IDs (for testing) (static version for tests)
@@ -235,8 +235,8 @@ extension MockKeychainService {
         // For now, we'll use a simple flag approach
         if shouldThrow {
             // Clear storage to simulate keychain unavailability
-            storageQueue.sync {
-                _storage.removeAll()
+            self.storageQueue.sync {
+                self._storage.removeAll()
             }
         }
     }

@@ -18,18 +18,18 @@ struct TerminalBufferPreview: View {
             ScrollViewReader { scrollProxy in
                 ScrollView([.horizontal, .vertical], showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
-                        ForEach(0..<snapshot.rows, id: \.self) { row in
+                        ForEach(0..<self.snapshot.rows, id: \.self) { row in
                             HStack(spacing: 0) {
-                                ForEach(0..<min(snapshot.cols, 80), id: \.self) { col in
+                                ForEach(0..<min(self.snapshot.cols, 80), id: \.self) { col in
                                     // Get cell at position, with bounds checking
-                                    if row < snapshot.cells.count && col < snapshot.cells[row].count {
-                                        let cell = snapshot.cells[row][col]
-                                        cellView(for: cell)
+                                    if row < self.snapshot.cells.count, col < self.snapshot.cells[row].count {
+                                        let cell = self.snapshot.cells[row][col]
+                                        self.cellView(for: cell)
                                     } else {
                                         // Empty cell
                                         Text(" ")
-                                            .font(Theme.Typography.terminalSystem(size: fontSize))
-                                            .frame(width: fontSize * 0.6)
+                                            .font(Theme.Typography.terminalSystem(size: self.fontSize))
+                                            .frame(width: self.fontSize * 0.6)
                                     }
                                 }
                                 Spacer(minLength: 0)
@@ -41,7 +41,7 @@ struct TerminalBufferPreview: View {
                 }
                 .onAppear {
                     // Scroll to show cursor area if visible
-                    if snapshot.cursorY >= 0 && snapshot.cursorY < snapshot.rows {
+                    if self.snapshot.cursorY >= 0, self.snapshot.cursorY < self.snapshot.rows {
                         withAnimation(.none) {
                             scrollProxy.scrollTo("content", anchor: .bottom)
                         }
@@ -56,10 +56,10 @@ struct TerminalBufferPreview: View {
     @ViewBuilder
     private func cellView(for cell: BufferCell) -> some View {
         Text(cell.char.isEmpty ? " " : cell.char)
-            .font(Theme.Typography.terminalSystem(size: fontSize))
-            .foregroundColor(foregroundColor(for: cell))
-            .background(backgroundColor(for: cell))
-            .frame(width: fontSize * 0.6 * CGFloat(max(1, cell.width)))
+            .font(Theme.Typography.terminalSystem(size: self.fontSize))
+            .foregroundColor(self.foregroundColor(for: cell))
+            .background(self.backgroundColor(for: cell))
+            .frame(width: self.fontSize * 0.6 * CGFloat(max(1, cell.width)))
     }
 
     private func foregroundColor(for cell: BufferCell) -> Color {
@@ -76,7 +76,7 @@ struct TerminalBufferPreview: View {
             return Color(red: red, green: green, blue: blue)
         } else {
             // Palette color
-            return paletteColor(fg)
+            return self.paletteColor(fg)
         }
     }
 
@@ -94,7 +94,7 @@ struct TerminalBufferPreview: View {
             return Color(red: red, green: green, blue: blue)
         } else {
             // Palette color
-            return paletteColor(bg)
+            return self.paletteColor(bg)
         }
     }
 
@@ -144,7 +144,7 @@ struct CompactTerminalPreview: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
             // Get the last non-empty lines
-            let visibleLines = getVisibleLines()
+            let visibleLines = self.getVisibleLines()
 
             ForEach(Array(visibleLines.enumerated()), id: \.offset) { _, line in
                 Text(line)
@@ -164,24 +164,24 @@ struct CompactTerminalPreview: View {
         var lines: [String] = []
 
         // Start from the bottom and work up to find non-empty lines
-        for row in (0..<snapshot.rows).reversed() {
-            guard row < snapshot.cells.count else { continue }
+        for row in (0..<self.snapshot.rows).reversed() {
+            guard row < self.snapshot.cells.count else { continue }
 
-            let line = snapshot.cells[row]
+            let line = self.snapshot.cells[row]
                 .map { $0.char.isEmpty ? " " : $0.char }
                 .joined()
                 .trimmingCharacters(in: .whitespaces)
 
             if !line.isEmpty {
                 lines.insert(line, at: 0)
-                if lines.count >= maxLines {
+                if lines.count >= self.maxLines {
                     break
                 }
             }
         }
 
         // If we have fewer lines than maxLines, add empty lines at the top
-        while lines.count < min(maxLines, snapshot.rows) && lines.count < maxLines {
+        while lines.count < min(self.maxLines, self.snapshot.rows), lines.count < self.maxLines {
             lines.insert("", at: 0)
         }
 

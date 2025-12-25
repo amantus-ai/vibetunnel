@@ -16,7 +16,7 @@ enum DevServerValidation: Equatable {
     }
 
     var errorMessage: String? {
-        if case .invalid(let message) = self { return message }
+        if case let .invalid(message) = self { return message }
         return nil
     }
 }
@@ -43,36 +43,32 @@ struct DebugSettingsView: View {
         NavigationStack {
             Form {
                 DevelopmentServerSection(
-                    useDevServer: $useDevServer,
-                    devServerPath: $devServerPath,
-                    devServerValidation: $devServerValidation,
-                    validateDevServer: validateDevServer,
-                    serverManager: serverManager
-                )
+                    useDevServer: self.$useDevServer,
+                    devServerPath: self.$devServerPath,
+                    devServerValidation: self.$devServerValidation,
+                    validateDevServer: self.validateDevServer,
+                    serverManager: self.serverManager)
 
                 DebugOptionsSection(
-                    debugMode: $debugMode,
-                    logLevel: $logLevel
-                )
+                    debugMode: self.$debugMode,
+                    logLevel: self.$logLevel)
 
                 DeveloperToolsSection(
-                    showPurgeConfirmation: $showPurgeConfirmation,
-                    openConsole: openConsole,
-                    showApplicationSupport: showApplicationSupport
-                )
+                    showPurgeConfirmation: self.$showPurgeConfirmation,
+                    openConsole: self.openConsole,
+                    showApplicationSupport: self.showApplicationSupport)
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
             .navigationTitle("Debug Settings")
-            .alert("Purge All User Defaults?", isPresented: $showPurgeConfirmation) {
+            .alert("Purge All User Defaults?", isPresented: self.$showPurgeConfirmation) {
                 Button("Cancel", role: .cancel) {}
                 Button("Purge", role: .destructive) {
-                    purgeAllUserDefaults()
+                    self.purgeAllUserDefaults()
                 }
             } message: {
                 Text(
-                    "This will remove all stored preferences and reset the app to its default state. The app will quit after purging."
-                )
+                    "This will remove all stored preferences and reset the app to its default state. The app will quit after purging.")
             }
         }
     }
@@ -108,7 +104,7 @@ struct DebugSettingsView: View {
     }
 
     private func validateDevServer(path: String) {
-        devServerValidation = devServerManager.validate(path: path)
+        self.devServerValidation = self.devServerManager.validate(path: path)
     }
 }
 
@@ -124,7 +120,7 @@ private struct DebugOptionsSection: View {
                 HStack {
                     Text("Log Level")
                     Spacer()
-                    Picker("", selection: $logLevel) {
+                    Picker("", selection: self.$logLevel) {
                         Text("Error").tag("error")
                         Text("Warning").tag("warning")
                         Text("Info").tag("info")
@@ -158,7 +154,7 @@ private struct DeveloperToolsSection: View {
                     Text("System Logs")
                     Spacer()
                     Button("Open Console") {
-                        openConsole()
+                        self.openConsole()
                     }
                     .buttonStyle(.bordered)
                 }
@@ -173,7 +169,7 @@ private struct DeveloperToolsSection: View {
                     Spacer()
                     Button("Show Welcome") {
                         #if !SWIFT_PACKAGE
-                            AppDelegate.showWelcomeScreen()
+                        AppDelegate.showWelcomeScreen()
                         #endif
                     }
                     .buttonStyle(.bordered)
@@ -188,7 +184,7 @@ private struct DeveloperToolsSection: View {
                     Text("User Defaults")
                     Spacer()
                     Button("Purge All") {
-                        showPurgeConfirmation = true
+                        self.showPurgeConfirmation = true
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.red)
@@ -218,15 +214,15 @@ private struct DevelopmentServerSection: View {
             VStack(alignment: .leading, spacing: 12) {
                 // Toggle for using dev server
                 VStack(alignment: .leading, spacing: 4) {
-                    Toggle("Use development server", isOn: $useDevServer)
-                        .onChange(of: useDevServer) { _, newValue in
-                            if newValue && !devServerPath.isEmpty {
-                                validateDevServer(devServerPath)
+                    Toggle("Use development server", isOn: self.$useDevServer)
+                        .onChange(of: self.useDevServer) { _, newValue in
+                            if newValue, !self.devServerPath.isEmpty {
+                                self.validateDevServer(self.devServerPath)
                             }
                             // Restart server if it's running and the setting changed
-                            if serverManager.isRunning {
+                            if self.serverManager.isRunning {
                                 Task {
-                                    await serverManager.restart()
+                                    await self.serverManager.restart()
                                 }
                             }
                         }
@@ -236,16 +232,16 @@ private struct DevelopmentServerSection: View {
                 }
 
                 // Path input (only shown when enabled)
-                if useDevServer {
+                if self.useDevServer {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
-                            TextField("Web project path", text: $devServerPath)
+                            TextField("Web project path", text: self.$devServerPath)
                                 .textFieldStyle(.roundedBorder)
-                                .onChange(of: devServerPath) { _, newPath in
-                                    validateDevServer(newPath)
+                                .onChange(of: self.devServerPath) { _, newPath in
+                                    self.validateDevServer(newPath)
                                 }
 
-                            Button(action: selectDirectory) {
+                            Button(action: self.selectDirectory) {
                                 Image(systemName: "folder")
                                     .font(.system(size: 12))
                                     .foregroundColor(.secondary)
@@ -255,7 +251,7 @@ private struct DevelopmentServerSection: View {
                         }
 
                         // Validation status
-                        if devServerValidation == .validating {
+                        if self.devServerValidation == .validating {
                             HStack(spacing: 4) {
                                 ProgressView()
                                     .scaleEffect(0.7)
@@ -263,7 +259,7 @@ private struct DevelopmentServerSection: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-                        } else if devServerValidation.isValid {
+                        } else if self.devServerValidation.isValid {
                             HStack(spacing: 4) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundColor(.green)
@@ -293,13 +289,12 @@ private struct DevelopmentServerSection: View {
             Text("Development Server")
                 .font(.headline)
         } footer: {
-            if useDevServer {
+            if self.useDevServer {
                 Text(
-                    "Requires pnpm to be installed. The server will run 'pnpm run dev' with the same arguments as the built-in server."
-                )
-                .font(.caption)
-                .frame(maxWidth: .infinity)
-                .multilineTextAlignment(.center)
+                    "Requires pnpm to be installed. The server will run 'pnpm run dev' with the same arguments as the built-in server.")
+                    .font(.caption)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
             }
         }
     }
@@ -311,7 +306,7 @@ private struct DevelopmentServerSection: View {
         panel.allowsMultipleSelection = false
 
         // Set initial directory
-        if !devServerPath.isEmpty {
+        if !self.devServerPath.isEmpty {
             let expandedPath = NSString(string: devServerPath).expandingTildeInPath
             panel.directoryURL = URL(fileURLWithPath: expandedPath)
         }
@@ -320,13 +315,13 @@ private struct DevelopmentServerSection: View {
             let path = url.path
             let homeDir = NSHomeDirectory()
             if path.hasPrefix(homeDir) {
-                devServerPath = "~" + path.dropFirst(homeDir.count)
+                self.devServerPath = "~" + path.dropFirst(homeDir.count)
             } else {
-                devServerPath = path
+                self.devServerPath = path
             }
 
             // Validate immediately after selection
-            validateDevServer(devServerPath)
+            self.validateDevServer(self.devServerPath)
         }
     }
 }

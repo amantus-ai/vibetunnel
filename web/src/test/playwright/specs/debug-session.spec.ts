@@ -20,7 +20,9 @@ test.describe('Debug Session Tests', () => {
   });
   test('debug session creation and listing', async ({ page }) => {
     // Simple test that creates a session and verifies it exists
-    const { sessionName } = await sessionManager.createTrackedSession('debug');
+    const { sessionName } = await sessionManager.createTrackedSession(
+      sessionManager.generateSessionName('debug')
+    );
 
     // Navigate back to list
     await page.goto('/');

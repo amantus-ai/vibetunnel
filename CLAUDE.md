@@ -137,7 +137,7 @@ cd ios
 ┌─────────────────────────────────────────────────────────────┐
 │                      Web Frontend                            │
 │  (TypeScript/LitElement - web/src/client/)                  │
-│  - Terminal rendering with xterm.js                         │
+│  - Terminal rendering with ghostty-web                      │
 │  - Real-time updates via WebSocket                          │
 └─────────────────────────────────────────────────────────────┘
 ```

@@ -88,7 +88,7 @@ struct TerminalParsingTests {
             }
 
             // 216 color cube (16-231)
-            if colorIndex >= 16 && colorIndex <= 231 {
+            if colorIndex >= 16, colorIndex <= 231 {
                 let index = colorIndex - 16
                 let r = (index / 36) * 51
                 let g = ((index % 36) / 6) * 51
@@ -97,7 +97,7 @@ struct TerminalParsingTests {
             }
 
             // Grayscale (232-255)
-            if colorIndex >= 232 && colorIndex <= 255 {
+            if colorIndex >= 232, colorIndex <= 255 {
                 let gray = (colorIndex - 232) * 10 + 8
                 return (gray, gray, gray)
             }
@@ -166,35 +166,35 @@ struct TerminalParsingTests {
             }
 
             mutating func write(_ char: Character) {
-                guard cursorRow < height && cursorCol < width else { return }
-                lines[cursorRow][cursorCol] = char
-                cursorCol += 1
+                guard self.cursorRow < self.height, self.cursorCol < self.width else { return }
+                self.lines[self.cursorRow][self.cursorCol] = char
+                self.cursorCol += 1
 
-                if cursorCol >= width {
-                    cursorCol = 0
-                    cursorRow += 1
-                    if cursorRow >= height {
+                if self.cursorCol >= self.width {
+                    self.cursorCol = 0
+                    self.cursorRow += 1
+                    if self.cursorRow >= self.height {
                         // Scroll
-                        lines.removeFirst()
-                        lines.append(Array(repeating: " ", count: width))
-                        cursorRow = height - 1
+                        self.lines.removeFirst()
+                        self.lines.append(Array(repeating: " ", count: self.width))
+                        self.cursorRow = self.height - 1
                     }
                 }
             }
 
             mutating func newline() {
-                cursorCol = 0
-                cursorRow += 1
-                if cursorRow >= height {
-                    lines.removeFirst()
-                    lines.append(Array(repeating: " ", count: width))
-                    cursorRow = height - 1
+                self.cursorCol = 0
+                self.cursorRow += 1
+                if self.cursorRow >= self.height {
+                    self.lines.removeFirst()
+                    self.lines.append(Array(repeating: " ", count: self.width))
+                    self.cursorRow = self.height - 1
                 }
             }
 
             func getLine(_ row: Int) -> String {
-                guard row < lines.count else { return "" }
-                return String(lines[row])
+                guard row < self.lines.count else { return "" }
+                return String(self.lines[row])
             }
         }
 
@@ -281,10 +281,10 @@ struct TerminalParsingTests {
                 case 1: // Application cursor keys
                     break
                 case 7: // Autowrap
-                    autowrap = enabled
+                    self.autowrap = enabled
                 case 25: // Cursor visibility
-                    cursorVisible = enabled
-                case 1_049: // Alternate screen buffer
+                    self.cursorVisible = enabled
+                case 1049: // Alternate screen buffer
                     break
                 default:
                     break
@@ -322,18 +322,18 @@ struct TerminalParsingTests {
             let payload: Data
 
             var description: String {
-                switch type {
+                switch self.type {
                 case .data:
-                    return "Data(\(payload.count) bytes)"
+                    return "Data(\(self.payload.count) bytes)"
                 case .resize:
-                    guard payload.count >= 4 else { return "Invalid resize" }
-                    let cols = payload.withUnsafeBytes { $0.loadUnaligned(as: UInt16.self) }
-                    let rows = payload.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 2, as: UInt16.self) }
+                    guard self.payload.count >= 4 else { return "Invalid resize" }
+                    let cols = self.payload.withUnsafeBytes { $0.loadUnaligned(as: UInt16.self) }
+                    let rows = self.payload.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 2, as: UInt16.self) }
                     return "Resize(\(cols)x\(rows))"
                 case .cursor:
-                    guard payload.count >= 4 else { return "Invalid cursor" }
-                    let x = payload.withUnsafeBytes { $0.loadUnaligned(as: UInt16.self) }
-                    let y = payload.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 2, as: UInt16.self) }
+                    guard self.payload.count >= 4 else { return "Invalid cursor" }
+                    let x = self.payload.withUnsafeBytes { $0.loadUnaligned(as: UInt16.self) }
+                    let y = self.payload.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: 2, as: UInt16.self) }
                     return "Cursor(\(x),\(y))"
                 case .clear:
                     return "Clear"
@@ -365,32 +365,32 @@ struct TerminalParsingTests {
 
             func parse(_ chunk: String) -> [(type: String, content: String)] {
                 var results: [(type: String, content: String)] = []
-                buffer += chunk
+                self.buffer += chunk
 
-                var i = buffer.startIndex
-                while i < buffer.endIndex {
-                    let char = buffer[i]
+                var i = self.buffer.startIndex
+                while i < self.buffer.endIndex {
+                    let char = self.buffer[i]
 
-                    if inEscape {
-                        escapeBuffer.append(char)
-                        if isEscapeTerminator(char) {
-                            results.append(("escape", escapeBuffer))
-                            escapeBuffer = ""
-                            inEscape = false
+                    if self.inEscape {
+                        self.escapeBuffer.append(char)
+                        if self.isEscapeTerminator(char) {
+                            results.append(("escape", self.escapeBuffer))
+                            self.escapeBuffer = ""
+                            self.inEscape = false
                         }
                     } else if char == "\u{1B}" {
-                        inEscape = true
-                        escapeBuffer = String(char)
+                        self.inEscape = true
+                        self.escapeBuffer = String(char)
                     } else {
                         results.append(("text", String(char)))
                     }
 
-                    i = buffer.index(after: i)
+                    i = self.buffer.index(after: i)
                 }
 
                 // Clear processed data
-                if !inEscape {
-                    buffer = ""
+                if !self.inEscape {
+                    self.buffer = ""
                 }
 
                 return results

@@ -21,14 +21,13 @@ This document provides a comprehensive map of the VibeTunnel web application arc
 - **Routes**: `src/server/routes/sessions.ts:134-1252` - Session API
 
 ### Real-time Communication
-- **Binary Buffer**: `src/server/services/terminal-manager.ts:378-574` - Buffer encoding
-- **WebSocket Server**: `src/server/services/buffer-aggregator.ts:44-344` - Buffer streaming
-- **Input Handler**: `src/server/routes/websocket-input.ts:156-164` - Input protocol
+- **VT Snapshot v1**: `src/server/services/terminal-manager.ts:378-574` - Snapshot encoding
+- **WebSocket v3 Hub**: `src/server/services/ws-v3-hub.ts` - Multiplexed stdout/snapshots/events + input
 
 ### Client Core
 - **Entry Point**: `src/client/app-entry.ts:1-28` - App initialization
 - **Main Component**: `src/client/app.ts:44-1355` - `<vibetunnel-app>`
-- **Terminal**: `src/client/components/terminal.ts:23-1567` - xterm.js wrapper
+- **Terminal**: `src/client/components/terminal.ts:23-1567` - ghostty-web wrapper
 
 ## Server Architecture
 
@@ -95,7 +94,6 @@ The server provides a comprehensive API for terminal session management with sup
 │   ├── session.json    # Session metadata
 │   ├── stdout          # Terminal output
 │   ├── stdin           # Terminal input log
-│   ├── activity.json   # Activity status
 │   └── ipc.sock        # Unix socket for IPC
 ```
 
@@ -109,7 +107,7 @@ The server provides a comprehensive API for terminal session management with sup
 ├── <session-list>                # Session listing
 │   └── <session-card>           # Individual session
 ├── <session-view>               # Full-screen terminal
-│   ├── <vibe-terminal>         # xterm.js wrapper
+│   ├── <vibe-terminal>         # ghostty-web wrapper
 │   └── <vibe-terminal-buffer>  # Binary buffer renderer
 └── <unified-settings>           # Settings panel
 ```
@@ -127,15 +125,10 @@ The server provides a comprehensive API for terminal session management with sup
 - Handles SSH key and password auth
 - Stores tokens in localStorage
 
-**BufferSubscriptionService** (`src/client/services/buffer-subscription-service.ts`):
-- WebSocket connection for binary terminal buffers
-- Automatic reconnection with exponential backoff
-- Multiplexed subscriptions per session
-
-**WebSocketInputClient** (`src/client/services/websocket-input-client.ts`):
-- Low-latency input transmission
-- Fire-and-forget protocol
-- Per-session connections
+**TerminalSocketClient** (`src/client/services/terminal-socket-client.ts`):
+- Single WebSocket to `/ws` (v3 framing)
+- Multiplexed subscriptions per session (stdout/snapshots/events)
+- Input + resize on the same socket
 
 ## API Specification
 
@@ -148,10 +141,7 @@ The server provides a comprehensive API for terminal session management with sup
 - `DELETE /api/sessions/:id` - Kill session
 - `POST /api/sessions/:id/input` - Send input
 - `POST /api/sessions/:id/resize` - Resize terminal
-- `GET /api/sessions/:id/stream` - SSE output stream
 - `GET /api/sessions/:id/text` - Get text output
-- `GET /api/sessions/:id/buffer` - Get binary buffer
-- `GET /api/sessions/activity` - Get all activity
 
 #### Authentication
 - `POST /api/auth/challenge` - Request challenge
@@ -174,23 +164,12 @@ The server provides a comprehensive API for terminal session management with sup
 
 ### WebSocket Protocols
 
-#### Binary Buffer Protocol (`/buffers`)
+#### Terminal Transport (`/ws`, v3)
 
-**Connection**: WebSocket with Bearer token authentication
+Single WebSocket. Multiplexed sessions. Binary framing.
+See `docs/websocket.md` for framing and message types.
 
-**Client → Server Messages** (JSON):
-```json
-{ "type": "subscribe", "sessionId": "session_123" }
-{ "type": "unsubscribe", "sessionId": "session_123" }
-{ "type": "ping" }
-```
-
-**Server → Client Messages** (Binary):
-```
-[0xBF][ID Length (4 bytes)][Session ID (UTF-8)][Buffer Data]
-```
-
-**Buffer Data Format** (32-byte header + cells):
+**VT Snapshot v1 Format** (`SNAPSHOT_VT` payload):
 ```
 Header (32 bytes):
 ├── Magic: 0x5654 "VT" (2 bytes)
@@ -217,26 +196,6 @@ Cell Type Byte:
 └── Bits 1-0: Character type (00=space, 01=ASCII, 10=Unicode)
 ```
 
-#### Input Protocol (`/ws/input`)
-
-**Connection**: `ws://host/ws/input?sessionId=X&token=Y`
-
-**Message Format**:
-- Regular text: Sent as-is
-- Special keys: `\x00key_name\x00`
-
-### Server-Sent Events (SSE)
-
-**Session Output Stream** (`/api/sessions/:id/stream`)
-
-Uses asciinema cast v2 format:
-```json
-[timestamp, "o", "output text"]      // Terminal output
-[timestamp, "i", "input text"]       // User input
-[timestamp, "r", "80x24"]           // Resize event
-["exit", exitCode, sessionId]       // Process exit
-```
-
 ## fwd.ts Application
 
 The `fwd.ts` tool (`src/server/fwd.ts`) wraps any command in a VibeTunnel session:
@@ -249,10 +208,10 @@ The `fwd.ts` tool (`src/server/fwd.ts`) wraps any command in a VibeTunnel sessio
 - `--update-title <title>`: Update existing session title
 
 **Features**:
-- Auto-detects Claude AI and enables dynamic titles
+- Dynamic title mode is a legacy alias of static (no activity tracking)
 - Forwards stdin/stdout through PTY infrastructure
 - Creates sessions accessible via web interface
-- Activity detection for intelligent status updates
+- Sends control commands over the IPC socket (resize/kill/update-title)
 
 **Socket Protocol** (`src/server/pty/socket-protocol.ts`):
 ```
@@ -260,7 +219,7 @@ Message Types:
 ├── stdin: { type: 'stdin', data: Buffer }
 ├── resize: { type: 'resize', cols: number, rows: number }
 ├── kill: { type: 'kill', signal?: string }
-└── status: { type: 'status', message: string }
+└── update-title: { type: 'update-title', title: string }
 ```
 
 ## HQ Mode & Distributed Architecture
@@ -274,7 +233,7 @@ Message Types:
 ### Request Routing
 - HQ checks session ownership via registry
 - Forwards API requests to appropriate remote
-- Proxies SSE streams transparently
+- Proxies WS v3 streams transparently
 - Multiplexes WebSocket connections
 
 ### High Availability
@@ -282,20 +241,6 @@ Message Types:
 - Continues serving local sessions
 - Automatic reconnection for WebSocket streams
 - Session ownership tracking for reliability
-
-## Activity Tracking
-
-### Activity Monitor (`src/server/services/activity-monitor.ts`)
-- Monitors stdout file changes (100ms intervals)
-- Marks sessions inactive after 500ms of no output
-- Persists activity to `activity.json`
-- Provides real-time activity status
-
-### Activity Detection (`src/server/utils/activity-detector.ts`)
-- App-specific status detection (Claude AI)
-- Filters prompt-only output
-- Dynamic title updates based on activity
-- 5-second activity timeout
 
 ## Additional Features
 

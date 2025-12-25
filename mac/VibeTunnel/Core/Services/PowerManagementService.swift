@@ -25,7 +25,7 @@ final class PowerManagementService {
 
     /// Prevents the system from sleeping
     func preventSleep() {
-        guard !isAssertionActive else { return }
+        guard !self.isAssertionActive else { return }
 
         let reason = "VibeTunnel is running terminal sessions" as CFString
         let assertionType = kIOPMAssertionTypeNoIdleSleep as CFString
@@ -34,40 +34,39 @@ final class PowerManagementService {
             assertionType,
             IOPMAssertionLevel(kIOPMAssertionLevelOn),
             reason,
-            &assertionID
-        )
+            &self.assertionID)
 
         if success == kIOReturnSuccess {
-            isAssertionActive = true
-            isSleepPrevented = true
-            logger.info("Sleep prevention enabled")
+            self.isAssertionActive = true
+            self.isSleepPrevented = true
+            self.logger.info("Sleep prevention enabled")
         } else {
-            logger.error("Failed to prevent sleep: \(success)")
+            self.logger.error("Failed to prevent sleep: \(success)")
         }
     }
 
     /// Allows the system to sleep normally
     func allowSleep() {
-        guard isAssertionActive else { return }
+        guard self.isAssertionActive else { return }
 
         let success = IOPMAssertionRelease(assertionID)
 
         if success == kIOReturnSuccess {
-            isAssertionActive = false
-            isSleepPrevented = false
-            assertionID = 0
-            logger.info("Sleep prevention disabled")
+            self.isAssertionActive = false
+            self.isSleepPrevented = false
+            self.assertionID = 0
+            self.logger.info("Sleep prevention disabled")
         } else {
-            logger.error("Failed to release sleep assertion: \(success)")
+            self.logger.error("Failed to release sleep assertion: \(success)")
         }
     }
 
     /// Updates sleep prevention based on user preference and server state
     func updateSleepPrevention(enabled: Bool, serverRunning: Bool) {
-        if enabled && serverRunning {
-            preventSleep()
+        if enabled, serverRunning {
+            self.preventSleep()
         } else {
-            allowSleep()
+            self.allowSleep()
         }
     }
 

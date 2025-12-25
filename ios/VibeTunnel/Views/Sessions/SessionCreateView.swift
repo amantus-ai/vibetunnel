@@ -15,12 +15,10 @@ struct TerminalTextFieldStyle: TextFieldStyle {
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                    .fill(Theme.Colors.cardBackground)
-            )
+                    .fill(Theme.Colors.cardBackground))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                    .stroke(Theme.Colors.cardBorder, lineWidth: 1)
-            )
+                    .stroke(Theme.Colors.cardBorder, lineWidth: 1))
     }
 }
 
@@ -65,11 +63,11 @@ struct SessionCreateView: View {
                                     .font(Theme.Typography.terminalSystem(size: 14))
                                     .foregroundColor(Theme.Colors.primaryAccent)
 
-                                TextField("zsh", text: $command)
+                                TextField("zsh", text: self.$command)
                                     .textFieldStyle(TerminalTextFieldStyle())
                                     .autocapitalization(.none)
                                     .disableAutocorrection(true)
-                                    .focused($focusedField, equals: .command)
+                                    .focused(self.$focusedField, equals: .command)
                             }
 
                             // Working Directory
@@ -79,15 +77,15 @@ struct SessionCreateView: View {
                                     .foregroundColor(Theme.Colors.primaryAccent)
 
                                 HStack(spacing: Theme.Spacing.small) {
-                                    TextField("~/", text: $workingDirectory)
+                                    TextField("~/", text: self.$workingDirectory)
                                         .textFieldStyle(TerminalTextFieldStyle())
                                         .autocapitalization(.none)
                                         .disableAutocorrection(true)
-                                        .focused($focusedField, equals: .workingDir)
+                                        .focused(self.$focusedField, equals: .workingDir)
 
                                     Button(action: {
                                         HapticFeedback.impact(.light)
-                                        showFileBrowser = true
+                                        self.showFileBrowser = true
                                     }, label: {
                                         Image(systemName: "folder")
                                             .font(.system(size: 16))
@@ -95,8 +93,7 @@ struct SessionCreateView: View {
                                             .frame(width: 44, height: 44)
                                             .background(
                                                 RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                                                    .fill(Theme.Colors.primaryAccent)
-                                            )
+                                                    .fill(Theme.Colors.primaryAccent))
                                     })
                                     .buttonStyle(PlainButtonStyle())
                                 }
@@ -108,33 +105,31 @@ struct SessionCreateView: View {
                                     .font(Theme.Typography.terminalSystem(size: 14))
                                     .foregroundColor(Theme.Colors.primaryAccent)
 
-                                TextField("My Session", text: $sessionName)
+                                TextField("My Session", text: self.$sessionName)
                                     .textFieldStyle(TerminalTextFieldStyle())
-                                    .focused($focusedField, equals: .name)
+                                    .focused(self.$focusedField, equals: .name)
                             }
 
                             // Error Message
-                            if presentedError != nil {
+                            if self.presentedError != nil {
                                 ErrorBanner(
-                                    message: presentedError?.error.localizedDescription ?? "An error occurred"
-                                ) {
-                                    presentedError = nil
+                                    message: self.presentedError?.error.localizedDescription ?? "An error occurred")
+                                {
+                                    self.presentedError = nil
                                 }
                                 .overlay(
                                     RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                                        .stroke(Theme.Colors.errorAccent.opacity(0.3), lineWidth: 1)
-                                )
+                                        .stroke(Theme.Colors.errorAccent.opacity(0.3), lineWidth: 1))
                                 .transition(.asymmetric(
                                     insertion: .scale(scale: 0.95).combined(with: .opacity),
-                                    removal: .scale(scale: 0.95).combined(with: .opacity)
-                                ))
+                                    removal: .scale(scale: 0.95).combined(with: .opacity)))
                             }
                         }
                         .padding(.horizontal)
                         .padding(.top, Theme.Spacing.large)
 
                         // Quick Directories
-                        if focusedField == .workingDir {
+                        if self.focusedField == .workingDir {
                             VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                                 Text("COMMON DIRECTORIES")
                                     .font(Theme.Typography.terminalSystem(size: 10))
@@ -144,9 +139,9 @@ struct SessionCreateView: View {
 
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: Theme.Spacing.small) {
-                                        ForEach(commonDirectories, id: \.self) { dir in
+                                        ForEach(self.commonDirectories, id: \.self) { dir in
                                             Button(action: {
-                                                workingDirectory = dir
+                                                self.workingDirectory = dir
                                                 HapticFeedback.selection()
                                             }, label: {
                                                 HStack(spacing: 4) {
@@ -155,25 +150,23 @@ struct SessionCreateView: View {
                                                     Text(dir)
                                                         .font(Theme.Typography.terminalSystem(size: 13))
                                                 }
-                                                .foregroundColor(workingDirectory == dir ? Theme.Colors
-                                                    .terminalBackground : Theme.Colors.terminalForeground
-                                                )
+                                                .foregroundColor(
+                                                    self.workingDirectory == dir ? Theme.Colors
+                                                        .terminalBackground : Theme.Colors.terminalForeground)
                                                 .padding(.horizontal, 12)
                                                 .padding(.vertical, 8)
                                                 .background(
                                                     RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                                                        .fill(workingDirectory == dir ? Theme.Colors
-                                                            .primaryAccent : Theme.Colors.cardBorder.opacity(0.1)
-                                                        )
-                                                )
+                                                        .fill(
+                                                            self.workingDirectory == dir ? Theme.Colors
+                                                                .primaryAccent : Theme.Colors.cardBorder.opacity(0.1)))
                                                 .overlay(
                                                     RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                                                         .stroke(
-                                                            workingDirectory == dir ? Theme.Colors.primaryAccent : Theme
+                                                            self.workingDirectory == dir ? Theme.Colors
+                                                                .primaryAccent : Theme
                                                                 .Colors.cardBorder.opacity(0.3),
-                                                            lineWidth: 1
-                                                        )
-                                                )
+                                                            lineWidth: 1))
                                             })
                                             .buttonStyle(PlainButtonStyle())
                                         }
@@ -193,11 +186,11 @@ struct SessionCreateView: View {
 
                             LazyVGrid(columns: [
                                 GridItem(.flexible()),
-                                GridItem(.flexible())
+                                GridItem(.flexible()),
                             ], spacing: Theme.Spacing.small) {
-                                ForEach(quickStartCommands, id: \.title) { item in
+                                ForEach(self.quickStartCommands, id: \.title) { item in
                                     Button(action: {
-                                        command = item.command
+                                        self.command = item.command
                                         HapticFeedback.selection()
                                     }, label: {
                                         HStack(spacing: Theme.Spacing.small) {
@@ -208,27 +201,25 @@ struct SessionCreateView: View {
                                                 .font(Theme.Typography.terminalSystem(size: 15))
                                             Spacer()
                                         }
-                                        .foregroundColor(command == item.command ? Theme.Colors
-                                            .terminalBackground : Theme.Colors
-                                            .terminalForeground
-                                        )
+                                        .foregroundColor(
+                                            self.command == item.command ? Theme.Colors
+                                                .terminalBackground : Theme.Colors
+                                                .terminalForeground)
                                         .padding(.horizontal, Theme.Spacing.medium)
                                         .padding(.vertical, 14)
                                         .background(
                                             RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                                                .fill(command == item.command ? Theme.Colors.primaryAccent : Theme
-                                                    .Colors
-                                                    .cardBackground
-                                                )
-                                        )
+                                                .fill(
+                                                    self.command == item.command ? Theme.Colors.primaryAccent : Theme
+                                                        .Colors
+                                                        .cardBackground))
                                         .overlay(
                                             RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                                                 .stroke(
-                                                    command == item.command ? Theme.Colors.primaryAccent : Theme.Colors
+                                                    self.command == item.command ? Theme.Colors.primaryAccent : Theme
+                                                        .Colors
                                                         .cardBorder.opacity(0.3),
-                                                    lineWidth: 1
-                                                )
-                                        )
+                                                    lineWidth: 1))
                                     })
                                     .buttonStyle(PlainButtonStyle())
                                 }
@@ -238,7 +229,7 @@ struct SessionCreateView: View {
 
                         Spacer(minLength: 40)
                     }
-                    .frame(maxWidth: horizontalSizeClass == .regular ? 600 : .infinity)
+                    .frame(maxWidth: self.horizontalSizeClass == .regular ? 600 : .infinity)
                     .frame(maxWidth: .infinity)
                 }
             }
@@ -255,7 +246,7 @@ struct SessionCreateView: View {
                     HStack {
                         Button(action: {
                             HapticFeedback.impact(.light)
-                            isPresented = false
+                            self.isPresented = false
                         }, label: {
                             Text("Cancel")
                                 .font(.system(size: 17))
@@ -273,22 +264,22 @@ struct SessionCreateView: View {
 
                         Button(action: {
                             HapticFeedback.impact(.medium)
-                            createSession()
+                            self.createSession()
                         }, label: {
-                            if isCreating {
+                            if self.isCreating {
                                 ProgressView()
                                     .progressViewStyle(CircularProgressViewStyle(tint: Theme.Colors.primaryAccent))
                                     .scaleEffect(0.8)
                             } else {
                                 Text("Create")
                                     .font(.system(size: 17, weight: .semibold))
-                                    .foregroundColor(command.isEmpty ? Theme.Colors.primaryAccent.opacity(0.5) : Theme
-                                        .Colors.primaryAccent
-                                    )
+                                    .foregroundColor(
+                                        self.command.isEmpty ? Theme.Colors.primaryAccent.opacity(0.5) : Theme
+                                            .Colors.primaryAccent)
                             }
                         })
                         .buttonStyle(PlainButtonStyle())
-                        .disabled(isCreating || command.isEmpty)
+                        .disabled(self.isCreating || self.command.isEmpty)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
@@ -299,21 +290,20 @@ struct SessionCreateView: View {
                     Rectangle()
                         .fill(Theme.Colors.cardBorder.opacity(0.15))
                         .frame(height: 0.5),
-                    alignment: .bottom
-                )
+                    alignment: .bottom)
             }
             .onAppear {
-                loadDefaults()
-                focusedField = .command
+                self.loadDefaults()
+                self.focusedField = .command
             }
         }
-        .sheet(isPresented: $showFileBrowser) {
-            FileBrowserView(initialPath: workingDirectory) { selectedPath in
-                workingDirectory = selectedPath
+        .sheet(isPresented: self.$showFileBrowser) {
+            FileBrowserView(initialPath: self.workingDirectory) { selectedPath in
+                self.workingDirectory = selectedPath
                 HapticFeedback.notification(.success)
             }
         }
-        .errorAlert(item: $presentedError)
+        .errorAlert(item: self.$presentedError)
     }
 
     private struct QuickStartItem {
@@ -329,7 +319,7 @@ struct SessionCreateView: View {
             QuickStartItem(title: "zsh", command: "zsh", icon: "terminal"),
             QuickStartItem(title: "python3", command: "python3", icon: "chevron.left.forwardslash.chevron.right"),
             QuickStartItem(title: "node", command: "node", icon: "server.rack"),
-            QuickStartItem(title: "npm run dev", command: "npm run dev", icon: "play.circle")
+            QuickStartItem(title: "npm run dev", command: "npm run dev", icon: "play.circle"),
         ]
     }
 
@@ -361,39 +351,38 @@ struct SessionCreateView: View {
     private func loadDefaults() {
         // Load last used values matching web behavior
         if let lastCommand = UserDefaults.standard.string(forKey: "vibetunnel_last_command"), !lastCommand.isEmpty {
-            command = lastCommand
+            self.command = lastCommand
         } else {
             // Default to zsh
-            command = "zsh"
+            self.command = "zsh"
         }
         if let lastDir = UserDefaults.standard.string(forKey: "vibetunnel_last_working_dir"), !lastDir.isEmpty {
-            workingDirectory = lastDir
+            self.workingDirectory = lastDir
         } else {
             // Default to home directory
-            workingDirectory = "~/"
+            self.workingDirectory = "~/"
         }
 
         // Match the web's selectedQuickStart behavior
-        if quickStartCommands.contains(where: { $0.command == command }) {
+        if self.quickStartCommands.contains(where: { $0.command == command }) {
             // Command matches a quick start option
         }
     }
 
     private func createSession() {
-        isCreating = true
-        presentedError = nil
+        self.isCreating = true
+        self.presentedError = nil
 
         // Save preferences matching web localStorage keys
-        UserDefaults.standard.set(command, forKey: "vibetunnel_last_command")
-        UserDefaults.standard.set(workingDirectory, forKey: "vibetunnel_last_working_dir")
+        UserDefaults.standard.set(self.command, forKey: "vibetunnel_last_command")
+        UserDefaults.standard.set(self.workingDirectory, forKey: "vibetunnel_last_working_dir")
 
         Task {
             do {
                 let sessionData = SessionCreateData(
                     command: command,
-                    workingDir: workingDirectory.isEmpty ? "~" : workingDirectory,
-                    name: sessionName.isEmpty ? nil : sessionName
-                )
+                    workingDir: workingDirectory.isEmpty ? "~" : self.workingDirectory,
+                    name: self.sessionName.isEmpty ? nil : self.sessionName)
 
                 // Log the request for debugging
                 logger.info("Creating session with data:")
@@ -408,8 +397,8 @@ struct SessionCreateView: View {
                 logger.info("Session created successfully with ID: \(sessionId)")
 
                 await MainActor.run {
-                    onCreated(sessionId)
-                    isPresented = false
+                    self.onCreated(sessionId)
+                    self.isPresented = false
                 }
             } catch {
                 logger.error("Failed to create session: \(error)")
@@ -418,8 +407,8 @@ struct SessionCreateView: View {
                 }
 
                 await MainActor.run {
-                    presentedError = IdentifiableError(error: error)
-                    isCreating = false
+                    self.presentedError = IdentifiableError(error: error)
+                    self.isCreating = false
                 }
             }
         }

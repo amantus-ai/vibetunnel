@@ -341,7 +341,7 @@ test('GET /api/git/repository-info matches schema', async () => {
   - [ ] DELETE /api/sessions/:id
   - [ ] POST /api/sessions/:id/resize
   - [ ] POST /api/sessions/:id/input
-  - [ ] GET /api/sessions/:id/stream (SSE)
+  - [ ] WS /ws (v3 framing; not OpenAPI)
 
 - [ ] **Repository APIs** (Phase 4)
   - [ ] GET /api/repositories/discover

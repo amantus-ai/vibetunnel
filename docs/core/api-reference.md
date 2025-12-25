@@ -99,42 +99,17 @@ Content-Type: application/json
 
 ## WebSocket Connection
 
-### Connect to Session
+### WebSocket v3 (`/ws`)
+
+- Endpoint: `GET /ws` (WebSocket upgrade)
+- Framing: binary v3 frames (`"VT"` magic, version `3`, type, sessionId, payload)
+- Multiplexing: one socket carries multiple session subscriptions
+
+Protocol details: `docs/websocket.md`.
+
 ```javascript
-const ws = new WebSocket('ws://localhost:4020/api/sessions/:id/ws');
+const ws = new WebSocket('ws://localhost:4020/ws?token=JWT_TOKEN');
 ws.binaryType = 'arraybuffer';
-```
-
-### Message Types
-
-#### Terminal Output (Server → Client)
-Binary format with magic byte:
-```
-[0xBF][4-byte length][UTF-8 data]
-```
-
-#### User Input (Client → Server)
-```json
-{
-  "type": "input",
-  "data": "ls -la\n"
-}
-```
-
-#### Terminal Resize (Client → Server)
-```json
-{
-  "type": "resize",
-  "cols": 120,
-  "rows": 40
-}
-```
-
-#### Keep-Alive Ping
-```json
-{
-  "type": "ping"
-}
 ```
 
 ## Health Check
@@ -179,38 +154,11 @@ GET /api/health
 - **API Calls**: 100 per minute
 - **WebSocket Messages**: Unlimited
 
-## Binary Buffer Protocol
+## Terminal Transport (WebSocket v3)
 
-### Packet Structure
-```
-┌──────────┬──────────────┬──────────────┐
-│ Magic    │ Length       │ Data         │
-│ (1 byte) │ (4 bytes)    │ (n bytes)    │
-│ 0xBF     │ Big-endian   │ UTF-8        │
-└──────────┴──────────────┴──────────────┘
-```
+Terminal I/O uses a single `/ws` WebSocket with binary v3 framing and multiplexed sessions.
 
-### Implementation
-```typescript
-// Encoding
-function encodeBuffer(data: string): ArrayBuffer {
-  const encoded = new TextEncoder().encode(data);
-  const buffer = new ArrayBuffer(5 + encoded.length);
-  const view = new DataView(buffer);
-  view.setUint8(0, 0xBF);
-  view.setUint32(1, encoded.length, false);
-  new Uint8Array(buffer, 5).set(encoded);
-  return buffer;
-}
-
-// Decoding
-function decodeBuffer(buffer: ArrayBuffer): string {
-  const view = new DataView(buffer);
-  if (view.getUint8(0) !== 0xBF) throw new Error('Invalid magic byte');
-  const length = view.getUint32(1, false);
-  return new TextDecoder().decode(new Uint8Array(buffer, 5, length));
-}
-```
+Details: `docs/websocket.md`.
 
 ## Session Recording
 

@@ -68,7 +68,7 @@ export namespace PromptDetector {
 
   /**
    * Check if the entire output is just a prompt (no other content)
-   * Used by activity detector to determine if output is meaningful
+   * Used to determine if output is meaningful
    */
   export function isPromptOnly(data: string): boolean {
     // Input validation

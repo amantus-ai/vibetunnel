@@ -16,6 +16,19 @@ final class RemoteServicesStatusManager {
     private let checkInterval: TimeInterval = RemoteAccessConstants.statusCheckInterval
     private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "RemoteServicesStatus")
 
+    struct TailscaleStatus: Equatable, Sendable {
+        let isInstalled: Bool
+        let isRunning: Bool
+        let hostname: String?
+    }
+
+    struct CloudflareStatus: Equatable, Sendable {
+        let isInstalled: Bool
+        let isRunning: Bool
+        let publicUrl: String?
+        let error: String?
+    }
+
     // Service references
     private let ngrokService = NgrokService.shared
     private let tailscaleService = TailscaleService.shared
@@ -23,69 +36,68 @@ final class RemoteServicesStatusManager {
 
     // Status storage
     private(set) var ngrokStatus: NgrokTunnelStatus?
-    private(set) var tailscaleStatus: (isInstalled: Bool, isRunning: Bool, hostname: String?)?
-    private(set) var cloudflareStatus: (isInstalled: Bool, isRunning: Bool, publicUrl: String?, error: String?)?
+    private(set) var tailscaleStatus: TailscaleStatus?
+    private(set) var cloudflareStatus: CloudflareStatus?
 
     private init() {}
 
     /// Start monitoring all remote services
     func startMonitoring() {
-        guard statusCheckTimer == nil else { return }
+        guard self.statusCheckTimer == nil else { return }
 
-        logger.info("Starting remote services monitoring")
+        self.logger.info("Starting remote services monitoring")
 
         // Perform initial check
         Task {
-            await checkAllServices()
+            await self.checkAllServices()
         }
 
         // Set up periodic checks
-        statusCheckTimer = Timer.scheduledTimer(withTimeInterval: checkInterval, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                await self?.checkAllServices()
+        self.statusCheckTimer = Timer
+            .scheduledTimer(withTimeInterval: self.checkInterval, repeats: true) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    await self?.checkAllServices()
+                }
             }
-        }
     }
 
     /// Stop monitoring remote services
     func stopMonitoring() {
-        logger.info("Stopping remote services monitoring")
-        statusCheckTimer?.invalidate()
-        statusCheckTimer = nil
+        self.logger.info("Stopping remote services monitoring")
+        self.statusCheckTimer?.invalidate()
+        self.statusCheckTimer = nil
     }
 
     /// Check all services and update their status
     private func checkAllServices() async {
-        logger.debug("Checking all remote services status")
+        self.logger.debug("Checking all remote services status")
 
         // Check services in parallel
-        async let ngrokCheck = ngrokService.getStatus()
-        async let tailscaleCheck = checkTailscaleStatus()
-        async let cloudflareCheck: Void = cloudflareService.checkCloudflaredStatus()
+        async let ngrokCheck = self.ngrokService.getStatus()
+        async let tailscaleCheck = self.checkTailscaleStatus()
+        async let cloudflareCheck: Void = self.cloudflareService.checkCloudflaredStatus()
 
         // Update status
-        ngrokStatus = await ngrokCheck
-        tailscaleStatus = await tailscaleCheck
+        self.ngrokStatus = await ngrokCheck
+        self.tailscaleStatus = await tailscaleCheck
 
         // Wait for cloudflare check to complete
         await cloudflareCheck
 
         // Get cloudflare status
-        cloudflareStatus = (
-            isInstalled: cloudflareService.isInstalled,
-            isRunning: cloudflareService.isRunning,
-            publicUrl: cloudflareService.publicUrl,
-            error: cloudflareService.statusError
-        )
+        self.cloudflareStatus = CloudflareStatus(
+            isInstalled: self.cloudflareService.isInstalled,
+            isRunning: self.cloudflareService.isRunning,
+            publicUrl: self.cloudflareService.publicUrl,
+            error: self.cloudflareService.statusError)
     }
 
     /// Check Tailscale status
-    private func checkTailscaleStatus() async -> (isInstalled: Bool, isRunning: Bool, hostname: String?) {
-        await tailscaleService.checkTailscaleStatus()
-        return (
-            isInstalled: tailscaleService.isInstalled,
-            isRunning: tailscaleService.isRunning,
-            hostname: tailscaleService.tailscaleHostname
-        )
+    private func checkTailscaleStatus() async -> TailscaleStatus {
+        await self.tailscaleService.checkTailscaleStatus()
+        return TailscaleStatus(
+            isInstalled: self.tailscaleService.isInstalled,
+            isRunning: self.tailscaleService.isRunning,
+            hostname: self.tailscaleService.tailscaleHostname)
     }
 }

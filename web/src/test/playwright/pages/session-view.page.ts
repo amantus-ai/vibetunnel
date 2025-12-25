@@ -47,33 +47,45 @@ export class SessionViewPage extends BasePage {
 
   private terminalSelector = this.selectors.terminal;
 
-  async waitForTerminalReady() {
+  async waitForTerminalReady(options?: { timeout?: number; requirePrompt?: boolean }) {
+    const timeout = options?.timeout ?? (process.env.CI ? 20000 : 15000);
+    const requirePrompt = options?.requirePrompt ?? true;
+
     // Wait for terminal element to be visible
     await this.page.waitForSelector(this.selectors.terminal, {
       state: 'visible',
-      timeout: process.env.CI ? 10000 : 4000,
+      timeout,
     });
 
-    // Wait for terminal to be fully initialized (has content or structure)
-    // Determine timeout based on CI environment before passing to browser context
-    const timeout = process.env.CI ? 10000 : 5000;
-
     await this.page.waitForFunction(
-      () => {
-        const terminal = document.querySelector('vibe-terminal');
+      ({ mustHavePrompt }) => {
+        const host = document.querySelector('#session-terminal') ?? document;
+        const terminal = host.querySelector('vibe-terminal') as unknown as {
+          getAttribute?: (name: string) => string | null;
+          getDebugText?: () => string;
+          textContent?: string | null;
+          shadowRoot?: ShadowRoot | null;
+        } | null;
         if (!terminal) return false;
 
-        // Terminal is ready if it has content, shadow root, or xterm element
-        // Check the terminal container first
-        const container = terminal.querySelector('#terminal-container');
-        const hasContainerContent =
-          container?.textContent && container.textContent.trim().length > 0;
-        const hasContent = terminal.textContent && terminal.textContent.trim().length > 0;
-        const hasShadowRoot = !!terminal.shadowRoot;
-        const hasXterm = !!terminal.querySelector('.xterm');
+        if (terminal.getAttribute?.('data-ready') !== 'true') return false;
 
-        return hasContainerContent || hasContent || hasShadowRoot || hasXterm;
+        if (!mustHavePrompt) return true;
+
+        const content =
+          typeof terminal.getDebugText === 'function'
+            ? terminal.getDebugText()
+            : terminal.textContent || '';
+        if (!content) return false;
+
+        return (
+          /[$>#%❯]\s*$/m.test(content) ||
+          content.includes('$') ||
+          content.includes('#') ||
+          content.includes('>')
+        );
       },
+      { mustHavePrompt: requirePrompt },
       { timeout }
     );
   }
@@ -117,8 +129,8 @@ export class SessionViewPage extends BasePage {
   async copyText() {
     await this.page.click(this.selectors.terminal);
     // Select all and copy
-    await this.page.keyboard.press('Control+a');
-    await this.page.keyboard.press('Control+c');
+    await this.page.keyboard.press('ControlOrMeta+a');
+    await this.page.keyboard.press('ControlOrMeta+c');
   }
 
   async pasteText(text: string) {
@@ -127,14 +139,20 @@ export class SessionViewPage extends BasePage {
     const clipboardAvailable = await this.page.evaluate(() => !!navigator.clipboard);
 
     if (clipboardAvailable) {
-      await this.page.evaluate(async (textToPaste) => {
-        await navigator.clipboard.writeText(textToPaste);
-      }, text);
-      await this.page.keyboard.press('Control+v');
+      try {
+        await this.page.evaluate(async (textToPaste) => {
+          await navigator.clipboard.writeText(textToPaste);
+        }, text);
+        await this.page.keyboard.press('ControlOrMeta+v');
+        return;
+      } catch {}
     } else {
       // Fallback: type the text directly
       await this.page.keyboard.type(text);
+      return;
     }
+
+    await this.page.keyboard.type(text);
   }
 
   async navigateBack() {

@@ -31,7 +31,7 @@ final class CLIInstaller {
     private let binDirectory: String
 
     private var vtTargetPath: String {
-        URL(fileURLWithPath: binDirectory).appendingPathComponent("vt").path
+        URL(fileURLWithPath: self.binDirectory).appendingPathComponent("vt").path
     }
 
     var isInstalled = false
@@ -60,7 +60,7 @@ final class CLIInstaller {
             // Check both /usr/local/bin and Apple Silicon Homebrew path
             let pathsToCheck = [
                 vtTargetPath,
-                "\(FilePathConstants.optHomebrewBin)/vt"
+                "\(FilePathConstants.optHomebrewBin)/vt",
             ]
 
             for path in pathsToCheck where FileManager.default.fileExists(atPath: path) {
@@ -71,12 +71,11 @@ final class CLIInstaller {
                     // Allow for optional variables or arguments between $VIBETUNNEL_BIN and fwd
                     let hasValidExecCommand = content.range(
                         of: #"exec\s+["']?\$VIBETUNNEL_BIN["']?\s+fwd"#,
-                        options: .regularExpression
-                    ) != nil
+                        options: .regularExpression) != nil
 
-                    if content.contains("VibeTunnel CLI wrapper") &&
-                        content.contains("$TRY_PATH/Contents/Resources/vibetunnel") &&
-                        hasValidExecCommand
+                    if content.contains("VibeTunnel CLI wrapper"),
+                       content.contains("$TRY_PATH/Contents/Resources/vibetunnel"),
+                       hasValidExecCommand
                     {
                         isCorrectlyInstalled = true
                         logger.info("CLIInstaller: Found valid vt script at \(path)")
@@ -86,15 +85,15 @@ final class CLIInstaller {
             }
 
             // Update state
-            isInstalled = isCorrectlyInstalled
+            self.isInstalled = isCorrectlyInstalled
 
-            logger.info("CLIInstaller: vt script installed: \(self.isInstalled)")
+            self.logger.info("CLIInstaller: vt script installed: \(self.isInstalled)")
 
             // If installed, check if it's outdated
-            if isInstalled {
-                checkScriptVersion()
+            if self.isInstalled {
+                self.checkScriptVersion()
             } else {
-                isOutdated = false
+                self.isOutdated = false
             }
         }
     }
@@ -102,22 +101,22 @@ final class CLIInstaller {
     /// Installs the CLI tool (async version for WelcomeView)
     func install() async {
         await MainActor.run {
-            installCLITool()
+            self.installCLITool()
         }
     }
 
     /// Installs the vt CLI tool to /usr/local/bin
     func installCLITool() {
-        logger.info("CLIInstaller: Starting CLI tool installation...")
-        isInstalling = true
-        lastError = nil
+        self.logger.info("CLIInstaller: Starting CLI tool installation...")
+        self.isInstalling = true
+        self.lastError = nil
 
         // Verify that vt script exists in the app bundle
         guard Bundle.main.path(forResource: "vt", ofType: nil) != nil else {
-            logger.error("CLIInstaller: Could not find vt script in app bundle")
-            lastError = "The vt script could not be found in the application bundle."
-            showError("The vt script could not be found in the application bundle.")
-            isInstalling = false
+            self.logger.error("CLIInstaller: Could not find vt script in app bundle")
+            self.lastError = "The vt script could not be found in the application bundle."
+            self.showError("The vt script could not be found in the application bundle.")
+            self.isInstalling = false
             return
         }
 
@@ -134,28 +133,28 @@ final class CLIInstaller {
 
         let response = confirmAlert.runModal()
         if response != .alertFirstButtonReturn {
-            logger.info("CLIInstaller: User cancelled installation")
-            isInstalling = false
+            self.logger.info("CLIInstaller: User cancelled installation")
+            self.isInstalling = false
             return
         }
 
         // Perform the installation
-        performInstallation()
+        self.performInstallation()
     }
 
     /// Uninstalls the vt CLI tool (async version)
     func uninstall() async {
         await MainActor.run {
-            uninstallCLITool()
+            self.uninstallCLITool()
         }
     }
 
     /// Uninstalls the vt CLI tool from /usr/local/bin and /opt/homebrew/bin
     func uninstallCLITool() {
-        logger.info("CLIInstaller: Starting CLI tool uninstallation...")
-        isInstalling = true
-        isUninstalling = true
-        lastError = nil
+        self.logger.info("CLIInstaller: Starting CLI tool uninstallation...")
+        self.isInstalling = true
+        self.isUninstalling = true
+        self.lastError = nil
 
         // Show confirmation dialog
         let confirmAlert = NSAlert()
@@ -170,27 +169,27 @@ final class CLIInstaller {
 
         let response = confirmAlert.runModal()
         if response != .alertFirstButtonReturn {
-            logger.info("CLIInstaller: User cancelled uninstallation")
-            isInstalling = false
-            isUninstalling = false
+            self.logger.info("CLIInstaller: User cancelled uninstallation")
+            self.isInstalling = false
+            self.isUninstalling = false
             return
         }
 
         // Perform the uninstallation
-        performUninstallation()
+        self.performUninstallation()
     }
 
     // MARK: - Private Implementation
 
     /// Performs the actual installation with sudo privileges
     private func performInstallation() {
-        logger.info("CLIInstaller: Installing vt script")
+        self.logger.info("CLIInstaller: Installing vt script")
 
         guard let vtScriptPath = Bundle.main.path(forResource: "vt", ofType: nil) else {
-            logger.error("CLIInstaller: Could not find vt script in app bundle")
-            lastError = "The vt script could not be found in the application bundle."
-            showError("The vt script could not be found in the application bundle.")
-            isInstalling = false
+            self.logger.error("CLIInstaller: Could not find vt script in app bundle")
+            self.lastError = "The vt script could not be found in the application bundle."
+            self.showError("The vt script could not be found in the application bundle.")
+            self.isInstalling = false
             return
         }
 
@@ -234,7 +233,7 @@ final class CLIInstaller {
             let attributes: [FileAttributeKey: Any] = [.posixPermissions: 0o755]
             try FileManager.default.setAttributes(attributes, ofItemAtPath: scriptURL.path)
 
-            logger.info("CLIInstaller: Created installation script at \(scriptURL.path)")
+            self.logger.info("CLIInstaller: Created installation script at \(scriptURL.path)")
 
             // Execute with osascript to get sudo dialog
             let appleScript = """
@@ -257,12 +256,12 @@ final class CLIInstaller {
             try? FileManager.default.removeItem(at: scriptURL)
 
             if task.terminationStatus == 0 {
-                logger.info("CLIInstaller: Installation completed successfully")
-                isInstalled = true
-                isInstalling = false
-                showSuccess()
+                self.logger.info("CLIInstaller: Installation completed successfully")
+                self.isInstalled = true
+                self.isInstalling = false
+                self.showSuccess()
                 // Refresh installation status
-                checkInstallationStatus()
+                self.checkInstallationStatus()
             } else {
                 let errorString: String
                 do {
@@ -272,25 +271,26 @@ final class CLIInstaller {
                         errorString = "Unknown error"
                     }
                 } catch {
-                    logger.debug("Could not read error output: \(error.localizedDescription)")
+                    self.logger.debug("Could not read error output: \(error.localizedDescription)")
                     errorString = "Unknown error (could not read stderr)"
                 }
-                logger.error("CLIInstaller: Installation failed with status \(task.terminationStatus): \(errorString)")
-                lastError = "Installation failed: \(errorString)"
-                isInstalling = false
-                showError("Installation failed: \(errorString)")
+                self.logger
+                    .error("CLIInstaller: Installation failed with status \(task.terminationStatus): \(errorString)")
+                self.lastError = "Installation failed: \(errorString)"
+                self.isInstalling = false
+                self.showError("Installation failed: \(errorString)")
             }
         } catch {
-            logger.error("CLIInstaller: Installation failed with error: \(error)")
-            lastError = "Installation failed: \(error.localizedDescription)"
-            isInstalling = false
-            showError("Installation failed: \(error.localizedDescription)")
+            self.logger.error("CLIInstaller: Installation failed with error: \(error)")
+            self.lastError = "Installation failed: \(error.localizedDescription)"
+            self.isInstalling = false
+            self.showError("Installation failed: \(error.localizedDescription)")
         }
     }
 
     /// Performs the actual uninstallation with sudo privileges
     private func performUninstallation() {
-        logger.info("CLIInstaller: Uninstalling vt script")
+        self.logger.info("CLIInstaller: Uninstalling vt script")
 
         // Create the uninstallation script
         let script = """
@@ -327,7 +327,7 @@ final class CLIInstaller {
             let attributes: [FileAttributeKey: Any] = [.posixPermissions: 0o755]
             try FileManager.default.setAttributes(attributes, ofItemAtPath: scriptURL.path)
 
-            logger.info("CLIInstaller: Created uninstallation script at \(scriptURL.path)")
+            self.logger.info("CLIInstaller: Created uninstallation script at \(scriptURL.path)")
 
             // Execute with osascript to get sudo dialog
             let appleScript = """
@@ -350,13 +350,13 @@ final class CLIInstaller {
             try? FileManager.default.removeItem(at: scriptURL)
 
             if task.terminationStatus == 0 {
-                logger.info("CLIInstaller: Uninstallation completed successfully")
-                isInstalled = false
-                isInstalling = false
-                isUninstalling = false
-                showUninstallSuccess()
+                self.logger.info("CLIInstaller: Uninstallation completed successfully")
+                self.isInstalled = false
+                self.isInstalling = false
+                self.isUninstalling = false
+                self.showUninstallSuccess()
                 // Refresh installation status
-                checkInstallationStatus()
+                self.checkInstallationStatus()
             } else {
                 let errorString: String
                 do {
@@ -366,22 +366,22 @@ final class CLIInstaller {
                         errorString = "Unknown error"
                     }
                 } catch {
-                    logger.debug("Could not read error output: \(error.localizedDescription)")
+                    self.logger.debug("Could not read error output: \(error.localizedDescription)")
                     errorString = "Unknown error (could not read stderr)"
                 }
-                logger
+                self.logger
                     .error("CLIInstaller: Uninstallation failed with status \(task.terminationStatus): \(errorString)")
-                lastError = "Uninstallation failed: \(errorString)"
-                isInstalling = false
-                isUninstalling = false
-                showError("Uninstallation failed: \(errorString)")
+                self.lastError = "Uninstallation failed: \(errorString)"
+                self.isInstalling = false
+                self.isUninstalling = false
+                self.showError("Uninstallation failed: \(errorString)")
             }
         } catch {
-            logger.error("CLIInstaller: Uninstallation failed with error: \(error)")
-            lastError = "Uninstallation failed: \(error.localizedDescription)"
-            isInstalling = false
-            isUninstalling = false
-            showError("Uninstallation failed: \(error.localizedDescription)")
+            self.logger.error("CLIInstaller: Uninstallation failed with error: \(error)")
+            self.lastError = "Uninstallation failed: \(error.localizedDescription)"
+            self.isInstalling = false
+            self.isUninstalling = false
+            self.showError("Uninstallation failed: \(error.localizedDescription)")
         }
     }
 
@@ -434,25 +434,25 @@ final class CLIInstaller {
     /// Gets the hash of the bundled vt script
     private func getBundledScriptHash() -> String? {
         guard let scriptPath = Bundle.main.path(forResource: "vt", ofType: nil) else {
-            logger.error("CLIInstaller: Bundled vt script not found")
+            self.logger.error("CLIInstaller: Bundled vt script not found")
             return nil
         }
 
-        return calculateHash(for: scriptPath)
+        return self.calculateHash(for: scriptPath)
     }
 
     /// Checks if the installed script is outdated compared to bundled version
     func checkScriptVersion() {
         Task { @MainActor in
             guard let bundledHash = getBundledScriptHash() else {
-                logger.error("CLIInstaller: Failed to get bundled script hash")
+                self.logger.error("CLIInstaller: Failed to get bundled script hash")
                 return
             }
 
             // Check both possible installation paths
             let pathsToCheck = [
                 vtTargetPath,
-                "\(FilePathConstants.optHomebrewBin)/vt"
+                "\(FilePathConstants.optHomebrewBin)/vt",
             ]
 
             var installedHash: String?
@@ -466,8 +466,8 @@ final class CLIInstaller {
             // Update outdated status
             if let installedHash {
                 self.isOutdated = (installedHash != bundledHash)
-                logger.info("CLIInstaller: Script version check - outdated: \(self.isOutdated)")
-                logger.debug("CLIInstaller: Bundled hash: \(bundledHash), Installed hash: \(installedHash)")
+                self.logger.info("CLIInstaller: Script version check - outdated: \(self.isOutdated)")
+                self.logger.debug("CLIInstaller: Bundled hash: \(bundledHash), Installed hash: \(installedHash)")
             } else {
                 // Script not installed
                 self.isOutdated = false

@@ -19,7 +19,7 @@ enum TerminalWidth: CaseIterable, Equatable {
         case .wide120: 120
         case .mainframe132: 132
         case .ultraWide160: 160
-        case .custom(let width): width
+        case let .custom(width): width
         }
     }
 
@@ -31,7 +31,7 @@ enum TerminalWidth: CaseIterable, Equatable {
         case .wide120: "120"
         case .mainframe132: "132"
         case .ultraWide160: "160"
-        case .custom(let width): "\(width)"
+        case let .custom(width): "\(width)"
         }
     }
 
@@ -86,40 +86,42 @@ class TerminalWidthManager {
     /// Get the default terminal width
     var defaultWidth: Int {
         get {
-            UserDefaults.standard.integer(forKey: defaultWidthKey)
+            UserDefaults.standard.integer(forKey: self.defaultWidthKey)
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: defaultWidthKey)
+            UserDefaults.standard.set(newValue, forKey: self.defaultWidthKey)
         }
     }
 
     /// Get saved custom widths
     var customWidths: [Int] {
         get {
-            UserDefaults.standard.array(forKey: customWidthsKey) as? [Int] ?? []
+            UserDefaults.standard.array(forKey: self.customWidthsKey) as? [Int] ?? []
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: customWidthsKey)
+            UserDefaults.standard.set(newValue, forKey: self.customWidthsKey)
         }
     }
 
     /// Add a custom width to saved list
     func addCustomWidth(_ width: Int) {
-        var widths = customWidths
-        if !widths.contains(width) && width >= 20 && width <= 500 {
+        var widths = self.customWidths
+        if !widths.contains(width), width >= 20, width <= 500 {
             widths.append(width)
             // Keep only last 5 custom widths
             if widths.count > 5 {
                 widths.removeFirst()
             }
-            customWidths = widths
+            self.customWidths = widths
         }
     }
 
     /// Get all available widths including custom ones
     func allWidths() -> [TerminalWidth] {
         var widths = TerminalWidth.allCases
-        for customWidth in customWidths where !TerminalWidth.allCases.contains(where: { $0.value == customWidth }) {
+        for customWidth in self.customWidths
+            where !TerminalWidth.allCases.contains(where: { $0.value == customWidth })
+        {
             widths.append(.custom(customWidth))
         }
         return widths

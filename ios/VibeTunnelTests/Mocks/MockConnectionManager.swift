@@ -7,6 +7,6 @@ class MockConnectionManager {
     var disconnectCallCount = 0
 
     func disconnect() async {
-        disconnectCallCount += 1
+        self.disconnectCallCount += 1
     }
 }

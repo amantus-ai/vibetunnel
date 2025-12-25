@@ -18,22 +18,20 @@ struct EmptySessionsView: View {
                 .foregroundStyle(
                     LinearGradient(
                         colors: [
-                            AppColors.Fallback.secondaryText(for: colorScheme),
-                            AppColors.Fallback.secondaryText(for: colorScheme).opacity(0.6)
+                            AppColors.Fallback.secondaryText(for: self.colorScheme),
+                            AppColors.Fallback.secondaryText(for: self.colorScheme).opacity(0.6),
                         ],
                         startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .scaleEffect(isAnimating ? 1.05 : 1.0)
-                .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: isAnimating)
-                .onAppear { isAnimating = true }
+                        endPoint: .bottomTrailing))
+                .scaleEffect(self.isAnimating ? 1.05 : 1.0)
+                .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: self.isAnimating)
+                .onAppear { self.isAnimating = true }
 
             Text("No active sessions")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
 
-            if serverManager.isRunning {
+            if self.serverManager.isRunning {
                 Button("Open Dashboard") {
                     if let url = DashboardURLBuilder.dashboardURL(port: serverManager.port) {
                         NSWorkspace.shared.open(url)

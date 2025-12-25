@@ -34,13 +34,12 @@ struct WelcomePageView: View {
                     .frame(maxWidth: 480)
 
                 Text(
-                    "You'll be quickly guided through the basics of VibeTunnel.\nThis screen can always be opened from the settings."
-                )
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 480)
-                .fixedSize(horizontal: false, vertical: true)
+                    "You'll be quickly guided through the basics of VibeTunnel.\nThis screen can always be opened from the settings.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

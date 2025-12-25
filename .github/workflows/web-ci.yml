@@ -36,7 +36,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: 'pnpm'
           cache-dependency-path: 'web/pnpm-lock.yaml'
 
@@ -76,7 +76,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: 'pnpm'
           cache-dependency-path: 'web/pnpm-lock.yaml'
 
@@ -91,6 +91,11 @@ jobs:
       - name: Build node-pty
         run: |
           cd node-pty && npm install && npm run build
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: latest
 
       - name: Build project
         run: pnpm run build
@@ -119,7 +124,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: 'pnpm'
           cache-dependency-path: 'web/pnpm-lock.yaml'
 
@@ -130,6 +135,14 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: latest
+
+      - name: Build zig forwarder
+        run: node scripts/build-fwd-zig.js
 
       - name: Run client tests
         run: pnpm run test:client:coverage
@@ -152,4 +165,3 @@ jobs:
           name: server-coverage-report
           path: web/coverage/server/
           retention-days: 7
-

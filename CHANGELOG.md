@@ -101,7 +101,7 @@
 - **Socket-based vt command communication**: Replaced HTTP with Unix domain sockets for reliability
 
 #### **Communication & Reliability**
-- Unified notification system now uses Server-Sent Events (SSE) for all clients instead of mixed approaches
+- Unified notification system now uses WebSocket v3 events for all clients instead of mixed approaches
 - Fixed git status monitoring to prevent EMFILE errors through shallow directory watching
 - Standardized git status terminology - consistently uses 'New' for untracked files across all interfaces
 - Enhanced session cleanup on startup with proper JSON field handling
@@ -279,7 +279,7 @@ Additional contributors:
 
 ### **Terminal Performance Mode (Experimental) **
 - New binary WebSocket mode for terminal sessions dramatically improves performance for high-throughput operations (#412)
-- Toggle between standard SSE mode and high-performance binary mode in terminal settings
+- Unified terminal transport: single WebSocket v3 (no legacy SSE mode)
 - Binary mode significantly reduces latency and CPU usage when running commands with heavy output
 - Seamless switching between modes without losing your session
 
@@ -477,7 +477,7 @@ First-time contributors to VibeTunnel:
 - Configurable prompts to match workflow
 
 #### **Terminal Performance**
-- Fixed critical flow control issue causing xterm.js buffer overflow (#223)
+- Fixed critical flow control issue causing web terminal buffer overflow (#223)
 - Fixed infinite scroll loop that could freeze the browser
 - Fixed race conditions in terminal output handling
 - Improved memory management for long-running sessions

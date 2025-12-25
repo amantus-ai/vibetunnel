@@ -12,7 +12,7 @@ struct FileBrowserFAB: View {
             Task { @MainActor in
                 HapticFeedback.impact(.medium)
             }
-            action()
+            self.action()
         }, label: {
             Image(systemName: "folder.fill")
                 .font(.system(size: 20, weight: .medium))
@@ -23,15 +23,13 @@ struct FileBrowserFAB: View {
                         .fill(Theme.Colors.primaryAccent)
                         .overlay(
                             Circle()
-                                .stroke(Theme.Colors.primaryAccent.opacity(0.3), lineWidth: 1)
-                        )
-                )
+                                .stroke(Theme.Colors.primaryAccent.opacity(0.3), lineWidth: 1)))
                 .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
         })
-        .opacity(isVisible ? 1 : 0)
-        .scaleEffect(isVisible ? 1 : 0.8)
-        .animation(Theme.Animation.smooth, value: isVisible)
-        .allowsHitTesting(isVisible)
+        .opacity(self.isVisible ? 1 : 0)
+        .scaleEffect(self.isVisible ? 1 : 0.8)
+        .animation(Theme.Animation.smooth, value: self.isVisible)
+        .allowsHitTesting(self.isVisible)
     }
 }
 

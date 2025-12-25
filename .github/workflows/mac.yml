@@ -12,43 +12,35 @@ permissions:
 jobs:
   build-lint-test:
     name: Build, Lint, and Test macOS
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on: macos-latest
     timeout-minutes: 40
     env:
       GITHUB_REPO_NAME: ${{ github.repository }}
     
     steps:
-    - name: Clean workspace
-      run: |
-        # Clean workspace for self-hosted runner
-        # Clean workspace but preserve .git directory
-        find . -maxdepth 1 -name '.*' -not -name '.git' -not -name '.' -not -name '..' -exec rm -rf {} + || true
-        rm -rf * || true
-        
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '26.1'
     
     - name: Verify Xcode
       run: |
-        # Check available Xcode versions
-        echo "Available Xcode versions:"
-        ls -la /Applications/ | grep -i xcode || true
-        
-        # Check if stable Xcode is available
-        if [ -d "/Applications/Xcode.app" ]; then
-          echo "Stable Xcode found, switching to it..."
-          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-        elif [ -d "/Applications/Xcode-15.app" ]; then
-          echo "Xcode 15 found, switching to it..."
-          sudo xcode-select -s /Applications/Xcode-15.app/Contents/Developer
-        else
-          echo "Using current Xcode installation with actool workaround..."
-        fi
-        
         xcodebuild -version
         swift --version
     
-    # Node.js/pnpm not needed - web artifacts are downloaded
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10
+        run_install: false
     
     - name: Cache Homebrew packages
       uses: actions/cache@v4
@@ -98,7 +90,7 @@ jobs:
           
           # Install tools without updating Homebrew
           # brew install automatically upgrades if already installed
-          if brew install swiftlint swiftformat xcbeautify; then
+          if brew install swiftlint swiftformat xcbeautify jq zig; then
             echo "Successfully installed/upgraded all tools"
             break
           else
@@ -112,6 +104,17 @@ jobs:
             WAIT_TIME=$((WAIT_TIME * 2))  # Exponential backoff
           fi
         done
+
+        # Ensure tools are linked into PATH (Homebrew may leave them unlinked)
+        if ! command -v swiftlint >/dev/null; then
+          brew link swiftlint || brew link --overwrite swiftlint || true
+        fi
+        if ! command -v swiftformat >/dev/null; then
+          brew link swiftformat || brew link --overwrite swiftformat || true
+        fi
+        if ! command -v xcbeautify >/dev/null; then
+          brew link xcbeautify || brew link --overwrite xcbeautify || true
+        fi
         
         # Verify which tools are available
         echo "Tool availability check:"
@@ -178,7 +181,12 @@ jobs:
       continue-on-error: true
       run: |
         cd mac
-        swiftformat . --lint 2>&1 | tee ../swiftformat-output.txt
+        if ! command -v swiftformat >/dev/null; then
+          echo "swiftformat not available; skipping"
+          echo "result=0" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        swiftformat . --lint --config ../apple/.swiftformat 2>&1 | tee ../swiftformat-output.txt
         echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
     
     - name: Run SwiftLint
@@ -186,7 +194,12 @@ jobs:
       continue-on-error: true
       run: |
         cd mac
-        swiftlint 2>&1 | tee ../swiftlint-output.txt
+        if ! command -v swiftlint >/dev/null; then
+          echo "swiftlint not available; skipping"
+          echo "result=0" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        swiftlint --config ../apple/.swiftlint.yml 2>&1 | tee ../swiftlint-output.txt
         echo "result=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
     
     # TEST PHASE
@@ -373,6 +386,18 @@ jobs:
         lint-result: ${{ steps.swiftlint.outputs.result == '0' && 'success' || 'failure' }}
         lint-output: ${{ steps.swiftlint-output.outputs.content }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Enforce Swift lint/format success
+      if: always()
+      run: |
+        if [[ "${{ steps.swiftformat.outputs.result }}" != "0" ]]; then
+          echo "::error::SwiftFormat check failed"
+          exit 1
+        fi
+        if [[ "${{ steps.swiftlint.outputs.result }}" != "0" ]]; then
+          echo "::error::SwiftLint failed"
+          exit 1
+        fi
 
   report-coverage:
     name: Report Coverage Results

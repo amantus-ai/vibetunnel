@@ -11,7 +11,7 @@ import SwiftUI
 /// ### Overview
 /// The agent army control page includes:
 /// - Instructions for using the menu bar to view all sessions
-/// - Information about session activity tracking
+/// - Information about session status tracking
 /// - Details about renaming sessions and using the magic wand
 /// - Explanation of session title display locations
 ///
@@ -29,13 +29,12 @@ struct ControlAgentArmyPageView: View {
                     .fontWeight(.semibold)
 
                 Text(
-                    "Click on the VibeTunnel icon in your menu bar to see all open terminal sessions. Track their activity, working paths, and Git changes."
-                )
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 480)
-                .fixedSize(horizontal: false, vertical: true)
+                    "Click on the VibeTunnel icon in your menu bar to see all open terminal sessions. Track their status, working paths, and Git changes.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 // VT Title Command
                 VStack(spacing: 12) {
@@ -54,21 +53,19 @@ struct ControlAgentArmyPageView: View {
 
                     VStack(spacing: 8) {
                         Text(
-                            "Session titles appear in the menu bar and terminal windows.\nUse the dashboard to rename sessions manually, or use the magic wand with Claude/Gemini."
-                        )
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 420)
-                        .fixedSize(horizontal: false, vertical: true)
+                            "Session titles appear in the menu bar and terminal windows.\nUse the dashboard to rename sessions manually, or use the magic wand with Claude/Gemini.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 420)
+                            .fixedSize(horizontal: false, vertical: true)
 
                         if let url = URL(string: "https://steipete.me/posts/command-your-claude-code-army-reloaded") {
                             Link(
                                 "Learn more",
-                                destination: url
-                            )
-                            .font(.caption)
-                            .foregroundColor(.accentColor)
+                                destination: url)
+                                .font(.caption)
+                                .foregroundColor(.accentColor)
                         }
                     }
                 }

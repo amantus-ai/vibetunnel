@@ -18,6 +18,5 @@ declare module 'bonjour-service' {
     destroy(): void;
   }
 
-  function bonjour(): Bonjour;
-  export = bonjour;
+  export default function bonjour(): Bonjour;
 }

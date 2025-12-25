@@ -52,7 +52,8 @@ The project structure emphasizes modularity with separate build systems for each
 
 **Terminal Views**
 - `VibeTunnel/Views/Terminal/TerminalView.swift` - Main terminal view
-- `VibeTunnel/Views/Terminal/TerminalHostingView.swift` - SwiftTerm hosting
+- `VibeTunnel/Views/Terminal/GhosttyWebView.swift` - Ghostty terminal renderer
+- `VibeTunnel/Views/Terminal/TerminalBufferRenderer.swift` - Buffer snapshot → ANSI conversion
 - `VibeTunnel/Views/Terminal/TerminalToolbar.swift` - Terminal controls
 - `VibeTunnel/Views/Terminal/CastPlayerView.swift` - Recording playback
 
@@ -72,7 +73,8 @@ The project structure emphasizes modularity with separate build systems for each
 - `src/server/pty/pty-manager.ts` - PTY process management
 - `src/server/pty/session-manager.ts` - Session lifecycle
 - `src/server/services/terminal-manager.ts` - Terminal service layer
-- `src/server/services/buffer-aggregator.ts` - Terminal buffer aggregation
+- `src/server/services/ws-v3-hub.ts` - WebSocket v3 hub (stdout/snapshots/input)
+- `src/server/services/cast-output-hub.ts` - Asciicast tail + pruning for stdout
 
 **API Routes**
 - `src/server/routes/sessions.ts` - Session API endpoints
@@ -83,7 +85,7 @@ The project structure emphasizes modularity with separate build systems for each
 - `src/client/app.ts` - Main application logic
 - `src/client/components/terminal.ts` - Web terminal component
 - `src/client/components/vibe-terminal-buffer.ts` - Buffer terminal component
-- `src/client/services/buffer-subscription-service.ts` - WebSocket subscriptions
+- `src/client/services/terminal-socket-client.ts` - WebSocket v3 transport (single socket)
 
 ## Platform Implementation
 
@@ -163,5 +165,5 @@ The project structure emphasizes modularity with separate build systems for each
 
 ### Key Dependencies
 - macOS: SwiftUI, Sparkle (updates), Bun runtime
-- iOS: SwiftUI, SwiftTerm, WebSocket client
-- Web: Express, xterm.js, WebSocket, Vite bundler
+- iOS: SwiftUI, ghostty-web resources, WebSocket client
+- Web: Express, ghostty-web, WebSocket, Vite bundler

@@ -19,9 +19,9 @@ enum APIError: LocalizedError {
             return "Invalid URL"
         case .noData:
             return "No data received"
-        case .decodingError(let error):
+        case let .decodingError(error):
             return "Failed to decode response: \(error.localizedDescription)"
-        case .serverError(let code, let message):
+        case let .serverError(code, message):
             if let message {
                 return message
             }
@@ -43,7 +43,7 @@ enum APIError: LocalizedError {
             default:
                 return "Server error: \(code)"
             }
-        case .networkError(let error):
+        case let .networkError(error):
             if let urlError = error as? URLError {
                 switch urlError.code {
                 case .notConnectedToInternet:
@@ -119,11 +119,11 @@ class APIClient: APIClientProtocol {
         let url = baseURL.appendingPathComponent("api/sessions")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         let (data, response) = try await session.data(for: request)
 
-        try validateResponse(response)
+        try self.validateResponse(response)
 
         // Debug logging
         if let jsonString = String(data: data, encoding: .utf8) {
@@ -131,7 +131,7 @@ class APIClient: APIClientProtocol {
         }
 
         do {
-            return try decoder.decode([Session].self, from: data)
+            return try self.decoder.decode([Session].self, from: data)
         } catch {
             logger.error("Decoding error: \(error)")
             if let decodingError = error as? DecodingError {
@@ -149,14 +149,14 @@ class APIClient: APIClientProtocol {
         let url = baseURL.appendingPathComponent("api/sessions/\(sessionId)")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         let (data, response) = try await session.data(for: request)
 
-        try validateResponse(response)
+        try self.validateResponse(response)
 
         do {
-            return try decoder.decode(Session.self, from: data)
+            return try self.decoder.decode(Session.self, from: data)
         } catch {
             throw APIError.decodingError(error)
         }
@@ -174,10 +174,10 @@ class APIClient: APIClientProtocol {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         do {
-            request.httpBody = try encoder.encode(data)
+            request.httpBody = try self.encoder.encode(data)
             if let bodyString = String(data: request.httpBody ?? Data(), encoding: .utf8) {
                 logger.debug("Request body: \(bodyString)")
             }
@@ -242,10 +242,10 @@ class APIClient: APIClientProtocol {
         let url = baseURL.appendingPathComponent("api/sessions/\(sessionId)")
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         let (_, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try self.validateResponse(response)
     }
 
     func cleanupSession(_ sessionId: String) async throws {
@@ -256,10 +256,10 @@ class APIClient: APIClientProtocol {
         let url = baseURL.appendingPathComponent("api/sessions/\(sessionId)/cleanup")
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         let (_, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try self.validateResponse(response)
     }
 
     func cleanupAllExitedSessions() async throws -> [String] {
@@ -270,10 +270,10 @@ class APIClient: APIClientProtocol {
         let url = baseURL.appendingPathComponent("api/cleanup-exited")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try self.validateResponse(response)
 
         // Handle empty response (204 No Content)
         if data.isEmpty {
@@ -321,13 +321,13 @@ class APIClient: APIClientProtocol {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         let input = TerminalInput(text: text)
-        request.httpBody = try encoder.encode(input)
+        request.httpBody = try self.encoder.encode(input)
 
         let (_, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try self.validateResponse(response)
     }
 
     func resizeTerminal(sessionId: String, cols: Int, rows: Int) async throws {
@@ -339,21 +339,16 @@ class APIClient: APIClientProtocol {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         let resize = TerminalResize(cols: cols, rows: rows)
-        request.httpBody = try encoder.encode(resize)
+        request.httpBody = try self.encoder.encode(resize)
 
         let (_, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try self.validateResponse(response)
     }
 
-    // MARK: - SSE Stream URL
-
-    func streamURL(for sessionId: String) -> URL? {
-        guard let baseURL else { return nil }
-        return baseURL.appendingPathComponent("api/sessions/\(sessionId)/stream")
-    }
+    // MARK: - Terminal Snapshot
 
     func snapshotURL(for sessionId: String) -> URL? {
         guard let baseURL else { return nil }
@@ -368,13 +363,13 @@ class APIClient: APIClientProtocol {
         let url = baseURL.appendingPathComponent("api/sessions/\(sessionId)/snapshot")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         logger.debug("📡 [APIClient] Making getSessionSnapshot request to: \(url.absoluteString)")
 
         let (data, response) = try await session.data(for: request)
 
-        try validateResponse(response)
+        try self.validateResponse(response)
 
         // The snapshot endpoint returns plain text asciinema format, not JSON
         guard let text = String(data: data, encoding: .utf8) else {
@@ -382,7 +377,7 @@ class APIClient: APIClientProtocol {
         }
 
         // Parse asciinema format
-        return try parseAsciinemaSnapshot(sessionId: sessionId, text: text)
+        return try self.parseAsciinemaSnapshot(sessionId: sessionId, text: text)
     }
 
     private func parseAsciinemaSnapshot(sessionId: String, text: String) throws -> TerminalSnapshot {
@@ -409,8 +404,7 @@ class APIClient: APIClientProtocol {
                         duration: json["duration"] as? Double,
                         command: json["command"] as? String,
                         title: json["title"] as? String,
-                        env: json["env"] as? [String: String]
-                    )
+                        env: json["env"] as? [String: String])
                 }
             } else if let json = try? JSONSerialization.jsonObject(with: data) as? [Any] {
                 // This is an event array [timestamp, type, data]
@@ -431,8 +425,7 @@ class APIClient: APIClientProtocol {
                     events.append(AsciinemaEvent(
                         time: timestamp,
                         type: eventType,
-                        data: eventData
-                    ))
+                        data: eventData))
                 }
             }
         }
@@ -440,8 +433,7 @@ class APIClient: APIClientProtocol {
         return TerminalSnapshot(
             sessionId: sessionId,
             header: header,
-            events: events
-        )
+            events: events)
     }
 
     // MARK: - Server Health
@@ -501,8 +493,7 @@ class APIClient: APIClientProtocol {
     func browseDirectory(
         path: String,
         showHidden: Bool = false,
-        gitFilter: String = "all"
-    )
+        gitFilter: String = "all")
         async throws -> DirectoryListing
     {
         guard let baseURL else {
@@ -511,14 +502,14 @@ class APIClient: APIClientProtocol {
 
         guard var components = URLComponents(
             url: baseURL.appendingPathComponent("api/fs/browse"),
-            resolvingAgainstBaseURL: false
-        ) else {
+            resolvingAgainstBaseURL: false)
+        else {
             throw APIError.invalidURL
         }
         components.queryItems = [
             URLQueryItem(name: "path", value: path),
             URLQueryItem(name: "showHidden", value: String(showHidden)),
-            URLQueryItem(name: "gitFilter", value: gitFilter)
+            URLQueryItem(name: "gitFilter", value: gitFilter),
         ]
 
         guard let url = components.url else {
@@ -529,7 +520,7 @@ class APIClient: APIClientProtocol {
         request.httpMethod = "GET"
 
         // Add authentication header if needed
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         let (data, response) = try await session.data(for: request)
 
@@ -543,10 +534,10 @@ class APIClient: APIClientProtocol {
             }
         }
 
-        try validateResponse(response)
+        try self.validateResponse(response)
 
         // Decode the DirectoryListing response
-        return try decoder.decode(DirectoryListing.self, from: data)
+        return try self.decoder.decode(DirectoryListing.self, from: data)
     }
 
     func createDirectory(path: String) async throws {
@@ -558,17 +549,17 @@ class APIClient: APIClientProtocol {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         struct CreateDirectoryRequest: Codable {
             let path: String
         }
 
         let requestBody = CreateDirectoryRequest(path: path)
-        request.httpBody = try encoder.encode(requestBody)
+        request.httpBody = try self.encoder.encode(requestBody)
 
         let (_, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try self.validateResponse(response)
     }
 
     func downloadFile(path: String, progressHandler: ((Double) -> Void)? = nil) async throws -> Data {
@@ -578,8 +569,8 @@ class APIClient: APIClientProtocol {
 
         guard var components = URLComponents(
             url: baseURL.appendingPathComponent("api/fs/read"),
-            resolvingAgainstBaseURL: false
-        ) else {
+            resolvingAgainstBaseURL: false)
+        else {
             throw APIError.invalidURL
         }
         components.queryItems = [URLQueryItem(name: "path", value: path)]
@@ -592,12 +583,12 @@ class APIClient: APIClientProtocol {
         request.httpMethod = "GET"
 
         // Add authentication header if needed
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         // For progress tracking, we'll use URLSession delegate
         // For now, just download the whole file
         let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try self.validateResponse(response)
 
         return data
     }
@@ -609,8 +600,8 @@ class APIClient: APIClientProtocol {
 
         guard var components = URLComponents(
             url: baseURL.appendingPathComponent("api/fs/info"),
-            resolvingAgainstBaseURL: false
-        ) else {
+            resolvingAgainstBaseURL: false)
+        else {
             throw APIError.invalidURL
         }
         components.queryItems = [URLQueryItem(name: "path", value: path)]
@@ -623,12 +614,12 @@ class APIClient: APIClientProtocol {
         request.httpMethod = "GET"
 
         // Add authentication header if needed
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try self.validateResponse(response)
 
-        return try decoder.decode(FileInfo.self, from: data)
+        return try self.decoder.decode(FileInfo.self, from: data)
     }
 
     func previewFile(path: String) async throws -> FilePreview {
@@ -638,8 +629,8 @@ class APIClient: APIClientProtocol {
 
         guard var components = URLComponents(
             url: baseURL.appendingPathComponent("api/fs/preview"),
-            resolvingAgainstBaseURL: false
-        ) else {
+            resolvingAgainstBaseURL: false)
+        else {
             throw APIError.invalidURL
         }
         components.queryItems = [URLQueryItem(name: "path", value: path)]
@@ -650,12 +641,12 @@ class APIClient: APIClientProtocol {
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try self.validateResponse(response)
 
-        return try decoder.decode(FilePreview.self, from: data)
+        return try self.decoder.decode(FilePreview.self, from: data)
     }
 
     func getGitDiff(path: String) async throws -> FileDiff {
@@ -665,8 +656,8 @@ class APIClient: APIClientProtocol {
 
         guard var components = URLComponents(
             url: baseURL.appendingPathComponent("api/fs/diff"),
-            resolvingAgainstBaseURL: false
-        ) else {
+            resolvingAgainstBaseURL: false)
+        else {
             throw APIError.invalidURL
         }
         components.queryItems = [URLQueryItem(name: "path", value: path)]
@@ -677,12 +668,12 @@ class APIClient: APIClientProtocol {
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try self.validateResponse(response)
 
-        return try decoder.decode(FileDiff.self, from: data)
+        return try self.decoder.decode(FileDiff.self, from: data)
     }
 
     // MARK: - System Logs
@@ -695,10 +686,10 @@ class APIClient: APIClientProtocol {
         let url = baseURL.appendingPathComponent("api/logs/raw")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try self.validateResponse(response)
 
         guard let logContent = String(data: data, encoding: .utf8) else {
             throw APIError.invalidResponse
@@ -715,12 +706,12 @@ class APIClient: APIClientProtocol {
         let url = baseURL.appendingPathComponent("api/logs/info")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         let (data, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try self.validateResponse(response)
 
-        return try decoder.decode(LogsInfo.self, from: data)
+        return try self.decoder.decode(LogsInfo.self, from: data)
     }
 
     func clearLogs() async throws {
@@ -731,10 +722,10 @@ class APIClient: APIClientProtocol {
         let url = baseURL.appendingPathComponent("api/logs/clear")
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
-        addAuthenticationIfNeeded(&request)
+        self.addAuthenticationIfNeeded(&request)
 
         let (_, response) = try await session.data(for: request)
-        try validateResponse(response)
+        try self.validateResponse(response)
     }
 }
 

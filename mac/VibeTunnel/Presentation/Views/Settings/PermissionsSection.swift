@@ -20,7 +20,7 @@ struct PermissionsSection: View {
 
                 Spacer()
 
-                if hasAppleScriptPermission {
+                if self.hasAppleScriptPermission {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
@@ -33,15 +33,15 @@ struct PermissionsSection: View {
                     .frame(height: 22) // Match small button height
                     .contextMenu {
                         Button("Refresh Status") {
-                            permissionManager.forcePermissionRecheck()
+                            self.permissionManager.forcePermissionRecheck()
                         }
                         Button("Open System Settings...") {
-                            permissionManager.requestPermission(.appleScript)
+                            self.permissionManager.requestPermission(.appleScript)
                         }
                     }
                 } else {
                     Button("Grant Permission") {
-                        permissionManager.requestPermission(.appleScript)
+                        self.permissionManager.requestPermission(.appleScript)
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
@@ -60,7 +60,7 @@ struct PermissionsSection: View {
 
                 Spacer()
 
-                if hasAccessibilityPermission {
+                if self.hasAccessibilityPermission {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
@@ -73,15 +73,15 @@ struct PermissionsSection: View {
                     .frame(height: 22) // Match small button height
                     .contextMenu {
                         Button("Refresh Status") {
-                            permissionManager.forcePermissionRecheck()
+                            self.permissionManager.forcePermissionRecheck()
                         }
                         Button("Open System Settings...") {
-                            permissionManager.requestPermission(.accessibility)
+                            self.permissionManager.requestPermission(.accessibility)
                         }
                     }
                 } else {
                     Button("Grant Permission") {
-                        permissionManager.requestPermission(.accessibility)
+                        self.permissionManager.requestPermission(.accessibility)
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
@@ -91,21 +91,19 @@ struct PermissionsSection: View {
             Text("System Permissions")
                 .font(.headline)
         } footer: {
-            if hasAppleScriptPermission && hasAccessibilityPermission {
+            if self.hasAppleScriptPermission, self.hasAccessibilityPermission {
                 Text(
-                    "All permissions granted. VibeTunnel has full functionality."
-                )
-                .font(.caption)
-                .frame(maxWidth: .infinity)
-                .multilineTextAlignment(.center)
-                .foregroundColor(.green)
+                    "All permissions granted. VibeTunnel has full functionality.")
+                    .font(.caption)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.green)
             } else {
                 Text(
-                    "Terminals can be captured without permissions, however new sessions won't load."
-                )
-                .font(.caption)
-                .frame(maxWidth: .infinity)
-                .multilineTextAlignment(.center)
+                    "Terminals can be captured without permissions, however new sessions won't load.")
+                    .font(.caption)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
             }
         }
     }
@@ -120,10 +118,9 @@ struct PermissionsSection: View {
             PermissionsSection(
                 hasAppleScriptPermission: hasAppleScript,
                 hasAccessibilityPermission: hasAccessibility,
-                permissionManager: SystemPermissionManager.shared
-            )
-            .frame(width: 500)
-            .padding()
+                permissionManager: SystemPermissionManager.shared)
+                .frame(width: 500)
+                .padding()
         }
     }
 

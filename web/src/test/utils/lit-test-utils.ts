@@ -2,7 +2,6 @@ import { fixture } from '@open-wc/testing';
 import { LitElement, type TemplateResult } from 'lit';
 import { vi } from 'vitest';
 import type { Session } from '../../shared/types';
-import type { ActivityStatus } from '../types/test-types';
 import { createTestSession } from './test-factories';
 
 /**
@@ -131,59 +130,6 @@ export class MockWebSocket extends EventTarget {
 }
 
 /**
- * Creates a mock EventSource instance
- */
-export class MockEventSource extends EventTarget {
-  static CONNECTING = 0;
-  static OPEN = 1;
-  static CLOSED = 2;
-  static instances = new Set<MockEventSource>();
-
-  url: string;
-  readyState: number = MockEventSource.CONNECTING;
-  withCredentials: boolean = false;
-
-  onopen?: (event: Event) => void;
-  onerror?: (event: Event) => void;
-  onmessage?: (event: MessageEvent) => void;
-
-  constructor(url: string, eventSourceInitDict?: EventSourceInit) {
-    super();
-    this.url = url;
-    if (eventSourceInitDict?.withCredentials) {
-      this.withCredentials = eventSourceInitDict.withCredentials;
-    }
-    MockEventSource.instances.add(this);
-  }
-
-  close = vi.fn(() => {
-    this.readyState = MockEventSource.CLOSED;
-    MockEventSource.instances.delete(this);
-  });
-
-  mockOpen(): void {
-    this.readyState = MockEventSource.OPEN;
-    const event = new Event('open');
-    this.dispatchEvent(event);
-    this.onopen?.(event);
-  }
-
-  mockMessage(data: string, eventType?: string): void {
-    const event = new MessageEvent(eventType || 'message', { data });
-    this.dispatchEvent(event);
-    if (!eventType || eventType === 'message') {
-      this.onmessage?.(event);
-    }
-  }
-
-  mockError(): void {
-    const event = new Event('error');
-    this.dispatchEvent(event);
-    this.onerror?.(event);
-  }
-}
-
-/**
  * Wait for a specific condition to be true
  */
 export async function waitFor(
@@ -224,16 +170,4 @@ export function createMockSession(overrides: Partial<Session> = {}): Session {
     workingDir,
     startedAt,
   });
-}
-
-/**
- * Creates mock activity status for testing
- */
-export function createMockActivityStatus(overrides: Partial<ActivityStatus> = {}): ActivityStatus {
-  return {
-    isActive: false,
-    timestamp: new Date().toISOString(),
-    session: createMockSession(),
-    ...overrides,
-  };
 }

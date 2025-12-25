@@ -33,13 +33,12 @@ struct AccessDashboardPageView: View {
                     .fontWeight(.semibold)
 
                 Text(
-                    "To access your terminals from any device, create a tunnel from your device.\n\nThis can be done via **ngrok** in settings or **Cloudflare** or **Tailscale**."
-                )
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 480)
-                .fixedSize(horizontal: false, vertical: true)
+                    "To access your terminals from any device, create a tunnel from your device.\n\nThis can be done via **ngrok** in settings or **Cloudflare** or **Tailscale**.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 VStack(spacing: 12) {
                     // Open Dashboard button
@@ -104,14 +103,14 @@ struct TailscaleLink: View {
             HStack {
                 Image(systemName: "link")
                 Text("Learn more about Tailscale")
-                    .underline(isHovering, color: .accentColor)
+                    .underline(self.isHovering, color: .accentColor)
             }
         })
         .buttonStyle(.link)
         .pointingHandCursor()
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.2)) {
-                isHovering = hovering
+                self.isHovering = hovering
             }
         }
     }

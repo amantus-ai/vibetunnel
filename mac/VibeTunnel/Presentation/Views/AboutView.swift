@@ -54,19 +54,19 @@ struct AboutView: View {
         "Alex Fallah",
         "Justin Williams",
         "Lachlan Donald",
-        "Diego Petrucci"
+        "Diego Petrucci",
     ]
 
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                appInfoSection
-                descriptionSection
-                linksSection
+                self.appInfoSection
+                self.descriptionSection
+                self.linksSection
 
                 Spacer(minLength: 2)
 
-                copyrightSection
+                self.copyrightSection
             }
             .frame(maxWidth: .infinity)
             .standardPadding()
@@ -81,15 +81,14 @@ struct AboutView: View {
                 enableFloating: true,
                 enableInteraction: true,
                 glowIntensity: 0.3,
-                action: openWebsite
-            )
-            .padding(.bottom, 8)
+                action: self.openWebsite)
+                .padding(.bottom, 8)
 
-            Text(appName)
+            Text(self.appName)
                 .font(.largeTitle)
                 .fontWeight(.medium)
 
-            Text("Version \(appVersion)")
+            Text("Version \(self.appVersion)")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -115,8 +114,7 @@ struct AboutView: View {
             HoverableLink(
                 url: "https://github.com/amantus-ai/vibetunnel/issues",
                 title: "Report an Issue",
-                icon: "exclamationmark.bubble"
-            )
+                icon: "exclamationmark.bubble")
             HoverableLink(url: "https://x.com/VibeTunnel", title: "Follow @VibeTunnel", icon: "bird")
         }
     }
@@ -153,7 +151,7 @@ struct AboutView: View {
                     .foregroundColor(.secondary)
 
                 VStack(spacing: 4) {
-                    ForEach(specialContributors.chunked(into: 3), id: \.self) { row in
+                    ForEach(self.specialContributors.chunked(into: 3), id: \.self) { row in
                         HStack(spacing: 4) {
                             ForEach(Array(row.enumerated()), id: \.offset) { index, contributor in
                                 Text(contributor)
@@ -188,19 +186,19 @@ struct HoverableLink: View {
     @State private var isHovering = false
 
     private var destinationURL: URL {
-        URL(string: url) ?? URL(fileURLWithPath: "/")
+        URL(string: self.url) ?? URL(fileURLWithPath: "/")
     }
 
     var body: some View {
-        Link(destination: destinationURL) {
-            Label(title, systemImage: icon)
-                .underline(isHovering, color: .accentColor)
+        Link(destination: self.destinationURL) {
+            Label(self.title, systemImage: self.icon)
+                .underline(self.isHovering, color: .accentColor)
         }
         .buttonStyle(.link)
         .pointingHandCursor()
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.2)) {
-                isHovering = hovering
+                self.isHovering = hovering
             }
         }
     }

@@ -5,7 +5,7 @@
 ### Prerequisites
 - macOS 14.0+
 - Xcode 16.0+
-- Node.js 18+
+- Node.js 22.12+
 - Bun 1.0+
 
 ### Clone & Build
@@ -194,9 +194,12 @@ node --inspect dist/server/server.js
 
 ### Modify Terminal Protocol
 
-1. Update `web/src/server/services/buffer-aggregator.ts`
-2. Modify `web/src/client/services/websocket.ts`
-3. Test with `web/tests/protocol.test.ts`
+1. Update framing/types in `web/src/shared/ws-v3.ts`
+2. Update server routing in `web/src/server/services/ws-v3-hub.ts`
+3. Update clients:
+   - Web: `web/src/client/services/terminal-socket-client.ts`
+   - iOS: `ios/VibeTunnel/Services/BufferWebSocketClient.swift`
+4. Add/adjust tests: `web/src/test/e2e/websocket-v3.e2e.test.ts`
 
 ## Build System
 

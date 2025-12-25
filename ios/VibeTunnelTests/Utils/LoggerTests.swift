@@ -24,7 +24,7 @@ struct LoggerTests {
 
     @Test("Logger initialization")
     func loggerInit() {
-        let logger = Logger(category: "TestCategory")
+        _ = Logger(category: "TestCategory")
 
         // Unfortunately we can't access the private category property
         // but we can verify the logger was created without error
@@ -91,7 +91,7 @@ struct LoggerTests {
         // Note: This test might not work as expected because the static var
         // is already initialized by the time tests run
         #else
-            // In release builds, default should be .warning
+        // In release builds, default should be .warning
         #endif
 
         // Just verify we can read the global level

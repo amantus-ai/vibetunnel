@@ -1,6 +1,6 @@
 import { html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { notificationEventService } from '../services/notification-event-service.js';
+import { serverEventService } from '../services/server-event-service.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('notification-status');
@@ -8,11 +8,11 @@ const logger = createLogger('notification-status');
 @customElement('notification-status')
 export class NotificationStatus extends LitElement {
   // Disable shadow DOM to use Tailwind
-  createRenderRoot() {
+  createRenderRoot(): HTMLElement {
     return this;
   }
 
-  @state() private isSSEConnected = false;
+  @state() private isWsConnected = false;
 
   private connectionStateUnsubscribe?: () => void;
 
@@ -30,16 +30,15 @@ export class NotificationStatus extends LitElement {
 
   private initializeComponent(): void {
     // Get initial connection state
-    this.isSSEConnected = notificationEventService.getConnectionStatus();
-    logger.debug('Initial SSE connection status:', this.isSSEConnected);
+    serverEventService.initialize();
+    this.isWsConnected = serverEventService.getConnectionStatus();
+    logger.debug('Initial WS connection status:', this.isWsConnected);
 
     // Listen for connection state changes
-    this.connectionStateUnsubscribe = notificationEventService.onConnectionStateChange(
-      (connected) => {
-        logger.log(`SSE connection state changed: ${connected ? 'connected' : 'disconnected'}`);
-        this.isSSEConnected = connected;
-      }
-    );
+    this.connectionStateUnsubscribe = serverEventService.onConnectionStateChange((connected) => {
+      logger.log(`WS connection state changed: ${connected ? 'connected' : 'disconnected'}`);
+      this.isWsConnected = connected;
+    });
   }
 
   private handleClick(): void {
@@ -47,18 +46,18 @@ export class NotificationStatus extends LitElement {
   }
 
   private getStatusConfig() {
-    // Green when SSE is connected (Mac app notifications are working)
-    if (this.isSSEConnected) {
+    // Green when v3 socket is connected.
+    if (this.isWsConnected) {
       return {
         color: 'text-status-success',
-        tooltip: 'Settings (Notifications connected)',
+        tooltip: 'Notifications (Connected)',
       };
     }
 
-    // Default color when SSE is not connected
+    // Default color when WS is not connected
     return {
       color: 'text-muted',
-      tooltip: 'Settings (Notifications disconnected)',
+      tooltip: 'Notifications (Disconnected)',
     };
   }
 

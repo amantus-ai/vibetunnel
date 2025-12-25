@@ -56,132 +56,132 @@ class MockAPIClient: APIClientProtocol {
     var responseDelay: TimeInterval = 0
 
     func getSessions() async throws -> [Session] {
-        getSessionsCalled = true
-        if shouldThrowError {
-            throw errorToThrow
+        self.getSessionsCalled = true
+        if self.shouldThrowError {
+            throw self.errorToThrow
         }
-        if responseDelay > 0 {
-            try await Task.sleep(nanoseconds: UInt64(responseDelay * 1_000_000_000))
+        if self.responseDelay > 0 {
+            try await Task.sleep(nanoseconds: UInt64(self.responseDelay * 1_000_000_000))
         }
-        if !sessionsToReturn.isEmpty {
-            return sessionsToReturn
+        if !self.sessionsToReturn.isEmpty {
+            return self.sessionsToReturn
         }
-        return try sessionsResponse.get()
+        return try self.sessionsResponse.get()
     }
 
     func getSession(_ sessionId: String) async throws -> Session {
-        getSessionCalled = true
-        getSessionId = sessionId
-        if responseDelay > 0 {
-            try await Task.sleep(nanoseconds: UInt64(responseDelay * 1_000_000_000))
+        self.getSessionCalled = true
+        self.getSessionId = sessionId
+        if self.responseDelay > 0 {
+            try await Task.sleep(nanoseconds: UInt64(self.responseDelay * 1_000_000_000))
         }
-        return try sessionResponse.get()
+        return try self.sessionResponse.get()
     }
 
     func createSession(_ data: SessionCreateData) async throws -> String {
-        createSessionCalled = true
-        createSessionData = data
-        lastCreateData = data
-        if responseDelay > 0 {
-            try await Task.sleep(nanoseconds: UInt64(responseDelay * 1_000_000_000))
+        self.createSessionCalled = true
+        self.createSessionData = data
+        self.lastCreateData = data
+        if self.responseDelay > 0 {
+            try await Task.sleep(nanoseconds: UInt64(self.responseDelay * 1_000_000_000))
         }
-        if !sessionIdToReturn.isEmpty {
-            return sessionIdToReturn
+        if !self.sessionIdToReturn.isEmpty {
+            return self.sessionIdToReturn
         }
-        return try createSessionResponse.get()
+        return try self.createSessionResponse.get()
     }
 
     func killSession(_ sessionId: String) async throws {
-        killSessionCalled = true
-        killSessionId = sessionId
-        lastKilledSessionId = sessionId
-        killSessionCallCount += 1
-        killedSessionIds.append(sessionId)
-        if responseDelay > 0 {
-            try await Task.sleep(nanoseconds: UInt64(responseDelay * 1_000_000_000))
+        self.killSessionCalled = true
+        self.killSessionId = sessionId
+        self.lastKilledSessionId = sessionId
+        self.killSessionCallCount += 1
+        self.killedSessionIds.append(sessionId)
+        if self.responseDelay > 0 {
+            try await Task.sleep(nanoseconds: UInt64(self.responseDelay * 1_000_000_000))
         }
-        try killSessionResponse.get()
+        try self.killSessionResponse.get()
     }
 
     func cleanupSession(_ sessionId: String) async throws {
-        cleanupSessionCalled = true
-        cleanupSessionId = sessionId
-        if responseDelay > 0 {
-            try await Task.sleep(nanoseconds: UInt64(responseDelay * 1_000_000_000))
+        self.cleanupSessionCalled = true
+        self.cleanupSessionId = sessionId
+        if self.responseDelay > 0 {
+            try await Task.sleep(nanoseconds: UInt64(self.responseDelay * 1_000_000_000))
         }
-        try cleanupSessionResponse.get()
+        try self.cleanupSessionResponse.get()
     }
 
     func cleanupAllExitedSessions() async throws -> [String] {
-        cleanupAllExitedSessionsCalled = true
-        if responseDelay > 0 {
-            try await Task.sleep(nanoseconds: UInt64(responseDelay * 1_000_000_000))
+        self.cleanupAllExitedSessionsCalled = true
+        if self.responseDelay > 0 {
+            try await Task.sleep(nanoseconds: UInt64(self.responseDelay * 1_000_000_000))
         }
-        return try cleanupAllResponse.get()
+        return try self.cleanupAllResponse.get()
     }
 
     func killAllSessions() async throws {
-        killAllSessionsCalled = true
-        if responseDelay > 0 {
-            try await Task.sleep(nanoseconds: UInt64(responseDelay * 1_000_000_000))
+        self.killAllSessionsCalled = true
+        if self.responseDelay > 0 {
+            try await Task.sleep(nanoseconds: UInt64(self.responseDelay * 1_000_000_000))
         }
-        try killAllResponse.get()
+        try self.killAllResponse.get()
     }
 
     func sendInput(sessionId: String, text: String) async throws {
-        sendInputCalled = true
-        sendInputSessionId = sessionId
-        sendInputText = text
-        lastInputSessionId = sessionId
-        lastInputText = text
-        if responseDelay > 0 {
-            try await Task.sleep(nanoseconds: UInt64(responseDelay * 1_000_000_000))
+        self.sendInputCalled = true
+        self.sendInputSessionId = sessionId
+        self.sendInputText = text
+        self.lastInputSessionId = sessionId
+        self.lastInputText = text
+        if self.responseDelay > 0 {
+            try await Task.sleep(nanoseconds: UInt64(self.responseDelay * 1_000_000_000))
         }
-        try sendInputResponse.get()
+        try self.sendInputResponse.get()
     }
 
     func resizeTerminal(sessionId: String, cols: Int, rows: Int) async throws {
-        resizeTerminalCalled = true
-        resizeTerminalSessionId = sessionId
-        resizeTerminalCols = cols
-        resizeTerminalRows = rows
-        lastResizeSessionId = sessionId
-        lastResizeCols = cols
-        lastResizeRows = rows
-        if responseDelay > 0 {
-            try await Task.sleep(nanoseconds: UInt64(responseDelay * 1_000_000_000))
+        self.resizeTerminalCalled = true
+        self.resizeTerminalSessionId = sessionId
+        self.resizeTerminalCols = cols
+        self.resizeTerminalRows = rows
+        self.lastResizeSessionId = sessionId
+        self.lastResizeCols = cols
+        self.lastResizeRows = rows
+        if self.responseDelay > 0 {
+            try await Task.sleep(nanoseconds: UInt64(self.responseDelay * 1_000_000_000))
         }
-        try resizeResponse.get()
+        try self.resizeResponse.get()
     }
 
     func checkHealth() async throws -> Bool {
-        checkHealthCalled = true
-        if responseDelay > 0 {
-            try await Task.sleep(nanoseconds: UInt64(responseDelay * 1_000_000_000))
+        self.checkHealthCalled = true
+        if self.responseDelay > 0 {
+            try await Task.sleep(nanoseconds: UInt64(self.responseDelay * 1_000_000_000))
         }
-        return try healthResponse.get()
+        return try self.healthResponse.get()
     }
 
     /// Helper to reset all tracking properties
     func reset() {
-        getSessionsCalled = false
-        getSessionCalled = false
-        getSessionId = nil
-        createSessionCalled = false
-        createSessionData = nil
-        killSessionCalled = false
-        killSessionId = nil
-        cleanupSessionCalled = false
-        cleanupSessionId = nil
-        cleanupAllExitedSessionsCalled = false
-        killAllSessionsCalled = false
-        sendInputCalled = false
-        sendInputSessionId = nil
-        sendInputText = nil
-        resizeTerminalCalled = false
-        resizeTerminalSessionId = nil
-        resizeTerminalCols = nil
-        resizeTerminalRows = nil
-        checkHealthCalled = false
+        self.getSessionsCalled = false
+        self.getSessionCalled = false
+        self.getSessionId = nil
+        self.createSessionCalled = false
+        self.createSessionData = nil
+        self.killSessionCalled = false
+        self.killSessionId = nil
+        self.cleanupSessionCalled = false
+        self.cleanupSessionId = nil
+        self.cleanupAllExitedSessionsCalled = false
+        self.killAllSessionsCalled = false
+        self.sendInputCalled = false
+        self.sendInputSessionId = nil
+        self.sendInputText = nil
+        self.resizeTerminalCalled = false
+        self.resizeTerminalSessionId = nil
+        self.resizeTerminalCols = nil
+        self.resizeTerminalRows = nil
+        self.checkHealthCalled = false
     }
 }

@@ -33,6 +33,7 @@ export async function waitForSessionCards(
       const noSessionsMsg = document.querySelector('.text-dark-text-muted');
       return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
     },
+    undefined,
     { timeout }
   );
 
@@ -117,19 +118,21 @@ export async function waitForButtonReady(
 export async function waitForTerminalPrompt(page: Page, timeout = 5000): Promise<void> {
   await page.waitForFunction(
     () => {
-      const terminal = document.querySelector('vibe-terminal');
+      const terminal = document.querySelector('vibe-terminal') as unknown as {
+        getDebugText?: () => string;
+        textContent?: string | null;
+      } | null;
       if (!terminal) return false;
 
-      // Check the terminal container first
-      const container = terminal.querySelector('#terminal-container');
-      const containerText = container?.textContent || '';
-
-      // Fall back to terminal content
-      const text = terminal?.textContent || containerText;
+      const text =
+        typeof terminal.getDebugText === 'function'
+          ? terminal.getDebugText()
+          : terminal.textContent || '';
 
       // Terminal is ready when it ends with a prompt character
       return text.trim().endsWith('$') || text.trim().endsWith('>') || text.trim().endsWith('#');
     },
+    undefined,
     { timeout }
   );
 }
@@ -140,19 +143,21 @@ export async function waitForTerminalPrompt(page: Page, timeout = 5000): Promise
 export async function waitForTerminalBusy(page: Page, timeout = 2000): Promise<void> {
   await page.waitForFunction(
     () => {
-      const terminal = document.querySelector('vibe-terminal');
+      const terminal = document.querySelector('vibe-terminal') as unknown as {
+        getDebugText?: () => string;
+        textContent?: string | null;
+      } | null;
       if (!terminal) return false;
 
-      // Check the terminal container first
-      const container = terminal.querySelector('#terminal-container');
-      const containerText = container?.textContent || '';
-
-      // Fall back to terminal content
-      const text = terminal?.textContent || containerText;
+      const text =
+        typeof terminal.getDebugText === 'function'
+          ? terminal.getDebugText()
+          : terminal.textContent || '';
 
       // Terminal is busy when it doesn't end with prompt
       return !text.trim().endsWith('$') && !text.trim().endsWith('>') && !text.trim().endsWith('#');
     },
+    undefined,
     { timeout }
   );
 }
@@ -331,35 +336,59 @@ export async function waitForSessionListReady(page: Page, timeout = 10000): Prom
   try {
     await page.waitForFunction(
       () => {
-        // Check if the page has the main app component
-        const app = document.querySelector('vibetunnel-app');
+        const app = document.querySelector('vibetunnel-app') as unknown as {
+          loading?: boolean;
+          currentView?: string;
+          sessions?: unknown;
+        } | null;
         if (!app) return false;
 
-        // Check for session cards or "no sessions" message
-        const cards = document.querySelectorAll('session-card');
-        const noSessionsMsg = document.querySelector('.text-dark-text-muted');
-        const emptyMessage = document.querySelector('[data-testid="no-sessions-message"]');
+        // Prefer real component state over brittle DOM text/class checks.
+        const isListView = app.currentView === 'list' || window.location.pathname === '/';
+        if (!isListView) return false;
 
-        return (
-          cards.length > 0 ||
-          noSessionsMsg?.textContent?.includes('No terminal sessions') ||
-          noSessionsMsg?.textContent?.includes('No running sessions') ||
-          emptyMessage !== null
-        );
+        if (app.loading === true) return false;
+        if (!Array.isArray(app.sessions)) return false;
+
+        // UI should have rendered either cards or an empty state at this point.
+        const cards = document.querySelectorAll('session-card, compact-session-card');
+        const emptyStateText = document.body.innerText || '';
+        const hasEmptyState =
+          emptyStateText.includes('No terminal sessions yet!') ||
+          emptyStateText.includes('No running sessions') ||
+          emptyStateText.includes('No terminal sessions') ||
+          emptyStateText.includes('No active sessions');
+
+        return cards.length > 0 || hasEmptyState;
       },
+      undefined,
       { timeout }
     );
   } catch (error) {
-    console.warn('waitForSessionListReady timed out, checking current state...');
-    // Log current page state for debugging
-    const pageContent = await page.evaluate(() => {
+    console.warn('waitForSessionListReady timed out');
+    const state = await page.evaluate(() => {
+      const app = document.querySelector('vibetunnel-app') as unknown as {
+        loading?: boolean;
+        currentView?: string;
+        sessions?: unknown;
+      } | null;
       return {
-        hasApp: !!document.querySelector('vibetunnel-app'),
+        url: window.location.href,
+        app: app
+          ? {
+              loading: app.loading,
+              currentView: app.currentView,
+              sessionsLength: Array.isArray(app.sessions) ? app.sessions.length : null,
+              sessionsType: Array.isArray(app.sessions) ? 'array' : typeof app.sessions,
+            }
+          : null,
         sessionCards: document.querySelectorAll('session-card').length,
-        bodyText: document.body.innerText.substring(0, 200),
+        compactSessionCards: document.querySelectorAll('compact-session-card').length,
+        bodyTextPreview: (document.body.innerText || '').slice(0, 120),
       };
     });
-    console.log('Page state:', pageContent);
+    console.warn('Session list state:', JSON.stringify(state));
+
     throw error;
   }
 }
@@ -409,17 +438,17 @@ export async function waitForTerminalText(
 ): Promise<void> {
   await page.waitForFunction(
     (text) => {
-      const terminal = document.querySelector('vibe-terminal');
+      const terminal = document.querySelector('vibe-terminal') as unknown as {
+        getDebugText?: () => string;
+        textContent?: string | null;
+      } | null;
       if (!terminal) return false;
 
-      // Check the terminal container first
-      const container = terminal.querySelector('#terminal-container');
-      if (container?.textContent?.includes(text)) {
-        return true;
-      }
-
-      // Fall back to terminal content
-      return terminal?.textContent?.includes(text);
+      const content =
+        typeof terminal.getDebugText === 'function'
+          ? terminal.getDebugText()
+          : terminal.textContent || '';
+      return content.includes(text);
     },
     searchText,
     { timeout }
@@ -435,19 +464,27 @@ export async function waitForTerminalReady(page: Page, timeout = 4000): Promise<
   // Additional check for terminal content or structure
   await page.waitForFunction(
     () => {
-      const terminal = document.querySelector('vibe-terminal');
+      const terminal = document.querySelector('vibe-terminal') as unknown as {
+        getAttribute?: (name: string) => string | null;
+        getDebugText?: () => string;
+        textContent?: string | null;
+        shadowRoot?: ShadowRoot | null;
+      } | null;
       if (!terminal) return false;
 
-      // Check the terminal container for content
-      const container = terminal.querySelector('#terminal-container');
+      if (terminal.getAttribute?.('data-ready') !== 'true') return false;
+      if (typeof terminal.getDebugText !== 'function') return false;
+
+      const content = terminal.getDebugText();
+      if (!content) return false;
       return (
-        terminal &&
-        ((container?.textContent?.trim().length || 0) > 0 ||
-          terminal.textContent?.trim().length > 0 ||
-          !!terminal.shadowRoot ||
-          !!terminal.querySelector('.xterm'))
+        /[$>#%❯]\s*$/m.test(content) ||
+        content.includes('$') ||
+        content.includes('#') ||
+        content.includes('>')
       );
     },
+    undefined,
     { timeout: 2000 }
   );
 }

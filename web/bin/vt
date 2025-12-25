@@ -133,11 +133,23 @@ if [ -z "$VIBETUNNEL_BIN" ]; then
             VIBETUNNEL_BIN="$(command -v vibetunnel)"
         fi
     fi
+fi
 
-    if [ -z "$VIBETUNNEL_BIN" ] || [ ! -f "$VIBETUNNEL_BIN" ]; then
-        echo "Error: vibetunnel binary not found. Please ensure vibetunnel is installed." >&2
-        echo "Install with: npm install -g vibetunnel" >&2
-        exit 1
+if [ -z "$VIBETUNNEL_BIN" ] || [ ! -f "$VIBETUNNEL_BIN" ]; then
+    echo "Error: vibetunnel binary not found. Please ensure vibetunnel is installed." >&2
+    echo "Install with: npm install -g vibetunnel" >&2
+    exit 1
+fi
+
+# Prefer native forwarder binary when available
+if [ -z "$VIBETUNNEL_FWD_BIN" ]; then
+    if [ -n "$APP_PATH" ] && [ -f "$APP_PATH/Contents/Resources/vibetunnel-fwd" ]; then
+        VIBETUNNEL_FWD_BIN="$APP_PATH/Contents/Resources/vibetunnel-fwd"
+    else
+        FWD_CANDIDATE="$(dirname "$VIBETUNNEL_BIN")/vibetunnel-fwd"
+        if [ -f "$FWD_CANDIDATE" ]; then
+            VIBETUNNEL_FWD_BIN="$FWD_CANDIDATE"
+        fi
     fi
 fi
 
@@ -190,8 +202,12 @@ if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
         shift # Remove 'title' from arguments
         TITLE="$*" # Get all remaining arguments as the title
         
-        # Use the vibetunnel binary's new --update-title flag
-        exec "$VIBETUNNEL_BIN" fwd --update-title "$TITLE" --session-id "$VIBETUNNEL_SESSION_ID"
+        # Use native forwarder when available for --update-title
+        if [ -n "$VIBETUNNEL_FWD_BIN" ] && [ -x "$VIBETUNNEL_FWD_BIN" ]; then
+            exec "$VIBETUNNEL_FWD_BIN" --update-title "$TITLE" --session-id "$VIBETUNNEL_SESSION_ID"
+        else
+            exec "$VIBETUNNEL_BIN" fwd --update-title "$TITLE" --session-id "$VIBETUNNEL_SESSION_ID"
+        fi
         # If exec fails, exit with error
         exit 1
     fi
@@ -284,7 +300,7 @@ OPTIONS:
     --shell, -i            Launch current shell (equivalent to vt $SHELL)
     --no-shell-wrap, -S    Execute command directly without shell wrapper
     --title-mode <mode>    Terminal title mode (none, filter, static, dynamic)
-                          Default: none (dynamic for claude)
+                          Default: none
     --quiet, -q            Quiet mode - only show errors
     --verbose, -v          Verbose mode - show more information
     -vv                    Extra verbose - show all except debug
@@ -295,7 +311,7 @@ TITLE MODES:
     none       No title management - apps control their own titles
     filter     Block all title changes from applications  
     static     Show working directory and command in title
-    dynamic    Show directory, command, and live activity status (default for web UI)
+    dynamic    Legacy alias of static (no activity)
 
 VERBOSITY:
     By default, only errors are shown. Use verbosity flags to control output:
@@ -385,29 +401,46 @@ exec_with_fallback() {
         # Log the error
         echo "[vt] VibeTunnel binary killed by macOS (exit code: $EXIT_CODE). Running command directly." >&2
         
-        # Extract the actual command (skip vibetunnel binary and fwd)
+        # Extract the actual command (skip vibetunnel binary and forwarder)
         local FALLBACK_CMD=()
         local SKIP_NEXT=0
         local IN_COMMAND=0
+        local USING_FWD_BIN=false
+
+        if [[ -n "$VIBETUNNEL_FWD_BIN" && "${SAVED_CMD[0]}" == "$VIBETUNNEL_FWD_BIN" ]]; then
+            USING_FWD_BIN=true
+        fi
         
         for arg in "${SAVED_CMD[@]}"; do
             # Skip the vibetunnel binary path
-            if [[ "$arg" == "$VIBETUNNEL_BIN" ]]; then
+            if [[ "$arg" == "$VIBETUNNEL_BIN" || "$arg" == "$VIBETUNNEL_FWD_BIN" ]]; then
                 continue
             fi
-            # Skip "fwd"
-            if [[ "$arg" == "fwd" ]]; then
+            # Skip "fwd" when using vibetunnel binary
+            if [[ "$USING_FWD_BIN" != "true" && "$arg" == "fwd" ]]; then
                 IN_COMMAND=1
                 continue
             fi
-            # Skip verbosity and title-mode args
-            if [[ "$arg" == "--verbosity" || "$arg" == "--title-mode" ]]; then
+            # Skip verbosity/title-mode/session-id/log-file/update-title args
+            if [[ "$arg" == "--verbosity" || "$arg" == "--title-mode" || "$arg" == "--session-id" || "$arg" == "--log-file" || "$arg" == "--update-title" ]]; then
                 SKIP_NEXT=1
+                continue
+            fi
+            # Skip end-of-options marker
+            if [[ "$arg" == "--" && $IN_COMMAND -eq 0 ]]; then
+                IN_COMMAND=1
                 continue
             fi
             if [[ $SKIP_NEXT -eq 1 ]]; then
                 SKIP_NEXT=0
                 continue
+            fi
+            # If using vibetunnel-fwd, detect first non-option as command start
+            if [[ "$USING_FWD_BIN" == "true" && $IN_COMMAND -eq 0 ]]; then
+                if [[ "$arg" == --* || "$arg" == "-"* ]]; then
+                    continue
+                fi
+                IN_COMMAND=1
             fi
             # Add to fallback command
             if [[ $IN_COMMAND -eq 1 ]]; then
@@ -420,6 +453,16 @@ exec_with_fallback() {
     else
         # Normal exit - return the exit code
         exit $EXIT_CODE
+    fi
+}
+
+# Function to run the forwarder (prefer native zig binary when present)
+exec_fwd() {
+    if [ -n "$VIBETUNNEL_FWD_BIN" ] && [ -x "$VIBETUNNEL_FWD_BIN" ]; then
+        exec_with_fallback "$VIBETUNNEL_FWD_BIN" "$@"
+    else
+        # Fall back to Node.js forwarder
+        exec_with_fallback "$VIBETUNNEL_BIN" fwd "$@"
     fi
 }
 
@@ -436,15 +479,15 @@ resolve_command() {
     case "$shell_name" in
         zsh)
             # For zsh, we need interactive mode to get aliases
-            exec_with_fallback "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
+            exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
             ;;
         bash)
             # For bash, expand aliases in non-interactive mode
-            exec_with_fallback "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
+            exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
             ;;
         *)
             # Generic shell handling
-            exec_with_fallback "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
+            exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
             ;;
     esac
 }
@@ -625,12 +668,12 @@ fi
 if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     if [[ "$NO_SHELL_WRAP" == "true" ]]; then
         # Execute directly without shell wrapper
-        exec_with_fallback "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
+        exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
     else
         # Check if the first argument is a real binary
         if which "$1" >/dev/null 2>&1; then
             # It's a real binary, execute directly
-            exec_with_fallback "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
+            exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
         else
             # Not a real binary, try alias resolution
             resolve_command "$@"
@@ -638,5 +681,5 @@ if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     fi
 else
     # Run with fwd command (original behavior for options)
-    exec_with_fallback "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
+    exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
 fi

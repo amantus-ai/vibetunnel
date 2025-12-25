@@ -1,9 +1,7 @@
 import * as path from 'path';
 import { describe, expect, it, vi } from 'vitest';
-import type { ActivityState } from '../../server/utils/activity-detector.js';
 import {
   extractCdDirectory,
-  generateDynamicTitle,
   generateTitleSequence,
   injectTitleIfNeeded,
   shouldInjectTitle,
@@ -236,103 +234,6 @@ describe('Terminal Title Utilities', () => {
     it('should handle empty data', () => {
       const result = injectTitleIfNeeded('', titleSequence);
       expect(result).toBe('');
-    });
-  });
-
-  describe('generateDynamicTitle', () => {
-    it('should generate title with inactive state and custom session name', () => {
-      const activity: ActivityState = {
-        isActive: false,
-        lastActivityTime: Date.now(),
-      };
-
-      const result = generateDynamicTitle(
-        '/home/user/projects',
-        ['vim', 'file.txt'],
-        activity,
-        'Editor'
-      );
-
-      expect(result).toBe('\x1B]2;Editor\x07');
-    });
-
-    it('should generate title with generic activity', () => {
-      const activity: ActivityState = {
-        isActive: true,
-        lastActivityTime: Date.now(),
-      };
-
-      const result = generateDynamicTitle('/home/user/projects', ['npm', 'run', 'dev'], activity);
-
-      expect(result).toBe('\x1B]2;● ~/projects · npm\x07');
-    });
-
-    it('should generate title with specific status and custom session name', () => {
-      const activity: ActivityState = {
-        isActive: true,
-        lastActivityTime: Date.now(),
-        specificStatus: {
-          app: 'claude',
-          status: '✻ Crafting (205s, ↑6.0k)',
-        },
-      };
-
-      const result = generateDynamicTitle(
-        '/home/user/projects',
-        ['claude'],
-        activity,
-        'AI Assistant'
-      );
-
-      expect(result).toBe('\x1B]2;✻ Crafting (205s, ↑6.0k) · AI Assistant\x07');
-    });
-
-    it('should handle all parts missing', () => {
-      const activity: ActivityState = {
-        isActive: false,
-        lastActivityTime: Date.now(),
-      };
-
-      const result = generateDynamicTitle('/home/user', [], activity);
-
-      expect(result).toBe('\x1B]2;~ · shell\x07');
-    });
-
-    it('should show activity without session name', () => {
-      const activity: ActivityState = {
-        isActive: true,
-        lastActivityTime: Date.now(),
-        specificStatus: {
-          app: 'npm',
-          status: '📦 Installing (45%)',
-        },
-      };
-
-      const result = generateDynamicTitle('/home/user/app', ['npm', 'install'], activity);
-
-      expect(result).toBe('\x1B]2;📦 Installing (45%) · ~/app · npm\x07');
-    });
-
-    it('should extract process name from full path with custom session name', () => {
-      const activity: ActivityState = {
-        isActive: true,
-        lastActivityTime: Date.now(),
-        specificStatus: {
-          app: 'claude',
-          status: '⚡ Thinking',
-        },
-      };
-
-      // Test with full path like /home/user/.claude/local/claude
-      const result = generateDynamicTitle(
-        '/home/user/Projects/vibetunnel',
-        ['/home/user/.claude/local/claude'],
-        activity,
-        'Test Session'
-      );
-
-      // Should use only the session name with status
-      expect(result).toBe('\x1B]2;⚡ Thinking · Test Session\x07');
     });
   });
 });

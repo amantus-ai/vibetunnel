@@ -6,30 +6,30 @@ import Testing
 
 final class MockProcess: Process, @unchecked Sendable {
     var mockIsRunning = false
-    var mockProcessIdentifier: Int32 = 12_345
+    var mockProcessIdentifier: Int32 = 12345
     var mockShouldFailToRun = false
     var runCalled = false
     var terminateCalled = false
 
     override var isRunning: Bool {
-        mockIsRunning
+        self.mockIsRunning
     }
 
     override var processIdentifier: Int32 {
-        mockProcessIdentifier
+        self.mockProcessIdentifier
     }
 
     override func run() throws {
-        runCalled = true
-        if mockShouldFailToRun {
+        self.runCalled = true
+        if self.mockShouldFailToRun {
             throw CocoaError(.fileNoSuchFile)
         }
-        mockIsRunning = true
+        self.mockIsRunning = true
     }
 
     override func terminate() {
-        terminateCalled = true
-        mockIsRunning = false
+        self.terminateCalled = true
+        self.mockIsRunning = false
     }
 }
 
@@ -43,60 +43,60 @@ actor MockTerminalManager {
     var executeCommandOutput = ("", "")
 
     func createSession(request: CreateSessionRequest) throws -> TunnelSession {
-        if createSessionShouldFail {
+        if self.createSessionShouldFail {
             throw TunnelError.invalidRequest
         }
 
         let session = TunnelSession()
-        mockSessions[session.id] = session
+        self.mockSessions[session.id] = session
 
         let process = MockProcess()
-        process.mockProcessIdentifier = Int32.random(in: 1_000...9_999)
-        mockProcesses[session.id] = process
+        process.mockProcessIdentifier = Int32.random(in: 1000...9999)
+        self.mockProcesses[session.id] = process
 
         return session
     }
 
     func executeCommand(sessionId: UUID, command: String) async throws -> (output: String, error: String) {
-        if executeCommandShouldFail {
+        if self.executeCommandShouldFail {
             throw TunnelError.commandExecutionFailed("Mock failure")
         }
 
-        guard mockSessions[sessionId] != nil else {
+        guard self.mockSessions[sessionId] != nil else {
             throw TunnelError.sessionNotFound
         }
 
-        return executeCommandOutput
+        return self.executeCommandOutput
     }
 
     func listSessions() -> [TunnelSession] {
-        Array(mockSessions.values)
+        Array(self.mockSessions.values)
     }
 
     func getSession(id: UUID) -> TunnelSession? {
-        mockSessions[id]
+        self.mockSessions[id]
     }
 
     func closeSession(id: UUID) {
-        mockProcesses[id]?.terminate()
-        mockProcesses.removeValue(forKey: id)
-        mockSessions.removeValue(forKey: id)
+        self.mockProcesses[id]?.terminate()
+        self.mockProcesses.removeValue(forKey: id)
+        self.mockSessions.removeValue(forKey: id)
     }
 
     func reset() {
-        mockSessions = [:]
-        mockProcesses = [:]
-        createSessionShouldFail = false
-        executeCommandShouldFail = false
-        executeCommandOutput = ("", "")
+        self.mockSessions = [:]
+        self.mockProcesses = [:]
+        self.createSessionShouldFail = false
+        self.executeCommandShouldFail = false
+        self.executeCommandOutput = ("", "")
     }
 
     func setCreateSessionShouldFail(_ value: Bool) {
-        createSessionShouldFail = value
+        self.createSessionShouldFail = value
     }
 
     func setExecuteCommandOutput(_ value: (String, String)) {
-        executeCommandOutput = value
+        self.executeCommandOutput = value
     }
 }
 
@@ -109,7 +109,7 @@ struct TerminalManagerTests {
     @Test("Detecting installed terminals", arguments: [
         "/bin/bash",
         "/bin/zsh",
-        "/bin/sh"
+        "/bin/sh",
     ])
     func terminalDetection(shell: String) throws {
         // Verify common shells exist on the system
@@ -138,7 +138,7 @@ struct TerminalManagerTests {
     @Test("Create terminal session with custom shell", arguments: [
         "/bin/bash",
         "/bin/zsh",
-        "/usr/bin/env"
+        "/usr/bin/env",
     ])
     func createSessionWithShell(shell: String) async throws {
         let manager = MockTerminalManager()
@@ -169,7 +169,7 @@ struct TerminalManagerTests {
 
         let env = [
             "CUSTOM_VAR": "test_value",
-            "PATH": "/custom/path:/usr/bin"
+            "PATH": "/custom/path:/usr/bin",
         ]
         let request = CreateSessionRequest(environment: env)
         let session = try await manager.createSession(request: request)
@@ -196,7 +196,7 @@ struct TerminalManagerTests {
         "ls -la",
         "pwd",
         "echo 'Hello, World!'",
-        "date"
+        "date",
     ])
     func commandExecution(command: String) async throws {
         let manager = MockTerminalManager()
@@ -210,8 +210,7 @@ struct TerminalManagerTests {
         // Execute command
         let (output, error) = try await manager.executeCommand(
             sessionId: session.id,
-            command: command
-        )
+            command: command)
 
         #expect(output == "Command output\n")
         #expect(error.isEmpty)
@@ -226,8 +225,7 @@ struct TerminalManagerTests {
 
         let (output, error) = try await manager.executeCommand(
             sessionId: session.id,
-            command: "nonexistent-command"
-        )
+            command: "nonexistent-command")
 
         #expect(output.isEmpty)
         #expect(error == "Command not found\n")
@@ -241,8 +239,7 @@ struct TerminalManagerTests {
         await #expect(throws: TunnelError.sessionNotFound) {
             _ = try await manager.executeCommand(
                 sessionId: fakeId,
-                command: "ls"
-            )
+                command: "ls")
         }
     }
 
@@ -343,8 +340,7 @@ struct TerminalManagerTests {
                 group.addTask {
                     do {
                         let request = CreateSessionRequest(
-                            workingDirectory: "/tmp/session-\(i)"
-                        )
+                            workingDirectory: "/tmp/session-\(i)")
                         let session = try await manager.createSession(request: request)
                         return session.id
                     } catch {
@@ -382,8 +378,7 @@ struct TerminalManagerTests {
                     do {
                         let (output, _) = try await manager.executeCommand(
                             sessionId: session.id,
-                            command: "echo \(i)"
-                        )
+                            command: "echo \(i)")
                         return .success(output)
                     } catch {
                         return .failure(error)
@@ -393,7 +388,7 @@ struct TerminalManagerTests {
 
             var outputs: [String] = []
             for await result in group {
-                if case .success(let output) = result {
+                if case let .success(output) = result {
                     outputs.append(output)
                 }
             }
@@ -412,7 +407,7 @@ struct TerminalManagerTests {
             .sessionNotFound,
             .commandExecutionFailed("Test failure"),
             .timeout,
-            .invalidRequest
+            .invalidRequest,
         ]
 
         for error in errors {
@@ -431,8 +426,7 @@ struct TerminalManagerTests {
         let request = CreateSessionRequest(
             workingDirectory: "/tmp",
             environment: ["TEST": "value"],
-            shell: "/bin/bash"
-        )
+            shell: "/bin/bash")
         let session = try await manager.createSession(request: request)
 
         // 2. Verify session exists
@@ -444,8 +438,7 @@ struct TerminalManagerTests {
         await manager.setExecuteCommandOutput(("test output\n", ""))
         let (output1, _) = try await manager.executeCommand(
             sessionId: session.id,
-            command: "echo test"
-        )
+            command: "echo test")
         #expect(output1 == "test output\n")
 
         // 4. List sessions

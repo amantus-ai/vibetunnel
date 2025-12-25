@@ -69,7 +69,7 @@ final class UnixSocketConnection {
         // Use socket path in user's home directory to avoid /tmp issues
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         self.socketPath = socketPath ?? "\(home)/.vibetunnel/control.sock"
-        logger.info("Unix socket initialized with path: \(self.socketPath)")
+        self.logger.info("Unix socket initialized with path: \(self.socketPath)")
     }
 
     deinit {
@@ -85,25 +85,25 @@ final class UnixSocketConnection {
 
     /// Connect to the UNIX socket with automatic reconnection
     func connect() {
-        logger.info("🔌 Connecting to UNIX socket at \(self.socketPath)")
+        self.logger.info("🔌 Connecting to UNIX socket at \(self.socketPath)")
 
-        guard !isConnecting else {
-            logger.debug("Connection attempt already in progress.")
+        guard !self.isConnecting else {
+            self.logger.debug("Connection attempt already in progress.")
             return
         }
 
         // Reset reconnection state if this is a new top-level call
-        if !isReconnecting {
-            shouldReconnect = true
-            reconnectDelay = initialReconnectDelay
-            consecutiveFailures = 0
+        if !self.isReconnecting {
+            self.shouldReconnect = true
+            self.reconnectDelay = self.initialReconnectDelay
+            self.consecutiveFailures = 0
         }
 
-        isConnecting = true
-        onStateChange?(.preparing)
+        self.isConnecting = true
+        self.onStateChange?(.preparing)
 
         // Connect on background queue
-        queue.async { [weak self] in
+        self.queue.async { [weak self] in
             self?.establishConnection()
         }
     }
@@ -111,16 +111,16 @@ final class UnixSocketConnection {
     /// Establish the actual connection using C socket API
     private nonisolated func establishConnection() {
         // Close any existing socket
-        if socketFD >= 0 {
-            close(socketFD)
-            socketFD = -1
+        if self.socketFD >= 0 {
+            close(self.socketFD)
+            self.socketFD = -1
         }
 
         // Create socket
-        socketFD = socket(AF_UNIX, SOCK_STREAM, 0)
-        guard socketFD >= 0 else {
+        self.socketFD = socket(AF_UNIX, SOCK_STREAM, 0)
+        guard self.socketFD >= 0 else {
             let error = POSIXError(POSIXErrorCode(rawValue: errno) ?? .ECONNREFUSED)
-            logger.error("Failed to create socket: \(error.localizedDescription)")
+            self.logger.error("Failed to create socket: \(error.localizedDescription)")
             Task { @MainActor in
                 self.handleConnectionError(error)
             }
@@ -128,32 +128,32 @@ final class UnixSocketConnection {
         }
 
         // Set socket buffer sizes for large messages
-        var bufferSize: Int32 = 1_024 * 1_024 // 1MB buffer
-        if setsockopt(socketFD, SOL_SOCKET, SO_SNDBUF, &bufferSize, socklen_t(MemoryLayout<Int32>.size)) < 0 {
-            logger.warning("Failed to set send buffer size: \(String(cString: strerror(errno)))")
+        var bufferSize: Int32 = 1024 * 1024 // 1MB buffer
+        if setsockopt(self.socketFD, SOL_SOCKET, SO_SNDBUF, &bufferSize, socklen_t(MemoryLayout<Int32>.size)) < 0 {
+            self.logger.warning("Failed to set send buffer size: \(String(cString: strerror(errno)))")
         } else {
-            logger.info("📊 Set socket send buffer to 1MB")
+            self.logger.info("📊 Set socket send buffer to 1MB")
         }
 
-        if setsockopt(socketFD, SOL_SOCKET, SO_RCVBUF, &bufferSize, socklen_t(MemoryLayout<Int32>.size)) < 0 {
-            logger.warning("Failed to set receive buffer size: \(String(cString: strerror(errno)))")
+        if setsockopt(self.socketFD, SOL_SOCKET, SO_RCVBUF, &bufferSize, socklen_t(MemoryLayout<Int32>.size)) < 0 {
+            self.logger.warning("Failed to set receive buffer size: \(String(cString: strerror(errno)))")
         } else {
-            logger.info("📊 Set socket receive buffer to 1MB")
+            self.logger.info("📊 Set socket receive buffer to 1MB")
         }
 
         // Set socket to non-blocking mode
         let flags = fcntl(socketFD, F_GETFL, 0)
         if flags < 0 {
-            logger.error("Failed to get socket flags")
-            close(socketFD)
-            socketFD = -1
+            self.logger.error("Failed to get socket flags")
+            close(self.socketFD)
+            self.socketFD = -1
             return
         }
 
-        if fcntl(socketFD, F_SETFL, flags | O_NONBLOCK) < 0 {
-            logger.error("Failed to set non-blocking mode")
-            close(socketFD)
-            socketFD = -1
+        if fcntl(self.socketFD, F_SETFL, flags | O_NONBLOCK) < 0 {
+            self.logger.error("Failed to set non-blocking mode")
+            close(self.socketFD)
+            self.socketFD = -1
             return
         }
 
@@ -162,11 +162,11 @@ final class UnixSocketConnection {
         address.sun_family = sa_family_t(AF_UNIX)
 
         // Copy socket path
-        let pathBytes = socketPath.utf8CString
+        let pathBytes = self.socketPath.utf8CString
         guard pathBytes.count <= MemoryLayout.size(ofValue: address.sun_path) else {
-            logger.error("Socket path too long")
-            close(socketFD)
-            socketFD = -1
+            self.logger.error("Socket path too long")
+            close(self.socketFD)
+            self.socketFD = -1
             return
         }
 
@@ -179,7 +179,7 @@ final class UnixSocketConnection {
         // Connect to socket
         let result = withUnsafePointer(to: &address) { ptr in
             ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
-                Darwin.connect(socketFD, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
+                Darwin.connect(self.socketFD, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
             }
         }
 
@@ -187,13 +187,13 @@ final class UnixSocketConnection {
             let errorCode = errno
             if errorCode == EINPROGRESS {
                 // Connection in progress (non-blocking)
-                logger.info("Connection in progress...")
-                waitForConnection()
+                self.logger.info("Connection in progress...")
+                self.waitForConnection()
             } else {
                 let error = POSIXError(POSIXErrorCode(rawValue: errorCode) ?? .ECONNREFUSED)
-                logger.error("Failed to connect: \(error.localizedDescription) (errno: \(errorCode))")
-                close(socketFD)
-                socketFD = -1
+                self.logger.error("Failed to connect: \(error.localizedDescription) (errno: \(errorCode))")
+                close(self.socketFD)
+                self.socketFD = -1
                 Task { @MainActor in
                     self.handleConnectionError(error)
                 }
@@ -208,7 +208,7 @@ final class UnixSocketConnection {
 
     /// Wait for non-blocking connection to complete
     private nonisolated func waitForConnection() {
-        queue.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+        self.queue.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             guard let self, self.socketFD >= 0 else { return }
 
             var error: Int32 = 0
@@ -217,7 +217,7 @@ final class UnixSocketConnection {
             let result = getsockopt(self.socketFD, SOL_SOCKET, SO_ERROR, &error, &errorLen)
 
             if result < 0 {
-                logger.error("Failed to get socket error")
+                self.logger.error("Failed to get socket error")
                 close(self.socketFD)
                 self.socketFD = -1
                 return
@@ -234,7 +234,7 @@ final class UnixSocketConnection {
             } else {
                 // Connection failed
                 let posixError = POSIXError(POSIXErrorCode(rawValue: error) ?? .ECONNREFUSED)
-                logger.error("Connection failed: \(posixError.localizedDescription)")
+                self.logger.error("Connection failed: \(posixError.localizedDescription)")
                 close(self.socketFD)
                 self.socketFD = -1
                 Task { @MainActor in
@@ -246,55 +246,55 @@ final class UnixSocketConnection {
 
     /// Handle successful connection
     private func handleConnectionSuccess() {
-        logger.info("✅ UNIX socket connected")
-        isConnected = true
-        isConnecting = false
-        lastConnectionTime = Date()
-        consecutiveFailures = 0
-        reconnectDelay = initialReconnectDelay
+        self.logger.info("✅ UNIX socket connected")
+        self.isConnected = true
+        self.isConnecting = false
+        self.lastConnectionTime = Date()
+        self.consecutiveFailures = 0
+        self.reconnectDelay = self.initialReconnectDelay
 
-        onStateChange?(.ready)
+        self.onStateChange?(.ready)
 
         // Start continuous receive loop
-        startReceiveLoop()
+        self.startReceiveLoop()
 
         // Start keep-alive timer
-        startKeepAlive()
+        self.startKeepAlive()
 
         // Send any pending messages
-        flushPendingMessages()
+        self.flushPendingMessages()
     }
 
     /// Handle connection error
     private func handleConnectionError(_ error: Error) {
-        logger.error("❌ Connection failed: \(error)")
-        isConnected = false
-        isConnecting = false
-        consecutiveFailures += 1
+        self.logger.error("❌ Connection failed: \(error)")
+        self.isConnected = false
+        self.isConnecting = false
+        self.consecutiveFailures += 1
 
-        onStateChange?(.failed(error))
+        self.onStateChange?(.failed(error))
 
         // Clean up
-        cleanupConnection()
+        self.cleanupConnection()
 
         // Schedule reconnection if appropriate
-        if shouldReconnect {
-            scheduleReconnect()
+        if self.shouldReconnect {
+            self.scheduleReconnect()
         }
     }
 
     /// Send a message with automatic retry on failure
     func send(_ message: some Encodable) async throws {
-        logger.info("📤 Sending control message...")
+        self.logger.info("📤 Sending control message...")
         let encoder = JSONEncoder()
         let data = try encoder.encode(message)
 
         // Log the message content for debugging
         if let str = String(data: data, encoding: .utf8) {
-            logger.info("📤 Message content: \(String(str.prefix(500)))")
+            self.logger.info("📤 Message content: \(String(str.prefix(500)))")
         }
 
-        try await sendData(data)
+        try await self.sendData(data)
     }
 
     /// Serial queue for message sending to prevent concurrent writes
@@ -304,25 +304,25 @@ final class UnixSocketConnection {
     func sendMessage(_ dict: [String: Any]) async {
         do {
             let data = try JSONSerialization.data(withJSONObject: dict, options: [])
-            await sendDataWithErrorHandling(data)
+            await self.sendDataWithErrorHandling(data)
         } catch {
-            logger.error("Failed to serialize message: \(error)")
+            self.logger.error("Failed to serialize message: \(error)")
         }
     }
 
     /// Send raw data with error handling
     func sendRawData(_ data: Data) async throws {
-        try await sendData(data)
+        try await self.sendData(data)
     }
 
     /// Send data with proper error handling and reconnection
     private func sendData(_ data: Data) async throws {
-        guard isConnected, socketFD >= 0 else {
+        guard self.isConnected, self.socketFD >= 0 else {
             throw UnixSocketError.notConnected
         }
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            sendQueue.async { [weak self] in
+            self.sendQueue.async { [weak self] in
                 guard let self else {
                     continuation.resume(throwing: UnixSocketError.notConnected)
                     return
@@ -356,7 +356,7 @@ final class UnixSocketConnection {
                         // Check if it's EAGAIN (would block) - that's okay for non-blocking
                         if errorCode == EAGAIN || errorCode == EWOULDBLOCK {
                             // Socket buffer is full, wait a bit and retry
-                            usleep(1_000) // Wait 1ms
+                            usleep(1000) // Wait 1ms
                             continue
                         }
 
@@ -400,14 +400,14 @@ final class UnixSocketConnection {
 
     /// Send data with error handling but no throwing
     private func sendDataWithErrorHandling(_ data: Data) async {
-        guard isConnected, socketFD >= 0 else {
-            queueMessage(data)
+        guard self.isConnected, self.socketFD >= 0 else {
+            self.queueMessage(data)
             return
         }
 
         // Use send queue to ensure serialized writes
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            sendQueue.async { [weak self] in
+            self.sendQueue.async { [weak self] in
                 guard let self else {
                     continuation.resume()
                     return
@@ -444,7 +444,7 @@ final class UnixSocketConnection {
                         // Check if it's EAGAIN (would block) - that's okay for non-blocking
                         if errorCode == EAGAIN || errorCode == EWOULDBLOCK {
                             // Socket buffer is full, wait a bit and retry
-                            usleep(1_000) // Wait 1ms
+                            usleep(1000) // Wait 1ms
                             continue
                         }
 
@@ -489,102 +489,100 @@ final class UnixSocketConnection {
 
     /// Handle send errors and trigger reconnection if needed
     private func handleSendError(_ error: Error, errorCode: Int32) {
-        logger.error("Failed to send message: \(error)")
-        logger.error("  Error code: \(errorCode)")
+        self.logger.error("Failed to send message: \(error)")
+        self.logger.error("  Error code: \(errorCode)")
 
         // Check for broken pipe (EPIPE = 32)
         if errorCode == EPIPE {
-            logger.warning("🔥 Broken pipe detected (EPIPE), triggering reconnection")
-            scheduleReconnect()
+            self.logger.warning("🔥 Broken pipe detected (EPIPE), triggering reconnection")
+            self.scheduleReconnect()
         }
         // Check for other connection errors
         else if errorCode == ECONNRESET || // 54 - Connection reset
             errorCode == ECONNREFUSED || // 61 - Connection refused
             errorCode == ENOTCONN
         { // 57 - Not connected
-            logger.warning("🔥 Connection error detected, triggering reconnection")
-            scheduleReconnect()
+            self.logger.warning("🔥 Connection error detected, triggering reconnection")
+            self.scheduleReconnect()
         }
     }
 
     /// Disconnect from the socket
     func disconnect() {
-        logger.info("🔌 Disconnecting from UNIX socket")
+        self.logger.info("🔌 Disconnecting from UNIX socket")
 
         // Stop reconnection attempts
-        shouldReconnect = false
+        self.shouldReconnect = false
 
         // Cancel timers and tasks
-        keepAliveTimer?.invalidate()
-        keepAliveTimer = nil
+        self.keepAliveTimer?.invalidate()
+        self.keepAliveTimer = nil
 
-        reconnectTask?.cancel()
-        reconnectTask = nil
+        self.reconnectTask?.cancel()
+        self.reconnectTask = nil
 
         // Cancel receive task
-        receiveTask?.cancel()
-        receiveTask = nil
+        self.receiveTask?.cancel()
+        self.receiveTask = nil
 
         // Clear buffers
-        receiveBuffer.removeAll()
-        pendingMessages.removeAll()
+        self.receiveBuffer.removeAll()
+        self.pendingMessages.removeAll()
 
         // Close socket
-        if socketFD >= 0 {
-            close(socketFD)
-            socketFD = -1
+        if self.socketFD >= 0 {
+            close(self.socketFD)
+            self.socketFD = -1
         }
 
-        isConnected = false
+        self.isConnected = false
 
-        onStateChange?(.cancelled)
+        self.onStateChange?(.cancelled)
     }
 
     // MARK: - Private Methods
 
     /// Clean up connection resources
     private func cleanupConnection() {
-        keepAliveTimer?.invalidate()
-        keepAliveTimer = nil
+        self.keepAliveTimer?.invalidate()
+        self.keepAliveTimer = nil
 
-        receiveTask?.cancel()
-        receiveTask = nil
+        self.receiveTask?.cancel()
+        self.receiveTask = nil
 
-        receiveBuffer.removeAll()
+        self.receiveBuffer.removeAll()
     }
 
     /// Schedule a reconnection attempt
     private func scheduleReconnect() {
-        guard shouldReconnect && !isReconnecting else {
-            logger
+        guard self.shouldReconnect, !self.isReconnecting else {
+            self.logger
                 .debug(
-                    "Skipping reconnect: shouldReconnect=\(self.shouldReconnect), isReconnecting=\(self.isReconnecting)"
-                )
+                    "Skipping reconnect: shouldReconnect=\(self.shouldReconnect), isReconnecting=\(self.isReconnecting)")
             return
         }
 
-        isReconnecting = true
+        self.isReconnecting = true
 
         // Cancel any existing reconnect task
-        reconnectTask?.cancel()
+        self.reconnectTask?.cancel()
 
-        logger
+        self.logger
             .info(
-                "🔄 Scheduling reconnection in \(String(format: "%.1f", self.reconnectDelay)) seconds (attempt #\(self.consecutiveFailures + 1))"
-            )
+                "🔄 Scheduling reconnection in \(String(format: "%.1f", self.reconnectDelay)) seconds (attempt #\(self.consecutiveFailures + 1))")
 
-        reconnectTask = Task { [weak self] in
+        self.reconnectTask = Task { [weak self] in
             guard let self else { return }
 
             do {
                 try await Task.sleep(nanoseconds: UInt64(self.reconnectDelay * 1_000_000_000))
 
-                guard !Task.isCancelled && self.shouldReconnect else {
+                guard !Task.isCancelled, self.shouldReconnect else {
                     self.isReconnecting = false
                     return
                 }
 
-                logger.info("🔁 Attempting reconnection...")
+                self.logger.info("🔁 Attempting reconnection...")
                 self.isReconnecting = false
                 self.connect()
 
@@ -593,7 +591,7 @@ final class UnixSocketConnection {
             } catch {
                 self.isReconnecting = false
                 if !Task.isCancelled {
-                    logger.error("Reconnection task error: \(error)")
+                    self.logger.error("Reconnection task error: \(error)")
                 }
             }
         }
@@ -601,36 +599,36 @@ final class UnixSocketConnection {
 
     /// Queue a message for later delivery
     private func queueMessage(_ data: Data, completion: (@Sendable (Error?) -> Void)? = nil) {
-        guard pendingMessages.count < maxPendingMessages else {
-            logger.warning("Pending message queue full, dropping oldest message")
-            pendingMessages.removeFirst()
+        guard self.pendingMessages.count < self.maxPendingMessages else {
+            self.logger.warning("Pending message queue full, dropping oldest message")
+            self.pendingMessages.removeFirst()
             return
         }
 
-        pendingMessages.append((data: data, completion: completion))
-        logger.debug("Queued message (total pending: \(self.pendingMessages.count))")
+        self.pendingMessages.append((data: data, completion: completion))
+        self.logger.debug("Queued message (total pending: \(self.pendingMessages.count))")
     }
 
     /// Send all pending messages
     private func flushPendingMessages() {
-        guard !pendingMessages.isEmpty else { return }
+        guard !self.pendingMessages.isEmpty else { return }
 
-        logger.info("📤 Flushing \(self.pendingMessages.count) pending messages")
+        self.logger.info("📤 Flushing \(self.pendingMessages.count) pending messages")
 
-        let messages = pendingMessages
-        pendingMessages.removeAll()
+        let messages = self.pendingMessages
+        self.pendingMessages.removeAll()
 
         Task {
             for (data, completion) in messages {
-                guard isConnected, socketFD >= 0 else {
+                guard self.isConnected, self.socketFD >= 0 else {
                     // Re-queue if connection lost again
-                    queueMessage(data, completion: completion)
+                    self.queueMessage(data, completion: completion)
                     break
                 }
 
                 // Use send queue to ensure serialized writes
                 await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                    sendQueue.async { [weak self] in
+                    self.sendQueue.async { [weak self] in
                         guard let self else {
                             continuation.resume()
                             return
@@ -656,7 +654,7 @@ final class UnixSocketConnection {
                         var remainingData = fullData
                         var sendError: Error?
 
-                        while totalSent < fullData.count && sendError == nil {
+                        while totalSent < fullData.count, sendError == nil {
                             let result = remainingData.withUnsafeBytes { ptr in
                                 Darwin.send(self.socketFD, ptr.baseAddress, remainingData.count, 0)
                             }
@@ -666,7 +664,7 @@ final class UnixSocketConnection {
                                 // Check if it's EAGAIN (would block) - that's okay for non-blocking
                                 if errorCode == EAGAIN || errorCode == EWOULDBLOCK {
                                     // Socket buffer is full, wait a bit and retry
-                                    usleep(1_000) // Wait 1ms
+                                    usleep(1000) // Wait 1ms
                                     continue
                                 }
 
@@ -710,43 +708,44 @@ final class UnixSocketConnection {
 
     /// Start keep-alive mechanism
     private func startKeepAlive() {
-        keepAliveTimer?.invalidate()
+        self.keepAliveTimer?.invalidate()
 
-        keepAliveTimer = Timer.scheduledTimer(withTimeInterval: keepAliveInterval, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                await self?.sendKeepAlive()
+        self.keepAliveTimer = Timer
+            .scheduledTimer(withTimeInterval: self.keepAliveInterval, repeats: true) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    await self?.sendKeepAlive()
+                }
             }
-        }
     }
 
     /// Send keep-alive ping
     private func sendKeepAlive() async {
-        guard isConnected else { return }
+        guard self.isConnected else { return }
 
-        let timeSinceLastPong = Date().timeIntervalSince(lastPongTime)
-        if timeSinceLastPong > keepAliveInterval * 2 {
-            logger
+        let timeSinceLastPong = Date().timeIntervalSince(self.lastPongTime)
+        if timeSinceLastPong > self.keepAliveInterval * 2 {
+            self.logger
                 .warning("⚠️ No pong received for \(String(format: "%.0f", timeSinceLastPong))s, connection may be dead")
             // Trigger reconnection
-            scheduleReconnect()
+            self.scheduleReconnect()
             return
         }
 
         let pingMessage = ControlProtocol.systemPingRequest()
         Task {
             do {
-                try await send(pingMessage)
-                logger.debug("🏓 Sent keep-alive ping")
+                try await self.send(pingMessage)
+                self.logger.debug("🏓 Sent keep-alive ping")
             } catch {
-                logger.error("Failed to send keep-alive ping: \(error)")
+                self.logger.error("Failed to send keep-alive ping: \(error)")
             }
         }
     }
 
     /// Start continuous receive loop
     private func startReceiveLoop() {
-        receiveTask?.cancel()
-        receiveTask = Task { [weak self] in
+        self.receiveTask?.cancel()
+        self.receiveTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { break }
                 await self.receiveNextMessage()
@@ -756,20 +755,20 @@ final class UnixSocketConnection {
 
     /// Receive next message from the connection
     private func receiveNextMessage() async {
-        guard isConnected, socketFD >= 0 else {
+        guard self.isConnected, self.socketFD >= 0 else {
             // Add a small delay to prevent busy loop
             try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
             return
         }
 
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            queue.async { [weak self] in
+            self.queue.async { [weak self] in
                 guard let self, self.socketFD >= 0 else {
                     continuation.resume()
                     return
                 }
 
-                var buffer = [UInt8](repeating: 0, count: 65_536) // Increased from 4KB to 64KB
+                var buffer = [UInt8](repeating: 0, count: 65536) // Increased from 4KB to 64KB
                 let bytesRead = recv(self.socketFD, &buffer, buffer.count, 0)
 
                 if bytesRead > 0 {
@@ -788,7 +787,7 @@ final class UnixSocketConnection {
                     }
                 } else {
                     let errorCode = errno
-                    if errorCode != EAGAIN && errorCode != EWOULDBLOCK {
+                    if errorCode != EAGAIN, errorCode != EWOULDBLOCK {
                         let error = POSIXError(POSIXErrorCode(rawValue: errorCode) ?? .ECONNREFUSED)
                         Task { @MainActor in
                             self.logger.error("Receive error: \(error) (errno: \(errorCode))")
@@ -810,31 +809,31 @@ final class UnixSocketConnection {
 
     /// Process received data with proper message framing
     private func processReceivedData(_ data: Data) {
-        logger.debug("📥 Received \(data.count) bytes of data")
-        receiveBuffer.append(data)
-        logger.debug("📦 Buffer now contains \(self.receiveBuffer.count) bytes")
+        self.logger.debug("📥 Received \(data.count) bytes of data")
+        self.receiveBuffer.append(data)
+        self.logger.debug("📦 Buffer now contains \(self.receiveBuffer.count) bytes")
 
         // Process as many messages as we can from the buffer
-        while receiveBuffer.count >= 4 {
+        while self.receiveBuffer.count >= 4 {
             // Read the message length header (4 bytes, big-endian UInt32)
-            let messageLength = receiveBuffer.prefix(4)
+            let messageLength = self.receiveBuffer.prefix(4)
                 .withUnsafeBytes { UInt32(bigEndian: $0.loadUnaligned(as: UInt32.self)) }
 
-            logger.debug("📏 Next message length from header: \(messageLength) bytes")
+            self.logger.debug("📏 Next message length from header: \(messageLength) bytes")
 
             // Check against reasonable upper bound to guard against corrupted headers
             guard messageLength < 10_000_000 else { // 10MB max message size (matching Node.js peer)
-                logger.error("Corrupted message header: length=\(messageLength)")
-                receiveBuffer.removeAll() // Clear corrupted buffer
+                self.logger.error("Corrupted message header: length=\(messageLength)")
+                self.receiveBuffer.removeAll() // Clear corrupted buffer
                 break
             }
 
             let needed = Int(messageLength) + 4
-            guard receiveBuffer.count >= needed else { break }
+            guard self.receiveBuffer.count >= needed else { break }
 
             // Extract the complete message body (skip the 4-byte header)
             let body = Data(receiveBuffer.dropFirst(4).prefix(Int(messageLength)))
-            receiveBuffer.removeFirst(needed)
+            self.receiveBuffer.removeFirst(needed)
 
             // Check for keep-alive pong
             if let msgDict = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
@@ -845,28 +844,28 @@ final class UnixSocketConnection {
                let action = msgDict["action"] as? String,
                action == "ping"
             {
-                lastPongTime = Date()
-                logger.debug("🏓 Received keep-alive pong")
+                self.lastPongTime = Date()
+                self.logger.debug("🏓 Received keep-alive pong")
                 continue
             }
 
             // Deliver the complete message
-            logger.info("📨 Delivering message of size \(body.count) bytes")
+            self.logger.info("📨 Delivering message of size \(body.count) bytes")
             if let str = String(data: body, encoding: .utf8) {
-                logger.info("📨 Message content: \(String(str.prefix(500)))")
+                self.logger.info("📨 Message content: \(String(str.prefix(500)))")
             }
 
             if let handler = onMessage {
                 handler(body)
             } else {
-                logger.warning("⚠️ No message handler registered - message will be dropped!")
+                self.logger.warning("⚠️ No message handler registered - message will be dropped!")
             }
         }
 
         // If buffer grows too large, clear it to prevent memory issues
-        if receiveBuffer.count > 10 * 1_024 * 1_024 { // 10MB limit (matching Node.js peer)
-            logger.warning("Receive buffer exceeded 10MB, clearing to prevent memory issues")
-            receiveBuffer.removeAll()
+        if self.receiveBuffer.count > 10 * 1024 * 1024 { // 10MB limit (matching Node.js peer)
+            self.logger.warning("Receive buffer exceeded 10MB, clearing to prevent memory issues")
+            self.receiveBuffer.removeAll()
         }
     }
 }
@@ -887,9 +886,9 @@ enum UnixSocketError: LocalizedError {
         switch self {
         case .notConnected:
             "UNIX socket not connected"
-        case .connectionFailed(let error):
+        case let .connectionFailed(error):
             "Connection failed: \(error.localizedDescription)"
-        case .sendFailed(let error):
+        case let .sendFailed(error):
             "Send failed: \(error.localizedDescription)"
         case .connectionClosed:
             "Connection closed by peer"

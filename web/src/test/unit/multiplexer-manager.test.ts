@@ -261,7 +261,7 @@ describe('MultiplexerManager', () => {
       expect(mockScreenManager.attachToSession).toHaveBeenCalledWith('main');
       expect(mockPtyManager.createSession).toHaveBeenCalledWith(
         ['screen', '-r', 'main'],
-        expect.objectContaining({ titleMode: TitleMode.DYNAMIC })
+        expect.objectContaining({ titleMode: TitleMode.STATIC })
       );
     });
 

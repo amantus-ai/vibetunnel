@@ -29,7 +29,7 @@ The server performs two primary management tasks:
 1. **External Session Monitoring**
    - Watches control directory for new external sessions
    - Automatically registers discovered sessions with the terminal manager
-   - Maintains in-memory buffer cache (cols × rows) for text/buffer API endpoints
+   - Maintains in-memory terminal buffer for text export + VT snapshots (WS v3 `SNAPSHOT_VT`)
 
 2. **Client Connection Handling**
    - WebSocket connections trigger file watchers on session stdout files
@@ -39,7 +39,7 @@ The server performs two primary management tasks:
 ### Memory Management
 
 - **Buffer caching**: Last visible scrollbuffer (terminal dimensions) kept in memory
-- **Efficient retrieval**: Text and buffer API endpoints serve from memory cache
+- **Efficient retrieval**: `/api/sessions/:id/text` and WS v3 `SNAPSHOT_VT` serve from memory cache
 - **File streaming**: WebSocket clients receive updates via file watchers
 
 ## Known Performance Issues

@@ -1,11 +1,70 @@
-import { Terminal as XtermTerminal } from '@xterm/headless';
 import chalk from 'chalk';
 import * as fs from 'fs';
+import { CellFlags, Ghostty, type GhosttyTerminal } from 'ghostty-web';
+import { createRequire } from 'module';
 import * as path from 'path';
+import type { SessionInfo } from '../../shared/types.js';
 import { ErrorDeduplicator, formatErrorSummary } from '../utils/error-deduplicator.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('terminal-manager');
+
+const SCROLLBACK_LIMIT = 10000;
+
+const localRequire = createRequire(__filename);
+
+function resolveGhosttyWasmPath(): string {
+  const moduleDir = __dirname;
+  const candidates: string[] = [
+    path.resolve(moduleDir, '../../../public/ghostty-vt.wasm'),
+    path.resolve(moduleDir, '../../public/ghostty-vt.wasm'),
+  ];
+
+  try {
+    candidates.push(localRequire.resolve('ghostty-web/dist/ghostty-vt.wasm'));
+  } catch {
+    // ignore
+  }
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+
+  throw new Error(
+    `ghostty-web wasm not found. Tried:\n${candidates.map((c) => `- ${c}`).join('\n')}`
+  );
+}
+
+let ghosttyPromise: Promise<Ghostty> | null = null;
+async function ensureGhostty(): Promise<Ghostty> {
+  if (!ghosttyPromise) {
+    ghosttyPromise = (async () => {
+      const wasmPath = resolveGhosttyWasmPath();
+      const wasmBytes = await fs.promises.readFile(wasmPath);
+
+      type GhosttyWasmInstance = ConstructorParameters<typeof Ghostty>[0];
+      type WebAssemblyInstantiateResult = { instance: GhosttyWasmInstance };
+      type WebAssemblyLike = {
+        instantiate: (
+          bytes: Uint8Array,
+          imports: Record<string, unknown>
+        ) => Promise<WebAssemblyInstantiateResult>;
+      };
+
+      const wasm = (globalThis as unknown as { WebAssembly: WebAssemblyLike }).WebAssembly;
+      const { instance } = await wasm.instantiate(wasmBytes, {
+        env: {
+          log: (_ptr: number, _len: number) => {
+            // Intentionally no-op: ghostty can be noisy with stream warnings.
+          },
+        },
+      });
+
+      return new Ghostty(instance);
+    })();
+  }
+  return ghosttyPromise;
+}
 
 // Helper function to truncate long strings for logging
 function truncateForLog(str: string, maxLength: number = 50): string {
@@ -36,7 +95,7 @@ const FLOW_CONTROL_CONFIG = {
 };
 
 interface SessionTerminal {
-  terminal: XtermTerminal;
+  terminal: GhosttyTerminal;
   watcher?: fs.FSWatcher;
   lastUpdate: number;
   isPaused?: boolean;
@@ -70,13 +129,13 @@ interface BufferSnapshot {
 /**
  * Manages terminal instances and their buffer operations for terminal sessions.
  *
- * Provides high-performance terminal emulation using xterm.js headless terminals,
+ * Provides high-performance terminal emulation using ghostty-web (WASM) terminals,
  * with sophisticated flow control, buffer management, and real-time change
  * notifications. Handles asciinema stream parsing, terminal resizing, and
  * efficient binary encoding of terminal buffers.
  *
  * Key features:
- * - Headless xterm.js terminal instances with 10K line scrollback
+ * - Headless Ghostty terminals with 10K line scrollback
  * - Asciinema v2 format stream parsing and playback
  * - Flow control with backpressure to prevent memory exhaustion
  * - Efficient binary buffer encoding for WebSocket transmission
@@ -107,7 +166,7 @@ interface BufferSnapshot {
  * );
  * ```
  *
- * @see XtermTerminal - Terminal emulation engine
+ * @see GhosttyTerminal - Terminal emulation engine
  * @see web/src/server/services/buffer-aggregator.ts - Aggregates buffer updates
  * @see web/src/server/pty/asciinema-writer.ts - Writes asciinema streams
  */
@@ -120,32 +179,15 @@ export class TerminalManager {
   private writeTimers: Map<string, NodeJS.Timeout> = new Map();
   private errorDeduplicator = new ErrorDeduplicator({
     keyExtractor: (error, context) => {
-      // Use session ID and line prefix as context for xterm parsing errors
+      // Use session ID and line prefix as context for terminal parsing errors
       const errorMessage = error instanceof Error ? error.message : String(error);
       return `${context}:${errorMessage}`;
     },
   });
-  private originalConsoleWarn: typeof console.warn;
   private flowControlTimer?: NodeJS.Timeout;
 
   constructor(controlDir: string) {
     this.controlDir = controlDir;
-
-    // Override console.warn to suppress xterm.js parsing warnings
-    this.originalConsoleWarn = console.warn;
-    console.warn = (...args: unknown[]) => {
-      const message = args[0];
-      if (
-        typeof message === 'string' &&
-        (message.includes('xterm.js parsing error') ||
-          message.includes('Unable to process character') ||
-          message.includes('Cannot read properties of undefined'))
-      ) {
-        // Suppress xterm.js parsing warnings
-        return;
-      }
-      this.originalConsoleWarn.apply(console, args);
-    };
 
     // Start flow control check timer
     this.startFlowControlTimer();
@@ -154,18 +196,13 @@ export class TerminalManager {
   /**
    * Get or create a terminal for a session
    */
-  async getTerminal(sessionId: string): Promise<XtermTerminal> {
+  async getTerminal(sessionId: string): Promise<GhosttyTerminal> {
     let sessionTerminal = this.terminals.get(sessionId);
 
     if (!sessionTerminal) {
       // Create new terminal
-      const terminal = new XtermTerminal({
-        cols: 80,
-        rows: 24,
-        scrollback: 10000,
-        allowProposedApi: true,
-        convertEol: true,
-      });
+      const ghostty = await ensureGhostty();
+      const terminal = ghostty.createTerminal(80, 24, { scrollbackLimit: SCROLLBACK_LIMIT });
 
       sessionTerminal = {
         terminal,
@@ -183,6 +220,144 @@ export class TerminalManager {
 
     sessionTerminal.lastUpdate = Date.now();
     return sessionTerminal.terminal;
+  }
+
+  private async readSessionDimensions(
+    sessionId: string
+  ): Promise<{ cols?: number; rows?: number }> {
+    const sessionJsonPath = path.join(this.controlDir, sessionId, 'session.json');
+    if (!fs.existsSync(sessionJsonPath)) {
+      return {};
+    }
+
+    try {
+      const raw = await fs.promises.readFile(sessionJsonPath, 'utf8');
+      const parsed = JSON.parse(raw) as Partial<SessionInfo>;
+      const cols =
+        typeof parsed.initialCols === 'number' && Number.isFinite(parsed.initialCols)
+          ? parsed.initialCols
+          : undefined;
+      const rows =
+        typeof parsed.initialRows === 'number' && Number.isFinite(parsed.initialRows)
+          ? parsed.initialRows
+          : undefined;
+      return { cols, rows };
+    } catch (error) {
+      logger.debug(`Failed to read session.json for fallback ${truncateForLog(sessionId)}:`, error);
+      return {};
+    }
+  }
+
+  private async buildFallbackSnapshot(sessionId: string): Promise<BufferSnapshot> {
+    const streamPath = path.join(this.controlDir, sessionId, 'stdout');
+    const sessionDimensions = await this.readSessionDimensions(sessionId);
+    const emptySnapshot = (): BufferSnapshot => ({
+      cols: 1,
+      rows: 1,
+      viewportY: 0,
+      cursorX: 0,
+      cursorY: 0,
+      cells: [[{ char: ' ', width: 1 }]],
+    });
+
+    if (!fs.existsSync(streamPath)) {
+      return emptySnapshot();
+    }
+
+    let content = '';
+    try {
+      content = await fs.promises.readFile(streamPath, 'utf8');
+    } catch (error) {
+      logger.error(`Failed to read fallback stream for ${truncateForLog(sessionId)}:`, error);
+      return emptySnapshot();
+    }
+
+    if (!content) {
+      return emptySnapshot();
+    }
+
+    const MAX_CHARS = 1024 * 1024;
+    if (content.length > MAX_CHARS) {
+      content = content.slice(-MAX_CHARS);
+    }
+
+    let output = '';
+    let headerCols: number | undefined;
+    let headerRows: number | undefined;
+    let resizeCols: number | undefined;
+    let resizeRows: number | undefined;
+    for (const line of content.split('\n')) {
+      if (!line.trim()) continue;
+      try {
+        const parsed = JSON.parse(line);
+        if (Array.isArray(parsed) && parsed.length >= 3) {
+          if (parsed[1] === 'o') {
+            output += String(parsed[2]);
+          } else if (parsed[1] === 'r') {
+            const match = String(parsed[2]).match(/^(\d+)x(\d+)$/);
+            if (match) {
+              resizeCols = Number.parseInt(match[1], 10);
+              resizeRows = Number.parseInt(match[2], 10);
+            }
+          }
+        } else if (parsed && typeof parsed === 'object') {
+          const width = (parsed as { width?: number }).width;
+          const height = (parsed as { height?: number }).height;
+          if (typeof width === 'number' && Number.isFinite(width)) headerCols = width;
+          if (typeof height === 'number' && Number.isFinite(height)) headerRows = height;
+        }
+      } catch {
+        // ignore malformed lines
+      }
+    }
+
+    const fallbackCols = resizeCols ?? sessionDimensions.cols ?? headerCols;
+    const fallbackRows = resizeRows ?? sessionDimensions.rows ?? headerRows;
+    if (!output) {
+      const cols = Math.max(1, fallbackCols ?? 1);
+      const rows = Math.max(1, fallbackRows ?? 1);
+      const cells: BufferCell[][] = Array.from({ length: rows }, () => [{ char: ' ', width: 1 }]);
+      return {
+        cols,
+        rows,
+        viewportY: 0,
+        cursorX: 0,
+        cursorY: 0,
+        cells,
+      };
+    }
+
+    const normalized = output.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    // biome-ignore lint/complexity/useRegexLiterals: avoid control-character lint for ESC
+    const ansiPattern = new RegExp('\\u001b\\[[0-9;?]*[a-zA-Z]', 'g');
+    const stripped = normalized.replace(ansiPattern, '');
+    const lines = stripped.split('\n');
+    const rows = Math.max(1, fallbackRows ?? lines.length);
+    const visibleLines = fallbackRows ? lines.slice(-rows) : lines;
+    const outputCols = Math.max(1, ...visibleLines.map((line) => Array.from(line).length));
+    const cols = Math.max(1, fallbackCols ?? outputCols);
+
+    const cells: BufferCell[][] = visibleLines.map((line) => {
+      const chars = Array.from(line);
+      const truncated = cols ? chars.slice(0, cols) : chars;
+      if (truncated.length === 0) {
+        return [{ char: ' ', width: 1 }];
+      }
+      return truncated.map((char) => ({ char, width: 1 }));
+    });
+
+    while (cells.length < rows) {
+      cells.push([{ char: ' ', width: 1 }]);
+    }
+
+    return {
+      cols,
+      rows,
+      viewportY: 0,
+      cursorX: 0,
+      cursorY: 0,
+      cells,
+    };
   }
 
   /**
@@ -328,9 +503,9 @@ export class TerminalManager {
     if (!sessionTerminal) return false;
 
     const terminal = sessionTerminal.terminal;
-    const buffer = terminal.buffer.active;
-    const maxLines = terminal.options.scrollback || 10000;
-    const currentLines = buffer.length;
+    const scrollbackLength = terminal.getScrollbackLength();
+    const currentLines = scrollbackLength + terminal.rows;
+    const maxLines = SCROLLBACK_LIMIT;
     const bufferUtilization = currentLines / maxLines;
 
     const wasPaused = sessionTerminal.isPaused || false;
@@ -537,23 +712,26 @@ export class TerminalManager {
    */
   async getBufferStats(sessionId: string) {
     const terminal = await this.getTerminal(sessionId);
-    const buffer = terminal.buffer.active;
+    terminal.update();
+    const cursor = terminal.getCursor();
+    const scrollbackLength = terminal.getScrollbackLength();
+    const totalRows = scrollbackLength + terminal.rows;
     const sessionTerminal = this.terminals.get(sessionId);
     logger.debug(
-      `Getting buffer stats for session ${truncateForLog(sessionId)}: ${buffer.length} total rows`
+      `Getting buffer stats for session ${truncateForLog(sessionId)}: ${totalRows} total rows`
     );
 
-    const maxLines = terminal.options.scrollback || 10000;
-    const bufferUtilization = buffer.length / maxLines;
+    const maxLines = SCROLLBACK_LIMIT;
+    const bufferUtilization = totalRows / maxLines;
 
     return {
-      totalRows: buffer.length,
+      totalRows,
       cols: terminal.cols,
       rows: terminal.rows,
-      viewportY: buffer.viewportY,
-      cursorX: buffer.cursorX,
-      cursorY: buffer.cursorY,
-      scrollback: terminal.options.scrollback || 0,
+      viewportY: cursor.viewportY,
+      cursorX: cursor.x,
+      cursorY: cursor.y,
+      scrollback: scrollbackLength,
       // Flow control metrics
       isPaused: sessionTerminal?.isPaused || false,
       pendingLines: sessionTerminal?.pendingLines?.length || 0,
@@ -567,87 +745,101 @@ export class TerminalManager {
    */
   async getBufferSnapshot(sessionId: string): Promise<BufferSnapshot> {
     const startTime = Date.now();
-    const terminal = await this.getTerminal(sessionId);
-    const buffer = terminal.buffer.active;
+    let terminal: GhosttyTerminal;
+    try {
+      terminal = await this.getTerminal(sessionId);
+    } catch (error) {
+      logger.error(`Failed to init terminal for snapshot ${truncateForLog(sessionId)}:`, error);
+      return this.buildFallbackSnapshot(sessionId);
+    }
 
-    // Always get the visible terminal area from bottom
-    const startLine = Math.max(0, buffer.length - terminal.rows);
-    const endLine = buffer.length;
-    const actualLines = endLine - startLine;
+    try {
+      terminal.update();
+    } catch (error) {
+      logger.error(`Failed to update terminal for snapshot ${truncateForLog(sessionId)}:`, error);
+      return this.buildFallbackSnapshot(sessionId);
+    }
+    const cols = terminal.cols;
+    const rows = terminal.rows;
+    const viewport = terminal.getViewport();
+    const cursor = terminal.getCursor();
+    const colors = terminal.getColors() as
+      | {
+          foreground: { r: number; g: number; b: number };
+          background: { r: number; g: number; b: number };
+        }
+      | undefined;
+    if (!colors?.foreground || !colors?.background) {
+      return this.buildFallbackSnapshot(sessionId);
+    }
 
-    // Get cursor position relative to our viewport
-    const cursorX = buffer.cursorX;
-    const cursorY = buffer.cursorY + buffer.viewportY - startLine;
+    const defaultFg =
+      (colors.foreground.r << 16) | (colors.foreground.g << 8) | colors.foreground.b;
+    const defaultBg =
+      (colors.background.r << 16) | (colors.background.g << 8) | colors.background.b;
 
-    // Extract cells
     const cells: BufferCell[][] = [];
-    const cell = buffer.getNullCell();
 
-    for (let row = 0; row < actualLines; row++) {
-      const line = buffer.getLine(startLine + row);
+    for (let row = 0; row < rows; row++) {
       const rowCells: BufferCell[] = [];
 
-      if (line) {
-        for (let col = 0; col < terminal.cols; col++) {
-          line.getCell(col, cell);
+      for (let col = 0; col < cols; col++) {
+        const cell = viewport[row * cols + col];
+        if (!cell) continue;
 
-          const char = cell.getChars() || ' ';
-          const width = cell.getWidth();
+        const width = cell.width;
+        if (width === 0) continue;
 
-          // Skip zero-width cells (part of wide characters)
-          if (width === 0) continue;
-
-          // Build attributes byte
-          let attributes = 0;
-          if (cell.isBold()) attributes |= 0x01;
-          if (cell.isItalic()) attributes |= 0x02;
-          if (cell.isUnderline()) attributes |= 0x04;
-          if (cell.isDim()) attributes |= 0x08;
-          if (cell.isInverse()) attributes |= 0x10;
-          if (cell.isInvisible()) attributes |= 0x20;
-          if (cell.isStrikethrough()) attributes |= 0x40;
-
-          const bufferCell: BufferCell = {
-            char,
-            width,
-          };
-
-          // Only include non-default values
-          const fg = cell.getFgColor();
-          const bg = cell.getBgColor();
-
-          // Handle color values - -1 means default color
-          if (fg !== undefined && fg !== -1) bufferCell.fg = fg;
-          if (bg !== undefined && bg !== -1) bufferCell.bg = bg;
-          if (attributes !== 0) bufferCell.attributes = attributes;
-
-          rowCells.push(bufferCell);
-        }
-
-        // Trim blank cells from the end of the line
-        let lastNonBlankCell = rowCells.length - 1;
-        while (lastNonBlankCell >= 0) {
-          const cell = rowCells[lastNonBlankCell];
-          if (
-            cell.char !== ' ' ||
-            cell.fg !== undefined ||
-            cell.bg !== undefined ||
-            cell.attributes !== undefined
-          ) {
-            break;
+        let char = ' ';
+        if (cell.codepoint !== 0) {
+          if (cell.grapheme_len && cell.grapheme_len > 1) {
+            char = terminal.getGraphemeString(row, col) || ' ';
+          } else {
+            char = String.fromCodePoint(cell.codepoint);
           }
-          lastNonBlankCell--;
         }
 
-        // Trim the array, but keep at least one cell
-        if (lastNonBlankCell < rowCells.length - 1) {
-          rowCells.splice(Math.max(1, lastNonBlankCell + 1));
-        }
-      } else {
-        // Empty line - just add a single space
-        rowCells.push({ char: ' ', width: 1 });
+        let attributes = 0;
+        if (cell.flags & CellFlags.BOLD) attributes |= 0x01;
+        if (cell.flags & CellFlags.ITALIC) attributes |= 0x02;
+        if (cell.flags & CellFlags.UNDERLINE) attributes |= 0x04;
+        if (cell.flags & CellFlags.FAINT) attributes |= 0x08;
+        if (cell.flags & CellFlags.INVERSE) attributes |= 0x10;
+        if (cell.flags & CellFlags.INVISIBLE) attributes |= 0x20;
+        if (cell.flags & CellFlags.STRIKETHROUGH) attributes |= 0x40;
+
+        const bufferCell: BufferCell = { char, width };
+
+        const fg = (cell.fg_r << 16) | (cell.fg_g << 8) | cell.fg_b;
+        const bg = (cell.bg_r << 16) | (cell.bg_g << 8) | cell.bg_b;
+
+        if (fg !== defaultFg) bufferCell.fg = fg;
+        if (bg !== defaultBg) bufferCell.bg = bg;
+        if (attributes !== 0) bufferCell.attributes = attributes;
+
+        rowCells.push(bufferCell);
       }
 
+      // Trim trailing blanks but keep at least one cell for height
+      let lastNonBlankCell = rowCells.length - 1;
+      while (lastNonBlankCell >= 0) {
+        const cell = rowCells[lastNonBlankCell];
+        if (
+          cell.char !== ' ' ||
+          cell.fg !== undefined ||
+          cell.bg !== undefined ||
+          cell.attributes !== undefined
+        ) {
+          break;
+        }
+        lastNonBlankCell--;
+      }
+
+      if (lastNonBlankCell < rowCells.length - 1) {
+        rowCells.splice(Math.max(1, lastNonBlankCell + 1));
+      }
+
+      if (rowCells.length === 0) rowCells.push({ char: ' ', width: 1 });
       cells.push(rowCells);
     }
 
@@ -677,11 +869,11 @@ export class TerminalManager {
     }
 
     return {
-      cols: terminal.cols,
+      cols,
       rows: trimmedCells.length,
-      viewportY: startLine,
-      cursorX,
-      cursorY,
+      viewportY: cursor.viewportY,
+      cursorX: cursor.x,
+      cursorY: cursor.y,
       cells: trimmedCells,
     };
   }
@@ -965,7 +1157,7 @@ export class TerminalManager {
       if (sessionTerminal.watcher) {
         sessionTerminal.watcher.close();
       }
-      sessionTerminal.terminal.dispose();
+      sessionTerminal.terminal.free();
       this.terminals.delete(sessionId);
 
       // Clear write timer if exists
@@ -1099,7 +1291,11 @@ export class TerminalManager {
     listener: BufferChangeListener
   ): Promise<() => void> {
     // Ensure terminal exists and is watching
-    await this.getTerminal(sessionId);
+    try {
+      await this.getTerminal(sessionId);
+    } catch (error) {
+      logger.error(`Failed to init terminal for subscription ${truncateForLog(sessionId)}:`, error);
+    }
 
     if (!this.bufferListeners.has(sessionId)) {
       this.bufferListeners.set(sessionId, new Set());
@@ -1110,6 +1306,17 @@ export class TerminalManager {
       listeners.add(listener);
       logger.log(
         chalk.blue(`Buffer listener subscribed for session ${sessionId} (${listeners.size} total)`)
+      );
+    }
+
+    // Send an immediate snapshot so new subscribers see a preview without waiting for output
+    try {
+      const snapshot = await this.getBufferSnapshot(sessionId);
+      listener(sessionId, snapshot);
+    } catch (error) {
+      logger.error(
+        `Error getting initial buffer snapshot for ${truncateForLog(sessionId)}:`,
+        error
       );
     }
 
@@ -1224,8 +1431,5 @@ export class TerminalManager {
       clearInterval(this.flowControlTimer);
       this.flowControlTimer = undefined;
     }
-
-    // Restore original console.warn
-    console.warn = this.originalConsoleWarn;
   }
 }

@@ -6,6 +6,7 @@
 # Create temporary files for capturing output
 FORMAT_OUT=$(mktemp)
 LINT_OUT=$(mktemp)
+LINT_TYPEAWARE_OUT=$(mktemp)
 TYPECHECK_OUT=$(mktemp)
 VT_OUT=$(mktemp)
 
@@ -27,6 +28,16 @@ pids+=($!)
     if ! pnpm run lint > "$LINT_OUT" 2>&1; then
         echo "Lint check failed:"
         cat "$LINT_OUT"
+        exit 1
+    fi
+} &
+pids+=($!)
+
+# Run type-aware lint CHECK in parallel
+{
+    if ! pnpm run lint:typeaware > "$LINT_TYPEAWARE_OUT" 2>&1; then
+        echo "Type-aware lint check failed:"
+        cat "$LINT_TYPEAWARE_OUT"
         exit 1
     fi
 } &
@@ -61,7 +72,7 @@ for pid in "${pids[@]}"; do
 done
 
 # Cleanup
-rm -f "$FORMAT_OUT" "$LINT_OUT" "$TYPECHECK_OUT" "$VT_OUT"
+rm -f "$FORMAT_OUT" "$LINT_OUT" "$LINT_TYPEAWARE_OUT" "$TYPECHECK_OUT" "$VT_OUT"
 
 # Exit with appropriate code
 if [ "$failed" = true ]; then

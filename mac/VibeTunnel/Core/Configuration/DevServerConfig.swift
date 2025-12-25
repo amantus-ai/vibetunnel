@@ -29,7 +29,6 @@ struct DevServerConfig {
     static func current() -> Self {
         Self(
             useDevServer: AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.useDevServer),
-            devServerPath: AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.devServerPath)
-        )
+            devServerPath: AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.devServerPath))
     }
 }

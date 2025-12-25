@@ -51,17 +51,18 @@ VibeTunnel consists of three main components working together:
 |-----------|------|---------|
 | HTTP Server | `web/src/server/server.ts` | REST API, WebSocket upgrade |
 | PTY Manager | `web/src/server/pty/pty-manager.ts` | Terminal process spawning |
-| Session Manager | `web/src/server/services/session-manager.ts` | Session state & cleanup |
-| Buffer Aggregator | `web/src/server/services/buffer-aggregator.ts` | Output optimization |
+| Session Manager | `web/src/server/pty/session-manager.ts` | Session state & cleanup |
+| WsV3Hub | `web/src/server/services/ws-v3-hub.ts` | `/ws` v3 framing + multiplex |
+| CastOutputHub | `web/src/server/services/cast-output-hub.ts` | Cast tail → `STDOUT` frames |
 
 ### Web Frontend
 
 | Component | File | Purpose |
 |-----------|------|---------|
 | App Shell | `web/src/client/app.ts` | Main application container |
-| Terminal View | `web/src/client/terminal-view.ts` | xterm.js integration |
-| Session List | `web/src/client/session-list.ts` | Active sessions UI |
-| WebSocket Client | `web/src/client/services/websocket.ts` | Real-time communication |
+| Terminal View | `web/src/client/components/terminal.ts` | ghostty-web integration |
+| Session List | `web/src/client/components/session-list.ts` | Active sessions UI |
+| WebSocket Client | `web/src/client/services/terminal-socket-client.ts` | `/ws` v3 transport |
 
 ## Data Flow
 
@@ -74,9 +75,10 @@ User → vt command → TTYForwardManager → HTTP POST /api/sessions
 
 ### Terminal I/O
 ```
-User types → WebSocket message → Server PTY write
-PTY output → Buffer aggregation → Binary protocol → WebSocket
-→ Client decode → xterm.js render
+User types → v3 `INPUT_*` frame → Server PTY write
+PTY output → Cast tail → v3 `STDOUT` frames
+Server-side Ghostty → v1 VT snapshots → v3 `SNAPSHOT_VT` frames
+Client render: ghostty-web (interactive) + VT snapshots (previews)
 ```
 
 ### Session Cleanup
@@ -94,11 +96,8 @@ Terminal exit → PTY close → Session manager cleanup
 - See [API Reference](api-reference.md)
 
 ### WebSocket Protocol
-- Binary buffer format for efficiency
-- Magic byte `0xBF` for packet identification
-- 4-byte length header (big-endian)
-- UTF-8 encoded terminal data
-- See [Protocol Details](protocols.md)
+- Terminal transport: `/ws` WebSocket v3 framing (multiplexed sessions)
+- Details: `docs/websocket.md`
 
 ### Inter-Process Communication
 - Mac app spawns Bun server as child process

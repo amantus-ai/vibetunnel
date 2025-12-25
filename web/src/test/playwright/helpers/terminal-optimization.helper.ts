@@ -17,24 +17,27 @@ export async function waitForTerminalReady(page: Page, timeout = 10000): Promise
   // Combine all checks into one efficient waitForFunction
   await page.waitForFunction(
     () => {
-      const term = document.querySelector('vibe-terminal');
+      const term = document.querySelector('vibe-terminal') as unknown as {
+        getDebugText?: () => string;
+        getAttribute?: (name: string) => string | null;
+      } | null;
       if (!term) return false;
 
-      // Check if terminal container exists
-      const container = term.querySelector('#terminal-container, .terminal-container, .xterm');
-      if (!container) return false;
+      if (term.getAttribute?.('data-ready') !== 'true') return false;
+      if (typeof term.getDebugText !== 'function') return false;
 
-      // Check for xterm.js terminal initialization
-      const hasXterm = container.querySelector('.xterm-screen, .xterm-viewport') !== null;
-      if (hasXterm) return true;
+      const content = term.getDebugText();
+      if (!content) return false;
 
-      // Check for content with prompt
-      const content = container.textContent || '';
+      // Prompt heuristics
       return (
-        content.length > 0 &&
-        (content.includes('$') || content.includes('#') || content.includes('>'))
+        /[$>#%❯]\s*$/m.test(content) ||
+        content.includes('$') ||
+        content.includes('#') ||
+        content.includes('>')
       );
     },
+    undefined,
     { timeout, polling: 50 } // Reduced polling interval for faster detection
   );
 }
@@ -59,23 +62,13 @@ export async function typeCommand(page: Page, command: string): Promise<void> {
  */
 export async function getTerminalContent(page: Page): Promise<string> {
   return await page.evaluate(() => {
-    const terminal = document.querySelector('vibe-terminal');
+    const terminal = document.querySelector('vibe-terminal') as unknown as {
+      getDebugText?: () => string;
+      textContent?: string | null;
+    } | null;
     if (!terminal) return '';
 
-    // Try to get content from various possible terminal structures
-    // First try the terminal container
-    const container = terminal.querySelector('#terminal-container, .terminal-container');
-    if (container?.textContent) {
-      return container.textContent;
-    }
-
-    // Try xterm.js structure
-    const xtermScreen = terminal.querySelector('.xterm-screen, .xterm-rows');
-    if (xtermScreen?.textContent) {
-      return xtermScreen.textContent;
-    }
-
-    // Fallback to terminal element content
+    if (typeof terminal.getDebugText === 'function') return terminal.getDebugText();
     return terminal.textContent || '';
   });
 }
@@ -128,8 +121,14 @@ export async function executeCommand(
     // Wait for content to change (command output)
     await page.waitForFunction(
       (before) => {
-        const term = document.querySelector('vibe-terminal');
-        const currentContent = term?.textContent || '';
+        const term = document.querySelector('vibe-terminal') as unknown as {
+          getDebugText?: () => string;
+          textContent?: string | null;
+        } | null;
+        const currentContent =
+          term && typeof term.getDebugText === 'function'
+            ? term.getDebugText()
+            : term?.textContent || '';
         return currentContent !== before && currentContent.length > before.length;
       },
       contentBefore,
@@ -191,11 +190,18 @@ export async function executeAndVerifyCommand(
 export async function waitForTerminalBusy(page: Page, timeout = 2000): Promise<void> {
   await page.waitForFunction(
     () => {
-      const terminal = document.querySelector('vibe-terminal');
-      const content = terminal?.textContent || '';
+      const terminal = document.querySelector('vibe-terminal') as unknown as {
+        getDebugText?: () => string;
+        textContent?: string | null;
+      } | null;
+      const content =
+        terminal && typeof terminal.getDebugText === 'function'
+          ? terminal.getDebugText()
+          : terminal?.textContent || '';
       // Terminal is busy if there's no prompt at the end
       return !content.match(/[$>#%❯]\s*$/m);
     },
+    undefined,
     { timeout }
   );
 }
@@ -208,10 +214,17 @@ export async function interruptCommand(page: Page): Promise<void> {
   // Wait for prompt to appear
   await page.waitForFunction(
     () => {
-      const terminal = document.querySelector('vibe-terminal');
-      const content = terminal?.textContent || '';
+      const terminal = document.querySelector('vibe-terminal') as unknown as {
+        getDebugText?: () => string;
+        textContent?: string | null;
+      } | null;
+      const content =
+        terminal && typeof terminal.getDebugText === 'function'
+          ? terminal.getDebugText()
+          : terminal?.textContent || '';
       return content.match(/[$>#%❯]\s*$/m) !== null;
     },
+    undefined,
     { timeout: 3000 }
   );
 }
@@ -274,13 +287,19 @@ export async function getTerminalDimensions(page: Page): Promise<{
   actualRows: number;
 }> {
   return await page.evaluate(() => {
-    const terminal = document.querySelector('vibe-terminal');
+    const terminal = document.querySelector('vibe-terminal') as unknown as {
+      getDebugText?: () => string;
+      textContent?: string | null;
+    } | null;
     if (!terminal) {
       return { cols: 0, rows: 0, actualCols: 0, actualRows: 0 };
     }
 
     // Get terminal content and estimate dimensions
-    const content = terminal.textContent || '';
+    const content =
+      typeof terminal.getDebugText === 'function'
+        ? terminal.getDebugText()
+        : terminal.textContent || '';
     const lines = content.split('\n');
     const rows = lines.length || 24;
     const cols = Math.max(...lines.map((l) => l.length)) || 80;

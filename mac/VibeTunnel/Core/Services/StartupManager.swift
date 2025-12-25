@@ -25,16 +25,15 @@ public struct StartupManager: StartupControlling {
         do {
             if enabled {
                 try SMAppService.mainApp.register()
-                logger.info("Successfully registered for launch at login.")
+                self.logger.info("Successfully registered for launch at login.")
             } else {
                 try SMAppService.mainApp.unregister()
-                logger.info("Successfully unregistered for launch at login.")
+                self.logger.info("Successfully unregistered for launch at login.")
             }
         } catch {
-            logger
+            self.logger
                 .error(
-                    "Failed to \(enabled ? "register" : "unregister") for launch at login: \(error.localizedDescription)"
-                )
+                    "Failed to \(enabled ? "register" : "unregister") for launch at login: \(error.localizedDescription)")
         }
     }
 

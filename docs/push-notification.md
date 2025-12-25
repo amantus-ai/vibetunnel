@@ -39,16 +39,6 @@ When you enable notifications in VibeTunnel, you can choose which events to be n
 - **Common sources**: vim alerts, IRC mentions, completion sounds
 - **Use case**: Get alerts from terminal programs that use the bell
 
-#### 6. Claude turn notifications ✓
-- **Notification**: "Your Turn" when Claude finishes responding
-- **Smart detection**: Monitors Claude CLI sessions automatically
-- **Triggers when**: Claude transitions from typing to waiting for input
-- **How it works**: 
-  - Detects sessions running Claude (by command or app name)
-  - Tracks when Claude stops outputting text
-  - Only notifies once per response (won't spam)
-- **Use case**: Know when Claude has finished its response and needs your input
-
 ## Architecture
 
 ### System Overview
@@ -66,7 +56,6 @@ Terminal Events → Session Monitor → Event Processing → Notification Servic
 - **Key responsibilities**:
   - Monitors session lifecycle (start/exit)
   - Tracks command execution and duration
-  - Detects Claude CLI activity transitions
   - Filters events based on thresholds (e.g., 3-second rule)
 
 #### 2. Server Event System (`ServerEvent.swift`)
@@ -74,12 +63,11 @@ Terminal Events → Session Monitor → Event Processing → Notification Servic
   - `sessionStart`, `sessionExit`: Session lifecycle
   - `commandFinished`, `commandError`: Command execution
   - `bell`: Terminal bell character detection
-  - `claudeTurn`: Claude AI idle detection
 - **Event data**: Each event carries session ID, display name, duration, exit codes, etc.
 
 #### 3. Notification Service (`NotificationService.swift`)
 - **macOS integration**: Uses `UserNotifications` framework
-- **Event source**: Connects to server via SSE at `/api/events`
+- **Event source**: Connects to server via WebSocket v3 at `/ws` (global subscription for `EVENT` frames)
 - **Preference management**: Checks user settings before sending
 - **Permission handling**: Manages notification authorization
 
@@ -98,18 +86,6 @@ Terminal Events → Session Monitor → Event Processing → Notification Servic
 6. **User Interaction**: Shows native macOS notifications
 
 ### Special Features
-
-#### Claude Detection Algorithm
-```swift
-// Detects Claude sessions by command or app name
-let isClaudeSession = session.command.contains("claude") || 
-                     session.app.lowercased().contains("claude")
-
-// Tracks activity state transitions
-if previousActive && !currentActive && !alreadyNotified {
-    // Claude went from typing to idle - send notification
-}
-```
 
 #### Command Duration Tracking
 - Only notifies for commands > 3 seconds
@@ -176,4 +152,3 @@ Benefits:
   ```bash
   claude config set --global preferredNotifChannel terminal_bell
   ```
-

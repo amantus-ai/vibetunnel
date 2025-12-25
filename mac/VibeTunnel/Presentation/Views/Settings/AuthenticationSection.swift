@@ -18,7 +18,7 @@ struct AuthenticationSection: View {
                         Text("Authentication Method")
                             .font(.callout)
                         Spacer()
-                        Picker("", selection: $authMode) {
+                        Picker("", selection: self.$authMode) {
                             ForEach(AuthenticationMode.allCases, id: \.self) { mode in
                                 Text(mode.displayName)
                                     .tag(mode)
@@ -27,19 +27,18 @@ struct AuthenticationSection: View {
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .frame(alignment: .trailing)
-                        .onChange(of: authMode) { _, newValue in
+                        .onChange(of: self.authMode) { _, newValue in
                             // Save the authentication mode
                             UserDefaults.standard.set(
                                 newValue.rawValue,
-                                forKey: AppConstants.UserDefaultsKeys.authenticationMode
-                            )
+                                forKey: AppConstants.UserDefaultsKeys.authenticationMode)
                             Task {
-                                logger.info("Authentication mode changed to: \(newValue.rawValue)")
-                                await serverManager.restart()
+                                self.logger.info("Authentication mode changed to: \(newValue.rawValue)")
+                                await self.serverManager.restart()
                             }
                         }
                     }
-                    Text(authMode.description)
+                    Text(self.authMode.description)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -47,7 +46,7 @@ struct AuthenticationSection: View {
                 }
 
                 // Additional info based on selected mode
-                if authMode == .osAuth || authMode == .both {
+                if self.authMode == .osAuth || self.authMode == .both {
                     HStack(alignment: .center, spacing: 6) {
                         Image(systemName: "info.circle")
                             .foregroundColor(.blue)
@@ -60,7 +59,7 @@ struct AuthenticationSection: View {
                     }
                 }
 
-                if authMode == .sshKeys || authMode == .both {
+                if self.authMode == .sshKeys || self.authMode == .both {
                     HStack(alignment: .center, spacing: 6) {
                         Image(systemName: "key.fill")
                             .foregroundColor(.blue)
@@ -79,8 +78,7 @@ struct AuthenticationSection: View {
                                 try? FileManager.default.createDirectory(
                                     atPath: sshPath,
                                     withIntermediateDirectories: true,
-                                    attributes: [.posixPermissions: 0o700]
-                                )
+                                    attributes: [.posixPermissions: 0o700])
                                 NSWorkspace.shared.open(URL(fileURLWithPath: sshPath))
                             }
                         }
@@ -111,10 +109,9 @@ struct AuthenticationSection: View {
                 authMode: $authMode,
                 enableSSHKeys: $enableSSHKeys,
                 logger: Logger(subsystem: "preview", category: "auth"),
-                serverManager: ServerManager.shared
-            )
-            .frame(width: 500)
-            .padding()
+                serverManager: ServerManager.shared)
+                .frame(width: 500)
+                .padding()
         }
     }
 

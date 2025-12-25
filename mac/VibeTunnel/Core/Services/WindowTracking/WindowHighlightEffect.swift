@@ -28,8 +28,7 @@ struct WindowHighlightConfig {
         duration: 0.8,
         borderWidth: 4.0,
         glowRadius: 12.0,
-        isEnabled: true
-    )
+        isEnabled: true)
 
     /// A more subtle configuration
     static let subtle = Self(
@@ -37,8 +36,7 @@ struct WindowHighlightConfig {
         duration: 0.5,
         borderWidth: 2.0,
         glowRadius: 6.0,
-        isEnabled: true
-    )
+        isEnabled: true)
 
     /// A vibrant neon-style configuration
     static let neon = Self(
@@ -46,8 +44,7 @@ struct WindowHighlightConfig {
         duration: 1.2,
         borderWidth: 6.0,
         glowRadius: 20.0,
-        isEnabled: true
-    )
+        isEnabled: true)
 }
 
 /// Provides visual highlighting effects for terminal windows.
@@ -56,8 +53,7 @@ struct WindowHighlightConfig {
 final class WindowHighlightEffect {
     private let logger = Logger(
         subsystem: BundleIdentifiers.loggerSubsystem,
-        category: "WindowHighlightEffect"
-    )
+        category: "WindowHighlightEffect")
 
     /// Active overlay windows for effects
     private var overlayWindows: [NSWindow] = []
@@ -87,7 +83,7 @@ final class WindowHighlightEffect {
         // First, we need to find the total screen height across all displays
         let screens = NSScreen.screens
         guard let mainScreen = NSScreen.main else {
-            logger.error("No main screen found")
+            self.logger.error("No main screen found")
             return screenFrame
         }
 
@@ -97,10 +93,9 @@ final class WindowHighlightEffect {
 
         for screen in screens {
             // Convert screen's Cocoa frame to screen coordinates for comparison
-            let screenFrameInScreenCoords = convertCocoaToScreenRect(
+            let screenFrameInScreenCoords = self.convertCocoaToScreenRect(
                 screen.frame,
-                mainScreenHeight: mainScreen.frame.height
-            )
+                mainScreenHeight: mainScreen.frame.height)
 
             if screenFrameInScreenCoords.contains(windowCenter) {
                 targetScreen = screen
@@ -111,17 +106,15 @@ final class WindowHighlightEffect {
         // Use the screen we found, or main screen as fallback
         let screen = targetScreen ?? mainScreen
 
-        logger.debug("Screen info for coordinate conversion:")
-        logger
+        self.logger.debug("Screen info for coordinate conversion:")
+        self.logger
             .debug(
-                "  Target screen frame (Cocoa): x=\(screen.frame.origin.x), y=\(screen.frame.origin.y), w=\(screen.frame.width), h=\(screen.frame.height)"
-            )
-        logger
+                "  Target screen frame (Cocoa): x=\(screen.frame.origin.x), y=\(screen.frame.origin.y), w=\(screen.frame.width), h=\(screen.frame.height)")
+        self.logger
             .debug(
-                "  Window frame (screen coords): x=\(screenFrame.origin.x), y=\(screenFrame.origin.y), w=\(screenFrame.width), h=\(screenFrame.height)"
-            )
-        logger.debug("  Window center: x=\(windowCenter.x), y=\(windowCenter.y)")
-        logger.debug("  Is main screen: \(screen == NSScreen.main)")
+                "  Window frame (screen coords): x=\(screenFrame.origin.x), y=\(screenFrame.origin.y), w=\(screenFrame.width), h=\(screenFrame.height)")
+        self.logger.debug("  Window center: x=\(windowCenter.x), y=\(windowCenter.y)")
+        self.logger.debug("  Is main screen: \(screen == NSScreen.main)")
 
         // Convert window coordinates from screen (top-left) to Cocoa (bottom-left)
         // The key is that we need to use the main screen's height as reference
@@ -136,8 +129,7 @@ final class WindowHighlightEffect {
             x: screenFrame.origin.x,
             y: cocoaY,
             width: screenFrame.width,
-            height: screenFrame.height
-        )
+            height: screenFrame.height)
     }
 
     /// Helper to convert Cocoa rect to screen coordinates for comparison
@@ -148,13 +140,12 @@ final class WindowHighlightEffect {
             x: cocoaRect.origin.x,
             y: screenY,
             width: cocoaRect.width,
-            height: cocoaRect.height
-        )
+            height: cocoaRect.height)
     }
 
     /// Highlight a window with a border pulse effect
     func highlightWindow(_ window: AXElement, bounds: CGRect? = nil) {
-        guard config.isEnabled else { return }
+        guard self.config.isEnabled else { return }
 
         let windowFrame: CGRect
 
@@ -164,38 +155,35 @@ final class WindowHighlightEffect {
         } else {
             // Get window bounds using AXElement
             guard let frame = window.frame() else {
-                logger.error("Failed to get window bounds for highlight effect")
+                self.logger.error("Failed to get window bounds for highlight effect")
                 return
             }
             windowFrame = frame
         }
 
         // Convert from screen coordinates (top-left origin) to Cocoa coordinates (bottom-left origin)
-        let cocoaFrame = convertScreenToCocoaCoordinates(windowFrame)
+        let cocoaFrame = self.convertScreenToCocoaCoordinates(windowFrame)
 
-        logger.debug("Window highlight coordinate conversion:")
-        logger
+        self.logger.debug("Window highlight coordinate conversion:")
+        self.logger
             .debug(
-                "  Original frame: x=\(windowFrame.origin.x), y=\(windowFrame.origin.y), w=\(windowFrame.width), h=\(windowFrame.height)"
-            )
-        logger
+                "  Original frame: x=\(windowFrame.origin.x), y=\(windowFrame.origin.y), w=\(windowFrame.width), h=\(windowFrame.height)")
+        self.logger
             .debug(
-                "  Cocoa frame: x=\(cocoaFrame.origin.x), y=\(cocoaFrame.origin.y), w=\(cocoaFrame.width), h=\(cocoaFrame.height)"
-            )
+                "  Cocoa frame: x=\(cocoaFrame.origin.x), y=\(cocoaFrame.origin.y), w=\(cocoaFrame.width), h=\(cocoaFrame.height)")
 
         // Create overlay window
-        let overlayWindow = createOverlayWindow(
-            frame: cocoaFrame
-        )
+        let overlayWindow = self.createOverlayWindow(
+            frame: cocoaFrame)
 
         // Add to tracking
-        overlayWindows.append(overlayWindow)
+        self.overlayWindows.append(overlayWindow)
 
         // Show the window
         overlayWindow.orderFront(nil)
 
         // Animate the pulse effect
-        animatePulse(on: overlayWindow, duration: config.duration) { [weak self] in
+        self.animatePulse(on: overlayWindow, duration: self.config.duration) { [weak self] in
             Task { @MainActor in
                 self?.removeOverlay(overlayWindow)
             }
@@ -208,8 +196,7 @@ final class WindowHighlightEffect {
             contentRect: frame,
             styleMask: .borderless,
             backing: .buffered,
-            defer: false
-        )
+            defer: false)
 
         window.backgroundColor = .clear
         window.isOpaque = false
@@ -222,9 +209,8 @@ final class WindowHighlightEffect {
         let effectView = BorderEffectView(
             frame: viewBounds,
             color: config.color,
-            borderWidth: config.borderWidth,
-            glowRadius: config.glowRadius
-        )
+            borderWidth: self.config.borderWidth,
+            glowRadius: self.config.glowRadius)
         effectView.autoresizingMask = [NSView.AutoresizingMask.width, NSView.AutoresizingMask.height]
         window.contentView = effectView
 
@@ -249,15 +235,15 @@ final class WindowHighlightEffect {
     /// Remove an overlay window
     private func removeOverlay(_ window: NSWindow) {
         window.orderOut(nil)
-        overlayWindows.removeAll { $0 == window }
+        self.overlayWindows.removeAll { $0 == window }
     }
 
     /// Clean up all overlay windows
     func cleanup() {
-        for window in overlayWindows {
+        for window in self.overlayWindows {
             window.orderOut(nil)
         }
-        overlayWindows.removeAll()
+        self.overlayWindows.removeAll()
     }
 }
 
@@ -289,27 +275,25 @@ private class BorderEffectView: NSView {
         context.saveGState()
 
         // Create inset rect for border
-        let borderRect = bounds.insetBy(dx: borderWidth / 2, dy: borderWidth / 2)
+        let borderRect = bounds.insetBy(dx: self.borderWidth / 2, dy: self.borderWidth / 2)
         let borderPath = NSBezierPath(roundedRect: borderRect, xRadius: 8, yRadius: 8)
 
         // Draw glow effect
         context.setShadow(
             offset: .zero,
-            blur: glowRadius,
-            color: borderColor.withAlphaComponent(0.8).cgColor
-        )
+            blur: self.glowRadius,
+            color: self.borderColor.withAlphaComponent(0.8).cgColor)
 
         // Draw border
-        borderColor.setStroke()
-        borderPath.lineWidth = borderWidth
+        self.borderColor.setStroke()
+        borderPath.lineWidth = self.borderWidth
         borderPath.stroke()
 
         // Draw inner glow
         context.setShadow(
             offset: .zero,
-            blur: glowRadius / 2,
-            color: borderColor.withAlphaComponent(0.4).cgColor
-        )
+            blur: self.glowRadius / 2,
+            color: self.borderColor.withAlphaComponent(0.4).cgColor)
         borderPath.stroke()
 
         context.restoreGState()

@@ -14,13 +14,13 @@ struct ErrorAlertModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .alert(
-                title,
-                isPresented: .constant(error != nil),
-                presenting: error
-            ) { _ in
+                self.title,
+                isPresented: .constant(self.error != nil),
+                presenting: self.error)
+            { _ in
                 Button(UIStrings.ok) {
-                    error = nil
-                    onDismiss?()
+                    self.error = nil
+                    self.onDismiss?()
                 }
             } message: { error in
                 Text(error.localizedDescription)
@@ -33,8 +33,7 @@ extension View {
     func errorAlert(
         _ title: String = UIStrings.error,
         error: Binding<Error?>,
-        onDismiss: (() -> Void)? = nil
-    )
+        onDismiss: (() -> Void)? = nil)
         -> some View
     {
         modifier(ErrorAlertModifier(error: error, title: title, onDismiss: onDismiss))
@@ -50,8 +49,7 @@ extension Task where Failure == Error {
     static func withErrorHandling<T>(
         priority: TaskPriority? = nil,
         errorBinding: Binding<Error?>,
-        operation: @escaping () async throws -> T
-    )
+        operation: @escaping () async throws -> T)
         -> Task<T, Error>
     {
         Task<T, Error>(priority: priority) {
@@ -106,7 +104,7 @@ struct ErrorToast: View {
                 Text(UIStrings.error)
                     .font(.headline)
 
-                Text(error.localizedDescription)
+                Text(self.error.localizedDescription)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
@@ -114,7 +112,7 @@ struct ErrorToast: View {
 
             Spacer()
 
-            Button(action: onDismiss) {
+            Button(action: self.onDismiss) {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundColor(.secondary)
             }
@@ -124,13 +122,12 @@ struct ErrorToast: View {
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color(NSColor.controlBackgroundColor))
-                .shadow(radius: 10)
-        )
+                .shadow(radius: 10))
         .padding()
-        .opacity(opacity)
+        .opacity(self.opacity)
         .onAppear {
             withAnimation(.easeIn(duration: 0.3)) {
-                opacity = 1
+                self.opacity = 1
             }
         }
     }
@@ -151,11 +148,11 @@ struct AsyncErrorBoundary<Content: View>: View {
     let content: () -> Content
 
     var body: some View {
-        content()
+        self.content()
             .environment(\.asyncErrorHandler, AsyncErrorHandler { error in
                 self.error = error
             })
-            .errorAlert(error: $error)
+            .errorAlert(error: self.$error)
     }
 }
 
@@ -180,6 +177,6 @@ struct AsyncErrorHandler {
     let handler: (Error) -> Void
 
     func handle(_ error: Error) {
-        handler(error)
+        self.handler(error)
     }
 }

@@ -206,7 +206,7 @@ This npm package includes:
 - Full VibeTunnel server with web UI
 - Command-line tools (vibetunnel, vt)
 - Native PTY support for terminal emulation
-- Web interface with xterm.js
+- Web interface with ghostty-web
 - Session management and forwarding
 - Built-in systemd service management for Linux
 

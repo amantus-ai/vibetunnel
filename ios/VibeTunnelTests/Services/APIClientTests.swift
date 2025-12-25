@@ -10,7 +10,7 @@ struct APIClientTests {
     init() {
         // Set up mock URLSession
         let configuration = URLSessionConfiguration.mockConfiguration
-        mockSession = URLSession(configuration: configuration)
+        self.mockSession = URLSession(configuration: configuration)
     }
 
     // MARK: - Session Management Tests
@@ -28,7 +28,7 @@ struct APIClientTests {
         }
 
         // Act
-        let client = createTestClient()
+        let client = self.createTestClient()
         let sessions = try await client.getSessions()
 
         // Assert
@@ -49,7 +49,7 @@ struct APIClientTests {
         }
 
         // Act
-        let client = createTestClient()
+        let client = self.createTestClient()
         let sessions = try await client.getSessions()
 
         // Assert
@@ -65,7 +65,7 @@ struct APIClientTests {
         }
 
         // Act & Assert
-        let client = createTestClient()
+        let client = self.createTestClient()
         do {
             _ = try await client.getSessions()
             Issue.record("Expected network error")
@@ -88,8 +88,7 @@ struct APIClientTests {
             workingDir: "/Users/test",
             name: "Test Session",
             cols: 80,
-            rows: 24
-        )
+            rows: 24)
 
         MockURLProtocol.requestHandler = { request in
             #expect(request.url?.path == "/api/sessions")
@@ -114,7 +113,7 @@ struct APIClientTests {
         }
 
         // Act
-        let client = createTestClient()
+        let client = self.createTestClient()
         let sessionId = try await client.createSession(sessionData)
 
         // Assert
@@ -135,7 +134,7 @@ struct APIClientTests {
         }
 
         // Act & Assert (should not throw)
-        let client = createTestClient()
+        let client = self.createTestClient()
         try await client.killSession(sessionId)
     }
 
@@ -162,7 +161,7 @@ struct APIClientTests {
         }
 
         // Act & Assert (should not throw)
-        let client = createTestClient()
+        let client = self.createTestClient()
         try await client.sendInput(sessionId: sessionId, text: inputText)
     }
 
@@ -191,7 +190,7 @@ struct APIClientTests {
         }
 
         // Act & Assert (should not throw)
-        let client = createTestClient()
+        let client = self.createTestClient()
         try await client.resizeTerminal(sessionId: sessionId, cols: cols, rows: rows)
     }
 
@@ -206,17 +205,16 @@ struct APIClientTests {
             return MockURLProtocol.errorResponse(
                 for: request.url!,
                 statusCode: 404,
-                message: "Session not found"
-            )
+                message: "Session not found")
         }
 
         // Act & Assert
-        let client = createTestClient()
+        let client = self.createTestClient()
         do {
             _ = try await client.getSession("nonexistent")
             Issue.record("Expected error to be thrown")
         } catch let error as APIError {
-            guard case .serverError(let code, let message) = error else {
+            guard case let .serverError(code, message) = error else {
                 Issue.record("Expected server error, got \(error)")
                 return
             }
@@ -236,12 +234,12 @@ struct APIClientTests {
         }
 
         // Act & Assert
-        let client = createTestClient()
+        let client = self.createTestClient()
         do {
             _ = try await client.getSessions()
             Issue.record("Expected error to be thrown")
         } catch let error as APIError {
-            guard case .serverError(let code, _) = error else {
+            guard case let .serverError(code, _) = error else {
                 Issue.record("Expected server error, got \(error)")
                 return
             }
@@ -261,7 +259,7 @@ struct APIClientTests {
         }
 
         // Act & Assert
-        let client = createTestClient()
+        let client = self.createTestClient()
         do {
             _ = try await client.getSessions()
             Issue.record("Expected decoding error")
@@ -284,7 +282,7 @@ struct APIClientTests {
         }
 
         // Act & Assert
-        let client = createTestClient()
+        let client = self.createTestClient()
         do {
             _ = try await client.getSessions()
             Issue.record("Expected network error")
@@ -310,7 +308,7 @@ struct APIClientTests {
         }
 
         // Act
-        let client = createTestClient()
+        let client = self.createTestClient()
         let isHealthy = try await client.checkHealth()
 
         // Assert
@@ -326,7 +324,7 @@ struct APIClientTests {
         }
 
         // Act
-        let client = createTestClient()
+        let client = self.createTestClient()
         let isHealthy = try await client.checkHealth()
 
         // Assert

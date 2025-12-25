@@ -17,7 +17,7 @@ struct AdvancedKeyboardView: View {
             // Header
             HStack {
                 Button("Done") {
-                    isPresented = false
+                    self.isPresented = false
                 }
                 .foregroundColor(Theme.Colors.primaryAccent)
 
@@ -29,16 +29,15 @@ struct AdvancedKeyboardView: View {
 
                 Spacer()
 
-                Toggle("", isOn: $sendWithEnter)
+                Toggle("", isOn: self.$sendWithEnter)
                     .labelsHidden()
                     .toggleStyle(SwitchToggleStyle(tint: Theme.Colors.primaryAccent))
                     .scaleEffect(0.8)
                     .overlay(
-                        Text(sendWithEnter ? "Send+Enter" : "Send")
+                        Text(self.sendWithEnter ? "Send+Enter" : "Send")
                             .font(Theme.Typography.terminalSystem(size: 12))
                             .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
-                            .offset(x: -60)
-                    )
+                            .offset(x: -60))
             }
             .padding()
             .background(Theme.Colors.cardBackground)
@@ -57,16 +56,16 @@ struct AdvancedKeyboardView: View {
                             .tracking(1)
 
                         HStack(spacing: Theme.Spacing.small) {
-                            TextField("Enter text...", text: $textInput)
+                            TextField("Enter text...", text: self.$textInput)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .font(Theme.Typography.terminalSystem(size: 16))
-                                .focused($isTextFieldFocused)
+                                .focused(self.$isTextFieldFocused)
                                 .submitLabel(.send)
                                 .onSubmit {
-                                    sendText()
+                                    self.sendText()
                                 }
 
-                            Button(action: sendText) {
+                            Button(action: self.sendText) {
                                 Text("Send")
                                     .font(Theme.Typography.terminalSystem(size: 14))
                                     .foregroundColor(Theme.Colors.terminalBackground)
@@ -75,7 +74,7 @@ struct AdvancedKeyboardView: View {
                                     .background(Theme.Colors.primaryAccent)
                                     .cornerRadius(Theme.CornerRadius.small)
                             }
-                            .disabled(textInput.isEmpty)
+                            .disabled(self.textInput.isEmpty)
                         }
                     }
                     .padding(.horizontal)
@@ -92,20 +91,20 @@ struct AdvancedKeyboardView: View {
                             GridItem(.flexible()),
                             GridItem(.flexible()),
                             GridItem(.flexible()),
-                            GridItem(.flexible())
+                            GridItem(.flexible()),
                         ], spacing: Theme.Spacing.small) {
-                            SpecialKeyButton(label: "ESC", key: "\u{1B}", onPress: onInput)
-                            SpecialKeyButton(label: "TAB", key: "\t", onPress: onInput)
-                            SpecialKeyButton(label: "↑", key: "\u{1B}[A", onPress: onInput)
-                            SpecialKeyButton(label: "↓", key: "\u{1B}[B", onPress: onInput)
-                            SpecialKeyButton(label: "←", key: "\u{1B}[D", onPress: onInput)
-                            SpecialKeyButton(label: "→", key: "\u{1B}[C", onPress: onInput)
-                            SpecialKeyButton(label: "Home", key: "\u{1B}[H", onPress: onInput)
-                            SpecialKeyButton(label: "End", key: "\u{1B}[F", onPress: onInput)
-                            SpecialKeyButton(label: "PgUp", key: "\u{1B}[5~", onPress: onInput)
-                            SpecialKeyButton(label: "PgDn", key: "\u{1B}[6~", onPress: onInput)
-                            SpecialKeyButton(label: "Del", key: "\u{7F}", onPress: onInput)
-                            SpecialKeyButton(label: "Ins", key: "\u{1B}[2~", onPress: onInput)
+                            SpecialKeyButton(label: "ESC", key: "\u{1B}", onPress: self.onInput)
+                            SpecialKeyButton(label: "TAB", key: "\t", onPress: self.onInput)
+                            SpecialKeyButton(label: "↑", key: "\u{1B}[A", onPress: self.onInput)
+                            SpecialKeyButton(label: "↓", key: "\u{1B}[B", onPress: self.onInput)
+                            SpecialKeyButton(label: "←", key: "\u{1B}[D", onPress: self.onInput)
+                            SpecialKeyButton(label: "→", key: "\u{1B}[C", onPress: self.onInput)
+                            SpecialKeyButton(label: "Home", key: "\u{1B}[H", onPress: self.onInput)
+                            SpecialKeyButton(label: "End", key: "\u{1B}[F", onPress: self.onInput)
+                            SpecialKeyButton(label: "PgUp", key: "\u{1B}[5~", onPress: self.onInput)
+                            SpecialKeyButton(label: "PgDn", key: "\u{1B}[6~", onPress: self.onInput)
+                            SpecialKeyButton(label: "Del", key: "\u{7F}", onPress: self.onInput)
+                            SpecialKeyButton(label: "Ins", key: "\u{1B}[2~", onPress: self.onInput)
                         }
                         .padding(.horizontal)
                     }
@@ -122,27 +121,27 @@ struct AdvancedKeyboardView: View {
 
                             Button {
                                 withAnimation(Theme.Animation.smooth) {
-                                    showCtrlGrid.toggle()
+                                    self.showCtrlGrid.toggle()
                                 }
                             } label: {
-                                Image(systemName: showCtrlGrid ? "chevron.up" : "chevron.down")
+                                Image(systemName: self.showCtrlGrid ? "chevron.up" : "chevron.down")
                                     .font(.system(size: 12))
                                     .foregroundColor(Theme.Colors.primaryAccent)
                             }
                         }
                         .padding(.horizontal)
 
-                        if showCtrlGrid {
+                        if self.showCtrlGrid {
                             LazyVGrid(columns: [
                                 GridItem(.flexible()),
                                 GridItem(.flexible()),
                                 GridItem(.flexible()),
                                 GridItem(.flexible()),
-                                GridItem(.flexible())
+                                GridItem(.flexible()),
                             ], spacing: Theme.Spacing.small) {
                                 ForEach(Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ"), id: \.self) { char in
                                     CtrlKeyButton(char: String(char)) { key in
-                                        onInput(key)
+                                        self.onInput(key)
                                         HapticFeedback.impact(.light)
                                     }
                                 }
@@ -150,8 +149,7 @@ struct AdvancedKeyboardView: View {
                             .padding(.horizontal)
                             .transition(.asymmetric(
                                 insertion: .scale(scale: 0.95).combined(with: .opacity),
-                                removal: .scale(scale: 0.95).combined(with: .opacity)
-                            ))
+                                removal: .scale(scale: 0.95).combined(with: .opacity)))
                         }
                     }
 
@@ -167,7 +165,7 @@ struct AdvancedKeyboardView: View {
                             HStack(spacing: Theme.Spacing.small) {
                                 ForEach(1...12, id: \.self) { num in
                                     FunctionKeyButton(number: num) { key in
-                                        onInput(key)
+                                        self.onInput(key)
                                         HapticFeedback.impact(.light)
                                     }
                                 }
@@ -181,20 +179,20 @@ struct AdvancedKeyboardView: View {
             .background(Theme.Colors.terminalBackground)
         }
         .onAppear {
-            isTextFieldFocused = true
+            self.isTextFieldFocused = true
         }
     }
 
     private func sendText() {
-        guard !textInput.isEmpty else { return }
+        guard !self.textInput.isEmpty else { return }
 
-        if sendWithEnter {
-            onInput(textInput + "\n")
+        if self.sendWithEnter {
+            self.onInput(self.textInput + "\n")
         } else {
-            onInput(textInput)
+            self.onInput(self.textInput)
         }
 
-        textInput = ""
+        self.textInput = ""
         HapticFeedback.impact(.light)
     }
 }
@@ -209,18 +207,17 @@ struct SpecialKeyButton: View {
 
     var body: some View {
         Button(action: {
-            onPress(key)
+            self.onPress(self.key)
             HapticFeedback.impact(.light)
         }, label: {
-            Text(label)
+            Text(self.label)
                 .font(Theme.Typography.terminalSystem(size: 14))
                 .foregroundColor(Theme.Colors.terminalForeground)
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .background(Theme.Colors.cardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .stroke(Theme.Colors.cardBorder, lineWidth: 1)
-                )
+                        .stroke(Theme.Colors.cardBorder, lineWidth: 1))
                 .cornerRadius(Theme.CornerRadius.small)
         })
     }
@@ -240,18 +237,17 @@ struct CtrlKeyButton: View {
                let ctrlScalar = UnicodeScalar(scalar.value - 64)
             {
                 let ctrlChar = Character(ctrlScalar)
-                onPress(String(ctrlChar))
+                self.onPress(String(ctrlChar))
             }
         }, label: {
-            Text("^" + char)
+            Text("^" + self.char)
                 .font(Theme.Typography.terminalSystem(size: 12))
                 .foregroundColor(Theme.Colors.terminalForeground)
                 .frame(width: 50, height: 40)
                 .background(Theme.Colors.cardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .stroke(Theme.Colors.cardBorder, lineWidth: 1)
-                )
+                        .stroke(Theme.Colors.cardBorder, lineWidth: 1))
                 .cornerRadius(Theme.CornerRadius.small)
         })
     }
@@ -265,7 +261,7 @@ struct FunctionKeyButton: View {
     let onPress: (String) -> Void
 
     private var escapeSequence: String {
-        switch number {
+        switch self.number {
         case 1: "\u{1B}OP" // F1
         case 2: "\u{1B}OQ" // F2
         case 3: "\u{1B}OR" // F3
@@ -284,17 +280,16 @@ struct FunctionKeyButton: View {
 
     var body: some View {
         Button(action: {
-            onPress(escapeSequence)
+            self.onPress(self.escapeSequence)
         }, label: {
-            Text("F\(number)")
+            Text("F\(self.number)")
                 .font(Theme.Typography.terminalSystem(size: 12))
                 .foregroundColor(Theme.Colors.terminalForeground)
                 .frame(width: 50, height: 40)
                 .background(Theme.Colors.cardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                        .stroke(Theme.Colors.cardBorder, lineWidth: 1)
-                )
+                        .stroke(Theme.Colors.cardBorder, lineWidth: 1))
                 .cornerRadius(Theme.CornerRadius.small)
         })
     }

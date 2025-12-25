@@ -311,7 +311,7 @@ Then open http://localhost:4020 in your browser to access the web interface.
 
 ### Using the vt Command
 ```bash
-# Monitor AI agents with automatic activity tracking
+# Run Claude with the vt wrapper
 vt claude
 vt claude --dangerously-skip-permissions
 

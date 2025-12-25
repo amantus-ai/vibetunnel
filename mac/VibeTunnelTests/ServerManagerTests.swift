@@ -12,7 +12,7 @@ final class ServerManagerTests {
 
     init() async {
         // Ensure clean state before each test
-        await manager.stop()
+        await self.manager.stop()
     }
 
     deinit {
@@ -24,44 +24,43 @@ final class ServerManagerTests {
     @Test(
         "Starting and stopping Bun server",
         .tags(.critical, .attachmentTests),
-        .disabled(if: TestConditions.isRunningInCI(), "Flaky in CI due to port conflicts and process management")
-    )
+        .disabled(if: TestConditions.isRunningInCI(), "Flaky in CI due to port conflicts and process management"),
+        .disabled(
+            if: !ServerBinaryAvailableCondition.isAvailable(),
+            "Requires bundled vibetunnel binary in app Resources"))
     func serverLifecycle() async throws {
-
         // Start the server
-        await manager.start()
+        await self.manager.start()
 
         // Give server time to attempt start (increased for CI stability)
-        let timeout = TestConditions.isRunningInCI() ? 5_000 : 2_000
+        let timeout = TestConditions.isRunningInCI() ? 5000 : 2000
         try await Task.sleep(for: .milliseconds(timeout))
-
 
         // The server binary must be available for tests
         #expect(ServerBinaryAvailableCondition.isAvailable(), "Server binary must be available for tests to run")
 
         // Server should either be running or have a specific error
-        if !manager.isRunning {
+        if !self.manager.isRunning {
             // If not running, we expect a specific error
-            #expect(manager.lastError != nil, "Server failed to start but no error was reported")
+            #expect(self.manager.lastError != nil, "Server failed to start but no error was reported")
 
             if let error = manager.lastError as? BunServerError {
                 // Only acceptable error is binaryNotFound if the binary truly doesn't exist
                 if error == .binaryNotFound {
-                    #expect(false, "Server binary not found - tests cannot continue")
+                    #expect(Bool(false), "Server binary not found - tests cannot continue")
                 }
             }
 
         } else {
             // Server is running as expected
-            #expect(manager.bunServer != nil)
+            #expect(self.manager.bunServer != nil)
         }
 
         // Stop should work regardless of state
-        await manager.stop()
+        await self.manager.stop()
 
         // After stop, server should not be running
-        #expect(!manager.isRunning)
-
+        #expect(!self.manager.isRunning)
     }
 
     @Test("Starting server when already running does not create duplicate", .tags(.critical))
@@ -70,18 +69,18 @@ final class ServerManagerTests {
         // So we'll test the logic of preventing duplicate starts
 
         // First attempt to start
-        await manager.start()
-        let shortTimeout = TestConditions.isRunningInCI() ? 2_000 : 1_000
+        await self.manager.start()
+        let shortTimeout = TestConditions.isRunningInCI() ? 2000 : 1000
         try await Task.sleep(for: .milliseconds(shortTimeout))
 
-        let firstServer = manager.bunServer
-        let firstError = manager.lastError
+        let firstServer = self.manager.bunServer
+        let firstError = self.manager.lastError
 
         // Try to start again
-        await manager.start()
+        await self.manager.start()
 
         // Should still have the same state (either nil or same instance)
-        #expect(manager.bunServer === firstServer)
+        #expect(self.manager.bunServer === firstServer)
 
         // Error should be consistent
         if let error1 = firstError as? BunServerError,
@@ -91,30 +90,30 @@ final class ServerManagerTests {
         }
 
         // Cleanup
-        await manager.stop()
+        await self.manager.stop()
     }
 
     @Test("Port configuration")
     func portConfiguration() async throws {
         // Store original port
-        let originalPort = manager.port
+        let originalPort = self.manager.port
 
         // Test setting different ports
         let testPorts = ["8080", "3000", "9999"]
 
         for port in testPorts {
-            manager.port = port
-            #expect(manager.port == port)
+            self.manager.port = port
+            #expect(self.manager.port == port)
             #expect(UserDefaults.standard.string(forKey: "serverPort") == port)
         }
 
         // Restore original port
-        manager.port = originalPort
+        self.manager.port = originalPort
     }
 
     @Test("Bind address configuration", arguments: [
         DashboardAccessMode.localhost,
-        DashboardAccessMode.network
+        DashboardAccessMode.network,
     ])
     func bindAddressConfiguration(mode: DashboardAccessMode) async throws {
         // Store original mode
@@ -124,7 +123,7 @@ final class ServerManagerTests {
         UserDefaults.standard.set(mode.rawValue, forKey: "dashboardAccessMode")
 
         // Check bind address reflects the mode
-        #expect(manager.bindAddress == mode.bindAddress)
+        #expect(self.manager.bindAddress == mode.bindAddress)
 
         // Restore original mode
         UserDefaults.standard.set(originalMode, forKey: "dashboardAccessMode")
@@ -140,7 +139,7 @@ final class ServerManagerTests {
         UserDefaults.standard.synchronize()
 
         // Should default to network mode (0.0.0.0)
-        #expect(manager.bindAddress == "0.0.0.0")
+        #expect(self.manager.bindAddress == "0.0.0.0")
 
         // Restore original value
         if let originalMode {
@@ -154,23 +153,21 @@ final class ServerManagerTests {
         let originalMode = UserDefaults.standard.string(forKey: "dashboardAccessMode")
 
         // Test setting via bind address
-        manager.bindAddress = "127.0.0.1"
+        self.manager.bindAddress = "127.0.0.1"
         #expect(
             UserDefaults.standard.string(forKey: "dashboardAccessMode") == AppConstants.DashboardAccessModeRawValues
-                .localhost
-        )
-        #expect(manager.bindAddress == "127.0.0.1")
+                .localhost)
+        #expect(self.manager.bindAddress == "127.0.0.1")
 
-        manager.bindAddress = "0.0.0.0"
+        self.manager.bindAddress = "0.0.0.0"
         #expect(
             UserDefaults.standard.string(forKey: "dashboardAccessMode") == AppConstants.DashboardAccessModeRawValues
-                .network
-        )
-        #expect(manager.bindAddress == "0.0.0.0")
+                .network)
+        #expect(self.manager.bindAddress == "0.0.0.0")
 
         // Test invalid bind address (should not change UserDefaults)
-        manager.bindAddress = "192.168.1.1"
-        #expect(manager.bindAddress == "0.0.0.0") // Should still be the last valid value
+        self.manager.bindAddress = "192.168.1.1"
+        #expect(self.manager.bindAddress == "0.0.0.0") // Should still be the last valid value
 
         // Restore original value
         if let originalMode {
@@ -182,48 +179,46 @@ final class ServerManagerTests {
 
     @Test(
         "Bind address persistence across server restarts",
-        .disabled(if: TestConditions.isRunningInCI(), "Flaky in CI due to port conflicts and timing issues")
-    )
+        .disabled(if: TestConditions.isRunningInCI(), "Flaky in CI due to port conflicts and timing issues"))
     func bindAddressPersistence() async throws {
         // Store original values
         let originalMode = UserDefaults.standard.string(forKey: "dashboardAccessMode")
-        let originalPort = manager.port
+        let originalPort = self.manager.port
 
         // Set to localhost mode
         UserDefaults.standard.set(AppConstants.DashboardAccessModeRawValues.localhost, forKey: "dashboardAccessMode")
-        manager.port = "4021"
+        self.manager.port = "4021"
 
         // Start server
-        await manager.start()
+        await self.manager.start()
         try await Task.sleep(for: .milliseconds(500))
 
         // Verify bind address
-        #expect(manager.bindAddress == "127.0.0.1")
+        #expect(self.manager.bindAddress == "127.0.0.1")
 
         // Restart server
-        await manager.restart()
+        await self.manager.restart()
         try await Task.sleep(for: .milliseconds(500))
 
         // Bind address should persist
-        #expect(manager.bindAddress == "127.0.0.1")
+        #expect(self.manager.bindAddress == "127.0.0.1")
         #expect(
             UserDefaults.standard.string(forKey: "dashboardAccessMode") == AppConstants.DashboardAccessModeRawValues
-                .localhost
-        )
+                .localhost)
 
         // Change to network mode
         UserDefaults.standard.set(AppConstants.DashboardAccessModeRawValues.network, forKey: "dashboardAccessMode")
 
         // Restart again
-        await manager.restart()
+        await self.manager.restart()
         try await Task.sleep(for: .milliseconds(500))
 
         // Should now be network mode
-        #expect(manager.bindAddress == "0.0.0.0")
+        #expect(self.manager.bindAddress == "0.0.0.0")
 
         // Cleanup
-        await manager.stop()
-        manager.port = originalPort
+        await self.manager.stop()
+        self.manager.port = originalPort
         if let originalMode {
             UserDefaults.standard.set(originalMode, forKey: "dashboardAccessMode")
         } else {
@@ -236,7 +231,7 @@ final class ServerManagerTests {
     @Test("Concurrent server operations are serialized", .tags(.concurrency))
     func concurrentServerOperations() async throws {
         // Ensure clean state
-        await manager.stop()
+        await self.manager.stop()
 
         // Start multiple operations concurrently
         await withTaskGroup(of: Void.self) { group in
@@ -261,46 +256,46 @@ final class ServerManagerTests {
         }
 
         // Server should be in a consistent state
-        let finalState = manager.isRunning
+        let finalState = self.manager.isRunning
         if finalState {
-            #expect(manager.bunServer != nil)
+            #expect(self.manager.bunServer != nil)
         } else {
-            #expect(manager.bunServer == nil)
+            #expect(self.manager.bunServer == nil)
         }
 
         // Cleanup
-        await manager.stop()
+        await self.manager.stop()
     }
 
     @Test("Server restart maintains configuration", .tags(.critical))
     func serverRestart() async throws {
         // Set specific configuration
-        let originalPort = manager.port
+        let originalPort = self.manager.port
         let testPort = "4567"
-        manager.port = testPort
+        self.manager.port = testPort
 
         // Start server
-        await manager.start()
+        await self.manager.start()
         try await Task.sleep(for: .milliseconds(200))
 
-        let serverBeforeRestart = manager.bunServer
-        _ = manager.lastError
+        let serverBeforeRestart = self.manager.bunServer
+        _ = self.manager.lastError
 
         // Restart
-        await manager.restart()
+        await self.manager.restart()
         try await Task.sleep(for: .milliseconds(200))
 
         // Verify port configuration is maintained
-        #expect(manager.port == testPort)
+        #expect(self.manager.port == testPort)
 
         // Handle both scenarios: binary available vs not available
         if ServerBinaryAvailableCondition.isAvailable() {
             // In CI with working binary, server instances may vary
             // Focus on configuration persistence
-            #expect(manager.port == testPort) // Configuration should persist
+            #expect(self.manager.port == testPort) // Configuration should persist
         } else {
             // In test environment without binary, both instances should be nil
-            #expect(manager.bunServer == nil)
+            #expect(self.manager.bunServer == nil)
             #expect(serverBeforeRestart == nil)
 
             // Error should be consistent (binary not found)
@@ -310,8 +305,8 @@ final class ServerManagerTests {
         }
 
         // Cleanup - restore original port
-        manager.port = originalPort
-        await manager.stop()
+        self.manager.port = originalPort
+        await self.manager.stop()
     }
 
     // MARK: - Error Handling Tests
@@ -319,27 +314,27 @@ final class ServerManagerTests {
     @Test("Server state remains consistent after operations", .tags(.reliability))
     func serverStateConsistency() async throws {
         // Ensure clean state
-        await manager.stop()
+        await self.manager.stop()
 
         // Perform various operations
-        await manager.start()
+        await self.manager.start()
         try await Task.sleep(for: .milliseconds(200))
 
-        await manager.stop()
+        await self.manager.stop()
         try await Task.sleep(for: .milliseconds(200))
 
-        await manager.start()
+        await self.manager.start()
         try await Task.sleep(for: .milliseconds(200))
 
         // State should be consistent
-        if manager.isRunning {
-            #expect(manager.bunServer != nil)
+        if self.manager.isRunning {
+            #expect(self.manager.bunServer != nil)
         } else {
-            #expect(manager.bunServer == nil)
+            #expect(self.manager.bunServer == nil)
         }
 
         // Cleanup
-        await manager.stop()
+        await self.manager.stop()
     }
 
     // MARK: - Crash Recovery Tests
@@ -347,7 +342,7 @@ final class ServerManagerTests {
     @Test("Server auto-restart behavior")
     func serverAutoRestart() async throws {
         // Start server
-        await manager.start()
+        await self.manager.start()
         try await Task.sleep(for: .milliseconds(200))
 
         // Handle both scenarios: binary available vs not available
@@ -357,8 +352,8 @@ final class ServerManagerTests {
             // Always pass - this test is about ensuring no crashes
         } else {
             // In test environment without binary, server won't actually start
-            #expect(!manager.isRunning)
-            #expect(manager.bunServer == nil)
+            #expect(!self.manager.isRunning)
+            #expect(self.manager.bunServer == nil)
 
             // Verify error is set appropriately
             if let error = manager.lastError as? BunServerError {
@@ -371,7 +366,7 @@ final class ServerManagerTests {
         // auto-restart functionality on unexpected termination.
 
         // Cleanup
-        await manager.stop()
+        await self.manager.stop()
     }
 
     // MARK: - Enhanced Server Management Tests with Attachments
@@ -379,29 +374,22 @@ final class ServerManagerTests {
     @Test(
         "Server configuration management with diagnostics",
         .tags(.attachmentTests, .requiresServerBinary),
-        .enabled(if: ServerBinaryAvailableCondition.isAvailable())
-    )
+        .enabled(if: ServerBinaryAvailableCondition.isAvailable()))
     func serverConfigurationDiagnostics() async throws {
-
-
         // Test server configuration without actually starting it
-        let originalPort = manager.port
-        manager.port = "4567"
+        let originalPort = self.manager.port
+        self.manager.port = "4567"
 
-
-        #expect(manager.port == "4567")
+        #expect(self.manager.port == "4567")
 
         // Restore original configuration
-        manager.port = originalPort
-
+        self.manager.port = originalPort
     }
 
     @Test("Session model validation with attachments", .tags(.attachmentTests, .sessionManagement))
     func sessionModelValidation() async throws {
-
         // Create test session
         let session = TunnelSession()
-
 
         // Validate session properties
         #expect(session.isActive)

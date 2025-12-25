@@ -470,7 +470,7 @@ YOUR_PRIVATE_KEY_CONTENT
 
 ### 3. Prerequisites
 - Xcode 16.4+ installed
-- Node.js 20+ and Bun (for web frontend build)
+- Node.js 22.12+ and Bun (for web frontend build)
   ```bash
   # Install Bun
   curl -fsSL https://bun.sh/install | bash

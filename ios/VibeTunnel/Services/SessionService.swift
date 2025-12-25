@@ -26,12 +26,12 @@ class SessionService: SessionServiceProtocol {
     }
 
     func getSessions() async throws -> [Session] {
-        try await apiClient.getSessions()
+        try await self.apiClient.getSessions()
     }
 
     func createSession(_ data: SessionCreateData) async throws -> String {
         do {
-            return try await apiClient.createSession(data)
+            return try await self.apiClient.createSession(data)
         } catch {
             logger.error("Failed to create session: \(error)")
             throw error
@@ -39,26 +39,26 @@ class SessionService: SessionServiceProtocol {
     }
 
     func killSession(_ sessionId: String) async throws {
-        try await apiClient.killSession(sessionId)
+        try await self.apiClient.killSession(sessionId)
     }
 
     func cleanupSession(_ sessionId: String) async throws {
-        try await apiClient.cleanupSession(sessionId)
+        try await self.apiClient.cleanupSession(sessionId)
     }
 
     func cleanupAllExitedSessions() async throws -> [String] {
-        try await apiClient.cleanupAllExitedSessions()
+        try await self.apiClient.cleanupAllExitedSessions()
     }
 
     func killAllSessions() async throws {
-        try await apiClient.killAllSessions()
+        try await self.apiClient.killAllSessions()
     }
 
     func sendInput(to sessionId: String, text: String) async throws {
-        try await apiClient.sendInput(sessionId: sessionId, text: text)
+        try await self.apiClient.sendInput(sessionId: sessionId, text: text)
     }
 
     func resizeTerminal(sessionId: String, cols: Int, rows: Int) async throws {
-        try await apiClient.resizeTerminal(sessionId: sessionId, cols: cols, rows: rows)
+        try await self.apiClient.resizeTerminal(sessionId: sessionId, cols: cols, rows: rows)
     }
 }

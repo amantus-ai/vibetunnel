@@ -80,25 +80,20 @@ struct GeneralSettingsView: View {
 
 ### TypeScript Conventions
 
-**Class-based services** - From `web/src/server/services/buffer-aggregator.ts`:
+**Class-based services** - From `web/src/server/services/ws-v3-hub.ts`:
 ```typescript
-interface BufferAggregatorConfig {
-  terminalManager: TerminalManager;
-  remoteRegistry: RemoteRegistry | null;
-  isHQMode: boolean;
-}
+export class WsV3Hub {
+  constructor(config: {
+    ptyManager: PtyManager;
+    terminalManager: TerminalManager;
+    castOutputHub: CastOutputHub;
+    gitStatusHub: GitStatusHub;
+    remoteRegistry: RemoteRegistry | null;
+    isHQMode: boolean;
+  }) {}
 
-export class BufferAggregator {
-  private config: BufferAggregatorConfig;
-  private remoteConnections: Map<string, RemoteWebSocketConnection> = new Map();
-  
-  constructor(config: BufferAggregatorConfig) {
-    this.config = config;
-  }
-  
-  async handleClientConnection(ws: WebSocket): Promise<void> {
-    console.log(chalk.blue('[BufferAggregator] New client connected'));
-    // ...
+  handleClientConnection(ws: WebSocket, req: IncomingMessage) {
+    // subscribe/unsubscribe + fanout (stdout/snapshots/events)
   }
 }
 ```
@@ -169,20 +164,7 @@ func getSessions() async throws -> [Session] {
 }
 ```
 
-**TypeScript async patterns** - From `web/src/server/services/buffer-aggregator.ts`:
-```typescript
-async handleClientMessage(
-  clientWs: WebSocket,
-  data: { type: string; sessionId?: string }
-): Promise<void> {
-  const subscriptions = this.clientSubscriptions.get(clientWs);
-  if (!subscriptions) return;
-  
-  if (data.type === 'subscribe' && data.sessionId) {
-    // Handle subscription
-  }
-}
-```
+**TypeScript async patterns** - See `web/src/server/services/ws-v3-hub.ts` (async frame handling + per-client subscription state).
 
 ### Error Handling
 
@@ -345,7 +327,7 @@ final class ServerManagerTests: XCTestCase {
 // web/src/test/setup.ts
 import { describe, it, expect } from 'vitest';
 
-describe('BufferAggregator', () => {
+describe('WsV3Hub', () => {
   it('should handle client connections', async () => {
     // Test implementation
   });
@@ -378,7 +360,7 @@ describe('BufferAggregator', () => {
 - Errors: `*Error` enum (e.g., `ServerError`, `APIError`)
 
 **TypeScript**:
-- Services: `*Service`, `*Manager` (e.g., `BufferAggregator`, `TerminalManager`)
+- Services: `*Service`, `*Manager`, `*Hub` (e.g., `WsV3Hub`, `TerminalManager`, `CastOutputHub`)
 - Components: `vibe-*` custom elements (e.g., `vibe-terminal-buffer`)
 - Types: PascalCase interfaces (e.g., `BufferSnapshot`, `ServerConfig`)
 

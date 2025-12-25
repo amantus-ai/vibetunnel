@@ -74,7 +74,9 @@ export class ResponsiveObserver {
   }
 
   private notifyCallbacks(state: MediaQueryState): void {
-    this.callbacks.forEach((callback) => callback(state));
+    this.callbacks.forEach((callback) => {
+      callback(state);
+    });
   }
 
   subscribe(callback: (state: MediaQueryState) => void): () => void {

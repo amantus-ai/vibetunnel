@@ -64,7 +64,7 @@ struct BonjourDiscoveryServiceTests {
             // Then - Verify service can manage discovery state
             // Note: In test environment without actual mDNS services,
             // we just verify the service can start discovery mode
-            let initialServerCount = service.discoveredServers.count
+            _ = service.discoveredServers.count
 
             // Cleanup
             service.stopDiscovery()
@@ -80,13 +80,11 @@ struct BonjourDiscoveryServiceTests {
         @MainActor
         func resolveService() async {
             // Given
-            let service = BonjourDiscoveryService.shared
             let testServer = DiscoveredServer(
                 name: "TestServer",
                 host: "192.168.1.100",
-                port: 4_020,
-                metadata: [:]
-            )
+                port: 4020,
+                metadata: [:])
 
             // When - Test that DiscoveredServer structure works correctly
             let serverId = testServer.id
@@ -96,7 +94,7 @@ struct BonjourDiscoveryServiceTests {
             #expect(!serverId.uuidString.isEmpty)
             #expect(displayName == "TestServer")
             #expect(testServer.host == "192.168.1.100")
-            #expect(testServer.port == 4_020)
+            #expect(testServer.port == 4020)
         }
 
         @Test("Resolve service handles IPv6 addresses correctly")
@@ -109,9 +107,8 @@ struct BonjourDiscoveryServiceTests {
             let testServer = DiscoveredServer(
                 name: "IPv6Server",
                 host: ipv6Host,
-                port: 4_020,
-                metadata: [:]
-            )
+                port: 4020,
+                metadata: [:])
 
             // When processing, the service should strip the interface
             let cleanedHost = ipv6Host.components(separatedBy: "%").first ?? ipv6Host
@@ -125,9 +122,9 @@ struct BonjourDiscoveryServiceTests {
         @MainActor
         func resolveServiceRaceCondition() async {
             // Given
-            let server1 = DiscoveredServer(name: "Server1", host: "192.168.1.1", port: 4_020, metadata: [:])
-            let server2 = DiscoveredServer(name: "Server2", host: "192.168.1.2", port: 4_020, metadata: [:])
-            let server3 = DiscoveredServer(name: "Server3", host: "192.168.1.3", port: 4_020, metadata: [:])
+            let server1 = DiscoveredServer(name: "Server1", host: "192.168.1.1", port: 4020, metadata: [:])
+            let server2 = DiscoveredServer(name: "Server2", host: "192.168.1.2", port: 4020, metadata: [:])
+            let server3 = DiscoveredServer(name: "Server3", host: "192.168.1.3", port: 4020, metadata: [:])
 
             // Create a test array simulating discovered servers
             let servers = [server1, server2, server3]

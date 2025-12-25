@@ -12,12 +12,12 @@ struct ErrorAlertModifier: ViewModifier {
         content
             .alert(
                 "Error",
-                isPresented: .constant(error != nil),
-                presenting: error
-            ) { _ in
+                isPresented: .constant(self.error != nil),
+                presenting: self.error)
+            { _ in
                 Button("OK") {
-                    error = nil
-                    onDismiss?()
+                    self.error = nil
+                    self.onDismiss?()
                 }
             } message: { error in
                 Text(error.localizedDescription)
@@ -31,8 +31,7 @@ extension View {
     /// Presents an error alert when an error is present
     func errorAlert(
         error: Binding<Error?>,
-        onDismiss: (() -> Void)? = nil
-    )
+        onDismiss: (() -> Void)? = nil)
         -> some View
     {
         modifier(ErrorAlertModifier(error: error, onDismiss: onDismiss))
@@ -57,8 +56,7 @@ extension View {
             Alert(
                 title: Text("Error"),
                 message: Text(identifiableError.error.localizedDescription),
-                dismissButton: .default(Text("OK"))
-            )
+                dismissButton: .default(Text("OK")))
         }
     }
 }
@@ -84,7 +82,7 @@ extension APIError: RecoverableError {
             "Please configure a server connection in Settings."
         case .networkError:
             "Check your internet connection and try again."
-        case .serverError(let code, _):
+        case let .serverError(code, _):
             switch code {
             case 401:
                 "Check your authentication credentials in Settings."
@@ -113,8 +111,8 @@ struct ErrorBanner: View {
     init(
         message: String,
         isOffline: Bool = false,
-        onDismiss: (() -> Void)? = nil
-    ) {
+        onDismiss: (() -> Void)? = nil)
+    {
         self.message = message
         self.isOffline = isOffline
         self.onDismiss = onDismiss
@@ -122,10 +120,10 @@ struct ErrorBanner: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.small) {
-            Image(systemName: isOffline ? "wifi.exclamationmark" : "exclamationmark.triangle.fill")
+            Image(systemName: self.isOffline ? "wifi.exclamationmark" : "exclamationmark.triangle.fill")
                 .font(.system(size: 14))
 
-            Text(message)
+            Text(self.message)
                 .font(Theme.Typography.terminalSystem(size: 13))
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -144,12 +142,10 @@ struct ErrorBanner: View {
         .padding(.vertical, Theme.Spacing.small)
         .background(
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                .fill(Theme.Colors.errorAccent.opacity(0.15))
-        )
+                .fill(Theme.Colors.errorAccent.opacity(0.15)))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                .stroke(Theme.Colors.errorAccent.opacity(0.3), lineWidth: 1)
-        )
+                .stroke(Theme.Colors.errorAccent.opacity(0.3), lineWidth: 1))
         .padding(.horizontal)
     }
 }
@@ -164,8 +160,7 @@ extension Task where Failure == Error {
     static func withErrorHandling<T>(
         priority: TaskPriority? = nil,
         errorHandler: @escaping @Sendable (Error) -> Void,
-        operation: @escaping @Sendable () async throws -> T
-    )
+        operation: @escaping @Sendable () async throws -> T)
         -> Task<T, Error>
     {
         Task<T, Error>(priority: priority) {

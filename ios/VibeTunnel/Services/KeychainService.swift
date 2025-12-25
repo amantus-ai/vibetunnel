@@ -25,8 +25,8 @@ class KeychainService: KeychainServiceProtocol {
         // Check if password already exists
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: serviceName,
-            kSecAttrAccount as String: account
+            kSecAttrService as String: self.serviceName,
+            kSecAttrAccount as String: account,
         ]
 
         let status = SecItemCopyMatching(query as CFDictionary, nil)
@@ -35,10 +35,10 @@ class KeychainService: KeychainServiceProtocol {
             // Add new password
             let attributes: [String: Any] = [
                 kSecClass as String: kSecClassGenericPassword,
-                kSecAttrService as String: serviceName,
+                kSecAttrService as String: self.serviceName,
                 kSecAttrAccount as String: account,
                 kSecValueData as String: passwordData,
-                kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+                kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
             ]
 
             let addStatus = SecItemAdd(attributes as CFDictionary, nil)
@@ -48,7 +48,7 @@ class KeychainService: KeychainServiceProtocol {
         } else if status == errSecSuccess {
             // Update existing password
             let attributes: [String: Any] = [
-                kSecValueData as String: passwordData
+                kSecValueData as String: passwordData,
             ]
 
             let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
@@ -66,10 +66,10 @@ class KeychainService: KeychainServiceProtocol {
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: serviceName,
+            kSecAttrService as String: self.serviceName,
             kSecAttrAccount as String: account,
             kSecMatchLimit as String: kSecMatchLimitOne,
-            kSecReturnData as String: true
+            kSecReturnData as String: true,
         ]
 
         var result: AnyObject?
@@ -97,8 +97,8 @@ class KeychainService: KeychainServiceProtocol {
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: serviceName,
-            kSecAttrAccount as String: account
+            kSecAttrService as String: self.serviceName,
+            kSecAttrAccount as String: account,
         ]
 
         let status = SecItemDelete(query as CFDictionary)
@@ -111,7 +111,7 @@ class KeychainService: KeychainServiceProtocol {
     func deleteAllPasswords() throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: serviceName
+            kSecAttrService as String: self.serviceName,
         ]
 
         let status = SecItemDelete(query as CFDictionary)
@@ -131,8 +131,8 @@ class KeychainService: KeychainServiceProtocol {
         // Check if password already exists
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: serviceName,
-            kSecAttrAccount as String: key
+            kSecAttrService as String: self.serviceName,
+            kSecAttrAccount as String: key,
         ]
 
         let status = SecItemCopyMatching(query as CFDictionary, nil)
@@ -141,10 +141,10 @@ class KeychainService: KeychainServiceProtocol {
             // Add new password
             let attributes: [String: Any] = [
                 kSecClass as String: kSecClassGenericPassword,
-                kSecAttrService as String: serviceName,
+                kSecAttrService as String: self.serviceName,
                 kSecAttrAccount as String: key,
                 kSecValueData as String: passwordData,
-                kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+                kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
             ]
 
             let addStatus = SecItemAdd(attributes as CFDictionary, nil)
@@ -154,7 +154,7 @@ class KeychainService: KeychainServiceProtocol {
         } else if status == errSecSuccess {
             // Update existing password
             let attributes: [String: Any] = [
-                kSecValueData as String: passwordData
+                kSecValueData as String: passwordData,
             ]
 
             let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
@@ -170,10 +170,10 @@ class KeychainService: KeychainServiceProtocol {
     func loadPassword(for key: String) throws -> String {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: serviceName,
+            kSecAttrService as String: self.serviceName,
             kSecAttrAccount as String: key,
             kSecMatchLimit as String: kSecMatchLimitOne,
-            kSecReturnData as String: true
+            kSecReturnData as String: true,
         ]
 
         var result: AnyObject?
@@ -199,8 +199,8 @@ class KeychainService: KeychainServiceProtocol {
     func deletePassword(for key: String) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: serviceName,
-            kSecAttrAccount as String: key
+            kSecAttrService as String: self.serviceName,
+            kSecAttrAccount as String: key,
         ]
 
         let status = SecItemDelete(query as CFDictionary)

@@ -52,8 +52,14 @@ export async function executeCommandWithRetry(
  */
 export async function waitForBackgroundProcess(page: Page, processMarker: string): Promise<void> {
   await page.waitForFunction((marker) => {
-    const terminal = document.querySelector('vibe-terminal');
-    const content = terminal?.textContent || '';
+    const terminal = document.querySelector('vibe-terminal') as unknown as {
+      getDebugText?: () => string;
+      textContent?: string | null;
+    } | null;
+    const content =
+      terminal && typeof terminal.getDebugText === 'function'
+        ? terminal.getDebugText()
+        : terminal?.textContent || '';
 
     // Check if process completed (by finding prompt after the marker)
     const markerIndex = content.lastIndexOf(marker);

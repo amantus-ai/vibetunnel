@@ -549,7 +549,7 @@ describe('UrlHighlighter', () => {
     it('should not detect numbered lists with various content as URLs', () => {
       createLines([
         '1. Successfully set up Playwright E2E testing framework with:',
-        '2. There might be a WebSocket or SSE connection issue',
+        '2. There might be a WebSocket connection issue',
         '3. The terminal component might not be initializing properly for web sessions',
         '4. Identified the issue: Web sessions in the test environment',
       ]);

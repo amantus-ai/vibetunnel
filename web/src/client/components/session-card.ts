@@ -2,13 +2,12 @@
  * Session Card Component
  *
  * Displays a single terminal session with its preview, status, and controls.
- * Shows activity indicators when terminal content changes and provides kill functionality.
+ * Provides kill functionality and quick session status at a glance.
  *
  * @fires session-select - When card is clicked (detail: Session)
  * @fires session-killed - When session is successfully killed (detail: { sessionId: string, session: Session })
  * @fires session-kill-error - When kill operation fails (detail: { sessionId: string, error: string })
  *
- * @listens content-changed - From vibe-terminal-buffer when terminal content changes
  */
 import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
@@ -62,14 +61,12 @@ export class SessionCard extends LitElement {
   @property({ type: Boolean }) selected = false;
   @state() private killing = false;
   @state() private killingFrame = 0;
-  @state() private isActive = false;
   @state() private isSendingPrompt = false;
   @state() private terminalTheme: TerminalThemeId = 'auto';
   // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used in render method
   @state() private isHovered = false;
 
   private killingInterval: number | null = null;
-  private activityTimeout: number | null = null;
   private storageListener: ((e: StorageEvent) => void) | null = null;
   private themeChangeListener: ((e: CustomEvent) => void) | null = null;
   private preferencesManager = TerminalPreferencesManager.getInstance();
@@ -100,9 +97,6 @@ export class SessionCard extends LitElement {
     if (this.killingInterval) {
       clearInterval(this.killingInterval);
     }
-    if (this.activityTimeout) {
-      clearTimeout(this.activityTimeout);
-    }
     if (this.storageListener) {
       window.removeEventListener('storage', this.storageListener);
       this.storageListener = null;
@@ -124,27 +118,6 @@ export class SessionCard extends LitElement {
         composed: true,
       })
     );
-  }
-
-  private handleContentChanged() {
-    // Only track activity for running sessions
-    if (this.session.status !== 'running') {
-      return;
-    }
-
-    // Content changed, immediately mark as active
-    this.isActive = true;
-
-    // Clear existing timeout
-    if (this.activityTimeout) {
-      clearTimeout(this.activityTimeout);
-    }
-
-    // Set timeout to clear activity after 500ms of no changes
-    this.activityTimeout = window.setTimeout(() => {
-      this.isActive = false;
-      this.activityTimeout = null;
-    }, 500);
   }
 
   private async handleKillClick(e: Event) {
@@ -355,10 +328,6 @@ export class SessionCard extends LitElement {
       <div
         class="card cursor-pointer overflow-hidden flex flex-col h-full ${
           this.killing ? 'opacity-60' : ''
-        } ${
-          this.isActive && this.session.status === 'running'
-            ? 'ring-2 ring-primary shadow-glow-sm'
-            : ''
         } ${this.selected ? 'ring-2 ring-accent-primary shadow-card-hover' : ''}"
         style="view-transition-name: session-${this.session.id}; --session-id: session-${
           this.session.id
@@ -483,7 +452,6 @@ export class SessionCard extends LitElement {
                   .theme=${this.terminalTheme}
                   class="w-full h-full"
                   style="pointer-events: none;"
-                  @content-changed=${this.handleContentChanged}
                 ></vibe-terminal-buffer>
               `
           }
@@ -501,13 +469,6 @@ export class SessionCard extends LitElement {
             >
               <div class="w-2 h-2 rounded-full ${this.getStatusDotColor()}"></div>
               ${this.getActivityStatusText()}
-              ${
-                this.session.status === 'running' &&
-                this.isActive &&
-                !this.session.activityStatus?.specificStatus
-                  ? html`<span class="text-primary animate-pulse ml-1">●</span>`
-                  : ''
-              }
             </span>
             ${this.renderGitStatus()}
           </div>
@@ -590,9 +551,6 @@ export class SessionCard extends LitElement {
     if (this.session.active === false) {
       return 'waiting';
     }
-    if (this.session.status === 'running' && this.session.activityStatus?.specificStatus) {
-      return this.session.activityStatus.specificStatus.status;
-    }
     return this.session.status;
   }
 
@@ -602,9 +560,6 @@ export class SessionCard extends LitElement {
     }
     if (this.session.active === false) {
       return 'text-text-muted';
-    }
-    if (this.session.status === 'running' && this.session.activityStatus?.specificStatus) {
-      return 'text-status-warning';
     }
     return this.session.status === 'running' ? 'text-status-success' : 'text-status-warning';
   }
@@ -617,13 +572,7 @@ export class SessionCard extends LitElement {
       return 'bg-muted';
     }
     if (this.session.status === 'running') {
-      if (this.session.activityStatus?.specificStatus) {
-        return 'bg-status-warning animate-pulse'; // Claude active - amber with pulse
-      } else if (this.session.activityStatus?.isActive || this.isActive) {
-        return 'bg-status-success'; // Generic active - solid green
-      } else {
-        return 'bg-status-success ring-1 ring-status-success/50'; // Idle - green with ring
-      }
+      return 'bg-status-success';
     }
     return 'bg-status-warning';
   }

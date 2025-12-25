@@ -32,7 +32,7 @@ struct LoginView: View {
                         .font(.system(size: 48))
                         .foregroundStyle(.accent)
 
-                    Text(serverConfig.displayName)
+                    Text(self.serverConfig.displayName)
                         .font(.headline)
                         .foregroundStyle(.primary)
 
@@ -44,20 +44,20 @@ struct LoginView: View {
 
                 // Login form
                 VStack(spacing: 16) {
-                    TextField("Username", text: $username)
+                    TextField("Username", text: self.$username)
                         .textFieldStyle(.roundedBorder)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                        .focused($focusedField, equals: .username)
+                        .focused(self.$focusedField, equals: .username)
                         .onSubmit {
-                            focusedField = .password
+                            self.focusedField = .password
                         }
 
-                    SecureField("Password", text: $password)
+                    SecureField("Password", text: self.$password)
                         .textFieldStyle(.roundedBorder)
-                        .focused($focusedField, equals: .password)
+                        .focused(self.$focusedField, equals: .password)
                         .onSubmit {
-                            authenticate()
+                            self.authenticate()
                         }
 
                     if let error = errorMessage {
@@ -76,14 +76,14 @@ struct LoginView: View {
                 // Action buttons
                 HStack(spacing: 12) {
                     Button("Cancel") {
-                        dismiss()
-                        isPresented = false
+                        self.dismiss()
+                        self.isPresented = false
                     }
                     .buttonStyle(.bordered)
-                    .disabled(isAuthenticating)
+                    .disabled(self.isAuthenticating)
 
-                    Button(action: authenticate) {
-                        if isAuthenticating {
+                    Button(action: self.authenticate) {
+                        if self.isAuthenticating {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle())
                                 .scaleEffect(0.8)
@@ -92,7 +92,7 @@ struct LoginView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(username.isEmpty || password.isEmpty || isAuthenticating)
+                    .disabled(self.username.isEmpty || self.password.isEmpty || self.isAuthenticating)
                 }
                 .padding(.horizontal)
 
@@ -106,7 +106,7 @@ struct LoginView: View {
                                 .font(.caption)
                                 .foregroundStyle(.green)
                         } else {
-                            if config.enableSSHKeys && !config.disallowUserPassword {
+                            if config.enableSSHKeys, !config.disallowUserPassword {
                                 Text("Password or SSH key authentication")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -132,75 +132,74 @@ struct LoginView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        dismiss()
-                        isPresented = false
+                        self.dismiss()
+                        self.isPresented = false
                     }
-                    .disabled(isAuthenticating)
+                    .disabled(self.isAuthenticating)
                 }
             }
         }
-        .interactiveDismissDisabled(isAuthenticating)
+        .interactiveDismissDisabled(self.isAuthenticating)
         .task {
             // Get current username
             do {
-                username = try await authenticationService.getCurrentUsername()
+                self.username = try await self.authenticationService.getCurrentUsername()
             } catch {
                 // If we can't get username, leave it empty
             }
 
             // Get auth configuration
             do {
-                authConfig = try await authenticationService.getAuthConfig()
+                self.authConfig = try await self.authenticationService.getAuthConfig()
 
                 // If no auth required, dismiss immediately
-                if authConfig?.noAuth == true {
-                    dismiss()
-                    onSuccess("", "") // No credentials needed
+                if self.authConfig?.noAuth == true {
+                    self.dismiss()
+                    self.onSuccess("", "") // No credentials needed
                 }
             } catch {
                 // Continue with password auth
             }
 
             // Focus username field if empty, otherwise password
-            if username.isEmpty {
-                focusedField = .username
+            if self.username.isEmpty {
+                self.focusedField = .username
             } else {
-                focusedField = .password
+                self.focusedField = .password
             }
         }
     }
 
     private func authenticate() {
-        guard !username.isEmpty && !password.isEmpty else { return }
+        guard !self.username.isEmpty, !self.password.isEmpty else { return }
 
         Task { @MainActor in
-            isAuthenticating = true
-            errorMessage = nil
+            self.isAuthenticating = true
+            self.errorMessage = nil
 
             do {
-                try await authenticationService.authenticateWithPassword(
-                    username: username,
-                    password: password
-                )
+                try await self.authenticationService.authenticateWithPassword(
+                    username: self.username,
+                    password: self.password)
 
                 // Success - dismiss and call completion with credentials
-                dismiss()
-                isPresented = false
-                onSuccess(username, password)
+                self.dismiss()
+                self.isPresented = false
+                self.onSuccess(self.username, self.password)
             } catch {
                 // Show error
                 if let apiError = error as? APIError {
-                    errorMessage = apiError.localizedDescription
+                    self.errorMessage = apiError.localizedDescription
                 } else {
-                    errorMessage = error.localizedDescription
+                    self.errorMessage = error.localizedDescription
                 }
 
                 // Clear password on error
-                password = ""
-                focusedField = .password
+                self.password = ""
+                self.focusedField = .password
             }
 
-            isAuthenticating = false
+            self.isAuthenticating = false
         }
     }
 }
@@ -208,20 +207,17 @@ struct LoginView: View {
 // MARK: - Preview
 
 #if DEBUG
-    struct LoginView_Previews: PreviewProvider {
-        static var previews: some View {
-            LoginView(
-                isPresented: .constant(true),
-                serverConfig: ServerConfig(
-                    host: "localhost",
-                    port: 3_000,
-                    name: "Test Server"
-                ),
-                authenticationService: AuthenticationService(
-                    apiClient: APIClient.shared,
-                    serverConfig: ServerConfig(host: "localhost", port: 3_000)
-                )
-            ) { _, _ in }
-        }
+struct LoginView_Previews: PreviewProvider {
+    static var previews: some View {
+        LoginView(
+            isPresented: .constant(true),
+            serverConfig: ServerConfig(
+                host: "localhost",
+                port: 3000,
+                name: "Test Server"),
+            authenticationService: AuthenticationService(
+                apiClient: APIClient.shared,
+                serverConfig: ServerConfig(host: "localhost", port: 3000))) { _, _ in }
     }
+}
 #endif

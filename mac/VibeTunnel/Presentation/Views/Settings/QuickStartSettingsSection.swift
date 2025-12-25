@@ -20,24 +20,24 @@ struct QuickStartSettingsSection: View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
                 // Native table view
-                Table(configManager.quickStartCommands, selection: $selection) {
+                Table(self.configManager.quickStartCommands, selection: self.$selection) {
                     TableColumn("Name") { command in
                         Group {
-                            if editingCommand?.id == command.id {
-                                TextField("", text: $editingName)
+                            if self.editingCommand?.id == command.id {
+                                TextField("", text: self.$editingName)
                                     .textFieldStyle(.plain)
                                     .padding(.horizontal, -3) // Compensate for TextField's internal padding
-                                    .focused($focusedField, equals: .name)
+                                    .focused(self.$focusedField, equals: .name)
                                     .onSubmit {
-                                        saveEdit()
+                                        self.saveEdit()
                                     }
                                     .onExitCommand {
-                                        cancelEdit()
+                                        self.cancelEdit()
                                     }
                             } else {
                                 Text(command.displayName)
                                     .onTapGesture(count: 2) {
-                                        startEditing(command)
+                                        self.startEditing(command)
                                     }
                             }
                         }
@@ -47,24 +47,24 @@ struct QuickStartSettingsSection: View {
 
                     TableColumn("Command") { command in
                         Group {
-                            if editingCommand?.id == command.id {
-                                TextField("", text: $editingCommandText)
+                            if self.editingCommand?.id == command.id {
+                                TextField("", text: self.$editingCommandText)
                                     .textFieldStyle(.plain)
                                     .font(.system(.body, design: .monospaced))
                                     .padding(.horizontal, -3) // Compensate for TextField's internal padding
-                                    .focused($focusedField, equals: .command)
+                                    .focused(self.$focusedField, equals: .command)
                                     .onSubmit {
-                                        saveEdit()
+                                        self.saveEdit()
                                     }
                                     .onExitCommand {
-                                        cancelEdit()
+                                        self.cancelEdit()
                                     }
                             } else {
                                 Text(command.command)
                                     .font(.system(.body, design: .monospaced))
                                     .foregroundStyle(.secondary)
                                     .onTapGesture(count: 2) {
-                                        startEditing(command)
+                                        self.startEditing(command)
                                     }
                             }
                         }
@@ -73,20 +73,20 @@ struct QuickStartSettingsSection: View {
                 }
                 .tableStyle(.inset(alternatesRowBackgrounds: true))
                 .frame(minHeight: 200)
-                .focused($isTableFocused)
+                .focused(self.$isTableFocused)
                 .onDeleteCommand {
-                    deleteSelected()
+                    self.deleteSelected()
                 }
                 .onKeyPress(.return) {
                     // Don't handle return if we're already editing
-                    if editingCommand != nil {
+                    if self.editingCommand != nil {
                         return .ignored
                     }
 
                     if let selectedId = selection.first,
                        let command = configManager.quickStartCommands.first(where: { $0.id == selectedId })
                     {
-                        startEditing(command)
+                        self.startEditing(command)
                         return .handled
                     }
                     return .ignored
@@ -96,7 +96,7 @@ struct QuickStartSettingsSection: View {
                 HStack(spacing: 8) {
                     // Add/Remove buttons
                     HStack(spacing: 4) {
-                        Button(action: addCommand) {
+                        Button(action: self.addCommand) {
                             Image(systemName: "plus")
                                 .font(.system(size: 11, weight: .medium))
                                 .frame(width: 20, height: 20)
@@ -104,7 +104,7 @@ struct QuickStartSettingsSection: View {
                         }
                         .buttonStyle(.accessoryBar)
 
-                        Button(action: deleteSelected) {
+                        Button(action: self.deleteSelected) {
                             ZStack {
                                 // Invisible plus to match the size
                                 Image(systemName: "plus")
@@ -118,13 +118,13 @@ struct QuickStartSettingsSection: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.accessoryBar)
-                        .disabled(selection.isEmpty)
+                        .disabled(self.selection.isEmpty)
                     }
 
                     Spacer()
 
                     Button("Reset to Defaults") {
-                        resetToDefaults()
+                        self.resetToDefaults()
                     }
                     .buttonStyle(.link)
                 }
@@ -142,80 +142,78 @@ struct QuickStartSettingsSection: View {
     }
 
     private func startEditing(_ command: QuickStartCommand) {
-        editingCommand = command
+        self.editingCommand = command
         // Use displayName to handle cases where name is nil
-        editingName = command.name ?? command.command
-        editingCommandText = command.command
+        self.editingName = command.name ?? command.command
+        self.editingCommandText = command.command
 
         // Focus the name field after a brief delay to ensure the TextField is rendered
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            focusedField = .name
+            self.focusedField = .name
         }
     }
 
     private func saveEdit() {
         guard let command = editingCommand else { return }
 
-        let trimmedName = editingName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedCommand = editingCommandText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedName = self.editingName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCommand = self.editingCommandText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if !trimmedCommand.isEmpty {
             // If name equals command, save as nil (no custom name needed)
             let finalName = (trimmedName.isEmpty || trimmedName == trimmedCommand) ? nil : trimmedName
 
-            configManager.updateCommand(
+            self.configManager.updateCommand(
                 id: command.id,
                 name: finalName,
-                command: trimmedCommand
-            )
+                command: trimmedCommand)
         }
 
-        editingCommand = nil
-        editingName = ""
-        editingCommandText = ""
-        focusedField = nil
+        self.editingCommand = nil
+        self.editingName = ""
+        self.editingCommandText = ""
+        self.focusedField = nil
 
         // Restore focus to table after editing
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            isTableFocused = true
+            self.isTableFocused = true
         }
     }
 
     private func cancelEdit() {
-        editingCommand = nil
-        editingName = ""
-        editingCommandText = ""
-        focusedField = nil
+        self.editingCommand = nil
+        self.editingName = ""
+        self.editingCommandText = ""
+        self.focusedField = nil
 
         // Restore focus to table after canceling
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            isTableFocused = true
+            self.isTableFocused = true
         }
     }
 
     private func addCommand() {
         let newCommand = QuickStartCommand(
             name: nil,
-            command: "new-command"
-        )
-        configManager.addCommand(name: newCommand.name, command: newCommand.command)
+            command: "new-command")
+        self.configManager.addCommand(name: newCommand.name, command: newCommand.command)
 
         // Start editing the new command immediately
         if let addedCommand = configManager.quickStartCommands.last {
-            startEditing(addedCommand)
+            self.startEditing(addedCommand)
         }
     }
 
     private func deleteSelected() {
-        for id in selection {
-            configManager.deleteCommand(id: id)
+        for id in self.selection {
+            self.configManager.deleteCommand(id: id)
         }
-        selection.removeAll()
+        self.selection.removeAll()
     }
 
     private func resetToDefaults() {
-        configManager.resetToDefaults()
-        selection.removeAll()
-        editingCommand = nil
+        self.configManager.resetToDefaults()
+        self.selection.removeAll()
+        self.editingCommand = nil
     }
 }

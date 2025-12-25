@@ -88,8 +88,8 @@ public struct CommandResponse: Codable, Sendable {
         output: String? = nil,
         error: String? = nil,
         exitCode: Int32? = nil,
-        timestamp: Date = Date()
-    ) {
+        timestamp: Date = Date())
+    {
         self.sessionId = sessionId
         self.output = output
         self.error = error
@@ -143,8 +143,8 @@ extension TunnelSession {
             username: String,
             homeDirectory: String,
             operatingSystem: String,
-            architecture: String
-        ) {
+            architecture: String)
+        {
             self.hostname = hostname
             self.username = username
             self.homeDirectory = homeDirectory
@@ -191,8 +191,8 @@ extension TunnelSession {
             sessionId: String,
             command: String,
             environment: [String: String]? = nil,
-            workingDirectory: String? = nil
-        ) {
+            workingDirectory: String? = nil)
+        {
             self.sessionId = sessionId
             self.command = command
             self.environment = environment

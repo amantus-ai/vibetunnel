@@ -23,7 +23,7 @@ extension Process {
 
     /// Async version of runWithParentTermination
     func runWithParentTerminationAsync() async throws {
-        try await runAsync()
+        try await self.runAsync()
     }
 
     /// Wait for the process to exit asynchronously

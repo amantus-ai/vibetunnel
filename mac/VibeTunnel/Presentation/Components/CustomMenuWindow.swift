@@ -37,7 +37,7 @@ final class CustomMenuWindow: NSPanel {
 
     /// More reliable visibility tracking
     var isWindowVisible: Bool {
-        _isWindowVisible
+        self._isWindowVisible
     }
 
     init(contentView: some View) {
@@ -46,15 +46,14 @@ final class CustomMenuWindow: NSPanel {
         self.retainedContentView = wrappedView
 
         // Create content view controller with the wrapped view
-        hostingController = NSHostingController(rootView: wrappedView)
+        self.hostingController = NSHostingController(rootView: wrappedView)
 
         // Initialize window with appropriate style
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 384, height: 400),
             styleMask: [.borderless, .utilityWindow],
             backing: .buffered,
-            defer: false
-        )
+            defer: false)
 
         // Configure window appearance
         isOpaque = false
@@ -71,10 +70,10 @@ final class CustomMenuWindow: NSPanel {
         acceptsMouseMovedEvents = false
 
         // Set content view controller
-        contentViewController = hostingController
+        contentViewController = self.hostingController
 
         // Force the view to load immediately
-        _ = hostingController.view
+        _ = self.hostingController.view
 
         // Add visual effect background with custom shape
         if let contentView = contentViewController?.view {
@@ -82,21 +81,20 @@ final class CustomMenuWindow: NSPanel {
 
             // Create a custom mask layer for side-rounded corners
             let maskLayer = CAShapeLayer()
-            maskLayer.path = createSideRoundedPath(
+            maskLayer.path = self.createSideRoundedPath(
                 in: contentView.bounds,
-                cornerRadius: DesignConstants.menuCornerRadius
-            )
+                cornerRadius: DesignConstants.menuCornerRadius)
             contentView.layer?.mask = maskLayer
             self.maskLayer = maskLayer
-            lastBounds = contentView.bounds
+            self.lastBounds = contentView.bounds
 
             // Update mask when bounds change
             contentView.postsFrameChangedNotifications = true
             self.frameObserver = NotificationCenter.default.addObserver(
                 forName: NSView.frameDidChangeNotification,
                 object: contentView,
-                queue: .main
-            ) { [weak self, weak contentView] _ in
+                queue: .main)
+            { [weak self, weak contentView] _ in
                 Task { @MainActor in
                     guard let self, let contentView else { return }
                     let currentBounds = contentView.bounds
@@ -104,8 +102,7 @@ final class CustomMenuWindow: NSPanel {
                     self.lastBounds = currentBounds
                     self.maskLayer?.path = self.createSideRoundedPath(
                         in: currentBounds,
-                        cornerRadius: DesignConstants.menuCornerRadius
-                    )
+                        cornerRadius: DesignConstants.menuCornerRadius)
                 }
             }
 
@@ -122,10 +119,10 @@ final class CustomMenuWindow: NSPanel {
         self.statusBarButton = statusItemButton
 
         // First, make sure the SwiftUI hierarchy has laid itself out
-        hostingController.view.layoutSubtreeIfNeeded()
+        self.hostingController.view.layoutSubtreeIfNeeded()
 
         // Determine the preferred size based on the content's intrinsic size
-        let fittingSize = hostingController.view.fittingSize
+        let fittingSize = self.hostingController.view.fittingSize
         let preferredSize = NSSize(width: fittingSize.width, height: fittingSize.height)
 
         // Update the panel's content size
@@ -140,10 +137,9 @@ final class CustomMenuWindow: NSPanel {
             // Check if the button frame is valid and visible
             if buttonFrameInScreen.width > 0, buttonFrameInScreen.height > 0 {
                 // Calculate optimal position relative to the status bar icon
-                let targetFrame = calculateOptimalFrame(
+                let targetFrame = self.calculateOptimalFrame(
                     relativeTo: buttonFrameInScreen,
-                    preferredSize: preferredSize
-                )
+                    preferredSize: preferredSize)
 
                 // Set frame directly without animation
                 setFrame(targetFrame, display: false)
@@ -152,20 +148,20 @@ final class CustomMenuWindow: NSPanel {
                 self.targetFrame = nil
             } else {
                 // Fallback: Position at top right of screen
-                showAtTopRightFallback(withSize: preferredSize)
+                self.showAtTopRightFallback(withSize: preferredSize)
                 self.targetFrame = nil
             }
         } else {
             // Fallback case
-            showAtTopRightFallback(withSize: preferredSize)
+            self.showAtTopRightFallback(withSize: preferredSize)
             self.targetFrame = nil
         }
 
         // Ensure the hosting controller's view is loaded
-        _ = hostingController.view
+        _ = self.hostingController.view
 
         // Display window with animation
-        displayWindowWithAnimation()
+        self.displayWindowWithAnimation()
     }
 
     private func displayWindowWithAnimation() {
@@ -185,7 +181,7 @@ final class CustomMenuWindow: NSPanel {
         // Show window without activating the app aggressively
         // This helps maintain the button's highlight state
         orderFront(nil)
-        makeKey()
+        self.makeKey()
 
         // Ensure window can receive keyboard events for navigation
         becomeKey()
@@ -199,17 +195,17 @@ final class CustomMenuWindow: NSPanel {
         contentView?.layoutSubtreeIfNeeded()
 
         // Mark window as visible
-        _isWindowVisible = true
+        self._isWindowVisible = true
 
         // Commit all changes at once
         CATransaction.commit()
 
-        onShow?()
+        self.onShow?()
     }
 
     private func displayWindowSafely() {
         // This method is now just a fallback for compatibility
-        displayWindowWithAnimation()
+        self.displayWindowWithAnimation()
     }
 
     private func displayWindowFallback() async {
@@ -221,8 +217,8 @@ final class CustomMenuWindow: NSPanel {
 
     private func calculateOptimalFrame(relativeTo statusFrame: NSRect, preferredSize: NSSize) -> NSRect {
         guard let screen = NSScreen.main else {
-            let defaultScreenWidth: CGFloat = 1_920
-            let defaultScreenHeight: CGFloat = 1_080
+            let defaultScreenWidth: CGFloat = 1920
+            let defaultScreenHeight: CGFloat = 1080
             let rightMargin: CGFloat = 10
             let menuBarHeight: CGFloat = 25
             let gap: CGFloat = 5
@@ -260,8 +256,7 @@ final class CustomMenuWindow: NSPanel {
 
         return NSRect(
             origin: NSPoint(x: x, y: finalY),
-            size: preferredSize
-        )
+            size: preferredSize)
     }
 
     private func showAtTopRightFallback(withSize preferredSize: NSSize) {
@@ -276,42 +271,41 @@ final class CustomMenuWindow: NSPanel {
 
         let fallbackFrame = NSRect(
             origin: NSPoint(x: x, y: y),
-            size: preferredSize
-        )
+            size: preferredSize)
 
         setFrame(fallbackFrame, display: false)
     }
 
     func hide() {
         // Mark window as not visible
-        _isWindowVisible = false
-        isNewSessionActive = false // Always reset this state
-        isFileSelectionInProgress = false // Reset file selection state
+        self._isWindowVisible = false
+        self.isNewSessionActive = false // Always reset this state
+        self.isFileSelectionInProgress = false // Reset file selection state
 
         // Button state will be reset by StatusBarMenuManager via onHide callback
-        orderOut(nil)
-        teardownEventMonitoring()
-        onHide?()
+        self.orderOut(nil)
+        self.teardownEventMonitoring()
+        self.onHide?()
     }
 
     override func orderOut(_ sender: Any?) {
         super.orderOut(sender)
 
         // Mark window as not visible
-        _isWindowVisible = false
+        self._isWindowVisible = false
 
         // Button state will be reset by StatusBarMenuManager via onHide callback
-        onHide?()
+        self.onHide?()
     }
 
     private func setupEventMonitoring() {
-        teardownEventMonitoring()
+        self.teardownEventMonitoring()
 
         guard isVisible else { return }
 
-        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [
+        self.eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [
             .leftMouseDown,
-            .rightMouseDown
+            .rightMouseDown,
         ]) { [weak self] _ in
             guard let self, self.isVisible else { return }
 
@@ -337,22 +331,22 @@ final class CustomMenuWindow: NSPanel {
             }
         }
 
-        isEventMonitoringActive = true
+        self.isEventMonitoringActive = true
     }
 
     private func teardownEventMonitoring() {
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
-            eventMonitor = nil
-            isEventMonitoringActive = false
+            self.eventMonitor = nil
+            self.isEventMonitoringActive = false
         }
     }
 
     override func resignKey() {
         super.resignKey()
         // Don't hide if new session form is active or file selection is in progress
-        if !isNewSessionActive && !isFileSelectionInProgress {
-            hide()
+        if !self.isNewSessionActive, !self.isFileSelectionInProgress {
+            self.hide()
         }
     }
 
@@ -394,8 +388,7 @@ final class CustomMenuWindow: NSPanel {
             radius: cornerRadius,
             startAngle: -CGFloat.pi / 2,
             endAngle: 0,
-            clockwise: false
-        )
+            clockwise: false)
 
         path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - cornerRadius))
 
@@ -404,8 +397,7 @@ final class CustomMenuWindow: NSPanel {
             radius: cornerRadius,
             startAngle: 0,
             endAngle: CGFloat.pi / 2,
-            clockwise: false
-        )
+            clockwise: false)
 
         // Bottom edge (flat)
         path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
@@ -416,8 +408,7 @@ final class CustomMenuWindow: NSPanel {
             radius: cornerRadius,
             startAngle: CGFloat.pi / 2,
             endAngle: CGFloat.pi,
-            clockwise: false
-        )
+            clockwise: false)
 
         path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + cornerRadius))
 
@@ -426,8 +417,7 @@ final class CustomMenuWindow: NSPanel {
             radius: cornerRadius,
             startAngle: CGFloat.pi,
             endAngle: 3 * CGFloat.pi / 2,
-            clockwise: false
-        )
+            clockwise: false)
 
         path.closeSubpath()
 
@@ -443,22 +433,23 @@ struct CustomMenuContainer<Content: View>: View {
     private var colorScheme
 
     var body: some View {
-        content
+        self.content
             .fixedSize()
             .background {
                 // First layer: tinted background for better readability
                 SideRoundedRectangle(cornerRadius: DesignConstants.menuCornerRadius)
-                    .fill(backgroundTint)
+                    .fill(self.backgroundTint)
             }
-            .background(backgroundMaterial, in: SideRoundedRectangle(cornerRadius: DesignConstants.menuCornerRadius))
+            .background(
+                self.backgroundMaterial,
+                in: SideRoundedRectangle(cornerRadius: DesignConstants.menuCornerRadius))
             .overlay(
                 SideRoundedRectangle(cornerRadius: DesignConstants.menuCornerRadius)
-                    .stroke(borderColor, lineWidth: 1)
-            )
+                    .stroke(self.borderColor, lineWidth: 1))
     }
 
     private var backgroundTint: Color {
-        switch colorScheme {
+        switch self.colorScheme {
         case .dark:
             // Black tint at 25% opacity for better text readability
             Color.black.opacity(0.25)
@@ -471,7 +462,7 @@ struct CustomMenuContainer<Content: View>: View {
     }
 
     private var borderColor: Color {
-        switch colorScheme {
+        switch self.colorScheme {
         case .dark:
             Color.white.opacity(0.1)
         case .light:
@@ -482,7 +473,7 @@ struct CustomMenuContainer<Content: View>: View {
     }
 
     private var backgroundMaterial: some ShapeStyle {
-        switch colorScheme {
+        switch self.colorScheme {
         case .dark:
             return .ultraThinMaterial
         case .light:

@@ -32,13 +32,13 @@ class MockNetworkMonitor: NetworkMonitoring {
     ///   - delay: Optional delay before state change (defaults to immediate)
     func simulateStateChange(to connected: Bool, after delay: TimeInterval = 0) {
         if delay == 0 {
-            isConnected = connected
+            self.isConnected = connected
         } else {
             let task = Task {
                 try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-                isConnected = connected
+                self.isConnected = connected
             }
-            pendingStateChanges.append(task)
+            self.pendingStateChanges.append(task)
         }
     }
 
@@ -48,35 +48,35 @@ class MockNetworkMonitor: NetworkMonitoring {
     ///   - reconnectAfter: Delay before reconnection (from disconnect time)
     func simulateIntermittentConnectivity(
         disconnectAfter: TimeInterval = 0.1,
-        reconnectAfter: TimeInterval = 0.2
-    ) {
-        simulateStateChange(to: false, after: disconnectAfter)
-        simulateStateChange(to: true, after: disconnectAfter + reconnectAfter)
+        reconnectAfter: TimeInterval = 0.2)
+    {
+        self.simulateStateChange(to: false, after: disconnectAfter)
+        self.simulateStateChange(to: true, after: disconnectAfter + reconnectAfter)
     }
 
     /// Inject error for specific scenarios
     /// - Parameter scenario: Error scenario identifier
     func injectError(for scenario: String) {
-        errorScenarios.insert(scenario)
+        self.errorScenarios.insert(scenario)
     }
 
     /// Check if error should be simulated for scenario
     /// - Parameter scenario: Scenario identifier
     /// - Returns: True if error should be simulated
     func shouldSimulateError(for scenario: String) -> Bool {
-        errorScenarios.contains(scenario)
+        self.errorScenarios.contains(scenario)
     }
 
     /// Reset mock to clean state
     func reset() {
-        isConnected = true
-        errorScenarios.removeAll()
+        self.isConnected = true
+        self.errorScenarios.removeAll()
 
         // Cancel pending state changes
-        for task in pendingStateChanges {
+        for task in self.pendingStateChanges {
             task.cancel()
         }
-        pendingStateChanges.removeAll()
+        self.pendingStateChanges.removeAll()
     }
 
     // MARK: - Test Helpers
@@ -88,13 +88,12 @@ class MockNetworkMonitor: NetworkMonitoring {
     /// - Returns: True if state was reached within timeout
     func waitForState(
         connected: Bool,
-        timeout: TimeInterval = 2.0
-    )
+        timeout: TimeInterval = 2.0)
         async -> Bool
     {
         let startTime = Date()
 
-        while isConnected != connected {
+        while self.isConnected != connected {
             if Date().timeIntervalSince(startTime) > timeout {
                 return false
             }
@@ -110,12 +109,12 @@ class MockNetworkMonitor: NetworkMonitoring {
 extension MockNetworkMonitor {
     /// Simulate going offline immediately
     func goOffline() {
-        simulateStateChange(to: false)
+        self.simulateStateChange(to: false)
     }
 
     /// Simulate going online immediately
     func goOnline() {
-        simulateStateChange(to: true)
+        self.simulateStateChange(to: true)
     }
 
     /// Simulate unstable connection (rapid connect/disconnect cycles)
@@ -127,16 +126,16 @@ extension MockNetworkMonitor {
             let disconnectTime = TimeInterval(i * 2) * cycleInterval
             let reconnectTime = TimeInterval(i * 2 + 1) * cycleInterval
 
-            simulateStateChange(to: false, after: disconnectTime)
-            simulateStateChange(to: true, after: reconnectTime)
+            self.simulateStateChange(to: false, after: disconnectTime)
+            self.simulateStateChange(to: true, after: reconnectTime)
         }
     }
 
     /// Simulate connection recovery after specified delay
     /// - Parameter delay: Delay before recovery
     func simulateConnectionRecovery(after delay: TimeInterval = 1.0) {
-        simulateStateChange(to: false)
-        simulateStateChange(to: true, after: delay)
+        self.simulateStateChange(to: false)
+        self.simulateStateChange(to: true, after: delay)
     }
 }
 
@@ -155,21 +154,21 @@ extension MockNetworkMonitor {
 
     /// Inject authentication error scenario
     func injectAuthenticationError() {
-        injectError(for: ErrorScenario.authentication)
+        self.injectError(for: ErrorScenario.authentication)
     }
 
     /// Inject connection timeout error scenario
     func injectConnectionTimeoutError() {
-        injectError(for: ErrorScenario.connectionTimeout)
+        self.injectError(for: ErrorScenario.connectionTimeout)
     }
 
     /// Inject server unreachable error scenario
     func injectServerUnreachableError() {
-        injectError(for: ErrorScenario.serverUnreachable)
+        self.injectError(for: ErrorScenario.serverUnreachable)
     }
 
     /// Remove all error scenarios
     func clearAllErrors() {
-        errorScenarios.removeAll()
+        self.errorScenarios.removeAll()
     }
 }

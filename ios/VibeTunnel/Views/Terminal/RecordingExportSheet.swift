@@ -38,18 +38,18 @@ struct RecordingExportSheet: View {
                         .fontWeight(.semibold)
                         .foregroundColor(Theme.Colors.terminalForeground)
 
-                    if recorder.isRecording {
+                    if self.recorder.isRecording {
                         Text("Recording in progress...")
                             .font(Theme.Typography.terminalSystem(size: 14))
                             .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
-                    } else if !recorder.events.isEmpty {
+                    } else if !self.recorder.events.isEmpty {
                         VStack(spacing: Theme.Spacing.extraSmall) {
-                            Text("\(recorder.events.count) events recorded")
+                            Text("\(self.recorder.events.count) events recorded")
                                 .font(Theme.Typography.terminalSystem(size: 14))
                                 .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
 
                             if let duration = recorder.events.last?.time {
-                                Text("Duration: \(formatDuration(duration))")
+                                Text("Duration: \(self.formatDuration(duration))")
                                     .font(Theme.Typography.terminalSystem(size: 12))
                                     .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
                             }
@@ -64,9 +64,9 @@ struct RecordingExportSheet: View {
                 Spacer()
 
                 // Export button
-                if !recorder.events.isEmpty {
-                    Button(action: exportRecording) {
-                        if isExporting {
+                if !self.recorder.events.isEmpty {
+                    Button(action: self.exportRecording) {
+                        if self.isExporting {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: Theme.Colors.terminalBackground))
                                 .scaleEffect(0.8)
@@ -84,9 +84,8 @@ struct RecordingExportSheet: View {
                     .padding(.vertical, Theme.Spacing.medium)
                     .background(
                         RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                            .fill(Theme.Colors.primaryAccent)
-                    )
-                    .disabled(isExporting)
+                            .fill(Theme.Colors.primaryAccent))
+                    .disabled(self.isExporting)
                     .padding(.horizontal)
                 }
 
@@ -97,13 +96,13 @@ struct RecordingExportSheet: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
-                        dismiss()
+                        self.dismiss()
                     }
                     .foregroundColor(Theme.Colors.primaryAccent)
                 }
             }
         }
-        .sheet(isPresented: $showingShareSheet) {
+        .sheet(isPresented: self.$showingShareSheet) {
             if let url = exportedFileURL {
                 ShareSheet(items: [url])
             }
@@ -111,7 +110,7 @@ struct RecordingExportSheet: View {
     }
 
     private func exportRecording() {
-        isExporting = true
+        self.isExporting = true
 
         Task {
             if let castData = recorder.exportCastFile() {
@@ -124,19 +123,19 @@ struct RecordingExportSheet: View {
                     try castData.write(to: tempURL)
 
                     await MainActor.run {
-                        exportedFileURL = tempURL
-                        isExporting = false
-                        showingShareSheet = true
+                        self.exportedFileURL = tempURL
+                        self.isExporting = false
+                        self.showingShareSheet = true
                     }
                 } catch {
                     logger.error("Failed to save cast file: \(error)")
                     await MainActor.run {
-                        isExporting = false
+                        self.isExporting = false
                     }
                 }
             } else {
                 await MainActor.run {
-                    isExporting = false
+                    self.isExporting = false
                 }
             }
         }

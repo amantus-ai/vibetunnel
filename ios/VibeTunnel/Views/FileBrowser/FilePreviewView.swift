@@ -18,10 +18,10 @@ struct FilePreviewView: View {
                 Theme.Colors.terminalBackground
                     .ignoresSafeArea()
 
-                if isLoading {
+                if self.isLoading {
                     ProgressView("Loading...")
                         .progressViewStyle(CircularProgressViewStyle(tint: Theme.Colors.primaryAccent))
-                } else if presentedError != nil {
+                } else if self.presentedError != nil {
                     ContentUnavailableView {
                         Label("Failed to Load File", systemImage: "exclamationmark.triangle")
                     } description: {
@@ -29,21 +29,21 @@ struct FilePreviewView: View {
                     } actions: {
                         Button("Retry") {
                             Task {
-                                await loadPreview()
+                                await self.loadPreview()
                             }
                         }
                         .terminalButton()
                     }
                 } else if let preview {
-                    previewContent(for: preview)
+                    self.previewContent(for: preview)
                 }
             }
-            .navigationTitle(URL(fileURLWithPath: path).lastPathComponent)
+            .navigationTitle(URL(fileURLWithPath: self.path).lastPathComponent)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Close") {
-                        dismiss()
+                        self.dismiss()
                     }
                     .foregroundColor(Theme.Colors.primaryAccent)
                 }
@@ -51,7 +51,7 @@ struct FilePreviewView: View {
                 if let preview, preview.type == .text {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button("Diff") {
-                            showingDiff = true
+                            self.showingDiff = true
                         }
                         .foregroundColor(Theme.Colors.primaryAccent)
                     }
@@ -59,19 +59,19 @@ struct FilePreviewView: View {
             }
         }
         .task {
-            await loadPreview()
+            await self.loadPreview()
         }
-        .sheet(isPresented: $showingDiff) {
+        .sheet(isPresented: self.$showingDiff) {
             if let diff = gitDiff {
                 GitDiffView(diff: diff)
             } else {
                 ProgressView("Loading diff...")
                     .task {
-                        await loadDiff()
+                        await self.loadDiff()
                     }
             }
         }
-        .errorAlert(item: $presentedError)
+        .errorAlert(item: self.$presentedError)
     }
 
     @ViewBuilder
@@ -81,8 +81,7 @@ struct FilePreviewView: View {
             if let content = preview.content {
                 SyntaxHighlightedView(
                     content: content,
-                    language: preview.language ?? "text"
-                )
+                    language: preview.language ?? "text")
             }
         case .image:
             if let content = preview.content,
@@ -105,7 +104,7 @@ struct FilePreviewView: View {
                     .foregroundColor(Theme.Colors.terminalForeground)
 
                 if let size = preview.size {
-                    Text(formatFileSize(size))
+                    Text(self.formatFileSize(size))
                         .font(.caption)
                         .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
                 }
@@ -114,21 +113,21 @@ struct FilePreviewView: View {
     }
 
     private func loadPreview() async {
-        isLoading = true
-        presentedError = nil
+        self.isLoading = true
+        self.presentedError = nil
 
         do {
-            preview = try await APIClient.shared.previewFile(path: path)
-            isLoading = false
+            self.preview = try await APIClient.shared.previewFile(path: self.path)
+            self.isLoading = false
         } catch {
-            presentedError = IdentifiableError(error: error)
-            isLoading = false
+            self.presentedError = IdentifiableError(error: error)
+            self.isLoading = false
         }
     }
 
     private func loadDiff() async {
         do {
-            gitDiff = try await APIClient.shared.getGitDiff(path: path)
+            self.gitDiff = try await APIClient.shared.getGitDiff(path: self.path)
         } catch {
             // Silently fail - diff might not be available
         }
@@ -155,7 +154,7 @@ struct SyntaxHighlightedView: UIViewRepresentable {
         webView.backgroundColor = UIColor(Theme.Colors.cardBackground)
         webView.scrollView.backgroundColor = UIColor(Theme.Colors.cardBackground)
 
-        loadContent(in: webView)
+        self.loadContent(in: webView)
         return webView
     }
 
@@ -164,7 +163,7 @@ struct SyntaxHighlightedView: UIViewRepresentable {
     }
 
     private func loadContent(in webView: WKWebView) {
-        let escapedContent = content
+        let escapedContent = self.content
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
@@ -230,14 +229,14 @@ struct GitDiffView: View {
                 Theme.Colors.terminalBackground
                     .ignoresSafeArea()
 
-                DiffWebView(content: diff.diff)
+                DiffWebView(content: self.diff.diff)
             }
             .navigationTitle("Git Diff")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Close") {
-                        dismiss()
+                        self.dismiss()
                     }
                     .foregroundColor(Theme.Colors.primaryAccent)
                 }
@@ -258,7 +257,7 @@ struct DiffWebView: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = UIColor(Theme.Colors.cardBackground)
 
-        loadDiff(in: webView)
+        self.loadDiff(in: webView)
         return webView
     }
 
@@ -267,7 +266,7 @@ struct DiffWebView: UIViewRepresentable {
     }
 
     private func loadDiff(in webView: WKWebView) {
-        let escapedContent = content
+        let escapedContent = self.content
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")

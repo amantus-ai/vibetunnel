@@ -9,7 +9,7 @@ struct TerminalSnapshotTests {
         let events = [
             AsciinemaEvent(time: 0.0, type: .output, data: "Line 1\n"),
             AsciinemaEvent(time: 1.0, type: .output, data: "Line 2 with some text\n"),
-            AsciinemaEvent(time: 2.0, type: .output, data: "Line 3\n")
+            AsciinemaEvent(time: 2.0, type: .output, data: "Line 3\n"),
         ]
 
         let header = AsciinemaHeader(
@@ -20,8 +20,7 @@ struct TerminalSnapshotTests {
             duration: nil,
             command: nil,
             title: nil,
-            env: nil
-        )
+            env: nil)
         let snapshot = TerminalSnapshot(sessionId: "test-session", header: header, events: events)
 
         #expect(snapshot.sessionId == "test-session")
@@ -36,7 +35,7 @@ struct TerminalSnapshotTests {
             AsciinemaEvent(time: 1.0, type: .output, data: "Second line\n"),
             AsciinemaEvent(time: 2.0, type: .output, data: "Third line\n"),
             AsciinemaEvent(time: 3.0, type: .output, data: "Fourth line\n"),
-            AsciinemaEvent(time: 4.0, type: .output, data: "Fifth line\n")
+            AsciinemaEvent(time: 4.0, type: .output, data: "Fifth line\n"),
         ]
 
         let snapshot = TerminalSnapshot(sessionId: "test", header: nil, events: events)
@@ -54,7 +53,7 @@ struct TerminalSnapshotTests {
         let events = [
             AsciinemaEvent(time: 0.0, type: .output, data: "\u{001B}[31mRed text\u{001B}[0m\n"),
             AsciinemaEvent(time: 1.0, type: .output, data: "\u{001B}[1;32mBold green\u{001B}[0m\n"),
-            AsciinemaEvent(time: 2.0, type: .output, data: "Normal text\n")
+            AsciinemaEvent(time: 2.0, type: .output, data: "Normal text\n"),
         ]
 
         let snapshot = TerminalSnapshot(sessionId: "test", header: nil, events: events)
@@ -94,7 +93,7 @@ struct TerminalSnapshotTests {
         let events = [
             AsciinemaEvent(time: 0.0, type: .output, data: "  Indented line\n"),
             AsciinemaEvent(time: 1.0, type: .output, data: "\tTab indented\n"),
-            AsciinemaEvent(time: 2.0, type: .output, data: "Multiple   spaces\n")
+            AsciinemaEvent(time: 2.0, type: .output, data: "Multiple   spaces\n"),
         ]
 
         let snapshot = TerminalSnapshot(sessionId: "whitespace", header: nil, events: events)
@@ -109,7 +108,7 @@ struct TerminalSnapshotTests {
         let events = [
             AsciinemaEvent(time: 0.0, type: .output, data: "Hello 👋\n"),
             AsciinemaEvent(time: 1.0, type: .output, data: "日本語テスト\n"),
-            AsciinemaEvent(time: 2.0, type: .output, data: "Émojis: 🎉🎊🎈\n")
+            AsciinemaEvent(time: 2.0, type: .output, data: "Émojis: 🎉🎊🎈\n"),
         ]
 
         let snapshot = TerminalSnapshot(sessionId: "unicode", header: nil, events: events)
@@ -130,7 +129,7 @@ struct TerminalSnapshotTests {
             AsciinemaEvent(time: 0.0, type: .output, data: "\u{001B}[2J\u{001B}[H"), // Clear screen and home
             AsciinemaEvent(time: 1.0, type: .output, data: "\u{001B}[?25l"), // Hide cursor
             AsciinemaEvent(time: 2.0, type: .output, data: "\u{001B}[38;5;196mExtended color\u{001B}[0m\n"),
-            AsciinemaEvent(time: 3.0, type: .output, data: "\u{001B}[48;2;255;0;0mRGB background\u{001B}[0m\n")
+            AsciinemaEvent(time: 3.0, type: .output, data: "\u{001B}[48;2;255;0;0mRGB background\u{001B}[0m\n"),
         ]
 
         let snapshot = TerminalSnapshot(sessionId: "ansi", header: nil, events: events)
@@ -173,7 +172,7 @@ struct TerminalSnapshotTests {
             AsciinemaEvent(time: 0.0, type: .output, data: "Output 1\n"),
             AsciinemaEvent(time: 1.0, type: .input, data: "ls"),
             AsciinemaEvent(time: 2.0, type: .output, data: "Output 2\n"),
-            AsciinemaEvent(time: 3.0, type: .resize, data: "80x24")
+            AsciinemaEvent(time: 3.0, type: .resize, data: "80x24"),
         ]
 
         let snapshot = TerminalSnapshot(sessionId: "mixed", header: nil, events: events)
@@ -196,8 +195,7 @@ struct TerminalSnapshotTests {
             duration: nil,
             command: nil,
             title: "Test Recording",
-            env: ["SHELL": "/bin/zsh", "TERM": "xterm-256color"]
-        )
+            env: ["SHELL": "/bin/zsh", "TERM": "xterm-256color"])
 
         let snapshot = TerminalSnapshot(sessionId: "header-test", header: header, events: [])
 

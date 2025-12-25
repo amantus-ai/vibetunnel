@@ -12,6 +12,20 @@ const execAsync = promisify(exec);
 // These tests require the real node-pty module, not mocked
 vi.unmock('node-pty');
 
+function normalizeStderr(stderr: string): string {
+  const lines = stderr
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0)
+    .filter(
+      (line) =>
+        line !==
+        'Warning: authenticate-pam native module not found. PAM authentication will not work.'
+    );
+
+  return lines.join('\n');
+}
+
 describe('vt title Command Integration', () => {
   let testControlDir: string;
   let vtScriptPath: string;
@@ -97,7 +111,7 @@ describe('vt title Command Integration', () => {
     );
 
     // Check that command succeeded (no specific output expected from fwd command)
-    expect(stderr).toBe('');
+    expect(normalizeStderr(stderr)).toBe('');
 
     // Verify session.json was updated
     const updatedContent = await fs.readFile(sessionJsonPath, 'utf-8');
@@ -165,7 +179,7 @@ describe('vt title Command Integration', () => {
         { env }
       );
 
-      expect(stderr).toBe('');
+      expect(normalizeStderr(stderr)).toBe('');
 
       // Verify update
       const content = await fs.readFile(sessionJsonPath, 'utf-8');
@@ -235,7 +249,7 @@ describe('vt title Command Integration', () => {
       { env }
     );
 
-    expect(stderr).toBe('');
+    expect(normalizeStderr(stderr)).toBe('');
 
     // Verify update
     const content = await fs.readFile(sessionJsonPath, 'utf-8');

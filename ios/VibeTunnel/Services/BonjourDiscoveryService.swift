@@ -24,7 +24,7 @@ struct DiscoveredServer: Identifiable, Equatable {
 
     var displayName: String {
         // Remove .local suffix if present
-        name.hasSuffix(".local") ? String(name.dropLast(6)) : name
+        self.name.hasSuffix(".local") ? String(self.name.dropLast(6)) : self.name
     }
 
     /// Creates a new DiscoveredServer with a generated UUID
@@ -62,7 +62,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
     private init() {}
 
     func startDiscovery() {
-        guard !isDiscovering else {
+        guard !self.isDiscovering else {
             logger.debug("Already discovering servers")
             return
         }
@@ -70,21 +70,21 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
         logger.info("Starting Bonjour discovery for _vibetunnel._tcp services")
 
         // Clear existing servers
-        discoveredServers.removeAll()
+        self.discoveredServers.removeAll()
 
         // Create browser for VibeTunnel services
         let parameters = NWParameters()
         parameters.includePeerToPeer = true
 
-        browser = NWBrowser(for: .bonjour(type: "_vibetunnel._tcp", domain: nil), using: parameters)
+        self.browser = NWBrowser(for: .bonjour(type: "_vibetunnel._tcp", domain: nil), using: parameters)
 
-        browser?.browseResultsChangedHandler = { [weak self] results, _ in
+        self.browser?.browseResultsChangedHandler = { [weak self] results, _ in
             Task { @MainActor [weak self] in
                 self?.handleBrowseResults(results)
             }
         }
 
-        browser?.stateUpdateHandler = { [weak self] state in
+        self.browser?.stateUpdateHandler = { [weak self] state in
             Task { @MainActor [weak self] in
                 guard let self else { return }
 
@@ -92,7 +92,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
                 case .ready:
                     logger.debug("Browser is ready")
                     self.isDiscovering = true
-                case .failed(let error):
+                case let .failed(error):
                     logger.error("Browser failed with error: \(error)")
                     self.isDiscovering = false
                 case .cancelled:
@@ -104,22 +104,22 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
             }
         }
 
-        browser?.start(queue: queue)
+        self.browser?.start(queue: self.queue)
     }
 
     func stopDiscovery() {
-        guard isDiscovering else { return }
+        guard self.isDiscovering else { return }
 
         logger.info("Stopping Bonjour discovery")
-        browser?.cancel()
-        browser = nil
-        isDiscovering = false
+        self.browser?.cancel()
+        self.browser = nil
+        self.isDiscovering = false
 
         // Cancel all active connections
-        for (_, connection) in activeConnections {
+        for (_, connection) in self.activeConnections {
             connection.cancel()
         }
-        activeConnections.removeAll()
+        self.activeConnections.removeAll()
     }
 
     private func handleBrowseResults(_ results: Set<NWBrowser.Result>) {
@@ -127,7 +127,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
 
         // Create a map of existing servers by name for efficient lookup
         var existingServersByName: [String: DiscoveredServer] = [:]
-        for server in discoveredServers {
+        for server in self.discoveredServers {
             existingServersByName[server.name] = server
         }
 
@@ -138,7 +138,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
         // Process results
         for result in results {
             switch result.endpoint {
-            case .service(let name, let type, let domain, _):
+            case let .service(name, type, domain, _):
                 logger.debug("Found service: \(name) of type \(type) in domain \(domain)")
                 currentServerNames.insert(name)
 
@@ -160,12 +160,11 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
                         name: name,
                         host: "", // Will be resolved
                         port: 0, // Will be resolved
-                        metadata: metadata
-                    )
+                        metadata: metadata)
                     newServers.append(newServer)
 
                     // Start resolving the new server
-                    resolveService(newServer)
+                    self.resolveService(newServer)
                 }
             default:
                 break
@@ -173,7 +172,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
         }
 
         // Cancel connections for servers that are no longer present
-        for server in discoveredServers where !currentServerNames.contains(server.name) {
+        for server in self.discoveredServers where !currentServerNames.contains(server.name) {
             if let connection = activeConnections[server.id] {
                 connection.cancel()
                 activeConnections.removeValue(forKey: server.id)
@@ -181,7 +180,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
         }
 
         // Update discovered servers with the new list
-        discoveredServers = newServers
+        self.discoveredServers = newServers
     }
 
     private func resolveService(_ server: DiscoveredServer) {
@@ -190,13 +189,13 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
         let serverName = server.name
 
         // Don't resolve if already resolved
-        if !server.host.isEmpty && server.port > 0 {
+        if !server.host.isEmpty, server.port > 0 {
             logger.debug("Server \(serverName) already resolved")
             return
         }
 
         // Check if we already have an active connection for this server
-        if activeConnections[serverId] != nil {
+        if self.activeConnections[serverId] != nil {
             logger.debug("Already resolving server \(serverName)")
             return
         }
@@ -207,28 +206,27 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
             name: serverName,
             type: "_vibetunnel._tcp",
             domain: "local",
-            interface: nil
-        )
+            interface: nil)
 
         let connection = NWConnection(to: endpoint, using: parameters)
 
         // Store the connection to track it
-        activeConnections[serverId] = connection
+        self.activeConnections[serverId] = connection
 
         connection.stateUpdateHandler = { [weak self] state in
             switch state {
             case .ready:
                 // Extract resolved endpoint information
-                if case .hostPort(let host, let port) = connection.currentPath?.remoteEndpoint {
+                if case let .hostPort(host, port) = connection.currentPath?.remoteEndpoint {
                     Task { @MainActor [weak self] in
                         guard let self else { return }
 
                         let hostString: String = switch host {
-                        case .ipv4(let address):
+                        case let .ipv4(address):
                             "\(address)"
-                        case .ipv6(let address):
+                        case let .ipv6(address):
                             "\(address)"
-                        case .name(let name, _):
+                        case let .name(name, _):
                             name
                         @unknown default:
                             ""
@@ -244,8 +242,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
                             let updatedServer = DiscoveredServer(
                                 from: originalServer,
                                 host: cleanHost,
-                                port: Int(port.rawValue)
-                            )
+                                port: Int(port.rawValue))
                             self.discoveredServers[index] = updatedServer
 
                             logger.info("Resolved \(serverName) to \(cleanHost):\(port.rawValue)")
@@ -259,7 +256,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
                 }
                 connection.cancel()
 
-            case .failed(let error):
+            case let .failed(error):
                 logger.error("Failed to resolve service \(serverName): \(error)")
                 Task { @MainActor [weak self] in
                     self?.activeConnections.removeValue(forKey: serverId)
@@ -276,7 +273,7 @@ final class BonjourDiscoveryService: BonjourDiscoveryProtocol {
             }
         }
 
-        connection.start(queue: queue)
+        connection.start(queue: self.queue)
     }
 }
 
@@ -296,7 +293,7 @@ struct ServerDiscoverySheet: View {
     var body: some View {
         NavigationStack {
             VStack {
-                if discoveryService.isDiscovering && discoveryService.discoveredServers.isEmpty {
+                if self.discoveryService.isDiscovering, self.discoveryService.discoveredServers.isEmpty {
                     VStack(spacing: 20) {
                         ProgressView()
                             .scaleEffect(1.5)
@@ -304,7 +301,7 @@ struct ServerDiscoverySheet: View {
                             .foregroundColor(Theme.Colors.terminalGray)
                     }
                     .frame(maxHeight: .infinity)
-                } else if discoveryService.discoveredServers.isEmpty {
+                } else if self.discoveryService.discoveredServers.isEmpty {
                     VStack(spacing: 20) {
                         Image(systemName: "wifi.slash")
                             .font(.system(size: 60))
@@ -317,12 +314,12 @@ struct ServerDiscoverySheet: View {
                     }
                     .frame(maxHeight: .infinity)
                 } else {
-                    List(discoveryService.discoveredServers) { server in
+                    List(self.discoveryService.discoveredServers) { server in
                         Button {
-                            selectedHost = server.host
-                            selectedPort = String(server.port)
-                            selectedName = server.displayName
-                            dismiss()
+                            self.selectedHost = server.host
+                            self.selectedPort = String(server.port)
+                            self.selectedName = server.displayName
+                            self.dismiss()
                         } label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
@@ -355,27 +352,27 @@ struct ServerDiscoverySheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        dismiss()
+                        self.dismiss()
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        if discoveryService.isDiscovering {
-                            discoveryService.stopDiscovery()
+                        if self.discoveryService.isDiscovering {
+                            self.discoveryService.stopDiscovery()
                         } else {
-                            discoveryService.startDiscovery()
+                            self.discoveryService.startDiscovery()
                         }
                     } label: {
-                        Image(systemName: discoveryService.isDiscovering ? "stop.circle" : "arrow.clockwise")
+                        Image(systemName: self.discoveryService.isDiscovering ? "stop.circle" : "arrow.clockwise")
                     }
                 }
             }
         }
         .onAppear {
-            discoveryService.startDiscovery()
+            self.discoveryService.startDiscovery()
         }
         .onDisappear {
-            discoveryService.stopDiscovery()
+            self.discoveryService.stopDiscovery()
         }
     }
 }

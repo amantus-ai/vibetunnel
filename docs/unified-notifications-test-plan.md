@@ -20,15 +20,7 @@ printf '\007'
 ```
 **Expected**: Bell notification appears on both Mac and Web
 
-### 2. Claude Turn Notification Test
-```bash
-# Start a Claude session
-claude "Tell me a joke"
-# Wait for Claude to finish responding
-```
-**Expected**: "Claude has finished responding" notification on both platforms
-
-### 3. Command Completion Test (>3 seconds)
+### 2. Command Completion Test (>3 seconds)
 ```bash
 # Run a command that takes more than 3 seconds
 sleep 4
@@ -37,7 +29,7 @@ find / -name "*.txt" 2>/dev/null | head -100
 ```
 **Expected**: Command completion notification after command finishes
 
-### 4. Command Error Test
+### 3. Command Error Test
 ```bash
 # Run a command that fails
 ls /nonexistent/directory
@@ -46,7 +38,7 @@ false
 ```
 **Expected**: Command error notification with exit code
 
-### 5. Session Start/Exit Test
+### 4. Session Start/Exit Test
 ```bash
 # From another terminal or web UI
 # Create new session
@@ -94,7 +86,6 @@ false
   
 - If notifications are delayed:
   - Check if bell detection is working (should be instant)
-  - Claude turn has 2-second debounce by design
   
 - If getting duplicate notifications:
   - Ensure only one VibeTunnel instance is running

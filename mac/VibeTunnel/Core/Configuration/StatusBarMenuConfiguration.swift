@@ -9,7 +9,7 @@ struct StatusBarMenuConfiguration {
     /// Monitors active terminal sessions.
     ///
     /// Tracks the lifecycle of terminal sessions, providing real-time
-    /// updates about session state, activity, and metadata.
+    /// updates about session state and metadata.
     let sessionMonitor: SessionMonitor
 
     /// Manages the VibeTunnel web server.

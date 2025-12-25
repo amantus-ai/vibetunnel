@@ -61,8 +61,7 @@ extension TerminalTheme {
         brightBlue: Theme.Colors.ansiBrightBlue,
         brightMagenta: Theme.Colors.ansiBrightMagenta,
         brightCyan: Theme.Colors.ansiBrightCyan,
-        brightWhite: Theme.Colors.ansiBrightWhite
-    )
+        brightWhite: Theme.Colors.ansiBrightWhite)
 
     /// VS Code Dark theme
     static let vsCodeDark = TerminalTheme(
@@ -88,8 +87,7 @@ extension TerminalTheme {
         brightBlue: Color(hex: "3B8EEA"),
         brightMagenta: Color(hex: "D670D6"),
         brightCyan: Color(hex: "29B8DB"),
-        brightWhite: Color(hex: "FFFFFF")
-    )
+        brightWhite: Color(hex: "FFFFFF"))
 
     /// Solarized Dark theme
     static let solarizedDark = TerminalTheme(
@@ -115,8 +113,7 @@ extension TerminalTheme {
         brightBlue: Color(hex: "839496"),
         brightMagenta: Color(hex: "6C71C4"),
         brightCyan: Color(hex: "93A1A1"),
-        brightWhite: Color(hex: "FDF6E3")
-    )
+        brightWhite: Color(hex: "FDF6E3"))
 
     /// Dracula theme
     static let dracula = TerminalTheme(
@@ -142,8 +139,7 @@ extension TerminalTheme {
         brightBlue: Color(hex: "D6ACFF"),
         brightMagenta: Color(hex: "FF92DF"),
         brightCyan: Color(hex: "A4FFFF"),
-        brightWhite: Color(hex: "FFFFFF")
-    )
+        brightWhite: Color(hex: "FFFFFF"))
 
     /// Nord theme
     static let nord = TerminalTheme(
@@ -169,8 +165,7 @@ extension TerminalTheme {
         brightBlue: Color(hex: "81A1C1"),
         brightMagenta: Color(hex: "B48EAD"),
         brightCyan: Color(hex: "8FBCBB"),
-        brightWhite: Color(hex: "ECEFF4")
-    )
+        brightWhite: Color(hex: "ECEFF4"))
 
     /// All available themes
     static let allThemes: [TerminalTheme] = [
@@ -178,7 +173,7 @@ extension TerminalTheme {
         .vsCodeDark,
         .solarizedDark,
         .dracula,
-        .nord
+        .nord,
     ]
 }
 

@@ -24,7 +24,6 @@ struct AuthConfig {
     /// - Returns: An `AuthConfig` instance with the current authentication mode.
     static func current() -> Self {
         Self(
-            mode: AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.authenticationMode)
-        )
+            mode: AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.authenticationMode))
     }
 }

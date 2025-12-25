@@ -40,31 +40,31 @@ struct GitBranchWorktreeSelector: View {
             // Base Branch Selection
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(selectedWorktree != nil ? "Base Branch for Worktree:" : "Switch to Branch:")
+                    Text(self.selectedWorktree != nil ? "Base Branch for Worktree:" : "Switch to Branch:")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
 
-                    if hasUncommittedChanges && selectedWorktree == nil {
+                    if self.hasUncommittedChanges, self.selectedWorktree == nil {
                         HStack(spacing: 2) {
                             Image(systemName: "circle.fill")
                                 .font(.system(size: 6))
-                                .foregroundColor(AppColors.Fallback.gitChanges(for: colorScheme))
+                                .foregroundColor(AppColors.Fallback.gitChanges(for: self.colorScheme))
                             Text("Uncommitted changes")
                                 .font(.system(size: 9))
-                                .foregroundColor(AppColors.Fallback.gitChanges(for: colorScheme))
+                                .foregroundColor(AppColors.Fallback.gitChanges(for: self.colorScheme))
                         }
                     }
                 }
 
                 Menu {
-                    ForEach(availableBranches, id: \.self) { branch in
+                    ForEach(self.availableBranches, id: \.self) { branch in
                         Button(action: {
-                            selectedBranch = branch
-                            onBranchChanged(branch)
+                            self.selectedBranch = branch
+                            self.onBranchChanged(branch)
                         }, label: {
                             HStack {
                                 Text(branch)
-                                if branch == getCurrentBranch() {
+                                if branch == self.getCurrentBranch() {
                                     Text("(current)")
                                         .foregroundColor(.secondary)
                                 }
@@ -73,7 +73,7 @@ struct GitBranchWorktreeSelector: View {
                     }
                 } label: {
                     HStack {
-                        Text(selectedBranch.isEmpty ? "Select branch" : selectedBranch)
+                        Text(self.selectedBranch.isEmpty ? "Select branch" : self.selectedBranch)
                             .font(.system(size: 12))
                             .lineLimit(1)
                         Spacer()
@@ -86,12 +86,12 @@ struct GitBranchWorktreeSelector: View {
                     .cornerRadius(4)
                 }
                 .buttonStyle(.plain)
-                .disabled(isLoadingBranches || (hasUncommittedChanges && selectedWorktree == nil))
-                .opacity((hasUncommittedChanges && selectedWorktree == nil) ? 0.5 : 1.0)
+                .disabled(self.isLoadingBranches || (self.hasUncommittedChanges && self.selectedWorktree == nil))
+                .opacity((self.hasUncommittedChanges && self.selectedWorktree == nil) ? 0.5 : 1.0)
 
                 // Status text
-                if !isLoadingBranches {
-                    statusText
+                if !self.isLoadingBranches {
+                    self.statusText
                 }
             }
 
@@ -101,25 +101,25 @@ struct GitBranchWorktreeSelector: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
 
-                if !showCreateWorktree {
+                if !self.showCreateWorktree {
                     Menu {
                         Button(action: {
-                            selectedWorktree = nil
-                            onWorktreeChanged(nil)
+                            self.selectedWorktree = nil
+                            self.onWorktreeChanged(nil)
                         }, label: {
-                            Text(worktreeNoneText)
+                            Text(self.worktreeNoneText)
                         })
 
                         Divider()
 
-                        ForEach(availableWorktrees, id: \.id) { worktree in
+                        ForEach(self.availableWorktrees, id: \.id) { worktree in
                             Button(action: {
-                                selectedWorktree = worktree.branch
-                                onWorktreeChanged(worktree.branch)
+                                self.selectedWorktree = worktree.branch
+                                self.onWorktreeChanged(worktree.branch)
                             }, label: {
                                 HStack {
-                                    Text(formatWorktreeName(worktree))
-                                    if followMode && followBranch == worktree.branch {
+                                    Text(self.formatWorktreeName(worktree))
+                                    if self.followMode, self.followBranch == worktree.branch {
                                         Text("⚡️")
                                     }
                                 }
@@ -127,7 +127,7 @@ struct GitBranchWorktreeSelector: View {
                         }
                     } label: {
                         HStack {
-                            Text(selectedWorktreeText)
+                            Text(self.selectedWorktreeText)
                                 .font(.system(size: 12))
                                 .lineLimit(1)
                             Spacer()
@@ -140,12 +140,12 @@ struct GitBranchWorktreeSelector: View {
                         .cornerRadius(4)
                     }
                     .buttonStyle(.plain)
-                    .disabled(isLoadingWorktrees)
+                    .disabled(self.isLoadingWorktrees)
 
                     Button(action: {
-                        showCreateWorktree = true
-                        newBranchName = ""
-                        isNewBranchFieldFocused = true
+                        self.showCreateWorktree = true
+                        self.newBranchName = ""
+                        self.isNewBranchFieldFocused = true
                     }, label: {
                         HStack(spacing: 4) {
                             Image(systemName: "plus")
@@ -160,36 +160,35 @@ struct GitBranchWorktreeSelector: View {
                 } else {
                     // Create Worktree Mode
                     VStack(spacing: 8) {
-                        TextField("New branch name", text: $newBranchName)
+                        TextField("New branch name", text: self.$newBranchName)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(size: 12))
-                            .focused($isNewBranchFieldFocused)
-                            .disabled(isCreatingWorktree)
+                            .focused(self.$isNewBranchFieldFocused)
+                            .disabled(self.isCreatingWorktree)
                             .onSubmit {
-                                if !newBranchName.isEmpty {
-                                    createWorktree()
+                                if !self.newBranchName.isEmpty {
+                                    self.createWorktree()
                                 }
                             }
 
                         HStack(spacing: 8) {
                             Button("Cancel") {
-                                showCreateWorktree = false
-                                newBranchName = ""
-                                errorMessage = nil
+                                self.showCreateWorktree = false
+                                self.newBranchName = ""
+                                self.errorMessage = nil
                             }
                             .font(.system(size: 11))
                             .buttonStyle(.plain)
-                            .disabled(isCreatingWorktree)
+                            .disabled(self.isCreatingWorktree)
 
-                            Button(isCreatingWorktree ? "Creating..." : "Create") {
-                                createWorktree()
+                            Button(self.isCreatingWorktree ? "Creating..." : "Create") {
+                                self.createWorktree()
                             }
                             .font(.system(size: 11))
                             .buttonStyle(.borderedProminent)
                             .disabled(
-                                newBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
-                                    .isEmpty || isCreatingWorktree
-                            )
+                                self.newBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    .isEmpty || self.isCreatingWorktree)
                         }
 
                         if let error = errorMessage {
@@ -202,7 +201,7 @@ struct GitBranchWorktreeSelector: View {
             }
         }
         .task {
-            await loadGitData()
+            await self.loadGitData()
         }
     }
 
@@ -211,21 +210,21 @@ struct GitBranchWorktreeSelector: View {
     @ViewBuilder
     private var statusText: some View {
         VStack(alignment: .leading, spacing: 2) {
-            if hasUncommittedChanges && selectedWorktree == nil {
+            if self.hasUncommittedChanges, self.selectedWorktree == nil {
                 Text("Branch switching is disabled due to uncommitted changes. Commit or stash changes first.")
                     .font(.system(size: 9))
-                    .foregroundColor(AppColors.Fallback.gitChanges(for: colorScheme))
+                    .foregroundColor(AppColors.Fallback.gitChanges(for: self.colorScheme))
             } else if let worktree = selectedWorktree {
                 Text("Session will use worktree: \(worktree)")
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
-            } else if !selectedBranch.isEmpty && selectedBranch != getCurrentBranch() {
-                Text("Session will start on \(selectedBranch)")
+            } else if !self.selectedBranch.isEmpty, self.selectedBranch != self.getCurrentBranch() {
+                Text("Session will start on \(self.selectedBranch)")
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
             }
 
-            if followMode, let branch = followBranch {
+            if self.followMode, let branch = followBranch {
                 Text("Follow mode active: following \(branch)")
                     .font(.system(size: 9))
                     .foregroundColor(.accentColor)
@@ -234,9 +233,11 @@ struct GitBranchWorktreeSelector: View {
     }
 
     private var worktreeNoneText: String {
-        if selectedWorktree != nil {
+        if self.selectedWorktree != nil {
             "No worktree (use main repository)"
-        } else if availableWorktrees.contains(where: { $0.isCurrentWorktree == true && $0.isMainWorktree != true }) {
+        } else if self.availableWorktrees
+            .contains(where: { $0.isCurrentWorktree == true && $0.isMainWorktree != true })
+        {
             "Switch to main repository"
         } else {
             "No worktree (use main repository)"
@@ -247,9 +248,9 @@ struct GitBranchWorktreeSelector: View {
         if let worktree = selectedWorktree,
            let info = availableWorktrees.first(where: { $0.branch == worktree })
         {
-            return formatWorktreeName(info)
+            return self.formatWorktreeName(info)
         }
-        return worktreeNoneText
+        return self.worktreeNoneText
     }
 
     // MARK: - Methods
@@ -271,7 +272,7 @@ struct GitBranchWorktreeSelector: View {
         if worktree.isCurrentWorktree == true {
             result += " (current)"
         }
-        if followMode && followBranch == worktree.branch {
+        if self.followMode, self.followBranch == worktree.branch {
             result += " ⚡️ following"
         }
         return result
@@ -279,65 +280,65 @@ struct GitBranchWorktreeSelector: View {
 
     private func getCurrentBranch() -> String {
         // Get the actual current branch from GitRepositoryMonitor
-        gitMonitor.getCachedRepository(for: repoPath)?.currentBranch ?? selectedBranch
+        self.gitMonitor.getCachedRepository(for: self.repoPath)?.currentBranch ?? self.selectedBranch
     }
 
     private func loadGitData() async {
-        isLoadingBranches = true
-        isLoadingWorktrees = true
+        self.isLoadingBranches = true
+        self.isLoadingWorktrees = true
 
         // Load branches
-        let branches = await gitMonitor.getBranches(for: repoPath)
-        availableBranches = branches
-        if selectedBranch.isEmpty, let firstBranch = branches.first {
-            selectedBranch = firstBranch
+        let branches = await gitMonitor.getBranches(for: self.repoPath)
+        self.availableBranches = branches
+        if self.selectedBranch.isEmpty, let firstBranch = branches.first {
+            self.selectedBranch = firstBranch
         }
-        isLoadingBranches = false
+        self.isLoadingBranches = false
 
         // Load worktrees
-        await worktreeService.fetchWorktrees(for: repoPath)
-        availableWorktrees = worktreeService.worktrees
+        await self.worktreeService.fetchWorktrees(for: self.repoPath)
+        self.availableWorktrees = self.worktreeService.worktrees
 
         // Check follow mode status from the service
         if let followModeStatus = worktreeService.followMode {
-            followMode = followModeStatus.enabled
-            followBranch = followModeStatus.targetBranch
+            self.followMode = followModeStatus.enabled
+            self.followBranch = followModeStatus.targetBranch
         } else {
-            followMode = false
-            followBranch = nil
+            self.followMode = false
+            self.followBranch = nil
         }
 
         if let error = worktreeService.error {
             logger.error("Failed to load worktrees: \(error)")
-            errorMessage = "Failed to load worktrees"
+            self.errorMessage = "Failed to load worktrees"
         }
-        isLoadingWorktrees = false
+        self.isLoadingWorktrees = false
 
         // Check for uncommitted changes
         if let repo = await gitMonitor.findRepository(for: repoPath) {
-            hasUncommittedChanges = repo.hasChanges
+            self.hasUncommittedChanges = repo.hasChanges
         }
     }
 
     private func createWorktree() {
-        let trimmedName = newBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedName = self.newBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return }
 
-        isCreatingWorktree = true
-        errorMessage = nil
+        self.isCreatingWorktree = true
+        self.errorMessage = nil
 
         Task {
             do {
-                try await onCreateWorktree(trimmedName, selectedBranch.isEmpty ? "main" : selectedBranch)
-                isCreatingWorktree = false
-                showCreateWorktree = false
-                newBranchName = ""
+                try await self.onCreateWorktree(trimmedName, self.selectedBranch.isEmpty ? "main" : self.selectedBranch)
+                self.isCreatingWorktree = false
+                self.showCreateWorktree = false
+                self.newBranchName = ""
 
                 // Reload to show new worktree
-                await loadGitData()
+                await self.loadGitData()
             } catch {
-                isCreatingWorktree = false
-                errorMessage = "Failed to create worktree: \(error.localizedDescription)"
+                self.isCreatingWorktree = false
+                self.errorMessage = "Failed to create worktree: \(error.localizedDescription)"
             }
         }
     }

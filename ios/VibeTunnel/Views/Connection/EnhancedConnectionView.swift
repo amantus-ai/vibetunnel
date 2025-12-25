@@ -14,7 +14,7 @@ struct EnhancedConnectionView: View {
     @State private var showingProfileEditor = false
 
     #if targetEnvironment(macCatalyst)
-        @State private var windowManager = MacCatalystWindowManager.shared
+    @State private var windowManager = MacCatalystWindowManager.shared
     #endif
 
     var body: some View {
@@ -23,33 +23,33 @@ struct EnhancedConnectionView: View {
                 ScrollView {
                     VStack(spacing: Theme.Spacing.extraLarge) {
                         // Logo and Title
-                        headerView
+                        self.headerView
                             .padding(.top, {
                                 #if targetEnvironment(macCatalyst)
-                                    return windowManager.windowStyle == .inline ? 60 : 40
+                                return self.windowManager.windowStyle == .inline ? 60 : 40
                                 #else
-                                    return 40
+                                return 40
                                 #endif
                             }())
 
                         // Quick Connect Section
-                        if !profilesViewModel.profiles.isEmpty && !showingNewServerForm {
-                            quickConnectSection
-                                .opacity(contentOpacity)
+                        if !self.profilesViewModel.profiles.isEmpty && !self.showingNewServerForm {
+                            self.quickConnectSection
+                                .opacity(self.contentOpacity)
                                 .onAppear {
                                     withAnimation(Theme.Animation.smooth.delay(0.3)) {
-                                        contentOpacity = 1.0
+                                        self.contentOpacity = 1.0
                                     }
                                 }
                         }
 
                         // New Connection Form
-                        if showingNewServerForm || profilesViewModel.profiles.isEmpty {
-                            newConnectionSection
-                                .opacity(contentOpacity)
+                        if self.showingNewServerForm || self.profilesViewModel.profiles.isEmpty {
+                            self.newConnectionSection
+                                .opacity(self.contentOpacity)
                                 .onAppear {
                                     withAnimation(Theme.Animation.smooth.delay(0.3)) {
-                                        contentOpacity = 1.0
+                                        self.contentOpacity = 1.0
                                     }
                                 }
                         }
@@ -62,41 +62,40 @@ struct EnhancedConnectionView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .background(Theme.Colors.terminalBackground.ignoresSafeArea())
-            .sheet(item: $selectedProfile) { profile in
+            .sheet(item: self.$selectedProfile) { profile in
                 ServerProfileEditView(
                     profile: profile,
                     onSave: { updatedProfile, password in
                         Task {
-                            try await profilesViewModel.updateProfile(updatedProfile, password: password)
-                            selectedProfile = nil
+                            try await self.profilesViewModel.updateProfile(updatedProfile, password: password)
+                            self.selectedProfile = nil
                         }
                     },
                     onDelete: {
                         Task {
-                            try await profilesViewModel.deleteProfile(profile)
-                            selectedProfile = nil
+                            try await self.profilesViewModel.deleteProfile(profile)
+                            self.selectedProfile = nil
                         }
-                    }
-                )
+                    })
             }
-            .sheet(isPresented: $viewModel.showLoginView) {
+            .sheet(isPresented: self.$viewModel.showLoginView) {
                 if let config = connectionManager.serverConfig,
                    let authService = connectionManager.authenticationService
                 {
                     LoginView(
-                        isPresented: $viewModel.showLoginView,
+                        isPresented: self.$viewModel.showLoginView,
                         serverConfig: config,
-                        authenticationService: authService
-                    ) { _, _ in
+                        authenticationService: authService)
+                    { _, _ in
                         // Authentication successful, mark as connected
-                        connectionManager.isConnected = true
+                        self.connectionManager.isConnected = true
                     }
                 }
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
-            profilesViewModel.loadProfiles()
+            self.profilesViewModel.loadProfiles()
         }
     }
 
@@ -118,10 +117,10 @@ struct EnhancedConnectionView: View {
                     .foregroundColor(Theme.Colors.primaryAccent)
                     .glowEffect()
             }
-            .scaleEffect(logoScale)
+            .scaleEffect(self.logoScale)
             .onAppear {
                 withAnimation(Theme.Animation.smooth.delay(0.1)) {
-                    logoScale = 1.0
+                    self.logoScale = 1.0
                 }
             }
 
@@ -155,27 +154,26 @@ struct EnhancedConnectionView: View {
 
                 Button {
                     withAnimation {
-                        showingNewServerForm.toggle()
+                        self.showingNewServerForm.toggle()
                     }
                 } label: {
-                    Image(systemName: showingNewServerForm ? "minus.circle" : "plus.circle")
+                    Image(systemName: self.showingNewServerForm ? "minus.circle" : "plus.circle")
                         .font(.system(size: 20))
                         .foregroundColor(Theme.Colors.primaryAccent)
                 }
             }
 
             VStack(spacing: Theme.Spacing.small) {
-                ForEach(profilesViewModel.profiles) { profile in
+                ForEach(self.profilesViewModel.profiles) { profile in
                     ServerProfileCard(
                         profile: profile,
-                        isLoading: profilesViewModel.isLoading,
+                        isLoading: self.profilesViewModel.isLoading,
                         onConnect: {
-                            connectToProfile(profile)
+                            self.connectToProfile(profile)
                         },
                         onEdit: {
-                            selectedProfile = profile
-                        }
-                    )
+                            self.selectedProfile = profile
+                        })
                 }
             }
         }
@@ -185,7 +183,7 @@ struct EnhancedConnectionView: View {
 
     private var newConnectionSection: some View {
         VStack(spacing: Theme.Spacing.large) {
-            if !profilesViewModel.profiles.isEmpty {
+            if !self.profilesViewModel.profiles.isEmpty {
                 HStack {
                     Text("New Server Connection")
                         .font(Theme.Typography.terminalSystem(size: 18, weight: .semibold))
@@ -196,20 +194,19 @@ struct EnhancedConnectionView: View {
             }
 
             ServerConfigForm(
-                host: $viewModel.host,
-                port: $viewModel.port,
-                name: $viewModel.name,
-                username: $viewModel.username,
-                password: $viewModel.password,
-                isConnecting: viewModel.isConnecting,
-                errorMessage: viewModel.errorMessage,
-                onConnect: saveAndConnect
-            )
+                host: self.$viewModel.host,
+                port: self.$viewModel.port,
+                name: self.$viewModel.name,
+                username: self.$viewModel.username,
+                password: self.$viewModel.password,
+                isConnecting: self.viewModel.isConnecting,
+                errorMessage: self.viewModel.errorMessage,
+                onConnect: self.saveAndConnect)
 
-            if !profilesViewModel.profiles.isEmpty {
+            if !self.profilesViewModel.profiles.isEmpty {
                 Button {
                     withAnimation {
-                        showingNewServerForm = false
+                        self.showingNewServerForm = false
                     }
                 } label: {
                     Text("Cancel")
@@ -224,55 +221,55 @@ struct EnhancedConnectionView: View {
     // MARK: - Actions
 
     private func connectToProfile(_ profile: ServerProfile) {
-        guard networkMonitor.isConnected else {
-            viewModel.errorMessage = "No internet connection available"
+        guard self.networkMonitor.isConnected else {
+            self.viewModel.errorMessage = "No internet connection available"
             return
         }
 
         Task {
             do {
-                try await profilesViewModel.connectToProfile(profile)
+                try await self.profilesViewModel.connectToProfile(profile)
                 // Connection successful - no further action needed
             } catch _ as AuthenticationError {
                 // Auto-login failed, show login modal for manual authentication
-                viewModel.showLoginView = true
+                self.viewModel.showLoginView = true
             } catch {
                 // Network, server, or other errors
-                viewModel.errorMessage = "Failed to connect: \(error.localizedDescription)"
+                self.viewModel.errorMessage = "Failed to connect: \(error.localizedDescription)"
             }
         }
     }
 
     private func saveAndConnect() {
-        guard networkMonitor.isConnected else {
-            viewModel.errorMessage = "No internet connection available"
+        guard self.networkMonitor.isConnected else {
+            self.viewModel.errorMessage = "No internet connection available"
             return
         }
 
         // Create profile from form data
-        let urlString = viewModel.port.isEmpty ? viewModel.host : "\(viewModel.host):\(viewModel.port)"
+        let urlString = self.viewModel.port.isEmpty ? self.viewModel.host : "\(self.viewModel.host):\(self.viewModel.port)"
         guard let profile = profilesViewModel.createProfileFromURL(urlString) else {
-            viewModel.errorMessage = "Invalid server URL"
+            self.viewModel.errorMessage = "Invalid server URL"
             return
         }
 
         var updatedProfile = profile
-        updatedProfile.name = viewModel.name.isEmpty ? profile.name : viewModel.name
-        updatedProfile.requiresAuth = !viewModel.password.isEmpty
+        updatedProfile.name = self.viewModel.name.isEmpty ? profile.name : self.viewModel.name
+        updatedProfile.requiresAuth = !self.viewModel.password.isEmpty
         updatedProfile.username = updatedProfile
-            .requiresAuth ? (viewModel.username.isEmpty ? "admin" : viewModel.username) : nil
+            .requiresAuth ? (self.viewModel.username.isEmpty ? "admin" : self.viewModel.username) : nil
 
         // Save profile and password
         Task {
-            try await profilesViewModel.addProfile(updatedProfile, password: viewModel.password)
+            try await self.profilesViewModel.addProfile(updatedProfile, password: self.viewModel.password)
 
             // Connect
-            connectToProfile(updatedProfile)
+            self.connectToProfile(updatedProfile)
         }
 
         // Reset form
-        viewModel = ConnectionViewModel()
-        showingNewServerForm = false
+        self.viewModel = ConnectionViewModel()
+        self.showingNewServerForm = false
     }
 }
 
@@ -297,29 +294,28 @@ struct ServerProfileEditView: View {
                     HStack {
                         Text("Icon")
                         Spacer()
-                        Image(systemName: profile.iconSymbol)
+                        Image(systemName: self.profile.iconSymbol)
                             .font(.system(size: 24))
                             .foregroundColor(Theme.Colors.primaryAccent)
                     }
 
-                    TextField("Name", text: $profile.name)
-                    TextField("URL", text: $profile.url)
+                    TextField("Name", text: self.$profile.name)
+                    TextField("URL", text: self.$profile.url)
 
-                    Toggle("Requires Authentication", isOn: $profile.requiresAuth)
+                    Toggle("Requires Authentication", isOn: self.$profile.requiresAuth)
 
-                    if profile.requiresAuth {
+                    if self.profile.requiresAuth {
                         TextField("Username", text: Binding(
-                            get: { profile.username ?? "admin" },
-                            set: { profile.username = $0 }
-                        ))
-                        SecureField("Password", text: $password)
+                            get: { self.profile.username ?? "admin" },
+                            set: { self.profile.username = $0 }))
+                        SecureField("Password", text: self.$password)
                             .textContentType(.password)
                     }
                 }
 
                 Section {
                     Button(role: .destructive) {
-                        showingDeleteConfirmation = true
+                        self.showingDeleteConfirmation = true
                     } label: {
                         Label("Delete Server", systemImage: "trash")
                             .foregroundColor(.red)
@@ -331,34 +327,34 @@ struct ServerProfileEditView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
-                        dismiss()
+                        self.dismiss()
                     }
                 }
 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
-                        onSave(profile, profile.requiresAuth ? password : nil)
-                        dismiss()
+                        self.onSave(self.profile, self.profile.requiresAuth ? self.password : nil)
+                        self.dismiss()
                     }
                     .fontWeight(.semibold)
                 }
             }
-            .alert("Delete Server?", isPresented: $showingDeleteConfirmation) {
+            .alert("Delete Server?", isPresented: self.$showingDeleteConfirmation) {
                 Button("Delete", role: .destructive) {
-                    onDelete()
-                    dismiss()
+                    self.onDelete()
+                    self.dismiss()
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Are you sure you want to delete \"\(profile.name)\"? This action cannot be undone.")
+                Text("Are you sure you want to delete \"\(self.profile.name)\"? This action cannot be undone.")
             }
         }
         .task {
             // Load existing password from keychain
-            if profile.requiresAuth,
+            if self.profile.requiresAuth,
                let existingPassword = try? KeychainService().getPassword(for: profile.id)
             {
-                password = existingPassword
+                self.password = existingPassword
             }
         }
     }

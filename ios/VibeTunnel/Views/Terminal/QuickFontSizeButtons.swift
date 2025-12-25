@@ -9,23 +9,22 @@ struct QuickFontSizeButtons: View {
     var body: some View {
         HStack(spacing: 0) {
             // Decrease button
-            Button(action: decreaseFontSize) {
+            Button(action: self.decreaseFontSize) {
                 Image(systemName: "minus")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(fontSize > minSize ? Theme.Colors.primaryAccent : Theme.Colors.secondaryText
-                        .opacity(0.5)
-                    )
+                    .foregroundColor(
+                        self.fontSize > self.minSize ? Theme.Colors.primaryAccent : Theme.Colors.secondaryText
+                            .opacity(0.5))
                     .frame(width: 30, height: 30)
                     .background(Theme.Colors.cardBackground)
                     .overlay(
                         RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                            .stroke(Theme.Colors.cardBorder, lineWidth: 1)
-                    )
+                            .stroke(Theme.Colors.cardBorder, lineWidth: 1))
             }
-            .disabled(fontSize <= minSize)
+            .disabled(self.fontSize <= self.minSize)
 
             // Current size display
-            Text("\(Int(fontSize))")
+            Text("\(Int(self.fontSize))")
                 .font(Theme.Typography.terminalSystem(size: 12, weight: .medium))
                 .foregroundColor(Theme.Colors.terminalForeground)
                 .frame(width: 32)
@@ -36,24 +35,22 @@ struct QuickFontSizeButtons: View {
                         Spacer()
                         Divider()
                             .background(Theme.Colors.cardBorder)
-                    }
-                )
+                    })
 
             // Increase button
-            Button(action: increaseFontSize) {
+            Button(action: self.increaseFontSize) {
                 Image(systemName: "plus")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(fontSize < maxSize ? Theme.Colors.primaryAccent : Theme.Colors.secondaryText
-                        .opacity(0.5)
-                    )
+                    .foregroundColor(
+                        self.fontSize < self.maxSize ? Theme.Colors.primaryAccent : Theme.Colors.secondaryText
+                            .opacity(0.5))
                     .frame(width: 30, height: 30)
                     .background(Theme.Colors.cardBackground)
                     .overlay(
                         RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                            .stroke(Theme.Colors.cardBorder, lineWidth: 1)
-                    )
+                            .stroke(Theme.Colors.cardBorder, lineWidth: 1))
             }
-            .disabled(fontSize >= maxSize)
+            .disabled(self.fontSize >= self.maxSize)
         }
         .background(Theme.Colors.cardBackground)
         .cornerRadius(Theme.CornerRadius.small)
@@ -61,12 +58,12 @@ struct QuickFontSizeButtons: View {
     }
 
     private func decreaseFontSize() {
-        fontSize = max(minSize, fontSize - 1)
+        self.fontSize = max(self.minSize, self.fontSize - 1)
         HapticFeedback.impact(.light)
     }
 
     private func increaseFontSize() {
-        fontSize = min(maxSize, fontSize + 1)
+        self.fontSize = min(self.maxSize, self.fontSize + 1)
         HapticFeedback.impact(.light)
     }
 }

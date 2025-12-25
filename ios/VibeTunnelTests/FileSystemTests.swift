@@ -24,19 +24,19 @@ struct FileSystemTests {
             let path: String
 
             var filename: String {
-                (path as NSString).lastPathComponent
+                (self.path as NSString).lastPathComponent
             }
 
             var `extension`: String {
-                (path as NSString).pathExtension
+                (self.path as NSString).pathExtension
             }
 
             var nameWithoutExtension: String {
-                (filename as NSString).deletingPathExtension
+                (self.filename as NSString).deletingPathExtension
             }
 
             func appendingExtension(_ ext: String) -> String {
-                (path as NSString).appendingPathExtension(ext) ?? path
+                (self.path as NSString).appendingPathExtension(ext) ?? self.path
             }
         }
 
@@ -62,9 +62,9 @@ struct FileSystemTests {
 
             var octalRepresentation: String {
                 var value = 0
-                if isReadable { value += 4 }
-                if isWritable { value += 2 }
-                if isExecutable { value += 1 }
+                if self.isReadable { value += 4 }
+                if self.isWritable { value += 2 }
+                if self.isExecutable { value += 1 }
                 return String(value)
             }
         }
@@ -73,24 +73,21 @@ struct FileSystemTests {
             isReadable: true,
             isWritable: false,
             isExecutable: false,
-            isDeletable: false
-        )
+            isDeletable: false)
         #expect(readOnly.octalRepresentation == "4")
 
         let readWrite = FilePermissions(
             isReadable: true,
             isWritable: true,
             isExecutable: false,
-            isDeletable: true
-        )
+            isDeletable: true)
         #expect(readWrite.octalRepresentation == "6")
 
         let executable = FilePermissions(
             isReadable: true,
             isWritable: false,
             isExecutable: true,
-            isDeletable: false
-        )
+            isDeletable: false)
         #expect(executable.octalRepresentation == "5")
     }
 
@@ -105,7 +102,7 @@ struct FileSystemTests {
             let modificationDate: Date?
 
             var type: String {
-                isDirectory ? "directory" : "file"
+                self.isDirectory ? "directory" : "file"
             }
         }
 
@@ -113,18 +110,16 @@ struct FileSystemTests {
         let fileEntry = DirectoryEntry(
             name: "test.txt",
             isDirectory: false,
-            size: 1_024,
-            modificationDate: Date()
-        )
+            size: 1024,
+            modificationDate: Date())
         #expect(fileEntry.type == "file")
-        #expect(fileEntry.size == 1_024)
+        #expect(fileEntry.size == 1024)
 
         let dirEntry = DirectoryEntry(
             name: "Documents",
             isDirectory: true,
             size: nil,
-            modificationDate: Date()
-        )
+            modificationDate: Date())
         #expect(dirEntry.type == "directory")
         #expect(dirEntry.size == nil)
     }
@@ -137,13 +132,13 @@ struct FileSystemTests {
         }
 
         let files = [
-            ("file1.txt", Int64(1_024)),
-            ("file2.doc", Int64(2_048)),
-            ("image.jpg", Int64(4_096))
+            ("file1.txt", Int64(1024)),
+            ("file2.doc", Int64(2048)),
+            ("image.jpg", Int64(4096)),
         ]
 
         let totalSize = calculateDirectorySize(files: files)
-        #expect(totalSize == 7_168)
+        #expect(totalSize == 7168)
 
         // Test size formatting
         func formatFileSize(_ bytes: Int64) -> String {
@@ -152,7 +147,7 @@ struct FileSystemTests {
             return formatter.string(fromByteCount: bytes)
         }
 
-        #expect(!formatFileSize(1_024).isEmpty)
+        #expect(!formatFileSize(1024).isEmpty)
         #expect(!formatFileSize(1_048_576).isEmpty) // 1 MB
     }
 
@@ -189,15 +184,15 @@ struct FileSystemTests {
             let destinationPath: String
 
             var temporaryPath: String {
-                destinationPath + ".tmp"
+                self.destinationPath + ".tmp"
             }
 
             func writeSteps() -> [String] {
                 [
-                    "Write to temporary file: \(temporaryPath)",
+                    "Write to temporary file: \(self.temporaryPath)",
                     "Verify temporary file integrity",
-                    "Atomically rename to: \(destinationPath)",
-                    "Clean up any failed attempts"
+                    "Atomically rename to: \(self.destinationPath)",
+                    "Clean up any failed attempts",
                 ]
             }
         }
@@ -220,32 +215,29 @@ struct FileSystemTests {
             let contentHash: String
 
             func hasChanged(comparedTo other: FileSnapshot) -> Bool {
-                size != other.size ||
-                    modificationDate != other.modificationDate ||
-                    contentHash != other.contentHash
+                self.size != other.size ||
+                    self.modificationDate != other.modificationDate ||
+                    self.contentHash != other.contentHash
             }
         }
 
         let snapshot1 = FileSnapshot(
             path: "/test/file.txt",
-            size: 1_024,
+            size: 1024,
             modificationDate: Date(),
-            contentHash: "abc123"
-        )
+            contentHash: "abc123")
 
         let snapshot2 = FileSnapshot(
             path: "/test/file.txt",
-            size: 1_024,
+            size: 1024,
             modificationDate: Date().addingTimeInterval(10),
-            contentHash: "abc123"
-        )
+            contentHash: "abc123")
 
         let snapshot3 = FileSnapshot(
             path: "/test/file.txt",
-            size: 2_048,
+            size: 2048,
             modificationDate: Date().addingTimeInterval(20),
-            contentHash: "def456"
-        )
+            contentHash: "def456")
 
         #expect(!snapshot1.hasChanged(comparedTo: snapshot1))
         #expect(snapshot1.hasChanged(comparedTo: snapshot2)) // Different date
@@ -268,7 +260,7 @@ struct FileSystemTests {
             }
 
             var appGroupDirectory: String {
-                "~/Library/Group Containers/\(appGroupIdentifier)"
+                "~/Library/Group Containers/\(self.appGroupIdentifier)"
             }
 
             func isWithinSandbox(_ path: String) -> Bool {
@@ -277,7 +269,7 @@ struct FileSystemTests {
                 let expandedAppGroup = (appGroupDirectory as NSString).expandingTildeInPath
 
                 return normalizedPath.hasPrefix(expandedDocs) ||
-                    normalizedPath.hasPrefix(temporaryDirectory) ||
+                    normalizedPath.hasPrefix(self.temporaryDirectory) ||
                     normalizedPath.hasPrefix(expandedAppGroup)
             }
         }
@@ -301,7 +293,7 @@ struct FileSystemTests {
                 "jpg": "image/jpeg",
                 "png": "image/png",
                 "mp4": "video/mp4",
-                "zip": "application/zip"
+                "zip": "application/zip",
             ]
 
             return mimeTypes[fileExtension.lowercased()] ?? "application/octet-stream"

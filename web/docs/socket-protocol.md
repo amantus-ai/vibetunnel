@@ -12,12 +12,12 @@ VibeTunnel uses a binary framed message protocol over Unix domain sockets for al
    - Creates Unix domain socket at `{session_dir}/ipc.sock`
    - Handles multiple client connections
    - Manages PTY process I/O
-   - Tracks session state and Claude status
+   - Tracks session state
 
 2. **Socket Client** (fwd.ts and other clients)
    - Connects to session's Unix socket
    - Sends stdin data and control commands
-   - Receives status updates and errors
+   - Receives errors and server responses
    - Supports auto-reconnection
 
 ### Socket Path
@@ -48,7 +48,7 @@ VibeTunnel uses a binary framed message protocol over Unix domain sockets for al
 |------|-------|-----------|-------------|
 | STDIN_DATA | 0x01 | Client → Server | Terminal input data |
 | CONTROL_CMD | 0x02 | Client → Server | Control commands (resize, kill) |
-| STATUS_UPDATE | 0x03 | Both | Activity status updates |
+| STATUS_UPDATE | 0x03 | Both | Legacy status updates (ignored) |
 | HEARTBEAT | 0x04 | Both | Connection health check |
 | ERROR | 0x05 | Server → Client | Error messages |
 
@@ -74,17 +74,7 @@ VibeTunnel uses a binary framed message protocol over Unix domain sockets for al
 
 ### STATUS_UPDATE (0x03)
 - **Payload**: JSON object
-- **Format**:
-  ```json
-  {
-    "app": "claude",
-    "status": "✻ Thinking (5s, ↑2.5k tokens)",
-    // Optional extra fields
-    "tokens": 2500,
-    "duration": 5000
-  }
-  ```
-- **Broadcast**: Server broadcasts status updates to all connected clients
+- **Status**: Reserved for legacy clients; server ignores these messages.
 
 ### HEARTBEAT (0x04)
 - **Payload**: Empty (0 bytes)
@@ -135,10 +125,9 @@ VibeTunnel uses a binary framed message protocol over Unix domain sockets for al
 ### Connection Flow
 
 1. Connect to Unix socket at `{session_dir}/ipc.sock`
-2. Receive any initial status updates from server
-3. Send messages as needed
-4. Handle incoming messages asynchronously
-5. Reconnect automatically on disconnection (optional)
+2. Send messages as needed
+3. Handle incoming messages asynchronously
+4. Reconnect automatically on disconnection (optional)
 
 ### Example Usage
 
@@ -153,7 +142,6 @@ const client = new VibeTunnelSocketClient('/path/to/session/ipc.sock', {
 
 // Listen for events
 client.on('connect', () => console.log('Connected'));
-client.on('status', (status) => console.log('Status:', status));
 client.on('error', (err) => console.error('Error:', err));
 
 // Connect and use
@@ -164,9 +152,6 @@ client.sendStdin('echo "Hello, World!"\n');
 
 // Resize terminal
 client.resize(120, 40);
-
-// Send Claude status
-client.sendStatus('claude', '✻ Thinking', { tokens: 1000 });
 
 // Disconnect when done
 client.disconnect();
@@ -182,11 +167,6 @@ The PTY manager creates a Unix domain socket for each session:
 // Create socket server
 const server = net.createServer((client) => {
   const parser = new MessageParser();
-  
-  // Send initial status if available
-  if (claudeStatus) {
-    client.write(frameMessage(MessageType.STATUS_UPDATE, claudeStatus));
-  }
   
   // Handle incoming messages
   client.on('data', (chunk) => {
@@ -208,7 +188,7 @@ The server processes messages based on type:
 
 - **STDIN_DATA**: Write to PTY process
 - **CONTROL_CMD**: Handle resize/kill commands
-- **STATUS_UPDATE**: Store status and broadcast to other clients
+- **STATUS_UPDATE**: Ignored (legacy)
 - **HEARTBEAT**: Echo back to sender
 
 ## Protocol Features
@@ -228,18 +208,10 @@ The protocol handles:
 - **Heartbeats**: Optional periodic heartbeats for connection health
 - **Graceful shutdown**: Proper cleanup of resources
 
-### Status Broadcasting
-
-When a client sends a STATUS_UPDATE:
-1. Server stores the status in memory
-2. Server broadcasts to all other connected clients
-3. New clients receive current status on connection
-
 ## Migration from File-Based IPC
 
 ### Previous System
 - Control commands via `{session_dir}/control-pipe` file
-- Activity updates via `{session_dir}/activity.json` file
 - Required file watching and polling
 
 ### New System

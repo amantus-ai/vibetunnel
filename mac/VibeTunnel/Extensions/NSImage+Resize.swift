@@ -17,8 +17,7 @@ extension NSImage {
             x: (targetSize.width - scaledWidth) / 2,
             y: (targetSize.height - scaledHeight) / 2,
             width: scaledWidth,
-            height: scaledHeight
-        )
+            height: scaledHeight)
 
         // Use high-quality interpolation
         NSGraphicsContext.current?.imageInterpolation = .high
@@ -28,8 +27,7 @@ extension NSImage {
             in: drawingRect,
             from: NSRect(origin: .zero, size: self.size),
             operation: .copy,
-            fraction: 1.0
-        )
+            fraction: 1.0)
 
         image.unlockFocus()
         return image

@@ -34,10 +34,10 @@ struct ConnectionView: View {
                                 .foregroundColor(Theme.Colors.primaryAccent)
                                 .glowEffect()
                         }
-                        .scaleEffect(logoScale)
+                        .scaleEffect(self.logoScale)
                         .onAppear {
                             withAnimation(Theme.Animation.smooth.delay(0.1)) {
-                                logoScale = 1.0
+                                self.logoScale = 1.0
                             }
                         }
 
@@ -60,21 +60,20 @@ struct ConnectionView: View {
 
                     // Connection Form
                     ServerConfigForm(
-                        host: $viewModel.host,
-                        port: $viewModel.port,
-                        name: $viewModel.name,
-                        username: $viewModel.username,
-                        password: $viewModel.password,
-                        isConnecting: viewModel.isConnecting,
-                        errorMessage: viewModel.errorMessage,
-                        onConnect: connectToServer
-                    )
-                    .opacity(contentOpacity)
-                    .onAppear {
-                        withAnimation(Theme.Animation.smooth.delay(0.3)) {
-                            contentOpacity = 1.0
+                        host: self.$viewModel.host,
+                        port: self.$viewModel.port,
+                        name: self.$viewModel.name,
+                        username: self.$viewModel.username,
+                        password: self.$viewModel.password,
+                        isConnecting: self.viewModel.isConnecting,
+                        errorMessage: self.viewModel.errorMessage,
+                        onConnect: self.connectToServer)
+                        .opacity(self.contentOpacity)
+                        .onAppear {
+                            withAnimation(Theme.Animation.smooth.delay(0.3)) {
+                                self.contentOpacity = 1.0
+                            }
                         }
-                    }
 
                     Spacer()
                 }
@@ -90,35 +89,35 @@ struct ConnectionView: View {
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
-            viewModel.loadLastConnection()
+            self.viewModel.loadLastConnection()
         }
-        .sheet(isPresented: $viewModel.showLoginView) {
+        .sheet(isPresented: self.$viewModel.showLoginView) {
             if let config = viewModel.pendingServerConfig,
                let authService = connectionManager.authenticationService
             {
                 LoginView(
-                    isPresented: $viewModel.showLoginView,
+                    isPresented: self.$viewModel.showLoginView,
                     serverConfig: config,
-                    authenticationService: authService
-                ) { _, _ in
+                    authenticationService: authService)
+                { _, _ in
                     // Authentication successful, mark as connected
-                    connectionManager.isConnected = true
+                    self.connectionManager.isConnected = true
                 }
             }
         }
     }
 
     private func connectToServer() {
-        guard networkMonitor.isConnected else {
-            viewModel.errorMessage = "No internet connection available"
+        guard self.networkMonitor.isConnected else {
+            self.viewModel.errorMessage = "No internet connection available"
             return
         }
 
         Task {
-            await viewModel.testConnection { config in
-                connectionManager.saveConnection(config)
+            await self.viewModel.testConnection { config in
+                self.connectionManager.saveConnection(config)
                 // Show login view to authenticate
-                viewModel.showLoginView = true
+                self.viewModel.showLoginView = true
             }
         }
     }
@@ -151,25 +150,24 @@ class ConnectionViewModel {
 
     @MainActor
     func testConnection(onSuccess: @escaping (ServerConfig) -> Void) async {
-        errorMessage = nil
+        self.errorMessage = nil
 
-        guard !host.isEmpty else {
-            errorMessage = "Please enter a server address"
+        guard !self.host.isEmpty else {
+            self.errorMessage = "Please enter a server address"
             return
         }
 
-        guard let portNumber = Int(port), portNumber > 0, portNumber <= 65_535 else {
-            errorMessage = "Please enter a valid port number"
+        guard let portNumber = Int(port), portNumber > 0, portNumber <= 65535 else {
+            self.errorMessage = "Please enter a valid port number"
             return
         }
 
-        isConnecting = true
+        self.isConnecting = true
 
         let config = ServerConfig(
             host: host,
             port: portNumber,
-            name: name.isEmpty ? nil : name
-        )
+            name: name.isEmpty ? nil : self.name)
 
         do {
             // Test basic connectivity by checking health endpoint
@@ -181,30 +179,30 @@ class ConnectionViewModel {
                httpResponse.statusCode == 200
             {
                 // Connection successful, save config and trigger authentication
-                pendingServerConfig = config
+                self.pendingServerConfig = config
                 onSuccess(config)
             } else {
-                errorMessage = "Failed to connect to server"
+                self.errorMessage = "Failed to connect to server"
             }
         } catch {
             if let urlError = error as? URLError {
                 switch urlError.code {
                 case .notConnectedToInternet:
-                    errorMessage = "No internet connection"
+                    self.errorMessage = "No internet connection"
                 case .cannotFindHost:
-                    errorMessage = "Cannot find server"
+                    self.errorMessage = "Cannot find server"
                 case .cannotConnectToHost:
-                    errorMessage = "Cannot connect to server"
+                    self.errorMessage = "Cannot connect to server"
                 case .timedOut:
-                    errorMessage = "Connection timed out"
+                    self.errorMessage = "Connection timed out"
                 default:
-                    errorMessage = "Connection failed: \(error.localizedDescription)"
+                    self.errorMessage = "Connection failed: \(error.localizedDescription)"
                 }
             } else {
-                errorMessage = "Connection failed: \(error.localizedDescription)"
+                self.errorMessage = "Connection failed: \(error.localizedDescription)"
             }
         }
 
-        isConnecting = false
+        self.isConnecting = false
     }
 }

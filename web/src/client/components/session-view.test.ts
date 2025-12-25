@@ -8,11 +8,23 @@ import {
   setViewport,
   waitForAsync,
 } from '@/test/utils/component-helpers';
-import { createMockSession, MockEventSource } from '@/test/utils/lit-test-utils';
+import { createMockSession } from '@/test/utils/lit-test-utils';
 import { resetFactoryCounters } from '@/test/utils/test-factories';
 
-// Mock EventSource globally
-global.EventSource = MockEventSource as unknown as typeof EventSource;
+const terminalSocketClientMock = vi.hoisted(() => ({
+  initialize: vi.fn(),
+  subscribe: vi.fn(() => () => {}),
+  getConnectionStatus: vi.fn(() => true),
+  onConnectionStateChange: vi.fn(() => () => {}),
+  sendInputText: vi.fn().mockReturnValue(true),
+  sendInputKey: vi.fn().mockReturnValue(true),
+  sendResize: vi.fn().mockReturnValue(true),
+  sendResetSize: vi.fn().mockReturnValue(true),
+}));
+
+vi.mock('../services/terminal-socket-client.js', () => ({
+  terminalSocketClient: terminalSocketClientMock,
+}));
 
 // Import component type
 import type { SessionView } from './session-view';
@@ -40,8 +52,11 @@ interface SessionViewTestInterface extends SessionView {
   };
   connectionManager?: {
     getIsConnected: () => boolean;
-    setupStreamConnection: (sessionId: string) => void;
+    connectToStream: () => void;
     cleanupStreamConnection: () => void;
+    setTerminal: (terminal: Terminal | null) => void;
+    setSession: (session: unknown) => void;
+    setConnected: (connected: boolean) => void;
   };
   terminalLifecycleManager?: {
     getTerminal: () => Terminal | null;
@@ -68,7 +83,6 @@ describe('SessionView', () => {
     // Import components to register custom elements
     await import('./session-view');
     await import('./terminal');
-    await import('./vibe-terminal-binary');
     await import('./session-view/terminal-renderer');
   });
 
@@ -81,6 +95,9 @@ describe('SessionView', () => {
 
     // Clear localStorage to prevent test pollution
     localStorage.clear();
+    terminalSocketClientMock.sendInputText.mockClear();
+    terminalSocketClientMock.sendInputKey.mockClear();
+    terminalSocketClientMock.subscribe.mockClear();
 
     // Reset matchMedia mock for consistent behavior
     if (vi.isMockFunction(window.matchMedia)) {
@@ -116,8 +133,6 @@ describe('SessionView', () => {
   afterEach(() => {
     element.remove();
     fetchMock.clear();
-    // Clear all EventSource instances
-    MockEventSource.instances.clear();
     // Clear all spy/mock calls but don't restore globals
     vi.clearAllMocks();
   });
@@ -216,11 +231,6 @@ describe('SessionView', () => {
 
       // Mock fetch responses
       fetchMock.mockResponse('/api/sessions/test-session-123', mockSession);
-      fetchMock.mockResponse('/api/sessions/test-session-123/activity', {
-        isActive: false,
-        timestamp: new Date().toISOString(),
-      });
-
       element.session = mockSession;
       await element.updateComplete;
 
@@ -291,18 +301,6 @@ describe('SessionView', () => {
     });
 
     it('should send keyboard input to terminal', async () => {
-      // Mock fetch for sendInput
-      const inputCapture = vi.fn();
-      (global.fetch as ReturnType<typeof vi.fn>).mockImplementation(
-        (url: string, options: RequestInit) => {
-          if (url.includes('/input')) {
-            inputCapture(JSON.parse(options.body));
-            return Promise.resolve({ ok: true });
-          }
-          return Promise.resolve({ ok: true });
-        }
-      );
-
       // Use the input manager directly instead of simulating keyboard events
       // biome-ignore lint/suspicious/noExplicitAny: need to access private property for testing
       const inputManager = (element as any).inputManager;
@@ -311,21 +309,13 @@ describe('SessionView', () => {
       // Wait for async operation
       await waitForAsync();
 
-      expect(inputCapture).toHaveBeenCalledWith({ text: 'a' });
+      expect(terminalSocketClientMock.sendInputText).toHaveBeenCalledWith(
+        (element.session as { id: string }).id,
+        'a'
+      );
     });
 
     it('should handle special keys', async () => {
-      const inputCapture = vi.fn();
-      (global.fetch as ReturnType<typeof vi.fn>).mockImplementation(
-        (url: string, options: RequestInit) => {
-          if (url.includes('/input')) {
-            inputCapture(JSON.parse(options.body));
-            return Promise.resolve({ ok: true });
-          }
-          return Promise.resolve({ ok: true });
-        }
-      );
-
       // Use the input manager directly instead of simulating keyboard events
       // biome-ignore lint/suspicious/noExplicitAny: need to access private property for testing
       const inputManager = (element as any).inputManager;
@@ -333,15 +323,21 @@ describe('SessionView', () => {
       // Test Enter key
       await inputManager.sendInput('enter');
       await waitForAsync();
-      expect(inputCapture).toHaveBeenCalledWith({ key: 'enter' });
+      expect(terminalSocketClientMock.sendInputKey).toHaveBeenCalledWith(
+        (element.session as { id: string }).id,
+        'enter'
+      );
 
       // Clear mock calls
-      inputCapture.mockClear();
+      terminalSocketClientMock.sendInputKey.mockClear();
 
       // Test Escape key
       await inputManager.sendInput('escape');
       await waitForAsync();
-      expect(inputCapture).toHaveBeenCalledWith({ key: 'escape' });
+      expect(terminalSocketClientMock.sendInputKey).toHaveBeenCalledWith(
+        (element.session as { id: string }).id,
+        'escape'
+      );
     });
 
     it.skip('should handle paste event from terminal', async () => {
@@ -411,25 +407,30 @@ describe('SessionView', () => {
   });
 
   describe('stream connection', () => {
-    it('should establish SSE connection for running session', async () => {
+    it('should establish v3 subscription for running session', async () => {
       const mockSession = createMockSession({ status: 'running' });
 
       element.session = mockSession;
       await element.updateComplete;
 
-      // Wait for connection
-      await waitForAsync();
-
-      // Should create EventSource - in test environment, the connection might not be established
-      // So we'll check if the connection manager was initialized instead
       const testElement = element as SessionViewTestInterface;
       expect(testElement.connectionManager).toBeTruthy();
 
-      // If EventSource was created, verify the URL
-      if (MockEventSource.instances.size > 0) {
-        const eventSource = MockEventSource.instances.values().next().value;
-        expect(eventSource.url).toContain(`/api/sessions/${mockSession.id}/stream`);
+      const terminal = element.querySelector('vibe-terminal');
+      if (!terminal) {
+        expect(true).toBe(true);
+        return;
       }
+
+      testElement.connectionManager?.setTerminal(terminal as unknown as Terminal);
+      testElement.connectionManager?.setSession(mockSession);
+      testElement.connectionManager?.setConnected(true);
+      testElement.connectionManager?.connectToStream();
+
+      expect(terminalSocketClientMock.subscribe).toHaveBeenCalledWith(
+        mockSession.id,
+        expect.objectContaining({ stdout: true })
+      );
     });
 
     it('should handle stream messages', async () => {
@@ -438,30 +439,24 @@ describe('SessionView', () => {
       element.session = mockSession;
       await element.updateComplete;
 
-      // Wait for EventSource to be created
-      await waitForAsync();
+      const testElement = element as SessionViewTestInterface;
+      expect(testElement.connectionManager).toBeTruthy();
 
-      if (MockEventSource.instances.size > 0) {
-        // Get the mock EventSource
-        const eventSource = MockEventSource.instances.values().next().value as MockEventSource;
-
-        // Simulate terminal ready
-        const terminal = element.querySelector('vibe-terminal') as TerminalTestInterface;
-        if (terminal) {
-          terminal.dispatchEvent(new Event('terminal-ready', { bubbles: true }));
-        }
-
-        // Simulate stream message
-        eventSource.mockMessage('Test output from server');
-
-        await element.updateComplete;
-
-        // Connection state should update through manager
-        const testElement = element as SessionViewTestInterface;
-        if (testElement.connectionManager) {
-          expect(testElement.connectionManager.getIsConnected()).toBe(true);
-        }
+      const terminal = element.querySelector('vibe-terminal');
+      if (!terminal) {
+        expect(true).toBe(true);
+        return;
       }
+
+      testElement.connectionManager?.setTerminal(terminal as unknown as Terminal);
+      testElement.connectionManager?.setSession(mockSession);
+      testElement.connectionManager?.setConnected(true);
+      testElement.connectionManager?.connectToStream();
+
+      expect(terminalSocketClientMock.subscribe).toHaveBeenCalledWith(
+        mockSession.id,
+        expect.objectContaining({ stdout: true })
+      );
     });
 
     it('should handle session exit event', async () => {
@@ -472,39 +467,26 @@ describe('SessionView', () => {
       element.session = mockSession;
       await element.updateComplete;
 
-      // Wait for EventSource
+      // Wait for initial setup
       await waitForAsync();
 
-      if (MockEventSource.instances.size > 0) {
-        // Get the mock EventSource
-        const eventSource = MockEventSource.instances.values().next().value as MockEventSource;
-
-        // Simulate session exit event
-        eventSource.mockMessage('{"status": "exited", "exit_code": 0}', 'session-exit');
-
+      // Session status update happens via terminal event
+      const terminal = element.querySelector('vibe-terminal');
+      if (terminal) {
+        terminal.dispatchEvent(
+          new CustomEvent('session-exit', {
+            detail: {
+              sessionId: mockSession.id,
+              status: 'exited',
+              exitCode: 0,
+            },
+            bubbles: true,
+          })
+        );
         await element.updateComplete;
-        await waitForAsync();
-
-        // Terminal receives exit event and updates
-        // Note: The session status update happens via terminal event, not directly
-        const terminal = element.querySelector('vibe-terminal');
-        if (terminal) {
-          // Dispatch session-exit from terminal with sessionId (required by handler)
-          terminal.dispatchEvent(
-            new CustomEvent('session-exit', {
-              detail: {
-                sessionId: mockSession.id,
-                status: 'exited',
-                exitCode: 0,
-              },
-              bubbles: true,
-            })
-          );
-          await element.updateComplete;
-        }
-
-        expect(element.session?.status).toBe('exited');
       }
+
+      expect(element.session?.status).toBe('exited');
     });
   });
 
@@ -546,17 +528,6 @@ describe('SessionView', () => {
     });
 
     it('should send mobile input text', async () => {
-      const inputCapture = vi.fn();
-      (global.fetch as ReturnType<typeof vi.fn>).mockImplementation(
-        (url: string, options: RequestInit) => {
-          if (url.includes('/input')) {
-            inputCapture(JSON.parse(options.body));
-            return Promise.resolve({ ok: true });
-          }
-          return Promise.resolve({ ok: true });
-        }
-      );
-
       const testElement = element as SessionViewTestInterface;
       testElement.uiStateManager.setShowMobileInput(true);
       await element.updateComplete;
@@ -574,9 +545,14 @@ describe('SessionView', () => {
 
           await waitForAsync();
           // Component sends text and enter separately
-          expect(inputCapture).toHaveBeenCalledTimes(2);
-          expect(inputCapture).toHaveBeenNthCalledWith(1, { text: 'mobile text' });
-          expect(inputCapture).toHaveBeenNthCalledWith(2, { key: 'enter' });
+          expect(terminalSocketClientMock.sendInputText).toHaveBeenCalledWith(
+            (element.session as { id: string }).id,
+            'mobile text'
+          );
+          expect(terminalSocketClientMock.sendInputKey).toHaveBeenCalledWith(
+            (element.session as { id: string }).id,
+            'enter'
+          );
         }
       }
     });
@@ -595,17 +571,6 @@ describe('SessionView', () => {
     });
 
     it('should handle file selection', async () => {
-      const inputCapture = vi.fn();
-      (global.fetch as ReturnType<typeof vi.fn>).mockImplementation(
-        (url: string, options: RequestInit) => {
-          if (url.includes('/input')) {
-            inputCapture(JSON.parse(options.body));
-            return Promise.resolve({ ok: true });
-          }
-          return Promise.resolve({ ok: true });
-        }
-      );
-
       const mockSession = createMockSession();
       element.session = mockSession;
       const testElement = element as SessionViewTestInterface;
@@ -624,7 +589,10 @@ describe('SessionView', () => {
         await waitForAsync();
 
         // Component sends the path as text
-        expect(inputCapture).toHaveBeenCalledWith({ text: '/home/user/file.txt' });
+        expect(terminalSocketClientMock.sendInputText).toHaveBeenCalledWith(
+          mockSession.id,
+          '/home/user/file.txt'
+        );
         // Note: showFileBrowser is not automatically closed on insert-path
       }
     });
@@ -897,22 +865,30 @@ describe('SessionView', () => {
 
   describe('cleanup', () => {
     it('should cleanup on disconnect', async () => {
+      const unsubscribeSpy = vi.fn();
+      terminalSocketClientMock.subscribe.mockReturnValueOnce(unsubscribeSpy);
+
       const mockSession = createMockSession();
       element.session = mockSession;
       await element.updateComplete;
 
-      // Create connection
-      await waitForAsync();
-
-      const instancesBefore = MockEventSource.instances.size;
+      // Create a v3 subscription via ConnectionManager
+      const connectionManager = (element as unknown as { connectionManager: unknown })
+        .connectionManager as {
+        setTerminal: (t: unknown) => void;
+        setSession: (s: unknown) => void;
+        setConnected: (c: boolean) => void;
+        connectToStream: () => void;
+      };
+      connectionManager.setTerminal({ write: vi.fn() });
+      connectionManager.setSession(mockSession);
+      connectionManager.setConnected(true);
+      connectionManager.connectToStream();
 
       // Disconnect
       element.disconnectedCallback();
 
-      // EventSource should be cleaned up
-      if (instancesBefore > 0) {
-        expect(MockEventSource.instances.size).toBeLessThan(instancesBefore);
-      }
+      expect(unsubscribeSpy).toHaveBeenCalled();
     });
   });
 

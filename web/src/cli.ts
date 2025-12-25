@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 // Entry point for the server - imports the modular server which starts automatically
 
-// Suppress xterm.js errors globally - must be before any other imports
-import { suppressXtermErrors } from './shared/suppress-xterm-errors.js';
-
-suppressXtermErrors();
-
+import { spawn } from 'child_process';
+import { existsSync } from 'fs';
+import * as path from 'path';
 import { startVibeTunnelForward } from './server/fwd.js';
 import { startVibeTunnelServer } from './server/server.js';
 import { closeLogger, createLogger, initLogger, VerbosityLevel } from './server/utils/logger.js';
@@ -102,7 +100,46 @@ function printVersion(): void {
  * Handle command forwarding to a session
  */
 async function handleForwardCommand(): Promise<void> {
+  const resolveForwarder = (): string | null => {
+    const envOverride = process.env.VIBETUNNEL_FWD_BIN;
+    if (envOverride && existsSync(envOverride)) {
+      return envOverride;
+    }
+
+    const candidates: string[] = [];
+    // Next to the current executable (SEA/app bundle)
+    candidates.push(path.join(path.dirname(process.execPath), 'vibetunnel-fwd'));
+
+    // Next to this module (dev and npm installs)
+    const moduleDir = __dirname;
+    candidates.push(path.resolve(moduleDir, '..', 'bin', 'vibetunnel-fwd'));
+    candidates.push(path.resolve(moduleDir, '..', 'native', 'vibetunnel-fwd'));
+
+    for (const candidate of candidates) {
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
+  };
+
   try {
+    const forwarder = resolveForwarder();
+    if (forwarder) {
+      const args = process.argv.slice(3);
+      const child = spawn(forwarder, args, { stdio: 'inherit' });
+      child.on('error', (error) => {
+        logger.error('Failed to start native forwarder:', error);
+        closeLogger();
+        process.exit(1);
+      });
+      child.on('exit', (code) => {
+        closeLogger();
+        process.exit(code ?? 1);
+      });
+      return;
+    }
+
     await startVibeTunnelForward(process.argv.slice(3));
   } catch (error) {
     logger.error('Fatal error:', error);

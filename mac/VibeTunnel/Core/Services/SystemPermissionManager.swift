@@ -58,13 +58,12 @@ final class SystemPermissionManager {
     /// Permission states
     private(set) var permissions: [SystemPermission: Bool] = [
         .appleScript: false,
-        .accessibility: false
+        .accessibility: false,
     ]
 
     private let logger = Logger(
         subsystem: BundleIdentifiers.loggerSubsystem,
-        category: "SystemPermissions"
-    )
+        category: "SystemPermissions")
 
     /// Timer for monitoring permission changes
     private var monitorTimer: Timer?
@@ -86,55 +85,55 @@ final class SystemPermissionManager {
 
     /// Check if a specific permission is granted
     func hasPermission(_ permission: SystemPermission) -> Bool {
-        permissions[permission] ?? false
+        self.permissions[permission] ?? false
     }
 
     /// Check if all permissions are granted
     var hasAllPermissions: Bool {
-        permissions.values.allSatisfy(\.self)
+        self.permissions.values.allSatisfy(\.self)
     }
 
     /// Get list of missing permissions
     var missingPermissions: [SystemPermission] {
-        permissions.compactMap { permission, granted in
+        self.permissions.compactMap { permission, granted in
             granted ? nil : permission
         }
     }
 
     /// Request a specific permission
     func requestPermission(_ permission: SystemPermission) {
-        logger.info("Requesting \(permission.displayName) permission")
+        self.logger.info("Requesting \(permission.displayName) permission")
 
         switch permission {
         case .appleScript:
-            requestAppleScriptPermission()
+            self.requestAppleScriptPermission()
         case .accessibility:
-            requestAccessibilityPermission()
+            self.requestAccessibilityPermission()
         }
     }
 
     /// Request all missing permissions
     func requestAllMissingPermissions() {
-        for permission in missingPermissions {
-            requestPermission(permission)
+        for permission in self.missingPermissions {
+            self.requestPermission(permission)
         }
     }
 
     /// Force a permission recheck (useful when user manually changes settings)
     func forcePermissionRecheck() {
-        logger.info("Force permission recheck requested")
+        self.logger.info("Force permission recheck requested")
 
         // Clear any cached values
-        permissions[.accessibility] = false
-        permissions[.appleScript] = false
+        self.permissions[.accessibility] = false
+        self.permissions[.appleScript] = false
 
         // Immediate check
         Task { @MainActor in
-            await checkAllPermissions()
+            await self.checkAllPermissions()
 
             // Double-check after a delay to catch any async updates
             try? await Task.sleep(for: .milliseconds(500))
-            await checkAllPermissions()
+            await self.checkAllPermissions()
         }
     }
 
@@ -154,7 +153,7 @@ final class SystemPermissionManager {
         alert.addButton(withTitle: "Cancel")
 
         if alert.runModal() == .alertFirstButtonReturn {
-            requestPermission(permission)
+            self.requestPermission(permission)
         }
     }
 
@@ -162,51 +161,51 @@ final class SystemPermissionManager {
 
     /// Register for permission monitoring (call when a view appears)
     func registerForMonitoring() {
-        monitorRegistrationCount += 1
-        logger.debug("Registered for monitoring, count: \(self.monitorRegistrationCount)")
+        self.monitorRegistrationCount += 1
+        self.logger.debug("Registered for monitoring, count: \(self.monitorRegistrationCount)")
 
-        if monitorRegistrationCount == 1 {
+        if self.monitorRegistrationCount == 1 {
             // First registration, start monitoring
-            startMonitoring()
+            self.startMonitoring()
         }
     }
 
     /// Unregister from permission monitoring (call when a view disappears)
     func unregisterFromMonitoring() {
-        monitorRegistrationCount = max(0, monitorRegistrationCount - 1)
-        logger.debug("Unregistered from monitoring, count: \(self.monitorRegistrationCount)")
+        self.monitorRegistrationCount = max(0, self.monitorRegistrationCount - 1)
+        self.logger.debug("Unregistered from monitoring, count: \(self.monitorRegistrationCount)")
 
-        if monitorRegistrationCount == 0 {
+        if self.monitorRegistrationCount == 0 {
             // No more registrations, stop monitoring
-            stopMonitoring()
+            self.stopMonitoring()
         }
     }
 
     private func startMonitoring() {
-        logger.info("Starting permission monitoring (registration count: \(self.monitorRegistrationCount))")
+        self.logger.info("Starting permission monitoring (registration count: \(self.monitorRegistrationCount))")
 
         // Initial check
         Task {
-            await checkAllPermissions()
+            await self.checkAllPermissions()
         }
 
         // Start timer for periodic checks
-        monitorTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        self.monitorTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor in
                 await self.checkAllPermissions()
             }
         }
 
-        logger.debug("Permission monitoring timer created: \(String(describing: self.monitorTimer))")
+        self.logger.debug("Permission monitoring timer created: \(String(describing: self.monitorTimer))")
     }
 
     private func stopMonitoring() {
-        logger.info("Stopping permission monitoring (registration count: \(self.monitorRegistrationCount))")
-        monitorTimer?.invalidate()
-        monitorTimer = nil
+        self.logger.info("Stopping permission monitoring (registration count: \(self.monitorRegistrationCount))")
+        self.monitorTimer?.invalidate()
+        self.monitorTimer = nil
         // Clear the last check time to ensure immediate check on next start
-        lastPermissionCheck = nil
+        self.lastPermissionCheck = nil
     }
 
     // MARK: - Permission Checking
@@ -219,15 +218,15 @@ final class SystemPermissionManager {
             return
         }
 
-        lastPermissionCheck = Date()
-        let oldPermissions = permissions
+        self.lastPermissionCheck = Date()
+        let oldPermissions = self.permissions
 
         // Check each permission type
-        permissions[.appleScript] = await checkAppleScriptPermission()
-        permissions[.accessibility] = checkAccessibilityPermission()
+        self.permissions[.appleScript] = await self.checkAppleScriptPermission()
+        self.permissions[.accessibility] = self.checkAccessibilityPermission()
 
         // Post notification if any permissions changed
-        if oldPermissions != permissions {
+        if oldPermissions != self.permissions {
             NotificationCenter.default.post(name: .permissionsUpdated, object: nil)
         }
     }
@@ -252,7 +251,7 @@ final class SystemPermissionManager {
             }
             return false
         } catch {
-            logger.debug("AppleScript check failed with unexpected error: \(error)")
+            self.logger.debug("AppleScript check failed with unexpected error: \(error)")
             return false
         }
     }
@@ -269,12 +268,12 @@ final class SystemPermissionManager {
             do {
                 _ = try await AppleScriptExecutor.shared.executeAsync(triggerScript, timeout: 15.0)
             } catch {
-                logger.info("AppleScript permission dialog triggered")
+                self.logger.info("AppleScript permission dialog triggered")
             }
 
             // Open System Settings after a delay
             try? await Task.sleep(for: .milliseconds(500))
-            openSystemSettings(for: .appleScript)
+            self.openSystemSettings(for: .appleScript)
         }
     }
 
@@ -283,7 +282,7 @@ final class SystemPermissionManager {
     private func checkAccessibilityPermission() -> Bool {
         // First check the API
         let apiResult = AXIsProcessTrusted()
-        logger.debug("AXIsProcessTrusted returned: \(apiResult)")
+        self.logger.debug("AXIsProcessTrusted returned: \(apiResult)")
 
         // More comprehensive test - try to get focused application and its windows
         // This definitely requires accessibility permission
@@ -292,8 +291,7 @@ final class SystemPermissionManager {
         let appResult = AXUIElementCopyAttributeValue(
             systemElement,
             kAXFocusedApplicationAttribute as CFString,
-            &focusedApp
-        )
+            &focusedApp)
 
         if appResult == .success, let app = focusedApp {
             // Try to get windows from the app - this definitely needs accessibility
@@ -304,25 +302,25 @@ final class SystemPermissionManager {
             let windowResult = AXUIElementCopyAttributeValue(
                 axElement,
                 kAXWindowsAttribute as CFString,
-                &windows
-            )
+                &windows)
 
             let hasAccess = windowResult == .success
-            logger.debug("Comprehensive accessibility test result: \(hasAccess), can get windows: \(windows != nil)")
+            self.logger
+                .debug("Comprehensive accessibility test result: \(hasAccess), can get windows: \(windows != nil)")
 
             if hasAccess {
-                logger.debug("Accessibility permission verified through comprehensive test")
+                self.logger.debug("Accessibility permission verified through comprehensive test")
                 return true
             } else if apiResult {
                 // API says yes but comprehensive test failed - permission not actually working
-                logger.debug("Accessibility API reports true but comprehensive test failed")
+                self.logger.debug("Accessibility API reports true but comprehensive test failed")
                 return false
             }
         } else {
             // Can't even get focused app
-            logger.debug("Cannot get focused application - accessibility permission not granted")
+            self.logger.debug("Cannot get focused application - accessibility permission not granted")
             if apiResult {
-                logger.debug("API reports true but cannot access UI elements")
+                self.logger.debug("API reports true but cannot access UI elements")
             }
         }
 
@@ -335,9 +333,9 @@ final class SystemPermissionManager {
         let alreadyTrusted = AXIsProcessTrustedWithOptions(options)
 
         if alreadyTrusted {
-            logger.info("Accessibility permission already granted")
+            self.logger.info("Accessibility permission already granted")
         } else {
-            logger.info("Accessibility permission dialog triggered")
+            self.logger.info("Accessibility permission dialog triggered")
 
             // Also open System Settings as a fallback
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in

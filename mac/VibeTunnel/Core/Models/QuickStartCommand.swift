@@ -28,7 +28,7 @@ struct QuickStartCommand: Identifiable, Codable, Equatable {
     /// This provides a cleaner UI experience while still showing the command
     /// when no custom name is set.
     var displayName: String {
-        name ?? command
+        self.name ?? self.command
     }
 
     /// Creates a new quick start command.

@@ -20,10 +20,12 @@ vi.mock('util', () => {
 });
 
 vi.mock('../../server/pty/session-manager.js', () => ({
-  SessionManager: vi.fn(() => ({
-    listSessions: vi.fn().mockReturnValue([]),
-    updateSessionName: vi.fn(),
-  })),
+  SessionManager: vi.fn(function SessionManager() {
+    return {
+      listSessions: vi.fn().mockReturnValue([]),
+      updateSessionName: vi.fn(),
+    };
+  }),
 }));
 
 vi.mock('../../server/websocket/control-unix-handler.js', () => ({
@@ -206,7 +208,9 @@ describe('Git Routes', () => {
 
       // Make SessionManager constructor return our mock instance
       (SessionManager as unknown as ReturnType<typeof vi.fn>).mockImplementation(
-        () => mockSessionManagerInstance
+        function SessionManager() {
+          return mockSessionManagerInstance;
+        }
       );
     });
 

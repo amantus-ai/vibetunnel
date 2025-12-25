@@ -49,6 +49,7 @@ export async function toggleExitedSessions(page: Page): Promise<boolean> {
         const hasShowButton = buttons.some((btn) => btn.textContent?.match(/Show Exited/i));
         return hasHideButton || hasShowButton;
       },
+      undefined,
       { timeout: TIMEOUTS.UI_UPDATE }
     );
   }
@@ -74,6 +75,7 @@ export async function ensureExitedSessionsVisible(page: Page): Promise<void> {
         const buttons = Array.from(document.querySelectorAll('button'));
         return buttons.some((btn) => btn.textContent?.match(/Hide Exited/i));
       },
+      undefined,
       { timeout: TIMEOUTS.UI_UPDATE }
     );
   }
@@ -95,6 +97,7 @@ export async function ensureExitedSessionsHidden(page: Page): Promise<void> {
         const buttons = Array.from(document.querySelectorAll('button'));
         return buttons.some((btn) => btn.textContent?.match(/Show Exited/i));
       },
+      undefined,
       { timeout: TIMEOUTS.UI_UPDATE }
     );
   }
@@ -121,6 +124,7 @@ export async function ensureAllSessionsVisible(page: Page): Promise<void> {
         const buttons = Array.from(document.querySelectorAll('button'));
         return buttons.some((btn) => btn.textContent?.match(/Hide Exited/i));
       },
+      undefined,
       { timeout: TIMEOUTS.UI_UPDATE }
     );
 

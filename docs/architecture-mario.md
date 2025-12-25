@@ -47,7 +47,7 @@ sequenceDiagram
     alt External Terminal
         FWD-->>TTY: mirror stdout to terminal
     end
-    Server-->>UI: SSE stream (truncated)
+    Server-->>UI: WS v3 stream (truncated + multiplexed)
 ```
 
 ### Key Files and Their Roles
@@ -64,7 +64,7 @@ sequenceDiagram
 
 #### Input Path (Keystroke → Terminal)
 1. Browser captures key press
-2. WebSocket sends to `/api/sessions/:id/input`
+2. WebSocket v3 sends to `/ws` (`INPUT_TEXT`/`INPUT_KEY`/`RESIZE`)
 3. Server writes to IPC socket
 4. PTY Manager writes to process stdin
 5. Process executes command
@@ -72,12 +72,11 @@ sequenceDiagram
 #### Output Path (Terminal → Browser)
 1. Process writes to stdout
 2. PTY Manager captures via `onData` handler
-3. Writes to ascinema file (with write queue for backpressure)
-4. Stream watcher monitors file changes
-5. For existing content: **scans for last clear sequence**
-6. Client receives via:
-   - SSE: `/api/sessions/:id/stream` (text/ascinema format)
-   - WebSocket: `/buffers` (binary cell format)
+3. Writes to asciinema cast file (with write queue for backpressure)
+4. CastOutputHub tails file + scans for last clear sequence (pruning)
+5. Client receives via `/ws` v3:
+   - `STDOUT` (UTF-8 bytes)
+   - `SNAPSHOT_VT` (server-rendered VT snapshot bytes)
 
 ### Binary Cell Buffer Format
 
@@ -306,9 +305,9 @@ window.addEventListener('resize', () => {
 ```
 
 ### Monitor Network Traffic
-- Check `/api/sessions/:id/stream` response size
-- Verify only sends data after last clear
-- Monitor WebSocket `/buffers` for binary updates
+- Check `/ws` traffic (v3 frames) for `STDOUT` and `SNAPSHOT_VT`
+- Verify pruning works (no replay before last clear)
+- Use `/api/sessions/:id/snapshot` for snapshot/export debugging
 
 ## Architectural Insights
 

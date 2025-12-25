@@ -38,8 +38,7 @@ final class WindowTracker {
 
     private let logger = Logger(
         subsystem: BundleIdentifiers.loggerSubsystem,
-        category: "WindowTracker"
-    )
+        category: "WindowTracker")
 
     /// Maps session IDs to their terminal window information
     private var sessionWindowMap: [String: WindowInfo] = [:]
@@ -73,7 +72,7 @@ final class WindowTracker {
     private let processTracker = ProcessTracker()
 
     private init() {
-        logger.info("WindowTracker initialized")
+        self.logger.info("WindowTracker initialized")
     }
 
     // MARK: - Window Registration
@@ -83,16 +82,16 @@ final class WindowTracker {
     /// Only sessions registered here will have their windows closed on termination.
     func registerSessionOpenedByUs(
         for sessionID: String,
-        terminalApp: Terminal
-    ) {
-        logger.info("Registering session opened by us: \(sessionID), terminal: \(terminalApp.rawValue)")
+        terminalApp: Terminal)
+    {
+        self.logger.info("Registering session opened by us: \(sessionID), terminal: \(terminalApp.rawValue)")
 
         // Mark this session as opened by us, so we can close its window later
         // This is the critical point where we distinguish between:
         // - Sessions we created via AppleScript (can close)
         // - Sessions attached via `vt` command (cannot close)
-        _ = mapLock.withLock {
-            sessionsOpenedByUs.insert(sessionID)
+        _ = self.mapLock.withLock {
+            self.sessionsOpenedByUs.insert(sessionID)
         }
 
         // Window finding is now handled dynamically when needed (focus/close)
@@ -104,20 +103,20 @@ final class WindowTracker {
         for sessionID: String,
         terminalApp: Terminal,
         tabReference: String? = nil,
-        tabID: String? = nil
-    ) {
+        tabID: String? = nil)
+    {
         // Simply mark the session as opened by us
         // We no longer store tab references as they become stale
-        registerSessionOpenedByUs(for: sessionID, terminalApp: terminalApp)
+        self.registerSessionOpenedByUs(for: sessionID, terminalApp: terminalApp)
     }
 
     /// Unregisters a window for a session.
     func unregisterWindow(for sessionID: String) {
-        mapLock.withLock {
-            if sessionWindowMap.removeValue(forKey: sessionID) != nil {
-                logger.info("Unregistered window for session: \(sessionID)")
+        self.mapLock.withLock {
+            if self.sessionWindowMap.removeValue(forKey: sessionID) != nil {
+                self.logger.info("Unregistered window for session: \(sessionID)")
             }
-            sessionsOpenedByUs.remove(sessionID)
+            self.sessionsOpenedByUs.remove(sessionID)
         }
     }
 
@@ -125,15 +124,15 @@ final class WindowTracker {
 
     /// Gets the window information for a specific session.
     func windowInfo(for sessionID: String) -> WindowInfo? {
-        mapLock.withLock {
-            sessionWindowMap[sessionID]
+        self.mapLock.withLock {
+            self.sessionWindowMap[sessionID]
         }
     }
 
     /// Gets all tracked windows.
     func allTrackedWindows() -> [WindowInfo] {
-        mapLock.withLock {
-            Array(sessionWindowMap.values)
+        self.mapLock.withLock {
+            Array(self.sessionWindowMap.values)
         }
     }
 
@@ -142,19 +141,19 @@ final class WindowTracker {
     /// Focuses the terminal window for a specific session.
     func focusWindow(for sessionID: String) {
         guard let windowInfo = windowInfo(for: sessionID) else {
-            logger.warning("No window registered for session: \(sessionID)")
+            self.logger.warning("No window registered for session: \(sessionID)")
             return
         }
 
-        logger.info("Focusing window for session: \(sessionID), terminal: \(windowInfo.terminalApp.rawValue)")
+        self.logger.info("Focusing window for session: \(sessionID), terminal: \(windowInfo.terminalApp.rawValue)")
 
         // Check permissions before attempting to focus
-        guard permissionChecker.checkPermissions() else {
+        guard self.permissionChecker.checkPermissions() else {
             return
         }
 
         // Delegate to the window focuser
-        windowFocuser.focusWindow(windowInfo)
+        self.windowFocuser.focusWindow(windowInfo)
     }
 
     // MARK: - Window Closing
@@ -184,43 +183,43 @@ final class WindowTracker {
     @discardableResult
     func closeWindowIfOpenedByUs(for sessionID: String) -> Bool {
         // Check if we opened this window
-        let wasOpenedByUs = mapLock.withLock {
-            sessionsOpenedByUs.contains(sessionID)
+        let wasOpenedByUs = self.mapLock.withLock {
+            self.sessionsOpenedByUs.contains(sessionID)
         }
 
         guard wasOpenedByUs else {
-            logger.info("Session \(sessionID) was not opened by VibeTunnel, not closing window")
+            self.logger.info("Session \(sessionID) was not opened by VibeTunnel, not closing window")
             return false
         }
 
         // Use dynamic lookup to find the window
         // This is more reliable than stored references which can become stale
         guard let sessionInfo = getSessionInfo(for: sessionID) else {
-            logger.warning("No session info found for session: \(sessionID)")
-            unregisterWindow(for: sessionID)
+            self.logger.warning("No session info found for session: \(sessionID)")
+            self.unregisterWindow(for: sessionID)
             return false
         }
 
         guard let windowInfo = findWindowForSession(sessionID, sessionInfo: sessionInfo) else {
-            logger.warning("Could not find window for session \(sessionID) - it may have been closed already")
+            self.logger.warning("Could not find window for session \(sessionID) - it may have been closed already")
             // Clean up tracking since window is gone
-            unregisterWindow(for: sessionID)
+            self.unregisterWindow(for: sessionID)
             return false
         }
 
-        logger.info("Closing window for session: \(sessionID), terminal: \(windowInfo.terminalApp.rawValue)")
+        self.logger.info("Closing window for session: \(sessionID), terminal: \(windowInfo.terminalApp.rawValue)")
 
         // Generate and execute AppleScript to close the window
-        let closeScript = generateCloseWindowScript(for: windowInfo)
+        let closeScript = self.generateCloseWindowScript(for: windowInfo)
         do {
             try AppleScriptExecutor.shared.execute(closeScript)
-            logger.info("Successfully closed window for session: \(sessionID)")
+            self.logger.info("Successfully closed window for session: \(sessionID)")
 
             // Clean up tracking
-            unregisterWindow(for: sessionID)
+            self.unregisterWindow(for: sessionID)
             return true
         } catch {
-            logger.error("Failed to close window for session \(sessionID): \(error)")
+            self.logger.error("Failed to close window for session \(sessionID): \(error)")
             return false
         }
     }
@@ -299,7 +298,7 @@ final class WindowTracker {
 
         default:
             // For other terminals, we don't have reliable window closing
-            logger.warning("Cannot close window for \(windowInfo.terminalApp.rawValue) - terminal not supported")
+            self.logger.warning("Cannot close window for \(windowInfo.terminalApp.rawValue) - terminal not supported")
             return ""
         }
     }
@@ -308,12 +307,12 @@ final class WindowTracker {
 
     /// Check if we have the required permissions.
     func checkPermissions() -> Bool {
-        permissionChecker.checkPermissions()
+        self.permissionChecker.checkPermissions()
     }
 
     /// Request accessibility permissions.
     func requestPermissions() {
-        permissionChecker.requestPermissions()
+        self.permissionChecker.requestPermissions()
     }
 
     // MARK: - Session Updates
@@ -326,16 +325,16 @@ final class WindowTracker {
         let sessionIDs = Set(sessions.map(\.id))
 
         // Remove windows for sessions that no longer exist
-        mapLock.withLock {
+        self.mapLock.withLock {
             let trackedSessions = Set(sessionWindowMap.keys)
             let sessionsToRemove = trackedSessions.subtracting(sessionIDs)
 
             for sessionID in sessionsToRemove {
-                if sessionWindowMap.removeValue(forKey: sessionID) != nil {
-                    logger.info("Removed window tracking for terminated session: \(sessionID)")
+                if self.sessionWindowMap.removeValue(forKey: sessionID) != nil {
+                    self.logger.info("Removed window tracking for terminated session: \(sessionID)")
                 }
                 // Also clean up the opened-by-us tracking
-                sessionsOpenedByUs.remove(sessionID)
+                self.sessionsOpenedByUs.remove(sessionID)
             }
         }
 
@@ -364,8 +363,7 @@ final class WindowTracker {
                     }
                     logger
                         .info(
-                            "Found and registered window for session: \(session.id)"
-                        )
+                            "Found and registered window for session: \(session.id)")
                 } else {
                     logger.debug("Could not find window for session: \(session.id)")
                 }
@@ -380,12 +378,11 @@ final class WindowTracker {
         for terminal: Terminal,
         sessionID: String,
         tabReference: String?,
-        tabID: String?
-    )
+        tabID: String?)
         -> WindowInfo?
     {
         let allWindows = WindowEnumerator.getAllTerminalWindows()
-        let sessionInfo = getSessionInfo(for: sessionID)
+        let sessionInfo = self.getSessionInfo(for: sessionID)
 
         if let window = windowMatcher.findWindow(
             for: terminal,
@@ -393,15 +390,14 @@ final class WindowTracker {
             sessionInfo: sessionInfo,
             tabReference: tabReference,
             tabID: tabID,
-            terminalWindows: allWindows
-        ) {
-            return createWindowInfo(
+            terminalWindows: allWindows)
+        {
+            return self.createWindowInfo(
                 from: window,
                 sessionID: sessionID,
                 terminal: terminal,
                 tabReference: tabReference,
-                tabID: tabID
-            )
+                tabID: tabID)
         }
 
         return nil
@@ -413,8 +409,7 @@ final class WindowTracker {
         sessionID: String,
         terminal: Terminal,
         tabReference: String?,
-        tabID: String?
-    )
+        tabID: String?)
         -> WindowInfo
     {
         WindowInfo(
@@ -426,8 +421,7 @@ final class WindowTracker {
             tabReference: tabReference,
             tabID: tabID,
             bounds: window.bounds,
-            title: window.title
-        )
+            title: window.title)
     }
 
     /// Get session info from SessionMonitor
@@ -453,8 +447,7 @@ final class WindowTracker {
                 tabReference: nil,
                 tabID: nil,
                 bounds: window.bounds,
-                title: window.title
-            )
+                title: window.title)
         }
 
         return nil
@@ -463,21 +456,21 @@ final class WindowTracker {
     /// Scans for a terminal window containing a specific session.
     /// This is used for sessions attached via `vt` that weren't launched through our app.
     private func scanForSession(_ sessionID: String) async {
-        logger.info("Scanning for window containing session: \(sessionID)")
+        self.logger.info("Scanning for window containing session: \(sessionID)")
 
         // Get session info to match by working directory
         guard let sessionInfo = getSessionInfo(for: sessionID) else {
-            logger.warning("No session info found for session: \(sessionID)")
+            self.logger.warning("No session info found for session: \(sessionID)")
             return
         }
 
         if let foundWindow = findWindowForSession(sessionID, sessionInfo: sessionInfo) {
-            mapLock.withLock {
-                sessionWindowMap[sessionID] = foundWindow
+            self.mapLock.withLock {
+                self.sessionWindowMap[sessionID] = foundWindow
             }
-            logger.info("Successfully found and registered window for session \(sessionID) during scan")
+            self.logger.info("Successfully found and registered window for session \(sessionID) during scan")
         } else {
-            logger.warning("Could not find window for session \(sessionID) during scan")
+            self.logger.warning("Could not find window for session \(sessionID) during scan")
         }
     }
 }

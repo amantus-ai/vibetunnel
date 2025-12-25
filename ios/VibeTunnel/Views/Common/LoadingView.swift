@@ -21,12 +21,12 @@ struct LoadingView: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.large) {
-            if useUnicodeSpinner {
-                Text(spinnerFrames[spinnerFrame])
+            if self.useUnicodeSpinner {
+                Text(self.spinnerFrames[self.spinnerFrame])
                     .font(Theme.Typography.terminalSystem(size: 24))
                     .foregroundColor(Theme.Colors.primaryAccent)
                     .onAppear {
-                        startUnicodeAnimation()
+                        self.startUnicodeAnimation()
                     }
             } else {
                 ZStack {
@@ -38,22 +38,21 @@ struct LoadingView: View {
                         .trim(from: 0, to: 0.2)
                         .stroke(Theme.Colors.primaryAccent, lineWidth: 3)
                         .frame(width: 50, height: 50)
-                        .rotationEffect(Angle(degrees: isAnimating ? 360 : 0))
+                        .rotationEffect(Angle(degrees: self.isAnimating ? 360 : 0))
                         .animation(
                             Animation.linear(duration: 1)
                                 .repeatForever(autoreverses: false),
-                            value: isAnimating
-                        )
+                            value: self.isAnimating)
                 }
             }
 
-            Text(message)
+            Text(self.message)
                 .font(Theme.Typography.terminalSystem(size: 14))
                 .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
         }
         .onAppear {
-            if !useUnicodeSpinner {
-                isAnimating = true
+            if !self.useUnicodeSpinner {
+                self.isAnimating = true
             }
         }
     }
@@ -61,7 +60,7 @@ struct LoadingView: View {
     private func startUnicodeAnimation() {
         Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { _ in
             Task { @MainActor in
-                spinnerFrame = (spinnerFrame + 1) % spinnerFrames.count
+                self.spinnerFrame = (self.spinnerFrame + 1) % self.spinnerFrames.count
             }
         }
     }

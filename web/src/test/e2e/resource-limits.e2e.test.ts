@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
+import { decodeWsV3Frame, WsV3MessageType } from '../../shared/ws-v3.js';
 import type { SessionData } from '../types/test-types';
 import {
   cleanupTestDirectories,
@@ -10,6 +11,7 @@ import {
   stopServer,
   waitForServerHealth,
 } from '../utils/server-utils';
+import { connectWsV3, sendSubscribe, WS_V3_FLAGS } from '../utils/ws-v3-test-utils';
 
 describe.skip('Resource Limits and Concurrent Sessions', () => {
   let server: ServerInstance | null = null;
@@ -132,16 +134,13 @@ describe.skip('Resource Limits and Concurrent Sessions', () => {
     it('should handle multiple WebSocket connections', async () => {
       const websockets: WebSocket[] = [];
       const connectionCount = 15;
+      const port = server?.port;
+      if (!port) throw new Error('Server not started');
 
       try {
         // Create multiple WebSocket connections
         for (let i = 0; i < connectionCount; i++) {
-          const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`);
-
-          await new Promise<void>((resolve, reject) => {
-            ws.on('open', () => resolve());
-            ws.on('error', (err) => reject(err));
-          });
+          const { ws } = await connectWsV3({ port });
 
           websockets.push(ws);
         }
@@ -182,17 +181,16 @@ describe.skip('Resource Limits and Concurrent Sessions', () => {
         sessionIds.push(sessionId);
       }
 
+      const port = server?.port;
+      if (!port) throw new Error('Server not started');
+
       // Create WebSocket and subscribe to all sessions
-      const ws = new WebSocket(`ws://localhost:${server?.port}/buffers`);
+      const { ws } = await connectWsV3({ port });
 
       try {
-        await new Promise<void>((resolve) => {
-          ws.on('open', () => resolve());
-        });
-
         // Subscribe to all sessions
         for (const sessionId of sessionIds) {
-          ws.send(JSON.stringify({ type: 'subscribe', sessionId }));
+          sendSubscribe({ ws, sessionId, flags: WS_V3_FLAGS.Stdout });
         }
 
         // Wait and count received updates
@@ -200,16 +198,21 @@ describe.skip('Resource Limits and Concurrent Sessions', () => {
         await new Promise<void>((resolve) => {
           const timeout = setTimeout(() => resolve(), 3000);
 
-          ws.on('message', (data: Buffer) => {
-            if (data[0] === 0xbf) {
-              // Binary buffer update
-              updateCount++;
-              if (updateCount >= sessionCount * 2) {
-                clearTimeout(timeout);
-                resolve();
-              }
+          const onMessage = (data: WebSocket.RawData, isBinary: boolean) => {
+            if (!isBinary) return;
+            const bytes =
+              data instanceof Buffer ? new Uint8Array(data) : new Uint8Array(data as ArrayBuffer);
+            const frame = decodeWsV3Frame(bytes);
+            if (!frame) return;
+            if (frame.type !== WsV3MessageType.STDOUT) return;
+            updateCount++;
+            if (updateCount >= sessionCount * 2) {
+              clearTimeout(timeout);
+              ws.off('message', onMessage);
+              resolve();
             }
-          });
+          };
+          ws.on('message', onMessage);
         });
 
         // Should receive multiple updates from each session

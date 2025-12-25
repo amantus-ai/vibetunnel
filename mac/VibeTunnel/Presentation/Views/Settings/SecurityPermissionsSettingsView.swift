@@ -29,50 +29,48 @@ struct SecurityPermissionsSettingsView: View {
     // permission check in .task happens before the first render, ensuring correct state
     // from the start.
     private var hasAppleScriptPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.appleScript)
+        _ = self.permissionUpdateTrigger
+        return self.permissionManager.hasPermission(.appleScript)
     }
 
     private var hasAccessibilityPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.accessibility)
+        _ = self.permissionUpdateTrigger
+        return self.permissionManager.hasPermission(.accessibility)
     }
 
     var body: some View {
         NavigationStack {
             Form {
                 SecuritySection(
-                    authMode: $authMode,
-                    enableSSHKeys: .constant(authMode == .sshKeys || authMode == .both),
-                    logger: logger,
-                    serverManager: serverManager
-                )
+                    authMode: self.$authMode,
+                    enableSSHKeys: .constant(self.authMode == .sshKeys || self.authMode == .both),
+                    logger: self.logger,
+                    serverManager: self.serverManager)
 
                 PermissionsSection(
-                    hasAppleScriptPermission: hasAppleScriptPermission,
-                    hasAccessibilityPermission: hasAccessibilityPermission,
-                    permissionManager: permissionManager
-                )
+                    hasAppleScriptPermission: self.hasAppleScriptPermission,
+                    hasAccessibilityPermission: self.hasAccessibilityPermission,
+                    permissionManager: self.permissionManager)
             }
             .formStyle(.grouped)
             .frame(minWidth: 500, idealWidth: 600)
             .scrollContentBackground(.hidden)
             .navigationTitle("Security")
             .onAppear {
-                onAppearSetup()
+                self.onAppearSetup()
                 // Register for continuous monitoring
-                permissionManager.registerForMonitoring()
+                self.permissionManager.registerForMonitoring()
             }
             .task {
                 // Check permissions before first render to avoid UI flashing
-                await permissionManager.checkAllPermissions()
+                await self.permissionManager.checkAllPermissions()
             }
             .onDisappear {
-                permissionManager.unregisterFromMonitoring()
+                self.permissionManager.unregisterFromMonitoring()
             }
             .onReceive(NotificationCenter.default.publisher(for: .permissionsUpdated)) { _ in
                 // Increment trigger to force computed property re-evaluation
-                permissionUpdateTrigger += 1
+                self.permissionUpdateTrigger += 1
             }
         }
     }
@@ -82,7 +80,7 @@ struct SecurityPermissionsSettingsView: View {
     private func onAppearSetup() {
         // Initialize authentication mode from stored value
         let storedMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.authenticationMode) ?? "os"
-        authMode = AuthenticationMode(rawValue: storedMode) ?? .osAuth
+        self.authMode = AuthenticationMode(rawValue: storedMode) ?? .osAuth
     }
 }
 
@@ -103,7 +101,7 @@ private struct SecuritySection: View {
                         Text("Authentication Method")
                             .font(.callout)
                         Spacer()
-                        Picker("", selection: $authMode) {
+                        Picker("", selection: self.$authMode) {
                             ForEach(AuthenticationMode.allCases, id: \.self) { mode in
                                 Text(mode.displayName)
                                     .tag(mode)
@@ -112,21 +110,20 @@ private struct SecuritySection: View {
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .frame(alignment: .trailing)
-                        .onChange(of: authMode) { _, newValue in
+                        .onChange(of: self.authMode) { _, newValue in
                             // Save the authentication mode
                             UserDefaults.standard.set(
                                 newValue.rawValue,
-                                forKey: AppConstants.UserDefaultsKeys.authenticationMode
-                            )
+                                forKey: AppConstants.UserDefaultsKeys.authenticationMode)
 
                             Task {
-                                logger.info("Authentication mode changed to: \(newValue.rawValue)")
-                                await serverManager.restart()
+                                self.logger.info("Authentication mode changed to: \(newValue.rawValue)")
+                                await self.serverManager.restart()
                             }
                         }
                     }
 
-                    Text(authMode.description)
+                    Text(self.authMode.description)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -134,7 +131,7 @@ private struct SecuritySection: View {
                 }
 
                 // Additional info based on selected mode
-                if authMode == .osAuth || authMode == .both {
+                if self.authMode == .osAuth || self.authMode == .both {
                     HStack(alignment: .center, spacing: 6) {
                         Image(systemName: "info.circle")
                             .foregroundColor(.blue)
@@ -147,7 +144,7 @@ private struct SecuritySection: View {
                     }
                 }
 
-                if authMode == .sshKeys || authMode == .both {
+                if self.authMode == .sshKeys || self.authMode == .both {
                     HStack(alignment: .center, spacing: 6) {
                         Image(systemName: "key.fill")
                             .foregroundColor(.blue)
@@ -166,8 +163,7 @@ private struct SecuritySection: View {
                                 try? FileManager.default.createDirectory(
                                     atPath: sshPath,
                                     withIntermediateDirectories: true,
-                                    attributes: [.posixPermissions: 0o700]
-                                )
+                                    attributes: [.posixPermissions: 0o700])
                                 NSWorkspace.shared.open(URL(fileURLWithPath: sshPath))
                             }
                         }

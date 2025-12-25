@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { ensureAllSessionsVisible } from './ui-state.helper';
 
 /**
  * Asserts that a session is visible in the session list
@@ -18,7 +19,6 @@ export async function assertSessionInList(
   }
 
   // Ensure all sessions are visible (including exited ones)
-  const { ensureAllSessionsVisible } = await import('./ui-state.helper');
   await ensureAllSessionsVisible(page);
 
   // Wait for session list to be ready - check for cards or "no sessions" message
@@ -28,6 +28,7 @@ export async function assertSessionInList(
       const noSessionsMsg = document.querySelector('.text-dark-text-muted');
       return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
     },
+    undefined,
     { timeout }
   );
 
@@ -145,36 +146,34 @@ export async function assertTerminalContains(
 ): Promise<void> {
   const { timeout = process.env.CI ? 10000 : 5000, exact = false } = options;
 
-  if (typeof text === 'string' && exact) {
-    await page.waitForFunction(
-      ({ searchText }) => {
-        const terminal = document.querySelector('vibe-terminal');
-        if (!terminal) return false;
+  await page.waitForFunction(
+    ({ searchText, isRegex, exactMatch }) => {
+      const terminal = document.querySelector('vibe-terminal') as unknown as {
+        getDebugText?: () => string;
+        textContent?: string | null;
+      } | null;
+      if (!terminal) return false;
 
-        // Check the terminal container first
-        const container = terminal.querySelector('#terminal-container');
-        const containerContent = container?.textContent || '';
+      const content =
+        typeof terminal.getDebugText === 'function'
+          ? terminal.getDebugText()
+          : terminal.textContent || '';
 
-        // Fall back to terminal content
-        const content = terminal.textContent || containerContent;
+      if (isRegex) {
+        const regex = new RegExp(searchText);
+        return regex.test(content);
+      }
 
-        return content === searchText;
-      },
-      { searchText: text },
-      { timeout }
-    );
-  } else {
-    // For regex or non-exact matches, try both selectors
-    const terminal = page.locator('vibe-terminal');
-    const container = page.locator('vibe-terminal #terminal-container');
-
-    // Try container first, then fall back to terminal
-    try {
-      await expect(container).toContainText(text, { timeout: timeout / 2 });
-    } catch {
-      await expect(terminal).toContainText(text, { timeout: timeout / 2 });
-    }
-  }
+      if (exactMatch) return content === searchText;
+      return content.includes(searchText);
+    },
+    {
+      searchText: text instanceof RegExp ? text.source : text,
+      isRegex: text instanceof RegExp,
+      exactMatch: typeof text === 'string' && exact,
+    },
+    { timeout }
+  );
 }
 
 /**
@@ -187,8 +186,29 @@ export async function assertTerminalNotContains(
 ): Promise<void> {
   const { timeout = process.env.CI ? 10000 : 5000 } = options;
 
-  const terminal = page.locator('vibe-terminal');
-  await expect(terminal).not.toContainText(text, { timeout });
+  await page.waitForFunction(
+    ({ searchText, isRegex }) => {
+      const terminal = document.querySelector('vibe-terminal') as unknown as {
+        getDebugText?: () => string;
+        textContent?: string | null;
+      } | null;
+      if (!terminal) return true;
+
+      const content =
+        typeof terminal.getDebugText === 'function'
+          ? terminal.getDebugText()
+          : terminal.textContent || '';
+
+      if (isRegex) {
+        const regex = new RegExp(searchText);
+        return !regex.test(content);
+      }
+
+      return !content.includes(searchText);
+    },
+    { searchText: text instanceof RegExp ? text.source : text, isRegex: text instanceof RegExp },
+    { timeout }
+  );
 }
 
 /**
@@ -325,43 +345,48 @@ export async function assertTerminalReady(
       }
 
       // Look for vibe-terminal inside session-terminal
-      const vibeTerminal = term.querySelector('vibe-terminal');
+      const vibeTerminal = term.querySelector('vibe-terminal') as unknown as {
+        getDebugText?: () => string;
+        textContent?: string | null;
+        querySelector?: (sel: string) => Element | null;
+      } | null;
       if (vibeTerminal) {
-        // Check the terminal container
-        const container = vibeTerminal.querySelector('#terminal-container');
-        if (container) {
-          const content = container.textContent || '';
+        const content =
+          typeof vibeTerminal.getDebugText === 'function'
+            ? vibeTerminal.getDebugText()
+            : vibeTerminal.textContent || '';
 
-          // Check for prompt patterns
-          const promptPatterns = [
-            /[$>#%❯]\s*$/, // Common prompts at end of line
-            /\$\s*$/, // Simple dollar sign
-            />\s*$/, // Simple greater than
-            /#\s*$/, // Root prompt
-            /❯\s*$/, // Fish/zsh prompt
-            /\n\s*[$>#%❯]/, // Prompt after newline
-            /bash-\d+\.\d+\$/, // Bash version prompt
-            /]\$\s*$/, // Bracketed prompt
-            /\w+@\w+/, // Username@hostname pattern
-          ];
+        // Check for prompt patterns
+        const promptPatterns = [
+          /[$>#%❯]\s*$/, // Common prompts at end of line
+          /\$\s*$/, // Simple dollar sign
+          />\s*$/, // Simple greater than
+          /#\s*$/, // Root prompt
+          /❯\s*$/, // Fish/zsh prompt
+          /\n\s*[$>#%❯]/, // Prompt after newline
+          /bash-\d+\.\d+\$/, // Bash version prompt
+          /]\$\s*$/, // Bracketed prompt
+          /\w+@\w+/, // Username@hostname pattern
+        ];
 
-          const hasPrompt = promptPatterns.some((pattern) => pattern.test(content));
+        const hasPrompt = promptPatterns.some((pattern) => pattern.test(content));
 
-          // If we have content and it looks like a prompt, we're ready
-          if (hasPrompt || content.length > 10) {
-            return true;
-          }
+        // If we have content and it looks like a prompt, we're ready
+        if (hasPrompt || content.length > 10) {
+          return true;
         }
       }
 
-      // Fallback: Check if terminal has xterm structure
-      const hasXterm = !!term.querySelector('.xterm');
-      const hasShadowRoot = !!term.shadowRoot;
+      // Fallback: check if terminal has any structure
+      const hasTerminalStructure =
+        !!term.querySelector('vibe-terminal') ||
+        !!term.querySelector('canvas') ||
+        !!term.shadowRoot;
 
       const content = term?.textContent || '';
 
       // If terminal structure exists but no content yet, wait
-      if ((hasXterm || hasShadowRoot) && !content) {
+      if (hasTerminalStructure && !content) {
         return false;
       }
 
@@ -374,7 +399,7 @@ export async function assertTerminalReady(
       }
 
       // If no content after structure exists, consider it ready (blank terminal)
-      if (!content && (hasXterm || hasShadowRoot)) {
+      if (!content && hasTerminalStructure) {
         console.log(
           '[assertTerminalReady] Terminal has structure but no content, considering ready'
         );
@@ -406,6 +431,7 @@ export async function assertTerminalReady(
 
       return hasPrompt;
     },
+    undefined,
     { timeout }
   );
 }

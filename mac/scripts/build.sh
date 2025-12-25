@@ -4,16 +4,17 @@
 # VibeTunnel Build Script
 # =============================================================================
 # 
-# This script builds the VibeTunnel application using xcodebuild with optional
-# code signing support. It includes comprehensive error checking and reports
+# This script builds the VibeTunnel application using xcodebuild and produces a
+# code-signed app bundle (ad-hoc or certificate-based, depending on environment).
+# It includes comprehensive error checking and reports
 # build details including the IS_PRERELEASE_BUILD flag status.
 #
 # USAGE:
-#   ./scripts/build.sh [--configuration Debug|Release] [--sign]
+#   ./scripts/build.sh [--configuration Debug|Release] [--no-sign]
 #
 # ARGUMENTS:
 #   --configuration <Debug|Release>  Build configuration (default: Release)
-#   --sign                          Sign the app after building (requires cert)
+#   --no-sign                       Disable code signing (not recommended)
 #
 # ENVIRONMENT VARIABLES:
 #   IS_PRERELEASE_BUILD=YES|NO      Sets pre-release flag in Info.plist
@@ -34,7 +35,7 @@
 # EXAMPLES:
 #   ./scripts/build.sh                           # Release build
 #   ./scripts/build.sh --configuration Debug     # Debug build
-#   ./scripts/build.sh --sign                    # Release build with signing
+#   ./scripts/build.sh --no-sign                 # Release build without signing (not recommended)
 #   IS_PRERELEASE_BUILD=YES ./scripts/build.sh   # Beta build
 #
 # =============================================================================
@@ -48,7 +49,7 @@ BUILD_DIR="$MAC_DIR/build"
 
 # Default values
 CONFIGURATION="Release"
-SIGN_APP=false
+SIGN_APP=true
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -57,13 +58,13 @@ while [[ $# -gt 0 ]]; do
             CONFIGURATION="$2"
             shift 2
             ;;
-        --sign)
-            SIGN_APP=true
+        --no-sign)
+            SIGN_APP=false
             shift
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--configuration Debug|Release] [--sign]"
+            echo "Usage: $0 [--configuration Debug|Release] [--no-sign]"
             exit 1
             ;;
     esac
@@ -105,8 +106,8 @@ fi
 
 # Prepare code signing arguments
 CODE_SIGN_ARGS=""
-if [[ "${CI:-false}" == "true" ]] || [[ "$SIGN_APP" == false ]]; then
-    # In CI or when not signing, disable code signing entirely
+if [[ "$SIGN_APP" == false ]]; then
+    # Explicitly disable code signing
     CODE_SIGN_ARGS="CODE_SIGN_IDENTITY=\"\" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO CODE_SIGN_ENTITLEMENTS=\"\" ENABLE_HARDENED_RUNTIME=NO PROVISIONING_PROFILE_SPECIFIER=\"\" DEVELOPMENT_TEAM=\"\""
 fi
 
@@ -180,13 +181,20 @@ rm -f "$APP_PATH/Contents/Resources/Local.xcconfig"
 rm -rf "$APP_PATH/Contents/Resources/web/public/tests"
 echo "✓ Removed development files from bundle"
 
-# Sign the app if requested
+# Re-sign after cleanup (removing resources invalidates the build-time signature).
 if [[ "$SIGN_APP" == true ]]; then
-    if [[ -n "${MACOS_SIGNING_CERTIFICATE_P12_BASE64:-}" ]]; then
-        echo "Signing app with CI certificate..."
-        "$SCRIPT_DIR/codesign-app.sh" "$APP_PATH"
+    echo "Re-signing app bundle after cleanup..."
+    "$SCRIPT_DIR/codesign-app.sh" "$APP_PATH"
+fi
+
+# Verify the signature (we always expect a code signature unless explicitly disabled)
+if [[ "$SIGN_APP" == true ]]; then
+    echo "Verifying code signature..."
+    if codesign --verify --verbose=2 "$APP_PATH" 2>&1; then
+        echo "✓ Code signature verification passed"
     else
-        echo "Warning: Signing requested but no certificate configured"
+        echo "Error: Code signature verification failed"
+        exit 1
     fi
 fi
 

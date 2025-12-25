@@ -22,16 +22,21 @@ const mockServerConfig: ServerConfig = {
 
 describe('ServerConfigService', () => {
   let service: ServerConfigService;
-  let fetchMock: ReturnType<typeof vi.spyOn>;
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  const getConfigFetchCallCount = () =>
+    fetchMock.mock.calls.filter(([input]) => input === '/api/config').length;
 
   beforeEach(() => {
     // Reset fetch mock
-    fetchMock = vi.spyOn(global, 'fetch');
+    fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
     service = new ServerConfigService();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   describe('loadConfig', () => {
@@ -75,12 +80,16 @@ describe('ServerConfigService', () => {
       } as Response);
 
       // First load
+      const beforeFirstLoad = getConfigFetchCallCount();
       const config1 = await service.loadConfig();
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const afterFirstLoad = getConfigFetchCallCount();
+      expect(afterFirstLoad - beforeFirstLoad).toBe(1);
 
       // Second load should use cache
+      const beforeSecondLoad = getConfigFetchCallCount();
       const config2 = await service.loadConfig();
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const afterSecondLoad = getConfigFetchCallCount();
+      expect(afterSecondLoad - beforeSecondLoad).toBe(0);
       expect(config2).toEqual(config1);
     });
 
@@ -91,12 +100,16 @@ describe('ServerConfigService', () => {
       } as Response);
 
       // First load
+      const beforeFirstLoad = getConfigFetchCallCount();
       await service.loadConfig();
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const afterFirstLoad = getConfigFetchCallCount();
+      expect(afterFirstLoad - beforeFirstLoad).toBe(1);
 
       // Force refresh
+      const beforeForceRefresh = getConfigFetchCallCount();
       await service.loadConfig(true);
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const afterForceRefresh = getConfigFetchCallCount();
+      expect(afterForceRefresh - beforeForceRefresh).toBe(1);
     });
 
     it('should return default config on error', async () => {
@@ -218,7 +231,7 @@ describe('ServerConfigService', () => {
       } as Response);
       await service.loadConfig();
 
-      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(getConfigFetchCallCount()).toBe(3);
     });
   });
 
@@ -284,7 +297,7 @@ describe('ServerConfigService', () => {
         json: async () => mockServerConfig,
       } as Response);
       await service.loadConfig();
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(getConfigFetchCallCount()).toBe(1);
 
       // Set new auth client
       const mockAuthClient = {
@@ -299,7 +312,7 @@ describe('ServerConfigService', () => {
       } as Response);
       await service.loadConfig();
 
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(getConfigFetchCallCount()).toBe(2);
       expect(fetchMock).toHaveBeenLastCalledWith('/api/config', {
         headers: { Authorization: 'Bearer new-token' },
       });

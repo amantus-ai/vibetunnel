@@ -24,7 +24,7 @@ struct TerminalDataTests {
         let event = TerminalEvent(from: headerJSON)
         #expect(event != nil)
 
-        if case .header(let header) = event {
+        if case let .header(header) = event {
             #expect(header.version == 2)
             #expect(header.width == 80)
             #expect(header.height == 24)
@@ -52,7 +52,7 @@ struct TerminalDataTests {
         let event = TerminalEvent(from: headerJSON)
         #expect(event != nil)
 
-        if case .header(let header) = event {
+        if case let .header(header) = event {
             #expect(header.version == 2)
             #expect(header.width == 80)
             #expect(header.height == 24)
@@ -73,7 +73,7 @@ struct TerminalDataTests {
         let event = TerminalEvent(from: outputJSON)
         #expect(event != nil)
 
-        if case .output(let timestamp, let data) = event {
+        if case let .output(timestamp, data) = event {
             #expect(timestamp == 1.5)
             #expect(data == "Hello, world!\r\n")
         } else {
@@ -88,7 +88,7 @@ struct TerminalDataTests {
         let event = TerminalEvent(from: resizeJSON)
         #expect(event != nil)
 
-        if case .resize(let timestamp, let dimensions) = event {
+        if case let .resize(timestamp, dimensions) = event {
             #expect(timestamp == 2.5)
             #expect(dimensions == "80x25")
         } else {
@@ -103,7 +103,7 @@ struct TerminalDataTests {
         let event = TerminalEvent(from: exitJSON)
         #expect(event != nil)
 
-        if case .exit(let code, let sessionId) = event {
+        if case let .exit(code, sessionId) = event {
             #expect(code == 0)
             #expect(sessionId == "test-session-123")
         } else {
@@ -118,7 +118,7 @@ struct TerminalDataTests {
         let event = TerminalEvent(from: exitJSON)
         #expect(event != nil)
 
-        if case .exit(let code, let sessionId) = event {
+        if case let .exit(code, sessionId) = event {
             #expect(code == 127)
             #expect(sessionId == "error-session")
         } else {
@@ -195,8 +195,7 @@ struct TerminalDataTests {
             duration: 300.5,
             command: "/bin/zsh",
             title: "My Terminal Session",
-            env: ["TERM": "xterm-256color", "USER": "testuser"]
-        )
+            env: ["TERM": "xterm-256color", "USER": "testuser"])
 
         let encoder = JSONEncoder()
         let data = try encoder.encode(header)

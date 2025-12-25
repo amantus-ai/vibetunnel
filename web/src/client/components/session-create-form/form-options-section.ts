@@ -21,7 +21,7 @@ export class FormOptionsSection extends LitElement {
 
   @property({ type: Boolean }) macAppConnected = false;
   @property({ type: Boolean }) spawnWindow = false;
-  @property({ type: String }) titleMode = TitleMode.DYNAMIC;
+  @property({ type: String }) titleMode = TitleMode.STATIC;
   @property({ type: Object }) gitRepoInfo: GitRepoInfo | null = null;
   @property({ type: Boolean }) followMode = false;
   @property({ type: String }) followBranch: string | null = null;
@@ -145,7 +145,7 @@ export class FormOptionsSection extends LitElement {
                     <option value="${TitleMode.NONE}" class="bg-bg-tertiary text-text" ?selected=${this.titleMode === TitleMode.NONE}>None</option>
                     <option value="${TitleMode.FILTER}" class="bg-bg-tertiary text-text" ?selected=${this.titleMode === TitleMode.FILTER}>Filter</option>
                     <option value="${TitleMode.STATIC}" class="bg-bg-tertiary text-text" ?selected=${this.titleMode === TitleMode.STATIC}>Static</option>
-                    <option value="${TitleMode.DYNAMIC}" class="bg-bg-tertiary text-text" ?selected=${this.titleMode === TitleMode.DYNAMIC}>Dynamic</option>
+                    <option value="${TitleMode.DYNAMIC}" class="bg-bg-tertiary text-text" ?selected=${this.titleMode === TitleMode.DYNAMIC}>Dynamic (legacy)</option>
                   </select>
                   <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 sm:px-1.5 lg:px-2 text-text-muted">
                     <svg class="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-4 lg:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

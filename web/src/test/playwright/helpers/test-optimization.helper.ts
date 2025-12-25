@@ -114,13 +114,8 @@ export function suppressConsoleNoise(page: Page): void {
     // List of known harmless messages to suppress
     const suppressPatterns = [
       'Failed to load resource: net::ERR_FAILED',
-      'Control event stream error',
-      'stream connection error',
-      'EventSource',
       'WebSocket',
       'Cast message stream closed',
-      '[control-event-service]',
-      '[cast-converter]',
     ];
 
     if (suppressPatterns.some((pattern) => text.includes(pattern))) {

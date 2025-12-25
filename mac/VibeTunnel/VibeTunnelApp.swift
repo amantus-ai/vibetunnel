@@ -48,18 +48,18 @@ struct VibeTunnelApp: App {
         // Welcome Window
         WindowGroup("Welcome", id: "welcome") {
             WelcomeView()
-                .environment(sessionMonitor)
-                .environment(serverManager)
-                .environment(ngrokService)
-                .environment(tailscaleService)
-                .environment(cloudflareService)
-                .environment(permissionManager)
-                .environment(terminalLauncher)
-                .environment(gitRepositoryMonitor)
-                .environment(repositoryDiscoveryService)
-                .environment(configManager)
-                .environment(worktreeService)
-                .environment(notificationService)
+                .environment(self.sessionMonitor)
+                .environment(self.serverManager)
+                .environment(self.ngrokService)
+                .environment(self.tailscaleService)
+                .environment(self.cloudflareService)
+                .environment(self.permissionManager)
+                .environment(self.terminalLauncher)
+                .environment(self.gitRepositoryMonitor)
+                .environment(self.repositoryDiscoveryService)
+                .environment(self.configManager)
+                .environment(self.worktreeService)
+                .environment(self.notificationService)
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 580, height: 480)
@@ -71,22 +71,21 @@ struct VibeTunnelApp: App {
                let session = sessionMonitor.sessions[sessionId]
             {
                 SessionDetailView(session: session)
-                    .environment(sessionMonitor)
-                    .environment(serverManager)
-                    .environment(ngrokService)
-                    .environment(tailscaleService)
-                    .environment(cloudflareService)
-                    .environment(permissionManager)
-                    .environment(terminalLauncher)
-                    .environment(gitRepositoryMonitor)
-                    .environment(repositoryDiscoveryService)
-                    .environment(configManager)
-                    .environment(sessionService ?? SessionService(
-                        serverManager: serverManager,
-                        sessionMonitor: sessionMonitor
-                    ))
-                    .environment(worktreeService)
-                    .environment(notificationService)
+                    .environment(self.sessionMonitor)
+                    .environment(self.serverManager)
+                    .environment(self.ngrokService)
+                    .environment(self.tailscaleService)
+                    .environment(self.cloudflareService)
+                    .environment(self.permissionManager)
+                    .environment(self.terminalLauncher)
+                    .environment(self.gitRepositoryMonitor)
+                    .environment(self.repositoryDiscoveryService)
+                    .environment(self.configManager)
+                    .environment(self.sessionService ?? SessionService(
+                        serverManager: self.serverManager,
+                        sessionMonitor: self.sessionMonitor))
+                    .environment(self.worktreeService)
+                    .environment(self.notificationService)
             } else {
                 Text("Session not found")
                     .frame(width: 400, height: 300)
@@ -98,23 +97,22 @@ struct VibeTunnelApp: App {
 
         Settings {
             SettingsView()
-                .environment(sessionMonitor)
-                .environment(serverManager)
-                .environment(ngrokService)
-                .environment(tailscaleService)
-                .environment(cloudflareService)
-                .environment(permissionManager)
-                .environment(terminalLauncher)
-                .environment(gitRepositoryMonitor)
-                .environment(repositoryDiscoveryService)
-                .environment(configManager)
-                .environment(sessionService ?? SessionService(
-                    serverManager: serverManager,
-                    sessionMonitor: sessionMonitor
-                ))
-                .environment(worktreeService)
-                .environment(notificationService)
-                .environment(tailscaleServeStatusService)
+                .environment(self.sessionMonitor)
+                .environment(self.serverManager)
+                .environment(self.ngrokService)
+                .environment(self.tailscaleService)
+                .environment(self.cloudflareService)
+                .environment(self.permissionManager)
+                .environment(self.terminalLauncher)
+                .environment(self.gitRepositoryMonitor)
+                .environment(self.repositoryDiscoveryService)
+                .environment(self.configManager)
+                .environment(self.sessionService ?? SessionService(
+                    serverManager: self.serverManager,
+                    sessionMonitor: self.sessionMonitor))
+                .environment(self.worktreeService)
+                .environment(self.notificationService)
+                .environment(self.tailscaleServeStatusService)
         }
         .commands {
             CommandGroup(after: .appInfo) {
@@ -125,8 +123,7 @@ struct VibeTunnelApp: App {
                         try? await Task.sleep(for: .milliseconds(100))
                         NotificationCenter.default.post(
                             name: .openSettingsTab,
-                            object: SettingsTab.about
-                        )
+                            object: SettingsTab.about)
                     }
                 }
             }
@@ -169,16 +166,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSClassFromString("XCTestCase") != nil
         let isRunningInPreview = processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
         #if DEBUG
-            let isRunningInDebug = true
+        let isRunningInDebug = true
         #else
-            let isRunningInDebug = processInfo.environment["DYLD_INSERT_LIBRARIES"]?
-                .contains("libMainThreadChecker.dylib") ?? false ||
-                processInfo.environment["__XCODE_BUILT_PRODUCTS_DIR_PATHS"] != nil
+        let isRunningInDebug = processInfo.environment["DYLD_INSERT_LIBRARIES"]?
+            .contains("libMainThreadChecker.dylib") ?? false ||
+            processInfo.environment["__XCODE_BUILT_PRODUCTS_DIR_PATHS"] != nil
         #endif
 
         // Kill other VibeTunnel instances FIRST, before any other initialization
         // This ensures only the newest instance survives and prevents Unix socket conflicts
-        if !isRunningInTests && !isRunningInPreview {
+        if !isRunningInTests, !isRunningInPreview {
             ProcessKiller.killOtherInstances()
         }
 
@@ -186,24 +183,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #if DEBUG
         // Skip single instance check in debug builds
         #else
-            if !isRunningInPreview && !isRunningInTests && !isRunningInDebug {
-                handleSingleInstanceCheck()
-                registerForDistributedNotifications()
+        if !isRunningInPreview, !isRunningInTests, !isRunningInDebug {
+            self.handleSingleInstanceCheck()
+            self.registerForDistributedNotifications()
 
-                // Check if app needs to be moved to Applications folder
-                let applicationMover = ApplicationMover()
-                applicationMover.checkAndOfferToMoveToApplications()
-            }
+            // Check if app needs to be moved to Applications folder
+            let applicationMover = ApplicationMover()
+            applicationMover.checkAndOfferToMoveToApplications()
+        }
         #endif
 
         // Register default values
         UserDefaults.standard.register(defaults: [
             "showInDock": true, // Default to showing in dock
-            "dashboardAccessMode": AppConstants.Defaults.dashboardAccessMode
+            "dashboardAccessMode": AppConstants.Defaults.dashboardAccessMode,
         ])
 
         // Initialize Sparkle updater manager
-        sparkleUpdaterManager = SparkleUpdaterManager.shared
+        self.sparkleUpdaterManager = SparkleUpdaterManager.shared
 
         // Initialize dock icon visibility through DockIconManager
         DockIconManager.shared.updateDockVisibility()
@@ -218,8 +215,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Small delay to allow CLI check to complete
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             // Show welcome if version is different from current OR if vt script is outdated
-            if (storedWelcomeVersion < AppConstants.currentWelcomeVersion || cliInstaller.isOutdated)
-                && !isRunningInTests && !isRunningInPreview
+            if storedWelcomeVersion < AppConstants.currentWelcomeVersion || cliInstaller.isOutdated,
+               !isRunningInTests, !isRunningInPreview
             {
                 self?.showWelcomeScreen()
             }
@@ -227,7 +224,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Skip all service initialization during tests
         if isRunningInTests {
-            logger.info("Running in test mode - skipping service initialization")
+            self.logger.info("Running in test mode - skipping service initialization")
             return
         }
 
@@ -237,10 +234,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Listen for update check requests
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(handleCheckForUpdatesNotification),
+            selector: #selector(self.handleCheckForUpdatesNotification),
             name: Notification.Name("checkForUpdates"),
-            object: nil
-        )
+            object: nil)
 
         // Initialize SessionService
         if let serverManager = app?.serverManager, let sessionMonitor = app?.sessionMonitor {
@@ -270,7 +266,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Connect GitRepositoryMonitor to SessionMonitor for pre-caching
         app.sessionMonitor.gitRepositoryMonitor = app.gitRepositoryMonitor
 
-        statusBarController = StatusBarController(
+        self.statusBarController = StatusBarController(
             sessionMonitor: app.sessionMonitor,
             serverManager: app.serverManager,
             ngrokService: app.ngrokService,
@@ -279,34 +275,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             gitRepositoryMonitor: app.gitRepositoryMonitor,
             repositoryDiscovery: app.repositoryDiscoveryService,
             configManager: app.configManager,
-            worktreeService: app.worktreeService
-        )
+            worktreeService: app.worktreeService)
 
         // Initialize and start HTTP server using ServerManager
         Task {
             let serverManager = app.serverManager
-            logger.info("Attempting to start HTTP server using ServerManager...")
+            self.logger.info("Attempting to start HTTP server using ServerManager...")
             await serverManager.start()
 
             // Check if server actually started
             if serverManager.isRunning {
-                logger.info("HTTP server started successfully on port \(serverManager.port)")
+                self.logger.info("HTTP server started successfully on port \(serverManager.port)")
 
                 // Update status bar icon to reflect server running state
-                statusBarController?.updateStatusItemDisplay()
+                self.statusBarController?.updateStatusItemDisplay()
 
                 // Session monitoring starts automatically
 
                 // NotificationService is started by ServerManager when the server is ready
             } else {
-                logger.error("HTTP server failed to start")
+                self.logger.error("HTTP server failed to start")
                 if let error = serverManager.lastError {
-                    logger.error("Server start error: \(error.localizedDescription)")
+                    self.logger.error("Server start error: \(error.localizedDescription)")
                 }
             }
 
             // Set up multi-layer cleanup for cloudflared processes
-            setupMultiLayerCleanup()
+            self.setupMultiLayerCleanup()
         }
     }
 
@@ -320,7 +315,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSClassFromString("XCTestCase") != nil
 
         if isRunningInTests {
-            logger.info("Skipping single instance check - running in tests")
+            self.logger.info("Skipping single instance check - running in tests")
             return
         }
 
@@ -351,10 +346,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func registerForDistributedNotifications() {
         DistributedNotificationCenter.default().addObserver(
             self,
-            selector: #selector(handleShowSettingsNotification),
+            selector: #selector(self.handleShowSettingsNotification),
             name: Self.showSettingsNotification,
-            object: nil
-        )
+            object: nil)
     }
 
     /// Shows the Settings window when another VibeTunnel instance asks us to.
@@ -365,7 +359,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc
     private func handleCheckForUpdatesNotification() {
-        sparkleUpdaterManager?.checkForUpdates()
+        self.sparkleUpdaterManager?.checkForUpdates()
     }
 
     /// Shows the welcome screen
@@ -397,8 +391,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let dashboardItem = NSMenuItem(
             title: "Open Dashboard",
             action: #selector(openDashboard),
-            keyEquivalent: ""
-        )
+            keyEquivalent: "")
         dashboardItem.target = self
         dockMenu.addItem(dashboardItem)
 
@@ -406,8 +399,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let settingsItem = NSMenuItem(
             title: "Settings...",
             action: #selector(openSettings),
-            keyEquivalent: ""
-        )
+            keyEquivalent: "")
         settingsItem.target = self
         dockMenu.addItem(settingsItem)
 
@@ -429,7 +421,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        logger.info("🚨 applicationWillTerminate called - starting cleanup process")
+        self.logger.info("🚨 applicationWillTerminate called - starting cleanup process")
 
         let processInfo = ProcessInfo.processInfo
         let isRunningInTests = processInfo.environment["XCTestConfigurationFilePath"] != nil ||
@@ -440,13 +432,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Skip cleanup during tests
         if isRunningInTests {
-            logger.info("Running in test mode - skipping termination cleanup")
+            self.logger.info("Running in test mode - skipping termination cleanup")
             return
         }
 
         // Ultra-fast cleanup for cloudflared - just send signals and exit
         if let cloudflareService = app?.cloudflareService, cloudflareService.isRunning {
-            logger.info("🔥 Sending quick termination signal to Cloudflare")
+            self.logger.info("🔥 Sending quick termination signal to Cloudflare")
             cloudflareService.sendTerminationSignal()
         }
 
@@ -463,31 +455,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Remove observers (quick operations)
         #if !DEBUG
-            if !isRunningInTests {
-                DistributedNotificationCenter.default().removeObserver(
-                    self,
-                    name: Self.showSettingsNotification,
-                    object: nil
-                )
-            }
+        if !isRunningInTests {
+            DistributedNotificationCenter.default().removeObserver(
+                self,
+                name: Self.showSettingsNotification,
+                object: nil)
+        }
         #endif
 
         NotificationCenter.default.removeObserver(
             self,
             name: Notification.Name("checkForUpdates"),
-            object: nil
-        )
+            object: nil)
 
-        logger.info("🚨 applicationWillTerminate completed quickly")
+        self.logger.info("🚨 applicationWillTerminate completed quickly")
     }
 
     /// Set up lightweight cleanup system for cloudflared processes
     private func setupMultiLayerCleanup() {
-        logger.info("🛡️ Setting up cloudflared cleanup system")
+        self.logger.info("🛡️ Setting up cloudflared cleanup system")
 
         // Only set up minimal cleanup - no atexit, no complex watchdog
         // The OS will clean up child processes automatically when parent dies
 
-        logger.info("🛡️ Cleanup system initialized (minimal mode)")
+        self.logger.info("🛡️ Cleanup system initialized (minimal mode)")
     }
 }

@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		51D8512C630C0A818A2651F4 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C27ECCFC47CD72452A9FD3E /* Foundation.framework */; };
-		7272E2FE084BB86440A69701 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 51D59A51D50DE7492ECEAA6F /* SwiftTerm */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -68,7 +67,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7272E2FE084BB86440A69701 /* SwiftTerm in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -151,7 +149,6 @@
 			);
 			name = VibeTunnel;
 			packageProductDependencies = (
-				51D59A51D50DE7492ECEAA6F /* SwiftTerm */,
 			);
 			productName = VibeTunnel;
 			productReference = 216D52E392D8F0CDC6358BB8 /* VibeTunnel.app */;
@@ -185,7 +182,6 @@
 			mainGroup = 0DD83B4196D66608380E46BB;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				99D7F1C619326805A282313E /* XCRemoteSwiftPackageReference "SwiftTerm" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7866022B46DD9C411CAEDA26 /* Products */;
@@ -281,6 +277,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_APPINTENTS_METADATA_PROCESSING = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -381,6 +378,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_APPINTENTS_METADATA_PROCESSING = NO;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -589,22 +587,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		99D7F1C619326805A282313E /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.2.0;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		51D59A51D50DE7492ECEAA6F /* SwiftTerm */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 99D7F1C619326805A282313E /* XCRemoteSwiftPackageReference "SwiftTerm" */;
-			productName = SwiftTerm;
-		};
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4C82CEFDA8E4EFE0B37538D7 /* Project object */;

@@ -62,7 +62,6 @@ vi.mock('util', () => ({
 
 describe('ApiSocketServer', () => {
   let apiSocketServer: ApiSocketServer;
-  let client: unknown;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -79,10 +78,6 @@ describe('ApiSocketServer', () => {
   });
 
   afterEach(async () => {
-    // Clean up client
-    if (client && !client.destroyed) {
-      client.destroy();
-    }
     // Stop server
     if (apiSocketServer) {
       apiSocketServer.stop();

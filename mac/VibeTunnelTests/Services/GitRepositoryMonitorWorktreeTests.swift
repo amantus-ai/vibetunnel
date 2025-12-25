@@ -17,7 +17,7 @@ struct GitRepositoryMonitorWorktreeTests {
         var responses: [String: Any] = [:]
 
         func setResponse(for endpoint: String, response: Any) {
-            responses[endpoint] = response
+            self.responses[endpoint] = response
         }
 
         func buildURL(endpoint: String, queryItems: [URLQueryItem]? = nil) -> URL? {
@@ -68,8 +68,7 @@ struct GitRepositoryMonitorWorktreeTests {
         let decoder = JSONDecoder()
         let response = try? decoder.decode(
             GitRepositoryInfoResponse.self,
-            from: jsonWithoutWorktree.data(using: .utf8)!
-        )
+            from: jsonWithoutWorktree.data(using: .utf8)!)
 
         #expect(response != nil)
         #expect(response?.isWorktree == nil)
@@ -93,11 +92,10 @@ struct GitRepositoryMonitorWorktreeTests {
             aheadCount: 0,
             behindCount: 0,
             hasUpstream: true,
-            isWorktree: false
-        )
+            isWorktree: false)
 
         // Test that the repository is correctly identified as non-worktree
-        let repository = await monitor.findRepository(for: "/Users/test/regular-repo/src/file.swift")
+        _ = await self.monitor.findRepository(for: "/Users/test/regular-repo/src/file.swift")
 
         // Note: In a real test, we would need to mock the server response
         // For now, we're testing the data structure
@@ -122,8 +120,7 @@ struct GitRepositoryMonitorWorktreeTests {
             aheadCount: 3,
             behindCount: 0,
             hasUpstream: true,
-            isWorktree: true
-        )
+            isWorktree: true)
 
         // Test that the repository is correctly identified as worktree
         #expect(mockResponse.isWorktree == true)
@@ -147,7 +144,7 @@ struct GitRepositoryMonitorWorktreeTests {
             aheadCount: 0,
             behindCount: 0,
             hasUpstream: false,
-            isWorktree: nil // Server didn't provide this info
+            isWorktree: nil, // Server didn't provide this info
         )
 
         // When isWorktree is nil, the code should fall back to local detection
@@ -168,8 +165,7 @@ struct GitRepositoryMonitorWorktreeTests {
             behindCount: nil,
             trackingBranch: "origin/main",
             isWorktree: false,
-            githubURL: URL(string: "https://github.com/test/repo")
-        )
+            githubURL: URL(string: "https://github.com/test/repo"))
 
         let worktreeRepo = GitRepository(
             path: "/Users/test/worktree-feature",
@@ -182,8 +178,7 @@ struct GitRepositoryMonitorWorktreeTests {
             behindCount: nil,
             trackingBranch: "origin/feature/awesome",
             isWorktree: true,
-            githubURL: URL(string: "https://github.com/test/repo")
-        )
+            githubURL: URL(string: "https://github.com/test/repo"))
 
         #expect(regularRepo.isWorktree == false)
         #expect(worktreeRepo.isWorktree == true)
@@ -192,7 +187,7 @@ struct GitRepositoryMonitorWorktreeTests {
     @Test("Cache preserves worktree status")
     func cachePreservesWorktreeStatus() async {
         // Clear cache first
-        monitor.clearCache()
+        self.monitor.clearCache()
 
         // Create test repositories with different worktree status
         let testRepos = [
@@ -207,8 +202,7 @@ struct GitRepositoryMonitorWorktreeTests {
                 behindCount: nil,
                 trackingBranch: nil,
                 isWorktree: false,
-                githubURL: nil
-            ),
+                githubURL: nil),
             GitRepository(
                 path: "/test/worktree-1",
                 modifiedCount: 1,
@@ -220,8 +214,7 @@ struct GitRepositoryMonitorWorktreeTests {
                 behindCount: nil,
                 trackingBranch: nil,
                 isWorktree: true,
-                githubURL: nil
-            )
+                githubURL: nil),
         ]
 
         // Test that cached repositories maintain their worktree status
@@ -247,8 +240,7 @@ struct GitRepositoryMonitorWorktreeTests {
             behindCount: nil,
             trackingBranch: nil,
             isWorktree: true,
-            githubURL: nil
-        )
+            githubURL: nil)
 
         // Simulate an update with changed file counts
         let updatedRepo = GitRepository(
@@ -262,8 +254,7 @@ struct GitRepositoryMonitorWorktreeTests {
             behindCount: nil,
             trackingBranch: "origin/feature",
             isWorktree: initialRepo.isWorktree, // Should preserve
-            githubURL: URL(string: "https://github.com/test/repo")
-        )
+            githubURL: URL(string: "https://github.com/test/repo"))
 
         #expect(updatedRepo.isWorktree == true)
         #expect(updatedRepo.isWorktree == initialRepo.isWorktree)
@@ -275,7 +266,7 @@ struct GitRepositoryMonitorWorktreeTests {
         let deepPaths = [
             "/Users/dev/projects/main-repo/src/components/ui/Button.tsx",
             "/Users/dev/worktrees/feature-x/src/components/ui/Button.tsx",
-            "/Users/dev/worktrees/bugfix-123/deeply/nested/path/to/file.swift"
+            "/Users/dev/worktrees/bugfix-123/deeply/nested/path/to/file.swift",
         ]
 
         // Each path should be properly handled regardless of depth
@@ -299,8 +290,7 @@ struct GitRepositoryMonitorWorktreeTests {
             isGitRepo: true,
             repoPath: "/Users/dev/worktrees/feature",
             remoteUrl: "git@github.com:company/project.git",
-            githubUrl: "https://github.com/company/project"
-        )
+            githubUrl: "https://github.com/company/project")
 
         #expect(worktreeRemote.githubUrl != nil)
         #expect(worktreeRemote.githubUrl == "https://github.com/company/project")
@@ -321,9 +311,6 @@ struct GitRepositoryMonitorStaticTests {
         // - Worktree: .git is a file
 
         // Test the expected behavior
-        let regularRepoPath = "/tmp/test-regular-repo"
-        let worktreePath = "/tmp/test-worktree"
-
         // The actual file system check would happen in the static method
         // Here we test the logic expectations
         #expect(true) // Placeholder for actual file system test

@@ -8,8 +8,7 @@ import OSLog
 public enum AXPermissions {
     private static let logger = Logger(
         subsystem: BundleIdentifiers.loggerSubsystem,
-        category: "AXPermissions"
-    )
+        category: "AXPermissions")
 
     /// Checks if the app currently has accessibility permissions without prompting.
     public static var hasPermissions: Bool {
@@ -21,8 +20,8 @@ public enum AXPermissions {
     @MainActor
     public static func requestPermissions() -> Bool {
         // Skip permission dialog in test environment
-        if isTestEnvironment {
-            logger.debug("Skipping permission request in test environment")
+        if self.isTestEnvironment {
+            self.logger.debug("Skipping permission request in test environment")
             return false
         }
 
@@ -30,10 +29,10 @@ public enum AXPermissions {
         let trusted = AXIsProcessTrusted()
         if !trusted {
             // Open accessibility preferences to prompt user
-            openAccessibilityPreferences()
+            self.openAccessibilityPreferences()
         }
 
-        logger.info("Accessibility permissions checked, trusted: \(trusted)")
+        self.logger.info("Accessibility permissions checked, trusted: \(trusted)")
         return trusted
     }
 
@@ -52,7 +51,7 @@ public enum AXPermissions {
     /// Opens System Preferences to the Security & Privacy > Accessibility pane
     @MainActor
     public static func openAccessibilityPreferences() {
-        logger.info("Opening Accessibility preferences")
+        self.logger.info("Opening Accessibility preferences")
 
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
             NSWorkspace.shared.open(url)
@@ -64,7 +63,7 @@ public enum AXPermissions {
     /// - Returns: An AsyncStream that emits permission status changes
     public static func permissionChanges(interval: TimeInterval = 1.0) -> AsyncStream<Bool> {
         AsyncStream { continuation in
-            let initialState = hasPermissions
+            let initialState = self.hasPermissions
             continuation.yield(initialState)
 
             // Timer holder to avoid capture issues
@@ -84,11 +83,11 @@ public enum AXPermissions {
             let holder = TimerHolder(initialState: initialState)
 
             holder.timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-                let currentState = hasPermissions
+                let currentState = self.hasPermissions
                 if currentState != holder.lastState {
                     holder.lastState = currentState
                     continuation.yield(currentState)
-                    logger.info("Accessibility permission changed to: \(currentState)")
+                    self.logger.info("Accessibility permission changed to: \(currentState)")
                 }
             }
 
@@ -105,7 +104,7 @@ public enum AXPermissions {
     /// - Returns: `true` if permissions are granted, `false` otherwise
     @MainActor
     public static func requestPermissionsAsync() async -> Bool {
-        requestPermissions()
+        self.requestPermissions()
     }
 }
 
@@ -117,13 +116,13 @@ extension AXPermissions {
     /// - Returns: `true` if permissions are granted, `false` otherwise
     @MainActor
     public static func ensurePermissions(onDenied: (() -> Void)? = nil) -> Bool {
-        if hasPermissions {
+        if self.hasPermissions {
             return true
         }
 
-        let granted = requestPermissions()
+        let granted = self.requestPermissions()
         if !granted {
-            logger.warning("Accessibility permissions denied")
+            self.logger.warning("Accessibility permissions denied")
             onDenied?()
         }
 
@@ -133,7 +132,7 @@ extension AXPermissions {
     /// Checks permissions and shows an alert if not granted
     @MainActor
     public static func checkPermissionsWithAlert() -> Bool {
-        if hasPermissions {
+        if self.hasPermissions {
             return true
         }
 
@@ -148,7 +147,7 @@ extension AXPermissions {
 
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
-            openAccessibilityPreferences()
+            self.openAccessibilityPreferences()
         }
 
         return false

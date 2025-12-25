@@ -177,7 +177,7 @@ export class ZellijManager {
       workingDir: options?.workingDir || process.env.HOME || '/',
       cols: options?.cols || 80,
       rows: options?.rows || 24,
-      titleMode: options?.titleMode || TitleMode.DYNAMIC,
+      titleMode: options?.titleMode || TitleMode.STATIC,
     };
 
     const session = await this.ptyManager.createSession(zellijCommand, sessionOptions);

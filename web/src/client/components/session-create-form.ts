@@ -68,7 +68,7 @@ export class SessionCreateForm extends LitElement {
   @property({ type: Boolean }) visible = false;
   @property({ type: Object }) authClient!: AuthClient;
   @property({ type: Boolean }) spawnWindow = false;
-  @property({ type: String }) titleMode = TitleMode.DYNAMIC;
+  @property({ type: String }) titleMode = TitleMode.STATIC;
 
   @state() private isCreating = false;
   @state() private showFileBrowser = false;
@@ -97,12 +97,12 @@ export class SessionCreateForm extends LitElement {
   @state() private showFollowMode = false;
 
   @state() private quickStartCommands: QuickStartItem[] = [
+    { label: '✨ codex', command: 'codex' },
     { label: '✨ claude', command: 'claude' },
-    { label: '✨ gemini', command: 'gemini' },
+    { label: 'gemini3', command: 'gemini3' },
+    { label: 'opencode 4', command: 'opencode 4' },
     { label: 'zsh', command: 'zsh' },
-    { label: 'python3', command: 'python3' },
     { label: 'node', command: 'node' },
-    { label: '▶️ pnpm run dev', command: 'pnpm run dev' },
   ];
 
   // State properties for UI
@@ -215,8 +215,11 @@ export class SessionCreateForm extends LitElement {
     // For spawn window, use saved value or default to false
     this.spawnWindow = formData.spawnWindow ?? false;
 
-    // For title mode, use saved value or default to DYNAMIC
-    this.titleMode = formData.titleMode || TitleMode.DYNAMIC;
+    // For title mode, use saved value or default to STATIC
+    this.titleMode =
+      formData.titleMode === TitleMode.DYNAMIC
+        ? TitleMode.STATIC
+        : formData.titleMode || TitleMode.STATIC;
 
     // Force re-render to update the input values
     this.requestUpdate();
@@ -332,7 +335,7 @@ export class SessionCreateForm extends LitElement {
         this.command = 'zsh';
         this.sessionName = '';
         this.spawnWindow = false;
-        this.titleMode = TitleMode.DYNAMIC;
+        this.titleMode = TitleMode.STATIC;
         this.branchSwitchWarning = undefined;
 
         // Then load from localStorage which may override the defaults
@@ -404,11 +407,6 @@ export class SessionCreateForm extends LitElement {
   private handleCommandChange(e: Event) {
     const input = e.target as HTMLInputElement;
     this.command = input.value;
-
-    // Auto-select dynamic mode for Claude
-    if (this.command.toLowerCase().includes('claude')) {
-      this.titleMode = TitleMode.DYNAMIC;
-    }
   }
 
   private handleSessionNameChange(e: Event) {
@@ -634,11 +632,6 @@ export class SessionCreateForm extends LitElement {
     const command = e.detail.command;
     this.command = command;
     this.selectedQuickStart = command;
-
-    // Auto-select dynamic mode for Claude
-    if (command.toLowerCase().includes('claude')) {
-      this.titleMode = TitleMode.DYNAMIC;
-    }
   }
 
   private handleBranchChanged(e: CustomEvent) {

@@ -21,7 +21,7 @@ struct FontSizeSheet: View {
                         .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
 
                     Text("VibeTunnel:~ $ echo 'Hello, World!'")
-                        .font(Theme.Typography.terminal(size: fontSize))
+                        .font(Theme.Typography.terminal(size: self.fontSize))
                         .foregroundColor(Theme.Colors.terminalForeground)
                         .padding()
                         .frame(maxWidth: .infinity)
@@ -29,15 +29,14 @@ struct FontSizeSheet: View {
                         .cornerRadius(Theme.CornerRadius.medium)
                         .overlay(
                             RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                                .stroke(Theme.Colors.cardBorder, lineWidth: 1)
-                        )
+                                .stroke(Theme.Colors.cardBorder, lineWidth: 1))
                 }
                 .padding()
 
                 // Font size slider
                 VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                     HStack {
-                        Text("Size: \(Int(fontSize))pt")
+                        Text("Size: \(Int(self.fontSize))pt")
                             .font(.headline)
                             .foregroundColor(Theme.Colors.terminalForeground)
 
@@ -45,7 +44,7 @@ struct FontSizeSheet: View {
 
                         Button("Reset") {
                             withAnimation(Theme.Animation.quick) {
-                                fontSize = 14
+                                self.fontSize = 14
                             }
                             HapticFeedback.impact(.light)
                         }
@@ -53,7 +52,7 @@ struct FontSizeSheet: View {
                         .foregroundColor(Theme.Colors.primaryAccent)
                     }
 
-                    Slider(value: $fontSize, in: 10...32, step: 1) { _ in
+                    Slider(value: self.$fontSize, in: 10...32, step: 1) { _ in
                         HapticFeedback.selection()
                     }
                     .accentColor(Theme.Colors.primaryAccent)
@@ -71,37 +70,35 @@ struct FontSizeSheet: View {
 
                     LazyVGrid(
                         columns: Array(repeating: GridItem(.flexible()), count: 5),
-                        spacing: Theme.Spacing.small
-                    ) {
-                        ForEach(fontSizes, id: \.self) { size in
+                        spacing: Theme.Spacing.small)
+                    {
+                        ForEach(self.fontSizes, id: \.self) { size in
                             Button(action: {
-                                fontSize = size
+                                self.fontSize = size
                                 HapticFeedback.impact(.light)
                             }, label: {
                                 Text("\(Int(size))")
                                     .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(fontSize == size ? Theme.Colors.terminalBackground : Theme.Colors
-                                        .terminalForeground
-                                    )
+                                    .foregroundColor(
+                                        self.fontSize == size ? Theme.Colors.terminalBackground : Theme.Colors
+                                            .terminalForeground)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, Theme.Spacing.small)
                                     .background(
                                         RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                                            .fill(fontSize == size ? Theme.Colors.primaryAccent : Theme.Colors
-                                                .cardBorder.opacity(0.3)
-                                            )
-                                    )
+                                            .fill(
+                                                self.fontSize == size ? Theme.Colors.primaryAccent : Theme.Colors
+                                                    .cardBorder.opacity(0.3)))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
                                             .stroke(
-                                                fontSize == size ? Theme.Colors.primaryAccent : Theme.Colors.cardBorder,
-                                                lineWidth: 1
-                                            )
-                                    )
+                                                self.fontSize == size ? Theme.Colors.primaryAccent : Theme.Colors
+                                                    .cardBorder,
+                                                lineWidth: 1))
                             })
                             .buttonStyle(PlainButtonStyle())
-                            .scaleEffect(fontSize == size ? 0.95 : 1.0)
-                            .animation(Theme.Animation.quick, value: fontSize == size)
+                            .scaleEffect(self.fontSize == size ? 0.95 : 1.0)
+                            .animation(Theme.Animation.quick, value: self.fontSize == size)
                         }
                     }
                 }
@@ -115,7 +112,7 @@ struct FontSizeSheet: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
-                        dismiss()
+                        self.dismiss()
                     }
                     .foregroundColor(Theme.Colors.primaryAccent)
                 }

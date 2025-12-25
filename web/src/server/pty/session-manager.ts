@@ -257,7 +257,20 @@ export class SessionManager {
       }
 
       const content = fs.readFileSync(sessionJsonPath, 'utf8');
-      return JSON.parse(content) as SessionInfo;
+      const parsed = JSON.parse(content) as SessionInfo;
+
+      // Defensive: legacy session.json files might have unexpected types.
+      if (typeof parsed.gitRepoPath !== 'string') {
+        delete (parsed as Partial<SessionInfo>).gitRepoPath;
+      }
+      if (typeof parsed.gitMainRepoPath !== 'string') {
+        delete (parsed as Partial<SessionInfo>).gitMainRepoPath;
+      }
+      if (typeof parsed.gitBranch !== 'string') {
+        delete (parsed as Partial<SessionInfo>).gitBranch;
+      }
+
+      return parsed;
     } catch (error) {
       logger.warn(`failed to load session info for ${sessionId}:`, error);
       return null;

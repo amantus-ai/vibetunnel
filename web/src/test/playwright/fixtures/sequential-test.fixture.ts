@@ -49,8 +49,7 @@ export const test = base.extend<SequentialTestFixtures>({
   },
 
   // Optimized wait utilities
-  // biome-ignore lint/correctness/noEmptyPattern: Playwright requires object destructuring
-  waitUtils: async ({}, use) => {
+  waitUtils: async (_unused, use) => {
     await use(OptimizedWaitUtils);
   },
 });

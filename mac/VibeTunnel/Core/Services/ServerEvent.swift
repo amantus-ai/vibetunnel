@@ -2,8 +2,8 @@ import Foundation
 
 /// Types of server events that can be received from the VibeTunnel server.
 ///
-/// `ServerEventType` defines all possible event types that flow through the Server-Sent Events (SSE)
-/// connection between the VibeTunnel server and the macOS app. Each event type corresponds to
+/// `ServerEventType` defines all possible event types that flow through the WebSocket v3 `EVENT`
+/// frames between the VibeTunnel server and the macOS app. Each event type corresponds to
 /// a specific terminal session lifecycle event or user interaction.
 ///
 /// ## Topics
@@ -15,8 +15,8 @@ import Foundation
 /// - ``commandFinished``: Command completion events
 /// - ``commandError``: Command failure events
 /// - ``bell``: Terminal bell notifications
-/// - ``claudeTurn``: AI assistant interaction events
 /// - ``connected``: Connection establishment events
+/// - ``testNotification``: Test notification events
 ///
 /// ### Event Properties
 ///
@@ -36,13 +36,13 @@ enum ServerEventType: String, Codable, CaseIterable {
     case commandError = "command-error"
 
     /// Indicates a terminal bell character was received.
-    case bell = "bell"
+    case bell
 
-    /// Indicates Claude (AI assistant) has finished responding and it's the user's turn.
-    case claudeTurn = "claude-turn"
+    /// Indicates the WS v3 events stream has been established.
+    case connected
 
-    /// Indicates the SSE connection has been established.
-    case connected = "connected"
+    /// Indicates a test notification event from the server.
+    case testNotification = "test-notification"
 
     /// Returns a human-readable description of the event type.
     ///
@@ -60,10 +60,10 @@ enum ServerEventType: String, Codable, CaseIterable {
             "Command Error"
         case .bell:
             "Terminal Bell"
-        case .claudeTurn:
-            "Your Turn"
         case .connected:
             "Connected"
+        case .testNotification:
+            "Test Notification"
         }
     }
 
@@ -76,15 +76,17 @@ enum ServerEventType: String, Codable, CaseIterable {
     /// - Returns: `true` if the event should trigger a notification, `false` otherwise.
     var shouldNotify: Bool {
         switch self {
-        case .sessionStart, .sessionExit, .claudeTurn:
+        case .sessionStart, .sessionExit:
             true
         case .commandFinished, .commandError, .bell, .connected:
+            false
+        case .testNotification:
             false
         }
     }
 }
 
-/// Represents a server event received via Server-Sent Events (SSE).
+/// Represents a server event received via WebSocket v3 `EVENT` frames.
 ///
 /// `ServerEvent` encapsulates all the information about terminal session events that flow
 /// from the VibeTunnel server to the macOS app. Each event carries contextual information
@@ -107,7 +109,6 @@ enum ServerEventType: String, Codable, CaseIterable {
 /// - ``sessionStart(sessionId:sessionName:command:)``
 /// - ``sessionExit(sessionId:sessionName:exitCode:)``
 /// - ``commandFinished(sessionId:command:duration:exitCode:)``
-/// - ``claudeTurn(sessionId:sessionName:)``
 /// - ``bell(sessionId:)``
 ///
 /// ### Event Properties
@@ -121,6 +122,8 @@ enum ServerEventType: String, Codable, CaseIterable {
 /// - ``processInfo``: Additional process information
 /// - ``message``: Event message
 /// - ``timestamp``: When the event occurred
+/// - ``title``: Optional title (test notifications)
+/// - ``body``: Optional body (test notifications)
 ///
 /// ### Computed Properties
 ///
@@ -156,6 +159,12 @@ struct ServerEvent: Codable, Identifiable, Equatable {
     /// Optional message providing additional context.
     let message: String?
 
+    /// Optional title (test notifications).
+    let title: String?
+
+    /// Optional body (test notifications).
+    let body: String?
+
     /// When the event occurred.
     let timestamp: Date
 
@@ -180,8 +189,10 @@ struct ServerEvent: Codable, Identifiable, Equatable {
         duration: Int? = nil,
         processInfo: String? = nil,
         message: String? = nil,
-        timestamp: Date = Date()
-    ) {
+        title: String? = nil,
+        body: String? = nil,
+        timestamp: Date = Date())
+    {
         self.type = type
         self.sessionId = sessionId
         self.sessionName = sessionName
@@ -190,6 +201,8 @@ struct ServerEvent: Codable, Identifiable, Equatable {
         self.duration = duration
         self.processInfo = processInfo
         self.message = message
+        self.title = title
+        self.body = body
         self.timestamp = timestamp
     }
 
@@ -209,8 +222,7 @@ struct ServerEvent: Codable, Identifiable, Equatable {
             type: .sessionStart,
             sessionId: sessionId,
             sessionName: sessionName,
-            command: command
-        )
+            command: command)
     }
 
     /// Creates a session exit event.
@@ -227,8 +239,7 @@ struct ServerEvent: Codable, Identifiable, Equatable {
             type: .sessionExit,
             sessionId: sessionId,
             sessionName: sessionName,
-            exitCode: exitCode
-        )
+            exitCode: exitCode)
     }
 
     /// Creates a command finished event.
@@ -245,8 +256,7 @@ struct ServerEvent: Codable, Identifiable, Equatable {
         sessionId: String,
         command: String,
         duration: Int,
-        exitCode: Int? = nil
-    )
+        exitCode: Int? = nil)
         -> Self
     {
         Self(
@@ -254,8 +264,7 @@ struct ServerEvent: Codable, Identifiable, Equatable {
             sessionId: sessionId,
             command: command,
             exitCode: exitCode,
-            duration: duration
-        )
+            duration: duration)
     }
 
     /// Creates a command error event.
@@ -274,26 +283,7 @@ struct ServerEvent: Codable, Identifiable, Equatable {
             sessionId: sessionId,
             command: command,
             exitCode: exitCode,
-            duration: duration
-        )
-    }
-
-    /// Creates a Claude turn event.
-    ///
-    /// Use this convenience method when Claude (AI assistant) finishes responding
-    /// and it's the user's turn to interact.
-    ///
-    /// - Parameters:
-    ///   - sessionId: The unique identifier for the session.
-    ///   - sessionName: Optional human-readable name for the session.
-    /// - Returns: A configured `ServerEvent` of type ``ServerEventType/claudeTurn``.
-    static func claudeTurn(sessionId: String, sessionName: String? = nil) -> Self {
-        Self(
-            type: .claudeTurn,
-            sessionId: sessionId,
-            sessionName: sessionName,
-            message: "Claude has finished responding"
-        )
+            duration: duration)
     }
 
     /// Creates a bell event.
@@ -306,8 +296,7 @@ struct ServerEvent: Codable, Identifiable, Equatable {
         Self(
             type: .bell,
             sessionId: sessionId,
-            message: "Terminal bell"
-        )
+            message: "Terminal bell")
     }
 
     // MARK: - Computed Properties
@@ -320,14 +309,14 @@ struct ServerEvent: Codable, Identifiable, Equatable {
     /// 3. Session ID (if available)
     /// 4. "Unknown Session" as fallback
     var displayName: String {
-        sessionName ?? command ?? sessionId ?? "Unknown Session"
+        self.sessionName ?? self.command ?? self.sessionId ?? "Unknown Session"
     }
 
     /// Determines whether this event should trigger a user notification.
     ///
     /// This delegates to the event type's ``ServerEventType/shouldNotify`` property.
     var shouldNotify: Bool {
-        type.shouldNotify
+        self.type.shouldNotify
     }
 
     /// Returns a human-readable formatted duration string.
@@ -342,18 +331,18 @@ struct ServerEvent: Codable, Identifiable, Equatable {
     var formattedDuration: String? {
         guard let duration else { return nil }
 
-        if duration < 1_000 {
+        if duration < 1000 {
             return "\(duration)ms"
-        } else if duration < 60_000 {
-            return String(format: "%.1fs", Double(duration) / 1_000.0)
+        } else if duration < 60000 {
+            return String(format: "%.1fs", Double(duration) / 1000.0)
         } else if duration < 3_600_000 {
-            let minutes = duration / 60_000
-            let seconds = (duration % 60_000) / 1_000
+            let minutes = duration / 60000
+            let seconds = (duration % 60000) / 1000
             return "\(minutes)m \(seconds)s"
         } else {
             let hours = duration / 3_600_000
-            let minutes = (duration % 3_600_000) / 60_000
-            let seconds = (duration % 60_000) / 1_000
+            let minutes = (duration % 3_600_000) / 60000
+            let seconds = (duration % 60000) / 1000
             return "\(hours)h \(minutes)m \(seconds)s"
         }
     }
@@ -365,7 +354,7 @@ struct ServerEvent: Codable, Identifiable, Equatable {
     var formattedTimestamp: String {
         let formatter = DateFormatter()
         formatter.timeStyle = .medium
-        return formatter.string(from: timestamp)
+        return formatter.string(from: self.timestamp)
     }
 
     // MARK: - Codable
@@ -380,6 +369,8 @@ struct ServerEvent: Codable, Identifiable, Equatable {
         case duration
         case processInfo
         case message
+        case title
+        case body
         case timestamp
     }
 }

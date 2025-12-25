@@ -6,10 +6,10 @@ import Foundation
 
 /// Represents the available authentication modes for dashboard access
 enum AuthenticationMode: String, CaseIterable {
-    case none = "none"
+    case none
     case osAuth = "os"
     case sshKeys = "ssh"
-    case both = "both"
+    case both
 
     var displayName: String {
         switch self {
@@ -34,10 +34,10 @@ enum AuthenticationMode: String, CaseIterable {
 
 /// Represents the terminal window title display modes
 enum TitleMode: String, CaseIterable {
-    case none = "none"
-    case filter = "filter"
-    case `static` = "static"
-    case dynamic = "dynamic"
+    case none
+    case filter
+    case `static`
+    case dynamic
 
     var displayName: String {
         switch self {

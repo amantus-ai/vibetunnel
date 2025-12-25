@@ -17,13 +17,11 @@ public final class SparkleUpdaterManager: NSObject, SPUUpdaterDelegate {
     private(set) var userDriverDelegate: SparkleUserDriverDelegate?
     private let logger = os.Logger(
         subsystem: BundleIdentifiers.loggerSubsystem,
-        category: "SparkleUpdater"
-    )
+        category: "SparkleUpdater")
 
     private nonisolated static let staticLogger = os.Logger(
         subsystem: BundleIdentifiers.loggerSubsystem,
-        category: "SparkleUpdater"
-    )
+        category: "SparkleUpdater")
 
     override public init() {
         super.init()
@@ -36,53 +34,51 @@ public final class SparkleUpdaterManager: NSObject, SPUUpdaterDelegate {
             NSClassFromString("XCTestCase") != nil
 
         if isRunningInTests {
-            logger.info("Running in test mode, skipping Sparkle initialization")
+            self.logger.info("Running in test mode, skipping Sparkle initialization")
             return
         }
 
         // Check if installed from App Store
         if ProcessInfo.processInfo.installedFromAppStore {
-            logger.info("App installed from App Store, skipping Sparkle initialization")
+            self.logger.info("App installed from App Store, skipping Sparkle initialization")
             return
         }
 
         // Create user driver delegate for gentle reminders
-        userDriverDelegate = SparkleUserDriverDelegate()
+        self.userDriverDelegate = SparkleUserDriverDelegate()
 
         // Initialize Sparkle with standard configuration
         #if DEBUG
-            // In debug mode, start the updater for testing
-            updaterController = SPUStandardUpdaterController(
-                startingUpdater: true,
-                updaterDelegate: self,
-                userDriverDelegate: userDriverDelegate
-            )
+        // In debug mode, start the updater for testing
+        self.updaterController = SPUStandardUpdaterController(
+            startingUpdater: true,
+            updaterDelegate: self,
+            userDriverDelegate: self.userDriverDelegate)
         #else
-            updaterController = SPUStandardUpdaterController(
-                startingUpdater: true,
-                updaterDelegate: self,
-                userDriverDelegate: userDriverDelegate
-            )
+        self.updaterController = SPUStandardUpdaterController(
+            startingUpdater: true,
+            updaterDelegate: self,
+            userDriverDelegate: self.userDriverDelegate)
         #endif
 
         // Configure automatic updates
         if let updater = updaterController?.updater {
             #if DEBUG
-                // Enable automatic checks in debug too
-                updater.automaticallyChecksForUpdates = true
-                updater.automaticallyDownloadsUpdates = false
-                logger.info("Sparkle updater initialized in DEBUG mode - automatic updates enabled for testing")
+            // Enable automatic checks in debug too
+            updater.automaticallyChecksForUpdates = true
+            updater.automaticallyDownloadsUpdates = false
+            self.logger.info("Sparkle updater initialized in DEBUG mode - automatic updates enabled for testing")
             #else
-                // Enable automatic checking for updates
-                updater.automaticallyChecksForUpdates = true
+            // Enable automatic checking for updates
+            updater.automaticallyChecksForUpdates = true
 
-                // Enable automatic downloading of updates
-                updater.automaticallyDownloadsUpdates = true
+            // Enable automatic downloading of updates
+            updater.automaticallyDownloadsUpdates = true
 
-                // Set update check interval to 24 hours
-                updater.updateCheckInterval = 86_400
+            // Set update check interval to 24 hours
+            updater.updateCheckInterval = 86400
 
-                logger.info("Sparkle updater initialized successfully with automatic downloads enabled")
+            self.logger.info("Sparkle updater initialized successfully with automatic downloads enabled")
             #endif
 
             // Start the updater for both debug and release builds
@@ -90,7 +86,7 @@ public final class SparkleUpdaterManager: NSObject, SPUUpdaterDelegate {
                 do {
                     try controller.updater.start()
                 } catch {
-                    logger.error("Failed to start Sparkle updater: \(error)")
+                    self.logger.error("Failed to start Sparkle updater: \(error)")
                 }
             }
 
@@ -101,7 +97,7 @@ public final class SparkleUpdaterManager: NSObject, SPUUpdaterDelegate {
     public func setUpdateChannel(_ channel: UpdateChannel) {
         // Save the channel preference
         UserDefaults.standard.set(channel.rawValue, forKey: "updateChannel")
-        logger.info("Update channel set to: \(channel.rawValue)")
+        self.logger.info("Update channel set to: \(channel.rawValue)")
 
         // The actual feed URL will be provided by the delegate method
     }
@@ -109,16 +105,16 @@ public final class SparkleUpdaterManager: NSObject, SPUUpdaterDelegate {
     public func checkForUpdatesInBackground() {
         guard let updater = updaterController?.updater else { return }
         updater.checkForUpdatesInBackground()
-        logger.info("Background update check initiated")
+        self.logger.info("Background update check initiated")
     }
 
     public func checkForUpdates() {
-        guard updaterController != nil else {
-            logger.warning("Cannot check for updates: updater not initialized")
+        guard self.updaterController != nil else {
+            self.logger.warning("Cannot check for updates: updater not initialized")
             return
         }
-        updaterController?.checkForUpdates(nil)
-        logger.info("Manual update check initiated")
+        self.updaterController?.checkForUpdates(nil)
+        self.logger.info("Manual update check initiated")
     }
 
     public func clearUserDefaults() {
@@ -129,14 +125,14 @@ public final class SparkleUpdaterManager: NSObject, SPUUpdaterDelegate {
             "SUSendProfileInfo",
             "SUUpdateRelaunchingMarker",
             "SUAutomaticallyUpdate",
-            "SULastProfileSubmissionDate"
+            "SULastProfileSubmissionDate",
         ]
 
         for key in sparkleDefaults {
             UserDefaults.standard.removeObject(forKey: key)
         }
 
-        logger.info("Sparkle user defaults cleared")
+        self.logger.info("Sparkle user defaults cleared")
     }
 }
 
@@ -178,7 +174,7 @@ public final class SparkleViewModel {
     public var isCheckingForUpdates = false
     public var automaticallyChecksForUpdates = true
     public var automaticallyDownloadsUpdates = true
-    public var updateCheckInterval: TimeInterval = 86_400
+    public var updateCheckInterval: TimeInterval = 86400
     public var lastUpdateCheckDate: Date?
     public var updateChannel: UpdateChannel = .stable
 
@@ -187,30 +183,30 @@ public final class SparkleViewModel {
     public init() {
         // Sync with actual Sparkle settings
         if let updater = updaterManager.updaterController?.updater {
-            automaticallyChecksForUpdates = updater.automaticallyChecksForUpdates
-            automaticallyDownloadsUpdates = updater.automaticallyDownloadsUpdates
-            updateCheckInterval = updater.updateCheckInterval
-            lastUpdateCheckDate = updater.lastUpdateCheckDate
-            canCheckForUpdates = updater.canCheckForUpdates
+            self.automaticallyChecksForUpdates = updater.automaticallyChecksForUpdates
+            self.automaticallyDownloadsUpdates = updater.automaticallyDownloadsUpdates
+            self.updateCheckInterval = updater.updateCheckInterval
+            self.lastUpdateCheckDate = updater.lastUpdateCheckDate
+            self.canCheckForUpdates = updater.canCheckForUpdates
         }
 
         // Load saved update channel
         if let savedChannel = UserDefaults.standard.string(forKey: "updateChannel"),
            let channel = UpdateChannel(rawValue: savedChannel)
         {
-            updateChannel = channel
+            self.updateChannel = channel
         } else {
-            updateChannel = UpdateChannel.stable
+            self.updateChannel = UpdateChannel.stable
         }
     }
 
     public func checkForUpdates() {
-        updaterManager.checkForUpdates()
+        self.updaterManager.checkForUpdates()
     }
 
     public func setUpdateChannel(_ channel: UpdateChannel) {
-        updateChannel = channel
-        updaterManager.setUpdateChannel(channel)
+        self.updateChannel = channel
+        self.updaterManager.setUpdateChannel(channel)
     }
 }
 

@@ -6,12 +6,11 @@ struct QuickLookWrapper: UIViewControllerRepresentable {
     let quickLookManager: QuickLookManager
 
     func makeUIViewController(context: Context) -> UINavigationController {
-        let previewController = quickLookManager.makePreviewController()
+        let previewController = self.quickLookManager.makePreviewController()
         previewController.navigationItem.rightBarButtonItem = UIBarButtonItem(
             barButtonSystemItem: .done,
             target: context.coordinator,
-            action: #selector(Coordinator.dismiss)
-        )
+            action: #selector(Coordinator.dismiss))
 
         let navigationController = UINavigationController(rootViewController: previewController)
         navigationController.navigationBar.prefersLargeTitles = false
@@ -21,7 +20,7 @@ struct QuickLookWrapper: UIViewControllerRepresentable {
         navigationController.navigationBar.tintColor = UIColor(Theme.Colors.terminalAccent)
         navigationController.navigationBar.titleTextAttributes = [
             .foregroundColor: UIColor(Theme.Colors.terminalWhite),
-            .font: UIFont(name: "SF Mono", size: 16) ?? UIFont.systemFont(ofSize: 16)
+            .font: UIFont(name: "SF Mono", size: 16) ?? UIFont.systemFont(ofSize: 16),
         ]
 
         return navigationController
@@ -32,7 +31,7 @@ struct QuickLookWrapper: UIViewControllerRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(quickLookManager: quickLookManager)
+        Coordinator(quickLookManager: self.quickLookManager)
     }
 
     class Coordinator: NSObject {
@@ -45,7 +44,7 @@ struct QuickLookWrapper: UIViewControllerRepresentable {
         @MainActor
         @objc
         func dismiss() {
-            quickLookManager.isPresenting = false
+            self.quickLookManager.isPresenting = false
         }
     }
 }

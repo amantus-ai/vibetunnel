@@ -1,18 +1,21 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HttpMethod, type Session } from '../../../shared/types.js';
+import type { Session } from '../../../shared/types.js';
 import { InputManager } from './input-manager.js';
 
 // Mock fetch globally
 global.fetch = vi.fn();
 
-// Mock websocket input client
-vi.mock('../../services/websocket-input-client.js', () => ({
-  websocketInputClient: {
-    connect: vi.fn().mockResolvedValue(undefined),
-    disconnect: vi.fn(),
-    sendInput: vi.fn().mockReturnValue(false), // Return false to fall back to HTTP
-  },
+const terminalSocketClientMock = vi.hoisted(() => ({
+  initialize: vi.fn(),
+  getConnectionStatus: vi.fn(() => true),
+  onConnectionStateChange: vi.fn(() => () => {}),
+  sendInputText: vi.fn().mockReturnValue(true),
+  sendInputKey: vi.fn().mockReturnValue(true),
+}));
+
+vi.mock('../../services/terminal-socket-client.js', () => ({
+  terminalSocketClient: terminalSocketClientMock,
 }));
 
 // We don't need to mock browser-shortcuts because the tests should verify
@@ -45,6 +48,8 @@ describe('InputManager', () => {
 
     // Reset fetch mock
     vi.mocked(global.fetch).mockReset();
+    terminalSocketClientMock.sendInputText.mockClear();
+    terminalSocketClientMock.sendInputKey.mockClear();
   });
 
   afterEach(() => {
@@ -53,9 +58,6 @@ describe('InputManager', () => {
 
   describe('Option/Alt + Arrow key navigation', () => {
     it('should send Escape+b for Alt+Left arrow', async () => {
-      const mockResponse = { ok: true, json: vi.fn().mockResolvedValue({}) };
-      vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse as Response);
-
       const event = new KeyboardEvent('keydown', {
         key: 'ArrowLeft',
         altKey: true,
@@ -63,22 +65,13 @@ describe('InputManager', () => {
 
       await inputManager.handleKeyboardInput(event);
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/sessions/test-session-id/input',
-        expect.objectContaining({
-          method: HttpMethod.POST,
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-          }),
-          body: JSON.stringify({ text: '\x1bb' }),
-        })
+      expect(terminalSocketClientMock.sendInputText).toHaveBeenCalledWith(
+        'test-session-id',
+        '\x1bb'
       );
     });
 
     it('should send Escape+f for Alt+Right arrow', async () => {
-      const mockResponse = { ok: true, json: vi.fn().mockResolvedValue({}) };
-      vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse as Response);
-
       const event = new KeyboardEvent('keydown', {
         key: 'ArrowRight',
         altKey: true,
@@ -86,22 +79,13 @@ describe('InputManager', () => {
 
       await inputManager.handleKeyboardInput(event);
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/sessions/test-session-id/input',
-        expect.objectContaining({
-          method: HttpMethod.POST,
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-          }),
-          body: JSON.stringify({ text: '\x1bf' }),
-        })
+      expect(terminalSocketClientMock.sendInputText).toHaveBeenCalledWith(
+        'test-session-id',
+        '\x1bf'
       );
     });
 
     it('should send regular arrow keys without Alt modifier', async () => {
-      const mockResponse = { ok: true, json: vi.fn().mockResolvedValue({}) };
-      vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse as Response);
-
       const event = new KeyboardEvent('keydown', {
         key: 'ArrowLeft',
         altKey: false,
@@ -109,24 +93,15 @@ describe('InputManager', () => {
 
       await inputManager.handleKeyboardInput(event);
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/sessions/test-session-id/input',
-        expect.objectContaining({
-          method: HttpMethod.POST,
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-          }),
-          body: JSON.stringify({ key: 'arrow_left' }),
-        })
+      expect(terminalSocketClientMock.sendInputKey).toHaveBeenCalledWith(
+        'test-session-id',
+        'arrow_left'
       );
     });
   });
 
   describe('Option/Alt + Backspace word deletion', () => {
     it('should send Ctrl+W for Alt+Backspace', async () => {
-      const mockResponse = { ok: true, json: vi.fn().mockResolvedValue({}) };
-      vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse as Response);
-
       const event = new KeyboardEvent('keydown', {
         key: 'Backspace',
         altKey: true,
@@ -134,22 +109,13 @@ describe('InputManager', () => {
 
       await inputManager.handleKeyboardInput(event);
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/sessions/test-session-id/input',
-        expect.objectContaining({
-          method: HttpMethod.POST,
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-          }),
-          body: JSON.stringify({ text: '\x17' }),
-        })
+      expect(terminalSocketClientMock.sendInputText).toHaveBeenCalledWith(
+        'test-session-id',
+        '\x17'
       );
     });
 
     it('should send regular Backspace without Alt modifier', async () => {
-      const mockResponse = { ok: true, json: vi.fn().mockResolvedValue({}) };
-      vi.mocked(global.fetch).mockResolvedValueOnce(mockResponse as Response);
-
       const event = new KeyboardEvent('keydown', {
         key: 'Backspace',
         altKey: false,
@@ -157,15 +123,9 @@ describe('InputManager', () => {
 
       await inputManager.handleKeyboardInput(event);
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/sessions/test-session-id/input',
-        expect.objectContaining({
-          method: HttpMethod.POST,
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-          }),
-          body: JSON.stringify({ key: 'backspace' }),
-        })
+      expect(terminalSocketClientMock.sendInputKey).toHaveBeenCalledWith(
+        'test-session-id',
+        'backspace'
       );
     });
   });
@@ -212,6 +172,8 @@ describe('InputManager', () => {
     });
 
     it('should update session status when receiving 400 response', async () => {
+      // Force HTTP fallback
+      terminalSocketClientMock.sendInputText.mockReturnValueOnce(false);
       const mockResponse = {
         ok: false,
         status: 400,

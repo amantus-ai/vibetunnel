@@ -12,7 +12,7 @@ The iOS app already implements most core functionality but lacks several feature
 
 | Feature | Web | iOS | Status | iOS Adaptation Notes |
 |---------|-----|-----|--------|---------------------|
-| Terminal emulation | xterm.js | SwiftTerm + xterm.js | ✅ Complete | Dual renderer approach is excellent |
+| Terminal emulation | ghostty-web | ghostty-web (WASM) | ✅ Complete | Unified renderer across platforms |
 | Copy/paste | Native clipboard | Touch selection | ✅ Complete | iOS implementation is more intuitive |
 | URL highlighting | Clickable URLs | URL detection (configurable) | ✅ Complete | Native iOS text detection |
 | Font size control | 8-32px range | 8-32pt with presets | ✅ Complete | Quick preset buttons are better for mobile |
@@ -98,7 +98,7 @@ The iOS app already implements most core functionality but lacks several feature
 |---------|-----|-----|--------|---------------------|
 | Split view | Side-by-side list/terminal | iPad multitasking | ✅ Different | iPad split view is better |
 | WebSocket binary | ✓ | ✓ | ✅ Complete | - |
-| SSE streaming | Text output | Not used | N/A | WebSocket is sufficient |
+| Legacy SSE streaming | Removed | Removed | ✅ Removed | WebSocket v3 is the only transport |
 | Offline support | Service worker | Basic offline handling | ⚠️ Partial | Improve offline mode |
 | PWA features | Installable | Native app | N/A | Already native |
 | URL routing | Deep links | URL schemes | ✅ Complete | - |

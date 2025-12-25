@@ -43,8 +43,8 @@ final class StatusBarController: NSObject {
         gitRepositoryMonitor: GitRepositoryMonitor,
         repositoryDiscovery: RepositoryDiscoveryService,
         configManager: ConfigManager,
-        worktreeService: WorktreeService
-    ) {
+        worktreeService: WorktreeService)
+    {
         self.sessionMonitor = sessionMonitor
         self.serverManager = serverManager
         self.ngrokService = ngrokService
@@ -59,20 +59,20 @@ final class StatusBarController: NSObject {
 
         super.init()
 
-        setupStatusItem()
-        setupMenuManager()
-        setupObservers()
-        setupNetworkMonitoring()
+        self.setupStatusItem()
+        self.setupMenuManager()
+        self.setupObservers()
+        self.setupNetworkMonitoring()
     }
 
     // MARK: - Setup
 
     private func setupStatusItem() {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem?.button {
             button.imagePosition = .imageLeading
-            button.action = #selector(handleClick(_:))
+            button.action = #selector(self.handleClick(_:))
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
 
@@ -80,20 +80,20 @@ final class StatusBarController: NSObject {
             button.setButtonType(.toggle)
 
             // Accessibility
-            button.setAccessibilityTitle(getAppDisplayName())
+            button.setAccessibilityTitle(self.getAppDisplayName())
             button.setAccessibilityRole(.button)
             button.setAccessibilityHelp("Shows terminal sessions and server information")
 
             // Initialize the icon controller
-            iconController = StatusBarIconController(button: button)
+            self.iconController = StatusBarIconController(button: button)
 
             // Perform initial update immediately for instant feedback
-            updateStatusItemDisplay()
+            self.updateStatusItemDisplay()
 
             // Schedule another update after a short delay to catch server startup
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(100))
-                updateStatusItemDisplay()
+                self.updateStatusItemDisplay()
             }
         }
     }
@@ -108,18 +108,17 @@ final class StatusBarController: NSObject {
             gitRepositoryMonitor: gitRepositoryMonitor,
             repositoryDiscovery: repositoryDiscovery,
             configManager: configManager,
-            worktreeService: worktreeService
-        )
-        menuManager.setup(with: configuration)
+            worktreeService: worktreeService)
+        self.menuManager.setup(with: configuration)
     }
 
     private func setupObservers() {
         // Start observing server state changes
-        observeServerState()
+        self.observeServerState()
 
         // Create a timer to periodically update the display
         // This serves dual purpose: updating session counts and ensuring server state is reflected
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        self.updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 _ = await self?.sessionMonitor.getSessions()
                 self?.updateStatusItemDisplay()
@@ -127,12 +126,12 @@ final class StatusBarController: NSObject {
         }
 
         // Fire timer immediately to catch any early state changes
-        updateTimer?.fire()
+        self.updateTimer?.fire()
     }
 
     private func observeServerState() {
         withObservationTracking {
-            _ = serverManager.isRunning
+            _ = self.serverManager.isRunning
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.updateStatusItemDisplay()
@@ -149,19 +148,18 @@ final class StatusBarController: NSObject {
         // Listen for network status changes
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(networkStatusChanged(_:)),
+            selector: #selector(self.networkStatusChanged(_:)),
             name: .networkStatusChanged,
-            object: nil
-        )
+            object: nil)
 
         // Set initial state
-        hasNetworkAccess = NetworkMonitor.shared.isConnected
+        self.hasNetworkAccess = NetworkMonitor.shared.isConnected
     }
 
     @objc
     private func networkStatusChanged(_ notification: Notification) {
-        hasNetworkAccess = NetworkMonitor.shared.isConnected
-        updateStatusItemDisplay()
+        self.hasNetworkAccess = NetworkMonitor.shared.isConnected
+        self.updateStatusItemDisplay()
     }
 
     // MARK: - Display Updates
@@ -170,18 +168,17 @@ final class StatusBarController: NSObject {
         guard let button = statusItem?.button else { return }
 
         // Update accessibility title (might have changed due to debug/dev server state)
-        button.setAccessibilityTitle(getAppDisplayName())
+        button.setAccessibilityTitle(self.getAppDisplayName())
 
         // Update icon and title using the dedicated controller
-        iconController?.update(serverManager: serverManager, sessionMonitor: sessionMonitor)
+        self.iconController?.update(serverManager: self.serverManager, sessionMonitor: self.sessionMonitor)
 
         // Update tooltip using the dedicated provider
         button.toolTip = TooltipProvider.generateTooltip(
-            serverManager: serverManager,
-            ngrokService: ngrokService,
-            tailscaleService: tailscaleService,
-            sessionMonitor: sessionMonitor
-        )
+            serverManager: self.serverManager,
+            ngrokService: self.ngrokService,
+            tailscaleService: self.tailscaleService,
+            sessionMonitor: self.sessionMonitor)
     }
 
     // MARK: - Click Handling
@@ -189,39 +186,39 @@ final class StatusBarController: NSObject {
     @objc
     private func handleClick(_ sender: NSStatusBarButton) {
         guard let currentEvent = NSApp.currentEvent else {
-            handleLeftClick(sender)
+            self.handleLeftClick(sender)
             return
         }
 
         switch currentEvent.type {
         case .leftMouseUp:
-            handleLeftClick(sender)
+            self.handleLeftClick(sender)
         case .rightMouseUp:
-            handleRightClick(sender)
+            self.handleRightClick(sender)
         default:
-            handleLeftClick(sender)
+            self.handleLeftClick(sender)
         }
     }
 
     private func handleLeftClick(_ button: NSStatusBarButton) {
-        menuManager.toggleCustomWindow(relativeTo: button)
+        self.menuManager.toggleCustomWindow(relativeTo: button)
     }
 
     private func handleRightClick(_ button: NSStatusBarButton) {
         guard let statusItem else { return }
-        menuManager.showContextMenu(for: button, statusItem: statusItem)
+        self.menuManager.showContextMenu(for: button, statusItem: statusItem)
     }
 
     // MARK: - Public Methods
 
     func showCustomWindow() {
         guard let button = statusItem?.button else { return }
-        menuManager.showCustomWindow(relativeTo: button)
+        self.menuManager.showCustomWindow(relativeTo: button)
     }
 
     func toggleCustomWindow() {
         guard let button = statusItem?.button else { return }
-        menuManager.toggleCustomWindow(relativeTo: button)
+        self.menuManager.toggleCustomWindow(relativeTo: button)
     }
 
     // MARK: - Helpers
@@ -230,7 +227,7 @@ final class StatusBarController: NSObject {
         let (debugMode, useDevServer) = AppConstants.getDevelopmentStatus()
 
         var name = debugMode ? "VibeTunnel Debug" : "VibeTunnel"
-        if useDevServer && serverManager.isRunning {
+        if useDevServer, self.serverManager.isRunning {
             name += " Dev Server"
         }
         return name

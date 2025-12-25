@@ -20,33 +20,32 @@ final class DashboardKeychain {
     /// Get the dashboard password from keychain
     func getPassword() -> String? {
         #if DEBUG
-            // In debug builds, skip keychain access to avoid authorization dialogs
-            logger
-                .info(
-                    "Debug mode: Skipping keychain password retrieval. Password will only persist during current app session."
-                )
-            return nil
+        // In debug builds, skip keychain access to avoid authorization dialogs
+        self.logger
+            .info(
+                "Debug mode: Skipping keychain password retrieval. Password will only persist during current app session.")
+        return nil
         #else
-            let query: [String: Any] = [
-                kSecClass as String: kSecClassGenericPassword,
-                kSecAttrService as String: service,
-                kSecAttrAccount as String: account,
-                kSecReturnData as String: true
-            ]
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: self.service,
+            kSecAttrAccount as String: self.account,
+            kSecReturnData as String: true,
+        ]
 
-            var result: AnyObject?
-            let status = SecItemCopyMatching(query as CFDictionary, &result)
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
 
-            guard status == errSecSuccess,
-                  let data = result as? Data,
-                  let password = String(data: data, encoding: .utf8)
-            else {
-                logger.debug("No password found in keychain")
-                return nil
-            }
+        guard status == errSecSuccess,
+              let data = result as? Data,
+              let password = String(data: data, encoding: .utf8)
+        else {
+            self.logger.debug("No password found in keychain")
+            return nil
+        }
 
-            logger.debug("Password retrieved from keychain")
-            return password
+        self.logger.debug("Password retrieved from keychain")
+        return password
         #endif
     }
 
@@ -54,11 +53,11 @@ final class DashboardKeychain {
     func hasPassword() -> Bool {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
+            kSecAttrService as String: self.service,
+            kSecAttrAccount as String: self.account,
             kSecMatchLimit as String: kSecMatchLimitOne,
             kSecReturnAttributes as String: false,
-            kSecReturnData as String: false
+            kSecReturnData as String: false,
         ]
 
         var result: AnyObject?
@@ -70,27 +69,26 @@ final class DashboardKeychain {
     /// Set the dashboard password in keychain
     func setPassword(_ password: String) -> Bool {
         guard !password.isEmpty else {
-            logger.warning("Attempted to set empty password")
+            self.logger.warning("Attempted to set empty password")
             return false
         }
 
         guard let data = password.data(using: .utf8) else {
-            logger.warning("Failed to convert password to UTF-8 data")
+            self.logger.warning("Failed to convert password to UTF-8 data")
             return false
         }
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
+            kSecAttrService as String: self.service,
+            kSecAttrAccount as String: self.account,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked,
         ]
 
         // Try to update first
         var status = SecItemUpdate(
             query as CFDictionary,
-            [kSecValueData as String: data] as CFDictionary
-        )
+            [kSecValueData as String: data] as CFDictionary)
 
         if status == errSecItemNotFound {
             // Item doesn't exist, create it
@@ -100,15 +98,14 @@ final class DashboardKeychain {
         }
 
         let success = status == errSecSuccess
-        logger.info("Password \(success ? "saved to" : "failed to save to") keychain")
+        self.logger.info("Password \(success ? "saved to" : "failed to save to") keychain")
 
         #if DEBUG
-            if success {
-                logger
-                    .info(
-                        "Debug mode: Password saved to keychain but will not persist across app restarts. The password will only be available during this session to avoid keychain authorization dialogs during development."
-                    )
-            }
+        if success {
+            self.logger
+                .info(
+                    "Debug mode: Password saved to keychain but will not persist across app restarts. The password will only be available during this session to avoid keychain authorization dialogs during development.")
+        }
         #endif
 
         return success
@@ -118,13 +115,13 @@ final class DashboardKeychain {
     func deletePassword() -> Bool {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
+            kSecAttrService as String: self.service,
+            kSecAttrAccount as String: self.account,
         ]
 
         let status = SecItemDelete(query as CFDictionary)
         let success = status == errSecSuccess || status == errSecItemNotFound
-        logger.info("Password \(success ? "deleted from" : "failed to delete from") keychain")
+        self.logger.info("Password \(success ? "deleted from" : "failed to delete from") keychain")
         return success
     }
 }

@@ -75,7 +75,7 @@ jobs:
           fi
           
           # Update Homebrew and install all tools in one command
-          if brew update && brew install swiftlint swiftformat xcbeautify; then
+          if brew update && brew install swiftlint swiftformat xcbeautify zig; then
             echo "Successfully installed/upgraded all tools"
             break
           else

@@ -13,7 +13,7 @@ struct APIErrorTests {
 
             var localizedDescription: String {
                 switch self {
-                case .networkError(let urlError):
+                case let .networkError(urlError):
                     switch urlError.code {
                     case .timedOut:
                         "Connection timed out"
@@ -54,7 +54,7 @@ struct APIErrorTests {
                 if let message {
                     return message
                 }
-                switch code {
+                switch self.code {
                 case 400: return "Bad request - check your input"
                 case 401: return "Unauthorized - authentication required"
                 case 403: return "Forbidden - access denied"
@@ -65,7 +65,7 @@ struct APIErrorTests {
                 case 500: return "Server error - internal server error"
                 case 502: return "Bad gateway - server is down"
                 case 503: return "Service unavailable"
-                default: return "Server error: \(code)"
+                default: return "Server error: \(self.code)"
                 }
             }
         }
@@ -111,7 +111,7 @@ struct APIErrorTests {
             // Format 4: All fields
             """
             {"error": "Request failed", "message": "Invalid input", "details": "Missing required fields", "code": "VALIDATION_ERROR"}
-            """
+            """,
         ]
 
         for json in errorFormats {
@@ -134,7 +134,7 @@ struct APIErrorTests {
             "{invalid json}", // Malformed JSON
             "null", // Null response
             "undefined", // JavaScript undefined
-            "<html>404 Not Found</html>" // HTML error page
+            "<html>404 Not Found</html>", // HTML error page
         ]
 
         for response in invalidResponses {
@@ -192,13 +192,13 @@ struct APIErrorTests {
             let rows: Int?
 
             func validate() -> String? {
-                if command.isEmpty {
+                if self.command.isEmpty {
                     return "Command cannot be empty"
                 }
-                if command.first?.isEmpty == true {
+                if self.command.first?.isEmpty == true {
                     return "Command cannot be empty string"
                 }
-                if workingDir.isEmpty {
+                if self.workingDir.isEmpty {
                     return "Working directory cannot be empty"
                 }
                 if let cols, cols <= 0 {
@@ -217,7 +217,7 @@ struct APIErrorTests {
             SessionCreateRequest(command: [""], workingDir: "/tmp", cols: 80, rows: 24),
             SessionCreateRequest(command: ["bash"], workingDir: "", cols: 80, rows: 24),
             SessionCreateRequest(command: ["bash"], workingDir: "/tmp", cols: 0, rows: 24),
-            SessionCreateRequest(command: ["bash"], workingDir: "/tmp", cols: 80, rows: -1)
+            SessionCreateRequest(command: ["bash"], workingDir: "/tmp", cols: 80, rows: -1),
         ]
 
         for request in invalidRequests {
@@ -285,7 +285,7 @@ struct APIErrorTests {
             let retryableErrors: Set<Int>
 
             func shouldRetry(attempt: Int, statusCode: Int) -> Bool {
-                attempt < maxAttempts && retryableErrors.contains(statusCode)
+                attempt < self.maxAttempts && self.retryableErrors.contains(statusCode)
             }
 
             func delayForAttempt(_ attempt: Int) -> TimeInterval {
@@ -296,7 +296,7 @@ struct APIErrorTests {
 
         let policy = RetryPolicy(
             maxAttempts: 3,
-            retryableErrors: [408, 429, 502, 503, 504] // Timeout, rate limit, gateway errors
+            retryableErrors: [408, 429, 502, 503, 504], // Timeout, rate limit, gateway errors
         )
 
         // Should retry on retryable errors
@@ -325,7 +325,7 @@ struct APIErrorTests {
             "❌ Operation failed",
             "Error: Path contains invalid characters: /tmp/test-file",
             "Session 'test—session' not found", // em dash
-            "Invalid input: 🚫"
+            "Invalid input: 🚫",
         ]
 
         struct ErrorResponse: Codable {
@@ -350,11 +350,11 @@ struct APIErrorTests {
             private var errors: [String] = []
 
             func addError(_ error: String) {
-                errors.append(error)
+                self.errors.append(error)
             }
 
             func getErrors() -> [String] {
-                errors
+                self.errors
             }
         }
 

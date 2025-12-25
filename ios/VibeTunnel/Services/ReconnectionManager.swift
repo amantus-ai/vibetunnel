@@ -17,51 +17,50 @@ class ReconnectionManager {
 
     init(connectionManager: ConnectionManager) {
         self.connectionManager = connectionManager
-        setupNetworkMonitoring()
+        self.setupNetworkMonitoring()
     }
 
     private func setupNetworkMonitoring() {
         // Listen for network changes
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(networkStatusChanged),
+            selector: #selector(self.networkStatusChanged),
             name: NetworkMonitor.statusChangedNotification,
-            object: nil
-        )
+            object: nil)
     }
 
     @objc
     private func networkStatusChanged() {
-        if NetworkMonitor.shared.isConnected && !connectionManager.isConnected {
+        if NetworkMonitor.shared.isConnected, !self.connectionManager.isConnected {
             // Network is back, attempt reconnection
-            startReconnection()
+            self.startReconnection()
         }
     }
 
     func startReconnection() {
-        guard !isReconnecting,
+        guard !self.isReconnecting,
               let serverConfig = connectionManager.serverConfig else { return }
 
-        isReconnecting = true
-        currentRetry = 0
-        lastError = nil
+        self.isReconnecting = true
+        self.currentRetry = 0
+        self.lastError = nil
 
-        reconnectionTask?.cancel()
-        reconnectionTask = Task {
-            await performReconnection(config: serverConfig)
+        self.reconnectionTask?.cancel()
+        self.reconnectionTask = Task {
+            await self.performReconnection(config: serverConfig)
         }
     }
 
     func stopReconnection() {
-        isReconnecting = false
-        currentRetry = 0
-        nextRetryTime = nil
-        reconnectionTask?.cancel()
-        reconnectionTask = nil
+        self.isReconnecting = false
+        self.currentRetry = 0
+        self.nextRetryTime = nil
+        self.reconnectionTask?.cancel()
+        self.reconnectionTask = nil
     }
 
     private func performReconnection(config: ServerConfig) async {
-        while isReconnecting && currentRetry < maxRetries {
+        while self.isReconnecting, self.currentRetry < self.maxRetries {
             // Check if we still have network
             guard NetworkMonitor.shared.isConnected else {
                 // Wait for network to come back
@@ -74,24 +73,24 @@ class ReconnectionManager {
                 _ = try await APIClient.shared.getSessions()
 
                 // Success!
-                connectionManager.isConnected = true
-                isReconnecting = false
-                currentRetry = 0
-                nextRetryTime = nil
-                lastError = nil
+                self.connectionManager.isConnected = true
+                self.isReconnecting = false
+                self.currentRetry = 0
+                self.nextRetryTime = nil
+                self.lastError = nil
 
                 // Update last connection time
-                connectionManager.saveConnection(config)
+                self.connectionManager.saveConnection(config)
 
                 return
             } catch {
-                lastError = error
-                currentRetry += 1
+                self.lastError = error
+                self.currentRetry += 1
 
-                if currentRetry < maxRetries {
+                if self.currentRetry < self.maxRetries {
                     // Calculate exponential backoff
                     let backoffSeconds = min(pow(2.0, Double(currentRetry - 1)), 60.0)
-                    nextRetryTime = Date().addingTimeInterval(backoffSeconds)
+                    self.nextRetryTime = Date().addingTimeInterval(backoffSeconds)
 
                     try? await Task.sleep(for: .seconds(backoffSeconds))
                 }
@@ -99,8 +98,8 @@ class ReconnectionManager {
         }
 
         // Max retries reached
-        isReconnecting = false
-        await connectionManager.disconnect()
+        self.isReconnecting = false
+        await self.connectionManager.disconnect()
     }
 
     deinit {
@@ -115,8 +114,7 @@ extension ReconnectionManager {
     static func calculateBackoff(
         attempt: Int,
         baseDelay: TimeInterval = 1.0,
-        maxDelay: TimeInterval = 60.0
-    )
+        maxDelay: TimeInterval = 60.0)
         -> TimeInterval
     {
         let exponentialDelay = baseDelay * pow(2.0, Double(attempt - 1))

@@ -17,21 +17,20 @@ struct AutocompleteWindowView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        if isShowing && !suggestions.isEmpty {
+        if self.isShowing, !self.suggestions.isEmpty {
             context.coordinator.showDropdown(
                 on: nsView,
-                suggestions: suggestions,
-                selectedIndex: selectedIndex,
-                keyboardNavigating: keyboardNavigating,
-                width: width
-            )
+                suggestions: self.suggestions,
+                selectedIndex: self.selectedIndex,
+                keyboardNavigating: self.keyboardNavigating,
+                width: self.width)
         } else {
             context.coordinator.hideDropdown()
         }
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onSelect: onSelect, isShowing: $isShowing, selectedIndex: $selectedIndex)
+        Coordinator(onSelect: self.onSelect, isShowing: self.$isShowing, selectedIndex: self.$selectedIndex)
     }
 
     @MainActor
@@ -62,7 +61,7 @@ struct AutocompleteWindowView: NSViewRepresentable {
         private func cleanupClickMonitor() {
             if let monitor = clickMonitor {
                 NSEvent.removeMonitor(monitor)
-                clickMonitor = nil
+                self.clickMonitor = nil
             }
         }
 
@@ -72,18 +71,17 @@ struct AutocompleteWindowView: NSViewRepresentable {
             suggestions: [PathSuggestion],
             selectedIndex: Int,
             keyboardNavigating: Bool,
-            width: CGFloat
-        ) {
+            width: CGFloat)
+        {
             guard let parentWindow = view.window else { return }
 
             // Create window if needed
-            if dropdownWindow == nil {
+            if self.dropdownWindow == nil {
                 let window = NSWindow(
                     contentRect: NSRect(x: 0, y: 0, width: width, height: 200),
                     styleMask: [.borderless],
                     backing: .buffered,
-                    defer: false
-                )
+                    defer: false)
 
                 window.isOpaque = false
                 window.backgroundColor = .clear
@@ -106,8 +104,8 @@ struct AutocompleteWindowView: NSViewRepresentable {
                 AutocompleteViewWithKeyboard(
                     suggestions: suggestions,
                     selectedIndex: $selectedIndex,
-                    keyboardNavigating: keyboardNavigating
-                ) { [weak self] suggestion in
+                    keyboardNavigating: keyboardNavigating)
+                { [weak self] suggestion in
                     self?.onSelect(suggestion)
                     self?.isShowing = false
                 }
@@ -118,8 +116,7 @@ struct AutocompleteWindowView: NSViewRepresentable {
             .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
-            )
+                    .stroke(Color.primary.opacity(0.1), lineWidth: 1))
 
             hostingView.rootView = AnyView(content)
 
@@ -132,8 +129,7 @@ struct AutocompleteWindowView: NSViewRepresentable {
                 x: screenFrame.minX,
                 y: screenFrame.minY - 204, // dropdown height + spacing
                 width: width,
-                height: 200
-            )
+                height: 200)
 
             window.setFrame(windowFrame, display: false)
 
@@ -144,10 +140,10 @@ struct AutocompleteWindowView: NSViewRepresentable {
             window.makeKeyAndOrderFront(nil)
 
             // Setup click monitoring
-            if clickMonitor == nil {
-                clickMonitor = NSEvent.addLocalMonitorForEvents(
-                    matching: [.leftMouseDown, .rightMouseDown]
-                ) { [weak self] event in
+            if self.clickMonitor == nil {
+                self.clickMonitor = NSEvent.addLocalMonitorForEvents(
+                    matching: [.leftMouseDown, .rightMouseDown])
+                { [weak self] event in
                     if event.window != window {
                         self?.isShowing = false
                     }
@@ -158,7 +154,7 @@ struct AutocompleteWindowView: NSViewRepresentable {
 
         @MainActor
         func hideDropdown() {
-            cleanupClickMonitor()
+            self.cleanupClickMonitor()
 
             if let window = dropdownWindow {
                 if let parent = window.parent {

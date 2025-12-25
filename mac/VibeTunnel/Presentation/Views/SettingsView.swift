@@ -27,11 +27,11 @@ struct SettingsView: View {
         .remoteAccess: Layout.defaultTabSize,
         .advanced: Layout.defaultTabSize,
         .debug: Layout.defaultTabSize,
-        .about: Layout.defaultTabSize
+        .about: Layout.defaultTabSize,
     ]
 
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: self.$selectedTab) {
             GeneralSettingsView()
                 .tabItem {
                     Label(SettingsTab.general.displayName, systemImage: SettingsTab.general.icon)
@@ -68,7 +68,7 @@ struct SettingsView: View {
                 }
                 .tag(SettingsTab.advanced)
 
-            if debugMode {
+            if self.debugMode {
                 DebugSettingsView()
                     .tabItem {
                         Label(SettingsTab.debug.displayName, systemImage: SettingsTab.debug.icon)
@@ -82,22 +82,22 @@ struct SettingsView: View {
                 }
                 .tag(SettingsTab.about)
         }
-        .frame(width: contentSize.width, height: contentSize.height)
+        .frame(width: self.contentSize.width, height: self.contentSize.height)
         .onReceive(NotificationCenter.default.publisher(for: .openSettingsTab)) { notification in
             if let tab = notification.object as? SettingsTab {
-                selectedTab = tab
+                self.selectedTab = tab
             }
         }
-        .onChange(of: selectedTab) { _, newTab in
-            contentSize = tabSizes[newTab] ?? Layout.fallbackTabSize
+        .onChange(of: self.selectedTab) { _, newTab in
+            self.contentSize = self.tabSizes[newTab] ?? Layout.fallbackTabSize
         }
         .onAppear {
-            contentSize = tabSizes[selectedTab] ?? Layout.fallbackTabSize
+            self.contentSize = self.tabSizes[self.selectedTab] ?? Layout.fallbackTabSize
         }
-        .onChange(of: debugMode) { _, _ in
+        .onChange(of: self.debugMode) { _, _ in
             // If debug mode is disabled and we're on the debug tab, switch to general
-            if !debugMode && selectedTab == .debug {
-                selectedTab = .general
+            if !self.debugMode, self.selectedTab == .debug {
+                self.selectedTab = .general
             }
         }
     }

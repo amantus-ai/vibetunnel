@@ -8,7 +8,7 @@
  * ## Main Features
  * - Create terminal sessions with custom commands and working directories
  * - Configure terminal dimensions (cols/rows) for proper rendering
- * - Set title management modes (none, filter, static, dynamic)
+ * - Set title management modes (none, filter, static, dynamic alias)
  * - Integrate with Git repositories for branch-aware sessions
  * - Support for both local and remote session creation (in HQ mode)
  *
@@ -30,7 +30,7 @@
  *   name: 'Dev Server',
  *   gitRepoPath: '/home/user/my-app',
  *   gitBranch: 'feature/new-ui',
- *   titleMode: TitleMode.DYNAMIC,
+ *   titleMode: TitleMode.STATIC,
  *   cols: 120,
  *   rows: 40
  * });
@@ -139,7 +139,7 @@ export class SessionService {
    * - `none`: No title management, apps control the title
    * - `filter`: Block all title changes from applications
    * - `static`: Fixed title format: "path — command — session"
-   * - `dynamic`: Static format + live activity indicators
+   * - `dynamic`: Legacy alias of `static`
    *
    * @param sessionData - The session configuration
    * @returns Promise resolving to the created session details
@@ -159,7 +159,7 @@ export class SessionService {
    *   name: 'Dev Server',
    *   gitRepoPath: '/path/to/project',
    *   gitBranch: 'main',
-   *   titleMode: TitleMode.DYNAMIC,
+   *   titleMode: TitleMode.STATIC,
    *   cols: 120,
    *   rows: 40
    * });

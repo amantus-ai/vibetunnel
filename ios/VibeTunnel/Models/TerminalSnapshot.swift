@@ -51,7 +51,7 @@ extension TerminalSnapshot {
     /// the most recent lines for display in session lists.
     var outputPreview: String {
         // Combine all output events
-        let outputEvents = events.filter { $0.type == .output }
+        let outputEvents = self.events.filter { $0.type == .output }
         let combinedOutput = outputEvents.map(\.data).joined()
 
         // Split into lines and get last few non-empty lines
@@ -71,7 +71,7 @@ extension TerminalSnapshot {
     /// This implementation removes common ANSI escape sequences
     /// for colors, cursor movement, and formatting.
     var cleanOutputPreview: String {
-        let output = outputPreview
+        let output = self.outputPreview
         // Remove common ANSI escape sequences (this is a simplified version)
         let pattern = "\\x1B\\[[0-9;]*[mGKHf]"
         let regex = try? NSRegularExpression(pattern: pattern, options: [])

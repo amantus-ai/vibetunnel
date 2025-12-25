@@ -10,8 +10,7 @@ extension View {
     ///   - vertical: Vertical padding (default: 14)
     public func standardPadding(
         horizontal: CGFloat = 16,
-        vertical: CGFloat = 14
-    )
+        vertical: CGFloat = 14)
         -> some View
     {
         self

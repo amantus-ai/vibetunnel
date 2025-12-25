@@ -59,8 +59,7 @@ export const VERBOSITY_MAP: Record<string, VerbosityLevel> = {
 let verbosityLevel: VerbosityLevel = VerbosityLevel.ERROR;
 
 // Debug mode flag (kept for backward compatibility)
-// biome-ignore lint/correctness/noUnusedVariables: Used for backward compatibility
-let debugMode = false;
+let _debugMode = false;
 
 /**
  * Type guard to check if a string is a valid VerbosityLevel key
@@ -88,7 +87,7 @@ const ANSI_PATTERN = /\x1b\[[0-9;]*m/g;
  * Initialize the logger - creates log directory and file
  */
 export function initLogger(debug: boolean = false, verbosity?: VerbosityLevel): void {
-  debugMode = debug;
+  _debugMode = debug;
 
   // Set verbosity level
   if (verbosity !== undefined) {
@@ -222,7 +221,7 @@ function writeToFile(message: string): void {
  * Enable or disable debug mode
  */
 export function setDebugMode(enabled: boolean): void {
-  debugMode = enabled;
+  _debugMode = enabled;
   // If enabling debug mode, also set verbosity to DEBUG
   if (enabled) {
     verbosityLevel = VerbosityLevel.DEBUG;
@@ -235,7 +234,7 @@ export function setDebugMode(enabled: boolean): void {
 export function setVerbosityLevel(level: VerbosityLevel): void {
   verbosityLevel = level;
   // Update debug mode flag for backward compatibility
-  debugMode = level >= VerbosityLevel.DEBUG;
+  _debugMode = level >= VerbosityLevel.DEBUG;
 }
 
 /**

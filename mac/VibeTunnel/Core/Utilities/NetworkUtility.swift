@@ -19,7 +19,7 @@ enum NetworkUtility {
         }
 
         // Fallback: check any "en" interface
-        return getIPAddressForAnyInterface()
+        return self.getIPAddressForAnyInterface()
     }
 
     /// Get IP address for a specific interface
@@ -53,8 +53,8 @@ enum NetworkUtility {
                         socklen_t(hostname.count),
                         nil,
                         0,
-                        NI_NUMERICHOST
-                    ) == 0 {
+                        NI_NUMERICHOST) == 0
+                    {
                         let ipAddress = String(cString: &hostname)
 
                         // Prefer addresses that look like local network addresses
@@ -106,8 +106,8 @@ enum NetworkUtility {
                         socklen_t(hostname.count),
                         nil,
                         0,
-                        NI_NUMERICHOST
-                    ) == 0 {
+                        NI_NUMERICHOST) == 0
+                    {
                         let ipAddress = String(cString: &hostname)
 
                         // Prefer addresses that look like local network addresses
@@ -159,8 +159,8 @@ enum NetworkUtility {
                     socklen_t(hostname.count),
                     nil,
                     0,
-                    NI_NUMERICHOST
-                ) == 0 {
+                    NI_NUMERICHOST) == 0
+                {
                     let ipAddress = String(cString: &hostname)
                     addresses.append(ipAddress)
                 }

@@ -20,12 +20,11 @@ struct WelcomeContentView: View {
             }
 
             Text(
-                "You'll be quickly guided through the basics of VibeTunnel.\nThis screen can always be opened from the settings."
-            )
-            .font(.body)
-            .foregroundColor(.secondary)
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 40)
+                "You'll be quickly guided through the basics of VibeTunnel.\nThis screen can always be opened from the settings.")
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
 
             Spacer()
         }

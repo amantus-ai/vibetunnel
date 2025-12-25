@@ -20,25 +20,25 @@ struct VibeTunnelApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(connectionManager)
-                .environment(navigationManager)
+                .environment(self.connectionManager)
+                .environment(self.navigationManager)
                 .offlineBanner()
                 .onOpenURL { url in
-                    handleURL(url)
+                    self.handleURL(url)
                 }
                 .task {
                     // Initialize network monitoring
-                    _ = networkMonitor
+                    _ = self.networkMonitor
                 }
-                .preferredColorScheme(colorScheme)
+                .preferredColorScheme(self.colorScheme)
             #if targetEnvironment(macCatalyst)
-                .macCatalystWindowStyle(getStoredWindowStyle())
+                .macCatalystWindowStyle(self.getStoredWindowStyle())
             #endif
         }
     }
 
     private var colorScheme: ColorScheme? {
-        switch colorSchemePreferenceRaw {
+        switch self.colorSchemePreferenceRaw {
         case "light": .light
         case "dark": .dark
         default: nil // System default
@@ -46,10 +46,10 @@ struct VibeTunnelApp: App {
     }
 
     #if targetEnvironment(macCatalyst)
-        private func getStoredWindowStyle() -> MacWindowStyle {
-            let styleRaw = UserDefaults.standard.string(forKey: "macWindowStyle") ?? "standard"
-            return styleRaw == "inline" ? .inline : .standard
-        }
+    private func getStoredWindowStyle() -> MacWindowStyle {
+        let styleRaw = UserDefaults.standard.string(forKey: "macWindowStyle") ?? "standard"
+        return styleRaw == "inline" ? .inline : .standard
+    }
     #endif
 
     private func handleURL(_ url: URL) {
@@ -60,7 +60,7 @@ struct VibeTunnelApp: App {
            let sessionId = url.pathComponents.last,
            !sessionId.isEmpty
         {
-            navigationManager.navigateToSession(sessionId)
+            self.navigationManager.navigateToSession(sessionId)
         }
     }
 }
@@ -75,12 +75,12 @@ class NavigationManager {
     var shouldNavigateToSession: Bool = false
 
     func navigateToSession(_ sessionId: String) {
-        selectedSessionId = sessionId
-        shouldNavigateToSession = true
+        self.selectedSessionId = sessionId
+        self.shouldNavigateToSession = true
     }
 
     func clearNavigation() {
-        selectedSessionId = nil
-        shouldNavigateToSession = false
+        self.selectedSessionId = nil
+        self.shouldNavigateToSession = false
     }
 }

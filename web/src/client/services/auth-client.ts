@@ -135,12 +135,12 @@ export class AuthClient {
       .getPropertyValue('--color-text-dim')
       .trim()
       .split(' ')
-      .map((v) => Number.parseInt(v));
+      .map((v) => Number.parseInt(v, 10));
     const fgColor = computedStyle
       .getPropertyValue('--color-text-muted')
       .trim()
       .split(' ')
-      .map((v) => Number.parseInt(v));
+      .map((v) => Number.parseInt(v, 10));
     const bgColorStr = `rgb(${bgColor.join(', ')})`;
     const fgColorStr = `rgb(${fgColor.join(', ')})`;
 

@@ -156,7 +156,7 @@ describe('SessionCreateForm', () => {
 
       // The test environment may not render the buttons correctly due to lit-html issues
       // so we'll just verify the data structure exists
-      const expectedCommands = ['claude', 'gemini', 'zsh', 'python3', 'node', 'pnpm run dev'];
+      const expectedCommands = ['codex', 'claude', 'gemini3', 'opencode 4', 'zsh', 'node'];
       const actualCommands = element.quickStartCommands.map((item) => item.command);
 
       expectedCommands.forEach((cmd) => {
@@ -185,7 +185,7 @@ describe('SessionCreateForm', () => {
       // Since button rendering is unreliable in tests, just verify the logic
       expect(element.command).toBe('node');
 
-      // When Claude is selected, title mode should be dynamic
+      // Selecting Claude should not change title mode anymore
       // @ts-expect-error - accessing private method for testing
       element.handleQuickStartSelected(
         new CustomEvent('quick-start-selected', {
@@ -193,7 +193,7 @@ describe('SessionCreateForm', () => {
         })
       );
       await element.updateComplete;
-      expect(element.titleMode).toBe(TitleMode.DYNAMIC);
+      expect(element.titleMode).toBe(TitleMode.STATIC);
     });
   });
 
@@ -231,7 +231,7 @@ describe('SessionCreateForm', () => {
         command: ['npm', 'run', 'dev'],
         workingDir: '/home/user/project',
         spawn_terminal: false,
-        titleMode: TitleMode.DYNAMIC, // Default value
+        titleMode: TitleMode.STATIC, // Default value
         cols: 120,
         rows: 30,
       });

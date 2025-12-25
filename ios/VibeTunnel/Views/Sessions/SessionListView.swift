@@ -26,24 +26,24 @@ struct SessionListView: View {
                 VStack {
                     // Error banner at the top
                     if let errorMessage = viewModel.errorMessage {
-                        ErrorBanner(message: errorMessage, isOffline: !viewModel.isNetworkConnected)
+                        ErrorBanner(message: errorMessage, isOffline: !self.viewModel.isNetworkConnected)
                             .transition(.move(edge: .top).combined(with: .opacity))
                     }
 
-                    if viewModel.isLoading && viewModel.sessions.isEmpty {
+                    if self.viewModel.isLoading, self.viewModel.sessions.isEmpty {
                         ProgressView("Loading sessions...")
                             .progressViewStyle(CircularProgressViewStyle(tint: Theme.Colors.primaryAccent))
                             .font(Theme.Typography.terminalSystem(size: 14))
                             .foregroundColor(Theme.Colors.terminalForeground)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if !viewModel.isNetworkConnected && viewModel.sessions.isEmpty {
-                        offlineStateView
-                    } else if viewModel.filteredSessions.isEmpty && !viewModel.searchText.isEmpty {
-                        noSearchResultsView
-                    } else if viewModel.sessions.isEmpty {
-                        emptyStateView
+                    } else if !self.viewModel.isNetworkConnected, self.viewModel.sessions.isEmpty {
+                        self.offlineStateView
+                    } else if self.viewModel.filteredSessions.isEmpty, !self.viewModel.searchText.isEmpty {
+                        self.noSearchResultsView
+                    } else if self.viewModel.sessions.isEmpty {
+                        self.emptyStateView
                     } else {
-                        sessionList
+                        self.sessionList
                     }
                 }
             }
@@ -54,7 +54,7 @@ struct SessionListView: View {
                     Button(action: {
                         HapticFeedback.impact(.medium)
                         Task {
-                            await viewModel.disconnect()
+                            await self.viewModel.disconnect()
                         }
                     }, label: {
                         HStack(spacing: 4) {
@@ -70,14 +70,14 @@ struct SessionListView: View {
                         Menu {
                             Button(action: {
                                 HapticFeedback.impact(.light)
-                                viewModel.showingSettings = true
+                                self.viewModel.showingSettings = true
                             }, label: {
                                 Label("Settings", systemImage: "gearshape")
                             })
 
                             Button(action: {
                                 HapticFeedback.impact(.light)
-                                viewModel.showingCastImporter = true
+                                self.viewModel.showingCastImporter = true
                             }, label: {
                                 Label("Import Recording", systemImage: "square.and.arrow.down")
                             })
@@ -89,7 +89,7 @@ struct SessionListView: View {
 
                         Button(action: {
                             HapticFeedback.impact(.light)
-                            viewModel.showingFileBrowser = true
+                            self.viewModel.showingFileBrowser = true
                         }, label: {
                             Image(systemName: "folder.fill")
                                 .font(.title3)
@@ -98,7 +98,7 @@ struct SessionListView: View {
 
                         Button(action: {
                             HapticFeedback.impact(.light)
-                            viewModel.showingCreateSession = true
+                            self.viewModel.showingCreateSession = true
                         }, label: {
                             Image(systemName: "plus.circle.fill")
                                 .font(.title3)
@@ -107,75 +107,75 @@ struct SessionListView: View {
                     }
                 }
             }
-            .sheet(isPresented: $viewModel.showingCreateSession) {
-                SessionCreateView(isPresented: $viewModel.showingCreateSession) { newSessionId in
+            .sheet(isPresented: self.$viewModel.showingCreateSession) {
+                SessionCreateView(isPresented: self.$viewModel.showingCreateSession) { newSessionId in
                     Task {
-                        await viewModel.loadSessions()
+                        await self.viewModel.loadSessions()
                         // Find and select the new session
                         if let newSession = viewModel.sessions.first(where: { $0.id == newSessionId }) {
-                            viewModel.selectedSession = newSession
+                            self.viewModel.selectedSession = newSession
                         }
                     }
                 }
             }
-            .fullScreenCover(item: $viewModel.selectedSession) { session in
+            .fullScreenCover(item: self.$viewModel.selectedSession) { session in
                 TerminalView(session: session)
             }
-            .sheet(isPresented: $viewModel.showingFileBrowser) {
+            .sheet(isPresented: self.$viewModel.showingFileBrowser) {
                 FileBrowserView(mode: .browseFiles) { _ in
                     // For browse mode, we don't need to handle path selection
                 }
             }
-            .sheet(isPresented: $viewModel.showingSettings) {
+            .sheet(isPresented: self.$viewModel.showingSettings) {
                 SettingsView()
             }
             .fileImporter(
-                isPresented: $viewModel.showingCastImporter,
+                isPresented: self.$viewModel.showingCastImporter,
                 allowedContentTypes: [.json, .data],
-                allowsMultipleSelection: false
-            ) { result in
+                allowsMultipleSelection: false)
+            { result in
                 switch result {
-                case .success(let urls):
+                case let .success(urls):
                     if let url = urls.first {
-                        viewModel.importedCastFile = CastFileItem(url: url)
+                        self.viewModel.importedCastFile = CastFileItem(url: url)
                     }
-                case .failure(let error):
+                case let .failure(error):
                     logger.error("Failed to import cast file: \(error)")
                 }
             }
-            .sheet(item: $viewModel.importedCastFile) { item in
-                CastPlayerView(castFileURL: item.url)
-            }
-            .errorAlert(item: $viewModel.presentedError)
-            .refreshable {
-                await viewModel.loadSessions()
-            }
-            .searchable(text: $viewModel.searchText, prompt: "Search sessions")
-            .task {
-                await viewModel.loadSessions()
+            .sheet(item: self.$viewModel.importedCastFile) { item in
+                    CastPlayerView(castFileURL: item.url)
+                }
+                .errorAlert(item: self.$viewModel.presentedError)
+                .refreshable {
+                    await self.viewModel.loadSessions()
+                }
+                .searchable(text: self.$viewModel.searchText, prompt: "Search sessions")
+                .task {
+                    await self.viewModel.loadSessions()
 
-                // Refresh every 3 seconds
-                while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
-                    if !Task.isCancelled {
-                        await viewModel.loadSessions()
+                    // Refresh every 3 seconds
+                    while !Task.isCancelled {
+                        try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+                        if !Task.isCancelled {
+                            await self.viewModel.loadSessions()
+                        }
                     }
                 }
-            }
         }
-        .onChange(of: navigationManager.shouldNavigateToSession) { _, shouldNavigate in
+        .onChange(of: self.navigationManager.shouldNavigateToSession) { _, shouldNavigate in
             if shouldNavigate,
                let sessionId = navigationManager.selectedSessionId,
                let session = viewModel.sessions.first(where: { $0.id == sessionId })
             {
-                viewModel.selectedSession = session
-                navigationManager.clearNavigation()
+                self.viewModel.selectedSession = session
+                self.navigationManager.clearNavigation()
             }
         }
-        .onChange(of: viewModel.errorMessage) { _, newError in
+        .onChange(of: self.viewModel.errorMessage) { _, newError in
             if let error = newError {
-                viewModel.presentedError = IdentifiableError(error: APIError.serverError(0, error))
-                viewModel.errorMessage = nil
+                self.viewModel.presentedError = IdentifiableError(error: APIError.serverError(0, error))
+                self.viewModel.errorMessage = nil
             }
         }
     }
@@ -208,7 +208,7 @@ struct SessionListView: View {
 
             Button(action: {
                 HapticFeedback.impact(.medium)
-                viewModel.showingCreateSession = true
+                self.viewModel.showingCreateSession = true
             }, label: {
                 HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: "plus.circle")
@@ -239,7 +239,7 @@ struct SessionListView: View {
                     .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
             }
 
-            Button(action: { viewModel.searchText = "" }, label: {
+            Button(action: { self.viewModel.searchText = "" }, label: {
                 Label("Clear Search", systemImage: "xmark.circle.fill")
                     .font(Theme.Typography.terminalSystem(size: 14))
             })
@@ -252,60 +252,57 @@ struct SessionListView: View {
         ScrollView {
             VStack(spacing: Theme.Spacing.large) {
                 SessionHeaderView(
-                    sessions: viewModel.sessions,
-                    showExitedSessions: $viewModel.showExitedSessions,
+                    sessions: self.viewModel.sessions,
+                    showExitedSessions: self.$viewModel.showExitedSessions,
                     onKillAll: {
                         Task {
-                            await viewModel.killAllSessions()
+                            await self.viewModel.killAllSessions()
                         }
                     },
                     onCleanupAll: {
                         Task {
-                            await viewModel.cleanupAllExited()
+                            await self.viewModel.cleanupAllExited()
                         }
-                    }
-                )
-                .padding(.horizontal)
-                .padding(.vertical, Theme.Spacing.small)
-                .background(
-                    RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
-                        .fill(Theme.Colors.terminalForeground.opacity(0.03))
-                )
-                .padding(.horizontal)
+                    })
+                    .padding(.horizontal)
+                    .padding(.vertical, Theme.Spacing.small)
+                    .background(
+                        RoundedRectangle(cornerRadius: Theme.CornerRadius.large)
+                            .fill(Theme.Colors.terminalForeground.opacity(0.03)))
+                    .padding(.horizontal)
 
                 // Sessions grid
                 LazyVGrid(columns: [
                     GridItem(.flexible(), spacing: Theme.Spacing.medium),
-                    GridItem(.flexible(), spacing: Theme.Spacing.medium)
+                    GridItem(.flexible(), spacing: Theme.Spacing.medium),
                 ], spacing: Theme.Spacing.medium) {
-                    ForEach(viewModel.filteredSessions) { session in
+                    ForEach(self.viewModel.filteredSessions) { session in
                         SessionCardView(session: session) {
                             HapticFeedback.selection()
                             if session.isRunning {
-                                viewModel.selectedSession = session
+                                self.viewModel.selectedSession = session
                             }
                         } onKill: {
                             HapticFeedback.impact(.medium)
                             Task {
-                                await viewModel.killSession(session.id)
+                                await self.viewModel.killSession(session.id)
                             }
                         } onCleanup: {
                             HapticFeedback.impact(.medium)
                             Task {
-                                await viewModel.cleanupSession(session.id)
+                                await self.viewModel.cleanupSession(session.id)
                             }
                         }
-                        .livePreview(for: session.id, enabled: session.isRunning && viewModel.enableLivePreviews)
+                        .livePreview(for: session.id, enabled: session.isRunning && self.viewModel.enableLivePreviews)
                         .transition(.asymmetric(
                             insertion: .scale(scale: 0.8).combined(with: .opacity),
-                            removal: .scale(scale: 0.8).combined(with: .opacity)
-                        ))
+                            removal: .scale(scale: 0.8).combined(with: .opacity)))
                     }
                 }
                 .padding(.horizontal)
             }
             .padding(.vertical)
-            .animation(Theme.Animation.smooth, value: viewModel.sessions)
+            .animation(Theme.Animation.smooth, value: self.viewModel.sessions)
         }
     }
 
@@ -338,7 +335,7 @@ struct SessionListView: View {
             Button(action: {
                 HapticFeedback.impact(.medium)
                 Task {
-                    await viewModel.loadSessions()
+                    await self.viewModel.loadSessions()
                 }
             }, label: {
                 HStack(spacing: Theme.Spacing.small) {
@@ -349,7 +346,7 @@ struct SessionListView: View {
                 .fontWeight(.medium)
             })
             .terminalButton()
-            .disabled(!viewModel.isNetworkConnected)
+            .disabled(!self.viewModel.isNetworkConnected)
         }
         .padding()
     }
@@ -388,9 +385,9 @@ class SessionListViewModel: SessionListViewModelProtocol {
     var searchText = ""
 
     var filteredSessions: [Session] {
-        let visibleSessions = sessions.filter { showExitedSessions || $0.isRunning }
+        let visibleSessions = self.sessions.filter { self.showExitedSessions || $0.isRunning }
 
-        if searchText.isEmpty {
+        if self.searchText.isEmpty {
             return visibleSessions
         }
 
@@ -400,11 +397,11 @@ class SessionListViewModel: SessionListViewModelProtocol {
                 return true
             }
             // Search in command
-            if session.command.joined(separator: " ").localizedCaseInsensitiveContains(searchText) {
+            if session.command.joined(separator: " ").localizedCaseInsensitiveContains(self.searchText) {
                 return true
             }
             // Search in working directory
-            if session.workingDir.localizedCaseInsensitiveContains(searchText) {
+            if session.workingDir.localizedCaseInsensitiveContains(self.searchText) {
                 return true
             }
             // Search in PID
@@ -416,7 +413,7 @@ class SessionListViewModel: SessionListViewModelProtocol {
     }
 
     var isNetworkConnected: Bool {
-        networkMonitor.isConnected
+        self.networkMonitor.isConnected
     }
 
     // UI State
@@ -436,68 +433,68 @@ class SessionListViewModel: SessionListViewModelProtocol {
     init(
         sessionService: SessionServiceProtocol = SessionService(),
         networkMonitor: NetworkMonitoring = NetworkMonitor.shared,
-        connectionManager: ConnectionManager = ConnectionManager.shared
-    ) {
+        connectionManager: ConnectionManager = ConnectionManager.shared)
+    {
         self.sessionService = sessionService
         self.networkMonitor = networkMonitor
         self.connectionManager = connectionManager
     }
 
     func disconnect() async {
-        await connectionManager.disconnect()
+        await self.connectionManager.disconnect()
     }
 
     func loadSessions() async {
-        if sessions.isEmpty {
-            isLoading = true
+        if self.sessions.isEmpty {
+            self.isLoading = true
         }
 
         do {
-            sessions = try await sessionService.getSessions()
-            errorMessage = nil
+            self.sessions = try await self.sessionService.getSessions()
+            self.errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
+            self.errorMessage = error.localizedDescription
         }
 
-        isLoading = false
+        self.isLoading = false
     }
 
     func killSession(_ sessionId: String) async {
         do {
-            try await sessionService.killSession(sessionId)
-            await loadSessions()
+            try await self.sessionService.killSession(sessionId)
+            await self.loadSessions()
         } catch {
-            errorMessage = error.localizedDescription
+            self.errorMessage = error.localizedDescription
         }
     }
 
     func cleanupSession(_ sessionId: String) async {
         do {
-            try await sessionService.cleanupSession(sessionId)
-            await loadSessions()
+            try await self.sessionService.cleanupSession(sessionId)
+            await self.loadSessions()
         } catch {
-            errorMessage = error.localizedDescription
+            self.errorMessage = error.localizedDescription
         }
     }
 
     func cleanupAllExited() async {
         do {
-            _ = try await sessionService.cleanupAllExitedSessions()
-            await loadSessions()
+            _ = try await self.sessionService.cleanupAllExitedSessions()
+            await self.loadSessions()
             HapticFeedback.notification(.success)
         } catch {
-            errorMessage = error.localizedDescription
+            self.errorMessage = error.localizedDescription
             HapticFeedback.notification(.error)
         }
     }
 
     func killAllSessions() async {
         do {
-            try await sessionService.killAllSessions()
-            await loadSessions()
+            try await self.sessionService.killAllSessions()
+            await self.loadSessions()
             HapticFeedback.notification(.success)
         } catch {
-            errorMessage = error.localizedDescription
+            self.errorMessage = error.localizedDescription
             HapticFeedback.notification(.error)
         }
     }
@@ -513,8 +510,8 @@ struct SessionHeaderView: View {
     let onKillAll: () -> Void
     let onCleanupAll: () -> Void
 
-    private var runningCount: Int { sessions.count { $0.isRunning } }
-    private var exitedCount: Int { sessions.count { !$0.isRunning } }
+    private var runningCount: Int { self.sessions.count { $0.isRunning } }
+    private var exitedCount: Int { self.sessions.count { !$0.isRunning } }
 
     var body: some View {
         VStack(spacing: Theme.Spacing.medium) {
@@ -522,33 +519,31 @@ struct SessionHeaderView: View {
             HStack(spacing: Theme.Spacing.extraLarge) {
                 SessionCountBadge(
                     label: "Running",
-                    count: runningCount,
-                    color: Theme.Colors.successAccent
-                )
+                    count: self.runningCount,
+                    color: Theme.Colors.successAccent)
 
                 SessionCountBadge(
                     label: "Exited",
-                    count: exitedCount,
-                    color: Theme.Colors.errorAccent
-                )
+                    count: self.exitedCount,
+                    color: Theme.Colors.errorAccent)
 
                 Spacer()
             }
 
             // Action buttons
             HStack(spacing: Theme.Spacing.medium) {
-                if exitedCount > 0 {
-                    ExitedSessionToggle(showExitedSessions: $showExitedSessions)
+                if self.exitedCount > 0 {
+                    ExitedSessionToggle(showExitedSessions: self.$showExitedSessions)
                 }
 
                 Spacer()
 
-                if showExitedSessions && sessions.contains(where: { !$0.isRunning }) {
-                    CleanupAllHeaderButton(onCleanup: onCleanupAll)
+                if self.showExitedSessions, self.sessions.contains(where: { !$0.isRunning }) {
+                    CleanupAllHeaderButton(onCleanup: self.onCleanupAll)
                 }
 
-                if sessions.contains(where: \.isRunning) {
-                    KillAllButton(onKillAll: onKillAll)
+                if self.sessions.contains(where: \.isRunning) {
+                    KillAllButton(onKillAll: self.onKillAll)
                 }
             }
         }
@@ -565,15 +560,15 @@ struct SessionCountBadge: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label)
+            Text(self.label)
                 .font(Theme.Typography.terminalSystem(size: 12))
                 .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
                 .textCase(.uppercase)
 
-            Text("\(count)")
+            Text("\(self.count)")
                 .font(Theme.Typography.terminalSystem(size: 28))
                 .fontWeight(.bold)
-                .foregroundColor(color)
+                .foregroundColor(self.color)
         }
     }
 }
@@ -585,13 +580,13 @@ struct ExitedSessionToggle: View {
         Button(action: {
             HapticFeedback.selection()
             withAnimation(Theme.Animation.smooth) {
-                showExitedSessions.toggle()
+                self.showExitedSessions.toggle()
             }
         }, label: {
             HStack(spacing: 6) {
-                Image(systemName: showExitedSessions ? "eye.slash" : "eye")
+                Image(systemName: self.showExitedSessions ? "eye.slash" : "eye")
                     .font(.system(size: 14))
-                Text(showExitedSessions ? "Hide Exited" : "Show Exited")
+                Text(self.showExitedSessions ? "Hide Exited" : "Show Exited")
                     .font(Theme.Typography.terminalSystem(size: 14))
             }
             .foregroundColor(Theme.Colors.terminalForeground.opacity(0.8))
@@ -602,9 +597,7 @@ struct ExitedSessionToggle: View {
                     .fill(Theme.Colors.terminalForeground.opacity(0.08))
                     .overlay(
                         RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                            .stroke(Theme.Colors.terminalForeground.opacity(0.15), lineWidth: 1)
-                    )
-            )
+                            .stroke(Theme.Colors.terminalForeground.opacity(0.15), lineWidth: 1)))
         })
         .buttonStyle(PlainButtonStyle())
     }
@@ -616,7 +609,7 @@ struct KillAllButton: View {
     var body: some View {
         Button(action: {
             HapticFeedback.impact(.medium)
-            onKillAll()
+            self.onKillAll()
         }, label: {
             HStack(spacing: 6) {
                 Image(systemName: "stop.circle.fill")
@@ -630,8 +623,7 @@ struct KillAllButton: View {
             .padding(.vertical, Theme.Spacing.small)
             .background(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                    .fill(Theme.Colors.errorAccent)
-            )
+                    .fill(Theme.Colors.errorAccent))
         })
         .buttonStyle(PlainButtonStyle())
     }
@@ -643,7 +635,7 @@ struct CleanupAllButton: View {
     var body: some View {
         Button(action: {
             HapticFeedback.impact(.medium)
-            onCleanup()
+            self.onCleanup()
         }, label: {
             HStack {
                 Image(systemName: "trash")
@@ -655,18 +647,15 @@ struct CleanupAllButton: View {
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
-                    .fill(Theme.Colors.warningAccent.opacity(0.1))
-            )
+                    .fill(Theme.Colors.warningAccent.opacity(0.1)))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
-                    .stroke(Theme.Colors.warningAccent.opacity(0.3), lineWidth: 1)
-            )
+                    .stroke(Theme.Colors.warningAccent.opacity(0.3), lineWidth: 1))
         })
         .buttonStyle(PlainButtonStyle())
         .transition(.asymmetric(
             insertion: .scale.combined(with: .opacity),
-            removal: .scale.combined(with: .opacity)
-        ))
+            removal: .scale.combined(with: .opacity)))
     }
 }
 
@@ -676,7 +665,7 @@ struct CleanupAllHeaderButton: View {
     var body: some View {
         Button(action: {
             HapticFeedback.impact(.medium)
-            onCleanup()
+            self.onCleanup()
         }, label: {
             HStack(spacing: 6) {
                 Image(systemName: "trash")
@@ -692,9 +681,7 @@ struct CleanupAllHeaderButton: View {
                     .fill(Theme.Colors.warningAccent.opacity(0.1))
                     .overlay(
                         RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                            .stroke(Theme.Colors.warningAccent.opacity(0.2), lineWidth: 1)
-                    )
-            )
+                            .stroke(Theme.Colors.warningAccent.opacity(0.2), lineWidth: 1)))
         })
         .buttonStyle(PlainButtonStyle())
     }

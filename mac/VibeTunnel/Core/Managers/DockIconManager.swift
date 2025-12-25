@@ -16,7 +16,7 @@ final class DockIconManager: NSObject, @unchecked Sendable {
 
     override private init() {
         super.init()
-        setupObservers()
+        self.setupObservers()
         Task { @MainActor in
             self.updateDockVisibility()
         }
@@ -35,7 +35,7 @@ final class DockIconManager: NSObject, @unchecked Sendable {
         Task { @MainActor in
             // Ensure NSApp is available before proceeding
             guard NSApp != nil else {
-                logger.warning("NSApp not available yet, skipping dock visibility update")
+                self.logger.warning("NSApp not available yet, skipping dock visibility update")
                 return
             }
 
@@ -77,7 +77,7 @@ final class DockIconManager: NSObject, @unchecked Sendable {
     func temporarilyShowDock() {
         Task { @MainActor in
             guard NSApp != nil else {
-                logger.warning("NSApp not available, cannot temporarily show dock")
+                self.logger.warning("NSApp not available, cannot temporarily show dock")
                 return
             }
             NSApp.setActivationPolicy(.regular)
@@ -90,7 +90,7 @@ final class DockIconManager: NSObject, @unchecked Sendable {
         Task { @MainActor in
             // Ensure NSApp is available before setting up observers
             guard NSApp != nil else {
-                logger.warning("NSApp not available, delaying observer setup")
+                self.logger.warning("NSApp not available, delaying observer setup")
                 try? await Task.sleep(for: .milliseconds(200))
                 self.setupObservers()
                 return
@@ -99,7 +99,7 @@ final class DockIconManager: NSObject, @unchecked Sendable {
             // Observe changes to NSApp.windows using KVO
             // Remove .initial option to avoid triggering during initialization
             if let app = NSApp {
-                windowsObservation = app.observe(\.windows, options: [.new]) { [weak self] _, _ in
+                self.windowsObservation = app.observe(\.windows, options: [.new]) { [weak self] _, _ in
                     Task { @MainActor in
                         // Add a small delay to let window state settle
                         try? await Task.sleep(for: .milliseconds(50))
@@ -111,39 +111,35 @@ final class DockIconManager: NSObject, @unchecked Sendable {
             // Also observe individual window visibility changes
             NotificationCenter.default.addObserver(
                 self,
-                selector: #selector(windowVisibilityChanged),
+                selector: #selector(self.windowVisibilityChanged),
                 name: NSWindow.didBecomeKeyNotification,
-                object: nil
-            )
+                object: nil)
 
             NotificationCenter.default.addObserver(
                 self,
-                selector: #selector(windowVisibilityChanged),
+                selector: #selector(self.windowVisibilityChanged),
                 name: NSWindow.didResignKeyNotification,
-                object: nil
-            )
+                object: nil)
 
             NotificationCenter.default.addObserver(
                 self,
-                selector: #selector(windowVisibilityChanged),
+                selector: #selector(self.windowVisibilityChanged),
                 name: NSWindow.willCloseNotification,
-                object: nil
-            )
+                object: nil)
 
             // Listen for preference changes
             NotificationCenter.default.addObserver(
                 self,
-                selector: #selector(dockPreferenceChanged),
+                selector: #selector(self.dockPreferenceChanged),
                 name: UserDefaults.didChangeNotification,
-                object: nil
-            )
+                object: nil)
         }
     }
 
     @objc
     private func windowVisibilityChanged(_ notification: Notification) {
         Task { @MainActor in
-            updateDockVisibility()
+            self.updateDockVisibility()
         }
     }
 

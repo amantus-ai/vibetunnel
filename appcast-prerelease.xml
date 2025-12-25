@@ -198,7 +198,6 @@
                 <h3><strong>Terminal Performance Mode (Experimental) </strong></h3>
                 <ul>
                 <li>New binary WebSocket mode for terminal sessions dramatically improves performance for high-throughput operations (#412)</li>
-                <li>Toggle between standard SSE mode and high-performance binary mode in terminal settings</li>
                 <li>Binary mode significantly reduces latency and CPU usage when running commands with heavy output</li>
                 <li>Seamless switching between modes without losing your session</li>
                 </ul>
@@ -584,7 +583,7 @@
                 
                 <h4><strong>Terminal Performance</strong></h4>
                 <ul>
-                <li><strong>FIXED</strong>: Critical flow control issue that caused xterm.js buffer overflow and terminal freezing</li>
+                <li><strong>FIXED</strong>: Critical flow control issue that caused web terminal buffer overflow and terminal freezing</li>
                 <li><strong>FIXED</strong>: Infinite scroll loop in terminal output that could freeze the browser</li>
                 <li><strong>FIXED</strong>: Race conditions in terminal output handling causing corrupted or out-of-order text</li>
                 <li>Improved memory management for long-running sessions</li>

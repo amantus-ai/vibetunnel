@@ -51,6 +51,15 @@ if [ "${CI}" = "true" ] && [ -f "${WEB_DIR}/dist/server/server.js" ]; then
         cp "${NATIVE_DIR}/vibetunnel" "${APP_RESOURCES}/"
         chmod +x "${APP_RESOURCES}/vibetunnel"
     fi
+
+    if [ -f "${NATIVE_DIR}/vibetunnel-fwd" ]; then
+        echo "Copying zig forwarder to app bundle..."
+        cp "${NATIVE_DIR}/vibetunnel-fwd" "${APP_RESOURCES}/"
+        chmod +x "${APP_RESOURCES}/vibetunnel-fwd"
+    else
+        echo "error: Zig forwarder not found at ${NATIVE_DIR}/vibetunnel-fwd"
+        exit 1
+    fi
     
     if [ -f "${NATIVE_DIR}/pty.node" ]; then
         cp "${NATIVE_DIR}/pty.node" "${APP_RESOURCES}/"
@@ -92,7 +101,7 @@ if [ -f "${PREVIOUS_HASH_FILE}" ]; then
     PREVIOUS_HASH=$(cat "${PREVIOUS_HASH_FILE}")
     if [ "${CURRENT_HASH}" = "${PREVIOUS_HASH}" ]; then
         # Also check if the built files actually exist
-        if [ -d "${DEST_DIR}" ] && [ -f "${APP_RESOURCES}/vibetunnel" ] && [ -f "${APP_RESOURCES}/pty.node" ] && [ -f "${APP_RESOURCES}/spawn-helper" ]; then
+        if [ -d "${DEST_DIR}" ] && [ -f "${APP_RESOURCES}/vibetunnel" ] && [ -f "${APP_RESOURCES}/pty.node" ] && [ -f "${APP_RESOURCES}/spawn-helper" ] && [ -f "${APP_RESOURCES}/vibetunnel-fwd" ]; then
             echo "Web content unchanged and build outputs exist. Skipping rebuild."
             NEED_REBUILD=0
         else
@@ -313,6 +322,15 @@ else
     exit 1
 fi
 
+if [ -f "${NATIVE_DIR}/vibetunnel-fwd" ]; then
+    echo "Copying zig forwarder..."
+    cp "${NATIVE_DIR}/vibetunnel-fwd" "${APP_RESOURCES}/"
+    chmod +x "${APP_RESOURCES}/vibetunnel-fwd"
+else
+    echo "error: Zig forwarder not found at ${NATIVE_DIR}/vibetunnel-fwd"
+    exit 1
+fi
+
 if [ -f "${NATIVE_DIR}/pty.node" ]; then
     echo "Copying pty.node..."
     cp "${NATIVE_DIR}/pty.node" "${APP_RESOURCES}/"
@@ -370,6 +388,11 @@ if [ ! -f "${APP_RESOURCES}/spawn-helper" ]; then
     MISSING_FILES+=("spawn-helper")
 fi
 
+# Check for zig forwarder
+if [ ! -f "${APP_RESOURCES}/vibetunnel-fwd" ]; then
+    MISSING_FILES+=("vibetunnel-fwd")
+fi
+
 # Check if vibetunnel is executable
 if [ -f "${APP_RESOURCES}/vibetunnel" ] && [ ! -x "${APP_RESOURCES}/vibetunnel" ]; then
     MISSING_FILES+=("vibetunnel is not executable")
@@ -378,6 +401,11 @@ fi
 # Check if spawn-helper is executable
 if [ -f "${APP_RESOURCES}/spawn-helper" ] && [ ! -x "${APP_RESOURCES}/spawn-helper" ]; then
     MISSING_FILES+=("spawn-helper is not executable")
+fi
+
+# Check if vibetunnel-fwd is executable
+if [ -f "${APP_RESOURCES}/vibetunnel-fwd" ] && [ ! -x "${APP_RESOURCES}/vibetunnel-fwd" ]; then
+    MISSING_FILES+=("vibetunnel-fwd is not executable")
 fi
 
 # Check for vt script

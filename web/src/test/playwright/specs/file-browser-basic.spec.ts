@@ -83,11 +83,15 @@ test.describe('File Browser Basic Tests', () => {
             },
           };
         },
+        undefined,
         { timeout: 8000 }
       )
+      .then((handle) => handle.jsonValue())
       .catch(() => ({ found: false, visible: false, types: {} }));
 
-    console.log('File browser detection result:', fileBrowserDetected);
+    console.log(
+      `File browser detected: found=${fileBrowserDetected.found} visible=${fileBrowserDetected.visible}`
+    );
 
     if (fileBrowserDetected.found) {
       console.log('✅ File browser interface detected - UI flow working');
@@ -143,8 +147,10 @@ test.describe('File Browser Basic Tests', () => {
                 browser.offsetParent !== null || browser.getAttribute('visible') === 'true',
             };
           },
+          undefined,
           { timeout: 8000 }
         )
+        .then((handle) => handle.jsonValue())
         .catch(() => ({ hasPath: false, hasFileList: false, isVisible: false }));
 
       if (uiElementsFound.hasPath || uiElementsFound.hasFileList) {
@@ -194,8 +200,10 @@ test.describe('File Browser Basic Tests', () => {
               upButtonClickable: upButton && !upButton.disabled && upButton.offsetParent !== null,
             };
           },
+          undefined,
           { timeout: 8000 }
         )
+        .then((handle) => handle.jsonValue())
         .catch(() => ({ hasUpButton: false, hasCloseButton: false, upButtonClickable: false }));
 
       if (navigationReady.upButtonClickable) {

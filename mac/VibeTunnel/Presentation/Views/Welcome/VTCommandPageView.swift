@@ -29,13 +29,12 @@ struct VTCommandPageView: View {
                     .fontWeight(.semibold)
 
                 Text(
-                    "VibeTunnel can capture any terminal app or terminal.\nJust prefix it with the `vt` command and it will show up on the dashboard."
-                )
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 480)
-                .fixedSize(horizontal: false, vertical: true)
+                    "VibeTunnel can capture any terminal app or terminal.\nJust prefix it with the `vt` command and it will show up on the dashboard.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text("For example, to remote control AI assistants, type:")
                     .font(.body)
@@ -52,8 +51,8 @@ struct VTCommandPageView: View {
 
                 // Install VT Binary button
                 VStack(spacing: 12) {
-                    if cliInstaller.isInstalled {
-                        if cliInstaller.isOutdated {
+                    if self.cliInstaller.isInstalled {
+                        if self.cliInstaller.isOutdated {
                             HStack {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundColor(.orange)
@@ -63,11 +62,11 @@ struct VTCommandPageView: View {
 
                             Button("Update VT Command Line Tool") {
                                 Task {
-                                    await cliInstaller.install()
+                                    await self.cliInstaller.install()
                                 }
                             }
                             .buttonStyle(.borderedProminent)
-                            .disabled(cliInstaller.isInstalling)
+                            .disabled(self.cliInstaller.isInstalling)
                         } else {
                             HStack {
                                 Image(systemName: "checkmark.circle.fill")
@@ -79,13 +78,13 @@ struct VTCommandPageView: View {
                     } else {
                         Button("Install VT Command Line Tool") {
                             Task {
-                                await cliInstaller.install()
+                                await self.cliInstaller.install()
                             }
                         }
                         .buttonStyle(.borderedProminent)
-                        .disabled(cliInstaller.isInstalling)
+                        .disabled(self.cliInstaller.isInstalling)
 
-                        if cliInstaller.isInstalling {
+                        if self.cliInstaller.isInstalling {
                             ProgressView()
                                 .scaleEffect(0.8)
                         }
@@ -104,7 +103,7 @@ struct VTCommandPageView: View {
         .padding()
         .onAppear {
             // Check installation status synchronously on appear
-            cliInstaller.checkInstallationStatus()
+            self.cliInstaller.checkInstallationStatus()
         }
     }
 }

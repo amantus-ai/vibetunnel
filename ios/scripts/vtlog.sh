@@ -84,7 +84,7 @@ LOG CATEGORIES:
     • [SessionListView]       - Session list UI
     • [Terminal]              - Terminal rendering logic
     • [TerminalView]          - Terminal display component
-    • [XtermWebView]          - Web-based terminal renderer
+    • [GhosttyWebView]        - Web-based terminal renderer
     • [SSEClient]             - Server-sent events for real-time updates
     • [LivePreviewManager]    - Live preview functionality
     • [AdvancedKeyboard]      - Advanced keyboard input handling

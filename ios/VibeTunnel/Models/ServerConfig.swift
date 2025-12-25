@@ -13,8 +13,8 @@ struct ServerConfig: Codable, Equatable {
     init(
         host: String,
         port: Int,
-        name: String? = nil
-    ) {
+        name: String? = nil)
+    {
         self.host = host
         self.port = port
         self.name = name
@@ -29,10 +29,10 @@ struct ServerConfig: Codable, Equatable {
     /// a file URL as fallback to ensure non-nil return.
     var baseURL: URL {
         // Handle IPv6 addresses by wrapping in brackets
-        var formattedHost = host
+        var formattedHost = self.host
 
         // First, strip any existing brackets to normalize
-        if formattedHost.hasPrefix("[") && formattedHost.hasSuffix("]") {
+        if formattedHost.hasPrefix("["), formattedHost.hasSuffix("]") {
             formattedHost = String(formattedHost.dropFirst().dropLast())
         }
 
@@ -52,7 +52,7 @@ struct ServerConfig: Codable, Equatable {
 
         // This should always succeed with valid host and port
         // Fallback ensures we always have a valid URL
-        return URL(string: "http://\(formattedHost):\(port)") ?? URL(fileURLWithPath: "/")
+        return URL(string: "http://\(formattedHost):\(self.port)") ?? URL(fileURLWithPath: "/")
     }
 
     /// User-friendly display name for the server.
@@ -60,7 +60,7 @@ struct ServerConfig: Codable, Equatable {
     /// Returns the custom name if set, otherwise formats
     /// the host and port as "host:port".
     var displayName: String {
-        name ?? "\(host):\(port)"
+        self.name ?? "\(self.host):\(self.port)"
     }
 
     /// Creates a URL for an API endpoint path.
@@ -68,13 +68,13 @@ struct ServerConfig: Codable, Equatable {
     /// - Parameter path: The API path (e.g., "/api/sessions")
     /// - Returns: A complete URL for the API endpoint
     func apiURL(path: String) -> URL {
-        baseURL.appendingPathComponent(path)
+        self.baseURL.appendingPathComponent(path)
     }
 
     /// Unique identifier for this server configuration.
     ///
     /// Used for keychain storage and identifying server instances.
     var id: String {
-        "\(host):\(port)"
+        "\(self.host):\(self.port)"
     }
 }

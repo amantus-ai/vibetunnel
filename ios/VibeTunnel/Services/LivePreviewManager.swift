@@ -33,17 +33,17 @@ final class LivePreviewManager {
 
         // Create new subscription
         let subscription = LivePreviewSubscription(sessionId: sessionId)
-        subscriptions[sessionId] = subscription
+        self.subscriptions[sessionId] = subscription
 
         // Manage concurrent preview limit
-        if subscriptions.count > maxConcurrentPreviews {
+        if self.subscriptions.count > self.maxConcurrentPreviews {
             // Remove oldest subscriptions that have no references
-            let sortedSubs = subscriptions.values
+            let sortedSubs = self.subscriptions.values
                 .filter { $0.referenceCount == 0 }
                 .sorted { $0.subscriptionTime < $1.subscriptionTime }
 
             if let oldest = sortedSubs.first {
-                unsubscribe(from: oldest.sessionId)
+                self.unsubscribe(from: oldest.sessionId)
             }
         }
 
@@ -51,12 +51,12 @@ final class LivePreviewManager {
         var lastUpdateTime: Date = .distantPast
         var pendingSnapshot: BufferSnapshot?
 
-        bufferClient.subscribe(to: sessionId) { [weak self, weak subscription] event in
+        self.bufferClient.subscribe(to: sessionId) { [weak self, weak subscription] event in
             guard let self, let subscription else { return }
 
             Task { @MainActor in
                 switch event {
-                case .bufferUpdate(let snapshot):
+                case let .bufferUpdate(snapshot):
                     // Throttle updates to prevent overwhelming the UI
                     let now = Date()
                     if now.timeIntervalSince(lastUpdateTime) >= self.updateInterval {
@@ -105,26 +105,26 @@ final class LivePreviewManager {
 
         if subscription.referenceCount <= 0 {
             // Clean up
-            updateTimers[sessionId]?.invalidate()
-            updateTimers.removeValue(forKey: sessionId)
-            bufferClient.unsubscribe(from: sessionId)
-            subscriptions.removeValue(forKey: sessionId)
+            self.updateTimers[sessionId]?.invalidate()
+            self.updateTimers.removeValue(forKey: sessionId)
+            self.bufferClient.unsubscribe(from: sessionId)
+            self.subscriptions.removeValue(forKey: sessionId)
 
-            logger.debug("Unsubscribed from session: \(sessionId)")
+            self.logger.debug("Unsubscribed from session: \(sessionId)")
         }
     }
 
     /// Clean up all subscriptions.
     func cleanup() {
-        for timer in updateTimers.values {
+        for timer in self.updateTimers.values {
             timer.invalidate()
         }
-        updateTimers.removeAll()
+        self.updateTimers.removeAll()
 
-        for sessionId in subscriptions.keys {
-            bufferClient.unsubscribe(from: sessionId)
+        for sessionId in self.subscriptions.keys {
+            self.bufferClient.unsubscribe(from: sessionId)
         }
-        subscriptions.removeAll()
+        self.subscriptions.removeAll()
     }
 }
 
@@ -156,17 +156,17 @@ struct LivePreviewModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .onAppear {
-                if isEnabled {
-                    subscription = LivePreviewManager.shared.subscribe(to: sessionId)
+                if self.isEnabled {
+                    self.subscription = LivePreviewManager.shared.subscribe(to: self.sessionId)
                 }
             }
             .onDisappear {
-                if subscription != nil {
-                    LivePreviewManager.shared.unsubscribe(from: sessionId)
-                    subscription = nil
+                if self.subscription != nil {
+                    LivePreviewManager.shared.unsubscribe(from: self.sessionId)
+                    self.subscription = nil
                 }
             }
-            .environment(\.livePreviewSubscription, subscription)
+            .environment(\.livePreviewSubscription, self.subscription)
     }
 }
 

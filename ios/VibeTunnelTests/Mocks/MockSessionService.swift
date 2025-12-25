@@ -19,11 +19,11 @@ class MockSessionService: SessionServiceProtocol {
     var cleanedUpSessionIds: [String] = []
 
     func getSessions() async throws -> [Session] {
-        getSessionsCallCount += 1
-        if shouldThrowError {
-            throw thrownError
+        self.getSessionsCallCount += 1
+        if self.shouldThrowError {
+            throw self.thrownError
         }
-        return sessions
+        return self.sessions
     }
 
     func createSession(_ data: SessionCreateData) async throws -> String {
@@ -31,34 +31,34 @@ class MockSessionService: SessionServiceProtocol {
     }
 
     func killSession(_ sessionId: String) async throws {
-        killSessionCallCount += 1
-        killedSessionIds.append(sessionId)
-        if shouldThrowError {
-            throw thrownError
+        self.killSessionCallCount += 1
+        self.killedSessionIds.append(sessionId)
+        if self.shouldThrowError {
+            throw self.thrownError
         }
     }
 
     func cleanupSession(_ sessionId: String) async throws {
-        cleanupSessionCallCount += 1
-        cleanedUpSessionIds.append(sessionId)
-        if shouldThrowError {
-            throw thrownError
+        self.cleanupSessionCallCount += 1
+        self.cleanedUpSessionIds.append(sessionId)
+        if self.shouldThrowError {
+            throw self.thrownError
         }
     }
 
     func cleanupAllExitedSessions() async throws -> [String] {
-        cleanupAllExitedCallCount += 1
-        if shouldThrowError {
-            throw thrownError
+        self.cleanupAllExitedCallCount += 1
+        if self.shouldThrowError {
+            throw self.thrownError
         }
-        let exitedIds = sessions.filter { !$0.isRunning }.map(\.id)
+        let exitedIds = self.sessions.filter { !$0.isRunning }.map(\.id)
         return exitedIds
     }
 
     func killAllSessions() async throws {
-        killAllSessionsCallCount += 1
-        if shouldThrowError {
-            throw thrownError
+        self.killAllSessionsCallCount += 1
+        if self.shouldThrowError {
+            throw self.thrownError
         }
     }
 

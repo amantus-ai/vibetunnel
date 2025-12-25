@@ -1,4 +1,16 @@
-import type { IBufferCell } from '@xterm/headless';
+interface BufferCellLike {
+  getChars(): string;
+  getWidth(): number;
+  getFgColor(): number;
+  getBgColor(): number;
+  isBold(): boolean | number;
+  isItalic(): boolean | number;
+  isUnderline(): boolean | number;
+  isDim(): boolean;
+  isInverse(): boolean | number;
+  isInvisible(): boolean | number;
+  isStrikethrough(): boolean | number;
+}
 
 export interface BufferCell {
   char: string;
@@ -28,11 +40,11 @@ function escapeHtml(text: string): string {
 }
 
 /**
- * Render a line from IBufferCell array (from xterm.js)
+ * Render a line from terminal buffer cell array
  */
 export function renderLineFromBuffer(
-  line: { getCell: (col: number, cell: IBufferCell) => void; length: number },
-  cell: IBufferCell,
+  line: { getCell: (col: number, cell: BufferCellLike) => void; length: number },
+  cell: BufferCellLike,
   cursorCol: number = -1
 ): string {
   let html = '';
@@ -127,7 +139,10 @@ export function renderLineFromCells(cells: BufferCell[], cursorCol: number = -1)
   return html;
 }
 
-function getCellStyling(cell: IBufferCell, isCursor: boolean): { classes: string; style: string } {
+function getCellStyling(
+  cell: BufferCellLike,
+  isCursor: boolean
+): { classes: string; style: string } {
   let classes = 'terminal-char';
   let style = '';
 

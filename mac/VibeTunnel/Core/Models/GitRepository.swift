@@ -46,34 +46,34 @@ public struct GitRepository: Sendable, Equatable, Hashable {
 
     /// Whether the repository has uncommitted changes
     public var hasChanges: Bool {
-        modifiedCount > 0 || deletedCount > 0 || untrackedCount > 0
+        self.modifiedCount > 0 || self.deletedCount > 0 || self.untrackedCount > 0
     }
 
     /// Total number of files with changes
     public var totalChangedFiles: Int {
-        modifiedCount + deletedCount + untrackedCount
+        self.modifiedCount + self.deletedCount + self.untrackedCount
     }
 
     /// Folder name for display
     public var folderName: String {
-        URL(fileURLWithPath: path).lastPathComponent
+        URL(fileURLWithPath: self.path).lastPathComponent
     }
 
     /// Status text for display
     public var statusText: String {
-        if !hasChanges {
+        if !self.hasChanges {
             return "clean"
         }
 
         var parts: [String] = []
-        if untrackedCount > 0 {
-            parts.append("\(untrackedCount)N")
+        if self.untrackedCount > 0 {
+            parts.append("\(self.untrackedCount)N")
         }
-        if modifiedCount > 0 {
-            parts.append("\(modifiedCount)M")
+        if self.modifiedCount > 0 {
+            parts.append("\(self.modifiedCount)M")
         }
-        if deletedCount > 0 {
-            parts.append("\(deletedCount)D")
+        if self.deletedCount > 0 {
+            parts.append("\(self.deletedCount)D")
         }
         return parts.joined(separator: " ")
     }
@@ -91,8 +91,8 @@ public struct GitRepository: Sendable, Equatable, Hashable {
         behindCount: Int? = nil,
         trackingBranch: String? = nil,
         isWorktree: Bool = false,
-        githubURL: URL? = nil
-    ) {
+        githubURL: URL? = nil)
+    {
         self.path = path
         self.modifiedCount = modifiedCount
         self.addedCount = addedCount
@@ -131,7 +131,7 @@ public struct GitRepository: Sendable, Equatable, Hashable {
             let output = String(data: outputData, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
-            return parseGitHubURL(from: output)
+            return self.parseGitHubURL(from: output)
         } catch {
             return nil
         }

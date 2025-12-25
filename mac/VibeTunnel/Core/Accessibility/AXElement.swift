@@ -13,8 +13,7 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
 
     private let logger = Logger(
         subsystem: BundleIdentifiers.loggerSubsystem,
-        category: "AXElement"
-    )
+        category: "AXElement")
 
     // MARK: - Initialization
 
@@ -174,13 +173,13 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
     /// Sets an attribute value
     @discardableResult
     public func setAttribute(_ attribute: String, value: CFTypeRef) -> AXError {
-        AXUIElementSetAttributeValue(element, attribute as CFString, value)
+        AXUIElementSetAttributeValue(self.element, attribute as CFString, value)
     }
 
     /// Sets a boolean attribute
     @discardableResult
     public func setBool(_ attribute: String, value: Bool) -> AXError {
-        setAttribute(attribute, value: value as CFBoolean)
+        self.setAttribute(attribute, value: value as CFBoolean)
     }
 
     /// Sets a CGPoint attribute
@@ -190,7 +189,7 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
         guard let axValue = AXValueCreate(.cgPoint, &mutableValue) else {
             return .failure
         }
-        return setAttribute(attribute, value: axValue)
+        return self.setAttribute(attribute, value: axValue)
     }
 
     /// Sets a CGSize attribute
@@ -200,7 +199,7 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
         guard let axValue = AXValueCreate(.cgSize, &mutableValue) else {
             return .failure
         }
-        return setAttribute(attribute, value: axValue)
+        return self.setAttribute(attribute, value: axValue)
     }
 
     // MARK: - Actions
@@ -208,7 +207,7 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
     /// Performs an action on the element
     @discardableResult
     public func performAction(_ action: String) -> AXError {
-        AXUIElementPerformAction(element, action as CFString)
+        AXUIElementPerformAction(self.element, action as CFString)
     }
 
     /// Gets the list of supported actions
@@ -229,22 +228,22 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
 
     /// Gets the role of the element
     public var role: String? {
-        string(for: kAXRoleAttribute)
+        self.string(for: kAXRoleAttribute)
     }
 
     /// Gets the title of the element
     public var title: String? {
-        string(for: kAXTitleAttribute)
+        self.string(for: kAXTitleAttribute)
     }
 
     /// Gets the value of the element
     public var value: Any? {
-        rawValue(for: kAXValueAttribute)
+        self.rawValue(for: kAXValueAttribute)
     }
 
     /// Gets the position of the element
     public var position: CGPoint? {
-        point(for: kAXPositionAttribute)
+        self.point(for: kAXPositionAttribute)
     }
 
     /// Gets the size of the element
@@ -254,34 +253,34 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
 
     /// Gets the focused state of the element
     public var isFocused: Bool {
-        bool(for: kAXFocusedAttribute) ?? false
+        self.bool(for: kAXFocusedAttribute) ?? false
     }
 
     /// Gets the enabled state of the element
     public var isEnabled: Bool {
-        bool(for: kAXEnabledAttribute) ?? true
+        self.bool(for: kAXEnabledAttribute) ?? true
     }
 
     /// Gets the window ID (for window elements)
     public var windowID: Int? {
-        int(for: "_AXWindowNumber")
+        self.int(for: "_AXWindowNumber")
     }
 
     // MARK: - Hierarchy
 
     /// Gets the parent element
     public var parent: Self? {
-        element(for: kAXParentAttribute)
+        self.element(for: kAXParentAttribute)
     }
 
     /// Gets the children elements
     public var children: [Self]? {
-        elements(for: kAXChildrenAttribute)
+        self.elements(for: kAXChildrenAttribute)
     }
 
     /// Gets the windows (for application elements)
     public var windows: [Self]? {
-        elements(for: kAXWindowsAttribute)
+        self.elements(for: kAXWindowsAttribute)
     }
 
     // MARK: - Parameterized Attributes
@@ -300,7 +299,7 @@ public struct AXElement: Equatable, Hashable, @unchecked Sendable {
     }
 
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(CFHash(element))
+        hasher.combine(CFHash(self.element))
     }
 }
 
@@ -310,19 +309,19 @@ extension AXElement {
     /// Presses the element (for buttons, etc.)
     @discardableResult
     public func press() -> Bool {
-        performAction(kAXPressAction) == .success
+        self.performAction(kAXPressAction) == .success
     }
 
     /// Raises the element (for windows)
     @discardableResult
     public func raise() -> Bool {
-        performAction(kAXRaiseAction) == .success
+        self.performAction(kAXRaiseAction) == .success
     }
 
     /// Shows the menu for the element
     @discardableResult
     public func showMenu() -> Bool {
-        performAction(kAXShowMenuAction) == .success
+        self.performAction(kAXShowMenuAction) == .success
     }
 }
 
@@ -331,58 +330,58 @@ extension AXElement {
 extension AXElement {
     /// Checks if this is a window element
     public var isWindow: Bool {
-        role == kAXWindowRole
+        self.role == kAXWindowRole
     }
 
     /// Checks if the window is minimized
     public var isMinimized: Bool? {
-        guard isWindow else { return nil }
-        return bool(for: kAXMinimizedAttribute)
+        guard self.isWindow else { return nil }
+        return self.bool(for: kAXMinimizedAttribute)
     }
 
     /// Minimizes or unminimizes the window
     @discardableResult
     public func setMinimized(_ minimized: Bool) -> AXError {
-        guard isWindow else { return .attributeUnsupported }
-        return setBool(kAXMinimizedAttribute, value: minimized)
+        guard self.isWindow else { return .attributeUnsupported }
+        return self.setBool(kAXMinimizedAttribute, value: minimized)
     }
 
     /// Gets the close button of the window
     public var closeButton: AXElement? {
-        guard isWindow else { return nil }
-        return element(for: kAXCloseButtonAttribute)
+        guard self.isWindow else { return nil }
+        return self.element(for: kAXCloseButtonAttribute)
     }
 
     /// Gets the minimize button of the window
     public var minimizeButton: AXElement? {
-        guard isWindow else { return nil }
-        return element(for: kAXMinimizeButtonAttribute)
+        guard self.isWindow else { return nil }
+        return self.element(for: kAXMinimizeButtonAttribute)
     }
 
     /// Gets the main window state
     public var isMain: Bool? {
-        guard isWindow else { return nil }
-        return bool(for: kAXMainAttribute)
+        guard self.isWindow else { return nil }
+        return self.bool(for: kAXMainAttribute)
     }
 
     /// Sets the main window state
     @discardableResult
     public func setMain(_ main: Bool) -> AXError {
-        guard isWindow else { return .attributeUnsupported }
-        return setBool(kAXMainAttribute, value: main)
+        guard self.isWindow else { return .attributeUnsupported }
+        return self.setBool(kAXMainAttribute, value: main)
     }
 
     /// Gets the focused window state
     public var isFocusedWindow: Bool? {
-        guard isWindow else { return nil }
-        return bool(for: kAXFocusedAttribute)
+        guard self.isWindow else { return nil }
+        return self.bool(for: kAXFocusedAttribute)
     }
 
     /// Sets the focused window state
     @discardableResult
     public func setFocused(_ focused: Bool) -> AXError {
-        guard isWindow else { return .attributeUnsupported }
-        return setBool(kAXFocusedAttribute, value: focused)
+        guard self.isWindow else { return .attributeUnsupported }
+        return self.setBool(kAXFocusedAttribute, value: focused)
     }
 }
 
@@ -406,13 +405,13 @@ extension AXElement {
 
     /// Checks if this element is selected (for tabs)
     public var isSelected: Bool? {
-        bool(for: kAXSelectedAttribute)
+        self.bool(for: kAXSelectedAttribute)
     }
 
     /// Sets the selected state
     @discardableResult
     public func setSelected(_ selected: Bool) -> AXError {
-        setBool(kAXSelectedAttribute, value: selected)
+        self.setBool(kAXSelectedAttribute, value: selected)
     }
 }
 
@@ -473,8 +472,7 @@ extension AXElement {
     public static func enumerateWindows(
         bundleIdentifiers: [String]? = nil,
         includeMinimized: Bool = false,
-        filter: ((WindowInfo) -> Bool)? = nil
-    )
+        filter: ((WindowInfo) -> Bool)? = nil)
         -> [WindowInfo]
     {
         var allWindows: [WindowInfo] = []
@@ -501,15 +499,14 @@ extension AXElement {
 
             for window in windows {
                 // Skip minimized windows if requested
-                if !includeMinimized && (window.isMinimized ?? false) {
+                if !includeMinimized, window.isMinimized ?? false {
                     continue
                 }
 
                 let windowInfo = WindowInfo(
                     window: window,
                     pid: app.processIdentifier,
-                    bundleIdentifier: bundleID
-                )
+                    bundleIdentifier: bundleID)
 
                 // Apply filter if provided
                 if let filter {
@@ -536,13 +533,11 @@ extension AXElement {
     /// - Returns: Array of WindowInfo for the specified applications
     public static func windows(
         for bundleIdentifiers: [String],
-        includeMinimized: Bool = false
-    )
+        includeMinimized: Bool = false)
         -> [WindowInfo]
     {
-        enumerateWindows(
+        self.enumerateWindows(
             bundleIdentifiers: bundleIdentifiers,
-            includeMinimized: includeMinimized
-        )
+            includeMinimized: includeMinimized)
     }
 }

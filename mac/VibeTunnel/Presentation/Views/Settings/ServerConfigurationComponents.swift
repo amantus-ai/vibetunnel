@@ -17,25 +17,23 @@ struct ServerConfigurationSection: View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
                 AccessModeView(
-                    accessMode: accessMode,
-                    accessModeString: $accessModeString,
-                    serverPort: serverPort,
-                    localIPAddress: localIPAddress,
-                    restartServerWithNewBindAddress: restartServerWithNewBindAddress
-                )
+                    accessMode: self.accessMode,
+                    accessModeString: self.$accessModeString,
+                    serverPort: self.serverPort,
+                    localIPAddress: self.localIPAddress,
+                    restartServerWithNewBindAddress: self.restartServerWithNewBindAddress)
 
                 PortConfigurationView(
-                    serverPort: $serverPort,
-                    restartServerWithNewPort: restartServerWithNewPort,
-                    serverManager: serverManager
-                )
+                    serverPort: self.$serverPort,
+                    restartServerWithNewPort: self.restartServerWithNewPort,
+                    serverManager: self.serverManager)
             }
         } header: {
             Text("Server Configuration")
                 .font(.headline)
         } footer: {
             // Dashboard URL display
-            if accessMode == .localhost {
+            if self.accessMode == .localhost {
                 HStack(spacing: 5) {
                     Text("Dashboard available at")
                         .font(.caption)
@@ -49,7 +47,7 @@ struct ServerConfigurationSection: View {
                 }
                 .frame(maxWidth: .infinity)
                 .multilineTextAlignment(.center)
-            } else if accessMode == .network {
+            } else if self.accessMode == .network {
                 if let ip = localIPAddress {
                     HStack(spacing: 5) {
                         Text("Dashboard available at")
@@ -100,7 +98,7 @@ struct AccessModeView: View {
                     .font(.callout)
                 Spacer()
 
-                if shouldLockToLocalhost {
+                if self.shouldLockToLocalhost {
                     // Only lock when Tailscale Serve is actually working
                     Text("Localhost")
                         .foregroundColor(.secondary)
@@ -109,21 +107,21 @@ struct AccessModeView: View {
                         .foregroundColor(.blue)
                         .help("Tailscale Serve active - locked to localhost for security")
                 } else {
-                    Picker("", selection: $accessModeString) {
+                    Picker("", selection: self.$accessModeString) {
                         ForEach(DashboardAccessMode.allCases, id: \.rawValue) { mode in
                             Text(mode.displayName)
                                 .tag(mode.rawValue)
                         }
                     }
                     .labelsHidden()
-                    .onChange(of: accessModeString) { _, _ in
-                        restartServerWithNewBindAddress()
+                    .onChange(of: self.accessModeString) { _, _ in
+                        self.restartServerWithNewBindAddress()
                     }
                 }
             }
 
             // Show warning when Tailscale Serve is enabled but not working
-            if tailscaleServeEnabled && !shouldLockToLocalhost {
+            if self.tailscaleServeEnabled, !self.shouldLockToLocalhost {
                 HStack(spacing: 4) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.orange)
@@ -135,7 +133,7 @@ struct AccessModeView: View {
             }
 
             // Show info when Tailscale Serve is active and locked
-            if shouldLockToLocalhost && accessMode == .network {
+            if self.shouldLockToLocalhost, self.accessMode == .network {
                 HStack(spacing: 4) {
                     Image(systemName: "info.circle.fill")
                         .foregroundColor(.blue)
@@ -150,9 +148,9 @@ struct AccessModeView: View {
 
     /// Only lock to localhost when Tailscale Serve is enabled AND actually working
     private var shouldLockToLocalhost: Bool {
-        tailscaleServeEnabled &&
-            tailscaleService.isRunning &&
-            tailscaleServeStatus.isRunning
+        self.tailscaleServeEnabled &&
+            self.tailscaleService.isRunning &&
+            self.tailscaleServeStatus.isRunning
     }
 }
 
@@ -174,31 +172,31 @@ struct PortConfigurationView: View {
                     .font(.callout)
                 Spacer()
                 HStack(spacing: 4) {
-                    TextField("", text: $pendingPort)
+                    TextField("", text: self.$pendingPort)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 80)
                         .multilineTextAlignment(.center)
-                        .focused($isPortFieldFocused)
+                        .focused(self.$isPortFieldFocused)
                         .onSubmit {
-                            validateAndUpdatePort()
+                            self.validateAndUpdatePort()
                         }
                         .onAppear {
-                            pendingPort = serverPort
+                            self.pendingPort = self.serverPort
                         }
-                        .onChange(of: pendingPort) { _, newValue in
+                        .onChange(of: self.pendingPort) { _, newValue in
                             // Clear error when user types
-                            portError = nil
+                            self.portError = nil
                             // Limit to 5 digits
                             if newValue.count > 5 {
-                                pendingPort = String(newValue.prefix(5))
+                                self.pendingPort = String(newValue.prefix(5))
                             }
                         }
 
                     VStack(spacing: 0) {
                         Button(action: {
-                            if let port = Int(pendingPort), port < 65_535 {
-                                pendingPort = String(port + 1)
-                                validateAndUpdatePort()
+                            if let port = Int(pendingPort), port < 65535 {
+                                self.pendingPort = String(port + 1)
+                                self.validateAndUpdatePort()
                             }
                         }, label: {
                             Image(systemName: "chevron.up")
@@ -208,9 +206,9 @@ struct PortConfigurationView: View {
                         .buttonStyle(.borderless)
 
                         Button(action: {
-                            if let port = Int(pendingPort), port > 1_024 {
-                                pendingPort = String(port - 1)
-                                validateAndUpdatePort()
+                            if let port = Int(pendingPort), port > 1024 {
+                                self.pendingPort = String(port - 1)
+                                self.validateAndUpdatePort()
                             }
                         }, label: {
                             Image(systemName: "chevron.down")
@@ -236,20 +234,20 @@ struct PortConfigurationView: View {
 
     private func validateAndUpdatePort() {
         guard let port = Int(pendingPort) else {
-            portError = "Invalid port number"
-            pendingPort = serverPort
+            self.portError = "Invalid port number"
+            self.pendingPort = self.serverPort
             return
         }
 
-        guard port >= 1_024 && port <= 65_535 else {
-            portError = "Port must be between 1024 and 65535"
-            pendingPort = serverPort
+        guard port >= 1024, port <= 65535 else {
+            self.portError = "Port must be between 1024 and 65535"
+            self.pendingPort = self.serverPort
             return
         }
 
-        if String(port) != serverPort {
-            restartServerWithNewPort(port)
-            serverPort = String(port)
+        if String(port) != self.serverPort {
+            self.restartServerWithNewPort(port)
+            self.serverPort = String(port)
         }
     }
 }
@@ -264,7 +262,7 @@ enum ServerConfigurationHelpers {
         // Update the port in ServerManager and restart
         serverManager.port = String(port)
         await serverManager.restart()
-        logger.info("Server restarted on port \(port)")
+        self.logger.info("Server restarted on port \(port)")
 
         // Wait for server to be fully ready before restarting session monitor
         try? await Task.sleep(for: .seconds(1))
@@ -275,12 +273,11 @@ enum ServerConfigurationHelpers {
     static func restartServerWithNewBindAddress(accessMode: DashboardAccessMode, serverManager: ServerManager) async {
         // Restart server to pick up the new bind address from UserDefaults
         // (accessModeString is already persisted via @AppStorage)
-        logger
+        self.logger
             .info(
-                "Restarting server due to access mode change: \(accessMode.displayName) -> \(accessMode.bindAddress)"
-            )
+                "Restarting server due to access mode change: \(accessMode.displayName) -> \(accessMode.bindAddress)")
         await serverManager.restart()
-        logger.info("Server restarted with bind address \(accessMode.bindAddress)")
+        self.logger.info("Server restarted with bind address \(accessMode.bindAddress)")
 
         // Wait for server to be fully ready before restarting session monitor
         try? await Task.sleep(for: .seconds(1))

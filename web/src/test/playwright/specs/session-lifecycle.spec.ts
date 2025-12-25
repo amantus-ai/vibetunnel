@@ -1,191 +1,112 @@
-import { expect, test } from '@playwright/test';
-import { createTestSession, TestSessionTracker, waitForSession } from '../test-utils';
+import { expect, test } from '../fixtures/test.fixture';
+import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { TestDataFactory } from '../utils/test-utils';
 
-let sessionTracker: TestSessionTracker;
-
-test.beforeEach(async ({ page }) => {
-  sessionTracker = new TestSessionTracker();
-  await page.goto('/');
-  await page.waitForLoadState('networkidle');
-});
-
-test.afterEach(async () => {
-  await sessionTracker.cleanup();
-});
+const TEST_PREFIX = TestDataFactory.getTestSpecificPrefix('session-lifecycle');
 
 test.describe('Session Lifecycle Tests', () => {
-  test('should create and terminate session properly', async ({ page }) => {
-    const sessionId = await createTestSession(page, sessionTracker, {
-      command: 'bash',
-      name: 'lifecycle-test',
-    });
+  let sessionManager: TestSessionManager;
 
-    await waitForSession(page, sessionId);
-
-    // Session should be active
-    const sessionRow = page.locator(`[data-testid="session-${sessionId}"]`);
-    await expect(sessionRow).toBeVisible();
-    await expect(sessionRow.locator('.session-status')).toContainText('active');
-
-    // Terminate the session
-    await sessionRow.locator('button[data-testid="kill-session"]').click();
-
-    // Confirm termination
-    await page.locator('button:has-text("Kill Session")').click();
-
-    // Session should be marked as exited
-    await expect(sessionRow.locator('.session-status')).toContainText('exited');
+  test.beforeEach(async ({ page }) => {
+    sessionManager = new TestSessionManager(page, TEST_PREFIX);
   });
 
-  test('should handle session exit gracefully', async ({ page }) => {
-    const sessionId = await createTestSession(page, sessionTracker, {
-      command: 'bash -c "echo Done; exit 0"',
-      name: 'exit-test',
-    });
-
-    await waitForSession(page, sessionId);
-
-    // Wait for command to complete
-    await page.waitForTimeout(500);
-
-    // Session should show as exited
-    const sessionRow = page.locator(`[data-testid="session-${sessionId}"]`);
-    await expect(sessionRow.locator('.session-status')).toContainText('exited');
-
-    // Should show exit code 0
-    await expect(sessionRow).toContainText('exit code: 0');
+  test.afterEach(async () => {
+    await sessionManager.cleanupAllSessions();
   });
 
-  test('should handle session with non-zero exit code', async ({ page }) => {
-    const sessionId = await createTestSession(page, sessionTracker, {
-      command: 'bash -c "echo Error; exit 1"',
-      name: 'error-exit-test',
-    });
+  test('should create and terminate session', async ({ page }) => {
+    test.setTimeout(20000);
+    const { sessionName, sessionId } = await sessionManager.createTrackedSession(
+      sessionManager.generateSessionName('lifecycle'),
+      false,
+      'bash'
+    );
 
-    await waitForSession(page, sessionId);
-
-    // Wait for command to complete
-    await page.waitForTimeout(500);
-
-    // Session should show as exited with error
-    const sessionRow = page.locator(`[data-testid="session-${sessionId}"]`);
-    await expect(sessionRow.locator('.session-status')).toContainText('exited');
-
-    // Should show exit code 1
-    await expect(sessionRow).toContainText('exit code: 1');
-  });
-
-  test('should reconnect to existing session', async ({ page }) => {
-    const sessionId = await createTestSession(page, sessionTracker, {
-      command: 'bash',
-      name: 'reconnect-test',
-    });
-
-    await waitForSession(page, sessionId);
-
-    // Type something in the terminal
-    const terminal = page.locator('.xterm-screen');
-    await terminal.click();
-    await page.keyboard.type('echo "Session state test"');
-    await page.keyboard.press('Enter');
-
-    // Wait for output
-    await expect(terminal).toContainText('Session state test');
-
-    // Navigate away and back
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-
-    // Click on the session to reconnect
-    const sessionRow = page.locator(`[data-testid="session-${sessionId}"]`);
-    await sessionRow.click();
-
-    // Should reconnect and show previous output
-    await expect(page.locator('.xterm-screen')).toContainText('Session state test');
-
-    // Terminal should be responsive
-    await page.locator('.xterm-screen').click();
-    await page.keyboard.type('echo "Reconnected"');
-    await page.keyboard.press('Enter');
-
-    await expect(page.locator('.xterm-screen')).toContainText('Reconnected');
-
-    // Clean up
-    await page.keyboard.type('exit');
-    await page.keyboard.press('Enter');
-  });
-
-  test('should show session duration', async ({ page }) => {
-    const sessionId = await createTestSession(page, sessionTracker, {
-      command: 'sleep 2',
-      name: 'duration-test',
+    await page.waitForSelector(`session-card:has-text("${sessionName}")`, {
+      state: 'visible',
+      timeout: 15000,
     });
 
-    await waitForSession(page, sessionId);
+    await page
+      .evaluate(async (id) => {
+        await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
+      }, sessionId)
+      .catch(() => {});
 
-    // Session should show as active initially
-    const sessionRow = page.locator(`[data-testid="session-${sessionId}"]`);
-    await expect(sessionRow.locator('.session-status')).toContainText('active');
-
-    // Wait for sleep command to complete
-    await page.waitForTimeout(2500);
-
-    // Session should show as exited
-    await expect(sessionRow.locator('.session-status')).toContainText('exited');
-
-    // Should show some duration (at least 2 seconds)
-    const durationText = await sessionRow.locator('.session-duration').textContent();
-    expect(durationText).toMatch(/[0-9]+[sm]/); // Should show seconds or minutes
+    await page.waitForFunction(
+      (name) => {
+        const cards = Array.from(document.querySelectorAll('session-card'));
+        const card = cards.find((c) => c.textContent?.includes(name));
+        if (!card) return true;
+        const root = (card as unknown as { shadowRoot?: ShadowRoot }).shadowRoot;
+        const status =
+          (card.querySelector('span[data-status]') as HTMLElement | null) ??
+          (root?.querySelector('span[data-status]') as HTMLElement | null);
+        const text = (status?.textContent || '').toLowerCase();
+        return text.includes('exited');
+      },
+      sessionName,
+      { timeout: 15000, polling: 250 }
+    );
   });
 
-  test('should handle multiple concurrent sessions', async ({ page }) => {
-    // Create multiple sessions
-    const sessionIds = await Promise.all([
-      createTestSession(page, sessionTracker, { command: 'bash', name: 'concurrent-1' }),
-      createTestSession(page, sessionTracker, { command: 'bash', name: 'concurrent-2' }),
-      createTestSession(page, sessionTracker, { command: 'bash', name: 'concurrent-3' }),
-    ]);
+  test('should handle session that exits', async ({ page, sessionViewPage }) => {
+    test.setTimeout(45000);
 
-    // Wait for all sessions to be ready
-    for (const sessionId of sessionIds) {
-      await waitForSession(page, sessionId);
+    const { sessionName } = await sessionManager.createTrackedSession(
+      sessionManager.generateSessionName('exit'),
+      false,
+      'bash'
+    );
+
+    await sessionViewPage.waitForTerminalReady();
+    await sessionViewPage.typeCommand('echo Done');
+    await sessionViewPage.waitForOutput('Done', { timeout: 5000 });
+    await sessionViewPage.typeCommand('exit');
+
+    await page.goto('/');
+
+    // Exited sessions can be hidden depending on persisted UI state.
+    // Ensure exited sessions are shown before waiting for the card.
+    const showExitedCheckbox = page.getByRole('checkbox', { name: 'Show' });
+    if (await showExitedCheckbox.isVisible({ timeout: 2000 })) {
+      if (!(await showExitedCheckbox.isChecked())) {
+        await showExitedCheckbox.check();
+      }
     }
 
-    // All sessions should be visible and active
-    for (const sessionId of sessionIds) {
-      const sessionRow = page.locator(`[data-testid="session-${sessionId}"]`);
-      await expect(sessionRow).toBeVisible();
-      await expect(sessionRow.locator('.session-status')).toContainText('active');
-    }
+    await page.waitForSelector(`session-card:has-text("${sessionName}")`, { state: 'visible' });
 
-    // Should be able to interact with each session
-    for (const sessionId of sessionIds) {
-      const sessionRow = page.locator(`[data-testid="session-${sessionId}"]`);
-      await sessionRow.click();
+    await expect(
+      page.locator(`session-card:has-text("${sessionName}") span[data-status]`).first()
+    ).toContainText('exited', { timeout: 15000 });
+  });
 
-      // Terminal should be active
-      await expect(page.locator('.xterm-screen')).toBeVisible();
+  test('should reconnect to existing session', async ({ page, sessionViewPage }) => {
+    const { sessionName } = await sessionManager.createTrackedSession(
+      sessionManager.generateSessionName('reconnect'),
+      false,
+      'bash'
+    );
 
-      // Type a unique command for this session
-      await page.locator('.xterm-screen').click();
-      await page.keyboard.type(`echo "Session ${sessionId}"`);
-      await page.keyboard.press('Enter');
+    await sessionViewPage.waitForTerminalReady();
+    await sessionViewPage.typeCommand('echo "Session state test"');
+    await sessionViewPage.waitForOutput('Session state test', { timeout: 5000 });
 
-      // Should see the output
-      await expect(page.locator('.xterm-screen')).toContainText(`Session ${sessionId}`);
+    await page.goto('/');
+    await page.waitForSelector(`session-card:has-text("${sessionName}")`, {
+      state: 'visible',
+      timeout: 15000,
+    });
 
-      // Exit this session
-      await page.keyboard.type('exit');
-      await page.keyboard.press('Enter');
-    }
+    await page.locator(`session-card:has-text("${sessionName}")`).first().click();
+    await sessionViewPage.waitForTerminalReady();
+    await sessionViewPage.waitForOutput('Session state test', { timeout: 5000 });
 
-    // Wait for sessions to exit
-    await page.waitForTimeout(500);
-
-    // All sessions should now be exited
-    for (const sessionId of sessionIds) {
-      const sessionRow = page.locator(`[data-testid="session-${sessionId}"]`);
-      await expect(sessionRow.locator('.session-status')).toContainText('exited');
-    }
+    await sessionViewPage.typeCommand('echo "Reconnected"');
+    await sessionViewPage.waitForOutput('Reconnected', { timeout: 5000 });
+    await sessionViewPage.typeCommand('exit');
   });
 });

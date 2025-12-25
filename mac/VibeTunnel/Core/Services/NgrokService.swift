@@ -19,11 +19,11 @@ enum NgrokError: LocalizedError, Equatable {
             ErrorMessages.ngrokNotInstalled
         case .authTokenMissing:
             ErrorMessages.ngrokAuthTokenMissing
-        case .tunnelCreationFailed(let message):
+        case let .tunnelCreationFailed(message):
             "Failed to create tunnel: \(message)"
         case .invalidConfiguration:
             ErrorMessages.invalidNgrokConfiguration
-        case .networkError(let message):
+        case let .networkError(message):
             "Network error: \(message)"
         }
     }
@@ -74,11 +74,11 @@ final class NgrokService: NgrokTunnelProtocol {
     var authToken: String? {
         get {
             let token = KeychainHelper.getNgrokAuthToken()
-            logger.info("Getting auth token from keychain: \(token != nil ? "present" : "nil")")
+            self.logger.info("Getting auth token from keychain: \(token != nil ? "present" : "nil")")
             return token
         }
         set {
-            logger.info("Setting auth token in keychain: \(newValue != nil ? "present" : "nil")")
+            self.logger.info("Setting auth token in keychain: \(newValue != nil ? "present" : "nil")")
             if let token = newValue {
                 KeychainHelper.setNgrokAuthToken(token)
             } else {
@@ -104,45 +104,45 @@ final class NgrokService: NgrokTunnelProtocol {
 
     /// Starts an ngrok tunnel for the specified port
     func start(port: Int) async throws -> String {
-        logger.info("Starting ngrok tunnel on port \(port)")
+        self.logger.info("Starting ngrok tunnel on port \(port)")
 
         guard let authToken, !authToken.isEmpty else {
-            logger.error("Auth token is missing")
+            self.logger.error("Auth token is missing")
             throw NgrokError.authTokenMissing
         }
 
-        logger.info("Auth token is present, proceeding with CLI start")
+        self.logger.info("Auth token is present, proceeding with CLI start")
 
         // For now, we'll use the ngrok CLI approach
         // Later we can switch to the SDK when available
-        return try await startWithCLI(port: port)
+        return try await self.startWithCLI(port: port)
     }
 
     /// Stops the active ngrok tunnel
     func stop() async throws {
-        logger.info("Stopping ngrok tunnel")
+        self.logger.info("Stopping ngrok tunnel")
 
         if let process = ngrokProcess {
             process.terminate()
-            ngrokProcess = nil
+            self.ngrokProcess = nil
         }
 
-        statusTask?.cancel()
-        statusTask = nil
+        self.statusTask?.cancel()
+        self.statusTask = nil
 
-        isActive = false
-        publicUrl = nil
-        tunnelStatus = nil
+        self.isActive = false
+        self.publicUrl = nil
+        self.tunnelStatus = nil
     }
 
     /// Gets the current tunnel status
     func getStatus() async -> NgrokTunnelStatus? {
-        tunnelStatus
+        self.tunnelStatus
     }
 
     /// Checks if a tunnel is currently running
     func isRunning() async -> Bool {
-        isActive && ngrokProcess?.isRunning == true
+        self.isActive && self.ngrokProcess?.isRunning == true
     }
 
     // MARK: - Private Methods
@@ -177,7 +177,7 @@ final class NgrokService: NgrokTunnelProtocol {
                     ngrokPath = nil
                 }
             } catch {
-                logger.debug("Could not read ngrok path: \(error.localizedDescription)")
+                self.logger.debug("Could not read ngrok path: \(error.localizedDescription)")
                 ngrokPath = nil
             }
 
@@ -245,21 +245,21 @@ final class NgrokService: NgrokTunnelProtocol {
             self.isActive = true
 
             // Start monitoring tunnel status
-            startStatusMonitoring()
+            self.startStatusMonitoring()
 
-            logger.info("ngrok tunnel started: \(url)")
+            self.logger.info("ngrok tunnel started: \(url)")
             return url
         } catch {
-            logger.error("Failed to start ngrok: \(error)")
+            self.logger.error("Failed to start ngrok: \(error)")
             throw error
         }
     }
 
     /// Monitors tunnel status periodically
     private func startStatusMonitoring() {
-        statusTask?.cancel()
+        self.statusTask?.cancel()
 
-        statusTask = Task { @MainActor in
+        self.statusTask = Task { @MainActor in
             while !Task.isCancelled {
                 await self.updateTunnelStatus()
                 try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
@@ -272,25 +272,23 @@ final class NgrokService: NgrokTunnelProtocol {
         // In a real implementation, we would query ngrok's API
         // For now, just check if the process is still running
         if let process = ngrokProcess, process.isRunning {
-            if tunnelStatus == nil {
-                tunnelStatus = NgrokTunnelStatus(
-                    publicUrl: publicUrl ?? "",
+            if self.tunnelStatus == nil {
+                self.tunnelStatus = NgrokTunnelStatus(
+                    publicUrl: self.publicUrl ?? "",
                     metrics: TunnelMetrics(connectionsCount: 0, bytesIn: 0, bytesOut: 0),
-                    startedAt: Date()
-                )
+                    startedAt: Date())
             }
         } else {
-            isActive = false
-            publicUrl = nil
-            tunnelStatus = nil
+            self.isActive = false
+            self.publicUrl = nil
+            self.tunnelStatus = nil
         }
     }
 
     /// Executes an async task with a timeout
     private func withTimeout<T: Sendable>(
         seconds: TimeInterval,
-        operation: @Sendable @escaping () async throws -> T
-    )
+        operation: @Sendable @escaping () async throws -> T)
         async throws -> T
     {
         try await withThrowingTaskGroup(of: T.self) { group in
@@ -338,26 +336,26 @@ struct AsyncLineSequence: AsyncSequence {
                 let lineBreakData = Data("\n".utf8)
                 if let range = buffer.range(of: lineBreakData) {
                     let line = String(data: buffer[..<range.lowerBound], encoding: .utf8)
-                    buffer.removeSubrange(..<range.upperBound)
+                    self.buffer.removeSubrange(..<range.upperBound)
                     return line
                 }
 
-                let newData = fileHandle.availableData
+                let newData = self.fileHandle.availableData
                 if newData.isEmpty {
-                    if !buffer.isEmpty {
+                    if !self.buffer.isEmpty {
                         defer { buffer.removeAll() }
-                        return String(data: buffer, encoding: .utf8)
+                        return String(data: self.buffer, encoding: .utf8)
                     }
                     return nil
                 }
 
-                buffer.append(newData)
+                self.buffer.append(newData)
             }
         }
     }
 
     func makeAsyncIterator() -> AsyncIterator {
-        AsyncIterator(fileHandle: fileHandle)
+        AsyncIterator(fileHandle: self.fileHandle)
     }
 }
 
@@ -374,9 +372,9 @@ private enum KeychainHelper {
     static func getNgrokAuthToken() -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true
+            kSecAttrService as String: self.service,
+            kSecAttrAccount as String: self.account,
+            kSecReturnData as String: true,
         ]
 
         var result: AnyObject?
@@ -396,11 +394,11 @@ private enum KeychainHelper {
     static func hasNgrokAuthToken() -> Bool {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
+            kSecAttrService as String: self.service,
+            kSecAttrAccount as String: self.account,
             kSecMatchLimit as String: kSecMatchLimitOne,
             kSecReturnAttributes as String: false,
-            kSecReturnData as String: false
+            kSecReturnData as String: false,
         ]
 
         var result: AnyObject?
@@ -416,8 +414,8 @@ private enum KeychainHelper {
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
+            kSecAttrService as String: self.service,
+            kSecAttrAccount as String: self.account,
         ]
 
         // Try to update first
@@ -437,8 +435,8 @@ private enum KeychainHelper {
     static func deleteNgrokAuthToken() {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
+            kSecAttrService as String: self.service,
+            kSecAttrAccount as String: self.account,
         ]
 
         SecItemDelete(query as CFDictionary)

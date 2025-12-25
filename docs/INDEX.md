@@ -35,7 +35,7 @@
 | `/api/sessions` | GET | List active sessions |
 | `/api/sessions/:id` | GET | Session details |
 | `/api/sessions/:id` | DELETE | Kill session |
-| `/api/sessions/:id/ws` | WS | Terminal I/O stream |
+| `/ws` | WS | Terminal transport (v3 framing; multiplexed) |
 | `/api/sessions/:id/resize` | POST | Resize terminal |
 | `/api/auth/token` | POST | Generate auth token |
 | `/api/health` | GET | Server health check |
@@ -54,19 +54,9 @@
 
 ## WebSocket Protocol
 
-### Message Types
+WebSocket v3 uses binary frames (`"VT"` magic, version `3`) and multiplexes sessions on a single `/ws` connection.
 
-| Type | Direction | Format | Purpose |
-|------|-----------|--------|---------|
-| `data` | Server→Client | Binary (0xBF prefix) | Terminal output |
-| `input` | Client→Server | Text/Binary | User keystrokes |
-| `resize` | Client→Server | JSON | Terminal resize |
-| `ping` | Both | Text | Keep-alive |
-
-### Binary Buffer Format
-```
-[0xBF][4-byte length][UTF-8 data]
-```
+Details: `docs/websocket.md`.
 
 ## Project Structure
 

@@ -16,7 +16,7 @@ struct TerminalThemeSheet: View {
                             .font(.caption)
                             .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
 
-                        TerminalThemePreview(theme: selectedTheme)
+                        TerminalThemePreview(theme: self.selectedTheme)
                             .frame(height: 120)
                     }
                     .padding(.horizontal)
@@ -26,7 +26,7 @@ struct TerminalThemeSheet: View {
                     VStack(spacing: Theme.Spacing.medium) {
                         ForEach(TerminalTheme.allThemes) { theme in
                             Button(action: {
-                                selectedTheme = theme
+                                self.selectedTheme = theme
                                 HapticFeedback.impact(.light)
                                 // Save to UserDefaults
                                 TerminalTheme.selected = theme
@@ -36,8 +36,8 @@ struct TerminalThemeSheet: View {
                                     HStack(spacing: 2) {
                                         ForEach(
                                             [theme.red, theme.green, theme.yellow, theme.blue],
-                                            id: \.self
-                                        ) { color in
+                                            id: \.self)
+                                        { color in
                                             Rectangle()
                                                 .fill(color)
                                                 .frame(width: 8, height: 32)
@@ -46,8 +46,7 @@ struct TerminalThemeSheet: View {
                                     .cornerRadius(4)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 4)
-                                            .stroke(Theme.Colors.cardBorder, lineWidth: 1)
-                                    )
+                                            .stroke(Theme.Colors.cardBorder, lineWidth: 1))
 
                                     // Theme info
                                     VStack(alignment: .leading, spacing: Theme.Spacing.extraSmall) {
@@ -64,7 +63,7 @@ struct TerminalThemeSheet: View {
                                     Spacer()
 
                                     // Selection indicator
-                                    if selectedTheme.id == theme.id {
+                                    if self.selectedTheme.id == theme.id {
                                         Image(systemName: "checkmark.circle.fill")
                                             .font(.system(size: 20))
                                             .foregroundColor(Theme.Colors.successAccent)
@@ -73,20 +72,17 @@ struct TerminalThemeSheet: View {
                                 .padding()
                                 .background(
                                     RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                                        .fill(selectedTheme.id == theme.id
-                                            ? Theme.Colors.primaryAccent.opacity(0.1)
-                                            : Theme.Colors.cardBorder.opacity(0.1)
-                                        )
-                                )
+                                        .fill(
+                                            self.selectedTheme.id == theme.id
+                                                ? Theme.Colors.primaryAccent.opacity(0.1)
+                                                : Theme.Colors.cardBorder.opacity(0.1)))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                                         .stroke(
-                                            selectedTheme.id == theme.id
+                                            self.selectedTheme.id == theme.id
                                                 ? Theme.Colors.primaryAccent
                                                 : Theme.Colors.cardBorder,
-                                            lineWidth: 1
-                                        )
-                                )
+                                            lineWidth: 1))
                             })
                             .buttonStyle(PlainButtonStyle())
                         }
@@ -102,7 +98,7 @@ struct TerminalThemeSheet: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
-                        dismiss()
+                        self.dismiss()
                     }
                     .foregroundColor(Theme.Colors.primaryAccent)
                 }
@@ -122,51 +118,50 @@ struct TerminalThemePreview: View {
             // Terminal prompt with colors
             HStack(spacing: 0) {
                 Text("user")
-                    .foregroundColor(theme.green)
+                    .foregroundColor(self.theme.green)
                 Text("@")
-                    .foregroundColor(theme.foreground)
+                    .foregroundColor(self.theme.foreground)
                 Text("vibetunnel")
-                    .foregroundColor(theme.blue)
+                    .foregroundColor(self.theme.blue)
                 Text(":")
-                    .foregroundColor(theme.foreground)
+                    .foregroundColor(self.theme.foreground)
                 Text("~/projects")
-                    .foregroundColor(theme.cyan)
+                    .foregroundColor(self.theme.cyan)
                 Text(" $ ")
-                    .foregroundColor(theme.foreground)
+                    .foregroundColor(self.theme.foreground)
             }
             .font(Theme.Typography.terminal(size: 12))
 
             // Sample command
             Text("git status")
-                .foregroundColor(theme.foreground)
+                .foregroundColor(self.theme.foreground)
                 .font(Theme.Typography.terminal(size: 12))
 
             // Sample output with different colors
             Text("On branch ")
-                .foregroundColor(theme.foreground) +
+                .foregroundColor(self.theme.foreground) +
                 Text("main")
-                .foregroundColor(theme.green)
+                .foregroundColor(self.theme.green)
 
             Text("Changes not staged for commit:")
-                .foregroundColor(theme.red)
+                .foregroundColor(self.theme.red)
                 .font(Theme.Typography.terminal(size: 12))
 
             HStack(spacing: 0) {
                 Text("  modified:   ")
-                    .foregroundColor(theme.red)
+                    .foregroundColor(self.theme.red)
                 Text("file.swift")
-                    .foregroundColor(theme.foreground)
+                    .foregroundColor(self.theme.foreground)
             }
             .font(Theme.Typography.terminal(size: 12))
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(theme.background)
+        .background(self.theme.background)
         .cornerRadius(Theme.CornerRadius.medium)
         .overlay(
             RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                .stroke(Theme.Colors.cardBorder, lineWidth: 1)
-        )
+                .stroke(Theme.Colors.cardBorder, lineWidth: 1))
     }
 }
 

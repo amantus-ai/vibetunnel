@@ -1,5 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { WsV3MessageType } from '../../shared/ws-v3.js';
 import { type ServerInstance, startTestServer, stopServer } from '../utils/server-utils';
+import {
+  connectWsV3,
+  sendSubscribe,
+  WS_V3_FLAGS,
+  waitForWsV3Frame,
+} from '../utils/ws-v3-test-utils';
 
 describe('Server Smoke Test', () => {
   let server: ServerInstance | null = null;
@@ -74,16 +81,29 @@ describe('Server Smoke Test', () => {
     expect(inputResponse.ok).toBe(true);
 
     // Wait a bit for the command to execute
-    await new Promise<void>((resolve) => setTimeout(resolve, 500));
+    await new Promise<void>((resolve) => setTimeout(resolve, 1500));
 
-    // 5. Get buffer
-    console.log('5. Getting buffer...');
-    const bufferResponse = await fetch(`${baseUrl}/api/sessions/${sessionId}/buffer`);
-    expect(bufferResponse.ok).toBe(true);
-    expect(bufferResponse.headers.get('content-type')).toBe('application/octet-stream');
-    const buffer = await bufferResponse.arrayBuffer();
-    expect(buffer.byteLength).toBeGreaterThan(0);
-    console.log(`Buffer size: ${buffer.byteLength} bytes`);
+    // 5. Get a VT snapshot over WebSocket v3
+    console.log('5. Getting snapshot via /ws...');
+    const { ws } = await connectWsV3({ port: server.port });
+    sendSubscribe({
+      ws,
+      sessionId,
+      flags: WS_V3_FLAGS.Snapshots,
+    });
+
+    const snapshotFrame = await waitForWsV3Frame(
+      ws,
+      (frame) => frame.type === WsV3MessageType.SNAPSHOT_VT && frame.sessionId === sessionId,
+      10000
+    );
+
+    expect(snapshotFrame.payload.byteLength).toBeGreaterThan(0);
+    const view = new DataView(snapshotFrame.payload.buffer, snapshotFrame.payload.byteOffset);
+    expect(view.getUint16(0, true)).toBe(0x5654); // "VT"
+    expect(view.getUint8(2)).toBe(1); // snapshot v1
+    console.log(`Snapshot size: ${snapshotFrame.payload.byteLength} bytes`);
+    ws.close();
 
     // 6. List sessions again (should have one)
     console.log('6. Listing sessions again...');

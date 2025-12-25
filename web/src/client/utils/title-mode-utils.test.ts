@@ -17,7 +17,7 @@ describe('title-mode-utils', () => {
     });
 
     it('should return correct description for DYNAMIC mode', () => {
-      expect(getTitleModeDescription(TitleMode.DYNAMIC)).toBe('○ idle ● active ▶ running');
+      expect(getTitleModeDescription(TitleMode.DYNAMIC)).toBe('Legacy alias of static');
     });
 
     it('should return empty string for unknown mode', () => {
@@ -49,7 +49,7 @@ describe('title-mode-utils', () => {
     });
 
     it('should return correct display name for DYNAMIC mode', () => {
-      expect(getTitleModeDisplayName(TitleMode.DYNAMIC)).toBe('Dynamic');
+      expect(getTitleModeDisplayName(TitleMode.DYNAMIC)).toBe('Dynamic (legacy)');
     });
 
     it('should return the input value for unknown mode', () => {

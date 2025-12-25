@@ -34,7 +34,7 @@ struct NetworkMonitorTests {
             "",
             "not-a-url",
             "http://", // No host
-            "just text"
+            "just text",
         ]
 
         for malformedUrl in malformedUrls {

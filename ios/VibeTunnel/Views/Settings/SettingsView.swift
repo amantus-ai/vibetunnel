@@ -28,7 +28,7 @@ struct SettingsView: View {
                     ForEach(SettingsTab.allCases, id: \.self) { tab in
                         Button {
                             withAnimation(Theme.Animation.smooth) {
-                                selectedTab = tab
+                                self.selectedTab = tab
                             }
                         } label: {
                             VStack(spacing: Theme.Spacing.small) {
@@ -39,12 +39,11 @@ struct SettingsView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, Theme.Spacing.medium)
-                            .foregroundColor(selectedTab == tab ? Theme.Colors.primaryAccent : Theme.Colors
-                                .terminalForeground.opacity(0.5)
-                            )
+                            .foregroundColor(
+                                self.selectedTab == tab ? Theme.Colors.primaryAccent : Theme.Colors
+                                    .terminalForeground.opacity(0.5))
                             .background(
-                                selectedTab == tab ? Theme.Colors.primaryAccent.opacity(0.1) : Color.clear
-                            )
+                                self.selectedTab == tab ? Theme.Colors.primaryAccent.opacity(0.1) : Color.clear)
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
@@ -57,7 +56,7 @@ struct SettingsView: View {
                 // Tab content
                 ScrollView {
                     VStack(spacing: Theme.Spacing.large) {
-                        switch selectedTab {
+                        switch self.selectedTab {
                         case .general:
                             GeneralSettingsView()
                         case .advanced:
@@ -75,7 +74,7 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
-                        dismiss()
+                        self.dismiss()
                     }
                     .foregroundColor(Theme.Colors.primaryAccent)
                 }
@@ -115,7 +114,7 @@ struct GeneralSettingsView: View {
     }
 
     private var colorSchemePreference: ColorSchemePreference {
-        ColorSchemePreference(rawValue: colorSchemePreferenceRaw) ?? .system
+        ColorSchemePreference(rawValue: self.colorSchemePreferenceRaw) ?? .system
     }
 
     var body: some View {
@@ -133,7 +132,7 @@ struct GeneralSettingsView: View {
                             .font(Theme.Typography.terminalSystem(size: 14))
                             .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
 
-                        Picker("Color Scheme", selection: $colorSchemePreferenceRaw) {
+                        Picker("Color Scheme", selection: self.$colorSchemePreferenceRaw) {
                             ForEach(ColorSchemePreference.allCases, id: \.self) { preference in
                                 Text(preference.displayName).tag(preference.rawValue)
                             }
@@ -155,11 +154,11 @@ struct GeneralSettingsView: View {
                 VStack(spacing: Theme.Spacing.medium) {
                     // Font Size
                     VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                        Text("Default Font Size: \(Int(defaultFontSize))pt")
+                        Text("Default Font Size: \(Int(self.defaultFontSize))pt")
                             .font(Theme.Typography.terminalSystem(size: 14))
                             .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
 
-                        Slider(value: $defaultFontSize, in: 10...24, step: 1)
+                        Slider(value: self.$defaultFontSize, in: 10...24, step: 1)
                             .accentColor(Theme.Colors.primaryAccent)
                     }
                     .padding()
@@ -168,11 +167,11 @@ struct GeneralSettingsView: View {
 
                     // Terminal Width
                     VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                        Text("Default Terminal Width: \(defaultTerminalWidth) columns")
+                        Text("Default Terminal Width: \(self.defaultTerminalWidth) columns")
                             .font(Theme.Typography.terminalSystem(size: 14))
                             .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
 
-                        Picker("Width", selection: $defaultTerminalWidth) {
+                        Picker("Width", selection: self.$defaultTerminalWidth) {
                             Text("80 columns").tag(80)
                             Text("100 columns").tag(100)
                             Text("120 columns").tag(120)
@@ -185,7 +184,7 @@ struct GeneralSettingsView: View {
                     .cornerRadius(Theme.CornerRadius.card)
 
                     // Auto Scroll
-                    Toggle(isOn: $autoScrollEnabled) {
+                    Toggle(isOn: self.$autoScrollEnabled) {
                         HStack {
                             Image(systemName: "arrow.down.to.line")
                                 .foregroundColor(Theme.Colors.primaryAccent)
@@ -200,7 +199,7 @@ struct GeneralSettingsView: View {
                     .cornerRadius(Theme.CornerRadius.card)
 
                     // URL Detection
-                    Toggle(isOn: $enableURLDetection) {
+                    Toggle(isOn: self.$enableURLDetection) {
                         HStack {
                             Image(systemName: "link")
                                 .foregroundColor(Theme.Colors.primaryAccent)
@@ -220,7 +219,7 @@ struct GeneralSettingsView: View {
                     .cornerRadius(Theme.CornerRadius.card)
 
                     // Live Previews
-                    Toggle(isOn: $enableLivePreviews) {
+                    Toggle(isOn: self.$enableLivePreviews) {
                         HStack {
                             Image(systemName: "dot.radiowaves.left.and.right")
                                 .foregroundColor(Theme.Colors.primaryAccent)
@@ -257,13 +256,13 @@ struct AdvancedSettingsView: View {
     @State private var showingSystemLogs = false
 
     #if targetEnvironment(macCatalyst)
-        @AppStorage("macWindowStyle")
-        private var macWindowStyleRaw = "standard"
-        @State private var windowManager = MacCatalystWindowManager.shared
+    @AppStorage("macWindowStyle")
+    private var macWindowStyleRaw = "standard"
+    @State private var windowManager = MacCatalystWindowManager.shared
 
-        private var macWindowStyle: MacWindowStyle {
-            macWindowStyleRaw == "inline" ? .inline : .standard
-        }
+    private var macWindowStyle: MacWindowStyle {
+        self.macWindowStyleRaw == "inline" ? .inline : .standard
+    }
     #endif
 
     var body: some View {
@@ -276,7 +275,7 @@ struct AdvancedSettingsView: View {
 
                 VStack(spacing: Theme.Spacing.medium) {
                     // Verbose Logging
-                    Toggle(isOn: $verboseLogging) {
+                    Toggle(isOn: self.$verboseLogging) {
                         HStack {
                             Image(systemName: "doc.text.magnifyingglass")
                                 .foregroundColor(Theme.Colors.primaryAccent)
@@ -296,7 +295,7 @@ struct AdvancedSettingsView: View {
                     .cornerRadius(Theme.CornerRadius.card)
 
                     // View System Logs Button
-                    Button(action: { showingSystemLogs = true }, label: {
+                    Button(action: { self.showingSystemLogs = true }, label: {
                         HStack {
                             Image(systemName: "doc.text")
                                 .foregroundColor(Theme.Colors.primaryAccent)
@@ -316,43 +315,43 @@ struct AdvancedSettingsView: View {
             }
 
             #if targetEnvironment(macCatalyst)
-                // Mac Catalyst Section
-                VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
-                    Text("Mac Catalyst")
-                        .font(.headline)
-                        .foregroundColor(Theme.Colors.terminalForeground)
+            // Mac Catalyst Section
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                Text("Mac Catalyst")
+                    .font(.headline)
+                    .foregroundColor(Theme.Colors.terminalForeground)
 
-                    VStack(spacing: Theme.Spacing.medium) {
-                        // Window Style Picker
-                        VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                            Text("Window Style")
-                                .font(Theme.Typography.terminalSystem(size: 14))
-                                .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
+                VStack(spacing: Theme.Spacing.medium) {
+                    // Window Style Picker
+                    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                        Text("Window Style")
+                            .font(Theme.Typography.terminalSystem(size: 14))
+                            .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
 
-                            Picker("Window Style", selection: $macWindowStyleRaw) {
-                                Label("Standard", systemImage: "macwindow")
-                                    .tag("standard")
-                                Label("Inline Traffic Lights", systemImage: "macwindow.badge.plus")
-                                    .tag("inline")
-                            }
-                            .pickerStyle(SegmentedPickerStyle())
-                            .onChange(of: macWindowStyleRaw) { _, newValue in
-                                let style: MacWindowStyle = newValue == "inline" ? .inline : .standard
-                                windowManager.setWindowStyle(style)
-                            }
+                        Picker("Window Style", selection: self.$macWindowStyleRaw) {
+                            Label("Standard", systemImage: "macwindow")
+                                .tag("standard")
+                            Label("Inline Traffic Lights", systemImage: "macwindow.badge.plus")
+                                .tag("inline")
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                        .onChange(of: self.macWindowStyleRaw) { _, newValue in
+                            let style: MacWindowStyle = newValue == "inline" ? .inline : .standard
+                            self.windowManager.setWindowStyle(style)
+                        }
 
-                            Text(macWindowStyle == .inline ?
+                        Text(
+                            self.macWindowStyle == .inline ?
                                 "Traffic light buttons appear inline with content" :
-                                "Standard macOS title bar with traffic lights"
-                            )
+                                "Standard macOS title bar with traffic lights")
                             .font(Theme.Typography.terminalSystem(size: 12))
                             .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
-                        }
-                        .padding()
-                        .background(Theme.Colors.cardBackground)
-                        .cornerRadius(Theme.CornerRadius.card)
                     }
+                    .padding()
+                    .background(Theme.Colors.cardBackground)
+                    .cornerRadius(Theme.CornerRadius.card)
                 }
+            }
             #endif
 
             // Developer Section
@@ -362,7 +361,7 @@ struct AdvancedSettingsView: View {
                     .foregroundColor(Theme.Colors.terminalForeground)
 
                 // Debug Mode Switch - Last element in Advanced section
-                Toggle(isOn: $debugModeEnabled) {
+                Toggle(isOn: self.$debugModeEnabled) {
                     HStack {
                         Image(systemName: "ladybug")
                             .foregroundColor(Theme.Colors.warningAccent)
@@ -382,13 +381,12 @@ struct AdvancedSettingsView: View {
                 .cornerRadius(Theme.CornerRadius.card)
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
-                        .stroke(Theme.Colors.warningAccent.opacity(0.3), lineWidth: 1)
-                )
+                        .stroke(Theme.Colors.warningAccent.opacity(0.3), lineWidth: 1))
             }
 
             Spacer()
         }
-        .sheet(isPresented: $showingSystemLogs) {
+        .sheet(isPresented: self.$showingSystemLogs) {
             SystemLogsView()
         }
     }
@@ -421,7 +419,7 @@ struct AboutSettingsView: View {
                         .font(.largeTitle)
                         .fontWeight(.bold)
 
-                    Text("Version \(appVersion) (\(buildNumber))")
+                    Text("Version \(self.appVersion) (\(self.buildNumber))")
                         .font(Theme.Typography.terminalSystem(size: 14))
                         .foregroundColor(Theme.Colors.secondaryText)
                 }
@@ -434,29 +432,25 @@ struct AboutSettingsView: View {
                     icon: "globe",
                     title: "Website",
                     subtitle: "vibetunnel.sh",
-                    url: URL(string: "https://vibetunnel.sh")
-                )
+                    url: URL(string: "https://vibetunnel.sh"))
 
                 LinkRow(
                     icon: "doc.text",
                     title: "Documentation",
                     subtitle: "Learn how to use VibeTunnel",
-                    url: URL(string: "https://docs.vibetunnel.sh")
-                )
+                    url: URL(string: "https://docs.vibetunnel.sh"))
 
                 LinkRow(
                     icon: "exclamationmark.bubble",
                     title: "Report an Issue",
                     subtitle: "Help us improve",
-                    url: URL(string: "https://github.com/vibetunnel/vibetunnel/issues")
-                )
+                    url: URL(string: "https://github.com/vibetunnel/vibetunnel/issues"))
 
                 LinkRow(
                     icon: "heart",
                     title: "Rate on App Store",
                     subtitle: "Share your feedback",
-                    url: URL(string: "https://apps.apple.com/app/vibetunnel")
-                )
+                    url: URL(string: "https://apps.apple.com/app/vibetunnel"))
             }
 
             // Credits
@@ -492,17 +486,17 @@ struct LinkRow: View {
             }
         }, label: {
             HStack(spacing: Theme.Spacing.medium) {
-                Image(systemName: icon)
+                Image(systemName: self.icon)
                     .font(.system(size: 20))
                     .foregroundColor(Theme.Colors.primaryAccent)
                     .frame(width: 30)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
+                    Text(self.title)
                         .font(Theme.Typography.terminalSystem(size: 14))
                         .foregroundColor(Theme.Colors.terminalForeground)
 
-                    Text(subtitle)
+                    Text(self.subtitle)
                         .font(Theme.Typography.terminalSystem(size: 12))
                         .foregroundColor(Theme.Colors.secondaryText)
                 }

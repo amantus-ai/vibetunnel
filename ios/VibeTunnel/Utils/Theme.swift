@@ -84,7 +84,7 @@ enum Theme {
         static let uiFont = "SF Pro Display"
 
         static func terminal(size: CGFloat) -> Font {
-            Font.custom(terminalFont, size: size)
+            Font.custom(self.terminalFont, size: size)
                 .monospaced()
         }
 
@@ -187,8 +187,7 @@ extension Color {
             red: Double(red) / 255,
             green: Double(green) / 255,
             blue: Double(blue) / 255,
-            opacity: Double(alpha) / 255
-        )
+            opacity: Double(alpha) / 255)
     }
 
     /// Creates a color that automatically adapts to light/dark mode
@@ -215,14 +214,12 @@ extension View {
             .cornerRadius(Theme.CornerRadius.card)
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
-                    .stroke(Theme.Colors.cardBorder, lineWidth: 1)
-            )
+                    .stroke(Theme.Colors.cardBorder, lineWidth: 1))
             .shadow(
                 color: Theme.CardShadow.color,
                 radius: Theme.CardShadow.radius,
                 x: Theme.CardShadow.xOffset,
-                y: Theme.CardShadow.yOffset
-            )
+                y: Theme.CardShadow.yOffset)
     }
 
     func glowEffect(color: Color = Theme.Colors.primaryAccent) -> some View {
@@ -240,8 +237,7 @@ extension View {
             .cornerRadius(Theme.CornerRadius.medium)
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                    .stroke(Theme.Colors.primaryAccent, lineWidth: 1)
-            )
+                    .stroke(Theme.Colors.primaryAccent, lineWidth: 1))
     }
 
     // Removed: interactiveButton - use explicit scaleEffect and animation instead
@@ -280,15 +276,15 @@ struct HapticFeedback: HapticFeedbackProtocol {
     }
 
     static func impact(_ style: ImpactStyle) {
-        shared.impact(style)
+        self.shared.impact(style)
     }
 
     static func selection() {
-        shared.selection()
+        self.shared.selection()
     }
 
     static func notification(_ type: NotificationType) {
-        shared.notification(type)
+        self.shared.notification(type)
     }
 
     /// SwiftUI-native style enums

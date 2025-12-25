@@ -23,7 +23,7 @@ struct TunnelSessionTests {
 
     @Test("TunnelSession is Codable with all fields")
     func tunnelSessionCodable() throws {
-        var originalSession = TunnelSession(processID: 67_890)
+        var originalSession = TunnelSession(processID: 67890)
         originalSession.updateActivity()
 
         let data = try JSONEncoder().encode(originalSession)
@@ -46,8 +46,7 @@ struct TunnelSessionTests {
         let originalRequest = CreateSessionRequest(
             workingDirectory: "/test/dir",
             environment: ["TEST": "value", "PATH": "/usr/bin"],
-            shell: "/bin/bash"
-        )
+            shell: "/bin/bash")
 
         let data = try JSONEncoder().encode(originalRequest)
         let decodedRequest = try JSONDecoder().decode(CreateSessionRequest.self, from: data)
@@ -79,8 +78,7 @@ struct TunnelSessionTests {
         let request = CreateSessionRequest(
             workingDirectory: "/path/with spaces/and\"quotes\"",
             environment: ["PATH": "/usr/bin:/usr/local/bin", "HOME": "/home/user with spaces"],
-            shell: "/bin/bash -l"
-        )
+            shell: "/bin/bash -l")
 
         let data = try JSONEncoder().encode(request)
         let decoded = try JSONDecoder().decode(CreateSessionRequest.self, from: data)
@@ -99,8 +97,7 @@ struct TunnelSessionTests {
     func createSessionResponseDateHandling() throws {
         let originalResponse = CreateSessionResponse(
             sessionId: "response-test-456",
-            createdAt: Date()
-        )
+            createdAt: Date())
 
         let data = try JSONEncoder().encode(originalResponse)
         let decodedResponse = try JSONDecoder().decode(CreateSessionResponse.self, from: data)

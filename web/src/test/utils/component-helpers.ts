@@ -54,9 +54,6 @@ export async function waitForEventWithTimeout(
   const { timeout = 5000, predicate } = options;
 
   return new Promise((resolve, reject) => {
-    // biome-ignore lint/style/useConst: timeoutId is used in closure before assignment
-    let timeoutId: ReturnType<typeof setTimeout>;
-
     const handler = (event: Event) => {
       if (!predicate || predicate(event)) {
         clearTimeout(timeoutId);
@@ -65,7 +62,7 @@ export async function waitForEventWithTimeout(
       }
     };
 
-    timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       element.removeEventListener(eventName, handler);
       reject(new Error(`Timeout waiting for event: ${eventName}`));
     }, timeout);

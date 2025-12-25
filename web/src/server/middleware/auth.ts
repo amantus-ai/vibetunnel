@@ -233,7 +233,7 @@ export function createAuthMiddleware(config: AuthConfig) {
       );
     }
 
-    // Check for token in query parameter (for EventSource connections)
+    // Check for token in query parameter (WebSocket v3 + other non-header clients)
     if (tokenQuery && config.authService) {
       const verification = config.authService.verifyToken(tokenQuery);
       if (verification.valid && verification.userId) {

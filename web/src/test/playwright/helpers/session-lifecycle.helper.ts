@@ -8,6 +8,7 @@ export interface SessionOptions {
   name?: string;
   spawnWindow?: boolean;
   command?: string;
+  requirePrompt?: boolean;
 }
 
 interface TestResponse {
@@ -43,6 +44,9 @@ export async function createAndNavigateToSession(
   const spawnWindow = options.spawnWindow ?? false;
   // Use bash as default for tests (CI environments may not have zsh)
   const command = options.command || 'bash';
+  const normalizedCommand = command.trim().split(/\s+/)[0] || 'bash';
+  const shouldRequirePrompt =
+    options.requirePrompt ?? ['bash', 'zsh', 'sh'].includes(normalizedCommand);
 
   // Navigate to list if not already there
   await navigateToHome(page);
@@ -93,7 +97,7 @@ export async function createAndNavigateToSession(
       throw new Error('No session ID found in URL after navigation');
     }
 
-    await sessionViewPage.waitForTerminalReady();
+    await sessionViewPage.waitForTerminalReady({ requirePrompt: shouldRequirePrompt });
 
     return { sessionName, sessionId };
   }

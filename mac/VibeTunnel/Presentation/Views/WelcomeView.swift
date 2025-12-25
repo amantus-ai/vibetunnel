@@ -40,56 +40,54 @@ struct WelcomeView: View {
                 size: 156,
                 enableFloating: true,
                 enableInteraction: false,
-                glowIntensity: 0.3
-            )
-            .padding(.top, 40)
-            .padding(.bottom, 20) // Add padding below icon
-            .frame(height: 240)
+                glowIntensity: 0.3)
+                .padding(.top, 40)
+                .padding(.bottom, 20) // Add padding below icon
+                .frame(height: 240)
 
             // Scrollable content area
             GeometryReader { _ in
                 HStack(spacing: 0) {
                     // Page 1: Welcome content (without icon)
                     WelcomeContentView()
-                        .frame(width: pageWidth)
+                        .frame(width: self.pageWidth)
 
                     // Page 2: VT Command
-                    VTCommandPageView(cliInstaller: cliInstaller)
-                        .frame(width: pageWidth)
+                    VTCommandPageView(cliInstaller: self.cliInstaller)
+                        .frame(width: self.pageWidth)
 
                     // Page 3: Request Permissions
-                    RequestPermissionsPageView(isCurrentPage: currentPage == 2)
-                        .frame(width: pageWidth)
+                    RequestPermissionsPageView(isCurrentPage: self.currentPage == 2)
+                        .frame(width: self.pageWidth)
 
                     // Page 4: Select Terminal
                     SelectTerminalPageView()
-                        .frame(width: pageWidth)
+                        .frame(width: self.pageWidth)
 
                     // Page 5: Project Folder
-                    ProjectFolderPageView(currentPage: $currentPage)
-                        .frame(width: pageWidth)
+                    ProjectFolderPageView(currentPage: self.$currentPage)
+                        .frame(width: self.pageWidth)
 
                     // Page 6: Protect Your Dashboard
                     ProtectDashboardPageView()
-                        .frame(width: pageWidth)
+                        .frame(width: self.pageWidth)
 
                     // Page 7: Notification Permissions
                     NotificationPermissionPageView()
-                        .frame(width: pageWidth)
+                        .frame(width: self.pageWidth)
 
                     // Page 8: Control Your Agent Army
                     ControlAgentArmyPageView()
-                        .frame(width: pageWidth)
+                        .frame(width: self.pageWidth)
 
                     // Page 9: Accessing Dashboard
                     AccessDashboardPageView()
-                        .frame(width: pageWidth)
+                        .frame(width: self.pageWidth)
                 }
-                .offset(x: CGFloat(-currentPage) * pageWidth)
+                .offset(x: CGFloat(-self.currentPage) * self.pageWidth)
                 .animation(
                     .interactiveSpring(response: 0.5, dampingFraction: 0.86, blendDuration: 0.25),
-                    value: currentPage
-                )
+                    value: self.currentPage)
             }
             .frame(height: 260) // Total height (560) - header (240) - navigation (60)
             .clipped()
@@ -109,8 +107,8 @@ struct WelcomeView: View {
                     .disabled(true)
 
                     // Actual back button when needed
-                    if currentPage > 0 {
-                        Button(action: handleBackAction) {
+                    if self.currentPage > 0 {
+                        Button(action: self.handleBackAction) {
                             Label("Back", systemImage: "chevron.left")
                                 .labelStyle(.iconOnly)
                         }
@@ -131,11 +129,11 @@ struct WelcomeView: View {
                     ForEach(0..<9) { index in
                         Button {
                             withAnimation {
-                                currentPage = index
+                                self.currentPage = index
                             }
                         } label: {
                             Circle()
-                                .fill(index == currentPage ? Color.accentColor : Color.gray.opacity(0.3))
+                                .fill(index == self.currentPage ? Color.accentColor : Color.gray.opacity(0.3))
                                 .frame(width: 8, height: 8)
                         }
                         .buttonStyle(.plain)
@@ -145,8 +143,8 @@ struct WelcomeView: View {
 
                 Spacer()
 
-                Button(action: handleNextAction) {
-                    Text(buttonTitle)
+                Button(action: self.handleNextAction) {
+                    Text(self.buttonTitle)
                         .frame(minWidth: 80)
                 }
                 .keyboardShortcut(.return)
@@ -159,7 +157,7 @@ struct WelcomeView: View {
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
             // Always start at the first page when the view appears
-            currentPage = 0
+            self.currentPage = 0
         }
         .onDisappear {
             // Ensure permission monitoring stops when welcome window closes
@@ -169,26 +167,26 @@ struct WelcomeView: View {
     }
 
     private var buttonTitle: String {
-        currentPage == 8 ? "Finish" : "Next"
+        self.currentPage == 8 ? "Finish" : "Next"
     }
 
     private func handleBackAction() {
         withAnimation {
-            currentPage -= 1
+            self.currentPage -= 1
         }
     }
 
     private func handleNextAction() {
-        if currentPage < 8 {
+        if self.currentPage < 8 {
             withAnimation {
-                currentPage += 1
+                self.currentPage += 1
             }
         } else {
             // Finish action - save welcome version and close window
-            welcomeVersion = AppConstants.currentWelcomeVersion
+            self.welcomeVersion = AppConstants.currentWelcomeVersion
 
             // Close the window using the SwiftUI dismiss environment
-            dismiss()
+            self.dismiss()
 
             // Open settings after a delay to ensure the window is fully closed
             Task { @MainActor in

@@ -1,7 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { WsV3MessageType } from '../../shared/ws-v3.js';
 import type { SessionData } from '../types/test-types';
 import { type ServerInstance, startTestServer, stopServer } from '../utils/server-utils';
 import { testLogger } from '../utils/test-logger';
+import {
+  connectWsV3,
+  sendSubscribe,
+  WS_V3_FLAGS,
+  waitForWsV3Frame,
+} from '../utils/ws-v3-test-utils';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -153,7 +160,7 @@ describe('Sessions API Tests', () => {
       sessionId = result.sessionId;
 
       // Wait for session to start
-      await sleep(500);
+      await sleep(1500);
     });
 
     it('should list the created session', async () => {
@@ -211,7 +218,7 @@ describe('Sessions API Tests', () => {
 
     it('should get session text', async () => {
       // Wait a bit for output to accumulate
-      await sleep(1500);
+      await sleep(3000);
 
       const response = await fetch(
         `http://localhost:${server?.port}/api/sessions/${sessionId}/text`
@@ -235,101 +242,56 @@ describe('Sessions API Tests', () => {
       expect(text).toBeDefined();
     });
 
-    it('should get session buffer', async () => {
+    it('should receive a VT snapshot via WebSocket v3', async () => {
       // Wait a bit after resize to ensure it's processed
       await sleep(200);
 
-      const response = await fetch(
-        `http://localhost:${server?.port}/api/sessions/${sessionId}/buffer`
+      const port = server?.port;
+      if (!port) throw new Error('Server not started');
+      const { ws } = await connectWsV3({ port });
+
+      sendSubscribe({
+        ws,
+        sessionId,
+        flags: WS_V3_FLAGS.Snapshots,
+      });
+
+      const snapshotFrame = await waitForWsV3Frame(
+        ws,
+        (frame) => frame.type === WsV3MessageType.SNAPSHOT_VT && frame.sessionId === sessionId,
+        10000
       );
 
-      expect(response.status).toBe(200);
-      const buffer = await response.arrayBuffer();
+      expect(snapshotFrame.payload.byteLength).toBeGreaterThan(50);
+      expect(snapshotFrame.payload.byteLength).toBeLessThan(100000);
 
-      // Check binary format header
-      const view = new DataView(buffer);
-      // Magic bytes "VT" - server writes in little-endian
-      expect(view.getUint16(0, true)).toBe(0x5654); // "VT" in little-endian
-      expect(view.getUint8(2)).toBe(1); // Version
+      const view = new DataView(snapshotFrame.payload.buffer, snapshotFrame.payload.byteOffset);
+      expect(view.getUint16(0, true)).toBe(0x5654); // "VT"
+      expect(view.getUint8(2)).toBe(1); // snapshot v1
+      expect(view.getUint32(4, true)).toBe(120); // cols (LE)
 
-      // Check dimensions - cols should match terminal size, rows is actual content
-      expect(view.getUint32(4, true)).toBe(120); // Cols (LE) - terminal width
-      const actualRows = view.getUint32(8, true);
-      expect(actualRows).toBeGreaterThan(0); // Rows (LE) - actual content rows
-      expect(actualRows).toBeLessThanOrEqual(40); // Should not exceed terminal height
-
-      // Buffer size check - verify it's reasonable
-      // The size depends heavily on content - empty terminals are very small due to optimization
-      // For a mostly empty terminal, we might see as little as 80-200 bytes
-      // For a terminal with content, it can be 20KB+
-      expect(buffer.byteLength).toBeGreaterThan(50); // At least minimal header + some data
-      expect(buffer.byteLength).toBeLessThan(100000); // Less than 100KB for sanity
-
-      // The buffer uses run-length encoding for empty space, so size varies greatly
-      // based on how much actual content vs empty space there is
+      ws.close();
     });
 
-    it('should get session activity', async () => {
-      const response = await fetch(
-        `http://localhost:${server?.port}/api/sessions/${sessionId}/activity`
+    it('should stream output via WebSocket v3', async () => {
+      const port = server?.port;
+      if (!port) throw new Error('Server not started');
+      const { ws } = await connectWsV3({ port });
+
+      sendSubscribe({
+        ws,
+        sessionId,
+        flags: WS_V3_FLAGS.Stdout,
+      });
+
+      const stdoutFrame = await waitForWsV3Frame(
+        ws,
+        (frame) => frame.type === WsV3MessageType.STDOUT && frame.sessionId === sessionId,
+        8000
       );
+      expect(stdoutFrame.payload.byteLength).toBeGreaterThan(0);
 
-      expect(response.status).toBe(200);
-      const activity = await response.json();
-
-      expect(activity).toHaveProperty('isActive');
-      expect(activity).toHaveProperty('timestamp');
-      expect(activity).toHaveProperty('session');
-      expect(activity.session.command).toEqual([
-        'bash',
-        '-c',
-        'while true; do echo "running"; sleep 1; done',
-      ]);
-    });
-
-    it('should get all sessions activity', async () => {
-      const response = await fetch(`http://localhost:${server?.port}/api/sessions/activity`);
-
-      expect(response.status).toBe(200);
-      const activities = await response.json();
-
-      expect(activities).toHaveProperty(sessionId);
-      expect(activities[sessionId]).toHaveProperty('isActive');
-      expect(activities[sessionId]).toHaveProperty('timestamp');
-    });
-
-    it('should handle SSE stream', async () => {
-      const response = await fetch(
-        `http://localhost:${server?.port}/api/sessions/${sessionId}/stream`,
-        {
-          headers: {
-            Accept: 'text/event-stream',
-          },
-        }
-      );
-
-      expect(response.status).toBe(200);
-      expect(response.headers.get('content-type')).toBe('text/event-stream');
-
-      // Read a few events
-      const reader = response.body?.getReader();
-      if (reader) {
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let eventCount = 0;
-
-        while (eventCount < 3) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const events = buffer.split('\n\n').filter((e) => e.trim());
-          eventCount += events.length;
-        }
-
-        reader.cancel();
-        expect(eventCount).toBeGreaterThan(0);
-      }
+      ws.close();
     });
 
     it('should kill session', async () => {

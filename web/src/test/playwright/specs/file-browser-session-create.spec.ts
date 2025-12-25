@@ -31,20 +31,22 @@ test.describe('File Browser in Session Create Form', () => {
     const fileBrowser = page.locator('[data-testid="file-browser"]');
     await expect(fileBrowser).toBeVisible({ timeout: 5000 });
 
-    // Verify file browser is above session create modal by checking z-index
-    const fileBrowserZIndex = await fileBrowser.evaluate((el) => {
-      const parent = el.parentElement;
-      if (!parent) return '0';
-      return window.getComputedStyle(parent).zIndex;
+    // Verify file browser is actually on top (not blocked by modal)
+    const isOnTop = await fileBrowser.evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      const top = document.elementFromPoint(x, y);
+      return top ? el.contains(top) : false;
     });
-    expect(Number.parseInt(fileBrowserZIndex)).toBeGreaterThan(1000); // Modal backdrop is z-index: 1000
+    expect(isOnTop).toBe(true);
 
     // Verify we can interact with file browser (not blocked by modal)
     const backButton = page.locator('button:has-text("Back")').first();
     await expect(backButton).toBeVisible();
 
     // Close file browser
-    await page.keyboard.press('Escape');
+    await backButton.click();
     await expect(fileBrowser).not.toBeVisible({ timeout: 5000 });
 
     // Session create modal should still be visible

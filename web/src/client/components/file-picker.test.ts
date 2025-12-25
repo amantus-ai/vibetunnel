@@ -206,7 +206,9 @@ describe('FilePicker Component', () => {
     };
 
     // @ts-expect-error - Mocking XMLHttpRequest
-    global.XMLHttpRequest = vi.fn(() => mockXHR);
+    global.XMLHttpRequest = vi.fn(function XMLHttpRequest() {
+      return mockXHR as unknown as XMLHttpRequest;
+    });
 
     // Should not throw an error for any file type
     await expect(element.uploadFile(textFile)).resolves.toBeUndefined();
@@ -232,8 +234,10 @@ describe('FilePicker Component', () => {
       }),
     };
 
-    // @ts-ignore
-    global.XMLHttpRequest = vi.fn(() => mockXHR);
+    // @ts-expect-error
+    global.XMLHttpRequest = vi.fn(function XMLHttpRequest() {
+      return mockXHR as unknown as XMLHttpRequest;
+    });
 
     const imageFile = new File(['fake image'], 'test.png', { type: 'image/png' });
 

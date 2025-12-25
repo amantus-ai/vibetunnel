@@ -17,44 +17,40 @@ struct SideRoundedRectangle: Shape {
 
         // Right edge with rounded corners
         path.addArc(
-            center: CGPoint(x: rect.maxX - cornerRadius, y: rect.minY + cornerRadius),
-            radius: cornerRadius,
+            center: CGPoint(x: rect.maxX - self.cornerRadius, y: rect.minY + self.cornerRadius),
+            radius: self.cornerRadius,
             startAngle: .degrees(-90),
             endAngle: .degrees(0),
-            clockwise: false
-        )
+            clockwise: false)
 
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - cornerRadius))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - self.cornerRadius))
 
         path.addArc(
-            center: CGPoint(x: rect.maxX - cornerRadius, y: rect.maxY - cornerRadius),
-            radius: cornerRadius,
+            center: CGPoint(x: rect.maxX - self.cornerRadius, y: rect.maxY - self.cornerRadius),
+            radius: self.cornerRadius,
             startAngle: .degrees(0),
             endAngle: .degrees(90),
-            clockwise: false
-        )
+            clockwise: false)
 
         // Bottom edge (flat)
         path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
 
         // Left edge with rounded corners
         path.addArc(
-            center: CGPoint(x: rect.minX + cornerRadius, y: rect.maxY - cornerRadius),
-            radius: cornerRadius,
+            center: CGPoint(x: rect.minX + self.cornerRadius, y: rect.maxY - self.cornerRadius),
+            radius: self.cornerRadius,
             startAngle: .degrees(90),
             endAngle: .degrees(180),
-            clockwise: false
-        )
+            clockwise: false)
 
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + cornerRadius))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + self.cornerRadius))
 
         path.addArc(
-            center: CGPoint(x: rect.minX + cornerRadius, y: rect.minY + cornerRadius),
-            radius: cornerRadius,
+            center: CGPoint(x: rect.minX + self.cornerRadius, y: rect.minY + self.cornerRadius),
+            radius: self.cornerRadius,
             startAngle: .degrees(180),
             endAngle: .degrees(270),
-            clockwise: false
-        )
+            clockwise: false)
 
         path.closeSubpath()
 

@@ -2,7 +2,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import WebSocket from 'ws';
+import type WebSocket from 'ws';
+import { decodeWsV3Frame, WsV3MessageType } from '../../shared/ws-v3.js';
 import {
   cleanupTestDirectories,
   type ServerInstance,
@@ -11,6 +12,7 @@ import {
   stopServer,
   waitForServerHealth,
 } from '../utils/server-utils';
+import { connectWsV3, sendSubscribe, WS_V3_FLAGS } from '../utils/ws-v3-test-utils';
 
 // HQ Mode tests for distributed terminal management
 describe.skip('HQ Mode E2E Tests', () => {
@@ -252,58 +254,44 @@ describe.skip('HQ Mode E2E Tests', () => {
       sessionIds.push(sessionId);
     }
 
-    // Connect to WebSocket
-    const ws = new WebSocket(`ws://localhost:${hqServer?.port}/buffers`);
+    const port = hqServer?.port;
+    if (!port) throw new Error('HQ server not started');
+    const { ws } = await connectWsV3({ port });
 
-    const receivedBuffers = new Set<string>();
+    for (const sessionId of sessionIds) {
+      sendSubscribe({ ws, sessionId, flags: WS_V3_FLAGS.Stdout });
+    }
+
+    const receivedStdout = new Set<string>();
     await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('WebSocket test timeout'));
-      }, 10000);
+      const timeout = setTimeout(() => reject(new Error('WebSocket v3 test timeout')), 10000);
 
-      ws.on('open', () => {
-        console.log(`[WS Test] WebSocket connected, subscribing to ${sessionIds.length} sessions`);
-        // Subscribe to all sessions
-        for (const sessionId of sessionIds) {
-          console.log(`[WS Test] Subscribing to session: ${sessionId}`);
-          ws.send(JSON.stringify({ type: 'subscribe', sessionId }));
+      const onMessage = (data: WebSocket.RawData, isBinary: boolean) => {
+        if (!isBinary) return;
+        const bytes =
+          data instanceof Buffer ? new Uint8Array(data) : new Uint8Array(data as ArrayBuffer);
+        const frame = decodeWsV3Frame(bytes);
+        if (!frame) return;
+        if (frame.type !== WsV3MessageType.STDOUT) return;
+
+        receivedStdout.add(frame.sessionId);
+        if (receivedStdout.size >= sessionIds.length) {
+          clearTimeout(timeout);
+          ws.off('message', onMessage);
+          resolve();
         }
+      };
+
+      ws.on('message', onMessage);
+      ws.once('error', (err) => {
+        clearTimeout(timeout);
+        ws.off('message', onMessage);
+        reject(err);
       });
-
-      ws.on('message', (data: Buffer) => {
-        console.log(
-          `[WS Test] Received message, first byte: 0x${data[0].toString(16)}, length: ${data.length}`
-        );
-        if (data[0] === 0xbf) {
-          // Binary buffer update
-          const sessionIdLength = data.readUInt32LE(1);
-          const sessionId = data.subarray(5, 5 + sessionIdLength).toString('utf8');
-          console.log(`[WS Test] Received buffer update for session: ${sessionId}`);
-          receivedBuffers.add(sessionId);
-
-          if (receivedBuffers.size >= sessionIds.length) {
-            clearTimeout(timeout);
-            resolve();
-          }
-        } else {
-          // JSON message
-          try {
-            const msg = JSON.parse(data.toString());
-            console.log(`[WS Test] Received JSON message:`, msg);
-            if (msg.type === 'ping') {
-              ws.send(JSON.stringify({ type: 'pong' }));
-            }
-          } catch (_e) {
-            // Ignore parse errors
-          }
-        }
-      });
-
-      ws.on('error', reject);
     });
 
     ws.close();
-    expect(receivedBuffers.size).toBe(sessionIds.length);
+    expect(receivedStdout.size).toBe(sessionIds.length);
   });
 
   it('should cleanup exited sessions across all servers', async () => {

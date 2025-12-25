@@ -64,18 +64,23 @@ export namespace OptimizedWaitUtils {
    * Wait for terminal to be ready (optimized)
    */
   export async function waitForTerminalReady(page: Page, timeout = 3000): Promise<void> {
-    // Wait for xterm element
-    await page.waitForSelector('.xterm', { state: 'visible', timeout });
+    // Wait for terminal host + ghostty terminal element
+    await page.waitForSelector('#session-terminal', { state: 'visible', timeout });
+    await page.waitForSelector('#session-terminal vibe-terminal', { state: 'visible', timeout });
 
-    // Quick check for terminal initialization
     await page.waitForFunction(
       () => {
-        const term = document.querySelector('.xterm');
+        const term = document.querySelector('#session-terminal vibe-terminal') as unknown as {
+          getAttribute?: (name: string) => string | null;
+          getDebugText?: () => string;
+        } | null;
         if (!term) return false;
-        const screen = term.querySelector('.xterm-screen');
-        return screen && screen.clientHeight > 0;
+        if (term.getAttribute?.('data-ready') !== 'true') return false;
+        const content = typeof term.getDebugText === 'function' ? term.getDebugText() : '';
+        return content.length > 0;
       },
-      { timeout: timeout / 2 }
+      undefined,
+      { timeout: Math.max(1000, timeout / 2) }
     );
   }
 

@@ -53,9 +53,6 @@ export interface UIState {
   terminalFontSize: number;
   terminalTheme: TerminalThemeId;
 
-  // Binary mode
-  useBinaryMode: boolean;
-
   // View mode
   viewMode: 'terminal' | 'worktree';
 
@@ -106,9 +103,6 @@ export class UIStateManager {
     terminalMaxCols: 0,
     terminalFontSize: 14,
     terminalTheme: 'auto',
-
-    // Binary mode
-    useBinaryMode: false,
 
     // View mode
     viewMode: 'terminal',
@@ -253,12 +247,6 @@ export class UIStateManager {
 
   setTerminalTheme(theme: TerminalThemeId): void {
     this.state.terminalTheme = theme;
-    this.callbacks?.requestUpdate();
-  }
-
-  // Binary mode
-  setUseBinaryMode(use: boolean): void {
-    this.state.useBinaryMode = use;
     this.callbacks?.requestUpdate();
   }
 

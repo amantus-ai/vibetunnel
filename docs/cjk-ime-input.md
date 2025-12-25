@@ -38,7 +38,7 @@ SessionView
 
 **File**: `cursor-position.ts`
 
-The cursor position tracking system uses a shared utility function that works consistently across both terminal types (XTerm.js and binary buffer modes):
+The cursor position tracking system uses a shared utility function for terminal renderers that expose cursor coordinates (currently the buffer-based terminal):
 
 #### Coordinate System
 ```typescript
@@ -58,8 +58,8 @@ export function calculateCursorPosition(
 4. **IME Positioning**: Returns coordinates suitable for IME input placement
 
 #### Terminal Type Support
-- **XTerm Terminal (`vibe-terminal`)**: Uses `terminal.buffer.active.cursorX/Y` from XTerm.js
-- **Binary Terminal (`vibe-terminal-binary`)**: Uses `buffer.cursorX/Y` from WebSocket buffer data
+- **Ghostty Terminal (`vibe-terminal`)**: Does not expose cursor coordinates yet; IME input falls back to a safe fixed position.
+- **Buffer Terminal (`vibe-terminal-buffer`)**: Uses `buffer.cursorX/Y` from VT snapshot data.
 
 #### Key Features
 - **Precise Alignment**: Accounts for exact character width and line height
@@ -117,11 +117,15 @@ private setupIMEInput(): void {
     onTextInput: (text: string) => this.sendInputText(text),
     onSpecialKey: (key: string) => this.sendInput(key),
     getCursorInfo: () => {
-      // Dynamic cursor position calculation
-      const cursorInfo = terminalElement.getCursorInfo();
-      const pixelX = terminalRect.left - containerRect.left + cursorX * charWidth;
-      const pixelY = terminalRect.top - containerRect.top + cursorY * lineHeight + lineHeight;
-      return { x: pixelX, y: pixelY };
+      const terminalElement = this.callbacks?.getTerminalElement?.();
+      if (
+        terminalElement &&
+        'getCursorInfo' in terminalElement &&
+        typeof terminalElement.getCursorInfo === 'function'
+      ) {
+        return terminalElement.getCursorInfo();
+      }
+      return null;
     }
   });
 }
@@ -305,8 +309,8 @@ OS shows IME candidates → User selects → Text appears in terminal
 
 ### Supporting Files
 - `cursor-position.ts` - **Shared cursor position calculation utility**
-- `terminal.ts` - XTerm cursor position API via `getCursorInfo()` (uses shared utility)
-- `vibe-terminal-binary.ts` - Binary terminal cursor position API (uses shared utility)
+- `terminal.ts` - Ghostty renderer (no cursor info provider yet; IME uses fallback)
+- `vibe-terminal-buffer.ts` - Buffer terminal cursor position API (uses shared utility)
 - `session-view.ts` - Container element and terminal integration
 - `lifecycle-event-manager.ts` - Event coordination and interception
 - `ime-constants.ts` - IME-related key filtering utilities
@@ -381,4 +385,4 @@ Comprehensive logging available in browser console:
 **Status**: ✅ Production Ready  
 **Platforms**: Desktop (Windows, macOS, Linux) and Mobile (iOS, Android)  
 **Version**: VibeTunnel Web v1.0.0-beta.16+  
-**Last Updated**: 2025-08-02
+**Last Updated**: 2025-12-19

@@ -110,9 +110,9 @@ export class ProcessTreeAnalyzer {
           // We need to handle the multi-word timestamp properly
           const parts = line.trim().split(/\s+/);
           if (parts.length >= 10) {
-            const pid = Number.parseInt(parts[0]);
-            const ppid = Number.parseInt(parts[1]);
-            const pgid = Number.parseInt(parts[2]);
+            const pid = Number.parseInt(parts[0], 10);
+            const ppid = Number.parseInt(parts[1], 10);
+            const pgid = Number.parseInt(parts[2], 10);
             const tty = parts[3] === '?' ? undefined : parts[3];
             const state = parts[4];
             // STARTED timestamp spans multiple parts: parts[5] through parts[9]
@@ -144,10 +144,10 @@ export class ProcessTreeAnalyzer {
           if (match) {
             const [, pid, ppid, pgid, sid, tty, state, startTime, command] = match;
             processes.push({
-              pid: Number.parseInt(pid),
-              ppid: Number.parseInt(ppid),
-              pgid: Number.parseInt(pgid),
-              sid: Number.parseInt(sid),
+              pid: Number.parseInt(pid, 10),
+              ppid: Number.parseInt(ppid, 10),
+              pgid: Number.parseInt(pgid, 10),
+              sid: Number.parseInt(sid, 10),
               tty: tty === '?' ? undefined : tty,
               state,
               startTime,
@@ -184,8 +184,8 @@ export class ProcessTreeAnalyzer {
 
       const parts = line.split(',');
       if (parts.length >= 3) {
-        const pid = Number.parseInt(parts[1]);
-        const ppid = Number.parseInt(parts[2]);
+        const pid = Number.parseInt(parts[1], 10);
+        const ppid = Number.parseInt(parts[2], 10);
         const command = parts[3] || 'unknown';
 
         if (!Number.isNaN(pid) && !Number.isNaN(ppid)) {

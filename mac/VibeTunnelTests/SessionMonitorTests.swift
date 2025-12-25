@@ -11,7 +11,7 @@ final class SessionMonitorTests {
 
     init() async {
         // Ensure clean state before each test
-        await monitor.refresh()
+        await self.monitor.refresh()
     }
 
     // MARK: - JSON Decoding Tests
@@ -40,13 +40,11 @@ final class SessionMonitorTests {
             gitMainRepoPath: nil,
             lastModified: "",
             active: nil,
-            activityStatus: nil,
             source: nil,
             remoteId: nil,
             remoteName: nil,
             remoteUrl: nil,
-            attachedViaVT: nil
-        )
+            attachedViaVT: nil)
         let exited = ServerSessionInfo(
             id: "one",
             name: "bash",
@@ -69,13 +67,11 @@ final class SessionMonitorTests {
             gitMainRepoPath: nil,
             lastModified: "",
             active: nil,
-            activityStatus: nil,
             source: nil,
             remoteId: nil,
             remoteName: nil,
             remoteUrl: nil,
-            attachedViaVT: nil
-        )
+            attachedViaVT: nil)
         let oldMap = ["one": running]
         let newMap = ["one": exited]
         let ended = SessionMonitor.detectEndedSessions(from: oldMap, to: newMap)
@@ -98,13 +94,6 @@ final class SessionMonitorTests {
             "pid": 12345,
             "initialCols": 80,
             "initialRows": 24,
-            "activityStatus": {
-                "isActive": true,
-                "specificStatus": {
-                    "app": "claude",
-                    "status": "active"
-                }
-            },
             "source": "local"
         }
         """
@@ -120,12 +109,9 @@ final class SessionMonitorTests {
         #expect(session.exitCode == nil)
         #expect(session.startedAt == "2025-01-01T10:00:00.000Z")
         #expect(session.lastModified == "2025-01-01T10:05:00.000Z")
-        #expect(session.pid == 12_345)
+        #expect(session.pid == 12345)
         #expect(session.initialCols == 80)
         #expect(session.initialRows == 24)
-        #expect(session.activityStatus?.isActive == true)
-        #expect(session.activityStatus?.specificStatus?.app == "claude")
-        #expect(session.activityStatus?.specificStatus?.status == "active")
         #expect(session.source == "local")
         #expect(session.isRunning == true)
     }
@@ -156,7 +142,6 @@ final class SessionMonitorTests {
         #expect(session.pid == nil)
         #expect(session.initialCols == nil)
         #expect(session.initialRows == nil)
-        #expect(session.activityStatus == nil)
         #expect(session.source == nil)
         #expect(session.isRunning == false)
     }
@@ -176,14 +161,7 @@ final class SessionMonitorTests {
             "lastModified": "2025-01-01T12:15:00.000Z",
             "pid": 54321,
             "initialCols": 120,
-            "initialRows": 40,
-            "activityStatus": {
-                "isActive": true,
-                "specificStatus": {
-                    "app": "claude",
-                    "status": "thinking"
-                }
-            }
+            "initialRows": 40
         }
         """
 
@@ -247,7 +225,7 @@ final class SessionMonitorTests {
         #expect(sessions[0].id == "session-1")
         #expect(sessions[0].command == ["bash"])
         #expect(sessions[0].isRunning == true)
-        #expect(sessions[0].pid == 1_001)
+        #expect(sessions[0].pid == 1001)
 
         // Verify second session
         #expect(sessions[1].id == "session-2")
@@ -341,7 +319,7 @@ final class SessionMonitorTests {
             ("crashed", false),
             ("", false),
             ("RUNNING", false), // Case sensitive
-            ("Running", false)
+            ("Running", false),
         ]
 
         for (status, expectedRunning) in statuses {
@@ -362,8 +340,7 @@ final class SessionMonitorTests {
 
             #expect(
                 session.isRunning == expectedRunning,
-                "Status '\(status)' should result in isRunning=\(expectedRunning)"
-            )
+                "Status '\(status)' should result in isRunning=\(expectedRunning)")
         }
     }
 
@@ -401,17 +378,17 @@ final class SessionMonitorTests {
     @Test("Session count calculation")
     func sessionCount() async {
         // Force a refresh to get current state
-        await monitor.refresh()
+        await self.monitor.refresh()
 
         // Session count should be non-negative
-        #expect(monitor.sessionCount >= 0)
+        #expect(self.monitor.sessionCount >= 0)
 
         // If there are sessions, they should be in the sessions dictionary
-        if monitor.sessionCount > 0 {
-            #expect(!monitor.sessions.isEmpty)
+        if self.monitor.sessionCount > 0 {
+            #expect(!self.monitor.sessions.isEmpty)
             // All counted sessions should be running
-            let runningCount = monitor.sessions.values.count(where: { $0.isRunning })
-            #expect(monitor.sessionCount == runningCount)
+            let runningCount = self.monitor.sessions.values.count(where: { $0.isRunning })
+            #expect(self.monitor.sessionCount == runningCount)
         }
 
         // Note: We can't assume sessionCount is 0 because:
@@ -425,7 +402,7 @@ final class SessionMonitorTests {
     @Test("Cache behavior", .tags(.performance))
     func cacheBehavior() async {
         // First call should fetch
-        _ = await monitor.getSessions()
+        _ = await self.monitor.getSessions()
 
         // Immediate second call should use cache (no network request)
         let cachedSessions = await monitor.getSessions()
@@ -440,7 +417,7 @@ final class SessionMonitorTests {
         let initialSessions = await monitor.getSessions()
 
         // Force refresh
-        await monitor.refresh()
+        await self.monitor.refresh()
 
         // Next call should fetch fresh data
         let refreshedSessions = await monitor.getSessions()
@@ -466,14 +443,7 @@ final class SessionMonitorTests {
                 "lastModified": "2025-01-01T10:45:32.456Z",
                 "pid": 45678,
                 "initialCols": 120,
-                "initialRows": 40,
-                "activityStatus": {
-                    "isActive": true,
-                    "specificStatus": {
-                        "app": "claude",
-                        "status": "editing"
-                    }
-                }
+                "initialRows": 40
             },
             {
                 "id": "20250101-090000-def456",
@@ -512,13 +482,12 @@ final class SessionMonitorTests {
         #expect(claudeSession.command[1] == "session")
         #expect(claudeSession.command[2] == "--continue")
         #expect(claudeSession.isRunning == true)
-        #expect(claudeSession.activityStatus?.specificStatus?.app == "claude")
 
         // Verify dev server session
         let devSession = sessions[1]
         #expect(devSession.command == ["pnpm", "run", "dev"])
         #expect(devSession.isRunning == true)
-        #expect(devSession.pid == 34_567)
+        #expect(devSession.pid == 34567)
 
         // Verify exited session
         let gitSession = sessions[2]
@@ -560,19 +529,19 @@ final class SessionMonitorTests {
     func cachePerformance() async throws {
         // Skip this test on macOS < 13
         #if os(macOS)
-            if #unavailable(macOS 13.0) {
-                return // Skip test on older macOS versions
-            }
+        if #unavailable(macOS 13.0) {
+            return // Skip test on older macOS versions
+        }
         #endif
 
         // Warm up cache
-        _ = await monitor.getSessions()
+        _ = await self.monitor.getSessions()
 
         // Measure cached access time
         let start = Date()
 
         for _ in 0..<100 {
-            _ = await monitor.getSessions()
+            _ = await self.monitor.getSessions()
         }
 
         let elapsed = Date().timeIntervalSince(start)

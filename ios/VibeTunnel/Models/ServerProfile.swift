@@ -22,8 +22,8 @@ struct ServerProfile: Identifiable, Codable, Equatable {
         lastConnected: Date? = nil,
         iconSymbol: String = "server.rack",
         createdAt: Date = Date(),
-        updatedAt: Date = Date()
-    ) {
+        updatedAt: Date = Date())
+    {
         self.id = id
         self.name = name
         self.url = url
@@ -46,7 +46,7 @@ struct ServerProfile: Identifiable, Codable, Equatable {
         // Clean up the host - remove brackets from IPv6 addresses
         // URLComponents includes brackets in the host for IPv6, but we want clean IPs
         var cleanHost = host
-        if cleanHost.hasPrefix("[") && cleanHost.hasSuffix("]") {
+        if cleanHost.hasPrefix("["), cleanHost.hasSuffix("]") {
             cleanHost = String(cleanHost.dropFirst().dropLast())
         }
 
@@ -62,8 +62,7 @@ struct ServerProfile: Identifiable, Codable, Equatable {
         return ServerConfig(
             host: cleanHost,
             port: port,
-            name: name
-        )
+            name: self.name)
     }
 }
 
@@ -85,35 +84,35 @@ extension ServerProfile {
     /// Save profiles to UserDefaults
     static func saveAll(_ profiles: [ServerProfile], to userDefaults: UserDefaults = .standard) {
         if let data = try? JSONEncoder().encode(profiles) {
-            userDefaults.set(data, forKey: storageKey)
+            userDefaults.set(data, forKey: self.storageKey)
         }
     }
 
     /// Add or update a profile
     static func save(_ profile: ServerProfile, to userDefaults: UserDefaults = .standard) {
-        var profiles = loadAll(from: userDefaults)
+        var profiles = self.loadAll(from: userDefaults)
         if let index = profiles.firstIndex(where: { $0.id == profile.id }) {
             profiles[index] = profile
         } else {
             profiles.append(profile)
         }
-        saveAll(profiles, to: userDefaults)
+        self.saveAll(profiles, to: userDefaults)
     }
 
     /// Delete a profile
     static func delete(_ profile: ServerProfile, from userDefaults: UserDefaults = .standard) {
-        var profiles = loadAll(from: userDefaults)
+        var profiles = self.loadAll(from: userDefaults)
         profiles.removeAll { $0.id == profile.id }
-        saveAll(profiles, to: userDefaults)
+        self.saveAll(profiles, to: userDefaults)
     }
 
     /// Update last connected time
     static func updateLastConnected(for profileId: UUID, in userDefaults: UserDefaults = .standard) {
-        var profiles = loadAll(from: userDefaults)
+        var profiles = self.loadAll(from: userDefaults)
         if let index = profiles.firstIndex(where: { $0.id == profileId }) {
             profiles[index].lastConnected = Date()
             profiles[index].updatedAt = Date()
-            saveAll(profiles, to: userDefaults)
+            self.saveAll(profiles, to: userDefaults)
         }
     }
 }

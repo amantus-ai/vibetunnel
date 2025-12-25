@@ -30,7 +30,7 @@ describe('cursor-position', () => {
         y: 50,
         toJSON: () => ({}),
       }),
-    } as any;
+    } as unknown as HTMLElement;
 
     mockSessionTerminal = {
       id: TERMINAL_IDS.SESSION_TERMINAL,
@@ -47,7 +47,7 @@ describe('cursor-position', () => {
         y: 10,
         toJSON: () => ({}),
       }),
-    } as any;
+    } as unknown as HTMLElement;
 
     // Mock getElementById to return our mock session terminal
     vi.spyOn(document, 'getElementById').mockImplementation((id) => {
@@ -70,7 +70,9 @@ describe('cursor-position', () => {
         style: {},
         textContent: '',
       };
-      vi.spyOn(document, 'createElement').mockReturnValue(mockTestElement as any);
+      vi.spyOn(document, 'createElement').mockReturnValue(
+        mockTestElement as unknown as HTMLSpanElement
+      );
 
       const result = calculateCursorPosition(cursorX, cursorY, fontSize, mockContainer, 'running');
 
@@ -103,7 +105,13 @@ describe('cursor-position', () => {
         removeChild: vi.fn(),
       };
 
-      const result = calculateCursorPosition(5, 3, 14, errorContainer as any, 'running');
+      const result = calculateCursorPosition(
+        5,
+        3,
+        14,
+        errorContainer as unknown as Element,
+        'running'
+      );
 
       // Should return null when calculation fails
       expect(result).toBeNull();
@@ -120,7 +128,7 @@ describe('cursor-position', () => {
       };
       const createElementSpy = vi
         .spyOn(document, 'createElement')
-        .mockReturnValue(mockTestElement as any);
+        .mockReturnValue(mockTestElement as unknown as HTMLSpanElement);
 
       // Mock appendChild and removeChild to track element creation
       const appendChildSpy = vi.spyOn(mockContainer, 'appendChild');
@@ -161,7 +169,9 @@ describe('cursor-position', () => {
           throw new Error('Test error');
         }),
       };
-      vi.spyOn(document, 'createElement').mockReturnValue(testElement as any);
+      vi.spyOn(document, 'createElement').mockReturnValue(
+        testElement as unknown as HTMLSpanElement
+      );
 
       // This should not throw and should still clean up
       expect(() => {
@@ -182,7 +192,9 @@ describe('cursor-position', () => {
         style: {},
         textContent: '',
       };
-      vi.spyOn(document, 'createElement').mockReturnValue(mockTestElement as any);
+      vi.spyOn(document, 'createElement').mockReturnValue(
+        mockTestElement as unknown as HTMLSpanElement
+      );
 
       const result = calculateCursorPosition(5, 3, 14, mockContainer, 'running');
 
@@ -197,13 +209,13 @@ describe('cursor-position', () => {
 
       // Mock a test element that tracks style assignments
       const testElement = {
-        style: {} as any,
+        style: {} as unknown as CSSStyleDeclaration,
         textContent: '',
         getBoundingClientRect: vi.fn().mockReturnValue({ width: 8.4 }),
       };
       const createElementSpy = vi
         .spyOn(document, 'createElement')
-        .mockReturnValue(testElement as any);
+        .mockReturnValue(testElement as unknown as HTMLSpanElement);
 
       calculateCursorPosition(1, 1, fontSize, mockContainer, 'running');
 
@@ -228,7 +240,7 @@ describe('cursor-position', () => {
       };
       const createElementSpy = vi
         .spyOn(document, 'createElement')
-        .mockReturnValue(mockTestElement as any);
+        .mockReturnValue(mockTestElement as unknown as HTMLSpanElement);
 
       // Make a call to populate the cache
       calculateCursorPosition(1, 1, fontSize, mockContainer, 'running');

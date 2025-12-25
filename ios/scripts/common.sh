@@ -49,19 +49,31 @@ get_log_level() {
 
 # Logging functions
 log_debug() {
-    [[ $(get_log_level) -le $LOG_DEBUG ]] && echo -e "${CYAN}[DEBUG]${NC} $*" >&2
+    if [[ $(get_log_level) -le $LOG_DEBUG ]]; then
+        echo -e "${CYAN}[DEBUG]${NC} $*" >&2
+    fi
+    return 0
 }
 
 log_info() {
-    [[ $(get_log_level) -le $LOG_INFO ]] && echo -e "${BLUE}[INFO]${NC} $*"
+    if [[ $(get_log_level) -le $LOG_INFO ]]; then
+        echo -e "${BLUE}[INFO]${NC} $*"
+    fi
+    return 0
 }
 
 log_warn() {
-    [[ $(get_log_level) -le $LOG_WARN ]] && echo -e "${YELLOW}[WARN]${NC} $*" >&2
+    if [[ $(get_log_level) -le $LOG_WARN ]]; then
+        echo -e "${YELLOW}[WARN]${NC} $*" >&2
+    fi
+    return 0
 }
 
 log_error() {
-    [[ $(get_log_level) -le $LOG_ERROR ]] && echo -e "${RED}[ERROR]${NC} $*" >&2
+    if [[ $(get_log_level) -le $LOG_ERROR ]]; then
+        echo -e "${RED}[ERROR]${NC} $*" >&2
+    fi
+    return 0
 }
 
 # Success/failure indicators
@@ -248,14 +260,24 @@ create_temp_dir() {
 }
 
 # Cleanup registration
-CLEANUP_ITEMS=()
+declare -a CLEANUP_ITEMS=()
 
 register_cleanup() {
     CLEANUP_ITEMS+=("$1")
 }
 
 cleanup() {
-    log_debug "Running cleanup for ${#CLEANUP_ITEMS[@]} items"
+    local cleanup_count=0
+    if declare -p CLEANUP_ITEMS >/dev/null 2>&1; then
+        cleanup_count="${#CLEANUP_ITEMS[@]}"
+    fi
+
+    log_debug "Running cleanup for ${cleanup_count} items"
+
+    if [[ "$cleanup_count" -eq 0 ]]; then
+        return 0
+    fi
+
     for item in "${CLEANUP_ITEMS[@]}"; do
         if [[ -f "$item" ]]; then
             log_debug "Removing file: $item"
@@ -265,6 +287,7 @@ cleanup() {
             rm -rf "$item"
         fi
     done
+    return 0
 }
 
 # Set up cleanup trap

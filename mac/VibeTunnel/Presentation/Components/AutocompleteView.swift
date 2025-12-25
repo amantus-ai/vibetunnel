@@ -11,11 +11,10 @@ struct AutocompleteView: View {
 
     var body: some View {
         AutocompleteViewWithKeyboard(
-            suggestions: suggestions,
-            selectedIndex: $selectedIndex,
+            suggestions: self.suggestions,
+            selectedIndex: self.$selectedIndex,
             keyboardNavigating: false,
-            onSelect: onSelect
-        )
+            onSelect: self.onSelect)
     }
 }
 
@@ -34,20 +33,19 @@ struct AutocompleteViewWithKeyboard: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(Array(suggestions.enumerated()), id: \.element.id) { index, suggestion in
+                        ForEach(Array(self.suggestions.enumerated()), id: \.element.id) { index, suggestion in
                             AutocompleteRow(
                                 suggestion: suggestion,
-                                isSelected: index == selectedIndex
-                            ) { onSelect(suggestion.suggestion) }
-                                .id(suggestion.id)
-                                .onHover { hovering in
-                                    if hovering {
-                                        mouseHoverTriggered = true
-                                        selectedIndex = index
+                                isSelected: index == self.selectedIndex) { self.onSelect(suggestion.suggestion) }
+                                    .id(suggestion.id)
+                                    .onHover { hovering in
+                                        if hovering {
+                                            self.mouseHoverTriggered = true
+                                            self.selectedIndex = index
+                                        }
                                     }
-                                }
 
-                            if index < suggestions.count - 1 {
+                            if index < self.suggestions.count - 1 {
                                 Divider()
                                     .padding(.horizontal, 8)
                             }
@@ -55,18 +53,20 @@ struct AutocompleteViewWithKeyboard: View {
                     }
                 }
                 .frame(maxHeight: 200)
-                .onChange(of: selectedIndex) { _, newIndex in
+                .onChange(of: self.selectedIndex) { _, newIndex in
                     // Only animate scroll when using keyboard navigation, not mouse hover
-                    if newIndex >= 0 && newIndex < suggestions.count && keyboardNavigating && !mouseHoverTriggered {
+                    if newIndex >= 0, newIndex < self.suggestions.count, self.keyboardNavigating,
+                       !self.mouseHoverTriggered
+                    {
                         withAnimation(.easeInOut(duration: 0.1)) {
                             proxy.scrollTo(newIndex, anchor: .center)
                         }
                     }
                     // Reset the mouse hover flag after processing
-                    mouseHoverTriggered = false
+                    self.mouseHoverTriggered = false
                 }
-                .onChange(of: keyboardNavigating) { _, newValue in
-                    lastKeyboardState = newValue
+                .onChange(of: self.keyboardNavigating) { _, newValue in
+                    self.lastKeyboardState = newValue
                 }
             }
         }
@@ -76,13 +76,11 @@ struct AutocompleteViewWithKeyboard: View {
                 Color(NSColor.windowBackgroundColor)
                 // Material overlay for visual consistency
                 Color.primary.opacity(0.02)
-            }
-        )
+            })
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
-        )
+                .stroke(Color.primary.opacity(0.1), lineWidth: 1))
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
 }
@@ -93,18 +91,18 @@ private struct AutocompleteRow: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
+        Button(action: self.onTap) {
             HStack(spacing: 8) {
                 // Icon
-                Image(systemName: iconName)
+                Image(systemName: self.iconName)
                     .font(.system(size: 12))
-                    .foregroundColor(iconColor)
+                    .foregroundColor(self.iconColor)
                     .frame(width: 16)
 
                 // Name and Git info
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 4) {
-                        Text(suggestion.name)
+                        Text(self.suggestion.name)
                             .font(.system(size: 12))
                             .foregroundColor(.primary)
                             .lineLimit(1)
@@ -157,27 +155,25 @@ private struct AutocompleteRow: View {
             .padding(.vertical, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                isSelected ? Color.accentColor.opacity(0.1) : Color.clear
-            )
+                self.isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .overlay(
             HStack {
-                if isSelected {
+                if self.isSelected {
                     Rectangle()
                         .fill(Color.accentColor)
                         .frame(width: 2)
                 }
                 Spacer()
-            }
-        )
+            })
     }
 
     private var iconName: String {
-        if suggestion.isRepository {
+        if self.suggestion.isRepository {
             "folder.badge.gearshape"
-        } else if suggestion.type == .directory {
+        } else if self.suggestion.type == .directory {
             "folder"
         } else {
             "doc"
@@ -185,7 +181,7 @@ private struct AutocompleteRow: View {
     }
 
     private var iconColor: Color {
-        if suggestion.isRepository {
+        if self.suggestion.isRepository {
             .accentColor
         } else {
             .secondary
@@ -211,100 +207,99 @@ struct AutocompleteTextField: View {
     @State private var textFieldSize: CGSize = .zero
 
     var body: some View {
-        TextField(placeholder, text: $text)
+        TextField(self.placeholder, text: self.$text)
             .textFieldStyle(.roundedBorder)
-            .focused($isFocused)
+            .focused(self.$isFocused)
             .onKeyPress { keyPress in
-                handleKeyPress(keyPress)
+                self.handleKeyPress(keyPress)
             }
-            .onChange(of: text) { _, newValue in
-                handleTextChange(newValue)
+            .onChange(of: self.text) { _, newValue in
+                self.handleTextChange(newValue)
             }
-            .onChange(of: isFocused) { _, focused in
+            .onChange(of: self.isFocused) { _, focused in
                 if !focused {
                     // Hide suggestions after a delay to allow clicking
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        showSuggestions = false
-                        selectedIndex = -1
+                        self.showSuggestions = false
+                        self.selectedIndex = -1
                     }
-                } else if focused && !text.isEmpty && !(autocompleteService?.suggestions.isEmpty ?? true) {
+                } else if focused, !self.text.isEmpty, !(self.autocompleteService?.suggestions.isEmpty ?? true) {
                     // Show suggestions when field gains focus if we have any
-                    showSuggestions = true
+                    self.showSuggestions = true
                 }
             }
             .background(
                 GeometryReader { geometry in
                     Color.clear
                         .onAppear {
-                            textFieldSize = geometry.size
+                            self.textFieldSize = geometry.size
                         }
                         .onChange(of: geometry.size) { _, newSize in
-                            textFieldSize = newSize
+                            self.textFieldSize = newSize
                         }
-                }
-            )
+                })
             .background(
                 AutocompleteWindowView(
-                    suggestions: autocompleteService?.suggestions ?? [],
-                    selectedIndex: $selectedIndex,
-                    keyboardNavigating: keyboardNavigating,
+                    suggestions: self.autocompleteService?.suggestions ?? [],
+                    selectedIndex: self.$selectedIndex,
+                    keyboardNavigating: self.keyboardNavigating,
                     onSelect: { suggestion in
-                        justSelectedCompletion = true
-                        text = suggestion
-                        showSuggestions = false
-                        selectedIndex = -1
-                        autocompleteService?.clearSuggestions()
+                        self.justSelectedCompletion = true
+                        self.text = suggestion
+                        self.showSuggestions = false
+                        self.selectedIndex = -1
+                        self.autocompleteService?.clearSuggestions()
                         // Keep focus on the text field
                         DispatchQueue.main.async {
-                            isFocused = true
+                            self.isFocused = true
                         }
                     },
-                    width: textFieldSize.width,
+                    width: self.textFieldSize.width,
                     isShowing: Binding(
-                        get: { showSuggestions && isFocused && !(autocompleteService?.suggestions.isEmpty ?? true) },
-                        set: { showSuggestions = $0 }
-                    )
-                )
-            )
+                        get: {
+                            self.showSuggestions && self
+                                .isFocused && !(self.autocompleteService?.suggestions.isEmpty ?? true)
+                        },
+                        set: { self.showSuggestions = $0 })))
             .onAppear {
                 // Initialize autocompleteService with GitRepositoryMonitor
-                autocompleteService = AutocompleteService(gitMonitor: gitMonitor)
+                self.autocompleteService = AutocompleteService(gitMonitor: self.gitMonitor)
             }
     }
 
     private func handleKeyPress(_ keyPress: KeyPress) -> KeyPress.Result {
-        guard isFocused && showSuggestions && !(autocompleteService?.suggestions.isEmpty ?? true) else {
+        guard self.isFocused, self.showSuggestions, !(self.autocompleteService?.suggestions.isEmpty ?? true) else {
             return .ignored
         }
 
         switch keyPress.key {
         case .downArrow:
-            keyboardNavigating = true
-            selectedIndex = min(selectedIndex + 1, (autocompleteService?.suggestions.count ?? 0) - 1)
+            self.keyboardNavigating = true
+            self.selectedIndex = min(self.selectedIndex + 1, (self.autocompleteService?.suggestions.count ?? 0) - 1)
             return .handled
 
         case .upArrow:
-            keyboardNavigating = true
-            selectedIndex = max(selectedIndex - 1, -1)
+            self.keyboardNavigating = true
+            self.selectedIndex = max(self.selectedIndex - 1, -1)
             return .handled
 
         case .tab, .return:
-            if selectedIndex >= 0 && selectedIndex < (autocompleteService?.suggestions.count ?? 0) {
-                justSelectedCompletion = true
-                text = autocompleteService?.suggestions[selectedIndex].suggestion ?? ""
-                showSuggestions = false
-                selectedIndex = -1
-                autocompleteService?.clearSuggestions()
-                keyboardNavigating = false
+            if self.selectedIndex >= 0, self.selectedIndex < (self.autocompleteService?.suggestions.count ?? 0) {
+                self.justSelectedCompletion = true
+                self.text = self.autocompleteService?.suggestions[self.selectedIndex].suggestion ?? ""
+                self.showSuggestions = false
+                self.selectedIndex = -1
+                self.autocompleteService?.clearSuggestions()
+                self.keyboardNavigating = false
                 return .handled
             }
             return .ignored
 
         case .escape:
-            if showSuggestions {
-                showSuggestions = false
-                selectedIndex = -1
-                keyboardNavigating = false
+            if self.showSuggestions {
+                self.showSuggestions = false
+                self.selectedIndex = -1
+                self.keyboardNavigating = false
                 return .handled
             }
             return .ignored
@@ -316,61 +311,60 @@ struct AutocompleteTextField: View {
 
     private func handleTextChange(_ newValue: String) {
         // If we just selected a completion, don't trigger a new search
-        if justSelectedCompletion {
-            justSelectedCompletion = false
+        if self.justSelectedCompletion {
+            self.justSelectedCompletion = false
             return
         }
 
         // Cancel previous debounce
-        debounceTask?.cancel()
+        self.debounceTask?.cancel()
 
         // Reset selection and keyboard navigation flag when text changes
-        selectedIndex = -1
-        keyboardNavigating = false
+        self.selectedIndex = -1
+        self.keyboardNavigating = false
 
         guard !newValue.isEmpty else {
             // Hide suggestions when text is empty
-            showSuggestions = false
-            autocompleteService?.clearSuggestions()
+            self.showSuggestions = false
+            self.autocompleteService?.clearSuggestions()
             return
         }
 
         // Show suggestions immediately if we already have them and field is focused, they'll update when new ones
         // arrive
-        if isFocused && !(autocompleteService?.suggestions.isEmpty ?? true) {
-            showSuggestions = true
+        if self.isFocused, !(self.autocompleteService?.suggestions.isEmpty ?? true) {
+            self.showSuggestions = true
         }
 
         // Debounce the autocomplete request
-        debounceTask = Task {
+        self.debounceTask = Task {
             try? await Task.sleep(nanoseconds: 100_000_000) // 100ms - reduced for better responsiveness
 
             if !Task.isCancelled {
-                await autocompleteService?.fetchSuggestions(for: newValue)
+                await self.autocompleteService?.fetchSuggestions(for: newValue)
 
                 await MainActor.run {
                     // Update suggestion visibility based on results - only show if focused
-                    if isFocused && !(autocompleteService?.suggestions.isEmpty ?? true) {
-                        showSuggestions = true
-                        logger.debug("Updated with \(autocompleteService?.suggestions.count ?? 0) suggestions")
+                    if self.isFocused, !(self.autocompleteService?.suggestions.isEmpty ?? true) {
+                        self.showSuggestions = true
+                        logger.debug("Updated with \(self.autocompleteService?.suggestions.count ?? 0) suggestions")
 
                         // Try to maintain selection if possible
-                        if selectedIndex >= (autocompleteService?.suggestions.count ?? 0) {
-                            selectedIndex = -1
+                        if self.selectedIndex >= (self.autocompleteService?.suggestions.count ?? 0) {
+                            self.selectedIndex = -1
                         }
 
                         // Auto-select first item if it's a good match and nothing is selected
-                        if selectedIndex == -1,
+                        if self.selectedIndex == -1,
                            let first = autocompleteService?.suggestions.first,
                            first.name.lowercased().hasPrefix(
-                               newValue.split(separator: "/").last?.lowercased() ?? ""
-                           )
+                               newValue.split(separator: "/").last?.lowercased() ?? "")
                         {
-                            selectedIndex = 0
+                            self.selectedIndex = 0
                         }
-                    } else if showSuggestions {
+                    } else if self.showSuggestions {
                         // Only hide if we're already showing and have no results
-                        showSuggestions = false
+                        self.showSuggestions = false
                     }
                 }
             }

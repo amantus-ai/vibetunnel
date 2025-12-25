@@ -20,7 +20,7 @@ final class TerminalControlHandler {
             await self?.handleMessage(data)
         }
 
-        logger.info("🚀 Terminal control handler initialized")
+        self.logger.info("🚀 Terminal control handler initialized")
     }
 
     // MARK: - Message Handling
@@ -35,28 +35,29 @@ final class TerminalControlHandler {
                 case "spawn":
                     // Try to decode as terminal spawn request
                     if let spawnRequest = try? ControlProtocol.decodeTerminalSpawnRequest(data) {
-                        logger
+                        self.logger
                             .info(
-                                "📥 Terminal spawn request for session: \(spawnRequest.payload?.sessionId ?? "unknown")"
-                            )
+                                "📥 Terminal spawn request for session: \(spawnRequest.payload?.sessionId ?? "unknown")")
                         let response = await handleSpawnRequest(spawnRequest)
                         return try ControlProtocol.encode(response)
                     } else {
-                        logger.error("Failed to decode terminal spawn request")
-                        return createErrorResponse(for: data, error: "Invalid spawn request format")
+                        self.logger.error("Failed to decode terminal spawn request")
+                        return self.createErrorResponse(for: data, error: "Invalid spawn request format")
                     }
 
                 default:
-                    logger.error("Unknown terminal action: \(action)")
-                    return createErrorResponse(for: data, error: "Unknown terminal action: \(action)")
+                    self.logger.error("Unknown terminal action: \(action)")
+                    return self.createErrorResponse(for: data, error: "Unknown terminal action: \(action)")
                 }
             } else {
-                logger.error("Invalid terminal message format")
-                return createErrorResponse(for: data, error: "Invalid message format")
+                self.logger.error("Invalid terminal message format")
+                return self.createErrorResponse(for: data, error: "Invalid message format")
             }
         } catch {
-            logger.error("Failed to process terminal message: \(error)")
-            return createErrorResponse(for: data, error: "Failed to process message: \(error.localizedDescription)")
+            self.logger.error("Failed to process terminal message: \(error)")
+            return self.createErrorResponse(
+                for: data,
+                error: "Failed to process message: \(error.localizedDescription)")
         }
     }
 
@@ -67,11 +68,10 @@ final class TerminalControlHandler {
             return ControlProtocol.terminalSpawnResponse(
                 to: message,
                 success: false,
-                error: "Missing payload"
-            )
+                error: "Missing payload")
         }
 
-        logger.info("Spawning terminal session \(payload.sessionId)")
+        self.logger.info("Spawning terminal session \(payload.sessionId)")
 
         do {
             // If a specific terminal is requested, temporarily set it
@@ -93,21 +93,19 @@ final class TerminalControlHandler {
                 workingDirectory: payload.workingDirectory ?? "",
                 command: payload.command ?? "",
                 sessionId: payload.sessionId,
-                vibetunnelPath: nil // Use bundled path
+                vibetunnelPath: nil, // Use bundled path
             )
 
             // Success response with compile-time guarantees
             return ControlProtocol.terminalSpawnResponse(
                 to: message,
-                success: true
-            )
+                success: true)
         } catch {
-            logger.error("Failed to spawn terminal: \(error)")
+            self.logger.error("Failed to spawn terminal: \(error)")
             return ControlProtocol.terminalSpawnResponse(
                 to: message,
                 success: false,
-                error: error.localizedDescription
-            )
+                error: error.localizedDescription)
         }
     }
 
@@ -116,13 +114,13 @@ final class TerminalControlHandler {
     /// Start the terminal control handler
     func start() {
         // Handler is registered in init, just log that we're ready
-        logger.info("✅ Terminal control handler started")
+        self.logger.info("✅ Terminal control handler started")
     }
 
     /// Stop the terminal control handler
     func stop() {
         SharedUnixSocketManager.shared.unregisterControlHandler(for: .terminal)
-        logger.info("🛑 Terminal control handler stopped")
+        self.logger.info("🛑 Terminal control handler stopped")
     }
 
     // MARK: - Error Handling
@@ -140,13 +138,13 @@ final class TerminalControlHandler {
                     "type": "response",
                     "category": "terminal",
                     "action": action,
-                    "error": error
+                    "error": error,
                 ]
 
                 return try JSONSerialization.data(withJSONObject: errorResponse)
             }
         } catch {
-            logger.error("Failed to create error response: \(error)")
+            self.logger.error("Failed to create error response: \(error)")
         }
 
         return nil

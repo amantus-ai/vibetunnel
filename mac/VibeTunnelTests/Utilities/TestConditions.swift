@@ -73,7 +73,7 @@ enum TestUtilities {
         System Information:
         - OS: \(ProcessInfo.processInfo.operatingSystemVersionString)
         - Processor: \(ProcessInfo.processInfo.processorCount) cores
-        - Memory: \(ProcessInfo.processInfo.physicalMemory / 1_024 / 1_024) MB
+        - Memory: \(ProcessInfo.processInfo.physicalMemory / 1024 / 1024) MB
         - Environment: \(ProcessInfo.processInfo.environment["CI"] != nil ? "CI" : "Local")
         - Timestamp: \(Date().ISO8601Format())
         """
@@ -115,5 +115,4 @@ enum TestUtilities {
 
         return sqrt(variance)
     }
-
 }

@@ -21,14 +21,14 @@ struct WelcomeView: View {
             GeometryReader { geometry in
                 VStack(spacing: 0) {
                     // Page content
-                    TabView(selection: $currentPage) {
+                    TabView(selection: self.$currentPage) {
                         WelcomePageView()
                             .tag(0)
 
                         ConnectServerPageView()
                             .tag(1)
 
-                        TerminalFeaturesPageView(selectedTheme: $selectedTheme)
+                        TerminalFeaturesPageView(selectedTheme: self.$selectedTheme)
                             .tag(2)
 
                         MobileControlsPageView()
@@ -38,7 +38,7 @@ struct WelcomeView: View {
                             .tag(4)
                     }
                     .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                    .animation(.easeInOut(duration: 0.3), value: currentPage)
+                    .animation(.easeInOut(duration: 0.3), value: self.currentPage)
 
                     // Custom page indicator and navigation
                     VStack(spacing: Theme.Spacing.medium) {
@@ -46,22 +46,22 @@ struct WelcomeView: View {
                         HStack(spacing: 8) {
                             ForEach(0..<5) { index in
                                 Circle()
-                                    .fill(index == currentPage ?
-                                        Theme.Colors.primaryAccent :
-                                        Theme.Colors.secondaryText.opacity(0.3)
-                                    )
+                                    .fill(
+                                        index == self.currentPage ?
+                                            Theme.Colors.primaryAccent :
+                                            Theme.Colors.secondaryText.opacity(0.3))
                                     .frame(width: 8, height: 8)
-                                    .animation(.easeInOut, value: currentPage)
+                                    .animation(.easeInOut, value: self.currentPage)
                             }
                         }
                         .padding(.top, Theme.Spacing.small)
 
                         // Navigation buttons
                         HStack(spacing: Theme.Spacing.medium) {
-                            if currentPage > 0 {
+                            if self.currentPage > 0 {
                                 Button(action: {
                                     withAnimation {
-                                        currentPage -= 1
+                                        self.currentPage -= 1
                                     }
                                 }, label: {
                                     HStack {
@@ -75,8 +75,8 @@ struct WelcomeView: View {
 
                             Spacer()
 
-                            Button(action: handleNextAction) {
-                                Text(currentPage == 4 ? "Get Started" : "Continue")
+                            Button(action: self.handleNextAction) {
+                                Text(self.currentPage == 4 ? "Get Started" : "Continue")
                                     .font(Theme.Typography.terminalSystem(size: 16, weight: .semibold))
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 24)
@@ -97,7 +97,7 @@ struct WelcomeView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Skip") {
-                        completeOnboarding()
+                        self.completeOnboarding()
                     }
                     .font(Theme.Typography.terminalSystem(size: 16))
                     .foregroundColor(Theme.Colors.primaryAccent)
@@ -107,28 +107,28 @@ struct WelcomeView: View {
     }
 
     private func handleNextAction() {
-        if currentPage < 4 {
+        if self.currentPage < 4 {
             withAnimation {
-                currentPage += 1
+                self.currentPage += 1
             }
         } else {
-            completeOnboarding()
+            self.completeOnboarding()
         }
     }
 
     private func completeOnboarding() {
         // Save the selected theme
-        TerminalTheme.selected = selectedTheme
+        TerminalTheme.selected = self.selectedTheme
 
         // Mark onboarding as completed
-        welcomeCompleted = true
-        welcomeVersion = currentWelcomeVersion
+        self.welcomeCompleted = true
+        self.welcomeVersion = self.currentWelcomeVersion
 
         // Generate haptic feedback
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
 
-        dismiss()
+        self.dismiss()
     }
 }
 
@@ -199,16 +199,13 @@ struct ConnectServerPageView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     FeatureRow(
                         icon: "network",
-                        text: "Connect via HTTP or HTTPS"
-                    )
+                        text: "Connect via HTTP or HTTPS")
                     FeatureRow(
                         icon: "lock.shield",
-                        text: "Secure authentication support"
-                    )
+                        text: "Secure authentication support")
                     FeatureRow(
                         icon: "clock.arrow.circlepath",
-                        text: "Automatic reconnection"
-                    )
+                        text: "Automatic reconnection")
                 }
                 .padding(.top, Theme.Spacing.medium)
             }
@@ -245,8 +242,7 @@ struct TerminalFeaturesPageView: View {
                         ForEach(TerminalTheme.allThemes, id: \.id) { theme in
                             ThemePreviewCard(
                                 theme: theme,
-                                isSelected: selectedTheme.id == theme.id
-                            ) { selectedTheme = theme }
+                                isSelected: self.selectedTheme.id == theme.id) { self.selectedTheme = theme }
                         }
                     }
                     .padding(.horizontal, Theme.Spacing.large)
@@ -282,31 +278,27 @@ struct MobileControlsPageView: View {
             // Feature grid
             LazyVGrid(columns: [
                 GridItem(.flexible()),
-                GridItem(.flexible())
+                GridItem(.flexible()),
             ], spacing: Theme.Spacing.medium) {
                 ControlFeatureCard(
                     icon: "arrow.up.arrow.down",
                     title: "Quick Controls",
-                    description: "Access arrow keys and special functions"
-                )
+                    description: "Access arrow keys and special functions")
 
                 ControlFeatureCard(
                     icon: "textformat.size",
                     title: "Adjustable Text",
-                    description: "Customize font size for readability"
-                )
+                    description: "Customize font size for readability")
 
                 ControlFeatureCard(
                     icon: "rectangle.expand.vertical",
                     title: "Terminal Width",
-                    description: "Optimize layout for your screen"
-                )
+                    description: "Optimize layout for your screen")
 
                 ControlFeatureCard(
                     icon: "hand.tap",
                     title: "Touch Gestures",
-                    description: "Intuitive touch-based interactions"
-                )
+                    description: "Intuitive touch-based interactions")
             }
             .padding(.horizontal, Theme.Spacing.large)
 
@@ -376,12 +368,12 @@ struct FeatureRow: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.medium) {
-            Image(systemName: icon)
+            Image(systemName: self.icon)
                 .font(.system(size: 20))
                 .foregroundColor(Theme.Colors.primaryAccent)
                 .frame(width: 30)
 
-            Text(text)
+            Text(self.text)
                 .font(Theme.Typography.terminalSystem(size: 16))
                 .foregroundColor(Theme.Colors.terminalForeground)
 
@@ -402,35 +394,33 @@ struct ThemePreviewCard: View {
                 ForEach(0..<3) { _ in
                     HStack(spacing: 2) {
                         Rectangle()
-                            .fill(theme.green)
+                            .fill(self.theme.green)
                             .frame(width: 20, height: 2)
                         Rectangle()
-                            .fill(theme.blue)
+                            .fill(self.theme.blue)
                             .frame(width: 30, height: 2)
                         Spacer()
                     }
                 }
             }
             .padding(8)
-            .background(theme.background)
+            .background(self.theme.background)
             .cornerRadius(6)
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(
-                        isSelected ? Theme.Colors.primaryAccent : Color.clear,
-                        lineWidth: 2
-                    )
-            )
+                        self.isSelected ? Theme.Colors.primaryAccent : Color.clear,
+                        lineWidth: 2))
 
-            Text(theme.name)
+            Text(self.theme.name)
                 .font(Theme.Typography.terminalSystem(size: 12))
-                .foregroundColor(isSelected ? Theme.Colors.primaryAccent : Theme.Colors.secondaryText)
+                .foregroundColor(self.isSelected ? Theme.Colors.primaryAccent : Theme.Colors.secondaryText)
         }
         .frame(width: 80, height: 80)
         .onTapGesture {
             let impactFeedback = UIImpactFeedbackGenerator(style: .light)
             impactFeedback.impactOccurred()
-            onTap()
+            self.onTap()
         }
     }
 }
@@ -442,15 +432,15 @@ struct ControlFeatureCard: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.small) {
-            Image(systemName: icon)
+            Image(systemName: self.icon)
                 .font(.system(size: 30))
                 .foregroundColor(Theme.Colors.primaryAccent)
 
-            Text(title)
+            Text(self.title)
                 .font(Theme.Typography.terminalSystem(size: 14, weight: .semibold))
                 .multilineTextAlignment(.center)
 
-            Text(description)
+            Text(self.description)
                 .font(Theme.Typography.terminalSystem(size: 12))
                 .foregroundColor(Theme.Colors.secondaryText)
                 .multilineTextAlignment(.center)

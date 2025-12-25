@@ -9,7 +9,7 @@ struct SessionIdHandlingTests {
     @Test("Session IDs must be valid UUIDs", arguments: [
         "a37ea008-41f6-412f-bbba-f28f091267ce", // Valid UUID
         "00000000-0000-0000-0000-000000000000", // Valid nil UUID
-        "550e8400-e29b-41d4-a716-446655440000" // Valid UUID v4
+        "550e8400-e29b-41d4-a716-446655440000", // Valid UUID v4
     ])
     func validSessionIdFormat(sessionId: String) {
         #expect(UUID(uuidString: sessionId) != nil)
@@ -54,17 +54,15 @@ struct SessionIdHandlingTests {
             // Correct format (what we fixed the server to return)
             (
                 json: #"{"sessionId":"a37ea008-41f6-412f-bbba-f28f091267ce"}"#,
-                expectedId: "a37ea008-41f6-412f-bbba-f28f091267ce"
-            ),
+                expectedId: "a37ea008-41f6-412f-bbba-f28f091267ce"),
 
             // Old incorrect format (what Swift server used to return)
             (
                 json: #"{"sessionId":"session_1234567890_abc123"}"#,
-                expectedId: "session_1234567890_abc123"
-            ), // Would fail UUID validation
+                expectedId: "session_1234567890_abc123"), // Would fail UUID validation
 
             // Empty response
-            (json: #"{}"#, expectedId: nil)
+            (json: #"{}"#, expectedId: nil),
         ]
 
         for testCase in testCases {
@@ -135,7 +133,7 @@ struct SessionIdHandlingTests {
                 case name
                 case pid
                 case status
-                case started_at = "started_at"
+                case started_at
                 case stdin
                 case streamOut = "stream-out"
             }

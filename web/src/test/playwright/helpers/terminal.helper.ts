@@ -14,16 +14,17 @@ import { TestDataFactory } from '../utils/test-utils';
 export async function waitForShellPrompt(page: Page): Promise<void> {
   await page.waitForFunction(
     () => {
-      const terminal =
-        document.querySelector('#session-terminal') || document.querySelector('vibe-terminal');
-      if (!terminal) return false;
+      const terminal = document.querySelector('vibe-terminal') as unknown as {
+        getDebugText?: () => string;
+        textContent?: string | null;
+      } | null;
+      const fallback = document.querySelector('#session-terminal') as HTMLElement | null;
+      if (!terminal && !fallback) return false;
 
-      // Check the terminal container first
-      const container = terminal.querySelector('#terminal-container');
-      const containerContent = container?.textContent || '';
-
-      // Fall back to terminal content
-      const content = terminal.textContent || containerContent;
+      const content =
+        terminal && typeof terminal.getDebugText === 'function'
+          ? terminal.getDebugText()
+          : terminal?.textContent || fallback?.textContent || '';
 
       // Enhanced prompt detection patterns
       const promptPatterns = [
@@ -39,6 +40,7 @@ export async function waitForShellPrompt(page: Page): Promise<void> {
         (content.length > 10 && /[$>#%❯]/.test(content))
       );
     },
+    undefined,
     { timeout: 10000 } // Increased timeout for reliability
   );
 }
@@ -47,23 +49,29 @@ export async function waitForShellPrompt(page: Page): Promise<void> {
  * Wait for terminal to be ready for input
  */
 export async function waitForTerminalReady(page: Page): Promise<void> {
-  const terminal = page.locator('#session-terminal');
-
-  // Ensure terminal is visible and clickable
-  await terminal.waitFor({ state: 'visible' });
+  await page.locator('#session-terminal').waitFor({ state: 'visible' });
 
   // Wait for terminal initialization and prompt
   await page.waitForFunction(
     () => {
-      const term = document.querySelector('#session-terminal');
+      const host = document.querySelector('#session-terminal');
+      if (!host) return false;
+
+      const term = host.querySelector('vibe-terminal') as unknown as {
+        getDebugText?: () => string;
+        textContent?: string | null;
+      } | null;
       if (!term) return false;
 
-      const content = term.textContent || '';
-      const hasContent = content.length > 5;
-      const hasPrompt = /[$>#%❯]/.test(content);
+      const content =
+        typeof term.getDebugText === 'function' ? term.getDebugText() : term.textContent || '';
+      if (!content) return false;
 
-      return hasContent && hasPrompt;
+      const promptPatterns = [/[$>#%❯]\s*$/m, /\w+@\w+/, /bash-\d+\.\d+[$>#]/];
+
+      return promptPatterns.some((p) => p.test(content)) || content.length > 10;
     },
+    undefined,
     { timeout: 15000 }
   );
 }
@@ -78,24 +86,29 @@ export async function executeCommandIntelligent(
   expectedOutput?: string | RegExp
 ): Promise<void> {
   // Get terminal element
-  const terminal = page.locator('#session-terminal');
+  const terminal = page.locator('vibe-terminal');
   await terminal.click();
 
-  // Capture current terminal state before command
-  const beforeContent = await terminal.textContent();
+  // Use a unique marker to robustly detect command completion across shells/prompts.
+  // Avoids fragile "prompt must be at end of buffer" logic.
+  const marker = `__VT_DONE_${Date.now()}_${Math.random().toString(16).slice(2)}__`;
+  const fullCommand = `${command}; echo "${marker}"`;
 
   // Execute command
-  await page.keyboard.type(command);
+  await page.keyboard.type(fullCommand);
   await page.keyboard.press('Enter');
 
-  // Wait for command completion with intelligent detection
+  // Wait for command completion: marker + expected output (if any).
   await page.waitForFunction(
-    ({ before, expectedText, expectRegex }) => {
-      const term = document.querySelector('#session-terminal');
-      const current = term?.textContent || '';
-
-      // Command must have completed (content changed)
-      if (current === before) return false;
+    ({ expectedText, expectRegex, markerText }) => {
+      const term = document.querySelector('vibe-terminal') as unknown as {
+        getDebugText?: () => string;
+        textContent?: string | null;
+      } | null;
+      const current =
+        term && typeof term.getDebugText === 'function'
+          ? term.getDebugText()
+          : term?.textContent || '';
 
       // Check for expected output if provided
       if (expectedText && !current.includes(expectedText)) return false;
@@ -104,16 +117,18 @@ export async function executeCommandIntelligent(
         if (!regex.test(current)) return false;
       }
 
-      // Must end with a new prompt (command completed)
-      return /[$>#%❯]\s*$/.test(current);
+      return current.includes(markerText);
     },
     {
-      before: beforeContent,
       expectedText: typeof expectedOutput === 'string' ? expectedOutput : null,
       expectRegex: expectedOutput instanceof RegExp ? expectedOutput.source : null,
+      markerText: marker,
     },
-    { timeout: 15000 }
+    { timeout: 20000 }
   );
+
+  // Finally, wait for a prompt to reappear (best-effort). Some environments may be noisy.
+  await waitForShellPrompt(page);
 }
 
 /**
@@ -206,8 +221,15 @@ export async function clearTerminal(page: Page): Promise<void> {
   await page.keyboard.press('Control+l');
   // Wait for terminal to be cleared
   await page.waitForFunction(() => {
-    const terminal = document.querySelector('vibe-terminal');
-    const lines = terminal?.textContent?.split('\n') || [];
+    const terminal = document.querySelector('vibe-terminal') as unknown as {
+      getDebugText?: () => string;
+      textContent?: string | null;
+    } | null;
+    const text =
+      terminal && typeof terminal.getDebugText === 'function'
+        ? terminal.getDebugText()
+        : terminal?.textContent || '';
+    const lines = text.split('\n');
     // Terminal is cleared when we have very few lines
     return lines.length < 5;
   });
@@ -265,6 +287,7 @@ export async function cleanupSessions(page: Page): Promise<void> {
             return text.includes('exited') || text.includes('exit');
           });
         },
+        undefined,
         { timeout: 5000 }
       );
     }
@@ -285,8 +308,14 @@ export async function assertTerminalContains(page: Page, text: string | RegExp):
   } else {
     await page.waitForFunction(
       ({ pattern }) => {
-        const terminal = document.querySelector('vibe-terminal');
-        const content = terminal?.textContent || '';
+        const terminal = document.querySelector('vibe-terminal') as unknown as {
+          getDebugText?: () => string;
+          textContent?: string | null;
+        } | null;
+        const content =
+          terminal && typeof terminal.getDebugText === 'function'
+            ? terminal.getDebugText()
+            : terminal?.textContent || '';
         return new RegExp(pattern).test(content);
       },
       { pattern: text.source }

@@ -58,7 +58,7 @@ enum AppConstants {
         static let preventSleepWhenRunning = true
 
         // Server Configuration
-        static let serverPort = 4_020
+        static let serverPort = 4020
         static let dashboardAccessMode = DashboardAccessModeRawValues.network
         static let cleanupOnStartup = true
         static let authenticationMode = "os"
@@ -184,7 +184,7 @@ extension AppConstants {
 
     /// Get current dashboard access mode
     static func getDashboardAccessMode() -> DashboardAccessMode {
-        let rawValue = stringValue(for: UserDefaultsKeys.dashboardAccessMode)
+        let rawValue = self.stringValue(for: UserDefaultsKeys.dashboardAccessMode)
         return DashboardAccessMode(rawValue: rawValue) ?? .network
     }
 

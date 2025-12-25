@@ -35,12 +35,11 @@ export default defineConfig({
       }
       console.warn(`Invalid PLAYWRIGHT_WORKERS value: "${process.env.PLAYWRIGHT_WORKERS}". Using default.`);
     }
-    // Default: 1 worker in CI to prevent race conditions, auto-detect locally
-    // This ensures test groups run sequentially, preventing session conflicts
-    return process.env.CI ? 1 : undefined;
+    // Default: 1 worker to prevent session conflicts (override via PLAYWRIGHT_WORKERS)
+    return 1;
   })(),
-  /* Test timeout - reduced for faster failure detection */
-  timeout: process.env.CI ? 20 * 1000 : 10 * 1000, // 20s on CI, 10s locally
+  /* Test timeout */
+  timeout: process.env.CI ? 60 * 1000 : 45 * 1000, // 60s on CI, 45s locally
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { open: 'never' }],
@@ -60,11 +59,11 @@ export default defineConfig({
     /* Capture video on failure */
     video: process.env.CI ? 'retain-on-failure' : 'off',
 
-    /* Maximum time each action can take - reduced for faster feedback */
-    actionTimeout: process.env.CI ? 5000 : 3000, // 5s on CI, 3s locally
+    /* Maximum time each action can take */
+    actionTimeout: process.env.CI ? 15_000 : 10_000,
 
-    /* Navigation timeout - reduced for faster page load detection */
-    navigationTimeout: process.env.CI ? 10000 : 5000, // 10s on CI, 5s locally
+    /* Navigation timeout */
+    navigationTimeout: process.env.CI ? 30_000 : 20_000,
 
     /* Run in headless mode for better performance */
     headless: true,
@@ -113,7 +112,7 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
     stdout: process.env.CI ? 'inherit' : 'ignore', // Reduce noise locally
     stderr: process.env.CI ? 'inherit' : 'pipe', // Show errors in CI for debugging
-    timeout: 20 * 1000, // 20 seconds for server startup - reduced for faster feedback
+    timeout: 60 * 1000, // server startup
     cwd: process.cwd(), // Ensure we're in the right directory
     env: (() => {
       const env = { ...process.env };

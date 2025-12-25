@@ -4,12 +4,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
 import { cellsToText } from '../../shared/terminal-text-formatter.js';
-import type { ServerStatus, Session, SessionActivity, TitleMode } from '../../shared/types.js';
+import type { ServerStatus, Session, TitleMode } from '../../shared/types.js';
 import { HttpMethod } from '../../shared/types.js';
 import { PtyError, type PtyManager } from '../pty/index.js';
-import type { ActivityMonitor } from '../services/activity-monitor.js';
 import type { RemoteRegistry } from '../services/remote-registry.js';
-import type { StreamWatcher } from '../services/stream-watcher.js';
 import { tailscaleServeService } from '../services/tailscale-serve-service.js';
 import type { TerminalManager } from '../services/terminal-manager.js';
 import { detectGitInfo } from '../utils/git-info.js';
@@ -26,10 +24,8 @@ const _execFile = promisify(require('child_process').execFile);
 interface SessionRoutesConfig {
   ptyManager: PtyManager;
   terminalManager: TerminalManager;
-  streamWatcher: StreamWatcher;
   remoteRegistry: RemoteRegistry | null;
   isHQMode: boolean;
-  activityMonitor: ActivityMonitor;
 }
 
 // Helper function to resolve path with default fallback
@@ -51,8 +47,7 @@ function resolvePath(inputPath: string, defaultPath: string): string {
 
 export function createSessionRoutes(config: SessionRoutesConfig): Router {
   const router = Router();
-  const { ptyManager, terminalManager, streamWatcher, remoteRegistry, isHQMode, activityMonitor } =
-    config;
+  const { ptyManager, terminalManager, remoteRegistry, isHQMode } = config;
 
   // Server status endpoint
   router.get('/server/status', async (_req, res) => {
@@ -355,107 +350,6 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
       } else {
         res.status(500).json({ error: 'Failed to create session' });
       }
-    }
-  });
-
-  // Get activity status for all sessions
-  router.get('/sessions/activity', async (_req, res) => {
-    logger.debug('getting activity status for all sessions');
-    try {
-      const activityStatus: Record<string, SessionActivity> = {};
-
-      // Get local sessions activity
-      const localActivity = activityMonitor.getActivityStatus();
-      Object.assign(activityStatus, localActivity);
-
-      // If in HQ mode, get activity from remote servers
-      if (isHQMode && remoteRegistry) {
-        const remotes = remoteRegistry.getRemotes();
-
-        // Fetch activity from each remote in parallel
-        const remotePromises = remotes.map(async (remote) => {
-          try {
-            const response = await fetch(`${remote.url}/api/sessions/activity`, {
-              headers: {
-                Authorization: `Bearer ${remote.token}`,
-              },
-              signal: AbortSignal.timeout(5000),
-            });
-
-            if (response.ok) {
-              const remoteActivity = await response.json();
-              return {
-                remote: {
-                  id: remote.id,
-                  name: remote.name,
-                  url: remote.url,
-                },
-                activity: remoteActivity,
-              };
-            }
-          } catch (error) {
-            logger.error(`failed to get activity from remote ${remote.name}:`, error);
-          }
-          return null;
-        });
-
-        const remoteResults = await Promise.all(remotePromises);
-
-        // Merge remote activity data
-        for (const result of remoteResults) {
-          if (result?.activity) {
-            // Merge remote activity data
-            Object.assign(activityStatus, result.activity);
-          }
-        }
-      }
-
-      res.json(activityStatus);
-    } catch (error) {
-      logger.error('error getting activity status:', error);
-      res.status(500).json({ error: 'Failed to get activity status' });
-    }
-  });
-
-  // Get activity status for a specific session
-  router.get('/sessions/:sessionId/activity', async (req, res) => {
-    const sessionId = req.params.sessionId;
-
-    try {
-      // If in HQ mode, check if this is a remote session
-      if (isHQMode && remoteRegistry) {
-        const remote = remoteRegistry.getRemoteBySessionId(sessionId);
-        if (remote) {
-          // Forward to remote server
-          try {
-            const response = await fetch(`${remote.url}/api/sessions/${sessionId}/activity`, {
-              headers: {
-                Authorization: `Bearer ${remote.token}`,
-              },
-              signal: AbortSignal.timeout(5000),
-            });
-
-            if (!response.ok) {
-              return res.status(response.status).json(await response.json());
-            }
-
-            return res.json(await response.json());
-          } catch (error) {
-            logger.error(`failed to get activity from remote ${remote.name}:`, error);
-            return res.status(503).json({ error: 'Failed to reach remote server' });
-          }
-        }
-      }
-
-      // Local session handling
-      const activityStatus = activityMonitor.getSessionActivityStatus(sessionId);
-      if (!activityStatus) {
-        return res.status(404).json({ error: 'Session not found' });
-      }
-      res.json(activityStatus);
-    } catch (error) {
-      logger.error(`error getting activity status for session ${sessionId}:`, error);
-      res.status(500).json({ error: 'Failed to get activity status' });
     }
   });
 
@@ -830,216 +724,6 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
       logger.error('error getting plain text:', error);
       res.status(500).json({ error: 'Failed to get terminal text' });
     }
-  });
-
-  // Get session buffer
-  router.get('/sessions/:sessionId/buffer', async (req, res) => {
-    const sessionId = req.params.sessionId;
-
-    logger.debug(`client requesting buffer for session ${sessionId}`);
-
-    try {
-      // If in HQ mode, check if this is a remote session
-      if (isHQMode && remoteRegistry) {
-        const remote = remoteRegistry.getRemoteBySessionId(sessionId);
-        if (remote) {
-          // Forward buffer request to remote server
-          try {
-            const response = await fetch(`${remote.url}/api/sessions/${sessionId}/buffer`, {
-              headers: {
-                Authorization: `Bearer ${remote.token}`,
-              },
-              signal: AbortSignal.timeout(5000),
-            });
-
-            if (!response.ok) {
-              return res.status(response.status).json(await response.json());
-            }
-
-            // Forward the binary buffer
-            const buffer = await response.arrayBuffer();
-            res.setHeader('Content-Type', 'application/octet-stream');
-            return res.send(Buffer.from(buffer));
-          } catch (error) {
-            logger.error(`failed to get buffer from remote ${remote.name}:`, error);
-            return res.status(503).json({ error: 'Failed to reach remote server' });
-          }
-        }
-      }
-
-      // Local session handling
-      const session = ptyManager.getSession(sessionId);
-      if (!session) {
-        logger.error(`session ${sessionId} not found`);
-        return res.status(404).json({ error: 'Session not found' });
-      }
-
-      // Get terminal buffer snapshot
-      const snapshot = await terminalManager.getBufferSnapshot(sessionId);
-
-      // Encode as binary buffer
-      const buffer = terminalManager.encodeSnapshot(snapshot);
-
-      logger.debug(
-        `sending buffer for session ${sessionId}: ${buffer.length} bytes, ` +
-          `dimensions: ${snapshot.cols}x${snapshot.rows}, cursor: (${snapshot.cursorX},${snapshot.cursorY})`
-      );
-
-      // Send as binary data
-      res.setHeader('Content-Type', 'application/octet-stream');
-      res.send(buffer);
-    } catch (error) {
-      logger.error('error getting buffer:', error);
-      res.status(500).json({ error: 'Failed to get terminal buffer' });
-    }
-  });
-
-  // Stream session output
-  router.get('/sessions/:sessionId/stream', async (req, res) => {
-    const sessionId = req.params.sessionId;
-    const startTime = Date.now();
-
-    logger.log(
-      chalk.blue(
-        `new SSE client connected to session ${sessionId} from ${req.get('User-Agent')?.substring(0, 50) || 'unknown'}`
-      )
-    );
-
-    // If in HQ mode, check if this is a remote session
-    if (isHQMode && remoteRegistry) {
-      const remote = remoteRegistry.getRemoteBySessionId(sessionId);
-      if (remote) {
-        // Proxy SSE stream from remote server
-        try {
-          const controller = new AbortController();
-          const response = await fetch(`${remote.url}/api/sessions/${sessionId}/stream`, {
-            headers: {
-              Authorization: `Bearer ${remote.token}`,
-              Accept: 'text/event-stream',
-            },
-            signal: controller.signal,
-          });
-
-          if (!response.ok) {
-            return res.status(response.status).json(await response.json());
-          }
-
-          // Set up SSE headers
-          res.writeHead(200, {
-            'Content-Type': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            Connection: 'keep-alive',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Cache-Control',
-            'X-Accel-Buffering': 'no',
-          });
-
-          // Proxy the stream
-          const reader = response.body?.getReader();
-          if (!reader) {
-            throw new Error('No response body');
-          }
-
-          const decoder = new TextDecoder();
-          const bytesProxied = { count: 0 };
-          const pump = async () => {
-            try {
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                bytesProxied.count += value.length;
-                const chunk = decoder.decode(value, { stream: true });
-                res.write(chunk);
-              }
-            } catch (error) {
-              logger.error(`stream proxy error for remote ${remote.name}:`, error);
-            }
-          };
-
-          pump();
-
-          // Clean up on disconnect
-          req.on('close', () => {
-            logger.log(
-              chalk.yellow(
-                `SSE client disconnected from remote session ${sessionId} (proxied ${bytesProxied.count} bytes)`
-              )
-            );
-            controller.abort();
-          });
-
-          return;
-        } catch (error) {
-          logger.error(`failed to stream from remote ${remote.name}:`, error);
-          return res.status(503).json({ error: 'Failed to reach remote server' });
-        }
-      }
-    }
-
-    // Local session handling
-    const session = ptyManager.getSession(sessionId);
-    if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-
-    const sessionPaths = ptyManager.getSessionPaths(sessionId);
-    if (!sessionPaths) {
-      return res.status(404).json({ error: 'Session paths not found' });
-    }
-
-    const streamPath = sessionPaths.stdoutPath;
-    if (!streamPath || !fs.existsSync(streamPath)) {
-      logger.warn(`stream path not found for session ${sessionId}`);
-      return res.status(404).json({ error: 'Session stream not found' });
-    }
-
-    // Set up SSE headers
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Cache-Control',
-      'X-Accel-Buffering': 'no', // Disable Nginx buffering
-      'Content-Encoding': 'identity', // Prevent compression
-    });
-
-    // Force headers to be sent immediately
-    res.flushHeaders();
-
-    // Send initial connection event
-    res.write(':ok\n\n');
-    if (res.flush) res.flush();
-
-    // Add client to stream watcher
-    streamWatcher.addClient(sessionId, streamPath, res);
-    logger.debug(`SSE stream setup completed in ${Date.now() - startTime}ms`);
-
-    // Send heartbeat every 30 seconds to keep connection alive
-    const heartbeat = setInterval(() => {
-      res.write(':heartbeat\n\n');
-      if (res.flush) res.flush();
-    }, 30000);
-
-    // Track if cleanup has been called to avoid duplicate calls
-    let cleanedUp = false;
-    const cleanup = () => {
-      if (!cleanedUp) {
-        cleanedUp = true;
-        logger.log(chalk.yellow(`SSE client disconnected from session ${sessionId}`));
-        streamWatcher.removeClient(sessionId, res);
-        clearInterval(heartbeat);
-      }
-    };
-
-    // Clean up on disconnect - listen to all possible events
-    req.on('close', cleanup);
-    req.on('error', (err) => {
-      logger.error(`SSE client error for session ${sessionId}:`, err);
-      cleanup();
-    });
-    res.on('close', cleanup);
-    res.on('finish', cleanup);
   });
 
   // Send input to session

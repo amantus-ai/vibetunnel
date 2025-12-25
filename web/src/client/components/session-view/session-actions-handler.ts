@@ -97,7 +97,7 @@ export class SessionActionsHandler {
           }
         },
         onSuccess: () => {
-          // For terminate, session status will be updated via SSE
+          // For terminate, session status will be updated via v3 `EVENT`/polling.
         },
       },
     });

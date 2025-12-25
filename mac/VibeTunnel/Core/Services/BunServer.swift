@@ -40,7 +40,7 @@ final class BunServer {
     private let serverOutput = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "ServerOutput")
 
     var isRunning: Bool {
-        state == .running
+        self.state == .running
     }
 
     var port: String = ""
@@ -49,7 +49,7 @@ final class BunServer {
 
     /// The process identifier of the running server, if available
     var processIdentifier: Int32? {
-        process?.processIdentifier
+        self.process?.processIdentifier
     }
 
     /// Local authentication token for bypassing auth on localhost
@@ -69,7 +69,7 @@ final class BunServer {
         if authConfig.mode == "none" {
             return nil
         }
-        return localAuthToken
+        return self.localAuthToken
     }
 
     /// Get the current authentication mode
@@ -87,16 +87,16 @@ final class BunServer {
 
     func start() async throws {
         // Update state atomically using MainActor
-        let currentState = state
+        let currentState = self.state
         if currentState == .running || currentState == .starting {
-            logger.warning("Bun server already running or starting")
+            self.logger.warning("Bun server already running or starting")
             return
         }
         if currentState == .stopping {
-            logger.warning("Cannot start server while stopping")
+            self.logger.warning("Cannot start server while stopping")
             throw BunServerError.invalidState
         }
-        state = .starting
+        self.state = .starting
 
         defer {
             // Ensure we reset state on error
@@ -105,24 +105,24 @@ final class BunServer {
             }
         }
 
-        guard !port.isEmpty else {
+        guard !self.port.isEmpty else {
             let error = BunServerError.invalidPort
-            logger.error("Port not configured")
+            self.logger.error("Port not configured")
             throw error
         }
 
         // Check if we should use dev server
         let devConfig = DevServerConfig.current()
 
-        if devConfig.useDevServer && !devConfig.devServerPath.isEmpty {
-            logger.notice("🔧 Starting DEVELOPMENT SERVER with hot reload (pnpm run dev) on port \(self.port)")
-            logger.info("Development path: \(devConfig.devServerPath)")
-            serverOutput.notice("🔧 VibeTunnel Development Mode - Hot reload enabled")
-            serverOutput.info("Project: \(devConfig.devServerPath)")
-            try await startDevServer(path: devConfig.devServerPath)
+        if devConfig.useDevServer, !devConfig.devServerPath.isEmpty {
+            self.logger.notice("🔧 Starting DEVELOPMENT SERVER with hot reload (pnpm run dev) on port \(self.port)")
+            self.logger.info("Development path: \(devConfig.devServerPath)")
+            self.serverOutput.notice("🔧 VibeTunnel Development Mode - Hot reload enabled")
+            self.serverOutput.info("Project: \(devConfig.devServerPath)")
+            try await self.startDevServer(path: devConfig.devServerPath)
         } else {
-            logger.info("Starting production server (built-in SPA) on port \(self.port)")
-            try await startProductionServer()
+            self.logger.info("Starting production server (built-in SPA) on port \(self.port)")
+            try await self.startProductionServer()
         }
     }
 
@@ -130,50 +130,49 @@ final class BunServer {
         // Get the vibetunnel binary path (the Bun executable)
         guard let binaryPath = Bundle.main.path(forResource: "vibetunnel", ofType: nil) else {
             let error = BunServerError.binaryNotFound
-            logger.error("vibetunnel binary not found in bundle")
+            self.logger.error("vibetunnel binary not found in bundle")
 
             // Additional diagnostics for CI debugging
-            logger.error("Bundle path: \(Bundle.main.bundlePath)")
-            logger.error("Resources path: \(Bundle.main.resourcePath ?? "nil")")
+            self.logger.error("Bundle path: \(Bundle.main.bundlePath)")
+            self.logger.error("Resources path: \(Bundle.main.resourcePath ?? "nil")")
 
             // List contents of Resources directory
             if let resourcesPath = Bundle.main.resourcePath {
                 do {
                     let contents = try FileManager.default.contentsOfDirectory(atPath: resourcesPath)
-                    logger.error("Resources directory contents: \(contents.joined(separator: ", "))")
+                    self.logger.error("Resources directory contents: \(contents.joined(separator: ", "))")
                 } catch {
-                    logger.error("Failed to list Resources directory: \(error)")
+                    self.logger.error("Failed to list Resources directory: \(error)")
                 }
             }
 
             throw error
         }
 
-        logger.info("Using Bun executable at: \(binaryPath)")
+        self.logger.info("Using Bun executable at: \(binaryPath)")
 
         // Ensure binary is executable
         do {
             try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: binaryPath)
         } catch {
-            logger.error("Failed to set executable permissions on binary: \(error.localizedDescription)")
+            self.logger.error("Failed to set executable permissions on binary: \(error.localizedDescription)")
             throw BunServerError.binaryNotFound
         }
 
         // Verify binary exists and is executable
         var isDirectory: ObjCBool = false
         let fileExists = FileManager.default.fileExists(atPath: binaryPath, isDirectory: &isDirectory)
-        if fileExists && !isDirectory.boolValue {
+        if fileExists, !isDirectory.boolValue {
             let attributes = try FileManager.default.attributesOfItem(atPath: binaryPath)
             if let permissions = attributes[.posixPermissions] as? NSNumber,
                let fileSize = attributes[.size] as? NSNumber
             {
-                logger
+                self.logger
                     .info(
-                        "vibetunnel binary size: \(fileSize.intValue) bytes, permissions: \(String(permissions.intValue, radix: 8))"
-                    )
+                        "vibetunnel binary size: \(fileSize.intValue) bytes, permissions: \(String(permissions.intValue, radix: 8))")
             }
         } else if !fileExists {
-            logger.error("vibetunnel binary NOT FOUND at: \(binaryPath)")
+            self.logger.error("vibetunnel binary NOT FOUND at: \(binaryPath)")
         }
 
         // Create the process using login shell
@@ -186,14 +185,14 @@ final class BunServer {
         // Set working directory to Resources/web directory where public folder is located
         let webPath = URL(fileURLWithPath: resourcesPath).appendingPathComponent("web").path
         process.currentDirectoryURL = URL(fileURLWithPath: webPath)
-        logger.info("Process working directory: \(webPath)")
+        self.logger.info("Process working directory: \(webPath)")
 
         // Static files are always at Resources/web/public
         let staticPath = URL(fileURLWithPath: resourcesPath).appendingPathComponent("web/public").path
 
         // Verify the web directory exists
         if !FileManager.default.fileExists(atPath: staticPath) {
-            logger.error("Web directory not found at expected location: \(staticPath)")
+            self.logger.error("Web directory not found at expected location: \(staticPath)")
         }
 
         // Build the vibetunnel command arguments as an array
@@ -202,7 +201,7 @@ final class BunServer {
 
         // Add authentication flags based on configuration
         let authConfig = AuthConfig.current()
-        logger.info("Configuring authentication mode: \(authConfig.mode)")
+        self.logger.info("Configuring authentication mode: \(authConfig.mode)")
 
         switch authConfig.mode {
         case "none":
@@ -219,8 +218,8 @@ final class BunServer {
         // Add local bypass authentication for the Mac app
         if authConfig.mode != "none" {
             // Enable local bypass with our generated token
-            vibetunnelArgs.append(contentsOf: ["--allow-local-bypass", "--local-auth-token", localAuthToken])
-            logger.info("Local authentication bypass enabled for Mac app")
+            vibetunnelArgs.append(contentsOf: ["--allow-local-bypass", "--local-auth-token", self.localAuthToken])
+            self.logger.info("Local authentication bypass enabled for Mac app")
         }
 
         // Repository base path is now loaded from config.json by the server
@@ -231,11 +230,11 @@ final class BunServer {
             .bool(forKey: AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
         if tailscaleServeEnabled {
             vibetunnelArgs.append("--enable-tailscale-serve")
-            logger.info("Tailscale Serve integration enabled")
+            self.logger.info("Tailscale Serve integration enabled")
 
             // Force localhost binding for security when using Tailscale Serve
-            if bindAddress == "0.0.0.0" {
-                logger.warning("Overriding bind address to localhost for Tailscale Serve security")
+            if self.bindAddress == "0.0.0.0" {
+                self.logger.warning("Overriding bind address to localhost for Tailscale Serve security")
                 // Update the vibetunnelArgs that were already set above
                 if let bindIndex = vibetunnelArgs.firstIndex(of: "--bind") {
                     vibetunnelArgs[bindIndex + 1] = "127.0.0.1"
@@ -286,9 +285,9 @@ final class BunServer {
             self?.logger.info("vibetunnel process terminated with status: \(process.terminationStatus)")
         }
 
-        logger.info("Executing command: /bin/zsh -l -c \"\(vibetunnelCommand)\"")
-        logger.info("Binary location: \(resourcesPath)")
-        logger.info("Server configuration: port=\(self.port), bindAddress=\(self.bindAddress)")
+        self.logger.info("Executing command: /bin/zsh -l -c \"\(vibetunnelCommand)\"")
+        self.logger.info("Binary location: \(resourcesPath)")
+        self.logger.info("Server configuration: port=\(self.port), bindAddress=\(self.bindAddress)")
 
         // Set up a minimal environment for the SEA binary
         // SEA binaries can be sensitive to certain environment variables
@@ -304,7 +303,7 @@ final class BunServer {
             EnvironmentKeys.lang,
             "LC_ALL",
             "LC_CTYPE",
-            "VIBETUNNEL_DEBUG"
+            "VIBETUNNEL_DEBUG",
         ]
         for key in essentialVars {
             if let value = ProcessInfo.processInfo.environment[key] {
@@ -314,8 +313,8 @@ final class BunServer {
 
         // Set NODE_ENV to development in debug builds to disable caching
         #if DEBUG
-            environment["NODE_ENV"] = "development"
-            logger.info("Running in DEBUG configuration - setting NODE_ENV=development to disable caching")
+        environment["NODE_ENV"] = "development"
+        self.logger.info("Running in DEBUG configuration - setting NODE_ENV=development to disable caching")
         #endif
 
         // Add Node.js memory settings as command line arguments instead of NODE_OPTIONS
@@ -323,7 +322,7 @@ final class BunServer {
 
         // Set BUILD_PUBLIC_PATH to help the server find static files in the app bundle
         environment["BUILD_PUBLIC_PATH"] = staticPath
-        logger.info("Setting BUILD_PUBLIC_PATH=\(staticPath)")
+        self.logger.info("Setting BUILD_PUBLIC_PATH=\(staticPath)")
 
         process.environment = environment
 
@@ -338,13 +337,13 @@ final class BunServer {
         self.stderrPipe = stderrPipe
 
         // Start monitoring output
-        startOutputMonitoring()
+        self.startOutputMonitoring()
 
         do {
             // Start the process with parent termination handling
             try await process.runWithParentTerminationAsync()
 
-            logger.info("Bun server process started")
+            self.logger.info("Bun server process started")
 
             // Give the process a moment to start before checking for early failures
             try await Task.sleep(for: .milliseconds(100))
@@ -355,12 +354,12 @@ final class BunServer {
 
                 // Special handling for specific exit codes
                 if exitCode == 126 {
-                    logger.error("Process exited immediately: Command not executable (exit code: 126)")
+                    self.logger.error("Process exited immediately: Command not executable (exit code: 126)")
                     throw BunServerError.binaryNotFound
                 } else if exitCode == 9 {
-                    logger.error("Process exited immediately: Port \(self.port) is already in use (exit code: 9)")
+                    self.logger.error("Process exited immediately: Port \(self.port) is already in use (exit code: 9)")
                 } else {
-                    logger.error("Process exited immediately with code: \(exitCode)")
+                    self.logger.error("Process exited immediately with code: \(exitCode)")
                 }
 
                 // Try to read any error output
@@ -374,22 +373,22 @@ final class BunServer {
                             errorDetails += "\nError: \(errorOutput.trimmingCharacters(in: .whitespacesAndNewlines))"
                         }
                     } catch {
-                        logger.debug("Could not read stderr: \(error.localizedDescription)")
+                        self.logger.debug("Could not read stderr: \(error.localizedDescription)")
                     }
                 }
 
-                logger.error("Server failed to start: \(errorDetails)")
+                self.logger.error("Server failed to start: \(errorDetails)")
                 throw BunServerError.processFailedToStart
             }
 
             // Mark server as running only after successful start
-            state = .running
+            self.state = .running
 
-            logger.info("Bun server process started successfully")
+            self.logger.info("Bun server process started successfully")
 
             // Monitor process termination
             Task {
-                await monitorProcessTermination()
+                await self.monitorProcessTermination()
             }
         } catch {
             // Log more detailed error information
@@ -403,7 +402,7 @@ final class BunServer {
                 error.localizedDescription
             }
 
-            logger.error("Failed to start Bun server: \(errorMessage)")
+            self.logger.error("Failed to start Bun server: \(errorMessage)")
             throw error
         }
     }
@@ -416,7 +415,7 @@ final class BunServer {
         let validation = devServerManager.validate(path: path)
         guard validation.isValid else {
             let error = BunServerError.devServerInvalid(validation.errorMessage ?? "Invalid dev server path")
-            logger.error("Dev server validation failed: \(error.localizedDescription)")
+            self.logger.error("Dev server validation failed: \(error.localizedDescription)")
             throw error
         }
 
@@ -426,37 +425,36 @@ final class BunServer {
 
         // Set working directory to the web project
         process.currentDirectoryURL = URL(fileURLWithPath: expandedPath)
-        logger.info("Dev server working directory: \(expandedPath)")
+        self.logger.info("Dev server working directory: \(expandedPath)")
 
         // Get authentication mode
         let authConfig = AuthConfig.current()
 
         // Build the dev server arguments
-        var effectiveBindAddress = bindAddress
+        var effectiveBindAddress = self.bindAddress
 
         // Check if Tailscale Serve is enabled and force localhost binding
         let tailscaleServeEnabled = UserDefaults.standard
             .bool(forKey: AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
-        if tailscaleServeEnabled && bindAddress == "0.0.0.0" {
-            logger.warning("Overriding bind address to localhost for Tailscale Serve security")
+        if tailscaleServeEnabled, self.bindAddress == "0.0.0.0" {
+            self.logger.warning("Overriding bind address to localhost for Tailscale Serve security")
             effectiveBindAddress = "127.0.0.1"
         }
 
         let devArgs = devServerManager.buildDevServerArguments(
-            port: port,
+            port: self.port,
             bindAddress: effectiveBindAddress,
             authMode: authConfig.mode,
-            localToken: localToken
-        )
+            localToken: self.localToken)
 
         // Find pnpm executable
         guard let pnpmPath = devServerManager.findPnpmPath() else {
             let error = BunServerError.devServerInvalid("pnpm executable not found")
-            logger.error("Failed to find pnpm executable")
+            self.logger.error("Failed to find pnpm executable")
             throw error
         }
 
-        logger.info("Using pnpm at: \(pnpmPath)")
+        self.logger.info("Using pnpm at: \(pnpmPath)")
 
         // Create wrapper to run pnpm with parent death monitoring AND crash detection
         let parentPid = ProcessInfo.processInfo.processIdentifier
@@ -517,9 +515,9 @@ final class BunServer {
             self?.serverOutput.notice("🛑 Development server stopped")
         }
 
-        logger.info("Executing command: /bin/zsh -l -c \"\(pnpmCommand)\"")
-        logger.info("Working directory: \(expandedPath)")
-        logger.info("Dev server configuration: port=\(self.port), bindAddress=\(self.bindAddress)")
+        self.logger.info("Executing command: /bin/zsh -l -c \"\(pnpmCommand)\"")
+        self.logger.info("Working directory: \(expandedPath)")
+        self.logger.info("Dev server configuration: port=\(self.port), bindAddress=\(self.bindAddress)")
 
         // Set up environment for dev server
         var environment = ProcessInfo.processInfo.environment
@@ -528,7 +526,7 @@ final class BunServer {
 
         // Always set NODE_ENV to development for dev server to ensure caching is disabled
         environment["NODE_ENV"] = "development"
-        logger.info("Dev server mode - setting NODE_ENV=development to disable caching")
+        self.logger.info("Dev server mode - setting NODE_ENV=development to disable caching")
 
         // Add pnpm to PATH so that scripts can use it
         // pnpmDir is already defined above
@@ -537,7 +535,7 @@ final class BunServer {
         } else {
             environment[EnvironmentKeys.path] = pnpmDir
         }
-        logger.info("Added pnpm directory to PATH: \(pnpmDir)")
+        self.logger.info("Added pnpm directory to PATH: \(pnpmDir)")
 
         process.environment = environment
 
@@ -552,24 +550,24 @@ final class BunServer {
         self.stderrPipe = stderrPipe
 
         // Start monitoring output
-        startOutputMonitoring()
+        self.startOutputMonitoring()
 
         do {
             // Start the process with parent termination handling
             try await process.runWithParentTerminationAsync()
 
-            logger.info("Dev server process started")
+            self.logger.info("Dev server process started")
 
             // Output a clear banner in the server logs
-            serverOutput.notice("")
-            serverOutput.notice("==========================================")
-            serverOutput.notice("🔧 DEVELOPMENT MODE ACTIVE")
-            serverOutput.notice("------------------------------------------")
-            serverOutput.notice("Hot reload enabled - changes auto-refresh")
-            serverOutput.notice("Project: \(expandedPath, privacy: .public)")
-            serverOutput.notice("Port: \(self.port, privacy: .public)")
-            serverOutput.notice("==========================================")
-            serverOutput.notice("")
+            self.serverOutput.notice("")
+            self.serverOutput.notice("==========================================")
+            self.serverOutput.notice("🔧 DEVELOPMENT MODE ACTIVE")
+            self.serverOutput.notice("------------------------------------------")
+            self.serverOutput.notice("Hot reload enabled - changes auto-refresh")
+            self.serverOutput.notice("Project: \(expandedPath, privacy: .public)")
+            self.serverOutput.notice("Port: \(self.port, privacy: .public)")
+            self.serverOutput.notice("==========================================")
+            self.serverOutput.notice("")
 
             // Give the process a moment to start before checking for early failures
             try await Task.sleep(for: .milliseconds(500)) // Dev server takes longer to start
@@ -577,7 +575,7 @@ final class BunServer {
             // Check if process exited immediately (indicating failure)
             if !process.isRunning {
                 let exitCode = process.terminationStatus
-                logger.error("Dev server process exited immediately with code: \(exitCode)")
+                self.logger.error("Dev server process exited immediately with code: \(exitCode)")
 
                 // Try to read any error output
                 var errorDetails = "Exit code: \(exitCode)"
@@ -590,49 +588,49 @@ final class BunServer {
                             errorDetails += "\nError: \(errorOutput.trimmingCharacters(in: .whitespacesAndNewlines))"
                         }
                     } catch {
-                        logger.debug("Could not read stderr: \(error.localizedDescription)")
+                        self.logger.debug("Could not read stderr: \(error.localizedDescription)")
                     }
                 }
 
-                logger.error("Dev server failed to start: \(errorDetails)")
+                self.logger.error("Dev server failed to start: \(errorDetails)")
                 throw BunServerError.processFailedToStart
             }
 
             // Mark server as running only after successful start
-            state = .running
+            self.state = .running
 
-            logger.notice("✅ Development server started successfully with hot reload")
-            serverOutput.notice("🔧 Development server is running - changes will auto-reload")
+            self.logger.notice("✅ Development server started successfully with hot reload")
+            self.serverOutput.notice("🔧 Development server is running - changes will auto-reload")
 
             // Monitor process termination
             Task {
-                await monitorProcessTermination()
+                await self.monitorProcessTermination()
             }
         } catch {
             // Log more detailed error information
-            logger.error("Failed to start dev server: \(error.localizedDescription)")
+            self.logger.error("Failed to start dev server: \(error.localizedDescription)")
             throw error
         }
     }
 
     func stop() async {
         // Update state atomically using MainActor
-        switch state {
+        switch self.state {
         case .running, .crashed:
             break // Continue with stop
         default:
-            logger.warning("Bun server not running (state: \(String(describing: self.state)))")
+            self.logger.warning("Bun server not running (state: \(String(describing: self.state)))")
             return
         }
 
         // Prevent concurrent cleanup
-        if isCleaningUp {
-            logger.warning("Already cleaning up server")
+        if self.isCleaningUp {
+            self.logger.warning("Already cleaning up server")
             return
         }
 
-        state = .stopping
-        isCleaningUp = true
+        self.state = .stopping
+        self.isCleaningUp = true
 
         defer {
             state = .idle
@@ -640,16 +638,16 @@ final class BunServer {
         }
 
         guard let process else {
-            logger.warning("No process to stop")
-            await performCleanup()
+            self.logger.warning("No process to stop")
+            await self.performCleanup()
             return
         }
 
-        logger.info("Stopping Bun server")
+        self.logger.info("Stopping Bun server")
 
         // Cancel output monitoring tasks
-        outputTask?.cancel()
-        errorTask?.cancel()
+        self.outputTask?.cancel()
+        self.errorTask?.cancel()
 
         // Close pipes to trigger EOF in monitors
         if let pipe = self.stdoutPipe {
@@ -671,19 +669,19 @@ final class BunServer {
         if !terminated {
             // Force kill if termination timeout
             process.interrupt()
-            logger.warning("Force killed Bun server after timeout")
+            self.logger.warning("Force killed Bun server after timeout")
         }
 
         // Clean up
-        await performCleanup()
+        await self.performCleanup()
 
-        logger.info("Bun server stopped")
+        self.logger.info("Bun server stopped")
     }
 
     func restart() async throws {
-        logger.info("Restarting Bun server")
-        await stop()
-        try await start()
+        self.logger.info("Restarting Bun server")
+        await self.stop()
+        try await self.start()
     }
 
     func checkHealth() async -> Bool {
@@ -697,12 +695,12 @@ final class BunServer {
     }
 
     func cleanup() async {
-        await stop()
+        await self.stop()
     }
 
     /// Get current server state
     func getState() -> ServerState {
-        state
+        self.state
     }
 
     // MARK: - Private Methods
@@ -721,7 +719,7 @@ final class BunServer {
         guard let stdoutPipe = self.stdoutPipe,
               let stderrPipe = self.stderrPipe
         else {
-            logger.warning("No pipes available for monitoring")
+            self.logger.warning("No pipes available for monitoring")
             return
         }
 
@@ -731,7 +729,7 @@ final class BunServer {
         let logHandler = LogHandler()
 
         // Monitor stdout on background thread with DispatchSource
-        outputTask = Task.detached { [logHandler] in
+        self.outputTask = Task.detached { [logHandler] in
             let pipe = stdoutPipe
 
             let handle = pipe.fileHandleForReading
@@ -749,7 +747,7 @@ final class BunServer {
             source.setEventHandler { [logHandler] in
                 // Read data in a non-blocking way to prevent hangs on large output
                 var buffer = Data()
-                let maxBytesPerRead = 65_536 // 64KB chunks
+                let maxBytesPerRead = 65536 // 64KB chunks
 
                 // Read available data without blocking
                 while true {
@@ -778,7 +776,7 @@ final class BunServer {
                         return
                     } else {
                         // Error occurred
-                        if errno != EAGAIN && errno != EWOULDBLOCK {
+                        if errno != EAGAIN, errno != EWOULDBLOCK {
                             logger.error("Read error on stdout: \(String(cString: strerror(errno)))")
                             cancelSource()
                             return
@@ -810,7 +808,7 @@ final class BunServer {
         }
 
         // Monitor stderr on background thread with DispatchSource
-        errorTask = Task.detached { [logHandler] in
+        self.errorTask = Task.detached { [logHandler] in
             let pipe = stderrPipe
 
             let handle = pipe.fileHandleForReading
@@ -828,7 +826,7 @@ final class BunServer {
             source.setEventHandler { [logHandler] in
                 // Read data in a non-blocking way to prevent hangs on large output
                 var buffer = Data()
-                let maxBytesPerRead = 65_536 // 64KB chunks
+                let maxBytesPerRead = 65536 // 64KB chunks
 
                 // Read available data without blocking
                 while true {
@@ -857,7 +855,7 @@ final class BunServer {
                         return
                     } else {
                         // Error occurred
-                        if errno != EAGAIN && errno != EWOULDBLOCK {
+                        if errno != EAGAIN, errno != EWOULDBLOCK {
                             logger.error("Read error on stderr: \(String(cString: strerror(errno)))")
                             cancelSource()
                             return
@@ -893,20 +891,19 @@ final class BunServer {
         let lowercased = line.lowercased()
 
         if isError || lowercased.contains("error") || lowercased.contains("failed") || lowercased.contains("fatal") {
-            serverOutput.error("\(line, privacy: .public)")
+            self.serverOutput.error("\(line, privacy: .public)")
         } else if lowercased.contains("warn") || lowercased.contains("warning") {
-            serverOutput.warning("\(line, privacy: .public)")
+            self.serverOutput.warning("\(line, privacy: .public)")
         } else if lowercased.contains("debug") || lowercased.contains("verbose") {
-            serverOutput.debug("\(line, privacy: .public)")
+            self.serverOutput.debug("\(line, privacy: .public)")
         } else {
-            serverOutput.info("\(line, privacy: .public)")
+            self.serverOutput.info("\(line, privacy: .public)")
         }
     }
 
     private func withTimeoutOrNil<T: Sendable>(
         seconds: TimeInterval,
-        operation: @escaping @Sendable () async -> T
-    )
+        operation: @escaping @Sendable () async -> T)
         async -> T?
     {
         await withTaskGroup(of: T?.self) { group in
@@ -937,17 +934,17 @@ final class BunServer {
 
         // Check if process is still valid before accessing terminationStatus
         guard self.process != nil else {
-            logger.warning("Process was deallocated during termination monitoring")
+            self.logger.warning("Process was deallocated during termination monitoring")
             return
         }
 
         let exitCode = process.terminationStatus
 
         // Check current state
-        let currentState = state
+        let currentState = self.state
         let wasRunning = currentState == .running
         if wasRunning {
-            state = .crashed
+            self.state = .crashed
         }
 
         if wasRunning {
@@ -1000,7 +997,7 @@ enum BunServerError: LocalizedError, Equatable {
             "Server port is not configured"
         case .invalidState:
             "Server is in an invalid state for this operation"
-        case .devServerInvalid(let reason):
+        case let .devServerInvalid(reason):
             "Dev server configuration invalid: \(reason)"
         }
     }
@@ -1011,7 +1008,7 @@ enum BunServerError: LocalizedError, Equatable {
 extension BunServer {
     /// Process output with chunking for large lines and rate limiting awareness
     fileprivate nonisolated static func processOutputStatic(_ output: String, logHandler: LogHandler, isError: Bool) {
-        let maxLineLength = 4_096 // Max chars per log line to avoid os.log truncation
+        let maxLineLength = 4096 // Max chars per log line to avoid os.log truncation
         let lines = output.trimmingCharacters(in: .whitespacesAndNewlines)
             .components(separatedBy: .newlines)
 
@@ -1039,7 +1036,7 @@ extension BunServer {
 
                     // Add small delay between chunks to avoid rate limiting
                     if chunkNumber.isMultiple(of: 10) {
-                        usleep(1_000) // 1ms delay every 10 chunks
+                        usleep(1000) // 1ms delay every 10 chunks
                     }
                 }
             } else {
@@ -1060,13 +1057,13 @@ private final class LogHandler: Sendable {
         let lowercased = line.lowercased()
 
         if isError || lowercased.contains("error") || lowercased.contains("failed") || lowercased.contains("fatal") {
-            serverOutput.error("\(line, privacy: .public)")
+            self.serverOutput.error("\(line, privacy: .public)")
         } else if lowercased.contains("warn") || lowercased.contains("warning") {
-            serverOutput.warning("\(line, privacy: .public)")
+            self.serverOutput.warning("\(line, privacy: .public)")
         } else if lowercased.contains("debug") || lowercased.contains("verbose") {
-            serverOutput.debug("\(line, privacy: .public)")
+            self.serverOutput.debug("\(line, privacy: .public)")
         } else {
-            serverOutput.info("\(line, privacy: .public)")
+            self.serverOutput.info("\(line, privacy: .public)")
         }
     }
 }

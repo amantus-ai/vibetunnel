@@ -63,7 +63,7 @@ enum GitApp: String, CaseIterable {
     }
 
     var isInstalled: Bool {
-        NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) != nil
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: self.bundleIdentifier) != nil
     }
 
     var appIcon: NSImage? {
@@ -79,7 +79,7 @@ enum GitApp: String, CaseIterable {
 
     /// Get the actual bundle identifier to use
     var actualBundleIdentifier: String? {
-        isInstalled ? bundleIdentifier : nil
+        self.isInstalled ? self.bundleIdentifier : nil
     }
 }
 
@@ -91,11 +91,11 @@ final class GitAppLauncher {
     private let logger = Logger(subsystem: BundleIdentifiers.main, category: "GitAppLauncher")
 
     private init() {
-        performFirstRunAutoDetection()
+        self.performFirstRunAutoDetection()
     }
 
     func openRepository(at path: String) {
-        let gitApp = getValidGitApp()
+        let gitApp = self.getValidGitApp()
         let url = URL(fileURLWithPath: path)
 
         if let bundleId = gitApp.actualBundleIdentifier,
@@ -104,8 +104,7 @@ final class GitAppLauncher {
             NSWorkspace.shared.open(
                 [url],
                 withApplicationAt: appURL,
-                configuration: NSWorkspace.OpenConfiguration()
-            )
+                configuration: NSWorkspace.OpenConfiguration())
         } else {
             // Fallback to Finder
             NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
@@ -130,13 +129,13 @@ final class GitAppLauncher {
         let hasSetPreference = AppConstants.getPreferredGitApp() != nil
 
         if !hasSetPreference {
-            logger.info("First run detected, auto-detecting preferred Git app")
+            self.logger.info("First run detected, auto-detecting preferred Git app")
 
             // Check installed git apps
             let installedGitApps = GitApp.installed
             if let bestGitApp = installedGitApps.max(by: { $0.detectionPriority < $1.detectionPriority }) {
                 AppConstants.setPreferredGitApp(bestGitApp.rawValue)
-                logger.info("Auto-detected and set preferred Git app to: \(bestGitApp.rawValue)")
+                self.logger.info("Auto-detected and set preferred Git app to: \(bestGitApp.rawValue)")
             }
         }
     }

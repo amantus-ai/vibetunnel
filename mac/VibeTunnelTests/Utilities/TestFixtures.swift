@@ -10,14 +10,12 @@ enum TestFixtures {
         createdAt: Date = Date(),
         lastActivity: Date = Date(),
         processID: Int32? = nil,
-        isActive: Bool = true
-    )
+        isActive: Bool = true)
         -> TunnelSession
     {
         var session = TunnelSession(
             id: UUID(uuidString: id) ?? UUID(),
-            processID: processID
-        )
+            processID: processID)
         session.isActive = isActive
         return session
     }
@@ -28,28 +26,24 @@ enum TestFixtures {
             username: "test-user",
             homeDirectory: "/Users/test",
             operatingSystem: "macOS",
-            architecture: "arm64"
-        )
+            architecture: "arm64")
     }
 
     static func createSessionRequest(
-        clientInfo: TunnelSession.ClientInfo? = nil
-    )
+        clientInfo: TunnelSession.ClientInfo? = nil)
         -> TunnelSession.CreateRequest
     {
-        TunnelSession.CreateRequest(clientInfo: clientInfo ?? defaultClientInfo())
+        TunnelSession.CreateRequest(clientInfo: clientInfo ?? self.defaultClientInfo())
     }
 
     static func createSessionResponse(
         id: String = "00000000-0000-0000-0000-000000000123",
-        session: TunnelSession? = nil
-    )
+        session: TunnelSession? = nil)
         -> TunnelSession.CreateResponse
     {
         TunnelSession.CreateResponse(
             id: id,
-            session: session ?? createSession(id: id)
-        )
+            session: session ?? self.createSession(id: id))
     }
 
     // MARK: - Command Fixtures
@@ -58,38 +52,33 @@ enum TestFixtures {
         sessionId: String = "00000000-0000-0000-0000-000000000123",
         command: String = "echo 'test'",
         environment: [String: String]? = nil,
-        workingDirectory: String? = nil
-    )
+        workingDirectory: String? = nil)
         -> TunnelSession.ExecuteCommandRequest
     {
         TunnelSession.ExecuteCommandRequest(
             sessionId: sessionId,
             command: command,
             environment: environment,
-            workingDirectory: workingDirectory
-        )
+            workingDirectory: workingDirectory)
     }
 
     static func executeCommandResponse(
         exitCode: Int32 = 0,
         stdout: String = "test output",
-        stderr: String = ""
-    )
+        stderr: String = "")
         -> TunnelSession.ExecuteCommandResponse
     {
         TunnelSession.ExecuteCommandResponse(
             exitCode: exitCode,
             stdout: stdout,
-            stderr: stderr
-        )
+            stderr: stderr)
     }
 
     // MARK: - Error Response Fixtures
 
     static func errorResponse(
         error: String = "Test error",
-        code: String? = "TEST_ERROR"
-    )
+        code: String? = "TEST_ERROR")
         -> TunnelSession.ErrorResponse
     {
         TunnelSession.ErrorResponse(error: error, code: code)
@@ -109,7 +98,7 @@ enum TestFixtures {
     }()
 
     static func date(from string: String) -> Date {
-        iso8601Formatter.date(from: string) ?? Date()
+        self.iso8601Formatter.date(from: string) ?? Date()
     }
 }
 
@@ -120,8 +109,7 @@ extension TestFixtures {
     static func waitFor(
         _ condition: @escaping () async -> Bool,
         timeout: TimeInterval = 1.0,
-        interval: TimeInterval = 0.1
-    )
+        interval: TimeInterval = 0.1)
         async throws
     {
         let deadline = Date().addingTimeInterval(timeout)

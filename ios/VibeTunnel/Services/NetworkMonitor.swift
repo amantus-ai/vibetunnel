@@ -26,7 +26,7 @@ final class NetworkMonitor: NetworkMonitoring {
     private let queue = DispatchQueue(label: "NetworkMonitor")
 
     private init() {
-        startMonitoring()
+        self.startMonitoring()
     }
 
     deinit {
@@ -34,7 +34,7 @@ final class NetworkMonitor: NetworkMonitoring {
     }
 
     private func startMonitoring() {
-        monitor.pathUpdateHandler = { [weak self] path in
+        self.monitor.pathUpdateHandler = { [weak self] path in
             Task { @MainActor [weak self] in
                 guard let self else { return }
 
@@ -55,17 +55,16 @@ final class NetworkMonitor: NetworkMonitoring {
                     // Post notification for other parts of the app
                     NotificationCenter.default.post(
                         name: self.isConnected ? .networkBecameAvailable : .networkBecameUnavailable,
-                        object: nil
-                    )
+                        object: nil)
                 }
             }
         }
 
-        monitor.start(queue: queue)
+        self.monitor.start(queue: self.queue)
     }
 
     private func stopMonitoring() {
-        monitor.cancel()
+        self.monitor.cancel()
     }
 
     /// Check if a specific host is reachable
@@ -81,10 +80,10 @@ final class NetworkMonitor: NetworkMonitoring {
             private var hasResponded = false
 
             func checkAndRespond() -> Bool {
-                if hasResponded {
+                if self.hasResponded {
                     return false
                 }
-                hasResponded = true
+                self.hasResponded = true
                 return true
             }
         }
@@ -142,7 +141,7 @@ struct OfflineBanner: ViewModifier {
         ZStack(alignment: .top) {
             content
 
-            if showBanner && !networkMonitor.isConnected {
+            if self.showBanner, !self.networkMonitor.isConnected {
                 VStack(spacing: 0) {
                     HStack {
                         Image(systemName: "wifi.slash")
@@ -157,7 +156,7 @@ struct OfflineBanner: ViewModifier {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
                     .background(Theme.Colors.errorAccent)
-                    .animation(.easeInOut(duration: 0.3), value: showBanner)
+                    .animation(.easeInOut(duration: 0.3), value: self.showBanner)
                     .transition(.move(edge: .top).combined(with: .opacity))
 
                     Spacer()
@@ -166,18 +165,18 @@ struct OfflineBanner: ViewModifier {
             }
         }
         .onAppear {
-            showBanner = true
+            self.showBanner = true
         }
-        .onChange(of: networkMonitor.isConnected) { oldValue, newValue in
-            if !oldValue && newValue {
+        .onChange(of: self.networkMonitor.isConnected) { oldValue, newValue in
+            if !oldValue, newValue {
                 // Coming back online - hide banner after delay
                 Task {
                     try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-                    showBanner = false
+                    self.showBanner = false
                 }
-            } else if oldValue && !newValue {
+            } else if oldValue, !newValue {
                 // Going offline - show banner immediately
-                showBanner = true
+                self.showBanner = true
             }
         }
     }
@@ -201,15 +200,15 @@ struct ConnectionStatusView: View {
     var body: some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(networkMonitor.isConnected ? Theme.Colors.successAccent : Theme.Colors.errorAccent)
+                .fill(self.networkMonitor.isConnected ? Theme.Colors.successAccent : Theme.Colors.errorAccent)
                 .frame(width: 8, height: 8)
 
-            Text(networkMonitor.isConnected ? "Online" : "Offline")
+            Text(self.networkMonitor.isConnected ? "Online" : "Offline")
                 .font(.caption)
                 .foregroundColor(Theme.Colors.terminalGray)
 
-            if networkMonitor.isConnected {
-                switch networkMonitor.connectionType {
+            if self.networkMonitor.isConnected {
+                switch self.networkMonitor.connectionType {
                 case .wifi:
                     Image(systemName: "wifi")
                         .font(.caption)
@@ -226,14 +225,14 @@ struct ConnectionStatusView: View {
                     EmptyView()
                 }
 
-                if networkMonitor.isExpensive {
+                if self.networkMonitor.isExpensive {
                     Image(systemName: "dollarsign.circle")
                         .font(.caption)
                         .foregroundColor(Theme.Colors.warningAccent)
                         .help("Connection may incur charges")
                 }
 
-                if networkMonitor.isConstrained {
+                if self.networkMonitor.isConstrained {
                     Image(systemName: "tortoise")
                         .font(.caption)
                         .foregroundColor(Theme.Colors.warningAccent)

@@ -3,23 +3,22 @@ import Observation
 import SwiftUI
 
 #if !SWIFT_PACKAGE
-    /// gross hack: https://stackoverflow.com/questions/26004684/nsstatusbarbutton-keep-highlighted?rq=4
-    /// Didn't manage to keep the highlighted state reliable active with any other way.
-    /// DO NOT CHANGE THIS! Yes, accessing AppDelegate is ugly, but it's the ONLY reliable way
-    /// to maintain button highlight state. All other approaches have been tried and failed.
-    extension NSStatusBarButton {
-        override public func mouseDown(with event: NSEvent) {
-            super.mouseDown(with: event)
-            self.highlight(true)
-            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100)) {
-                self
-                    .highlight(
-                        AppDelegate.shared?.statusBarController?.menuManager.customWindow?
-                            .isWindowVisible ?? false
-                    )
-            }
+/// gross hack: https://stackoverflow.com/questions/26004684/nsstatusbarbutton-keep-highlighted?rq=4
+/// Didn't manage to keep the highlighted state reliable active with any other way.
+/// DO NOT CHANGE THIS! Yes, accessing AppDelegate is ugly, but it's the ONLY reliable way
+/// to maintain button highlight state. All other approaches have been tried and failed.
+extension NSStatusBarButton {
+    override public func mouseDown(with event: NSEvent) {
+        super.mouseDown(with: event)
+        self.highlight(true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100)) {
+            self
+                .highlight(
+                    AppDelegate.shared?.statusBarController?.menuManager.customWindow?
+                        .isWindowVisible ?? false)
         }
     }
+}
 #endif
 
 /// Manages status bar menu behavior, providing left-click custom view and right-click context menu functionality.
@@ -62,7 +61,7 @@ final class StatusBarMenuManager: NSObject {
     private var isNewSessionActive = false {
         didSet {
             // Update window when state changes
-            customWindow?.isNewSessionActive = isNewSessionActive
+            self.customWindow?.isNewSessionActive = self.isNewSessionActive
         }
     }
 
@@ -90,16 +89,16 @@ final class StatusBarMenuManager: NSObject {
 
     private func updateMenuState(_ newState: MenuState, button: NSStatusBarButton? = nil) {
         // Update state
-        menuState = newState
+        self.menuState = newState
 
         // Update button reference if provided
         if let button {
-            statusBarButton = button
+            self.statusBarButton = button
         }
 
         // Reset button state when no menu is active
         if newState == .none {
-            statusBarButton?.state = .off
+            self.statusBarButton?.state = .off
         }
     }
 
@@ -107,9 +106,9 @@ final class StatusBarMenuManager: NSObject {
 
     func toggleCustomWindow(relativeTo button: NSStatusBarButton) {
         if let window = customWindow, window.isVisible {
-            hideCustomWindow()
+            self.hideCustomWindow()
         } else {
-            showCustomWindow(relativeTo: button)
+            self.showCustomWindow(relativeTo: button)
         }
     }
 
@@ -125,7 +124,7 @@ final class StatusBarMenuManager: NSObject {
               let worktreeService else { return }
 
         // Update menu state to custom window FIRST before any async operations
-        updateMenuState(.customWindow, button: button)
+        self.updateMenuState(.customWindow, button: button)
 
         // Create SessionService instance
         let sessionService = SessionService(serverManager: serverManager, sessionMonitor: sessionMonitor)
@@ -133,8 +132,7 @@ final class StatusBarMenuManager: NSObject {
         // Create the main view with all dependencies and binding
         let sessionBinding = Binding(
             get: { [weak self] in self?.isNewSessionActive ?? false },
-            set: { [weak self] in self?.isNewSessionActive = $0 }
-        )
+            set: { [weak self] in self?.isNewSessionActive = $0 })
         let mainView = VibeTunnelMenuView(isNewSessionActive: sessionBinding)
             .environment(sessionMonitor)
             .environment(serverManager)
@@ -153,17 +151,17 @@ final class StatusBarMenuManager: NSObject {
         }
 
         // Hide and cleanup old window before creating new one
-        customWindow?.hide()
-        customWindow = nil
-        customWindow = CustomMenuWindow(contentView: containerView)
+        self.customWindow?.hide()
+        self.customWindow = nil
+        self.customWindow = CustomMenuWindow(contentView: containerView)
 
         // Set up callbacks for window show/hide
-        customWindow?.onShow = { [weak self] in
+        self.customWindow?.onShow = { [weak self] in
             // Start monitoring git repositories for updates every 5 seconds
             self?.gitRepositoryMonitor?.startMonitoring()
         }
 
-        customWindow?.onHide = { [weak self] in
+        self.customWindow?.onHide = { [weak self] in
             self?.statusBarButton?.highlight(false)
 
             // Stop monitoring git repositories when menu closes
@@ -177,58 +175,58 @@ final class StatusBarMenuManager: NSObject {
 
         // Sync the new session state with the window
         if let window = customWindow {
-            window.isNewSessionActive = isNewSessionActive
+            window.isNewSessionActive = self.isNewSessionActive
         }
 
         // Show the custom window
-        customWindow?.show(relativeTo: button)
-        statusBarButton?.highlight(true)
+        self.customWindow?.show(relativeTo: button)
+        self.statusBarButton?.highlight(true)
     }
 
     func hideCustomWindow() {
-        if customWindow?.isWindowVisible ?? false {
-            customWindow?.hide()
+        if self.customWindow?.isWindowVisible ?? false {
+            self.customWindow?.hide()
         }
         // Reset new session state when hiding
-        isNewSessionActive = false
+        self.isNewSessionActive = false
         // Button state will be reset by updateMenuState(.none) in the onHide callback
     }
 
     var isCustomWindowVisible: Bool {
-        customWindow?.isWindowVisible ?? false
+        self.customWindow?.isWindowVisible ?? false
     }
 
     // MARK: - Menu State Management
 
     func hideAllMenus() {
-        hideCustomWindow()
+        self.hideCustomWindow()
         // If there's a context menu showing, dismiss it
-        if menuState == .contextMenu, let statusItem = currentStatusItem {
+        if self.menuState == .contextMenu, let statusItem = currentStatusItem {
             statusItem.menu = nil
         }
         // Reset state to none
-        updateMenuState(.none)
+        self.updateMenuState(.none)
     }
 
     var isAnyMenuVisible: Bool {
         // Check both the menu state and the actual window visibility
-        menuState != .none || (customWindow?.isWindowVisible ?? false)
+        self.menuState != .none || (self.customWindow?.isWindowVisible ?? false)
     }
 
     // MARK: - Right-Click Context Menu
 
     func showContextMenu(for button: NSStatusBarButton, statusItem: NSStatusItem) {
         // Hide custom window first if it's visible
-        hideCustomWindow()
+        self.hideCustomWindow()
 
         // Store status item reference
-        currentStatusItem = statusItem
+        self.currentStatusItem = statusItem
 
         // Set the button's state to on for context menu
         button.state = .on
 
         // Update menu state to context menu
-        updateMenuState(.contextMenu, button: button)
+        self.updateMenuState(.contextMenu, button: button)
 
         let menu = NSMenu()
         menu.delegate = self
@@ -334,7 +332,7 @@ final class StatusBarMenuManager: NSObject {
     @objc
     private func showTutorial() {
         #if !SWIFT_PACKAGE
-            AppDelegate.showWelcomeScreen()
+        AppDelegate.showWelcomeScreen()
         #endif
     }
 
@@ -364,8 +362,7 @@ final class StatusBarMenuManager: NSObject {
             try? await Task.sleep(for: .milliseconds(100))
             NotificationCenter.default.post(
                 name: .openSettingsTab,
-                object: SettingsTab.about
-            )
+                object: SettingsTab.about)
         }
     }
 
@@ -389,10 +386,10 @@ final class StatusBarMenuManager: NSObject {
 extension StatusBarMenuManager: NSMenuDelegate {
     func menuDidClose(_ menu: NSMenu) {
         // Reset button state
-        statusBarButton?.state = .off
+        self.statusBarButton?.state = .off
 
         // Reset menu state when context menu closes
-        updateMenuState(.none)
+        self.updateMenuState(.none)
 
         // Clean up the menu from status item
         if let statusItem = currentStatusItem {
@@ -400,6 +397,6 @@ extension StatusBarMenuManager: NSMenuDelegate {
         }
 
         // Clear the stored reference
-        currentStatusItem = nil
+        self.currentStatusItem = nil
     }
 }

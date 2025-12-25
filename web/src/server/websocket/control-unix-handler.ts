@@ -266,16 +266,18 @@ export class ControlUnixHandler {
     }
 
     socket.on('data', (data) => {
+      const chunk = Buffer.isBuffer(data) ? data : Buffer.from(data);
+
       // Append new data to our buffer
-      this.messageBuffer = Buffer.concat([this.messageBuffer, data]);
+      this.messageBuffer = Buffer.concat([this.messageBuffer, chunk]);
 
       logger.log(
-        `📥 Received from Mac: ${data.length} bytes, buffer size: ${this.messageBuffer.length}`
+        `📥 Received from Mac: ${chunk.length} bytes, buffer size: ${this.messageBuffer.length}`
       );
 
       // Log first few bytes for debugging
-      if (data.length > 0) {
-        const preview = data.subarray(0, Math.min(data.length, 50));
+      if (chunk.length > 0) {
+        const preview = chunk.subarray(0, Math.min(chunk.length, 50));
         logger.debug(`📋 Data preview (first ${preview.length} bytes):`, preview.toString('hex'));
       }
 

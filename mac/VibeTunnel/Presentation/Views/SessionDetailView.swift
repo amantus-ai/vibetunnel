@@ -43,19 +43,19 @@ struct SessionDetailView: View {
 
                         Spacer()
 
-                        StatusBadge(isRunning: session.isRunning)
+                        StatusBadge(isRunning: self.session.isRunning)
                     }
                 }
                 .padding(.bottom, 10)
 
                 // Session Information
                 VStack(alignment: .leading, spacing: 16) {
-                    DetailRow(label: "Session ID", value: session.id)
-                    DetailRow(label: "Command", value: session.command.joined(separator: " "))
-                    DetailRow(label: "Working Directory", value: session.workingDir)
-                    DetailRow(label: "Status", value: session.status.capitalized)
-                    DetailRow(label: "Started At", value: formatDate(session.startedAt))
-                    DetailRow(label: "Last Modified", value: formatDate(session.lastModified))
+                    DetailRow(label: "Session ID", value: self.session.id)
+                    DetailRow(label: "Command", value: self.session.command.joined(separator: " "))
+                    DetailRow(label: "Working Directory", value: self.session.workingDir)
+                    DetailRow(label: "Status", value: self.session.status.capitalized)
+                    DetailRow(label: "Started At", value: self.formatDate(self.session.startedAt))
+                    DetailRow(label: "Last Modified", value: self.formatDate(self.session.lastModified))
 
                     if let pid = session.pid {
                         DetailRow(label: "Process ID", value: "\(pid)")
@@ -71,15 +71,15 @@ struct SessionDetailView: View {
                 // Action Buttons
                 HStack {
                     Button("Open in Terminal") {
-                        openInTerminal()
+                        self.openInTerminal()
                     }
                     .controlSize(.large)
 
                     Spacer()
 
-                    if session.isRunning {
+                    if self.session.isRunning {
                         Button("Terminate Session") {
-                            terminateSession()
+                            self.terminateSession()
                         }
                         .controlSize(.large)
                         .foregroundColor(.red)
@@ -105,8 +105,7 @@ struct SessionDetailView: View {
                         if let bounds = windowInfo.bounds {
                             DetailRow(
                                 label: "Position",
-                                value: "X: \(Int(bounds.origin.x)), Y: \(Int(bounds.origin.y))"
-                            )
+                                value: "X: \(Int(bounds.origin.x)), Y: \(Int(bounds.origin.y))")
                             DetailRow(label: "Size", value: "\(Int(bounds.width)) × \(Int(bounds.height))")
                         }
 
@@ -116,34 +115,33 @@ struct SessionDetailView: View {
 
                         HStack {
                             Button("Focus Window") {
-                                focusWindow()
+                                self.focusWindow()
                             }
                             .controlSize(.regular)
                         }
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 12) {
-                        if windowSearchAttempted {
+                        if self.windowSearchAttempted {
                             Label("No window found", systemImage: "exclamationmark.triangle")
                                 .foregroundColor(.orange)
                                 .font(.headline)
 
                             Text(
-                                "Could not find a terminal window for this session. The window may have been closed or the session was started outside VibeTunnel."
-                            )
-                            .foregroundColor(.secondary)
-                            .font(.caption)
-                            .fixedSize(horizontal: false, vertical: true)
+                                "Could not find a terminal window for this session. The window may have been closed or the session was started outside VibeTunnel.")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                                .fixedSize(horizontal: false, vertical: true)
                         } else {
                             Text("No window information available")
                                 .foregroundColor(.secondary)
                         }
 
-                        Button(isFindingWindow ? "Searching..." : "Find Window") {
-                            findWindow()
+                        Button(self.isFindingWindow ? "Searching..." : "Find Window") {
+                            self.findWindow()
                         }
                         .controlSize(.regular)
-                        .disabled(isFindingWindow)
+                        .disabled(self.isFindingWindow)
                     }
                     .padding(.vertical, 20)
                 }
@@ -155,23 +153,23 @@ struct SessionDetailView: View {
         .padding(30)
         .frame(minWidth: 900, minHeight: 450)
         .onAppear {
-            updateWindowTitle()
-            findWindow()
+            self.updateWindowTitle()
+            self.findWindow()
 
             // Check permissions
             Task {
-                await permissionManager.checkAllPermissions()
+                await self.permissionManager.checkAllPermissions()
             }
         }
-        .background(WindowAccessor(title: $windowTitle))
+        .background(WindowAccessor(title: self.$windowTitle))
     }
 
     private func updateWindowTitle() {
         let dir = URL(fileURLWithPath: session.workingDir).lastPathComponent
         if let pid = session.pid {
-            windowTitle = "\(dir) — VibeTunnel (PID: \(pid))"
+            self.windowTitle = "\(dir) — VibeTunnel (PID: \(pid))"
         } else {
-            windowTitle = "\(dir) — VibeTunnel"
+            self.windowTitle = "\(dir) — VibeTunnel"
         }
     }
 
@@ -193,13 +191,12 @@ struct SessionDetailView: View {
         do {
             let terminalLauncher = TerminalLauncher.shared
             try terminalLauncher.launchTerminalSession(
-                workingDirectory: session.workingDir,
-                command: session.command.joined(separator: " "),
-                sessionId: session.id
-            )
-            logger.info("Opened session \(session.id) in terminal")
+                workingDirectory: self.session.workingDir,
+                command: self.session.command.joined(separator: " "),
+                sessionId: self.session.id)
+            self.logger.info("Opened session \(self.session.id) in terminal")
         } catch {
-            logger.error("Failed to open session in terminal: \(error)")
+            self.logger.error("Failed to open session in terminal: \(error)")
             // Could show an alert here if needed
         }
     }
@@ -207,80 +204,76 @@ struct SessionDetailView: View {
     private func terminateSession() {
         Task {
             do {
-                try await sessionService.terminateSession(sessionId: session.id)
-                logger.info("Terminated session \(session.id)")
+                try await self.sessionService.terminateSession(sessionId: self.session.id)
+                self.logger.info("Terminated session \(self.session.id)")
                 // The view will automatically update when session is removed from monitor
                 // You could dismiss the window here if desired
             } catch {
-                logger.error("Failed to terminate session: \(error)")
+                self.logger.error("Failed to terminate session: \(error)")
                 // Could show an alert here if needed
             }
         }
     }
 
     private func findWindow() {
-        isFindingWindow = true
-        windowSearchAttempted = true
+        self.isFindingWindow = true
+        self.windowSearchAttempted = true
 
         Task { @MainActor in
             defer {
                 isFindingWindow = false
             }
 
-            logger.info("Looking for window associated with session \(session.id)")
+            self.logger.info("Looking for window associated with session \(self.session.id)")
 
             // First, check if WindowTracker already has window info for this session
             if let trackedWindow = WindowTracker.shared.windowInfo(for: session.id) {
-                logger
+                self.logger
                     .info(
-                        "Found tracked window for session \(session.id): windowID=\(trackedWindow.windowID), terminal=\(trackedWindow.terminalApp.rawValue)"
-                    )
+                        "Found tracked window for session \(self.session.id): windowID=\(trackedWindow.windowID), terminal=\(trackedWindow.terminalApp.rawValue)")
                 self.windowInfo = trackedWindow
                 return
             }
 
-            logger.info("No tracked window found for session \(session.id), attempting to find it...")
+            self.logger.info("No tracked window found for session \(self.session.id), attempting to find it...")
 
             // Get all terminal windows for debugging
             let allWindows = WindowEnumerator.getAllTerminalWindows()
-            logger.info("Found \(allWindows.count) terminal windows currently open")
+            self.logger.info("Found \(allWindows.count) terminal windows currently open")
 
             // Log details about each window for debugging
             for (index, window) in allWindows.enumerated() {
-                logger
+                self.logger
                     .debug(
-                        "Window \(index): terminal=\(window.terminalApp.rawValue), windowID=\(window.windowID), ownerPID=\(window.ownerPID), title=\(window.title ?? "<no title>")"
-                    )
+                        "Window \(index): terminal=\(window.terminalApp.rawValue), windowID=\(window.windowID), ownerPID=\(window.ownerPID), title=\(window.title ?? "<no title>")")
             }
 
             // Log session details for debugging
-            logger
+            self.logger
                 .info(
-                    "Session details: id=\(session.id), pid=\(session.pid ?? -1), workingDir=\(session.workingDir)"
-                )
+                    "Session details: id=\(self.session.id), pid=\(self.session.pid ?? -1), workingDir=\(self.session.workingDir)")
 
             // Try to match by various criteria
             if let pid = session.pid {
-                logger.info("Looking for window with PID \(pid)...")
+                self.logger.info("Looking for window with PID \(pid)...")
                 if let window = allWindows.first(where: { $0.ownerPID == pid }) {
-                    logger.info("Found window by PID match: windowID=\(window.windowID)")
+                    self.logger.info("Found window by PID match: windowID=\(window.windowID)")
                     self.windowInfo = window
                     // Register this window with WindowTracker for future use
                     WindowTracker.shared.registerWindow(
-                        for: session.id,
+                        for: self.session.id,
                         terminalApp: window.terminalApp,
                         tabReference: nil,
-                        tabID: nil
-                    )
+                        tabID: nil)
                     return
                 } else {
-                    logger.warning("No window found with PID \(pid)")
+                    self.logger.warning("No window found with PID \(pid)")
                 }
             }
 
             // Try to find by window title containing working directory
             let workingDirName = URL(fileURLWithPath: session.workingDir).lastPathComponent
-            logger.info("Looking for window with title containing '\(workingDirName)'...")
+            self.logger.info("Looking for window with title containing '\(workingDirName)'...")
 
             if let window = allWindows.first(where: { window in
                 if let title = window.title {
@@ -288,44 +281,42 @@ struct SessionDetailView: View {
                 }
                 return false
             }) {
-                logger.info("Found window by title match: windowID=\(window.windowID), title=\(window.title ?? "")")
+                self.logger
+                    .info("Found window by title match: windowID=\(window.windowID), title=\(window.title ?? "")")
                 self.windowInfo = window
                 // Register this window with WindowTracker for future use
                 WindowTracker.shared.registerWindow(
-                    for: session.id,
+                    for: self.session.id,
                     terminalApp: window.terminalApp,
                     tabReference: nil,
-                    tabID: nil
-                )
+                    tabID: nil)
                 return
             }
 
-            logger
+            self.logger
                 .warning(
-                    "Could not find window for session \(session.id) after checking all \(allWindows.count) terminal windows"
-                )
-            logger.warning("Session may not have an associated terminal window or window detection failed")
+                    "Could not find window for session \(self.session.id) after checking all \(allWindows.count) terminal windows")
+            self.logger.warning("Session may not have an associated terminal window or window detection failed")
         }
     }
 
     private func focusWindow() {
         // Use WindowTracker's existing focus logic which handles all the complexity
-        logger.info("Attempting to focus window for session \(session.id)")
+        self.logger.info("Attempting to focus window for session \(self.session.id)")
 
         // First ensure we have window info
         if windowInfo == nil {
-            logger.info("No window info cached, trying to find window first...")
-            findWindow()
+            self.logger.info("No window info cached, trying to find window first...")
+            self.findWindow()
         }
 
         if let windowInfo {
-            logger
+            self.logger
                 .info(
-                    "Using WindowTracker to focus window: windowID=\(windowInfo.windowID), terminal=\(windowInfo.terminalApp.rawValue)"
-                )
-            WindowTracker.shared.focusWindow(for: session.id)
+                    "Using WindowTracker to focus window: windowID=\(windowInfo.windowID), terminal=\(windowInfo.terminalApp.rawValue)")
+            WindowTracker.shared.focusWindow(for: self.session.id)
         } else {
-            logger.error("Cannot focus window - no window found for session \(session.id)")
+            self.logger.error("Cannot focus window - no window found for session \(self.session.id)")
         }
     }
 }
@@ -342,12 +333,12 @@ struct DetailRow: View {
 
     var body: some View {
         HStack(alignment: .top) {
-            Text(label + ":")
+            Text(self.label + ":")
                 .fontWeight(.medium)
                 .foregroundColor(.secondary)
                 .frame(width: 140, alignment: .trailing)
 
-            Text(value)
+            Text(self.value)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -364,20 +355,19 @@ struct StatusBadge: View {
     var body: some View {
         HStack(spacing: 6) {
             Circle()
-                .fill(isRunning ? Color.green : Color.red)
+                .fill(self.isRunning ? Color.green : Color.red)
                 .frame(width: 10, height: 10)
 
-            Text(isRunning ? "Running" : "Stopped")
+            Text(self.isRunning ? "Running" : "Stopped")
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundColor(isRunning ? .green : .red)
+                .foregroundColor(self.isRunning ? .green : .red)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isRunning ? Color.green.opacity(0.1) : Color.red.opacity(0.1))
-        )
+                .fill(self.isRunning ? Color.green.opacity(0.1) : Color.red.opacity(0.1)))
     }
 }
 
@@ -423,7 +413,7 @@ struct WindowAccessor: NSViewRepresentable {
         @MainActor
         func startObserving(window: NSWindow, binding: Binding<String>) {
             // Update the binding when window title changes
-            observation = window.observe(\.title, options: [.new]) { _, change in
+            self.observation = window.observe(\.title, options: [.new]) { _, change in
                 if let newTitle = change.newValue {
                     DispatchQueue.main.async {
                         binding.wrappedValue = newTitle

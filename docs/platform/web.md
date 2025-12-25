@@ -3,7 +3,7 @@
 ## Setup
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 22.12+
 - Bun 1.0+
 - pnpm 8+
 
@@ -42,43 +42,16 @@ web/
 
 | Service | File | Purpose |
 |---------|------|---------|
-| TerminalManager | `services/terminal-manager.ts` | PTY lifecycle |
-| SessionManager | `services/session-manager.ts` | Session state |
-| BufferAggregator | `services/buffer-aggregator.ts` | Output batching |
-| AuthService | `services/auth.ts` | Authentication |
+| PtyManager | `server/pty/pty-manager.ts` | PTY lifecycle + input/resize |
+| SessionManager | `server/pty/session-manager.ts` | On-disk session metadata + stdout/stderr paths |
+| TerminalManager | `server/services/terminal-manager.ts` | Server-side terminal state + VT snapshots |
+| CastOutputHub | `server/services/cast-output-hub.ts` | Stdout tail + pruning (`lastClearOffset`) |
+| GitStatusHub | `server/services/git-status-hub.ts` | Git status updates for sessions |
+| WsV3Hub | `server/services/ws-v3-hub.ts` | Unified WebSocket v3 transport (`/ws`) |
 
 ### API Routes
-
-```typescript
-// routes/api.ts
-router.post('/api/sessions', createSession);
-router.get('/api/sessions', listSessions);
-router.get('/api/sessions/:id', getSession);
-router.delete('/api/sessions/:id', deleteSession);
-router.ws('/api/sessions/:id/ws', handleWebSocket);
-```
-
-### WebSocket Handler
-
-```typescript
-// services/websocket-handler.ts
-export async function handleWebSocket(ws: WebSocket, sessionId: string) {
-  const session = await sessionManager.get(sessionId);
-  
-  // Binary protocol for terminal data
-  session.onData((data: Buffer) => {
-    ws.send(encodeBuffer(data));
-  });
-  
-  // Handle client messages
-  ws.on('message', (msg: Buffer) => {
-    const data = JSON.parse(msg.toString());
-    if (data.type === 'input') {
-      session.write(data.data);
-    }
-  });
-}
-```
+- HTTP: `/api/...` (sessions, git, config, worktrees)
+- WebSocket: `/ws` (binary v3 framing; see `docs/websocket.md`)
 
 ### PTY Management
 
@@ -131,41 +104,43 @@ export class TerminalView extends LitElement {
 ### WebSocket Client
 
 ```typescript
-// services/websocket-client.ts
-export class WebSocketClient {
-  private ws?: WebSocket;
-  
-  connect(sessionId: string): void {
-    this.ws = new WebSocket(`ws://localhost:4020/api/sessions/${sessionId}/ws`);
-    this.ws.binaryType = 'arraybuffer';
-    
-    this.ws.onmessage = (event) => {
-      if (event.data instanceof ArrayBuffer) {
-        const text = this.decodeBuffer(event.data);
-        this.onData?.(text);
-      }
-    };
-  }
-  
-  send(data: string): void {
-    this.ws?.send(JSON.stringify({ type: 'input', data }));
-  }
-}
+// services/terminal-socket-client.ts
+//
+// Single `/ws` WebSocket (v3 framing). Multiplexes sessions via `sessionId`.
+import { terminalSocketClient } from './services/terminal-socket-client.js';
+
+terminalSocketClient.initialize();
+
+const unsubscribe = terminalSocketClient.subscribe(sessionId, {
+  stdout: true,
+  snapshots: true,
+  events: true,
+  onStdout: (bytes) => {
+    // forward bytes to Ghostty renderer
+  },
+  onSnapshot: (snapshot) => {
+    // update preview / hard resync
+  },
+  onEvent: (event) => {
+    // handle exit, git-status, etc
+  },
+});
 ```
 
 ### Terminal Integration
 
 ```typescript
 // services/terminal-service.ts
-import { Terminal } from '@xterm/xterm';
-import { FitAddon } from '@xterm/addon-fit';
+import { Ghostty, Terminal, FitAddon } from 'ghostty-web';
 
 export class TerminalService {
   private terminal: Terminal;
   private fitAddon: FitAddon;
   
-  initialize(container: HTMLElement): void {
+  async initialize(container: HTMLElement): Promise<void> {
+    const ghostty = await Ghostty.load('/ghostty-vt.wasm');
     this.terminal = new Terminal({
+      ghostty,
       theme: {
         background: '#1e1e1e',
         foreground: '#ffffff'
@@ -251,9 +226,9 @@ test('create and connect to session', async ({ page }) => {
 
 | Technique | Implementation | Impact |
 |-----------|---------------|--------|
-| Buffer aggregation | Batch every 16ms | 90% fewer messages |
-| Binary protocol | Magic byte encoding | 50% smaller payload |
-| Virtual scrolling | xterm.js built-in | Handles 100K+ lines |
+| Multiplexed transport | `/ws` WebSocket v3 framing | One socket for all sessions |
+| Snapshot previews | VT snapshot v1 (`SNAPSHOT_VT`) | Fast previews / hard resync |
+| Virtual scrolling | ghostty-web scrollback | Handles 100K+ lines |
 | Service worker | Cache static assets | Instant load |
 
 ### Benchmarks
@@ -289,8 +264,9 @@ DEBUG=vt:* pnpm dev:server
 ### Client Debugging
 
 ```javascript
-// Enable xterm.js debug mode
-terminal.options.logLevel = 'debug';
+// Terminal debugging
+const terminalEl = document.querySelector('vibe-terminal');
+console.log(terminalEl?.getDebugText?.({ maxLines: 50 }));
 
 // WebSocket debugging
 ws.addEventListener('message', (e) => {

@@ -159,7 +159,7 @@ Content-Type: application/json
 - `GET /api/sessions/:id` - Proxied to owning remote
 - `POST /api/sessions/:id/input` - Proxied to owning remote
 - `DELETE /api/sessions/:id` - Proxied to owning remote
-- `GET /api/sessions/:id/stream` - SSE stream proxied from remote
+- `GET /ws` (WebSocket) - Unified v3 terminal stream proxied/fanned-out via HQ
 
 ## Authentication Flow
 
@@ -169,9 +169,9 @@ Content-Type: application/json
 
 ## WebSocket Support
 
-- Buffer updates (`/buffers`) are aggregated from all remotes
-- Input WebSocket (`/ws/input`) connections are proxied to the owning remote
-- HQ maintains WebSocket connections and forwards messages transparently
+- Unified terminal transport: `/ws` (WebSocket v3 framing)
+- HQ keeps one upstream `/ws` connection per remote and fans out frames to clients
+- Subscription flags are aggregated per session (stdout/snapshots/events)
 
 ## Implementation Details
 

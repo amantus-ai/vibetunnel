@@ -29,7 +29,7 @@ struct MenuActionBar: View {
     var body: some View {
         HStack(spacing: 8) {
             Button(action: {
-                showingNewSession = true
+                self.showingNewSession = true
             }, label: {
                 Label("New Session", systemImage: "plus.circle")
                     .font(.system(size: 12))
@@ -38,28 +38,24 @@ struct MenuActionBar: View {
                     .background(
                         RoundedRectangle(cornerRadius: 8)
                             .fill(
-                                isHoveringNewSession ? AppColors.Fallback.controlBackground(for: colorScheme)
-                                    .opacity(colorScheme == .light ? 0.6 : 0.7) : Color.clear
-                            )
-                            .scaleEffect(isHoveringNewSession ? 1.08 : 1.0)
-                            .animation(.easeInOut(duration: 0.15), value: isHoveringNewSession)
-                    )
+                                self.isHoveringNewSession ? AppColors.Fallback.controlBackground(for: self.colorScheme)
+                                    .opacity(self.colorScheme == .light ? 0.6 : 0.7) : Color.clear)
+                            .scaleEffect(self.isHoveringNewSession ? 1.08 : 1.0)
+                            .animation(.easeInOut(duration: 0.15), value: self.isHoveringNewSession))
             })
             .buttonStyle(.plain)
             .foregroundColor(.primary)
             .onHover { hovering in
-                isHoveringNewSession = hovering
+                self.isHoveringNewSession = hovering
             }
             .focusable()
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
                     .strokeBorder(
-                        focusedField == .newSessionButton && hasStartedKeyboardNavigation ? AppColors.Fallback
-                            .accentHover(for: colorScheme).opacity(2) : Color.clear,
-                        lineWidth: 1
-                    )
-                    .animation(.easeInOut(duration: 0.15), value: focusedField)
-            )
+                        self.focusedField == .newSessionButton && self.hasStartedKeyboardNavigation ? AppColors.Fallback
+                            .accentHover(for: self.colorScheme).opacity(2) : Color.clear,
+                        lineWidth: 1)
+                    .animation(.easeInOut(duration: 0.15), value: self.focusedField))
 
             Button(action: {
                 SettingsOpener.openSettings()
@@ -71,28 +67,24 @@ struct MenuActionBar: View {
                     .background(
                         RoundedRectangle(cornerRadius: 8)
                             .fill(
-                                isHoveringSettings ? AppColors.Fallback.controlBackground(for: colorScheme)
-                                    .opacity(colorScheme == .light ? 0.6 : 0.7) : Color.clear
-                            )
-                            .scaleEffect(isHoveringSettings ? 1.08 : 1.0)
-                            .animation(.easeInOut(duration: 0.15), value: isHoveringSettings)
-                    )
+                                self.isHoveringSettings ? AppColors.Fallback.controlBackground(for: self.colorScheme)
+                                    .opacity(self.colorScheme == .light ? 0.6 : 0.7) : Color.clear)
+                            .scaleEffect(self.isHoveringSettings ? 1.08 : 1.0)
+                            .animation(.easeInOut(duration: 0.15), value: self.isHoveringSettings))
             })
             .buttonStyle(.plain)
             .foregroundColor(.secondary)
             .onHover { hovering in
-                isHoveringSettings = hovering
+                self.isHoveringSettings = hovering
             }
             .focusable()
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
                     .strokeBorder(
-                        focusedField == .settingsButton && hasStartedKeyboardNavigation ? AppColors.Fallback
-                            .accentHover(for: colorScheme).opacity(2) : Color.clear,
-                        lineWidth: 1
-                    )
-                    .animation(.easeInOut(duration: 0.15), value: focusedField)
-            )
+                        self.focusedField == .settingsButton && self.hasStartedKeyboardNavigation ? AppColors.Fallback
+                            .accentHover(for: self.colorScheme).opacity(2) : Color.clear,
+                        lineWidth: 1)
+                    .animation(.easeInOut(duration: 0.15), value: self.focusedField))
 
             Spacer()
 
@@ -106,28 +98,24 @@ struct MenuActionBar: View {
                     .background(
                         RoundedRectangle(cornerRadius: 8)
                             .fill(
-                                isHoveringQuit ? AppColors.Fallback.controlBackground(for: colorScheme)
-                                    .opacity(colorScheme == .light ? 0.6 : 0.7) : Color.clear
-                            )
-                            .scaleEffect(isHoveringQuit ? 1.08 : 1.0)
-                            .animation(.easeInOut(duration: 0.15), value: isHoveringQuit)
-                    )
+                                self.isHoveringQuit ? AppColors.Fallback.controlBackground(for: self.colorScheme)
+                                    .opacity(self.colorScheme == .light ? 0.6 : 0.7) : Color.clear)
+                            .scaleEffect(self.isHoveringQuit ? 1.08 : 1.0)
+                            .animation(.easeInOut(duration: 0.15), value: self.isHoveringQuit))
             })
             .buttonStyle(.plain)
             .foregroundColor(.secondary)
             .onHover { hovering in
-                isHoveringQuit = hovering
+                self.isHoveringQuit = hovering
             }
             .focusable()
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
                     .strokeBorder(
-                        focusedField == .quitButton && hasStartedKeyboardNavigation ? AppColors.Fallback
-                            .accentHover(for: colorScheme).opacity(2) : Color.clear,
-                        lineWidth: 1
-                    )
-                    .animation(.easeInOut(duration: 0.15), value: focusedField)
-            )
+                        self.focusedField == .quitButton && self.hasStartedKeyboardNavigation ? AppColors.Fallback
+                            .accentHover(for: self.colorScheme).opacity(2) : Color.clear,
+                        lineWidth: 1)
+                    .animation(.easeInOut(duration: 0.15), value: self.focusedField))
         }
         .padding(.horizontal)
         .padding(.vertical, 12)

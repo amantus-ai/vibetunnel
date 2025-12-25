@@ -67,7 +67,7 @@ await page.waitForFunction(() => {
   return terminal && (
     terminal.textContent?.trim().length > 0 ||
     !!terminal.shadowRoot ||
-    !!terminal.querySelector('.xterm')
+    !!terminal.querySelector('vibe-terminal')
   );
 });
 ```
@@ -229,7 +229,7 @@ When `spawnWindow` is false, terminals run server-side:
 // Create session with server-side terminal
 await sessionListPage.createNewSession(sessionName, false);
 
-// Wait for WebSocket/SSE connection
+// Wait for WebSocket v3 connection
 await page.locator('vibe-terminal').waitFor({ state: 'visible' });
 
 // Terminal content comes through WebSocket - no need for complex waits

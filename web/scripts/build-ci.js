@@ -45,6 +45,11 @@ if (fs.existsSync(path.join(__dirname, '../dist'))) {
   process.exit(1);
 }
 
+// Build zig forwarder first.
+// build-native.js verifies the forwarder in CI.
+console.log('Building zig forwarder...');
+execSync('node scripts/build-fwd-zig.js', { stdio: 'inherit' });
+
 // Build native executable in CI
 console.log('Building native executable for CI...');
 execSync('node build-native.js', { stdio: 'inherit' });

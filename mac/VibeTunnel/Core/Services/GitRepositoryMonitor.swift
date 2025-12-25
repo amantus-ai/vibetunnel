@@ -131,7 +131,7 @@ public final class GitRepositoryMonitor {
                 "Git command not found"
             case .invalidRepository:
                 "Not a valid git repository"
-            case .commandFailed(let error):
+            case let .commandFailed(error):
                 "Git command failed: \(error)"
             }
         }
@@ -140,7 +140,7 @@ public final class GitRepositoryMonitor {
     // MARK: - Lifecycle
 
     public init() {
-        gitOperationQueue.maxConcurrentOperationCount = 3 // Limit concurrent git processes
+        self.gitOperationQueue.maxConcurrentOperationCount = 3 // Limit concurrent git processes
     }
 
     // MARK: - Private Properties
@@ -190,18 +190,17 @@ public final class GitRepositoryMonitor {
                 endpoint: "/api/repositories/branches",
                 method: "GET",
                 queryItems: [URLQueryItem(name: "path", value: repoPath)],
-                responseType: [Branch].self
-            )
+                responseType: [Branch].self)
 
             // Filter to local branches only and extract names
             let localBranchNames = branches
                 .filter { !$0.remote }
                 .map(\.name)
 
-            logger.debug("Retrieved \(localBranchNames.count) local branches from server")
+            self.logger.debug("Retrieved \(localBranchNames.count) local branches from server")
             return localBranchNames
         } catch {
-            logger.error("Failed to get branches from server: \(error)")
+            self.logger.error("Failed to get branches from server: \(error)")
             return []
         }
     }
@@ -210,11 +209,11 @@ public final class GitRepositoryMonitor {
     /// - Parameter filePath: Path to a file within a potential Git repository
     /// - Returns: GitRepository information if found, nil otherwise
     public func findRepository(for filePath: String) async -> GitRepository? {
-        logger.info("🔍 findRepository called for: \(filePath)")
+        self.logger.info("🔍 findRepository called for: \(filePath)")
 
         // Validate path first
-        guard validatePath(filePath) else {
-            logger.warning("❌ Path validation failed for: \(filePath)")
+        guard self.validatePath(filePath) else {
+            self.logger.warning("❌ Path validation failed for: \(filePath)")
             return nil
         }
 
@@ -222,33 +221,32 @@ public final class GitRepositoryMonitor {
         if let nonGitCheck = nonGitPathCache[filePath],
            Date().timeIntervalSince(nonGitCheck) < 600.0
         { // 10 minutes for non-Git paths
-            logger.debug("⏭️ Skipping known non-Git path: \(filePath)")
+            self.logger.debug("⏭️ Skipping known non-Git path: \(filePath)")
             return nil
         }
 
         // Check cache first
         if let cached = getCachedRepository(for: filePath) {
-            logger.debug("📦 Found cached repository for: \(filePath)")
+            self.logger.debug("📦 Found cached repository for: \(filePath)")
 
             // Use longer cache duration for common parent directories
-            let cacheThreshold = isCommonParentDirectory(filePath) ? 300.0 :
-                recentCheckThreshold // 5 minutes vs 30 seconds
+            let cacheThreshold = self.isCommonParentDirectory(filePath) ? 300.0 :
+                self.recentCheckThreshold // 5 minutes vs 30 seconds
 
             // Check if this was recently checked
             if let lastCheck = recentRepositoryChecks[filePath],
                Date().timeIntervalSince(lastCheck) < cacheThreshold
             {
-                logger
+                self.logger
                     .debug(
-                        "⏭️ Skipping redundant check for: \(filePath) (checked \(Int(Date().timeIntervalSince(lastCheck)))s ago, threshold: \(Int(cacheThreshold))s)"
-                    )
+                        "⏭️ Skipping redundant check for: \(filePath) (checked \(Int(Date().timeIntervalSince(lastCheck)))s ago, threshold: \(Int(cacheThreshold))s)")
                 return cached
             }
         }
 
         // Check if there's already a pending request for this exact path
         if let pendingTask = pendingRepositoryRequests[filePath] {
-            logger.debug("🔄 Waiting for existing request for: \(filePath)")
+            self.logger.debug("🔄 Waiting for existing request for: \(filePath)")
             return await pendingTask.value
         }
 
@@ -258,7 +256,7 @@ public final class GitRepositoryMonitor {
 
             // Find the Git repository root
             guard let repoPath = await self.findGitRoot(from: filePath) else {
-                logger.info("❌ No Git root found for: \(filePath)")
+                self.logger.info("❌ No Git root found for: \(filePath)")
                 // Mark as recently checked even for non-git paths to avoid repeated checks
                 // Use longer cache for common parent directories that aren't Git repos
                 await MainActor.run {
@@ -272,7 +270,7 @@ public final class GitRepositoryMonitor {
                 return nil
             }
 
-            logger.info("✅ Found Git root at: \(repoPath)")
+            self.logger.info("✅ Found Git root at: \(repoPath)")
 
             // Check if we already have this repository cached
             let cachedRepo = await MainActor.run { self.repositoryCache[repoPath] }
@@ -282,7 +280,7 @@ public final class GitRepositoryMonitor {
                     self.fileToRepoCache[filePath] = repoPath
                     self.recentRepositoryChecks[filePath] = Date()
                 }
-                logger.debug("📦 Using cached repo data for: \(repoPath)")
+                self.logger.debug("📦 Using cached repo data for: \(repoPath)")
                 return cachedRepo
             }
 
@@ -295,43 +293,43 @@ public final class GitRepositoryMonitor {
                     self.cacheRepository(repository, originalFilePath: filePath)
                     self.recentRepositoryChecks[filePath] = Date()
                 }
-                logger.info("✅ Repository status obtained and cached for: \(repoPath)")
+                self.logger.info("✅ Repository status obtained and cached for: \(repoPath)")
             } else {
-                logger.error("❌ Failed to get repository status for: \(repoPath)")
+                self.logger.error("❌ Failed to get repository status for: \(repoPath)")
             }
 
             return repository
         }
 
         // Store the pending task
-        pendingRepositoryRequests[filePath] = task
+        self.pendingRepositoryRequests[filePath] = task
 
         // Get the result
         let result = await task.value
 
         // Clean up the pending task
-        pendingRepositoryRequests[filePath] = nil
+        self.pendingRepositoryRequests[filePath] = nil
 
         return result
     }
 
     /// Clear the repository cache
     public func clearCache() {
-        repositoryCache.removeAll()
-        fileToRepoCache.removeAll()
-        githubURLCache.removeAll()
-        githubURLFetchesInProgress.removeAll()
-        pendingRepositoryRequests.removeAll()
-        recentRepositoryChecks.removeAll()
-        nonGitPathCache.removeAll()
+        self.repositoryCache.removeAll()
+        self.fileToRepoCache.removeAll()
+        self.githubURLCache.removeAll()
+        self.githubURLFetchesInProgress.removeAll()
+        self.pendingRepositoryRequests.removeAll()
+        self.recentRepositoryChecks.removeAll()
+        self.nonGitPathCache.removeAll()
     }
 
     /// Start monitoring and refreshing all cached repositories
     public func startMonitoring() {
-        stopMonitoring()
+        self.stopMonitoring()
 
         // Set up periodic refresh of all cached repositories
-        monitoringTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
+        self.monitoringTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
             Task { @MainActor in
                 await self.refreshAllCached()
             }
@@ -340,8 +338,8 @@ public final class GitRepositoryMonitor {
 
     /// Stop monitoring
     public func stopMonitoring() {
-        monitoringTimer?.invalidate()
-        monitoringTimer = nil
+        self.monitoringTimer?.invalidate()
+        self.monitoringTimer = nil
     }
 
     // MARK: - Private Methods
@@ -351,31 +349,31 @@ public final class GitRepositoryMonitor {
         let repoPaths = Array(repositoryCache.keys)
         for repoPath in repoPaths {
             if let fresh = await getRepositoryStatus(at: repoPath) {
-                repositoryCache[repoPath] = fresh
+                self.repositoryCache[repoPath] = fresh
             }
         }
 
         // Clean up stale entries from recent checks cache
-        cleanupRecentChecks()
+        self.cleanupRecentChecks()
     }
 
     /// Remove old entries from the recent checks cache
     private func cleanupRecentChecks() {
-        let cutoffDate = Date().addingTimeInterval(-recentCheckThreshold * 2) // Remove entries older than 60 seconds
-        recentRepositoryChecks = recentRepositoryChecks.filter { _, checkDate in
+        let cutoffDate = Date()
+            .addingTimeInterval(-self.recentCheckThreshold * 2) // Remove entries older than 60 seconds
+        self.recentRepositoryChecks = self.recentRepositoryChecks.filter { _, checkDate in
             checkDate > cutoffDate
         }
 
         // Also cleanup non-Git path cache (remove entries older than 10 minutes)
         let nonGitCutoff = Date().addingTimeInterval(-600.0)
-        nonGitPathCache = nonGitPathCache.filter { _, checkDate in
+        self.nonGitPathCache = self.nonGitPathCache.filter { _, checkDate in
             checkDate > nonGitCutoff
         }
 
-        logger
+        self.logger
             .debug(
-                "🧹 Cleaned up caches: \(self.recentRepositoryChecks.count) recent checks, \(self.nonGitPathCache.count) non-Git paths"
-            )
+                "🧹 Cleaned up caches: \(self.recentRepositoryChecks.count) recent checks, \(self.nonGitPathCache.count) non-Git paths")
     }
 
     // MARK: - Private Properties
@@ -435,11 +433,11 @@ public final class GitRepositoryMonitor {
     }
 
     private func cacheRepository(_ repository: GitRepository, originalFilePath: String? = nil) {
-        repositoryCache[repository.path] = repository
+        self.repositoryCache[repository.path] = repository
 
         // Also map the original file path if different from repository path
         if let originalFilePath, originalFilePath != repository.path {
-            fileToRepoCache[originalFilePath] = repository.path
+            self.fileToRepoCache[originalFilePath] = repository.path
         }
     }
 
@@ -473,10 +471,9 @@ public final class GitRepositoryMonitor {
 
         // Use HTTP endpoint to check if it's a git repository
         let url = await MainActor.run {
-            serverManager.buildURL(
+            self.serverManager.buildURL(
                 endpoint: "/api/git/repo-info",
-                queryItems: [URLQueryItem(name: "path", value: expandedPath)]
-            )
+                queryItems: [URLQueryItem(name: "path", value: expandedPath)])
         }
 
         guard let url else {
@@ -492,7 +489,7 @@ public final class GitRepositoryMonitor {
                 return response.repoPath
             }
         } catch {
-            logger.error("❌ Failed to get git repo info: \(error)")
+            self.logger.error("❌ Failed to get git repo info: \(error)")
         }
 
         return nil
@@ -520,12 +517,11 @@ public final class GitRepositoryMonitor {
                 behindCount: repository.behindCount,
                 trackingBranch: repository.trackingBranch,
                 isWorktree: repository.isWorktree,
-                githubURL: cachedURL
-            )
+                githubURL: cachedURL)
         } else {
             // Fetch GitHub URL from remote endpoint or local git command
             Task {
-                await fetchGitHubURLInBackground(for: repoPath)
+                await self.fetchGitHubURLInBackground(for: repoPath)
             }
         }
 
@@ -536,10 +532,9 @@ public final class GitRepositoryMonitor {
     private nonisolated func getBasicGitStatus(at repoPath: String) async -> GitRepository? {
         // Use HTTP endpoint to get git status
         let url = await MainActor.run {
-            serverManager.buildURL(
+            self.serverManager.buildURL(
                 endpoint: "/api/git/repository-info",
-                queryItems: [URLQueryItem(name: "path", value: repoPath)]
-            )
+                queryItems: [URLQueryItem(name: "path", value: repoPath)])
         }
 
         guard let url else {
@@ -557,7 +552,7 @@ public final class GitRepositoryMonitor {
 
             // Ensure we have required fields when isGitRepo is true
             guard let repoPath = response.repoPath else {
-                logger.error("❌ Invalid response: isGitRepo is true but repoPath is missing")
+                self.logger.error("❌ Invalid response: isGitRepo is true but repoPath is missing")
                 return nil
             }
 
@@ -578,10 +573,9 @@ public final class GitRepositoryMonitor {
                 behindCount: (response.behindCount ?? 0) > 0 ? response.behindCount : nil,
                 trackingBranch: (response.hasUpstream ?? false) ? "origin/\(response.currentBranch ?? "main")" : nil,
                 isWorktree: isWorktree,
-                githubURL: githubURL
-            )
+                githubURL: githubURL)
         } catch {
-            logger.error("❌ Failed to get git status: \(error)")
+            self.logger.error("❌ Failed to get git status: \(error)")
             return nil
         }
     }
@@ -590,19 +584,18 @@ public final class GitRepositoryMonitor {
     @MainActor
     private func fetchGitHubURLInBackground(for repoPath: String) async {
         // Check if already cached or fetch in progress
-        if githubURLCache[repoPath] != nil || githubURLFetchesInProgress.contains(repoPath) {
+        if self.githubURLCache[repoPath] != nil || self.githubURLFetchesInProgress.contains(repoPath) {
             return
         }
 
         // Mark as in progress
-        githubURLFetchesInProgress.insert(repoPath)
+        self.githubURLFetchesInProgress.insert(repoPath)
 
         // Try to get from HTTP endpoint first
         let url = await MainActor.run {
-            serverManager.buildURL(
+            self.serverManager.buildURL(
                 endpoint: "/api/git/remote",
-                queryItems: [URLQueryItem(name: "path", value: repoPath)]
-            )
+                queryItems: [URLQueryItem(name: "path", value: repoPath)])
         }
 
         if let url {
@@ -640,14 +633,13 @@ public final class GitRepositoryMonitor {
                             behindCount: cachedRepo.behindCount,
                             trackingBranch: cachedRepo.trackingBranch,
                             isWorktree: cachedRepo.isWorktree,
-                            githubURL: githubURL
-                        )
+                            githubURL: githubURL)
                         self.repositoryCache[repoPath] = cachedRepo
                     }
                 }
             } catch {
                 // HTTP endpoint failed, log the error but don't fallback to direct git
-                logger.debug("Failed to fetch GitHub URL from server: \(error)")
+                self.logger.debug("Failed to fetch GitHub URL from server: \(error)")
             }
         }
 

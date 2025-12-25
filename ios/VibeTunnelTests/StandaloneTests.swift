@@ -36,8 +36,7 @@ struct StandaloneAPITests {
             workingDir: "/Users/test",
             name: "Test Session",
             cols: 80,
-            rows: 24
-        )
+            rows: 24)
 
         let encoder = JSONEncoder()
         let jsonData = try encoder.encode(data)
@@ -144,17 +143,17 @@ struct ModelValidationTests {
             let useSSL: Bool
 
             var baseURL: URL {
-                let scheme = useSSL ? "https" : "http"
-                return URL(string: "\(scheme)://\(host):\(port)")!
+                let scheme = self.useSSL ? "https" : "http"
+                return URL(string: "\(scheme)://\(self.host):\(self.port)")!
             }
 
             var websocketURL: URL {
-                let scheme = useSSL ? "wss" : "ws"
-                return URL(string: "\(scheme)://\(host):\(port)")!
+                let scheme = self.useSSL ? "wss" : "ws"
+                return URL(string: "\(scheme)://\(self.host):\(self.port)")!
             }
         }
 
-        let httpConfig = ServerConfig(host: "localhost", port: 8_888, useSSL: false)
+        let httpConfig = ServerConfig(host: "localhost", port: 8888, useSSL: false)
         #expect(httpConfig.baseURL.absoluteString == "http://localhost:8888")
         #expect(httpConfig.websocketURL.absoluteString == "ws://localhost:8888")
 
@@ -173,7 +172,7 @@ struct PersistenceTests {
             let port: Int
         }
 
-        let config = TestConfig(host: "test.local", port: 9_999)
+        let config = TestConfig(host: "test.local", port: 9999)
         let key = "test_config_\(UUID().uuidString)"
 
         // Save
@@ -199,17 +198,17 @@ struct PersistenceTests {
     @Test("Connection state restoration logic")
     func connectionStateLogic() {
         let now = Date()
-        let thirtyMinutesAgo = now.addingTimeInterval(-1_800) // 30 minutes
-        let twoHoursAgo = now.addingTimeInterval(-7_200) // 2 hours
+        let thirtyMinutesAgo = now.addingTimeInterval(-1800) // 30 minutes
+        let twoHoursAgo = now.addingTimeInterval(-7200) // 2 hours
 
         // Within time window (less than 1 hour)
         let timeSinceLastConnection1 = now.timeIntervalSince(thirtyMinutesAgo)
-        #expect(timeSinceLastConnection1 < 3_600)
+        #expect(timeSinceLastConnection1 < 3600)
         #expect(timeSinceLastConnection1 > 0)
 
         // Outside time window (more than 1 hour)
         let timeSinceLastConnection2 = now.timeIntervalSince(twoHoursAgo)
-        #expect(timeSinceLastConnection2 >= 3_600)
+        #expect(timeSinceLastConnection2 >= 3600)
     }
 }
 

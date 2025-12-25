@@ -1,68 +1,20 @@
 # Protocol Specifications
 
-## WebSocket Protocol
+## Terminal Transport (WebSocket v3)
+
+VibeTunnel uses a **single** WebSocket endpoint for terminal transport, multiplexing sessions over binary frames.
 
 ### Connection Establishment
 ```javascript
-// Client connection
-const ws = new WebSocket('ws://localhost:4020/api/sessions/:id/ws');
+const ws = new WebSocket('ws://localhost:4020/ws?token=JWT_TOKEN');
 ws.binaryType = 'arraybuffer';
-
-// Authentication via query param or header
-const ws = new WebSocket('ws://localhost:4020/api/sessions/:id/ws?token=JWT_TOKEN');
 ```
 
-### Message Types
+### Subscriptions
+- Subscribe per session: send a v3 `SUBSCRIBE` frame with `sessionId` + flags (`Stdout`, `Snapshots`, `Events`).
+- Global events: use an empty `sessionId` and the `Events` flag.
 
-#### Binary Terminal Data (Server → Client)
-```
-┌──────────┬──────────────┬──────────────┐
-│ Magic    │ Length       │ Data         │
-│ 0xBF     │ 4 bytes BE   │ UTF-8 bytes  │
-└──────────┴──────────────┴──────────────┘
-```
-
-**Encoding Example**:
-```typescript
-function encode(text: string): ArrayBuffer {
-  const data = new TextEncoder().encode(text);
-  const buffer = new ArrayBuffer(5 + data.length);
-  const view = new DataView(buffer);
-  view.setUint8(0, 0xBF);                    // Magic byte
-  view.setUint32(1, data.length, false);     // Length (big-endian)
-  new Uint8Array(buffer, 5).set(data);       // UTF-8 data
-  return buffer;
-}
-```
-
-#### Text Messages (Client → Server)
-```typescript
-// User input
-ws.send(JSON.stringify({
-  type: 'input',
-  data: 'ls -la\n'
-}));
-
-// Terminal resize
-ws.send(JSON.stringify({
-  type: 'resize',
-  cols: 120,
-  rows: 40
-}));
-
-// Keep-alive ping
-ws.send(JSON.stringify({
-  type: 'ping'
-}));
-```
-
-### Connection Lifecycle
-
-1. **Open**: Client connects with session ID
-2. **Authenticate**: Token validation
-3. **Initialize**: Terminal size negotiation
-4. **Stream**: Bidirectional data flow
-5. **Close**: Clean disconnection or timeout
+Source of truth: `docs/websocket.md` and `web/src/shared/ws-v3.ts`.
 
 ### Error Codes
 
@@ -180,37 +132,15 @@ X-RateLimit-Reset: 1704067200
 | 429 | Too Many Requests | Rate limited |
 | 500 | Server Error | Internal error |
 
-## Binary Buffer Optimization
+## Terminal Transport (WebSocket v3)
 
-### Aggregation Strategy
-```typescript
-class BufferAggregator {
-  private buffer: Uint8Array[] = [];
-  private timer: NodeJS.Timeout;
-  
-  aggregate(data: Uint8Array) {
-    this.buffer.push(data);
-    this.scheduleFlush();
-  }
-  
-  private scheduleFlush() {
-    clearTimeout(this.timer);
-    this.timer = setTimeout(() => this.flush(), 16); // ~60fps
-  }
-  
-  private flush() {
-    const combined = Buffer.concat(this.buffer);
-    this.send(combined);
-    this.buffer = [];
-  }
-}
-```
+VibeTunnel uses a single WebSocket endpoint for terminal transport:
+- Endpoint: `GET /ws` (upgrade)
+- Binary framing: `"VT"` magic + version + type + sessionId + payload
+- Multiplexing: one socket can carry multiple sessions
+- Subscriptions: flags for `stdout`, `snapshots`, `events`
 
-### Performance Metrics
-- **Latency**: <10ms average
-- **Throughput**: >10MB/s
-- **Message rate**: 60/s max
-- **Buffer size**: 64KB max
+Details: `docs/websocket.md`.
 
 ## Authentication Protocol
 

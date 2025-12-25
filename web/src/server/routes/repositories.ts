@@ -66,7 +66,7 @@ export function createRepositoryRoutes(): Router {
   router.get('/repositories/discover', async (req, res) => {
     try {
       const basePath = (req.query.path as string) || DEFAULT_REPOSITORY_BASE_PATH;
-      const maxDepth = Number.parseInt(req.query.maxDepth as string) || 3;
+      const maxDepth = Number.parseInt(req.query.maxDepth as string, 10) || 3;
 
       logger.debug(`[GET /repositories/discover] Discovering repositories in: ${basePath}`);
 

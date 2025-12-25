@@ -32,24 +32,21 @@ struct VibeTunnelMenuView: View {
     }
 
     var body: some View {
-        if showingNewSession {
+        if self.showingNewSession {
             NewSessionForm(isPresented: Binding(
-                get: { showingNewSession },
+                get: { self.showingNewSession },
                 set: { newValue in
-                    showingNewSession = newValue
-                    isNewSessionActive = newValue
-                }
-            ))
-            .transition(.asymmetric(
-                insertion: .move(edge: .bottom).combined(with: .opacity),
-                removal: .move(edge: .bottom).combined(with: .opacity)
-            ))
+                    self.showingNewSession = newValue
+                    self.isNewSessionActive = newValue
+                }))
+                .transition(.asymmetric(
+                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                    removal: .move(edge: .bottom).combined(with: .opacity)))
         } else {
-            mainContent
+            self.mainContent
                 .transition(.asymmetric(
                     insertion: .opacity,
-                    removal: .opacity
-                ))
+                    removal: .opacity))
         }
     }
 
@@ -61,29 +58,26 @@ struct VibeTunnelMenuView: View {
                 .padding(.vertical, 14)
                 .background(
                     LinearGradient(
-                        colors: colorScheme == .dark ? MenuStyles.headerGradientDark : MenuStyles.headerGradientLight,
+                        colors: self.colorScheme == .dark ? MenuStyles.headerGradientDark : MenuStyles
+                            .headerGradientLight,
                         startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+                        endPoint: .bottom))
 
             Divider()
 
             // Session list
             ScrollView {
                 SessionListSection(
-                    activeSessions: activeSessions,
-                    idleSessions: idleSessions,
-                    hoveredSessionId: hoveredSessionId,
-                    focusedField: focusedField,
-                    hasStartedKeyboardNavigation: hasStartedKeyboardNavigation,
+                    sessions: self.runningSessions,
+                    hoveredSessionId: self.hoveredSessionId,
+                    focusedField: self.focusedField,
+                    hasStartedKeyboardNavigation: self.hasStartedKeyboardNavigation,
                     onHover: { sessionId in
-                        hoveredSessionId = sessionId
+                        self.hoveredSessionId = sessionId
                     },
                     onFocus: { field in
-                        focusedField = field
-                    }
-                )
+                        self.focusedField = field
+                    })
             }
             .frame(maxHeight: 600)
 
@@ -91,13 +85,11 @@ struct VibeTunnelMenuView: View {
 
             // Bottom action bar
             MenuActionBar(
-                showingNewSession: $showingNewSession,
+                showingNewSession: self.$showingNewSession,
                 focusedField: Binding(
-                    get: { focusedField },
-                    set: { focusedField = $0 }
-                ),
-                hasStartedKeyboardNavigation: hasStartedKeyboardNavigation
-            )
+                    get: { self.focusedField },
+                    set: { self.focusedField = $0 }),
+                hasStartedKeyboardNavigation: self.hasStartedKeyboardNavigation)
         }
         .frame(width: MenuStyles.menuWidth)
         .background(Color.clear)
@@ -105,50 +97,37 @@ struct VibeTunnelMenuView: View {
         .focusEffectDisabled() // Remove blue focus ring
         .onKeyPress { keyPress in
             // Handle Tab key for focus indication
-            if keyPress.key == .tab && !hasStartedKeyboardNavigation {
-                hasStartedKeyboardNavigation = true
+            if keyPress.key == .tab && !self.hasStartedKeyboardNavigation {
+                self.hasStartedKeyboardNavigation = true
                 // Let the system handle the Tab to actually move focus
                 return .ignored
             }
 
             // Handle arrow keys for navigation
             if keyPress.key == .upArrow || keyPress.key == .downArrow {
-                hasStartedKeyboardNavigation = true
-                return handleArrowKeyNavigation(keyPress.key == .upArrow)
+                self.hasStartedKeyboardNavigation = true
+                return self.handleArrowKeyNavigation(keyPress.key == .upArrow)
             }
 
             // Handle Enter key to activate focused item
             if keyPress.key == .return {
-                return handleEnterKey()
+                return self.handleEnterKey()
             }
 
             return .ignored
         }
     }
 
-    private var activeSessions: [(key: String, value: ServerSessionInfo)] {
-        sessionMonitor.sessions
-            .filter { $0.value.isRunning && hasActivity($0.value) }
+    private var runningSessions: [(key: String, value: ServerSessionInfo)] {
+        self.sessionMonitor.sessions
+            .filter(\.value.isRunning)
             .sorted { $0.value.startedAt > $1.value.startedAt }
-    }
-
-    private var idleSessions: [(key: String, value: ServerSessionInfo)] {
-        sessionMonitor.sessions
-            .filter { $0.value.isRunning && !hasActivity($0.value) }
-            .sorted { $0.value.startedAt > $1.value.startedAt }
-    }
-
-    private func hasActivity(_ session: ServerSessionInfo) -> Bool {
-        if let activityStatus = session.activityStatus?.specificStatus?.status {
-            return !activityStatus.isEmpty
-        }
-        return false
     }
 
     // MARK: - Keyboard Navigation
 
     private func handleArrowKeyNavigation(_ isUpArrow: Bool) -> KeyPress.Result {
-        let allSessions = activeSessions + idleSessions
+        let allSessions = self.runningSessions
         let focusableFields: [MenuFocusField] = allSessions.map { .sessionRow($0.key) } +
             [.newSessionButton, .settingsButton, .quitButton]
 
@@ -157,7 +136,7 @@ struct VibeTunnelMenuView: View {
         else {
             // No current focus, focus first item
             if !focusableFields.isEmpty {
-                focusedField = focusableFields[0]
+                self.focusedField = focusableFields[0]
             }
             return .handled
         }
@@ -168,7 +147,7 @@ struct VibeTunnelMenuView: View {
             currentIndex < focusableFields.count - 1 ? currentIndex + 1 : 0
         }
 
-        focusedField = focusableFields[newIndex]
+        self.focusedField = focusableFields[newIndex]
         return .handled
     }
 
@@ -176,9 +155,9 @@ struct VibeTunnelMenuView: View {
         guard let currentFocus = focusedField else { return .ignored }
 
         switch currentFocus {
-        case .sessionRow(let sessionId):
+        case let .sessionRow(sessionId):
             // Find the session and trigger the appropriate action
-            if sessionMonitor.sessions[sessionId] != nil {
+            if self.sessionMonitor.sessions[sessionId] != nil {
                 let hasWindow = WindowTracker.shared.windowInfo(for: sessionId) != nil
 
                 if hasWindow {
@@ -197,7 +176,7 @@ struct VibeTunnelMenuView: View {
             return .handled
 
         case .newSessionButton:
-            showingNewSession = true
+            self.showingNewSession = true
             return .handled
 
         case .settingsButton:

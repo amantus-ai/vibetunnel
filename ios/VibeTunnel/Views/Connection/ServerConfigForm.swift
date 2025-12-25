@@ -37,18 +37,18 @@ struct ServerConfigForm: View {
                         .foregroundColor(Theme.Colors.primaryAccent)
 
                     HStack(spacing: Theme.Spacing.small) {
-                        TextField("192.168.1.100 or localhost", text: $host)
+                        TextField("192.168.1.100 or localhost", text: self.$host)
                             .textFieldStyle(TerminalTextFieldStyle())
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
-                            .focused($focusedField, equals: .host)
+                            .focused(self.$focusedField, equals: .host)
                             .submitLabel(.next)
                             .onSubmit {
-                                focusedField = .port
+                                self.focusedField = .port
                             }
 
                         Button {
-                            showingDiscoverySheet = true
+                            self.showingDiscoverySheet = true
                             HapticFeedback.impact(.light)
                         } label: {
                             Image(systemName: "bonjour")
@@ -57,8 +57,7 @@ struct ServerConfigForm: View {
                                 .frame(width: 44, height: 44)
                                 .background(
                                     RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                                        .stroke(Theme.Colors.cardBorder, lineWidth: 1)
-                                )
+                                        .stroke(Theme.Colors.cardBorder, lineWidth: 1))
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
@@ -70,13 +69,13 @@ struct ServerConfigForm: View {
                         .font(Theme.Typography.terminalSystem(size: 12))
                         .foregroundColor(Theme.Colors.primaryAccent)
 
-                    TextField("3000", text: $port)
+                    TextField("3000", text: self.$port)
                         .textFieldStyle(TerminalTextFieldStyle())
                         .keyboardType(.numberPad)
-                        .focused($focusedField, equals: .port)
+                        .focused(self.$focusedField, equals: .port)
                         .submitLabel(.next)
                         .onSubmit {
-                            focusedField = .name
+                            self.focusedField = .name
                         }
                 }
 
@@ -86,12 +85,12 @@ struct ServerConfigForm: View {
                         .font(Theme.Typography.terminalSystem(size: 12))
                         .foregroundColor(Theme.Colors.primaryAccent)
 
-                    TextField("My Mac", text: $name)
+                    TextField("My Mac", text: self.$name)
                         .textFieldStyle(TerminalTextFieldStyle())
-                        .focused($focusedField, equals: .name)
+                        .focused(self.$focusedField, equals: .name)
                         .submitLabel(.next)
                         .onSubmit {
-                            focusedField = .username
+                            self.focusedField = .username
                         }
                 }
 
@@ -101,15 +100,15 @@ struct ServerConfigForm: View {
                         .font(Theme.Typography.terminalSystem(size: 12))
                         .foregroundColor(Theme.Colors.primaryAccent)
 
-                    TextField("admin", text: $username)
+                    TextField("admin", text: self.$username)
                         .textFieldStyle(TerminalTextFieldStyle())
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
-                        .focused($focusedField, equals: .username)
+                        .focused(self.$focusedField, equals: .username)
                         .submitLabel(.done)
                         .onSubmit {
-                            focusedField = nil
-                            onConnect()
+                            self.focusedField = nil
+                            self.onConnect()
                         }
                 }
             }
@@ -127,16 +126,15 @@ struct ServerConfigForm: View {
                 .padding(.horizontal)
                 .transition(.asymmetric(
                     insertion: .scale.combined(with: .opacity),
-                    removal: .scale.combined(with: .opacity)
-                ))
+                    removal: .scale.combined(with: .opacity)))
             }
 
             // Connect Button
             Button(action: {
                 HapticFeedback.impact(.medium)
-                onConnect()
+                self.onConnect()
             }, label: {
-                if isConnecting {
+                if self.isConnecting {
                     HStack(spacing: Theme.Spacing.small) {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: Theme.Colors.terminalBackground))
@@ -145,7 +143,7 @@ struct ServerConfigForm: View {
                             .font(Theme.Typography.terminalSystem(size: 16))
                     }
                     .frame(maxWidth: .infinity)
-                } else if !networkMonitor.isConnected {
+                } else if !self.networkMonitor.isConnected {
                     HStack(spacing: Theme.Spacing.small) {
                         Image(systemName: "wifi.slash")
                         Text("No Internet Connection")
@@ -164,33 +162,29 @@ struct ServerConfigForm: View {
                 }
             })
             .foregroundColor(
-                isConnecting || !networkMonitor.isConnected ? Theme.Colors.terminalForeground : Theme
-                    .Colors.primaryAccent
-            )
+                self.isConnecting || !self.networkMonitor.isConnected ? Theme.Colors.terminalForeground : Theme
+                    .Colors.primaryAccent)
             .padding(.vertical, Theme.Spacing.medium)
             .background(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                     .fill(
-                        isConnecting || !networkMonitor.isConnected ? Theme.Colors.cardBackground : Theme.Colors
-                            .terminalBackground
-                    )
-            )
+                        self.isConnecting || !self.networkMonitor.isConnected ? Theme.Colors.cardBackground : Theme
+                            .Colors
+                            .terminalBackground))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                     .stroke(
-                        networkMonitor.isConnected ? Theme.Colors.primaryAccent : Theme.Colors.cardBorder,
-                        lineWidth: isConnecting || !networkMonitor.isConnected ? 1 : 2
-                    )
-                    .opacity(host.isEmpty ? 0.5 : 1.0)
-            )
-            .disabled(isConnecting || host.isEmpty || !networkMonitor.isConnected)
+                        self.networkMonitor.isConnected ? Theme.Colors.primaryAccent : Theme.Colors.cardBorder,
+                        lineWidth: self.isConnecting || !self.networkMonitor.isConnected ? 1 : 2)
+                    .opacity(self.host.isEmpty ? 0.5 : 1.0))
+            .disabled(self.isConnecting || self.host.isEmpty || !self.networkMonitor.isConnected)
             .padding(.horizontal)
-            .scaleEffect(isConnecting ? 0.98 : 1.0)
-            .animation(Theme.Animation.quick, value: isConnecting)
-            .animation(Theme.Animation.quick, value: networkMonitor.isConnected)
+            .scaleEffect(self.isConnecting ? 0.98 : 1.0)
+            .animation(Theme.Animation.quick, value: self.isConnecting)
+            .animation(Theme.Animation.quick, value: self.networkMonitor.isConnected)
 
             // Recent Servers (if any)
-            if !recentServers.isEmpty {
+            if !self.recentServers.isEmpty {
                 VStack(alignment: .leading, spacing: Theme.Spacing.small) {
                     Text("Recent Connections")
                         .font(Theme.Typography.terminalSystem(size: 12))
@@ -199,11 +193,11 @@ struct ServerConfigForm: View {
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: Theme.Spacing.small) {
-                            ForEach(recentServers.prefix(3), id: \.host) { server in
+                            ForEach(self.recentServers.prefix(3), id: \.host) { server in
                                 Button(action: {
-                                    host = server.host
-                                    port = String(server.port)
-                                    name = server.name ?? ""
+                                    self.host = server.host
+                                    self.port = String(server.port)
+                                    self.name = server.name ?? ""
                                     HapticFeedback.selection()
                                 }, label: {
                                     VStack(alignment: .leading, spacing: 4) {
@@ -219,8 +213,7 @@ struct ServerConfigForm: View {
                                     .padding(.vertical, Theme.Spacing.small)
                                     .background(
                                         RoundedRectangle(cornerRadius: Theme.CornerRadius.small)
-                                            .stroke(Theme.Colors.cardBorder, lineWidth: 1)
-                                    )
+                                            .stroke(Theme.Colors.cardBorder, lineWidth: 1))
                                 })
                                 .buttonStyle(PlainButtonStyle())
                             }
@@ -232,18 +225,16 @@ struct ServerConfigForm: View {
             }
         }
         .onAppear {
-            focusedField = .host
-            loadRecentServers()
+            self.focusedField = .host
+            self.loadRecentServers()
         }
-        .sheet(isPresented: $showingDiscoverySheet) {
+        .sheet(isPresented: self.$showingDiscoverySheet) {
             ServerDiscoverySheet(
-                selectedHost: $host,
-                selectedPort: $port,
+                selectedHost: self.$host,
+                selectedPort: self.$port,
                 selectedName: Binding<String?>(
-                    get: { name.isEmpty ? nil : name },
-                    set: { name = $0 ?? "" }
-                )
-            )
+                    get: { self.name.isEmpty ? nil : self.name },
+                    set: { self.name = $0 ?? "" }))
         }
     }
 
@@ -252,7 +243,7 @@ struct ServerConfigForm: View {
         if let data = UserDefaults.standard.data(forKey: "recentServers"),
            let servers = try? JSONDecoder().decode([ServerConfig].self, from: data)
         {
-            recentServers = servers
+            self.recentServers = servers
         }
     }
 }

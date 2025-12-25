@@ -5,7 +5,7 @@ import Testing
 
 @Suite("Cloudflare Service Tests", .tags(.networking))
 struct CloudflareServiceTests {
-    let testPort = 8_888
+    let testPort = 8888
 
     @Test("Singleton instance")
     @MainActor
@@ -73,7 +73,7 @@ struct CloudflareServiceTests {
         // If cloudflared is not installed, starting should fail
         if !service.isInstalled {
             do {
-                try await service.startQuickTunnel(port: testPort)
+                try await service.startQuickTunnel(port: self.testPort)
                 Issue.record("Expected error to be thrown")
             } catch let error as CloudflareError {
                 #expect(error == .notInstalled)
@@ -96,7 +96,7 @@ struct CloudflareServiceTests {
         // If tunnel is already running, starting again should fail
         if service.isRunning {
             do {
-                try await service.startQuickTunnel(port: testPort)
+                try await service.startQuickTunnel(port: self.testPort)
                 Issue.record("Expected error to be thrown")
             } catch let error as CloudflareError {
                 #expect(error == .tunnelAlreadyRunning)
@@ -134,7 +134,7 @@ struct CloudflareServiceTests {
             "2024-01-01 12:00:00 INF https://another-test.trycloudflare.com",
             "Tunnel URL: https://third-test.trycloudflare.com",
             "No URL in this output",
-            "https://invalid-domain.com should not match"
+            "https://invalid-domain.com should not match",
         ]
 
         // This test verifies the URL extraction logic indirectly
@@ -146,7 +146,7 @@ struct CloudflareServiceTests {
             let range = NSRange(location: 0, length: output.count)
             let matches = regex?.matches(in: output, options: [], range: range)
 
-            if output.contains("trycloudflare.com") && !output.contains("invalid-domain") {
+            if output.contains("trycloudflare.com"), !output.contains("invalid-domain") {
                 #expect(matches?.count == 1)
             }
         }
@@ -160,7 +160,7 @@ struct CloudflareServiceTests {
             .tunnelCreationFailed("test error"),
             .networkError("connection failed"),
             .invalidOutput,
-            .processTerminated
+            .processTerminated,
         ]
 
         for error in errors {

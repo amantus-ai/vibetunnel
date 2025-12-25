@@ -27,7 +27,7 @@ class AutocompleteService {
         "/git",
         "/src",
         "/work",
-        "" // Home directory itself
+        "", // Home directory itself
     ]
 
     init(gitMonitor: GitRepositoryMonitor = GitRepositoryMonitor()) {
@@ -36,29 +36,30 @@ class AutocompleteService {
 
     /// Fetch autocomplete suggestions for the given path
     func fetchSuggestions(for partialPath: String) async {
-        logger.debug("[AutocompleteService] fetchSuggestions called with: '\(partialPath)'")
+        self.logger.debug("[AutocompleteService] fetchSuggestions called with: '\(partialPath)'")
 
         // Cancel any existing task
-        currentTask?.cancel()
+        self.currentTask?.cancel()
 
         guard !partialPath.isEmpty else {
-            logger.debug("[AutocompleteService] Empty path, clearing suggestions")
-            suggestions = []
+            self.logger.debug("[AutocompleteService] Empty path, clearing suggestions")
+            self.suggestions = []
             return
         }
 
         // Increment task counter to track latest task
-        taskCounter += 1
-        let thisTaskId = taskCounter
-        logger.debug("[AutocompleteService] Starting task \(thisTaskId) for path: '\(partialPath)'")
+        self.taskCounter += 1
+        let thisTaskId = self.taskCounter
+        self.logger.debug("[AutocompleteService] Starting task \(thisTaskId) for path: '\(partialPath)'")
 
-        currentTask = Task {
-            await performFetch(for: partialPath, taskId: thisTaskId)
+        self.currentTask = Task {
+            await self.performFetch(for: partialPath, taskId: thisTaskId)
         }
 
         // Wait for the task to complete
-        await currentTask?.value
-        logger.debug("[AutocompleteService] Task \(thisTaskId) awaited, suggestions count: \(self.suggestions.count)")
+        await self.currentTask?.value
+        self.logger
+            .debug("[AutocompleteService] Task \(thisTaskId) awaited, suggestions count: \(self.suggestions.count)")
     }
 
     private func performFetch(for originalPath: String, taskId: Int) async {
@@ -67,7 +68,7 @@ class AutocompleteService {
 
         var partialPath = originalPath
 
-        logger.debug("[AutocompleteService] performFetch - originalPath: '\(originalPath)'")
+        self.logger.debug("[AutocompleteService] performFetch - originalPath: '\(originalPath)'")
 
         // Handle tilde expansion
         if partialPath.hasPrefix("~") {
@@ -79,12 +80,12 @@ class AutocompleteService {
             }
         }
 
-        logger.debug("[AutocompleteService] After expansion - partialPath: '\(partialPath)'")
+        self.logger.debug("[AutocompleteService] After expansion - partialPath: '\(partialPath)'")
 
         // Determine directory and partial filename
-        let (dirPath, partialName) = splitPath(partialPath)
+        let (dirPath, partialName) = self.splitPath(partialPath)
 
-        logger.debug("[AutocompleteService] After split - dirPath: '\(dirPath)', partialName: '\(partialName)'")
+        self.logger.debug("[AutocompleteService] After split - dirPath: '\(dirPath)', partialName: '\(partialName)'")
 
         // Check if task was cancelled
         if Task.isCancelled { return }
@@ -94,8 +95,7 @@ class AutocompleteService {
             directory: dirPath,
             partialName: partialName,
             originalPath: originalPath,
-            taskId: taskId
-        )
+            taskId: taskId)
 
         // Check if task was cancelled
         if Task.isCancelled { return }
@@ -120,7 +120,7 @@ class AutocompleteService {
         }
 
         // Sort suggestions
-        let sortedSuggestions = sortSuggestions(allSuggestions, searchTerm: partialName)
+        let sortedSuggestions = self.sortSuggestions(allSuggestions, searchTerm: partialName)
 
         // Limit to 20 results before enriching with Git info
         let limitedSuggestions = Array(sortedSuggestions.prefix(20))
@@ -129,18 +129,16 @@ class AutocompleteService {
         let enrichedSuggestions = await enrichSuggestionsWithGitInfo(limitedSuggestions)
 
         // Only update suggestions if this is still the latest task
-        if taskId == taskCounter {
+        if taskId == self.taskCounter {
             self.suggestions = enrichedSuggestions
 
-            logger
+            self.logger
                 .debug(
-                    "[AutocompleteService] Task \(taskId) updated suggestions. Final count: \(self.suggestions.count), items: \(self.suggestions.map(\.name).joined(separator: ", "))"
-                )
+                    "[AutocompleteService] Task \(taskId) updated suggestions. Final count: \(self.suggestions.count), items: \(self.suggestions.map(\.name).joined(separator: ", "))")
         } else {
-            logger
+            self.logger
                 .debug(
-                    "[AutocompleteService] Discarding stale results from task \(taskId), current task is \(self.taskCounter)"
-                )
+                    "[AutocompleteService] Discarding stale results from task \(taskId), current task is \(self.taskCounter)")
         }
     }
 
@@ -157,8 +155,7 @@ class AutocompleteService {
         directory: String,
         partialName: String,
         originalPath: String,
-        taskId: Int
-    )
+        taskId: Int)
         async -> [PathSuggestion]
     {
         // Move to background thread to avoid blocking UI
@@ -185,19 +182,18 @@ class AutocompleteService {
                 }
                 logger
                     .debug(
-                        "[AutocompleteService] Directory: \(expandedDir), PartialName: '\(partialName)', Total items: \(contents.count), Matching: \(matching.count) - \(matching.joined(separator: ", "))"
-                    )
+                        "[AutocompleteService] Directory: \(expandedDir), PartialName: '\(partialName)', Total items: \(contents.count), Matching: \(matching.count) - \(matching.joined(separator: ", "))")
 
                 return contents.compactMap { filename -> PathSuggestion? in
                     // Filter by partial name (case-insensitive)
-                    if !partialName.isEmpty &&
-                        !filename.lowercased().hasPrefix(partialName.lowercased())
+                    if !partialName.isEmpty,
+                       !filename.lowercased().hasPrefix(partialName.lowercased())
                     {
                         return nil
                     }
 
                     // Skip hidden files unless explicitly searching for them
-                    if !partialName.hasPrefix(".") && filename.hasPrefix(".") {
+                    if !partialName.hasPrefix("."), filename.hasPrefix(".") {
                         return nil
                     }
 
@@ -226,7 +222,7 @@ class AutocompleteService {
                         type: isDirectory.boolValue ? .directory : .file,
                         suggestion: isDirectory.boolValue ? displayPath + "/" : displayPath,
                         isRepository: isGitRepo,
-                        gitInfo: nil // Git info will be fetched later if needed
+                        gitInfo: nil, // Git info will be fetched later if needed
                     )
                 }
             } catch {
@@ -268,7 +264,7 @@ class AutocompleteService {
 
                     for item in contents {
                         // Skip if doesn't match search term
-                        if !lowercasedTerm.isEmpty && !item.lowercased().contains(lowercasedTerm) {
+                        if !lowercasedTerm.isEmpty, !item.lowercased().contains(lowercasedTerm) {
                             continue
                         }
 
@@ -289,7 +285,7 @@ class AutocompleteService {
                                 type: .directory,
                                 suggestion: fullPath + "/",
                                 isRepository: true,
-                                gitInfo: nil // Git info will be fetched later if needed
+                                gitInfo: nil, // Git info will be fetched later if needed
                             ))
                         }
                     }
@@ -327,7 +323,7 @@ class AutocompleteService {
             }
 
             // Git repositories before regular directories
-            if first.type == .directory && second.type == .directory {
+            if first.type == .directory, second.type == .directory {
                 if first.isRepository != second.isRepository {
                     return first.isRepository
                 }
@@ -340,8 +336,8 @@ class AutocompleteService {
 
     /// Clear all suggestions
     func clearSuggestions() {
-        currentTask?.cancel()
-        suggestions = []
+        self.currentTask?.cancel()
+        self.suggestions = []
     }
 
     /// Fetch Git info for directory suggestions
@@ -355,16 +351,14 @@ class AutocompleteService {
                     // Expand path for Git lookup
                     let expandedPath = NSString(
                         string: suggestion.suggestion
-                            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-                    ).expandingTildeInPath
+                            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))).expandingTildeInPath
                     let gitInfo = await gitMonitor.findRepository(for: expandedPath).map { repo in
                         GitInfo(
                             branch: repo.currentBranch,
                             aheadCount: repo.aheadCount,
                             behindCount: repo.behindCount,
                             hasChanges: repo.hasChanges,
-                            isWorktree: repo.isWorktree
-                        )
+                            isWorktree: repo.isWorktree)
                     }
                     return (index, gitInfo)
                 }
@@ -379,8 +373,7 @@ class AutocompleteService {
                         type: enrichedSuggestions[index].type,
                         suggestion: enrichedSuggestions[index].suggestion,
                         isRepository: true, // If we have Git info, it's a repository
-                        gitInfo: gitInfo
-                    )
+                        gitInfo: gitInfo)
                 }
             }
 
@@ -432,7 +425,7 @@ class AutocompleteService {
                             type: .directory,
                             suggestion: displayPath + "/",
                             isRepository: true,
-                            gitInfo: nil // Git info will be fetched later if needed
+                            gitInfo: nil, // Git info will be fetched later if needed
                         ))
                     }
                 } catch {

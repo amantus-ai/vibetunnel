@@ -86,30 +86,26 @@ export async function withRetry<T>(
 // biome-ignore lint/complexity/noStaticOnlyClass: Utility class pattern for test helpers
 export class WaitUtils {
   /**
-   * Wait for terminal to be ready (xterm initialized and visible)
+   * Wait for terminal to be ready (ghostty initialized + debug text available)
    */
-  static async waitForTerminalReady(page: Page, selector = '.xterm'): Promise<void> {
-    // Wait for xterm container
-    await page.waitForSelector(selector, { state: 'visible' });
+  static async waitForTerminalReady(page: Page): Promise<void> {
+    await page.waitForSelector('#session-terminal', { state: 'visible' });
+    await page.waitForSelector('#session-terminal vibe-terminal', { state: 'visible' });
 
-    // Wait for xterm to be fully initialized
-    await page.waitForFunction((sel) => {
-      const term = document.querySelector(sel);
-      if (!term) return false;
-
-      // Check if xterm is initialized
-      const screen = term.querySelector('.xterm-screen');
-      const viewport = term.querySelector('.xterm-viewport');
-      const textLayer = term.querySelector('.xterm-text-layer');
-
-      return !!(screen && viewport && textLayer);
-    }, selector);
-
-    // Wait for terminal to be interactive
-    await page.waitForFunction((sel) => {
-      const viewport = document.querySelector(`${sel} .xterm-viewport`);
-      return viewport && viewport.scrollHeight > 0;
-    }, selector);
+    await page.waitForFunction(
+      () => {
+        const term = document.querySelector('#session-terminal vibe-terminal') as unknown as {
+          getAttribute?: (name: string) => string | null;
+          getDebugText?: () => string;
+        } | null;
+        if (!term) return false;
+        if (term.getAttribute?.('data-ready') !== 'true') return false;
+        const content = typeof term.getDebugText === 'function' ? term.getDebugText() : '';
+        return content.length > 0;
+      },
+      undefined,
+      { timeout: 15000 }
+    );
   }
 
   /**
@@ -123,7 +119,7 @@ export class WaitUtils {
       terminalSelector?: string;
     } = {}
   ): Promise<void> {
-    const { timeout = 4000, customPrompts = [], terminalSelector = '.xterm-screen' } = options;
+    const { timeout = 4000, customPrompts = [], terminalSelector = 'vibe-terminal' } = options;
 
     const defaultPrompts = [
       /\$\s*/, // Bash prompt (removed $ anchor to handle trailing spaces)
@@ -138,10 +134,14 @@ export class WaitUtils {
 
     await page.waitForFunction(
       ({ selector, patterns }) => {
-        const term = document.querySelector(selector);
-        if (!term) return false;
+        const el = document.querySelector(selector) as unknown as {
+          getDebugText?: () => string;
+          textContent?: string | null;
+        } | null;
+        if (!el) return false;
 
-        const text = term.textContent || '';
+        const text =
+          typeof el.getDebugText === 'function' ? el.getDebugText() : el.textContent || '';
 
         // Check if any prompt pattern exists in the terminal content
         return patterns.some((pattern) => {
@@ -165,14 +165,18 @@ export class WaitUtils {
       terminalSelector?: string;
     } = {}
   ): Promise<void> {
-    const { timeout = 4000, terminalSelector = '.xterm-screen' } = options;
+    const { timeout = 4000, terminalSelector = 'vibe-terminal' } = options;
 
     await page.waitForFunction(
       ({ selector, expected, isRegex }) => {
-        const term = document.querySelector(selector);
-        if (!term) return false;
+        const el = document.querySelector(selector) as unknown as {
+          getDebugText?: () => string;
+          textContent?: string | null;
+        } | null;
+        if (!el) return false;
 
-        const text = term.textContent || '';
+        const text =
+          typeof el.getDebugText === 'function' ? el.getDebugText() : el.textContent || '';
         if (isRegex) {
           return new RegExp(expected).test(text);
         }
@@ -285,7 +289,7 @@ export class WaitUtils {
     // Additional check for any pending XHR/fetch requests
     await page.waitForFunction(
       (maxRequests) => {
-        // @ts-ignore - accessing internal state
+        // @ts-expect-error - accessing internal state
         const requests = window.performance
           .getEntriesByType('resource')
           .filter((entry) => entry.duration === 0);
@@ -311,7 +315,7 @@ export class AssertionUtils {
     expectedText: string,
     options: { terminalSelector?: string; timeout?: number } = {}
   ): Promise<void> {
-    const { terminalSelector = '.xterm-screen', timeout = 4000 } = options;
+    const { terminalSelector = 'vibe-terminal', timeout = 4000 } = options;
 
     await WaitUtils.waitForCommandOutput(page, expectedText, {
       terminalSelector,
@@ -327,15 +331,20 @@ export class AssertionUtils {
     unexpectedText: string,
     options: { terminalSelector?: string; checkDuration?: number } = {}
   ): Promise<void> {
-    const { terminalSelector = '.xterm-screen', checkDuration = 1000 } = options;
+    const { terminalSelector = 'vibe-terminal', checkDuration = 1000 } = options;
 
     // Check multiple times to ensure text doesn't appear
     const startTime = Date.now();
     while (Date.now() - startTime < checkDuration) {
       const hasText = await page.evaluate(
         ({ selector, text }) => {
-          const term = document.querySelector(selector);
-          return term?.textContent?.includes(text) || false;
+          const el = document.querySelector(selector) as unknown as {
+            getDebugText?: () => string;
+            textContent?: string | null;
+          } | null;
+          const content =
+            el && typeof el.getDebugText === 'function' ? el.getDebugText() : el?.textContent || '';
+          return content.includes(text);
         },
         { selector: terminalSelector, text: unexpectedText }
       );
@@ -364,16 +373,7 @@ export class TerminalUtils {
   ): Promise<void> {
     const { delay = 50, pressEnter = true } = options;
 
-    // Focus terminal first - try xterm textarea, fallback to terminal component
-    try {
-      await page.click('.xterm-helper-textarea', { force: true, timeout: 1000 });
-    } catch {
-      // Fallback for custom terminal component
-      const terminal = await page.$('vibe-terminal');
-      if (terminal) {
-        await terminal.click();
-      }
-    }
+    await page.locator('#session-terminal vibe-terminal').click({ timeout: 5000 });
 
     // Type command with delay for shell processing
     await page.keyboard.type(command, { delay });
@@ -412,12 +412,16 @@ export class TerminalUtils {
     endMarker: string,
     options: { terminalSelector?: string } = {}
   ): Promise<string> {
-    const { terminalSelector = '.xterm-screen' } = options;
+    const { terminalSelector = 'vibe-terminal' } = options;
 
     return await page.evaluate(
       ({ selector, start, end }) => {
-        const term = document.querySelector(selector);
-        const text = term?.textContent || '';
+        const el = document.querySelector(selector) as unknown as {
+          getDebugText?: () => string;
+          textContent?: string | null;
+        } | null;
+        const text =
+          el && typeof el.getDebugText === 'function' ? el.getDebugText() : el?.textContent || '';
 
         const startIndex = text.indexOf(start);
         const endIndex = text.indexOf(end, startIndex + start.length);

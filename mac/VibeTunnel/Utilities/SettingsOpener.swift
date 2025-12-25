@@ -63,16 +63,16 @@ enum SettingsOpener {
         // Try multiple methods to find the window
         NSApp.windows.first { window in
             // Check by identifier
-            if window.identifier?.rawValue == settingsWindowIdentifier {
+            if window.identifier?.rawValue == self.settingsWindowIdentifier {
                 return true
             }
 
             // Check by title
-            if window.isVisible && window.styleMask.contains(.titled) &&
-                (
-                    window.title.localizedCaseInsensitiveContains("settings") ||
-                        window.title.localizedCaseInsensitiveContains("preferences")
-                )
+            if window.isVisible, window.styleMask.contains(.titled),
+
+               window.title.localizedCaseInsensitiveContains("settings") ||
+               window.title.localizedCaseInsensitiveContains("preferences")
+
             {
                 return true
             }
@@ -90,14 +90,13 @@ enum SettingsOpener {
 
     /// Opens the Settings window and navigates to a specific tab
     static func openSettingsTab(_ tab: SettingsTab) {
-        openSettings()
+        self.openSettings()
 
         Task {
             // Then switch to the specific tab
             NotificationCenter.default.post(
                 name: .openSettingsTab,
-                object: tab
-            )
+                object: tab)
         }
     }
 }
@@ -119,7 +118,7 @@ struct HiddenWindowView: View {
             .onReceive(NotificationCenter.default.publisher(for: .openSettingsRequest)) { _ in
                 // Another hack, if we don't wait a runloop we crash in some toolbar logic on macOS Tahoe b1.
                 Task { @MainActor in
-                    openSettings()
+                    self.openSettings()
                 }
             }
             .onAppear {

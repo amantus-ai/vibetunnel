@@ -9,7 +9,7 @@ VibeTunnel iOS is a native SwiftUI application that provides a beautiful, native
 - **iOS/iPadOS**: 18.0+
 - **Universal App**: Single app that adapts to iPhone and iPad
 - **SwiftUI**: Modern declarative UI framework
-- **Terminal Engine**: SwiftTerm (https://github.com/migueldeicaza/SwiftTerm)
+- **Terminal Engine**: ghostty-web (WASM + canvas)
 
 ## Core Features
 
@@ -44,8 +44,8 @@ VibeTunnel iOS is a native SwiftUI application that provides a beautiful, native
   - Tap to view terminal
 
 ### 3. Terminal View
-- **SwiftTerm Integration**:
-  - Full terminal emulation using SwiftTerm
+- **ghostty-web Integration**:
+  - Full terminal emulation using ghostty-web
   - Support for ANSI escape sequences
   - 256-color and true color support
   - VS Code dark theme colors
@@ -61,7 +61,7 @@ VibeTunnel iOS is a native SwiftUI application that provides a beautiful, native
   - Pinch-to-zoom font sizing
 
 - **Real-time Updates**:
-  - Server-Sent Events (SSE) for terminal output streaming
+  - WebSocket buffer streaming for terminal output
   - Efficient buffer management
   - Auto-scroll to bottom on new output
   - Scroll position indicator
@@ -115,7 +115,8 @@ ios/
 │   │   │   └── SessionCreateView.swift
 │   │   ├── Terminal/
 │   │   │   ├── TerminalView.swift
-│   │   │   ├── TerminalHostingView.swift
+│   │   │   ├── GhosttyWebView.swift
+│   │   │   ├── TerminalBufferRenderer.swift
 │   │   │   └── TerminalToolbar.swift
 │   │   └── Common/
 │   │       ├── LoadingView.swift
@@ -124,7 +125,7 @@ ios/
 │   │   ├── APIClient.swift
 │   │   ├── SessionService.swift
 │   │   ├── TerminalService.swift
-│   │   └── SSEClient.swift
+│   │   └── BufferWebSocketClient.swift
 │   ├── Utils/
 │   │   ├── KeychainHelper.swift
 │   │   ├── ColorTheme.swift
@@ -199,33 +200,34 @@ protocol APIClientProtocol {
     func resizeTerminal(sessionId: String, cols: Int, rows: Int) async throws
 }
 
-// SSE Client for Terminal Streaming
-class SSEClient: NSObject {
-    func connect(to url: URL) -> AsyncStream<TerminalEvent>
+// Buffer WebSocket client for terminal streaming
+class BufferWebSocketClient: NSObject {
+    func connect()
+    func subscribe(to sessionId: String, handler: @escaping (TerminalWebSocketEvent) -> Void)
     func disconnect()
 }
 ```
 
-### 4. SwiftTerm Integration
+### 4. ghostty-web Integration
 
 ```swift
 // Terminal View Controller
 class TerminalViewController: UIViewController {
-    private let terminal: TerminalView // SwiftTerm
+    private let terminal: GhosttyWebView
     private let sessionId: String
-    private let sseClient: SSEClient
+    private let bufferClient: BufferWebSocketClient
     
     // Configure terminal with VS Code theme
     // Handle input/output
     // Manage resize events
-    // Stream terminal data via SSE
+    // Stream terminal data via WebSocket buffer updates
 }
 ```
 
 ### 5. State Management
 - Use SwiftUI's `@StateObject` and `@ObservedObject` for view models
 - Combine framework for reactive updates
-- AsyncStream for SSE handling
+- AsyncStream/Task for WebSocket handling
 - UserDefaults for connection preferences
 - Keychain for secure credential storage
 
@@ -282,9 +284,9 @@ SessionListView (main screen)
 - Pull-to-refresh
 
 ### Phase 3: Terminal Integration (Tasks 6-7, 9)
-- Integrate SwiftTerm library
+- Integrate ghostty-web resources
 - Terminal view wrapper
-- SSE streaming client
+- WebSocket buffer streaming client
 - Input handling
 - Resize support
 
@@ -311,7 +313,7 @@ SessionListView (main screen)
 
 ### Integration Tests
 - End-to-end session lifecycle
-- SSE streaming reliability
+- WebSocket streaming reliability
 - Terminal command execution
 
 ## Security Considerations
@@ -328,7 +330,7 @@ SessionListView (main screen)
 - Efficient terminal buffer management
 - Debounced resize events
 - Background session updates
-- Memory-efficient SSE streaming
+- Memory-efficient buffer streaming
 
 ## Future Enhancements
 
@@ -342,7 +344,7 @@ SessionListView (main screen)
 
 ## Dependencies
 
-- **SwiftTerm**: Terminal emulator engine
+- **ghostty-web**: Terminal emulator engine
 - **Alamofire** (optional): For networking (or use URLSession)
 - **KeychainSwift**: Secure credential storage
 
@@ -355,4 +357,4 @@ SessionListView (main screen)
 
 ## Conclusion
 
-This specification outlines a comprehensive native iOS/iPadOS client for VibeTunnel that leverages SwiftUI and SwiftTerm to provide a superior terminal experience compared to the web interface. The app will be fast, responsive, and take full advantage of native iOS features while maintaining feature parity with the web frontend.
+This specification outlines a comprehensive native iOS/iPadOS client for VibeTunnel that leverages SwiftUI and ghostty-web to provide a superior terminal experience compared to the web interface. The app will be fast, responsive, and take full advantage of native iOS features while maintaining feature parity with the web frontend.

@@ -34,9 +34,8 @@ enum WindowCenteringHelper {
         if let screen = NSScreen.main {
             let screenFrame = screen.frame
             window.setFrame(
-                NSRect(x: screenFrame.midX, y: screenFrame.minY - 1_000, width: 1, height: 1),
-                display: false
-            )
+                NSRect(x: screenFrame.midX, y: screenFrame.minY - 1000, width: 1, height: 1),
+                display: false)
         }
     }
 

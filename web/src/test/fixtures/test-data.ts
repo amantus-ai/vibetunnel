@@ -54,24 +54,6 @@ export const mockSessionEntries: SessionEntryWithId[] = mockSessions.map((sessio
   source: 'local' as const,
 }));
 
-export const mockActivityStatus = {
-  'session-1': {
-    isActive: true,
-    timestamp: '2025-01-01T10:45:00Z',
-    session: mockSessions[0],
-  },
-  'session-2': {
-    isActive: false,
-    timestamp: '2025-01-01T10:35:00Z',
-    session: mockSessions[1],
-  },
-  'session-3': {
-    isActive: false,
-    timestamp: '2025-01-01T09:30:00Z',
-    session: mockSessions[2],
-  },
-};
-
 export const mockRemotes = [
   {
     id: 'remote-1',

@@ -19,7 +19,7 @@ struct ServerListView: View {
     }
 
     #if targetEnvironment(macCatalyst)
-        @State private var windowManager = MacCatalystWindowManager.shared
+    @State private var windowManager = MacCatalystWindowManager.shared
     #endif
 
     var body: some View {
@@ -28,37 +28,37 @@ struct ServerListView: View {
                 ScrollView {
                     VStack(spacing: Theme.Spacing.extraLarge) {
                         // Logo and Title
-                        headerView
+                        self.headerView
                             .padding(.top, {
                                 #if targetEnvironment(macCatalyst)
-                                    return windowManager.windowStyle == .inline ? 60 : 40
+                                return self.windowManager.windowStyle == .inline ? 60 : 40
                                 #else
-                                    return 40
+                                return 40
                                 #endif
                             }())
 
                         // Server List Section
-                        if !viewModel.profiles.isEmpty {
-                            serverListSection
-                                .opacity(contentOpacity)
+                        if !self.viewModel.profiles.isEmpty {
+                            self.serverListSection
+                                .opacity(self.contentOpacity)
                                 .onAppear {
                                     withAnimation(Theme.Animation.smooth.delay(0.3)) {
-                                        contentOpacity = 1.0
+                                        self.contentOpacity = 1.0
                                     }
                                 }
                         } else {
-                            emptyStateView
-                                .opacity(contentOpacity)
+                            self.emptyStateView
+                                .opacity(self.contentOpacity)
                                 .onAppear {
                                     withAnimation(Theme.Animation.smooth.delay(0.3)) {
-                                        contentOpacity = 1.0
+                                        self.contentOpacity = 1.0
                                     }
                                 }
                         }
 
                         // Discovered servers section
-                        if discoveryService.isDiscovering || !filteredDiscoveredServers.isEmpty {
-                            discoveredServersSection
+                        if self.discoveryService.isDiscovering || !self.filteredDiscoveredServers.isEmpty {
+                            self.discoveredServersSection
                                 .padding(.top, Theme.Spacing.large)
                         }
 
@@ -70,64 +70,62 @@ struct ServerListView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .background(Theme.Colors.terminalBackground.ignoresSafeArea())
-            .sheet(item: $selectedProfile) { profile in
+            .sheet(item: self.$selectedProfile) { profile in
                 ServerProfileEditView(
                     profile: profile,
                     onSave: { updatedProfile, password in
                         Task {
-                            try await viewModel.updateProfile(updatedProfile, password: password)
-                            selectedProfile = nil
+                            try await self.viewModel.updateProfile(updatedProfile, password: password)
+                            self.selectedProfile = nil
                         }
                     },
                     onDelete: {
                         Task {
-                            try await viewModel.deleteProfile(profile)
-                            selectedProfile = nil
+                            try await self.viewModel.deleteProfile(profile)
+                            self.selectedProfile = nil
                         }
-                    }
-                )
+                    })
             }
             .sheet(
-                isPresented: $showingAddServer,
+                isPresented: self.$showingAddServer,
                 onDismiss: {
                     // Clear the selected discovered server when sheet is dismissed
-                    selectedDiscoveredServer = nil
+                    self.selectedDiscoveredServer = nil
                 },
                 content: {
                     AddServerView(
-                        initialHost: selectedDiscoveredServer?.host,
-                        initialPort: selectedDiscoveredServer.map { String($0.port) },
-                        initialName: selectedDiscoveredServer?.displayName
-                    ) { _ in
-                        viewModel.loadProfiles()
+                        initialHost: self.selectedDiscoveredServer?.host,
+                        initialPort: self.selectedDiscoveredServer.map { String($0.port) },
+                        initialName: self.selectedDiscoveredServer?.displayName)
+                    { _ in
+                        self.viewModel.loadProfiles()
                     }
-                }
-            )
-            .sheet(item: $serverToAdd) { server in
+                })
+            .sheet(item: self.$serverToAdd) { server in
                 AddServerView(
                     initialHost: server.host,
                     initialPort: String(server.port),
-                    initialName: server.displayName
-                ) { _ in
-                    viewModel.loadProfiles()
-                    serverToAdd = nil
+                    initialName: server.displayName)
+                { _ in
+                    self.viewModel.loadProfiles()
+                    self.serverToAdd = nil
                 }
             }
-            .sheet(isPresented: $viewModel.showLoginView) {
+            .sheet(isPresented: self.$viewModel.showLoginView) {
                 if let config = viewModel.connectionManager.serverConfig,
                    let authService = viewModel.connectionManager.authenticationService
                 {
                     LoginView(
-                        isPresented: $viewModel.showLoginView,
+                        isPresented: self.$viewModel.showLoginView,
                         serverConfig: config,
-                        authenticationService: authService
-                    ) { username, password in
+                        authenticationService: authService)
+                    { username, password in
                         // Delegate to ViewModel to handle login success
                         Task { @MainActor in
                             do {
-                                try await viewModel.handleLoginSuccess(username: username, password: password)
+                                try await self.viewModel.handleLoginSuccess(username: username, password: password)
                             } catch {
-                                viewModel.errorMessage = "Failed to save credentials: \(error.localizedDescription)"
+                                self.viewModel.errorMessage = "Failed to save credentials: \(error.localizedDescription)"
                             }
                         }
                     }
@@ -136,19 +134,19 @@ struct ServerListView: View {
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onAppear {
-            viewModel.loadProfiles()
-            discoveryService.startDiscovery()
+            self.viewModel.loadProfiles()
+            self.discoveryService.startDiscovery()
         }
         .onDisappear {
-            discoveryService.stopDiscovery()
+            self.discoveryService.stopDiscovery()
         }
-        .sheet(isPresented: $showingDiscoverySheet) {
+        .sheet(isPresented: self.$showingDiscoverySheet) {
             DiscoveryDetailSheet(
-                discoveredServers: filteredDiscoveredServers
-            ) { _ in
-                showingDiscoverySheet = false
+                discoveredServers: self.filteredDiscoveredServers)
+            { _ in
+                self.showingDiscoverySheet = false
                 // Auto-fill add server form with discovered server
-                showingAddServer = true
+                self.showingAddServer = true
             }
         }
     }
@@ -171,10 +169,10 @@ struct ServerListView: View {
                     .foregroundColor(Theme.Colors.primaryAccent)
                     .glowEffect()
             }
-            .scaleEffect(logoScale)
+            .scaleEffect(self.logoScale)
             .onAppear {
                 withAnimation(Theme.Animation.smooth.delay(0.1)) {
-                    logoScale = 1.0
+                    self.logoScale = 1.0
                 }
             }
 
@@ -207,8 +205,8 @@ struct ServerListView: View {
                 Spacer()
 
                 Button {
-                    selectedDiscoveredServer = nil // Clear any discovered server
-                    showingAddServer = true
+                    self.selectedDiscoveredServer = nil // Clear any discovered server
+                    self.showingAddServer = true
                 } label: {
                     Image(systemName: "plus.circle")
                         .font(.system(size: 20))
@@ -217,17 +215,16 @@ struct ServerListView: View {
             }
 
             VStack(spacing: Theme.Spacing.small) {
-                ForEach(viewModel.profiles) { profile in
+                ForEach(self.viewModel.profiles) { profile in
                     ServerProfileCard(
                         profile: profile,
-                        isLoading: viewModel.isLoading,
+                        isLoading: self.viewModel.isLoading,
                         onConnect: {
-                            connectToProfile(profile)
+                            self.connectToProfile(profile)
                         },
                         onEdit: {
-                            selectedProfile = profile
-                        }
-                    )
+                            self.selectedProfile = profile
+                        })
                 }
             }
         }
@@ -254,8 +251,8 @@ struct ServerListView: View {
             }
 
             Button {
-                selectedDiscoveredServer = nil // Clear any discovered server
-                showingAddServer = true
+                self.selectedDiscoveredServer = nil // Clear any discovered server
+                self.showingAddServer = true
             } label: {
                 HStack(spacing: Theme.Spacing.small) {
                     Image(systemName: "plus.circle.fill")
@@ -268,12 +265,10 @@ struct ServerListView: View {
                 .padding(.horizontal, Theme.Spacing.large)
                 .background(
                     RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                        .fill(Theme.Colors.terminalBackground)
-                )
+                        .fill(Theme.Colors.terminalBackground))
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                        .stroke(Theme.Colors.primaryAccent, lineWidth: 2)
-                )
+                        .stroke(Theme.Colors.primaryAccent, lineWidth: 2))
             }
         }
         .padding(.horizontal)
@@ -282,8 +277,8 @@ struct ServerListView: View {
     // MARK: - Discovered Servers Section
 
     private var filteredDiscoveredServers: [DiscoveredServer] {
-        let profiles = viewModel.profiles
-        let discovered = discoveryService.discoveredServers
+        let profiles = self.viewModel.profiles
+        let discovered = self.discoveryService.discoveredServers
 
         var filtered: [DiscoveredServer] = []
         for server in discovered {
@@ -297,7 +292,7 @@ struct ServerListView: View {
                     let defaultPort = urlComponents.scheme?.lowercased() == "https" ? 443 : 80
                     let profilePort = urlComponents.port ?? defaultPort
 
-                    if profileHost == server.host && profilePort == server.port {
+                    if profileHost == server.host, profilePort == server.port {
                         isAlreadySaved = true
                         break
                     }
@@ -313,13 +308,13 @@ struct ServerListView: View {
     @ViewBuilder private var discoveredServersSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             // Header
-            discoveryHeader
+            self.discoveryHeader
 
             // Content
-            if filteredDiscoveredServers.isEmpty && discoveryService.isDiscovering {
-                searchingView
-            } else if !filteredDiscoveredServers.isEmpty {
-                discoveredServersList
+            if self.filteredDiscoveredServers.isEmpty, self.discoveryService.isDiscovering {
+                self.searchingView
+            } else if !self.filteredDiscoveredServers.isEmpty {
+                self.discoveredServersList
             }
         }
     }
@@ -332,7 +327,7 @@ struct ServerListView: View {
 
             Spacer()
 
-            if discoveryService.isDiscovering {
+            if self.discoveryService.isDiscovering {
                 ProgressView()
                     .scaleEffect(0.7)
             }
@@ -353,26 +348,26 @@ struct ServerListView: View {
 
     private var discoveredServersList: some View {
         VStack(spacing: Theme.Spacing.small) {
-            ForEach(Array(filteredDiscoveredServers.prefix(3))) { server in
+            ForEach(Array(self.filteredDiscoveredServers.prefix(3))) { server in
                 DiscoveredServerCard(
-                    server: server
-                ) {
-                    connectToDiscoveredServer(server)
+                    server: server)
+                {
+                    self.connectToDiscoveredServer(server)
                 }
             }
 
-            if filteredDiscoveredServers.count > 3 {
-                viewMoreButton
+            if self.filteredDiscoveredServers.count > 3 {
+                self.viewMoreButton
             }
         }
     }
 
     private var viewMoreButton: some View {
         Button {
-            showingDiscoverySheet = true
+            self.showingDiscoverySheet = true
         } label: {
             HStack {
-                Text("View \(filteredDiscoveredServers.count - 3) more...")
+                Text("View \(self.filteredDiscoveredServers.count - 3) more...")
                     .font(Theme.Typography.terminalSystem(size: 14))
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12))
@@ -386,13 +381,13 @@ struct ServerListView: View {
 
     private func connectToProfile(_ profile: ServerProfile) {
         Task {
-            await viewModel.initiateConnectionToProfile(profile)
+            await self.viewModel.initiateConnectionToProfile(profile)
         }
     }
 
     private func connectToDiscoveredServer(_ server: DiscoveredServer) {
         // Use item binding to ensure server data is available when sheet opens
-        serverToAdd = server
+        self.serverToAdd = server
     }
 }
 
@@ -411,7 +406,7 @@ struct ServerProfileCard: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.medium) {
             // Icon
-            Image(systemName: profile.iconSymbol)
+            Image(systemName: self.profile.iconSymbol)
                 .font(.system(size: 24))
                 .foregroundColor(Theme.Colors.primaryAccent)
                 .frame(width: 40, height: 40)
@@ -420,16 +415,16 @@ struct ServerProfileCard: View {
 
             // Server Info
             VStack(alignment: .leading, spacing: 2) {
-                Text(profile.name)
+                Text(self.profile.name)
                     .font(Theme.Typography.terminalSystem(size: 16, weight: .medium))
                     .foregroundColor(Theme.Colors.terminalForeground)
 
                 HStack(spacing: 4) {
-                    Text(profile.url)
+                    Text(self.profile.url)
                         .font(Theme.Typography.terminalSystem(size: 12))
                         .foregroundColor(Theme.Colors.secondaryText)
 
-                    if profile.requiresAuth {
+                    if self.profile.requiresAuth {
                         Image(systemName: "lock.fill")
                             .font(.system(size: 10))
                             .foregroundColor(Theme.Colors.warningAccent)
@@ -447,16 +442,16 @@ struct ServerProfileCard: View {
 
             // Action Buttons
             HStack(spacing: Theme.Spacing.small) {
-                Button(action: onEdit) {
+                Button(action: self.onEdit) {
                     Image(systemName: "ellipsis.circle")
                         .font(.system(size: 20))
                         .foregroundColor(Theme.Colors.secondaryText)
                 }
                 .buttonStyle(.plain)
 
-                Button(action: onConnect) {
+                Button(action: self.onConnect) {
                     HStack(spacing: 4) {
-                        if isLoading {
+                        if self.isLoading {
                             ProgressView()
                                 .scaleEffect(0.8)
                         } else {
@@ -467,7 +462,7 @@ struct ServerProfileCard: View {
                     .foregroundColor(Theme.Colors.primaryAccent)
                 }
                 .buttonStyle(.plain)
-                .disabled(isLoading)
+                .disabled(self.isLoading)
             }
         }
         .padding(Theme.Spacing.medium)
@@ -475,18 +470,16 @@ struct ServerProfileCard: View {
         .cornerRadius(Theme.CornerRadius.card)
         .overlay(
             RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
-                .stroke(Theme.Colors.cardBorder, lineWidth: 1)
-        )
-        .scaleEffect(isPressed ? 0.98 : 1.0)
-        .animation(.easeInOut(duration: 0.1), value: isPressed)
+                .stroke(Theme.Colors.cardBorder, lineWidth: 1))
+        .scaleEffect(self.isPressed ? 0.98 : 1.0)
+        .animation(.easeInOut(duration: 0.1), value: self.isPressed)
         .onTapGesture {
-            onConnect()
+            self.onConnect()
         }
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+                .onChanged { _ in self.isPressed = true }
+                .onEnded { _ in self.isPressed = false })
     }
 }
 

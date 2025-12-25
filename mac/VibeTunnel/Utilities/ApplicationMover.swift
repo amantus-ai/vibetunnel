@@ -47,16 +47,16 @@ final class ApplicationMover {
     /// Checks if the app should be moved to Applications and offers to do so if needed.
     /// This should be called early in the app lifecycle, typically in applicationDidFinishLaunching.
     func checkAndOfferToMoveToApplications() {
-        logger.info("ApplicationMover: Starting check...")
-        logger.info("ApplicationMover: Bundle path: \(Bundle.main.bundlePath)")
+        self.logger.info("ApplicationMover: Starting check...")
+        self.logger.info("ApplicationMover: Bundle path: \(Bundle.main.bundlePath)")
 
-        guard shouldOfferToMove() else {
-            logger.info("ApplicationMover: App is already in Applications or move not needed")
+        guard self.shouldOfferToMove() else {
+            self.logger.info("ApplicationMover: App is already in Applications or move not needed")
             return
         }
 
-        logger.info("ApplicationMover: App needs to be moved, offering to move to Applications")
-        offerToMoveToApplications()
+        self.logger.info("ApplicationMover: App needs to be moved, offering to move to Applications")
+        self.offerToMoveToApplications()
     }
 
     // MARK: - Private Implementation
@@ -64,30 +64,30 @@ final class ApplicationMover {
     /// Determines if we should offer to move the app to Applications
     private func shouldOfferToMove() -> Bool {
         let bundlePath = Bundle.main.bundlePath
-        logger.info("ApplicationMover: Checking bundle path: \(bundlePath)")
+        self.logger.info("ApplicationMover: Checking bundle path: \(bundlePath)")
 
         // Check if already in Applications
-        let inApps = isInApplicationsFolder(bundlePath)
-        logger.info("ApplicationMover: Is in Applications folder: \(inApps)")
+        let inApps = self.isInApplicationsFolder(bundlePath)
+        self.logger.info("ApplicationMover: Is in Applications folder: \(inApps)")
         if inApps {
             return false
         }
 
         // Check if running from DMG or other mounted volume
-        let fromDMG = isRunningFromDMG(bundlePath)
-        logger.info("ApplicationMover: Is running from DMG: \(fromDMG)")
+        let fromDMG = self.isRunningFromDMG(bundlePath)
+        self.logger.info("ApplicationMover: Is running from DMG: \(fromDMG)")
         if fromDMG {
             return true
         }
 
         // Check if running from Downloads or Desktop (common when downloaded)
-        let fromTemp = isRunningFromTemporaryLocation(bundlePath)
-        logger.info("ApplicationMover: Is running from temporary location: \(fromTemp)")
+        let fromTemp = self.isRunningFromTemporaryLocation(bundlePath)
+        self.logger.info("ApplicationMover: Is running from temporary location: \(fromTemp)")
         if fromTemp {
             return true
         }
 
-        logger.info("ApplicationMover: No move needed for path: \(bundlePath)")
+        self.logger.info("ApplicationMover: No move needed for path: \(bundlePath)")
         return false
     }
 
@@ -102,33 +102,33 @@ final class ApplicationMover {
     /// Checks if the app is running from a DMG (mounted disk image)
     /// Uses the proven approach from PFMoveApplication/LetsMove
     private func isRunningFromDMG(_ path: String) -> Bool {
-        logger.info("ApplicationMover: Checking if running from DMG for path: \(path)")
+        self.logger.info("ApplicationMover: Checking if running from DMG for path: \(path)")
 
         guard let diskImageDevice = containingDiskImageDevice(for: path) else {
-            logger.info("ApplicationMover: No disk image device found")
+            self.logger.info("ApplicationMover: No disk image device found")
             return false
         }
 
-        logger.info("ApplicationMover: App is running from disk image device: \(diskImageDevice)")
+        self.logger.info("ApplicationMover: App is running from disk image device: \(diskImageDevice)")
         return true
     }
 
     /// Determines the disk image device containing the given path
     /// Based on the proven PFMoveApplication implementation
     private func containingDiskImageDevice(for path: String) -> String? {
-        logger.info("ApplicationMover: Checking disk image device for path: \(path)")
+        self.logger.info("ApplicationMover: Checking disk image device for path: \(path)")
 
         var fs = statfs()
         let result = statfs(path, &fs)
 
         // If statfs fails or this is the root filesystem, not a disk image
         guard result == 0 else {
-            logger.info("ApplicationMover: statfs failed with result: \(result)")
+            self.logger.info("ApplicationMover: statfs failed with result: \(result)")
             return nil
         }
 
         guard (fs.f_flags & UInt32(MNT_ROOTFS)) == 0 else {
-            logger.info("ApplicationMover: Path is on root filesystem")
+            self.logger.info("ApplicationMover: Path is on root filesystem")
             return nil
         }
 
@@ -140,15 +140,15 @@ final class ApplicationMover {
             }
         }
 
-        logger.info("ApplicationMover: Device name: \(deviceName)")
+        self.logger.info("ApplicationMover: Device name: \(deviceName)")
 
         // Use hdiutil to check if this device is a disk image
-        return checkDeviceIsDiskImage(deviceName)
+        return self.checkDeviceIsDiskImage(deviceName)
     }
 
     /// Checks if the given device is a mounted disk image using hdiutil
     private func checkDeviceIsDiskImage(_ deviceName: String) -> String? {
-        logger.info("ApplicationMover: Checking if device is disk image: \(deviceName)")
+        self.logger.info("ApplicationMover: Checking if device is disk image: \(deviceName)")
 
         let task = Process()
         task.launchPath = "/usr/bin/hdiutil"
@@ -159,12 +159,12 @@ final class ApplicationMover {
         task.standardError = Pipe() // Suppress stderr
 
         do {
-            logger.debug("ApplicationMover: Running hdiutil info -plist")
+            self.logger.debug("ApplicationMover: Running hdiutil info -plist")
             try task.run()
             task.waitUntilExit()
 
             guard task.terminationStatus == 0 else {
-                logger.debug("ApplicationMover: hdiutil command failed with status: \(task.terminationStatus)")
+                self.logger.debug("ApplicationMover: hdiutil command failed with status: \(task.terminationStatus)")
                 return nil
             }
 
@@ -172,16 +172,16 @@ final class ApplicationMover {
             do {
                 data = try pipe.fileHandleForReading.readToEnd() ?? Data()
             } catch {
-                logger.debug("ApplicationMover: Could not read hdiutil output: \(error.localizedDescription)")
+                self.logger.debug("ApplicationMover: Could not read hdiutil output: \(error.localizedDescription)")
                 return nil
             }
-            logger.debug("ApplicationMover: hdiutil returned \(data.count) bytes")
+            self.logger.debug("ApplicationMover: hdiutil returned \(data.count) bytes")
 
             guard let plist = try PropertyListSerialization
                 .propertyList(from: data, options: [], format: nil) as? [String: Any],
                 let images = plist["images"] as? [[String: Any]]
             else {
-                logger.debug("ApplicationMover: No disk images found in hdiutil output")
+                self.logger.debug("ApplicationMover: No disk images found in hdiutil output")
                 return nil
             }
 
@@ -192,17 +192,17 @@ final class ApplicationMover {
                         if let entityDevName = entity["dev-entry"] as? String,
                            entityDevName == deviceName
                         {
-                            logger.debug("Found matching disk image for device: \(deviceName)")
+                            self.logger.debug("Found matching disk image for device: \(deviceName)")
                             return deviceName
                         }
                     }
                 }
             }
 
-            logger.debug("Device \(deviceName) is not a disk image")
+            self.logger.debug("Device \(deviceName) is not a disk image")
             return nil
         } catch {
-            logger.debug("ApplicationMover: Unable to run hdiutil (expected in some environments): \(error)")
+            self.logger.debug("ApplicationMover: Unable to run hdiutil (expected in some environments): \(error)")
             return nil
         }
     }
@@ -236,7 +236,7 @@ final class ApplicationMover {
         // For menu bar apps, always show as modal dialog since there's typically no main window
         NSApp.activate(ignoringOtherApps: true)
         let response = alert.runModal()
-        handleMoveResponse(response)
+        self.handleMoveResponse(response)
     }
 
     /// Handles the user's response to the move offer
@@ -244,13 +244,13 @@ final class ApplicationMover {
         switch response {
         case .alertFirstButtonReturn:
             // User chose "Move to Applications"
-            logger.info("User chose to move app to Applications")
-            performMoveToApplications()
+            self.logger.info("User chose to move app to Applications")
+            self.performMoveToApplications()
         case .alertSecondButtonReturn:
             // User chose "Don't Move"
-            logger.info("User chose not to move app to Applications")
+            self.logger.info("User chose not to move app to Applications")
         default:
-            logger.debug("Unknown alert response: \(response.rawValue)")
+            self.logger.debug("Unknown alert response: \(response.rawValue)")
         }
     }
 
@@ -277,24 +277,24 @@ final class ApplicationMover {
 
                 let response = replaceAlert.runModal()
                 if response != .alertFirstButtonReturn {
-                    logger.info("User cancelled replacement of existing app")
+                    self.logger.info("User cancelled replacement of existing app")
                     return
                 }
 
                 // Remove existing app
                 try fileManager.removeItem(atPath: applicationsPath)
-                logger.info("Removed existing app at \(applicationsPath)")
+                self.logger.info("Removed existing app at \(applicationsPath)")
             }
 
             // Copy the app to Applications
             try fileManager.copyItem(atPath: currentPath, toPath: applicationsPath)
-            logger.info("Successfully copied app to \(applicationsPath)")
+            self.logger.info("Successfully copied app to \(applicationsPath)")
 
             // Show success message and offer to relaunch
-            showMoveSuccessAndRelaunch(newPath: applicationsPath)
+            self.showMoveSuccessAndRelaunch(newPath: applicationsPath)
         } catch {
-            logger.error("Failed to move app to Applications: \(error)")
-            showMoveError(error)
+            self.logger.error("Failed to move app to Applications: \(error)")
+            self.showMoveError(error)
         }
     }
 
@@ -315,7 +315,7 @@ final class ApplicationMover {
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
             // Launch the new version and quit this one
-            launchFromApplicationsAndQuit(newPath: newPath)
+            self.launchFromApplicationsAndQuit(newPath: newPath)
         }
     }
 

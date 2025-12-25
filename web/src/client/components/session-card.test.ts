@@ -65,7 +65,6 @@ describe('SessionCard', () => {
     it('should create component with default state', () => {
       expect(element).toBeDefined();
       expect(element.killing).toBe(false);
-      expect(element.isActive).toBe(false);
     });
 
     it('should render session details', async () => {
@@ -396,61 +395,7 @@ describe('SessionCard', () => {
     });
   });
 
-  describe('activity tracking', () => {
-    it('should track activity for running sessions', async () => {
-      element.session = createMockSession({ status: 'running' });
-      await element.updateComplete;
-
-      // Initially not active
-      expect(element.isActive).toBe(false);
-
-      // Simulate content change event from terminal buffer
-      const terminalBuffer = element.querySelector('vibe-terminal-buffer');
-      if (terminalBuffer) {
-        terminalBuffer.dispatchEvent(new CustomEvent('content-changed'));
-
-        expect(element.isActive).toBe(true);
-
-        // Wait for activity timeout
-        await new Promise((resolve) => setTimeout(resolve, 600));
-
-        expect(element.isActive).toBe(false);
-      }
-    });
-
-    it('should not track activity for non-running sessions', async () => {
-      element.session = createMockSession({ status: 'exited' });
-      await element.updateComplete;
-
-      const terminalBuffer = element.querySelector('vibe-terminal-buffer');
-      if (terminalBuffer) {
-        terminalBuffer.dispatchEvent(new CustomEvent('content-changed'));
-
-        expect(element.isActive).toBe(false);
-      }
-    });
-
-    it('should show activity indicator when active', async () => {
-      element.session = createMockSession({ status: 'running' });
-      element.isActive = true;
-      await element.updateComplete;
-
-      const activityIndicator = element.querySelector('.animate-pulse');
-      expect(activityIndicator).toBeTruthy();
-      expect(activityIndicator?.textContent).toContain('●');
-    });
-  });
-
   describe('styling', () => {
-    it('should apply green glow when active and running', async () => {
-      element.session = createMockSession({ status: 'running' });
-      element.isActive = true;
-      await element.updateComplete;
-
-      const card = element.querySelector('.card');
-      expect(card?.classList.contains('shadow-glow-sm')).toBe(true);
-    });
-
     it('should apply opacity when killing', async () => {
       element.killing = true;
       await element.updateComplete;
@@ -472,7 +417,6 @@ describe('SessionCard', () => {
     it('should clean up intervals on disconnect', () => {
       // Set up some intervals
       element.killing = true;
-      element.isActive = true;
 
       // Disconnect
       element.disconnectedCallback();

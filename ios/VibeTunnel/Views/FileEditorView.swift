@@ -14,8 +14,7 @@ struct FileEditorView: View {
         self._viewModel = State(initialValue: FileEditorViewModel(
             path: path,
             isNewFile: isNewFile,
-            initialContent: initialContent
-        ))
+            initialContent: initialContent))
     }
 
     var body: some View {
@@ -27,18 +26,18 @@ struct FileEditorView: View {
                 VStack(spacing: 0) {
                     // Editor
                     ScrollView {
-                        TextEditor(text: $viewModel.content)
+                        TextEditor(text: self.$viewModel.content)
                             .font(Theme.Typography.terminal(size: 14))
                             .foregroundColor(Theme.Colors.terminalForeground)
                             .scrollContentBackground(.hidden)
                             .padding()
-                            .focused($isTextEditorFocused)
+                            .focused(self.$isTextEditorFocused)
                     }
                     .background(Theme.Colors.terminalBackground)
 
                     // Status bar
                     HStack(spacing: Theme.Spacing.medium) {
-                        if viewModel.hasChanges {
+                        if self.viewModel.hasChanges {
                             Label("Modified", systemImage: "pencil.circle.fill")
                                 .font(.caption)
                                 .foregroundColor(Theme.Colors.warningAccent)
@@ -46,14 +45,14 @@ struct FileEditorView: View {
 
                         Spacer()
 
-                        Text("\(viewModel.lineCount) lines")
+                        Text("\(self.viewModel.lineCount) lines")
                             .font(Theme.Typography.terminalSystem(size: 12))
                             .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
 
                         Text("•")
                             .foregroundColor(Theme.Colors.terminalForeground.opacity(0.3))
 
-                        Text("\(viewModel.content.count) chars")
+                        Text("\(self.viewModel.content.count) chars")
                             .font(Theme.Typography.terminalSystem(size: 12))
                             .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
                     }
@@ -64,19 +63,18 @@ struct FileEditorView: View {
                         Rectangle()
                             .fill(Theme.Colors.cardBorder)
                             .frame(height: 1),
-                        alignment: .top
-                    )
+                        alignment: .top)
                 }
             }
-            .navigationTitle(viewModel.filename)
+            .navigationTitle(self.viewModel.filename)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
-                        if viewModel.hasChanges {
-                            showingDiscardAlert = true
+                        if self.viewModel.hasChanges {
+                            self.showingDiscardAlert = true
                         } else {
-                            dismiss()
+                            self.dismiss()
                         }
                     }
                     .foregroundColor(Theme.Colors.primaryAccent)
@@ -85,36 +83,36 @@ struct FileEditorView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
                         Task {
-                            await viewModel.save()
-                            if !viewModel.showError {
-                                dismiss()
+                            await self.viewModel.save()
+                            if !self.viewModel.showError {
+                                self.dismiss()
                             }
                         }
                     }
                     .foregroundColor(Theme.Colors.successAccent)
-                    .disabled(!viewModel.hasChanges && !viewModel.isNewFile)
+                    .disabled(!self.viewModel.hasChanges && !self.viewModel.isNewFile)
                 }
             }
-            .alert("Discard Changes?", isPresented: $showingDiscardAlert) {
+            .alert("Discard Changes?", isPresented: self.$showingDiscardAlert) {
                 Button("Discard", role: .destructive) {
-                    dismiss()
+                    self.dismiss()
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("You have unsaved changes. Are you sure you want to discard them?")
             }
-            .alert("Error", isPresented: $viewModel.showError, presenting: viewModel.errorMessage) { _ in
+            .alert("Error", isPresented: self.$viewModel.showError, presenting: self.viewModel.errorMessage) { _ in
                 Button("OK") {}
             } message: { error in
                 Text(error)
             }
         }
         .onAppear {
-            isTextEditorFocused = true
+            self.isTextEditorFocused = true
         }
         .task {
-            if !viewModel.isNewFile {
-                await viewModel.loadFile()
+            if !self.viewModel.isNewFile {
+                await self.viewModel.loadFile()
             }
         }
     }
@@ -136,18 +134,18 @@ class FileEditorViewModel {
     let isNewFile: Bool
 
     var filename: String {
-        if isNewFile {
+        if self.isNewFile {
             return "New File"
         }
-        return URL(fileURLWithPath: path).lastPathComponent
+        return URL(fileURLWithPath: self.path).lastPathComponent
     }
 
     var hasChanges: Bool {
-        content != originalContent
+        self.content != self.originalContent
     }
 
     var lineCount: Int {
-        content.isEmpty ? 1 : content.components(separatedBy: .newlines).count
+        self.content.isEmpty ? 1 : self.content.components(separatedBy: .newlines).count
     }
 
     init(path: String, isNewFile: Bool, initialContent: String = "") {
@@ -159,14 +157,14 @@ class FileEditorViewModel {
 
     func loadFile() async {
         // File editing is not yet implemented in the backend
-        errorMessage = "File editing is not available in the current server version"
-        showError = true
+        self.errorMessage = "File editing is not available in the current server version"
+        self.showError = true
     }
 
     func save() async {
         // File editing is not yet implemented in the backend
-        errorMessage = "File editing is not available in the current server version"
-        showError = true
+        self.errorMessage = "File editing is not available in the current server version"
+        self.showError = true
         HapticFeedback.notification(.error)
     }
 }

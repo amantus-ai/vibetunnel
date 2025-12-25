@@ -7,13 +7,12 @@ import OSLog
 final class PermissionChecker {
     private let logger = Logger(
         subsystem: BundleIdentifiers.loggerSubsystem,
-        category: "PermissionChecker"
-    )
+        category: "PermissionChecker")
 
     /// Check if we have the required permissions.
     func checkPermissions() -> Bool {
-        if !checkPermissionsDirectly() {
-            logger.warning("VibeTunnel needs accessibility permissions to focus terminal windows")
+        if !self.checkPermissionsDirectly() {
+            self.logger.warning("VibeTunnel needs accessibility permissions to focus terminal windows")
 
             let alert = NSAlert()
             alert.messageText = "Accessibility Permissions Required"
@@ -27,7 +26,7 @@ final class PermissionChecker {
             alert.addButton(withTitle: "Later")
 
             if alert.runModal() == .alertFirstButtonReturn {
-                requestPermissions()
+                self.requestPermissions()
             }
 
             return false

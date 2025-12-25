@@ -35,8 +35,8 @@ struct FileBrowserView: View {
         initialPath: String = "~",
         mode: FileBrowserMode = .selectDirectory,
         onSelect: @escaping (String) -> Void,
-        onInsertPath: ((String, Bool) -> Void)? = nil
-    ) {
+        onInsertPath: ((String, Bool) -> Void)? = nil)
+    {
         self.initialPath = initialPath
         self.mode = mode
         self.onSelect = onSelect
@@ -46,10 +46,10 @@ struct FileBrowserView: View {
     private var navigationHeader: some View {
         HStack(spacing: 16) {
             // Back button
-            if viewModel.canGoUp {
+            if self.viewModel.canGoUp {
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    viewModel.navigateToParent()
+                    self.viewModel.navigateToParent()
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "chevron.left")
@@ -62,8 +62,7 @@ struct FileBrowserView: View {
                     .padding(.vertical, 6)
                     .background(
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(Theme.Colors.terminalAccent.opacity(0.1))
-                    )
+                            .fill(Theme.Colors.terminalAccent.opacity(0.1)))
                 }
                 .buttonStyle(TerminalButtonStyle())
             }
@@ -74,7 +73,7 @@ struct FileBrowserView: View {
                     .foregroundColor(Theme.Colors.terminalAccent)
                     .font(.system(size: 16))
 
-                Text(viewModel.displayPath)
+                Text(self.viewModel.displayPath)
                     .font(.custom("SF Mono", size: 14))
                     .foregroundColor(Theme.Colors.terminalGray)
                     .lineLimit(1)
@@ -99,50 +98,49 @@ struct FileBrowserView: View {
             // Git filter toggle
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                viewModel.gitFilter = viewModel.gitFilter == .all ? .changed : .all
-                viewModel.loadDirectory(path: viewModel.currentPath)
+                self.viewModel.gitFilter = self.viewModel.gitFilter == .all ? .changed : .all
+                self.viewModel.loadDirectory(path: self.viewModel.currentPath)
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.triangle.branch")
                         .font(.system(size: 12))
-                    Text(viewModel.gitFilter == .changed ? "Git Changes" : "All Files")
+                    Text(self.viewModel.gitFilter == .changed ? "Git Changes" : "All Files")
                         .font(.custom("SF Mono", size: 12))
                 }
-                .foregroundColor(viewModel.gitFilter == .changed ? Theme.Colors.successAccent : Theme.Colors
-                    .terminalGray
-                )
+                .foregroundColor(
+                    self.viewModel.gitFilter == .changed ? Theme.Colors.successAccent : Theme.Colors
+                        .terminalGray)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(viewModel.gitFilter == .changed ? Theme.Colors.successAccent.opacity(0.2) : Theme.Colors
-                            .terminalGray.opacity(0.1)
-                        )
-                )
+                        .fill(
+                            self.viewModel.gitFilter == .changed ? Theme.Colors.successAccent.opacity(0.2) : Theme
+                                .Colors
+                                .terminalGray.opacity(0.1)))
             }
             .buttonStyle(TerminalButtonStyle())
 
             // Hidden files toggle
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                viewModel.showHidden.toggle()
-                viewModel.loadDirectory(path: viewModel.currentPath)
+                self.viewModel.showHidden.toggle()
+                self.viewModel.loadDirectory(path: self.viewModel.currentPath)
             } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: viewModel.showHidden ? "eye" : "eye.slash")
+                    Image(systemName: self.viewModel.showHidden ? "eye" : "eye.slash")
                         .font(.system(size: 12))
                     Text("Hidden")
                         .font(.custom("SF Mono", size: 12))
                 }
-                .foregroundColor(viewModel.showHidden ? Theme.Colors.terminalAccent : Theme.Colors.terminalGray)
+                .foregroundColor(self.viewModel.showHidden ? Theme.Colors.terminalAccent : Theme.Colors.terminalGray)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(viewModel.showHidden ? Theme.Colors.terminalAccent.opacity(0.2) : Theme.Colors
-                            .terminalGray.opacity(0.1)
-                        )
-                )
+                        .fill(
+                            self.viewModel.showHidden ? Theme.Colors.terminalAccent.opacity(0.2) : Theme.Colors
+                                .terminalGray.opacity(0.1)))
             }
             .buttonStyle(TerminalButtonStyle())
 
@@ -160,30 +158,30 @@ struct FileBrowserView: View {
                 Theme.Colors.terminalBackground.ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    navigationHeader
-                    filterToolbar
+                    self.navigationHeader
+                    self.filterToolbar
 
                     // File list
                     ScrollView {
                         LazyVStack(spacing: 0) {
                             // Directories first, then files
-                            ForEach(viewModel.sortedEntries) { entry in
+                            ForEach(self.viewModel.sortedEntries) { entry in
                                 FileBrowserRow(
                                     name: entry.name,
                                     isDirectory: entry.isDir,
                                     size: entry.isDir ? nil : entry.formattedSize,
                                     modifiedTime: entry.formattedDate,
-                                    gitStatus: entry.gitStatus
-                                ) {
-                                    if entry.isDir && mode != .insertPath {
-                                        viewModel.navigate(to: entry.path)
-                                    } else if mode == .browseFiles {
+                                    gitStatus: entry.gitStatus)
+                                {
+                                    if entry.isDir, self.mode != .insertPath {
+                                        self.viewModel.navigate(to: entry.path)
+                                    } else if self.mode == .browseFiles {
                                         // Preview file with our custom preview
-                                        previewPath = entry.path
-                                        showingFilePreview = true
-                                    } else if mode == .insertPath {
+                                        self.previewPath = entry.path
+                                        self.showingFilePreview = true
+                                    } else if self.mode == .insertPath {
                                         // Insert the path into terminal
-                                        insertPath(entry.path, isDirectory: entry.isDir)
+                                        self.insertPath(entry.path, isDirectory: entry.isDir)
                                     }
                                 }
                                 .transition(.opacity)
@@ -210,7 +208,7 @@ struct FileBrowserView: View {
                         .padding(.vertical, 8)
                     }
                     .overlay(alignment: .center) {
-                        if viewModel.isLoading {
+                        if self.viewModel.isLoading {
                             VStack(spacing: 16) {
                                 ProgressView()
                                     .progressViewStyle(CircularProgressViewStyle(tint: Theme.Colors.terminalAccent))
@@ -228,7 +226,7 @@ struct FileBrowserView: View {
                     // Bottom toolbar
                     HStack(spacing: 20) {
                         // Cancel button
-                        Button(action: { dismiss() }, label: {
+                        Button(action: { self.dismiss() }, label: {
                             Text("cancel")
                                 .font(.custom("SF Mono", size: 14))
                                 .foregroundColor(Theme.Colors.terminalGray)
@@ -236,8 +234,7 @@ struct FileBrowserView: View {
                                 .padding(.vertical, 10)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Theme.Colors.terminalGray.opacity(0.3), lineWidth: 1)
-                                )
+                                        .stroke(Theme.Colors.terminalGray.opacity(0.3), lineWidth: 1))
                                 .contentShape(Rectangle())
                         })
                         .buttonStyle(TerminalButtonStyle())
@@ -245,7 +242,7 @@ struct FileBrowserView: View {
                         Spacer()
 
                         // Create folder button
-                        Button(action: { viewModel.showCreateFolder = true }, label: {
+                        Button(action: { self.viewModel.showCreateFolder = true }, label: {
                             Label("new folder", systemImage: "folder.badge.plus")
                                 .font(.custom("SF Mono", size: 14))
                                 .foregroundColor(Theme.Colors.terminalAccent)
@@ -253,8 +250,7 @@ struct FileBrowserView: View {
                                 .padding(.vertical, 10)
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Theme.Colors.terminalAccent.opacity(0.5), lineWidth: 1)
-                                )
+                                        .stroke(Theme.Colors.terminalAccent.opacity(0.5), lineWidth: 1))
                                 .contentShape(Rectangle())
                         })
                         .buttonStyle(TerminalButtonStyle())
@@ -278,10 +274,10 @@ struct FileBrowserView: View {
                         // }
 
                         // Select button (only in selectDirectory mode)
-                        if mode == .selectDirectory {
+                        if self.mode == .selectDirectory {
                             Button(action: {
-                                onSelect(viewModel.currentPath)
-                                dismiss()
+                                self.onSelect(self.viewModel.currentPath)
+                                self.dismiss()
                             }, label: {
                                 Text("select")
                                     .font(.custom("SF Mono", size: 14))
@@ -290,13 +286,11 @@ struct FileBrowserView: View {
                                     .padding(.vertical, 10)
                                     .background(
                                         RoundedRectangle(cornerRadius: 8)
-                                            .fill(Theme.Colors.terminalAccent)
-                                    )
+                                            .fill(Theme.Colors.terminalAccent))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 8)
                                             .fill(Theme.Colors.terminalAccent.opacity(0.3))
-                                            .blur(radius: 10)
-                                    )
+                                            .blur(radius: 10))
                                     .contentShape(Rectangle())
                             })
                             .buttonStyle(TerminalButtonStyle())
@@ -308,86 +302,84 @@ struct FileBrowserView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
-            .alert("Create Folder", isPresented: $viewModel.showCreateFolder) {
-                TextField("Folder name", text: $viewModel.newFolderName)
+            .alert("Create Folder", isPresented: self.$viewModel.showCreateFolder) {
+                TextField("Folder name", text: self.$viewModel.newFolderName)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
 
                 Button("Cancel", role: .cancel) {
-                    viewModel.newFolderName = ""
+                    self.viewModel.newFolderName = ""
                 }
 
                 Button("Create") {
-                    viewModel.createFolder()
+                    self.viewModel.createFolder()
                 }
-                .disabled(viewModel.newFolderName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(self.viewModel.newFolderName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             } message: {
                 Text("Enter a name for the new folder")
             }
-            .alert("Error", isPresented: $viewModel.showError, presenting: viewModel.errorMessage) { _ in
+            .alert("Error", isPresented: self.$viewModel.showError, presenting: self.viewModel.errorMessage) { _ in
                 Button("OK") {}
             } message: { error in
                 Text(error)
             }
-            .alert("Create File", isPresented: $showingNewFileAlert) {
-                TextField("File name", text: $newFileName)
+            .alert("Create File", isPresented: self.$showingNewFileAlert) {
+                TextField("File name", text: self.$newFileName)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
 
                 Button("Cancel", role: .cancel) {
-                    newFileName = ""
+                    self.newFileName = ""
                 }
 
                 Button("Create") {
-                    let path = viewModel.currentPath + "/" + newFileName
-                    selectedFile = FileEntry(
-                        name: newFileName,
+                    let path = self.viewModel.currentPath + "/" + self.newFileName
+                    self.selectedFile = FileEntry(
+                        name: self.newFileName,
                         path: path,
                         isDir: false,
                         size: 0,
                         mode: "0644",
-                        modTime: Date()
-                    )
-                    showingFileEditor = true
-                    newFileName = ""
+                        modTime: Date())
+                    self.showingFileEditor = true
+                    self.newFileName = ""
                 }
-                .disabled(newFileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(self.newFileName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             } message: {
                 Text("Enter a name for the new file")
             }
-            .alert("Delete File", isPresented: $showingDeleteAlert, presenting: selectedFile) { file in
+            .alert("Delete File", isPresented: self.$showingDeleteAlert, presenting: self.selectedFile) { file in
                 Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive) {
                     Task {
-                        await viewModel.deleteFile(path: file.path)
+                        await self.viewModel.deleteFile(path: file.path)
                     }
                 }
             } message: { file in
                 Text("Are you sure you want to delete '\(file.name)'? This action cannot be undone.")
             }
-            .sheet(isPresented: $showingFileEditor) {
+            .sheet(isPresented: self.$showingFileEditor) {
                 if let file = selectedFile {
                     FileEditorView(
                         path: file.path,
-                        isNewFile: !viewModel.entries.contains { $0.path == file.path }
-                    )
-                    .onDisappear {
-                        // Reload directory to show any new files
-                        viewModel.loadDirectory(path: viewModel.currentPath)
-                    }
+                        isNewFile: !self.viewModel.entries.contains { $0.path == file.path })
+                        .onDisappear {
+                            // Reload directory to show any new files
+                            self.viewModel.loadDirectory(path: self.viewModel.currentPath)
+                        }
                 }
             }
-            .fullScreenCover(isPresented: $quickLookManager.isPresenting) {
-                QuickLookWrapper(quickLookManager: quickLookManager)
+            .fullScreenCover(isPresented: self.$quickLookManager.isPresenting) {
+                QuickLookWrapper(quickLookManager: self.quickLookManager)
                     .ignoresSafeArea()
             }
-            .sheet(isPresented: $showingFilePreview) {
+            .sheet(isPresented: self.$showingFilePreview) {
                 if let path = previewPath {
                     FilePreviewView(path: path)
                 }
             }
             .overlay {
-                if quickLookManager.isDownloading {
+                if self.quickLookManager.isDownloading {
                     ZStack {
                         Theme.Colors.overlayBackground
                             .ignoresSafeArea()
@@ -401,8 +393,8 @@ struct FileBrowserView: View {
                                 .font(.custom("SF Mono", size: 16))
                                 .foregroundColor(Theme.Colors.terminalWhite)
 
-                            if quickLookManager.downloadProgress > 0 {
-                                ProgressView(value: quickLookManager.downloadProgress)
+                            if self.quickLookManager.downloadProgress > 0 {
+                                ProgressView(value: self.quickLookManager.downloadProgress)
                                     .progressViewStyle(LinearProgressViewStyle(tint: Theme.Colors.terminalAccent))
                                     .frame(width: 200)
                             }
@@ -415,7 +407,7 @@ struct FileBrowserView: View {
             }
         }
         .onAppear {
-            viewModel.loadDirectory(path: initialPath)
+            self.viewModel.loadDirectory(path: self.initialPath)
         }
     }
 
@@ -426,13 +418,13 @@ struct FileBrowserView: View {
         let escapedPath = path.contains(" ") ? "\"\(path)\"" : path
 
         // Call the insertion handler
-        onInsertPath?(escapedPath, isDirectory)
+        self.onInsertPath?(escapedPath, isDirectory)
 
         // Provide haptic feedback
         HapticFeedback.impact(.light)
 
         // Dismiss the file browser
-        dismiss()
+        self.dismiss()
     }
 }
 
@@ -458,8 +450,8 @@ struct FileBrowserRow: View {
         size: String? = nil,
         modifiedTime: String? = nil,
         gitStatus: GitFileStatus? = nil,
-        onTap: @escaping () -> Void
-    ) {
+        onTap: @escaping () -> Void)
+    {
         self.name = name
         self.isDirectory = isDirectory
         self.isParent = isParent
@@ -470,12 +462,12 @@ struct FileBrowserRow: View {
     }
 
     var iconName: String {
-        if isDirectory {
+        if self.isDirectory {
             return "folder.fill"
         }
 
         // Get file extension
-        let ext = name.split(separator: ".").last?.lowercased() ?? ""
+        let ext = self.name.split(separator: ".").last?.lowercased() ?? ""
 
         switch ext {
         case "js", "jsx", "ts", "tsx", "mjs", "cjs":
@@ -518,11 +510,11 @@ struct FileBrowserRow: View {
     }
 
     var iconColor: Color {
-        if isDirectory {
+        if self.isDirectory {
             return Theme.Colors.terminalAccent
         }
 
-        let ext = name.split(separator: ".").last?.lowercased() ?? ""
+        let ext = self.name.split(separator: ".").last?.lowercased() ?? ""
 
         switch ext {
         case "js", "jsx", "mjs", "cjs":
@@ -555,20 +547,21 @@ struct FileBrowserRow: View {
     }
 
     var body: some View {
-        Button(action: onTap) {
+        Button(action: self.onTap) {
             HStack(spacing: 12) {
                 // Icon
-                Image(systemName: iconName)
-                    .foregroundColor(iconColor)
+                Image(systemName: self.iconName)
+                    .foregroundColor(self.iconColor)
                     .font(.system(size: 16))
                     .frame(width: 24)
 
                 // Name
-                Text(name)
+                Text(self.name)
                     .font(.custom("SF Mono", size: 14))
-                    .foregroundColor(isParent ? Theme.Colors
-                        .terminalAccent : (isDirectory ? Theme.Colors.terminalWhite : Theme.Colors.terminalGray)
-                    )
+                    .foregroundColor(
+                        self.isParent ? Theme.Colors
+                            .terminalAccent :
+                            (self.isDirectory ? Theme.Colors.terminalWhite : Theme.Colors.terminalGray))
                     .lineLimit(1)
                     .truncationMode(.middle)
 
@@ -581,7 +574,7 @@ struct FileBrowserRow: View {
                 }
 
                 // Details
-                if !isParent {
+                if !self.isParent {
                     VStack(alignment: .trailing, spacing: 2) {
                         if let size {
                             Text(size)
@@ -598,7 +591,7 @@ struct FileBrowserRow: View {
                 }
 
                 // Chevron for directories
-                if isDirectory && !isParent {
+                if self.isDirectory, !self.isParent {
                     Image(systemName: "chevron.right")
                         .foregroundColor(Theme.Colors.terminalGray.opacity(0.4))
                         .font(.system(size: 12, weight: .medium))
@@ -611,19 +604,18 @@ struct FileBrowserRow: View {
         .buttonStyle(PlainButtonStyle())
         .background(
             Theme.Colors.terminalGray.opacity(0.05)
-                .opacity(isDirectory ? 1 : 0)
-        )
+                .opacity(self.isDirectory ? 1 : 0))
         .contextMenu {
-            if !isParent {
+            if !self.isParent {
                 Button {
-                    UIPasteboard.general.string = name
+                    UIPasteboard.general.string = self.name
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
                 } label: {
                     Label("Copy Name", systemImage: "doc.on.doc")
                 }
 
                 Button {
-                    UIPasteboard.general.string = isDirectory ? "\(name)/" : name
+                    UIPasteboard.general.string = self.isDirectory ? "\(self.name)/" : self.name
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
                 } label: {
                     Label("Copy Path", systemImage: "doc.on.doc.fill")
@@ -673,7 +665,7 @@ class FileBrowserViewModel {
     private let apiClient = APIClient.shared
 
     var sortedEntries: [FileEntry] {
-        entries.sorted { entry1, entry2 in
+        self.entries.sorted { entry1, entry2 in
             // Directories come first
             if entry1.isDir != entry2.isDir {
                 return entry1.isDir
@@ -684,107 +676,106 @@ class FileBrowserViewModel {
     }
 
     var canGoUp: Bool {
-        currentPath != "/" && currentPath != "~"
+        self.currentPath != "/" && self.currentPath != "~"
     }
 
     var displayPath: String {
         // Show a more user-friendly path
-        if currentPath == "/" {
+        if self.currentPath == "/" {
             return "/"
-        } else if currentPath.hasPrefix("/Users/") {
+        } else if self.currentPath.hasPrefix("/Users/") {
             // Extract username from path like /Users/username/...
-            let components = currentPath.components(separatedBy: "/")
+            let components = self.currentPath.components(separatedBy: "/")
             if components.count > 2 {
                 let username = components[2]
                 let homePath = "/Users/\(username)"
-                if currentPath == homePath || currentPath.hasPrefix(homePath + "/") {
-                    return currentPath.replacingOccurrences(of: homePath, with: "~")
+                if self.currentPath == homePath || self.currentPath.hasPrefix(homePath + "/") {
+                    return self.currentPath.replacingOccurrences(of: homePath, with: "~")
                 }
             }
         }
-        return currentPath
+        return self.currentPath
     }
 
     func loadDirectory(path: String) {
         Task {
-            await loadDirectoryAsync(path: path)
+            await self.loadDirectoryAsync(path: path)
         }
     }
 
     @MainActor
     private func loadDirectoryAsync(path: String) async {
-        isLoading = true
+        self.isLoading = true
         defer { isLoading = false }
 
         do {
             let result = try await apiClient.browseDirectory(
                 path: path,
-                showHidden: showHidden,
-                gitFilter: gitFilter.rawValue
-            )
+                showHidden: self.showHidden,
+                gitFilter: self.gitFilter.rawValue)
             // Use the absolute path returned by the server
-            currentPath = result.absolutePath
-            gitStatus = result.gitStatus
+            self.currentPath = result.absolutePath
+            self.gitStatus = result.gitStatus
             withAnimation(.easeInOut(duration: 0.2)) {
-                entries = result.files
+                self.entries = result.files
             }
         } catch {
             // Failed to load directory: \(error)
-            errorMessage = "Failed to load directory: \(error.localizedDescription)"
-            showError = true
+            self.errorMessage = "Failed to load directory: \(error.localizedDescription)"
+            self.showError = true
         }
     }
 
     func navigate(to path: String) {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        loadDirectory(path: path)
+        self.loadDirectory(path: path)
     }
 
     func navigateToParent() {
         let parentPath = URL(fileURLWithPath: currentPath).deletingLastPathComponent().path
-        navigate(to: parentPath)
+        self.navigate(to: parentPath)
     }
 
     func createFolder() {
-        let folderName = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let folderName = self.newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !folderName.isEmpty else { return }
 
         Task {
-            await createFolderAsync(name: folderName)
+            await self.createFolderAsync(name: folderName)
         }
     }
 
     @MainActor
     private func createFolderAsync(name: String) async {
         do {
-            let fullPath = currentPath + "/" + name
-            try await apiClient.createDirectory(path: fullPath)
+            let fullPath = self.currentPath + "/" + name
+            try await self.apiClient.createDirectory(path: fullPath)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
-            newFolderName = ""
+            self.newFolderName = ""
             // Reload directory to show new folder
-            await loadDirectoryAsync(path: currentPath)
+            await self.loadDirectoryAsync(path: self.currentPath)
         } catch {
             // Failed to create folder: \(error)
-            errorMessage = "Failed to create folder: \(error.localizedDescription)"
-            showError = true
+            self.errorMessage = "Failed to create folder: \(error.localizedDescription)"
+            self.showError = true
             UINotificationFeedbackGenerator().notificationOccurred(.error)
         }
     }
 
     func deleteFile(path: String) async {
         // File deletion is not yet implemented in the backend
-        errorMessage = "File deletion is not available in the current server version"
-        showError = true
+        self.errorMessage = "File deletion is not available in the current server version"
+        self.showError = true
         UINotificationFeedbackGenerator().notificationOccurred(.error)
     }
 
     func previewFile(_ file: FileEntry) async {
         do {
-            try await QuickLookManager.shared.previewFile(file, apiClient: apiClient)
+            try await QuickLookManager.shared.previewFile(file, apiClient: self.apiClient)
         } catch {
             await MainActor.run {
-                errorMessage = "Failed to preview file: \(error.localizedDescription)"
-                showError = true
+                self.errorMessage = "Failed to preview file: \(error.localizedDescription)"
+                self.showError = true
             }
         }
     }
@@ -797,7 +788,7 @@ struct GitStatusBadge: View {
     let status: GitFileStatus
 
     var label: String {
-        switch status {
+        switch self.status {
         case .modified: "M"
         case .added: "A"
         case .deleted: "D"
@@ -807,7 +798,7 @@ struct GitStatusBadge: View {
     }
 
     var color: Color {
-        switch status {
+        switch self.status {
         case .modified: .yellow
         case .added: .green
         case .deleted: .red
@@ -817,14 +808,14 @@ struct GitStatusBadge: View {
     }
 
     var body: some View {
-        if status != .unchanged {
-            Text(label)
+        if self.status != .unchanged {
+            Text(self.label)
                 .font(.custom("SF Mono", size: 10))
                 .fontWeight(.bold)
-                .foregroundColor(color)
+                .foregroundColor(self.color)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
-                .background(color.opacity(0.2))
+                .background(self.color.opacity(0.2))
                 .cornerRadius(4)
         }
     }

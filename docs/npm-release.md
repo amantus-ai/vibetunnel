@@ -74,7 +74,7 @@ This checklist ensures a smooth and error-free npm release process for VibeTunne
 ### 9. Docker Test (Linux Compatibility)
 - [ ] Create test Dockerfile:
   ```dockerfile
-  FROM node:20-slim
+  FROM node:22-slim
   COPY vibetunnel-*.tgz /tmp/
   RUN npm install -g /tmp/vibetunnel-*.tgz
   CMD ["vibetunnel", "--version"]

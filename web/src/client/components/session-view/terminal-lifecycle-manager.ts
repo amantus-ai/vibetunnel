@@ -8,6 +8,7 @@
 import type { Session } from '../../../shared/types.js';
 import { HttpMethod } from '../../../shared/types.js';
 import { authClient } from '../../services/auth-client.js';
+import { terminalSocketClient } from '../../services/terminal-socket-client.js';
 import { createLogger } from '../../utils/logger.js';
 import type { TerminalThemeId } from '../../utils/terminal-themes.js';
 import type { Terminal } from '../terminal.js';
@@ -103,18 +104,12 @@ export class TerminalLifecycleManager {
 
     // First try to find terminal inside terminal-renderer, then fallback to direct query
     const terminalElement = (this.domElement.querySelector('terminal-renderer vibe-terminal') ||
-      this.domElement.querySelector('terminal-renderer vibe-terminal-binary') ||
-      this.domElement.querySelector('vibe-terminal') ||
-      this.domElement.querySelector('vibe-terminal-binary')) as Terminal;
+      this.domElement.querySelector('vibe-terminal')) as Terminal;
 
     logger.debug('Terminal search results:', {
       hasTerminalRenderer: !!this.domElement.querySelector('terminal-renderer'),
       hasDirectTerminal: !!this.domElement.querySelector('vibe-terminal'),
-      hasDirectBinaryTerminal: !!this.domElement.querySelector('vibe-terminal-binary'),
       hasNestedTerminal: !!this.domElement.querySelector('terminal-renderer vibe-terminal'),
-      hasNestedBinaryTerminal: !!this.domElement.querySelector(
-        'terminal-renderer vibe-terminal-binary'
-      ),
       foundElement: !!terminalElement,
       sessionId: this.session?.id,
     });
@@ -221,22 +216,22 @@ export class TerminalLifecycleManager {
             `sending resize request: ${cols}x${rows} (was ${this.lastResizeWidth}x${this.lastResizeHeight})`
           );
 
-          const response = await fetch(`/api/sessions/${this.session.id}/resize`, {
-            method: HttpMethod.POST,
-            headers: {
-              'Content-Type': 'application/json',
-              ...authClient.getAuthHeader(),
-            },
-            body: JSON.stringify({ cols: cols, rows: rows }),
-          });
+          const sent = terminalSocketClient.resize(this.session.id, cols, rows);
+          if (!sent) {
+            const response = await fetch(`/api/sessions/${this.session.id}/resize`, {
+              method: HttpMethod.POST,
+              headers: { 'Content-Type': 'application/json', ...authClient.getAuthHeader() },
+              body: JSON.stringify({ cols: cols, rows: rows }),
+            });
 
-          if (response.ok) {
-            // Cache the successfully sent dimensions
-            this.lastResizeWidth = cols;
-            this.lastResizeHeight = rows;
-          } else {
-            logger.warn(`failed to resize session: ${response.status}`);
+            if (!response.ok) {
+              logger.warn(`failed to resize session: ${response.status}`);
+              return;
+            }
           }
+
+          this.lastResizeWidth = cols;
+          this.lastResizeHeight = rows;
         } catch (error) {
           logger.warn('failed to send resize request', error);
         }

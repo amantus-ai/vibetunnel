@@ -29,8 +29,7 @@ protocol WebSocketDelegate: AnyObject {
     func webSocketDidDisconnect(
         _ webSocket: WebSocketProtocol,
         closeCode: URLSessionWebSocketTask.CloseCode,
-        reason: Data?
-    )
+        reason: Data?)
 }
 
 /// Real implementation of WebSocketProtocol using URLSessionWebSocketTask.
@@ -51,16 +50,16 @@ class URLSessionWebSocket: NSObject, WebSocketProtocol {
         var request = URLRequest(url: url)
         headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
 
-        webSocketTask = session?.webSocketTask(with: request)
-        webSocketTask?.resume()
+        self.webSocketTask = self.session?.webSocketTask(with: request)
+        self.webSocketTask?.resume()
 
         // Start receiving messages
-        isReceiving = true
-        receiveNextMessage()
+        self.isReceiving = true
+        self.receiveNextMessage()
 
         // Send initial ping to verify connection
         do {
-            try await sendPing()
+            try await self.sendPing()
             Task { @MainActor in
                 self.delegate?.webSocketDidConnect(self)
             }
@@ -78,9 +77,9 @@ class URLSessionWebSocket: NSObject, WebSocketProtocol {
         }
 
         switch message {
-        case .string(let text):
+        case let .string(text):
             try await task.send(.string(text))
-        case .data(let data):
+        case let .data(data):
             try await task.send(.data(data))
         }
     }
@@ -102,26 +101,26 @@ class URLSessionWebSocket: NSObject, WebSocketProtocol {
     }
 
     func disconnect(with code: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        isReceiving = false
-        webSocketTask?.cancel(with: code, reason: reason)
+        self.isReceiving = false
+        self.webSocketTask?.cancel(with: code, reason: reason)
         Task { @MainActor in
             self.delegate?.webSocketDidDisconnect(self, closeCode: code, reason: reason)
         }
     }
 
     private func receiveNextMessage() {
-        guard isReceiving, let task = webSocketTask else { return }
+        guard self.isReceiving, let task = webSocketTask else { return }
 
         task.receive { [weak self] result in
             guard let self else { return }
 
             switch result {
-            case .success(let message):
+            case let .success(message):
                 let wsMessage: WebSocketMessage
                 switch message {
-                case .string(let text):
+                case let .string(text):
                     wsMessage = .string(text)
-                case .data(let data):
+                case let .data(data):
                     wsMessage = .data(data)
                 @unknown default:
                     return
@@ -136,7 +135,7 @@ class URLSessionWebSocket: NSObject, WebSocketProtocol {
                     self.receiveNextMessage()
                 }
 
-            case .failure(let error):
+            case let .failure(error):
                 Task { @MainActor in
                     self.isReceiving = false
                     self.delegate?.webSocket(self, didFailWithError: error)
@@ -150,8 +149,8 @@ extension URLSessionWebSocket: URLSessionWebSocketDelegate {
     nonisolated func urlSession(
         _ session: URLSession,
         webSocketTask: URLSessionWebSocketTask,
-        didOpenWithProtocol protocol: String?
-    ) {
+        didOpenWithProtocol protocol: String?)
+    {
         // Connection opened - already handled in connect()
     }
 
@@ -159,8 +158,8 @@ extension URLSessionWebSocket: URLSessionWebSocketDelegate {
         _ session: URLSession,
         webSocketTask: URLSessionWebSocketTask,
         didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
-        reason: Data?
-    ) {
+        reason: Data?)
+    {
         Task { @MainActor in
             self.isReceiving = false
             self.delegate?.webSocketDidDisconnect(self, closeCode: closeCode, reason: reason)

@@ -2,13 +2,13 @@
  * Session View Component
  *
  * Full-screen terminal view for an active session. Handles terminal I/O,
- * streaming updates via SSE, file browser integration, and mobile overlays.
+ * streaming updates via WebSocket v3, file browser integration, and mobile overlays.
  *
  * @fires navigate-to-list - When navigating back to session list
  * @fires error - When an error occurs (detail: string)
  * @fires warning - When a warning occurs (detail: string)
  *
- * @listens session-exit - From SSE stream when session exits
+ * @listens session-exit - From v3 `EVENT` frames when session exits
  * @listens terminal-ready - From terminal component when ready
  * @listens file-selected - From file browser when file is selected
  * @listens browser-cancel - From file browser when cancelled
@@ -45,14 +45,11 @@ import {
 } from './session-view/terminal-lifecycle-manager.js';
 import { TerminalSettingsManager } from './session-view/terminal-settings-manager.js';
 import { UIStateManager } from './session-view/ui-state-manager.js';
-import type { AppPreferences } from './settings.js';
-import { STORAGE_KEY } from './settings.js';
 
 // Components
 import './session-view/terminal-renderer.js';
 import './session-view/overlays-container.js';
 import type { Terminal } from './terminal.js';
-import type { VibeTerminalBinary } from './vibe-terminal-binary.js';
 
 // Extend Window interface to include our custom property
 declare global {
@@ -236,18 +233,12 @@ export class SessionView extends LitElement {
     // Check initial orientation
     this.checkOrientation();
 
-    // Load binary mode preference
-    this.loadBinaryModePreference();
-
     // Create bound orientation handler
     this.boundHandleOrientationChange = () => this.handleOrientationChange();
 
     // Listen for orientation changes
     window.addEventListener('orientationchange', this.boundHandleOrientationChange);
     window.addEventListener('resize', this.boundHandleOrientationChange);
-
-    // Listen for binary mode changes
-    window.addEventListener('terminal-binary-mode-changed', this.handleBinaryModeChange);
 
     // Initialize connection manager
     this.connectionManager = new ConnectionManager(
@@ -454,9 +445,6 @@ export class SessionView extends LitElement {
       window.removeEventListener('resize', this.boundHandleOrientationChange);
     }
 
-    // Remove binary mode listener
-    window.removeEventListener('terminal-binary-mode-changed', this.handleBinaryModeChange);
-
     // Remove drag & drop and paste event listeners using FileOperationsManager
     this.fileOperationsManager.removeEventListeners(this);
 
@@ -491,56 +479,15 @@ export class SessionView extends LitElement {
     this.requestUpdate();
   }
 
-  private loadBinaryModePreference() {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const preferences = JSON.parse(stored) as AppPreferences;
-        this.uiStateManager.setUseBinaryMode(preferences.useBinaryMode ?? false);
-      }
-    } catch (error) {
-      logger.warn('Failed to load binary mode preference', error);
-    }
-  }
-
-  private handleBinaryModeChange = (event: Event) => {
-    const customEvent = event as CustomEvent<boolean>;
-    const newValue = customEvent.detail;
-
-    // Only update if value actually changed
-    const currentState = this.uiStateManager.getState();
-    if (currentState.useBinaryMode !== newValue) {
-      this.uiStateManager.setUseBinaryMode(newValue);
-
-      // If we have an active session, reconnect with new mode
-      if (this.session && currentState.connected) {
-        // Disconnect current terminal
-        this.connectionManager.cleanupStreamConnection();
-
-        // Force a re-render to switch terminal components
-        this.requestUpdate();
-
-        // Re-establish connection after component switch
-        requestAnimationFrame(() => {
-          this.ensureTerminalInitialized();
-        });
-      }
-    }
-  };
-
-  private getTerminalElement(): Terminal | VibeTerminalBinary | null {
+  private getTerminalElement(): Terminal | null {
     // Look for terminal inside terminal-renderer (no shadow DOM, so direct descendant selector works)
     const terminalRenderer = this.querySelector('terminal-renderer');
     if (terminalRenderer) {
-      return this.uiStateManager.getState().useBinaryMode
-        ? (terminalRenderer.querySelector('vibe-terminal-binary') as VibeTerminalBinary | null)
-        : (terminalRenderer.querySelector('vibe-terminal') as Terminal | null);
+      return terminalRenderer.querySelector('vibe-terminal') as Terminal | null;
     }
 
     // Fallback to direct search (shouldn't happen with new structure)
-    return this.uiStateManager.getState().useBinaryMode
-      ? (this.querySelector('vibe-terminal-binary') as VibeTerminalBinary | null)
-      : (this.querySelector('vibe-terminal') as Terminal | null);
+    return this.querySelector('vibe-terminal') as Terminal | null;
   }
 
   firstUpdated(changedProperties: PropertyValues) {
@@ -1038,8 +985,7 @@ export class SessionView extends LitElement {
         }
         
         /* Make terminal content 50px larger to prevent clipping */
-        .terminal-area vibe-terminal,
-        .terminal-area vibe-terminal-binary {
+        .terminal-area vibe-terminal {
           height: calc(100% + 50px) !important;
           margin-bottom: -50px !important;
         }
@@ -1051,8 +997,7 @@ export class SessionView extends LitElement {
         }
         
         /* Add padding to terminal content when keyboard is visible */
-        .terminal-area[data-quickkeys-visible="true"] vibe-terminal,
-        .terminal-area[data-quickkeys-visible="true"] vibe-terminal-binary {
+        .terminal-area[data-quickkeys-visible="true"] vibe-terminal {
           padding-bottom: 70px !important;
           box-sizing: border-box;
         }
@@ -1188,7 +1133,6 @@ export class SessionView extends LitElement {
               <terminal-renderer
                 id="${TERMINAL_IDS.SESSION_TERMINAL}"
                 .session=${this.session}
-                .useBinaryMode=${uiState.useBinaryMode}
                 .terminalFontSize=${uiState.terminalFontSize}
                 .terminalMaxCols=${uiState.terminalMaxCols}
                 .terminalTheme=${uiState.terminalTheme}

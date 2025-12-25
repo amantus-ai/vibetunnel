@@ -7,8 +7,7 @@ import OSLog
 extension Logger {
     fileprivate static let repositoryDiscovery = Logger(
         subsystem: BundleIdentifiers.loggerSubsystem,
-        category: "RepositoryDiscovery"
-    )
+        category: "RepositoryDiscovery")
 }
 
 // MARK: - FileSystemScanner
@@ -20,8 +19,7 @@ private actor FileSystemScanner {
         try FileManager.default.contentsOfDirectory(
             at: url,
             includingPropertiesForKeys: [.isDirectoryKey, .isHiddenKey],
-            options: [.skipsSubdirectoryDescendants]
-        )
+            options: [.skipsSubdirectoryDescendants])
     }
 
     /// Check if path is readable
@@ -46,8 +44,7 @@ private actor FileSystemScanner {
         let resourceValues = try url.resourceValues(forKeys: [.isDirectoryKey, .isHiddenKey])
         return (
             isDirectory: resourceValues.isDirectory ?? false,
-            isHidden: resourceValues.isHidden ?? false
-        )
+            isHidden: resourceValues.isHidden ?? false)
     }
 }
 
@@ -88,13 +85,13 @@ public final class RepositoryDiscoveryService {
     /// Discover repositories in the specified base path
     /// - Parameter basePath: The base directory to search (supports ~ expansion)
     public func discoverRepositories(in basePath: String) async {
-        guard !isDiscovering else {
+        guard !self.isDiscovering else {
             Logger.repositoryDiscovery.debug("Discovery already in progress, skipping")
             return
         }
 
-        isDiscovering = true
-        lastError = nil
+        self.isDiscovering = true
+        self.lastError = nil
 
         let expandedPath = NSString(string: basePath).expandingTildeInPath
         Logger.repositoryDiscovery.info("Starting repository discovery in: \(expandedPath)")
@@ -102,8 +99,8 @@ public final class RepositoryDiscoveryService {
         // Check cache first
         if let cachedRepositories = repositoryCache[expandedPath] {
             Logger.repositoryDiscovery.debug("Using cached repositories for path: \(expandedPath)")
-            repositories = cachedRepositories
-            isDiscovering = false
+            self.repositories = cachedRepositories
+            self.isDiscovering = false
             return
         }
 
@@ -120,7 +117,7 @@ public final class RepositoryDiscoveryService {
 
     /// Clear the repository cache
     public func clearCache() {
-        repositoryCache.removeAll()
+        self.repositoryCache.removeAll()
         Logger.repositoryDiscovery.debug("Repository cache cleared")
     }
 
@@ -139,7 +136,7 @@ public final class RepositoryDiscoveryService {
 
     /// Recursively scan a directory for Git repositories
     private func scanDirectory(_ path: String, depth: Int) async -> [DiscoveredRepository] {
-        guard depth < maxSearchDepth else {
+        guard depth < self.maxSearchDepth else {
             Logger.repositoryDiscovery.debug("Max depth reached at: \(path)")
             return []
         }
@@ -152,7 +149,7 @@ public final class RepositoryDiscoveryService {
             let url = URL(fileURLWithPath: path)
 
             // Check if directory is accessible using actor
-            guard await fileScanner.isReadable(at: path) else {
+            guard await self.fileScanner.isReadable(at: path) else {
                 Logger.repositoryDiscovery.debug("Directory not readable: \(path)")
                 return []
             }
@@ -167,14 +164,14 @@ public final class RepositoryDiscoveryService {
 
                 // Skip files and hidden directories (except .git)
                 guard isDirectory else { continue }
-                if isHidden && itemURL.lastPathComponent != ".git" {
+                if isHidden, itemURL.lastPathComponent != ".git" {
                     continue
                 }
 
                 let itemPath = itemURL.path
 
                 // Check if this directory is a Git repository using actor
-                if await fileScanner.isGitRepository(at: itemPath) {
+                if await self.fileScanner.isGitRepository(at: itemPath) {
                     let repository = await createDiscoveredRepository(at: itemPath)
                     repositories.append(repository)
                 } else {
@@ -208,14 +205,13 @@ public final class RepositoryDiscoveryService {
             path: path,
             folderName: folderName,
             lastModified: lastModified,
-            githubURL: githubURL
-        )
+            githubURL: githubURL)
     }
 
     /// Get the last modified date of a repository
     private func getLastModifiedDate(at path: String) async -> Date {
         do {
-            return try await fileScanner.getModificationDate(at: path)
+            return try await self.fileScanner.getModificationDate(at: path)
         } catch {
             Logger.repositoryDiscovery.debug("Could not get modification date for \(path): \(error)")
             return Date.distantPast
@@ -235,16 +231,16 @@ public struct DiscoveredRepository: Identifiable, Hashable, Sendable {
 
     /// Display name for the repository
     public var displayName: String {
-        folderName
+        self.folderName
     }
 
     /// Relative path from home directory if applicable
     public var relativePath: String {
         let homeDir = NSHomeDirectory()
-        if path.hasPrefix(homeDir) {
-            return "~" + path.dropFirst(homeDir.count)
+        if self.path.hasPrefix(homeDir) {
+            return "~" + self.path.dropFirst(homeDir.count)
         }
-        return path
+        return self.path
     }
 
     /// Formatted last modified date
@@ -252,6 +248,6 @@ public struct DiscoveredRepository: Identifiable, Hashable, Sendable {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
         formatter.timeStyle = .none
-        return formatter.string(from: lastModified)
+        return formatter.string(from: self.lastModified)
     }
 }

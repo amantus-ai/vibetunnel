@@ -493,6 +493,7 @@ function validatePackageHybrid() {
     'lib/vibetunnel-cli',
     'lib/cli.js',
     'bin/vibetunnel',
+    'bin/vibetunnel-fwd',
     'bin/vt',
     'scripts/postinstall.js',
     'public/index.html',

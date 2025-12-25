@@ -13,8 +13,7 @@ struct NotificationPermissionPageView: View {
 
     private let logger = Logger(
         subsystem: "sh.vibetunnel.vibetunnel",
-        category: "NotificationPermissionPageView"
-    )
+        category: "NotificationPermissionPageView")
 
     init(permissionStatus: UNAuthorizationStatus = .notDetermined) {
         self.permissionStatus = permissionStatus
@@ -28,15 +27,14 @@ struct NotificationPermissionPageView: View {
                     .fontWeight(.semibold)
 
                 Text(
-                    "Get notified about session events, command completions, and errors. You can customize which notifications to receive in Settings."
-                )
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 480)
-                .fixedSize(horizontal: false, vertical: true)
+                    "Get notified about session events, command completions, and errors. You can customize which notifications to receive in Settings.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+                    .fixedSize(horizontal: false, vertical: true)
 
-                if permissionStatus != .denied {
+                if self.permissionStatus != .denied {
                     // Notification examples
                     VStack(alignment: .leading, spacing: 12) {
                         Label("Session starts and exits", systemImage: "terminal")
@@ -52,7 +50,7 @@ struct NotificationPermissionPageView: View {
                 }
 
                 // Permission button/status
-                if permissionStatus == .authorized {
+                if self.permissionStatus == .authorized {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
@@ -61,7 +59,7 @@ struct NotificationPermissionPageView: View {
                     }
                     .font(.body)
                     .frame(height: 32)
-                } else if permissionStatus == .denied {
+                } else if self.permissionStatus == .denied {
                     VStack(spacing: 8) {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
@@ -72,14 +70,14 @@ struct NotificationPermissionPageView: View {
                         .font(.body)
 
                         Button("Open System Settings") {
-                            notificationService.openNotificationSettings()
+                            self.notificationService.openNotificationSettings()
                         }
                         .buttonStyle(.borderedProminent)
                         .frame(height: 32)
                     }
                 } else {
-                    Button(action: requestNotificationPermission) {
-                        if isRequestingPermission {
+                    Button(action: self.requestNotificationPermission) {
+                        if self.isRequestingPermission {
                             ProgressView()
                                 .scaleEffect(0.5)
                                 .frame(width: 8, height: 8)
@@ -88,7 +86,7 @@ struct NotificationPermissionPageView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(isRequestingPermission)
+                    .disabled(self.isRequestingPermission)
                     .frame(height: 32)
                 }
             }
@@ -97,28 +95,28 @@ struct NotificationPermissionPageView: View {
         .padding()
         .task {
             if !isRunningPreviews() {
-                await checkNotificationPermission()
+                await self.checkNotificationPermission()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             // Check permissions when returning from System Settings
             Task {
-                await checkNotificationPermission()
+                await self.checkNotificationPermission()
             }
         }
     }
 
     private func checkNotificationPermission() async {
-        permissionStatus = await notificationService.authorizationStatus()
+        self.permissionStatus = await self.notificationService.authorizationStatus()
     }
 
     private func requestNotificationPermission() {
         Task {
-            isRequestingPermission = true
+            self.isRequestingPermission = true
             defer { isRequestingPermission = false }
-            _ = try? await notificationService.requestAuthorization()
+            _ = try? await self.notificationService.requestAuthorization()
             // Update permission status after request
-            await checkNotificationPermission()
+            await self.checkNotificationPermission()
         }
     }
 }

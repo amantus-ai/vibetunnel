@@ -78,6 +78,7 @@ async function build() {
         'compression',
         'helmet',
         'express',
+        'ghostty-web',
         'ws',
         'jsonwebtoken',
         'web-push',
@@ -86,7 +87,6 @@ async function build() {
         'http-proxy-middleware',
         'multer',
         'mime-types',
-        '@xterm/headless',
       ],
       minify: true,
       sourcemap: false,
@@ -115,6 +115,11 @@ async function build() {
     console.error('CLI bundling failed:', error);
     process.exit(1);
   }
+
+  // Build zig forwarder first.
+  // `build-native.js` runs verification in CI which expects the forwarder to exist.
+  console.log('Building zig forwarder...');
+  execSync('node scripts/build-fwd-zig.js', { stdio: 'inherit' });
 
 
   // Build native executable

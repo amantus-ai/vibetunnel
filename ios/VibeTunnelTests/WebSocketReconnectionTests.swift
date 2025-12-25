@@ -35,7 +35,7 @@ struct WebSocketReconnectionTests {
         var attempts = 0
         var shouldRetry = true
 
-        while shouldRetry && attempts < maxAttempts {
+        while shouldRetry, attempts < maxAttempts {
             attempts += 1
             shouldRetry = attempts < maxAttempts
         }
@@ -168,10 +168,9 @@ struct WebSocketReconnectionTests {
         }
 
         let config = ConnectionConfig(
-            url: "wss://localhost:8888/buffers",
+            url: "wss://localhost:8888/ws",
             authToken: "test-token",
-            sessionId: "session-123"
-        )
+            sessionId: "session-123")
 
         // Verify auth info is preserved for reconnection
         #expect(config.authToken != nil)
@@ -200,7 +199,7 @@ struct WebSocketReconnectionTests {
                 true // Always retry network errors
             case .authentication:
                 false // Don't retry auth errors
-            case .server(let code):
+            case let .server(code):
                 code >= 500 // Retry server errors
             case .client:
                 false // Don't retry client errors
@@ -248,8 +247,7 @@ struct WebSocketReconnectionTests {
             url: "wss://localhost:8888",
             sessionId: "abc123",
             lastConnected: Date(),
-            reconnectCount: 3
-        )
+            reconnectCount: 3)
 
         // Encode
         let encoder = JSONEncoder()
@@ -286,22 +284,22 @@ struct WebSocketReconnectionTests {
             var state: State {
                 if let lastFailure = lastFailureTime {
                     let timeSinceFailure = Date().timeIntervalSince(lastFailure)
-                    if timeSinceFailure > resetTimeout {
+                    if timeSinceFailure > self.resetTimeout {
                         return .halfOpen
                     }
                 }
 
-                return failureCount >= failureThreshold ? .open : .closed
+                return self.failureCount >= self.failureThreshold ? .open : .closed
             }
 
             func recordSuccess() {
-                failureCount = 0
-                lastFailureTime = nil
+                self.failureCount = 0
+                self.lastFailureTime = nil
             }
 
             func recordFailure() {
-                failureCount += 1
-                lastFailureTime = Date()
+                self.failureCount += 1
+                self.lastFailureTime = Date()
             }
         }
 

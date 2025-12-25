@@ -1,0 +1,21 @@
+{
+  "ignorePatterns": [
+    "src/types/**/*.d.ts"
+  ],
+  "rules": {
+    "no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+    "no-empty-pattern": "off",
+    "no-unassigned-vars": "off",
+    "no-unused-expressions": "off",
+    "no-control-regex": "off"
+    ,
+    "unicorn/no-useless-fallback-in-spread": "off"
+  }
+}

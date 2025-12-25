@@ -1,11 +1,10 @@
-import type { Response } from 'express';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SessionManager } from '../../server/pty/session-manager.js';
 import type { AsciinemaHeader } from '../../server/pty/types.js';
-import { StreamWatcher } from '../../server/services/stream-watcher.js';
+import { CastOutputHub } from '../../server/services/cast-output-hub.js';
 import {
   mockAsciinemaNoClears,
   mockAsciinemaWithClearMidLine,
@@ -15,29 +14,16 @@ import {
 // Type for asciinema events used in tests
 type TestAsciinemaEvent = [number | 'exit', string | number, string?];
 
-describe('StreamWatcher - Asciinema Stream Pruning', () => {
-  let streamWatcher: StreamWatcher;
+describe('CastOutputHub - Asciinema Stream Pruning', () => {
+  let castOutputHub: CastOutputHub;
   let tempDir: string;
-  let mockResponse: Partial<Response>;
-  let writtenData: string[] = [];
+  let sessionManager: SessionManager;
 
   beforeEach(() => {
     // Create temp directory for test files
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'stream-pruning-test-'));
-
-    // Mock response object
-    writtenData = [];
-    mockResponse = {
-      write: vi.fn((data: string) => {
-        writtenData.push(data);
-        return true;
-      }),
-      end: vi.fn(),
-      locals: {},
-    };
-
-    const sessionManager = new SessionManager(tempDir);
-    streamWatcher = new StreamWatcher(sessionManager);
+    sessionManager = new SessionManager(tempDir);
+    castOutputHub = new CastOutputHub(sessionManager);
   });
 
   afterEach(() => {
@@ -45,169 +31,172 @@ describe('StreamWatcher - Asciinema Stream Pruning', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  // Helper to create test asciinema file
+  function ensureSessionInfo(sessionId: string) {
+    sessionManager.createSessionDirectory(sessionId);
+    sessionManager.saveSessionInfo(sessionId, {
+      id: sessionId,
+      name: 'test',
+      command: ['bash'],
+      workingDir: tempDir,
+      status: 'running',
+      startedAt: new Date().toISOString(),
+      lastClearOffset: 0,
+    });
+  }
+
+  // Helper to create test asciinema file (writes to session stdout path)
   function createTestFile(
     filename: string,
     header: AsciinemaHeader,
     events: TestAsciinemaEvent[]
   ): string {
-    const filepath = path.join(tempDir, filename);
+    const sessionId = filename.replace(/\.cast$/, '');
+    ensureSessionInfo(sessionId);
+    const paths = sessionManager.getSessionPaths(sessionId, true);
+    if (!paths) throw new Error('session paths not found');
+
+    const filepath = paths.stdoutPath;
     const lines = [JSON.stringify(header), ...events.map((event) => JSON.stringify(event))];
-    fs.writeFileSync(filepath, lines.join('\n'));
+    fs.writeFileSync(filepath, `${lines.join('\n')}\n`);
     return filepath;
   }
 
-  // Helper to parse SSE data
-  function parseSSEData(data: string[]): Array<AsciinemaHeader | TestAsciinemaEvent> {
-    return data
-      .filter((line) => line.startsWith('data: '))
-      .map((line) => {
-        const jsonStr = line.substring(6).trim();
-        try {
-          return JSON.parse(jsonStr);
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean);
+  async function collectExistingEvents(sessionId: string, timeoutMs = 250) {
+    const events: Array<
+      | { kind: 'header'; header: AsciinemaHeader }
+      | { kind: 'output'; data: string }
+      | { kind: 'resize'; dimensions: string }
+      | { kind: 'exit'; exitCode: number }
+      | { kind: 'error'; message: string }
+    > = [];
+
+    const unsubscribe = castOutputHub.subscribe(sessionId, (event) => {
+      // normalize to make tests simple
+      if (event.kind === 'header') events.push({ kind: 'header', header: event.header });
+      else if (event.kind === 'output') events.push({ kind: 'output', data: event.data });
+      else if (event.kind === 'resize')
+        events.push({ kind: 'resize', dimensions: event.dimensions });
+      else if (event.kind === 'exit') events.push({ kind: 'exit', exitCode: event.exitCode });
+      else if (event.kind === 'error') events.push({ kind: 'error', message: event.message });
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, timeoutMs));
+    unsubscribe();
+    return events;
   }
 
   it('should prune content before the last clear sequence', async () => {
-    const filepath = createTestFile(
+    createTestFile(
       'with-clears.cast',
       mockAsciinemaWithClears.header as AsciinemaHeader,
       mockAsciinemaWithClears.events as TestAsciinemaEvent[]
     );
 
-    // Use reflection to call private method
-    // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
-    const sendExistingContent = (streamWatcher as any).sendExistingContent.bind(streamWatcher);
-    sendExistingContent('session1', filepath, {
-      response: mockResponse,
-      startTime: Date.now() / 1000,
-    });
+    const events = await collectExistingEvents('with-clears');
 
-    // Wait for async operations to complete
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    const headerEvent = events.find((e) => e.kind === 'header') as
+      | { kind: 'header'; header: AsciinemaHeader }
+      | undefined;
+    expect(headerEvent).toBeTruthy();
 
-    const events = parseSSEData(writtenData);
-
-    // Should have header + final content only
-    expect(events.length).toBeGreaterThan(0);
-
-    // First event should be header with updated dimensions
-    const header = events[0] as AsciinemaHeader;
+    // Header should be updated to last resize before the last clear
+    const header = headerEvent?.header as AsciinemaHeader;
     expect(header.version).toBe(2);
     expect(header.width).toBe(100); // From last resize before clear
     expect(header.height).toBe(30);
 
     // Should only have content after the last clear
-    const outputEvents = events.filter((e) => Array.isArray(e) && e[1] === 'o');
+    const outputEvents = events.filter((e) => e.kind === 'output') as Array<{
+      kind: 'output';
+      data: string;
+    }>;
     expect(outputEvents.length).toBe(3); // Lines 9, 10, 11
-    expect(outputEvents[0][2]).toContain('Line 9: Final content');
-    expect(outputEvents[1][2]).toContain('Line 10: This should be visible');
-    expect(outputEvents[2][2]).toContain('Line 11: Last line');
+    expect(outputEvents[0].data).toContain('Line 9: Final content');
+    expect(outputEvents[1].data).toContain('Line 10: This should be visible');
+    expect(outputEvents[2].data).toContain('Line 11: Last line');
 
     // Should have exit event
-    const exitEvent = events.find((e) => Array.isArray(e) && e[0] === 'exit');
+    const exitEvent = events.find((e) => e.kind === 'exit');
     expect(exitEvent).toBeDefined();
   });
 
   it('should handle clear sequence in middle of line', async () => {
-    const filepath = createTestFile(
+    createTestFile(
       'clear-mid-line.cast',
       mockAsciinemaWithClearMidLine.header as AsciinemaHeader,
       mockAsciinemaWithClearMidLine.events as TestAsciinemaEvent[]
     );
 
-    // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
-    const sendExistingContent = (streamWatcher as any).sendExistingContent.bind(streamWatcher);
-    sendExistingContent('session2', filepath, {
-      response: mockResponse,
-      startTime: Date.now() / 1000,
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    const events = parseSSEData(writtenData);
-
     // Should only have content after the clear
-    const outputEvents = events.filter((e) => Array.isArray(e) && e[1] === 'o');
+    const events = await collectExistingEvents('clear-mid-line');
+    const outputEvents = events.filter((e) => e.kind === 'output') as Array<{
+      kind: 'output';
+      data: string;
+    }>;
     expect(outputEvents.length).toBe(1); // Only "After clear"
-    expect(outputEvents[0][2]).toContain('After clear');
+    expect(outputEvents[0].data).toContain('After clear');
   });
 
   it('should not prune streams without clear sequences', async () => {
-    const filepath = createTestFile(
+    createTestFile(
       'no-clears.cast',
       mockAsciinemaNoClears.header as AsciinemaHeader,
       mockAsciinemaNoClears.events as TestAsciinemaEvent[]
     );
 
-    // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
-    const sendExistingContent = (streamWatcher as any).sendExistingContent.bind(streamWatcher);
-    sendExistingContent('session3', filepath, {
-      response: mockResponse,
-      startTime: Date.now() / 1000,
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    const events = parseSSEData(writtenData);
-
     // Should have all events
-    const outputEvents = events.filter((e) => Array.isArray(e) && e[1] === 'o');
+    const events = await collectExistingEvents('no-clears');
+    const outputEvents = events.filter((e) => e.kind === 'output') as Array<{
+      kind: 'output';
+      data: string;
+    }>;
     expect(outputEvents.length).toBe(3); // All 3 lines
-    expect(outputEvents[0][2]).toContain('Line 1: No clears');
-    expect(outputEvents[1][2]).toContain('Line 2: Just regular');
-    expect(outputEvents[2][2]).toContain('Line 3: Should replay');
+    expect(outputEvents[0].data).toContain('Line 1: No clears');
+    expect(outputEvents[1].data).toContain('Line 2: Just regular');
+    expect(outputEvents[2].data).toContain('Line 3: Should replay');
   });
 
-  it('should fall back to non-pruning on read errors', async () => {
-    const nonExistentPath = path.join(tempDir, 'does-not-exist.cast');
-
-    // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
-    const sendExistingContent = (streamWatcher as any).sendExistingContent.bind(streamWatcher);
-    sendExistingContent('session4', nonExistentPath, {
-      response: mockResponse,
-      startTime: Date.now() / 1000,
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    // Should have called the fallback method (no data written due to missing file)
-    expect(writtenData.length).toBe(0);
+  it('should surface errors for missing sessions', async () => {
+    const events = await collectExistingEvents('does-not-exist', 100);
+    const error = events.find((e) => e.kind === 'error') as
+      | { kind: 'error'; message: string }
+      | undefined;
+    expect(error).toBeTruthy();
   });
 
   it('should handle real-world Claude session with multiple clears', async () => {
-    // Use the actual real-world cast file
-    const filepath = path.join(__dirname, '../fixtures/asciinema/real-world-claude-session.cast');
+    const fixturePath = path.join(
+      __dirname,
+      '../fixtures/asciinema/real-world-claude-session.cast'
+    );
+    ensureSessionInfo('real-world');
+    const paths = sessionManager.getSessionPaths('real-world', true);
+    if (!paths) throw new Error('session paths not found');
+    fs.copyFileSync(fixturePath, paths.stdoutPath);
 
-    // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
-    const sendExistingContent = (streamWatcher as any).sendExistingContent.bind(streamWatcher);
-    sendExistingContent('session5', filepath, {
-      response: mockResponse,
-      startTime: Date.now() / 1000,
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    const events = parseSSEData(writtenData);
+    const events = await collectExistingEvents('real-world', 400);
 
     // Should have pruned everything before the last clear
     expect(events.length).toBeGreaterThan(0);
 
     // First event should be header
-    const header = events[0] as AsciinemaHeader;
+    const headerEvent = events.find((e) => e.kind === 'header') as
+      | { kind: 'header'; header: AsciinemaHeader }
+      | undefined;
+    expect(headerEvent).toBeTruthy();
+    const header = headerEvent?.header as AsciinemaHeader;
     expect(header.version).toBe(2);
 
     // Check that we're getting content after the last clear
-    const outputEvents = events.filter((e) => Array.isArray(e) && e[1] === 'o');
+    const outputEvents = events.filter((e) => e.kind === 'output') as Array<{
+      kind: 'output';
+      data: string;
+    }>;
     expect(outputEvents.length).toBeGreaterThan(0);
 
     // The real file has 4 clear sequences, we should only see content after the last one
     // Check that we have the welcome banner (appears after the last clear)
-    const welcomeContent = outputEvents.map((e) => e[2]).join('');
+    const welcomeContent = outputEvents.map((e) => e.data).join('');
     // Strip ANSI escape sequences for easier testing
     // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences are necessary for terminal output
     const cleanContent = welcomeContent.replace(/\u001b\[[^m]*m/g, '');

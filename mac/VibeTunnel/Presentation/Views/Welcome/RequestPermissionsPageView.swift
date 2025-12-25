@@ -33,13 +33,13 @@ struct RequestPermissionsPageView: View {
     // permission check in .task happens before the first render, ensuring correct state
     // from the start.
     private var hasAppleScriptPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.appleScript)
+        _ = self.permissionUpdateTrigger
+        return self.permissionManager.hasPermission(.appleScript)
     }
 
     private var hasAccessibilityPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.accessibility)
+        _ = self.permissionUpdateTrigger
+        return self.permissionManager.hasPermission(.accessibility)
     }
 
     var body: some View {
@@ -50,18 +50,17 @@ struct RequestPermissionsPageView: View {
                     .fontWeight(.semibold)
 
                 Text(
-                    "VibeTunnel needs permissions for automation to start terminal sessions and accessibility to send commands."
-                )
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 480)
-                .fixedSize(horizontal: false, vertical: true)
+                    "VibeTunnel needs permissions for automation to start terminal sessions and accessibility to send commands.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 // Permissions buttons
                 VStack(spacing: 16) {
                     // Automation permission
-                    if hasAppleScriptPermission {
+                    if self.hasAppleScriptPermission {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.green)
@@ -73,7 +72,7 @@ struct RequestPermissionsPageView: View {
                         .frame(height: 32)
                     } else {
                         Button("Grant Automation Permission") {
-                            permissionManager.requestPermission(.appleScript)
+                            self.permissionManager.requestPermission(.appleScript)
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.regular)
@@ -81,7 +80,7 @@ struct RequestPermissionsPageView: View {
                     }
 
                     // Accessibility permission
-                    if hasAccessibilityPermission {
+                    if self.hasAccessibilityPermission {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.green)
@@ -93,7 +92,7 @@ struct RequestPermissionsPageView: View {
                         .frame(height: 32)
                     } else {
                         Button("Grant Accessibility Permission") {
-                            permissionManager.requestPermission(.accessibility)
+                            self.permissionManager.requestPermission(.accessibility)
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.regular)
@@ -106,20 +105,20 @@ struct RequestPermissionsPageView: View {
         .padding()
         .task {
             // Check permissions before first render to avoid UI flashing
-            await permissionManager.checkAllPermissions()
+            await self.permissionManager.checkAllPermissions()
         }
-        .onChange(of: isCurrentPage) { _, newValue in
+        .onChange(of: self.isCurrentPage) { _, newValue in
             if newValue {
                 // Page became visible - start monitoring
-                permissionManager.registerForMonitoring()
+                self.permissionManager.registerForMonitoring()
             } else {
                 // Page is no longer visible - stop monitoring
-                permissionManager.unregisterFromMonitoring()
+                self.permissionManager.unregisterFromMonitoring()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .permissionsUpdated)) { _ in
             // Increment trigger to force computed property re-evaluation
-            permissionUpdateTrigger += 1
+            self.permissionUpdateTrigger += 1
         }
     }
 }

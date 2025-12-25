@@ -163,7 +163,7 @@ export class MultiplexerManager {
       // Create a new PTY session that will run the screen attach command
       const result = await this.ptyManager.createSession(attachCmd, {
         ...options,
-        titleMode: TitleMode.DYNAMIC,
+        titleMode: options?.titleMode ?? TitleMode.STATIC,
       });
       return result.sessionId;
     } else {

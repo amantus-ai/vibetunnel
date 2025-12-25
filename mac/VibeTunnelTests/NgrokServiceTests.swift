@@ -5,7 +5,7 @@ import Testing
 @Suite("Ngrok Service Tests", .tags(.networking))
 struct NgrokServiceTests {
     let testAuthToken = "test_auth_token_123"
-    let testPort = 8_888
+    let testPort = 8888
 
     @Test("Singleton instance")
     @MainActor
@@ -33,8 +33,8 @@ struct NgrokServiceTests {
         let originalToken = service.authToken
 
         // Set test token
-        service.authToken = testAuthToken
-        #expect(service.authToken == testAuthToken)
+        service.authToken = self.testAuthToken
+        #expect(service.authToken == self.testAuthToken)
         #expect(service.hasAuthToken == true)
 
         // Clear token
@@ -58,7 +58,7 @@ struct NgrokServiceTests {
         service.authToken = nil
 
         do {
-            _ = try await service.start(port: testPort)
+            _ = try await service.start(port: self.testPort)
             Issue.record("Expected error to be thrown")
         } catch let error as NgrokError {
             #expect(error == .authTokenMissing)
@@ -117,7 +117,7 @@ struct NgrokServiceTests {
             .authTokenMissing,
             .tunnelCreationFailed("test error"),
             .invalidConfiguration,
-            .networkError("connection failed")
+            .networkError("connection failed"),
         ]
 
         for error in errors {

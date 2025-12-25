@@ -17,8 +17,8 @@ struct CLIInstallationSection: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Command Line Tool")
                             .font(.callout)
-                        if cliInstaller.isInstalled {
-                            if cliInstaller.isOutdated {
+                        if self.cliInstaller.isInstalled {
+                            if self.cliInstaller.isOutdated {
                                 Text("Update available")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -36,29 +36,29 @@ struct CLIInstallationSection: View {
 
                     Spacer()
 
-                    if cliInstaller.isInstalling {
+                    if self.cliInstaller.isInstalling {
                         HStack {
                             ProgressView()
                                 .scaleEffect(0.7)
-                            Text(cliInstaller.isUninstalling ? "Uninstalling..." : "Installing...")
+                            Text(self.cliInstaller.isUninstalling ? "Uninstalling..." : "Installing...")
                                 .font(.caption)
                         }
                     } else {
-                        if cliInstaller.isInstalled {
+                        if self.cliInstaller.isInstalled {
                             // Updated status
-                            if cliInstaller.isOutdated {
+                            if self.cliInstaller.isOutdated {
                                 HStack(spacing: 8) {
                                     Button("Update 'vt' Command") {
                                         Task {
-                                            await cliInstaller.install()
+                                            await self.cliInstaller.install()
                                         }
                                     }
                                     .buttonStyle(.bordered)
-                                    .disabled(cliInstaller.isInstalling)
+                                    .disabled(self.cliInstaller.isInstalling)
 
                                     Button(action: {
                                         Task {
-                                            await cliInstaller.uninstall()
+                                            await self.cliInstaller.uninstall()
                                         }
                                     }, label: {
                                         Image(systemName: "trash")
@@ -66,7 +66,7 @@ struct CLIInstallationSection: View {
                                     })
                                     .buttonStyle(.plain)
                                     .foregroundColor(.red)
-                                    .disabled(cliInstaller.isInstalling)
+                                    .disabled(self.cliInstaller.isInstalling)
                                     .help("Uninstall CLI tool")
                                 }
                             } else {
@@ -77,9 +77,9 @@ struct CLIInstallationSection: View {
                                         .foregroundColor(.secondary)
 
                                     // Show reinstall button in debug mode
-                                    if debugMode {
+                                    if self.debugMode {
                                         Button(action: {
-                                            cliInstaller.installCLITool()
+                                            self.cliInstaller.installCLITool()
                                         }, label: {
                                             Image(systemName: "arrow.clockwise.circle")
                                                 .font(.system(size: 14))
@@ -91,7 +91,7 @@ struct CLIInstallationSection: View {
 
                                     Button(action: {
                                         Task {
-                                            await cliInstaller.uninstall()
+                                            await self.cliInstaller.uninstall()
                                         }
                                     }, label: {
                                         Image(systemName: "trash")
@@ -99,18 +99,18 @@ struct CLIInstallationSection: View {
                                     })
                                     .buttonStyle(.plain)
                                     .foregroundColor(.red)
-                                    .disabled(cliInstaller.isInstalling)
+                                    .disabled(self.cliInstaller.isInstalling)
                                     .help("Uninstall CLI tool")
                                 }
                             }
                         } else {
                             Button("Install 'vt' Command") {
                                 Task {
-                                    await cliInstaller.install()
+                                    await self.cliInstaller.install()
                                 }
                             }
                             .buttonStyle(.bordered)
-                            .disabled(cliInstaller.isInstalling)
+                            .disabled(self.cliInstaller.isInstalling)
                         }
                     }
                 }
@@ -121,7 +121,7 @@ struct CLIInstallationSection: View {
                         .foregroundColor(.red)
                 } else {
                     HStack(alignment: .center, spacing: 8) {
-                        if cliInstaller.isInstalled {
+                        if self.cliInstaller.isInstalled {
                             Text("The 'vt' command line tool is installed at /usr/local/bin/vt")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -134,7 +134,7 @@ struct CLIInstallationSection: View {
                         Spacer()
 
                         Button(action: {
-                            showingVtConflictAlert = true
+                            self.showingVtConflictAlert = true
                         }, label: {
                             Text("Use a different name")
                                 .font(.caption)
@@ -148,22 +148,21 @@ struct CLIInstallationSection: View {
                 .font(.headline)
         } footer: {
             Text(
-                "Prefix any terminal command with 'vt' to enable remote control."
-            )
-            .font(.caption)
-            .frame(maxWidth: .infinity)
-            .multilineTextAlignment(.center)
+                "Prefix any terminal command with 'vt' to enable remote control.")
+                .font(.caption)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
         }
         .onAppear {
-            cliInstaller.checkInstallationStatus()
+            self.cliInstaller.checkInstallationStatus()
         }
-        .alert("Using a Different Command Name", isPresented: $showingVtConflictAlert) {
+        .alert("Using a Different Command Name", isPresented: self.$showingVtConflictAlert) {
             Button("OK") {}
             Button("Copy to Clipboard") {
-                copyCommandToClipboard()
+                self.copyCommandToClipboard()
             }
         } message: {
-            Text(vtConflictMessage)
+            Text(self.vtConflictMessage)
         }
     }
 
@@ -178,7 +177,7 @@ struct CLIInstallationSection: View {
         """
         You can install the `vt` bash script with a different name. For example:
 
-        cp "\(vtScriptPath)" /usr/local/bin/vtunnel && chmod +x /usr/local/bin/vtunnel
+        cp "\(self.vtScriptPath)" /usr/local/bin/vtunnel && chmod +x /usr/local/bin/vtunnel
         """
     }
 

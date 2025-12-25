@@ -40,14 +40,14 @@ final class TailscaleService {
 
     private init() {
         Task {
-            await checkTailscaleStatus()
+            await self.checkTailscaleStatus()
         }
     }
 
     /// Checks if Tailscale app is installed
     func checkAppInstallation() -> Bool {
         let isAppInstalled = FileManager.default.fileExists(atPath: "/Applications/Tailscale.app")
-        logger.info("Tailscale app installed: \(isAppInstalled)")
+        self.logger.info("Tailscale app installed: \(isAppInstalled)")
         return isAppInstalled
     }
 
@@ -69,7 +69,7 @@ final class TailscaleService {
     /// Fetches Tailscale status from the API
     private func fetchTailscaleStatus() async -> TailscaleAPIResponse? {
         guard let url = URL(string: Self.tailscaleAPIEndpoint) else {
-            logger.error("Invalid Tailscale API URL")
+            self.logger.error("Invalid Tailscale API URL")
             return nil
         }
 
@@ -84,14 +84,14 @@ final class TailscaleService {
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200
             else {
-                logger.warning("Tailscale API returned non-200 status")
+                self.logger.warning("Tailscale API returned non-200 status")
                 return nil
             }
 
             let decoder = JSONDecoder()
             return try decoder.decode(TailscaleAPIResponse.self, from: data)
         } catch {
-            logger.debug("Failed to fetch Tailscale status: \(error)")
+            self.logger.debug("Failed to fetch Tailscale status: \(error)")
             return nil
         }
     }
@@ -99,22 +99,22 @@ final class TailscaleService {
     /// Checks the current Tailscale status and updates properties
     func checkTailscaleStatus() async {
         // First check if app is installed
-        isInstalled = checkAppInstallation()
+        self.isInstalled = self.checkAppInstallation()
 
-        guard isInstalled else {
-            isRunning = false
-            tailscaleHostname = nil
-            tailscaleIP = nil
-            statusError = "Tailscale is not installed"
+        guard self.isInstalled else {
+            self.isRunning = false
+            self.tailscaleHostname = nil
+            self.tailscaleIP = nil
+            self.statusError = "Tailscale is not installed"
             return
         }
 
         // Try to fetch status from API
         if let apiResponse = await fetchTailscaleStatus() {
             // Tailscale is running if API responds
-            isRunning = apiResponse.status.lowercased() == "running"
+            self.isRunning = apiResponse.status.lowercased() == "running"
 
-            if isRunning {
+            if self.isRunning {
                 // Extract hostname from device name and tailnet name
                 // Format: devicename.tailnetname (without .ts.net suffix)
                 let deviceName = apiResponse.deviceName.lowercased().replacingOccurrences(of: " ", with: "-")
@@ -122,27 +122,26 @@ final class TailscaleService {
                     .replacingOccurrences(of: ".ts.net", with: "")
                     .replacingOccurrences(of: ".tailscale.net", with: "")
 
-                tailscaleHostname = "\(deviceName).\(tailnetName).ts.net"
-                tailscaleIP = apiResponse.iPv4
-                statusError = nil
+                self.tailscaleHostname = "\(deviceName).\(tailnetName).ts.net"
+                self.tailscaleIP = apiResponse.iPv4
+                self.statusError = nil
 
-                logger
+                self.logger
                     .info(
-                        "Tailscale status: running=true, hostname=\(self.tailscaleHostname ?? "nil"), IP=\(self.tailscaleIP ?? "nil")"
-                    )
+                        "Tailscale status: running=true, hostname=\(self.tailscaleHostname ?? "nil"), IP=\(self.tailscaleIP ?? "nil")")
             } else {
                 // Tailscale installed but not running properly
-                tailscaleHostname = nil
-                tailscaleIP = nil
-                statusError = "Tailscale is not running"
+                self.tailscaleHostname = nil
+                self.tailscaleIP = nil
+                self.statusError = "Tailscale is not running"
             }
         } else {
             // API not responding - Tailscale not running
-            isRunning = false
-            tailscaleHostname = nil
-            tailscaleIP = nil
-            statusError = "Please start the Tailscale app"
-            logger.info("Tailscale API not responding - app likely not running")
+            self.isRunning = false
+            self.tailscaleHostname = nil
+            self.tailscaleIP = nil
+            self.statusError = "Please start the Tailscale app"
+            self.logger.info("Tailscale API not responding - app likely not running")
         }
     }
 

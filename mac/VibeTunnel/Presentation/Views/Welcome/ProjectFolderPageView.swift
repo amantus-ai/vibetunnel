@@ -33,21 +33,20 @@ struct ProjectFolderPageView: View {
                     .fontWeight(.semibold)
 
                 Text(
-                    "Select the folder where you keep your projects. VibeTunnel will use this for quick access and repository discovery."
-                )
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 480)
-                .fixedSize(horizontal: false, vertical: true)
+                    "Select the folder where you keep your projects. VibeTunnel will use this for quick access and repository discovery.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 // Folder and repository section
                 VStack(spacing: 16) {
                     // Folder picker
                     HStack {
-                        Text(selectedPath.isEmpty ? "~/" : selectedPath)
+                        Text(self.selectedPath.isEmpty ? "~/" : self.selectedPath)
                             .font(.system(size: 13))
-                            .foregroundColor(selectedPath.isEmpty ? .secondary : .primary)
+                            .foregroundColor(self.selectedPath.isEmpty ? .secondary : .primary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
@@ -55,33 +54,32 @@ struct ProjectFolderPageView: View {
                             .cornerRadius(6)
 
                         Button("Choose...") {
-                            showFolderPicker()
+                            self.showFolderPicker()
                         }
                         .buttonStyle(.bordered)
                     }
                     .frame(width: 350)
 
                     // Repository count
-                    if !selectedPath.isEmpty {
+                    if !self.selectedPath.isEmpty {
                         HStack {
                             Image(systemName: "folder.badge.gearshape")
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary)
 
-                            if isScanning {
+                            if self.isScanning {
                                 Text("Scanning...")
                                     .font(.system(size: 12))
                                     .foregroundColor(.secondary)
-                            } else if discoveredRepos.isEmpty {
+                            } else if self.discoveredRepos.isEmpty {
                                 Text("No repositories found")
                                     .font(.system(size: 12))
                                     .foregroundColor(.secondary)
                             } else {
                                 Text(
-                                    "\(discoveredRepos.count) repositor\(discoveredRepos.count == 1 ? "y" : "ies") found"
-                                )
-                                .font(.system(size: 12))
-                                .foregroundColor(.primary)
+                                    "\(self.discoveredRepos.count) repositor\(self.discoveredRepos.count == 1 ? "y" : "ies") found")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.primary)
                             }
 
                             Spacer()
@@ -108,36 +106,36 @@ struct ProjectFolderPageView: View {
         }
         .padding()
         .onAppear {
-            selectedPath = configManager.repositoryBasePath
+            self.selectedPath = self.configManager.repositoryBasePath
         }
-        .onChange(of: currentPage) { _, newPage in
-            if newPage == pageIndex {
+        .onChange(of: self.currentPage) { _, newPage in
+            if newPage == self.pageIndex {
                 // Page just became visible
-                if !selectedPath.isEmpty {
-                    scanForRepositories()
+                if !self.selectedPath.isEmpty {
+                    self.scanForRepositories()
                 }
             } else {
                 // Page is no longer visible, cancel any ongoing scan
-                scanTask?.cancel()
+                self.scanTask?.cancel()
                 // Ensure UI is reset if scan was in progress
-                isScanning = false
+                self.isScanning = false
             }
         }
-        .onChange(of: selectedPath) { _, newValue in
-            configManager.updateRepositoryBasePath(newValue)
+        .onChange(of: self.selectedPath) { _, newValue in
+            self.configManager.updateRepositoryBasePath(newValue)
 
             // Cancel any existing scan
-            scanTask?.cancel()
+            self.scanTask?.cancel()
 
             // Debounce path changes to prevent rapid successive scans
-            scanTask = Task {
+            self.scanTask = Task {
                 // Add small delay to debounce rapid changes
                 try? await Task.sleep(for: .milliseconds(300))
                 guard !Task.isCancelled else { return }
 
                 // Only scan if we're the current page
-                if currentPage == pageIndex && !newValue.isEmpty {
-                    await performScan()
+                if self.currentPage == self.pageIndex, !newValue.isEmpty {
+                    await self.performScan()
                 }
             }
         }
@@ -154,7 +152,7 @@ struct ProjectFolderPageView: View {
         panel.allowsMultipleSelection = false
 
         // Set initial directory
-        if !selectedPath.isEmpty {
+        if !self.selectedPath.isEmpty {
             let expandedPath = (selectedPath as NSString).expandingTildeInPath
             panel.directoryURL = URL(fileURLWithPath: expandedPath)
         } else {
@@ -167,25 +165,25 @@ struct ProjectFolderPageView: View {
 
             // Convert to ~/ format if it's in the home directory
             if path.hasPrefix(homePath) {
-                selectedPath = "~" + path.dropFirst(homePath.count)
+                self.selectedPath = "~" + path.dropFirst(homePath.count)
             } else {
-                selectedPath = path
+                self.selectedPath = path
             }
         }
     }
 
     private func scanForRepositories() {
         // Cancel any existing scan
-        scanTask?.cancel()
+        self.scanTask?.cancel()
 
-        scanTask = Task {
-            await performScan()
+        self.scanTask = Task {
+            await self.performScan()
         }
     }
 
     private func performScan() async {
-        isScanning = true
-        discoveredRepos = []
+        self.isScanning = true
+        self.discoveredRepos = []
 
         let expandedPath = (selectedPath as NSString).expandingTildeInPath
         let repos = await findGitRepositories(in: expandedPath, maxDepth: 3)
@@ -193,11 +191,11 @@ struct ProjectFolderPageView: View {
         await MainActor.run {
             // Always update isScanning to false when done, regardless of cancellation
             if !Task.isCancelled {
-                discoveredRepos = repos.map { path in
+                self.discoveredRepos = repos.map { path in
                     RepositoryInfo(name: URL(fileURLWithPath: path).lastPathComponent, path: path)
                 }
             }
-            isScanning = false
+            self.isScanning = false
         }
     }
 
@@ -224,7 +222,7 @@ struct ProjectFolderPageView: View {
                           isDirectory.boolValue else { continue }
 
                     // Skip hidden directories except .git
-                    if item.hasPrefix(".") && item != ".git" { continue }
+                    if item.hasPrefix("."), item != ".git" { continue }
 
                     // Check if this directory contains .git
                     let gitPath = (fullPath as NSString).appendingPathComponent(".git")

@@ -431,7 +431,6 @@ describe('ConfigService', () => {
         commandCompletion: false,
         commandError: true,
         bell: true,
-        claudeTurn: false,
         soundEnabled: true,
         vibrationEnabled: false,
       });
@@ -445,7 +444,6 @@ describe('ConfigService', () => {
         commandCompletion: true,
         commandError: true,
         bell: true,
-        claudeTurn: false,
         soundEnabled: true,
         vibrationEnabled: false,
       };
@@ -465,7 +463,6 @@ describe('ConfigService', () => {
         commandCompletion: true,
         commandError: true,
         bell: true,
-        claudeTurn: false,
         soundEnabled: true,
         vibrationEnabled: true,
       };
@@ -493,7 +490,6 @@ describe('ConfigService', () => {
         commandCompletion: false,
         commandError: false,
         bell: false,
-        claudeTurn: true,
         soundEnabled: true,
         vibrationEnabled: true,
       };
@@ -526,7 +522,6 @@ describe('ConfigService', () => {
         commandCompletion: true,
         commandError: true,
         bell: true,
-        claudeTurn: false,
         soundEnabled: false,
         vibrationEnabled: true,
       };
@@ -559,7 +554,6 @@ describe('ConfigService', () => {
         commandCompletion: true,
         commandError: true,
         bell: true,
-        claudeTurn: false,
         soundEnabled: false,
         vibrationEnabled: false,
       };

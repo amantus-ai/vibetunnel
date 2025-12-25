@@ -16,7 +16,6 @@ const NotificationPreferencesSchema = z
     commandCompletion: z.boolean(),
     commandError: z.boolean(),
     bell: z.boolean(),
-    claudeTurn: z.boolean(),
     soundEnabled: z.boolean(),
     vibrationEnabled: z.boolean(),
   })

@@ -42,7 +42,7 @@
           {
             "group": "Getting Started",
             "pages": [
-              "introduction",
+              "docs/introduction",
               "docs/INDEX",
               "docs/project-overview",
               "docs/keyboard-shortcuts",

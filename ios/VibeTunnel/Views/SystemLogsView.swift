@@ -46,13 +46,13 @@ struct SystemLogsView: View {
     }
 
     var filteredLogs: String {
-        let lines = logs.components(separatedBy: .newlines)
+        let lines = self.logs.components(separatedBy: .newlines)
         let filtered = lines.filter { line in
             // Skip empty lines
             guard !line.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
 
             // Filter by level
-            if selectedLevel != .all && !selectedLevel.matches(line) {
+            if self.selectedLevel != .all && !self.selectedLevel.matches(line) {
                 return false
             }
 
@@ -60,15 +60,15 @@ struct SystemLogsView: View {
             let isClientLog = line.contains("[Client]") || line.contains("client:")
             let isServerLog = line.contains("[Server]") || line.contains("server:") || !isClientLog
 
-            if !showClientLogs && isClientLog {
+            if !self.showClientLogs, isClientLog {
                 return false
             }
-            if !showServerLogs && isServerLog {
+            if !self.showServerLogs, isServerLog {
                 return false
             }
 
             // Filter by search text
-            if !searchText.isEmpty && !line.localizedCaseInsensitiveContains(searchText) {
+            if !self.searchText.isEmpty, !line.localizedCaseInsensitiveContains(self.searchText) {
                 return false
             }
 
@@ -86,17 +86,17 @@ struct SystemLogsView: View {
 
                 VStack(spacing: 0) {
                     // Filters toolbar
-                    filtersToolbar
+                    self.filtersToolbar
 
                     // Search bar
-                    searchBar
+                    self.searchBar
 
                     // Logs content
-                    if isLoading {
+                    if self.isLoading {
                         ProgressView("Loading logs...")
                             .progressViewStyle(CircularProgressViewStyle(tint: Theme.Colors.primaryAccent))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if presentedError != nil {
+                    } else if self.presentedError != nil {
                         ContentUnavailableView {
                             Label("Failed to Load Logs", systemImage: "exclamationmark.triangle")
                         } description: {
@@ -104,14 +104,14 @@ struct SystemLogsView: View {
                         } actions: {
                             Button("Retry") {
                                 Task {
-                                    await loadLogs()
+                                    await self.loadLogs()
                                 }
                             }
                             .terminalButton()
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
-                        logsContent
+                        self.logsContent
                     }
                 }
             }
@@ -120,26 +120,26 @@ struct SystemLogsView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Close") {
-                        dismiss()
+                        self.dismiss()
                     }
                     .foregroundColor(Theme.Colors.primaryAccent)
                 }
 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
-                        Button(action: downloadLogs) {
+                        Button(action: self.downloadLogs) {
                             Label("Download", systemImage: "square.and.arrow.down")
                         }
 
-                        Button(action: { showingClearConfirmation = true }, label: {
+                        Button(action: { self.showingClearConfirmation = true }, label: {
                             Label("Clear Logs", systemImage: "trash")
                         })
 
-                        Toggle("Auto-scroll", isOn: $autoScroll)
+                        Toggle("Auto-scroll", isOn: self.$autoScroll)
 
                         if let info = logsInfo {
                             Section {
-                                Label(formatFileSize(info.size), systemImage: "doc")
+                                Label(self.formatFileSize(info.size), systemImage: "doc")
                             }
                         }
                     } label: {
@@ -150,23 +150,23 @@ struct SystemLogsView: View {
             }
         }
         .task {
-            await loadLogs()
-            startAutoRefresh()
+            await self.loadLogs()
+            self.startAutoRefresh()
         }
         .onDisappear {
-            stopAutoRefresh()
+            self.stopAutoRefresh()
         }
-        .alert("Clear Logs", isPresented: $showingClearConfirmation) {
+        .alert("Clear Logs", isPresented: self.$showingClearConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Clear", role: .destructive) {
                 Task {
-                    await clearLogs()
+                    await self.clearLogs()
                 }
             }
         } message: {
             Text("Are you sure you want to clear all system logs? This action cannot be undone.")
         }
-        .errorAlert(item: $presentedError)
+        .errorAlert(item: self.$presentedError)
     }
 
     private var filtersToolbar: some View {
@@ -175,10 +175,10 @@ struct SystemLogsView: View {
                 // Level filter
                 Menu {
                     ForEach(LogLevel.allCases, id: \.self) { level in
-                        Button(action: { selectedLevel = level }, label: {
+                        Button(action: { self.selectedLevel = level }, label: {
                             HStack {
                                 Text(level.displayName)
-                                if selectedLevel == level {
+                                if self.selectedLevel == level {
                                     Image(systemName: "checkmark")
                                 }
                             }
@@ -187,7 +187,7 @@ struct SystemLogsView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "line.horizontal.3.decrease.circle")
-                        Text(selectedLevel.displayName)
+                        Text(self.selectedLevel.displayName)
                     }
                     .font(.caption)
                     .padding(.horizontal, 12)
@@ -197,10 +197,10 @@ struct SystemLogsView: View {
                 }
 
                 // Source toggles
-                Toggle("Client", isOn: $showClientLogs)
+                Toggle("Client", isOn: self.$showClientLogs)
                     .toggleStyle(ChipToggleStyle())
 
-                Toggle("Server", isOn: $showServerLogs)
+                Toggle("Server", isOn: self.$showServerLogs)
                     .toggleStyle(ChipToggleStyle())
 
                 Spacer()
@@ -216,15 +216,15 @@ struct SystemLogsView: View {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
 
-            TextField("Search logs...", text: $searchText)
+            TextField("Search logs...", text: self.$searchText)
                 .textFieldStyle(PlainTextFieldStyle())
                 .font(Theme.Typography.terminalSystem(size: 14))
                 .foregroundColor(Theme.Colors.terminalForeground)
                 .autocapitalization(.none)
                 .disableAutocorrection(true)
 
-            if !searchText.isEmpty {
-                Button(action: { searchText = "" }, label: {
+            if !self.searchText.isEmpty {
+                Button(action: { self.searchText = "" }, label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(Theme.Colors.terminalForeground.opacity(0.5))
                 })
@@ -238,7 +238,7 @@ struct SystemLogsView: View {
     private var logsContent: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                Text(filteredLogs.isEmpty ? "No logs matching filters" : filteredLogs)
+                Text(self.filteredLogs.isEmpty ? "No logs matching filters" : self.filteredLogs)
                     .font(Theme.Typography.terminalSystem(size: 12))
                     .foregroundColor(Theme.Colors.terminalForeground)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -247,8 +247,8 @@ struct SystemLogsView: View {
                     .id("bottom")
             }
             .background(Theme.Colors.terminalDarkGray)
-            .onChange(of: filteredLogs) { _, _ in
-                if autoScroll {
+            .onChange(of: self.filteredLogs) { _, _ in
+                if self.autoScroll {
                     withAnimation {
                         proxy.scrollTo("bottom", anchor: .bottom)
                     }
@@ -258,30 +258,30 @@ struct SystemLogsView: View {
     }
 
     private func loadLogs() async {
-        isLoading = true
-        presentedError = nil
+        self.isLoading = true
+        self.presentedError = nil
 
         do {
             // Load logs content
-            logs = try await APIClient.shared.getLogsRaw()
+            self.logs = try await APIClient.shared.getLogsRaw()
 
             // Load logs info
-            logsInfo = try await APIClient.shared.getLogsInfo()
+            self.logsInfo = try await APIClient.shared.getLogsInfo()
 
-            isLoading = false
+            self.isLoading = false
         } catch {
-            presentedError = IdentifiableError(error: error)
-            isLoading = false
+            self.presentedError = IdentifiableError(error: error)
+            self.isLoading = false
         }
     }
 
     private func clearLogs() async {
         do {
             try await APIClient.shared.clearLogs()
-            logs = ""
-            await loadLogs()
+            self.logs = ""
+            await self.loadLogs()
         } catch {
-            presentedError = IdentifiableError(error: error)
+            self.presentedError = IdentifiableError(error: error)
         }
     }
 
@@ -289,8 +289,7 @@ struct SystemLogsView: View {
         // Create activity controller with logs
         let activityVC = UIActivityViewController(
             activityItems: [logs],
-            applicationActivities: nil
-        )
+            applicationActivities: nil)
 
         // Present it
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -302,16 +301,16 @@ struct SystemLogsView: View {
     }
 
     private func startAutoRefresh() {
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
+        self.refreshTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
             Task {
-                await loadLogs()
+                await self.loadLogs()
             }
         }
     }
 
     private func stopAutoRefresh() {
-        refreshTimer?.invalidate()
-        refreshTimer = nil
+        self.refreshTimer?.invalidate()
+        self.refreshTimer = nil
     }
 
     private func formatFileSize(_ size: Int64) -> String {

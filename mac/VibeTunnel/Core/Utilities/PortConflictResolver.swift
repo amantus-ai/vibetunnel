@@ -21,21 +21,21 @@ struct ProcessDetails {
         if let path {
             return path.contains("VibeTunnel")
         }
-        return name.contains("VibeTunnel")
+        return self.name.contains("VibeTunnel")
     }
 
     /// Check if this is one of our managed servers
     var isManagedServer: Bool {
         // Direct vibetunnel binary
-        if name == "vibetunnel" || name.contains("vibetunnel") {
+        if self.name == "vibetunnel" || self.name.contains("vibetunnel") {
             return true
         }
         // Node server with VibeTunnel in path
-        if name.contains("node") && (path?.contains("VibeTunnel") ?? false) {
+        if self.name.contains("node"), path?.contains("VibeTunnel") ?? false {
             return true
         }
         // Bun executable (our vibetunnel binary is a Bun executable)
-        if name.contains("bun") && (path?.contains("VibeTunnel") ?? false) {
+        if self.name.contains("bun"), path?.contains("VibeTunnel") ?? false {
             return true
         }
         // Check if the path contains our bundle identifier
@@ -85,12 +85,12 @@ final class PortConflictResolver {
     /// Check if a port is available by attempting to bind to it
     func isPortAvailable(_ port: Int) async -> Bool {
         // First check if any process is using it
-        if await detectConflict(on: port) != nil {
+        if await self.detectConflict(on: port) != nil {
             return false
         }
 
         // Then try to actually bind to the port
-        return await canBindToPort(port)
+        return await self.canBindToPort(port)
     }
 
     /// Attempt to bind to a port to verify it's truly available
@@ -112,8 +112,8 @@ final class PortConflictResolver {
                     SOL_SOCKET,
                     SO_REUSEADDR,
                     &reuseAddr,
-                    socklen_t(MemoryLayout.size(ofValue: reuseAddr))
-                ) < 0 {
+                    socklen_t(MemoryLayout.size(ofValue: reuseAddr))) < 0
+                {
                     self.logger.debug("Failed to set SO_REUSEADDR: \(errno)")
                 }
 
@@ -124,8 +124,8 @@ final class PortConflictResolver {
                     SOL_SOCKET,
                     SO_REUSEPORT,
                     &reusePort,
-                    socklen_t(MemoryLayout.size(ofValue: reusePort))
-                ) < 0 {
+                    socklen_t(MemoryLayout.size(ofValue: reusePort))) < 0
+                {
                     self.logger.debug("Failed to set SO_REUSEPORT: \(errno)")
                 }
 
@@ -206,18 +206,17 @@ final class PortConflictResolver {
                 let alternatives = await findAvailablePorts(near: port, count: 3)
 
                 // Determine action
-                let action = determineAction(for: processInfo, rootProcess: rootProcess)
+                let action = self.determineAction(for: processInfo, rootProcess: rootProcess)
 
                 return PortConflict(
                     port: port,
                     process: processInfo,
                     rootProcess: rootProcess,
                     suggestedAction: action,
-                    alternativePorts: alternatives
-                )
+                    alternativePorts: alternatives)
             }
         } catch {
-            logger.error("Failed to check port conflict: \(error)")
+            self.logger.error("Failed to check port conflict: \(error)")
         }
 
         return nil
@@ -226,8 +225,8 @@ final class PortConflictResolver {
     /// Kill a process and optionally its parent VibeTunnel instance
     func resolveConflict(_ conflict: PortConflict) async throws {
         switch conflict.suggestedAction {
-        case .killOurInstance(let pid, let processName):
-            logger.info("Killing conflicting process: \(processName) (PID: \(pid))")
+        case let .killOurInstance(pid, processName):
+            self.logger.info("Killing conflicting process: \(processName) (PID: \(pid))")
 
             // Kill the process
             let killProcess = Process()
@@ -257,14 +256,14 @@ final class PortConflictResolver {
             while retries < maxRetries {
                 try await Task.sleep(for: .milliseconds(500 * UInt64(pow(2.0, Double(retries)))))
 
-                if await canBindToPort(conflict.port) {
-                    logger.info("Port \(conflict.port) successfully released after \(retries + 1) retries")
+                if await self.canBindToPort(conflict.port) {
+                    self.logger.info("Port \(conflict.port) successfully released after \(retries + 1) retries")
                     break
                 }
 
                 retries += 1
                 if retries < maxRetries {
-                    logger.debug("Port \(conflict.port) still not available, retry \(retries + 1)/\(maxRetries)")
+                    self.logger.debug("Port \(conflict.port) still not available, retry \(retries + 1)/\(maxRetries)")
                 }
             }
 
@@ -280,7 +279,7 @@ final class PortConflictResolver {
 
     /// Force kill any process, regardless of type
     func forceKillProcess(_ conflict: PortConflict) async throws {
-        logger.info("Force killing process: \(conflict.process.name) (PID: \(conflict.process.pid))")
+        self.logger.info("Force killing process: \(conflict.process.name) (PID: \(conflict.process.pid))")
 
         // Kill the process
         let killProcess = Process()
@@ -301,7 +300,7 @@ final class PortConflictResolver {
 
         if exitCode != 0 {
             // Try with sudo if regular kill fails
-            logger.warning("Regular kill failed, attempting with elevated privileges")
+            self.logger.warning("Regular kill failed, attempting with elevated privileges")
             throw PortConflictError.failedToKillProcess(pid: conflict.process.pid)
         }
 
@@ -312,14 +311,14 @@ final class PortConflictResolver {
         while retries < maxRetries {
             try await Task.sleep(for: .milliseconds(500 * UInt64(pow(2.0, Double(retries)))))
 
-            if await canBindToPort(conflict.port) {
-                logger.info("Port \(conflict.port) successfully released after \(retries + 1) retries")
+            if await self.canBindToPort(conflict.port) {
+                self.logger.info("Port \(conflict.port) successfully released after \(retries + 1) retries")
                 break
             }
 
             retries += 1
             if retries < maxRetries {
-                logger.debug("Port \(conflict.port) still not available, retry \(retries + 1)/\(maxRetries)")
+                self.logger.debug("Port \(conflict.port) still not available, retry \(retries + 1)/\(maxRetries)")
             }
         }
 
@@ -331,7 +330,7 @@ final class PortConflictResolver {
     /// Find available ports near a given port
     func findAvailablePorts(near port: Int, count: Int) async -> [Int] {
         var availablePorts: [Int] = []
-        let range = max(1_024, port - 10)...(port + 100)
+        let range = max(1024, port - 10)...(port + 100)
 
         for candidatePort in range where candidatePort != port {
             if await isPortAvailable(candidatePort) {
@@ -377,8 +376,7 @@ final class PortConflictResolver {
             name: name,
             path: path,
             parentPid: ppid,
-            bundleIdentifier: bundleId
-        )
+            bundleIdentifier: bundleId)
     }
 
     private func getProcessPath(pid: Int) async -> String? {
@@ -417,7 +415,7 @@ final class PortConflictResolver {
 
             return output.trimmingCharacters(in: .whitespacesAndNewlines)
         } catch {
-            logger.debug("Failed to get process path: \(error)")
+            self.logger.debug("Failed to get process path: \(error)")
         }
 
         return nil
@@ -467,7 +465,7 @@ final class PortConflictResolver {
                 }
             }
         } catch {
-            logger.debug("Failed to get bundle identifier: \(error)")
+            self.logger.debug("Failed to get bundle identifier: \(error)")
         }
 
         return nil
@@ -546,11 +544,10 @@ final class PortConflictResolver {
                     name: name,
                     path: path,
                     parentPid: ppid > 0 ? ppid : nil,
-                    bundleIdentifier: bundleId
-                )
+                    bundleIdentifier: bundleId)
             }
         } catch {
-            logger.debug("Failed to get process info: \(error)")
+            self.logger.debug("Failed to get process info: \(error)")
         }
 
         return nil
@@ -561,44 +558,43 @@ final class PortConflictResolver {
     }
 
     private func determineAction(for process: ProcessDetails, rootProcess: ProcessDetails?) -> ConflictAction {
-        logger
+        self.logger
             .debug(
-                "Determining action for process: \(process.name) (PID: \(process.pid), Path: \(process.path ?? "unknown"))"
-            )
+                "Determining action for process: \(process.name) (PID: \(process.pid), Path: \(process.path ?? "unknown"))")
 
         // If running in a test, don't kill the test runner process
-        if isRunningInTest, process.pid == ProcessInfo.processInfo.processIdentifier {
-            logger.warning("Conflict with test runner process detected. Avoiding self-termination.")
+        if self.isRunningInTest, process.pid == ProcessInfo.processInfo.processIdentifier {
+            self.logger.warning("Conflict with test runner process detected. Avoiding self-termination.")
             return .suggestAlternativePort
         }
 
         // If it's our managed server, kill it
         if process.isManagedServer {
-            logger.info("Process identified as managed server: \(process.name)")
+            self.logger.info("Process identified as managed server: \(process.name)")
             return .killOurInstance(pid: process.pid, processName: process.name)
         }
 
         // If root process is VibeTunnel, kill the whole app
         if let root = rootProcess, root.isVibeTunnel {
-            logger.info("Root process identified as VibeTunnel: \(root.name)")
+            self.logger.info("Root process identified as VibeTunnel: \(root.name)")
             return .killOurInstance(pid: root.pid, processName: root.name)
         }
 
         // If the process itself is VibeTunnel
         if process.isVibeTunnel {
-            logger.info("Process identified as VibeTunnel: \(process.name)")
+            self.logger.info("Process identified as VibeTunnel: \(process.name)")
             return .killOurInstance(pid: process.pid, processName: process.name)
         }
 
         // Special handling for Chrome Helper processes
         // Chrome sometimes leaves orphaned helper processes on our port
         if process.name.contains("Chrome Helper") || process.name.contains("Google Chrome Helper") {
-            logger.info("Chrome Helper process detected on our port, marking for termination: \(process.name)")
+            self.logger.info("Chrome Helper process detected on our port, marking for termination: \(process.name)")
             return .killOurInstance(pid: process.pid, processName: process.name)
         }
 
         // Otherwise, it's an external app
-        logger.info("Process identified as external app: \(process.name)")
+        self.logger.info("Process identified as external app: \(process.name)")
         return .reportExternalApp(name: process.name)
     }
 }
@@ -616,11 +612,11 @@ enum PortConflictError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .failedToKillProcess(let pid):
+        case let .failedToKillProcess(pid):
             "Failed to terminate process with PID \(pid)"
         case .requiresUserAction:
             "This conflict requires user action to resolve"
-        case .portStillInUse(let port):
+        case let .portStillInUse(port):
             "Port \(port) is still in use after multiple attempts to free it"
         }
     }

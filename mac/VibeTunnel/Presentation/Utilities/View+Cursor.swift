@@ -23,9 +23,8 @@ struct PressEventModifier: ViewModifier {
         content
             .simultaneousGesture(
                 DragGesture(minimumDistance: 0)
-                    .onChanged { _ in onPress() }
-                    .onEnded { _ in onRelease() }
-            )
+                    .onChanged { _ in self.onPress() }
+                    .onEnded { _ in self.onRelease() })
     }
 }
 
@@ -38,8 +37,7 @@ struct PointingHandCursorModifier: ViewModifier {
         content
             .background(
                 CursorTrackingView()
-                    .allowsHitTesting(false)
-            )
+                    .allowsHitTesting(false))
     }
 }
 

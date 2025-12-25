@@ -93,7 +93,7 @@ cd mac
 
 **Development Tools**:
 - Xcode 16.0+ with command line tools
-- Node.js 20+ and pnpm
+- Node.js 22.12+ and pnpm
 - Bun runtime (installed via npm)
 - xcbeautify (optional, for cleaner output)
 
@@ -110,7 +110,7 @@ cd mac
 ### Web Frontend Requirements
 
 **Tools**:
-- Node.js 20+ with npm
+- Node.js 22.12+ with npm
 - Bun runtime for standalone builds
 
 **Native Modules**:
@@ -128,7 +128,7 @@ cd mac
 - iOS 18.0+ deployment target
 
 **Dependencies**:
-- SwiftTerm package via SPM
+- ghostty-web resources (JS + WASM) bundled in the iOS app
 
 ## Reference
 

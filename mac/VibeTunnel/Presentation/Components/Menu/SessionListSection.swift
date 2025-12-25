@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// Section header for grouping sessions by status.
+/// Section header for grouping sessions.
 ///
-/// Displays a section title (Active/Idle) with a count of sessions
-/// in that category for better visual organization.
+/// Displays a section title with a count of sessions for better visual organization.
 struct SessionSectionHeader: View {
     let title: String
     let count: Int
@@ -13,12 +12,12 @@ struct SessionSectionHeader: View {
 
     var body: some View {
         HStack {
-            Text(title)
+            Text(self.title)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.secondary)
-            Text("(\(count))")
+            Text("(\(self.count))")
                 .font(.system(size: 11))
-                .foregroundColor(AppColors.Fallback.secondaryText(for: colorScheme).opacity(0.6))
+                .foregroundColor(AppColors.Fallback.secondaryText(for: self.colorScheme).opacity(0.6))
             Spacer()
         }
         .padding(.horizontal, 12)
@@ -26,13 +25,12 @@ struct SessionSectionHeader: View {
     }
 }
 
-/// Main session list section that groups and displays sessions.
+/// Main session list section that displays sessions.
 ///
-/// Handles session organization by active/idle status, displays section headers,
-/// and manages the empty state when no sessions are running.
+/// Handles session organization, displays section headers, and manages the empty
+/// state when no sessions are running.
 struct SessionListSection: View {
-    let activeSessions: [(key: String, value: ServerSessionInfo)]
-    let idleSessions: [(key: String, value: ServerSessionInfo)]
+    let sessions: [(key: String, value: ServerSessionInfo)]
     let hoveredSessionId: String?
     let focusedField: MenuFocusField?
     let hasStartedKeyboardNavigation: Bool
@@ -41,53 +39,26 @@ struct SessionListSection: View {
 
     var body: some View {
         VStack(spacing: 1) {
-            if activeSessions.isEmpty && idleSessions.isEmpty {
+            if self.sessions.isEmpty {
                 EmptySessionsView()
                     .padding()
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
             } else {
-                // Active sessions section
-                if !activeSessions.isEmpty {
-                    SessionSectionHeader(title: "Active", count: activeSessions.count)
-                        .transition(.opacity)
-                    ForEach(activeSessions, id: \.key) { session in
-                        SessionRow(
-                            session: session,
-                            isHovered: hoveredSessionId == session.key,
-                            isActive: true,
-                            isFocused: focusedField == .sessionRow(session.key) && hasStartedKeyboardNavigation
-                        )
+                SessionSectionHeader(title: "Sessions", count: self.sessions.count)
+                    .transition(.opacity)
+                ForEach(self.sessions, id: \.key) { session in
+                    SessionRow(
+                        session: session,
+                        isHovered: self.hoveredSessionId == session.key,
+                        isFocused: self.focusedField == .sessionRow(session.key) && self
+                            .hasStartedKeyboardNavigation)
                         .onHover { hovering in
-                            onHover(hovering ? session.key : nil)
+                            self.onHover(hovering ? session.key : nil)
                         }
                         .focusable()
                         .transition(.asymmetric(
                             insertion: .opacity.combined(with: .move(edge: .top)),
-                            removal: .opacity.combined(with: .scale)
-                        ))
-                    }
-                }
-
-                // Idle sessions section
-                if !idleSessions.isEmpty {
-                    SessionSectionHeader(title: "Idle", count: idleSessions.count)
-                        .transition(.opacity)
-                    ForEach(idleSessions, id: \.key) { session in
-                        SessionRow(
-                            session: session,
-                            isHovered: hoveredSessionId == session.key,
-                            isActive: false,
-                            isFocused: focusedField == .sessionRow(session.key) && hasStartedKeyboardNavigation
-                        )
-                        .onHover { hovering in
-                            onHover(hovering ? session.key : nil)
-                        }
-                        .focusable()
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .move(edge: .top)),
-                            removal: .opacity.combined(with: .scale)
-                        ))
-                    }
+                            removal: .opacity.combined(with: .scale)))
                 }
             }
         }

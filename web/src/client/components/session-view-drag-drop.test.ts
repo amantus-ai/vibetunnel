@@ -62,16 +62,6 @@ vi.mock('../utils/terminal-preferences.js', () => ({
   ],
 }));
 
-vi.mock('../services/buffer-subscription-service.js', () => ({
-  bufferSubscriptionService: {
-    isConnected: () => true,
-    connect: vi.fn(),
-    disconnect: vi.fn(),
-    subscribe: vi.fn(),
-    unsubscribe: vi.fn(),
-  },
-}));
-
 vi.mock('../services/repository-service.js', () => ({
   repositoryService: {
     getRepositoryPath: vi.fn().mockReturnValue(null),
@@ -97,7 +87,6 @@ describe('SessionView Drag & Drop and Paste', () => {
     // Import components to register custom elements
     await import('./session-view.js');
     await import('./terminal.js');
-    await import('./vibe-terminal-binary.js');
     await import('./session-view/terminal-renderer.js');
   });
 
@@ -135,7 +124,6 @@ describe('SessionView Drag & Drop and Paste', () => {
     // Import component to register custom element
     await import('./session-view.js');
     await import('./terminal.js');
-    await import('./vibe-terminal-binary.js');
     await import('./session-view/terminal-renderer.js');
 
     // Ensure custom element is registered

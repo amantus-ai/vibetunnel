@@ -1,5 +1,5 @@
 import { expect, test } from '../fixtures/test.fixture';
-import { assertTerminalReady } from '../helpers/assertion.helper';
+import { assertTerminalContains, assertTerminalReady } from '../helpers/assertion.helper';
 import { createAndNavigateToSession } from '../helpers/session-lifecycle.helper';
 import {
   executeCommandIntelligent,
@@ -23,25 +23,25 @@ test.describe('Terminal Basic Tests', () => {
   });
 
   test.afterEach(async () => {
-    await sessionManager.cleanupAllSessions();
+    if (sessionManager) await sessionManager.cleanupAllSessions();
   });
 
   test('should display terminal and accept input', async ({ page }) => {
     test.setTimeout(45000);
 
     // Create and navigate to session
-    await createAndNavigateToSession(page, {
+    const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('terminal-input-test'),
     });
+    sessionManager.trackSession(sessionName, sessionId);
 
     await assertTerminalReady(page, 15000);
 
     // Get terminal element using the correct selector
-    const terminal = page.locator('#session-terminal');
-    await expect(terminal).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#session-terminal')).toBeVisible({ timeout: 10000 });
 
     // Click on terminal to focus it
-    await terminal.click();
+    await page.locator('vibe-terminal').click();
     await page.waitForTimeout(1000);
 
     // Use intelligent command execution
@@ -54,30 +54,32 @@ test.describe('Terminal Basic Tests', () => {
   test('should handle keyboard interactions', async ({ page }) => {
     test.setTimeout(45000);
 
-    await createAndNavigateToSession(page, {
+    const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('keyboard-test'),
     });
+    sessionManager.trackSession(sessionName, sessionId);
 
     await assertTerminalReady(page, 15000);
 
-    const terminal = page.locator('#session-terminal');
-    await expect(terminal).toBeVisible();
-    await terminal.click();
+    await expect(page.locator('#session-terminal')).toBeVisible();
+    await page.locator('vibe-terminal').click();
     await page.waitForTimeout(1000);
 
-    // Test basic text input with intelligent waiting
-    await executeCommandIntelligent(page, 'pwd');
+    // Seed history with a command and verify output.
+    await page.keyboard.type('echo OUTPUT_ONE_12345');
+    await page.keyboard.press('Enter');
+    await assertTerminalContains(page, 'OUTPUT_ONE_12345', { timeout: 15000 });
 
-    // Test arrow keys for command history
+    // Recall previous command, edit it with backspace, run again.
     await page.keyboard.press('ArrowUp');
-
-    // Test backspace
     await page.keyboard.press('Backspace');
     await page.keyboard.press('Backspace');
     await page.keyboard.press('Backspace');
-
-    // Type new command with intelligent waiting
-    await executeCommandIntelligent(page, 'ls');
+    await page.keyboard.press('Backspace');
+    await page.keyboard.press('Backspace');
+    await page.keyboard.type('67890');
+    await page.keyboard.press('Enter');
+    await assertTerminalContains(page, 'OUTPUT_ONE_67890', { timeout: 15000 });
 
     console.log('✅ Keyboard interactions tested');
   });
@@ -85,15 +87,15 @@ test.describe('Terminal Basic Tests', () => {
   test('should execute multiple commands sequentially', async ({ page }) => {
     test.setTimeout(60000);
 
-    await createAndNavigateToSession(page, {
+    const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('multi-command-test'),
     });
+    sessionManager.trackSession(sessionName, sessionId);
 
     await assertTerminalReady(page, 15000);
 
-    const terminal = page.locator('#session-terminal');
-    await expect(terminal).toBeVisible();
-    await terminal.click();
+    await expect(page.locator('#session-terminal')).toBeVisible();
+    await page.locator('vibe-terminal').click();
     await page.waitForTimeout(1000);
 
     // Execute a series of commands (defined but used in commandsWithOutputs below)
@@ -118,10 +120,10 @@ test.describe('Terminal Basic Tests', () => {
     await executeCommandsWithExpectedOutputs(page, commandsWithOutputs);
 
     // Verify some of the command outputs with longer timeouts
-    await expect(terminal).toContainText('Command 1: Starting test', { timeout: 15000 });
-    await expect(terminal).toContainText('Command 2: Working directory shown', { timeout: 15000 });
-    await expect(terminal).toContainText('Command 3: User identified', { timeout: 15000 });
-    await expect(terminal).toContainText('Command 4: Date displayed', { timeout: 15000 });
+    await assertTerminalContains(page, 'Command 1: Starting test', { timeout: 15000 });
+    await assertTerminalContains(page, 'Command 2: Working directory shown', { timeout: 15000 });
+    await assertTerminalContains(page, 'Command 3: User identified', { timeout: 15000 });
+    await assertTerminalContains(page, 'Command 4: Date displayed', { timeout: 15000 });
 
     console.log('✅ Multiple sequential commands executed successfully');
   });
@@ -129,15 +131,15 @@ test.describe('Terminal Basic Tests', () => {
   test('should handle terminal scrolling', async ({ page }) => {
     test.setTimeout(60000);
 
-    await createAndNavigateToSession(page, {
+    const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('scroll-test'),
     });
+    sessionManager.trackSession(sessionName, sessionId);
 
     await assertTerminalReady(page, 15000);
 
-    const terminal = page.locator('#session-terminal');
-    await expect(terminal).toBeVisible();
-    await terminal.click();
+    await expect(page.locator('#session-terminal')).toBeVisible();
+    await page.locator('vibe-terminal').click();
     await page.waitForTimeout(1000);
 
     // Generate a lot of output to test scrolling - use simpler commands for CI reliability
@@ -158,21 +160,16 @@ test.describe('Terminal Basic Tests', () => {
     }
 
     // Verify the output appears
-    await expect(terminal).toContainText('Line 1 - Testing terminal scrolling', { timeout: 10000 });
-    await expect(terminal).toContainText('Line 5 - Testing terminal scrolling', { timeout: 10000 });
+    await assertTerminalContains(page, 'Line 1 - Testing terminal scrolling', { timeout: 10000 });
+    await assertTerminalContains(page, 'Line 5 - Testing terminal scrolling', { timeout: 10000 });
 
     // Test scrolling (if scrollbar exists) - look inside the terminal container
-    const scrollableArea = terminal.locator('.xterm-viewport, .terminal-viewport, vibe-terminal');
-    if (await scrollableArea.isVisible({ timeout: 2000 })) {
-      // Try to scroll up
-      await scrollableArea.hover();
-      await page.mouse.wheel(0, -200);
-      await page.waitForTimeout(1000);
-
-      // Scroll back down
-      await page.mouse.wheel(0, 200);
-      await page.waitForTimeout(1000);
-    }
+    const scrollableArea = page.locator('vibe-terminal');
+    await scrollableArea.hover();
+    await page.mouse.wheel(0, -200);
+    await page.waitForTimeout(500);
+    await page.mouse.wheel(0, 200);
+    await page.waitForTimeout(500);
 
     console.log('✅ Terminal scrolling tested');
   });
@@ -180,17 +177,17 @@ test.describe('Terminal Basic Tests', () => {
   test('should maintain terminal state during navigation', async ({ page }) => {
     test.setTimeout(45000);
 
-    await createAndNavigateToSession(page, {
+    const { sessionName, sessionId } = await createAndNavigateToSession(page, {
       name: sessionManager.generateSessionName('state-test'),
     });
+    sessionManager.trackSession(sessionName, sessionId);
 
     await assertTerminalReady(page, 15000);
 
-    const terminal = page.locator('#session-terminal');
-    await terminal.click();
+    await page.locator('vibe-terminal').click();
 
     // Wait for terminal to be ready without fixed timeout
-    await expect(terminal).toBeVisible();
+    await expect(page.locator('#session-terminal')).toBeVisible();
     await page.waitForLoadState('domcontentloaded');
 
     // Execute command more reliably without using the helper that's timing out
@@ -199,7 +196,7 @@ test.describe('Terminal Basic Tests', () => {
     await page.keyboard.press('Enter');
 
     // Use expect with retry instead of the helper function
-    await expect(terminal).toContainText(markerText, { timeout: 15000 });
+    await assertTerminalContains(page, markerText, { timeout: 15000 });
 
     // Navigate away and back
     await page.goto('/');
@@ -215,15 +212,19 @@ test.describe('Terminal Basic Tests', () => {
       await assertTerminalReady(page, 15000);
 
       // Check if our marker is still there - use soft assertion for CI resilience
-      const terminalAfterReturn = page.locator('#session-terminal');
+      await expect(page.locator('#session-terminal')).toBeVisible();
 
-      // First check if terminal has any content
-      await expect(terminalAfterReturn).toBeVisible();
-
-      // Use soft assertion so test doesn't fail entirely if state isn't persisted
-      await expect.soft(terminalAfterReturn).toContainText(markerText, {
-        timeout: 10000,
+      const content = await page.evaluate(() => {
+        const term = document.querySelector('vibe-terminal') as unknown as {
+          getDebugText?: () => string;
+          textContent?: string | null;
+        } | null;
+        if (!term) return '';
+        return typeof term.getDebugText === 'function'
+          ? term.getDebugText()
+          : term.textContent || '';
       });
+      expect.soft(content).toContain(markerText);
 
       console.log('✅ Terminal state navigation test completed');
     } catch (_error) {

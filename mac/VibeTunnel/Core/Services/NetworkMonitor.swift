@@ -35,27 +35,27 @@ final class NetworkMonitor {
     // MARK: - Initialization
 
     private init() {
-        setupMonitor()
+        self.setupMonitor()
     }
 
     // MARK: - Public Methods
 
     /// Starts monitoring network connectivity
     func startMonitoring() {
-        monitor.start(queue: queue)
-        logger.info("Network monitoring started")
+        self.monitor.start(queue: self.queue)
+        self.logger.info("Network monitoring started")
     }
 
     /// Stops monitoring network connectivity
     func stopMonitoring() {
-        monitor.cancel()
-        logger.info("Network monitoring stopped")
+        self.monitor.cancel()
+        self.logger.info("Network monitoring stopped")
     }
 
     // MARK: - Private Methods
 
     private func setupMonitor() {
-        monitor.pathUpdateHandler = { [weak self] path in
+        self.monitor.pathUpdateHandler = { [weak self] path in
             Task { @MainActor in
                 self?.updateNetworkStatus(path)
             }
@@ -64,29 +64,29 @@ final class NetworkMonitor {
 
     @MainActor
     private func updateNetworkStatus(_ path: NWPath) {
-        let wasConnected = isConnected
+        let wasConnected = self.isConnected
 
-        isConnected = path.status == .satisfied
-        isExpensive = path.isExpensive
-        isConstrained = path.isConstrained
+        self.isConnected = path.status == .satisfied
+        self.isExpensive = path.isExpensive
+        self.isConstrained = path.isConstrained
 
         // Determine connection type
         if path.usesInterfaceType(.wifi) {
-            connectionType = .wifi
+            self.connectionType = .wifi
         } else if path.usesInterfaceType(.cellular) {
-            connectionType = .cellular
+            self.connectionType = .cellular
         } else if path.usesInterfaceType(.wiredEthernet) {
-            connectionType = .wiredEthernet
+            self.connectionType = .wiredEthernet
         } else {
-            connectionType = nil
+            self.connectionType = nil
         }
 
         // Log status changes
-        if wasConnected != isConnected {
-            if isConnected {
-                logger.info("Network connected via \(self.connectionTypeString)")
+        if wasConnected != self.isConnected {
+            if self.isConnected {
+                self.logger.info("Network connected via \(self.connectionTypeString)")
             } else {
-                logger.warning("Network disconnected")
+                self.logger.warning("Network disconnected")
             }
         }
 
@@ -94,13 +94,12 @@ final class NetworkMonitor {
         NotificationCenter.default.post(
             name: .networkStatusChanged,
             object: self,
-            userInfo: ["isConnected": isConnected]
-        )
+            userInfo: ["isConnected": self.isConnected])
     }
 
     /// Human-readable description of the connection type
     var connectionTypeString: String {
-        switch connectionType {
+        switch self.connectionType {
         case .wifi:
             return "Wi-Fi"
         case .cellular:

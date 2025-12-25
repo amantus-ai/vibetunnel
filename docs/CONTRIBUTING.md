@@ -14,7 +14,7 @@ We love your input! We want to make contributing to VibeTunnel as easy and trans
 
 1. **macOS 14.0+** (Sonoma or later)
 2. **Xcode 16.0+** with Swift 6.0 support
-3. **Node.js 20+**: `brew install node`
+3. **Node.js 22.12+**: `brew install node`
 4. **Bun runtime**: `curl -fsSL https://bun.sh/install | bash`
 5. **Git**: For version control
 

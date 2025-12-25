@@ -5,12 +5,11 @@ import SwiftUI
 /// Row component displaying a single terminal session.
 ///
 /// Shows session information including command, directory, git status,
-/// activity indicators, and provides interaction for opening, renaming,
+/// status indicators, and provides interaction for opening, renaming,
 /// and terminating sessions. Supports both window and web-based sessions.
 struct SessionRow: View {
     let session: (key: String, value: ServerSessionInfo)
     let isHovered: Bool
-    let isActive: Bool
     let isFocused: Bool
 
     @Environment(\.openWindow)
@@ -36,32 +35,32 @@ struct SessionRow: View {
     /// Computed property that reads directly from the monitor's cache
     /// This will automatically update when the monitor refreshes
     private var gitRepository: GitRepository? {
-        gitRepositoryMonitor.getCachedRepository(for: session.value.workingDir)
+        self.gitRepositoryMonitor.getCachedRepository(for: self.session.value.workingDir)
     }
 
     var body: some View {
-        Button(action: handleTap) {
-            content
+        Button(action: self.handleTap) {
+            self.content
         }
         .buttonStyle(PlainButtonStyle())
-        .task(id: session.value.workingDir) {
+        .task(id: self.session.value.workingDir) {
             // Fetch repository data if not already cached
-            if gitRepository == nil {
-                _ = await gitRepositoryMonitor.findRepository(for: session.value.workingDir)
+            if self.gitRepository == nil {
+                _ = await self.gitRepositoryMonitor.findRepository(for: self.session.value.workingDir)
             }
         }
     }
 
     var content: some View {
         HStack(spacing: 8) {
-            // Activity indicator with subtle glow
+            // Status indicator with subtle glow
             ZStack {
                 Circle()
-                    .fill(activityColor.opacity(0.3))
+                    .fill(self.statusColor.opacity(0.3))
                     .frame(width: 8, height: 8)
                     .blur(radius: 2)
                 Circle()
-                    .fill(activityColor)
+                    .fill(self.statusColor)
                     .frame(width: 4, height: 4)
             }
 
@@ -69,33 +68,33 @@ struct SessionRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 // First row: Command name, session name, and window indicator - FULL WIDTH
                 HStack(spacing: 4) {
-                    if isEditing {
-                        TextField("Session Name", text: $editedName)
+                    if self.isEditing {
+                        TextField("Session Name", text: self.$editedName)
                             .font(.system(size: 12, weight: .medium))
                             .textFieldStyle(.plain)
-                            .focused($isEditFieldFocused)
+                            .focused(self.$isEditFieldFocused)
                             .onSubmit {
-                                saveSessionName()
+                                self.saveSessionName()
                             }
                             .onKeyPress(.escape) {
-                                cancelEditing()
+                                self.cancelEditing()
                                 return .handled
                             }
                     } else {
                         // Show command name
-                        Text(commandName)
+                        Text(self.commandName)
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.primary)
                             .lineLimit(1)
                             .truncationMode(.tail)
 
                         // Show session name if available
-                        if !session.value.name.isEmpty {
+                        if !self.session.value.name.isEmpty {
                             Text("–")
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary.opacity(0.6))
 
-                            Text(session.value.name)
+                            Text(self.session.value.name)
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
@@ -103,9 +102,9 @@ struct SessionRow: View {
                         }
 
                         // Edit button (pencil icon) - only show on hover
-                        if isHovered && !isEditing {
+                        if self.isHovered, !self.isEditing {
                             HStack(spacing: 6) {
-                                Button(action: startEditing) {
+                                Button(action: self.startEditing) {
                                     Image(systemName: "square.and.pencil")
                                         .font(.system(size: 11))
                                         .foregroundColor(.primary)
@@ -115,8 +114,8 @@ struct SessionRow: View {
                                 .modifier(HoverOpacityModifier())
 
                                 // Magic wand button for AI assistant sessions
-                                if isAIAssistantSession {
-                                    Button(action: sendAIPrompt) {
+                                if self.isAIAssistantSession {
+                                    Button(action: self.sendAIPrompt) {
                                         Image(systemName: "wand.and.rays")
                                             .font(.system(size: 11))
                                             .foregroundColor(.primary)
@@ -132,7 +131,7 @@ struct SessionRow: View {
                     Spacer()
 
                     // Window indicator - only show globe if no window
-                    if !hasWindow {
+                    if !self.hasWindow {
                         Image(systemName: "globe")
                             .font(.system(size: 10))
                             .foregroundColor(.secondary.opacity(0.6))
@@ -145,36 +144,33 @@ struct SessionRow: View {
                     HStack(alignment: .center, spacing: 4) {
                         // Folder icon - clickable
                         Button(action: {
-                            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
+                            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: self.session.value.workingDir)
                         }, label: {
                             Image(systemName: "folder")
                                 .font(.system(size: 10))
-                                .foregroundColor(isHoveringFolder ? .primary : .secondary)
+                                .foregroundColor(self.isHoveringFolder ? .primary : .secondary)
                                 .padding(4)
                                 .background(
                                     RoundedRectangle(cornerRadius: 4)
                                         .fill(
-                                            isHoveringFolder ? AppColors.Fallback.controlBackground(for: colorScheme)
-                                                .opacity(0.3) : Color.clear
-                                        )
-                                )
+                                            self.isHoveringFolder ? AppColors.Fallback
+                                                .controlBackground(for: self.colorScheme)
+                                                .opacity(0.3) : Color.clear))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 4)
                                         .strokeBorder(
-                                            isHoveringFolder ? AppColors.Fallback.gitBorder(for: colorScheme)
+                                            self.isHoveringFolder ? AppColors.Fallback.gitBorder(for: self.colorScheme)
                                                 .opacity(0.4) : Color.clear,
-                                            lineWidth: 0.5
-                                        )
-                                )
+                                            lineWidth: 0.5))
                         })
                         .buttonStyle(.plain)
                         .onHover { hovering in
-                            isHoveringFolder = hovering
+                            self.isHoveringFolder = hovering
                         }
                         .help("Open in Finder")
 
                         // Path text - not clickable
-                        Text(compactPath)
+                        Text(self.compactPath)
                             .font(.system(size: 10, design: .monospaced))
                             .foregroundColor(.secondary)
                             .lineLimit(1)
@@ -191,54 +187,41 @@ struct SessionRow: View {
                     // Right side: Duration and X button overlay
                     ZStack {
                         // Duration label (hidden on hover)
-                        if !duration.isEmpty && !isHovered && !isTerminating {
-                            Text(duration)
+                        if !self.duration.isEmpty, !self.isHovered, !self.isTerminating {
+                            Text(self.duration)
                                 .font(.system(size: 10))
                                 .foregroundColor(.secondary.opacity(0.6))
                         }
 
                         // Show X button on hover (overlays duration)
-                        if !isTerminating && isHovered {
-                            Button(action: terminateSession) {
+                        if !self.isTerminating, self.isHovered {
+                            Button(action: self.terminateSession) {
                                 ZStack {
                                     Circle()
-                                        .fill(AppColors.Fallback.destructive(for: colorScheme).opacity(0.1))
+                                        .fill(AppColors.Fallback.destructive(for: self.colorScheme).opacity(0.1))
                                         .frame(width: 14, height: 14)
                                     Circle()
                                         .strokeBorder(
-                                            AppColors.Fallback.destructive(for: colorScheme).opacity(0.3),
-                                            lineWidth: 0.5
-                                        )
+                                            AppColors.Fallback.destructive(for: self.colorScheme).opacity(0.3),
+                                            lineWidth: 0.5)
                                         .frame(width: 14, height: 14)
                                     Image(systemName: "xmark")
                                         .font(.system(size: 8, weight: .medium))
-                                        .foregroundColor(AppColors.Fallback.destructive(for: colorScheme).opacity(0.8))
+                                        .foregroundColor(AppColors.Fallback.destructive(for: self.colorScheme)
+                                            .opacity(0.8))
                                 }
                             }
                             .buttonStyle(.plain)
                         }
 
                         // Show progress indicator while terminating
-                        if isTerminating {
+                        if self.isTerminating {
                             ProgressView()
                                 .scaleEffect(0.5)
                                 .frame(width: 14, height: 14)
                         }
                     }
                     .frame(width: 30, height: 16)
-                }
-
-                // Third row: Activity status (if present)
-                if let activityStatus = session.value.activityStatus?.specificStatus?.status {
-                    HStack(spacing: 4) {
-                        Text(activityStatus)
-                            .font(.system(size: 10))
-                            .foregroundColor(AppColors.Fallback.activityIndicator(for: colorScheme))
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-
-                        Spacer()
-                    }
                 }
             }
             .frame(maxWidth: .infinity)
@@ -248,21 +231,18 @@ struct SessionRow: View {
         .contentShape(Rectangle())
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(isHovered ? hoverBackgroundColor : Color.clear)
-        )
+                .fill(self.isHovered ? self.hoverBackgroundColor : Color.clear))
         .overlay(
             RoundedRectangle(cornerRadius: 6)
                 .strokeBorder(
-                    isFocused ? AppColors.Fallback.accentHover(for: colorScheme).opacity(2) : Color.clear,
-                    lineWidth: 1
-                )
-        )
+                    self.isFocused ? AppColors.Fallback.accentHover(for: self.colorScheme).opacity(2) : Color.clear,
+                    lineWidth: 1))
         .focusable()
-        .help(tooltipText)
+        .help(self.tooltipText)
         .contextMenu {
-            if hasWindow {
+            if self.hasWindow {
                 Button("Focus Terminal Window") {
-                    WindowTracker.shared.focusWindow(for: session.key)
+                    WindowTracker.shared.focusWindow(for: self.session.key)
                 }
             } else {
                 Button("Open in Browser") {
@@ -273,13 +253,13 @@ struct SessionRow: View {
             }
 
             Button("View Session Details") {
-                openWindow(id: "session-detail", value: session.key)
+                self.openWindow(id: "session-detail", value: self.session.key)
             }
 
             Divider()
 
             Button("Show in Finder") {
-                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: session.value.workingDir)
+                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: self.session.value.workingDir)
             }
 
             // Add git repository options if available
@@ -287,7 +267,7 @@ struct SessionRow: View {
                 Divider()
 
                 // Open in Git app
-                let gitAppName = getGitAppName()
+                let gitAppName = self.getGitAppName()
                 Button("Open in \(gitAppName)") {
                     GitAppLauncher.shared.openRepository(at: repo.path)
                 }
@@ -316,29 +296,29 @@ struct SessionRow: View {
             Divider()
 
             Button("Rename Session...") {
-                startEditing()
+                self.startEditing()
             }
 
             Divider()
 
             Button("Kill Session", role: .destructive) {
-                terminateSession()
+                self.terminateSession()
             }
 
             Divider()
 
             Button("Copy Session ID") {
                 NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(session.key, forType: .string)
+                NSPasteboard.general.setString(self.session.key, forType: .string)
             }
         }
     }
 
     private func handleTap() {
-        guard !isEditing else { return }
+        guard !self.isEditing else { return }
 
-        if hasWindow {
-            WindowTracker.shared.focusWindow(for: session.key)
+        if self.hasWindow {
+            WindowTracker.shared.focusWindow(for: self.session.key)
         } else {
             // Open browser for sessions without windows
             if let url = DashboardURLBuilder.dashboardURL(port: serverManager.port, sessionId: session.key) {
@@ -352,18 +332,18 @@ struct SessionRow: View {
     }
 
     private func terminateSession() {
-        isTerminating = true
+        self.isTerminating = true
 
         Task {
             do {
-                try await sessionService.terminateSession(sessionId: session.key)
+                try await self.sessionService.terminateSession(sessionId: self.session.key)
                 // Session terminated successfully
                 // The session monitor will automatically update
             } catch {
                 // Handle error
-                Self.logger.error("Failed to terminate session \(session.key): \(error)")
+                Self.logger.error("Failed to terminate session \(self.session.key): \(error)")
                 await MainActor.run {
-                    isTerminating = false
+                    self.isTerminating = false
                 }
                 // Error terminating session - reset state
             }
@@ -383,12 +363,12 @@ struct SessionRow: View {
         switch executableName {
         case "zsh", "bash", "sh":
             // For shells, check if there's a -c argument with the actual command
-            if session.value.command.count > 2,
-               session.value.command.contains("-c"),
+            if self.session.value.command.count > 2,
+               self.session.value.command.contains("-c"),
                let cIndex = session.value.command.firstIndex(of: "-c"),
                cIndex + 1 < session.value.command.count
             {
-                let actualCommand = session.value.command[cIndex + 1]
+                let actualCommand = self.session.value.command[cIndex + 1]
                 return (actualCommand as NSString).lastPathComponent
             }
             return executableName
@@ -400,7 +380,7 @@ struct SessionRow: View {
     private var isAIAssistantSession: Bool {
         // Check if this is an AI assistant session by looking at the command
         let aiAssistants = ["claude", "gemini", "openhands", "aider", "codex"]
-        let cmd = commandName.lowercased()
+        let cmd = self.commandName.lowercased()
 
         // Match exact executable names or at word boundaries
         return aiAssistants.contains { ai in
@@ -412,46 +392,46 @@ struct SessionRow: View {
 
     private var sessionName: String {
         // Use the session name if available, otherwise fall back to directory name
-        if !session.value.name.isEmpty {
-            return session.value.name
+        if !self.session.value.name.isEmpty {
+            return self.session.value.name
         }
-        let workingDir = session.value.workingDir
+        let workingDir = self.session.value.workingDir
         return (workingDir as NSString).lastPathComponent
     }
 
     private func startEditing() {
-        editedName = session.value.name
-        isEditing = true
-        isEditFieldFocused = true
+        self.editedName = self.session.value.name
+        self.isEditing = true
+        self.isEditFieldFocused = true
     }
 
     private func cancelEditing() {
-        isEditing = false
-        editedName = ""
-        isEditFieldFocused = false
+        self.isEditing = false
+        self.editedName = ""
+        self.isEditFieldFocused = false
     }
 
     private func saveSessionName() {
-        let trimmedName = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedName = self.editedName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
-            cancelEditing()
+            self.cancelEditing()
             return
         }
 
         // Update the session name via SessionService
         Task {
             do {
-                try await sessionService.renameSession(sessionId: session.key, to: trimmedName)
+                try await self.sessionService.renameSession(sessionId: self.session.key, to: trimmedName)
 
                 // Clear editing state after successful update
                 await MainActor.run {
-                    isEditing = false
-                    editedName = ""
-                    isEditFieldFocused = false
+                    self.isEditing = false
+                    self.editedName = ""
+                    self.isEditFieldFocused = false
                 }
             } catch {
                 // Error already handled - editing state reverted
-                cancelEditing()
+                self.cancelEditing()
             }
         }
     }
@@ -461,10 +441,10 @@ struct SessionRow: View {
             do {
                 // Send a prompt that encourages the AI assistant to use vt title
                 let prompt = "use vt title to update the terminal title with what you're currently working on"
-                try await sessionService.sendInput(to: session.key, text: prompt)
+                try await sessionService.sendInput(to: self.session.key, text: prompt)
 
                 // Send Enter key to submit the prompt
-                try await sessionService.sendKey(to: session.key, key: "enter")
+                try await self.sessionService.sendKey(to: self.session.key, key: "enter")
             } catch {
                 // Silently handle errors for now
                 Self.logger.error("Failed to send prompt to AI assistant: \(error)")
@@ -473,7 +453,7 @@ struct SessionRow: View {
     }
 
     private var compactPath: String {
-        let path = session.value.workingDir
+        let path = self.session.value.workingDir
         let homeDir = NSHomeDirectory()
 
         if path.hasPrefix(homeDir) {
@@ -490,34 +470,35 @@ struct SessionRow: View {
         return path
     }
 
-    private var activityColor: Color {
-        isActive ? AppColors.Fallback.activityIndicator(for: colorScheme) : AppColors.Fallback
-            .gitClean(for: colorScheme)
+    private var statusColor: Color {
+        self.session.value.isRunning
+            ? AppColors.Fallback.activityIndicator(for: self.colorScheme)
+            : AppColors.Fallback.gitClean(for: self.colorScheme)
     }
 
     private var hasWindow: Bool {
         // Check if WindowTracker has found a window for this session
         // This includes both spawned terminals and those attached via vt
-        WindowTracker.shared.windowInfo(for: session.key) != nil
+        WindowTracker.shared.windowInfo(for: self.session.key) != nil
     }
 
     private var hoverBackgroundColor: Color {
-        AppColors.Fallback.accentHover(for: colorScheme)
+        AppColors.Fallback.accentHover(for: self.colorScheme)
     }
 
     private var tooltipText: String {
         var tooltip = ""
 
         // Session name
-        if !session.value.name.isEmpty {
-            tooltip += "Session: \(session.value.name)\n"
+        if !self.session.value.name.isEmpty {
+            tooltip += "Session: \(self.session.value.name)\n"
         }
 
         // Command
-        tooltip += "Command: \(session.value.command.joined(separator: " "))\n"
+        tooltip += "Command: \(self.session.value.command.joined(separator: " "))\n"
 
         // Project path
-        tooltip += "Path: \(session.value.workingDir)\n"
+        tooltip += "Path: \(self.session.value.workingDir)\n"
 
         // Git info
         if let repo = gitRepository {
@@ -528,15 +509,11 @@ struct SessionRow: View {
             tooltip += "\n"
         }
 
-        // Activity status
-        if let activityStatus = session.value.activityStatus?.specificStatus?.status {
-            tooltip += "Activity: \(activityStatus)\n"
-        } else {
-            tooltip += "Activity: \(isActive ? "Active" : "Idle")\n"
-        }
+        // Status
+        tooltip += "Status: \(self.session.value.status)\n"
 
         // Duration
-        tooltip += "Duration: \(formattedDuration)"
+        tooltip += "Duration: \(self.formattedDuration)"
 
         return tooltip
     }
@@ -552,10 +529,10 @@ struct SessionRow: View {
             guard let startDate = formatter.date(from: session.value.startedAt) else {
                 return "unknown"
             }
-            return formatLongDuration(from: startDate)
+            return self.formatLongDuration(from: startDate)
         }
 
-        return formatLongDuration(from: startDate)
+        return self.formatLongDuration(from: startDate)
     }
 
     private func formatLongDuration(from startDate: Date) -> String {
@@ -563,19 +540,19 @@ struct SessionRow: View {
 
         if elapsed < 60 {
             return "just started"
-        } else if elapsed < 3_600 {
+        } else if elapsed < 3600 {
             let minutes = Int(elapsed / 60)
             return "\(minutes) minute\(minutes == 1 ? "" : "s")"
-        } else if elapsed < 86_400 {
-            let hours = Int(elapsed / 3_600)
-            let minutes = Int((elapsed.truncatingRemainder(dividingBy: 3_600)) / 60)
+        } else if elapsed < 86400 {
+            let hours = Int(elapsed / 3600)
+            let minutes = Int((elapsed.truncatingRemainder(dividingBy: 3600)) / 60)
             if minutes > 0 {
                 return "\(hours) hour\(hours == 1 ? "" : "s") \(minutes) minute\(minutes == 1 ? "" : "s")"
             }
             return "\(hours) hour\(hours == 1 ? "" : "s")"
         } else {
-            let days = Int(elapsed / 86_400)
-            let hours = Int((elapsed.truncatingRemainder(dividingBy: 86_400)) / 3_600)
+            let days = Int(elapsed / 86400)
+            let hours = Int((elapsed.truncatingRemainder(dividingBy: 86400)) / 3600)
             if hours > 0 {
                 return "\(days) day\(days == 1 ? "" : "s") \(hours) hour\(hours == 1 ? "" : "s")"
             }
@@ -594,10 +571,10 @@ struct SessionRow: View {
             guard let startDate = formatter.date(from: session.value.startedAt) else {
                 return "" // Return empty string instead of "unknown"
             }
-            return formatDuration(from: startDate)
+            return self.formatDuration(from: startDate)
         }
 
-        return formatDuration(from: startDate)
+        return self.formatDuration(from: startDate)
     }
 
     private func formatDuration(from startDate: Date) -> String {
@@ -605,14 +582,14 @@ struct SessionRow: View {
 
         if elapsed < 60 {
             return "now"
-        } else if elapsed < 3_600 {
+        } else if elapsed < 3600 {
             let minutes = Int(elapsed / 60)
             return "\(minutes)m"
-        } else if elapsed < 86_400 {
-            let hours = Int(elapsed / 3_600)
+        } else if elapsed < 86400 {
+            let hours = Int(elapsed / 3600)
             return "\(hours)h"
         } else {
-            let days = Int(elapsed / 86_400)
+            let days = Int(elapsed / 86400)
             return "\(days)d"
         }
     }
@@ -624,11 +601,11 @@ struct HoverOpacityModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .opacity(isHovering ? 1.0 : 0.5)
-            .scaleEffect(isHovering ? 1.0 : 0.95)
-            .animation(.easeInOut(duration: 0.15), value: isHovering)
+            .opacity(self.isHovering ? 1.0 : 0.5)
+            .scaleEffect(self.isHovering ? 1.0 : 0.95)
+            .animation(.easeInOut(duration: 0.15), value: self.isHovering)
             .onHover { hovering in
-                isHovering = hovering
+                self.isHovering = hovering
             }
     }
 }

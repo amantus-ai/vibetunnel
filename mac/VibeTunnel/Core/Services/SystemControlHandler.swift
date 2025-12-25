@@ -18,7 +18,7 @@ final class SystemControlHandler {
 
     init(onSystemReady: @escaping () -> Void = {}) {
         self.onSystemReady = onSystemReady
-        logger.info("SystemControlHandler initialized")
+        self.logger.info("SystemControlHandler initialized")
         // Note: Registration with SharedUnixSocketManager is handled by
         // SharedUnixSocketManager.initializeSystemHandler()
     }
@@ -34,20 +34,20 @@ final class SystemControlHandler {
             {
                 switch action {
                 case "ready":
-                    return await handleReadyEvent(data)
+                    return await self.handleReadyEvent(data)
                 case "ping":
-                    return await handlePingRequest(data)
+                    return await self.handlePingRequest(data)
                 default:
-                    logger.error("Unknown system action: \(action)")
-                    return createErrorResponse(for: data, error: "Unknown system action: \(action)")
+                    self.logger.error("Unknown system action: \(action)")
+                    return self.createErrorResponse(for: data, error: "Unknown system action: \(action)")
                 }
             } else {
-                logger.error("Invalid system message format")
-                return createErrorResponse(for: data, error: "Invalid message format")
+                self.logger.error("Invalid system message format")
+                return self.createErrorResponse(for: data, error: "Invalid message format")
             }
         } catch {
-            logger.error("Failed to parse system message: \(error)")
-            return createErrorResponse(for: data, error: "Failed to parse message: \(error.localizedDescription)")
+            self.logger.error("Failed to parse system message: \(error)")
+            return self.createErrorResponse(for: data, error: "Failed to parse message: \(error.localizedDescription)")
         }
     }
 
@@ -56,15 +56,15 @@ final class SystemControlHandler {
     private func handleReadyEvent(_ data: Data) async -> Data? {
         do {
             _ = try ControlProtocol.decode(data, as: ControlProtocol.SystemReadyMessage.self)
-            logger.info("System ready event received")
+            self.logger.info("System ready event received")
 
             // Call the ready handler
-            onSystemReady()
+            self.onSystemReady()
 
             // No response needed for events
             return nil
         } catch {
-            logger.error("Failed to decode system ready event: \(error)")
+            self.logger.error("Failed to decode system ready event: \(error)")
             return nil
         }
     }
@@ -72,13 +72,13 @@ final class SystemControlHandler {
     private func handlePingRequest(_ data: Data) async -> Data? {
         do {
             let request = try ControlProtocol.decodeSystemPingRequest(data)
-            logger.debug("System ping request received")
+            self.logger.debug("System ping request received")
 
             let response = ControlProtocol.systemPingResponse(to: request)
             return try ControlProtocol.encode(response)
         } catch {
-            logger.error("Failed to handle ping request: \(error)")
-            return createErrorResponse(for: data, error: "Failed to process ping: \(error.localizedDescription)")
+            self.logger.error("Failed to handle ping request: \(error)")
+            return self.createErrorResponse(for: data, error: "Failed to process ping: \(error.localizedDescription)")
         }
     }
 
@@ -97,13 +97,13 @@ final class SystemControlHandler {
                     "type": "response",
                     "category": "system",
                     "action": action,
-                    "error": error
+                    "error": error,
                 ]
 
                 return try JSONSerialization.data(withJSONObject: errorResponse)
             }
         } catch {
-            logger.error("Failed to create error response: \(error)")
+            self.logger.error("Failed to create error response: \(error)")
         }
 
         return nil

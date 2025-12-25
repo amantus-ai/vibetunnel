@@ -14,29 +14,29 @@ struct NotificationSettingsView: View {
 
     @State private var isTestingNotification = false
     @State private var showingPermissionAlert = false
-    @State private var sseConnectionStatus = false
+    @State private var eventStreamConnectionStatus = false
 
     private func updateNotificationPreferences() {
         // Load current preferences from ConfigManager and notify the service
-        let prefs = NotificationService.NotificationPreferences(fromConfig: configManager)
-        notificationService.updatePreferences(prefs)
+        let prefs = NotificationService.NotificationPreferences(fromConfig: self.configManager)
+        self.notificationService.updatePreferences(prefs)
         // Also update the enabled state in ConfigManager
-        configManager.notificationsEnabled = showNotifications
+        self.configManager.notificationsEnabled = self.showNotifications
     }
 
     var body: some View {
         NavigationStack {
-            @Bindable var bindableConfig = configManager
+            @Bindable var bindableConfig = self.configManager
 
             Form {
                 // Master toggle section
                 Section {
                     VStack(alignment: .leading, spacing: 12) {
-                        Toggle("Show Session Notifications", isOn: $showNotifications)
+                        Toggle("Show Session Notifications", isOn: self.$showNotifications)
                             .controlSize(.large)
-                            .onChange(of: showNotifications) { _, newValue in
+                            .onChange(of: self.showNotifications) { _, newValue in
                                 // Update ConfigManager's notificationsEnabled to match
-                                configManager.notificationsEnabled = newValue
+                                self.configManager.notificationsEnabled = newValue
 
                                 // Ensure NotificationService starts/stops based on the toggle
                                 if newValue {
@@ -46,45 +46,45 @@ struct NotificationSettingsView: View {
                                             .requestPermissionAndShowTestNotification()
 
                                         if granted {
-                                            await notificationService.start()
+                                            await self.notificationService.start()
                                         } else {
                                             // If permission denied, turn toggle back off
                                             await MainActor.run {
-                                                showNotifications = false
-                                                configManager.notificationsEnabled = false
-                                                showingPermissionAlert = true
+                                                self.showNotifications = false
+                                                self.configManager.notificationsEnabled = false
+                                                self.showingPermissionAlert = true
                                             }
                                         }
                                     }
                                 } else {
-                                    notificationService.stop()
+                                    self.notificationService.stop()
                                 }
                             }
                         Text("Display native macOS notifications for session and command events")
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
-                        // SSE Connection Status Row
+                        // Event Stream Connection Status Row
                         HStack(spacing: 6) {
                             Circle()
-                                .fill(sseConnectionStatus ? Color.green : Color.red)
+                                .fill(self.eventStreamConnectionStatus ? Color.green : Color.red)
                                 .frame(width: 8, height: 8)
                             Text("Event Stream:")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            Text(sseConnectionStatus ? "Connected" : "Disconnected")
+                            Text(self.eventStreamConnectionStatus ? "Connected" : "Disconnected")
                                 .font(.caption)
-                                .foregroundStyle(sseConnectionStatus ? .green : .red)
+                                .foregroundStyle(self.eventStreamConnectionStatus ? .green : .red)
                                 .fontWeight(.medium)
                             Spacer()
                         }
-                        .help(sseConnectionStatus
-                            ? "Real-time notification stream is connected"
-                            : "Real-time notification stream is disconnected. Check if the server is running."
-                        )
+                        .help(
+                            self.eventStreamConnectionStatus
+                                ? "Real-time notification stream is connected"
+                                : "Real-time notification stream is disconnected. Check if the server is running.")
 
                         // Show warning when disconnected
-                        if showNotifications && !sseConnectionStatus {
+                        if self.showNotifications, !self.eventStreamConnectionStatus {
                             HStack(spacing: 6) {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundStyle(.yellow)
@@ -99,61 +99,47 @@ struct NotificationSettingsView: View {
                 }
 
                 // Notification types section
-                if showNotifications {
+                if self.showNotifications {
                     Section {
                         NotificationToggleRow(
                             title: "Session starts",
                             description: "When a new session starts (useful for shared terminals)",
-                            isOn: $bindableConfig.notificationSessionStart
-                        )
-                        .onChange(of: bindableConfig.notificationSessionStart) { _, _ in
-                            updateNotificationPreferences()
-                        }
+                            isOn: $bindableConfig.notificationSessionStart)
+                            .onChange(of: bindableConfig.notificationSessionStart) { _, _ in
+                                self.updateNotificationPreferences()
+                            }
 
                         NotificationToggleRow(
                             title: "Session ends",
                             description: "When a session terminates or crashes (shows exit code)",
-                            isOn: $bindableConfig.notificationSessionExit
-                        )
-                        .onChange(of: bindableConfig.notificationSessionExit) { _, _ in
-                            updateNotificationPreferences()
-                        }
+                            isOn: $bindableConfig.notificationSessionExit)
+                            .onChange(of: bindableConfig.notificationSessionExit) { _, _ in
+                                self.updateNotificationPreferences()
+                            }
 
                         NotificationToggleRow(
                             title: "Commands fail",
                             description: "When commands fail with non-zero exit codes",
-                            isOn: $bindableConfig.notificationCommandError
-                        )
-                        .onChange(of: bindableConfig.notificationCommandError) { _, _ in
-                            updateNotificationPreferences()
-                        }
+                            isOn: $bindableConfig.notificationCommandError)
+                            .onChange(of: bindableConfig.notificationCommandError) { _, _ in
+                                self.updateNotificationPreferences()
+                            }
 
                         NotificationToggleRow(
                             title: "Commands complete (> 3 seconds)",
                             description: "When commands taking >3 seconds finish (builds, tests, etc.)",
-                            isOn: $bindableConfig.notificationCommandCompletion
-                        )
-                        .onChange(of: bindableConfig.notificationCommandCompletion) { _, _ in
-                            updateNotificationPreferences()
-                        }
+                            isOn: $bindableConfig.notificationCommandCompletion)
+                            .onChange(of: bindableConfig.notificationCommandCompletion) { _, _ in
+                                self.updateNotificationPreferences()
+                            }
 
                         NotificationToggleRow(
                             title: "Terminal bell (🔔)",
                             description: "Terminal bell (^G) from vim, IRC mentions, completion sounds",
-                            isOn: $bindableConfig.notificationBell
-                        )
-                        .onChange(of: bindableConfig.notificationBell) { _, _ in
-                            updateNotificationPreferences()
-                        }
-
-                        NotificationToggleRow(
-                            title: "Claude turn notifications",
-                            description: "When Claude AI finishes responding and awaits input",
-                            isOn: $bindableConfig.notificationClaudeTurn
-                        )
-                        .onChange(of: bindableConfig.notificationClaudeTurn) { _, _ in
-                            updateNotificationPreferences()
-                        }
+                            isOn: $bindableConfig.notificationBell)
+                            .onChange(of: bindableConfig.notificationBell) { _, _ in
+                                self.updateNotificationPreferences()
+                            }
                     } header: {
                         Text("Notification Types")
                             .font(.headline)
@@ -164,12 +150,12 @@ struct NotificationSettingsView: View {
                         VStack(spacing: 12) {
                             Toggle("Play sound", isOn: $bindableConfig.notificationSoundEnabled)
                                 .onChange(of: bindableConfig.notificationSoundEnabled) { _, _ in
-                                    updateNotificationPreferences()
+                                    self.updateNotificationPreferences()
                                 }
 
                             Toggle("Show in Notification Center", isOn: $bindableConfig.showInNotificationCenter)
                                 .onChange(of: bindableConfig.showInNotificationCenter) { _, _ in
-                                    updateNotificationPreferences()
+                                    self.updateNotificationPreferences()
                                 }
                         }
                     } header: {
@@ -183,18 +169,18 @@ struct NotificationSettingsView: View {
                             HStack {
                                 Button("Test Notification") {
                                     Task { @MainActor in
-                                        isTestingNotification = true
+                                        self.isTestingNotification = true
                                         // Use server test notification to verify the full flow
-                                        await notificationService.sendServerTestNotification()
+                                        await self.notificationService.sendServerTestNotification()
                                         // Reset button state after a delay
                                         await Task.yield()
-                                        isTestingNotification = false
+                                        self.isTestingNotification = false
                                     }
                                 }
                                 .buttonStyle(.bordered)
-                                .disabled(!showNotifications || isTestingNotification)
+                                .disabled(!self.showNotifications || self.isTestingNotification)
 
-                                if isTestingNotification {
+                                if self.isTestingNotification {
                                     ProgressView()
                                         .scaleEffect(0.7)
                                         .frame(width: 16, height: 16)
@@ -205,7 +191,7 @@ struct NotificationSettingsView: View {
 
                             HStack {
                                 Button("Open System Settings") {
-                                    notificationService.openNotificationSettings()
+                                    self.notificationService.openNotificationSettings()
                                 }
                                 .buttonStyle(.link)
 
@@ -223,26 +209,25 @@ struct NotificationSettingsView: View {
             .navigationTitle("Notification Settings")
             .onAppear {
                 // Sync the AppStorage value with ConfigManager on first load
-                showNotifications = configManager.notificationsEnabled
+                self.showNotifications = self.configManager.notificationsEnabled
 
                 // Update initial connection status
-                sseConnectionStatus = notificationService.isSSEConnected
+                self.eventStreamConnectionStatus = self.notificationService.isEventStreamConnected
             }
             .onReceive(NotificationCenter.default.publisher(for: .notificationServiceConnectionChanged)) { _ in
                 // Update connection status when it changes
-                sseConnectionStatus = notificationService.isSSEConnected
-                logger.debug("SSE connection status changed: \(sseConnectionStatus)")
+                self.eventStreamConnectionStatus = self.notificationService.isEventStreamConnected
+                logger.debug("Event stream connection status changed: \(self.eventStreamConnectionStatus)")
             }
         }
-        .alert("Notification Permission Required", isPresented: $showingPermissionAlert) {
+        .alert("Notification Permission Required", isPresented: self.$showingPermissionAlert) {
             Button("Open System Settings") {
-                notificationService.openNotificationSettings()
+                self.notificationService.openNotificationSettings()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "VibeTunnel needs permission to show notifications. Please enable notifications for VibeTunnel in System Settings."
-            )
+                "VibeTunnel needs permission to show notifications. Please enable notifications for VibeTunnel in System Settings.")
         }
     }
 }
@@ -256,15 +241,15 @@ struct NotificationToggleRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
+                Text(self.title)
                     .font(.body)
-                Text(description)
+                Text(self.description)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
-            Toggle("", isOn: $isOn)
+            Toggle("", isOn: self.$isOn)
                 .labelsHidden()
         }
         .padding(.vertical, 6)

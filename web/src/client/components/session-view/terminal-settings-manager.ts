@@ -16,13 +16,12 @@ import {
 } from '../../utils/terminal-preferences.js';
 import type { TerminalThemeId } from '../../utils/terminal-themes.js';
 import type { Terminal } from '../terminal.js';
-import type { VibeTerminalBinary } from '../vibe-terminal-binary.js';
 
 const logger = createLogger('terminal-settings-manager');
 
 export interface TerminalSettingsCallbacks {
   getSession: () => Session | null;
-  getTerminalElement: () => Terminal | VibeTerminalBinary | null;
+  getTerminalElement: () => Terminal | null;
   requestUpdate: () => void;
   setTerminalMaxCols: (cols: number) => void;
   setTerminalFontSize: (size: number) => void;
@@ -243,7 +242,7 @@ export class TerminalSettingsManager {
   }
 
   // Initialize terminal with current settings
-  initializeTerminal(terminal: Terminal | VibeTerminalBinary): void {
+  initializeTerminal(terminal: Terminal): void {
     terminal.maxCols = this.terminalMaxCols;
     terminal.fontSize = this.terminalFontSize;
     terminal.theme = this.terminalTheme;

@@ -27,62 +27,62 @@ final class MockCLIInstaller {
     var lastError: String?
 
     func checkInstallationStatus() {
-        checkInstallationStatusCalled = true
+        self.checkInstallationStatusCalled = true
         // Only update from mock if not already installed
-        if !isInstalled {
-            isInstalled = mockIsInstalled
+        if !self.isInstalled {
+            self.isInstalled = self.mockIsInstalled
         }
     }
 
     func install() async {
-        installCalled = true
+        self.installCalled = true
 
         await MainActor.run {
-            isInstalling = true
+            self.isInstalling = true
 
-            if mockInstallShouldFail {
-                lastError = mockInstallError ?? "Mock installation failed"
-                lastErrorMessage = lastError
-                isInstalling = false
-                showErrorCalled = true
+            if self.mockInstallShouldFail {
+                self.lastError = self.mockInstallError ?? "Mock installation failed"
+                self.lastErrorMessage = self.lastError
+                self.isInstalling = false
+                self.showErrorCalled = true
             } else {
-                isInstalled = true
-                isInstalling = false
-                showSuccessCalled = true
+                self.isInstalled = true
+                self.isInstalling = false
+                self.showSuccessCalled = true
             }
         }
     }
 
     func installCLITool() {
-        installCalled = true
-        isInstalling = true
+        self.installCalled = true
+        self.isInstalling = true
 
-        if mockInstallShouldFail {
-            lastError = mockInstallError ?? "Mock installation failed"
-            lastErrorMessage = lastError
-            isInstalling = false
-            showErrorCalled = true
+        if self.mockInstallShouldFail {
+            self.lastError = self.mockInstallError ?? "Mock installation failed"
+            self.lastErrorMessage = self.lastError
+            self.isInstalling = false
+            self.showErrorCalled = true
         } else {
-            isInstalled = true
-            isInstalling = false
-            showSuccessCalled = true
+            self.isInstalled = true
+            self.isInstalling = false
+            self.showSuccessCalled = true
         }
     }
 
     func reset() {
-        mockIsInstalled = false
-        mockInstallShouldFail = false
-        mockInstallError = nil
-        mockResourcePath = nil
-        checkInstallationStatusCalled = false
-        installCalled = false
-        performInstallationCalled = false
-        showSuccessCalled = false
-        showErrorCalled = false
-        lastErrorMessage = nil
-        isInstalled = false
-        isInstalling = false
-        lastError = nil
+        self.mockIsInstalled = false
+        self.mockInstallShouldFail = false
+        self.mockInstallError = nil
+        self.mockResourcePath = nil
+        self.checkInstallationStatusCalled = false
+        self.installCalled = false
+        self.performInstallationCalled = false
+        self.showSuccessCalled = false
+        self.showErrorCalled = false
+        self.lastErrorMessage = nil
+        self.isInstalled = false
+        self.isInstalling = false
+        self.lastError = nil
     }
 }
 
@@ -94,17 +94,17 @@ final class MockFileManager {
     var setAttributesShouldFail = false
 
     func fileExists(atPath path: String) -> Bool {
-        fileExistsResults[path] ?? false
+        self.fileExistsResults[path] ?? false
     }
 
     func createDirectory(at url: URL, withIntermediateDirectories: Bool) throws {
-        if createDirectoryShouldFail {
+        if self.createDirectoryShouldFail {
             throw CocoaError(.fileWriteUnknown)
         }
     }
 
     func setAttributes(_ attributes: [FileAttributeKey: Any], ofItemAtPath path: String) throws {
-        if setAttributesShouldFail {
+        if self.setAttributesShouldFail {
             throw CocoaError(.fileWriteNoPermission)
         }
     }
@@ -120,11 +120,11 @@ struct CLIInstallerTests {
     init() throws {
         self.tempDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("CLIInstallerTests-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: self.tempDirectory, withIntermediateDirectories: true)
     }
 
     func cleanup() {
-        try? FileManager.default.removeItem(at: tempDirectory)
+        try? FileManager.default.removeItem(at: self.tempDirectory)
     }
 
     // MARK: - Installation Status Tests
@@ -435,7 +435,7 @@ struct CLIInstallerTests {
         exec "$VIBETUNNEL_BIN" fwd $TITLE_MODE_ARGS "$@"
         """
 
-        let vtPath = tempDirectory.appendingPathComponent("vt").path
+        let vtPath = self.tempDirectory.appendingPathComponent("vt").path
         try script.write(toFile: vtPath, atomically: true, encoding: .utf8)
 
         let installer = CLIInstaller(binDirectory: tempDirectory.path)

@@ -14,6 +14,10 @@
  * - /path/to/normalrepo -> normalrepo
  */
 export function getBaseRepoName(repoPath: string): string {
+  if (typeof repoPath !== 'string') {
+    return '';
+  }
+
   // Handle root path edge case
   if (repoPath === '/') {
     return '';

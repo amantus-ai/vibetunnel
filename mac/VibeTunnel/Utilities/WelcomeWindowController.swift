@@ -43,10 +43,9 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
         // Listen for notification to show welcome screen
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(handleShowWelcomeNotification),
+            selector: #selector(self.handleShowWelcomeNotification),
             name: .showWelcomeScreen,
-            object: nil
-        )
+            object: nil)
     }
 
     @available(*, unavailable)
@@ -82,7 +81,7 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
 
     @objc
     private func handleShowWelcomeNotification() {
-        show()
+        self.show()
     }
 
     // MARK: - NSWindowDelegate

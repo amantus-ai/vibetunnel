@@ -33,7 +33,6 @@ struct DebugConfig {
     static func current() -> Self {
         Self(
             debugMode: AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.debugMode),
-            logLevel: AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.logLevel)
-        )
+            logLevel: AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.logLevel))
     }
 }

@@ -3,14 +3,12 @@
  *
  * Displays a read-only terminal buffer snapshot with automatic resizing.
  * Subscribes to buffer updates via WebSocket and renders the terminal content.
- * Detects content changes and emits events when the terminal content updates.
- *
- * @fires content-changed - When terminal content changes (no detail)
+ * Detects content changes and keeps the terminal snapshot updated.
  */
 import { html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { cellsToText } from '../../shared/terminal-text-formatter.js';
-import { bufferSubscriptionService } from '../services/buffer-subscription-service.js';
+import { terminalSocketClient } from '../services/terminal-socket-client.js';
 import { TERMINAL_IDS } from '../utils/terminal-constants.js';
 import { type BufferCell, TerminalRenderer } from '../utils/terminal-renderer.js';
 import { TERMINAL_THEMES, type TerminalThemeId } from '../utils/terminal-themes.js';
@@ -44,7 +42,6 @@ export class VibeTerminalBuffer extends LitElement {
   private container: HTMLElement | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private unsubscribe: (() => void) | null = null;
-  private lastTextSnapshot: string | null = null;
 
   // Adaptive debouncing properties
   private updateTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -151,46 +148,24 @@ export class VibeTerminalBuffer extends LitElement {
   private subscribeToBuffer() {
     if (!this.sessionId) return;
 
-    // Subscribe to buffer updates
-    this.unsubscribe = bufferSubscriptionService.subscribe(this.sessionId, (snapshot) => {
-      this.buffer = snapshot;
-      this.error = null;
+    // Subscribe to buffer snapshots over v3 socket
+    this.unsubscribe = terminalSocketClient.subscribe(this.sessionId, {
+      snapshots: true,
+      onSnapshot: (snapshot) => {
+        this.buffer = snapshot;
+        this.error = null;
 
-      // Check for content changes
-      this.checkForContentChange();
+        // Recalculate dimensions now that we have the actual cols
+        this.calculateDimensions();
 
-      // Recalculate dimensions now that we have the actual cols
-      this.calculateDimensions();
-
-      // Request update which will trigger updated() lifecycle
-      this.requestUpdate();
+        // Request update which will trigger updated() lifecycle
+        this.requestUpdate();
+      },
+      onError: (message) => {
+        this.error = message;
+        this.requestUpdate();
+      },
     });
-  }
-
-  private checkForContentChange() {
-    if (!this.buffer) return;
-
-    // Get current text with styles to detect any visual changes
-    const currentSnapshot = this.getTextWithStyles(true);
-
-    // Skip the first check
-    if (this.lastTextSnapshot === null) {
-      this.lastTextSnapshot = currentSnapshot;
-      return;
-    }
-
-    // Compare with last snapshot
-    if (currentSnapshot !== this.lastTextSnapshot) {
-      this.lastTextSnapshot = currentSnapshot;
-
-      // Dispatch content changed event
-      this.dispatchEvent(
-        new CustomEvent('content-changed', {
-          bubbles: true,
-          composed: true,
-        })
-      );
-    }
   }
 
   private unsubscribeFromBuffer() {

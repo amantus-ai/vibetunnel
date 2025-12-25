@@ -14,7 +14,7 @@ export function getTitleModeDescription(titleMode: TitleMode): string {
     case TitleMode.STATIC:
       return 'Shows path and command';
     case TitleMode.DYNAMIC:
-      return '○ idle ● active ▶ running';
+      return 'Legacy alias of static';
     default:
       return '';
   }
@@ -34,7 +34,7 @@ export function getTitleModeDisplayName(titleMode: TitleMode): string {
     case TitleMode.STATIC:
       return 'Static';
     case TitleMode.DYNAMIC:
-      return 'Dynamic';
+      return 'Dynamic (legacy)';
     default:
       return titleMode;
   }

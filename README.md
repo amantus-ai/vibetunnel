@@ -1,3 +1,5 @@
+# VibeTunnel 🚇 - Turn any browser into your terminal; command agents from the road (vt.sh)
+
 <!-- Generated: 2025-07-28 12:35:00 UTC -->
 <p align="center">
   <img src="assets/banner.png" alt="VibeTunnel Banner" />
@@ -12,7 +14,7 @@
   <a href="https://github.com/amantus-ai/vibetunnel/releases/latest"><img src="https://img.shields.io/badge/Download-macOS-blue" alt="Download"></a>
   <a href="https://www.npmjs.com/package/vibetunnel"><img src="https://img.shields.io/npm/v/vibetunnel.svg" alt="npm version"></a>
   <a href="https://formulae.brew.sh/cask/vibetunnel"><img src="https://img.shields.io/homebrew/cask/v/vibetunnel" alt="Homebrew"></a>
-  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-20+-339933?logo=node.js" alt="Node.js 20+"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-22.12%2B-339933?logo=node.js" alt="Node.js 22.12+"></a>
   <a href="https://discord.gg/3Ub3EUwrcR"><img src="https://img.shields.io/discord/1394471066990280875?label=Discord&logo=discord" alt="Discord"></a>
   <a href="https://twitter.com/vibetunnel"><img src="https://img.shields.io/twitter/follow/vibetunnel?style=social" alt="Twitter"></a>
 </p>
@@ -79,7 +81,7 @@ This gives you the full VibeTunnel server with web UI, just without the macOS me
 
 **macOS App**: Requires an Apple Silicon Mac (M1+). Intel Macs are not supported for the native app.
 
-**npm Package**: Works on any system with Node.js 20+, including Intel Macs and Linux. Windows is not yet supported ([#252](https://github.com/amantus-ai/vibetunnel/issues/252)).
+**npm Package**: Works on any system with Node.js 22.12+, including Intel Macs and Linux. Windows is not yet supported ([#252](https://github.com/amantus-ai/vibetunnel/issues/252)).
 
 ### 1. Download & Install
 
@@ -177,7 +179,7 @@ VibeTunnel consists of three main components:
 
 1. **macOS Menu Bar App** - Native Swift application that manages the server lifecycle
 2. **Node.js Server** - High-performance TypeScript server handling terminal sessions
-3. **Web Frontend** - Modern web interface using Lit components and xterm.js
+3. **Web Frontend** - Modern web interface using Lit components and ghostty-web
 
 The server runs as a standalone Node.js executable with embedded modules, providing excellent performance and minimal resource usage.
 
@@ -196,8 +198,9 @@ The server runs as a standalone Node.js executable with embedded modules, provid
    - **Android**: [Download from Google Play](https://play.google.com/store/apps/details?id=com.tailscale.ipn)
    - **Other platforms**: [All Downloads](https://tailscale.com/download)
 3. Sign in to both devices with the same account
-4. Find your Mac's Tailscale hostname in the Tailscale menu bar app (e.g., `my-mac.tailnet-name.ts.net`)
-5. Access VibeTunnel at `http://[your-tailscale-hostname]:4020`
+4. If using VibeTunnel's Tailscale Serve integration, ensure Tailscale Serve is enabled in your [tailnet settings](https://login.tailscale.com/f/serve)
+5. Find your Mac's Tailscale hostname in the Tailscale menu bar app (e.g., `my-mac.tailnet-name.ts.net`)
+6. Access VibeTunnel at `http://[your-tailscale-hostname]:4020`
 
 **Benefits**:
 - End-to-end encrypted traffic
@@ -421,7 +424,7 @@ yarn global add vibetunnel
 pnpm add -g vibetunnel
 ```
 
-**Requirements**: Node.js 20.0.0 or higher
+**Requirements**: Node.js 22.12.0 or higher
 
 ### Running the VibeTunnel Server
 
@@ -626,8 +629,8 @@ npm run build:npm
 ```
 
 This creates prebuilt binaries for:
-- macOS (x64, arm64) - Node.js 20, 22, 23, 24
-- Linux (x64, arm64) - Node.js 20, 22, 23, 24
+- macOS (x64, arm64) - Node.js 22, 23, 24
+- Linux (x64, arm64) - Node.js 22, 23, 24
 
 #### Build Options
 ```bash
@@ -655,7 +658,7 @@ npm publish
 ### Prerequisites
 - macOS 14.0+ (Sonoma) on Apple Silicon (M1+)
 - Xcode 16.0+
-- Node.js 20+ (minimum supported version)
+- Node.js 22.12+ (minimum supported version)
 
 ### Build Steps
 
@@ -919,7 +922,7 @@ VIBETUNNEL_LOG_LEVEL=silent vt npm test
 
 ## Poltergeist Integration
 
-[Poltergeist](https://github.com/poltergeist/poltergeist) is an intelligent file watcher and auto-builder that can automatically rebuild VibeTunnel as you develop. This is particularly useful for native app development where manual rebuilds can interrupt your flow.
+[Poltergeist](https://github.com/steipete/poltergeist) is an intelligent file watcher and auto-builder that can automatically rebuild VibeTunnel as you develop. This is particularly useful for native app development where manual rebuilds can interrupt your flow.
 
 ### Setting Up Poltergeist
 

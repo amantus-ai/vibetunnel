@@ -13,12 +13,109 @@ const distCliPath = path.join(projectRoot, 'dist/cli.js');
 let cliPath;
 let useNode = true;
 
+function getLatestSourceMtimeMs(dir) {
+  let latest = 0;
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return latest;
+  }
+
+  for (const entry of entries) {
+    // Skip heavy / irrelevant directories
+    if (
+      entry.name === 'node_modules' ||
+      entry.name === 'dist' ||
+      entry.name === '.git' ||
+      entry.name === 'native' ||
+      entry.name === 'test-results'
+    ) {
+      continue;
+    }
+
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      latest = Math.max(latest, getLatestSourceMtimeMs(fullPath));
+      continue;
+    }
+
+    if (!entry.isFile()) continue;
+    if (!/\.(ts|tsx|js|mjs|cjs|json)$/.test(entry.name)) continue;
+
+    try {
+      const stat = fs.statSync(fullPath);
+      latest = Math.max(latest, stat.mtimeMs);
+    } catch {
+      // ignore
+    }
+  }
+
+  return latest;
+}
+
+function isDistUpToDate(distPath) {
+  try {
+    const distStat = fs.statSync(distPath);
+    const latestSourceMtimeMs = getLatestSourceMtimeMs(path.join(projectRoot, 'src'));
+    return distStat.mtimeMs >= latestSourceMtimeMs;
+  } catch {
+    return false;
+  }
+}
+
+function isClientUpToDate() {
+  const bundlePaths = [
+    path.join(projectRoot, 'public', 'bundle', 'client-bundle.js'),
+    path.join(projectRoot, 'public', 'bundle', 'styles.css'),
+    path.join(projectRoot, 'public', 'sw.js'),
+  ];
+
+  try {
+    const latestClientMtimeMs = Math.max(
+      getLatestSourceMtimeMs(path.join(projectRoot, 'src', 'client')),
+      getLatestSourceMtimeMs(path.join(projectRoot, 'src', 'shared'))
+    );
+
+    for (const bundlePath of bundlePaths) {
+      const stat = fs.statSync(bundlePath);
+      if (stat.mtimeMs < latestClientMtimeMs) return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 if (process.env.VIBETUNNEL_SEA === 'true' && fs.existsSync(nativeExecutable)) {
   console.log('Using native executable for tests (VIBETUNNEL_SEA mode)');
   cliPath = nativeExecutable;
   useNode = false;
 } else if (fs.existsSync(distCliPath)) {
-  console.log('Using TypeScript compiled version for tests');
+  const shouldRebuild =
+    process.env.CI ||
+    process.env.FORCE_TEST_BUILD === 'true' ||
+    !isDistUpToDate(distCliPath);
+
+  if (shouldRebuild) {
+    console.log('Building server TypeScript files for tests...');
+    try {
+      execSync('pnpm exec tsc -p tsconfig.server.json', {
+        stdio: 'inherit',
+        cwd: projectRoot,
+      });
+      console.log('TypeScript build completed successfully');
+    } catch (error) {
+      console.error('Failed to build server TypeScript files:', error);
+      console.error('Build command exit code:', error.status);
+      console.error('Build command signal:', error.signal);
+      process.exit(1);
+    }
+  } else {
+    console.log('Using TypeScript compiled version for tests');
+  }
+
   cliPath = distCliPath;
 } else {
   // Fallback: build TypeScript files if needed
@@ -43,6 +140,26 @@ execSync('node scripts/ensure-native-modules.js', {
   stdio: 'inherit',
   cwd: projectRoot
 });
+
+// Ensure static assets exist (incl. ghostty-web WASM in public/)
+execSync('node scripts/copy-assets.js', {
+  stdio: 'inherit',
+  cwd: projectRoot,
+});
+
+// Ensure client bundle is up-to-date (Playwright runs against public/bundle)
+const shouldRebuildClient =
+  process.env.CI || process.env.FORCE_TEST_BUILD === 'true' || !isClientUpToDate();
+
+if (shouldRebuildClient) {
+  console.log('Building client bundles for tests...');
+  execSync('node scripts/build-client.js', {
+    stdio: 'inherit',
+    cwd: projectRoot,
+  });
+} else {
+  console.log('Client bundles up-to-date for tests');
+}
 
 // Check if the CLI file exists
 if (!fs.existsSync(cliPath)) {

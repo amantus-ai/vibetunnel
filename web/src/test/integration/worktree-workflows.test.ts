@@ -44,7 +44,6 @@ describe('Worktree Workflows Integration Tests', () => {
     }
 
     // Stop services (without killing all sessions)
-    testServer.activityMonitor.stop();
 
     // Clean up repository
     await gitRepo.cleanup();

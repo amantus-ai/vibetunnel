@@ -10,6 +10,7 @@ const path = require('path');
 const os = require('os');
 
 const nativeExe = path.join(__dirname, '..', 'native', 'vibetunnel');
+const forwarderExe = path.join(__dirname, '..', 'native', 'vibetunnel-fwd');
 
 console.log('Verifying native executable...');
 console.log(`Path: ${nativeExe}`);
@@ -59,6 +60,26 @@ if (!modulesOk) {
   console.error('\nERROR: Required native modules are missing!');
   process.exit(1);
 }
+
+// Verify zig forwarder exists
+console.log('\nChecking zig forwarder...');
+if (!fs.existsSync(forwarderExe)) {
+  console.error('ERROR: Zig forwarder not found!');
+  console.log(`Expected at: ${forwarderExe}`);
+  process.exit(1);
+}
+
+try {
+  fs.accessSync(forwarderExe, fs.constants.X_OK);
+  console.log('✓ Zig forwarder is executable');
+} catch (error) {
+  console.error('ERROR: Zig forwarder is not executable!');
+  console.log('Attempting to make it executable...');
+  fs.chmodSync(forwarderExe, 0o755);
+}
+
+const forwarderStats = fs.statSync(forwarderExe);
+console.log(`Zig forwarder size: ${(forwarderStats.size / 1024 / 1024).toFixed(2)} MB`);
 
 // Skip version test on Linux due to Node.js SEA segfault issues
 // This affects both x64 and ARM64 architectures on Linux

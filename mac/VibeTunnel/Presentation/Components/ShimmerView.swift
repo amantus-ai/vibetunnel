@@ -13,40 +13,34 @@ struct ShimmerView: View {
     }
 
     var body: some View {
-        RoundedRectangle(cornerRadius: cornerRadius)
+        RoundedRectangle(cornerRadius: self.cornerRadius)
             .fill(
                 LinearGradient(
                     gradient: Gradient(colors: [
                         Color.gray.opacity(0.3),
                         Color.gray.opacity(0.15),
-                        Color.gray.opacity(0.3)
+                        Color.gray.opacity(0.3),
                     ]),
                     startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .frame(height: height)
+                    endPoint: .trailing))
+            .frame(height: self.height)
             .mask(
-                RoundedRectangle(cornerRadius: cornerRadius)
+                RoundedRectangle(cornerRadius: self.cornerRadius)
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
                                 Color.black.opacity(0.3),
                                 Color.black,
-                                Color.black.opacity(0.3)
+                                Color.black.opacity(0.3),
                             ]),
-                            startPoint: isAnimating ? .leading : .trailing,
-                            endPoint: isAnimating ? .trailing : .leading
-                        )
-                    )
+                            startPoint: self.isAnimating ? .leading : .trailing,
+                            endPoint: self.isAnimating ? .trailing : .leading))
                     .animation(
                         Animation.linear(duration: 1.5)
                             .repeatForever(autoreverses: false),
-                        value: isAnimating
-                    )
-            )
+                        value: self.isAnimating))
             .onAppear {
-                isAnimating = true
+                self.isAnimating = true
             }
     }
 }
@@ -61,20 +55,19 @@ struct TextShimmer: View {
     var body: some View {
         ZStack {
             // Hidden text to measure height
-            Text(text)
-                .font(font)
+            Text(self.text)
+                .font(self.font)
                 .opacity(0)
                 .background(
                     GeometryReader { geometry in
                         Color.clear
                             .preference(key: HeightPreferenceKey.self, value: geometry.size.height)
-                    }
-                )
+                    })
                 .onPreferenceChange(HeightPreferenceKey.self) { height in
-                    textHeight = height
+                    self.textHeight = height
                 }
 
-            ShimmerView(height: textHeight, cornerRadius: 4)
+            ShimmerView(height: self.textHeight, cornerRadius: 4)
         }
     }
 }

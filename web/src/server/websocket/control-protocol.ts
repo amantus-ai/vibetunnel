@@ -58,8 +58,7 @@ export type SessionMonitorAction =
   | 'session-exit'
   | 'command-finished'
   | 'command-error'
-  | 'bell'
-  | 'claude-turn';
+  | 'bell';
 
 export interface SessionMonitorEvent {
   type: SessionMonitorAction;
@@ -71,10 +70,6 @@ export interface SessionMonitorEvent {
   exitCode?: number;
   command?: string;
   duration?: number;
-  activityStatus?: {
-    isActive: boolean;
-    app?: string;
-  };
 }
 
 // Helper to create control messages

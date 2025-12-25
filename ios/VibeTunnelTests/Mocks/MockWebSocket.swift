@@ -29,55 +29,55 @@ class MockWebSocket: WebSocketProtocol {
     private var messageDeliveryTask: Task<Void, Never>?
 
     func connect(to url: URL, with headers: [String: String]) async throws {
-        lastConnectURL = url
-        lastConnectHeaders = headers
+        self.lastConnectURL = url
+        self.lastConnectHeaders = headers
 
-        if shouldFailConnection {
-            let error = connectionError ?? WebSocketError.connectionFailed
+        if self.shouldFailConnection {
+            let error = self.connectionError ?? WebSocketError.connectionFailed
             throw error
         }
 
-        isConnected = true
-        delegate?.webSocketDidConnect(self)
+        self.isConnected = true
+        self.delegate?.webSocketDidConnect(self)
 
         // Start delivering queued messages
-        startMessageDelivery()
+        self.startMessageDelivery()
     }
 
     func send(_ message: WebSocketMessage) async throws {
-        guard isConnected else {
+        guard self.isConnected else {
             throw WebSocketError.connectionFailed
         }
 
-        if shouldFailSend {
-            throw sendError ?? WebSocketError.connectionFailed
+        if self.shouldFailSend {
+            throw self.sendError ?? WebSocketError.connectionFailed
         }
 
-        sentMessages.append(message)
+        self.sentMessages.append(message)
     }
 
     func sendPing() async throws {
-        guard isConnected else {
+        guard self.isConnected else {
             throw WebSocketError.connectionFailed
         }
 
-        if shouldFailPing {
-            throw pingError ?? WebSocketError.connectionFailed
+        if self.shouldFailPing {
+            throw self.pingError ?? WebSocketError.connectionFailed
         }
 
-        pingCount += 1
+        self.pingCount += 1
     }
 
     func disconnect(with code: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        disconnectCalled = true
-        lastDisconnectCode = code
-        lastDisconnectReason = reason
+        self.disconnectCalled = true
+        self.lastDisconnectCode = code
+        self.lastDisconnectReason = reason
 
-        if isConnected {
-            isConnected = false
-            messageDeliveryTask?.cancel()
-            messageDeliveryTask = nil
-            delegate?.webSocketDidDisconnect(self, closeCode: code, reason: reason)
+        if self.isConnected {
+            self.isConnected = false
+            self.messageDeliveryTask?.cancel()
+            self.messageDeliveryTask = nil
+            self.delegate?.webSocketDidDisconnect(self, closeCode: code, reason: reason)
         }
     }
 
@@ -85,59 +85,59 @@ class MockWebSocket: WebSocketProtocol {
 
     /// Simulate receiving a message from the server
     func simulateMessage(_ message: WebSocketMessage) {
-        guard isConnected else { return }
-        messageQueue.append(message)
+        guard self.isConnected else { return }
+        self.messageQueue.append(message)
     }
 
     /// Simulate multiple messages
     func simulateMessages(_ messages: [WebSocketMessage]) {
-        guard isConnected else { return }
-        messageQueue.append(contentsOf: messages)
+        guard self.isConnected else { return }
+        self.messageQueue.append(contentsOf: messages)
     }
 
     /// Simulate a connection error
     func simulateError(_ error: Error) {
-        guard isConnected else { return }
-        delegate?.webSocket(self, didFailWithError: error)
+        guard self.isConnected else { return }
+        self.delegate?.webSocket(self, didFailWithError: error)
     }
 
     /// Simulate server disconnection
     func simulateDisconnection(closeCode: URLSessionWebSocketTask.CloseCode = .abnormalClosure, reason: Data? = nil) {
-        guard isConnected else { return }
-        isConnected = false
-        messageDeliveryTask?.cancel()
-        messageDeliveryTask = nil
-        delegate?.webSocketDidDisconnect(self, closeCode: closeCode, reason: reason)
+        guard self.isConnected else { return }
+        self.isConnected = false
+        self.messageDeliveryTask?.cancel()
+        self.messageDeliveryTask = nil
+        self.delegate?.webSocketDidDisconnect(self, closeCode: closeCode, reason: reason)
     }
 
     /// Clear all tracked state
     func reset() {
-        isConnected = false
-        lastConnectURL = nil
-        lastConnectHeaders = nil
-        sentMessages.removeAll()
-        pingCount = 0
-        disconnectCalled = false
-        lastDisconnectCode = nil
-        lastDisconnectReason = nil
-        messageQueue.removeAll()
-        messageDeliveryTask?.cancel()
-        messageDeliveryTask = nil
+        self.isConnected = false
+        self.lastConnectURL = nil
+        self.lastConnectHeaders = nil
+        self.sentMessages.removeAll()
+        self.pingCount = 0
+        self.disconnectCalled = false
+        self.lastDisconnectCode = nil
+        self.lastDisconnectReason = nil
+        self.messageQueue.removeAll()
+        self.messageDeliveryTask?.cancel()
+        self.messageDeliveryTask = nil
     }
 
     /// Clear tracked state but preserve connection state
     func reset(preserveConnection: Bool) {
-        let wasConnected = isConnected
-        reset()
+        let wasConnected = self.isConnected
+        self.reset()
         if preserveConnection {
-            isConnected = wasConnected
+            self.isConnected = wasConnected
         }
     }
 
     /// Find sent messages by type
     func sentStringMessages() -> [String] {
-        sentMessages.compactMap { message in
-            if case .string(let text) = message {
+        self.sentMessages.compactMap { message in
+            if case let .string(text) = message {
                 return text
             }
             return nil
@@ -145,8 +145,8 @@ class MockWebSocket: WebSocketProtocol {
     }
 
     func sentDataMessages() -> [Data] {
-        sentMessages.compactMap { message in
-            if case .data(let data) = message {
+        self.sentMessages.compactMap { message in
+            if case let .data(data) = message {
                 return data
             }
             return nil
@@ -155,7 +155,7 @@ class MockWebSocket: WebSocketProtocol {
 
     /// Find sent JSON messages
     func sentJSONMessages() -> [[String: Any]] {
-        sentStringMessages().compactMap { string in
+        self.sentStringMessages().compactMap { string in
             guard let data = string.data(using: .utf8),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             else {
@@ -166,12 +166,12 @@ class MockWebSocket: WebSocketProtocol {
     }
 
     private func startMessageDelivery() {
-        messageDeliveryTask = Task { [weak self] in
+        self.messageDeliveryTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { break }
 
-                if !messageQueue.isEmpty {
-                    let message = messageQueue.removeFirst()
+                if !self.messageQueue.isEmpty {
+                    let message = self.messageQueue.removeFirst()
                     await MainActor.run {
                         self.delegate?.webSocket(self, didReceiveMessage: message)
                     }
@@ -191,16 +191,16 @@ class MockWebSocketFactory: WebSocketFactory {
 
     func createWebSocket() -> WebSocketProtocol {
         let webSocket = MockWebSocket()
-        createdWebSockets.append(webSocket)
+        self.createdWebSockets.append(webSocket)
         return webSocket
     }
 
     var lastCreatedWebSocket: MockWebSocket? {
-        createdWebSockets.last
+        self.createdWebSockets.last
     }
 
     func reset() {
-        createdWebSockets.forEach { $0.reset() }
-        createdWebSockets.removeAll()
+        self.createdWebSockets.forEach { $0.reset() }
+        self.createdWebSockets.removeAll()
     }
 }

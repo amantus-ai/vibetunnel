@@ -92,7 +92,7 @@ struct ConnectionManagerTests {
             mockStorage.set(data, forKey: "savedServerConfig")
         }
         mockStorage.set(true, forKey: "connectionState")
-        let twoHoursAgo = Date().addingTimeInterval(-7_200)
+        let twoHoursAgo = Date().addingTimeInterval(-7200)
         mockStorage.set(twoHoursAgo, forKey: "lastConnectionTime")
 
         // Act

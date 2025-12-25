@@ -232,6 +232,17 @@ for (const module of modules) {
   }
 }
 
+// Ensure zig forwarder is executable if present
+const forwarderPath = path.join(__dirname, '..', 'bin', 'vibetunnel-fwd');
+if (fs.existsSync(forwarderPath)) {
+  try {
+    fs.chmodSync(forwarderPath, 0o755);
+    console.log('✓ Zig forwarder is executable');
+  } catch (error) {
+    console.warn(`⚠️  Failed to set executable bit on vibetunnel-fwd: ${error.message}`);
+  }
+}
+
 // Import vt installation functions
 const { detectGlobalInstall, installVtCommand } = require('./install-vt-command');
 

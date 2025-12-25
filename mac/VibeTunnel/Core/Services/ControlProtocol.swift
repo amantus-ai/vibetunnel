@@ -43,8 +43,7 @@ enum ControlProtocol {
         sessionId: String,
         workingDirectory: String? = nil,
         command: String? = nil,
-        terminalPreference: String? = nil
-    )
+        terminalPreference: String? = nil)
         -> TerminalSpawnRequestMessage
     {
         ControlMessage(
@@ -55,10 +54,8 @@ enum ControlProtocol {
                 sessionId: sessionId,
                 workingDirectory: workingDirectory,
                 command: command,
-                terminalPreference: terminalPreference
-            ),
-            sessionId: sessionId
-        )
+                terminalPreference: terminalPreference),
+            sessionId: sessionId)
     }
 
     /// Build a spawn response
@@ -71,8 +68,7 @@ enum ControlProtocol {
         to request: TerminalSpawnRequestMessage,
         success: Bool,
         pid: Int? = nil,
-        error: String? = nil
-    )
+        error: String? = nil)
         -> TerminalSpawnResponseMessage
     {
         ControlMessage(
@@ -82,8 +78,7 @@ enum ControlProtocol {
             action: "spawn",
             payload: TerminalSpawnResponse(success: success, pid: pid, error: error),
             sessionId: request.sessionId,
-            error: error
-        )
+            error: error)
     }
 
     /// System messages
@@ -92,8 +87,7 @@ enum ControlProtocol {
             type: .event,
             category: .system,
             action: "ready",
-            payload: SystemReadyEvent()
-        )
+            payload: SystemReadyEvent())
     }
 
     static func systemPingRequest() -> SystemPingRequestMessage {
@@ -101,13 +95,11 @@ enum ControlProtocol {
             type: .request,
             category: .system,
             action: "ping",
-            payload: SystemPingRequest()
-        )
+            payload: SystemPingRequest())
     }
 
     static func systemPingResponse(
-        to request: SystemPingRequestMessage
-    )
+        to request: SystemPingRequestMessage)
         -> SystemPingResponseMessage
     {
         ControlMessage(
@@ -115,8 +107,7 @@ enum ControlProtocol {
             type: .response,
             category: .system,
             action: "ping",
-            payload: SystemPingResponse()
-        )
+            payload: SystemPingResponse())
     }
 
     // MARK: - Message Serialization
@@ -139,15 +130,14 @@ enum ControlProtocol {
         action: String,
         payload: [String: Any]? = nil,
         sessionId: String? = nil,
-        error: String? = nil
-    )
+        error: String? = nil)
         throws -> Data
     {
         var dict: [String: Any] = [
             "id": id,
             "type": type.rawValue,
             "category": category.rawValue,
-            "action": action
+            "action": action,
         ]
 
         if let payload {
@@ -165,11 +155,11 @@ enum ControlProtocol {
 
     /// For handlers that need to decode specific message types based on action
     static func decodeTerminalSpawnRequest(_ data: Data) throws -> TerminalSpawnRequestMessage {
-        try decode(data, as: TerminalSpawnRequestMessage.self)
+        try self.decode(data, as: TerminalSpawnRequestMessage.self)
     }
 
     static func decodeSystemPingRequest(_ data: Data) throws -> SystemPingRequestMessage {
-        try decode(data, as: SystemPingRequestMessage.self)
+        try self.decode(data, as: SystemPingRequestMessage.self)
     }
 
     // Empty payload for messages that don't need data

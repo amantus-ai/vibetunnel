@@ -7,7 +7,7 @@ struct PerformanceTests {
 
     @Test("Large string concatenation performance")
     func stringConcatenation() {
-        let iterations = 1_000
+        let iterations = 1000
 
         // Test inefficient concatenation
         func inefficientConcat() -> String {
@@ -55,7 +55,7 @@ struct PerformanceTests {
 
     @Test("Array vs Set lookup performance")
     func collectionLookup() {
-        let size = 10_000
+        let size = 10000
         let searchValues = Array(0..<100)
 
         // Create collections
@@ -90,12 +90,12 @@ struct PerformanceTests {
 
             func hash(into hasher: inout Hasher) {
                 // Poor hash function that causes collisions
-                hasher.combine(value % 10)
+                hasher.combine(self.value % 10)
             }
         }
 
         var dict: [PoorHashKey: String] = [:]
-        let count = 1_000
+        let count = 1000
 
         // Insert values
         for i in 0..<count {
@@ -119,7 +119,7 @@ struct PerformanceTests {
 
     @Test("Memory allocation stress test")
     func memoryAllocation() {
-        let allocationSize = 1_024 * 1_024 // 1 MB
+        let allocationSize = 1024 * 1024 // 1 MB
         let iterations = 10
 
         var allocations: [Data] = []
@@ -144,7 +144,7 @@ struct PerformanceTests {
 
     @Test("Autorelease pool stress test")
     func autoreleasePool() {
-        let iterations = 10_000
+        let iterations = 10000
 
         // Without autorelease pool
         var withoutPool: [NSString] = []
@@ -184,11 +184,11 @@ struct PerformanceTests {
             }
 
             func set(_ value: Int, at index: Int) {
-                results[index] = value
+                self.results[index] = value
             }
 
             func getResults() -> [Int] {
-                results
+                self.results
             }
         }
 
@@ -226,16 +226,16 @@ struct PerformanceTests {
             private var value = 0
 
             func increment() {
-                value += 1
+                self.value += 1
             }
 
             func getValue() -> Int {
-                value
+                self.value
             }
         }
 
         let sharedCounter = SharedCounter()
-        let iterations = 1_000
+        let iterations = 1000
         let queues = 4
         let group = DispatchGroup()
 
@@ -271,7 +271,7 @@ struct PerformanceTests {
             try? FileManager.default.removeItem(at: testFile)
         }
 
-        let content = String(repeating: "Test data line\n", count: 1_000)
+        let content = String(repeating: "Test data line\n", count: 1000)
         let data = content.data(using: .utf8)!
 
         // Write test
@@ -309,11 +309,11 @@ struct PerformanceTests {
             private var count = 0
 
             func increment() {
-                count += 1
+                self.count += 1
             }
 
             func getCount() -> Int {
-                count
+                self.count
             }
         }
 
@@ -348,7 +348,7 @@ struct PerformanceTests {
 
     @Test("Sorting algorithm performance")
     func sortingPerformance() {
-        let size = 10_000
+        let size = 10000
         let randomArray = (0..<size).shuffled()
 
         // Test built-in sort
@@ -376,7 +376,7 @@ struct PerformanceTests {
     @Test("Hash table resize performance")
     func hashTableResize() {
         var dictionary: [Int: String] = [:]
-        let iterations = 10_000
+        let iterations = 10000
 
         // Pre-size vs dynamic resize
         var preSized: [Int: String] = [:]
@@ -411,8 +411,8 @@ struct PerformanceTests {
     @Test("Binary message parsing performance")
     func binaryMessageParsing() {
         // Simulate parsing many binary messages
-        let messageCount = 1_000
-        let messageSize = 1_024
+        let messageCount = 1000
+        let messageSize = 1024
 
         var parsedCount = 0
 
@@ -425,7 +425,7 @@ struct PerformanceTests {
             data.append(Data(count: messageSize))
 
             // Parse the message
-            if data[0] == 0x01 && data.count >= 9 {
+            if data[0] == 0x01, data.count >= 9 {
                 parsedCount += 1
             }
         }

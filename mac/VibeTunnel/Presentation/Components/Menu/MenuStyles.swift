@@ -11,12 +11,12 @@ enum MenuStyles {
 
     static let headerGradientLight: [Color] = [
         AppColors.Fallback.controlBackground(for: .light),
-        AppColors.Fallback.controlBackground(for: .light).opacity(0.8)
+        AppColors.Fallback.controlBackground(for: .light).opacity(0.8),
     ]
 
     static let headerGradientDark: [Color] = [
         AppColors.Fallback.controlBackground(for: .dark).opacity(0.6),
-        AppColors.Fallback.controlBackground(for: .dark).opacity(0.3)
+        AppColors.Fallback.controlBackground(for: .dark).opacity(0.3),
     ]
 }
 
@@ -29,8 +29,7 @@ extension View {
             .background(
                 RoundedRectangle(cornerRadius: MenuStyles.cornerRadius)
                     .fill(isHovered ? AppColors.Fallback.accentHover(for: colorScheme).opacity(0.1) : Color.clear)
-                    .animation(.easeInOut(duration: MenuStyles.animationDuration), value: isHovered)
-            )
+                    .animation(.easeInOut(duration: MenuStyles.animationDuration), value: isHovered))
     }
 
     /// Applies standard focus ring for keyboard navigation
@@ -40,9 +39,7 @@ extension View {
                 RoundedRectangle(cornerRadius: MenuStyles.smallCornerRadius)
                     .strokeBorder(
                         isFocused ? AppColors.Fallback.accentHover(for: colorScheme).opacity(2) : Color.clear,
-                        lineWidth: 1
-                    )
-                    .animation(.easeInOut(duration: MenuStyles.animationDuration), value: isFocused)
-            )
+                        lineWidth: 1)
+                    .animation(.easeInOut(duration: MenuStyles.animationDuration), value: isFocused))
     }
 }

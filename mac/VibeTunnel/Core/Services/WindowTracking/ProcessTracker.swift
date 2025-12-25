@@ -7,8 +7,7 @@ import OSLog
 final class ProcessTracker {
     private let logger = Logger(
         subsystem: BundleIdentifiers.loggerSubsystem,
-        category: "ProcessTracker"
-    )
+        category: "ProcessTracker")
 
     /// Get the parent process ID of a given process
     func getParentProcessID(of pid: pid_t) -> pid_t? {
@@ -18,7 +17,7 @@ final class ProcessTracker {
 
         let result = sysctl(&mib, u_int(mib.count), &info, &size, nil, 0)
 
-        if result == 0 && size > 0 {
+        if result == 0, size > 0 {
             return info.kp_eproc.e_ppid
         }
 
@@ -33,7 +32,7 @@ final class ProcessTracker {
 
         let result = sysctl(&mib, u_int(mib.count), &info, &size, nil, 0)
 
-        if result == 0 && size > 0 {
+        if result == 0, size > 0 {
             let name = withUnsafeBytes(of: &info.kp_proc.p_comm) { bytes in
                 let commBytes = bytes.bindMemory(to: CChar.self)
                 guard let baseAddress = commBytes.baseAddress else {
@@ -49,7 +48,7 @@ final class ProcessTracker {
 
     /// Log the process tree for debugging
     func logProcessTree(for pid: pid_t) {
-        logger.debug("Process tree for PID \(pid):")
+        self.logger.debug("Process tree for PID \(pid):")
 
         var currentPID = pid
         var depth = 0
@@ -57,7 +56,7 @@ final class ProcessTracker {
         while depth < 20 {
             if let info = getProcessInfo(for: currentPID) {
                 let indent = String(repeating: "  ", count: depth)
-                logger.debug("\(indent)PID \(currentPID): \(info.name)")
+                self.logger.debug("\(indent)PID \(currentPID): \(info.name)")
 
                 if info.ppid == 0 || info.ppid == 1 {
                     break
@@ -78,7 +77,7 @@ final class ProcessTracker {
 
         while depth < maxDepth {
             if let parentPID = getParentProcessID(of: currentPID) {
-                logger.debug("Checking ancestor process PID: \(parentPID) at depth \(depth + 1)")
+                self.logger.debug("Checking ancestor process PID: \(parentPID) at depth \(depth + 1)")
 
                 // Check if this is a terminal process by examining windows
                 // This will be coordinated with WindowEnumerator

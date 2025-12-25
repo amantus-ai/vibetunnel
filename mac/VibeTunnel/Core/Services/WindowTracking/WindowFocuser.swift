@@ -7,8 +7,7 @@ import OSLog
 final class WindowFocuser {
     private let logger = Logger(
         subsystem: BundleIdentifiers.loggerSubsystem,
-        category: "WindowFocuser"
-    )
+        category: "WindowFocuser")
 
     private let windowMatcher = WindowMatcher()
     private let highlightEffect: WindowHighlightEffect
@@ -21,10 +20,9 @@ final class WindowFocuser {
         // Observe UserDefaults changes
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(userDefaultsDidChange),
+            selector: #selector(self.userDefaultsDidChange),
             name: UserDefaults.didChangeNotification,
-            object: nil
-        )
+            object: nil)
     }
 
     deinit {
@@ -43,8 +41,7 @@ final class WindowFocuser {
                 duration: 0,
                 borderWidth: 0,
                 glowRadius: 0,
-                isEnabled: false
-            )
+                isEnabled: false)
         }
 
         switch style {
@@ -63,8 +60,7 @@ final class WindowFocuser {
                     duration: 0.8,
                     borderWidth: 4.0,
                     glowRadius: 12.0,
-                    isEnabled: true
-                )
+                    isEnabled: true)
             }
             return .default
         default:
@@ -77,7 +73,7 @@ final class WindowFocuser {
     private func userDefaultsDidChange(_ notification: Notification) {
         // Update highlight configuration when settings change
         let newConfig = Self.loadHighlightConfig()
-        highlightEffect.updateConfig(newConfig)
+        self.highlightEffect.updateConfig(newConfig)
     }
 
     /// Focus a window based on terminal type
@@ -85,13 +81,13 @@ final class WindowFocuser {
         switch windowInfo.terminalApp {
         case .terminal:
             // Terminal.app has special AppleScript support for tab selection
-            focusTerminalAppWindow(windowInfo)
+            self.focusTerminalAppWindow(windowInfo)
         case .iTerm2:
             // iTerm2 uses its own tab system, needs special handling
-            focusiTerm2Window(windowInfo)
+            self.focusiTerm2Window(windowInfo)
         default:
             // All other terminals that use macOS standard tabs
-            focusWindowUsingAccessibility(windowInfo)
+            self.focusWindowUsingAccessibility(windowInfo)
         }
     }
 
@@ -115,11 +111,11 @@ final class WindowFocuser {
 
             do {
                 try AppleScriptExecutor.shared.execute(script)
-                logger.info("Focused Terminal.app tab using reference: \(tabRef)")
+                self.logger.info("Focused Terminal.app tab using reference: \(tabRef)")
             } catch {
-                logger.error("Failed to focus Terminal.app tab: \(error)")
+                self.logger.error("Failed to focus Terminal.app tab: \(error)")
                 // Fallback to accessibility
-                focusWindowUsingAccessibility(windowInfo)
+                self.focusWindowUsingAccessibility(windowInfo)
             }
         } else {
             // Fallback to window ID based focusing
@@ -139,8 +135,8 @@ final class WindowFocuser {
             do {
                 try AppleScriptExecutor.shared.execute(script)
             } catch {
-                logger.error("Failed to focus Terminal.app window: \(error)")
-                focusWindowUsingAccessibility(windowInfo)
+                self.logger.error("Failed to focus Terminal.app window: \(error)")
+                self.focusWindowUsingAccessibility(windowInfo)
             }
         }
     }
@@ -198,11 +194,11 @@ final class WindowFocuser {
 
         do {
             let result = try AppleScriptExecutor.shared.executeWithResult(script)
-            logger.info("iTerm2 focus result: \(result)")
+            self.logger.info("iTerm2 focus result: \(result)")
         } catch {
-            logger.error("Failed to focus iTerm2 window/tab: \(error)")
+            self.logger.error("Failed to focus iTerm2 window/tab: \(error)")
             // Fallback to accessibility
-            focusWindowUsingAccessibility(windowInfo)
+            self.focusWindowUsingAccessibility(windowInfo)
         }
     }
 
@@ -222,43 +218,42 @@ final class WindowFocuser {
     private func selectTab(
         tabs: [AXElement],
         windowInfo: WindowInfo,
-        sessionInfo: ServerSessionInfo?
-    ) {
-        logger.debug("Attempting to select tab for session \(windowInfo.sessionID) from \(tabs.count) tabs")
+        sessionInfo: ServerSessionInfo?)
+    {
+        self.logger.debug("Attempting to select tab for session \(windowInfo.sessionID) from \(tabs.count) tabs")
 
         // Try to find the correct tab
         if let matchingTab = windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) {
             // Found matching tab - select it using kAXPressAction (most reliable)
             if matchingTab.press() {
-                logger.info("Successfully selected matching tab for session \(windowInfo.sessionID)")
+                self.logger.info("Successfully selected matching tab for session \(windowInfo.sessionID)")
             } else {
-                logger.warning("Failed to select tab with kAXPressAction")
+                self.logger.warning("Failed to select tab with kAXPressAction")
 
                 // Try alternative selection method - set as selected
                 if matchingTab.isAttributeSettable(kAXSelectedAttribute) {
                     let setResult = matchingTab.setSelected(true)
                     if setResult == .success {
-                        logger.info("Selected tab using AXSelected attribute")
+                        self.logger.info("Selected tab using AXSelected attribute")
                     } else {
-                        logger.error("Failed to set AXSelected attribute, error: \(setResult.rawValue)")
+                        self.logger.error("Failed to set AXSelected attribute, error: \(setResult.rawValue)")
                     }
                 }
             }
         } else if tabs.count == 1 {
             // If only one tab, select it
             tabs[0].press()
-            logger.info("Selected the only available tab")
+            self.logger.info("Selected the only available tab")
         } else {
             // Multiple tabs but no match - try to find by index or select first
-            logger
+            self.logger
                 .warning(
-                    "Multiple tabs (\(tabs.count)) but could not identify correct one for session \(windowInfo.sessionID)"
-                )
+                    "Multiple tabs (\(tabs.count)) but could not identify correct one for session \(windowInfo.sessionID)")
 
             // Log tab titles for debugging
             for (index, tab) in tabs.enumerated() {
                 if let title = tab.title {
-                    logger.debug("  Tab \(index): \(title)")
+                    self.logger.debug("  Tab \(index): \(title)")
                 }
             }
         }
@@ -269,7 +264,7 @@ final class WindowFocuser {
         guard let tabs = group.tabs,
               index < tabs.count
         else {
-            logger.warning("Could not get tabs from group or index out of bounds")
+            self.logger.warning("Could not get tabs from group or index out of bounds")
             return false
         }
 
@@ -287,19 +282,19 @@ final class WindowFocuser {
         guard let windows = axProcess.windows,
               !windows.isEmpty
         else {
-            logger.debug("PID-based lookup failed for PID \(windowInfo.ownerPID), no windows found")
+            self.logger.debug("PID-based lookup failed for PID \(windowInfo.ownerPID), no windows found")
             return false
         }
 
-        logger.info("Found \(windows.count) window(s) for PID \(windowInfo.ownerPID)")
+        self.logger.info("Found \(windows.count) window(s) for PID \(windowInfo.ownerPID)")
 
         // Single window case - simple!
         if windows.count == 1 {
-            logger.info("Single window found for PID \(windowInfo.ownerPID), focusing it directly")
+            self.logger.info("Single window found for PID \(windowInfo.ownerPID), focusing it directly")
             let window = windows[0]
 
             // Show highlight effect
-            highlightEffect.highlightWindow(window, bounds: window.frame())
+            self.highlightEffect.highlightWindow(window, bounds: window.frame())
 
             // Focus the window
             window.setMain(true)
@@ -314,7 +309,7 @@ final class WindowFocuser {
         }
 
         // Multiple windows - need to be smarter
-        logger.info("Multiple windows found for PID \(windowInfo.ownerPID), using scoring system")
+        self.logger.info("Multiple windows found for PID \(windowInfo.ownerPID), using scoring system")
 
         // Use our existing scoring logic but only on these PID-specific windows
         var bestMatch: (window: AXElement, score: Int)?
@@ -324,12 +319,12 @@ final class WindowFocuser {
 
             // Check window title for session ID or working directory (most reliable)
             if let title = window.title {
-                logger.debug("Window \(index) title: '\(title)'")
+                self.logger.debug("Window \(index) title: '\(title)'")
 
                 // Check for session ID in title
                 if title.contains(windowInfo.sessionID) || title.contains("TTY_SESSION_ID=\(windowInfo.sessionID)") {
                     matchScore += 200 // Highest score for session ID match
-                    logger.debug("Window \(index) has session ID in title!")
+                    self.logger.debug("Window \(index) has session ID in title!")
                 }
 
                 // Check for working directory in title
@@ -338,17 +333,17 @@ final class WindowFocuser {
                     let dirName = (workingDir as NSString).lastPathComponent
 
                     if !dirName
-                        .isEmpty &&
-                        (title.contains(dirName) || title.hasSuffix(dirName) || title.hasSuffix(" - \(dirName)"))
+                        .isEmpty,
+                        title.contains(dirName) || title.hasSuffix(dirName) || title.hasSuffix(" - \(dirName)")
                     {
                         matchScore += 100 // High score for directory match
-                        logger.debug("Window \(index) has working directory in title: \(dirName)")
+                        self.logger.debug("Window \(index) has working directory in title: \(dirName)")
                     }
 
                     // Check for session name
-                    if !sessionInfo.name.isEmpty && title.contains(sessionInfo.name) {
+                    if !sessionInfo.name.isEmpty, title.contains(sessionInfo.name) {
                         matchScore += 150 // High score for session name match
-                        logger.debug("Window \(index) has session name in title: \(sessionInfo.name)")
+                        self.logger.debug("Window \(index) has session name in title: \(sessionInfo.name)")
                     }
                 }
             }
@@ -357,7 +352,7 @@ final class WindowFocuser {
             if let axWindowID = window.windowID {
                 if axWindowID == windowInfo.windowID {
                     matchScore += 50 // Lower score since window IDs can be unreliable
-                    logger.debug("Window \(index) has matching ID: \(axWindowID)")
+                    self.logger.debug("Window \(index) has matching ID: \(axWindowID)")
                 }
             }
 
@@ -366,13 +361,13 @@ final class WindowFocuser {
                let windowFrame = window.frame()
             {
                 let tolerance: CGFloat = 5.0
-                if abs(windowFrame.origin.x - bounds.origin.x) < tolerance &&
-                    abs(windowFrame.origin.y - bounds.origin.y) < tolerance &&
-                    abs(windowFrame.width - bounds.width) < tolerance &&
-                    abs(windowFrame.height - bounds.height) < tolerance
+                if abs(windowFrame.origin.x - bounds.origin.x) < tolerance,
+                   abs(windowFrame.origin.y - bounds.origin.y) < tolerance,
+                   abs(windowFrame.width - bounds.width) < tolerance,
+                   abs(windowFrame.height - bounds.height) < tolerance
                 {
                     matchScore += 25 // Lowest score for bounds match
-                    logger.debug("Window \(index) bounds match")
+                    self.logger.debug("Window \(index) bounds match")
                 }
             }
 
@@ -384,10 +379,10 @@ final class WindowFocuser {
         }
 
         if let best = bestMatch {
-            logger.info("Focusing best match window with score \(best.score) for PID \(windowInfo.ownerPID)")
+            self.logger.info("Focusing best match window with score \(best.score) for PID \(windowInfo.ownerPID)")
 
             // Show highlight effect
-            highlightEffect.highlightWindow(best.window, bounds: best.window.frame())
+            self.highlightEffect.highlightWindow(best.window, bounds: best.window.frame())
 
             // Focus the window
             best.window.setMain(true)
@@ -401,25 +396,25 @@ final class WindowFocuser {
             return true
         }
 
-        logger.error("No matching window found for PID \(windowInfo.ownerPID)")
+        self.logger.error("No matching window found for PID \(windowInfo.ownerPID)")
         return false
     }
 
     /// Focuses a window using Accessibility APIs.
     private func focusWindowUsingAccessibility(_ windowInfo: WindowInfo) {
         // First try PID-based approach
-        if focusWindowUsingPID(windowInfo) {
-            logger.info("Successfully focused window using PID-based approach")
+        if self.focusWindowUsingPID(windowInfo) {
+            self.logger.info("Successfully focused window using PID-based approach")
             return
         }
 
         // Fallback to the original approach if PID-based fails
-        logger.info("Falling back to terminal app-based window search")
+        self.logger.info("Falling back to terminal app-based window search")
 
         // First bring the application to front
         if let app = NSRunningApplication(processIdentifier: windowInfo.ownerPID) {
             app.activate()
-            logger.info("Activated application with PID: \(windowInfo.ownerPID)")
+            self.logger.info("Activated application with PID: \(windowInfo.ownerPID)")
         }
 
         // Use AXElement to focus the specific window
@@ -428,14 +423,13 @@ final class WindowFocuser {
         guard let windows = axApp.windows,
               !windows.isEmpty
         else {
-            logger.error("Failed to get windows for application")
+            self.logger.error("Failed to get windows for application")
             return
         }
 
-        logger
+        self.logger
             .info(
-                "Found \(windows.count) windows for \(windowInfo.terminalApp.rawValue), looking for window ID: \(windowInfo.windowID)"
-            )
+                "Found \(windows.count) windows for \(windowInfo.terminalApp.rawValue), looking for window ID: \(windowInfo.windowID)")
 
         // Get session info for tab matching
         let sessionInfo = SessionMonitor.shared.sessions[windowInfo.sessionID]
@@ -453,10 +447,9 @@ final class WindowFocuser {
                     windowMatches = true
                     matchScore += 100 // High score for exact ID match
                 }
-                logger
+                self.logger
                     .debug(
-                        "Window \(index) windowID: \(axWindowID), target: \(windowInfo.windowID), matches: \(windowMatches)"
-                    )
+                        "Window \(index) windowID: \(axWindowID), target: \(windowInfo.windowID), matches: \(windowMatches)")
             }
 
             // Check window position and size as secondary validation
@@ -465,27 +458,26 @@ final class WindowFocuser {
             {
                 // Check if bounds approximately match (within 5 pixels tolerance)
                 let tolerance: CGFloat = 5.0
-                if abs(windowFrame.origin.x - bounds.origin.x) < tolerance &&
-                    abs(windowFrame.origin.y - bounds.origin.y) < tolerance &&
-                    abs(windowFrame.width - bounds.width) < tolerance &&
-                    abs(windowFrame.height - bounds.height) < tolerance
+                if abs(windowFrame.origin.x - bounds.origin.x) < tolerance,
+                   abs(windowFrame.origin.y - bounds.origin.y) < tolerance,
+                   abs(windowFrame.width - bounds.width) < tolerance,
+                   abs(windowFrame.height - bounds.height) < tolerance
                 {
                     matchScore += 50 // Medium score for bounds match
-                    logger
+                    self.logger
                         .debug(
-                            "Window \(index) bounds match! Position: (\(windowFrame.origin.x), \(windowFrame.origin.y)), Size: (\(windowFrame.width), \(windowFrame.height))"
-                        )
+                            "Window \(index) bounds match! Position: (\(windowFrame.origin.x), \(windowFrame.origin.y)), Size: (\(windowFrame.width), \(windowFrame.height))")
                 }
             }
 
             // Check window title for session information
             if let title = window.title {
-                logger.debug("Window \(index) title: '\(title)'")
+                self.logger.debug("Window \(index) title: '\(title)'")
 
                 // Check for session ID in title (most reliable)
                 if title.contains(windowInfo.sessionID) || title.contains("TTY_SESSION_ID=\(windowInfo.sessionID)") {
                     matchScore += 200 // Highest score
-                    logger.debug("Window \(index) has session ID in title!")
+                    self.logger.debug("Window \(index) has session ID in title!")
                 }
 
                 // Check for session-specific information
@@ -493,20 +485,20 @@ final class WindowFocuser {
                     let workingDir = sessionInfo.workingDir
                     let dirName = (workingDir as NSString).lastPathComponent
 
-                    if !dirName.isEmpty && (title.contains(dirName) || title.hasSuffix(dirName)) {
+                    if !dirName.isEmpty, title.contains(dirName) || title.hasSuffix(dirName) {
                         matchScore += 100
-                        logger.debug("Window \(index) has working directory in title")
+                        self.logger.debug("Window \(index) has working directory in title")
                     }
 
-                    if !sessionInfo.name.isEmpty && title.contains(sessionInfo.name) {
+                    if !sessionInfo.name.isEmpty, title.contains(sessionInfo.name) {
                         matchScore += 150
-                        logger.debug("Window \(index) has session name in title")
+                        self.logger.debug("Window \(index) has session name in title")
                     }
                 }
 
                 // Original title match logic as fallback
                 if !title
-                    .isEmpty && (windowInfo.title?.contains(title) ?? false || title.contains(windowInfo.title ?? ""))
+                    .isEmpty, windowInfo.title?.contains(title) ?? false || title.contains(windowInfo.title ?? "")
                 {
                     matchScore += 25 // Low score for title match
                 }
@@ -516,7 +508,7 @@ final class WindowFocuser {
             if matchScore > 0 {
                 if bestMatchWindow == nil || matchScore > bestMatchWindow?.score ?? 0 {
                     bestMatchWindow = (window, matchScore)
-                    logger.debug("Window \(index) is new best match with score: \(matchScore)")
+                    self.logger.debug("Window \(index) is new best match with score: \(matchScore)")
                 }
             }
 
@@ -526,22 +518,22 @@ final class WindowFocuser {
                 if let tabs = tabGroup.tabs,
                    !tabs.isEmpty
                 {
-                    logger.info("Window \(index) has tab group with \(tabs.count) tabs")
+                    self.logger.info("Window \(index) has tab group with \(tabs.count) tabs")
 
                     // Try to find matching tab
-                    if windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) != nil {
+                    if self.windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) != nil {
                         // Found the tab! Focus the window and select the tab
-                        logger.info("Found matching tab in window \(index)")
+                        self.logger.info("Found matching tab in window \(index)")
 
                         // Show highlight effect
-                        highlightEffect.highlightWindow(window, bounds: window.frame())
+                        self.highlightEffect.highlightWindow(window, bounds: window.frame())
 
                         // Make window main and focused
                         window.setMain(true)
                         window.setFocused(true)
 
                         // Select the tab
-                        selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
+                        self.selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
 
                         return
                     }
@@ -551,22 +543,22 @@ final class WindowFocuser {
                 if let tabs = window.tabs,
                    !tabs.isEmpty
                 {
-                    logger.info("Window \(index) has \(tabs.count) tabs (direct attribute)")
+                    self.logger.info("Window \(index) has \(tabs.count) tabs (direct attribute)")
 
                     // Try to find matching tab
-                    if windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) != nil {
+                    if self.windowMatcher.findMatchingTab(tabs: tabs, sessionInfo: sessionInfo) != nil {
                         // Found the tab! Focus the window and select the tab
-                        logger.info("Found matching tab in window \(index)")
+                        self.logger.info("Found matching tab in window \(index)")
 
                         // Show highlight effect
-                        highlightEffect.highlightWindow(window, bounds: window.frame())
+                        self.highlightEffect.highlightWindow(window, bounds: window.frame())
 
                         // Make window main and focused
                         window.setMain(true)
                         window.setFocused(true)
 
                         // Select the tab
-                        selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
+                        self.selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
 
                         return
                     }
@@ -576,10 +568,11 @@ final class WindowFocuser {
 
         // After checking all windows, use the best match if we found one
         if let bestMatch = bestMatchWindow {
-            logger.info("Using best match window with score \(bestMatch.score) for window ID \(windowInfo.windowID)")
+            self.logger
+                .info("Using best match window with score \(bestMatch.score) for window ID \(windowInfo.windowID)")
 
             // Show highlight effect
-            highlightEffect.highlightWindow(bestMatch.window, bounds: bestMatch.window.frame())
+            self.highlightEffect.highlightWindow(bestMatch.window, bounds: bestMatch.window.frame())
 
             // Focus the best matching window
             bestMatch.window.setMain(true)
@@ -592,25 +585,24 @@ final class WindowFocuser {
                     if let tabs = tabGroup.tabs,
                        !tabs.isEmpty
                     {
-                        selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
+                        self.selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
                     }
                 } else {
                     // Try direct tabs attribute
                     if let tabs = bestMatch.window.tabs,
                        !tabs.isEmpty
                     {
-                        selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
+                        self.selectTab(tabs: tabs, windowInfo: windowInfo, sessionInfo: sessionInfo)
                     }
                 }
             }
 
-            logger.info("Focused best match window for session \(windowInfo.sessionID)")
+            self.logger.info("Focused best match window for session \(windowInfo.sessionID)")
         } else {
             // No match found at all - log error but don't focus random window
-            logger
+            self.logger
                 .error(
-                    "Failed to find window with ID \(windowInfo.windowID) for session \(windowInfo.sessionID). No windows matched by ID, position, or title."
-                )
+                    "Failed to find window with ID \(windowInfo.windowID) for session \(windowInfo.sessionID). No windows matched by ID, position, or title.")
         }
     }
 }

@@ -1,6 +1,6 @@
 # Terminal Title Management in VibeTunnel
 
-VibeTunnel provides comprehensive terminal title management with four distinct modes to suit different workflows and preferences.
+VibeTunnel provides terminal title management with four modes; Dynamic is a legacy alias of Static (no activity tracking).
 
 ## Title Modes
 
@@ -26,31 +26,24 @@ VibeTunnel offers four terminal title management modes:
   - `~/Projects/app — npm — Dev Server`
 - **CLI**: `--title-mode static`
 
-### 4. Dynamic Mode
-- **Behavior**: Shows directory, command, and real-time activity status
-- **Format**: `~/path — command [— activity] — session name`
-- **Activity indicators**:
-  - `•` - Generic activity within last 5 seconds
-  - App-specific status (e.g., Claude: `✻ Crafting (205s, ↑6.0k)`)
-- **Use case**: Monitoring active processes and their status
-- **Auto-selected**: For Claude commands
+### 4. Dynamic Mode (Legacy)
+- **Behavior**: Alias of Static mode (no activity tracking)
+- **Use case**: Backward compatibility with existing scripts/configs
 - **CLI**: `--title-mode dynamic`
 
 ## Using Title Modes
 
 ### Web Interface
 
-When creating a new session through the web interface, the default is Dynamic mode, which provides real-time activity tracking. You can select a different mode from the dropdown:
+When creating a new session through the web interface, the default is Static mode. You can select a different mode from the dropdown:
 
 ```
-Terminal Title Mode: [Dynamic ▼]
+Terminal Title Mode: [Static ▼]
   - None - No title management
-  - Filter - Block title changes  
+  - Filter - Block title changes
   - Static - Show path & command
-  - Dynamic - Show path, command & activity
+  - Dynamic (legacy) - Same as Static
 ```
-
-Dynamic mode is also automatically selected when running Claude from the command line.
 
 ### Command Line (fwd.ts)
 
@@ -60,30 +53,11 @@ pnpm exec tsx src/server/fwd.ts --title-mode static bash
 pnpm exec tsx src/server/fwd.ts --title-mode filter vim
 pnpm exec tsx src/server/fwd.ts --title-mode dynamic python
 
-# Auto-selects dynamic mode for Claude
-pnpm exec tsx src/server/fwd.ts claude
-
 # Using environment variable
 VIBETUNNEL_TITLE_MODE=static pnpm exec tsx src/server/fwd.ts zsh
 ```
 
 ## Implementation Details
-
-### Dynamic Mode Activity Detection
-
-The dynamic mode includes real-time activity monitoring:
-
-1. **Generic Activity**: Any terminal output within 5 seconds shows `•`
-2. **Claude Status Detection**: Parses status lines like:
-   - `✻ Crafting… (205s · ↑ 6.0k tokens · esc to interrupt)`
-   - `✢ Transitioning… (381s · ↑ 4.0k tokens · esc to interrupt)`
-   - Filters these lines from output and displays compact version in title
-
-3. **Extensible System**: New app detectors can be added for:
-   - npm install progress
-   - git clone status
-   - docker build steps
-   - Any CLI tool with parseable output
 
 ### Title Sequence Management
 
@@ -98,22 +72,16 @@ ESC ] 2 ; <title> BEL
 
 ## Use Cases
 
-### Managing Multiple Claude Code Sessions
+### Managing Multiple Sessions
 
-When running multiple Claude Code instances across different projects, dynamic mode provides instant visibility:
+Static mode provides quick context across projects:
 
 ```
-Terminal 1: ~/frontend — claude — ✻ Crafting (45s, ↑2.1k) — Web UI
-Terminal 2: ~/backend — claude — ✢ Transitioning (12s, ↓0.5k) — API Server  
-Terminal 3: ~/docs — claude • — Documentation
-Terminal 4: ~/tests — claude — Test Suite
+Terminal 1: ~/frontend — npm — Web UI
+Terminal 2: ~/backend — npm — API Server
+Terminal 3: ~/docs — zsh — Documentation
+Terminal 4: ~/tests — pytest — Test Suite
 ```
-
-The titles show:
-- Which project each Claude is working on
-- Current activity status (Crafting, Transitioning, idle)
-- Progress indicators (time and token usage)
-- Custom session names for context
 
 ### Using with Custom Terminal Management
 
@@ -143,8 +111,6 @@ Tab 4: ~/myapp — vim — Editor
 ### Performance
 - Pre-compiled regex patterns for efficient filtering
 - Minimal overhead: <1ms per output chunk
-- Activity detection uses 500ms intervals for title updates
-- Claude status parsing adds negligible latency
 
 ### Compatibility
 - Works with any terminal supporting OSC sequences
@@ -160,11 +126,6 @@ Tab 4: ~/myapp — vim — Editor
 - `cd -` (previous directory) not supported
 - Symbolic links show resolved paths
 
-**Activity Detection** (Dynamic mode):
-- 5-second timeout for generic activity
-- Claude detection requires exact status format
-- Some app outputs may interfere with detection
-
 **Title Injection**:
 - Relies on shell prompt detection
 - May not work with heavily customized prompts
@@ -172,8 +133,5 @@ Tab 4: ~/myapp — vim — Editor
 
 ## Future Enhancements
 
-- Additional app detectors (npm, git, docker)
-- Customizable activity timeout
-- User-defined status patterns
 - Title templates and formatting options
 - Integration with session recording features

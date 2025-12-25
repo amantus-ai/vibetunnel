@@ -29,8 +29,8 @@ struct GlowingAppIcon: View {
         enableFloating: Bool = true,
         enableInteraction: Bool = true,
         glowIntensity: Double = 0.3,
-        action: (() -> Void)? = nil
-    ) {
+        action: (() -> Void)? = nil)
+    {
         self.size = size
         self.enableFloating = enableFloating
         self.enableInteraction = enableInteraction
@@ -40,28 +40,27 @@ struct GlowingAppIcon: View {
 
     var body: some View {
         Group {
-            if enableInteraction {
-                Button(action: { action?() }, label: {
-                    iconContent
+            if self.enableInteraction {
+                Button(action: { self.action?() }, label: {
+                    self.iconContent
                 })
                 .buttonStyle(PlainButtonStyle())
                 .pointingHandCursor()
                 .onHover { hovering in
-                    isHovering = hovering
+                    self.isHovering = hovering
                 }
                 .simultaneousGesture(
                     DragGesture(minimumDistance: 0)
-                        .onChanged { _ in isPressed = true }
-                        .onEnded { _ in isPressed = false }
-                )
+                        .onChanged { _ in self.isPressed = true }
+                        .onEnded { _ in self.isPressed = false })
             } else {
-                iconContent
+                self.iconContent
             }
         }
-        .scaleEffect(breathingScale)
+        .scaleEffect(self.breathingScale)
         .onAppear {
-            if enableFloating {
-                startBreathingAnimation()
+            if self.enableFloating {
+                self.startBreathingAnimation()
             }
         }
     }
@@ -71,71 +70,70 @@ struct GlowingAppIcon: View {
             // Subtle glow effect that changes with breathing
             Image(nsImage: NSImage(named: "AppIcon") ?? NSImage())
                 .resizable()
-                .frame(width: size, height: size)
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-                .opacity(dynamicGlowOpacity)
-                .blur(radius: dynamicGlowBlur)
+                .frame(width: self.size, height: self.size)
+                .clipShape(RoundedRectangle(cornerRadius: self.cornerRadius))
+                .opacity(self.dynamicGlowOpacity)
+                .blur(radius: self.dynamicGlowBlur)
                 .scaleEffect(1.15)
                 .allowsHitTesting(false)
 
             // Main icon with shadow
             Image(nsImage: NSImage(named: "AppIcon") ?? NSImage())
                 .resizable()
-                .frame(width: size, height: size)
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-                .scaleEffect(iconScale)
+                .frame(width: self.size, height: self.size)
+                .clipShape(RoundedRectangle(cornerRadius: self.cornerRadius))
+                .scaleEffect(self.iconScale)
                 .shadow(
-                    color: dynamicShadowColor,
-                    radius: dynamicShadowRadius,
+                    color: self.dynamicShadowColor,
+                    radius: self.dynamicShadowRadius,
                     x: 0,
-                    y: dynamicShadowOffset
-                )
-                .animation(.easeInOut(duration: 0.2), value: isHovering)
-                .animation(.easeInOut(duration: 0.1), value: isPressed)
+                    y: self.dynamicShadowOffset)
+                .animation(.easeInOut(duration: 0.2), value: self.isHovering)
+                .animation(.easeInOut(duration: 0.1), value: self.isPressed)
         }
     }
 
     private var cornerRadius: CGFloat {
-        size * 0.172 // Maintains the same corner radius ratio as original (22/128)
+        self.size * 0.172 // Maintains the same corner radius ratio as original (22/128)
     }
 
     private var iconScale: CGFloat {
-        if !enableInteraction { return 1.0 }
-        return isPressed ? 0.95 : (isHovering ? 1.05 : 1.0)
+        if !self.enableInteraction { return 1.0 }
+        return self.isPressed ? 0.95 : (self.isHovering ? 1.05 : 1.0)
     }
 
     /// Dynamic properties that change with breathing
     private var dynamicGlowOpacity: Double {
-        let baseOpacity = glowIntensity * 0.5
+        let baseOpacity = self.glowIntensity * 0.5
         // Glow gets stronger when "coming forward" (breathingPhase > 0)
-        return baseOpacity + (breathingPhase * glowIntensity * 0.3)
+        return baseOpacity + (self.breathingPhase * self.glowIntensity * 0.3)
     }
 
     private var dynamicGlowBlur: CGFloat {
         // Blur increases when coming forward for a softer, larger glow
-        15 + (breathingPhase * 5)
+        15 + (self.breathingPhase * 5)
     }
 
     private var dynamicShadowColor: Color {
-        let baseOpacity = colorScheme == .dark ? 0.4 : 0.2
-        let hoverOpacity = colorScheme == .dark ? 0.6 : 0.3
-        let opacity = isHovering ? hoverOpacity : baseOpacity
+        let baseOpacity = self.colorScheme == .dark ? 0.4 : 0.2
+        let hoverOpacity = self.colorScheme == .dark ? 0.6 : 0.3
+        let opacity = self.isHovering ? hoverOpacity : baseOpacity
         // Shadow gets stronger when coming forward
         let breathingOpacity = opacity + (breathingPhase * 0.1)
         return .black.opacity(breathingOpacity)
     }
 
     private var dynamicShadowRadius: CGFloat {
-        let baseRadius = size * 0.117
-        let hoverMultiplier: CGFloat = enableInteraction && isHovering ? 1.5 : 1.0
+        let baseRadius = self.size * 0.117
+        let hoverMultiplier: CGFloat = self.enableInteraction && self.isHovering ? 1.5 : 1.0
         // Shadow gets softer/larger when coming forward
         let breathingMultiplier = 1.0 + (breathingPhase * 0.2)
         return baseRadius * hoverMultiplier * breathingMultiplier
     }
 
     private var dynamicShadowOffset: CGFloat {
-        let baseOffset = size * 0.047
-        let hoverMultiplier: CGFloat = enableInteraction && isHovering ? 1.5 : 1.0
+        let baseOffset = self.size * 0.047
+        let hoverMultiplier: CGFloat = self.enableInteraction && self.isHovering ? 1.5 : 1.0
         // Shadow moves down more when coming forward
         let breathingMultiplier = 1.0 + (breathingPhase * 0.3)
         return baseOffset * hoverMultiplier * breathingMultiplier
@@ -144,10 +142,10 @@ struct GlowingAppIcon: View {
     private func startBreathingAnimation() {
         withAnimation(
             Animation.easeInOut(duration: 4.0)
-                .repeatForever(autoreverses: true)
-        ) {
-            breathingScale = 1.04 // Very subtle scale change
-            breathingPhase = 1.0 // Used to calculate dynamic effects
+                .repeatForever(autoreverses: true))
+        {
+            self.breathingScale = 1.04 // Very subtle scale change
+            self.breathingPhase = 1.0 // Used to calculate dynamic effects
         }
     }
 }
@@ -161,16 +159,15 @@ struct GlowingAppIcon: View {
             size: 156,
             enableFloating: true,
             enableInteraction: false,
-            glowIntensity: 0.3
-        )
+            glowIntensity: 0.3)
 
         // About style - smaller, interactive
         GlowingAppIcon(
             size: 128,
             enableFloating: true,
             enableInteraction: true,
-            glowIntensity: 0.3
-        ) {
+            glowIntensity: 0.3)
+        {
             // Icon clicked - action handled here
         }
     }

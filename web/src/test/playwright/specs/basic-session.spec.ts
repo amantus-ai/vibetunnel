@@ -55,7 +55,7 @@ test.describe('Basic Session Tests', () => {
     test.setTimeout(60000); // Increase timeout for this test
     // Create multiple sessions using helper
     const sessions = await createMultipleSessions(page, 2, {
-      name: 'nav-test',
+      name: sessionManager.generateSessionName('nav-test'),
     });
 
     const firstSessionUrl = sessions[0].sessionId;

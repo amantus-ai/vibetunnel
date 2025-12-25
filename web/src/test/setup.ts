@@ -1,6 +1,14 @@
 // Global test setup for Vitest
 import { webcrypto } from 'crypto';
 import { vi } from 'vitest';
+import { MockFitAddon, MockTerminal } from './utils/terminal-mocks';
+
+// Mock ghostty-web (WASM/canvas) for unit tests
+vi.mock('ghostty-web', () => ({
+  Ghostty: { load: vi.fn(async () => ({})) },
+  Terminal: MockTerminal,
+  FitAddon: MockFitAddon,
+}));
 
 // Disable SEA loader for tests
 process.env.VIBETUNNEL_SEA = '';
@@ -206,29 +214,6 @@ global.WebSocket = class WebSocket extends EventTarget {
     this.readyState = WebSocket.CLOSED;
   }
 } as unknown as typeof WebSocket;
-
-// Mock EventSource for SSE tests
-global.EventSource = class EventSource extends EventTarget {
-  static CONNECTING = 0;
-  static OPEN = 1;
-  static CLOSED = 2;
-
-  url: string;
-  readyState: number = EventSource.CONNECTING;
-  withCredentials: boolean = false;
-
-  constructor(url: string, eventSourceInitDict?: EventSourceInit) {
-    super();
-    this.url = url;
-    if (eventSourceInitDict?.withCredentials) {
-      this.withCredentials = eventSourceInitDict.withCredentials;
-    }
-  }
-
-  close() {
-    this.readyState = EventSource.CLOSED;
-  }
-} as unknown as typeof EventSource;
 
 // Set up fetch mock (only for non-e2e tests)
 if (typeof window !== 'undefined') {

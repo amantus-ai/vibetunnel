@@ -36,7 +36,6 @@ struct ServerConfig {
         Self(
             port: AppConstants.intValue(for: AppConstants.UserDefaultsKeys.serverPort),
             dashboardAccessMode: AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.dashboardAccessMode),
-            cleanupOnStartup: AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.cleanupOnStartup)
-        )
+            cleanupOnStartup: AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.cleanupOnStartup))
     }
 }

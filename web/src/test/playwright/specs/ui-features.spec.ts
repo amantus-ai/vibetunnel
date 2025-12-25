@@ -56,6 +56,7 @@ async function openFileBrowser(page: Page) {
             item.getAttribute('data-testid')?.includes('compact-')
           );
         },
+        undefined,
         { timeout: 5000 }
       );
 
@@ -82,6 +83,7 @@ async function openFileBrowser(page: Page) {
           item.getAttribute('data-testid')?.includes('compact-')
         );
       },
+      undefined,
       { timeout: 5000 }
     );
 
@@ -137,6 +139,7 @@ test.describe('UI Features', () => {
 
           return hasVisibleProp || hasVisibleAttr || (isDisplayed && hasContent);
         },
+        undefined,
         { timeout: 10000 }
       );
     } catch (_error) {
@@ -174,6 +177,7 @@ test.describe('UI Features', () => {
 
         return hasVisibleProp || hasVisibleAttr || isHidden;
       },
+      undefined,
       { timeout: 10000 }
     );
   });
@@ -194,6 +198,7 @@ test.describe('UI Features', () => {
         const browser = document.querySelector('file-browser');
         return browser && (browser as FileBrowserElement).visible === true;
       },
+      undefined,
       { timeout: 5000 }
     );
     expect(fileBrowserVisible).toBeTruthy();
@@ -336,7 +341,7 @@ test.describe('UI Features', () => {
     }
 
     const countText = await sessionCountElement.textContent();
-    const count = Number.parseInt(countText?.match(/\d+/)?.[0] || '0');
+    const count = Number.parseInt(countText?.match(/\d+/)?.[0] || '0', 10);
 
     // We should have at least 1 session (the one we just created)
     expect(count).toBeGreaterThanOrEqual(1);

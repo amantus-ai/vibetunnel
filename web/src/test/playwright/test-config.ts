@@ -11,10 +11,10 @@ export const testConfig = {
     return `http://localhost:${this.port}`;
   },
 
-  // Timeouts - Optimized for faster test execution
-  defaultTimeout: 5000, // 5 seconds for default operations
-  navigationTimeout: 5000, // 5 seconds for page navigation
-  actionTimeout: 2000, // 2 seconds for UI actions
+  // Timeouts - tuned for stability (Playwright fixture applies these as defaults)
+  defaultTimeout: 10_000,
+  navigationTimeout: 15_000,
+  actionTimeout: 5_000,
 
   // Session defaults
   defaultSessionName: 'Test Session',

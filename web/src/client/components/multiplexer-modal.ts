@@ -178,7 +178,7 @@ export class MultiplexerModal extends LitElement {
         paneIndex: target.pane,
         cols: window.innerWidth > 768 ? 120 : 80,
         rows: window.innerHeight > 600 ? 30 : 24,
-        titleMode: 'dynamic',
+        titleMode: 'static',
         metadata: {
           source: 'multiplexer-modal',
         },
@@ -231,7 +231,7 @@ export class MultiplexerModal extends LitElement {
         sessionName: sessionName,
         cols: window.innerWidth > 768 ? 120 : 80,
         rows: window.innerHeight > 600 ? 30 : 24,
-        titleMode: 'dynamic',
+        titleMode: 'static',
         metadata: {
           source: 'multiplexer-modal-new',
         },

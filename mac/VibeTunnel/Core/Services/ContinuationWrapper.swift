@@ -18,23 +18,23 @@ final class ContinuationWrapper<T>: @unchecked Sendable {
     ///
     /// - Parameter error: The error to throw
     func resume(throwing error: Error) {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
 
-        guard !hasResumed else { return }
-        hasResumed = true
-        continuation.resume(throwing: error)
+        guard !self.hasResumed else { return }
+        self.hasResumed = true
+        self.continuation.resume(throwing: error)
     }
 
     /// Resumes the continuation with a value.
     ///
     /// - Parameter value: The value to return
     func resume(returning value: sending T) {
-        lock.lock()
+        self.lock.lock()
         defer { lock.unlock() }
 
-        guard !hasResumed else { return }
-        hasResumed = true
-        continuation.resume(returning: value)
+        guard !self.hasResumed else { return }
+        self.hasResumed = true
+        self.continuation.resume(returning: value)
     }
 }

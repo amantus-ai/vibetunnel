@@ -14,7 +14,7 @@ final class ConnectionManager {
     // MARK: - Constants
 
     private enum Constants {
-        static let connectionRestorationWindow: TimeInterval = 3_600 // 1 hour
+        static let connectionRestorationWindow: TimeInterval = 3600 // 1 hour
         static let savedServerConfigKey = "savedServerConfig"
         static let connectionStateKey = "connectionState"
         static let lastConnectionTimeKey = "lastConnectionTime"
@@ -22,8 +22,8 @@ final class ConnectionManager {
 
     var isConnected: Bool = false {
         didSet {
-            guard oldValue != isConnected else { return }
-            storage.set(isConnected, forKey: Constants.connectionStateKey)
+            guard oldValue != self.isConnected else { return }
+            self.storage.set(self.isConnected, forKey: Constants.connectionStateKey)
         }
     }
 
@@ -34,17 +34,17 @@ final class ConnectionManager {
 
     private init(storage: PersistentStorage = UserDefaultsStorage()) {
         self.storage = storage
-        loadSavedConnection()
-        restoreConnectionState()
+        self.loadSavedConnection()
+        self.restoreConnectionState()
     }
 
     #if DEBUG
-        /// Test-only factory method for creating instances with mock storage
-        /// - Parameter storage: Mock storage for testing
-        /// - Returns: A new ConnectionManager instance for testing
-        static func createForTesting(storage: PersistentStorage) -> ConnectionManager {
-            ConnectionManager(storage: storage)
-        }
+    /// Test-only factory method for creating instances with mock storage
+    /// - Parameter storage: Mock storage for testing
+    /// - Returns: A new ConnectionManager instance for testing
+    static func createForTesting(storage: PersistentStorage) -> ConnectionManager {
+        ConnectionManager(storage: storage)
+    }
     #endif
 
     private func loadSavedConnection() {
@@ -54,10 +54,9 @@ final class ConnectionManager {
             self.serverConfig = config
 
             // Set up authentication service for restored connection
-            authenticationService = AuthenticationService(
+            self.authenticationService = AuthenticationService(
                 apiClient: APIClient.shared,
-                serverConfig: config
-            )
+                serverConfig: config)
 
             // Configure API client and WebSocket client with auth service
             if let authService = authenticationService {
@@ -69,18 +68,18 @@ final class ConnectionManager {
 
     private func restoreConnectionState() {
         // Restore connection state if app was terminated while connected
-        let wasConnected = storage.bool(forKey: Constants.connectionStateKey)
+        let wasConnected = self.storage.bool(forKey: Constants.connectionStateKey)
         if let lastConnectionData = storage.object(forKey: Constants.lastConnectionTimeKey) as? Date {
-            lastConnectionTime = lastConnectionData
+            self.lastConnectionTime = lastConnectionData
 
             // Only restore connection if it was within the last hour
             let timeSinceLastConnection = Date().timeIntervalSince(lastConnectionData)
-            if wasConnected && timeSinceLastConnection < Constants.connectionRestorationWindow && serverConfig != nil {
+            if wasConnected, timeSinceLastConnection < Constants.connectionRestorationWindow, self.serverConfig != nil {
                 // Attempt to restore connection
-                isConnected = true
+                self.isConnected = true
             } else {
                 // Clear stale connection state
-                isConnected = false
+                self.isConnected = false
             }
         }
     }
@@ -90,10 +89,9 @@ final class ConnectionManager {
             // Create and configure authentication service BEFORE saving config
             // This prevents race conditions where other components try to use
             // the API client before authentication is properly configured
-            authenticationService = AuthenticationService(
+            self.authenticationService = AuthenticationService(
                 apiClient: APIClient.shared,
-                serverConfig: config
-            )
+                serverConfig: config)
 
             // Configure API client and WebSocket client with auth service
             if let authService = authenticationService {
@@ -102,25 +100,25 @@ final class ConnectionManager {
             }
 
             // Now save the config and timestamp after auth is set up
-            storage.set(data, forKey: Constants.savedServerConfigKey)
+            self.storage.set(data, forKey: Constants.savedServerConfigKey)
             self.serverConfig = config
 
             // Save connection timestamp
-            lastConnectionTime = Date()
-            storage.set(lastConnectionTime, forKey: Constants.lastConnectionTimeKey)
+            self.lastConnectionTime = Date()
+            self.storage.set(self.lastConnectionTime, forKey: Constants.lastConnectionTimeKey)
         }
     }
 
     func disconnect() async {
-        isConnected = false
-        storage.removeObject(forKey: Constants.connectionStateKey)
-        storage.removeObject(forKey: Constants.lastConnectionTimeKey)
+        self.isConnected = false
+        self.storage.removeObject(forKey: Constants.connectionStateKey)
+        self.storage.removeObject(forKey: Constants.lastConnectionTimeKey)
 
-        await authenticationService?.logout()
-        authenticationService = nil
+        await self.authenticationService?.logout()
+        self.authenticationService = nil
     }
 
     var currentServerConfig: ServerConfig? {
-        serverConfig
+        self.serverConfig
     }
 }

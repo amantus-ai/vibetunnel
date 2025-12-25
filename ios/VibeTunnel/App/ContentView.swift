@@ -17,7 +17,7 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if isValidatingConnection && connectionManager.isConnected {
+            if self.isValidatingConnection, self.connectionManager.isConnected {
                 // Show loading while validating restored connection
                 VStack(spacing: Theme.Spacing.large) {
                     ProgressView()
@@ -30,32 +30,32 @@ struct ContentView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Theme.Colors.terminalBackground)
-            } else if connectionManager.isConnected, connectionManager.serverConfig != nil {
+            } else if self.connectionManager.isConnected, self.connectionManager.serverConfig != nil {
                 SessionListView()
             } else {
                 ServerListView()
             }
         }
-        .animation(.default, value: connectionManager.isConnected)
+        .animation(.default, value: self.connectionManager.isConnected)
         .onAppear {
-            validateRestoredConnection()
+            self.validateRestoredConnection()
 
             // Show welcome on first launch
-            if !welcomeCompleted {
-                showingWelcome = true
+            if !self.welcomeCompleted {
+                self.showingWelcome = true
             }
         }
-        .fullScreenCover(isPresented: $showingWelcome) {
+        .fullScreenCover(isPresented: self.$showingWelcome) {
             WelcomeView()
         }
         .onOpenURL { url in
             // Handle cast file opening
             if url.pathExtension == "cast" {
-                selectedCastFile = url
-                showingCastPlayer = true
+                self.selectedCastFile = url
+                self.showingCastPlayer = true
             }
         }
-        .sheet(isPresented: $showingCastPlayer) {
+        .sheet(isPresented: self.$showingCastPlayer) {
             if let castFile = selectedCastFile {
                 CastPlayerView(castFileURL: castFile)
             }
@@ -63,10 +63,10 @@ struct ContentView: View {
     }
 
     private func validateRestoredConnection() {
-        guard connectionManager.isConnected,
-              connectionManager.serverConfig != nil
+        guard self.connectionManager.isConnected,
+              self.connectionManager.serverConfig != nil
         else {
-            isValidatingConnection = false
+            self.isValidatingConnection = false
             return
         }
 
@@ -77,15 +77,15 @@ struct ContentView: View {
                 _ = try await APIClient.shared.getSessions()
                 // Connection is valid
                 await MainActor.run {
-                    isValidatingConnection = false
+                    self.isValidatingConnection = false
                 }
             } catch {
                 // Connection failed, reset state
                 await MainActor.run {
                     Task {
-                        await connectionManager.disconnect()
+                        await self.connectionManager.disconnect()
                     }
-                    isValidatingConnection = false
+                    self.isValidatingConnection = false
                 }
             }
         }

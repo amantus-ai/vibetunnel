@@ -16,7 +16,7 @@ export enum HttpMethod {
 }
 
 /**
- * Types of server events that can be received via Server-Sent Events (SSE).
+ * Types of server events delivered over WebSocket v3 `EVENT` frames.
  * Matches the Swift ServerEventType enum for type safety across platforms.
  */
 export enum ServerEventType {
@@ -25,13 +25,12 @@ export enum ServerEventType {
   CommandFinished = 'command-finished',
   CommandError = 'command-error',
   Bell = 'bell',
-  ClaudeTurn = 'claude-turn',
   Connected = 'connected',
   TestNotification = 'test-notification',
 }
 
 /**
- * Server event received via Server-Sent Events (SSE).
+ * Server event delivered over WebSocket v3 `EVENT` frames.
  * Matches the Swift ServerEvent struct for cross-platform compatibility.
  */
 export interface ServerEvent {
@@ -104,33 +103,11 @@ export interface Session extends SessionInfo {
   lastModified: string;
   active?: boolean;
 
-  // Activity information (for dynamic title mode)
-  activityStatus?: {
-    isActive: boolean;
-    specificStatus?: {
-      app: string;
-      status: string;
-    };
-  };
-
   // Source information (for HQ mode)
   source?: 'local' | 'remote';
   remoteId?: string;
   remoteName?: string;
   remoteUrl?: string;
-}
-
-/**
- * Activity status for a session
- */
-export interface SessionActivity {
-  isActive: boolean;
-  timestamp: string;
-  session?: SessionInfo;
-  specificStatus?: {
-    app: string;
-    status: string;
-  };
 }
 
 /**
@@ -140,7 +117,7 @@ export enum TitleMode {
   NONE = 'none', // No title management
   FILTER = 'filter', // Block all title changes from apps
   STATIC = 'static', // Static title: path — command — session
-  DYNAMIC = 'dynamic', // Static + live activity indicators
+  DYNAMIC = 'dynamic', // Legacy alias of static (no activity indicators)
 }
 
 /**
@@ -237,7 +214,6 @@ export interface PushNotificationPreferences {
   systemAlerts: boolean;
   soundEnabled: boolean;
   vibrationEnabled: boolean;
-  claudeTurn?: boolean;
 }
 
 /**

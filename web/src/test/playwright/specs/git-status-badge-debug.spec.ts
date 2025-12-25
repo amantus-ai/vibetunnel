@@ -226,7 +226,9 @@ test.describe('Git Status Badge Debugging', () => {
 
     // Print all captured console logs
     console.log('\n=== All GitStatusBadge Console Logs ===');
-    consoleLogs.forEach((log) => console.log(log));
+    consoleLogs.forEach((log) => {
+      console.log(log);
+    });
 
     // Print network requests summary
     console.log('\n=== Network Requests Summary ===');

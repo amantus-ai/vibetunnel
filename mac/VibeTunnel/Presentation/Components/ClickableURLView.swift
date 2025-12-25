@@ -18,15 +18,15 @@ struct ClickableURLView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(label)
+                Text(self.label)
                     .font(.caption)
                     .foregroundColor(.secondary)
 
                 Spacer()
 
-                Button(action: copyURL) {
-                    Image(systemName: showCopiedFeedback ? "checkmark" : "doc.on.doc")
-                        .foregroundColor(showCopiedFeedback ? .green : .accentColor)
+                Button(action: self.copyURL) {
+                    Image(systemName: self.showCopiedFeedback ? "checkmark" : "doc.on.doc")
+                        .foregroundColor(self.showCopiedFeedback ? .green : .accentColor)
                 }
                 .buttonStyle(.borderless)
                 .help("Copy URL")
@@ -34,13 +34,13 @@ struct ClickableURLView: View {
 
             HStack {
                 if let nsUrl = URL(string: url) {
-                    Link(url, destination: nsUrl)
+                    Link(self.url, destination: nsUrl)
                         .font(.caption)
                         .foregroundStyle(.blue)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 } else {
-                    Text(url)
+                    Text(self.url)
                         .font(.caption)
                         .foregroundColor(.blue)
                         .textSelection(.enabled)
@@ -50,8 +50,8 @@ struct ClickableURLView: View {
 
                 Spacer()
 
-                if showOpenButton {
-                    Button(action: openURL) {
+                if self.showOpenButton {
+                    Button(action: self.openURL) {
                         Image(systemName: "arrow.up.right.square")
                             .foregroundColor(.accentColor)
                     }
@@ -68,13 +68,13 @@ struct ClickableURLView: View {
 
     private func copyURL() {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(url, forType: .string)
+        NSPasteboard.general.setString(self.url, forType: .string)
         withAnimation {
-            showCopiedFeedback = true
+            self.showCopiedFeedback = true
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             withAnimation {
-                showCopiedFeedback = false
+                self.showCopiedFeedback = false
             }
         }
     }
@@ -100,18 +100,18 @@ struct InlineClickableURLView: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            Text(label)
+            Text(self.label)
                 .font(.caption)
                 .foregroundColor(.secondary)
 
             if let nsUrl = URL(string: url) {
-                Link(url, destination: nsUrl)
+                Link(self.url, destination: nsUrl)
                     .font(.caption)
                     .foregroundStyle(.blue)
                     .lineLimit(1)
                     .truncationMode(.middle)
             } else {
-                Text(url)
+                Text(self.url)
                     .font(.caption)
                     .foregroundColor(.blue)
                     .textSelection(.enabled)
@@ -119,9 +119,9 @@ struct InlineClickableURLView: View {
                     .truncationMode(.middle)
             }
 
-            Button(action: copyURL) {
-                Image(systemName: showCopiedFeedback ? "checkmark" : "doc.on.doc")
-                    .foregroundColor(showCopiedFeedback ? .green : .accentColor)
+            Button(action: self.copyURL) {
+                Image(systemName: self.showCopiedFeedback ? "checkmark" : "doc.on.doc")
+                    .foregroundColor(self.showCopiedFeedback ? .green : .accentColor)
             }
             .buttonStyle(.borderless)
             .help("Copy URL")
@@ -130,13 +130,13 @@ struct InlineClickableURLView: View {
 
     private func copyURL() {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(url, forType: .string)
+        NSPasteboard.general.setString(self.url, forType: .string)
         withAnimation {
-            showCopiedFeedback = true
+            self.showCopiedFeedback = true
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             withAnimation {
-                showCopiedFeedback = false
+                self.showCopiedFeedback = false
             }
         }
     }
@@ -146,19 +146,16 @@ struct InlineClickableURLView: View {
     VStack(spacing: 20) {
         ClickableURLView(
             label: "Public URL:",
-            url: "https://example.ngrok.io"
-        )
+            url: "https://example.ngrok.io")
 
         ClickableURLView(
             label: "Tailscale URL:",
             url: "http://my-machine.tailnet:4020",
-            showOpenButton: false
-        )
+            showOpenButton: false)
 
         InlineClickableURLView(
             label: "Inline URL:",
-            url: "https://tunnel.cloudflare.com"
-        )
+            url: "https://tunnel.cloudflare.com")
     }
     .padding()
     .frame(width: 400)

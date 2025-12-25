@@ -40,26 +40,11 @@ export class TestSessionTracker {
 
   /**
    * Check if a session should be cleaned up
-   * Only clean up sessions that:
-   * 1. Were explicitly tracked by tests, OR
-   * 2. Match our test naming pattern (as a safety fallback)
+   * Only clean up sessions that were explicitly tracked by tests.
    */
   shouldCleanupSession(sessionId: string, sessionName?: string): boolean {
-    // Always clean up explicitly tracked sessions
-    if (this.createdSessions.has(sessionId)) {
-      return true;
-    }
-
-    // As a fallback, clean up sessions with test naming pattern
-    // This helps clean up orphaned test sessions from previous runs
-    if (sessionName && this.sessionNamePattern.test(sessionName)) {
-      console.log(
-        `[TestSessionTracker] Session "${sessionName}" matches test pattern, will clean up`
-      );
-      return true;
-    }
-
-    return false;
+    void sessionName;
+    return this.createdSessions.has(sessionId);
   }
 
   /**

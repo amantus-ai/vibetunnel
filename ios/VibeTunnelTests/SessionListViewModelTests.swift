@@ -22,14 +22,14 @@ struct SessionListViewModelTests {
         init(
             sessionService: SessionServiceProtocol,
             networkMonitor: NetworkMonitoring,
-            connectionManager: MockConnectionManager
-        ) {
+            connectionManager: MockConnectionManager)
+        {
             self.mockConnectionManager = connectionManager
             super.init(sessionService: sessionService, networkMonitor: networkMonitor)
         }
 
         override func disconnect() async {
-            await mockConnectionManager.disconnect()
+            await self.mockConnectionManager.disconnect()
         }
     }
 
@@ -52,22 +52,19 @@ struct SessionListViewModelTests {
             source: nil,
             remoteId: nil,
             remoteName: nil,
-            remoteUrl: nil
-        )
+            remoteUrl: nil)
     }
 
     func createViewModel(
         mockSessionService: MockSessionService = MockSessionService(),
-        mockNetworkMonitor: MockNetworkMonitor = MockNetworkMonitor()
-    )
+        mockNetworkMonitor: MockNetworkMonitor = MockNetworkMonitor())
         -> (SessionListViewModel, MockConnectionManager)
     {
         let mockConnectionManager = MockConnectionManager()
         let viewModel = TestableSessionListViewModel(
             sessionService: mockSessionService,
             networkMonitor: mockNetworkMonitor,
-            connectionManager: mockConnectionManager
-        )
+            connectionManager: mockConnectionManager)
         return (viewModel, mockConnectionManager)
     }
 
@@ -75,7 +72,7 @@ struct SessionListViewModelTests {
 
     @Test("ViewModel initializes with correct default state")
     func initialState() async {
-        let (viewModel, _) = createViewModel()
+        let (viewModel, _) = self.createViewModel()
 
         #expect(viewModel.sessions.isEmpty)
         #expect(viewModel.filteredSessions.isEmpty)
@@ -103,11 +100,11 @@ struct SessionListViewModelTests {
         let mockService = MockSessionService()
         let mockSessions = [
             createMockSession(id: "1", name: "Test Session 1"),
-            createMockSession(id: "2", name: "Test Session 2", isRunning: false)
+            createMockSession(id: "2", name: "Test Session 2", isRunning: false),
         ]
         mockService.sessions = mockSessions
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
 
         await viewModel.loadSessions()
 
@@ -122,7 +119,7 @@ struct SessionListViewModelTests {
     @Test("loadSessions shows loading state during first load")
     func loadSessionsLoadingState() async {
         let mockService = MockSessionService()
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
 
         // Verify initial state
         #expect(viewModel.isLoading == false)
@@ -139,14 +136,14 @@ struct SessionListViewModelTests {
         let existingSessions = [createMockSession(id: "1")]
         mockService.sessions = existingSessions
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
 
         // Load initial sessions
         await viewModel.loadSessions()
         #expect(viewModel.sessions.count == 1)
 
         // Add more sessions and reload
-        mockService.sessions.append(createMockSession(id: "2"))
+        mockService.sessions.append(self.createMockSession(id: "2"))
 
         await viewModel.loadSessions()
 
@@ -161,7 +158,7 @@ struct SessionListViewModelTests {
         mockService.shouldThrowError = true
         mockService.thrownError = APIError.serverError(500, "Test error")
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
 
         await viewModel.loadSessions()
 
@@ -177,11 +174,11 @@ struct SessionListViewModelTests {
     func filteredSessionsShowAll() async {
         let mockService = MockSessionService()
         mockService.sessions = [
-            createMockSession(id: "1", name: "Running", isRunning: true),
-            createMockSession(id: "2", name: "Exited", isRunning: false)
+            self.createMockSession(id: "1", name: "Running", isRunning: true),
+            self.createMockSession(id: "2", name: "Exited", isRunning: false),
         ]
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
         await viewModel.loadSessions()
 
         viewModel.showExitedSessions = true
@@ -195,11 +192,11 @@ struct SessionListViewModelTests {
     func filteredSessionsHideExited() async {
         let mockService = MockSessionService()
         mockService.sessions = [
-            createMockSession(id: "1", name: "Running", isRunning: true),
-            createMockSession(id: "2", name: "Exited", isRunning: false)
+            self.createMockSession(id: "1", name: "Running", isRunning: true),
+            self.createMockSession(id: "2", name: "Exited", isRunning: false),
         ]
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
         await viewModel.loadSessions()
 
         viewModel.showExitedSessions = false
@@ -214,12 +211,12 @@ struct SessionListViewModelTests {
     func searchByName() async {
         let mockService = MockSessionService()
         mockService.sessions = [
-            createMockSession(id: "1", name: "Frontend Dev"),
-            createMockSession(id: "2", name: "Backend API"),
-            createMockSession(id: "3", name: "Database Work")
+            self.createMockSession(id: "1", name: "Frontend Dev"),
+            self.createMockSession(id: "2", name: "Backend API"),
+            self.createMockSession(id: "3", name: "Database Work"),
         ]
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
         await viewModel.loadSessions()
 
         viewModel.searchText = "front"
@@ -248,8 +245,7 @@ struct SessionListViewModelTests {
                 source: nil,
                 remoteId: nil,
                 remoteName: nil,
-                remoteUrl: nil
-            ),
+                remoteUrl: nil),
             Session(
                 id: "2",
                 command: ["python", "server.py"],
@@ -266,11 +262,10 @@ struct SessionListViewModelTests {
                 source: nil,
                 remoteId: nil,
                 remoteName: nil,
-                remoteUrl: nil
-            )
+                remoteUrl: nil),
         ]
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
         await viewModel.loadSessions()
 
         viewModel.searchText = "npm"
@@ -299,8 +294,7 @@ struct SessionListViewModelTests {
                 source: nil,
                 remoteId: nil,
                 remoteName: nil,
-                remoteUrl: nil
-            ),
+                remoteUrl: nil),
             Session(
                 id: "2",
                 command: ["bash"],
@@ -317,11 +311,10 @@ struct SessionListViewModelTests {
                 source: nil,
                 remoteId: nil,
                 remoteName: nil,
-                remoteUrl: nil
-            )
+                remoteUrl: nil),
         ]
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
         await viewModel.loadSessions()
 
         viewModel.searchText = "frontend"
@@ -334,11 +327,11 @@ struct SessionListViewModelTests {
     func searchByPID() async {
         let mockService = MockSessionService()
         mockService.sessions = [
-            createMockSession(id: "1", name: "Session 1", pid: 1_234),
-            createMockSession(id: "2", name: "Session 2", pid: 5_678)
+            self.createMockSession(id: "1", name: "Session 1", pid: 1234),
+            self.createMockSession(id: "2", name: "Session 2", pid: 5678),
         ]
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
         await viewModel.loadSessions()
 
         viewModel.searchText = "1234"
@@ -351,11 +344,11 @@ struct SessionListViewModelTests {
     func searchEmpty() async {
         let mockService = MockSessionService()
         mockService.sessions = [
-            createMockSession(id: "1", name: "Session 1"),
-            createMockSession(id: "2", name: "Session 2")
+            self.createMockSession(id: "1", name: "Session 1"),
+            self.createMockSession(id: "2", name: "Session 2"),
         ]
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
         await viewModel.loadSessions()
 
         viewModel.searchText = ""
@@ -367,10 +360,10 @@ struct SessionListViewModelTests {
     func searchCaseInsensitive() async {
         let mockService = MockSessionService()
         mockService.sessions = [
-            createMockSession(id: "1", name: "Frontend Development")
+            self.createMockSession(id: "1", name: "Frontend Development"),
         ]
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
         await viewModel.loadSessions()
 
         viewModel.searchText = "FRONTEND"
@@ -384,7 +377,7 @@ struct SessionListViewModelTests {
     @Test("isNetworkConnected reflects network monitor state")
     func networkConnectivity() async {
         let mockNetworkMonitor = MockNetworkMonitor(isConnected: true)
-        let (viewModel, _) = createViewModel(mockNetworkMonitor: mockNetworkMonitor)
+        let (viewModel, _) = self.createViewModel(mockNetworkMonitor: mockNetworkMonitor)
 
         #expect(viewModel.isNetworkConnected == true)
 
@@ -400,9 +393,9 @@ struct SessionListViewModelTests {
     @Test("killSession calls service and reloads sessions")
     func killSessionSuccess() async {
         let mockService = MockSessionService()
-        mockService.sessions = [createMockSession(id: "test-session")]
+        mockService.sessions = [self.createMockSession(id: "test-session")]
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
         await viewModel.loadSessions()
 
         await viewModel.killSession("test-session")
@@ -419,7 +412,7 @@ struct SessionListViewModelTests {
         mockService.shouldThrowError = true
         mockService.thrownError = APIError.serverError(500, "Kill failed")
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
 
         await viewModel.killSession("test-session")
 
@@ -430,9 +423,9 @@ struct SessionListViewModelTests {
     @Test("cleanupSession calls service and reloads sessions")
     func cleanupSessionSuccess() async {
         let mockService = MockSessionService()
-        mockService.sessions = [createMockSession(id: "test-session", isRunning: false)]
+        mockService.sessions = [self.createMockSession(id: "test-session", isRunning: false)]
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
         await viewModel.loadSessions()
 
         await viewModel.cleanupSession("test-session")
@@ -449,7 +442,7 @@ struct SessionListViewModelTests {
         mockService.shouldThrowError = true
         mockService.thrownError = APIError.serverError(500, "Cleanup failed")
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
 
         await viewModel.cleanupSession("test-session")
 
@@ -461,12 +454,12 @@ struct SessionListViewModelTests {
     func cleanupAllExitedSuccess() async {
         let mockService = MockSessionService()
         mockService.sessions = [
-            createMockSession(id: "running", isRunning: true),
-            createMockSession(id: "exited1", isRunning: false),
-            createMockSession(id: "exited2", isRunning: false)
+            self.createMockSession(id: "running", isRunning: true),
+            self.createMockSession(id: "exited1", isRunning: false),
+            self.createMockSession(id: "exited2", isRunning: false),
         ]
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
         await viewModel.loadSessions()
 
         await viewModel.cleanupAllExited()
@@ -482,7 +475,7 @@ struct SessionListViewModelTests {
         mockService.shouldThrowError = true
         mockService.thrownError = APIError.serverError(500, "Cleanup all failed")
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
 
         await viewModel.cleanupAllExited()
 
@@ -494,11 +487,11 @@ struct SessionListViewModelTests {
     func killAllSessionsSuccess() async {
         let mockService = MockSessionService()
         mockService.sessions = [
-            createMockSession(id: "session1"),
-            createMockSession(id: "session2")
+            self.createMockSession(id: "session1"),
+            self.createMockSession(id: "session2"),
         ]
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
         await viewModel.loadSessions()
 
         await viewModel.killAllSessions()
@@ -514,7 +507,7 @@ struct SessionListViewModelTests {
         mockService.shouldThrowError = true
         mockService.thrownError = APIError.serverError(500, "Kill all failed")
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
 
         await viewModel.killAllSessions()
 
@@ -526,7 +519,7 @@ struct SessionListViewModelTests {
 
     @Test("disconnect calls connection manager")
     func testDisconnect() async {
-        let (viewModel, mockConnectionManager) = createViewModel()
+        let (viewModel, mockConnectionManager) = self.createViewModel()
 
         await viewModel.disconnect()
 
@@ -537,13 +530,13 @@ struct SessionListViewModelTests {
 
     @Test("UI state properties can be modified")
     func uIStateManagement() async {
-        let (viewModel, _) = createViewModel()
+        let (viewModel, _) = self.createViewModel()
 
         // Test all UI state properties
         viewModel.showingCreateSession = true
         #expect(viewModel.showingCreateSession == true)
 
-        let mockSession = createMockSession(id: "test")
+        let mockSession = self.createMockSession(id: "test")
         viewModel.selectedSession = mockSession
         #expect(viewModel.selectedSession?.id == "test")
 
@@ -574,13 +567,13 @@ struct SessionListViewModelTests {
     func searchAndFilterCombined() async {
         let mockService = MockSessionService()
         mockService.sessions = [
-            createMockSession(id: "1", name: "Frontend Running", isRunning: true),
-            createMockSession(id: "2", name: "Frontend Exited", isRunning: false),
-            createMockSession(id: "3", name: "Backend Running", isRunning: true),
-            createMockSession(id: "4", name: "Backend Exited", isRunning: false)
+            self.createMockSession(id: "1", name: "Frontend Running", isRunning: true),
+            self.createMockSession(id: "2", name: "Frontend Exited", isRunning: false),
+            self.createMockSession(id: "3", name: "Backend Running", isRunning: true),
+            self.createMockSession(id: "4", name: "Backend Exited", isRunning: false),
         ]
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
         await viewModel.loadSessions()
 
         // Search for "Frontend" and hide exited sessions
@@ -595,9 +588,9 @@ struct SessionListViewModelTests {
     @Test("error handling preserves previous sessions on failure")
     func errorPreservesData() async {
         let mockService = MockSessionService()
-        mockService.sessions = [createMockSession(id: "existing")]
+        mockService.sessions = [self.createMockSession(id: "existing")]
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
 
         // First successful load
         await viewModel.loadSessions()
@@ -617,11 +610,11 @@ struct SessionListViewModelTests {
     func concurrentOperations() async {
         let mockService = MockSessionService()
         mockService.sessions = [
-            createMockSession(id: "1"),
-            createMockSession(id: "2")
+            self.createMockSession(id: "1"),
+            self.createMockSession(id: "2"),
         ]
 
-        let (viewModel, _) = createViewModel(mockSessionService: mockService)
+        let (viewModel, _) = self.createViewModel(mockSessionService: mockService)
         await viewModel.loadSessions()
 
         // Start multiple operations concurrently

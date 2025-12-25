@@ -25,7 +25,7 @@ actor TerminalManager {
     /// Create a new terminal session
     func createSession(request: CreateSessionRequest) throws -> TunnelSession {
         let session = TunnelSession()
-        sessions[session.id] = session
+        self.sessions[session.id] = session
 
         // Set up process and pipes
         let process = Process()
@@ -50,12 +50,12 @@ actor TerminalManager {
         // Start the process
         do {
             try process.run()
-            processes[session.id] = process
-            pipes[session.id] = SessionPipes(stdin: stdinPipe, stdout: stdoutPipe, stderr: stderrPipe)
+            self.processes[session.id] = process
+            self.pipes[session.id] = SessionPipes(stdin: stdinPipe, stdout: stdoutPipe, stderr: stderrPipe)
 
-            logger.info("Created session \(session.id) with process \(process.processIdentifier)")
+            self.logger.info("Created session \(session.id) with process \(process.processIdentifier)")
         } catch {
-            sessions.removeValue(forKey: session.id)
+            self.sessions.removeValue(forKey: session.id)
             throw error
         }
 
@@ -74,7 +74,7 @@ actor TerminalManager {
 
         // Update session activity
         session.updateActivity()
-        sessions[sessionId] = session
+        self.sessions[sessionId] = session
 
         // Send command to stdin
         guard let commandData = (command + "\n").data(using: .utf8) else {
@@ -99,31 +99,31 @@ actor TerminalManager {
 
     /// Get all active sessions
     func listSessions() -> [TunnelSession] {
-        Array(sessions.values)
+        Array(self.sessions.values)
     }
 
     /// Get a specific session
     func getSession(id: UUID) -> TunnelSession? {
-        sessions[id]
+        self.sessions[id]
     }
 
     /// Close a session
     func closeSession(id: UUID) {
         if let process = processes[id] {
             process.terminate()
-            processes.removeValue(forKey: id)
+            self.processes.removeValue(forKey: id)
         }
-        pipes.removeValue(forKey: id)
-        sessions.removeValue(forKey: id)
+        self.pipes.removeValue(forKey: id)
+        self.sessions.removeValue(forKey: id)
 
-        logger.info("Closed session \(id)")
+        self.logger.info("Closed session \(id)")
     }
 
     /// Clean up inactive sessions
     func cleanupInactiveSessions(olderThan minutes: Int = 30) {
         let cutoffDate = Date().addingTimeInterval(-Double(minutes * 60))
 
-        for (id, session) in sessions where session.lastActivity < cutoffDate {
+        for (id, session) in self.sessions where session.lastActivity < cutoffDate {
             closeSession(id: id)
             logger.info("Cleaned up inactive session \(id)")
         }
@@ -132,8 +132,7 @@ actor TerminalManager {
     /// Helper function for timeout
     private func withTimeout<T: Sendable>(
         seconds: TimeInterval,
-        operation: @escaping @Sendable () async throws -> T
-    )
+        operation: @escaping @Sendable () async throws -> T)
         async throws -> T
     {
         try await withThrowingTaskGroup(of: T.self) { group in
@@ -169,7 +168,7 @@ enum TunnelError: LocalizedError, Equatable {
         switch self {
         case .sessionNotFound:
             ErrorMessages.sessionNotFound
-        case .commandExecutionFailed(let message):
+        case let .commandExecutionFailed(message):
             "Command execution failed: \(message)"
         case .timeout:
             ErrorMessages.operationTimeout

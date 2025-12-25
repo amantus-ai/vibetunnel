@@ -285,7 +285,6 @@ describe('Config Routes', () => {
           commandCompletion: true,
           commandError: true,
           bell: true,
-          claudeTurn: false,
         };
 
         mockConfigService.getNotificationPreferences = vi.fn(() => notificationPreferences);
@@ -320,7 +319,6 @@ describe('Config Routes', () => {
           commandCompletion: false,
           commandError: false,
           bell: false,
-          claudeTurn: true,
         };
 
         const response = await request(app)
@@ -347,7 +345,6 @@ describe('Config Routes', () => {
           commandCompletion: true,
           commandError: true,
           bell: true,
-          claudeTurn: false,
         };
 
         const response = await request(app).put('/api/config').send({

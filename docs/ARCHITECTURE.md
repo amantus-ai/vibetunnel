@@ -20,16 +20,16 @@ The system consists of four main components: a native macOS menu bar application
 - pty/pty-manager.ts - Native PTY process management
 - pty/session-manager.ts - Terminal session lifecycle
 - services/terminal-manager.ts - High-level terminal operations
-- services/buffer-aggregator.ts - Terminal buffer optimization
+- services/ws-v3-hub.ts - Unified `/ws` WebSocket v3 hub (multiplexed)
 - routes/sessions.ts - REST API endpoints for session management
 
 **iOS Application** - Native iOS app in ios/VibeTunnel/
 - BufferWebSocketClient (ios/VibeTunnel/Services/BufferWebSocketClient.swift) - WebSocket client for terminal streaming
 - TerminalView (ios/VibeTunnel/Views/Terminal/TerminalView.swift) - Terminal rendering UI
-- TerminalHostingView (ios/VibeTunnel/Views/Terminal/TerminalHostingView.swift) - UIKit integration layer
+- GhosttyWebView (ios/VibeTunnel/Views/Terminal/GhosttyWebView.swift) - WKWebView-based terminal renderer
 
 **Web Frontend** - TypeScript/React app in web/src/client/
-- Terminal rendering using xterm.js
+- Terminal rendering using ghostty-web
 - WebSocket client for real-time updates
 - Session management UI
 
@@ -57,21 +57,23 @@ The system consists of four main components: a native macOS menu bar application
 2. TerminalManager.createTerminal() (web/src/server/services/terminal-manager.ts) 
 3. PtyManager.spawn() (web/src/server/pty/pty-manager.ts) - Spawns native PTY process
 4. Session stored in manager, WebSocket upgrade prepared
-5. Response with session ID and WebSocket URL
+5. Response with `sessionId` (client connects to `/ws` and subscribes)
 
 **Terminal I/O Stream**
-1. User input → WebSocket message to /api/sessions/:id/ws
-2. BufferAggregator processes input (web/src/server/services/buffer-aggregator.ts)
-3. PTY process receives input via pty.write()
-4. PTY output → BufferAggregator.handleData()
-5. Binary buffer snapshot or text delta → WebSocket broadcast
-6. Client renders using xterm.js or native terminal view
+1. Client connects → WebSocket upgrade to `/ws` (v3 framing)
+2. Client subscribes → `SUBSCRIBE(sessionId, flags)` frames
+3. Client input/resize → `INPUT_*` / `RESIZE` frames
+4. Server routes frames → `WsV3Hub` (web/src/server/services/ws-v3-hub.ts)
+5. PTY output → cast tail (`CastOutputHub`) → `STDOUT` frames
+6. Server-side Ghostty → `SNAPSHOT_VT` frames for previews/resync
+7. Client renders:
+   - interactive: `ghostty-web` (`vibe-terminal`)
+   - previews: VT snapshots (`vibe-terminal-buffer`)
 
 **Buffer Optimization Protocol**
-- Binary messages use magic byte 0xBF (ios/VibeTunnel/Services/BufferWebSocketClient.swift:50)
-- Full buffer snapshots sent periodically for synchronization
-- Text deltas for incremental updates between snapshots
-- Automatic aggregation reduces message frequency
+- WS v3 framing uses `VT` magic + version `3` (see docs/websocket.md)
+- Full VT snapshots (`SNAPSHOT_VT`) for previews/resync
+- Stdout streaming (`STDOUT`) for interactive terminals
 
 **Server Lifecycle Management**
 1. ServerManager.start() (mac/VibeTunnel/Core/Services/ServerManager.swift)

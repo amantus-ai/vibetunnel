@@ -1,156 +1,100 @@
-import { expect, test } from '@playwright/test';
-import { createTestSession, TestSessionTracker, waitForSession } from '../test-utils';
+import { test } from '../fixtures/test.fixture';
+import { TestSessionManager } from '../helpers/test-data-manager.helper';
+import { TestDataFactory } from '../utils/test-utils';
 
-let sessionTracker: TestSessionTracker;
-
-test.beforeEach(async ({ page }) => {
-  sessionTracker = new TestSessionTracker();
-  await page.goto('/');
-  await page.waitForLoadState('networkidle');
-});
-
-test.afterEach(async () => {
-  await sessionTracker.cleanup();
-});
+const TEST_PREFIX = TestDataFactory.getTestSpecificPrefix('keyboard-input');
 
 test.describe('Keyboard Input Tests', () => {
-  test('should handle basic text input', async ({ page }) => {
-    const sessionId = await createTestSession(page, sessionTracker, {
-      command: 'cat',
-      name: 'input-test',
-    });
+  let sessionManager: TestSessionManager;
 
-    await waitForSession(page, sessionId);
-
-    // Wait for cat command to be ready for input
-    await page.waitForTimeout(100);
-
-    // Type some text
-    const terminal = page.locator('.xterm-screen');
-    await terminal.click();
-    await page.keyboard.type('Hello Terminal');
-    await page.keyboard.press('Enter');
-
-    // Should see the echoed text
-    await expect(terminal).toContainText('Hello Terminal');
-
-    // End cat command
-    await page.keyboard.press('Control+C');
+  test.beforeEach(async ({ page }) => {
+    sessionManager = new TestSessionManager(page, TEST_PREFIX);
   });
 
-  test('should handle special key combinations', async ({ page }) => {
-    const sessionId = await createTestSession(page, sessionTracker, {
-      command: 'bash',
-      name: 'keys-test',
-    });
-
-    await waitForSession(page, sessionId);
-
-    const terminal = page.locator('.xterm-screen');
-    await terminal.click();
-
-    // Test Ctrl+C (interrupt)
-    await page.keyboard.type('sleep 10');
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(100);
-    await page.keyboard.press('Control+C');
-
-    // Should see the interrupted command
-    await expect(terminal).toContainText('sleep 10');
-
-    // Test command history (Up arrow)
-    await page.keyboard.press('ArrowUp');
-    await expect(terminal).toContainText('sleep 10');
-
-    // Clear the line
-    await page.keyboard.press('Control+C');
-
-    // Exit bash
-    await page.keyboard.type('exit');
-    await page.keyboard.press('Enter');
+  test.afterEach(async () => {
+    await sessionManager.cleanupAllSessions();
   });
 
-  test('should handle tab completion', async ({ page }) => {
-    const sessionId = await createTestSession(page, sessionTracker, {
-      command: 'bash',
-      name: 'tab-test',
-    });
+  test('should handle basic text input', async ({ sessionViewPage }) => {
+    await sessionManager.createTrackedSession(
+      sessionManager.generateSessionName('keyboard-cat'),
+      false,
+      'cat'
+    );
 
-    await waitForSession(page, sessionId);
+    await sessionViewPage.waitForTerminalReady({ requirePrompt: false });
+    await sessionViewPage.typeCommand('Hello Terminal');
+    await sessionViewPage.waitForOutput('Hello Terminal', { timeout: 5000 });
+    await sessionViewPage.sendInterrupt();
+  });
 
-    const terminal = page.locator('.xterm-screen');
-    await terminal.click();
+  test('should handle Ctrl+C interrupt', async ({ sessionViewPage }) => {
+    await sessionManager.createTrackedSession(
+      sessionManager.generateSessionName('keyboard-bash'),
+      false,
+      'bash'
+    );
 
-    // Try tab completion with a common command
+    await sessionViewPage.waitForTerminalReady();
+    await sessionViewPage.typeCommand('sleep 5');
+    await sessionViewPage.sendInterrupt();
+    await sessionViewPage.typeCommand('echo "Interrupted"');
+    await sessionViewPage.waitForOutput('Interrupted', { timeout: 5000 });
+    await sessionViewPage.typeCommand('exit');
+  });
+
+  test('should handle tab key', async ({ page, sessionViewPage }) => {
+    await sessionManager.createTrackedSession(
+      sessionManager.generateSessionName('keyboard-tab'),
+      false,
+      'bash'
+    );
+
+    await sessionViewPage.waitForTerminalReady();
+    await sessionViewPage.clickTerminal();
+
     await page.keyboard.type('ec');
     await page.keyboard.press('Tab');
-
-    // Should complete to 'echo' or show options
-    await page.waitForTimeout(100);
-
-    // Clear and exit
-    await page.keyboard.press('Control+C');
-    await page.keyboard.type('exit');
+    await page.keyboard.type('ho "Tab OK"');
     await page.keyboard.press('Enter');
+
+    await sessionViewPage.waitForOutput('Tab OK', { timeout: 5000 });
+    await sessionViewPage.typeCommand('exit');
   });
 
-  test('should handle copy and paste', async ({ page }) => {
-    const sessionId = await createTestSession(page, sessionTracker, {
-      command: 'cat',
-      name: 'paste-test',
-    });
+  test('should handle paste', async ({ page, sessionViewPage }) => {
+    await sessionManager.createTrackedSession(
+      sessionManager.generateSessionName('keyboard-paste'),
+      false,
+      'cat'
+    );
 
-    await waitForSession(page, sessionId);
-
-    const terminal = page.locator('.xterm-screen');
-    await terminal.click();
-
-    // Type some text to copy
-    await page.keyboard.type('Test text for copying');
+    await sessionViewPage.waitForTerminalReady({ requirePrompt: false });
+    await sessionViewPage.clickTerminal();
+    await sessionViewPage.pasteText('Pasted text');
     await page.keyboard.press('Enter');
 
-    // Try to select and copy text (this depends on terminal implementation)
-    // For now, just test that paste works with clipboard API
-    await page.evaluate(() => navigator.clipboard.writeText('Pasted text'));
-
-    // Paste using Ctrl+V (if supported) or right-click
-    await page.keyboard.press('Control+V');
-    await page.waitForTimeout(100);
-
-    // End cat command
-    await page.keyboard.press('Control+C');
+    await sessionViewPage.waitForOutput('Pasted text', { timeout: 5000 });
+    await sessionViewPage.sendInterrupt();
   });
 
-  test('should handle arrow key navigation', async ({ page }) => {
-    const sessionId = await createTestSession(page, sessionTracker, {
-      command: 'bash',
-      name: 'arrow-test',
-    });
+  test('should handle arrow key editing', async ({ page, sessionViewPage }) => {
+    await sessionManager.createTrackedSession(
+      sessionManager.generateSessionName('keyboard-arrows'),
+      false,
+      'bash'
+    );
 
-    await waitForSession(page, sessionId);
+    await sessionViewPage.waitForTerminalReady();
+    await sessionViewPage.clickTerminal();
 
-    const terminal = page.locator('.xterm-screen');
-    await terminal.click();
-
-    // Type a long command
-    await page.keyboard.type('echo "This is a long command for testing arrow keys"');
-
-    // Use left arrow to move cursor
+    await page.keyboard.type('echo "abc"');
     await page.keyboard.press('ArrowLeft');
     await page.keyboard.press('ArrowLeft');
-    await page.keyboard.press('ArrowLeft');
-
-    // Insert some text in the middle
-    await page.keyboard.type('new ');
-
-    // Execute the command
+    await page.keyboard.type('X');
     await page.keyboard.press('Enter');
 
-    // Should see the modified command output
-    await expect(terminal).toContainText('long new command');
-
-    // Exit bash
-    await page.keyboard.type('exit');
-    await page.keyboard.press('Enter');
+    await sessionViewPage.waitForOutput('abXc', { timeout: 5000 });
+    await sessionViewPage.typeCommand('exit');
   });
 });

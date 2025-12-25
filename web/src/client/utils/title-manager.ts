@@ -97,7 +97,9 @@ export class TitleManager {
    * Clean up event listeners
    */
   cleanup(): void {
-    this.cleanupFunctions.forEach((fn) => fn());
+    this.cleanupFunctions.forEach((fn) => {
+      fn();
+    });
     this.cleanupFunctions = [];
   }
 }

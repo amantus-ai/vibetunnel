@@ -20,7 +20,7 @@ struct AdvancedSettingsView: View {
     @State private var isCheckingForUpdates = false
 
     var updateChannel: UpdateChannel {
-        UpdateChannel(rawValue: updateChannelRaw) ?? .stable
+        UpdateChannel(rawValue: self.updateChannelRaw) ?? .stable
     }
 
     var body: some View {
@@ -39,7 +39,7 @@ struct AdvancedSettingsView: View {
                         HStack {
                             Text("Update Channel")
                             Spacer()
-                            Picker("", selection: updateChannelBinding) {
+                            Picker("", selection: self.updateChannelBinding) {
                                 ForEach(UpdateChannel.allCases) { channel in
                                     Text(channel.displayName).tag(channel)
                                 }
@@ -47,7 +47,7 @@ struct AdvancedSettingsView: View {
                             .pickerStyle(.menu)
                             .labelsHidden()
                         }
-                        Text(updateChannel.description)
+                        Text(self.updateChannel.description)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -64,10 +64,10 @@ struct AdvancedSettingsView: View {
                         Spacer()
 
                         Button("Check Now") {
-                            checkForUpdates()
+                            self.checkForUpdates()
                         }
                         .buttonStyle(.bordered)
-                        .disabled(isCheckingForUpdates)
+                        .disabled(self.isCheckingForUpdates)
                     }
                 } header: {
                     Text("Updates")
@@ -77,7 +77,7 @@ struct AdvancedSettingsView: View {
                 // Advanced section
                 Section {
                     VStack(alignment: .leading, spacing: 4) {
-                        Toggle("Clean up old sessions on startup", isOn: $cleanupOnStartup)
+                        Toggle("Clean up old sessions on startup", isOn: self.$cleanupOnStartup)
                         Text("Automatically remove terminated sessions when the app starts.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -85,7 +85,7 @@ struct AdvancedSettingsView: View {
 
                     // Debug mode toggle
                     VStack(alignment: .leading, spacing: 4) {
-                        Toggle("Debug mode", isOn: $debugMode)
+                        Toggle("Debug mode", isOn: self.$debugMode)
                         Text("Enable additional logging and debugging features.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -103,27 +103,25 @@ struct AdvancedSettingsView: View {
 
     private var updateChannelBinding: Binding<UpdateChannel> {
         Binding(
-            get: { updateChannel },
+            get: { self.updateChannel },
             set: { newValue in
-                updateChannelRaw = newValue.rawValue
+                self.updateChannelRaw = newValue.rawValue
                 // Notify the updater manager about the channel change
                 NotificationCenter.default.post(
                     name: Notification.Name("UpdateChannelChanged"),
                     object: nil,
-                    userInfo: ["channel": newValue]
-                )
-            }
-        )
+                    userInfo: ["channel": newValue])
+            })
     }
 
     private func checkForUpdates() {
-        isCheckingForUpdates = true
+        self.isCheckingForUpdates = true
         NotificationCenter.default.post(name: Notification.Name("checkForUpdates"), object: nil)
 
         // Reset after a delay
         Task {
             try? await Task.sleep(for: .seconds(2))
-            isCheckingForUpdates = false
+            self.isCheckingForUpdates = false
         }
     }
 }
@@ -151,7 +149,7 @@ private struct TerminalPreferenceSection: View {
                     Button("Test") {
                         Task {
                             do {
-                                try terminalLauncher.launchCommand("echo 'VibeTunnel Terminal Test: Success!'")
+                                try self.terminalLauncher.launchCommand("echo 'VibeTunnel Terminal Test: Success!'")
                             } catch {
                                 // Log the error
                                 Logger.advanced.error("Failed to launch terminal test: \(error)")
@@ -160,61 +158,61 @@ private struct TerminalPreferenceSection: View {
                                 if let terminalError = error as? TerminalLauncherError {
                                     switch terminalError {
                                     case .appleScriptPermissionDenied:
-                                        errorTitle = "Permission Denied"
-                                        errorMessage =
+                                        self.errorTitle = "Permission Denied"
+                                        self.errorMessage =
                                             "VibeTunnel needs permission to control terminal applications.\n\nPlease grant Automation permission in System Settings > Privacy & Security > Automation."
                                     case .accessibilityPermissionDenied:
-                                        errorTitle = "Accessibility Permission Required"
-                                        errorMessage =
-                                            "VibeTunnel needs Accessibility permission to send keystrokes to \(Terminal(rawValue: preferredTerminal)?.displayName ?? "terminal").\n\nPlease grant permission in System Settings > Privacy & Security > Accessibility."
+                                        self.errorTitle = "Accessibility Permission Required"
+                                        self.errorMessage =
+                                            "VibeTunnel needs Accessibility permission to send keystrokes to \(Terminal(rawValue: self.preferredTerminal)?.displayName ?? "terminal").\n\nPlease grant permission in System Settings > Privacy & Security > Accessibility."
                                     case .terminalNotFound:
-                                        errorTitle = "Terminal Not Found"
-                                        errorMessage =
+                                        self.errorTitle = "Terminal Not Found"
+                                        self.errorMessage =
                                             "The selected terminal application could not be found. Please select a different terminal."
-                                    case .appleScriptExecutionFailed(let details, let errorCode):
+                                    case let .appleScriptExecutionFailed(details, errorCode):
                                         if let code = errorCode {
                                             switch code {
-                                            case -1_743:
-                                                errorTitle = "Permission Denied"
-                                                errorMessage =
+                                            case -1743:
+                                                self.errorTitle = "Permission Denied"
+                                                self.errorMessage =
                                                     "VibeTunnel needs permission to control terminal applications.\n\nPlease grant Automation permission in System Settings > Privacy & Security > Automation."
-                                            case -1_728:
-                                                errorTitle = "Terminal Not Available"
-                                                errorMessage =
+                                            case -1728:
+                                                self.errorTitle = "Terminal Not Available"
+                                                self.errorMessage =
                                                     "The terminal application is not running or cannot be controlled.\n\nDetails: \(details)"
-                                            case -1_708:
-                                                errorTitle = "Terminal Communication Error"
-                                                errorMessage =
+                                            case -1708:
+                                                self.errorTitle = "Terminal Communication Error"
+                                                self.errorMessage =
                                                     "The terminal did not respond to the command.\n\nDetails: \(details)"
-                                            case -25_211:
-                                                errorTitle = "Accessibility Permission Required"
-                                                errorMessage =
+                                            case -25211:
+                                                self.errorTitle = "Accessibility Permission Required"
+                                                self.errorMessage =
                                                     "System Events requires Accessibility permission to send keystrokes.\n\nPlease grant permission in System Settings > Privacy & Security > Accessibility."
                                             default:
-                                                errorTitle = "Terminal Launch Failed"
-                                                errorMessage = "AppleScript error \(code): \(details)"
+                                                self.errorTitle = "Terminal Launch Failed"
+                                                self.errorMessage = "AppleScript error \(code): \(details)"
                                             }
                                         } else {
-                                            errorTitle = "Terminal Launch Failed"
-                                            errorMessage = "Failed to launch terminal: \(details)"
+                                            self.errorTitle = "Terminal Launch Failed"
+                                            self.errorMessage = "Failed to launch terminal: \(details)"
                                         }
-                                    case .processLaunchFailed(let details):
-                                        errorTitle = "Process Launch Failed"
-                                        errorMessage = "Failed to start terminal process: \(details)"
+                                    case let .processLaunchFailed(details):
+                                        self.errorTitle = "Process Launch Failed"
+                                        self.errorMessage = "Failed to start terminal process: \(details)"
                                     }
                                 } else {
-                                    errorTitle = "Terminal Launch Failed"
-                                    errorMessage = error.localizedDescription
+                                    self.errorTitle = "Terminal Launch Failed"
+                                    self.errorMessage = error.localizedDescription
                                 }
 
-                                showingError = true
+                                self.showingError = true
                             }
                         }
                     }
                     .buttonStyle(.plain)
                     .foregroundColor(.secondary)
 
-                    Picker("", selection: $preferredTerminal) {
+                    Picker("", selection: self.$preferredTerminal) {
                         ForEach(Terminal.installed, id: \.rawValue) { terminal in
                             HStack {
                                 if let icon = terminal.appIcon {
@@ -233,7 +231,7 @@ private struct TerminalPreferenceSection: View {
                 HStack {
                     Text("Preferred Git App")
                     Spacer()
-                    Picker("", selection: gitAppBinding) {
+                    Picker("", selection: self.gitAppBinding) {
                         ForEach(GitApp.installed, id: \.rawValue) { gitApp in
                             HStack {
                                 if let icon = gitApp.appIcon {
@@ -253,15 +251,14 @@ private struct TerminalPreferenceSection: View {
                 .font(.headline)
         } footer: {
             Text(
-                "Configure which applications VibeTunnel uses for terminal sessions and Git repositories."
-            )
-            .font(.caption)
-            .frame(maxWidth: .infinity)
-            .multilineTextAlignment(.center)
+                "Configure which applications VibeTunnel uses for terminal sessions and Git repositories.")
+                .font(.caption)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
         }
-        .alert(errorTitle, isPresented: $showingError) {
+        .alert(self.errorTitle, isPresented: self.$showingError) {
             Button("OK") {}
-            if errorTitle == "Permission Denied" {
+            if self.errorTitle == "Permission Denied" {
                 Button("Open System Settings") {
                     if let url =
                         URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
@@ -271,7 +268,7 @@ private struct TerminalPreferenceSection: View {
                 }
             }
         } message: {
-            Text(errorMessage)
+            Text(self.errorMessage)
         }
     }
 
@@ -279,15 +276,14 @@ private struct TerminalPreferenceSection: View {
         Binding(
             get: {
                 // If no preference or invalid preference, use first installed app
-                if preferredGitApp.isEmpty || GitApp(rawValue: preferredGitApp) == nil {
+                if self.preferredGitApp.isEmpty || GitApp(rawValue: self.preferredGitApp) == nil {
                     return GitApp.installed.first?.rawValue ?? ""
                 }
-                return preferredGitApp
+                return self.preferredGitApp
             },
             set: { newValue in
-                preferredGitApp = newValue
-            }
-        )
+                self.preferredGitApp = newValue
+            })
     }
 }
 
@@ -311,7 +307,7 @@ private struct WindowHighlightSettingsSection: View {
                 HStack {
                     Text("Window highlight")
                     Spacer()
-                    Picker("", selection: highlightStyleBinding) {
+                    Picker("", selection: self.highlightStyleBinding) {
                         Text("None").tag("none")
                         Text("Default").tag("default")
                         Text("Subtle").tag("subtle")
@@ -323,15 +319,15 @@ private struct WindowHighlightSettingsSection: View {
                 }
 
                 // Custom color picker (only shown when custom is selected)
-                if highlightStyle == "custom" && highlightEnabled {
+                if self.highlightStyle == "custom", self.highlightEnabled {
                     HStack {
                         Text("Custom color")
                         Spacer()
-                        ColorPicker("", selection: $customColor, supportsOpacity: false)
+                        ColorPicker("", selection: self.$customColor, supportsOpacity: false)
                             .labelsHidden()
-                            .onChange(of: customColor) { _, newColor in
-                                saveCustomColor(newColor)
-                                previewHighlightEffect()
+                            .onChange(of: self.customColor) { _, newColor in
+                                self.saveCustomColor(newColor)
+                                self.previewHighlightEffect()
                             }
                     }
                 }
@@ -346,48 +342,47 @@ private struct WindowHighlightSettingsSection: View {
                 .multilineTextAlignment(.center)
         }
         .onAppear {
-            loadCustomColor()
+            self.loadCustomColor()
             // Create highlight effect instance for preview
-            highlightEffect = WindowHighlightEffect()
+            self.highlightEffect = WindowHighlightEffect()
         }
     }
 
     private var highlightStyleBinding: Binding<String> {
         Binding(
             get: {
-                highlightEnabled ? highlightStyle : "none"
+                self.highlightEnabled ? self.highlightStyle : "none"
             },
             set: { newValue in
                 if newValue == "none" {
-                    highlightEnabled = false
-                    highlightStyle = "default" // Keep a default style for when re-enabled
+                    self.highlightEnabled = false
+                    self.highlightStyle = "default" // Keep a default style for when re-enabled
                 } else {
-                    highlightEnabled = true
-                    highlightStyle = newValue
-                    previewHighlightEffect()
+                    self.highlightEnabled = true
+                    self.highlightStyle = newValue
+                    self.previewHighlightEffect()
                 }
-            }
-        )
+            })
     }
 
     private func saveCustomColor(_ color: Color) {
         let nsColor = NSColor(color)
         do {
             let data = try NSKeyedArchiver.archivedData(withRootObject: nsColor, requiringSecureCoding: false)
-            highlightColorData = data
+            self.highlightColorData = data
         } catch {
             Logger.advanced.error("Failed to save custom color: \(error)")
         }
     }
 
     private func loadCustomColor() {
-        if !highlightColorData.isEmpty {
+        if !self.highlightColorData.isEmpty {
             do {
                 if let nsColor = try NSKeyedUnarchiver.unarchivedObject(
                     ofClass: NSColor.self,
-                    from: highlightColorData
-                ) {
-                    customColor = Color(nsColor)
+                    from: highlightColorData)
+                {
+                    self.customColor = Color(nsColor)
                 }
             } catch {
                 Logger.advanced.error("Failed to load custom color: \(error)")
@@ -398,10 +393,10 @@ private struct WindowHighlightSettingsSection: View {
     private func previewHighlightEffect() {
         Task { @MainActor in
             // Get the current highlight configuration
-            let config = loadCurrentHighlightConfig()
+            let config = self.loadCurrentHighlightConfig()
 
             // Update the highlight effect with new config
-            highlightEffect?.updateConfig(config)
+            self.highlightEffect?.updateConfig(config)
 
             // Find the settings window
             guard let settingsWindow = NSApp.windows.first(where: { window in
@@ -428,9 +423,9 @@ private struct WindowHighlightSettingsSection: View {
                 if let frame = axWindow.frame() {
                     // Check if this matches our settings window (with some tolerance for frame differences)
                     let tolerance: CGFloat = 5.0
-                    if abs(frame.origin.x - settingsFrame.origin.x) < tolerance &&
-                        abs(frame.width - settingsFrame.width) < tolerance &&
-                        abs(frame.height - settingsFrame.height) < tolerance
+                    if abs(frame.origin.x - settingsFrame.origin.x) < tolerance,
+                       abs(frame.width - settingsFrame.width) < tolerance,
+                       abs(frame.height - settingsFrame.height) < tolerance
                     {
                         targetWindow = axWindow
                         break
@@ -440,7 +435,7 @@ private struct WindowHighlightSettingsSection: View {
 
             // Apply highlight effect to the settings window
             if let window = targetWindow {
-                highlightEffect?.highlightWindow(window)
+                self.highlightEffect?.highlightWindow(window)
             } else {
                 Logger.advanced.debug("Could not match settings window for highlight preview")
             }
@@ -448,24 +443,23 @@ private struct WindowHighlightSettingsSection: View {
     }
 
     private func loadCurrentHighlightConfig() -> WindowHighlightConfig {
-        guard highlightEnabled else {
+        guard self.highlightEnabled else {
             return WindowHighlightConfig(
                 color: .clear,
                 duration: 0,
                 borderWidth: 0,
                 glowRadius: 0,
-                isEnabled: false
-            )
+                isEnabled: false)
         }
 
-        switch highlightStyle {
+        switch self.highlightStyle {
         case "subtle":
             return .subtle
         case "neon":
             return .neon
         case "custom":
             // Load custom color
-            let colorData = highlightColorData
+            let colorData = self.highlightColorData
             if !colorData.isEmpty,
                let nsColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData)
             {
@@ -474,8 +468,7 @@ private struct WindowHighlightSettingsSection: View {
                     duration: 0.8,
                     borderWidth: 4.0,
                     glowRadius: 12.0,
-                    isEnabled: true
-                )
+                    isEnabled: true)
             }
             return .default
         default:

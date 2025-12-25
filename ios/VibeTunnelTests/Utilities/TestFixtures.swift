@@ -7,22 +7,19 @@ enum TestFixtures {
 
     static let validServerConfig = ServerConfig(
         host: "localhost",
-        port: 8_888,
-        name: nil
-    )
+        port: 8888,
+        name: nil)
 
     static let sslServerConfig = ServerConfig(
         host: "example.com",
         port: 443,
-        name: "Test Server"
-    )
+        name: "Test Server")
 
     static func testServerConfig(
         host: String = "localhost",
-        port: Int = 8_888,
+        port: Int = 8888,
         name: String? = nil,
-        password: String? = nil
-    )
+        password: String? = nil)
         -> ServerConfig
     {
         ServerConfig(host: host, port: port, name: name)
@@ -45,15 +42,14 @@ enum TestFixtures {
         exitCode: nil,
         startedAt: "2024-01-01T10:00:00Z",
         lastModified: "2024-01-01T10:05:00Z",
-        pid: 12_345,
+        pid: 12345,
         width: 80,
         height: 24,
         waiting: false,
         source: nil,
         remoteId: nil,
         remoteName: nil,
-        remoteUrl: nil
-    )
+        remoteUrl: nil)
 
     static let exitedSession = Session(
         id: "exited-session-456",
@@ -71,15 +67,13 @@ enum TestFixtures {
         source: nil,
         remoteId: nil,
         remoteName: nil,
-        remoteUrl: nil
-    )
+        remoteUrl: nil)
 
     static func testSession(
         id: String = UUID().uuidString,
         name: String = "Test Session",
         workingDir: String = "/tmp/test",
-        isRunning: Bool = true
-    )
+        isRunning: Bool = true)
         -> Session
     {
         Session(
@@ -91,15 +85,14 @@ enum TestFixtures {
             exitCode: isRunning ? nil : 0,
             startedAt: ISO8601DateFormatter().string(from: Date()),
             lastModified: ISO8601DateFormatter().string(from: Date()),
-            pid: isRunning ? 12_345 : nil,
+            pid: isRunning ? 12345 : nil,
             width: 80,
             height: 24,
             waiting: false,
             source: nil,
             remoteId: nil,
             remoteName: nil,
-            remoteUrl: nil
-        )
+            remoteUrl: nil)
     }
 
     // MARK: - JSON Fixtures
@@ -216,6 +209,73 @@ enum TestFixtures {
         messageData.append(bufferData)
 
         return messageData
+    }
+
+    /// Creates a WebSocket v3 frame
+    ///
+    /// Frame:
+    /// u16 magic "VT" LE, u8 version=3, u8 type, u32 sessionIdLen LE, sessionId, u32 payloadLen LE, payload
+    static func wrappedV3Frame(sessionId: String, type: UInt8, payload: Data) -> Data {
+        var out = Data()
+
+        var magic: UInt16 = 0x5654
+        magic = magic.littleEndian
+        out.append(Data(bytes: &magic, count: 2))
+        out.append(0x03)
+        out.append(type)
+
+        let sid = sessionId.data(using: .utf8)!
+        var sidLen = UInt32(sid.count).littleEndian
+        out.append(Data(bytes: &sidLen, count: 4))
+        out.append(sid)
+
+        var payloadLen = UInt32(payload.count).littleEndian
+        out.append(Data(bytes: &payloadLen, count: 4))
+        out.append(payload)
+
+        return out
+    }
+
+    static func wrappedV3SnapshotMessage(sessionId: String, bufferData: Data) -> Data {
+        // v3 type 21 = SNAPSHOT_VT
+        self.wrappedV3Frame(sessionId: sessionId, type: 21, payload: bufferData)
+    }
+
+    static func decodeV3Frame(_ data: Data) -> (type: UInt8, sessionId: String, payload: Data)? {
+        guard data.count >= 2 + 1 + 1 + 4 + 4 else { return nil }
+        var offset = 0
+
+        let magic = data.withUnsafeBytes { bytes in
+            bytes.loadUnaligned(fromByteOffset: offset, as: UInt16.self).littleEndian
+        }
+        offset += 2
+        guard magic == 0x5654 else { return nil }
+
+        let version = data[offset]
+        offset += 1
+        guard version == 0x03 else { return nil }
+
+        let type = data[offset]
+        offset += 1
+
+        let sessionLen = data.withUnsafeBytes { bytes in
+            bytes.loadUnaligned(fromByteOffset: offset, as: UInt32.self).littleEndian
+        }
+        offset += 4
+
+        guard data.count >= offset + Int(sessionLen) + 4 else { return nil }
+        let sessionIdData = data.subdata(in: offset..<(offset + Int(sessionLen)))
+        offset += Int(sessionLen)
+        guard let sessionId = String(data: sessionIdData, encoding: .utf8) else { return nil }
+
+        let payloadLen = data.withUnsafeBytes { bytes in
+            bytes.loadUnaligned(fromByteOffset: offset, as: UInt32.self).littleEndian
+        }
+        offset += 4
+
+        guard data.count >= offset + Int(payloadLen) else { return nil }
+        let payload = data.subdata(in: offset..<(offset + Int(payloadLen)))
+        return (type: type, sessionId: sessionId, payload: payload)
     }
 
     // MARK: - Terminal Events

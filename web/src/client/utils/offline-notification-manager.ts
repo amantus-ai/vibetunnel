@@ -29,6 +29,19 @@ export class OfflineNotificationManager {
   private processingQueue = false;
   private initialized = false;
 
+  private readonly handleOnline = () => {
+    logger.log('connection restored, processing queued notifications');
+    this.isOnline = true;
+    this.processQueue().catch((error) => {
+      logger.error('failed to process queue after going online:', error);
+    });
+  };
+
+  private readonly handleOffline = () => {
+    logger.log('connection lost, queueing notifications');
+    this.isOnline = false;
+  };
+
   constructor() {
     this.initialize().catch((error) => {
       logger.error('failed to initialize offline notification manager:', error);
@@ -87,18 +100,8 @@ export class OfflineNotificationManager {
   }
 
   private setupOnlineListeners(): void {
-    window.addEventListener('online', () => {
-      logger.log('connection restored, processing queued notifications');
-      this.isOnline = true;
-      this.processQueue().catch((error) => {
-        logger.error('failed to process queue after going online:', error);
-      });
-    });
-
-    window.addEventListener('offline', () => {
-      logger.log('connection lost, queueing notifications');
-      this.isOnline = false;
-    });
+    window.addEventListener('online', this.handleOnline);
+    window.addEventListener('offline', this.handleOffline);
   }
 
   /**
@@ -362,8 +365,8 @@ export class OfflineNotificationManager {
       this.db = null;
     }
 
-    window.removeEventListener('online', this.processQueue);
-    window.removeEventListener('offline', () => {});
+    window.removeEventListener('online', this.handleOnline);
+    window.removeEventListener('offline', this.handleOffline);
 
     this.initialized = false;
   }

@@ -8,8 +8,7 @@ import OSLog
 final class WindowEnumerator {
     private let logger = Logger(
         subsystem: BundleIdentifiers.loggerSubsystem,
-        category: "WindowEnumerator"
-    )
+        category: "WindowEnumerator")
 
     /// Gets all terminal windows currently visible on screen using Accessibility APIs.
     static func getAllTerminalWindows() -> [WindowInfo] {
@@ -19,8 +18,7 @@ final class WindowEnumerator {
         // Use AXElement to enumerate windows
         let axWindows = AXElement.enumerateWindows(
             bundleIdentifiers: terminalBundleIDs,
-            includeMinimized: false
-        )
+            includeMinimized: false)
 
         // Convert AXElement.WindowInfo to our WindowInfo
         return axWindows.compactMap { axWindow in
@@ -40,8 +38,7 @@ final class WindowEnumerator {
                 tabReference: nil,
                 tabID: nil,
                 bounds: axWindow.bounds,
-                title: axWindow.title
-            )
+                title: axWindow.title)
         }
     }
 

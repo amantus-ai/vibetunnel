@@ -19,12 +19,12 @@ struct DiscoveredServerCard: View {
 
             // Server Info
             VStack(alignment: .leading, spacing: 2) {
-                Text(server.displayName)
+                Text(self.server.displayName)
                     .font(Theme.Typography.terminalSystem(size: 16, weight: .medium))
                     .foregroundColor(Theme.Colors.terminalForeground)
 
-                if !server.host.isEmpty {
-                    Text("\(server.host):\(server.port)")
+                if !self.server.host.isEmpty {
+                    Text("\(self.server.host):\(self.server.port)")
                         .font(Theme.Typography.terminalSystem(size: 12))
                         .foregroundColor(Theme.Colors.secondaryText)
                 } else {
@@ -45,13 +45,13 @@ struct DiscoveredServerCard: View {
             Spacer()
 
             // Connect button
-            Button(action: onTap) {
+            Button(action: self.onTap) {
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 24))
                     .foregroundColor(Theme.Colors.primaryAccent)
             }
             .buttonStyle(.plain)
-            .disabled(server.host.isEmpty)
+            .disabled(self.server.host.isEmpty)
         }
         .padding(Theme.Spacing.medium)
         .background(
@@ -59,21 +59,18 @@ struct DiscoveredServerCard: View {
                 .fill(Theme.Colors.cardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
-                        .stroke(Theme.Colors.secondaryAccent.opacity(0.3), lineWidth: 1)
-                )
-        )
-        .scaleEffect(isPressed ? 0.98 : 1.0)
-        .animation(.easeInOut(duration: 0.1), value: isPressed)
+                        .stroke(Theme.Colors.secondaryAccent.opacity(0.3), lineWidth: 1)))
+        .scaleEffect(self.isPressed ? 0.98 : 1.0)
+        .animation(.easeInOut(duration: 0.1), value: self.isPressed)
         .onTapGesture {
-            if !server.host.isEmpty {
-                onTap()
+            if !self.server.host.isEmpty {
+                self.onTap()
             }
         }
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+                .onChanged { _ in self.isPressed = true }
+                .onEnded { _ in self.isPressed = false })
     }
 }
 
@@ -91,11 +88,11 @@ struct DiscoveryDetailSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: Theme.Spacing.small) {
-                    ForEach(discoveredServers) { server in
+                    ForEach(self.discoveredServers) { server in
                         DiscoveredServerCard(
-                            server: server
-                        ) {
-                            onConnect(server)
+                            server: server)
+                        {
+                            self.onConnect(server)
                         }
                     }
                 }
@@ -107,7 +104,7 @@ struct DiscoveryDetailSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") {
-                        dismiss()
+                        self.dismiss()
                     }
                 }
             }

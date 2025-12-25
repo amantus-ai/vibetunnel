@@ -29,13 +29,12 @@ struct ProtectDashboardPageView: View {
                     .fontWeight(.semibold)
 
                 Text(
-                    "Your dashboard is protected using your macOS username and password.\nNo additional setup is required."
-                )
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 480)
-                .fixedSize(horizontal: false, vertical: true)
+                    "Your dashboard is protected using your macOS username and password.\nNo additional setup is required.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 480)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 // Authentication info
                 VStack(spacing: 20) {

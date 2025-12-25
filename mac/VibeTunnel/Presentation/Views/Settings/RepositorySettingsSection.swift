@@ -10,10 +10,10 @@ struct RepositorySettingsSection: View {
         Section {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
-                    TextField("Default base path", text: $repositoryBasePath)
+                    TextField("Default base path", text: self.$repositoryBasePath)
                         .textFieldStyle(.roundedBorder)
 
-                    Button(action: selectDirectory) {
+                    Button(action: self.selectDirectory) {
                         Image(systemName: "folder")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
@@ -37,15 +37,15 @@ struct RepositorySettingsSection: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.directoryURL = URL(fileURLWithPath: NSString(string: repositoryBasePath).expandingTildeInPath)
+        panel.directoryURL = URL(fileURLWithPath: NSString(string: self.repositoryBasePath).expandingTildeInPath)
 
         if panel.runModal() == .OK, let url = panel.url {
             let path = url.path
             let homeDir = NSHomeDirectory()
             if path.hasPrefix(homeDir) {
-                repositoryBasePath = "~" + path.dropFirst(homeDir.count)
+                self.repositoryBasePath = "~" + path.dropFirst(homeDir.count)
             } else {
-                repositoryBasePath = path
+                self.repositoryBasePath = path
             }
         }
     }

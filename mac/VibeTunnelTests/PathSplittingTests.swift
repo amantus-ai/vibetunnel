@@ -59,8 +59,8 @@ struct PathSplittingTests {
         // Test root directory
         let rootUrl = URL(fileURLWithPath: "/")
         #expect(rootUrl.path == "/")
-        // Root URL's parent is "/.." on macOS
-        #expect(rootUrl.deletingLastPathComponent().path == "/..")
+        // Root URL's parent has differed across Foundation versions (/ or /..)
+        #expect(["/", "/.."].contains(rootUrl.deletingLastPathComponent().path))
         // Root URL's last component is "/" on macOS
         #expect(rootUrl.lastPathComponent == "/")
 
@@ -87,8 +87,7 @@ struct PathSplittingTests {
         let fileManager = FileManager.default
         let contents = try #require(try? fileManager.contentsOfDirectory(
             at: parentURL,
-            includingPropertiesForKeys: nil
-        ))
+            includingPropertiesForKeys: nil))
 
         let matching = contents.filter { $0.lastPathComponent.hasPrefix(prefix) }
         // We can't assert specific matches as they depend on the user's home directory

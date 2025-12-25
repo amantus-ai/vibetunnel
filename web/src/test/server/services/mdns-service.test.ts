@@ -32,7 +32,7 @@ vi.mock('node:os', () => ({
 
 // Create a custom require mock
 const originalRequire = require;
-// @ts-ignore - override require for test
+// @ts-expect-error - override require for test
 global.require = vi.fn((moduleName: string) => {
   if (moduleName === 'bonjour-service') {
     return MockBonjourConstructor;
@@ -184,6 +184,6 @@ describe.skip('MDNSService - skipped due to require() mocking complexity', () =>
 
 // Restore original require after tests
 afterAll(() => {
-  // @ts-ignore
+  // @ts-expect-error
   global.require = originalRequire;
 });

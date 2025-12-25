@@ -23,13 +23,27 @@ test.describe('Terminal Interaction', () => {
     // Use unique prefix for this test file to prevent session conflicts
     sessionManager = new TestSessionManager(page, 'termint');
 
-    // Add network error logging for debugging
-    page.on('requestfailed', (request) => {
-      console.error(`Request failed: ${request.url()} - ${request.failure()?.errorText}`);
-    });
+    // Optional network error logging for debugging (very noisy in CI).
+    if (process.env.PW_DEBUG_NETWORK_ERRORS === '1') {
+      page.on('requestfailed', (request) => {
+        const errorText = request.failure()?.errorText ?? '';
+        if (errorText.includes('net::ERR_ABORTED')) {
+          return;
+        }
+
+        const resourceType = request.resourceType();
+        if (resourceType === 'font' || resourceType === 'image' || resourceType === 'stylesheet') {
+          return;
+        }
+
+        console.error(`Request failed: ${request.url()} - ${errorText}`);
+      });
+    }
 
     // Create a session for all tests using the session manager to ensure proper tracking
-    const sessionData = await sessionManager.createTrackedSession('terminal-test');
+    const sessionData = await sessionManager.createTrackedSession(
+      sessionManager.generateSessionName('terminal-test')
+    );
 
     // Navigate to the created session with increased timeout for CI
     await page.goto(`/session/${sessionData.sessionId}`, {
@@ -78,10 +92,17 @@ test.describe('Terminal Interaction', () => {
     // Wait for the output and prompt
     await page.waitForFunction(
       () => {
-        const terminal = document.querySelector('vibe-terminal');
-        const content = terminal?.textContent || '';
+        const terminal = document.querySelector('vibe-terminal') as unknown as {
+          getDebugText?: () => string;
+          textContent?: string | null;
+        } | null;
+        const content =
+          terminal && typeof terminal.getDebugText === 'function'
+            ? terminal.getDebugText()
+            : terminal?.textContent || '';
         return content.includes('Test 1') && content.match(/[$>#%❯]\s*$/);
       },
+      undefined,
       { timeout: 5000 }
     );
 
@@ -95,10 +116,17 @@ test.describe('Terminal Interaction', () => {
     // Wait for the second output
     await page.waitForFunction(
       () => {
-        const terminal = document.querySelector('vibe-terminal');
-        const content = terminal?.textContent || '';
+        const terminal = document.querySelector('vibe-terminal') as unknown as {
+          getDebugText?: () => string;
+          textContent?: string | null;
+        } | null;
+        const content =
+          terminal && typeof terminal.getDebugText === 'function'
+            ? terminal.getDebugText()
+            : terminal?.textContent || '';
         return content.includes('Test 2');
       },
+      undefined,
       { timeout: 5000 }
     );
 
@@ -142,9 +170,8 @@ test.describe('Terminal Interaction', () => {
     await executeAndVerifyCommand(page, 'echo "More test content"', 'More test content');
 
     // Get terminal content before clearing
-    const terminal = page.locator('vibe-terminal');
-    await expect(terminal).toContainText('Test content');
-    await expect(terminal).toContainText('More test content');
+    await assertTerminalContains(page, 'Test content');
+    await assertTerminalContains(page, 'More test content');
 
     // Clear terminal using the clear command
     // Note: Ctrl+L is intercepted as a browser shortcut in VibeTunnel
@@ -159,7 +186,7 @@ test.describe('Terminal Interaction', () => {
     await executeAndVerifyCommand(page, 'echo "After clear"', 'After clear');
 
     // Verify new content is visible
-    await expect(terminal).toContainText('After clear');
+    await assertTerminalContains(page, 'After clear');
 
     // Test passes if terminal remains functional after clear command
   });
@@ -175,8 +202,14 @@ test.describe('Terminal Interaction', () => {
       // Wait for directory to be created by checking it doesn't show error
       await page.waitForFunction(
         (dir) => {
-          const terminal = document.querySelector('vibe-terminal');
-          const content = terminal?.textContent || '';
+          const terminal = document.querySelector('vibe-terminal') as unknown as {
+            getDebugText?: () => string;
+            textContent?: string | null;
+          } | null;
+          const content =
+            terminal && typeof terminal.getDebugText === 'function'
+              ? terminal.getDebugText()
+              : terminal?.textContent || '';
           // Check that mkdir succeeded (no error message)
           return (
             !content.includes(`mkdir: ${dir}: File exists`) &&
@@ -199,8 +232,14 @@ test.describe('Terminal Interaction', () => {
       // Wait for rmdir to complete
       await page.waitForFunction(
         (dir) => {
-          const terminal = document.querySelector('vibe-terminal');
-          const content = terminal?.textContent || '';
+          const terminal = document.querySelector('vibe-terminal') as unknown as {
+            getDebugText?: () => string;
+            textContent?: string | null;
+          } | null;
+          const content =
+            terminal && typeof terminal.getDebugText === 'function'
+              ? terminal.getDebugText()
+              : terminal?.textContent || '';
           // Check that rmdir succeeded (no error message)
           return (
             !content.includes(`rmdir: ${dir}: No such file or directory`) &&
@@ -225,11 +264,18 @@ test.describe('Terminal Interaction', () => {
     // Wait for terminal to be properly ready - check for prompt
     await page.waitForFunction(
       () => {
-        const terminal = document.querySelector('vibe-terminal');
-        const content = terminal?.textContent || '';
+        const terminal = document.querySelector('vibe-terminal') as unknown as {
+          getDebugText?: () => string;
+          textContent?: string | null;
+        } | null;
+        const content =
+          terminal && typeof terminal.getDebugText === 'function'
+            ? terminal.getDebugText()
+            : terminal?.textContent || '';
         // Look for shell prompt indicators
         return content.includes('$') || content.includes('#') || content.includes('>');
       },
+      undefined,
       { timeout: 10000 }
     );
 

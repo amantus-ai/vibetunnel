@@ -15,12 +15,6 @@ export interface SessionData {
   rows?: number;
 }
 
-export interface ActivityStatus {
-  isActive: boolean;
-  timestamp: string;
-  session: SessionData;
-}
-
 export interface BufferMessage {
   type: string;
   sessionId?: string;
@@ -34,13 +28,5 @@ export interface MockWebSocketConstructor {
   CONNECTING: number;
   OPEN: number;
   CLOSING: number;
-  CLOSED: number;
-}
-
-// Type for EventSource mock constructor
-export interface MockEventSourceConstructor {
-  new (url: string, eventSourceInitDict?: EventSourceInit): EventSource;
-  CONNECTING: number;
-  OPEN: number;
   CLOSED: number;
 }

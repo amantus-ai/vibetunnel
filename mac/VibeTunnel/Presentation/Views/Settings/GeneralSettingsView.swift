@@ -23,7 +23,7 @@ struct GeneralSettingsView: View {
     private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "GeneralSettings")
 
     var updateChannel: UpdateChannel {
-        UpdateChannel(rawValue: updateChannelRaw) ?? .stable
+        UpdateChannel(rawValue: self.updateChannelRaw) ?? .stable
     }
 
     // MARK: - Helper Properties
@@ -33,13 +33,13 @@ struct GeneralSettingsView: View {
     // when permissions change. Without this, the UI would not update when permissions are
     // granted in System Settings while this view is visible.
     private var hasAppleScriptPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.appleScript)
+        _ = self.permissionUpdateTrigger
+        return self.permissionManager.hasPermission(.appleScript)
     }
 
     private var hasAccessibilityPermission: Bool {
-        _ = permissionUpdateTrigger
-        return permissionManager.hasPermission(.accessibility)
+        _ = self.permissionUpdateTrigger
+        return self.permissionManager.hasPermission(.accessibility)
     }
 
     var body: some View {
@@ -50,14 +50,13 @@ struct GeneralSettingsView: View {
 
                 // Repository section
                 RepositorySettingsSection(repositoryBasePath: .init(
-                    get: { configManager.repositoryBasePath },
-                    set: { configManager.updateRepositoryBasePath($0) }
-                ))
+                    get: { self.configManager.repositoryBasePath },
+                    set: { self.configManager.updateRepositoryBasePath($0) }))
 
                 Section {
                     // Launch at Login
                     VStack(alignment: .leading, spacing: 4) {
-                        Toggle("Launch at Login", isOn: launchAtLoginBinding)
+                        Toggle("Launch at Login", isOn: self.launchAtLoginBinding)
                         Text("Automatically start VibeTunnel when you log into your Mac.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -65,7 +64,7 @@ struct GeneralSettingsView: View {
 
                     // Show in Dock
                     VStack(alignment: .leading, spacing: 4) {
-                        Toggle("Show in Dock", isOn: showInDockBinding)
+                        Toggle("Show in Dock", isOn: self.showInDockBinding)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Show VibeTunnel icon in the Dock.")
                                 .font(.caption)
@@ -78,7 +77,7 @@ struct GeneralSettingsView: View {
 
                     // Prevent Sleep
                     VStack(alignment: .leading, spacing: 4) {
-                        Toggle("Prevent Sleep When Running", isOn: $preventSleepWhenRunning)
+                        Toggle("Prevent Sleep When Running", isOn: self.$preventSleepWhenRunning)
                         Text("Keep your Mac awake while VibeTunnel sessions are active.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -90,10 +89,9 @@ struct GeneralSettingsView: View {
 
                 // System Permissions section (moved from Security)
                 PermissionsSection(
-                    hasAppleScriptPermission: hasAppleScriptPermission,
-                    hasAccessibilityPermission: hasAccessibilityPermission,
-                    permissionManager: permissionManager
-                )
+                    hasAppleScriptPermission: self.hasAppleScriptPermission,
+                    hasAccessibilityPermission: self.hasAccessibilityPermission,
+                    permissionManager: self.permissionManager)
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
@@ -101,67 +99,63 @@ struct GeneralSettingsView: View {
         }
         .task {
             // Sync launch at login status
-            autostart = startupManager.isLaunchAtLoginEnabled
+            self.autostart = self.startupManager.isLaunchAtLoginEnabled
             // Check permissions before first render to avoid UI flashing
-            await permissionManager.checkAllPermissions()
+            await self.permissionManager.checkAllPermissions()
         }
         .onAppear {
             // Register for continuous monitoring
-            permissionManager.registerForMonitoring()
+            self.permissionManager.registerForMonitoring()
         }
         .onDisappear {
-            permissionManager.unregisterFromMonitoring()
+            self.permissionManager.unregisterFromMonitoring()
         }
         .onReceive(NotificationCenter.default.publisher(for: .permissionsUpdated)) { _ in
             // Increment trigger to force computed property re-evaluation
-            permissionUpdateTrigger += 1
+            self.permissionUpdateTrigger += 1
         }
     }
 
     private var launchAtLoginBinding: Binding<Bool> {
         Binding(
-            get: { autostart },
+            get: { self.autostart },
             set: { newValue in
-                autostart = newValue
-                startupManager.setLaunchAtLogin(enabled: newValue)
-            }
-        )
+                self.autostart = newValue
+                self.startupManager.setLaunchAtLogin(enabled: newValue)
+            })
     }
 
     private var showInDockBinding: Binding<Bool> {
         Binding(
-            get: { showInDock },
+            get: { self.showInDock },
             set: { newValue in
-                showInDock = newValue
+                self.showInDock = newValue
                 // Don't change activation policy while settings window is open
                 // The change will be applied when the settings window closes
-            }
-        )
+            })
     }
 
     private var updateChannelBinding: Binding<UpdateChannel> {
         Binding(
-            get: { updateChannel },
+            get: { self.updateChannel },
             set: { newValue in
-                updateChannelRaw = newValue.rawValue
+                self.updateChannelRaw = newValue.rawValue
                 // Notify the updater manager about the channel change
                 NotificationCenter.default.post(
                     name: Notification.Name("UpdateChannelChanged"),
                     object: nil,
-                    userInfo: ["channel": newValue]
-                )
-            }
-        )
+                    userInfo: ["channel": newValue])
+            })
     }
 
     private func checkForUpdates() {
-        isCheckingForUpdates = true
+        self.isCheckingForUpdates = true
         NotificationCenter.default.post(name: Notification.Name("checkForUpdates"), object: nil)
 
         // Reset after a delay
         Task {
             try? await Task.sleep(for: .seconds(2))
-            isCheckingForUpdates = false
+            self.isCheckingForUpdates = false
         }
     }
 }

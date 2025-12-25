@@ -23,7 +23,7 @@ struct ModelTests {
 
         @Test("TunnelSession with process ID")
         func initWithProcessID() throws {
-            let pid: Int32 = 12_345
+            let pid: Int32 = 12345
             let session = TunnelSession(processID: pid)
 
             #expect(session.processID == pid)
@@ -46,7 +46,7 @@ struct ModelTests {
 
         @Test("TunnelSession serialization", .tags(.models))
         func serialization() throws {
-            let session = TunnelSession(id: UUID(), processID: 99_999)
+            let session = TunnelSession(id: UUID(), processID: 99999)
 
             // Encode
             let encoder = JSONEncoder()
@@ -91,8 +91,7 @@ struct ModelTests {
             let request2 = CreateSessionRequest(
                 workingDirectory: "/tmp",
                 environment: ["KEY": "value"],
-                shell: "/bin/zsh"
-            )
+                shell: "/bin/zsh")
             #expect(request2.workingDirectory == "/tmp")
             #expect(request2.environment?["KEY"] == "value")
             #expect(request2.shell == "/bin/zsh")
@@ -103,8 +102,7 @@ struct ModelTests {
             let request = CreateSessionRequest(
                 workingDirectory: "/Users/test",
                 environment: ["PATH": "/usr/bin", "LANG": "en_US.UTF-8"],
-                shell: "/bin/bash"
-            )
+                shell: "/bin/bash")
 
             let data = try JSONEncoder().encode(request)
             let decoded = try JSONDecoder().decode(CreateSessionRequest.self, from: data)
@@ -175,8 +173,7 @@ struct ModelTests {
     struct UpdateChannelTests {
         @Test("UpdateChannel precedence", arguments: zip(
             UpdateChannel.allCases,
-            ["stable", "prerelease"]
-        ))
+            ["stable", "prerelease"]))
         func updateChannelPrecedence(channel: UpdateChannel, expectedRawValue: String) throws {
             #expect(channel.rawValue == expectedRawValue)
         }
@@ -203,7 +200,7 @@ struct ModelTests {
             ("1.0.0-rc1", UpdateChannel.prerelease),
             ("1.0.0-pre", UpdateChannel.prerelease),
             ("1.0.0-dev", UpdateChannel.prerelease),
-            ("1.2.3", UpdateChannel.stable)
+            ("1.2.3", UpdateChannel.stable),
         ])
         func defaultChannelDetection(version: String, expectedChannel: UpdateChannel) throws {
             let detectedChannel = UpdateChannel.defaultChannel(for: version)
@@ -276,7 +273,7 @@ struct ModelTests {
             #expect(AppConstants.Defaults.dashboardAccessMode == DashboardAccessMode.network.rawValue)
 
             // Verify server port default
-            #expect(AppConstants.Defaults.serverPort == 4_020)
+            #expect(AppConstants.Defaults.serverPort == 4020)
 
             // Verify other defaults
             #expect(AppConstants.Defaults.cleanupOnStartup == true)
@@ -306,16 +303,14 @@ struct ModelTests {
             // When key exists with localhost, should return localhost
             UserDefaults.standard.set(
                 AppConstants.DashboardAccessModeRawValues.localhost,
-                forKey: AppConstants.UserDefaultsKeys.dashboardAccessMode
-            )
+                forKey: AppConstants.UserDefaultsKeys.dashboardAccessMode)
             let localhostValue = AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.dashboardAccessMode)
             #expect(localhostValue == AppConstants.DashboardAccessModeRawValues.localhost)
 
             // When key exists with network, should return network
             UserDefaults.standard.set(
                 AppConstants.DashboardAccessModeRawValues.network,
-                forKey: AppConstants.UserDefaultsKeys.dashboardAccessMode
-            )
+                forKey: AppConstants.UserDefaultsKeys.dashboardAccessMode)
             let networkValue = AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.dashboardAccessMode)
             #expect(networkValue == AppConstants.DashboardAccessModeRawValues.network)
         }
@@ -332,6 +327,6 @@ actor TestActor {
     }
 
     func getSession() -> TunnelSession? {
-        session
+        self.session
     }
 }

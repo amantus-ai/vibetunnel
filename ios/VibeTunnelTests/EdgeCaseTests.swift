@@ -70,9 +70,9 @@ struct EdgeCaseTests {
 
         // On 64-bit systems, Int can hold UInt32.max
         #if arch(i386) || arch(arm)
-            #expect(Int(exactly: uint32Max) == nil) // Can't fit in 32-bit Int
+        #expect(Int(exactly: uint32Max) == nil) // Can't fit in 32-bit Int
         #else
-            #expect(Int(exactly: uint32Max) != nil) // Can fit in 64-bit Int
+        #expect(Int(exactly: uint32Max) != nil) // Can fit in 64-bit Int
         #endif
         #expect(Int32(exactly: int32Max) == int32Max)
     }
@@ -94,7 +94,7 @@ struct EdgeCaseTests {
 
         // Test safe division
         func safeDivide(_ a: Double, by b: Double) -> Double? {
-            guard b != 0 && !b.isNaN else { return nil }
+            guard b != 0, !b.isNaN else { return nil }
             let result = a / b
             return result.isFinite ? result : nil
         }
@@ -119,7 +119,7 @@ struct EdgeCaseTests {
 
         // Safe array access
         func safeAccess<T>(_ array: [T], at index: Int) -> T? {
-            guard index >= 0 && index < array.count else { return nil }
+            guard index >= 0, index < array.count else { return nil }
             return array[index]
         }
 
@@ -132,7 +132,7 @@ struct EdgeCaseTests {
     @Test("Large collection performance boundaries")
     func largeCollections() {
         // Test with moderately large collections
-        let largeSize = 10_000
+        let largeSize = 10000
         let largeArray = Array(0..<largeSize)
         let largeSet = Set(0..<largeSize)
         let largeDict = Dictionary(uniqueKeysWithValues: (0..<largeSize).map { ($0, "value\($0)") })
@@ -142,11 +142,11 @@ struct EdgeCaseTests {
         #expect(largeDict.count == largeSize)
 
         // Test contains performance
-        #expect(largeSet.contains(5_000))
+        #expect(largeSet.contains(5000))
         #expect(!largeSet.contains(largeSize))
 
         // Test dictionary access
-        #expect(largeDict[5_000] == "value5000")
+        #expect(largeDict[5000] == "value5000")
         #expect(largeDict[largeSize] == nil)
     }
 
@@ -163,13 +163,13 @@ struct EdgeCaseTests {
         #expect(distantFuture > now)
 
         // Test date calculations near boundaries
-        let oneDay: TimeInterval = 86_400
+        let oneDay: TimeInterval = 86400
         let farFuture = distantFuture.addingTimeInterval(-oneDay)
         #expect(farFuture < distantFuture)
 
         // Test date component validation
         var components = DateComponents()
-        components.year = 2_024
+        components.year = 2024
         components.month = 13 // Invalid month
         components.day = 32 // Invalid day
 
@@ -195,7 +195,7 @@ struct EdgeCaseTests {
             "http://localhost:8080",
             "ftp://files.example.com",
             "file:///Users/test/file.txt",
-            "https://example.com/path%20with%20spaces"
+            "https://example.com/path%20with%20spaces",
         ]
 
         for urlString in validURLs {
@@ -210,12 +210,12 @@ struct EdgeCaseTests {
             ("http://", true), // Has scheme but no host
             ("://missing-scheme", true), // Invalid format
             ("http://[invalid-ipv6", false), // Malformed IPv6
-            ("https://example.com/\u{0000}", true) // Null character
+            ("https://example.com/\u{0000}", true), // Null character
         ]
 
         for (urlString, mightBeValid) in problematicURLs {
             let url = URL(string: urlString)
-            if mightBeValid && url != nil {
+            if mightBeValid, url != nil {
                 // Check if it's actually a useful URL
                 #expect(url?.scheme != nil || url?.host != nil || url?.path != nil)
             } else {
@@ -224,11 +224,11 @@ struct EdgeCaseTests {
         }
 
         // Test extremely long URLs
-        let longPath = String(repeating: "a", count: 2_000)
+        let longPath = String(repeating: "a", count: 2000)
         let longURL = "https://example.com/\(longPath)"
         let url = URL(string: longURL)
         #expect(url != nil)
-        #expect(url?.absoluteString.count ?? 0 > 2_000)
+        #expect(url?.absoluteString.count ?? 0 > 2000)
     }
 
     // MARK: - Thread Safety Boundaries
@@ -241,13 +241,13 @@ struct EdgeCaseTests {
             private let queue = DispatchQueue(label: "counter", attributes: .concurrent)
 
             func increment() {
-                queue.async(flags: .barrier) {
+                self.queue.async(flags: .barrier) {
                     self.value += 1
                 }
             }
 
             func read() -> Int {
-                queue.sync { value }
+                self.queue.sync { self.value }
             }
         }
 
@@ -275,12 +275,12 @@ struct EdgeCaseTests {
     @Test("Memory allocation boundaries")
     func memoryBoundaries() {
         // Test large data allocation
-        let megabyte = 1_024 * 1_024
+        let megabyte = 1024 * 1024
         let size = 10 * megabyte // 10 MB
 
         // Safely allocate memory
         func safeAllocate(bytes: Int) -> Data? {
-            guard bytes > 0 && bytes < Int.max / 2 else { return nil }
+            guard bytes > 0, bytes < Int.max / 2 else { return nil }
             return Data(count: bytes)
         }
 
@@ -308,7 +308,7 @@ struct EdgeCaseTests {
             "👨‍👩‍👧‍👦", // Family emoji
             "\u{0000}", // Null character
             "\u{FFFF}", // Maximum BMP character
-            "A\u{0301}" // Combining character (A + accent)
+            "A\u{0301}", // Combining character (A + accent)
         ]
 
         for testString in testCases {
@@ -347,13 +347,13 @@ struct EdgeCaseTests {
             init(from decoder: Decoder) throws {
                 let container = try decoder.container(keyedBy: CodingKeys.self)
                 if let intValue = try? container.decode(Int.self, forKey: .value) {
-                    value = intValue
+                    self.value = intValue
                 } else if let doubleValue = try? container.decode(Double.self, forKey: .value) {
-                    value = doubleValue
+                    self.value = doubleValue
                 } else if let stringValue = try? container.decode(String.self, forKey: .value) {
-                    value = stringValue
+                    self.value = stringValue
                 } else {
-                    value = nil
+                    self.value = nil
                 }
             }
 
@@ -380,7 +380,7 @@ struct EdgeCaseTests {
             (#"{"value": "string with \"quotes\""}"#, true),
             (#"{"value": "\u0000"}"#, true), // Null character
             (#"{invalid json}"#, false),
-            (#"{"value": undefined}"#, false)
+            (#"{"value": undefined}"#, false),
         ]
 
         for (json, shouldSucceed) in edgeCases {

@@ -77,8 +77,7 @@ extension View {
         systemPermissionManager: SystemPermissionManager? = nil,
         terminalLauncher: TerminalLauncher? = nil,
         tailscaleService: TailscaleService? = nil,
-        cloudflareService: CloudflareService? = nil
-    )
+        cloudflareService: CloudflareService? = nil)
         -> some View
     {
         self
@@ -86,8 +85,7 @@ extension View {
             .environment(\.ngrokService, ngrokService ?? NgrokService.shared)
             .environment(
                 \.systemPermissionManager,
-                systemPermissionManager ?? SystemPermissionManager.shared
-            )
+                systemPermissionManager ?? SystemPermissionManager.shared)
             .environment(\.terminalLauncher, terminalLauncher ?? TerminalLauncher.shared)
             .environment(\.tailscaleService, tailscaleService ?? TailscaleService.shared)
             .environment(\.cloudflareService, cloudflareService ?? CloudflareService.shared)

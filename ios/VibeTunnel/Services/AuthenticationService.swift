@@ -15,7 +15,7 @@ enum AuthenticationError: LocalizedError {
             "Invalid username or password"
         case .tokenExpired:
             "Authentication token has expired"
-        case .serverError(let message):
+        case let .serverError(message):
             "Server error: \(message)"
         }
     }
@@ -39,7 +39,7 @@ final class AuthenticationService: ObservableObject {
     /// Supported authentication methods.
     /// Defines the different ways users can authenticate with the server.
     enum AuthMethod: String, Codable {
-        case password = "password"
+        case password
         case sshKey = "ssh-key"
         case noAuth = "no-auth"
     }
@@ -84,8 +84,8 @@ final class AuthenticationService: ObservableObject {
     init(
         apiClient: APIClient,
         serverConfig: ServerConfig,
-        keychainService: KeychainServiceProtocol = KeychainService()
-    ) {
+        keychainService: KeychainServiceProtocol = KeychainService())
+    {
         self.apiClient = apiClient
         self.serverConfig = serverConfig
         self.keychainService = keychainService
@@ -94,7 +94,7 @@ final class AuthenticationService: ObservableObject {
 
         // Check for existing authentication
         Task {
-            await checkExistingAuth()
+            await self.checkExistingAuth()
         }
     }
 
@@ -102,7 +102,7 @@ final class AuthenticationService: ObservableObject {
 
     /// Get the current system username
     func getCurrentUsername() async throws -> String {
-        let url = serverConfig.apiURL(path: "/api/auth/current-user")
+        let url = self.serverConfig.apiURL(path: "/api/auth/current-user")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
 
@@ -118,7 +118,7 @@ final class AuthenticationService: ObservableObject {
 
     /// Get authentication configuration from server
     func getAuthConfig() async throws -> AuthConfig {
-        let url = serverConfig.apiURL(path: "/api/auth/config")
+        let url = self.serverConfig.apiURL(path: "/api/auth/config")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
 
@@ -128,7 +128,7 @@ final class AuthenticationService: ObservableObject {
 
     /// Authenticate with password
     func authenticateWithPassword(username: String, password: String) async throws {
-        let url = serverConfig.apiURL(path: "/api/auth/password")
+        let url = self.serverConfig.apiURL(path: "/api/auth/password")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -146,19 +146,18 @@ final class AuthenticationService: ObservableObject {
 
         if httpResponse.statusCode == 200, authResponse.success, let token = authResponse.token {
             // Store token and user data
-            try keychainService.savePassword(token, for: tokenKey)
+            try self.keychainService.savePassword(token, for: self.tokenKey)
 
             let userData = UserData(
                 userId: username,
                 authMethod: authResponse.authMethod ?? "password",
-                loginTime: Date()
-            )
+                loginTime: Date())
             let userDataJson = try JSONEncoder().encode(userData)
             guard let userDataString = String(data: userDataJson, encoding: .utf8) else {
-                logger.error("Failed to convert user data to UTF-8 string")
+                self.logger.error("Failed to convert user data to UTF-8 string")
                 throw APIError.dataEncodingFailed
             }
-            try keychainService.savePassword(userDataString, for: userDataKey)
+            try self.keychainService.savePassword(userDataString, for: self.userDataKey)
 
             // Update state
             self.authToken = token
@@ -166,7 +165,7 @@ final class AuthenticationService: ObservableObject {
             self.authMethod = AuthMethod(rawValue: authResponse.authMethod ?? "password")
             self.isAuthenticated = true
 
-            logger.info("Successfully authenticated user: \(username)")
+            self.logger.info("Successfully authenticated user: \(username)")
         } else {
             throw APIError.authenticationFailed(authResponse.error ?? "Authentication failed")
         }
@@ -176,7 +175,7 @@ final class AuthenticationService: ObservableObject {
     func verifyToken() async -> Bool {
         guard let token = authToken else { return false }
 
-        let url = serverConfig.apiURL(path: "/api/auth/verify")
+        let url = self.serverConfig.apiURL(path: "/api/auth/verify")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -187,7 +186,7 @@ final class AuthenticationService: ObservableObject {
                 return httpResponse.statusCode == 200
             }
         } catch {
-            logger.error("Token verification failed: \(error)")
+            self.logger.error("Token verification failed: \(error)")
         }
 
         return false
@@ -197,7 +196,7 @@ final class AuthenticationService: ObservableObject {
     func logout() async {
         // Call logout endpoint if authenticated
         if let token = authToken {
-            let url = serverConfig.apiURL(path: "/api/auth/logout")
+            let url = self.serverConfig.apiURL(path: "/api/auth/logout")
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -205,19 +204,19 @@ final class AuthenticationService: ObservableObject {
             do {
                 _ = try await URLSession.shared.data(for: request)
             } catch {
-                logger.error("Logout request failed: \(error)")
+                self.logger.error("Logout request failed: \(error)")
             }
         }
 
         // Clear stored credentials
-        try? keychainService.deletePassword(for: tokenKey)
-        try? keychainService.deletePassword(for: userDataKey)
+        try? self.keychainService.deletePassword(for: self.tokenKey)
+        try? self.keychainService.deletePassword(for: self.userDataKey)
 
         // Clear state
-        authToken = nil
-        currentUser = nil
-        authMethod = nil
-        isAuthenticated = false
+        self.authToken = nil
+        self.currentUser = nil
+        self.authMethod = nil
+        self.isAuthenticated = false
     }
 
     /// Get authentication header for API requests
@@ -226,64 +225,62 @@ final class AuthenticationService: ObservableObject {
         return ["Authorization": "Bearer \(token)"]
     }
 
-    /// Get token for query parameters (used for SSE)
+    /// Get token for query parameters (used for WebSocket auth)
     func getTokenForQuery() -> String? {
-        authToken
+        self.authToken
     }
 
     /// Attempt automatic login using stored credentials for a server profile
     func attemptAutoLogin(profile: ServerProfile) async throws {
-        logger
+        self.logger
             .debug(
-                "attemptAutoLogin called for profile: \(profile.name) (id: \(profile.id)), isAuthenticated: \(isAuthenticated)"
-            )
-        logger.debug("Profile requiresAuth: \(profile.requiresAuth), username: \(profile.username ?? "nil")")
+                "attemptAutoLogin called for profile: \(profile.name) (id: \(profile.id)), isAuthenticated: \(self.isAuthenticated)")
+        self.logger.debug("Profile requiresAuth: \(profile.requiresAuth), username: \(profile.username ?? "nil")")
 
         // Check if we already have valid authentication
-        if isAuthenticated {
+        if self.isAuthenticated {
             let tokenValid = await verifyToken()
             if tokenValid {
-                logger.info("Already authenticated with valid token for user: \(currentUser ?? "unknown")")
+                self.logger.info("Already authenticated with valid token for user: \(self.currentUser ?? "unknown")")
                 return
             } else {
-                logger.warning("Token verification failed, will attempt fresh login")
+                self.logger.warning("Token verification failed, will attempt fresh login")
             }
         }
 
         // Check if profile requires authentication
         if !profile.requiresAuth {
-            logger
+            self.logger
                 .debug(
-                    "Profile does not require authentication, but server requires it - treating as credentials not found"
-                )
+                    "Profile does not require authentication, but server requires it - treating as credentials not found")
             throw AuthenticationError.credentialsNotFound
         }
 
         // Get stored password from keychain
         do {
             let password = try keychainService.getPassword(for: profile.id)
-            logger.debug("Successfully retrieved password from keychain for profile: \(profile.name)")
-            logger.debug("Password length: \(password.count) characters")
+            self.logger.debug("Successfully retrieved password from keychain for profile: \(profile.name)")
+            self.logger.debug("Password length: \(password.count) characters")
 
             // Get username from profile or use default
             guard let username = profile.username else {
-                logger.error("No username configured for profile: \(profile.name)")
+                self.logger.error("No username configured for profile: \(profile.name)")
                 throw AuthenticationError.credentialsNotFound
             }
 
-            logger.debug("Attempting authentication with username: \(username)")
+            self.logger.debug("Attempting authentication with username: \(username)")
 
             // Attempt authentication with stored credentials
             do {
-                try await authenticateWithPassword(username: username, password: password)
-                logger.info("Auto-login successful for user: \(username)")
+                try await self.authenticateWithPassword(username: username, password: password)
+                self.logger.info("Auto-login successful for user: \(username)")
             } catch {
-                logger.error("Auto-login failed for user: \(username), error: \(error)")
+                self.logger.error("Auto-login failed for user: \(username), error: \(error)")
                 if let apiError = error as? APIError {
                     switch apiError {
                     case .serverError(401, _):
                         throw AuthenticationError.invalidCredentials
-                    case .serverError(let code, let message):
+                    case let .serverError(code, message):
                         throw AuthenticationError.serverError(message ?? "HTTP \(code)")
                     default:
                         throw AuthenticationError.serverError(apiError.localizedDescription)
@@ -292,17 +289,16 @@ final class AuthenticationService: ObservableObject {
                 throw AuthenticationError.invalidCredentials
             }
         } catch {
-            logger
+            self.logger
                 .error(
-                    "Failed to retrieve password from keychain for profile: \(profile.name), error: \(error)"
-                )
-            logger.debug("Looking for keychain item with account: server-\(profile.id)")
+                    "Failed to retrieve password from keychain for profile: \(profile.name), error: \(error)")
+            self.logger.debug("Looking for keychain item with account: server-\(profile.id)")
             if let keychainErr = error as? KeychainService.KeychainError {
                 switch keychainErr {
                 case .itemNotFound:
-                    logger.debug("Keychain item not found for profile id: \(profile.id)")
+                    self.logger.debug("Keychain item not found for profile id: \(profile.id)")
                 default:
-                    logger.error("Keychain error: \(keychainErr)")
+                    self.logger.error("Keychain error: \(keychainErr)")
                 }
             }
             throw AuthenticationError.credentialsNotFound
@@ -326,16 +322,16 @@ final class AuthenticationService: ObservableObject {
                 self.authMethod = AuthMethod(rawValue: userData.authMethod)
 
                 // Verify token is still valid
-                if await verifyToken() {
+                if await self.verifyToken() {
                     self.isAuthenticated = true
-                    logger.info("Restored authentication for user: \(userData.userId)")
+                    self.logger.info("Restored authentication for user: \(userData.userId)")
                 } else {
                     // Token invalid, clear it
-                    await logout()
+                    await self.logout()
                 }
             } else {
                 // Token too old, clear it
-                await logout()
+                await self.logout()
             }
         }
     }

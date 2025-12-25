@@ -81,6 +81,6 @@ enum AppleScriptSecurity {
     /// - Parameter string: The string to make into a literal
     /// - Returns: A properly quoted and escaped AppleScript string literal
     static func createStringLiteral(_ string: String) -> String {
-        "\"\(escapeString(string))\""
+        "\"\(self.escapeString(string))\""
     }
 }

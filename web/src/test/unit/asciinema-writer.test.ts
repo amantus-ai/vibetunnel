@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AsciinemaWriter } from '../../server/pty/asciinema-writer';
 
 describe('AsciinemaWriter byte position tracking', () => {
@@ -99,8 +99,7 @@ describe('AsciinemaWriter byte position tracking', () => {
     const outputWithClear = `Some text before${clearScreen}Some text after`;
     writer.writeOutput(Buffer.from(outputWithClear));
 
-    // Wait for write and callback
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await vi.waitFor(() => expect(pruningEvents).toHaveLength(1), { timeout: 1000 });
 
     // Should have detected the clear sequence
     expect(pruningEvents).toHaveLength(1);
@@ -144,6 +143,10 @@ describe('AsciinemaWriter byte position tracking', () => {
 
     writer.writeOutput(Buffer.from('Enter alt screen\x1b[?1049hIn alt screen'));
     await new Promise((resolve) => setTimeout(resolve, 20));
+
+    await vi.waitFor(() => expect(pruningEvents.length).toBeGreaterThanOrEqual(3), {
+      timeout: 1000,
+    });
 
     // Should have detected all sequences
     expect(pruningEvents.length).toBeGreaterThanOrEqual(3);
@@ -260,7 +263,7 @@ describe('AsciinemaWriter byte position tracking', () => {
     const outputWithMultipleClear = 'Text1\x1b[2JText2\x1b[3JText3\x1bcText4';
     writer.writeOutput(Buffer.from(outputWithMultipleClear));
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await vi.waitFor(() => expect(pruningEvents).toHaveLength(1), { timeout: 1000 });
 
     // Should only report the last one (as per the implementation)
     expect(pruningEvents).toHaveLength(1);

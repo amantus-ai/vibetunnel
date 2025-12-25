@@ -249,11 +249,11 @@ struct CastFileTests {
             private var events: [CastEvent] = []
 
             func addEvent(_ event: CastEvent) {
-                events.append(event)
+                self.events.append(event)
             }
 
             func getEvents() -> [CastEvent] {
-                events
+                self.events
             }
         }
 

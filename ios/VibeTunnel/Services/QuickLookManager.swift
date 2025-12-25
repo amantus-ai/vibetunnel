@@ -24,7 +24,7 @@ class QuickLookManager: NSObject, ObservableObject {
         super.init()
 
         // Clean up old files on init
-        cleanupTemporaryFiles()
+        self.cleanupTemporaryFiles()
     }
 
     func previewFile(_ file: FileEntry, apiClient: APIClient) async throws {
@@ -32,28 +32,28 @@ class QuickLookManager: NSObject, ObservableObject {
             throw QuickLookError.isDirectory
         }
 
-        currentFile = file
-        isDownloading = true
-        downloadProgress = 0
+        self.currentFile = file
+        self.isDownloading = true
+        self.downloadProgress = 0
 
         do {
             let localURL = try await downloadFileForPreview(file: file, apiClient: apiClient)
 
             // Create preview item
             let previewItem = PreviewItem(url: localURL, title: file.name)
-            previewItems = [previewItem]
+            self.previewItems = [previewItem]
 
-            isDownloading = false
-            isPresenting = true
+            self.isDownloading = false
+            self.isPresenting = true
         } catch {
-            isDownloading = false
+            self.isDownloading = false
             throw error
         }
     }
 
     private func downloadFileForPreview(file: FileEntry, apiClient: APIClient) async throws -> URL {
         // Check if file is already cached
-        let cachedURL = temporaryDirectory.appendingPathComponent(file.name)
+        let cachedURL = self.temporaryDirectory.appendingPathComponent(file.name)
 
         // For now, always download fresh (could implement proper caching later)
         if FileManager.default.fileExists(atPath: cachedURL.path) {
@@ -75,12 +75,12 @@ class QuickLookManager: NSObject, ObservableObject {
 
     func cleanupTemporaryFiles() {
         // Remove files older than 1 hour
-        let oneHourAgo = Date().addingTimeInterval(-3_600)
+        let oneHourAgo = Date().addingTimeInterval(-3600)
 
         guard let files = try? FileManager.default.contentsOfDirectory(
             at: temporaryDirectory,
-            includingPropertiesForKeys: [.creationDateKey]
-        ) else {
+            includingPropertiesForKeys: [.creationDateKey])
+        else {
             return
         }
 
@@ -105,11 +105,11 @@ class QuickLookManager: NSObject, ObservableObject {
 
 extension QuickLookManager: QLPreviewControllerDataSource {
     func numberOfPreviewItems(in controller: QLPreviewController) -> Int {
-        previewItems.count
+        self.previewItems.count
     }
 
     func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem {
-        previewItems[index]
+        self.previewItems[index]
     }
 }
 
@@ -118,9 +118,9 @@ extension QuickLookManager: QLPreviewControllerDataSource {
 extension QuickLookManager: QLPreviewControllerDelegate {
     nonisolated func previewControllerDidDismiss(_ controller: QLPreviewController) {
         Task { @MainActor in
-            isPresenting = false
-            previewItems = []
-            currentFile = nil
+            self.isPresenting = false
+            self.previewItems = []
+            self.currentFile = nil
         }
     }
 }

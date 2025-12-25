@@ -176,6 +176,7 @@ export async function waitForModalClosed(
         const backdrop = document.querySelector('.modal-backdrop, .overlay, [class*="backdrop"]');
         return !backdrop || (backdrop as HTMLElement).style.display === 'none';
       },
+      undefined,
       { timeout: 2000 }
     )
     .catch(() => {}); // Ignore if no backdrop

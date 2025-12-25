@@ -53,14 +53,14 @@ struct Session: Codable, Identifiable, Equatable, Hashable {
         if let name, !name.isEmpty {
             return name
         }
-        return command.joined(separator: " ")
+        return self.command.joined(separator: " ")
     }
 
     /// Indicates whether the session is currently active.
     ///
     /// - Returns: true if the session status is `.running`.
     var isRunning: Bool {
-        status == .running
+        self.status == .running
     }
 
     /// Formats the session start time for display.
@@ -100,7 +100,7 @@ struct Session: Codable, Identifiable, Equatable, Hashable {
             return displayFormatter.string(from: date)
         }
 
-        return startedAt
+        return self.startedAt
     }
 }
 
@@ -152,8 +152,8 @@ struct SessionCreateData: Codable {
         name: String? = nil,
         spawnTerminal: Bool = true,
         cols: Int = 120,
-        rows: Int = 30
-    ) {
+        rows: Int = 30)
+    {
         self.command = [command]
         self.workingDir = workingDir
         self.name = name

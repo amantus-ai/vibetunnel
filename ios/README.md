@@ -6,8 +6,8 @@
 
 - **Native SwiftUI app** optimized for iOS 18+
 - **Beautiful terminal-inspired UI** with custom theme and animations
-- **Full terminal emulation** using SwiftTerm
-- **Real-time session management** with SSE streaming
+- **Full terminal emulation** using ghostty-web (WASM + canvas)
+- **Real-time session management** with WebSocket buffer streaming
 - **Keyboard toolbar** with special keys (arrows, ESC, CTRL combinations)
 - **Font size adjustment** with live preview
 - **Haptic feedback** throughout the interface
@@ -45,16 +45,11 @@
 3. Choose "Create groups" and ensure "Copy items if needed" is checked
 4. Make sure the target membership is set for all files
 
-### 3. Add SwiftTerm Package
+### 3. Bundle Ghostty Resources
 
-1. Select your project in the navigator
-2. Select the VibeTunnel target
-3. Go to **Package Dependencies** tab
-4. Click the **+** button
-5. Enter: `https://github.com/migueldeicaza/SwiftTerm.git`
-6. Version rule: **Up to Next Major** from `1.2.0`
-7. Click **Add Package**
-8. Select **SwiftTerm** library and add to VibeTunnel target
+1. Ensure `VibeTunnel/Resources/ghostty/ghostty-web.js` is included in the target
+2. Ensure `VibeTunnel/Resources/ghostty/ghostty-vt.wasm` is included in the target
+3. These files are vendored from `web/node_modules/ghostty-web/dist`
 
 ### 4. Configure Info.plist
 
@@ -109,7 +104,7 @@ VibeTunnel/
 ├── Services/              # Networking and API
 │   ├── APIClient          # HTTP client for REST API
 │   ├── SessionService     # Session management logic
-│   └── SSEClient          # Server-Sent Events streaming
+│   └── BufferWebSocketClient # Binary buffer streaming
 ├── Utils/                 # Helpers and extensions
 │   └── Theme.swift        # Design system and styling
 └── Resources/             # Assets and configuration
@@ -129,7 +124,7 @@ VibeTunnel/
    - Name your session (optional)
 
 3. **Use Terminal**
-   - Full terminal emulation with SwiftTerm
+   - Full terminal emulation with ghostty-web
    - Special keys toolbar for mobile input
    - Pinch to zoom or use menu for font size
    - Long press for copy/paste
@@ -144,7 +139,7 @@ VibeTunnel/
 
 - **Minimum iOS**: 18.0 (uses latest SwiftUI features)
 - **Swift**: 6.0 compatible
-- **Dependencies**: SwiftTerm for terminal emulation
+- **Dependencies**: ghostty-web resources for terminal emulation
 - **Architecture**: MVVM with SwiftUI and Combine
 
 ### Logging with vtlog

@@ -14,10 +14,6 @@ enum APIEndpoints {
         "/api/sessions/\(id)/input"
     }
 
-    static func sessionStream(id: String) -> String {
-        "/api/sessions/\(id)/stream"
-    }
-
     static func sessionResize(id: String) -> String {
         "/api/sessions/\(id)/resize"
     }
@@ -28,5 +24,5 @@ enum APIEndpoints {
 
     // MARK: - WebSocket
 
-    static let buffers = "/buffers"
+    static let ws = "/ws"
 }

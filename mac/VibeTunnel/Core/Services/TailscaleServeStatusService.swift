@@ -22,11 +22,11 @@ final class TailscaleServeStatusService {
     func startMonitoring() {
         // Initial fetch
         Task {
-            await fetchStatus()
+            await self.fetchStatus()
         }
 
         // Set up periodic updates
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
+        self.updateTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
             Task { @MainActor in
                 await self.fetchStatus()
             }
@@ -35,14 +35,14 @@ final class TailscaleServeStatusService {
 
     /// Stop polling for status updates
     func stopMonitoring() {
-        updateTimer?.invalidate()
-        updateTimer = nil
+        self.updateTimer?.invalidate()
+        self.updateTimer = nil
     }
 
     /// Fetch the current Tailscale Serve status
     @MainActor
     func fetchStatus() async {
-        isLoading = true
+        self.isLoading = true
         defer { isLoading = false }
 
         // Get server port
@@ -50,7 +50,7 @@ final class TailscaleServeStatusService {
         let urlString = "http://localhost:\(port)/api/sessions/tailscale/status"
 
         guard let url = URL(string: urlString) else {
-            logger.error("Invalid URL for Tailscale status endpoint")
+            self.logger.error("Invalid URL for Tailscale status endpoint")
             return
         }
 
@@ -58,17 +58,17 @@ final class TailscaleServeStatusService {
             let (data, response) = try await URLSession.shared.data(from: url)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                logger.error("Invalid response type")
-                isRunning = false
-                lastError = "Invalid server response"
+                self.logger.error("Invalid response type")
+                self.isRunning = false
+                self.lastError = "Invalid server response"
                 return
             }
 
             guard httpResponse.statusCode == 200 else {
-                logger.error("HTTP error: \(httpResponse.statusCode)")
+                self.logger.error("HTTP error: \(httpResponse.statusCode)")
                 // If we get a non-200 response, there's an issue with the endpoint
-                isRunning = false
-                lastError = "Unable to check status (HTTP \(httpResponse.statusCode))"
+                self.isRunning = false
+                self.lastError = "Unable to check status (HTTP \(httpResponse.statusCode))"
                 return
             }
 
@@ -91,27 +91,27 @@ final class TailscaleServeStatusService {
                 }
                 throw DecodingError.dataCorruptedError(
                     in: container,
-                    debugDescription: "Cannot decode date string \(dateString)"
-                )
+                    debugDescription: "Cannot decode date string \(dateString)")
             }
 
             let status = try decoder.decode(TailscaleServeStatus.self, from: data)
 
             // Update published properties
-            isRunning = status.isRunning
-            lastError = status.lastError
-            startTime = status.startTime
+            self.isRunning = status.isRunning
+            self.lastError = status.lastError
+            self.startTime = status.startTime
 
-            logger.debug("Tailscale Serve status - Running: \(status.isRunning), Error: \(status.lastError ?? "none")")
+            self.logger
+                .debug("Tailscale Serve status - Running: \(status.isRunning), Error: \(status.lastError ?? "none")")
         } catch {
-            logger.error("Failed to fetch Tailscale Serve status: \(error.localizedDescription)")
+            self.logger.error("Failed to fetch Tailscale Serve status: \(error.localizedDescription)")
             // On error, assume not running
-            isRunning = false
+            self.isRunning = false
             // Keep error messages concise to prevent UI jumping
             if error.localizedDescription.contains("couldn't be read") {
-                lastError = "Status check failed"
+                self.lastError = "Status check failed"
             } else {
-                lastError = error.localizedDescription
+                self.lastError = error.localizedDescription
             }
         }
     }

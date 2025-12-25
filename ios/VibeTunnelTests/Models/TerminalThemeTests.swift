@@ -50,7 +50,7 @@ struct TerminalThemeTests {
             "VS Code Dark",
             "Solarized Dark",
             "Dracula",
-            "Nord"
+            "Nord",
         ]
 
         for expectedTheme in expectedThemes {
@@ -94,7 +94,7 @@ struct TerminalThemeTests {
             theme.blue,
             theme.magenta,
             theme.cyan,
-            theme.white
+            theme.white,
         ]
 
         // Ensure we have the expected number of colors
@@ -110,7 +110,7 @@ struct TerminalThemeTests {
             theme.brightBlue,
             theme.brightMagenta,
             theme.brightCyan,
-            theme.brightWhite
+            theme.brightWhite,
         ]
 
         #expect(brightColors.count == 8)

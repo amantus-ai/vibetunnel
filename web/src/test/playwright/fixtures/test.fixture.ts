@@ -1,4 +1,6 @@
 import { test as base } from '@playwright/test';
+import { SessionCleanupHelper } from '../helpers/session-cleanup.helper';
+import { TestSessionTracker } from '../helpers/test-session-tracker';
 import { SessionListPage } from '../pages/session-list.page';
 import { SessionViewPage } from '../pages/session-view.page';
 import { testConfig } from '../test-config';
@@ -19,6 +21,11 @@ export const test = base.extend<TestFixtures>({
     page.setDefaultTimeout(defaultTimeout);
     page.setDefaultNavigationTimeout(navigationTimeout);
 
+    // Clipboard access for paste tests
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
+      origin: testConfig.baseURL,
+    });
+
     // Block unnecessary resources for faster loading
     await context.route('**/*.{png,jpg,jpeg,gif,svg,woff,woff2,ttf,ico}', (route) => route.abort());
     await context.route('**/analytics/**', (route) => route.abort());
@@ -28,13 +35,7 @@ export const test = base.extend<TestFixtures>({
     page.on('console', (msg) => {
       const text = msg.text();
       // Suppress known harmless errors
-      if (
-        text.includes('Failed to load resource: net::ERR_FAILED') ||
-        text.includes('Control event stream error') ||
-        text.includes('stream connection error') ||
-        text.includes('EventSource') ||
-        text.includes('WebSocket')
-      ) {
+      if (text.includes('Failed to load resource: net::ERR_FAILED') || text.includes('WebSocket')) {
         return; // Suppress these expected errors
       }
       // Only log actual errors
@@ -135,6 +136,11 @@ export const test = base.extend<TestFixtures>({
     await use(page);
 
     // Cleanup after test
+    try {
+      await new SessionCleanupHelper(page).cleanupTestSessions();
+      TestSessionTracker.getInstance().clear();
+    } catch {}
+
     await page
       .evaluate(() => {
         localStorage.clear();

@@ -61,7 +61,7 @@ struct NewSessionForm: View {
             // Header with back button
             HStack {
                 Button(action: {
-                    isPresented = false
+                    self.isPresented = false
                 }, label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
@@ -90,12 +90,10 @@ struct NewSessionForm: View {
                 LinearGradient(
                     colors: [
                         Color(NSColor.controlBackgroundColor).opacity(0.6),
-                        Color(NSColor.controlBackgroundColor).opacity(0.3)
+                        Color(NSColor.controlBackgroundColor).opacity(0.3),
                     ],
                     startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+                    endPoint: .bottom))
 
             Divider()
 
@@ -119,12 +117,10 @@ struct NewSessionForm: View {
                         .padding(10)
                         .background(
                             RoundedRectangle(cornerRadius: 6)
-                                .fill(Color.yellow.opacity(0.1))
-                        )
+                                .fill(Color.yellow.opacity(0.1)))
                         .overlay(
                             RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color.yellow.opacity(0.3), lineWidth: 1)
-                        )
+                                .stroke(Color.yellow.opacity(0.3), lineWidth: 1))
                     }
 
                     // Name field (first)
@@ -133,9 +129,9 @@ struct NewSessionForm: View {
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.secondary)
 
-                        TextField("(optional)", text: $sessionName)
+                        TextField("(optional)", text: self.$sessionName)
                             .textFieldStyle(.roundedBorder)
-                            .focused($focusedField, equals: .name)
+                            .focused(self.$focusedField, equals: .name)
                     }
 
                     // Command field (second)
@@ -144,15 +140,15 @@ struct NewSessionForm: View {
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.secondary)
 
-                        TextField("claude", text: $command)
+                        TextField("claude", text: self.$command)
                             .textFieldStyle(.roundedBorder)
-                            .focused($focusedField, equals: .command)
-                            .onChange(of: command) { _, newValue in
+                            .focused(self.$focusedField, equals: .command)
+                            .onChange(of: self.command) { _, newValue in
                                 // Auto-select dynamic title mode for AI tools
                                 if newValue.lowercased().contains("claude") ||
                                     newValue.lowercased().contains("gemini")
                                 {
-                                    titleMode = .dynamic
+                                    self.titleMode = .dynamic
                                 }
                             }
                     }
@@ -164,14 +160,14 @@ struct NewSessionForm: View {
                             .foregroundColor(.secondary)
 
                         HStack(spacing: 8) {
-                            AutocompleteTextField(text: $workingDirectory, placeholder: "~/")
-                                .focused($focusedField, equals: .directory)
-                                .onChange(of: workingDirectory) { _, newValue in
-                                    checkForGitRepository(at: newValue)
+                            AutocompleteTextField(text: self.$workingDirectory, placeholder: "~/")
+                                .focused(self.$focusedField, equals: .directory)
+                                .onChange(of: self.workingDirectory) { _, newValue in
+                                    self.checkForGitRepository(at: newValue)
                                 }
                                 .zIndex(1) // Ensure autocomplete appears above other elements
 
-                            Button(action: selectDirectory) {
+                            Button(action: self.selectDirectory) {
                                 Image(systemName: "folder")
                                     .font(.system(size: 12))
                                     .foregroundColor(.secondary)
@@ -184,26 +180,26 @@ struct NewSessionForm: View {
                     }
 
                     // Git branch and worktree selection when Git repository is detected
-                    if isGitRepository, let repoPath = gitRepoPath, let service = worktreeService {
+                    if self.isGitRepository, let repoPath = gitRepoPath, let service = worktreeService {
                         GitBranchWorktreeSelector(
                             repoPath: repoPath,
-                            gitMonitor: gitMonitor,
+                            gitMonitor: self.gitMonitor,
                             worktreeService: service,
                             onBranchChanged: { branch in
-                                selectedBaseBranch = branch
-                                branchSwitchWarning = nil
+                                self.selectedBaseBranch = branch
+                                self.branchSwitchWarning = nil
                             },
                             onWorktreeChanged: { worktree in
                                 if let worktree {
                                     // Find the worktree info to get the path
                                     if let worktreeInfo = service.worktrees.first(where: { $0.branch == worktree }) {
-                                        selectedWorktreePath = worktreeInfo.path
-                                        selectedWorktreeBranch = worktreeInfo.branch
-                                        workingDirectory = worktreeInfo.path
+                                        self.selectedWorktreePath = worktreeInfo.path
+                                        self.selectedWorktreeBranch = worktreeInfo.branch
+                                        self.workingDirectory = worktreeInfo.path
                                     }
                                 } else {
-                                    selectedWorktreePath = nil
-                                    selectedWorktreeBranch = nil
+                                    self.selectedWorktreePath = nil
+                                    self.selectedWorktreeBranch = nil
                                     // Don't change workingDirectory here - keep the original git repo path
                                 }
                             },
@@ -224,28 +220,24 @@ struct NewSessionForm: View {
                                     gitRepoPath: repoPath,
                                     branch: branchName,
                                     worktreePath: worktreePath,
-                                    baseBranch: baseBranch
-                                )
+                                    baseBranch: baseBranch)
 
                                 // After creation, select the new worktree
                                 await service.fetchWorktrees(for: repoPath)
                                 if let newWorktree = service.worktrees.first(where: { $0.branch == branchName }) {
-                                    selectedWorktreePath = newWorktree.path
-                                    selectedWorktreeBranch = newWorktree.branch
-                                    workingDirectory = newWorktree.path
+                                    self.selectedWorktreePath = newWorktree.path
+                                    self.selectedWorktreeBranch = newWorktree.branch
+                                    self.workingDirectory = newWorktree.path
                                 }
-                            }
-                        )
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(Color(NSColor.controlBackgroundColor).opacity(0.05))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color.accentColor.opacity(0.2), lineWidth: 1)
-                        )
+                            })
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color(NSColor.controlBackgroundColor).opacity(0.05)))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Color.accentColor.opacity(0.2), lineWidth: 1))
                     }
 
                     // Quick Start
@@ -257,12 +249,12 @@ struct NewSessionForm: View {
                         LazyVGrid(columns: [
                             GridItem(.flexible()),
                             GridItem(.flexible()),
-                            GridItem(.flexible())
+                            GridItem(.flexible()),
                         ], spacing: 8) {
-                            ForEach(configManager.quickStartCommands) { cmd in
+                            ForEach(self.configManager.quickStartCommands) { cmd in
                                 Button(action: {
-                                    command = cmd.command
-                                    sessionName = ""
+                                    self.command = cmd.command
+                                    self.sessionName = ""
                                 }, label: {
                                     Text(cmd.displayName)
                                         .font(.system(size: 11))
@@ -273,18 +265,15 @@ struct NewSessionForm: View {
                                 .background(
                                     RoundedRectangle(cornerRadius: 6)
                                         .fill(
-                                            command == cmd.command ? Color.accentColor.opacity(0.15) : Color.primary
-                                                .opacity(0.05)
-                                        )
-                                )
+                                            self.command == cmd.command ? Color.accentColor.opacity(0.15) : Color
+                                                .primary
+                                                .opacity(0.05)))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 6)
                                         .stroke(
-                                            command == cmd.command ? Color.accentColor.opacity(0.5) : Color.primary
+                                            self.command == cmd.command ? Color.accentColor.opacity(0.5) : Color.primary
                                                 .opacity(0.1),
-                                            lineWidth: 1
-                                        )
-                                )
+                                            lineWidth: 1))
                                 .buttonStyle(.plain)
                             }
                         }
@@ -305,10 +294,10 @@ struct NewSessionForm: View {
 
                             Menu {
                                 ForEach(TitleMode.allCases, id: \.self) { mode in
-                                    Button(action: { titleMode = mode }, label: {
+                                    Button(action: { self.titleMode = mode }, label: {
                                         HStack {
                                             Text(mode.displayName)
-                                            if mode == titleMode {
+                                            if mode == self.titleMode {
                                                 Image(systemName: "checkmark")
                                             }
                                         }
@@ -316,7 +305,7 @@ struct NewSessionForm: View {
                                 }
                             } label: {
                                 HStack(spacing: 4) {
-                                    Text(titleMode.displayName)
+                                    Text(self.titleMode.displayName)
                                         .font(.system(size: 11))
                                         .foregroundColor(.primary)
                                     Image(systemName: "chevron.up.chevron.down")
@@ -327,12 +316,10 @@ struct NewSessionForm: View {
                                 .padding(.vertical, 4)
                                 .background(
                                     RoundedRectangle(cornerRadius: 6)
-                                        .fill(Color.primary.opacity(0.05))
-                                )
+                                        .fill(Color.primary.opacity(0.05)))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color.primary.opacity(0.1), lineWidth: 1)
-                                )
+                                        .stroke(Color.primary.opacity(0.1), lineWidth: 1))
                             }
                             .menuStyle(.borderlessButton)
                             .menuIndicator(.hidden)
@@ -351,7 +338,7 @@ struct NewSessionForm: View {
 
                             Spacer()
 
-                            Toggle("", isOn: $spawnWindow)
+                            Toggle("", isOn: self.$spawnWindow)
                                 .toggleStyle(.switch)
                                 .scaleEffect(0.8)
                                 .labelsHidden()
@@ -369,8 +356,8 @@ struct NewSessionForm: View {
             HStack {
                 Spacer()
 
-                Button(action: createSession) {
-                    if isCreating {
+                Button(action: self.createSession) {
+                    if self.isCreating {
                         HStack(spacing: 4) {
                             ProgressView()
                                 .scaleEffect(0.7)
@@ -388,18 +375,18 @@ struct NewSessionForm: View {
                     }
                 }
                 .buttonStyle(.plain)
-                .foregroundColor(command.isEmpty || workingDirectory.isEmpty ? .secondary.opacity(0.5) : .secondary)
+                .foregroundColor(self.command.isEmpty || self.workingDirectory.isEmpty ? .secondary
+                    .opacity(0.5) : .secondary)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
                         .fill(
-                            isHoveringCreate && !command.isEmpty && !workingDirectory.isEmpty ? Color.accentColor
-                                .opacity(0.05) : Color.clear
-                        )
-                        .animation(.easeInOut(duration: 0.2), value: isHoveringCreate)
-                )
-                .disabled(isCreating || command.isEmpty || workingDirectory.isEmpty)
+                            self.isHoveringCreate && !self.command.isEmpty && !self.workingDirectory.isEmpty ? Color
+                                .accentColor
+                                .opacity(0.05) : Color.clear)
+                        .animation(.easeInOut(duration: 0.2), value: self.isHoveringCreate))
+                .disabled(self.isCreating || self.command.isEmpty || self.workingDirectory.isEmpty)
                 .onHover { hovering in
-                    isHoveringCreate = hovering
+                    self.isHoveringCreate = hovering
                 }
             }
             .padding(.horizontal, 16)
@@ -411,18 +398,18 @@ struct NewSessionForm: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .fixedSize(horizontal: true, vertical: false)
         .onAppear {
-            loadPreferences()
-            focusedField = .name
+            self.loadPreferences()
+            self.focusedField = .name
             // Check if the default/loaded directory is a Git repository
-            checkForGitRepository(at: workingDirectory)
+            self.checkForGitRepository(at: self.workingDirectory)
         }
         .task {
-            await repositoryDiscovery.discoverRepositories(in: configManager.repositoryBasePath)
+            await self.repositoryDiscovery.discoverRepositories(in: self.configManager.repositoryBasePath)
         }
-        .alert("Error", isPresented: $showError) {
+        .alert("Error", isPresented: self.$showError) {
             Button("OK") {}
         } message: {
-            Text(errorMessage)
+            Text(self.errorMessage)
         }
         .compositingGroup() // Render the entire form as a single composited layer
     }
@@ -436,7 +423,7 @@ struct NewSessionForm: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.directoryURL = URL(fileURLWithPath: NSString(string: workingDirectory).expandingTildeInPath)
+        panel.directoryURL = URL(fileURLWithPath: NSString(string: self.workingDirectory).expandingTildeInPath)
         // Set flag on the window to prevent it from hiding
         menuWindow.isFileSelectionInProgress = true
         // Use beginSheetModal to keep the window relationship
@@ -462,10 +449,10 @@ struct NewSessionForm: View {
     }
 
     private func createSession() {
-        guard !command.isEmpty && !workingDirectory.isEmpty else { return }
+        guard !self.command.isEmpty, !self.workingDirectory.isEmpty else { return }
 
-        isCreating = true
-        savePreferences()
+        self.isCreating = true
+        self.savePreferences()
 
         Task {
             do {
@@ -474,7 +461,7 @@ struct NewSessionForm: View {
 
                 // Clear any previous warning
                 await MainActor.run {
-                    branchSwitchWarning = nil
+                    self.branchSwitchWarning = nil
                 }
 
                 // If using a specific worktree
@@ -482,38 +469,40 @@ struct NewSessionForm: View {
                     // Using a specific worktree
                     finalWorkingDir = selectedWorktreePath
                     effectiveBranch = selectedBranch
-                } else if isGitRepository && !selectedBaseBranch.isEmpty && selectedBaseBranch != currentBranch {
+                } else if self.isGitRepository, !self.selectedBaseBranch.isEmpty,
+                          self.selectedBaseBranch != self.currentBranch
+                {
                     // Not using worktree but selected a different branch - attempt to switch
-                    finalWorkingDir = workingDirectory
+                    finalWorkingDir = self.workingDirectory
 
                     if let service = worktreeService, let repoPath = gitRepoPath {
                         do {
-                            try await service.switchBranch(gitRepoPath: repoPath, branch: selectedBaseBranch)
-                            effectiveBranch = selectedBaseBranch
+                            try await service.switchBranch(gitRepoPath: repoPath, branch: self.selectedBaseBranch)
+                            effectiveBranch = self.selectedBaseBranch
                         } catch {
                             // Branch switch failed - show warning but continue with current branch
-                            effectiveBranch = currentBranch
+                            effectiveBranch = self.currentBranch
 
                             let errorMessage = error.localizedDescription
                             let isUncommittedChanges = errorMessage.lowercased().contains("uncommitted changes")
 
                             await MainActor.run {
-                                branchSwitchWarning = isUncommittedChanges
+                                self.branchSwitchWarning = isUncommittedChanges
                                     ?
-                                    "Cannot switch to \(selectedBaseBranch) due to uncommitted changes. Creating session on \(currentBranch)."
+                                    "Cannot switch to \(self.selectedBaseBranch) due to uncommitted changes. Creating session on \(self.currentBranch)."
                                     :
-                                    "Failed to switch to \(selectedBaseBranch): \(errorMessage). Creating session on \(currentBranch)."
+                                    "Failed to switch to \(self.selectedBaseBranch): \(errorMessage). Creating session on \(self.currentBranch)."
                             }
                         }
                     }
                 } else {
                     // Use current branch
-                    finalWorkingDir = workingDirectory
-                    effectiveBranch = selectedBaseBranch.isEmpty ? currentBranch : selectedBaseBranch
+                    finalWorkingDir = self.workingDirectory
+                    effectiveBranch = self.selectedBaseBranch.isEmpty ? self.currentBranch : self.selectedBaseBranch
                 }
 
                 // Parse command into array
-                let commandArray = parseCommand(command.trimmingCharacters(in: .whitespacesAndNewlines))
+                let commandArray = self.parseCommand(self.command.trimmingCharacters(in: .whitespacesAndNewlines))
 
                 // Expand tilde in working directory
                 let expandedWorkingDir = NSString(string: finalWorkingDir).expandingTildeInPath
@@ -522,28 +511,28 @@ struct NewSessionForm: View {
                 let sessionId = try await sessionService.createSession(
                     command: commandArray,
                     workingDir: expandedWorkingDir,
-                    name: sessionName.isEmpty ? nil : sessionName.trimmingCharacters(in: .whitespacesAndNewlines),
-                    titleMode: titleMode.rawValue,
-                    spawnTerminal: spawnWindow,
-                    gitRepoPath: gitRepoPath,
-                    gitBranch: effectiveBranch.isEmpty ? nil : effectiveBranch
-                )
+                    name: self.sessionName.isEmpty ? nil : self.sessionName
+                        .trimmingCharacters(in: .whitespacesAndNewlines),
+                    titleMode: self.titleMode.rawValue,
+                    spawnTerminal: self.spawnWindow,
+                    gitRepoPath: self.gitRepoPath,
+                    gitBranch: effectiveBranch.isEmpty ? nil : effectiveBranch)
 
                 // If not spawning window, open in browser
-                if !spawnWindow {
+                if !self.spawnWindow {
                     if let webURL = DashboardURLBuilder.dashboardURL(port: serverManager.port, sessionId: sessionId) {
                         NSWorkspace.shared.open(webURL)
                     }
                 }
 
                 await MainActor.run {
-                    isPresented = false
+                    self.isPresented = false
                 }
             } catch {
                 await MainActor.run {
-                    isCreating = false
-                    errorMessage = error.localizedDescription
-                    showError = true
+                    self.isCreating = false
+                    self.errorMessage = error.localizedDescription
+                    self.showError = true
                 }
             }
         }
@@ -557,13 +546,13 @@ struct NewSessionForm: View {
         var quoteChar: Character?
 
         for char in cmd {
-            if !inQuotes && (char == "\"" || char == "'") {
+            if !inQuotes, char == "\"" || char == "'" {
                 inQuotes = true
                 quoteChar = char
-            } else if inQuotes && char == quoteChar {
+            } else if inQuotes, char == quoteChar {
                 inQuotes = false
                 quoteChar = nil
-            } else if !inQuotes && char == " " {
+            } else if !inQuotes, char == " " {
                 if !current.isEmpty {
                     result.append(current)
                     current = ""
@@ -584,46 +573,48 @@ struct NewSessionForm: View {
 
     private func loadPreferences() {
         if let savedCommand = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.newSessionCommand) {
-            command = savedCommand
+            self.command = savedCommand
         }
 
         // Restore last used working directory, not repository base path
         if let savedDirectory = UserDefaults.standard
             .string(forKey: AppConstants.UserDefaultsKeys.newSessionWorkingDirectory)
         {
-            workingDirectory = savedDirectory
+            self.workingDirectory = savedDirectory
         } else {
             // Default to repository base path if never set
-            workingDirectory = configManager.sessionWorkingDirectory
+            self.workingDirectory = self.configManager.sessionWorkingDirectory
         }
 
         // Check if spawn window preference has been explicitly set
         if UserDefaults.standard.object(forKey: AppConstants.UserDefaultsKeys.newSessionSpawnWindow) != nil {
-            spawnWindow = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.newSessionSpawnWindow)
+            self.spawnWindow = UserDefaults.standard.bool(forKey: AppConstants.UserDefaultsKeys.newSessionSpawnWindow)
         } else {
             // Default to true if never set
-            spawnWindow = true
+            self.spawnWindow = true
         }
 
         if let savedMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.newSessionTitleMode),
            let mode = TitleMode(rawValue: savedMode)
         {
-            titleMode = mode
+            self.titleMode = mode
         }
     }
 
     private func savePreferences() {
-        UserDefaults.standard.set(command, forKey: AppConstants.UserDefaultsKeys.newSessionCommand)
-        UserDefaults.standard.set(workingDirectory, forKey: AppConstants.UserDefaultsKeys.newSessionWorkingDirectory)
-        UserDefaults.standard.set(spawnWindow, forKey: AppConstants.UserDefaultsKeys.newSessionSpawnWindow)
-        UserDefaults.standard.set(titleMode.rawValue, forKey: AppConstants.UserDefaultsKeys.newSessionTitleMode)
+        UserDefaults.standard.set(self.command, forKey: AppConstants.UserDefaultsKeys.newSessionCommand)
+        UserDefaults.standard.set(
+            self.workingDirectory,
+            forKey: AppConstants.UserDefaultsKeys.newSessionWorkingDirectory)
+        UserDefaults.standard.set(self.spawnWindow, forKey: AppConstants.UserDefaultsKeys.newSessionSpawnWindow)
+        UserDefaults.standard.set(self.titleMode.rawValue, forKey: AppConstants.UserDefaultsKeys.newSessionTitleMode)
     }
 
     private func checkForGitRepository(at path: String) {
-        guard !checkingGitStatus else { return }
+        guard !self.checkingGitStatus else { return }
 
         logger.info("🔍 Checking for Git repository at: \(path)")
-        checkingGitStatus = true
+        self.checkingGitStatus = true
 
         Task {
             let expandedPath = NSString(string: path).expandingTildeInPath
@@ -634,7 +625,7 @@ struct NewSessionForm: View {
                 await MainActor.run {
                     self.isGitRepository = true
                     self.gitRepoPath = repo.path
-                    self.worktreeService = WorktreeService(serverManager: serverManager)
+                    self.worktreeService = WorktreeService(serverManager: self.serverManager)
                     self.checkingGitStatus = false
                 }
 
@@ -701,10 +692,10 @@ private struct RepositoryDropdownList: View {
         VStack(spacing: 0) {
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(repositories) { repository in
+                    ForEach(self.repositories) { repository in
                         Button(action: {
-                            selectedPath = repository.path
-                            isShowing = false
+                            self.selectedPath = repository.path
+                            self.isShowing = false
                         }, label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
@@ -727,8 +718,7 @@ private struct RepositoryDropdownList: View {
                             .padding(.vertical, 8)
                             .background(
                                 RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color.clear)
-                            )
+                                    .fill(Color.clear))
                             .contentShape(Rectangle())
                         })
                         .buttonStyle(.plain)
@@ -738,7 +728,7 @@ private struct RepositoryDropdownList: View {
                             }
                         }
 
-                        if repository.id != repositories.last?.id {
+                        if repository.id != self.repositories.last?.id {
                             Divider()
                                 .padding(.horizontal, 8)
                         }
@@ -750,11 +740,9 @@ private struct RepositoryDropdownList: View {
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(.regularMaterial)
-        )
+                .fill(.regularMaterial))
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
-        )
+                .stroke(Color.primary.opacity(0.1), lineWidth: 1))
     }
 }

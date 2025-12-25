@@ -15,7 +15,6 @@ import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PtyManager } from '../../server/pty/pty-manager.js';
 import { VibeTunnelSocketClient } from '../../server/pty/socket-client.js';
-import { TitleMode } from '../../shared/types.js';
 import { SessionTestHelper } from '../helpers/session-test-helper.js';
 
 describe('Socket Protocol Integration', () => {
@@ -196,91 +195,6 @@ describe('Socket Protocol Integration', () => {
     });
   });
 
-  describe('Claude status tracking', () => {
-    it('should track Claude status updates', async () => {
-      // Create a session with dynamic title mode
-      const { sessionId } = await sessionHelper.createTrackedSession(['echo', 'test'], {
-        name: 'claude-test',
-        workingDir: process.cwd(),
-        titleMode: TitleMode.DYNAMIC,
-      });
-
-      // Connect socket client
-      const socketPath = path.join(testDir, sessionId, 'ipc.sock');
-      const client = new VibeTunnelSocketClient(socketPath);
-
-      // Wait for socket file to exist
-      let attempts = 0;
-      while (!fs.existsSync(socketPath) && attempts < 50) {
-        await new Promise((resolve) => setTimeout(resolve, 20));
-        attempts++;
-      }
-
-      await client.connect();
-
-      // Send Claude status update
-      client.sendStatus('claude', '✻ Thinking (5s, ↑2.5k tokens)');
-
-      // Give it time to process
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Check that status is tracked in session list
-      const sessions = ptyManager.listSessions();
-      const session = sessions.find((s) => s.id === sessionId);
-
-      expect(session?.activityStatus?.specificStatus).toEqual({
-        app: 'claude',
-        status: '✻ Thinking (5s, ↑2.5k tokens)',
-      });
-
-      client.disconnect();
-    });
-
-    it('should broadcast status to other clients', async () => {
-      const { sessionId } = await sessionHelper.createTrackedSession(['sleep', '60'], {
-        name: 'broadcast-test',
-        workingDir: process.cwd(),
-      });
-
-      const socketPath = path.join(testDir, sessionId, 'ipc.sock');
-
-      // Wait for socket file to exist
-      let attempts = 0;
-      while (!fs.existsSync(socketPath) && attempts < 50) {
-        await new Promise((resolve) => setTimeout(resolve, 20));
-        attempts++;
-      }
-
-      // Connect two clients
-      const client1 = new VibeTunnelSocketClient(socketPath);
-      const client2 = new VibeTunnelSocketClient(socketPath);
-
-      await client1.connect();
-      await client2.connect();
-
-      // Set up status listener on client2
-      let receivedStatus: { app: string; status: string } | null = null;
-      client2.on('STATUS_UPDATE', (status) => {
-        receivedStatus = status;
-      });
-
-      // Send status from client1
-      client1.sendStatus('claude', '✻ Processing');
-
-      // Wait for broadcast
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Client2 should have received the status
-      expect(receivedStatus).toEqual({
-        app: 'claude',
-        status: '✻ Processing',
-      });
-
-      client1.disconnect();
-      client2.disconnect();
-    });
-  });
-
   describe('Error handling', () => {
     it('should handle client sending to non-existent session', async () => {
       const fakeSessionId = 'non-existent-session';
@@ -357,95 +271,6 @@ describe('Socket Protocol Integration', () => {
       expect(duration).toBeLessThan(1000);
 
       client.disconnect();
-    });
-
-    it('should handle rapid status updates', async () => {
-      const { sessionId } = await sessionHelper.createTrackedSession(['sleep', '60'], {
-        name: 'status-perf-test',
-        workingDir: process.cwd(),
-      });
-
-      const socketPath = path.join(testDir, sessionId, 'ipc.sock');
-      const client = new VibeTunnelSocketClient(socketPath);
-
-      // Wait for socket file to exist
-      let attempts = 0;
-      while (!fs.existsSync(socketPath) && attempts < 50) {
-        await new Promise((resolve) => setTimeout(resolve, 20));
-        attempts++;
-      }
-
-      await client.connect();
-
-      // Send many status updates
-      const startTime = Date.now();
-
-      for (let i = 0; i < 1000; i++) {
-        client.sendStatus('claude', `Status update ${i}`);
-      }
-
-      const duration = Date.now() - startTime;
-
-      // Should handle 1000 status updates quickly
-      expect(duration).toBeLessThan(500);
-
-      // Give a bit of time for the last status to be processed
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Check that the last status is stored
-      const sessions = ptyManager.listSessions();
-      const session = sessions.find((s) => s.id === sessionId);
-
-      expect(session?.activityStatus?.specificStatus?.status).toMatch(/Status update \d+/);
-
-      client.disconnect();
-    });
-  });
-
-  describe('Multiple sessions', () => {
-    it('should handle multiple sessions with separate sockets', async () => {
-      // Create two sessions
-      const { sessionId: sessionId1 } = await sessionHelper.createTrackedSession(['sleep', '60'], {
-        name: 'session-1',
-      });
-
-      const { sessionId: sessionId2 } = await sessionHelper.createTrackedSession(['sleep', '60'], {
-        name: 'session-2',
-      });
-
-      // Wait for both socket files to exist
-      const socketPath1 = path.join(testDir, sessionId1, 'ipc.sock');
-      const socketPath2 = path.join(testDir, sessionId2, 'ipc.sock');
-
-      let attempts = 0;
-      while ((!fs.existsSync(socketPath1) || !fs.existsSync(socketPath2)) && attempts < 50) {
-        await new Promise((resolve) => setTimeout(resolve, 20));
-        attempts++;
-      }
-
-      // Connect to both
-      const client1 = new VibeTunnelSocketClient(socketPath1);
-      const client2 = new VibeTunnelSocketClient(socketPath2);
-
-      await client1.connect();
-      await client2.connect();
-
-      // Send different status to each
-      client1.sendStatus('claude', 'Session 1 status');
-      client2.sendStatus('claude', 'Session 2 status');
-
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Check that each session has its own status
-      const sessions = ptyManager.listSessions();
-      const session1 = sessions.find((s) => s.id === sessionId1);
-      const session2 = sessions.find((s) => s.id === sessionId2);
-
-      expect(session1?.activityStatus?.specificStatus?.status).toBe('Session 1 status');
-      expect(session2?.activityStatus?.specificStatus?.status).toBe('Session 2 status');
-
-      client1.disconnect();
-      client2.disconnect();
     });
   });
 });

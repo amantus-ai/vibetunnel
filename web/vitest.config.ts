@@ -43,6 +43,18 @@ export default defineConfig(({ mode }) => {
     define: {
       __APP_VERSION__: JSON.stringify(version),
     },
+    poolOptions: {
+      threads: {
+        // Use available CPU cores for parallel execution
+        maxThreads: undefined,
+        minThreads: 1,
+      },
+      forks: {
+        // Allow multiple forks for better test isolation
+        maxForks: undefined,
+        minForks: 1,
+      },
+    },
     test: {
       globals: true,
       include: testInclude,
@@ -51,18 +63,6 @@ export default defineConfig(({ mode }) => {
       testTimeout: 10000, // 10s for tests
       hookTimeout: 10000, // 10s for setup/teardown
       reporters,
-      poolOptions: {
-        threads: {
-          // Use available CPU cores for parallel execution
-          maxThreads: undefined,
-          minThreads: 1,
-        },
-        forks: {
-          // Allow multiple forks for better test isolation
-          maxForks: undefined,
-          minForks: 1,
-        }
-      },
       isolate: true, // Isolate tests in separate contexts
       coverage: {
         provider: 'v8',

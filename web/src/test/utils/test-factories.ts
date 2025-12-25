@@ -5,14 +5,6 @@
 
 import type { Session } from '@/shared/types';
 
-interface Activity {
-  id: number;
-  session_id: string;
-  timestamp: Date;
-  type: 'input' | 'output' | 'resize' | 'connect' | 'disconnect';
-  data: string;
-}
-
 interface CreateSessionOptions {
   id?: string;
   name?: string;
@@ -36,13 +28,6 @@ interface CreateSessionOptions {
   gitIsWorktree?: boolean;
 }
 
-interface CreateActivityOptions {
-  session_id?: string;
-  timestamp?: Date;
-  type?: 'input' | 'output' | 'resize' | 'connect' | 'disconnect';
-  data?: string;
-}
-
 interface CreateAuthConfigOptions {
   enableSSHKeys?: boolean;
   disallowUserPassword?: boolean;
@@ -58,7 +43,6 @@ interface CreateAuthResultOptions {
 }
 
 let sessionCounter = 1;
-let activityCounter = 1;
 
 /**
  * Creates a test session with sensible defaults
@@ -100,39 +84,6 @@ export function createTestSessions(count: number, options: CreateSessionOptions 
       ...options,
       id: options.id ? `${options.id}-${i + 1}` : undefined,
       name: options.name ? `${options.name} ${i + 1}` : undefined,
-    })
-  );
-}
-
-/**
- * Creates a test activity with sensible defaults
- */
-export function createTestActivity(options: CreateActivityOptions = {}): Activity {
-  const id = activityCounter++;
-
-  return {
-    id,
-    session_id: options.session_id || 'test-session-1',
-    timestamp: options.timestamp || new Date(),
-    type: options.type || 'output',
-    data: options.data || `Test activity data ${id}`,
-  };
-}
-
-/**
- * Creates multiple test activities
- */
-export function createTestActivities(
-  count: number,
-  sessionId: string,
-  options: Partial<CreateActivityOptions> = {}
-): Activity[] {
-  return Array.from({ length: count }, (_, i) =>
-    createTestActivity({
-      ...options,
-      session_id: sessionId,
-      data: options.data || `Activity ${i + 1}`,
-      timestamp: options.timestamp || new Date(Date.now() + i * 1000),
     })
   );
 }
@@ -184,16 +135,8 @@ export function createWebSocketMessage(type: string, data: unknown = {}): string
 }
 
 /**
- * Creates SSE event data
- */
-export function createSSEEvent(event: string, data: unknown): string {
-  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-}
-
-/**
  * Reset factory counters (useful for test isolation)
  */
 export function resetFactoryCounters(): void {
   sessionCounter = 1;
-  activityCounter = 1;
 }

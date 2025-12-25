@@ -4,7 +4,7 @@ import Foundation
 enum NetworkConstants {
     // MARK: - Default Port
 
-    static let defaultPort = 4_020
+    static let defaultPort = 4020
 
     // MARK: - Headers
 

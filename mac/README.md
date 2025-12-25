@@ -20,7 +20,7 @@ xcodebuild -workspace VibeTunnel.xcworkspace -scheme VibeTunnel test
 
 ### Creating Release
 ```bash
-./scripts/build.sh --configuration Release --sign
+./scripts/build.sh --configuration Release
 ./scripts/create-dmg.sh build/Build/Products/Release/VibeTunnel.app
 ```
 

@@ -22,3 +22,6 @@ IPHONEOS_DEPLOYMENT_TARGET = 18.0
 TARGETED_DEVICE_FAMILY = 1,2
 SUPPORTS_MACCATALYST = YES
 SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES
+
+// Silence AppIntents metadata warning by linking the framework.
+OTHER_LDFLAGS = $(inherited) -framework AppIntents

@@ -10,8 +10,7 @@ import UserNotifications
 final class SparkleUserDriverDelegate: NSObject, @preconcurrency SPUStandardUserDriverDelegate {
     private let logger = os.Logger(
         subsystem: BundleIdentifiers.loggerSubsystem,
-        category: "SparkleUserDriver"
-    )
+        category: "SparkleUserDriver")
 
     private var pendingUpdate: SUAppcastItem?
     private var reminderTimer: Timer?
@@ -24,7 +23,7 @@ final class SparkleUserDriverDelegate: NSObject, @preconcurrency SPUStandardUser
 
     override init() {
         super.init()
-        setupNotificationCategories()
+        self.setupNotificationCategories()
     }
 
     // MARK: - SPUStandardUserDriverDelegate
@@ -37,18 +36,17 @@ final class SparkleUserDriverDelegate: NSObject, @preconcurrency SPUStandardUser
     /// Called to determine if Sparkle should handle showing the update
     func standardUserDriverShouldHandleShowingScheduledUpdate(
         _ update: SUAppcastItem,
-        andInImmediateFocus immediateFocus: Bool
-    )
+        andInImmediateFocus immediateFocus: Bool)
         -> Bool
     {
-        logger.info("Should handle showing update: \(update.displayVersionString), immediate: \(immediateFocus)")
+        self.logger.info("Should handle showing update: \(update.displayVersionString), immediate: \(immediateFocus)")
 
         // Store the pending update for reminders
-        pendingUpdate = update
+        self.pendingUpdate = update
 
         // If it's not immediate focus and we have a pending update, schedule a reminder
         if !immediateFocus {
-            scheduleGentleReminder(for: update)
+            self.scheduleGentleReminder(for: update)
         }
 
         // Let Sparkle handle showing the update UI
@@ -59,22 +57,22 @@ final class SparkleUserDriverDelegate: NSObject, @preconcurrency SPUStandardUser
     func standardUserDriverWillHandleShowingUpdate(
         _ handleShowingUpdate: Bool,
         forUpdate update: SUAppcastItem,
-        state: SPUUserUpdateState
-    ) {
-        logger.info("Will show update: \(update.displayVersionString), userInitiated: \(state.userInitiated)")
+        state: SPUUserUpdateState)
+    {
+        self.logger.info("Will show update: \(update.displayVersionString), userInitiated: \(state.userInitiated)")
 
         // If this is a user-initiated check or the update is being shown, cancel reminders
         if state.userInitiated || handleShowingUpdate {
-            cancelReminders()
+            self.cancelReminders()
         }
     }
 
     /// Called when user first interacts with the update
     func standardUserDriverDidReceiveUserAttention(forUpdate update: SUAppcastItem) {
-        logger.info("User gave attention to update: \(update.displayVersionString)")
+        self.logger.info("User gave attention to update: \(update.displayVersionString)")
 
         // Cancel any pending reminders since user has seen the update
-        cancelReminders()
+        self.cancelReminders()
 
         // Remove any existing notifications
         if let identifier = notificationIdentifier {
@@ -84,21 +82,21 @@ final class SparkleUserDriverDelegate: NSObject, @preconcurrency SPUStandardUser
 
     /// Called when update session ends
     func standardUserDriverWillFinishUpdateSession() {
-        logger.info("Update session ending")
+        self.logger.info("Update session ending")
 
         // Clean up
-        pendingUpdate = nil
-        cancelReminders()
+        self.pendingUpdate = nil
+        self.cancelReminders()
     }
 
     /// Called before showing a modal alert
     func standardUserDriverWillShowModalAlert() {
-        logger.debug("Will show modal alert")
+        self.logger.debug("Will show modal alert")
     }
 
     /// Called after showing a modal alert
     func standardUserDriverDidShowModalAlert() {
-        logger.debug("Did show modal alert")
+        self.logger.debug("Did show modal alert")
     }
 
     // MARK: - Gentle Reminders
@@ -107,43 +105,41 @@ final class SparkleUserDriverDelegate: NSObject, @preconcurrency SPUStandardUser
         let updateAction = UNNotificationAction(
             identifier: "UPDATE_ACTION",
             title: "Update Now",
-            options: [.foreground]
-        )
+            options: [.foreground])
 
         let laterAction = UNNotificationAction(
             identifier: "LATER_ACTION",
             title: "Remind Me Later",
-            options: []
-        )
+            options: [])
 
         let category = UNNotificationCategory(
             identifier: "UPDATE_REMINDER",
             actions: [updateAction, laterAction],
             intentIdentifiers: [],
-            options: []
-        )
+            options: [])
 
         UNUserNotificationCenter.current().setNotificationCategories([category])
     }
 
     private func scheduleGentleReminder(for update: SUAppcastItem) {
         // Cancel any existing reminder
-        reminderTimer?.invalidate()
+        self.reminderTimer?.invalidate()
 
         // Determine the delay for the next reminder
-        let delay: TimeInterval = if lastReminderDate == nil {
+        let delay: TimeInterval = if self.lastReminderDate == nil {
             // First reminder
-            initialReminderDelay
+            self.initialReminderDelay
         } else {
             // Subsequent reminders
-            subsequentReminderInterval
+            self.subsequentReminderInterval
         }
 
-        logger.info("Scheduling gentle reminder in \(delay / 3_600) hours for version \(update.displayVersionString)")
+        self.logger
+            .info("Scheduling gentle reminder in \(delay / 3600) hours for version \(update.displayVersionString)")
 
         // Schedule the reminder
         let versionString = update.displayVersionString
-        reminderTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+        self.reminderTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 self?.showReminderNotificationForVersion(versionString)
             }
@@ -151,7 +147,7 @@ final class SparkleUserDriverDelegate: NSObject, @preconcurrency SPUStandardUser
     }
 
     private func showReminderNotificationForVersion(_ versionString: String) {
-        lastReminderDate = Date()
+        self.lastReminderDate = Date()
 
         // Create notification content
         let content = UNMutableNotificationContent()
@@ -166,13 +162,13 @@ final class SparkleUserDriverDelegate: NSObject, @preconcurrency SPUStandardUser
         // Create unique identifier
         let timestamp = Date().timeIntervalSince1970
         let identifier = "vibetunnel-update-\(versionString)-\(timestamp)"
-        notificationIdentifier = identifier
+        self.notificationIdentifier = identifier
 
         // Create the request
         let request = UNNotificationRequest(
             identifier: identifier,
             content: content,
-            trigger: nil // Show immediately
+            trigger: nil, // Show immediately
         )
 
         // Schedule the notification
@@ -193,9 +189,9 @@ final class SparkleUserDriverDelegate: NSObject, @preconcurrency SPUStandardUser
     }
 
     private func cancelReminders() {
-        reminderTimer?.invalidate()
-        reminderTimer = nil
-        lastReminderDate = nil
+        self.reminderTimer?.invalidate()
+        self.reminderTimer = nil
+        self.lastReminderDate = nil
     }
 
     // MARK: - Notification Handling
@@ -203,14 +199,14 @@ final class SparkleUserDriverDelegate: NSObject, @preconcurrency SPUStandardUser
     func handleNotificationAction(_ action: String, userInfo: [AnyHashable: Any]) {
         switch action {
         case "UPDATE_ACTION":
-            logger.info("User tapped 'Update Now' in notification")
+            self.logger.info("User tapped 'Update Now' in notification")
             // Bring app to foreground and trigger update check
             NSApp.activate(ignoringOtherApps: true)
             // The SparkleUpdaterManager will handle the actual update check
             SparkleUpdaterManager.shared.checkForUpdates()
 
         case "LATER_ACTION":
-            logger.info("User tapped 'Remind Me Later' in notification")
+            self.logger.info("User tapped 'Remind Me Later' in notification")
         // The next reminder is already scheduled
 
         default:

@@ -6,14 +6,15 @@ import Testing
 @MainActor
 struct GeneralSettingsViewTests {
     init() {
-        // Reset ConfigManager to default values before tests
-        let configManager = ConfigManager.shared
+        self.resetNotificationDefaults(ConfigManager.shared)
+    }
+
+    private func resetNotificationDefaults(_ configManager: ConfigManager) {
         configManager.notificationSessionStart = true
         configManager.notificationSessionExit = true
         configManager.notificationCommandCompletion = true
         configManager.notificationCommandError = true
         configManager.notificationBell = true
-        configManager.notificationClaudeTurn = false
         configManager.notificationSoundEnabled = true
         configManager.notificationVibrationEnabled = true
     }
@@ -22,6 +23,7 @@ struct GeneralSettingsViewTests {
     func notificationPreferencesDefaultValues() {
         // Get default preferences from ConfigManager
         let configManager = ConfigManager.shared
+        self.resetNotificationDefaults(configManager)
         let prefs = NotificationService.NotificationPreferences(fromConfig: configManager)
 
         // Check that preferences match ConfigManager defaults
@@ -30,7 +32,6 @@ struct GeneralSettingsViewTests {
         #expect(prefs.commandCompletion == true)
         #expect(prefs.commandError == true)
         #expect(prefs.bell == true)
-        #expect(prefs.claudeTurn == false)
 
         // Verify ConfigManager properties directly
         #expect(configManager.notificationSessionStart == true)
@@ -38,12 +39,12 @@ struct GeneralSettingsViewTests {
         #expect(configManager.notificationCommandCompletion == true)
         #expect(configManager.notificationCommandError == true)
         #expect(configManager.notificationBell == true)
-        #expect(configManager.notificationClaudeTurn == false)
     }
 
     @Test("Notification checkbox toggle updates preferences")
     func notificationCheckboxToggle() {
         let configManager = ConfigManager.shared
+        self.resetNotificationDefaults(configManager)
 
         // Set initial value through ConfigManager
         configManager.notificationSessionStart = false
@@ -60,7 +61,7 @@ struct GeneralSettingsViewTests {
         // Test that NotificationService reads the updated preferences
         let prefs = NotificationService.NotificationPreferences(fromConfig: configManager)
         #expect(prefs.sessionStart == true)
-        
+
         // Cleanup - ensure defaults are restored (though this test should end with correct value)
         configManager.notificationSessionStart = true
     }
@@ -69,6 +70,7 @@ struct GeneralSettingsViewTests {
     func notificationPreferencesSave() {
         // Test that ConfigManager properties work correctly
         let configManager = ConfigManager.shared
+        self.resetNotificationDefaults(configManager)
 
         // Update values through ConfigManager
         configManager.notificationSessionStart = false
@@ -91,14 +93,13 @@ struct GeneralSettingsViewTests {
         #expect(prefs.commandCompletion == true)
         #expect(prefs.commandError == true)
         #expect(prefs.bell == false)
-        
+
         // Cleanup - reset to default values to prevent state pollution
         configManager.notificationSessionStart = true
         configManager.notificationSessionExit = true
         configManager.notificationCommandCompletion = true
         configManager.notificationCommandError = true
         configManager.notificationBell = true
-        configManager.notificationClaudeTurn = false
         configManager.notificationSoundEnabled = true
         configManager.notificationVibrationEnabled = true
     }

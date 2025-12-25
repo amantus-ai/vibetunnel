@@ -46,6 +46,7 @@ test.describe('Global Session Management', () => {
           showExitedButton
         );
       },
+      undefined,
       { timeout: 10000 }
     );
 

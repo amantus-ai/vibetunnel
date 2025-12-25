@@ -14,7 +14,7 @@ struct CtrlKeyGrid: View {
         ("B", "Back one character"),
         ("F", "Forward one character"),
         ("P", "Previous command"),
-        ("N", "Next command")
+        ("N", "Next command"),
     ]
 
     let editingKeys = [
@@ -23,7 +23,7 @@ struct CtrlKeyGrid: View {
         ("W", "Delete word"),
         ("U", "Delete to beginning"),
         ("K", "Delete to end"),
-        ("Y", "Paste")
+        ("Y", "Paste"),
     ]
 
     let processKeys = [
@@ -32,7 +32,7 @@ struct CtrlKeyGrid: View {
         ("\\", "Quit (SIGQUIT)"),
         ("S", "Stop output"),
         ("Q", "Resume output"),
-        ("L", "Clear screen")
+        ("L", "Clear screen"),
     ]
 
     let searchKeys = [
@@ -41,7 +41,7 @@ struct CtrlKeyGrid: View {
         ("_", "Undo"),
         ("X", "Start selection"),
         ("G", "Cancel command"),
-        ("O", "Execute + new line")
+        ("O", "Execute + new line"),
     ]
 
     @State private var selectedCategory = 0
@@ -50,7 +50,7 @@ struct CtrlKeyGrid: View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Category picker
-                Picker("Category", selection: $selectedCategory) {
+                Picker("Category", selection: self.$selectedCategory) {
                     Text("Navigation").tag(0)
                     Text("Editing").tag(1)
                     Text("Process").tag(2)
@@ -64,13 +64,12 @@ struct CtrlKeyGrid: View {
                     LazyVGrid(columns: [
                         GridItem(.flexible()),
                         GridItem(.flexible()),
-                        GridItem(.flexible())
+                        GridItem(.flexible()),
                     ], spacing: Theme.Spacing.medium) {
-                        ForEach(currentKeys, id: \.0) { key, description in
+                        ForEach(self.currentKeys, id: \.0) { key, description in
                             CtrlGridKeyButton(
                                 key: key,
-                                description: description
-                            ) { sendCtrlKey(key) }
+                                description: description) { self.sendCtrlKey(key) }
                         }
                     }
                     .padding()
@@ -95,7 +94,7 @@ struct CtrlKeyGrid: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
-                        isPresented = false
+                        self.isPresented = false
                     }
                     .foregroundColor(Theme.Colors.primaryAccent)
                 }
@@ -104,12 +103,12 @@ struct CtrlKeyGrid: View {
     }
 
     private var currentKeys: [(String, String)] {
-        switch selectedCategory {
-        case 0: navigationKeys
-        case 1: editingKeys
-        case 2: processKeys
-        case 3: searchKeys
-        default: navigationKeys
+        switch self.selectedCategory {
+        case 0: self.navigationKeys
+        case 1: self.editingKeys
+        case 2: self.processKeys
+        case 3: self.searchKeys
+        default: self.navigationKeys
         }
     }
 
@@ -118,14 +117,14 @@ struct CtrlKeyGrid: View {
         if let charCode = key.first?.asciiValue {
             let controlCharCode = Int(charCode & 0x1F) // Convert to control character
             if let controlChar = UnicodeScalar(controlCharCode).map(String.init) {
-                onKeyPress(controlChar)
+                self.onKeyPress(controlChar)
                 Task { @MainActor in
                     HapticFeedback.impact(.medium)
                 }
 
                 // Auto-dismiss for common keys
                 if ["C", "D", "Z"].contains(key) {
-                    isPresented = false
+                    self.isPresented = false
                 }
             }
         }
@@ -144,60 +143,55 @@ struct CtrlGridKeyButton: View {
     @State private var showingTooltip = false
 
     var body: some View {
-        Button(action: onPress) {
+        Button(action: self.onPress) {
             VStack(spacing: 4) {
-                Text("^" + key)
+                Text("^" + self.key)
                     .font(Theme.Typography.terminalSystem(size: 20, weight: .bold))
-                    .foregroundColor(isPressed ? .white : Theme.Colors.primaryAccent)
+                    .foregroundColor(self.isPressed ? .white : Theme.Colors.primaryAccent)
 
-                Text("Ctrl+" + key)
+                Text("Ctrl+" + self.key)
                     .font(Theme.Typography.terminalSystem(size: 10))
-                    .foregroundColor(isPressed ? .white.opacity(0.8) : Theme.Colors.secondaryText)
+                    .foregroundColor(self.isPressed ? .white.opacity(0.8) : Theme.Colors.secondaryText)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 80)
             .background(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
-                    .fill(isPressed ? Theme.Colors.primaryAccent : Theme.Colors.cardBackground)
-            )
+                    .fill(self.isPressed ? Theme.Colors.primaryAccent : Theme.Colors.cardBackground))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.medium)
                     .stroke(
-                        isPressed ? Theme.Colors.primaryAccent : Theme.Colors.cardBorder,
-                        lineWidth: isPressed ? 2 : 1
-                    )
-            )
+                        self.isPressed ? Theme.Colors.primaryAccent : Theme.Colors.cardBorder,
+                        lineWidth: self.isPressed ? 2 : 1))
             .shadow(
-                color: isPressed ? Theme.Colors.primaryAccent.opacity(0.3) : .clear,
-                radius: isPressed ? 8 : 0
-            )
+                color: self.isPressed ? Theme.Colors.primaryAccent.opacity(0.3) : .clear,
+                radius: self.isPressed ? 8 : 0)
         }
         .buttonStyle(PlainButtonStyle())
-        .scaleEffect(isPressed ? 0.95 : 1.0)
-        .animation(.easeInOut(duration: 0.1), value: isPressed)
+        .scaleEffect(self.isPressed ? 0.95 : 1.0)
+        .animation(.easeInOut(duration: 0.1), value: self.isPressed)
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+                .onChanged { _ in self.isPressed = true }
+                .onEnded { _ in self.isPressed = false })
         .onLongPressGesture(minimumDuration: 0.5) {
-            showingTooltip = true
+            self.showingTooltip = true
             Task { @MainActor in
                 HapticFeedback.impact(.light)
             }
 
             // Hide tooltip after 3 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                showingTooltip = false
+                self.showingTooltip = false
             }
         }
-        .popover(isPresented: $showingTooltip) {
+        .popover(isPresented: self.$showingTooltip) {
             VStack(alignment: .leading, spacing: Theme.Spacing.small) {
-                Text("Ctrl+" + key)
+                Text("Ctrl+" + self.key)
                     .font(Theme.Typography.terminalSystem(size: 14, weight: .bold))
                     .foregroundColor(Theme.Colors.primaryAccent)
 
-                Text(description)
+                Text(self.description)
                     .font(Theme.Typography.terminalSystem(size: 12))
                     .foregroundColor(Theme.Colors.terminalForeground)
             }

@@ -8,12 +8,12 @@ enum CITestConfiguration {
 
     /// Get adjusted timeout for CI
     static func adjustedTimeout(base: TimeInterval) -> TimeInterval {
-        base * timeoutMultiplier
+        base * self.timeoutMultiplier
     }
 
     /// Get adjusted sleep duration for CI
     static func adjustedSleep(milliseconds: Int) -> Duration {
-        let adjustedMs = Double(milliseconds) * timeoutMultiplier
+        let adjustedMs = Double(milliseconds) * self.timeoutMultiplier
         return .milliseconds(Int(adjustedMs))
     }
 

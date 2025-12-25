@@ -63,8 +63,8 @@ struct ControlMessage<Payload: Codable>: Codable {
         action: String,
         payload: Payload? = nil,
         sessionId: String? = nil,
-        error: String? = nil
-    ) {
+        error: String? = nil)
+    {
         self.id = id
         self.type = type
         self.category = category

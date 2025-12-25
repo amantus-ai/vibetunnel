@@ -5,7 +5,7 @@ import os.log
 /// Server session information returned by the API.
 ///
 /// Represents the current state of a terminal session running on the VibeTunnel server,
-/// including its command, directory, process status, and activity information.
+/// including its command, directory, and process status.
 struct ServerSessionInfo: Codable {
     let id: String
     let name: String
@@ -30,7 +30,6 @@ struct ServerSessionInfo: Codable {
     // Additional fields from Session (not SessionInfo)
     let lastModified: String
     let active: Bool?
-    let activityStatus: ActivityStatus?
     let source: String?
     let remoteId: String?
     let remoteName: String?
@@ -38,26 +37,8 @@ struct ServerSessionInfo: Codable {
     let attachedViaVT: Bool?
 
     var isRunning: Bool {
-        status == "running"
+        self.status == "running"
     }
-}
-
-/// Activity status for a session.
-///
-/// Tracks whether a session is actively being used and provides
-/// application-specific status information when available.
-struct ActivityStatus: Codable {
-    let isActive: Bool
-    let specificStatus: SpecificStatus?
-}
-
-/// App-specific status information.
-///
-/// Provides detailed status information for specific applications running
-/// within a terminal session, such as Claude's current working state.
-struct SpecificStatus: Codable {
-    let app: String
-    let status: String
 }
 
 /// Lightweight session monitor that fetches terminal sessions on-demand.
@@ -77,8 +58,7 @@ final class SessionMonitor {
     /// Detect sessions that transitioned from running to not running
     static func detectEndedSessions(
         from old: [String: ServerSessionInfo],
-        to new: [String: ServerSessionInfo]
-    )
+        to new: [String: ServerSessionInfo])
         -> [ServerSessionInfo]
     {
         old.compactMap { id, oldSession in
@@ -109,24 +89,24 @@ final class SessionMonitor {
 
     /// Number of running sessions
     var sessionCount: Int {
-        sessions.values.count { $0.isRunning }
+        self.sessions.values.count { $0.isRunning }
     }
 
     /// Get all sessions, using cache if available
     func getSessions() async -> [String: ServerSessionInfo] {
         // Use cache if available and fresh
         if let lastFetch, Date().timeIntervalSince(lastFetch) < cacheInterval {
-            return sessions
+            return self.sessions
         }
 
-        await fetchSessions()
-        return sessions
+        await self.fetchSessions()
+        return self.sessions
     }
 
     /// Force refresh session data
     func refresh() async {
-        lastFetch = nil
-        await fetchSessions()
+        self.lastFetch = nil
+        await self.fetchSessions()
     }
 
     // MARK: - Private Methods
@@ -134,13 +114,12 @@ final class SessionMonitor {
     private func fetchSessions() async {
         do {
             // Snapshot previous sessions for exit notifications
-            _ = sessions
+            _ = self.sessions
 
             let sessionsArray = try await serverManager.performRequest(
                 endpoint: APIEndpoints.sessions,
                 method: "GET",
-                responseType: [ServerSessionInfo].self
-            )
+                responseType: [ServerSessionInfo].self)
 
             // Convert to dictionary
             var sessionsDict: [String: ServerSessionInfo] = [:]
@@ -154,7 +133,7 @@ final class SessionMonitor {
             // Sessions have been updated
 
             // Set firstFetchDone AFTER detecting ended sessions
-            firstFetchDone = true
+            self.firstFetchDone = true
             self.lastFetch = Date()
 
             // Update WindowTracker
@@ -162,14 +141,14 @@ final class SessionMonitor {
 
             // Pre-cache Git data for all sessions (deduplicated by repository)
             if let gitMonitor = gitRepositoryMonitor {
-                await preCacheGitRepositories(for: sessionsArray, using: gitMonitor)
+                await self.preCacheGitRepositories(for: sessionsArray, using: gitMonitor)
             }
         } catch {
             // Only update error if it's not a simple connection error
             if !(error is URLError) {
                 self.lastError = error
             }
-            logger.error("Failed to fetch sessions: \(error, privacy: .public)")
+            self.logger.error("Failed to fetch sessions: \(error, privacy: .public)")
             self.sessions = [:]
             self.lastFetch = Date() // Still update timestamp to avoid hammering
         }
@@ -178,8 +157,7 @@ final class SessionMonitor {
     /// Pre-cache Git repositories for sessions, deduplicating by repository root
     private func preCacheGitRepositories(
         for sessions: [ServerSessionInfo],
-        using gitMonitor: GitRepositoryMonitor
-    )
+        using gitMonitor: GitRepositoryMonitor)
         async
     {
         // Track unique directories we need to check
@@ -206,7 +184,7 @@ final class SessionMonitor {
                 let commonDevPaths = ["Projects", "Development", "Developer", "Code", "Work", "Source"]
 
                 for (index, component) in pathComponents.enumerated() {
-                    if commonDevPaths.contains(component) && index < pathComponents.count - 1 {
+                    if commonDevPaths.contains(component), index < pathComponents.count - 1 {
                         // This might be a parent project directory
                         // Add the immediate child of the development directory
                         let potentialProjectPath = "/" + pathComponents[0...index + 1].joined(separator: "/")
@@ -228,9 +206,8 @@ final class SessionMonitor {
             }
         }
 
-        logger
+        self.logger
             .debug(
-                "Pre-caching Git data for \(uniqueDirectoriesToCheck.count) unique directories (from \(sessions.count) sessions)"
-            )
+                "Pre-caching Git data for \(uniqueDirectoriesToCheck.count) unique directories (from \(sessions.count) sessions)")
     }
 }

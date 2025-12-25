@@ -14,13 +14,13 @@ interface TestNotificationOptions {
 
 /**
  * Test notification endpoint to verify the full notification flow
- * from server → SSE → Mac app AND push notifications
+ * from server → WS v3 `EVENT` → clients AND push notifications
  */
 export function createTestNotificationRouter(options: TestNotificationOptions): Router {
   const { sessionMonitor, pushNotificationService } = options;
   const router = Router();
 
-  // POST /api/test-notification - Trigger a test notification through BOTH SSE and push systems
+  // POST /api/test-notification - Trigger a test notification through WS v3 events and push.
   router.post('/test-notification', async (req: Request, res: Response) => {
     logger.info('📨 Test notification requested from client');
     logger.debug('Request headers:', req.headers);
@@ -49,11 +49,11 @@ export function createTestNotificationRouter(options: TestNotificationOptions): 
 
       logger.info('📤 Emitting test notification event through SessionMonitor:', testEvent);
 
-      // Emit a test notification event through SessionMonitor
-      // This will be picked up by the SSE endpoint and sent to all connected clients
+      // Emit a test notification event through SessionMonitor.
+      // This will be picked up by the WS v3 hub and sent to all connected clients.
       sessionMonitor.emit('notification', testEvent);
 
-      logger.info('✅ Test notification event emitted successfully through SSE');
+      logger.info('✅ Test notification event emitted successfully');
 
       // Also send through push notification service if available
       let pushResult = null;
@@ -88,7 +88,7 @@ export function createTestNotificationRouter(options: TestNotificationOptions): 
 
       res.json({
         success: true,
-        message: 'Test notification sent through SSE and push',
+        message: 'Test notification sent through events and push',
         event: testEvent,
         pushResult,
       });

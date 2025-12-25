@@ -215,6 +215,8 @@ export class SessionCleanupHelper {
         },
         { url: this.baseUrl, sessionIds: testSessions.map((s: SessionInfo) => s.id) }
       );
+
+      tracker.clear();
     } catch (error) {
       logger.error('Failed to cleanup test sessions:', error);
     }

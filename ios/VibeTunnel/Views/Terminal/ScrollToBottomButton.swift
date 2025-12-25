@@ -12,46 +12,42 @@ struct ScrollToBottomButton: View {
     var body: some View {
         Button(action: {
             HapticFeedback.impact(.light)
-            action()
+            self.action()
         }, label: {
             Text("↓")
                 .font(.system(size: 24, weight: .bold))
-                .foregroundColor(isHovered ? Theme.Colors.primaryAccent : Theme.Colors.terminalForeground)
+                .foregroundColor(self.isHovered ? Theme.Colors.primaryAccent : Theme.Colors.terminalForeground)
                 .frame(width: 48, height: 48)
                 .background(
                     Circle()
-                        .fill(isHovered ? Theme.Colors.cardBackground : Theme.Colors.cardBackground.opacity(0.8))
+                        .fill(self.isHovered ? Theme.Colors.cardBackground : Theme.Colors.cardBackground.opacity(0.8))
                         .overlay(
                             Circle()
                                 .stroke(
-                                    isHovered ? Theme.Colors.primaryAccent : Theme.Colors.cardBorder,
-                                    lineWidth: isHovered ? 2 : 1
-                                )
-                        )
-                )
+                                    self.isHovered ? Theme.Colors.primaryAccent : Theme.Colors.cardBorder,
+                                    lineWidth: self.isHovered ? 2 : 1)))
                 .shadow(
-                    color: isHovered ? Theme.Colors.primaryAccent.opacity(0.3) : .black.opacity(0.3),
-                    radius: isHovered ? 12 : 8,
+                    color: self.isHovered ? Theme.Colors.primaryAccent.opacity(0.3) : .black.opacity(0.3),
+                    radius: self.isHovered ? 12 : 8,
                     x: 0,
-                    y: isHovered ? 3 : 4
-                )
-                .scaleEffect(isPressed ? 0.95 : 1.0)
-                .offset(y: isHovered && !isPressed ? -1 : 0)
+                    y: self.isHovered ? 3 : 4)
+                .scaleEffect(self.isPressed ? 0.95 : 1.0)
+                .offset(y: self.isHovered && !self.isPressed ? -1 : 0)
         })
         .buttonStyle(PlainButtonStyle())
-        .opacity(isVisible ? 1 : 0)
-        .scaleEffect(isVisible ? 1 : 0.8)
-        .animation(Theme.Animation.quick, value: isHovered)
-        .animation(Theme.Animation.quick, value: isPressed)
-        .animation(Theme.Animation.smooth, value: isVisible)
-        .allowsHitTesting(isVisible)
+        .opacity(self.isVisible ? 1 : 0)
+        .scaleEffect(self.isVisible ? 1 : 0.8)
+        .animation(Theme.Animation.quick, value: self.isHovered)
+        .animation(Theme.Animation.quick, value: self.isPressed)
+        .animation(Theme.Animation.smooth, value: self.isVisible)
+        .allowsHitTesting(self.isVisible)
         .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity) { pressing in
-            isPressed = pressing
+            self.isPressed = pressing
         } perform: {
             // Action handled by button
         }
         .onHover { hovering in
-            isHovered = hovering
+            self.isHovered = hovering
         }
     }
 }

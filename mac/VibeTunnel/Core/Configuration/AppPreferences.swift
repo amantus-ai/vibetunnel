@@ -54,7 +54,6 @@ struct AppPreferences {
             preferredGitApp: UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.preferredGitApp),
             preferredTerminal: UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.preferredTerminal),
             showInDock: AppConstants.boolValue(for: AppConstants.UserDefaultsKeys.showInDock),
-            updateChannel: AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.updateChannel)
-        )
+            updateChannel: AppConstants.stringValue(for: AppConstants.UserDefaultsKeys.updateChannel))
     }
 }

@@ -10,10 +10,10 @@ enum ProcessKiller {
     /// Kill all other VibeTunnel instances except the current one
     static func killOtherInstances() {
         let currentPID = ProcessInfo.processInfo.processIdentifier
-        logger.info("🔍 Current process PID: \(currentPID)")
+        self.logger.info("🔍 Current process PID: \(currentPID)")
 
         // Find all VibeTunnel processes
-        let vibeTunnelProcesses = findVibeTunnelProcesses()
+        let vibeTunnelProcesses = self.findVibeTunnelProcesses()
 
         // Kill other instances
         var killedCount = 0
@@ -36,12 +36,12 @@ enum ProcessKiller {
         }
 
         if killedCount > 0 {
-            logger.info("🧹 Killed \(killedCount) other VibeTunnel instance(s)")
+            self.logger.info("🧹 Killed \(killedCount) other VibeTunnel instance(s)")
 
             // Give processes time to fully terminate
             Thread.sleep(forTimeInterval: 0.5)
         } else {
-            logger.info("✨ No other VibeTunnel instances found")
+            self.logger.info("✨ No other VibeTunnel instances found")
         }
     }
 
@@ -50,15 +50,15 @@ enum ProcessKiller {
         var processes: [(pid: Int32, path: String)] = []
 
         // Get all processes
-        let allProcesses = getAllProcesses()
-        logger.debug("🔍 Found \(allProcesses.count) total processes")
+        let allProcesses = self.getAllProcesses()
+        self.logger.debug("🔍 Found \(allProcesses.count) total processes")
 
         for process in allProcesses where process.path.contains("VibeTunnel.app/Contents/MacOS/VibeTunnel") {
             logger.debug("🎯 Found VibeTunnel process: PID \(process.pid) at \(process.path)")
             processes.append(process)
         }
 
-        logger.info("📊 Found \(processes.count) VibeTunnel app processes")
+        self.logger.info("📊 Found \(processes.count) VibeTunnel app processes")
         return processes
     }
 
@@ -66,7 +66,7 @@ enum ProcessKiller {
     private static func getAllProcesses() -> [(pid: Int32, path: String)] {
         var processes: [(pid: Int32, path: String)] = []
 
-        logger.debug("🔎 Getting process list...")
+        self.logger.debug("🔎 Getting process list...")
 
         // Set up the mib (Management Information Base) for getting all processes
         var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
@@ -74,7 +74,7 @@ enum ProcessKiller {
         // Get process list size
         var size: size_t = 0
         if sysctl(&mib, 4, nil, &size, nil, 0) != 0 {
-            logger.error("❌ Failed to get process list size, errno: \(errno)")
+            self.logger.error("❌ Failed to get process list size, errno: \(errno)")
             return processes
         }
 
@@ -85,7 +85,7 @@ enum ProcessKiller {
 
         // Get process list - reuse the same mib
         if sysctl(&mib, 4, &procList, &size, nil, 0) != 0 {
-            logger.error("❌ Failed to get process list, errno: \(errno)")
+            self.logger.error("❌ Failed to get process list, errno: \(errno)")
             return processes
         }
 
@@ -118,7 +118,7 @@ enum ProcessKiller {
     private static func isDebugProcess(pid: Int32) -> Bool {
         // Get process arguments using sysctl
         var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, pid]
-        var argmax: Int = 0
+        var argmax = 0
         var size = MemoryLayout<Int>.size
 
         // Get the maximum argument size
@@ -156,10 +156,10 @@ enum ProcessKiller {
             // Process doesn't exist or we don't have permission
             if errno == ESRCH {
                 // Process doesn't exist, consider it a success
-                logger.debug("Process \(pid) doesn't exist")
+                self.logger.debug("Process \(pid) doesn't exist")
                 return true
             } else if errno == EPERM {
-                logger.error("No permission to kill process \(pid)")
+                self.logger.error("No permission to kill process \(pid)")
                 return false
             }
         }
@@ -167,7 +167,7 @@ enum ProcessKiller {
         // For suspended processes or stubborn ones, try SIGKILL first
         // This is more aggressive but ensures we clean up properly
         if kill(pid, SIGKILL) == 0 {
-            logger.info("Forcefully killed process \(pid) with SIGKILL")
+            self.logger.info("Forcefully killed process \(pid) with SIGKILL")
             // Give it a moment to be reaped
             Thread.sleep(forTimeInterval: 0.1)
             return true
@@ -179,7 +179,7 @@ enum ProcessKiller {
             return true
         }
 
-        logger.error("Failed to kill process \(pid), errno: \(errno)")
+        self.logger.error("Failed to kill process \(pid), errno: \(errno)")
         return false
     }
 }

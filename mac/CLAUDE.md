@@ -130,7 +130,7 @@ VibeTunnel is a macOS application that provides terminal access through web brow
 ### 3. Web Frontend (TypeScript/LitElement)
 - Browser-based terminal interface
 - Connects to the server via WebSocket
-- Uses xterm.js for terminal rendering
+- Uses ghostty-web for terminal rendering
 - Sends logs back to server for centralized logging
 
 ## Logging Architecture

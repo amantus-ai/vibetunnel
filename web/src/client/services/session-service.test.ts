@@ -37,7 +37,7 @@ describe('SessionService', () => {
       spawn_terminal: false,
       cols: 120,
       rows: 30,
-      titleMode: TitleMode.DYNAMIC,
+      titleMode: TitleMode.STATIC,
     };
 
     it('should create a session successfully', async () => {
@@ -175,7 +175,7 @@ describe('SessionService', () => {
         spawn_terminal: false,
         cols: 120,
         rows: 30,
-        titleMode: TitleMode.DYNAMIC,
+        titleMode: TitleMode.STATIC,
       });
     });
 

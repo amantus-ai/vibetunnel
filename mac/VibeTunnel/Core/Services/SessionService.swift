@@ -27,17 +27,17 @@ struct SessionCreateRequest: Encodable {
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(command, forKey: .command)
-        try container.encode(workingDir, forKey: .workingDir)
-        try container.encode(titleMode, forKey: .titleMode)
+        try container.encode(self.command, forKey: .command)
+        try container.encode(self.workingDir, forKey: .workingDir)
+        try container.encode(self.titleMode, forKey: .titleMode)
 
         // Only encode optional values if they're present
-        try container.encodeIfPresent(name, forKey: .name)
-        try container.encodeIfPresent(spawnTerminal, forKey: .spawnTerminal)
-        try container.encodeIfPresent(cols, forKey: .cols)
-        try container.encodeIfPresent(rows, forKey: .rows)
-        try container.encodeIfPresent(gitRepoPath, forKey: .gitRepoPath)
-        try container.encodeIfPresent(gitBranch, forKey: .gitBranch)
+        try container.encodeIfPresent(self.name, forKey: .name)
+        try container.encodeIfPresent(self.spawnTerminal, forKey: .spawnTerminal)
+        try container.encodeIfPresent(self.cols, forKey: .cols)
+        try container.encodeIfPresent(self.rows, forKey: .rows)
+        try container.encodeIfPresent(self.gitRepoPath, forKey: .gitRepoPath)
+        try container.encodeIfPresent(self.gitBranch, forKey: .gitBranch)
     }
 }
 
@@ -68,11 +68,10 @@ final class SessionService {
         try await serverManager.performVoidRequest(
             endpoint: "\(APIEndpoints.sessions)/\(sessionId)",
             method: "PATCH",
-            body: body
-        )
+            body: body)
 
         // Force refresh the session monitor to see the update immediately
-        await sessionMonitor.refresh()
+        await self.sessionMonitor.refresh()
     }
 
     /// Terminate a session
@@ -92,10 +91,9 @@ final class SessionService {
     /// - Note: The server implements graceful termination (SIGTERM → SIGKILL)
     ///         with a 3-second timeout before force-killing processes.
     func terminateSession(sessionId: String) async throws {
-        try await serverManager.performVoidRequest(
+        try await self.serverManager.performVoidRequest(
             endpoint: "\(APIEndpoints.sessions)/\(sessionId)",
-            method: "DELETE"
-        )
+            method: "DELETE")
 
         // After successfully terminating the session, close the window if we opened it.
         // This is the key feature that prevents orphaned terminal windows.
@@ -116,30 +114,28 @@ final class SessionService {
 
     /// Send input text to a session
     func sendInput(to sessionId: String, text: String) async throws {
-        guard serverManager.isRunning else {
+        guard self.serverManager.isRunning else {
             throw SessionServiceError.serverNotRunning
         }
 
-        let body = ["text": text]
-        try await serverManager.performVoidRequest(
-            endpoint: "\(APIEndpoints.sessions)/\(sessionId)/input",
-            method: "POST",
-            body: body
-        )
+        WsV3SocketClient.shared.connect(
+            serverPort: self.serverManager.port,
+            authMode: self.serverManager.authMode,
+            token: self.serverManager.localAuthToken)
+        WsV3SocketClient.shared.sendInputText(sessionId: sessionId, text: text)
     }
 
     /// Send a key command to a session
     func sendKey(to sessionId: String, key: String) async throws {
-        guard serverManager.isRunning else {
+        guard self.serverManager.isRunning else {
             throw SessionServiceError.serverNotRunning
         }
 
-        let body = ["key": key]
-        try await serverManager.performVoidRequest(
-            endpoint: "\(APIEndpoints.sessions)/\(sessionId)/input",
-            method: "POST",
-            body: body
-        )
+        WsV3SocketClient.shared.connect(
+            serverPort: self.serverManager.port,
+            authMode: self.serverManager.authMode,
+            token: self.serverManager.localAuthToken)
+        WsV3SocketClient.shared.sendInputKey(sessionId: sessionId, key: key)
     }
 
     /// Create a new session
@@ -152,11 +148,10 @@ final class SessionService {
         cols: Int = 120,
         rows: Int = 30,
         gitRepoPath: String? = nil,
-        gitBranch: String? = nil
-    )
+        gitBranch: String? = nil)
         async throws -> String
     {
-        guard serverManager.isRunning else {
+        guard self.serverManager.isRunning else {
             throw SessionServiceError.serverNotRunning
         }
 
@@ -174,19 +169,17 @@ final class SessionService {
             cols: spawnTerminal ? nil : cols,
             rows: spawnTerminal ? nil : rows,
             gitRepoPath: gitRepoPath,
-            gitBranch: gitBranch
-        )
+            gitBranch: gitBranch)
 
         // Use performRequest to create the session
         let createResponse = try await serverManager.performRequest(
             endpoint: APIEndpoints.sessions,
             method: "POST",
             body: requestBody,
-            responseType: CreateSessionResponse.self
-        )
+            responseType: CreateSessionResponse.self)
 
         // Refresh session list
-        await sessionMonitor.refresh()
+        await self.sessionMonitor.refresh()
 
         return createResponse.sessionId
     }
@@ -213,9 +206,9 @@ enum SessionServiceError: LocalizedError {
             ErrorMessages.invalidServerURL
         case .serverNotRunning:
             ErrorMessages.serverNotRunning
-        case .requestFailed(let statusCode):
+        case let .requestFailed(statusCode):
             "Request failed with status code: \(statusCode)"
-        case .createFailed(let message):
+        case let .createFailed(message):
             message
         case .invalidResponse:
             ErrorMessages.invalidServerResponse

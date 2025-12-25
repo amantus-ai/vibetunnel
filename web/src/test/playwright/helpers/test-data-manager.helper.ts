@@ -11,7 +11,10 @@ export class TestSessionManager {
 
   constructor(page: Page, sessionPrefix = 'test') {
     this.page = page;
-    this.sessionPrefix = sessionPrefix;
+    this.sessionPrefix =
+      sessionPrefix === 'test' || sessionPrefix.startsWith('test-')
+        ? sessionPrefix
+        : `test-${sessionPrefix}`;
   }
 
   /**
@@ -84,12 +87,12 @@ export class TestSessionManager {
         // Wait for the terminal to be ready before navigating away
         // This ensures the session is fully created
         await this.page
-          .waitForSelector('.xterm-screen', {
+          .waitForSelector('#session-terminal vibe-terminal[data-ready="true"]', {
             state: 'visible',
-            timeout: 5000,
+            timeout: process.env.CI ? 15000 : 8000,
           })
           .catch(() => {
-            console.warn('Terminal screen not visible, session might not be fully initialized');
+            console.warn('Terminal not ready, session might not be fully initialized');
           });
 
         // Additional wait to ensure session is saved to backend
@@ -121,7 +124,7 @@ export class TestSessionManager {
    * Generates a unique session name with test context
    */
   generateSessionName(prefix?: string): string {
-    const actualPrefix = prefix || this.sessionPrefix;
+    const actualPrefix = prefix ? `${this.sessionPrefix}-${prefix}` : this.sessionPrefix;
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 8);
     return `${actualPrefix}-${timestamp}-${random}`;
@@ -133,6 +136,15 @@ export class TestSessionManager {
   async cleanupSession(sessionName: string): Promise<void> {
     if (!this.sessions.has(sessionName)) return;
 
+    const session = this.sessions.get(sessionName);
+    if (!session) return;
+
+    // Native sessions don't have an API session ID to delete.
+    if (session.spawnWindow) {
+      this.sessions.delete(sessionName);
+      return;
+    }
+
     const sessionListPage = new SessionListPage(this.page);
 
     // Navigate to list
@@ -141,6 +153,17 @@ export class TestSessionManager {
     }
 
     try {
+      if (session.id) {
+        await this.page
+          .evaluate(async (sessionId) => {
+            await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+          }, session.id)
+          .catch(() => {});
+
+        this.sessions.delete(sessionName);
+        return;
+      }
+
       // Wait for page to be ready - either session cards or "no sessions" message
       await this.page.waitForFunction(
         () => {
@@ -148,11 +171,12 @@ export class TestSessionManager {
           const noSessionsMsg = document.querySelector('.text-dark-text-muted');
           return cards.length > 0 || noSessionsMsg?.textContent?.includes('No terminal sessions');
         },
+        undefined,
         { timeout: 5000 }
       );
 
       // Check if session exists
-      const sessionCard = this.page.locator(`session-card:has-text("${sessionName}")`);
+      const sessionCard = this.page.locator(`session-card:has-text("${sessionName}")`).first();
       if (await sessionCard.isVisible({ timeout: 1000 })) {
         await sessionListPage.killSession(sessionName);
       }
@@ -232,7 +256,7 @@ export class TestSessionManager {
         const countText = countElement.textContent || '';
         const match = countText.match(/\d+/);
         if (!match) return false;
-        const actualCount = Number.parseInt(match[0]);
+        const actualCount = Number.parseInt(match[0], 10);
         return actualCount === expected;
       },
       expectedCount,

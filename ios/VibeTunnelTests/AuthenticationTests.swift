@@ -50,16 +50,16 @@ struct AuthenticationTests {
             let expiresAt: Date
 
             var isExpired: Bool {
-                Date() > expiresAt
+                Date() > self.expiresAt
             }
 
             var authorizationHeader: String {
-                "Bearer \(value)"
+                "Bearer \(self.value)"
             }
         }
 
-        let futureDate = Date().addingTimeInterval(3_600) // 1 hour
-        let pastDate = Date().addingTimeInterval(-3_600) // 1 hour ago
+        let futureDate = Date().addingTimeInterval(3600) // 1 hour
+        let pastDate = Date().addingTimeInterval(-3600) // 1 hour ago
 
         let validToken = AuthToken(value: "valid-token-123", expiresAt: futureDate)
         let expiredToken = AuthToken(value: "expired-token-456", expiresAt: pastDate)
@@ -103,20 +103,20 @@ struct AuthenticationTests {
             let timeoutInterval: TimeInterval
 
             var isExpired: Bool {
-                Date().timeIntervalSince(createdAt) > timeoutInterval
+                Date().timeIntervalSince(self.createdAt) > self.timeoutInterval
             }
         }
 
         let activeSession = Session(
             id: "active-123",
             createdAt: Date(),
-            timeoutInterval: 3_600 // 1 hour
+            timeoutInterval: 3600, // 1 hour
         )
 
         let expiredSession = Session(
             id: "expired-456",
-            createdAt: Date().addingTimeInterval(-7_200), // 2 hours ago
-            timeoutInterval: 3_600 // 1 hour timeout
+            createdAt: Date().addingTimeInterval(-7200), // 2 hours ago
+            timeoutInterval: 3600, // 1 hour timeout
         )
 
         #expect(!activeSession.isExpired)
@@ -171,13 +171,13 @@ struct AuthenticationTests {
             let pinnedCertificates: Set<String> // SHA256 hashes
 
             func isValid(certificateHash: String) -> Bool {
-                pinnedCertificates.contains(certificateHash)
+                self.pinnedCertificates.contains(certificateHash)
             }
         }
 
         let validator = CertificateValidator(pinnedCertificates: [
             "abc123def456", // Example hash
-            "789ghi012jkl" // Another example
+            "789ghi012jkl", // Another example
         ])
 
         #expect(validator.isValid(certificateHash: "abc123def456") == true)
@@ -243,17 +243,17 @@ struct AuthenticationTests {
                 if let (count, resetTime) = requestCounts[identifier] {
                     if now > resetTime {
                         // Window expired, reset
-                        requestCounts[identifier] = (1, now.addingTimeInterval(windowDuration))
+                        self.requestCounts[identifier] = (1, now.addingTimeInterval(self.windowDuration))
                         return true
-                    } else if count >= maxRequests {
+                    } else if count >= self.maxRequests {
                         return false
                     } else {
-                        requestCounts[identifier] = (count + 1, resetTime)
+                        self.requestCounts[identifier] = (count + 1, resetTime)
                         return true
                     }
                 } else {
                     // First request
-                    requestCounts[identifier] = (1, now.addingTimeInterval(windowDuration))
+                    self.requestCounts[identifier] = (1, now.addingTimeInterval(self.windowDuration))
                     return true
                 }
             }
@@ -287,8 +287,8 @@ struct AuthenticationTests {
             var query: [String: Any] {
                 var query: [String: Any] = [
                     kSecClass as String: kSecClassGenericPassword,
-                    kSecAttrService as String: service,
-                    kSecAttrAccount as String: account
+                    kSecAttrService as String: self.service,
+                    kSecAttrAccount as String: self.account,
                 ]
 
                 if let accessGroup {
@@ -303,8 +303,7 @@ struct AuthenticationTests {
             service: "sh.vibetunnel.ios",
             account: "user-token",
             data: "secret-token".data(using: .utf8)!,
-            accessGroup: nil
-        )
+            accessGroup: nil)
 
         #expect(item.query[kSecClass as String] as? String == kSecClassGenericPassword as String)
         #expect(item.query[kSecAttrService as String] as? String == "sh.vibetunnel.ios")
@@ -344,7 +343,7 @@ struct AuthenticationTests {
         let allowedOrigins: Set<String> = [
             "https://app.vibetunnel.com",
             "https://*.vibetunnel.com",
-            "http://localhost:3000"
+            "http://localhost:3000",
         ]
 
         #expect(isAllowedOrigin("https://app.vibetunnel.com", allowedOrigins: allowedOrigins) == true)

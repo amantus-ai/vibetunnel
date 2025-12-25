@@ -1,131 +1,134 @@
-#!/bin/bash
-# codesign-app.sh - Code signing script for VibeTunnel
+#!/usr/bin/env bash
+# codesign-app.sh - Code signing script for VibeTunnel (Sparkle-safe; no --deep)
 
 set -euo pipefail
 
-log() {
-    echo "[$(date "+%Y-%m-%d %H:%M:%S")] $1"
+APP_BUNDLE="${1:-build/Build/Products/Release/VibeTunnel.app}"
+SIGN_IDENTITY="${2:-${SIGN_IDENTITY:-}}"
+
+log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
+fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+
+if [[ ! -d "$APP_BUNDLE" ]]; then
+  fail "App bundle not found: $APP_BUNDLE"
+fi
+
+select_identity() {
+  local preferred available first
+
+  preferred="$(security find-identity -p codesigning -v 2>/dev/null \
+    | awk -F'\"' '/Developer ID Application/ { print $2; exit }')"
+  if [[ -n "$preferred" ]]; then
+    printf '%s\n' "$preferred"
+    return 0
+  fi
+
+  available="$(security find-identity -p codesigning -v 2>/dev/null | sed -n 's/.*\"\\(.*\\)\"/\\1/p')"
+  if [[ -n "$available" ]]; then
+    first="$(printf '%s\n' "$available" | head -n1)"
+    printf '%s\n' "$first"
+    return 0
+  fi
+
+  return 1
 }
 
-# Default parameters
-APP_BUNDLE="${1:-build/Build/Products/Release/VibeTunnel.app}"
-SIGN_IDENTITY="${2:-Developer ID Application}"
-
-# Validate input
-if [ ! -d "$APP_BUNDLE" ]; then
-    log "Error: App bundle not found at $APP_BUNDLE"
-    log "Usage: $0 <app_path> [signing_identity]"
-    exit 1
-fi
-
-log "Code signing $APP_BUNDLE with identity: $SIGN_IDENTITY"
-
-# Create entitlements with hardened runtime
-ENTITLEMENTS_FILE="VibeTunnel/VibeTunnel.entitlements"
-TMP_ENTITLEMENTS="/tmp/VibeTunnel_entitlements.plist"
-
-if [ -f "$ENTITLEMENTS_FILE" ]; then
-    log "Using entitlements from $ENTITLEMENTS_FILE"
-    
-    # Get the bundle identifier from the Info.plist
-    BUNDLE_ID=$(defaults read "$APP_BUNDLE/Contents/Info.plist" CFBundleIdentifier 2>/dev/null || echo "sh.vibetunnel.vibetunnel")
-    log "Bundle identifier: $BUNDLE_ID"
-    
-    # Copy entitlements and replace variables
-    sed -e "s/\$(PRODUCT_BUNDLE_IDENTIFIER)/$BUNDLE_ID/g" "$ENTITLEMENTS_FILE" > "$TMP_ENTITLEMENTS"
-    
-    # Ensure hardened runtime is enabled
-    if ! grep -q "com.apple.security.hardened-runtime" "$TMP_ENTITLEMENTS"; then
-        awk '/<\/dict>/ { print "    <key>com.apple.security.hardened-runtime</key>\n    <true/>"; } { print; }' "$TMP_ENTITLEMENTS" > "${TMP_ENTITLEMENTS}.new"
-        mv "${TMP_ENTITLEMENTS}.new" "$TMP_ENTITLEMENTS"
-    fi
+if [[ -z "$SIGN_IDENTITY" ]]; then
+  if SIGN_IDENTITY="$(select_identity)"; then
+    log "Using signing identity: $SIGN_IDENTITY"
+  else
+    SIGN_IDENTITY="-"
+    log "No signing identity found; falling back to ad-hoc signing (-)"
+  fi
 else
-    log "Creating entitlements file with hardened runtime..."
-    # Get the bundle identifier
-    BUNDLE_ID=$(defaults read "$APP_BUNDLE/Contents/Info.plist" CFBundleIdentifier 2>/dev/null || echo "sh.vibetunnel.vibetunnel")
-    log "Bundle identifier: $BUNDLE_ID"
-    
-    cat > "$TMP_ENTITLEMENTS" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>com.apple.security.app-sandbox</key>
-    <true/>
-    <key>com.apple.security.hardened-runtime</key>
-    <true/>
-    <key>com.apple.security.network.client</key>
-    <true/>
-    <key>com.apple.security.files.user-selected.read-only</key>
-    <true/>
-    <key>com.apple.security.files.downloads.read-write</key>
-    <true/>
-    <key>com.apple.security.automation.apple-events</key>
-    <true/>
-    <!-- Sparkle XPC Service temporary exceptions -->
-    <key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
-    <array>
-        <string>${BUNDLE_ID}-spks</string>
-        <string>${BUNDLE_ID}-spkd</string>
-    </array>
-</dict>
-</plist>
-EOF
+  log "Using signing identity (explicit): $SIGN_IDENTITY"
 fi
 
-# Clean up any existing signatures and quarantine attributes
-log "Preparing app bundle for signing..."
+TIMESTAMP_FLAG="--timestamp=none"
+if [[ "${CODESIGN_TIMESTAMP:-}" == "1" ]]; then
+  TIMESTAMP_FLAG="--timestamp"
+fi
+if [[ "$SIGN_IDENTITY" == "-" ]]; then
+  TIMESTAMP_FLAG="--timestamp=none"
+fi
+
+KEYCHAIN_OPTS=""
+if [[ -n "${KEYCHAIN_NAME:-}" ]]; then
+  KEYCHAIN_OPTS="--keychain $KEYCHAIN_NAME"
+  log "Using keychain: $KEYCHAIN_NAME"
+fi
+
+ENTITLEMENTS_FILE="VibeTunnel/VibeTunnel.entitlements"
+TMP_ENTITLEMENTS="$(mktemp -t vibetunnel-entitlements.XXXXXX)"
+
+BUNDLE_ID="$(defaults read "$APP_BUNDLE/Contents/Info.plist" CFBundleIdentifier 2>/dev/null || echo "sh.vibetunnel.vibetunnel")"
+log "Bundle identifier: $BUNDLE_ID"
+
+if [[ -f "$ENTITLEMENTS_FILE" ]]; then
+  sed -e 's/$(PRODUCT_BUNDLE_IDENTIFIER)/'"$BUNDLE_ID"'/g' "$ENTITLEMENTS_FILE" > "$TMP_ENTITLEMENTS"
+else
+  fail "Entitlements file not found: $ENTITLEMENTS_FILE"
+fi
+
+log "Preparing bundle for signing (xattr -cr)"
 xattr -cr "$APP_BUNDLE" 2>/dev/null || true
 
-# Check if we're in CI and have a specific keychain
-KEYCHAIN_OPTS=""
-if [ -n "${KEYCHAIN_NAME:-}" ]; then
-    log "Using keychain: $KEYCHAIN_NAME"
-    KEYCHAIN_OPTS="--keychain $KEYCHAIN_NAME"
+sign_plain() {
+  local target="$1"
+  codesign --force --options runtime $TIMESTAMP_FLAG --sign "$SIGN_IDENTITY" $KEYCHAIN_OPTS "$target"
+}
+
+sign_with_entitlements() {
+  local target="$1"
+  codesign --force --options runtime $TIMESTAMP_FLAG --entitlements "$TMP_ENTITLEMENTS" --sign "$SIGN_IDENTITY" $KEYCHAIN_OPTS "$target"
+}
+
+# Sparkle: sign nested code explicitly (avoid --deep).
+SPARKLE="$APP_BUNDLE/Contents/Frameworks/Sparkle.framework"
+if [[ -d "$SPARKLE" ]]; then
+  log "Signing Sparkle framework + helpers"
+  sign_plain "$SPARKLE/Versions/B/Sparkle"
+  sign_plain "$SPARKLE/Versions/B/Autoupdate"
+  sign_plain "$SPARKLE/Versions/B/Updater.app/Contents/MacOS/Updater"
+  sign_plain "$SPARKLE/Versions/B/Updater.app"
+  sign_plain "$SPARKLE/Versions/B/XPCServices/Downloader.xpc/Contents/MacOS/Downloader"
+  sign_plain "$SPARKLE/Versions/B/XPCServices/Downloader.xpc"
+  sign_plain "$SPARKLE/Versions/B/XPCServices/Installer.xpc/Contents/MacOS/Installer"
+  sign_plain "$SPARKLE/Versions/B/XPCServices/Installer.xpc"
+  sign_plain "$SPARKLE/Versions/B"
+  sign_plain "$SPARKLE"
 fi
 
-# Sign frameworks first (if any)
-if [ -d "$APP_BUNDLE/Contents/Frameworks" ]; then
-    log "Signing embedded frameworks..."
-    find "$APP_BUNDLE/Contents/Frameworks" \( -type d -name "*.framework" -o -type f -name "*.dylib" \) 2>/dev/null | while read -r framework; do
-        log "Signing framework: $framework"
-        codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" $KEYCHAIN_OPTS "$framework" || log "Warning: Failed to sign $framework"
+if [[ -d "$APP_BUNDLE/Contents/Frameworks" ]]; then
+  log "Signing embedded frameworks/dylibs"
+  find "$APP_BUNDLE/Contents/Frameworks" \( -name "*.framework" -o -name "*.dylib" \) ! -path "*Sparkle.framework*" -print0 \
+    | while IFS= read -r -d '' item; do
+      sign_plain "$item"
     done
 fi
 
-# Sign embedded binaries (like vibetunnel)
-if [ -f "$APP_BUNDLE/Contents/Resources/vibetunnel" ]; then
-    log "Signing vibetunnel binary..."
-    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" $KEYCHAIN_OPTS "$APP_BUNDLE/Contents/Resources/vibetunnel" || log "Warning: Failed to sign vibetunnel"
+if [[ -d "$APP_BUNDLE/Contents/Resources" ]]; then
+  VIBETUNNEL_ENTITLEMENTS="$(dirname "$0")/../VibeTunnel/vibetunnel-binary.entitlements"
+
+  if [[ -f "$APP_BUNDLE/Contents/Resources/vibetunnel" ]]; then
+    log "Signing embedded vibetunnel binary with JIT entitlements"
+    codesign --force --options runtime $TIMESTAMP_FLAG --sign "$SIGN_IDENTITY" --entitlements "$VIBETUNNEL_ENTITLEMENTS" $KEYCHAIN_OPTS "$APP_BUNDLE/Contents/Resources/vibetunnel"
+  fi
+
+  if [[ -f "$APP_BUNDLE/Contents/Resources/vibetunnel-fwd" ]]; then
+    log "Signing vibetunnel-fwd with entitlements"
+    codesign --force --options runtime $TIMESTAMP_FLAG --sign "$SIGN_IDENTITY" --entitlements "$VIBETUNNEL_ENTITLEMENTS" $KEYCHAIN_OPTS "$APP_BUNDLE/Contents/Resources/vibetunnel-fwd"
+  fi
 fi
 
-# Sign the main executable
-log "Signing main executable..."
-codesign --force --options runtime --timestamp --entitlements "$TMP_ENTITLEMENTS" --sign "$SIGN_IDENTITY" $KEYCHAIN_OPTS "$APP_BUNDLE/Contents/MacOS/VibeTunnel" || true
+log "Signing main executable"
+sign_with_entitlements "$APP_BUNDLE/Contents/MacOS/VibeTunnel"
 
-# Sign the app bundle WITHOUT deep signing (per Sparkle documentation)
-# "Due to different code signing requirements, please do not add --deep to 
-# OTHER_CODE_SIGN_FLAGS or from custom build scripts when signing your application. 
-# This is a common source of Sandboxing errors."
-log "Signing complete app bundle (without --deep per Sparkle requirements)..."
-codesign --force --options runtime --timestamp --entitlements "$TMP_ENTITLEMENTS" --sign "$SIGN_IDENTITY" $KEYCHAIN_OPTS "$APP_BUNDLE"
+log "Signing app bundle (no --deep)"
+sign_with_entitlements "$APP_BUNDLE"
 
-# Verify the signature
-log "Verifying code signature..."
-if codesign --verify --verbose=2 "$APP_BUNDLE" 2>&1; then
-    log "✅ Code signature verification passed"
-else
-    log "⚠️ Code signature verification had warnings (may be expected in CI)"
-fi
+log "Verifying code signature"
+codesign --verify --verbose=2 "$APP_BUNDLE" >/dev/null 2>&1 || fail "codesign verify failed"
 
-# Test with spctl (may fail without proper certificates)
-if spctl -a -t exec -vv "$APP_BUNDLE" 2>&1; then
-    log "✅ spctl verification passed"
-else
-    log "⚠️ spctl verification failed (expected without proper Developer ID certificate)"
-fi
-
-# Clean up
 rm -f "$TMP_ENTITLEMENTS"
-
-log "✅ Code signing completed successfully"
+log "Codesign complete for $APP_BUNDLE"

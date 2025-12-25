@@ -18,12 +18,10 @@ const logger = createLogger('settings');
 
 export interface AppPreferences {
   useDirectKeyboard: boolean;
-  useBinaryMode: boolean;
 }
 
 const DEFAULT_APP_PREFERENCES: AppPreferences = {
   useDirectKeyboard: true, // Default to modern direct keyboard for new users
-  useBinaryMode: false, // Default to SSE/RSC mode for compatibility
 };
 
 export const STORAGE_KEY = 'vibetunnel_app_preferences';
@@ -445,7 +443,7 @@ export class Settings extends LitElement {
     }
   }
 
-  private handleAppPreferenceChange(key: keyof AppPreferences, value: boolean | string) {
+  private handleAppPreferenceChange(key: keyof AppPreferences, value: boolean) {
     // Update locally
     this.appPreferences = { ...this.appPreferences, [key]: value };
     this.saveAppPreferences();
@@ -650,7 +648,6 @@ export class Settings extends LitElement {
                           ${this.renderNotificationToggle('commandError', 'Session Errors', 'When commands fail with non-zero exit codes')}
                           ${this.renderNotificationToggle('commandCompletion', 'Command Completion', 'When commands taking >3 seconds finish (builds, tests, etc.)')}
                           ${this.renderNotificationToggle('bell', 'System Alerts', 'Terminal bell (^G) from vim, IRC mentions, completion sounds')}
-                          ${this.renderNotificationToggle('claudeTurn', 'Claude Turn', 'When Claude AI finishes responding and awaits input')}
                         </div>
                       </div>
 

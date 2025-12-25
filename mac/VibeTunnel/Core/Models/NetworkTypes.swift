@@ -28,9 +28,9 @@ public enum NetworkError: LocalizedError {
         switch self {
         case .invalidResponse:
             "Invalid server response"
-        case .serverError(let statusCode, let message):
+        case let .serverError(statusCode, message):
             "Server error (\(statusCode)): \(message)"
-        case .decodingError(let error):
+        case let .decodingError(error):
             "Failed to decode response: \(error.localizedDescription)"
         case .noData:
             "No data received from server"

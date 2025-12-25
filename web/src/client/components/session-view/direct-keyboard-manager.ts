@@ -591,7 +591,7 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
       return;
     } else if (key.startsWith('F')) {
       // Handle function keys F1-F12
-      const fNum = Number.parseInt(key.substring(1));
+      const fNum = Number.parseInt(key.substring(1), 10);
       if (fNum >= 1 && fNum <= 12) {
         this.inputManager.sendInput(`f${fNum}`);
       }

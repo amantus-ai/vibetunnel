@@ -60,3 +60,15 @@ if (fs.existsSync(srcDir)) {
 } else {
   console.log('No assets directory found, skipping copy');
 }
+
+// ghostty-web WASM (required at runtime via fetch)
+try {
+  const wasmSrc = path.join(__dirname, '..', 'node_modules', 'ghostty-web', 'dist', 'ghostty-vt.wasm');
+  const wasmDest = path.join(__dirname, '..', 'public', 'ghostty-vt.wasm');
+  if (fs.existsSync(wasmSrc)) {
+    fs.copyFileSync(wasmSrc, wasmDest);
+    console.log('ghostty-web WASM copied successfully');
+  }
+} catch (error) {
+  console.warn('Failed to copy ghostty-web WASM:', error);
+}

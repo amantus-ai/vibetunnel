@@ -15,7 +15,7 @@ import { Buffer } from 'buffer';
 export enum MessageType {
   STDIN_DATA = 0x01, // Raw stdin data (keyboard input)
   CONTROL_CMD = 0x02, // Control commands (resize, kill, etc)
-  STATUS_UPDATE = 0x03, // Status updates (Claude status, etc)
+  STATUS_UPDATE = 0x03, // Legacy status updates (ignored)
   HEARTBEAT = 0x04, // Keep-alive ping/pong
   ERROR = 0x05, // Error messages
   // Reserved for future use
@@ -185,8 +185,11 @@ export class MessageParser {
   /**
    * Add data to the parser
    */
-  addData(chunk: Buffer): void {
-    this.buffer = Buffer.concat([this.buffer, chunk]);
+  addData(chunk: Buffer | Uint8Array | string): void {
+    const bufferChunk = Buffer.isBuffer(chunk)
+      ? chunk
+      : Buffer.from(typeof chunk === 'string' ? chunk : chunk);
+    this.buffer = Buffer.concat([this.buffer, bufferChunk]);
   }
 
   /**

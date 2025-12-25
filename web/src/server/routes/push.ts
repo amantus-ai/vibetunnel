@@ -165,7 +165,7 @@ export function createPushRoutes(options: CreatePushRoutesOptions): Router {
         ],
       });
 
-      // Also emit through SSE if sessionMonitor is available
+      // Also emit through WS v3 events if sessionMonitor is available
       if (sessionMonitor) {
         const testEvent = {
           type: ServerEventType.TestNotification,
@@ -177,7 +177,7 @@ export function createPushRoutes(options: CreatePushRoutesOptions): Router {
           body: message || 'This is a test notification from VibeTunnel',
         };
         sessionMonitor.emit('notification', testEvent);
-        logger.info('✅ Test notification also emitted through SSE');
+        logger.info('✅ Test notification also emitted through events');
       }
 
       res.json({
@@ -185,7 +185,7 @@ export function createPushRoutes(options: CreatePushRoutesOptions): Router {
         sent: result.sent,
         failed: result.failed,
         errors: result.errors,
-        message: `Test notification sent to ${result.sent} push subscribers${sessionMonitor ? ' and SSE listeners' : ''}`,
+        message: `Test notification sent to ${result.sent} push subscribers${sessionMonitor ? ' and event listeners' : ''}`,
       });
 
       logger.log(`Test notification sent: ${result.sent} successful, ${result.failed} failed`);

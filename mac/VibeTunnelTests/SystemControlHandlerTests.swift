@@ -18,7 +18,7 @@ struct SystemControlHandlerTests {
             "id": "test-123",
             "type": "event",
             "category": "system",
-            "action": "ready"
+            "action": "ready",
         ]
         let messageData = try JSONSerialization.data(withJSONObject: message)
 
@@ -40,7 +40,7 @@ struct SystemControlHandlerTests {
             "id": "test-123",
             "type": "request",
             "category": "system",
-            "action": "ping"
+            "action": "ping",
         ]
         let messageData = try JSONSerialization.data(withJSONObject: message)
 

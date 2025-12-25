@@ -446,7 +446,9 @@ export class BrowserSSHAgent {
         // Load directly without decryption
         const keys: SSHKey[] = JSON.parse(keysData);
         this.keys.clear();
-        keys.forEach((key) => this.keys.set(key.id, key));
+        keys.forEach((key) => {
+          this.keys.set(key.id, key);
+        });
       }
     } catch (error) {
       console.error('Failed to load SSH keys from storage:', error);

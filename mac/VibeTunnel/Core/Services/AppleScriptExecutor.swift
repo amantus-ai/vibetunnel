@@ -19,8 +19,7 @@ private struct SendableDescriptor: @unchecked Sendable {
 final class AppleScriptExecutor {
     private let logger = Logger(
         subsystem: BundleIdentifiers.loggerSubsystem,
-        category: "AppleScriptExecutor"
-    )
+        category: "AppleScriptExecutor")
 
     /// Shared instance for app-wide AppleScript execution
     static let shared = AppleScriptExecutor()
@@ -37,7 +36,7 @@ final class AppleScriptExecutor {
     private func executeCore(_ script: String) throws -> NSAppleEventDescriptor? {
         var error: NSDictionary?
         guard let scriptObject = NSAppleScript(source: script) else {
-            logger.error("Failed to create NSAppleScript object")
+            self.logger.error("Failed to create NSAppleScript object")
             throw AppleScriptError.scriptCreationFailed
         }
 
@@ -48,23 +47,22 @@ final class AppleScriptExecutor {
             let errorNumber = error["NSAppleScriptErrorNumber"] as? Int
 
             // Log error details
-            logger.error("AppleScript execution failed:")
-            logger.error("  Error code: \(errorNumber ?? -1)")
-            logger.error("  Error message: \(errorMessage)")
+            self.logger.error("AppleScript execution failed:")
+            self.logger.error("  Error code: \(errorNumber ?? -1)")
+            self.logger.error("  Error message: \(errorMessage)")
             if let errorRange = error["NSAppleScriptErrorRange"] as? NSRange {
-                logger.error("  Error range: \(errorRange)")
+                self.logger.error("  Error range: \(errorRange)")
             }
             if let errorBriefMessage = error["NSAppleScriptErrorBriefMessage"] as? String {
-                logger.error("  Brief message: \(errorBriefMessage)")
+                self.logger.error("  Brief message: \(errorBriefMessage)")
             }
 
             throw AppleScriptError.executionFailed(
                 message: errorMessage,
-                errorCode: errorNumber
-            )
+                errorCode: errorNumber)
         }
 
-        logger.debug("AppleScript \(script) executed successfully")
+        self.logger.debug("AppleScript \(script) executed successfully")
         return result
     }
 
@@ -84,23 +82,23 @@ final class AppleScriptExecutor {
         if Thread.isMainThread {
             // Add a small delay to avoid crashes from SwiftUI actions
             RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.01))
-            return try executeCore(script)
+            return try self.executeCore(script)
         } else {
             // If on background thread, dispatch to main and wait
             var result: Result<NSAppleEventDescriptor?, Error>?
 
             DispatchQueue.main.sync {
                 do {
-                    result = try .success(execute(script, timeout: timeout))
+                    result = try .success(self.execute(script, timeout: timeout))
                 } catch {
                     result = .failure(error)
                 }
             }
 
             switch result {
-            case .success(let value):
+            case let .success(value):
                 return value
-            case .failure(let error):
+            case let .failure(error):
                 throw error
             case .none:
                 throw AppleScriptError.executionFailed(message: "Script execution result was nil", errorCode: nil)
@@ -145,7 +143,7 @@ final class AppleScriptExecutor {
                 Task {
                     do {
                         try await Task.sleep(nanoseconds: UInt64(timeoutDuration * 1_000_000_000))
-                        logger.error("AppleScript execution timed out after \(timeoutDuration) seconds")
+                        self.logger.error("AppleScript execution timed out after \(timeoutDuration) seconds")
                         wrapper.resume(throwing: AppleScriptError.timeout)
                     } catch {
                         // Task was cancelled, do nothing
@@ -184,7 +182,7 @@ final class AppleScriptExecutor {
         """
 
         do {
-            _ = try await executeAsync(testScript)
+            _ = try await self.executeAsync(testScript)
             return true
         } catch let error as AppleScriptError {
             if error.isPermissionError {
@@ -194,7 +192,7 @@ final class AppleScriptExecutor {
             logger.error("AppleScript permission check failed with error: \(error)")
             return false
         } catch {
-            logger.error("AppleScript permission check failed with unexpected error: \(error)")
+            self.logger.error("AppleScript permission check failed with unexpected error: \(error)")
             return false
         }
     }
@@ -214,7 +212,7 @@ enum AppleScriptError: LocalizedError {
         switch self {
         case .scriptCreationFailed:
             "Failed to create AppleScript object"
-        case .executionFailed(let message, let errorCode):
+        case let .executionFailed(message, errorCode):
             if let code = errorCode {
                 "AppleScript error \(code): \(message)"
             } else {
@@ -231,16 +229,16 @@ enum AppleScriptError: LocalizedError {
         switch self {
         case .permissionDenied:
             return "VibeTunnel needs Automation permission to control other applications."
-        case .executionFailed(_, let errorCode):
+        case let .executionFailed(_, errorCode):
             if let code = errorCode {
                 switch code {
-                case -1_743:
+                case -1743:
                     return "User permission is required to control other applications."
-                case -1_728:
+                case -1728:
                     return "The application is not running or cannot be controlled."
-                case -1_708:
+                case -1708:
                     return "The event was not handled by the target application."
-                case -2_741:
+                case -2741:
                     return "AppleScript syntax error - check for unescaped quotes or invalid identifiers."
                 default:
                     return nil
@@ -257,8 +255,8 @@ enum AppleScriptError: LocalizedError {
         switch self {
         case .permissionDenied:
             true
-        case .executionFailed(_, let errorCode):
-            errorCode == -1_743
+        case let .executionFailed(_, errorCode):
+            errorCode == -1743
         default:
             false
         }
@@ -266,12 +264,12 @@ enum AppleScriptError: LocalizedError {
 
     /// Converts this error to a TerminalLauncherError if appropriate
     func toTerminalLauncherError() -> TerminalLauncherError {
-        if isPermissionError {
+        if self.isPermissionError {
             return .appleScriptPermissionDenied
         }
 
         switch self {
-        case .executionFailed(let message, let errorCode):
+        case let .executionFailed(message, errorCode):
             return .appleScriptExecutionFailed(message, errorCode: errorCode)
         default:
             return .appleScriptExecutionFailed(self.localizedDescription, errorCode: nil)

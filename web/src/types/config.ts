@@ -16,7 +16,6 @@ export interface NotificationPreferences {
   commandCompletion: boolean;
   commandError: boolean;
   bell: boolean;
-  claudeTurn: boolean;
   // UI preferences
   soundEnabled: boolean;
   vibrationEnabled: boolean;
@@ -61,10 +60,10 @@ export interface VibeTunnelConfig {
 }
 
 export const DEFAULT_QUICK_START_COMMANDS: QuickStartCommand[] = [
-  { name: '✨ claude', command: 'claude --dangerously-skip-permissions' },
-  { name: '✨ gemini', command: 'gemini' },
-  { command: 'opencode' },
-  { command: 'crush' },
+  { name: '✨ codex', command: 'codex' },
+  { name: '✨ claude', command: 'claude' },
+  { command: 'gemini3' },
+  { command: 'opencode 4' },
   { command: 'zsh' },
   { command: 'node' },
 ];
@@ -76,7 +75,6 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   commandCompletion: false,
   commandError: true,
   bell: true,
-  claudeTurn: false,
   soundEnabled: true,
   vibrationEnabled: false,
 };
@@ -92,7 +90,6 @@ export const RECOMMENDED_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   commandCompletion: false,
   commandError: true,
   bell: true,
-  claudeTurn: true,
   soundEnabled: true,
   vibrationEnabled: false,
 };

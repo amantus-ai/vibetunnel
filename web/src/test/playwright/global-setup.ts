@@ -2,6 +2,46 @@ import { chromium, type FullConfig } from '@playwright/test';
 import type { Session } from '../../shared/types.js';
 import { testConfig } from './test-config';
 
+function isLikelyTestSessionName(name?: string): boolean {
+  if (!name) return false;
+  if (name.startsWith('test-')) return true;
+
+  // Legacy / older test prefixes (from before we standardized on "test-*").
+  // Guard with timestamp marker to avoid nuking normal sessions that happen to share a word.
+  const hasTimestamp = /-\d{13}-/.test(name);
+  if (!hasTimestamp) return false;
+
+  const markers = [
+    'nav-test',
+    'keyboard-test',
+    'terminal-test',
+    'terminal-input-test',
+    'multi-command-test',
+    'scroll-test',
+    'state-test',
+    'basic-test',
+    'exit',
+    'lifecycle',
+    'reconnect',
+    'metadata-test',
+    'file-nav-test',
+    'file-browser-ui-test',
+    'file-browser-test',
+    'file-browser-nav',
+    'file-browser',
+    'quick-start',
+    'long-running',
+    'sesscreate',
+    'actmon',
+    'termint',
+    'uifeat',
+  ];
+
+  return markers.some(
+    (m) => name.startsWith(`${m}-`) || name.includes(`-${m}-`) || name.includes(m)
+  );
+}
+
 async function globalSetup(config: FullConfig) {
   // Start performance tracking
   console.time('Total test duration');
@@ -31,8 +71,8 @@ async function globalSetup(config: FullConfig) {
   // Set up any global test data or configuration
   process.env.PLAYWRIGHT_TEST_BASE_URL = config.use?.baseURL || testConfig.baseURL;
 
-  // Clean up sessions if explicitly requested
-  if (process.env.CLEAN_TEST_SESSIONS === 'true') {
+  // Clean up sessions in CI (or if explicitly requested)
+  if (process.env.CI || process.env.CLEAN_TEST_SESSIONS === 'true') {
     console.log('Cleaning up old test sessions...');
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
@@ -72,22 +112,15 @@ async function globalSetup(config: FullConfig) {
 
         console.log(`Cleaned up all ${sessions.length} sessions`);
       } else {
-        // Clean up old test sessions (both CI and local)
+        // Clean up test sessions
         const oneHourAgo = Date.now() - 60 * 60 * 1000;
         const testSessions = sessions.filter((s: Session) => {
-          const isTestSession =
-            s.name?.includes('test-') ||
-            s.name?.includes('nav-test') ||
-            s.name?.includes('keyboard-test') ||
-            s.name?.includes('sesscreate-') ||
-            s.name?.includes('actmon-') ||
-            s.name?.includes('termint-') ||
-            s.name?.includes('uifeat-');
+          const isTestSession = isLikelyTestSessionName(s.name);
           const isOld = new Date(s.startedAt).getTime() < oneHourAgo;
-          return isTestSession && isOld;
+          return isTestSession && (process.env.CI || isOld);
         });
 
-        console.log(`Found ${testSessions.length} old test sessions to clean up`);
+        console.log(`Found ${testSessions.length} test sessions to clean up`);
 
         // Kill old test sessions
         for (const session of testSessions) {

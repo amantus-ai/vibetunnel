@@ -21,7 +21,7 @@ struct ServerInfoHeader: View {
         let (debugMode, useDevServer) = AppConstants.getDevelopmentStatus()
 
         var name = debugMode ? "VibeTunnel Debug" : "VibeTunnel"
-        if useDevServer && serverManager.isRunning {
+        if useDevServer, self.serverManager.isRunning {
             name += " Dev Server"
         }
         return name
@@ -38,36 +38,35 @@ struct ServerInfoHeader: View {
                         .cornerRadius(4)
                         .padding(.leading, -5) // Align with small icons below
 
-                    Text(appDisplayName)
+                    Text(self.appDisplayName)
                         .font(.system(size: 14, weight: .semibold))
                 }
 
                 Spacer()
 
                 ServerStatusBadge(
-                    isRunning: serverManager.isRunning
-                ) {
+                    isRunning: self.serverManager.isRunning)
+                {
                     Task {
-                        await serverManager.restart()
+                        await self.serverManager.restart()
                     }
                 }
             }
 
             // Server address
-            if serverManager.isRunning {
+            if self.serverManager.isRunning {
                 VStack(alignment: .leading, spacing: 4) {
                     ServerAddressRow()
 
-                    if ngrokService.isActive, let publicURL = ngrokService.publicUrl {
+                    if self.ngrokService.isActive, let publicURL = ngrokService.publicUrl {
                         ServerAddressRow(
                             icon: "network",
                             label: "ngrok:",
                             address: publicURL,
-                            url: URL(string: publicURL)
-                        )
+                            url: URL(string: publicURL))
                     }
 
-                    if tailscaleService.isRunning, let hostname = tailscaleService.tailscaleHostname {
+                    if self.tailscaleService.isRunning, let hostname = tailscaleService.tailscaleHostname {
                         let isTailscaleServeEnabled = UserDefaults.standard
                             .bool(forKey: AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
                         ServerAddressRow(
@@ -75,15 +74,12 @@ struct ServerInfoHeader: View {
                             label: "Tailscale:",
                             address: TailscaleURLHelper.displayAddress(
                                 hostname: hostname,
-                                port: serverManager.port,
-                                isTailscaleServeEnabled: isTailscaleServeEnabled
-                            ),
+                                port: self.serverManager.port,
+                                isTailscaleServeEnabled: isTailscaleServeEnabled),
                             url: TailscaleURLHelper.constructURL(
                                 hostname: hostname,
-                                port: serverManager.port,
-                                isTailscaleServeEnabled: isTailscaleServeEnabled
-                            )
-                        )
+                                port: self.serverManager.port,
+                                isTailscaleServeEnabled: isTailscaleServeEnabled))
                     }
                 }
             }
@@ -112,8 +108,8 @@ struct ServerAddressRow: View {
         icon: String = "server.rack",
         label: String = "Local:",
         address: String? = nil,
-        url: URL? = nil
-    ) {
+        url: URL? = nil)
+    {
         self.icon = icon
         self.label = label
         self.address = address ?? ""
@@ -122,17 +118,17 @@ struct ServerAddressRow: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: icon)
+            Image(systemName: self.icon)
                 .font(.system(size: 10))
-                .foregroundColor(AppColors.Fallback.serverRunning(for: colorScheme))
+                .foregroundColor(AppColors.Fallback.serverRunning(for: self.colorScheme))
                 .frame(width: 14, alignment: .center)
-            Text(label)
+            Text(self.label)
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
             Button(action: {
                 if let providedUrl = url {
                     NSWorkspace.shared.open(providedUrl)
-                } else if computedAddress.starts(with: "127.0.0.1:") {
+                } else if self.computedAddress.starts(with: "127.0.0.1:") {
                     // For localhost, use DashboardURLBuilder
                     if let dashboardURL = DashboardURLBuilder.dashboardURL(port: serverManager.port) {
                         NSWorkspace.shared.open(dashboardURL)
@@ -142,46 +138,46 @@ struct ServerAddressRow: View {
                     NSWorkspace.shared.open(url)
                 }
             }, label: {
-                Text(computedAddress)
+                Text(self.computedAddress)
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(AppColors.Fallback.serverRunning(for: colorScheme))
-                    .underline(isHovered)
+                    .foregroundColor(AppColors.Fallback.serverRunning(for: self.colorScheme))
+                    .underline(self.isHovered)
             })
             .buttonStyle(.plain)
             .pointingHandCursor()
 
             // Copy button - always present but opacity changes on hover
             Button(action: {
-                copyToClipboard()
+                self.copyToClipboard()
             }, label: {
-                Image(systemName: showCopiedFeedback ? "checkmark.circle.fill" : "doc.on.doc")
+                Image(systemName: self.showCopiedFeedback ? "checkmark.circle.fill" : "doc.on.doc")
                     .font(.system(size: 10))
-                    .foregroundColor(AppColors.Fallback.serverRunning(for: colorScheme))
+                    .foregroundColor(AppColors.Fallback.serverRunning(for: self.colorScheme))
             })
             .buttonStyle(.plain)
             .pointingHandCursor()
-            .help(showCopiedFeedback ? "Copied!" : "Copy to clipboard")
-            .opacity(isHovered ? 1.0 : 0.0)
-            .animation(.easeInOut(duration: 0.15), value: isHovered)
+            .help(self.showCopiedFeedback ? "Copied!" : "Copy to clipboard")
+            .opacity(self.isHovered ? 1.0 : 0.0)
+            .animation(.easeInOut(duration: 0.15), value: self.isHovered)
         }
         .onHover { hovering in
-            isHovered = hovering
+            self.isHovered = hovering
         }
     }
 
     private var computedAddress: String {
-        if !address.isEmpty {
-            return address
+        if !self.address.isEmpty {
+            return self.address
         }
 
         // Default behavior for local server
-        let bindAddress = serverManager.bindAddress
+        let bindAddress = self.serverManager.bindAddress
         if bindAddress == "127.0.0.1" {
-            return "127.0.0.1:\(serverManager.port)"
+            return "127.0.0.1:\(self.serverManager.port)"
         } else if let localIP = NetworkUtility.getLocalIPAddress() {
-            return "\(localIP):\(serverManager.port)"
+            return "\(localIP):\(self.serverManager.port)"
         } else {
-            return "0.0.0.0:\(serverManager.port)"
+            return "0.0.0.0:\(self.serverManager.port)"
         }
     }
 
@@ -192,27 +188,27 @@ struct ServerAddressRow: View {
         }
 
         // For local addresses, build the full URL
-        if computedAddress.starts(with: "127.0.0.1:") {
-            return "http://\(computedAddress)"
+        if self.computedAddress.starts(with: "127.0.0.1:") {
+            return "http://\(self.computedAddress)"
         } else {
-            return "http://\(computedAddress)"
+            return "http://\(self.computedAddress)"
         }
     }
 
     private func copyToClipboard() {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.setString(urlToCopy, forType: .string)
+        pasteboard.setString(self.urlToCopy, forType: .string)
 
         // Show feedback
         withAnimation(.easeInOut(duration: 0.15)) {
-            showCopiedFeedback = true
+            self.showCopiedFeedback = true
         }
 
         // Hide feedback after 2 seconds
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             withAnimation(.easeInOut(duration: 0.15)) {
-                showCopiedFeedback = false
+                self.showCopiedFeedback = false
             }
         }
     }
@@ -235,47 +231,43 @@ struct ServerStatusBadge: View {
         HStack(spacing: 4) {
             Circle()
                 .fill(
-                    isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : AppColors.Fallback
-                        .destructive(for: colorScheme)
-                )
+                    self.isRunning ? AppColors.Fallback.serverRunning(for: self.colorScheme) : AppColors.Fallback
+                        .destructive(for: self.colorScheme))
                 .frame(width: 6, height: 6)
-            Text(isRunning ? "Running" : "Stopped")
+            Text(self.isRunning ? "Running" : "Stopped")
                 .font(.system(size: 10, weight: .medium))
                 .foregroundColor(
-                    isRunning ? AppColors.Fallback.serverRunning(for: colorScheme) : AppColors.Fallback
-                        .destructive(for: colorScheme)
-                )
+                    self.isRunning ? AppColors.Fallback.serverRunning(for: self.colorScheme) : AppColors.Fallback
+                        .destructive(for: self.colorScheme))
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(
             Capsule()
                 .fill(
-                    isRunning ? AppColors.Fallback.serverRunning(for: colorScheme).opacity(0.1) : AppColors.Fallback
-                        .destructive(for: colorScheme).opacity(0.1)
-                )
+                    self.isRunning ? AppColors.Fallback.serverRunning(for: self.colorScheme).opacity(0.1) : AppColors
+                        .Fallback
+                        .destructive(for: self.colorScheme).opacity(0.1))
                 .overlay(
                     Capsule()
                         .stroke(
-                            isRunning ? AppColors.Fallback.serverRunning(for: colorScheme).opacity(0.3) : AppColors
-                                .Fallback.destructive(for: colorScheme).opacity(0.3),
-                            lineWidth: 0.5
-                        )
-                )
-        )
-        .opacity(isHovered && !isRunning ? 0.8 : 1.0)
-        .scaleEffect(isHovered && !isRunning ? 0.95 : 1.0)
-        .animation(.easeInOut(duration: 0.15), value: isHovered)
+                            self.isRunning ? AppColors.Fallback.serverRunning(for: self.colorScheme)
+                                .opacity(0.3) : AppColors
+                                .Fallback.destructive(for: self.colorScheme).opacity(0.3),
+                            lineWidth: 0.5)))
+        .opacity(self.isHovered && !self.isRunning ? 0.8 : 1.0)
+        .scaleEffect(self.isHovered && !self.isRunning ? 0.95 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: self.isHovered)
         .onHover { hovering in
-            if !isRunning {
-                isHovered = hovering
+            if !self.isRunning {
+                self.isHovered = hovering
             }
         }
         .onTapGesture {
-            if !isRunning, let onRestart {
+            if !self.isRunning, let onRestart {
                 onRestart()
             }
         }
-        .help(!isRunning ? "Click to restart server" : "")
+        .help(!self.isRunning ? "Click to restart server" : "")
     }
 }

@@ -7,7 +7,7 @@
 
 import type { Session } from '../../../shared/types.js';
 import { authClient } from '../../services/auth-client.js';
-import { websocketInputClient } from '../../services/websocket-input-client.js';
+import { terminalSocketClient } from '../../services/terminal-socket-client.js';
 import { isBrowserShortcut, isCopyPasteShortcut } from '../../utils/browser-shortcuts.js';
 import { consumeEvent } from '../../utils/event-utils.js';
 import { isIMEAllowedKey } from '../../utils/ime-constants.js';
@@ -16,20 +16,18 @@ import { detectMobile } from '../../utils/mobile-utils.js';
 import { CJK_LANGUAGE_CODES, TERMINAL_IDS } from '../../utils/terminal-constants.js';
 import { DesktopIMEInput } from '../ime-input.js';
 import type { Terminal } from '../terminal.js';
-import type { VibeTerminalBinary } from '../vibe-terminal-binary.js';
 
 const logger = createLogger('input-manager');
 
 export interface InputManagerCallbacks {
   requestUpdate(): void;
   getKeyboardCaptureActive?(): boolean;
-  getTerminalElement?(): Terminal | VibeTerminalBinary | null; // For cursor position access
+  getTerminalElement?(): Terminal | null; // For cursor position access
 }
 
 export class InputManager {
   private session: Session | null = null;
   private callbacks: InputManagerCallbacks | null = null;
-  private useWebSocketInput = true; // Feature flag for WebSocket input
   private lastEscapeTime = 0;
   private readonly DOUBLE_ESCAPE_THRESHOLD = 500; // ms
   private imeInput: DesktopIMEInput | null = null;
@@ -53,21 +51,9 @@ export class InputManager {
       this.setupGlobalCompositionListener();
     }
 
-    // Check URL parameter for WebSocket input feature flag
-    const urlParams = new URLSearchParams(window.location.search);
-    const socketInputParam = urlParams.get('socket_input');
-    if (socketInputParam !== null) {
-      this.useWebSocketInput = socketInputParam === 'true';
-      logger.log(
-        `WebSocket input ${this.useWebSocketInput ? 'enabled' : 'disabled'} via URL parameter`
-      );
-    }
-
-    // Connect to WebSocket when session is set (if feature enabled)
-    if (session && this.useWebSocketInput) {
-      websocketInputClient.connect(session).catch((error) => {
-        logger.debug('WebSocket connection failed, will use HTTP fallback:', error);
-      });
+    // Ensure v3 socket is initialized early
+    if (session) {
+      terminalSocketClient.initialize();
     }
   }
 
@@ -390,37 +376,29 @@ export class InputManager {
     if (!this.session) return;
 
     try {
-      // Try WebSocket first if feature enabled - non-blocking (connection should already be established)
-      if (this.useWebSocketInput) {
-        const sentViaWebSocket = websocketInputClient.sendInput(input);
+      // Prefer v3 socket (single transport). Keep HTTP fallback for robustness.
+      const sentViaSocket =
+        input.text !== undefined
+          ? terminalSocketClient.sendInputText(this.session.id, input.text)
+          : input.key !== undefined
+            ? terminalSocketClient.sendInputKey(this.session.id, input.key)
+            : false;
 
-        if (sentViaWebSocket) {
-          // Successfully sent via WebSocket, no need for HTTP fallback
-          return;
-        }
-      }
+      if (sentViaSocket) return;
 
-      // Fallback to HTTP if WebSocket failed
-      logger.debug('WebSocket unavailable, falling back to HTTP');
+      logger.debug('v3 socket unavailable, falling back to HTTP');
       const response = await fetch(`/api/sessions/${this.session.id}/input`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authClient.getAuthHeader(),
-        },
+        headers: { 'Content-Type': 'application/json', ...authClient.getAuthHeader() },
         body: JSON.stringify(input),
       });
 
       if (!response.ok) {
         if (response.status === 400) {
           logger.log('session no longer accepting input (likely exited)');
-          // Update session status to exited
           if (this.session) {
             this.session.status = 'exited';
-            // Trigger UI update through callbacks
-            if (this.callbacks) {
-              this.callbacks.requestUpdate();
-            }
+            this.callbacks?.requestUpdate();
           }
         } else {
           logger.error(`failed to ${errorContext}`, { status: response.status });
@@ -589,11 +567,6 @@ export class InputManager {
     if (this.globalCompositionListener) {
       document.removeEventListener('compositionstart', this.globalCompositionListener);
       this.globalCompositionListener = null;
-    }
-
-    // Disconnect WebSocket if feature was enabled
-    if (this.useWebSocketInput) {
-      websocketInputClient.disconnect();
     }
 
     // Clear references to prevent memory leaks

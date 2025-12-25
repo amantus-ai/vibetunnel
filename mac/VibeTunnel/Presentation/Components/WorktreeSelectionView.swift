@@ -32,7 +32,7 @@ struct WorktreeSelectionView: View {
                     .foregroundColor(.secondary)
             }
 
-            if worktreeService.isLoading {
+            if self.worktreeService.isLoading {
                 HStack {
                     ProgressView()
                         .scaleEffect(0.8)
@@ -56,24 +56,24 @@ struct WorktreeSelectionView: View {
                     }
 
                     // Worktree selection
-                    if !worktreeService.worktrees.isEmpty {
+                    if !self.worktreeService.worktrees.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(selectedWorktreePath != nil ? "Selected Worktree" : "Select Worktree")
+                            Text(self.selectedWorktreePath != nil ? "Selected Worktree" : "Select Worktree")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
 
                             ScrollView {
                                 VStack(spacing: 2) {
-                                    ForEach(worktreeService.worktrees) { worktree in
+                                    ForEach(self.worktreeService.worktrees) { worktree in
                                         WorktreeRow(
                                             worktree: worktree,
-                                            isSelected: selectedWorktreePath == worktree.path
-                                        ) {
-                                            selectedWorktreePath = worktree.path
-                                            shouldCreateNewWorktree = false
-                                            showCreateWorktree = false
-                                            newBranchName = ""
-                                            createFromBranch = ""
+                                            isSelected: self.selectedWorktreePath == worktree.path)
+                                        {
+                                            self.selectedWorktreePath = worktree.path
+                                            self.shouldCreateNewWorktree = false
+                                            self.showCreateWorktree = false
+                                            self.newBranchName = ""
+                                            self.createFromBranch = ""
                                         }
                                     }
                                 }
@@ -83,7 +83,7 @@ struct WorktreeSelectionView: View {
                     }
 
                     // Action buttons or create form
-                    if showCreateWorktree {
+                    if self.showCreateWorktree {
                         // Inline create worktree form
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -95,10 +95,10 @@ struct WorktreeSelectionView: View {
                                 Spacer()
 
                                 Button(action: {
-                                    showCreateWorktree = false
-                                    shouldCreateNewWorktree = false
-                                    newBranchName = ""
-                                    createFromBranch = ""
+                                    self.showCreateWorktree = false
+                                    self.shouldCreateNewWorktree = false
+                                    self.newBranchName = ""
+                                    self.createFromBranch = ""
                                 }, label: {
                                     Image(systemName: "xmark.circle.fill")
                                         .font(.system(size: 12))
@@ -107,15 +107,15 @@ struct WorktreeSelectionView: View {
                                 .buttonStyle(.plain)
                             }
 
-                            TextField("Branch name", text: $newBranchName)
+                            TextField("Branch name", text: self.$newBranchName)
                                 .textFieldStyle(.roundedBorder)
                                 .font(.system(size: 11))
-                                .focused($focusedField, equals: .branchName)
+                                .focused(self.$focusedField, equals: .branchName)
 
-                            TextField("Base branch (optional)", text: $createFromBranch)
+                            TextField("Base branch (optional)", text: self.$createFromBranch)
                                 .textFieldStyle(.roundedBorder)
                                 .font(.system(size: 11))
-                                .focused($focusedField, equals: .baseBranch)
+                                .focused(self.$focusedField, equals: .baseBranch)
 
                             Text("Leave empty to create from current branch")
                                 .font(.system(size: 10))
@@ -126,13 +126,13 @@ struct WorktreeSelectionView: View {
                         .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
                         .cornerRadius(6)
                         .onAppear {
-                            focusedField = .branchName
+                            self.focusedField = .branchName
                         }
                     } else {
                         HStack(spacing: 8) {
                             Button(action: {
-                                showCreateWorktree = true
-                                shouldCreateNewWorktree = true
+                                self.showCreateWorktree = true
+                                self.shouldCreateNewWorktree = true
                             }, label: {
                                 Label("New Worktree", systemImage: "plus.circle")
                                     .font(.caption)
@@ -158,19 +158,17 @@ struct WorktreeSelectionView: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(Color(NSColor.controlBackgroundColor).opacity(0.05))
-        )
+                .fill(Color(NSColor.controlBackgroundColor).opacity(0.05)))
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .stroke(Color.accentColor.opacity(0.2), lineWidth: 1)
-        )
+                .stroke(Color.accentColor.opacity(0.2), lineWidth: 1))
         .task {
-            await worktreeService.fetchWorktrees(for: gitRepoPath)
+            await self.worktreeService.fetchWorktrees(for: self.gitRepoPath)
         }
-        .alert("Error", isPresented: $showError) {
+        .alert("Error", isPresented: self.$showError) {
             Button("OK") {}
         } message: {
-            Text(errorMessage)
+            Text(self.errorMessage)
         }
     }
 }
@@ -182,25 +180,25 @@ struct WorktreeRow: View {
     let onSelect: () -> Void
 
     var body: some View {
-        Button(action: onSelect) {
+        Button(action: self.onSelect) {
             HStack {
-                Image(systemName: (worktree.isCurrentWorktree ?? false) ? "checkmark.circle.fill" : "circle")
+                Image(systemName: (self.worktree.isCurrentWorktree ?? false) ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 10))
-                    .foregroundColor((worktree.isCurrentWorktree ?? false) ? .accentColor : .secondary)
+                    .foregroundColor((self.worktree.isCurrentWorktree ?? false) ? .accentColor : .secondary)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(worktree.branch)
+                    Text(self.worktree.branch)
                         .font(.system(.caption, design: .monospaced))
-                        .foregroundColor(isSelected ? .white : .primary)
+                        .foregroundColor(self.isSelected ? .white : .primary)
 
-                    Text(shortenPath(worktree.path))
+                    Text(self.shortenPath(self.worktree.path))
                         .font(.system(size: 10))
-                        .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+                        .foregroundColor(self.isSelected ? .white.opacity(0.8) : .secondary)
                 }
 
                 Spacer()
 
-                if worktree.locked ?? false {
+                if self.worktree.locked ?? false {
                     Image(systemName: "lock.fill")
                         .font(.system(size: 10))
                         .foregroundColor(.orange)
@@ -208,7 +206,7 @@ struct WorktreeRow: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(isSelected ? Color.accentColor : Color.clear)
+            .background(self.isSelected ? Color.accentColor : Color.clear)
             .cornerRadius(4)
         }
         .buttonStyle(.plain)

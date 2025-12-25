@@ -17,15 +17,15 @@ struct CreditLink: View {
                 NSWorkspace.shared.open(linkURL)
             }
         }, label: {
-            Text(name)
+            Text(self.name)
                 .font(.caption)
-                .underline(isHovering, color: .accentColor)
+                .underline(self.isHovering, color: .accentColor)
         })
         .buttonStyle(.link)
         .pointingHandCursor()
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.2)) {
-                isHovering = hovering
+                self.isHovering = hovering
             }
         }
     }
