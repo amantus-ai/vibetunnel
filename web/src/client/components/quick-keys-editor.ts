@@ -37,6 +37,7 @@ export class QuickKeysEditor extends LitElement {
   @state() private draftRows: QuickKeyId[][] = [];
   @state() private draggedKey: QuickKeyId | null = null;
   @state() private isDraggingOverHidden = false;
+  @state() private showPresetMenu = false;
 
   private dragGhost: HTMLElement | null = null;
   private boundHandleDragMove: (e: TouchEvent | MouseEvent) => void;
@@ -395,17 +396,51 @@ export class QuickKeysEditor extends LitElement {
               >
                 Reset
               </button>
-              ${PRESETS.map(
-                (preset) => html`
-                  <button
-                    class="px-2 py-2 bg-bg-tertiary border border-border rounded-md hover:bg-bg hover:border-primary text-sm transition-colors flex items-center justify-center"
-                    title="${preset.name}"
-                    @click=${() => this.loadPreset(preset.layout)}
+              <div class="relative">
+                <button
+                  class="px-3 py-2 bg-bg-tertiary border border-border text-primary rounded-md hover:bg-bg text-sm transition-colors flex items-center gap-1"
+                  @click=${() => {
+                    this.showPresetMenu = !this.showPresetMenu;
+                  }}
+                >
+                  Presets
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    class="transition-transform ${this.showPresetMenu ? 'rotate-180' : ''}"
                   >
-                    ${preset.icon}
-                  </button>
-                `
-              )}
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+                ${
+                  this.showPresetMenu
+                    ? html`
+                      <div
+                        class="absolute bottom-full left-0 mb-1 bg-bg-secondary border border-border rounded-md shadow-lg overflow-hidden min-w-[150px] z-[1100]"
+                      >
+                        ${PRESETS.map(
+                          (preset) => html`
+                            <button
+                              class="w-full px-3 py-2 text-left text-sm text-primary hover:bg-bg-tertiary transition-colors flex items-center gap-2"
+                              @click=${() => {
+                                this.loadPreset(preset.layout);
+                                this.showPresetMenu = false;
+                              }}
+                            >
+                              ${preset.icon}
+                              <span>${preset.name}</span>
+                            </button>
+                          `
+                        )}
+                      </div>
+                    `
+                    : ''
+                }
+              </div>
             </div>
             <button
               class="px-4 py-2 bg-primary border border-primary text-white rounded-md hover:bg-primary-hover text-sm transition-colors"
