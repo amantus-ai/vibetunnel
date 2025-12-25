@@ -5,6 +5,7 @@
  * Persists to server-side config for cross-browser sync.
  */
 import { html, type TemplateResult } from 'lit';
+import { authClient } from '../services/auth-client.js';
 
 // Key definitions - source of truth for all quick keys
 export const QUICK_KEY_DEFINITIONS = [
@@ -188,7 +189,9 @@ export class QuickKeysPreferencesManager {
   async load(): Promise<void> {
     if (this.loaded) return;
     try {
-      const response = await fetch('/api/config');
+      const response = await fetch('/api/config', {
+        headers: authClient.getAuthHeader(),
+      });
       if (response.ok) {
         const config = await response.json();
         if (this.isValidLayout(config.quickKeysLayout)) {
@@ -220,7 +223,10 @@ export class QuickKeysPreferencesManager {
     try {
       await fetch('/api/config/quick-keys-layout', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authClient.getAuthHeader(),
+        },
         body: JSON.stringify(this.layout),
       });
     } catch (error) {
