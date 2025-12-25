@@ -41,6 +41,8 @@ export const QUICK_KEY_DEFINITIONS = [
   { key: 'Ctrl+U', label: '^U', combo: true },
   { key: 'Ctrl+D', label: '^D', combo: true },
   { key: 'Ctrl+L', label: '^L', combo: true },
+  { key: 'Ctrl+O', label: '^O', combo: true },
+  { key: 'Ctrl+E', label: '^E', combo: true },
   { key: "'", label: "'" },
   { key: '"', label: '"' },
   { key: '{', label: '{' },
@@ -121,7 +123,7 @@ export const PRESETS: QuickKeysPreset[] = [
     </svg>`,
     layout: [
       // Row 1: Vim mode essentials - exit insert, editing shortcuts
-      ['Escape', 'Ctrl+C', 'Ctrl+W', 'Ctrl+U', 'shift_tab'],
+      ['Escape', 'Ctrl+C', 'Ctrl+W', 'Ctrl+U', 'Ctrl+O', 'Ctrl+E', 'shift_tab'],
       // Row 2: Navigation and completion
       ['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Delete'],
       // Row 3: Scrolling and extras
