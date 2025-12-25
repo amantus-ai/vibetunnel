@@ -5,13 +5,10 @@
  * Manages modals, floating buttons, and overlay states.
  */
 import { html, LitElement } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { customElement, property } from 'lit/decorators.js';
 import type { Session } from '../../../shared/types.js';
+import { QuickKeysController } from '../../controllers/quick-keys-controller.js';
 import { Z_INDEX } from '../../utils/constants.js';
-import {
-  type QuickKeyDefinition,
-  quickKeysPreferencesManager,
-} from '../../utils/quick-keys-preferences.js';
 import type { TerminalThemeId } from '../../utils/terminal-themes.js';
 import type { UIState } from './ui-state-manager.js';
 import './ctrl-alpha-overlay.js';
@@ -61,24 +58,8 @@ export class OverlaysContainer extends LitElement {
   @property({ type: Object }) uiState: UIState | null = null;
   @property({ type: Object }) callbacks: OverlaysCallbacks | null = null;
 
-  @state() private quickKeysRows?: QuickKeyDefinition[][];
-  private quickKeysUnsubscribe?: () => void;
-
-  connectedCallback() {
-    super.connectedCallback();
-    // Load quick keys preferences and subscribe to changes
-    quickKeysPreferencesManager.load().then(() => {
-      this.quickKeysRows = quickKeysPreferencesManager.getState().rows;
-    });
-    this.quickKeysUnsubscribe = quickKeysPreferencesManager.subscribe(() => {
-      this.quickKeysRows = quickKeysPreferencesManager.getState().rows;
-    });
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this.quickKeysUnsubscribe?.();
-  }
+  // Quick keys layout controller (fork-only integration point)
+  private quickKeys = new QuickKeysController(this);
 
   render() {
     if (!this.uiState || !this.callbacks) {
@@ -156,7 +137,7 @@ export class OverlaysContainer extends LitElement {
             <terminal-quick-keys
               .visible=${this.uiState.showQuickKeys}
               .onKeyPress=${this.callbacks.onQuickKeyPress}
-              .rows=${this.quickKeysRows}
+              .rows=${this.quickKeys.rows}
             ></terminal-quick-keys>
           `
           : ''
