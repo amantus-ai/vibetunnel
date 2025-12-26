@@ -58,11 +58,15 @@ final class ConfigManager {
     var sessionSpawnWindow: Bool = true
     var sessionTitleMode: TitleMode = .static
 
+    // Quick keys layout
+    var quickKeysLayout: [[String]] = QuickKeysData.defaultLayout
+
     /// Comprehensive configuration structure
     private struct VibeTunnelConfig: Codable {
         let version: Int
         var quickStartCommands: [QuickStartCommand]
         var repositoryBasePath: String?
+        var quickKeysLayout: [[String]]?
 
         // Extended configuration sections
         var server: ServerConfig?
@@ -212,6 +216,11 @@ final class ConfigManager {
                     self.sessionTitleMode = TitleMode(rawValue: session.titleMode) ?? .static
                 }
 
+                // Quick keys layout
+                if let layout = config.quickKeysLayout, !layout.isEmpty {
+                    self.quickKeysLayout = layout
+                }
+
                 self.logger.info("Loaded configuration from disk")
             } catch {
                 self.logger.error("Failed to load config: \(error.localizedDescription)")
@@ -248,7 +257,8 @@ final class ConfigManager {
         var config = VibeTunnelConfig(
             version: 2,
             quickStartCommands: quickStartCommands,
-            repositoryBasePath: repositoryBasePath)
+            repositoryBasePath: repositoryBasePath,
+            quickKeysLayout: quickKeysLayout)
 
         // Server configuration
         config.server = ServerConfig(
@@ -424,6 +434,15 @@ final class ConfigManager {
         self.repositoryBasePath = path
         self.saveConfiguration()
         self.logger.info("Updated repository base path to: \(path)")
+    }
+
+    /// Update quick keys layout
+    func updateQuickKeysLayout(_ layout: [[String]]) {
+        guard layout != self.quickKeysLayout else { return }
+
+        self.quickKeysLayout = layout
+        self.saveConfiguration()
+        self.logger.info("Updated quick keys layout: \(layout.count) rows")
     }
 
     /// Update notification preferences

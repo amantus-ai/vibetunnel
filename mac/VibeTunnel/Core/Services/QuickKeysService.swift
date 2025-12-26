@@ -2,7 +2,7 @@ import Foundation
 import Observation
 import OSLog
 
-/// Service for managing Quick Keys layout via server API
+/// Service for managing Quick Keys layout via ConfigManager
 /// Handles loading, saving (with debouncing), and preset management
 @MainActor
 @Observable
@@ -10,7 +10,7 @@ final class QuickKeysService {
     static let shared = QuickKeysService()
 
     private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "QuickKeysService")
-    private var serverManager: ServerManager { ServerManager.shared }
+    private var configManager: ConfigManager { ConfigManager.shared }
     private var saveTask: Task<Void, Never>?
 
     /// Current layout - array of rows, each row is array of key IDs
@@ -27,15 +27,9 @@ final class QuickKeysService {
 
     private init() {}
 
-    // MARK: - API Response Types
-
-    private struct ConfigResponse: Decodable {
-        let quickKeysLayout: [[String]]?
-    }
-
     // MARK: - Public API
 
-    /// Load layout from server
+    /// Load layout from ConfigManager
     func load() async {
         guard !isLoading else { return }
 
@@ -44,26 +38,17 @@ final class QuickKeysService {
 
         defer { isLoading = false }
 
-        do {
-            let response: ConfigResponse = try await serverManager.performRequest(
-                endpoint: APIEndpoints.config,
-                method: "GET",
-                responseType: ConfigResponse.self)
-
-            if let serverLayout = response.quickKeysLayout, !serverLayout.isEmpty {
-                layout = serverLayout
-                logger.info("Loaded quick keys layout from server: \(serverLayout.count) rows")
-            } else {
-                layout = QuickKeysData.defaultLayout
-                logger.info("No quick keys layout on server, using defaults")
-            }
-        } catch {
-            self.error = error
-            logger.error("Failed to load quick keys layout: \(error.localizedDescription)")
+        let configLayout = configManager.quickKeysLayout
+        if !configLayout.isEmpty {
+            layout = configLayout
+            logger.info("Loaded quick keys layout from config: \(configLayout.count) rows")
+        } else {
+            layout = QuickKeysData.defaultLayout
+            logger.info("No quick keys layout in config, using defaults")
         }
     }
 
-    /// Save layout to server (debounced to prevent excessive API calls during drag operations)
+    /// Save layout to ConfigManager (debounced to prevent excessive saves during drag operations)
     /// Note: Does not update `layout` property to avoid triggering UI re-renders - caller manages local state
     func save(_ newLayout: [[String]]) {
         // Cancel any pending save
@@ -93,22 +78,12 @@ final class QuickKeysService {
             }
         }
 
-        do {
-            // Wrap the layout array in a struct for encoding
-            let body = QuickKeysLayoutBody(layout: layoutToSave)
-            try await serverManager.performVoidRequest(
-                endpoint: APIEndpoints.quickKeysLayout,
-                method: "PUT",
-                body: body)
+        configManager.updateQuickKeysLayout(layoutToSave)
 
-            // Update internal state only after successful save
-            self.layout = layoutToSave
-            logger.info("Saved quick keys layout: \(layoutToSave.count) rows")
-            error = nil
-        } catch {
-            self.error = error
-            logger.error("Failed to save quick keys layout: \(error.localizedDescription)")
-        }
+        // Update internal state after save
+        self.layout = layoutToSave
+        logger.info("Saved quick keys layout: \(layoutToSave.count) rows")
+        error = nil
 
         showIndicator.cancel()
         isSaving = false
@@ -128,18 +103,5 @@ final class QuickKeysService {
     func hiddenKeys() -> [QuickKeyDefinition] {
         let usedKeys = Set(layout.flatMap { $0 })
         return QuickKeysData.allKeys.filter { !usedKeys.contains($0.key) }
-    }
-}
-
-// MARK: - Request Body Wrapper
-
-/// Wrapper to encode the layout array directly as JSON array
-/// The server expects the body to be just the array: [["Escape", ...], ...]
-private struct QuickKeysLayoutBody: Encodable {
-    let layout: [[String]]
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        try container.encode(layout)
     }
 }
