@@ -2,30 +2,9 @@
 
 ## [Unreleased]
 
-### ✨ Features
-- Add standalone tunnel helpers (ngrok + Cloudflare quick tunnels) and Docker packaging for headless usage (via [@hjanuschka](https://github.com/hjanuschka)) (#522)
-
 ### 🐛 Bug Fixes
 - Fix session creation "data couldn't be read" error on Mac app (#500)
-- Fix mobile session header overflow for long paths/branch names (via [@ndraiman](https://github.com/ndraiman)) (#561)
-- Add JIT entitlements for Node.js SEA binary codesign (via [@ndraiman](https://github.com/ndraiman)) (#563)
-- Restore active/idle UI state using activityStatus derived from recent input/output (via [@mrshu](https://github.com/mrshu)) (#549)
-- Fix notification service local auth headers for local notification delivery (via [@rothnic](https://github.com/rothnic)) (#558)
-- Fix follow mode 404 when enabling follow mode from worktree UI
-- Harden Tailscale WebSocket token issuance with proxy/origin validation (via [@chrisvanbuskirk](https://github.com/chrisvanbuskirk)) (#542)
-- Normalize health endpoint response shape and status for Tailscale clients (via [@chrisvanbuskirk](https://github.com/chrisvanbuskirk)) (#542)
-- Fix iOS Tailscale OAuth token requests to use proper form encoding (via [@chrisvanbuskirk](https://github.com/chrisvanbuskirk)) (#542)
-- Fix iOS Bonjour discovery to resolve services using the reported domain (via [@chrisvanbuskirk](https://github.com/chrisvanbuskirk)) (#542)
-- Fix Linux npm builds by removing pnpm-only postcss invocation and skipping SEA by default
-
-### 🧹 Maintenance
-- Include node-pty tsconfig + node-addon-api in npm bundle (via [@kevinbluer](https://github.com/kevinbluer)) (#521)
-- Update web/mac dependencies; drop stray claude-code dep
-- Remove dynamic title mode; keep none/filter/static only
-- Make PAM auth optional and add Linux bootstrap + docs
-- Avoid building filtered log messages to reduce overhead (via [@plx](https://github.com/plx)) (#527)
-- Document Tailscale Serve enablement requirement in setup guide (via [@wtberry](https://github.com/wtberry)) (#547)
-- Fix Poltergeist link in README (via [@fourplusone](https://github.com/fourplusone)) (#548)
+- Add Nix per-user profile path for cloudflared discovery (via [@bkase](https://github.com/bkase)) (#533)
 
 ## [1.0.0-beta.15] - 2025-08-02
 
@@ -123,7 +102,7 @@
 - **Socket-based vt command communication**: Replaced HTTP with Unix domain sockets for reliability
 
 #### **Communication & Reliability**
-- Unified notification system now uses WebSocket v3 events for all clients instead of mixed approaches
+- Unified notification system now uses Server-Sent Events (SSE) for all clients instead of mixed approaches
 - Fixed git status monitoring to prevent EMFILE errors through shallow directory watching
 - Standardized git status terminology - consistently uses 'New' for untracked files across all interfaces
 - Enhanced session cleanup on startup with proper JSON field handling
@@ -301,7 +280,7 @@ Additional contributors:
 
 ### **Terminal Performance Mode (Experimental) **
 - New binary WebSocket mode for terminal sessions dramatically improves performance for high-throughput operations (#412)
-- Unified terminal transport: single WebSocket v3 (no legacy SSE mode)
+- Toggle between standard SSE mode and high-performance binary mode in terminal settings
 - Binary mode significantly reduces latency and CPU usage when running commands with heavy output
 - Seamless switching between modes without losing your session
 
@@ -499,7 +478,7 @@ First-time contributors to VibeTunnel:
 - Configurable prompts to match workflow
 
 #### **Terminal Performance**
-- Fixed critical flow control issue causing web terminal buffer overflow (#223)
+- Fixed critical flow control issue causing xterm.js buffer overflow (#223)
 - Fixed infinite scroll loop that could freeze the browser
 - Fixed race conditions in terminal output handling
 - Improved memory management for long-running sessions
