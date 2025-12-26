@@ -32,7 +32,6 @@ struct QuickKeyDefinition: Identifiable, Equatable, Hashable {
 struct QuickKeysPreset: Identifiable {
     let id: String
     let name: String
-    let iconName: String // SF Symbol name
     let layout: [[String]]
 }
 
@@ -104,7 +103,6 @@ enum QuickKeysData {
         QuickKeysPreset(
             id: "claude",
             name: "Claude Code",
-            iconName: "sparkles",
             layout: [
                 ["Escape", "Ctrl+C", "Ctrl+W", "Ctrl+U", "Ctrl+O", "Ctrl+E", "shift_tab"],
                 ["Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Delete"],
@@ -113,7 +111,6 @@ enum QuickKeysData {
         QuickKeysPreset(
             id: "opencode",
             name: "Open Code",
-            iconName: "terminal",
             layout: [
                 ["Escape", "Control", "Ctrl+X", "Ctrl+P", "Tab", "Ctrl+C", "/"],
                 ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "PageUp", "PageDown"],

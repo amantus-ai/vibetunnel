@@ -21,7 +21,7 @@ struct QuickKeysEditorView: View {
                         HStack(spacing: 2) {
                             ForEach(Array(row.enumerated()), id: \.element) { keyIndex, key in
                                 if let def = QuickKeysData.definition(for: key) {
-                                    KeyTile(label: def.label, isDragging: self.draggedKey == key)
+                                    KeyTile(label: def.label, isDragging: self.draggedKey == key, flexGrow: true)
                                         .onDrag {
                                             self.draggedKey = key
                                             return NSItemProvider(object: key as NSString)
@@ -34,7 +34,6 @@ struct QuickKeysEditorView: View {
                                 }
                             }
                         }
-                        .frame(maxWidth: .infinity)
                     }
 
                     if self.layout.last?.isEmpty == false {
@@ -87,24 +86,30 @@ struct QuickKeysEditorView: View {
                         layout: self.$layout))
                 }
 
-                // Actions
-                HStack {
-                    Button("Reset") {
-                        self.layout = QuickKeysData.defaultLayout
-                    }
-                    .buttonStyle(.link)
+                // Presets
+                HStack(spacing: 8) {
+                    Text("Presets")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
 
-                    Menu {
-                        ForEach(QuickKeysData.presets) { preset in
-                            Button { self.layout = preset.layout } label: {
-                                Label(preset.name, systemImage: preset.iconName)
-                            }
-                        }
+                    Button {
+                        self.layout = QuickKeysData.defaultLayout
                     } label: {
-                        Label("Presets", systemImage: "slider.horizontal.3")
+                        Text("Default")
+                            .font(.callout)
                     }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
+                    .buttonStyle(.accessoryBar)
+
+                    ForEach(QuickKeysData.presets) { preset in
+                        Button { self.layout = preset.layout } label: {
+                            HStack(spacing: 4) {
+                                PresetIcon(presetId: preset.id)
+                                Text(preset.name)
+                            }
+                            .font(.callout)
+                        }
+                        .buttonStyle(.accessoryBar)
+                    }
 
                     Spacer()
                 }
@@ -144,11 +149,37 @@ struct QuickKeysEditorView: View {
     }
 }
 
+// MARK: - Preset Icon
+
+private struct PresetIcon: View {
+    let presetId: String
+
+    var body: some View {
+        Group {
+            switch self.presetId {
+            case "claude":
+                Image("ClaudeIcon")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            case "opencode":
+                Image("OpenCodeIcon")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            default:
+                Image(systemName: "keyboard")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 14, height: 14)
+    }
+}
+
 // MARK: - Key Tile
 
 private struct KeyTile: View {
     let label: String
     let isDragging: Bool
+    var flexGrow: Bool = false
 
     var body: some View {
         Text(self.label)
@@ -156,7 +187,7 @@ private struct KeyTile: View {
             .lineLimit(1)
             .padding(.horizontal, 5)
             .padding(.vertical, 4)
-            .frame(minWidth: 24, maxWidth: 44)
+            .frame(maxWidth: self.flexGrow ? .infinity : 44, minHeight: 24)
             .background(RoundedRectangle(cornerRadius: 4).fill(Color(nsColor: .controlColor)))
             .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color(nsColor: .separatorColor), lineWidth: 0.5))
             .opacity(self.isDragging ? 0.3 : 1)
