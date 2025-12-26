@@ -60,6 +60,8 @@ export class TerminalQuickKeys extends LitElement {
   @state() private showFunctionKeys = false;
   @state() private showCtrlKeys = false;
   @state() private isLandscape = false;
+  // Track which row triggered the toggle (1 = row 1, 2 = row 2)
+  @state() private toggleSourceRow: 1 | 2 = 1;
 
   private keyRepeatInterval: number | null = null;
   private keyRepeatTimeout: number | null = null;
@@ -179,7 +181,8 @@ export class TerminalQuickKeys extends LitElement {
     isModifier = false,
     isSpecial = false,
     isToggle = false,
-    event?: Event
+    event?: Event,
+    sourceRow: 1 | 2 = 1
   ) {
     // Prevent default to avoid any focus loss
     if (event) {
@@ -191,6 +194,7 @@ export class TerminalQuickKeys extends LitElement {
       // Toggle function keys display
       this.showFunctionKeys = !this.showFunctionKeys;
       this.showCtrlKeys = false; // Hide Ctrl keys if showing
+      this.toggleSourceRow = sourceRow;
       return;
     }
 
@@ -198,6 +202,7 @@ export class TerminalQuickKeys extends LitElement {
       // Toggle Ctrl shortcuts display
       this.showCtrlKeys = !this.showCtrlKeys;
       this.showFunctionKeys = false; // Hide function keys if showing
+      this.toggleSourceRow = sourceRow;
       return;
     }
 
@@ -295,6 +300,97 @@ export class TerminalQuickKeys extends LitElement {
       clearInterval(this.keyRepeatInterval);
       this.keyRepeatInterval = null;
     }
+  }
+
+  /** Render the Ctrl shortcuts buttons */
+  private renderCtrlShortcuts() {
+    return CTRL_SHORTCUTS.map(
+      ({ key, label, combo, special }) => html`
+        <button
+          type="button"
+          tabindex="-1"
+          class="ctrl-shortcut-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''}"
+          data-key="${key}"
+          ?data-combo="${combo}"
+          ?data-special="${special}"
+          @mousedown=${(e: Event) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          @touchend=${(e: TouchEvent) => {
+            this.handleTouchEnd(e, () => {
+              this.handleKeyPress(key, false, special, false, e);
+            });
+          }}
+          @click=${(e: MouseEvent) => {
+            if (e.detail !== 0) {
+              this.handleKeyPress(key, false, special, false, e);
+            }
+          }}
+        >
+          ${label}
+        </button>
+      `
+    );
+  }
+
+  /** Render the Function key buttons */
+  private renderFunctionKeys() {
+    return FUNCTION_KEYS.map(
+      ({ key, label }) => html`
+        <button
+          type="button"
+          tabindex="-1"
+          class="func-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap"
+          data-key="${key}"
+          @mousedown=${(e: Event) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          @touchend=${(e: TouchEvent) => {
+            this.handleTouchEnd(e, () => {
+              this.handleKeyPress(key, false, false, false, e);
+            });
+          }}
+          @click=${(e: MouseEvent) => {
+            if (e.detail !== 0) {
+              this.handleKeyPress(key, false, false, false, e);
+            }
+          }}
+        >
+          ${label}
+        </button>
+      `
+    );
+  }
+
+  /** Render the Done button */
+  private renderDoneButton() {
+    return html`
+      <button
+        type="button"
+        tabindex="-1"
+        class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
+        data-key="${DONE_BUTTON.key}"
+        ?data-special="${DONE_BUTTON.special}"
+        @mousedown=${(e: Event) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        @touchend=${(e: TouchEvent) => {
+          this.handleTouchEnd(e, () => {
+            this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
+          });
+        }}
+        @click=${(e: MouseEvent) => {
+          if (e.detail !== 0) {
+            this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
+          }
+        }}
+      >
+        ${DONE_BUTTON.label}
+      </button>
+    `;
   }
 
   disconnectedCallback() {
@@ -504,175 +600,23 @@ export class TerminalQuickKeys extends LitElement {
         style="position: fixed !important; bottom: var(--keyboard-offset, 0px) !important; left: 0 !important; right: 0 !important;"
       >
         <div class="quick-keys-bar">
-          <!-- Row 1 -->
-          <div class="flex gap-0.5 mb-0.5">
-            ${(this.rows ?? DEFAULT_ROWS)[0]?.map(
-              ({ key, label, modifier, arrow, toggle }) => html`
-                <button
-                  type="button"
-                  tabindex="-1"
-                  class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && ((key === 'CtrlExpand' && this.showCtrlKeys) || (key === 'F' && this.showFunctionKeys)) ? 'active' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
-                  data-key="${key}"
-                  ?data-modifier="${modifier}"
-                  ?data-arrow="${arrow}"
-                  ?data-toggle="${toggle}"
-                  @mousedown=${(e: Event) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  @touchend=${(e: TouchEvent) => {
-                    this.handleTouchEnd(e, () => {
-                      // Stop key repeat
-                      if (arrow) {
-                        this.stopKeyRepeat();
-                      } else {
-                        this.handleKeyPress(key, modifier, false, toggle, e);
-                      }
-                    });
-                  }}
-                  @touchcancel=${(_e: Event) => {
-                    // Also stop on touch cancel
-                    if (arrow) {
-                      this.stopKeyRepeat();
-                    }
-                  }}
-                  @click=${(e: MouseEvent) => {
-                    if (e.detail !== 0 && !arrow) {
-                      this.handleKeyPress(key, modifier, false, toggle, e);
-                    }
-                  }}>
-                  ${label}
-                </button>
-              `
-            )}
-          </div>
-          
-          <!-- Row 2 or Function Keys or Ctrl Shortcuts (with Done button always visible) -->
-          ${
-            this.showCtrlKeys
-              ? html`
-              <!-- Ctrl shortcuts row with Done button -->
-              <div class="flex gap-0.5 mb-0.5">
-                ${CTRL_SHORTCUTS.map(
-                  ({ key, label, combo, special }) => html`
-                    <button
-                      type="button"
-                      tabindex="-1"
-                      class="ctrl-shortcut-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''}"
-                      data-key="${key}"
-                      ?data-combo="${combo}"
-                      ?data-special="${special}"
-                      @mousedown=${(e: Event) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      @touchend=${(e: TouchEvent) => {
-                        this.handleTouchEnd(e, () => {
-                          this.handleKeyPress(key, false, special, false, e);
-                        });
-                      }}
-                      @click=${(e: MouseEvent) => {
-                        if (e.detail !== 0) {
-                          this.handleKeyPress(key, false, special, false, e);
-                        }
-                      }}>
-                      ${label}
-                    </button>
-                  `
-                )}
-                <!-- Done button -->
-                <button
-                  type="button"
-                  tabindex="-1"
-                  class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
-                  data-key="${DONE_BUTTON.key}"
-                  ?data-special="${DONE_BUTTON.special}"
-                  @mousedown=${(e: Event) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  @touchend=${(e: TouchEvent) => {
-                    this.handleTouchEnd(e, () => {
-                      this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
-                    });
-                  }}
-                  @click=${(e: MouseEvent) => {
-                    if (e.detail !== 0) {
-                      this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
-                    }
-                  }}
-                >
-                  ${DONE_BUTTON.label}
-                </button>
-              </div>
-            `
-              : this.showFunctionKeys
+          <!-- Row 1 - show Ctrl/Fn keys here if toggled from row 2, otherwise show regular row 1 -->
+          ${this.showCtrlKeys && this.toggleSourceRow === 2
+            ? html`<div class="flex gap-0.5 mb-0.5">${this.renderCtrlShortcuts()}</div>`
+            : this.showFunctionKeys && this.toggleSourceRow === 2
+              ? html`<div class="flex gap-0.5 mb-0.5">${this.renderFunctionKeys()}</div>`
+              : (this.rows ?? DEFAULT_ROWS)[0]?.length > 0
                 ? html`
-              <!-- Function keys row with Done button -->
               <div class="flex gap-0.5 mb-0.5">
-                ${FUNCTION_KEYS.map(
-                  ({ key, label }) => html`
+                ${(this.rows ?? DEFAULT_ROWS)[0].map(
+                  ({ key, label, modifier, arrow, toggle }) => html`
                     <button
                       type="button"
                       tabindex="-1"
-                      class="func-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap"
-                      data-key="${key}"
-                      @mousedown=${(e: Event) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      @touchend=${(e: Event) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        this.handleKeyPress(key, false, false, false, e);
-                      }}
-                      @click=${(e: MouseEvent) => {
-                        if (e.detail !== 0) {
-                          this.handleKeyPress(key, false, false, false, e);
-                        }
-                      }}     >
-                      ${label}
-                    </button>
-                  `
-                )}
-                <!-- Done button -->
-                <button
-                  type="button"
-                  tabindex="-1"
-                  class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
-                  data-key="${DONE_BUTTON.key}"
-                  ?data-special="${DONE_BUTTON.special}"
-                  @mousedown=${(e: Event) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  @touchend=${(e: TouchEvent) => {
-                    this.handleTouchEnd(e, () => {
-                      this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
-                    });
-                  }}
-                  @click=${(e: MouseEvent) => {
-                    if (e.detail !== 0) {
-                      this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
-                    }
-                  }}
-                >
-                  ${DONE_BUTTON.label}
-                </button>
-              </div>
-            `
-                : html`
-              <!-- Regular row 2 -->
-              <div class="flex gap-0.5 mb-0.5 ">
-                ${(this.rows ?? DEFAULT_ROWS)[1]?.map(
-                  ({ key, label, modifier, combo, toggle }) => html`
-                    <button
-                      type="button"
-                      tabindex="-1"
-                      class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && this.showFunctionKeys ? 'active' : ''}"
+                      class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && ((key === 'CtrlExpand' && this.showCtrlKeys) || (key === 'F' && this.showFunctionKeys)) ? 'active' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
                       data-key="${key}"
                       ?data-modifier="${modifier}"
-                      ?data-combo="${combo}"
+                      ?data-arrow="${arrow}"
                       ?data-toggle="${toggle}"
                       @mousedown=${(e: Event) => {
                         e.preventDefault();
@@ -680,46 +624,93 @@ export class TerminalQuickKeys extends LitElement {
                       }}
                       @touchend=${(e: TouchEvent) => {
                         this.handleTouchEnd(e, () => {
-                          if (key === 'Paste') {
-                            this.handlePasteImmediate(e);
+                          if (arrow) {
+                            this.stopKeyRepeat();
                           } else {
-                            this.handleKeyPress(key, modifier || combo, false, false, e);
+                            this.handleKeyPress(key, modifier, false, toggle, e);
                           }
                         });
                       }}
-                      @click=${(e: MouseEvent) => {
-                        if (e.detail !== 0) {
-                          this.handleKeyPress(key, modifier || combo, false, false, e);
+                      @touchcancel=${(_e: Event) => {
+                        if (arrow) {
+                          this.stopKeyRepeat();
                         }
-                      }}     >
+                      }}
+                      @click=${(e: MouseEvent) => {
+                        if (e.detail !== 0 && !arrow) {
+                          this.handleKeyPress(key, modifier, false, toggle, e);
+                        }
+                      }}>
                       ${label}
                     </button>
                   `
                 )}
-                <!-- Done button (in regular row 2) -->
-                <button
-                  type="button"
-                  tabindex="-1"
-                  class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
-                  data-key="${DONE_BUTTON.key}"
-                  ?data-special="${DONE_BUTTON.special}"
-                  @mousedown=${(e: Event) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  @touchend=${(e: TouchEvent) => {
-                    this.handleTouchEnd(e, () => {
-                      this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
-                    });
-                  }}
-                  @click=${(e: MouseEvent) => {
-                    if (e.detail !== 0) {
-                      this.handleKeyPress(DONE_BUTTON.key, false, DONE_BUTTON.special, false, e);
-                    }
-                  }}
-                >
-                  ${DONE_BUTTON.label}
-                </button>
+              </div>
+            `
+                : ''}
+
+          <!-- Row 2 or Function Keys or Ctrl Shortcuts (with Done button always visible) -->
+          ${
+            this.showCtrlKeys && this.toggleSourceRow === 1
+              ? html`
+              <!-- Ctrl shortcuts row replacing row 2 (toggled from row 1) -->
+              <div class="flex gap-0.5 mb-0.5">
+                ${this.renderCtrlShortcuts()}
+                ${this.renderDoneButton()}
+              </div>
+            `
+              : this.showFunctionKeys && this.toggleSourceRow === 1
+                ? html`
+              <!-- Function keys row replacing row 2 (toggled from row 1) -->
+              <div class="flex gap-0.5 mb-0.5">
+                ${this.renderFunctionKeys()}
+                ${this.renderDoneButton()}
+              </div>
+            `
+                : html`
+              <!-- Regular row 2 -->
+              <div class="flex gap-0.5 mb-0.5 ">
+                ${(this.rows ?? DEFAULT_ROWS)[1]?.map(
+                  ({ key, label, modifier, combo, toggle, arrow }) => html`
+                    <button
+                      type="button"
+                      tabindex="-1"
+                      class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${arrow ? 'arrow-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && ((key === 'CtrlExpand' && this.showCtrlKeys) || (key === 'F' && this.showFunctionKeys)) ? 'active' : ''}"
+                      data-key="${key}"
+                      ?data-modifier="${modifier}"
+                      ?data-combo="${combo}"
+                      ?data-arrow="${arrow}"
+                      ?data-toggle="${toggle}"
+                      @mousedown=${(e: Event) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      @touchend=${(e: TouchEvent) => {
+                        this.handleTouchEnd(e, () => {
+                          if (arrow) {
+                            this.stopKeyRepeat();
+                          } else if (key === 'Paste') {
+                            this.handlePasteImmediate(e);
+                          } else {
+                            this.handleKeyPress(key, modifier || combo, false, toggle, e, 2);
+                          }
+                        });
+                      }}
+                      @touchcancel=${(_e: Event) => {
+                        if (arrow) {
+                          this.stopKeyRepeat();
+                        }
+                      }}
+                      @click=${(e: MouseEvent) => {
+                        if (e.detail !== 0 && !arrow) {
+                          this.handleKeyPress(key, modifier || combo, false, toggle, e, 2);
+                        }
+                      }}>
+                      ${label}
+                    </button>
+                  `
+                )}
+                ${this.renderDoneButton()}
               </div>
             `
           }
@@ -729,33 +720,41 @@ export class TerminalQuickKeys extends LitElement {
             (row, idx) => html`
               <div class="flex gap-0.5 ${idx < (this.rows ?? DEFAULT_ROWS).length - 3 ? 'mb-0.5' : ''}">
                 ${row.map(
-                  ({ key, label, modifier, combo }) => html`
+                  ({ key, label, modifier, combo, toggle, arrow }) => html`
                     <button
                       type="button"
                       tabindex="-1"
-                      class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
+                      class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${arrow ? 'arrow-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && ((key === 'CtrlExpand' && this.showCtrlKeys) || (key === 'F' && this.showFunctionKeys)) ? 'active' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
                       data-key="${key}"
                       ?data-modifier="${modifier}"
                       ?data-combo="${combo}"
+                      ?data-arrow="${arrow}"
+                      ?data-toggle="${toggle}"
                       @mousedown=${(e: Event) => {
                         e.preventDefault();
                         e.stopPropagation();
                       }}
                       @touchend=${(e: TouchEvent) => {
                         this.handleTouchEnd(e, () => {
-                          if (key === 'Paste') {
+                          if (arrow) {
+                            this.stopKeyRepeat();
+                          } else if (key === 'Paste') {
                             this.handlePasteImmediate(e);
                           } else {
-                            this.handleKeyPress(key, modifier || combo, false, false, e);
+                            this.handleKeyPress(key, modifier || combo, false, toggle, e, 2);
                           }
                         });
                       }}
-                      @click=${(e: MouseEvent) => {
-                        if (e.detail !== 0) {
-                          this.handleKeyPress(key, modifier || combo, false, false, e);
+                      @touchcancel=${(_e: Event) => {
+                        if (arrow) {
+                          this.stopKeyRepeat();
                         }
                       }}
-                    >
+                      @click=${(e: MouseEvent) => {
+                        if (e.detail !== 0 && !arrow) {
+                          this.handleKeyPress(key, modifier || combo, false, toggle, e, 2);
+                        }
+                      }}>
                       ${label}
                     </button>
                   `

@@ -78,11 +78,8 @@ export class QuickKeysEditor extends LitElement {
   }
 
   private async save(): Promise<void> {
-    // Filter out empty rows before saving, but ensure minimum rows
-    const layout = this.draftRows.filter((row) => row.length > 0);
-    while (layout.length < MIN_ROWS) {
-      layout.push([]);
-    }
+    // Keep first MIN_ROWS rows as-is (preserving empty rows), trim any beyond
+    const layout = this.draftRows.slice(0, MAX_ROWS);
     await quickKeysPreferencesManager.setLayout(layout);
     this.close();
   }

@@ -304,8 +304,6 @@ private struct KeyDrop: DropDelegate {
                 withAnimation(.easeInOut(duration: 0.12)) {
                     self.layout[r].remove(at: k)
                     self.layout[self.rowIndex].insert(key, at: min(targetIdx, self.layout[self.rowIndex].count))
-                    self.layout.removeAll { $0.isEmpty }
-                    while self.layout.count < self.minRows { self.layout.append([]) }
                 }
                 return
             }
@@ -337,8 +335,6 @@ private struct HiddenDrop: DropDelegate {
 
         withAnimation(.easeInOut(duration: 0.12)) {
             for i in self.layout.indices { self.layout[i].removeAll { $0 == key } }
-            self.layout.removeAll { $0.isEmpty }
-            while self.layout.count < self.minRows { self.layout.append([]) }
         }
     }
 
