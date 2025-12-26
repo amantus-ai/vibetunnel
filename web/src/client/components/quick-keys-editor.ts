@@ -24,6 +24,10 @@ const KEY_DEFINITION_MAP = new Map<string, QuickKeyDefinition>(
 // Throttle interval for drag updates (ms)
 const DRAG_THROTTLE_MS = 80;
 
+// Row limits
+const MIN_ROWS = 2;
+const MAX_ROWS = 3;
+
 @customElement('quick-keys-editor')
 export class QuickKeysEditor extends LitElement {
   // Disable shadow DOM to use Tailwind
@@ -58,7 +62,12 @@ export class QuickKeysEditor extends LitElement {
     if (changedProperties.has('isOpen') && this.isOpen) {
       // Ensure preferences are loaded from server, then get layout for editing
       quickKeysPreferencesManager.load().then(() => {
-        this.draftRows = quickKeysPreferencesManager.getLayout();
+        const layout = quickKeysPreferencesManager.getLayout();
+        // Ensure minimum rows
+        while (layout.length < MIN_ROWS) {
+          layout.push([]);
+        }
+        this.draftRows = layout;
       });
     }
   }
@@ -69,14 +78,22 @@ export class QuickKeysEditor extends LitElement {
   }
 
   private async save(): Promise<void> {
-    // Filter out empty rows before saving
+    // Filter out empty rows before saving, but ensure minimum rows
     const layout = this.draftRows.filter((row) => row.length > 0);
+    while (layout.length < MIN_ROWS) {
+      layout.push([]);
+    }
     await quickKeysPreferencesManager.setLayout(layout);
     this.close();
   }
 
   private reset(): void {
     this.draftRows = structuredClone(DEFAULT_LAYOUT);
+  }
+
+  private clearAll(): void {
+    // Create empty rows up to MIN_ROWS
+    this.draftRows = Array.from({ length: MIN_ROWS }, () => []);
   }
 
   private loadPreset(layout: QuickKeysLayout): void {
@@ -88,9 +105,11 @@ export class QuickKeysEditor extends LitElement {
   }
 
   private canAddRow(): boolean {
-    if (this.draftRows.length === 0) return true;
-    const lastRow = this.draftRows[this.draftRows.length - 1];
-    return lastRow.length > 0;
+    // Exclude dragged key when counting to prevent button appearing mid-drag
+    const liveRows = this.draftRows.filter(
+      (row) => row.filter((k) => k !== this.draggedKey).length > 0
+    ).length;
+    return liveRows >= MIN_ROWS && liveRows < MAX_ROWS;
   }
 
   private getHiddenKeys(): QuickKeyDefinition[] {
@@ -397,6 +416,12 @@ export class QuickKeysEditor extends LitElement {
               >
                 Reset
               </button>
+              <button
+                class="px-4 py-2 bg-bg-tertiary border border-border text-primary rounded-md hover:bg-bg text-sm transition-colors"
+                @click=${this.clearAll}
+              >
+                Clear All
+              </button>
               <div class="relative">
                 <button
                   class="px-3 py-2 bg-bg-tertiary border border-border text-primary rounded-md hover:bg-bg text-sm transition-colors flex items-center gap-1"
@@ -455,16 +480,31 @@ export class QuickKeysEditor extends LitElement {
 
   /** Render a row using flex layout - matches actual keyboard */
   private renderRow(rowIndex: number, keys: QuickKeyId[]) {
+    // Row 2 (index 1) has the locked Done button at the end
+    const isRow2 = rowIndex === 1;
+
     return html`
       <div class="key-row px-0.5 py-0.5" data-row=${rowIndex}>
         <div class="flex gap-0.5 min-h-[28px]">
-          ${keys.length === 0
+          ${keys.length === 0 && !isRow2
             ? html`<span
                 class="text-muted/50 text-[10px] italic flex-1 text-center border border-dashed border-border rounded py-1"
                 >Empty</span
               >`
             : keys.map((key) => this.renderKeyTile(key))}
+          ${isRow2 ? this.renderLockedDoneButton() : ''}
         </div>
+      </div>
+    `;
+  }
+
+  /** Render the locked Done button for row 2 - not draggable */
+  private renderLockedDoneButton() {
+    return html`
+      <div
+        class="flex-1 min-w-0 px-0.5 py-1 bg-bg-tertiary/50 border border-dashed border-border rounded font-mono text-[10px] text-muted text-center truncate select-none"
+      >
+        Done
       </div>
     `;
   }

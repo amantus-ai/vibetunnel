@@ -24,7 +24,7 @@ const ConfigSchema = z.object({
     })
   ),
   repositoryBasePath: z.string().optional(),
-  quickKeysLayout: z.array(z.array(z.string())).optional(),
+  quickKeysLayout: z.array(z.array(z.string())).min(2).max(3).optional(),
   // Extended configuration sections - we parse but don't use most of these yet
   server: z
     .object({

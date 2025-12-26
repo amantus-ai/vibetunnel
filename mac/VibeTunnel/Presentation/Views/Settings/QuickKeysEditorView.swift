@@ -7,6 +7,8 @@ struct QuickKeysEditorView: View {
     @State private var draggedKey: String?
 
     private let mobilePreviewWidth: CGFloat = 440
+    private let minRows = 2
+    private let maxRows = 3
 
     var body: some View {
         Section {
@@ -19,24 +21,40 @@ struct QuickKeysEditorView: View {
                 VStack(spacing: 4) {
                     ForEach(Array(self.layout.enumerated()), id: \.offset) { rowIndex, row in
                         HStack(spacing: 2) {
-                            ForEach(Array(row.enumerated()), id: \.element) { keyIndex, key in
-                                if let def = QuickKeysData.definition(for: key) {
-                                    KeyTile(label: def.label, isDragging: self.draggedKey == key, flexGrow: true)
-                                        .onDrag {
-                                            self.draggedKey = key
-                                            return NSItemProvider(object: key as NSString)
-                                        }
-                                        .onDrop(of: [.text], delegate: KeyDrop(
-                                            rowIndex: rowIndex,
-                                            keyIndex: keyIndex,
-                                            draggedKey: self.$draggedKey,
-                                            layout: self.$layout))
+                            if row.isEmpty {
+                                // Empty row drop zone
+                                EmptyRowDropZone()
+                                    .onDrop(of: [.text], delegate: KeyDrop(
+                                        rowIndex: rowIndex,
+                                        keyIndex: 0,
+                                        minRows: self.minRows,
+                                        draggedKey: self.$draggedKey,
+                                        layout: self.$layout))
+                            } else {
+                                ForEach(Array(row.enumerated()), id: \.element) { keyIndex, key in
+                                    if let def = QuickKeysData.definition(for: key) {
+                                        KeyTile(label: def.label, isDragging: self.draggedKey == key, flexGrow: true)
+                                            .onDrag {
+                                                self.draggedKey = key
+                                                return NSItemProvider(object: key as NSString)
+                                            }
+                                            .onDrop(of: [.text], delegate: KeyDrop(
+                                                rowIndex: rowIndex,
+                                                keyIndex: keyIndex,
+                                                minRows: self.minRows,
+                                                draggedKey: self.$draggedKey,
+                                                layout: self.$layout))
+                                    }
                                 }
+                            }
+                            // Locked Done button on row 2 (index 1)
+                            if rowIndex == 1 {
+                                LockedKeyTile(label: "Done")
                             }
                         }
                     }
 
-                    if self.layout.last?.isEmpty == false {
+                    if self.canAddRow {
                         Button { self.layout.append([]) } label: {
                             Label("Add Row", systemImage: "plus")
                                 .font(.caption)
@@ -82,6 +100,7 @@ struct QuickKeysEditorView: View {
                     .background(Color(nsColor: .controlBackgroundColor))
                     .cornerRadius(8)
                     .onDrop(of: [.text], delegate: HiddenDrop(
+                        minRows: self.minRows,
                         draggedKey: self.$draggedKey,
                         layout: self.$layout))
                 }
@@ -115,6 +134,15 @@ struct QuickKeysEditorView: View {
                         .buttonStyle(.accessoryBar)
                     }
 
+                    Button {
+                        self.layout = Array(repeating: [], count: self.minRows)
+                        self.service.save(self.layout)
+                    } label: {
+                        Text("Clear All")
+                            .font(.callout)
+                    }
+                    .buttonStyle(.accessoryBar)
+
                     Spacer()
                 }
             }
@@ -136,6 +164,15 @@ struct QuickKeysEditorView: View {
             }
         }
 
+    }
+
+    /// Check if Add Row button should be shown
+    /// Excludes the dragged key when counting to prevent button appearing mid-drag
+    private var canAddRow: Bool {
+        let liveRows = self.layout.filter { row in
+            row.filter { $0 != self.draggedKey }.isEmpty == false
+        }.count
+        return liveRows >= self.minRows && liveRows < self.maxRows
     }
 
     private var hiddenKeys: [QuickKeyDefinition] {
@@ -198,11 +235,52 @@ private struct KeyTile: View {
     }
 }
 
+// MARK: - Empty Row Drop Zone
+
+private struct EmptyRowDropZone: View {
+    var body: some View {
+        Text("Empty")
+            .font(.system(size: 10, weight: .medium, design: .monospaced))
+            .foregroundStyle(.tertiary)
+            .italic()
+            .frame(maxWidth: .infinity, minHeight: 24)
+            .background(RoundedRectangle(cornerRadius: 4).fill(Color(nsColor: .controlColor).opacity(0.3)))
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
+                    .foregroundStyle(.tertiary)
+            )
+    }
+}
+
+// MARK: - Locked Key Tile (non-draggable, visually distinct)
+
+private struct LockedKeyTile: View {
+    let label: String
+
+    var body: some View {
+        Text(self.label)
+            .font(.system(size: 10, weight: .medium, design: .monospaced))
+            .lineLimit(1)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, minHeight: 24)
+            .background(RoundedRectangle(cornerRadius: 4).fill(Color(nsColor: .controlColor).opacity(0.5)))
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [3]))
+                    .foregroundStyle(.secondary)
+            )
+    }
+}
+
 // MARK: - Drop Delegates
 
 private struct KeyDrop: DropDelegate {
     let rowIndex: Int
     let keyIndex: Int
+    let minRows: Int
     @Binding var draggedKey: String?
     @Binding var layout: [[String]]
 
@@ -227,7 +305,7 @@ private struct KeyDrop: DropDelegate {
                     self.layout[r].remove(at: k)
                     self.layout[self.rowIndex].insert(key, at: min(targetIdx, self.layout[self.rowIndex].count))
                     self.layout.removeAll { $0.isEmpty }
-                    if self.layout.isEmpty { self.layout = [[]] }
+                    while self.layout.count < self.minRows { self.layout.append([]) }
                 }
                 return
             }
@@ -244,6 +322,7 @@ private struct KeyDrop: DropDelegate {
 }
 
 private struct HiddenDrop: DropDelegate {
+    let minRows: Int
     @Binding var draggedKey: String?
     @Binding var layout: [[String]]
 
@@ -259,7 +338,7 @@ private struct HiddenDrop: DropDelegate {
         withAnimation(.easeInOut(duration: 0.12)) {
             for i in self.layout.indices { self.layout[i].removeAll { $0 == key } }
             self.layout.removeAll { $0.isEmpty }
-            if self.layout.isEmpty { self.layout = [[]] }
+            while self.layout.count < self.minRows { self.layout.append([]) }
         }
     }
 
