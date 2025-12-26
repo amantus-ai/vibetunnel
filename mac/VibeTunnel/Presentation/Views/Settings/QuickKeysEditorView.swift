@@ -94,6 +94,7 @@ struct QuickKeysEditorView: View {
 
                     Button {
                         self.layout = QuickKeysData.defaultLayout
+                        self.service.save(self.layout)
                     } label: {
                         Text("Default")
                             .font(.callout)
@@ -101,7 +102,10 @@ struct QuickKeysEditorView: View {
                     .buttonStyle(.accessoryBar)
 
                     ForEach(QuickKeysData.presets) { preset in
-                        Button { self.layout = preset.layout } label: {
+                        Button {
+                            self.layout = preset.layout
+                            self.service.save(self.layout)
+                        } label: {
                             HStack(spacing: 4) {
                                 PresetIcon(presetId: preset.id)
                                 Text(preset.name)
