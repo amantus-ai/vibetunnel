@@ -55,6 +55,9 @@ export const Z_INDEX = {
   MODAL: 105,
   FILE_PICKER: 110,
   QUICK_KEYS_EDITOR: 1010, // Above modal-content (1001) since it opens from within settings modal
+  QUICK_KEYS_EDITOR_BACKDROP: 1005, // Backdrop behind editor (above modal content 1001)
+  QUICK_KEYS_EDITOR_DROPDOWN: 1015, // Dropdown menus within editor
+  QUICK_KEYS_EDITOR_DRAG_GHOST: 1020, // Drag ghost (highest - floats above everything in editor)
   SESSION_EXITED_OVERLAY: 120,
   NOTIFICATION: 150, // Notifications appear above modals but below file browser
 

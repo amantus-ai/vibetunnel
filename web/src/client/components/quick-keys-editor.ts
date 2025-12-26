@@ -6,6 +6,7 @@
  */
 import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { Z_INDEX } from '../utils/constants.js';
 import {
   DEFAULT_LAYOUT,
   PRESETS,
@@ -134,7 +135,8 @@ export class QuickKeysEditor extends LitElement {
     const tile = e.currentTarget as HTMLElement;
     this.dragGhost = tile.cloneNode(true) as HTMLElement;
     this.dragGhost.className =
-      'fixed pointer-events-none z-[1100] opacity-95 scale-105 shadow-xl px-2 py-1.5 bg-primary/20 border-2 border-primary rounded font-mono text-xs text-primary';
+      'fixed pointer-events-none opacity-95 scale-105 shadow-xl px-2 py-1.5 bg-primary/20 border-2 border-primary rounded font-mono text-xs text-primary';
+    this.dragGhost.style.zIndex = `${Z_INDEX.QUICK_KEYS_EDITOR_DRAG_GHOST}`;
     this.dragGhost.style.left = `${clientX - 20}px`;
     this.dragGhost.style.top = `${clientY - 15}px`;
     document.body.appendChild(this.dragGhost);
@@ -355,7 +357,8 @@ export class QuickKeysEditor extends LitElement {
 
     return html`
       <div
-        class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-1050"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center"
+        style="z-index: ${Z_INDEX.QUICK_KEYS_EDITOR_BACKDROP}"
         @click=${this.close}
       >
         <div
@@ -442,7 +445,8 @@ export class QuickKeysEditor extends LitElement {
                 ${this.showPresetMenu
                   ? html`
                       <div
-                        class="absolute bottom-full left-0 mb-1 bg-bg-secondary border border-border rounded-md shadow-lg overflow-hidden min-w-[150px] z-1100"
+                        class="absolute bottom-full left-0 mb-1 bg-bg-secondary border border-border rounded-md shadow-lg overflow-hidden min-w-[150px]"
+                        style="z-index: ${Z_INDEX.QUICK_KEYS_EDITOR_DROPDOWN}"
                       >
                         ${PRESETS.map(
                           (preset) => html`
