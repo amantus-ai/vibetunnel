@@ -23,6 +23,7 @@ struct SettingsView: View {
         .general: Layout.defaultTabSize,
         .notifications: Layout.defaultTabSize,
         .quickStart: Layout.defaultTabSize,
+        .quickKeys: Layout.defaultTabSize,
         .dashboard: Layout.defaultTabSize,
         .remoteAccess: Layout.defaultTabSize,
         .advanced: Layout.defaultTabSize,
@@ -49,6 +50,12 @@ struct SettingsView: View {
                     Label(SettingsTab.quickStart.displayName, systemImage: SettingsTab.quickStart.icon)
                 }
                 .tag(SettingsTab.quickStart)
+
+            QuickKeysSettingsView()
+                .tabItem {
+                    Label(SettingsTab.quickKeys.displayName, systemImage: SettingsTab.quickKeys.icon)
+                }
+                .tag(SettingsTab.quickKeys)
 
             DashboardSettingsView()
                 .tabItem {

@@ -8,6 +8,7 @@ enum SettingsTab: String, CaseIterable {
     case general
     case notifications
     case quickStart
+    case quickKeys
     case dashboard
     case remoteAccess
     case advanced
@@ -19,6 +20,7 @@ enum SettingsTab: String, CaseIterable {
         case .general: "General"
         case .notifications: "Notifications"
         case .quickStart: "Quick Start"
+        case .quickKeys: "Quick Keys"
         case .dashboard: "Dashboard"
         case .remoteAccess: "Remote"
         case .advanced: "Advanced"
@@ -32,6 +34,7 @@ enum SettingsTab: String, CaseIterable {
         case .general: "gear"
         case .notifications: "bell.badge"
         case .quickStart: "bolt.fill"
+        case .quickKeys: "keyboard"
         case .dashboard: "server.rack"
         case .remoteAccess: "network"
         case .advanced: "gearshape.2"

@@ -29,6 +29,7 @@ struct VibeTunnelApp: App {
     @State var configManager = ConfigManager.shared
     @State var notificationService = NotificationService.shared
     @State var tailscaleServeStatusService = TailscaleServeStatusService.shared
+    @State var quickKeysService = QuickKeysService.shared
 
     init() {
         // Connect the app delegate to this app instance
@@ -113,6 +114,7 @@ struct VibeTunnelApp: App {
                 .environment(self.worktreeService)
                 .environment(self.notificationService)
                 .environment(self.tailscaleServeStatusService)
+                .environment(self.quickKeysService)
         }
         .commands {
             CommandGroup(after: .appInfo) {

@@ -25,4 +25,9 @@ enum APIEndpoints {
     // MARK: - WebSocket
 
     static let ws = "/ws"
+
+    // MARK: - Configuration
+
+    static let config = "/api/config"
+    static let quickKeysLayout = "/api/config/quick-keys-layout"
 }
