@@ -23,7 +23,7 @@ select_identity() {
     return 0
   fi
 
-  available="$(security find-identity -p codesigning -v 2>/dev/null | sed -n 's/.*\"\\(.*\\)\"/\\1/p')"
+  available="$(security find-identity -p codesigning -v 2>/dev/null | sed -n 's/.*"\(.*\)"/\1/p')"
   if [[ -n "$available" ]]; then
     first="$(printf '%s\n' "$available" | head -n1)"
     printf '%s\n' "$first"
