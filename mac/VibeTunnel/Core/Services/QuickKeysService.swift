@@ -64,16 +64,15 @@ final class QuickKeysService {
     }
 
     /// Save layout to server (debounced to prevent excessive API calls during drag operations)
+    /// Note: Does not update `layout` property to avoid triggering UI re-renders - caller manages local state
     func save(_ newLayout: [[String]]) {
-        layout = newLayout
-
         // Cancel any pending save
         saveTask?.cancel()
 
-        // Debounce saves by 300ms
+        // Debounce saves by 500ms to batch rapid changes
         saveTask = Task {
             do {
-                try await Task.sleep(for: .milliseconds(300))
+                try await Task.sleep(for: .milliseconds(500))
             } catch {
                 return // Cancelled
             }
@@ -86,8 +85,13 @@ final class QuickKeysService {
 
     /// Perform immediate save (internal)
     private func performSave(_ layoutToSave: [[String]]) async {
-        isSaving = true
-        defer { isSaving = false }
+        // Only show saving indicator for longer operations
+        let showIndicator = Task {
+            try? await Task.sleep(for: .milliseconds(200))
+            if !Task.isCancelled {
+                self.isSaving = true
+            }
+        }
 
         do {
             // Wrap the layout array in a struct for encoding
@@ -96,12 +100,18 @@ final class QuickKeysService {
                 endpoint: APIEndpoints.quickKeysLayout,
                 method: "PUT",
                 body: body)
+
+            // Update internal state only after successful save
+            self.layout = layoutToSave
             logger.info("Saved quick keys layout: \(layoutToSave.count) rows")
             error = nil
         } catch {
             self.error = error
             logger.error("Failed to save quick keys layout: \(error.localizedDescription)")
         }
+
+        showIndicator.cancel()
+        isSaving = false
     }
 
     /// Reset to default layout
