@@ -126,10 +126,7 @@ struct QuickKeysEditorView: View {
                 self.service.save(self.layout)
             }
         }
-        .onDrop(of: [.text], isTargeted: nil) { _ in
-            self.draggedKey = nil
-            return true
-        }
+
     }
 
     private var hiddenKeys: [QuickKeyDefinition] {
@@ -234,6 +231,8 @@ private struct HiddenDrop: DropDelegate {
     func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
     func validateDrop(info: DropInfo) -> Bool { self.draggedKey != nil }
 }
+
+
 
 #Preview {
     Form { QuickKeysEditorView() }
