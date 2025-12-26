@@ -1161,9 +1161,10 @@ export class SessionView extends LitElement {
             margin-bottom: -50px !important;
           }
           
-          /* Desktop: Keep transform for quick keys */
+          /* Desktop: Keep transform for quick keys - 36px per row + 2px total padding */
           .terminal-area[data-quickkeys-visible="true"] {
-            transform: translateY(-110px);
+            --quickkeys-rows: 3;
+            transform: translateY(calc((var(--quickkeys-rows) * -36px) - 2px));
             transition: transform 0.2s ease-out;
           }
           

@@ -27,7 +27,6 @@ struct QuickKeysEditorView: View {
                                     .onDrop(of: [.text], delegate: KeyDrop(
                                         rowIndex: rowIndex,
                                         keyIndex: 0,
-                                        minRows: self.minRows,
                                         draggedKey: self.$draggedKey,
                                         layout: self.$layout))
                             } else {
@@ -41,7 +40,6 @@ struct QuickKeysEditorView: View {
                                             .onDrop(of: [.text], delegate: KeyDrop(
                                                 rowIndex: rowIndex,
                                                 keyIndex: keyIndex,
-                                                minRows: self.minRows,
                                                 draggedKey: self.$draggedKey,
                                                 layout: self.$layout))
                                     }
@@ -100,7 +98,6 @@ struct QuickKeysEditorView: View {
                     .background(Color(nsColor: .controlBackgroundColor))
                     .cornerRadius(8)
                     .onDrop(of: [.text], delegate: HiddenDrop(
-                        minRows: self.minRows,
                         draggedKey: self.$draggedKey,
                         layout: self.$layout))
                 }
@@ -280,7 +277,6 @@ private struct LockedKeyTile: View {
 private struct KeyDrop: DropDelegate {
     let rowIndex: Int
     let keyIndex: Int
-    let minRows: Int
     @Binding var draggedKey: String?
     @Binding var layout: [[String]]
 
@@ -320,7 +316,6 @@ private struct KeyDrop: DropDelegate {
 }
 
 private struct HiddenDrop: DropDelegate {
-    let minRows: Int
     @Binding var draggedKey: String?
     @Binding var layout: [[String]]
 

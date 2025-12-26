@@ -174,6 +174,42 @@ export class TerminalQuickKeys extends LitElement {
 
   updated(changedProperties: PropertyValues) {
     super.updated(changedProperties);
+    // Update row count CSS variable when relevant state changes
+    if (
+      changedProperties.has('rows') ||
+      changedProperties.has('visible') ||
+      changedProperties.has('showCtrlKeys') ||
+      changedProperties.has('showFunctionKeys') ||
+      changedProperties.has('toggleSourceRow')
+    ) {
+      this.updateRowCount();
+    }
+  }
+
+  /** Calculate visible row count and set CSS variable */
+  private updateRowCount() {
+    const rows = this.rows ?? DEFAULT_ROWS;
+    let count = 0;
+
+    if (this.visible) {
+      // Row 1: shown if has keys OR if toggle from row 2 (Ctrl/Fn shown there)
+      const row1HasKeys = (rows[0]?.length ?? 0) > 0;
+      const toggleInRow1 = (this.showCtrlKeys || this.showFunctionKeys) && this.toggleSourceRow === 2;
+      if (row1HasKeys || toggleInRow1) count++;
+
+      // Row 2: always shown (has Done button)
+      count++;
+
+      // Row 3+: additional non-empty rows
+      const additionalRows = rows.slice(2).filter((row) => row.length > 0).length;
+      count += additionalRows;
+    }
+
+    // Set CSS variable on terminal-area element
+    const terminalArea = document.querySelector('.terminal-area');
+    if (terminalArea) {
+      (terminalArea as HTMLElement).style.setProperty('--quickkeys-rows', String(count));
+    }
   }
 
   private handleKeyPress(
