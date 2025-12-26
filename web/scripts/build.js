@@ -122,7 +122,11 @@ async function build() {
   execSync('node scripts/build-fwd-zig.js', { stdio: 'inherit' });
 
 
-  const shouldBuildSea = process.env.VIBETUNNEL_BUILD_SEA === '1' || process.argv.includes('--build-sea');
+  const shouldBuildSea =
+    process.env.VIBETUNNEL_BUILD_SEA === '1' ||
+    process.env.VIBETUNNEL_SEA === '1' ||
+    process.env.VIBETUNNEL_SEA === 'true' ||
+    process.argv.includes('--build-sea');
   const isLinux = process.platform === 'linux';
   if (isLinux && !shouldBuildSea) {
     console.log('Skipping native SEA build on Linux (set VIBETUNNEL_BUILD_SEA=1 or --build-sea to override).');
