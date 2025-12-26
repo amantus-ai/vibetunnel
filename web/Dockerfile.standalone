@@ -1,7 +1,7 @@
 # VibeTunnel Standalone Server Docker Image
 # Mount your code and get instant web terminal access with tunnels
 
-FROM node:20-slim
+FROM node:24-trixie-slim
 
 # Install system dependencies and common development tools
 RUN apt-get update && apt-get install -y \
@@ -20,7 +20,29 @@ RUN apt-get update && apt-get install -y \
     unzip \
     ca-certificates \
     openssh-client \
+    dash \
+    bash \
+    xz-utils \
+    libpam0g-dev \
+    && ln -sf /bin/dash /bin/sh \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Zig (latest stable) for vibetunnel-fwd build
+SHELL ["/bin/bash", "-c"]
+ARG ZIG_VERSION=0.15.2
+RUN set -euo pipefail; \
+    arch="$(uname -m)"; \
+    case "$arch" in \
+      aarch64|arm64) zig_arch="aarch64-linux";; \
+      x86_64|amd64) zig_arch="x86_64-linux";; \
+      *) echo "unsupported arch: $arch" >&2; exit 1;; \
+    esac; \
+    zig_url="https://ziglang.org/download/${ZIG_VERSION}/zig-${zig_arch}-${ZIG_VERSION}.tar.xz"; \
+    mkdir -p /usr/local/zig /usr/local/bin; \
+    curl -sL "$zig_url" -o /tmp/zig.tar.xz; \
+    tar -xf /tmp/zig.tar.xz -C /usr/local/zig --strip-components=1; \
+    ln -sf /usr/local/zig/zig /usr/local/bin/zig; \
+    zig version
 
 # Install ngrok
 RUN curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
@@ -43,15 +65,31 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 COPY pnpm-lock.yaml ./
+COPY node-pty ./node-pty
+COPY scripts ./scripts
 
 # Install dependencies
+ENV PUPPETEER_SKIP_DOWNLOAD=1
 RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
+# Ensure vt-fwd sources exist (for web-only context builds)
+ARG VT_FWD_REF
+RUN if [ ! -d /app/native/vt-fwd ]; then \
+      ref="${VT_FWD_REF:-v$(node -p "require('./package.json').version")}"; \
+      git clone --depth 1 --filter=blob:none --sparse --branch "$ref" https://github.com/amantus-ai/vibetunnel.git /tmp/vt-src \
+        || git clone --depth 1 --filter=blob:none --sparse https://github.com/amantus-ai/vibetunnel.git /tmp/vt-src; \
+      git -C /tmp/vt-src sparse-checkout set native/vt-fwd; \
+      mkdir -p /app/native; \
+      cp -R /tmp/vt-src/native/vt-fwd /app/native/vt-fwd; \
+      rm -rf /tmp/vt-src; \
+    fi
+
 # Build the project
-RUN pnpm run build
+ENV VT_SKIP_VERSION_SYNC=1
+RUN ln -sf /bin/dash /bin/sh && pnpm run build
 
 # Create workspace directory for mounted code
 RUN mkdir -p /workspace
@@ -66,25 +104,27 @@ ENV PORT=4020
 ENV PATH="/workspace/node_modules/.bin:${PATH}"
 
 # Create entrypoint script that handles command passthrough
-RUN echo '#!/bin/bash\n\
-set -e\n\
-# If no arguments provided, show usage\n\
-if [ $# -eq 0 ]; then\n\
-  echo "VibeTunnel Docker Container"\n\
-  echo "Usage: docker run -v /path/to/code:/workspace -p 4020:4020 vibetunnel [OPTIONS]"\n\
-  echo ""\n\
-  echo "Examples:"\n\
-  echo "  docker run -v \\$(pwd):/workspace -p 4020:4020 vibetunnel --ngrok"\n\
-  echo "  docker run -v \\$(pwd):/workspace -p 4020:4020 vibetunnel --cloudflare"\n\
-  echo "  docker run -v \\$(pwd):/workspace -p 4020:4020 vibetunnel --no-auth --ngrok"\n\
-  echo ""\n\
-  echo "Your code will be available at /workspace in the terminal"\n\
-  echo "Access via browser at http://localhost:4020 or the tunnel URL"\n\
-  exit 1\n\
-fi\n\
-# Start VibeTunnel with all provided arguments\n\
-exec node /app/dist/cli.js --bind 0.0.0.0 "$@"' > /entrypoint.sh \
-    && chmod +x /entrypoint.sh
+RUN cat <<'EOF' > /entrypoint.sh
+#!/bin/bash
+set -e
+# If no arguments provided, show usage
+if [ $# -eq 0 ]; then
+  echo "VibeTunnel Docker Container"
+  echo "Usage: docker run -v /path/to/code:/workspace -p 4020:4020 vibetunnel [OPTIONS]"
+  echo ""
+  echo "Examples:"
+  echo "  docker run -v \$(pwd):/workspace -p 4020:4020 vibetunnel --ngrok"
+  echo "  docker run -v \$(pwd):/workspace -p 4020:4020 vibetunnel --cloudflare"
+  echo "  docker run -v \$(pwd):/workspace -p 4020:4020 vibetunnel --no-auth --ngrok"
+  echo ""
+  echo "Your code will be available at /workspace in the terminal"
+  echo "Access via browser at http://localhost:4020 or the tunnel URL"
+  exit 1
+fi
+# Start VibeTunnel with all provided arguments
+exec node /app/dist/cli.js --bind 0.0.0.0 "$@"
+EOF
+RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
 

@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### ✨ Features
+- Add standalone tunnel helpers (ngrok + Cloudflare quick tunnels) and Docker packaging for headless usage (via [@hjanuschka](https://github.com/hjanuschka)) (#522)
+
 ### 🐛 Bug Fixes
 - Fix session creation "data couldn't be read" error on Mac app (#500)
 - Fix mobile session header overflow for long paths/branch names (via [@ndraiman](https://github.com/ndraiman)) (#561)

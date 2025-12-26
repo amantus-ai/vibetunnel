@@ -1,12 +1,30 @@
 #!/usr/bin/env node
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
 const webRoot = path.join(__dirname, '..');
 const repoRoot = path.join(webRoot, '..');
-const zigProject = path.join(repoRoot, 'native', 'vt-fwd');
+const zigProjectCandidates = [
+  process.env.VT_FWD_SOURCE_DIR,
+  path.join(repoRoot, 'native', 'vt-fwd'),
+  path.join(webRoot, 'native', 'vt-fwd'),
+].filter(Boolean);
+const zigProject = zigProjectCandidates.find((candidate) =>
+  fs.existsSync(path.join(candidate, 'build.zig')),
+);
+if (!zigProject) {
+  console.error('ERROR: Could not find vt-fwd source directory.');
+  console.error('Checked:');
+  for (const candidate of zigProjectCandidates) {
+    console.error(`  - ${candidate}`);
+  }
+  console.error(
+    'Set VT_FWD_SOURCE_DIR to the vt-fwd directory or ensure native/vt-fwd is available.',
+  );
+  process.exit(1);
+}
 
 const pkgPath = path.join(webRoot, 'package.json');
 const pkg = fs.existsSync(pkgPath) ? JSON.parse(fs.readFileSync(pkgPath, 'utf8')) : {};
@@ -23,10 +41,21 @@ function ensureDir(dir) {
 }
 
 console.log('Building zig forwarder...');
-execSync(`zig build -Doptimize=ReleaseFast -Dversion=${version}`, {
-  cwd: zigProject,
-  stdio: 'inherit',
-});
+const zigFromEnv = process.env.ZIG;
+const zigCandidates = zigFromEnv
+  ? [zigFromEnv]
+  : ['/usr/local/bin/zig', '/usr/bin/zig', '/bin/zig'];
+const zigBinary =
+  zigCandidates.find((candidate) => fs.existsSync(candidate)) ||
+  (process.platform === 'win32' ? 'zig.exe' : 'zig');
+execFileSync(
+  zigBinary,
+  ['build', '-Doptimize=ReleaseFast', `-Dversion=${version}`],
+  {
+    cwd: zigProject,
+    stdio: 'inherit',
+  },
+);
 
 if (!fs.existsSync(zigOut)) {
   console.error('ERROR: zig build did not produce vibetunnel-fwd binary');

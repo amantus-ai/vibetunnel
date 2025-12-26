@@ -5,6 +5,11 @@ const fs = require('fs');
 const path = require('path');
 const { version } = require('../package.json');
 
+if (process.env.VT_SKIP_VERSION_SYNC === '1') {
+  console.log('⚠️  Skipping version sync validation (VT_SKIP_VERSION_SYNC=1).');
+  process.exit(0);
+}
+
 // Path to the xcconfig file
 const xcconfigPath = path.join(__dirname, '../../mac/VibeTunnel/version.xcconfig');
 

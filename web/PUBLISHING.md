@@ -4,8 +4,8 @@ This guide helps the repository owner publish VibeTunnel to npm as a standalone 
 
 ## Prerequisites
 
-1. **npm account** with publish access to `@vibetunnel` scope
-2. **Node.js 20+** installed
+1. **npm account** with publish access to `vibetunnel`
+2. **Node.js 22+** installed
 3. **Docker** installed (for Linux builds)
 
 ## Publishing Checklist
@@ -67,13 +67,7 @@ npm login
 # Email: [your-email]
 # OTP: [if 2FA enabled]
 
-# For scoped package, ensure you have access
-npm access ls-packages @vibetunnel
-
 # Publish
-npm publish --access public
-
-# Or if updating
 npm publish
 ```
 
@@ -81,25 +75,25 @@ npm publish
 
 ```bash
 # Check it's published
-npm view @vibetunnel/vibetunnel
+npm view vibetunnel
 
 # Test installation
-npx @vibetunnel/vibetunnel --version
+npx vibetunnel --version
 
 # Test in a fresh directory
 cd /tmp
-npx @vibetunnel/vibetunnel --no-auth
+npx vibetunnel --no-auth
 ```
 
 ## Package Configuration
 
 The package is configured with:
 
-- **Name**: `@vibetunnel/vibetunnel` (scoped for organization)
+- **Name**: `vibetunnel` (unscoped)
 - **Main**: `lib/cli.js` (entry point)
 - **Bin**: `vibetunnel` command
 - **Platforms**: macOS (x64, arm64) and Linux (x64, arm64)
-- **Node**: Requires Node.js 20+
+- **Node**: Requires Node.js 22+
 
 ## What Gets Published
 
@@ -155,8 +149,7 @@ pnpm run build:npm -- --platform darwin --arch arm64
 npm whoami
 npm access ls-packages
 
-# For scoped packages, you may need
-npm access grant read-write @vibetunnel:developers [username]
+# If using npm org teams, ensure team access for the package
 ```
 
 ### Already Published Version
@@ -171,7 +164,7 @@ npm version patch  # or minor/major
 
 After successful publication:
 
-1. **Test with npx**: `npx @vibetunnel/vibetunnel --version`
+1. **Test with npx**: `npx vibetunnel --version`
 2. **Update documentation**: Add npm badge to main README
 3. **Create GitHub release**: Tag the version
 4. **Announce**: Twitter, Discord, etc.
@@ -193,7 +186,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
       - run: cd web && pnpm install
       - run: cd web && pnpm run build:npm

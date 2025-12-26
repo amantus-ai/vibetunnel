@@ -5,7 +5,7 @@ The standalone VibeTunnel server is now fully prepared for npm publishing!
 ## What's Been Prepared
 
 ### 📦 Package Configuration (`package.npm.json`)
-- **Package name**: `@vibetunnel/vibetunnel` (scoped package)
+- **Package name**: `vibetunnel` (unscoped package)
 - **Version**: 1.0.0-beta.16 (ready to increment)
 - **Entry point**: `lib/cli.js`
 - **Binary**: `vibetunnel` command
@@ -20,7 +20,7 @@ The standalone VibeTunnel server is now fully prepared for npm publishing!
    - Proper cleanup on shutdown
 
 2. **Enhanced CLI**
-   - Works with `npx @vibetunnel/vibetunnel` out of the box
+   - Works with `npx vibetunnel` out of the box
    - All server configuration options preserved
    - Help text with examples
 
@@ -56,9 +56,7 @@ npm uninstall -g vibetunnel
 
 # 3. Publish
 npm login  # If not logged in
-npm publish --access public  # First time
-# or
-npm publish  # Updates
+npm publish
 ```
 
 ## Testing Commands
@@ -67,13 +65,13 @@ After publishing, users can:
 
 ```bash
 # Quick start - no installation
-npx @vibetunnel/vibetunnel --no-auth
+npx vibetunnel --no-auth
 
 # With ngrok tunnel
-npx @vibetunnel/vibetunnel --no-auth --ngrok
+npx vibetunnel --no-auth --ngrok
 
 # Docker
-docker run -p 4020:4020 vibetunnel/vibetunnel --no-auth --ngrok
+docker run -p 4020:4020 vibetunnel --no-auth --ngrok
 ```
 
 ## Key Benefits for Users

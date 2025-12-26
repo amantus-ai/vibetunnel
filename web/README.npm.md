@@ -2,7 +2,7 @@
 
 Run terminal sessions in your browser. Perfect for remote access, Docker containers, and quick terminal sharing via ngrok.
 
-[![npm version](https://img.shields.io/npm/v/@vibetunnel/vibetunnel.svg)](https://www.npmjs.com/package/@vibetunnel/vibetunnel)
+[![npm version](https://img.shields.io/npm/v/vibetunnel.svg)](https://www.npmjs.com/package/vibetunnel)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 🚀 Quick Start
@@ -11,13 +11,13 @@ No installation needed - run instantly with npx:
 
 ```bash
 # Start local server (no auth)
-npx @vibetunnel/vibetunnel --no-auth
+npx vibetunnel --no-auth
 
 # Start with ngrok tunnel for remote access
-npx @vibetunnel/vibetunnel --no-auth --ngrok
+npx vibetunnel --no-auth --ngrok
 
 # Custom port
-npx @vibetunnel/vibetunnel --port 8080 --no-auth
+npx vibetunnel --port 8080 --no-auth
 ```
 
 Then open http://localhost:4020 in your browser.
@@ -27,7 +27,7 @@ Then open http://localhost:4020 in your browser.
 ### Global Install
 
 ```bash
-npm install -g @vibetunnel/vibetunnel
+npm install -g vibetunnel
 
 # Run the server
 vibetunnel --no-auth
@@ -54,14 +54,14 @@ Share your terminal with anyone on the internet:
 
 ```bash
 # With built-in Tailscale Serve  
-npx @vibetunnel/vibetunnel --no-auth --enable-tailscale-serve
+npx vibetunnel --no-auth --enable-tailscale-serve
 
 # With external ngrok (run separately)
-npx @vibetunnel/vibetunnel --no-auth &
+npx vibetunnel --no-auth &
 ngrok http 4020
 
 # With Cloudflare tunnel
-npx @vibetunnel/vibetunnel --no-auth &
+npx vibetunnel --no-auth &
 cloudflared tunnel --url localhost:4020
 ```
 
@@ -83,6 +83,7 @@ cloudflared tunnel --url localhost:4020
 - `--ngrok-auth <token>` - Ngrok auth token
 - `--ngrok-domain <domain>` - Custom domain
 - `--ngrok-region <region>` - Region: us, eu, ap, au, sa, jp, in
+- `--cloudflare` - Enable Cloudflare Quick Tunnel (no auth)
 
 ## 💡 Use Cases
 
@@ -92,7 +93,7 @@ Access any server's terminal through a browser:
 
 ```bash
 ssh remote-server
-npx @vibetunnel/vibetunnel --no-auth --ngrok
+npx vibetunnel --no-auth --ngrok
 # Share the ngrok URL with your team
 ```
 
@@ -121,8 +122,8 @@ containers:
 - name: main-app
   image: your-app:latest
 - name: terminal
-  image: node:20
-  command: ["npx", "@vibetunnel/vibetunnel", "--no-auth"]
+  image: node:24-trixie-slim
+  command: ["npx", "vibetunnel", "--no-auth"]
   ports:
   - containerPort: 4020
 ```
@@ -132,7 +133,7 @@ containers:
 Share your terminal for live coding sessions:
 
 ```bash
-npx @vibetunnel/vibetunnel --no-auth --ngrok
+npx vibetunnel --no-auth --ngrok
 # Share URL with students
 ```
 

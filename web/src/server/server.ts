@@ -32,8 +32,8 @@ import { createTmuxRoutes } from './routes/tmux.js';
 import { createWorktreeRoutes } from './routes/worktrees.js';
 import { AuthService } from './services/auth-service.js';
 import { CastOutputHub } from './services/cast-output-hub.js';
-import { ConfigService } from './services/config-service.js';
 import { CloudflareService } from './services/cloudflare-service.js';
+import { ConfigService } from './services/config-service.js';
 import { ControlDirWatcher } from './services/control-dir-watcher.js';
 import { GitStatusHub } from './services/git-status-hub.js';
 import { HQClient } from './services/hq-client.js';
@@ -57,6 +57,36 @@ interface WebSocketRequest extends http.IncomingMessage {
   userId?: string;
   authMethod?: string;
 }
+
+interface TailscaleConnectionInfo {
+  available: boolean;
+  isRunning: boolean;
+  httpsAvailable: boolean;
+  isPublic: boolean;
+  funnel: boolean;
+  mode: string;
+  hostname?: string;
+  httpsUrl?: string;
+}
+
+interface ConnectionInfo {
+  http: {
+    port: number | null;
+    url: string;
+  };
+  port: number | null;
+  tailscale?: TailscaleConnectionInfo;
+  sslAvailable?: boolean;
+  isPublic?: boolean;
+  tailscaleUrl?: string;
+}
+
+interface GlobalTunnelState {
+  __ngrokService?: NgrokService;
+  __cloudflareService?: CloudflareService;
+}
+
+const globalTunnelState = global as typeof global & GlobalTunnelState;
 
 const logger = createLogger('server');
 
@@ -165,6 +195,7 @@ Environment Variables:
   VIBETUNNEL_PASSWORD   Default password if --password not specified
   VIBETUNNEL_CONTROL_DIR Control directory for session data
   PUSH_CONTACT_EMAIL    Contact email for VAPID configuration
+  NGROK_AUTHTOKEN       Ngrok auth token (used with --ngrok)
 
 Examples:
   # Run a simple server with authentication
@@ -193,6 +224,7 @@ Examples:
 // Parse command line arguments
 function parseArgs(): Config {
   const args = process.argv.slice(2);
+  const envNgrokAuthToken = process.env.NGROK_AUTHTOKEN?.trim() || null;
   const config = {
     port: null as number | null,
     bind: null as string | null,
@@ -226,7 +258,7 @@ function parseArgs(): Config {
     enableMDNS: true, // Enable mDNS by default
     // Ngrok tunnel configuration
     enableNgrok: false,
-    ngrokAuthToken: null as string | null,
+    ngrokAuthToken: envNgrokAuthToken as string | null,
     ngrokDomain: null as string | null,
     ngrokRegion: null as string | null,
     // Cloudflare tunnel configuration
@@ -823,7 +855,7 @@ export async function createApp(): Promise<AppInstance> {
     const versionInfo = getVersionInfo();
 
     // Get connection information
-    const connections: any = {
+    const connections: ConnectionInfo = {
       http: {
         port: config.port,
         url: `http://localhost:${config.port}`,
@@ -850,7 +882,7 @@ export async function createApp(): Promise<AppInstance> {
             const statusJson = execSync('tailscale status --json', { encoding: 'utf8' });
             const status = JSON.parse(statusJson);
 
-            if (status.Self && status.Self.DNSName) {
+            if (status.Self?.DNSName) {
               // Remove trailing dot from DNS name
               tailscaleHostname = status.Self.DNSName.replace(/\.$/, '');
               tailscaleUrl = `https://${tailscaleHostname}`;
@@ -1435,6 +1467,7 @@ export async function createApp(): Promise<AppInstance> {
           domain: config.ngrokDomain || undefined,
           region: config.ngrokRegion || undefined,
         });
+        globalTunnelState.__ngrokService = ngrokService;
 
         ngrokService
           .start()
@@ -1442,9 +1475,6 @@ export async function createApp(): Promise<AppInstance> {
             logger.log(chalk.green('Ngrok tunnel: ENABLED'));
             logger.log(chalk.green(`Public URL: ${tunnel.publicUrl}`));
             logger.log(chalk.gray('Your VibeTunnel server is now accessible from the internet'));
-
-            // Store ngrok service instance for cleanup
-            (global as any).__ngrokService = ngrokService;
           })
           .catch((error) => {
             logger.error(chalk.red('Failed to start ngrok tunnel:'), error.message);
@@ -1466,6 +1496,7 @@ export async function createApp(): Promise<AppInstance> {
         logger.log(chalk.blue('Starting Cloudflare tunnel...'));
 
         const cloudflareService = new CloudflareService(actualPort);
+        globalTunnelState.__cloudflareService = cloudflareService;
 
         cloudflareService
           .start()
@@ -1474,9 +1505,6 @@ export async function createApp(): Promise<AppInstance> {
             logger.log(chalk.green(`Public URL: ${tunnel.publicUrl}`));
             logger.log(chalk.gray('Your VibeTunnel server is now accessible from the internet'));
             logger.log(chalk.gray('Note: Cloudflare Quick Tunnels have usage limits'));
-
-            // Store cloudflare service instance for cleanup
-            (global as any).__cloudflareService = cloudflareService;
           })
           .catch((error) => {
             logger.error(chalk.red('Failed to start Cloudflare tunnel:'), error.message);
@@ -1697,16 +1725,16 @@ export async function startVibeTunnelServer() {
       }
 
       // Stop ngrok tunnel if it was started
-      const ngrokService = (global as any).__ngrokService;
-      if (ngrokService && ngrokService.isActive()) {
+      const ngrokService = globalTunnelState.__ngrokService;
+      if (ngrokService?.isActive()) {
         logger.log('Stopping ngrok tunnel...');
         await ngrokService.stop();
         logger.debug('Stopped ngrok tunnel');
       }
 
       // Stop Cloudflare tunnel if it was started
-      const cloudflareService = (global as any).__cloudflareService;
-      if (cloudflareService && cloudflareService.isActive()) {
+      const cloudflareService = globalTunnelState.__cloudflareService;
+      if (cloudflareService?.isActive()) {
         logger.log('Stopping Cloudflare tunnel...');
         await cloudflareService.stop();
         logger.debug('Stopped Cloudflare tunnel');

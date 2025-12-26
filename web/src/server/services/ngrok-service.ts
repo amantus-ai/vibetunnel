@@ -1,5 +1,4 @@
-import { spawn, type ChildProcess } from 'child_process';
-import * as fs from 'fs';
+import { type ChildProcess, spawn } from 'child_process';
 import * as os from 'os';
 import * as path from 'path';
 import { createLogger } from '../utils/logger.js';
@@ -24,7 +23,6 @@ export class NgrokService {
   private ngrokProcess: ChildProcess | null = null;
   private currentTunnel: NgrokTunnel | null = null;
   private isRunning = false;
-  private statusCheckInterval: NodeJS.Timeout | null = null;
 
   constructor(private config: NgrokConfig) {}
 
@@ -67,24 +65,6 @@ export class NgrokService {
   }
 
   /**
-   * Write ngrok configuration file
-   */
-  private async writeNgrokConfig(authToken: string): Promise<string> {
-    const configDir = path.join(os.homedir(), '.ngrok2');
-    const configPath = path.join(configDir, 'ngrok.yml');
-
-    // Create directory if it doesn't exist
-    await fs.promises.mkdir(configDir, { recursive: true });
-
-    const config = `version: "2"
-authtoken: ${authToken}
-`;
-
-    await fs.promises.writeFile(configPath, config, 'utf8');
-    return configPath;
-  }
-
-  /**
    * Start ngrok tunnel
    */
   async start(): Promise<NgrokTunnel> {
@@ -100,13 +80,12 @@ authtoken: ${authToken}
       throw new Error('ngrok binary not found. Please install ngrok: https://ngrok.com/download');
     }
 
-    // Set up auth token if provided
-    if (this.config.authToken) {
-      await this.writeNgrokConfig(this.config.authToken);
-    }
-
     // Build ngrok command arguments
     const args = ['http', String(this.config.port), '--log=stdout', '--log-format=json'];
+
+    if (this.config.authToken) {
+      args.push('--authtoken', this.config.authToken);
+    }
 
     if (this.config.domain) {
       args.push('--domain', this.config.domain);
@@ -204,11 +183,6 @@ authtoken: ${authToken}
     }
 
     logger.log('Stopping ngrok tunnel...');
-
-    if (this.statusCheckInterval) {
-      clearInterval(this.statusCheckInterval);
-      this.statusCheckInterval = null;
-    }
 
     return new Promise((resolve) => {
       if (!this.ngrokProcess) {

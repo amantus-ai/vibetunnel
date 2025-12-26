@@ -1,5 +1,4 @@
-import { spawn, type ChildProcess } from 'child_process';
-import * as fs from 'fs';
+import { type ChildProcess, spawn } from 'child_process';
 import * as os from 'os';
 import * as path from 'path';
 import { createLogger } from '../utils/logger.js';
@@ -86,8 +85,15 @@ export class CloudflareService {
 
     logger.log(`Starting Cloudflare tunnel on port ${this.port}...`);
 
+    const cloudflaredPath = this.cloudflaredPath;
+    if (!cloudflaredPath) {
+      throw new Error(
+        'cloudflared binary not found. Please install cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/'
+      );
+    }
+
     return new Promise((resolve, reject) => {
-      this.cloudflaredProcess = spawn(this.cloudflaredPath!, args, {
+      this.cloudflaredProcess = spawn(cloudflaredPath, args, {
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 
