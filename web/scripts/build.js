@@ -7,22 +7,6 @@ const { prodOptions } = require('./esbuild-config.js');
 const { nodePtyPlugin } = require('./node-pty-plugin.js');
 
 /**
- * Clean old hashed bundle files before building new ones.
- * Removes files matching patterns like client-bundle-[hash].js and styles-[hash].css
- */
-function cleanOldBundles() {
-  const bundleDir = path.join(__dirname, '..', 'public', 'bundle');
-  if (!fs.existsSync(bundleDir)) return;
-
-  for (const file of fs.readdirSync(bundleDir)) {
-    if (file.match(/^(client-bundle|styles)-[a-f0-9]{8}\.(js|css)(\.map)?$/)) {
-      fs.unlinkSync(path.join(bundleDir, file));
-      console.log(`  Cleaned old bundle: ${file}`);
-    }
-  }
-}
-
-/**
  * Update HTML files with new hashed asset filenames.
  * @param {string} jsFilename - The hashed JS bundle filename
  * @param {string} cssFilename - The hashed CSS filename
@@ -62,9 +46,11 @@ async function build() {
   console.log('Creating directories...');
   execSync('node scripts/ensure-dirs.js', { stdio: 'inherit' });
 
-  // Clean old hashed bundles
-  console.log('Cleaning old hashed bundles...');
-  cleanOldBundles();
+  // Clean bundle directory before building
+  console.log('Cleaning bundle directory...');
+  const bundleDir = path.join(__dirname, '..', 'public', 'bundle');
+  fs.rmSync(bundleDir, { recursive: true, force: true });
+  fs.mkdirSync(bundleDir, { recursive: true });
 
   // Copy assets
   console.log('Copying assets...');
