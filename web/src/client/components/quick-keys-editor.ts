@@ -339,7 +339,7 @@ export class QuickKeysEditor extends LitElement {
 
     return html`
       <div
-        class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1050]"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-1050"
         @click=${this.close}
       >
         <div
@@ -364,27 +364,28 @@ export class QuickKeysEditor extends LitElement {
           </div>
 
           <!-- Add Row button - only show if last row has keys -->
-          ${
-            this.canAddRow()
-              ? html`<button
-                  class="w-full mt-2 py-1.5 text-xs border border-dashed border-border text-muted rounded transition-colors hover:border-primary hover:text-primary"
-                  @click=${this.addRow}
-                >
-                  + Add Row
-                </button>`
-              : ''
-          }
+          ${this.canAddRow()
+            ? html`<button
+                class="w-full mt-2 py-1.5 text-xs border border-dashed border-border text-muted rounded transition-colors hover:border-primary hover:text-primary"
+                @click=${this.addRow}
+              >
+                + Add Row
+              </button>`
+            : ''}
 
           <div
-            class="hidden-section mt-3 p-2 rounded-lg bg-bg-tertiary border border-dashed transition-colors ${this.isDraggingOverHidden ? 'border-status-error bg-status-error/10' : 'border-border'}"
+            class="hidden-section mt-3 p-2 rounded-lg bg-bg-tertiary border border-dashed transition-colors ${this
+              .isDraggingOverHidden
+              ? 'border-status-error bg-status-error/10'
+              : 'border-border'}"
           >
             <h3 class="text-[10px] text-muted mb-1 font-medium">Hidden</h3>
             <div class="flex flex-wrap gap-0.5 min-h-[28px]">
-              ${
-                hidden.length === 0
-                  ? html`<span class="text-muted text-[10px] italic py-1">Drag keys here to hide</span>`
-                  : hidden.map((def) => this.renderHiddenKeyTile(def.key))
-              }
+              ${hidden.length === 0
+                ? html`<span class="text-muted text-[10px] italic py-1"
+                    >Drag keys here to hide</span
+                  >`
+                : hidden.map((def) => this.renderHiddenKeyTile(def.key))}
             </div>
           </div>
 
@@ -416,11 +417,10 @@ export class QuickKeysEditor extends LitElement {
                     <path d="M6 9l6 6 6-6" />
                   </svg>
                 </button>
-                ${
-                  this.showPresetMenu
-                    ? html`
+                ${this.showPresetMenu
+                  ? html`
                       <div
-                        class="absolute bottom-full left-0 mb-1 bg-bg-secondary border border-border rounded-md shadow-lg overflow-hidden min-w-[150px] z-[1100]"
+                        class="absolute bottom-full left-0 mb-1 bg-bg-secondary border border-border rounded-md shadow-lg overflow-hidden min-w-[150px] z-1100"
                       >
                         ${PRESETS.map(
                           (preset) => html`
@@ -438,8 +438,7 @@ export class QuickKeysEditor extends LitElement {
                         )}
                       </div>
                     `
-                    : ''
-                }
+                  : ''}
               </div>
             </div>
             <button
@@ -459,11 +458,12 @@ export class QuickKeysEditor extends LitElement {
     return html`
       <div class="key-row px-0.5 py-0.5" data-row=${rowIndex}>
         <div class="flex gap-0.5 min-h-[28px]">
-          ${
-            keys.length === 0
-              ? html`<span class="text-muted/50 text-[10px] italic flex-1 text-center border border-dashed border-border rounded py-1">Empty</span>`
-              : keys.map((key) => this.renderKeyTile(key))
-          }
+          ${keys.length === 0
+            ? html`<span
+                class="text-muted/50 text-[10px] italic flex-1 text-center border border-dashed border-border rounded py-1"
+                >Empty</span
+              >`
+            : keys.map((key) => this.renderKeyTile(key))}
         </div>
       </div>
     `;
@@ -476,7 +476,9 @@ export class QuickKeysEditor extends LitElement {
 
     return html`
       <div
-        class="key-tile flex-1 min-w-0 px-0.5 py-1 bg-bg-tertiary border border-border rounded font-mono text-[10px] cursor-grab select-none touch-none text-center truncate ${isDragging ? 'dragging opacity-40 border-primary bg-primary/10' : 'text-primary hover:border-primary/50'}"
+        class="key-tile flex-1 min-w-0 px-0.5 py-1 bg-bg-tertiary border border-border rounded font-mono text-[10px] cursor-grab select-none touch-none text-center truncate ${isDragging
+          ? 'dragging opacity-40 border-primary bg-primary/10'
+          : 'text-primary hover:border-primary/50'}"
         data-key=${key}
         @touchstart=${(e: TouchEvent) => this.handleDragStart(e, key)}
         @touchmove=${this.boundHandleDragMove}
