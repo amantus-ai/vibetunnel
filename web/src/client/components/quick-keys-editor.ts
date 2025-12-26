@@ -420,7 +420,7 @@ export class QuickKeysEditor extends LitElement {
                 class="px-4 py-2 bg-bg-tertiary border border-border text-primary rounded-md hover:bg-bg text-sm transition-colors"
                 @click=${this.clearAll}
               >
-                Clear All
+                Clear
               </button>
               <div class="relative">
                 <button
