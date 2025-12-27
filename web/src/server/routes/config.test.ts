@@ -36,6 +36,8 @@ describe('Config Routes', () => {
       getConfigPath: vi.fn(() => '/home/user/.vibetunnel/config.json'),
       getNotificationPreferences: vi.fn(),
       updateNotificationPreferences: vi.fn(),
+      getQuickKeysLayout: vi.fn(() => undefined),
+      updateQuickKeysLayout: vi.fn(),
     } as unknown as ConfigService;
 
     // Create routes
