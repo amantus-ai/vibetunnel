@@ -160,20 +160,19 @@ struct QuickKeysEditorView: View {
                 self.service.save(self.layout)
             }
         }
-
     }
 
     /// Check if Add Row button should be shown
     /// Excludes the dragged key when counting to prevent button appearing mid-drag
     private var canAddRow: Bool {
-        let liveRows = self.layout.filter { row in
+        let liveRows = self.layout.count(where: { row in
             row.filter { $0 != self.draggedKey }.isEmpty == false
-        }.count
+        })
         return liveRows >= self.minRows && liveRows < self.maxRows
     }
 
     private var hiddenKeys: [QuickKeyDefinition] {
-        let used = Set(self.layout.flatMap { $0 })
+        let used = Set(self.layout.flatMap(\.self))
         return QuickKeysData.allKeys.filter { !used.contains($0.key) }
     }
 
@@ -245,8 +244,7 @@ private struct EmptyRowDropZone: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
                     .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                    .foregroundStyle(.tertiary)
-            )
+                    .foregroundStyle(.tertiary))
     }
 }
 
@@ -267,8 +265,7 @@ private struct LockedKeyTile: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
                     .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [3]))
-                    .foregroundStyle(.secondary)
-            )
+                    .foregroundStyle(.secondary))
     }
 }
 
@@ -329,15 +326,15 @@ private struct HiddenDrop: DropDelegate {
               self.layout.contains(where: { $0.contains(key) }) else { return }
 
         withAnimation(.easeInOut(duration: 0.12)) {
-            for i in self.layout.indices { self.layout[i].removeAll { $0 == key } }
+            for i in self.layout.indices {
+                self.layout[i].removeAll { $0 == key }
+            }
         }
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
     func validateDrop(info: DropInfo) -> Bool { self.draggedKey != nil }
 }
-
-
 
 #Preview {
     Form { QuickKeysEditorView() }

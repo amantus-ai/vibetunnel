@@ -31,20 +31,20 @@ final class QuickKeysService {
 
     /// Load layout from ConfigManager
     func load() async {
-        guard !isLoading else { return }
+        guard !self.isLoading else { return }
 
-        isLoading = true
-        error = nil
+        self.isLoading = true
+        self.error = nil
 
         defer { isLoading = false }
 
-        let configLayout = configManager.quickKeysLayout
+        let configLayout = self.configManager.quickKeysLayout
         if !configLayout.isEmpty {
-            layout = configLayout
-            logger.info("Loaded quick keys layout from config: \(configLayout.count) rows")
+            self.layout = configLayout
+            self.logger.info("Loaded quick keys layout from config: \(configLayout.count) rows")
         } else {
-            layout = QuickKeysData.defaultLayout
-            logger.info("No quick keys layout in config, using defaults")
+            self.layout = QuickKeysData.defaultLayout
+            self.logger.info("No quick keys layout in config, using defaults")
         }
     }
 
@@ -52,10 +52,10 @@ final class QuickKeysService {
     /// Note: Does not update `layout` property to avoid triggering UI re-renders - caller manages local state
     func save(_ newLayout: [[String]]) {
         // Cancel any pending save
-        saveTask?.cancel()
+        self.saveTask?.cancel()
 
         // Debounce saves by 500ms to batch rapid changes
-        saveTask = Task {
+        self.saveTask = Task {
             do {
                 try await Task.sleep(for: .milliseconds(500))
             } catch {
@@ -64,7 +64,7 @@ final class QuickKeysService {
 
             guard !Task.isCancelled else { return }
 
-            await performSave(newLayout)
+            await self.performSave(newLayout)
         }
     }
 
@@ -78,30 +78,30 @@ final class QuickKeysService {
             }
         }
 
-        configManager.updateQuickKeysLayout(layoutToSave)
+        self.configManager.updateQuickKeysLayout(layoutToSave)
 
         // Update internal state after save
         self.layout = layoutToSave
-        logger.info("Saved quick keys layout: \(layoutToSave.count) rows")
-        error = nil
+        self.logger.info("Saved quick keys layout: \(layoutToSave.count) rows")
+        self.error = nil
 
         showIndicator.cancel()
-        isSaving = false
+        self.isSaving = false
     }
 
     /// Reset to default layout
     func resetToDefaults() {
-        save(QuickKeysData.defaultLayout)
+        self.save(QuickKeysData.defaultLayout)
     }
 
     /// Apply a preset
     func applyPreset(_ preset: QuickKeysPreset) {
-        save(preset.layout)
+        self.save(preset.layout)
     }
 
     /// Get hidden keys (keys not in current layout)
     func hiddenKeys() -> [QuickKeyDefinition] {
-        let usedKeys = Set(layout.flatMap { $0 })
+        let usedKeys = Set(layout.flatMap(\.self))
         return QuickKeysData.allKeys.filter { !usedKeys.contains($0.key) }
     }
 }

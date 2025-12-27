@@ -3,7 +3,7 @@ import Foundation
 /// Definition for a single quick key
 /// Mirrors web's QUICK_KEY_DEFINITIONS from quick-keys-preferences.ts
 struct QuickKeyDefinition: Identifiable, Equatable, Hashable {
-    var id: String { key }
+    var id: String { self.key }
     let key: String // "Escape", "Ctrl+C", etc.
     let label: String // "Esc", "^C", etc.
     let isModifier: Bool // Control, Option, Command
@@ -119,12 +119,11 @@ enum QuickKeysData {
     ]
 
     /// Map from key ID to definition for quick lookups
-    private static let keyMap: [String: QuickKeyDefinition] = {
-        Dictionary(uniqueKeysWithValues: allKeys.map { ($0.key, $0) })
-    }()
+    private static let keyMap: [String: QuickKeyDefinition] = Dictionary(uniqueKeysWithValues: allKeys
+        .map { ($0.key, $0) })
 
     /// Lookup key definition by ID
     static func definition(for key: String) -> QuickKeyDefinition? {
-        keyMap[key]
+        self.keyMap[key]
     }
 }

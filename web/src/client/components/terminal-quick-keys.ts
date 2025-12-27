@@ -194,7 +194,8 @@ export class TerminalQuickKeys extends LitElement {
     if (this.visible) {
       // Row 1: shown if has keys OR if toggle from row 2 (Ctrl/Fn shown there)
       const row1HasKeys = (rows[0]?.length ?? 0) > 0;
-      const toggleInRow1 = (this.showCtrlKeys || this.showFunctionKeys) && this.toggleSourceRow === 2;
+      const toggleInRow1 =
+        (this.showCtrlKeys || this.showFunctionKeys) && this.toggleSourceRow === 2;
       if (row1HasKeys || toggleInRow1) count++;
 
       // Row 2: always shown (has Done button)
@@ -637,12 +638,13 @@ export class TerminalQuickKeys extends LitElement {
       >
         <div class="quick-keys-bar">
           <!-- Row 1 - show Ctrl/Fn keys here if toggled from row 2, otherwise show regular row 1 -->
-          ${this.showCtrlKeys && this.toggleSourceRow === 2
-            ? html`<div class="flex gap-0.5 mb-0.5">${this.renderCtrlShortcuts()}</div>`
-            : this.showFunctionKeys && this.toggleSourceRow === 2
-              ? html`<div class="flex gap-0.5 mb-0.5">${this.renderFunctionKeys()}</div>`
-              : (this.rows ?? DEFAULT_ROWS)[0]?.length > 0
-                ? html`
+          ${
+            this.showCtrlKeys && this.toggleSourceRow === 2
+              ? html`<div class="flex gap-0.5 mb-0.5">${this.renderCtrlShortcuts()}</div>`
+              : this.showFunctionKeys && this.toggleSourceRow === 2
+                ? html`<div class="flex gap-0.5 mb-0.5">${this.renderFunctionKeys()}</div>`
+                : (this.rows ?? DEFAULT_ROWS)[0]?.length > 0
+                  ? html`
               <div class="flex gap-0.5 mb-0.5">
                 ${(this.rows ?? DEFAULT_ROWS)[0].map(
                   ({ key, label, modifier, arrow, toggle }) => html`
@@ -683,8 +685,8 @@ export class TerminalQuickKeys extends LitElement {
                 )}
               </div>
             `
-                : ''}
-
+                : ''
+          }
           <!-- Row 2 or Function Keys or Ctrl Shortcuts (with Done button always visible) -->
           ${
             this.showCtrlKeys && this.toggleSourceRow === 1
