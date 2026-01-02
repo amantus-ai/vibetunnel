@@ -765,6 +765,16 @@ export async function createApp(): Promise<AppInstance> {
         return true;
       }
 
+      // Handle dist output for npm installs
+      if (__filename.includes(path.join('node_modules', 'vibetunnel', 'dist'))) {
+        return true;
+      }
+
+      // Check for Windows path variant
+      if (__filename.includes('node_modules\\vibetunnel\\dist')) {
+        return true;
+      }
+
       // Secondary check: if we're in a lib directory, verify it's actually an npm package
       // by checking for the existence of package.json in the parent directory
       if (path.basename(__dirname) === 'lib') {
@@ -776,6 +786,18 @@ export async function createApp(): Promise<AppInstance> {
           return packageJson.name === 'vibetunnel';
         } catch {
           // Not a valid npm package structure
+          return false;
+        }
+      }
+
+      // Secondary check: dist/server output directory for npm installs
+      if (path.basename(path.dirname(__dirname)) === 'dist') {
+        const parentDir = path.dirname(path.dirname(__dirname));
+        const packageJsonPath = path.join(parentDir, 'package.json');
+        try {
+          const packageJson = require(packageJsonPath);
+          return packageJson.name === 'vibetunnel';
+        } catch {
           return false;
         }
       }
