@@ -118,8 +118,16 @@ async function build() {
 
   // Build zig forwarder first.
   // `build-native.js` runs verification in CI which expects the forwarder to exist.
+  // The forwarder is optional - VibeTunnel works without it by falling back to Node.js implementation
   console.log('Building zig forwarder...');
-  execSync('node scripts/build-fwd-zig.js', { stdio: 'inherit' });
+  try {
+    execSync('node scripts/build-fwd-zig.js', { stdio: 'inherit' });
+  } catch (error) {
+    console.warn('⚠️  Warning: Failed to build zig forwarder (vibetunnel-fwd)');
+    console.warn('   VibeTunnel will work without it using the Node.js implementation.');
+    console.warn('   This is common on systems with older Zig versions or ARM architectures.');
+    console.warn('   To build the forwarder, ensure Zig 0.14+ is installed.');
+  }
 
 
   const shouldBuildSea =
