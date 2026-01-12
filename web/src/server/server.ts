@@ -752,22 +752,29 @@ export async function createApp(): Promise<AppInstance> {
     }
     // More precise npm package detection:
     // 1. Check if we're explicitly in an npm package structure
-    // 2. The file should be in node_modules/vibetunnel/lib/
+    // 2. The file should be in node_modules/vibetunnel/dist/ or node_modules/vibetunnel/lib/
     // 3. Or check for our specific package markers
     const isNpmPackage = (() => {
       // Most reliable: check if we're in node_modules/vibetunnel structure
-      if (__filename.includes(path.join('node_modules', 'vibetunnel', 'lib'))) {
+      if (
+        __filename.includes(path.join('node_modules', 'vibetunnel', 'dist')) ||
+        __filename.includes(path.join('node_modules', 'vibetunnel', 'lib'))
+      ) {
         return true;
       }
 
-      // Check for Windows path variant
-      if (__filename.includes('node_modules\\vibetunnel\\lib')) {
+      // Check for Windows path variants
+      if (
+        __filename.includes('node_modules\\vibetunnel\\dist') ||
+        __filename.includes('node_modules\\vibetunnel\\lib')
+      ) {
         return true;
       }
 
-      // Secondary check: if we're in a lib directory, verify it's actually an npm package
+      // Secondary check: if we're in a dist or lib directory, verify it's actually an npm package
       // by checking for the existence of package.json in the parent directory
-      if (path.basename(__dirname) === 'lib') {
+      const currentDirBasename = path.basename(__dirname);
+      if (currentDirBasename === 'dist' || currentDirBasename === 'lib') {
         const parentDir = path.dirname(__dirname);
         const packageJsonPath = path.join(parentDir, 'package.json');
         try {

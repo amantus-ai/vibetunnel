@@ -1,4 +1,36 @@
 #!/usr/bin/env node
 
-// Start the CLI - it handles all command routing including 'fwd'
-require('../dist/vibetunnel-cli');
+// Wrapper script for VibeTunnel CLI
+// Spawns the actual CLI as a child process with correct working directory
+// This ensures the server can find its static assets regardless of user's CWD
+
+const { spawn } = require('child_process');
+const path = require('path');
+
+// Package root is the parent directory of bin/
+const packageRoot = path.join(__dirname, '..');
+
+// Path to the compiled CLI entry point
+const cliPath = path.join(packageRoot, 'dist', 'vibetunnel-cli.js');
+
+// Spawn the CLI as a child process with the package root as cwd
+const child = spawn(process.execPath, [cliPath, ...process.argv.slice(2)], {
+  cwd: packageRoot,
+  stdio: 'inherit',
+  env: process.env
+});
+
+// Forward exit code
+child.on('exit', (code, signal) => {
+  if (signal) {
+    process.kill(process.pid, signal);
+  } else {
+    process.exit(code || 0);
+  }
+});
+
+// Handle errors
+child.on('error', (err) => {
+  console.error('Failed to start VibeTunnel:', err);
+  process.exit(1);
+});

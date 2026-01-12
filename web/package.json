@@ -122,7 +122,8 @@
     "signal-exit": "^4.1.0",
     "web-push": "^3.6.7",
     "ws": "^8.18.3",
-    "zod": "^4.2.1"
+    "zod": "^4.2.1",
+    "chokidar": "^5.0.0"
   },
   "optionalDependencies": {
     "authenticate-pam": "^1.0.5"
@@ -147,7 +148,6 @@
     "@vitest/coverage-v8": "^4.0.16",
     "@vitest/ui": "^4.0.16",
     "autoprefixer": "^10.4.23",
-    "chokidar": "^5.0.0",
     "chokidar-cli": "^3.0.0",
     "concurrently": "^9.2.1",
     "esbuild": "^0.27.2",
