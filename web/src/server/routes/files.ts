@@ -106,6 +106,12 @@ export function createFileRoutes(): Router {
   router.get('/files/:filename', async (req, res) => {
     try {
       const filename = req.params.filename;
+
+      // Type guard: ensure filename is a string
+      if (typeof filename !== 'string') {
+        return res.status(400).json({ error: 'Invalid filename parameter' });
+      }
+
       const filePath = path.join(UPLOADS_DIR, filename);
 
       // Security check: ensure filename doesn't contain path traversal
@@ -193,6 +199,11 @@ export function createFileRoutes(): Router {
   router.delete('/files/:filename', async (req: AuthenticatedRequest, res) => {
     try {
       const filename = req.params.filename;
+
+      // Type guard: ensure filename is a string
+      if (typeof filename !== 'string') {
+        return res.status(400).json({ error: 'Invalid filename parameter' });
+      }
 
       // Security check: ensure filename doesn't contain path traversal
       if (
