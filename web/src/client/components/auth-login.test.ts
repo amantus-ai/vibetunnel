@@ -365,7 +365,7 @@ describe('AuthLogin', () => {
       // Look for authentication prompt text
       const content = element.textContent;
       expect(content).toBeTruthy();
-      expect(content).toContain('Please authenticate to continue');
+      expect(content).toContain('Please introduce password to continue');
     });
 
     it('should have accessible password input', () => {
