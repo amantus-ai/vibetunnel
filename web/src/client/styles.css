@@ -2460,6 +2460,11 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   display: none;
 }
 
+/* Hide mobile action bar to avoid overlapping custom quick keys. */
+mobile-action-bar {
+  display: none !important;
+}
+
 /* Mobile terminal text overflow handling */
 @media (max-width: 768px) {
   /* Force terminal lines to wrap on mobile */

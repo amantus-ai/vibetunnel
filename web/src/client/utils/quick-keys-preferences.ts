@@ -38,6 +38,8 @@ export const QUICK_KEY_DEFINITIONS = [
   { key: 'Command', label: '\u2318', modifier: true },
   { key: 'Ctrl+C', label: '^C', combo: true },
   { key: 'Ctrl+Z', label: '^Z', combo: true },
+  { key: 'Ctrl+A', label: '^A', combo: true },
+  { key: 'Ctrl+R', label: '^R', combo: true },
   { key: 'Ctrl+W', label: '^W', combo: true },
   { key: 'Ctrl+U', label: '^U', combo: true },
   { key: 'Ctrl+D', label: '^D', combo: true },
@@ -55,6 +57,8 @@ export const QUICK_KEY_DEFINITIONS = [
   { key: ']', label: ']' },
   { key: '(', label: '(' },
   { key: ')', label: ')' },
+  { key: 'CtrlFull', label: 'Ctrl\u2026', special: true },
+  { key: 'Done', label: 'Done', special: true },
 ] as const;
 
 // Derived type from QUICK_KEY_DEFINITIONS
