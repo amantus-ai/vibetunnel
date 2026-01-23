@@ -332,10 +332,9 @@ async function parseCommandAndExecute(): Promise<void> {
  */
 function isMainModule(): boolean {
   return (
-    !module.parent &&
-    (require.main === module ||
-      require.main === undefined ||
-      (require.main?.filename?.endsWith('/vibetunnel-cli') ?? false))
+    require.main === module ||
+    require.main === undefined ||
+    (require.main?.filename?.endsWith('/vibetunnel') ?? false)
   );
 }
 
