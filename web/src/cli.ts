@@ -331,12 +331,32 @@ async function parseCommandAndExecute(): Promise<void> {
  * Check if this module is being run directly (not imported)
  */
 function isMainModule(): boolean {
-  return (
-    !module.parent &&
-    (require.main === module ||
-      require.main === undefined ||
-      (require.main?.filename?.endsWith('/vibetunnel-cli') ?? false))
-  );
+  // Direct execution (not loaded via require)
+  if (!module.parent) {
+    return true;
+  }
+
+  // Loaded from bin wrapper (npm global install)
+  if (module.parent?.filename?.endsWith('/bin/vibetunnel')) {
+    return true;
+  }
+
+  // SEA context where require.main might be undefined
+  if (require.main === undefined) {
+    return true;
+  }
+
+  // Main module is this module
+  if (require.main === module) {
+    return true;
+  }
+
+  // Main module is the bundled CLI
+  if (require.main?.filename?.endsWith('/vibetunnel-cli')) {
+    return true;
+  }
+
+  return false;
 }
 
 // Main execution
