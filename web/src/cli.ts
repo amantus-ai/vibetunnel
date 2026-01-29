@@ -71,19 +71,24 @@ function printHelp(): void {
   console.log('  shellops unfollow                     Disable Git follow mode');
   console.log('  shellops git-event                    Notify server of Git event');
   console.log('  shellops systemd [action]             Manage systemd service (Linux)');
+  console.log('  shellops launchd [action]             Manage LaunchAgent service (macOS)');
   console.log('  shellops version                      Show version');
   console.log('  shellops help                         Show this help');
   console.log('');
-  console.log('Systemd Service Actions:');
-  console.log('  install   - Install ShellOps as systemd service (default)');
-  console.log('  uninstall - Remove ShellOps systemd service');
-  console.log('  status    - Check systemd service status');
+  console.log('Service Management:');
+  console.log('  systemd   - Linux systemd user service');
+  console.log('  launchd   - macOS LaunchAgent (runs at login)');
+  console.log('');
+  console.log('Service Actions:');
+  console.log('  install   - Install service (default)');
+  console.log('  uninstall - Remove service');
+  console.log('  status    - Check service status');
   console.log('');
   console.log('Examples:');
   console.log('  shellops --port 8080 --no-auth');
   console.log('  shellops fwd --title-mode static bash');
-  console.log('  shellops systemd');
-  console.log('  shellops systemd uninstall');
+  console.log('  shellops systemd                    # Linux');
+  console.log('  shellops launchd                    # macOS');
   console.log('');
   console.log('For more options, run: shellops --help');
 }
@@ -162,6 +167,22 @@ async function handleSystemdService(): Promise<void> {
     installSystemdService(action);
   } catch (error) {
     logger.error('Failed to load systemd installer:', error);
+    closeLogger();
+    process.exit(1);
+  }
+}
+
+/**
+ * Handle launchd service installation and management (macOS)
+ */
+async function handleLaunchdService(): Promise<void> {
+  try {
+    // Import launchd installer dynamically to avoid loading it on every startup
+    const { installLaunchdService } = await import('./server/services/launchd-installer.js');
+    const action = process.argv[3] || 'install';
+    installLaunchdService(action);
+  } catch (error) {
+    logger.error('Failed to load launchd installer:', error);
     closeLogger();
     process.exit(1);
   }
@@ -318,6 +339,10 @@ async function parseCommandAndExecute(): Promise<void> {
 
     case 'systemd':
       await handleSystemdService();
+      break;
+
+    case 'launchd':
+      await handleLaunchdService();
       break;
 
     default:

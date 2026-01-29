@@ -165,7 +165,25 @@ shellops fwd --session-id abc123 npm test
 shellops fwd --session-id abc123 python script.py
 ```
 
-Linux users can install ShellOps as a systemd service with `shellops systemd` for automatic startup and process management - see [detailed systemd documentation](docs/systemd.md).
+### Running as a Background Service
+
+ShellOps can run as a persistent background service that starts automatically:
+
+**macOS (LaunchAgent):**
+```bash
+shellops launchd              # Install and start
+shellops launchd status       # Check status
+shellops launchd uninstall    # Remove
+```
+See [detailed launchd documentation](docs/launchd.md).
+
+**Linux (systemd):**
+```bash
+shellops systemd              # Install and enable
+shellops systemd status       # Check status  
+shellops systemd uninstall    # Remove
+```
+See [detailed systemd documentation](docs/systemd.md).
 
 ### Environment Variables
 
