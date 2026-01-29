@@ -12,6 +12,8 @@ struct TerminalView: View {
     @State private var viewModel: TerminalViewModel
     @State private var keyboardHeight: CGFloat = 0
     @State private var showingFileBrowser = false
+    @State private var showingDictation = false
+    @State private var dictationText = ""
     @FocusState private var isInputFocused: Bool
 
     init(session: Session) {
@@ -24,32 +26,38 @@ struct TerminalView: View {
     }
 
     var body: some View {
-        GeometryReader { geo in
-            VStack(spacing: 0) {
-                // Simple header
-                header
+        VStack(spacing: 0) {
+            // Simple header
+            header
 
-                // Terminal fills all available space
-                terminalContent
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Terminal fills available space (shrinks when keyboard appears)
+            terminalContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                // Keyboard toolbar
-                if keyboardHeight > 0 {
-                    TerminalToolbar(
-                        onSpecialKey: { key in
-                            viewModel.sendInput(key.rawValue)
-                        },
-                        onDismissKeyboard: {
-                            isInputFocused = false
-                        },
-                        onRawInput: { input in
-                            viewModel.sendInput(input)
-                        })
-                }
+            // Keyboard toolbar - always above keyboard
+            if keyboardHeight > 0 {
+                TerminalToolbar(
+                    onSpecialKey: { key in
+                        viewModel.sendInput(key.rawValue)
+                    },
+                    onDismissKeyboard: {
+                        viewModel.terminalCoordinator?.dismissKeyboard()
+                    },
+                    onRawInput: { input in
+                        viewModel.sendInput(input)
+                    },
+                    onDictation: {
+                        // Dismiss keyboard first, then show modal
+                        viewModel.terminalCoordinator?.dismissKeyboard()
+                        // Use Task to let keyboard dismiss first
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 300_000_000)
+                            showingDictation = true
+                        }
+                    })
             }
-            .background(theme.background)
         }
-        .ignoresSafeArea(.keyboard)
+        .background(theme.background)
         .navigationBarHidden(true)
         .onAppear {
             viewModel.connect()
@@ -66,6 +74,21 @@ struct TerminalView: View {
                 onInsertPath: { path, _ in
                     viewModel.sendInput(path)
                     showingFileBrowser = false
+                })
+        }
+        .sheet(isPresented: $showingDictation) {
+            DictationModal(
+                text: $dictationText,
+                onSubmit: {
+                    if !dictationText.isEmpty {
+                        viewModel.sendInput(dictationText + "\r")
+                        dictationText = ""
+                    }
+                    showingDictation = false
+                },
+                onCancel: {
+                    dictationText = ""
+                    showingDictation = false
                 })
         }
         .gesture(
@@ -355,4 +378,5 @@ protocol TerminalCoordinating: AnyObject {
     func scrollToBottom()
     func setMaxWidth(_ maxWidth: Int)
     func getBufferContent() -> String?
+    func dismissKeyboard()
 }

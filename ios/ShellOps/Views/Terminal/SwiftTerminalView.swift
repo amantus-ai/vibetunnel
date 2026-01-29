@@ -19,6 +19,9 @@ struct SwiftTerminalView: UIViewRepresentable {
         terminalView.terminalDelegate = context.coordinator
         terminalView.nativeBackgroundColor = UIColor(theme.background)
 
+        // Disable SwiftTerm's built-in keyboard accessory (we use our own TerminalToolbar)
+        terminalView.inputAccessoryView = nil
+
         // Apply theme colors
         applyTheme(theme, to: terminalView)
 
@@ -120,6 +123,13 @@ struct SwiftTerminalView: UIViewRepresentable {
             super.init()
         }
 
+        // MARK: - Keyboard Control
+
+        @MainActor
+        func dismissKeyboard() {
+            terminalView?.resignFirstResponder()
+        }
+
         // MARK: - TerminalCoordinating
 
         @MainActor
@@ -184,6 +194,9 @@ struct SwiftTerminalView: UIViewRepresentable {
             guard !parent.disableInput else { return }
 
             if let text = String(bytes: data, encoding: .utf8) {
+                Task { @MainActor in
+                    self.logger.debug("Sending input: \(text.debugDescription) (\(data.count) bytes)")
+                }
                 self.parent.onInput?(text)
             }
         }

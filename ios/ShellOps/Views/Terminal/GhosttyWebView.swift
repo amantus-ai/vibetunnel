@@ -82,16 +82,33 @@ struct GhosttyWebView: UIViewRepresentable {
             let fontFamilyJSON = self.makeFontFamilyJSON()
             let disableInput = self.parent.disableInput ? "true" : "false"
 
+            let bgHex = self.parent.theme.background.hex
             let html = """
             <!DOCTYPE html>
             <html>
             <head>
                 <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no\">
                 <style>
-                    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
-                    body { background: transparent; -webkit-user-select: none; -webkit-touch-callout: none; }
-                    #terminal { width: 100vw; height: 100vh; }
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    html, body {
+                        width: 100%;
+                        height: 100%;
+                        overflow: hidden;
+                        background: \(bgHex);
+                    }
+                    body {
+                        -webkit-user-select: none;
+                        -webkit-touch-callout: none;
+                        -webkit-tap-highlight-color: transparent;
+                    }
+                    #terminal {
+                        width: 100vw;
+                        height: 100vh;
+                        background: \(bgHex);
+                    }
                     canvas { display: block; }
+                    /* Hide any scrollbars */
+                    ::-webkit-scrollbar { display: none; }
                 </style>
             </head>
             <body>
@@ -368,6 +385,10 @@ struct GhosttyWebView: UIViewRepresentable {
             self.bufferRenderer.bufferContent()
         }
 
+        func dismissKeyboard() {
+            self.webView?.resignFirstResponder()
+        }
+
         private func makeThemeJSON(_ theme: TerminalTheme) -> String {
             let themeDict: [String: String] = [
                 "background": theme.background.hex,
@@ -396,8 +417,10 @@ struct GhosttyWebView: UIViewRepresentable {
         }
 
         private func makeFontFamilyJSON() -> String {
-            let fontFamily = "\(Theme.Typography.terminalFont), \(Theme.Typography.terminalFontFallback), monospace"
-            return self.jsonString(fontFamily) ?? "\"monospace\""
+            // Use fonts that are actually available in iOS WebKit
+            // Menlo is the best monospace font on iOS, with system UI monospace as fallback
+            let fontFamily = "Menlo, ui-monospace, -apple-system-ui-monospace, monospace"
+            return self.jsonString(fontFamily) ?? "\"Menlo, monospace\""
         }
 
         private func jsonString<T: Encodable>(_ value: T) -> String? {

@@ -125,5 +125,9 @@
 	<array>
 		<string>_shellops._tcp</string>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>ShellOps uses the microphone for voice commands to control your terminal.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>ShellOps uses speech recognition to convert your voice into terminal commands.</string>
 </dict>
 </plist>
