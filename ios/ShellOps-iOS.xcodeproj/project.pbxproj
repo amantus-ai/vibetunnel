@@ -149,6 +149,7 @@
 			);
 			name = ShellOps;
 			packageProductDependencies = (
+				SWIFTTERM_PKG_DEP /* SwiftTerm */,
 			);
 			productName = ShellOps;
 			productReference = 216D52E392D8F0CDC6358BB8 /* ShellOps.app */;
@@ -182,6 +183,7 @@
 			mainGroup = 0DD83B4196D66608380E46BB;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				SWIFTTERM_PKG_REF /* XCRemoteSwiftPackageReference "SwiftTerm" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7866022B46DD9C411CAEDA26 /* Products */;
@@ -587,9 +589,22 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		SWIFTTERM_PKG_REF /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		SWIFTTERM_PKG_DEP /* SwiftTerm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = SWIFTTERM_PKG_REF /* XCRemoteSwiftPackageReference "SwiftTerm" */;
+			productName = SwiftTerm;
+		};
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4C82CEFDA8E4EFE0B37538D7 /* Project object */;

@@ -173,15 +173,16 @@ struct FileBrowserView: View {
                                     modifiedTime: entry.formattedDate,
                                     gitStatus: entry.gitStatus)
                                 {
-                                    if entry.isDir, self.mode != .insertPath {
+                                    if entry.isDir {
+                                        // Always navigate into directories
                                         self.viewModel.navigate(to: entry.path)
                                     } else if self.mode == .browseFiles {
                                         // Preview file with our custom preview
                                         self.previewPath = entry.path
                                         self.showingFilePreview = true
                                     } else if self.mode == .insertPath {
-                                        // Insert the path into terminal
-                                        self.insertPath(entry.path, isDirectory: entry.isDir)
+                                        // Insert file path into terminal
+                                        self.insertPath(entry.path, isDirectory: false)
                                     }
                                 }
                                 .transition(.opacity)

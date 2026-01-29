@@ -28,16 +28,6 @@ struct FileEntry: Codable, Identifiable {
     var id: String { self.path }
 
     /// Creates a new FileEntry with the given parameters.
-    ///
-    /// - Parameters:
-    ///   - name: The file name
-    ///   - path: The full path to the file
-    ///   - isDir: Whether this entry represents a directory
-    ///   - size: The file size in bytes
-    ///   - mode: The file permissions mode string
-    ///   - modTime: The modification time
-    ///   - isGitTracked: Whether the file is in a git repository
-    ///   - gitStatus: The git status of the file
     init(
         name: String,
         path: String,
@@ -58,35 +48,39 @@ struct FileEntry: Codable, Identifiable {
         self.gitStatus = gitStatus
     }
 
+    // Server sends: type, permissions, modified
+    // We store as: isDir, mode, modTime
     enum CodingKeys: String, CodingKey {
         case name
         case path
-        case isDir = "is_dir"
+        case type // Server sends "file" or "directory"
         case size
-        case mode
-        case modTime = "mod_time"
+        case permissions // Server sends "permissions", we store as "mode"
+        case modified // Server sends "modified", we store as "modTime"
         case isGitTracked
         case gitStatus
     }
 
-    /// Creates a FileEntry from a decoder.
-    ///
-    /// - Parameter decoder: The decoder to read data from.
-    ///
-    /// This custom initializer handles the special parsing of the modification
-    /// time from ISO8601 format, supporting both fractional and non-fractional seconds.
+    /// Custom decoder to handle server's field names and types.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.name = try container.decode(String.self, forKey: .name)
         self.path = try container.decode(String.self, forKey: .path)
-        self.isDir = try container.decode(Bool.self, forKey: .isDir)
+
+        // Convert type string to isDir bool
+        let typeString = try container.decode(String.self, forKey: .type)
+        self.isDir = typeString == "directory"
+
         self.size = try container.decode(Int64.self, forKey: .size)
-        self.mode = try container.decode(String.self, forKey: .mode)
+
+        // permissions → mode (optional, default to "000")
+        self.mode = try container.decodeIfPresent(String.self, forKey: .permissions) ?? "000"
+
         self.isGitTracked = try container.decodeIfPresent(Bool.self, forKey: .isGitTracked)
         self.gitStatus = try container.decodeIfPresent(GitFileStatus.self, forKey: .gitStatus)
 
-        // Decode mod_time string as Date
-        let modTimeString = try container.decode(String.self, forKey: .modTime)
+        // Decode modified string as Date
+        let modTimeString = try container.decode(String.self, forKey: .modified)
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let date = formatter.date(from: modTimeString) {
@@ -98,11 +92,28 @@ struct FileEntry: Codable, Identifiable {
                 self.modTime = date
             } else {
                 throw DecodingError.dataCorruptedError(
-                    forKey: .modTime,
+                    forKey: .modified,
                     in: container,
-                    debugDescription: "Invalid date format")
+                    debugDescription: "Invalid date format: \(modTimeString)")
             }
         }
+    }
+
+    /// Custom encoder to convert back to server format.
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.path, forKey: .path)
+        try container.encode(self.isDir ? "directory" : "file", forKey: .type)
+        try container.encode(self.size, forKey: .size)
+        try container.encode(self.mode, forKey: .permissions)
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        try container.encode(formatter.string(from: self.modTime), forKey: .modified)
+
+        try container.encodeIfPresent(self.isGitTracked, forKey: .isGitTracked)
+        try container.encodeIfPresent(self.gitStatus, forKey: .gitStatus)
     }
 
     /// Returns a human-readable file size string.
