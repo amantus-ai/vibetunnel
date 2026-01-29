@@ -594,12 +594,11 @@ export class ControlUnixHandler {
       // Write with error handling
       const result = this.macSocket.write(fullData, (error) => {
         if (error) {
+          const errnoError = error as NodeJS.ErrnoException;
           logger.error('❌ Error writing to Mac socket:', error);
           logger.error('Error details:', {
-            // biome-ignore lint/suspicious/noExplicitAny: error object has non-standard properties
-            code: (error as any).code,
-            // biome-ignore lint/suspicious/noExplicitAny: error object has non-standard properties
-            syscall: (error as any).syscall,
+            code: errnoError.code,
+            syscall: errnoError.syscall,
             message: error.message,
           });
           // Close the connection on write error

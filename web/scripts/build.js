@@ -83,8 +83,6 @@ async function build() {
         'jsonwebtoken',
         'web-push',
         'bonjour-service',
-        'signal-exit',
-        'http-proxy-middleware',
         'multer',
         'mime-types',
       ],

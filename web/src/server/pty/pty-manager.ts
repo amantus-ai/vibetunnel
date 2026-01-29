@@ -62,6 +62,15 @@ import {
 
 const logger = createLogger('pty-manager');
 
+/**
+ * Extended IPty interface that includes internal node-pty properties.
+ * The _pty property contains the PTY device name (e.g., /dev/ttys001)
+ * and is used for querying the foreground process group.
+ */
+interface IPtyWithInternals extends IPty {
+  _pty?: string;
+}
+
 // Title injection timing constants
 const TITLE_UPDATE_INTERVAL_MS = 1000; // How often to check if title needs updating
 const TITLE_INJECTION_QUIET_PERIOD_MS = 50; // Minimum quiet period before injecting title
@@ -2200,8 +2209,7 @@ export class PtyManager extends EventEmitter {
 
     try {
       // On Unix-like systems, we can check the terminal's foreground process group
-      // biome-ignore lint/suspicious/noExplicitAny: Accessing internal node-pty property
-      const ttyName = (session.ptyProcess as any)._pty; // Internal PTY name
+      const ttyName = (session.ptyProcess as IPtyWithInternals)._pty; // Internal PTY name
       if (!ttyName) {
         logger.debug(`Session ${session.id}: No TTY name found, falling back to process tree`);
         return this.getForegroundFromProcessTree(session);

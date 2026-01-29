@@ -100,7 +100,6 @@
     "express": "^5.2.1",
     "ghostty-web": "^0.4.0",
     "helmet": "^8.1.0",
-    "http-proxy-middleware": "^3.0.5",
     "jsonwebtoken": "^9.0.3",
     "lit": "^3.3.2",
     "mime-types": "^3.0.2",
@@ -109,7 +108,6 @@
     "node-addon-api": "^8.5.0",
     "node-pty": "file:node-pty",
     "postject": "1.0.0-alpha.6",
-    "signal-exit": "^4.1.0",
     "web-push": "^3.6.7",
     "ws": "^8.18.3",
     "zod": "^4.2.1"
