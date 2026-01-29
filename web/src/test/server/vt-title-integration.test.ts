@@ -227,6 +227,13 @@ describe('vt title Command Integration', () => {
   });
 
   it('should work without jq using sed fallback', async () => {
+    // This test requires the native binary since it uses a restricted PATH
+    // that excludes Node.js (to test minimal PATH scenarios)
+    if (!isNativeBinaryWorking()) {
+      console.log('Skipping test: native binary not working');
+      return;
+    }
+
     const sessionId = `t-${Math.random().toString(36).substring(2, 8)}`;
     const sessionDir = path.join(testControlDir, sessionId);
     await fs.mkdir(sessionDir, { recursive: true });
@@ -248,6 +255,7 @@ describe('vt title Command Integration', () => {
     await fs.mkdir(path.join(mockHome, '.shellops', 'control'), { recursive: true });
     await fs.symlink(sessionDir, path.join(mockHome, '.shellops', 'control', sessionId));
 
+    const nativePath = path.join(process.cwd(), 'native', 'shellops');
     const env = {
       ...process.env,
       SHELLOPS_SESSION_ID: sessionId,
@@ -255,9 +263,9 @@ describe('vt title Command Integration', () => {
       PATH: '/usr/bin:/bin', // Minimal PATH that likely excludes jq
     };
 
-    // Run shellops directly (fwd doesn't use jq/sed, it updates directly)
+    // Run native shellops binary directly (fwd doesn't use jq/sed, it updates directly)
     const { stderr } = await execAsync(
-      `${shellopsPath} fwd --update-title "Sed Fallback Test" --session-id "${sessionId}"`,
+      `${nativePath} fwd --update-title "Sed Fallback Test" --session-id "${sessionId}"`,
       { env }
     );
 

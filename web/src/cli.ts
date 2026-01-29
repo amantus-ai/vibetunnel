@@ -354,14 +354,25 @@ async function parseCommandAndExecute(): Promise<void> {
 
 /**
  * Check if this module is being run directly (not imported)
+ * Also returns true if required from bin/shellops wrapper
  */
 function isMainModule(): boolean {
-  return (
-    !module.parent &&
-    (require.main === module ||
+  // Running directly as CLI
+  if (!module.parent) {
+    return (
+      require.main === module ||
       require.main === undefined ||
-      (require.main?.filename?.endsWith('/shellops-cli') ?? false))
-  );
+      (require.main?.filename?.endsWith('/shellops-cli') ?? false)
+    );
+  }
+
+  // Check if required from bin/shellops wrapper
+  const parentFilename = module.parent?.filename ?? '';
+  if (parentFilename.endsWith('/bin/shellops') || parentFilename.endsWith('\\bin\\shellops')) {
+    return true;
+  }
+
+  return false;
 }
 
 // Main execution
