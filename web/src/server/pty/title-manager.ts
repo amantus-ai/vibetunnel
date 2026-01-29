@@ -10,9 +10,9 @@
 import { once } from 'events';
 import { TitleMode } from '../../shared/types.js';
 import { TitleSequenceFilter } from '../utils/ansi-title-filter.js';
+import { createLogger } from '../utils/logger.js';
 import { generateTitleSequence, shouldInjectTitle } from '../utils/terminal-title.js';
 import type { WriteQueue } from '../utils/write-queue.js';
-import { createLogger } from '../utils/logger.js';
 import type { PtySession } from './types.js';
 
 const logger = createLogger('title-manager');

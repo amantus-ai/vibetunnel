@@ -62,7 +62,7 @@ export class SessionCreateForm extends LitElement {
   }
 
   @property({ type: String }) workingDir = DEFAULT_REPOSITORY_BASE_PATH;
-  @property({ type: String }) command = 'zsh';
+  @property({ type: String }) command = 'fish';
   @property({ type: String }) sessionName = '';
   @property({ type: Boolean }) disabled = false;
   @property({ type: Boolean }) visible = false;
@@ -101,7 +101,7 @@ export class SessionCreateForm extends LitElement {
     { label: '✨ claude', command: 'claude' },
     { label: 'gemini3', command: 'gemini3' },
     { label: 'opencode 4', command: 'opencode 4' },
-    { label: 'zsh', command: 'zsh' },
+    { label: 'fish', command: 'fish' },
     { label: 'node', command: 'node' },
   ];
 
@@ -210,7 +210,7 @@ export class SessionCreateForm extends LitElement {
     // Always set values, using saved values or defaults
     // Priority: savedWorkingDir > appRepoBasePath > default
     this.workingDir = formData.workingDir || appRepoBasePath || DEFAULT_REPOSITORY_BASE_PATH;
-    this.command = formData.command || 'zsh';
+    this.command = formData.command || 'fish';
 
     // For spawn window, use saved value or default to false
     this.spawnWindow = formData.spawnWindow ?? false;
@@ -332,7 +332,7 @@ export class SessionCreateForm extends LitElement {
       if (this.visible) {
         // Reset to defaults first to ensure clean state
         this.workingDir = DEFAULT_REPOSITORY_BASE_PATH;
-        this.command = 'zsh';
+        this.command = 'fish';
         this.sessionName = '';
         this.spawnWindow = false;
         this.titleMode = TitleMode.STATIC;
@@ -1105,7 +1105,7 @@ export class SessionCreateForm extends LitElement {
                 @blur=${(e: Event) => {
                   (e.target as HTMLInputElement).style.borderColor = 'rgba(255, 255, 255, 0.08)';
                 }}
-                placeholder="zsh"
+                placeholder="fish"
                 ?disabled=${this.disabled || this.isCreating}
                 data-testid="command-input"
               />

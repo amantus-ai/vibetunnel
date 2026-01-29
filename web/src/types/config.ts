@@ -64,7 +64,7 @@ export const DEFAULT_QUICK_START_COMMANDS: QuickStartCommand[] = [
   { name: '✨ claude', command: 'claude' },
   { command: 'gemini3' },
   { command: 'opencode 4' },
-  { command: 'zsh' },
+  { command: 'fish' },
   { command: 'node' },
 ];
 

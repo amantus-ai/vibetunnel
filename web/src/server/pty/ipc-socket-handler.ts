@@ -100,9 +100,7 @@ export class IPCSocketHandler {
 
         // Add client to connected clients set
         clients.add(client);
-        logger.debug(
-          `Client connected to session ${session.id}, total clients: ${clients.size}`
-        );
+        logger.debug(`Client connected to session ${session.id}, total clients: ${clients.size}`);
 
         client.on('data', (chunk) => {
           parser.addData(chunk);

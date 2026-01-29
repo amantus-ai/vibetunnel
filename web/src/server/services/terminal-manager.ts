@@ -425,9 +425,11 @@ export class TerminalManager {
             }
           } catch (error) {
             logger.error(
-              `Error reading stream file for session ${truncateForLog(sessionId)}:`,
+              `Error reading stream file for session ${truncateForLog(sessionId)}, cleaning up terminal:`,
               error
             );
+            // Clean up the terminal on watcher error to prevent orphaned state
+            this.closeTerminal(sessionId);
           }
         }
       });
@@ -435,6 +437,8 @@ export class TerminalManager {
       logger.log(chalk.green(`Watching stream file for session ${truncateForLog(sessionId)}`));
     } catch (error) {
       logger.error(`Failed to watch stream file for session ${truncateForLog(sessionId)}:`, error);
+      // Clean up before throwing to avoid orphaned terminal
+      this.closeTerminal(sessionId);
       throw error;
     }
   }

@@ -22,8 +22,8 @@ import type {
 } from '../../shared/types.js';
 import { TitleMode } from '../../shared/types.js';
 import type { SessionMonitor } from '../services/session-monitor.js';
-import { extractCdDirectory } from '../utils/terminal-title.js';
 import { createLogger } from '../utils/logger.js';
+import { extractCdDirectory } from '../utils/terminal-title.js';
 import { WriteQueue } from '../utils/write-queue.js';
 import { controlUnixHandler } from '../websocket/control-unix-handler.js';
 import { computeActivityStatus } from './activity-status.js';
@@ -32,12 +32,8 @@ import { IOHandler } from './io-handler.js';
 import { IPCSocketHandler } from './ipc-socket-handler.js';
 import { ProcessTracker } from './process-tracker.js';
 import { ProcessUtils } from './process-utils.js';
+import { initializeNodePty, isNodePtyInitialized, SessionLifecycle } from './session-lifecycle.js';
 import { SessionManager } from './session-manager.js';
-import {
-  initializeNodePty,
-  isNodePtyInitialized,
-  SessionLifecycle,
-} from './session-lifecycle.js';
 import { TitleManager } from './title-manager.js';
 import {
   type KillControlMessage,
@@ -181,17 +177,14 @@ export class PtyManager extends EventEmitter {
     });
 
     // Initialize session lifecycle with callbacks
-    this.sessionLifecycle = new SessionLifecycle(
-      this.sessionManager,
-      {
-        onSessionCreated: (session) => {
-          this.sessions.set(session.id, session);
-        },
-        setupPtyHandlers: (session, forwardToStdout, onExit) => {
-          this.setupPtyHandlers(session, forwardToStdout, onExit);
-        },
-      }
-    );
+    this.sessionLifecycle = new SessionLifecycle(this.sessionManager, {
+      onSessionCreated: (session) => {
+        this.sessions.set(session.id, session);
+      },
+      setupPtyHandlers: (session, forwardToStdout, onExit) => {
+        this.setupPtyHandlers(session, forwardToStdout, onExit);
+      },
+    });
 
     this.setupTerminalResizeDetection();
   }
@@ -293,7 +286,11 @@ export class PtyManager extends EventEmitter {
     }
 
     // Emit session started event
-    this.emit('sessionStarted', session.id, session.sessionInfo.name || session.sessionInfo.command.join(' '));
+    this.emit(
+      'sessionStarted',
+      session.id,
+      session.sessionInfo.name || session.sessionInfo.command.join(' ')
+    );
 
     // Send notification to Mac app
     if (controlUnixHandler.isMacAppConnected()) {
@@ -553,7 +550,9 @@ export class PtyManager extends EventEmitter {
    * Update session name
    */
   updateSessionName(sessionId: string, name: string): string {
-    logger.debug(`[PtyManager] updateSessionName called for session ${sessionId} with name: ${name}`);
+    logger.debug(
+      `[PtyManager] updateSessionName called for session ${sessionId} with name: ${name}`
+    );
 
     const uniqueName = this.sessionManager.updateSessionName(sessionId, name);
 
@@ -567,7 +566,9 @@ export class PtyManager extends EventEmitter {
         this.titleManager.updateTerminalTitleForSessionName(session);
       }
 
-      logger.log(`[PtyManager] Updated session ${sessionId} name from "${oldName}" to "${uniqueName}"`);
+      logger.log(
+        `[PtyManager] Updated session ${sessionId} name from "${oldName}" to "${uniqueName}"`
+      );
     }
 
     this.trackAndEmit('sessionNameChanged', sessionId, uniqueName);

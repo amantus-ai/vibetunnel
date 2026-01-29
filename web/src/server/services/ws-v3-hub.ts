@@ -54,13 +54,34 @@ type RemoteConn = {
   sessionFlags: Map<string, number>;
 };
 
+// Retry queue entry for failed remote sends
+type RetryEntry = {
+  remoteId: string;
+  data: Uint8Array;
+  attempts: number;
+  nextRetry: number;
+};
+
+// Retry configuration
+const RETRY_CONFIG = {
+  maxAttempts: 5,
+  baseDelayMs: 100,
+  maxDelayMs: 5000,
+  maxQueueSize: 1000,
+};
+
 export class WsV3Hub {
   private clients = new WeakMap<WebSocket, ClientState>();
   private clientSockets = new Set<WebSocket>();
   private sessionMonitorListener: ((event: ServerEvent) => void) | null = null;
 
   private remoteConnections: Map<string, RemoteConn> = new Map();
+  private remoteConnectPromises: Map<string, Promise<RemoteConn | null>> = new Map();
   private remoteSessionSubscribers: Map<string, Set<WebSocket>> = new Map();
+
+  // Retry queue for failed remote sends
+  private retryQueue: RetryEntry[] = [];
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private config: {
@@ -482,10 +503,30 @@ export class WsV3Hub {
     const remote = registry.getRemote(remoteId);
     if (!remote) return null;
 
+    // Check for existing open connection
     const existing = this.remoteConnections.get(remoteId);
     if (existing?.ws.readyState === WebSocket.OPEN) return existing;
-    if (existing?.reconnecting) return existing;
 
+    // Check for in-flight connection attempt (fixes race condition)
+    const pendingPromise = this.remoteConnectPromises.get(remoteId);
+    if (pendingPromise) return pendingPromise;
+
+    // Create and cache the connection promise
+    const connectPromise = this.createRemoteConnection(remoteId, remote);
+    this.remoteConnectPromises.set(remoteId, connectPromise);
+
+    try {
+      return await connectPromise;
+    } finally {
+      this.remoteConnectPromises.delete(remoteId);
+    }
+  }
+
+  private async createRemoteConnection(
+    remoteId: string,
+    remote: { name: string; url: string; token: string }
+  ): Promise<RemoteConn | null> {
+    const existing = this.remoteConnections.get(remoteId);
     const wsUrl = `${remote.url.replace(/^http/, 'ws')}/ws`;
 
     const ws = new WebSocket(wsUrl, {
@@ -626,10 +667,98 @@ export class WsV3Hub {
 
   private async sendToRemote(remoteId: string, data: Uint8Array) {
     const conn = await this.ensureRemoteConnection(remoteId);
-    if (!conn) return;
+    if (!conn) {
+      this.queueRetry(remoteId, data);
+      return;
+    }
     await conn.openPromise.catch(() => {});
-    if (conn.ws.readyState !== WebSocket.OPEN) return;
+    if (conn.ws.readyState !== WebSocket.OPEN) {
+      this.queueRetry(remoteId, data);
+      return;
+    }
     this.safeSend(conn.ws, data);
+  }
+
+  private queueRetry(remoteId: string, data: Uint8Array) {
+    // Enforce queue size limit to prevent memory exhaustion
+    if (this.retryQueue.length >= RETRY_CONFIG.maxQueueSize) {
+      const dropped = this.retryQueue.shift();
+      if (dropped) {
+        logger.warn(`retry queue full, dropped oldest entry for remote ${dropped.remoteId}`);
+      }
+    }
+
+    this.retryQueue.push({
+      remoteId,
+      data,
+      attempts: 0,
+      nextRetry: Date.now() + RETRY_CONFIG.baseDelayMs,
+    });
+
+    this.scheduleRetryProcessing();
+  }
+
+  private scheduleRetryProcessing() {
+    if (this.retryTimer) return;
+
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      this.processRetryQueue();
+    }, RETRY_CONFIG.baseDelayMs);
+  }
+
+  private async processRetryQueue() {
+    const now = Date.now();
+    const pending: RetryEntry[] = [];
+
+    for (const entry of this.retryQueue) {
+      if (entry.nextRetry > now) {
+        pending.push(entry);
+        continue;
+      }
+
+      entry.attempts++;
+      const conn = this.remoteConnections.get(entry.remoteId);
+
+      if (conn?.ws.readyState === WebSocket.OPEN) {
+        // Connection recovered, send the data
+        this.safeSend(conn.ws, entry.data);
+        logger.debug(
+          `retry succeeded for remote ${entry.remoteId} after ${entry.attempts} attempts`
+        );
+      } else if (entry.attempts < RETRY_CONFIG.maxAttempts) {
+        // Exponential backoff with jitter
+        const delay = Math.min(
+          RETRY_CONFIG.baseDelayMs * 2 ** entry.attempts + Math.random() * 100,
+          RETRY_CONFIG.maxDelayMs
+        );
+        entry.nextRetry = now + delay;
+        pending.push(entry);
+      } else {
+        logger.warn(
+          `retry exhausted for remote ${entry.remoteId} after ${RETRY_CONFIG.maxAttempts} attempts, dropping message`
+        );
+      }
+    }
+
+    this.retryQueue = pending;
+
+    // Schedule next processing if there are pending entries
+    if (this.retryQueue.length > 0) {
+      this.scheduleRetryProcessing();
+    }
+  }
+
+  /** Call this on shutdown to clean up retry timer */
+  public stopRetryProcessing() {
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+    }
+    if (this.retryQueue.length > 0) {
+      logger.info(`shutdown: dropping ${this.retryQueue.length} pending retry entries`);
+      this.retryQueue = [];
+    }
   }
 
   private forwardRemoteFrame(type: WsV3MessageType, sessionId: string, payload: Uint8Array) {

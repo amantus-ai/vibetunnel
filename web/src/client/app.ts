@@ -76,7 +76,7 @@ export class ShellOpsApp extends LitElement {
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
   @state() private hasActiveOverlay = false;
   @state() private keyboardCaptureActive = true;
-  @state() private shellopsNavView: 'sessions' | 'settings' = 'sessions';
+  @state() private shellopsNavView: 'sessions' | 'endpoints' | 'settings' | 'ssh-keys' = 'sessions';
   private initialLoadComplete = false;
   private responsiveObserverInitialized = false;
   private initialRenderComplete = false;
@@ -1487,12 +1487,23 @@ export class ShellOpsApp extends LitElement {
     this.shellopsNavView = 'sessions';
   };
 
-  private handleShellopsNavChange = (e: CustomEvent<{ view: 'sessions' | 'settings' }>) => {
+  private handleShellopsNavChange = (
+    e: CustomEvent<{ view: 'sessions' | 'endpoints' | 'settings' | 'ssh-keys' }>
+  ) => {
     this.shellopsNavView = e.detail.view;
-    // When navigating to settings via sidebar, also clear any selected session
-    if (e.detail.view === 'settings') {
+    // When navigating away from sessions, clear any selected session
+    if (e.detail.view !== 'sessions') {
       this.selectedSessionId = null;
     }
+  };
+
+  private handleSidebarQuickAction = (
+    e: CustomEvent<{ action: 'new-session' | 'add-endpoint' }>
+  ) => {
+    if (e.detail.action === 'new-session') {
+      this.handleCreateSession();
+    }
+    // TODO: Handle add-endpoint action when endpoints feature is implemented
   };
 
   private handleOpenFileBrowser = () => {
@@ -1791,13 +1802,15 @@ export class ShellOpsApp extends LitElement {
             : html`
       <!-- ShellOps V3 Layout -->
       <div class="flex h-screen overflow-hidden" style="background: var(--color-bg);">
-        <!-- ShellOps Sidebar (72px) - Hidden on mobile -->
+        <!-- ShellOps Sidebar (240px) - Hidden on mobile -->
         <div class="hidden sm:block flex-shrink-0">
           <shellops-sidebar
             .activeView=${this.shellopsNavView}
             .userInitial=${(authClient.getCurrentUser()?.userId || 'A').charAt(0).toUpperCase()}
+            .userName=${authClient.getCurrentUser()?.userId || 'Admin'}
             @nav-change=${this.handleShellopsNavChange}
-            @avatar-click=${this.handleLogout}
+            @quick-action=${this.handleSidebarQuickAction}
+            @logout-click=${this.handleLogout}
           ></shellops-sidebar>
         </div>
 

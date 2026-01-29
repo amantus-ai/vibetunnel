@@ -72,7 +72,8 @@ const logger = createLogger('session-manager');
 
 export class SessionManager {
   private controlPath: string;
-  private static readonly SESSION_ID_REGEX = /^[a-zA-Z0-9_-]+$/;
+  // Max length 128: well under filesystem limits, reasonable for IDs
+  private static readonly SESSION_ID_REGEX = /^[a-zA-Z0-9_-]{1,128}$/;
 
   constructor(controlPath?: string) {
     this.controlPath = controlPath || path.join(os.homedir(), '.shellops', 'control');
@@ -86,7 +87,7 @@ export class SessionManager {
   private validateSessionId(sessionId: string): void {
     if (!SessionManager.SESSION_ID_REGEX.test(sessionId)) {
       throw new PtyError(
-        `Invalid session ID format: "${sessionId}". Session IDs must only contain letters, numbers, hyphens (-), and underscores (_).`,
+        `Invalid session ID format: "${sessionId.slice(0, 32)}${sessionId.length > 32 ? '...' : ''}". Session IDs must be 1-128 characters containing only letters, numbers, hyphens (-), and underscores (_).`,
         'INVALID_SESSION_ID'
       );
     }

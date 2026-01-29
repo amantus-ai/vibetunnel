@@ -13,11 +13,7 @@ import * as net from 'net';
 import * as path from 'path';
 import type { SessionInput, SpecialKey } from '../../shared/types.js';
 import { createLogger } from '../utils/logger.js';
-import {
-  type ControlCommand,
-  frameMessage,
-  MessageType,
-} from './socket-protocol.js';
+import { type ControlCommand, frameMessage, MessageType } from './socket-protocol.js';
 import {
   type KillControlMessage,
   PtyError,
@@ -72,11 +68,7 @@ export class IOHandler {
   /**
    * Send text input to a session
    */
-  sendInput(
-    sessionId: string,
-    input: SessionInput,
-    session?: PtySession
-  ): void {
+  sendInput(sessionId: string, input: SessionInput, session?: PtySession): void {
     try {
       let dataToSend = '';
       if (input.text !== undefined) {
@@ -171,12 +163,7 @@ export class IOHandler {
   /**
    * Resize a session terminal
    */
-  resizeSession(
-    sessionId: string,
-    cols: number,
-    rows: number,
-    session?: PtySession
-  ): void {
+  resizeSession(sessionId: string, cols: number, rows: number, session?: PtySession): void {
     const currentTime = Date.now();
 
     // Check for rapid resizes (potential feedback loop)
@@ -245,14 +232,10 @@ export class IOHandler {
 
     // Check if we should apply this resize based on "last resize wins" logic
     const shouldResize =
-      !lastResize ||
-      lastResize.source === 'terminal' ||
-      currentTime - lastResize.timestamp > 1000; // 1 second grace period for browser resizes
+      !lastResize || lastResize.source === 'terminal' || currentTime - lastResize.timestamp > 1000; // 1 second grace period for browser resizes
 
     if (!shouldResize) {
-      logger.debug(
-        `Skipping terminal resize for session ${sessionId} (browser has precedence)`
-      );
+      logger.debug(`Skipping terminal resize for session ${sessionId} (browser has precedence)`);
       return false;
     }
 

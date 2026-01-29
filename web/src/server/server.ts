@@ -1395,9 +1395,7 @@ export async function createApp(): Promise<AppInstance> {
       const actualPort =
         typeof address === 'string' ? requestedPort : address?.port || requestedPort;
       const displayAddress = bindAddress === '0.0.0.0' ? 'localhost' : bindAddress;
-      logger.log(
-        chalk.green(`ShellOps Server running on http://${displayAddress}:${actualPort}`)
-      );
+      logger.log(chalk.green(`ShellOps Server running on http://${displayAddress}:${actualPort}`));
 
       // Update API socket server with actual port information
       apiSocketServer.setServerInfo(actualPort, `http://${displayAddress}:${actualPort}`);
@@ -1448,9 +1446,7 @@ export async function createApp(): Promise<AppInstance> {
           .catch((error) => {
             logger.error(chalk.red('❌ Failed to start Tailscale Serve:'), error.message);
             logger.warn(
-              chalk.yellow(
-                '⚠️ ShellOps will continue running, but Tailscale Serve is not available'
-              )
+              chalk.yellow('⚠️ ShellOps will continue running, but Tailscale Serve is not available')
             );
             logger.info(chalk.blue('💻 You can manually configure Tailscale Serve with:'));
             logger.info(chalk.gray(`  tailscale serve ${actualPort}`));

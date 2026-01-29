@@ -16,8 +16,8 @@ import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import type { SessionCreateOptions, SessionInfo, TitleMode } from '../../shared/types.js';
 import { TitleSequenceFilter } from '../utils/ansi-title-filter.js';
-import { WriteQueue } from '../utils/write-queue.js';
 import { createLogger } from '../utils/logger.js';
+import { WriteQueue } from '../utils/write-queue.js';
 import { VERSION } from '../version.js';
 import { AsciinemaWriter } from './asciinema-writer.js';
 import { ProcessUtils } from './process-utils.js';
@@ -71,7 +71,11 @@ export interface SessionLifecycleCallbacks {
   /** Called when session name changes */
   onSessionNameChanged?: (sessionId: string, name: string) => void;
   /** Called to setup PTY event handlers */
-  setupPtyHandlers?: (session: PtySession, forwardToStdout: boolean, onExit?: (exitCode: number, signal?: number) => void) => void;
+  setupPtyHandlers?: (
+    session: PtySession,
+    forwardToStdout: boolean,
+    onExit?: (exitCode: number, signal?: number) => void
+  ) => void;
 }
 
 /**
@@ -378,10 +382,7 @@ export class SessionLifecycle {
   /**
    * Kill a session with proper SIGTERM -> SIGKILL escalation
    */
-  async killSession(
-    session: PtySession,
-    signal: string | number = 'SIGTERM'
-  ): Promise<void> {
+  async killSession(session: PtySession, signal: string | number = 'SIGTERM'): Promise<void> {
     // Special handling for tmux attachment sessions
     if (session.isTmuxAttachment) {
       const detached = await this.detachFromTmux(session);
