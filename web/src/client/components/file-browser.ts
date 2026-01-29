@@ -2,7 +2,7 @@
  * File Browser Component
  *
  * Modal file browser for navigating the filesystem and selecting files/directories.
- * Supports Git status display, file preview with CodeMirror editor, and diff viewing.
+ * Supports Git status display, file preview with Monaco editor, and diff viewing.
  *
  * @fires insert-path - When inserting a file path into terminal (detail: { path: string, type: 'file' | 'directory' })
  * @fires directory-selected - When a directory is selected in 'select' mode (detail: string)
