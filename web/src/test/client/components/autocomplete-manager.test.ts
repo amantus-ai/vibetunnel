@@ -108,7 +108,7 @@ describe('AutocompleteManager', () => {
         json: async () => ({ completions: [] }),
       });
 
-      const result = await manager.fetchCompletions('vibe');
+      const result = await manager.fetchCompletions('shell');
 
       expect(result).toHaveLength(2);
       expect(result[0].name).toBe('shellops');

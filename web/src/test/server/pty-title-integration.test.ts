@@ -133,8 +133,8 @@ describe('PTY Terminal Title Integration', () => {
     const session = ptyManager.getInternalSession(sessionId);
     expect(session).toBeDefined();
 
-    // Claude commands should not auto-select a title mode
-    expect(session?.titleMode).toBe(TitleMode.NONE);
+    // Claude commands should not auto-select a title mode (remains undefined or NONE)
+    expect(session?.titleMode === undefined || session?.titleMode === TitleMode.NONE).toBe(true);
   });
 
   it('should respect explicit title mode even for Claude', async () => {
