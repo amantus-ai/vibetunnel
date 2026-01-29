@@ -200,6 +200,11 @@ export class SessionLifecycle {
       // Create PTY process
       let ptyProcess: IPty;
       try {
+        // Detect if we're spawning fish shell and add feature flag to disable DA1 query
+        // ghostty-web doesn't respond to DA1 queries, causing a 2-second startup delay
+        const isFish = finalCommand === 'fish' || finalCommand.endsWith('/fish');
+        const adjustedArgs = isFish ? ['--features=no-query-term', ...finalArgs] : finalArgs;
+
         const ptyEnv = {
           ...process.env,
           TERM: term,
@@ -208,7 +213,7 @@ export class SessionLifecycle {
 
         logger.debug('PTY spawn parameters:', {
           command: finalCommand,
-          args: finalArgs,
+          args: adjustedArgs,
           options: {
             name: term,
             cols: cols !== undefined ? cols : 'terminal default',
@@ -232,7 +237,7 @@ export class SessionLifecycle {
           spawnOptions.rows = rows;
         }
 
-        ptyProcess = pty.spawn(finalCommand, finalArgs, spawnOptions);
+        ptyProcess = pty.spawn(finalCommand, adjustedArgs, spawnOptions);
 
         // Add immediate exit handler for CI issues
         const exitHandler = (event: { exitCode: number; signal?: number }) => {
