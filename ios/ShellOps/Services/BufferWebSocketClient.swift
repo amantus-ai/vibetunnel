@@ -104,13 +104,18 @@ class BufferWebSocketClient: NSObject {
     private(set) var connectionError: Error?
 
     private var baseURL: URL? {
-        guard let config = UserDefaults.standard.data(forKey: "savedServerConfig"),
-              let serverConfig = try? JSONDecoder().decode(ServerConfig.self, from: config)
-        else {
+        guard let config = UserDefaults.standard.data(forKey: "savedServerConfig") else {
+            self.logger.error("No saved server config found in UserDefaults")
+            return nil
+        }
+        guard let serverConfig = try? JSONDecoder().decode(ServerConfig.self, from: config) else {
+            self.logger.error("Failed to decode server config from UserDefaults")
             return nil
         }
         // Use connectionURL to get the best URL (HTTPS when available)
-        return serverConfig.connectionURL()
+        let url = serverConfig.connectionURL()
+        self.logger.info("Base URL resolved to: \(url.absoluteString)")
+        return url
     }
 
     init(webSocketFactory: WebSocketFactory = DefaultWebSocketFactory()) {
@@ -133,7 +138,9 @@ class BufferWebSocketClient: NSObject {
             return
         }
         guard let baseURL else {
+            self.logger.error("Cannot connect: baseURL is nil (no server config saved)")
             self.connectionError = WebSocketError.invalidURL
+            self.isConnecting = false
             return
         }
 

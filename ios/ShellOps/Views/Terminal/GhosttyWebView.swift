@@ -16,6 +16,7 @@ struct GhosttyWebView: UIViewRepresentable {
     var disableInput = false
     var terminalSize: TerminalSize?
     var onReady: ((Coordinator) -> Void)?
+    var onError: ((String) -> Void)?
 
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
@@ -66,7 +67,10 @@ struct GhosttyWebView: UIViewRepresentable {
             super.init()
 
             if let viewModel = parent.viewModel {
+                self.logger.info("Setting terminalCoordinator on viewModel")
                 viewModel.terminalCoordinator = self
+            } else {
+                self.logger.warning("GhosttyWebView.Coordinator: viewModel is nil, cannot set coordinator")
             }
             parent.onReady?(self)
         }
@@ -233,16 +237,20 @@ struct GhosttyWebView: UIViewRepresentable {
             </html>
             """
 
+            // Note: Files are copied to bundle root by Xcode's automatic file sync
+            // (subdirectory structure is not preserved with PBXFileSystemSynchronizedRootGroup)
             guard let ghosttyURL = Bundle.main.url(
                 forResource: "ghostty-web",
-                withExtension: "js",
-                subdirectory: "ghostty")
+                withExtension: "js")
             else {
                 self.logger.error("ghostty-web.js missing from bundle")
+                self.parent.onError?("Terminal WASM failed to load: ghostty-web.js missing from app bundle")
+                self.parent.viewModel?.setError("Terminal failed to initialize")
                 return
             }
 
             let baseURL = ghosttyURL.deletingLastPathComponent()
+            self.logger.info("Loading terminal HTML with baseURL: \(baseURL.absoluteString)")
             webView.loadHTMLString(html, baseURL: baseURL)
             webView.navigationDelegate = self
         }
@@ -273,11 +281,12 @@ struct GhosttyWebView: UIViewRepresentable {
                 }
 
             case "terminalReady":
+                self.logger.info("Terminal ready message received")
                 self.handleTerminalReady()
 
             case "terminalLog":
                 if let log = message.body as? String {
-                    self.logger.debug(log)
+                    self.logger.info("JS: \(log)")
                 }
 
             default:

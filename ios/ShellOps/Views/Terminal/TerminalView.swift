@@ -604,7 +604,16 @@ class TerminalViewModel {
     private var resizeDebounceTask: Task<Void, Never>?
     private var hasPerformedInitialResize = false
     private var isPerformingInitialResize = false
-    weak var terminalCoordinator: (any TerminalCoordinating)?
+    private var pendingEvents: [TerminalWebSocketEvent] = []
+    private var coordinatorReadyTask: Task<Void, Never>?
+    weak var terminalCoordinator: (any TerminalCoordinating)? {
+        didSet {
+            logger.info("Terminal coordinator didSet: \(terminalCoordinator != nil ? "SET" : "NIL"), pending events: \(pendingEvents.count)")
+            if terminalCoordinator != nil {
+                flushPendingEvents()
+            }
+        }
+    }
 
     init(session: Session) {
         self.session = session
@@ -615,6 +624,12 @@ class TerminalViewModel {
 
     private func setupTerminal() {
         // Terminal setup handled by GhosttyWebView
+    }
+
+    /// Set an error message to display in the UI
+    func setError(_ message: String) {
+        self.errorMessage = message
+        self.isConnecting = false
     }
 
     func startRecording() {
@@ -698,15 +713,9 @@ class TerminalViewModel {
             if let coordinator = terminalCoordinator {
                 coordinator.feedData(data)
             } else {
-                // Queue the data to be fed once coordinator is ready
-                logger.warning("Terminal coordinator not ready, queueing data")
-                Task {
-                    // Wait a bit for coordinator to be initialized
-                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
-                    if let coordinator = self.terminalCoordinator {
-                        coordinator.feedData(data)
-                    }
-                }
+                // Queue the event to be processed once coordinator is ready
+                logger.warning("Terminal coordinator not ready, queueing output event (\(pendingEvents.count + 1) pending)")
+                self.pendingEvents.append(event)
             }
             // Record output if recording
             self.castRecorder.recordOutput(data)
@@ -744,8 +753,9 @@ class TerminalViewModel {
             if let coordinator = terminalCoordinator {
                 coordinator.updateBuffer(from: snapshot)
             } else {
-                // Fallback: buffer updates not available yet
-                logger.warning("Direct buffer update not available")
+                // Queue the event to be processed once coordinator is ready
+                logger.warning("Terminal coordinator not ready, queueing buffer update (\(pendingEvents.count + 1) pending)")
+                self.pendingEvents.append(event)
             }
 
         case .bell:
@@ -756,6 +766,25 @@ class TerminalViewModel {
             // Terminal alert - show notification
             self.handleTerminalAlert(title: title, message: message)
         }
+    }
+
+    /// Flush any pending events that were queued before the coordinator was ready
+    @MainActor
+    private func flushPendingEvents() {
+        guard let coordinator = terminalCoordinator, !pendingEvents.isEmpty else { return }
+        logger.info("Flushing \(pendingEvents.count) pending events to terminal")
+
+        for event in pendingEvents {
+            switch event {
+            case let .output(_, data):
+                coordinator.feedData(data)
+            case let .bufferUpdate(snapshot):
+                coordinator.updateBuffer(from: snapshot)
+            default:
+                break
+            }
+        }
+        pendingEvents.removeAll()
     }
 
     func sendInput(_ text: String) {
