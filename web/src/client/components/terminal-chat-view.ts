@@ -386,8 +386,8 @@ export class TerminalChatView extends LitElement {
   @query('.chat-messages-container')
   private messagesContainer!: HTMLElement;
 
-  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used in addMessage()
   private messageIdCounter = 0;
+  private waitingForResponse = false;
 
   connectedCallback() {
     super.connectedCallback();
@@ -764,8 +764,6 @@ export class TerminalChatView extends LitElement {
     }
   }
 
-  private waitingForResponse = false;
-
   private stripAnsiCodes(str: string): string {
     // Remove ANSI escape codes but preserve the text
     // biome-ignore lint/complexity/useRegexLiterals: Avoiding control character lint errors
@@ -932,10 +930,7 @@ export class TerminalChatView extends LitElement {
     // Force next output to create a new message by adding a placeholder command
     this.addMessage('command', `[Option ${option.response}]`);
 
-    // Wait for response after selecting an option
-    this.waitingForResponse = true;
-
-    logger.log(`Selected option ${index + 1}: ${option}`);
+    logger.log(`Selected option: ${option.label}`);
   }
 
   /**

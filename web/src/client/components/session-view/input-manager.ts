@@ -680,11 +680,6 @@ export class InputManager {
       this.globalCompositionListener = null;
     }
 
-    // Disconnect WebSocket if feature was enabled
-    if (this.useWebSocketInput) {
-      websocketInputClient.disconnect();
-    }
-
     // Clear pending input state
     this._pendingInput = '';
     this.pendingInputListeners.clear();

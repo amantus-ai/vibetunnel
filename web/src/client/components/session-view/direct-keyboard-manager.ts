@@ -36,6 +36,7 @@ const logger = createLogger('direct-keyboard-manager');
 
 export interface DirectKeyboardCallbacks {
   getShowCtrlAlpha(): boolean;
+  getShowMobileInput(): boolean;
   getDisableFocusManagement(): boolean;
   getVisualViewportHandler(): (() => void) | null;
   getKeyboardHeight(): number;

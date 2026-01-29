@@ -1019,49 +1019,48 @@ export class SessionCreateForm extends LitElement {
     }
 
     return html`
-      <div class="modal-backdrop flex items-center justify-center py-4 sm:py-6 lg:py-8" @click=${this.handleBackdropClick} role="dialog" aria-modal="true">
+      <!-- ShellOps V3 Modal -->
+      <div
+        class="fixed inset-0 flex items-center justify-center z-[1000]"
+        style="background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px);"
+        @click=${this.handleBackdropClick}
+        role="dialog"
+        aria-modal="true"
+      >
         <div
-          class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-[576px] mx-2 sm:mx-4 overflow-hidden"
-          style="pointer-events: auto;"
+          class="font-mono text-[13px] w-full max-w-[520px] mx-4 overflow-hidden"
+          style="background: #0D0D0D; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.06); box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);"
           @click=${(e: Event) => e.stopPropagation()}
           data-testid="session-create-modal"
         >
-          <div class="p-3 sm:p-4 mb-1 sm:mb-2 border-b border-border/50 relative bg-gradient-to-r from-bg-secondary to-bg-tertiary flex-shrink-0 rounded-t-xl flex items-center justify-between">
-            <h2 id="modal-title" class="text-primary text-base sm:text-lg lg:text-xl font-bold">New Session</h2>
+          <!-- Modal Header -->
+          <div class="flex items-center justify-between p-5 border-b" style="border-color: rgba(255, 255, 255, 0.06);">
+            <h2 class="text-white text-base font-semibold">New Session</h2>
             <button
-              class="text-text-muted hover:text-text transition-all duration-200 p-1.5 sm:p-2 hover:bg-bg-elevated/30 rounded-lg"
+              class="flex items-center justify-center w-8 h-8 rounded-full transition-colors"
+              style="background: rgba(255, 255, 255, 0.06);"
               @click=${this.handleCancel}
               title="Close (Esc)"
               aria-label="Close modal"
             >
-              <svg
-                class="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400">
+                <path d="M18 6L6 18M6 6l12 12"/>
               </svg>
             </button>
           </div>
 
-          <div class="p-3 sm:p-4 overflow-y-auto flex-grow max-h-[calc(100vh-8rem)] sm:max-h-[calc(100vh-6rem)] lg:max-h-[calc(100vh-4rem)]">
+          <!-- Modal Body -->
+          <div class="p-5 overflow-y-auto max-h-[calc(100vh-200px)]" style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;">
             <!-- Branch Switch Warning -->
             ${
               this.branchSwitchWarning
                 ? html`
-                  <div class="mb-2 sm:mb-3 p-2 sm:p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <div class="mb-4 p-3 rounded-lg" style="background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.2);">
                     <div class="flex items-start gap-2">
-                      <svg class="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: #FBBF24;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                       </svg>
-                      <p class="text-[10px] sm:text-xs text-yellow-200">
+                      <p class="text-xs" style="color: #FDE68A;">
                         ${this.branchSwitchWarning}
                       </p>
                     </div>
@@ -1069,15 +1068,22 @@ export class SessionCreateForm extends LitElement {
                 `
                 : nothing
             }
-            
+
             <!-- Session Name -->
-            <div class="mb-2 sm:mb-3">
-              <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Session Name (Optional):</label>
+            <div class="mb-4">
+              <label class="block text-xs font-medium mb-2" style="color: #737373;">Session Name (Optional)</label>
               <input
                 type="text"
-                class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm"
+                class="w-full px-3 py-2.5 rounded-lg text-[13px] text-white placeholder-neutral-500 outline-none transition-colors"
+                style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08);"
                 .value=${this.sessionName}
                 @input=${this.handleSessionNameChange}
+                @focus=${(e: Event) => {
+                  (e.target as HTMLInputElement).style.borderColor = 'rgba(34, 197, 94, 0.5)';
+                }}
+                @blur=${(e: Event) => {
+                  (e.target as HTMLInputElement).style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                }}
                 placeholder="My Session"
                 ?disabled=${this.disabled || this.isCreating}
                 data-testid="session-name-input"
@@ -1085,13 +1091,20 @@ export class SessionCreateForm extends LitElement {
             </div>
 
             <!-- Command -->
-            <div class="mb-2 sm:mb-3">
-              <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Command:</label>
+            <div class="mb-4">
+              <label class="block text-xs font-medium mb-2" style="color: #737373;">Command</label>
               <input
                 type="text"
-                class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm"
+                class="w-full px-3 py-2.5 rounded-lg text-[13px] text-white placeholder-neutral-500 outline-none transition-colors"
+                style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08);"
                 .value=${this.command}
                 @input=${this.handleCommandChange}
+                @focus=${(e: Event) => {
+                  (e.target as HTMLInputElement).style.borderColor = 'rgba(34, 197, 94, 0.5)';
+                }}
+                @blur=${(e: Event) => {
+                  (e.target as HTMLInputElement).style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                }}
                 placeholder="zsh"
                 ?disabled=${this.disabled || this.isCreating}
                 data-testid="command-input"
@@ -1099,14 +1112,15 @@ export class SessionCreateForm extends LitElement {
             </div>
 
             <!-- Working Directory -->
-            <div class="mb-3 sm:mb-4">
-              <label class="form-label text-text-muted text-[10px] sm:text-xs lg:text-sm">Working Directory:</label>
+            <div class="mb-4">
+              <label class="block text-xs font-medium mb-2" style="color: #737373;">Working Directory</label>
               <div class="relative">
-                <div class="flex gap-1.5 sm:gap-2">
+                <div class="flex gap-2">
                 <div class="relative flex-1">
                   <input
                     type="text"
-                    class="input-field py-1.5 sm:py-2 lg:py-3 text-xs sm:text-sm w-full pr-24"
+                    class="w-full px-3 py-2.5 pr-24 rounded-lg text-[13px] text-white placeholder-neutral-500 outline-none transition-colors"
+                    style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08);"
                     .value=${this.workingDir}
                     @input=${this.handleWorkingDirChange}
                     @keydown=${this.handleWorkingDirKeydown}
@@ -1121,13 +1135,22 @@ export class SessionCreateForm extends LitElement {
                 </div>
                 <button
                   id="session-browse-button"
-                  class="bg-bg-tertiary border border-border/50 rounded-lg p-1.5 sm:p-2 lg:p-3 font-mono text-text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary/50 hover:shadow-sm flex-shrink-0"
+                  class="flex items-center justify-center w-10 h-10 rounded-lg transition-colors"
+                  style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); color: #737373;"
                   @click=${this.handleBrowse}
+                  @mouseenter=${(e: Event) => {
+                    (e.target as HTMLButtonElement).style.borderColor = 'rgba(34, 197, 94, 0.5)';
+                    (e.target as HTMLButtonElement).style.color = '#22C55E';
+                  }}
+                  @mouseleave=${(e: Event) => {
+                    (e.target as HTMLButtonElement).style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                    (e.target as HTMLButtonElement).style.color = '#737373';
+                  }}
                   ?disabled=${this.disabled || this.isCreating}
                   title="Browse directories"
                   type="button"
                 >
-                  <svg width="12" height="12" class="sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" viewBox="0 0 16 16" fill="currentColor">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                     <path
                       d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v1h4c.966 0 1.75.784 1.75 1.75v7.75A1.75 1.75 0 0113 15H3a1.75 1.75 0 01-1.75-1.75V2.75C1.25 1.784 1.784 1 1.75 1zM2.75 2.5v10.75c0 .138.112.25.25.25h10a.25.25 0 00.25-.25V5.5a.25.25 0 00-.25-.25H8.75v-2.5a.25.25 0 00-.25-.25h-5.5a.25.25 0 00-.25.25z"
                     />
@@ -1135,23 +1158,34 @@ export class SessionCreateForm extends LitElement {
                 </button>
                 <button
                   id="session-autocomplete-button"
-                  class="bg-bg-tertiary border border-border/50 rounded-lg p-1.5 sm:p-2 lg:p-3 font-mono text-text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary/50 hover:shadow-sm flex-shrink-0 ${
+                  class="flex items-center justify-center w-10 h-10 rounded-lg transition-colors"
+                  style="background: rgba(255, 255, 255, 0.06); border: 1px solid ${
                     this.showRepositoryDropdown || this.showCompletions
-                      ? 'text-primary border-primary/50'
-                      : ''
-                  }"
+                      ? 'rgba(34, 197, 94, 0.5)'
+                      : 'rgba(255, 255, 255, 0.08)'
+                  }; color: ${this.showRepositoryDropdown || this.showCompletions ? '#22C55E' : '#737373'};"
                   @click=${this.handleToggleAutocomplete}
+                  @mouseenter=${(e: Event) => {
+                    (e.target as HTMLButtonElement).style.borderColor = 'rgba(34, 197, 94, 0.5)';
+                    (e.target as HTMLButtonElement).style.color = '#22C55E';
+                  }}
+                  @mouseleave=${(e: Event) => {
+                    if (!this.showRepositoryDropdown && !this.showCompletions) {
+                      (e.target as HTMLButtonElement).style.borderColor =
+                        'rgba(255, 255, 255, 0.08)';
+                      (e.target as HTMLButtonElement).style.color = '#737373';
+                    }
+                  }}
                   ?disabled=${this.disabled || this.isCreating}
                   title="Choose from repositories or recent directories"
                   type="button"
                 >
-                  <svg 
-                    width="12" 
-                    height="12" 
-                    class="sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4 transition-transform duration-200" 
-                    viewBox="0 0 16 16" 
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
                     fill="currentColor"
-                    style="transform: ${this.showRepositoryDropdown || this.showCompletions ? 'rotate(90deg)' : 'rotate(0deg)'}"
+                    style="transform: ${this.showRepositoryDropdown || this.showCompletions ? 'rotate(90deg)' : 'rotate(0deg)'}; transition: transform 0.2s;"
                   >
                     <path
                       d="M5.22 1.22a.75.75 0 011.06 0l6.25 6.25a.75.75 0 010 1.06l-6.25 6.25a.75.75 0 01-1.06-1.06L10.94 8 5.22 2.28a.75.75 0 010-1.06z"
@@ -1221,30 +1255,52 @@ export class SessionCreateForm extends LitElement {
               @follow-mode-changed=${this.handleFollowModeChanged}
             ></form-options-section>
 
-            <div class="flex gap-1.5 sm:gap-2 mt-2 sm:mt-3">
-              <button
-                id="session-cancel-button"
-                class="flex-1 bg-bg-elevated border border-border/50 text-text px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 xl:px-6 xl:py-3 rounded-lg font-mono text-[10px] sm:text-xs lg:text-sm transition-all duration-200 hover:bg-hover hover:border-border"
-                @click=${this.handleCancel}
-                ?disabled=${this.isCreating}
-              >
-                Cancel
-              </button>
-              <button
-                id="session-create-button"
-                class="flex-1 bg-primary text-text-bright px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 xl:px-6 xl:py-3 rounded-lg font-mono text-[10px] sm:text-xs lg:text-sm font-medium transition-all duration-200 hover:bg-primary-hover hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
-                @click=${this.handleCreate}
-                ?disabled=${
-                  this.disabled ||
-                  this.isCreating ||
-                  !this.workingDir?.trim() ||
-                  !this.command?.trim()
+          </div>
+
+          <!-- Modal Footer -->
+          <div class="flex gap-3 p-5 border-t" style="border-color: rgba(255, 255, 255, 0.06);">
+            <button
+              id="session-cancel-button"
+              class="flex-1 px-4 py-2.5 rounded-lg font-mono text-[13px] font-medium transition-colors"
+              style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); color: #E5E5E5;"
+              @click=${this.handleCancel}
+              @mouseenter=${(e: Event) => {
+                (e.target as HTMLButtonElement).style.background = 'rgba(255, 255, 255, 0.1)';
+              }}
+              @mouseleave=${(e: Event) => {
+                (e.target as HTMLButtonElement).style.background = 'rgba(255, 255, 255, 0.06)';
+              }}
+              ?disabled=${this.isCreating}
+            >
+              Cancel
+            </button>
+            <button
+              id="session-create-button"
+              class="flex-1 px-4 py-2.5 rounded-lg font-mono text-[13px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              style="background: #22C55E; color: #000000; box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);"
+              @click=${this.handleCreate}
+              @mouseenter=${(e: Event) => {
+                if (!(e.target as HTMLButtonElement).disabled) {
+                  (e.target as HTMLButtonElement).style.background = '#16A34A';
+                  (e.target as HTMLButtonElement).style.boxShadow =
+                    '0 4px 20px rgba(34, 197, 94, 0.4)';
                 }
-                data-testid="create-session-submit"
-              >
-                ${this.isCreating ? 'Creating...' : 'Create'}
-              </button>
-            </div>
+              }}
+              @mouseleave=${(e: Event) => {
+                (e.target as HTMLButtonElement).style.background = '#22C55E';
+                (e.target as HTMLButtonElement).style.boxShadow =
+                  '0 4px 16px rgba(34, 197, 94, 0.3)';
+              }}
+              ?disabled=${
+                this.disabled ||
+                this.isCreating ||
+                !this.workingDir?.trim() ||
+                !this.command?.trim()
+              }
+              data-testid="create-session-submit"
+            >
+              ${this.isCreating ? 'Creating...' : 'Create'}
+            </button>
           </div>
         </div>
       </div>

@@ -25,30 +25,6 @@ import './vibe-terminal-buffer.js';
 import './clickable-path.js';
 import './inline-edit.js';
 
-// Magic wand icon constant
-const MAGIC_WAND_ICON = html`
-  <svg
-    class="w-5 h-5"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      stroke-width="2"
-      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-    />
-    <path
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      stroke-width="1.5"
-      d="M12 8l-2 2m4-2l-2 2m4 0l-2 2"
-      opacity="0.6"
-    />
-  </svg>
-`;
-
 @customElement('session-card')
 export class SessionCard extends LitElement {
   // Disable shadow DOM to use Tailwind
@@ -324,14 +300,19 @@ export class SessionCard extends LitElement {
       });
     }
 
+    // Determine status colors
+    const isRunning = this.session.status === 'running';
+    const isWarning = this.session.status === 'starting';
+    const statusColor = isRunning ? '#22C55E' : isWarning ? '#FBBF24' : '#525252';
+
     return html`
       <div
-        class="card cursor-pointer overflow-hidden flex flex-col h-full ${
-          this.killing ? 'opacity-60' : ''
-        } ${this.selected ? 'ring-2 ring-accent-primary shadow-card-hover' : ''}"
+        class="session-card cursor-pointer overflow-hidden relative group ${this.killing ? 'opacity-60' : ''} ${
+          this.selected ? 'ring-2 ring-primary' : ''
+        }"
         style="view-transition-name: session-${this.session.id}; --session-id: session-${
           this.session.id
-        }"
+        };"
         data-session-id="${this.session.id}"
         data-testid="session-card"
         data-session-status="${this.session.status}"
@@ -340,12 +321,15 @@ export class SessionCard extends LitElement {
         @mouseenter=${this.handleMouseEnter}
         @mouseleave=${this.handleMouseLeave}
       >
-        <!-- Compact Header -->
-        <div
-          class="flex justify-between items-center px-3 py-2 border-b border-border bg-gradient-to-r from-bg-secondary to-bg-tertiary"
-        >
-          <div class="text-xs font-mono pr-2 flex-1 min-w-0 text-primary">
-            <div class="flex items-center gap-2">
+        <!-- Mobile: List-style card layout -->
+        <div class="sm:hidden flex flex-col gap-3 p-4">
+          <!-- Header row: Status, Name, Time -->
+          <div class="flex items-center gap-2.5">
+            <div
+              class="w-2 h-2 rounded-full flex-shrink-0 ${isRunning ? 'animate-pulse' : ''}"
+              style="background: ${statusColor}; box-shadow: 0 0 6px ${statusColor};"
+            ></div>
+            <div class="font-mono text-sm font-medium truncate text-white flex-1" @click=${(e: Event) => e.stopPropagation()}>
               <inline-edit
                 .value=${this.session.name || this.session.command?.join(' ') || ''}
                 .placeholder=${this.session.command?.join(' ') || ''}
@@ -353,227 +337,214 @@ export class SessionCard extends LitElement {
                   try {
                     await this.handleRename(newName);
                   } catch (error) {
-                    // Error is already handled in handleRename
                     logger.debug('Rename error caught in onSave', { error });
                   }
                 }}
               ></inline-edit>
             </div>
-          </div>
-          <div class="flex items-center gap-1 flex-shrink-0">
+            <!-- Close button always visible on mobile -->
             ${
-              this.session.status === 'running' && isAIAssistantSession(this.session)
+              (this.session.status === 'running' || this.session.status === 'exited') &&
+              !this.killing
                 ? html`
                   <button
-                    class="bg-transparent border-0 p-0 cursor-pointer opacity-50 hover:opacity-100 transition-opacity duration-200 text-primary"
-                    @click=${(e: Event) => {
-                      e.stopPropagation();
-                      this.handleMagicButton();
-                    }}
-                    id="session-magic-button"
-                    title="Send prompt to update terminal title"
-                    aria-label="Send magic prompt to AI assistant"
-                    ?disabled=${this.isSendingPrompt}
-                  >
-                    ${
-                      this.isSendingPrompt
-                        ? html`<span class="block w-5 h-5 flex items-center justify-center animate-spin">⠋</span>`
-                        : MAGIC_WAND_ICON
-                    }
-                  </button>
-                `
-                : ''
-            }
-            ${
-              this.session.status === 'running' || this.session.status === 'exited'
-                ? html`
-                  <button
-                    class="p-1 rounded-full transition-all duration-200 disabled:opacity-50 flex-shrink-0 ${
+                    class="p-1.5 rounded-full ${
                       this.session.status === 'running'
-                        ? 'text-status-error hover:bg-status-error/20'
-                        : 'text-status-warning hover:bg-status-warning/20'
+                        ? 'bg-red-500/20 text-red-400'
+                        : 'bg-amber-500/20 text-amber-400'
                     }"
                     @click=${this.handleKillClick}
                     ?disabled=${this.killing}
-                    id="session-kill-button"
-                    title="${this.session.status === 'running' ? 'Kill session' : 'Clean up session'}"
-                    data-testid="kill-session-button"
+                    data-testid="kill-session-button-mobile"
                   >
-                    ${
-                      this.killing
-                        ? html`<span class="block w-5 h-5 flex items-center justify-center"
-                          >${this.getKillingText()}</span
-                        >`
-                        : html`
-                          <svg
-                            class="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <circle cx="12" cy="12" r="10" stroke-width="2" />
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M15 9l-6 6m0-6l6 6"
-                            />
-                          </svg>
-                        `
-                    }
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
                 `
                 : ''
             }
           </div>
-        </div>
 
-        <!-- Terminal display (main content) -->
-        <div
-          class="session-preview bg-bg overflow-hidden flex-1 relative ${
-            this.session.status === 'exited' ? 'session-exited' : ''
-          }"
-          style="background: linear-gradient(to bottom, rgb(var(--color-bg)), rgb(var(--color-bg-secondary))); box-shadow: inset 0 1px 3px rgb(var(--color-bg) / 0.5);"
-        >
+          <!-- Server badge -->
           ${
-            this.killing
+            this.session.remoteName
               ? html`
-                <div class="w-full h-full flex items-center justify-center text-status-error">
-                  <div class="text-center font-mono">
-                    <div class="text-4xl mb-2">${this.getKillingText()}</div>
-                    <div class="text-sm">Killing session...</div>
-                  </div>
+                <div
+                  class="flex items-center gap-1.5 px-2 py-1 rounded-md font-mono text-[11px] w-fit"
+                  style="background: rgba(59, 130, 246, 0.1); color: #3B82F6;"
+                >
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" />
+                  </svg>
+                  ${this.session.remoteName}
                 </div>
               `
-              : html`
-                <vibe-terminal-buffer
-                  .sessionId=${this.session.id}
-                  .theme=${this.terminalTheme}
-                  class="w-full h-full"
-                  style="pointer-events: none;"
-                ></vibe-terminal-buffer>
-              `
+              : ''
           }
+
+          <!-- Terminal preview (60px on mobile) -->
+          <div
+            class="terminal-preview-mobile rounded-lg overflow-hidden ${
+              this.session.status === 'exited' ? 'opacity-50' : ''
+            }"
+            style="background: #0A0A0A; height: 60px;"
+          >
+            ${
+              this.killing
+                ? html`
+                  <div class="w-full h-full flex items-center justify-center" style="color: #EF4444;">
+                    <span class="font-mono text-sm">${this.getKillingText()} Terminating...</span>
+                  </div>
+                `
+                : html`
+                  <div class="p-2.5 h-full">
+                    <vibe-terminal-buffer
+                      .sessionId=${this.session.id}
+                      .theme=${this.terminalTheme}
+                      class="w-full h-full"
+                      style="pointer-events: none; font-size: 10px;"
+                    ></vibe-terminal-buffer>
+                  </div>
+                `
+            }
+          </div>
         </div>
 
-        <!-- Compact Footer -->
-        <div
-          class="px-3 py-2 text-text-muted text-xs border-t border-border bg-gradient-to-r from-bg-tertiary to-bg-secondary"
-        >
-          <div class="flex justify-between items-center min-w-0">
-            <span 
-              class="${this.getActivityStatusColor()} text-xs flex items-center gap-1 flex-shrink-0"
-              data-status="${this.session.status}"
-              data-killing="${this.killing}"
-            >
-              <div class="w-2 h-2 rounded-full ${this.getStatusDotColor()}"></div>
-              ${this.getActivityStatusText()}
-            </span>
-            ${this.renderGitStatus()}
+        <!-- Desktop: Original card layout with full preview -->
+        <div class="hidden sm:block h-[180px]">
+          <!-- Full Terminal Preview -->
+          <div
+            class="session-preview absolute inset-0 ${
+              this.session.status === 'exited' ? 'session-exited opacity-50' : ''
+            }"
+          >
+            ${
+              this.killing
+                ? html`
+                  <div class="w-full h-full flex items-center justify-center" style="color: #EF4444;">
+                    <div class="text-center font-mono">
+                      <div class="text-3xl mb-2">${this.getKillingText()}</div>
+                      <div class="text-sm opacity-70">Terminating...</div>
+                    </div>
+                  </div>
+                `
+                : html`
+                  <div class="p-3 h-full">
+                    <vibe-terminal-buffer
+                      .sessionId=${this.session.id}
+                      .theme=${this.terminalTheme}
+                      class="w-full h-full"
+                      style="pointer-events: none; font-size: 11px;"
+                    ></vibe-terminal-buffer>
+                  </div>
+                `
+            }
           </div>
-          <div class="text-xs opacity-75 min-w-0 mt-1">
-            <clickable-path .path=${this.session.workingDir} .iconSize=${12}></clickable-path>
+
+          <!-- Close Button Overlay (top-right) -->
+          ${
+            (this.session.status === 'running' || this.session.status === 'exited') && !this.killing
+              ? html`
+                <button
+                  class="absolute top-3 right-3 p-1.5 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 z-10 ${
+                    this.session.status === 'running'
+                      ? 'bg-red-500/20 hover:bg-red-500/40 text-red-400'
+                      : 'bg-amber-500/20 hover:bg-amber-500/40 text-amber-400'
+                  }"
+                  style="backdrop-filter: blur(8px);"
+                  @click=${this.handleKillClick}
+                  ?disabled=${this.killing}
+                  id="session-kill-button"
+                  title="${this.session.status === 'running' ? 'Kill session' : 'Clean up session'}"
+                  data-testid="kill-session-button"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              `
+              : ''
+          }
+
+          <!-- Magic Button Overlay (top-right, next to close) -->
+          ${
+            this.session.status === 'running' && isAIAssistantSession(this.session)
+              ? html`
+                <button
+                  class="absolute top-3 right-12 p-1.5 rounded-full transition-all duration-200 opacity-0 group-hover:opacity-100 z-10 bg-primary/20 hover:bg-primary/40 text-primary"
+                  style="backdrop-filter: blur(8px);"
+                  @click=${(e: Event) => {
+                    e.stopPropagation();
+                    this.handleMagicButton();
+                  }}
+                  id="session-magic-button"
+                  title="Send prompt to update terminal title"
+                  aria-label="Send magic prompt to AI assistant"
+                  ?disabled=${this.isSendingPrompt}
+                >
+                  ${
+                    this.isSendingPrompt
+                      ? html`<span class="block w-4 h-4 flex items-center justify-center animate-spin text-xs">⠋</span>`
+                      : html`<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>`
+                  }
+                </button>
+              `
+              : ''
+          }
+
+          <!-- Name & Info Overlay (bottom) -->
+          <div
+            class="absolute bottom-0 left-0 right-0 p-4 z-10"
+            style="background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.8) 50%, transparent 100%);"
+          >
+            <div class="flex items-center gap-2.5">
+              <!-- Status indicator -->
+              <div
+                class="w-2.5 h-2.5 rounded-full flex-shrink-0 ${isRunning ? 'animate-pulse' : ''}"
+                style="background: ${statusColor}; box-shadow: 0 0 8px ${statusColor};"
+              ></div>
+              <!-- Name -->
+              <div class="font-mono text-sm font-medium truncate text-white flex-1" @click=${(e: Event) => e.stopPropagation()}>
+                <inline-edit
+                  .value=${this.session.name || this.session.command?.join(' ') || ''}
+                  .placeholder=${this.session.command?.join(' ') || ''}
+                  .onSave=${async (newName: string) => {
+                    try {
+                      await this.handleRename(newName);
+                    } catch (error) {
+                      logger.debug('Rename error caught in onSave', { error });
+                    }
+                  }}
+                ></inline-edit>
+              </div>
+              <!-- Server badge -->
+              ${
+                this.session.remoteName
+                  ? html`
+                    <div
+                      class="flex items-center gap-1.5 px-2 py-1 rounded-full font-mono text-[10px] flex-shrink-0"
+                      style="background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.7);"
+                    >
+                      <div class="w-1.5 h-1.5 rounded-full" style="background: #22C55E;"></div>
+                      ${this.session.remoteName}
+                    </div>
+                  `
+                  : html`
+                    <div
+                      class="px-2 py-1 rounded-full font-mono text-[10px] flex-shrink-0"
+                      style="background: rgba(255, 255, 255, 0.06); color: rgba(255, 255, 255, 0.5);"
+                    >
+                      local
+                    </div>
+                  `
+              }
+            </div>
           </div>
         </div>
       </div>
     `;
-  }
-
-  private renderGitStatus() {
-    if (!this.session.gitBranch) {
-      return '';
-    }
-
-    return html`
-      <div class="flex items-center gap-1 text-[10px] flex-shrink-0">
-        ${
-          this.session.gitBranch
-            ? html`
-          <span class="px-1.5 py-0.5 bg-surface-2 rounded-sm">${this.session.gitBranch}</span>
-        `
-            : ''
-        }
-        
-        ${
-          this.session.gitAheadCount && this.session.gitAheadCount > 0
-            ? html`
-          <span class="text-status-success flex items-center gap-0.5">
-            <svg width="8" height="8" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 4l-4 4h3v4h2v-4h3L8 4z"/>
-            </svg>
-            ${this.session.gitAheadCount}
-          </span>
-        `
-            : ''
-        }
-        
-        ${
-          this.session.gitBehindCount && this.session.gitBehindCount > 0
-            ? html`
-          <span class="text-status-warning flex items-center gap-0.5">
-            <svg width="8" height="8" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 12l4-4h-3V4H7v4H4l4 4z"/>
-            </svg>
-            ${this.session.gitBehindCount}
-          </span>
-        `
-            : ''
-        }
-        
-        ${
-          this.session.gitHasChanges
-            ? html`
-          <span class="text-yellow-500">●</span>
-        `
-            : ''
-        }
-        
-        ${
-          this.session.gitIsWorktree
-            ? html`
-          <span class="text-purple-400" title="Git worktree">
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z"/>
-            </svg>
-          </span>
-        `
-            : ''
-        }
-      </div>
-    `;
-  }
-
-  private getActivityStatusText(): string {
-    if (this.killing) {
-      return 'killing...';
-    }
-    if (this.session.active === false) {
-      return 'waiting';
-    }
-    return this.session.status;
-  }
-
-  private getActivityStatusColor(): string {
-    if (this.killing) {
-      return 'text-status-error';
-    }
-    if (this.session.active === false) {
-      return 'text-text-muted';
-    }
-    return this.session.status === 'running' ? 'text-status-success' : 'text-status-warning';
-  }
-
-  private getStatusDotColor(): string {
-    if (this.killing) {
-      return 'bg-status-error animate-pulse';
-    }
-    if (this.session.active === false) {
-      return 'bg-muted';
-    }
-    if (this.session.status === 'running') {
-      return 'bg-status-success';
-    }
-    return 'bg-status-warning';
   }
 }

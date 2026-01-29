@@ -51,6 +51,7 @@ import { UIStateManager } from './session-view/ui-state-manager.js';
 import './session-view/terminal-renderer.js';
 import './session-view/overlays-container.js';
 import './mobile-action-bar.js';
+import './mobile-terminal-input.js';
 import type { Terminal } from './terminal.js';
 
 // Extend Window interface to include our custom property
@@ -153,16 +154,16 @@ export class SessionView extends LitElement {
       getTerminalLifecycleManager: () =>
         this.terminalLifecycleManager
           ? {
-            resetTerminalSize: () => this.terminalLifecycleManager.resetTerminalSize(),
-            cleanup: () => this.terminalLifecycleManager.cleanup(),
-          }
+              resetTerminalSize: () => this.terminalLifecycleManager.resetTerminalSize(),
+              cleanup: () => this.terminalLifecycleManager.cleanup(),
+            }
           : null,
       getConnectionManager: () =>
         this.connectionManager
           ? {
-            setConnected: (connected: boolean) => this.connectionManager.setConnected(connected),
-            cleanupStreamConnection: () => this.connectionManager.cleanupStreamConnection(),
-          }
+              setConnected: (connected: boolean) => this.connectionManager.setConnected(connected),
+              cleanupStreamConnection: () => this.connectionManager.cleanupStreamConnection(),
+            }
           : null,
       setConnected: (connected: boolean) => {
         this.uiStateManager.setConnected(connected);
@@ -305,6 +306,7 @@ export class SessionView extends LitElement {
     // Set up callbacks for direct keyboard manager
     const directKeyboardCallbacks: DirectKeyboardCallbacks = {
       getShowCtrlAlpha: () => this.uiStateManager.getState().showCtrlAlpha,
+      getShowMobileInput: () => this.uiStateManager.getState().showMobileInput,
       getDisableFocusManagement: () => this.disableFocusManagement,
       getVisualViewportHandler: () => {
         // Trigger the visual viewport handler if it exists
@@ -747,6 +749,16 @@ export class SessionView extends LitElement {
     this.requestUpdate();
   }
 
+  private async handleSpecialKey(key: string) {
+    if (this.inputManager) {
+      await this.inputManager.sendInput(key);
+    }
+  }
+
+  private handleMobileInputToggle() {
+    this.uiStateManager.setShowMobileInput(!this.uiStateManager.getState().showMobileInput);
+  }
+
   private handleTerminalClick(e: Event) {
     const uiState = this.uiStateManager.getState();
     if (uiState.isMobile) {
@@ -1152,6 +1164,12 @@ export class SessionView extends LitElement {
             contain: layout style paint; /* Isolate terminal updates */
             touch-action: auto;
             -webkit-overflow-scrolling: touch;
+            /* Solid black terminal container */
+            background: #000000;
+            margin: 16px 20px 20px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 16px 20px;
           }
           
           /* Desktop: Keep existing terminal behavior */
@@ -1221,6 +1239,13 @@ export class SessionView extends LitElement {
             min-height: 0 !important;
             overflow: hidden !important;
             overflow-x: hidden !important;
+            /* Solid black terminal container */
+            background: #000000 !important;
+            margin: 12px !important;
+            margin-bottom: 120px !important; /* Space for mobile input bar */
+            border-radius: 12px !important;
+            border: 1px solid rgba(255, 255, 255, 0.06) !important;
+            padding: 12px !important;
             position: relative !important;
             contain: layout style paint !important;
             touch-action: auto !important;
@@ -1275,11 +1300,11 @@ export class SessionView extends LitElement {
           -webkit-tap-highlight-color: transparent;
         }
       </style>
-      <!-- Background wrapper to extend header color to status bar -->
-      <div class="bg-bg-secondary" style="padding-top: env(safe-area-inset-top);">
+      <!-- ShellOps V3 Background wrapper -->
+      <div style="background: var(--color-bg-secondary); padding-top: env(safe-area-inset-top);">
         <div
           class="session-view-grid"
-          style="outline: none !important; box-shadow: none !important; --keyboard-height: ${uiState.keyboardHeight}px; --quickkeys-height: 0px;"
+          style="outline: none !important; box-shadow: none !important; --keyboard-height: ${uiState.keyboardHeight}px; --quickkeys-height: 0px; background: var(--color-bg);"
           data-keyboard-visible="${uiState.keyboardHeight > 0 || uiState.showQuickKeys ? 'true' : 'false'}"
         >
         <!-- Session Header Area -->
@@ -1313,27 +1338,27 @@ export class SessionView extends LitElement {
             .chatMode=${uiState.chatMode}
             .onToggleChatMode=${() => this.handleToggleChatMode()}
             @close-width-selector=${() => {
-        this.uiStateManager.setShowWidthSelector(false);
-        this.uiStateManager.setCustomWidth('');
-      }}
+              this.uiStateManager.setShowWidthSelector(false);
+              this.uiStateManager.setCustomWidth('');
+            }}
             @session-rename=${async (e: CustomEvent) => {
-        const { sessionId, newName } = e.detail;
-        await this.sessionActionsHandler.handleRename(sessionId, newName);
-      }}
+              const { sessionId, newName } = e.detail;
+              await this.sessionActionsHandler.handleRename(sessionId, newName);
+            }}
             @paste-image=${async () => await this.fileOperationsManager.pasteImage()}
             @select-image=${() => this.fileOperationsManager.selectImage()}
             @open-camera=${() => this.fileOperationsManager.openCamera()}
             @show-image-upload-options=${() => this.fileOperationsManager.selectImage()}
             @toggle-view-mode=${() => this.sessionActionsHandler.handleToggleViewMode()}
             @capture-toggled=${(e: CustomEvent) => {
-        this.dispatchEvent(
-          new CustomEvent('capture-toggled', {
-            detail: e.detail,
-            bubbles: true,
-            composed: true,
-          })
-        );
-      }}
+              this.dispatchEvent(
+                new CustomEvent('capture-toggled', {
+                  detail: e.detail,
+                  bubbles: true,
+                  composed: true,
+                })
+              );
+            }}
             .hasGitRepo=${!!this.session?.gitRepoPath}
             .viewMode=${uiState.viewMode}
           >
@@ -1342,17 +1367,19 @@ export class SessionView extends LitElement {
 
         <!-- Content Area (Terminal or Worktree) -->
         <div
-          class="terminal-area bg-bg ${this.session?.status === 'exited' && uiState.viewMode === 'terminal'
-        ? 'session-exited opacity-90'
-        : ''
-      } ${
-      // Add safe area padding for landscape mode on mobile to handle notch
-      uiState.isMobile && uiState.isLandscape ? 'safe-area-left safe-area-right' : ''
-      }"
+          class="terminal-area ${
+            this.session?.status === 'exited' && uiState.viewMode === 'terminal'
+              ? 'session-exited opacity-90'
+              : ''
+          } ${
+            // Add safe area padding for landscape mode on mobile to handle notch
+            uiState.isMobile && uiState.isLandscape ? 'safe-area-left safe-area-right' : ''
+          }"
           data-quickkeys-visible="${uiState.showQuickKeys}"
         >
-          ${this.loadingAnimationManager.isLoading()
-        ? html`
+          ${
+            this.loadingAnimationManager.isLoading()
+              ? html`
                 <!-- Enhanced Loading overlay -->
                 <div
                   class="absolute inset-0 bg-bg/90 backdrop-filter backdrop-blur-sm flex items-center justify-center z-10 animate-fade-in"
@@ -1363,20 +1390,21 @@ export class SessionView extends LitElement {
                   </div>
                 </div>
               `
-        : ''
-      }
-          ${uiState.viewMode === 'worktree' && this.session?.gitRepoPath
-        ? html`
+              : ''
+          }
+          ${
+            uiState.viewMode === 'worktree' && this.session?.gitRepoPath
+              ? html`
               <worktree-manager
                 .gitService=${this.gitService}
                 .repoPath=${this.session.gitRepoPath}
                 @back=${() => {
-            this.uiStateManager.setViewMode('terminal');
-          }}
+                  this.uiStateManager.setViewMode('terminal');
+                }}
               ></worktree-manager>
             `
-        : uiState.viewMode === 'terminal'
-          ? html`
+              : uiState.viewMode === 'terminal'
+                ? html`
               <!-- Enhanced Terminal Component -->
               <div style="position: relative; height: 100%;">
                 <!-- Terminal (hidden when chat mode is active) -->
@@ -1414,59 +1442,46 @@ export class SessionView extends LitElement {
           }
         </div>
 
-        <!-- Quick Keys Area / Mobile Action Bar -->
+        <!-- Quick Keys Area / Mobile Terminal Input -->
         ${
           uiState.isMobile
             ? html`
-          <mobile-action-bar
+          <mobile-terminal-input
             .visible=${true}
-            .session=${this.session}
-            .keyboardVisible=${uiState.keyboardHeight > 0}
-            .keyboardHeight=${uiState.keyboardHeight}
-            .currentMode=${'normal'}
-            .callbacks=${(() => {
-              const callbacks = {
-                // Command palette callbacks
-                onTogglePlanMode: () => this.handleClaudeModeToggle('plan'),
-                onToggleAutoAccept: () => this.handleClaudeModeToggle('auto-accept'),
-                onToggleNormalMode: () => this.handleClaudeModeToggle('normal'),
-
-                // Clipboard callbacks
-                onPasteFromClipboard: () => this.handleClipboardPaste(),
-                onShowClipboardHistory: () => this.handleShowClipboardHistory(),
-
-                // Slash commands callbacks
-                onShowSlashCommands: () => this.handleShowSlashCommands(),
-                onExecuteSlashCommand: (command: string) => this.handleExecuteSlashCommand(command),
-
-                // Session management callbacks
-                onCreateSession: () => this.dispatchEvent(new CustomEvent('navigate-to-list')), // Navigate back to create new session
-                onTerminateSession: () => this.sessionActionsHandler.handleTerminateSession(),
-                onClearSession: () => this.sessionActionsHandler.handleClearSession(),
-
-                // File operations callbacks
-                onOpenFileBrowser: () => this.fileOperationsManager.openFileBrowser(),
-                onUploadFile: () => this.fileOperationsManager.openFilePicker(),
-                onUploadImage: () => this.fileOperationsManager.selectImage(),
-
-                // Terminal settings callbacks
-                onOpenTerminalSettings: () => this.terminalSettingsManager.handleMaxWidthToggle(), // Open width selector as settings
-                onToggleTheme: () => this.handleThemeToggle(),
-
-                // Navigation callbacks
-                onNavigateBack: () => this.handleBack(),
-                onToggleSidebar: () => this.handleSidebarToggle(),
-
-                // Mobile-specific callbacks
-                onShowKeyboard: () => this.handleKeyboardButtonClick(),
-                onHideKeyboard: () => this.handleHideKeyboard(),
-                onSendInput: (text: string) => this.handleSendInput(text),
-                onTriggerHaptic: (type: 'light' | 'medium' | 'heavy') =>
-                  this.handleHapticFeedback(type),
-              };
-              return callbacks;
-            })()}
-          ></mobile-action-bar>
+            .disabled=${this.session?.status === 'exited'}
+            .callbacks=${{
+              onSendInput: (text: string) => this.handleSendInput(text),
+              onQuickAction: (action: 'tab' | 'clear' | 'history' | 'ctrl-c') => {
+                switch (action) {
+                  case 'tab':
+                    this.directKeyboardManager.handleQuickKeyPress('Tab');
+                    break;
+                  case 'clear':
+                    // Ctrl+L to clear screen
+                    if (this.inputManager) {
+                      this.inputManager.sendInputText('\x0c');
+                    }
+                    break;
+                  case 'history':
+                    this.directKeyboardManager.handleQuickKeyPress('ArrowUp');
+                    break;
+                  case 'ctrl-c':
+                    // Send Ctrl+C
+                    if (this.inputManager) {
+                      this.inputManager.sendInputText('\x03');
+                    }
+                    break;
+                }
+              },
+              onFocus: () => {
+                // When input is focused, hide quick keys
+                this.uiStateManager.setShowQuickKeys(false);
+              },
+              onBlur: () => {
+                // Optionally show quick keys again
+              },
+            }}
+          ></mobile-terminal-input>
         `
             : html`
           <div class="quickkeys-area ${!uiState.showQuickKeys ? 'hidden' : ''}">
@@ -1487,41 +1502,41 @@ export class SessionView extends LitElement {
               onClearCtrlSequence: () => this.handleClearCtrlSequence(),
               onCtrlAlphaCancel: () => this.handleCtrlAlphaCancel(),
 
-        // Quick keys
-        onQuickKeyPress: (key: string) => this.directKeyboardManager.handleQuickKeyPress(key),
+              // Quick keys
+              onQuickKeyPress: (key: string) => this.directKeyboardManager.handleQuickKeyPress(key),
 
-        // File browser/picker
-        onCloseFileBrowser: () => this.fileOperationsManager.closeFileBrowser(),
-        onInsertPath: async (e: CustomEvent) => {
-          const { path, type } = e.detail;
-          await this.fileOperationsManager.insertPath(path, type);
-        },
-        onFileSelected: async (e: CustomEvent) => {
-          await this.fileOperationsManager.handleFileSelected(e.detail.path);
-        },
-        onFileError: (e: CustomEvent) => {
-          this.fileOperationsManager.handleFileError(e.detail);
-        },
-        onCloseFilePicker: () => this.fileOperationsManager.closeFilePicker(),
+              // File browser/picker
+              onCloseFileBrowser: () => this.fileOperationsManager.closeFileBrowser(),
+              onInsertPath: async (e: CustomEvent) => {
+                const { path, type } = e.detail;
+                await this.fileOperationsManager.insertPath(path, type);
+              },
+              onFileSelected: async (e: CustomEvent) => {
+                await this.fileOperationsManager.handleFileSelected(e.detail.path);
+              },
+              onFileError: (e: CustomEvent) => {
+                this.fileOperationsManager.handleFileError(e.detail);
+              },
+              onCloseFilePicker: () => this.fileOperationsManager.closeFilePicker(),
 
-        // Terminal settings
-        onWidthSelect: (width: number) =>
-          this.terminalSettingsManager.handleWidthSelect(width),
-        onFontSizeChange: (size: number) =>
-          this.terminalSettingsManager.handleFontSizeChange(size),
-        onThemeChange: (theme: TerminalThemeId) =>
-          this.terminalSettingsManager.handleThemeChange(theme),
-        onCloseWidthSelector: () => {
-          this.uiStateManager.setShowWidthSelector(false);
-          this.uiStateManager.setCustomWidth('');
-        },
+              // Terminal settings
+              onWidthSelect: (width: number) =>
+                this.terminalSettingsManager.handleWidthSelect(width),
+              onFontSizeChange: (size: number) =>
+                this.terminalSettingsManager.handleFontSizeChange(size),
+              onThemeChange: (theme: TerminalThemeId) =>
+                this.terminalSettingsManager.handleThemeChange(theme),
+              onCloseWidthSelector: () => {
+                this.uiStateManager.setShowWidthSelector(false);
+                this.uiStateManager.setCustomWidth('');
+              },
 
-        // Keyboard button
-        onKeyboardButtonClick: () => this.handleKeyboardButtonClick(),
+              // Keyboard button
+              onKeyboardButtonClick: () => this.handleKeyboardButtonClick(),
 
-        // Navigation
-        handleBack: () => this.handleBack(),
-      }}
+              // Navigation
+              handleBack: () => this.handleBack(),
+            }}
           ></overlays-container>
         </div>
       </div>
@@ -1535,8 +1550,9 @@ export class SessionView extends LitElement {
       ></terminal-quick-keys>
 
       <!-- Mobile Input Controls (only show when direct keyboard is disabled) -->
-      ${uiState.isMobile && !uiState.showMobileInput && !uiState.useDirectKeyboard
-        ? html`
+      ${
+        uiState.isMobile && !uiState.showMobileInput && !uiState.useDirectKeyboard
+          ? html`
             <div class="p-4 bg-bg-secondary" style="position: fixed; bottom: 0; left: 0; right: 0; z-index: ${Z_INDEX.TERMINAL_QUICK_KEYS};">
             <!-- First row: Arrow keys -->
             <div class="flex gap-2 mb-2">
@@ -1615,7 +1631,7 @@ export class SessionView extends LitElement {
               </div>
             </div>
           `
-        : ''
+          : ''
       }
       </div>
     `;

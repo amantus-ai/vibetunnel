@@ -9,7 +9,10 @@
  * - Terminal dimensions
  */
 
+import { createLogger } from '../../utils/logger.js';
 import type { TerminalThemeId } from '../../utils/terminal-themes.js';
+
+const logger = createLogger('ui-state-manager');
 
 export interface UIState {
   // Connection state
@@ -55,6 +58,10 @@ export interface UIState {
 
   // Keyboard capture
   keyboardCaptureActive: boolean;
+
+  // Direct keyboard mode (vs chat input)
+  useDirectKeyboard: boolean;
+  showMobileInput: boolean;
 }
 
 export interface UIStateCallbacks {
@@ -106,6 +113,10 @@ export class UIStateManager {
 
     // Keyboard capture
     keyboardCaptureActive: true,
+
+    // Direct keyboard mode
+    useDirectKeyboard: true,
+    showMobileInput: false,
   };
 
   private callbacks: UIStateCallbacks | null = null;
@@ -289,6 +300,17 @@ export class UIStateManager {
     if (enteringChatMode) {
       this.state.showQuickKeys = false;
     }
+    this.callbacks?.requestUpdate();
+  }
+
+  // Direct keyboard mode
+  toggleDirectKeyboard(): void {
+    this.state.useDirectKeyboard = !this.state.useDirectKeyboard;
+    this.callbacks?.requestUpdate();
+  }
+
+  setShowMobileInput(show: boolean): void {
+    this.state.showMobileInput = show;
     this.callbacks?.requestUpdate();
   }
 }

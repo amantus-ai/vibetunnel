@@ -1,32 +1,46 @@
 @import "tailwindcss";
 
+/* JetBrains Mono Variable Font */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/jetbrainsmono/v18/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjPVmUsaaDhw.woff2') format('woff2');
+}
 
 /* Define CSS variables first */
 :root {
-  /* Light mode colors (default) */
-  --color-bg: rgb(250 250 250);
-  --color-bg-secondary: rgb(245 245 245);
-  --color-bg-tertiary: rgb(237 237 237);
-  --color-bg-elevated: rgb(255 255 255);
-  --color-surface: rgb(245 245 245);
-  --color-surface-hover: rgb(237 237 237);
-  --color-border: rgb(226 226 226);
-  --color-border-light: rgb(237 237 237);
-  --color-border-focus: rgb(200 200 200);
-  --color-text: rgb(23 23 23);
-  --color-text-bright: rgb(0 0 0);
-  --color-text-muted: rgb(75 75 75);
-  --color-text-dim: rgb(115 115 115);
-  --color-primary: #10B981;
-  --color-primary-hover: #059669;
-  --color-primary-dark: #047857;
-  --color-primary-light: #34D399;
-  --color-primary-muted: #10B98133;
-  --color-primary-glow: #10B98166;
+  /* ShellOps V3 Dark Theme (default) */
+  --color-bg: #050505;
+  --color-bg-secondary: #070707;
+  --color-bg-tertiary: #0A0A0A;
+  --color-bg-elevated: #0D0D0D;
+  --color-surface: #0D0D0D;
+  --color-surface-hover: #141414;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-light: rgba(255, 255, 255, 0.06);
+  --color-border-focus: rgba(255, 255, 255, 0.12);
+  --color-text: #FFFFFF;
+  --color-text-bright: #FFFFFF;
+  --color-text-muted: #737373;
+  --color-text-dim: #525252;
+  --color-primary: #22C55E;
+  --color-primary-hover: #16A34A;
+  --color-primary-dark: #15803D;
+  --color-primary-light: #4ADE80;
+  --color-primary-muted: rgba(34, 197, 94, 0.15);
+  --color-primary-glow: rgba(34, 197, 94, 0.3);
+  --color-primary-surface: rgba(34, 197, 94, 0.05);
+  --color-primary-border: rgba(34, 197, 94, 0.2);
   --color-status-error: #EF4444;
-  --color-status-warning: #F59E0B;
-  --color-status-success: #10B981;
+  --color-status-warning: #FBBF24;
+  --color-status-success: #22C55E;
   --color-status-info: #3B82F6;
+  --color-warning-surface: rgba(245, 158, 11, 0.05);
+  --color-warning-border: rgba(245, 158, 11, 0.2);
+  --color-sidebar: #030303;
+  --color-terminal: #000000;
 }
 
 /* Tailwind v4 Theme Configuration */
@@ -51,6 +65,8 @@
   --color-primary-light: var(--color-primary-light);
   --color-primary-muted: var(--color-primary-muted);
   --color-primary-glow: var(--color-primary-glow);
+  --color-primary-surface: var(--color-primary-surface);
+  --color-primary-border: var(--color-primary-border);
   --color-accent-primary: var(--color-primary);
   --color-accent-green: var(--color-status-success);
   --color-accent-red: var(--color-status-error);
@@ -58,22 +74,30 @@
   --color-status-warning: var(--color-status-warning);
   --color-status-success: var(--color-status-success);
   --color-status-info: var(--color-status-info);
-  
-  /* Box Shadows */
-  --shadow-glow: 0 0 20px rgb(16 185 129 / 0.4);
-  --shadow-glow-sm: 0 0 10px rgb(16 185 129 / 0.3);
-  --shadow-glow-lg: 0 0 30px rgb(16 185 129 / 0.5);
-  --shadow-glow-intense: 0 0 40px rgb(16 185 129 / 0.6);
-  --shadow-glow-error: 0 0 20px rgb(239 68 68 / 0.4);
-  --shadow-glow-error-sm: 0 0 10px rgb(239 68 68 / 0.3);
-  --shadow-glow-error-lg: 0 0 30px rgb(239 68 68 / 0.5);
-  --shadow-glow-warning: 0 0 20px rgb(245 158 11 / 0.4);
-  --shadow-glow-warning-sm: 0 0 10px rgb(245 158 11 / 0.3);
-  --shadow-glow-warning-lg: 0 0 30px rgb(245 158 11 / 0.5);
-  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.3), 0 1px 2px rgb(0 0 0 / 0.4);
-  --shadow-card-hover: 0 4px 6px rgb(0 0 0 / 0.3), 0 2px 4px rgb(0 0 0 / 0.4);
-  --shadow-elevated: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -2px rgb(0 0 0 / 0.2);
-  
+  --color-warning-surface: var(--color-warning-surface);
+  --color-warning-border: var(--color-warning-border);
+  --color-sidebar: var(--color-sidebar);
+  --color-terminal: var(--color-terminal);
+
+  /* Font Family */
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  /* Box Shadows - ShellOps V3 style */
+  --shadow-glow: 0 0 20px rgba(34, 197, 94, 0.3);
+  --shadow-glow-sm: 0 0 12px rgba(34, 197, 94, 0.2);
+  --shadow-glow-lg: 0 0 30px rgba(34, 197, 94, 0.4);
+  --shadow-glow-intense: 0 4px 16px rgba(34, 197, 94, 0.3);
+  --shadow-glow-error: 0 0 20px rgba(239, 68, 68, 0.3);
+  --shadow-glow-error-sm: 0 0 12px rgba(239, 68, 68, 0.2);
+  --shadow-glow-error-lg: 0 0 30px rgba(239, 68, 68, 0.4);
+  --shadow-glow-warning: 0 0 20px rgba(251, 191, 36, 0.3);
+  --shadow-glow-warning-sm: 0 0 12px rgba(251, 191, 36, 0.2);
+  --shadow-glow-warning-lg: 0 0 30px rgba(251, 191, 36, 0.4);
+  --shadow-card: 0 0 20px rgba(34, 197, 94, 0.08);
+  --shadow-card-hover: 0 0 30px rgba(34, 197, 94, 0.12);
+  --shadow-elevated: 0 8px 60px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 0, 0, 0.3);
+  --shadow-modal: 0 8px 60px rgba(0, 0, 0, 0.5), 0 0 10px rgba(255, 255, 255, 0.08);
+
   /* Animations */
   --animate-pulse-primary: pulsePrimary 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-slide-in-right: slideInRight 0.3s ease-out;
@@ -177,43 +201,30 @@
   --vt-terminal-resize-debounce: 100ms;
 }
 
-/* Dark mode theme colors */
-[data-theme="dark"] {
-  /* Override CSS variables for dark mode */
-  --color-bg: rgb(23 23 23);
-  --color-bg-secondary: rgb(32 32 32);
-  --color-bg-tertiary: rgb(40 40 40);
-  --color-bg-elevated: rgb(48 48 48);
-  --color-surface: rgb(36 36 36);
-  --color-surface-hover: rgb(52 52 52);
-  --color-border: rgb(64 64 64);
-  --color-border-light: rgb(72 72 72);
-  --color-border-focus: rgb(80 80 80);
-  --color-text: rgb(228 228 228);
-  --color-text-bright: rgb(255 255 255);
-  --color-text-muted: rgb(163 163 163);
+/* Light mode theme colors (optional override) */
+[data-theme="light"] {
+  --color-bg: rgb(250 250 250);
+  --color-bg-secondary: rgb(245 245 245);
+  --color-bg-tertiary: rgb(237 237 237);
+  --color-bg-elevated: rgb(255 255 255);
+  --color-surface: rgb(245 245 245);
+  --color-surface-hover: rgb(237 237 237);
+  --color-border: rgb(226 226 226);
+  --color-border-light: rgb(237 237 237);
+  --color-border-focus: rgb(200 200 200);
+  --color-text: rgb(23 23 23);
+  --color-text-bright: rgb(0 0 0);
+  --color-text-muted: rgb(75 75 75);
   --color-text-dim: rgb(115 115 115);
-  /* Primary and status colors remain the same */
+  --color-primary-surface: rgba(34, 197, 94, 0.1);
+  --color-primary-border: rgba(34, 197, 94, 0.3);
+  --color-warning-surface: rgba(245, 158, 11, 0.1);
+  --color-warning-border: rgba(245, 158, 11, 0.3);
+  --color-sidebar: rgb(250 250 250);
+  --color-terminal: rgb(245 245 245);
 }
 
-/* System preference detection */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --color-bg: rgb(23 23 23);
-    --color-bg-secondary: rgb(32 32 32);
-    --color-bg-tertiary: rgb(40 40 40);
-    --color-bg-elevated: rgb(48 48 48);
-    --color-surface: rgb(36 36 36);
-    --color-surface-hover: rgb(52 52 52);
-    --color-border: rgb(64 64 64);
-    --color-border-light: rgb(72 72 72);
-    --color-border-focus: rgb(80 80 80);
-    --color-text: rgb(228 228 228);
-    --color-text-bright: rgb(255 255 255);
-    --color-text-muted: rgb(163 163 163);
-    --color-text-dim: rgb(115 115 115);
-  }
-}
+/* ShellOps V3 is dark by default - no system preference detection needed */
 
 /* Global theme-aware styles */
 @layer base {
@@ -446,45 +457,73 @@
     @apply hover:text-text hover:bg-bg-tertiary;
   }
 
-  /* Enhanced card styles */
+  /* Enhanced card styles - ShellOps V3 */
   .card {
-    @apply bg-bg-secondary border border-border rounded-lg p-0;
-    @apply transition-all duration-300 ease-out shadow-sm;
-    @apply hover:border-border-light hover:shadow-lg hover:-translate-y-1;
+    @apply bg-bg-elevated border rounded-xl p-0;
+    @apply transition-all duration-300 ease-out;
+    border-color: rgba(255, 255, 255, 0.08);
     position: relative;
     overflow: hidden;
-    /* Ensure cards have proper z-index for hover */
     z-index: 1;
-    /* Ensure proper box sizing and prevent overflow */
     box-sizing: border-box;
     min-width: 0;
     width: 100%;
   }
-  
+
   .card:hover {
     z-index: 10;
+    border-color: rgba(255, 255, 255, 0.12);
   }
-  
-  /* Card glow effect for active sessions */
-  .card::before {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    background: radial-gradient(circle at 50% 50%, transparent 60%, rgb(var(--color-primary) / 0.1) 100%);
-    opacity: 0;
-    transition: opacity 0.3s ease-out;
-    pointer-events: none;
-    z-index: -1;
+
+  /* Card glow effect for active sessions - ShellOps V3 style */
+  .card.card-active {
+    border-color: var(--color-primary-border);
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.08);
   }
-  
-  .card:hover::before {
-    opacity: 1;
+
+  .card.card-active:hover {
+    box-shadow: 0 0 30px rgba(34, 197, 94, 0.12);
   }
-  
+
+  /* Warning state cards */
+  .card.card-warning {
+    border-color: var(--color-warning-border);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.08);
+  }
+
+  .card.card-warning:hover {
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.12);
+  }
+
+  /* Card header with colored background */
+  .card-header {
+    @apply flex items-center justify-between p-4;
+    background: var(--color-primary-surface);
+  }
+
+  .card-header-warning {
+    background: var(--color-warning-surface);
+  }
+
+  .card-header-default {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  /* Card terminal preview */
+  .card-terminal {
+    @apply p-4;
+    background: var(--color-terminal);
+    border-radius: 0 0 12px 12px;
+  }
+
   .card-elevated {
-    @apply bg-bg-elevated rounded-xl p-6 shadow-card;
-    @apply hover:shadow-elevated hover:bg-surface-hover;
-    @apply transition-all duration-200;
+    @apply bg-bg-elevated rounded-xl p-6;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .card-elevated:hover {
+    border-color: rgba(255, 255, 255, 0.12);
   }
   
   /* Status badges */
@@ -555,13 +594,11 @@
     @apply text-text-muted text-sm font-medium mb-2 flex items-center gap-2;
   }
 
-  /* Enhanced responsive session grid layout */
+  /* Enhanced responsive session grid layout - ShellOps V3 style */
   .session-flex-responsive {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    grid-auto-rows: 400px;
-    gap: 1.5rem;
-    padding: 0.5rem 0.75rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
     /* Enable smooth grid transitions - disabled in session view */
     transition: grid-template-columns 0.3s ease-out;
   }
@@ -572,68 +609,44 @@
   }
 
   .session-flex-responsive > * {
-    height: 100%;
     /* Allow overflow for hover effects */
     overflow: visible;
   }
 
-  /* Adjust grid for smaller tablets and large phones */
-  @media (max-width: 768px) {
+  /* Tablet: Single column */
+  @media (max-width: 1024px) {
     .session-flex-responsive {
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      grid-auto-rows: 380px;
-      gap: 1rem;
-      padding: 0.5rem;
+      grid-template-columns: 1fr;
+      gap: 16px;
     }
   }
-  
-  /* Single column layout for small screens */
-  @media (max-width: 540px) {
+
+  /* Mobile: Single column with adjusted padding */
+  @media (max-width: 640px) {
     .session-flex-responsive {
-      grid-template-columns: minmax(0, 1fr);
-      grid-auto-rows: auto;  /* Let cards size themselves */
-      gap: 0.875rem;
-      padding: 0 1rem;  /* Consistent horizontal padding */
-      width: 100%;
-      box-sizing: border-box;
-    }
-    
-    /* Ensure cards respect viewport width */
-    .session-flex-responsive > * {
-      width: 100%;
-      max-width: 100%;
-      box-sizing: border-box;
-      min-height: 280px;
-      max-height: 400px;
-      aspect-ratio: 4/3;  /* Maintain aspect ratio */
+      grid-template-columns: 1fr;
+      gap: 12px;
     }
   }
-  
-  /* Small phones - more aggressive constraints */
-  @media (max-width: 420px) {
-    .session-flex-responsive {
-      padding: 0 0.75rem;  /* 12px padding each side */
-      gap: 0.75rem;
-    }
-    
-    .session-flex-responsive > * {
-      min-height: 260px;
-      max-height: 360px;
+
+  /* Session card responsive styles */
+  .session-card {
+    background: #000000;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  /* Desktop card height handled by inner container */
+  @media (min-width: 641px) {
+    .session-card {
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
   }
-  
-  /* Extra small screens - maximum space efficiency */
-  @media (max-width: 380px) {
-    .session-flex-responsive {
-      padding: 0 0.625rem;  /* 10px padding each side */
-      gap: 0.625rem;
-    }
-    
-    .session-flex-responsive > * {
-      min-height: 240px;
-      max-height: 320px;
-      aspect-ratio: 16/11;  /* Slightly wider for small screens */
-    }
+
+  /* Mobile terminal preview styling */
+  .terminal-preview-mobile {
+    border: 1px solid rgba(255, 255, 255, 0.04);
   }
 
   /* Enhanced authentication styles */
@@ -701,6 +714,284 @@
 
   .badge-ed25519 {
     @apply bg-primary text-bg-elevated;
+  }
+
+  /* ===== ShellOps V3 Components ===== */
+
+  /* Sidebar - 72px vertical nav */
+  .shellops-sidebar {
+    width: 72px;
+    background: var(--color-sidebar);
+    border-right: 1px solid rgba(255, 255, 255, 0.04);
+    @apply flex flex-col justify-between py-6;
+    height: 100%;
+  }
+
+  .shellops-sidebar-top,
+  .shellops-sidebar-bottom {
+    @apply flex flex-col items-center gap-8;
+  }
+
+  .shellops-sidebar-nav {
+    @apply flex flex-col items-center gap-2;
+  }
+
+  /* Logo */
+  .shellops-logo {
+    @apply flex items-center justify-center rounded-xl;
+    width: 40px;
+    height: 40px;
+    background: var(--color-primary);
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+  }
+
+  .shellops-logo-text {
+    @apply text-sm font-semibold font-mono;
+    color: var(--color-bg);
+  }
+
+  /* Nav items */
+  .shellops-nav-item {
+    @apply flex items-center justify-center rounded-xl cursor-pointer;
+    @apply transition-all duration-200;
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .shellops-nav-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .shellops-nav-item.active {
+    background: var(--color-primary-muted);
+    border: 1px solid var(--color-primary-border);
+  }
+
+  .shellops-nav-item.active svg,
+  .shellops-nav-item.active .nav-icon {
+    color: var(--color-primary);
+  }
+
+  .shellops-nav-item svg,
+  .shellops-nav-item .nav-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--color-text-muted);
+  }
+
+  /* Avatar */
+  .shellops-avatar {
+    @apply flex items-center justify-center rounded-full font-mono text-sm font-medium;
+    width: 36px;
+    height: 36px;
+    background: #1F1F1F;
+    border: 1px solid var(--color-primary-border);
+    color: var(--color-primary);
+  }
+
+  /* Main content area */
+  .shellops-main {
+    @apply flex-1 flex flex-col;
+    background: var(--color-bg-secondary);
+    border-radius: 16px 0 0 16px;
+    @apply p-8;
+    gap: 32px;
+  }
+
+  /* Header */
+  .shellops-header {
+    @apply flex items-center justify-between;
+  }
+
+  .shellops-title {
+    @apply text-3xl font-bold font-mono text-text-bright;
+    letter-spacing: -0.02em;
+  }
+
+  /* Active badge */
+  .shellops-active-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium font-mono;
+    background: var(--color-primary-muted);
+    border: 1px solid var(--color-primary-border);
+    color: var(--color-primary);
+  }
+
+  .shellops-active-badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-primary);
+  }
+
+  /* Search bar */
+  .shellops-search {
+    @apply flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-mono text-sm cursor-pointer;
+    @apply transition-all duration-200;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--color-text-dim);
+  }
+
+  .shellops-search:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .shellops-search-key {
+    @apply text-xs;
+    color: var(--color-text-dim);
+  }
+
+  /* Primary button - New */
+  .shellops-btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-mono text-sm font-medium;
+    @apply transition-all duration-200;
+    background: var(--color-primary);
+    color: var(--color-bg);
+    box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);
+  }
+
+  .shellops-btn-primary:hover {
+    background: var(--color-primary-hover);
+    box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .shellops-btn-primary:active {
+    transform: translateY(0);
+  }
+
+  /* Filter bar */
+  .shellops-filter-bar {
+    @apply flex items-center justify-between gap-3;
+  }
+
+  .shellops-filter-group {
+    @apply flex items-center gap-2.5;
+  }
+
+  .shellops-filter-label {
+    @apply flex items-center gap-1.5 text-xs font-mono font-medium;
+    color: var(--color-text-dim);
+  }
+
+  .shellops-filter-chip {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-medium cursor-pointer;
+    @apply transition-all duration-200;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--color-text-muted);
+  }
+
+  .shellops-filter-chip:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .shellops-filter-chip.active {
+    background: var(--color-primary-muted);
+    border: 1px solid var(--color-primary-border);
+    color: var(--color-primary);
+  }
+
+  .shellops-filter-chip-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  .shellops-filter-chip-dot.online {
+    background: var(--color-primary);
+  }
+
+  .shellops-filter-chip-dot.warning {
+    background: var(--color-status-warning);
+  }
+
+  .shellops-filter-count {
+    @apply text-xs font-mono;
+    color: var(--color-text-dim);
+  }
+
+  /* Session grid */
+  .shellops-session-grid {
+    @apply grid gap-6;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  }
+
+  /* Session card */
+  .shellops-session-card {
+    @apply rounded-xl overflow-hidden;
+    @apply transition-all duration-300;
+    background: var(--color-bg-elevated);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .shellops-session-card.active {
+    border-color: var(--color-primary-border);
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.08);
+  }
+
+  .shellops-session-card.warning {
+    border-color: var(--color-warning-border);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.08);
+  }
+
+  .shellops-session-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .shellops-session-card.active:hover {
+    box-shadow: 0 0 30px rgba(34, 197, 94, 0.12);
+  }
+
+  .shellops-session-card-header {
+    @apply flex items-center justify-between p-4;
+  }
+
+  .shellops-session-card-header.active {
+    background: var(--color-primary-surface);
+  }
+
+  .shellops-session-card-header.warning {
+    background: var(--color-warning-surface);
+  }
+
+  .shellops-session-card-header.default {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .shellops-session-card-terminal {
+    @apply p-4;
+    background: var(--color-terminal);
+    height: 180px;
+    overflow: hidden;
+  }
+
+  /* Status dot */
+  .shellops-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .shellops-status-dot.online {
+    background: var(--color-primary);
+  }
+
+  .shellops-status-dot.warning {
+    background: var(--color-status-warning);
+  }
+
+  .shellops-status-dot.offline {
+    background: var(--color-text-dim);
+  }
+
+  /* Server badge */
+  .shellops-server-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--color-text-muted);
   }
 }
 
@@ -856,10 +1147,10 @@
   src: url('/fonts/HackNerdFontMono-Bold.ttf') format('truetype');
 }
 
-/* Override Tailwind's font-mono to use Hack Nerd Font */
+/* Override Tailwind's font-mono to use JetBrains Mono (ShellOps V3 style) */
 .font-mono {
   font-family:
-    'Hack Nerd Font Mono', 'Fira Code', ui-monospace, SFMono-Regular, 'SF Mono', Consolas,
+    'JetBrains Mono', 'Hack Nerd Font Mono', 'Fira Code', ui-monospace, SFMono-Regular, 'SF Mono', Consolas,
     'Liberation Mono', Menlo, monospace !important;
 }
 
@@ -1303,10 +1594,20 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   overflow: hidden;
 }
 
-/* Terminal container theme styling */
+/* Terminal container theme styling - force pure black background */
 [data-theme="dark"] .terminal-container,
 :root:not([data-theme="light"]) .terminal-container {
-  /* Terminal colors are handled by ghostty-web */
+  background: #000000 !important;
+}
+
+/* Force terminal element backgrounds to pure black */
+vibe-terminal,
+vibe-terminal-binary,
+.xterm,
+.xterm-viewport,
+.xterm-screen {
+  background: #000000 !important;
+  background-color: #000000 !important;
 }
 
 /* Light theme terminal container styling */

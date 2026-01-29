@@ -10,7 +10,7 @@ import type { Session } from '../shared/types.js';
 import { HttpMethod } from '../shared/types.js';
 import { isBrowserShortcut } from './utils/browser-shortcuts.js';
 // Import utilities
-import { BREAKPOINTS, SIDEBAR, TIMING, TRANSITIONS, Z_INDEX } from './utils/constants.js';
+import { BREAKPOINTS, SIDEBAR, TIMING, Z_INDEX } from './utils/constants.js';
 // Import logger
 import { createLogger } from './utils/logger.js';
 import { isIOS } from './utils/mobile-utils.js';
@@ -31,6 +31,10 @@ import './components/settings.js';
 import './components/notification-status.js';
 import './components/auth-login.js';
 import './components/ssh-key-manager.js';
+import './components/shellops-sidebar.js';
+import './components/shellops-header.js';
+import './components/shellops-filter-bar.js';
+import './components/shellops-settings.js';
 
 import { authClient } from './services/auth-client.js';
 import { pushNotificationService } from './services/push-notification-service.js';
@@ -72,6 +76,7 @@ export class VibeTunnelApp extends LitElement {
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
   @state() private hasActiveOverlay = false;
   @state() private keyboardCaptureActive = true;
+  @state() private shellopsNavView: 'sessions' | 'settings' = 'sessions';
   private initialLoadComplete = false;
   private responsiveObserverInitialized = false;
   private initialRenderComplete = false;
@@ -1151,16 +1156,6 @@ export class VibeTunnelApp extends LitElement {
     await this.loadSessions();
   }
 
-  private handleCleanExited() {
-    // Find the session list and call its cleanup method directly
-    const sessionList = this.querySelector('session-list') as HTMLElement & {
-      handleCleanupExited?: () => void;
-    };
-    if (sessionList?.handleCleanupExited) {
-      sessionList.handleCleanupExited();
-    }
-  }
-
   private handleToggleSidebar() {
     this.sidebarCollapsed = !this.sidebarCollapsed;
     this.saveSidebarState(this.sidebarCollapsed);
@@ -1181,17 +1176,6 @@ export class VibeTunnelApp extends LitElement {
     // Immediately refresh the session list to show updated status
     this.loadSessions();
   }
-
-  private handleMobileOverlayClick = (e: Event) => {
-    // In portrait mode, dismiss the sidebar
-    if (this.isInSidebarDismissMode) {
-      e.preventDefault();
-      e.stopPropagation();
-      this.handleToggleSidebar();
-    }
-    // In landscape mode, the overlay is transparent and pointer-events-none,
-    // so this handler won't be called
-  };
 
   // State persistence methods
   private loadHideExitedState(): boolean {
@@ -1299,26 +1283,6 @@ export class VibeTunnelApp extends LitElement {
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
   }
-
-  private handleResizeStart = (e: MouseEvent) => {
-    e.preventDefault();
-    this.isResizing = true;
-
-    // Clean up any existing listeners first
-    this.cleanupResizeListeners();
-
-    document.addEventListener('mousemove', this.handleResize);
-    document.addEventListener('mouseup', this.handleResizeEnd);
-
-    // Store cleanup functions
-    this.resizeCleanupFunctions.push(() => {
-      document.removeEventListener('mousemove', this.handleResize);
-      document.removeEventListener('mouseup', this.handleResizeEnd);
-    });
-
-    document.body.style.cursor = 'ew-resize';
-    document.body.style.userSelect = 'none';
-  };
 
   private handleResize = (e: MouseEvent) => {
     if (!this.isResizing) return;
@@ -1519,6 +1483,16 @@ export class VibeTunnelApp extends LitElement {
 
   private handleCloseSettings = () => {
     this.showSettings = false;
+    // Return to sessions view when closing settings
+    this.shellopsNavView = 'sessions';
+  };
+
+  private handleShellopsNavChange = (e: CustomEvent<{ view: 'sessions' | 'settings' }>) => {
+    this.shellopsNavView = e.detail.view;
+    // When navigating to settings via sidebar, also clear any selected session
+    if (e.detail.view === 'settings') {
+      this.selectedSessionId = null;
+    }
   };
 
   private handleOpenFileBrowser = () => {
@@ -1564,6 +1538,32 @@ export class VibeTunnelApp extends LitElement {
     this._cachedSelectedSessionId = this.selectedSessionId;
     this._cachedSelectedSession = this.sessions.find((s) => s.id === this.selectedSessionId);
     return this._cachedSelectedSession;
+  }
+
+  /**
+   * Get unique servers from sessions for the filter bar
+   */
+  private getUniqueServers(): Array<{ id: string; name: string; color: string }> {
+    const serverMap = new Map<string, { id: string; name: string; color: string }>();
+
+    for (const session of this.sessions) {
+      const serverId = session.remoteId || 'local';
+      const serverName = session.remoteName || 'Local';
+
+      if (!serverMap.has(serverId)) {
+        // Use green for active sessions, amber for others
+        const hasActiveSession = this.sessions.some(
+          (s) => (s.remoteId || 'local') === serverId && s.status === 'running'
+        );
+        serverMap.set(serverId, {
+          id: serverId,
+          name: serverName,
+          color: hasActiveSession ? '#22C55E' : '#FBBF24',
+        });
+      }
+    }
+
+    return Array.from(serverMap.values());
   }
 
   private get sidebarClasses(): string {
@@ -1789,111 +1789,179 @@ export class VibeTunnelApp extends LitElement {
               ></file-browser>
             `
             : html`
-      <!-- Main content with split view support -->
-      <div class="${this.mainContainerClasses}">
-        <!-- Mobile overlay when sidebar is open -->
-        ${
-          this.shouldShowMobileOverlay
-            ? html`
-              <div
-                class="fixed inset-0 sm:hidden transition-all ${
-                  this.isInSidebarDismissMode
-                    ? 'bg-bg/50 backdrop-blur-sm'
-                    : 'bg-transparent pointer-events-none'
-                }"
-                style="z-index: ${Z_INDEX.MOBILE_OVERLAY}; transition-duration: ${TRANSITIONS.MOBILE_SLIDE}ms;"
-                @click=${this.handleMobileOverlayClick}
-              ></div>
-            `
-            : ''
-        }
-
-        <!-- Sidebar with session list - always visible on desktop -->
-        <div class="${this.sidebarClasses}" style="${this.sidebarStyles}">
-          <app-header
-            .sessions=${this.sessions}
-            .hideExited=${this.hideExited}
-            .showSplitView=${showSplitView}
-            .currentUser=${authClient.getCurrentUser()?.userId || null}
-            .authMethod=${authClient.getCurrentUser()?.authMethod || null}
-            @create-session=${this.handleCreateSession}
-            @hide-exited-change=${this.handleHideExitedChange}
-            @kill-all-sessions=${this.handleKillAll}
-            @clean-exited-sessions=${this.handleCleanExited}
-            @open-file-browser=${this.handleOpenFileBrowser}
-            @open-tmux-sessions=${this.handleOpenTmuxSessions}
-            @open-settings=${this.handleOpenSettings}
-            @logout=${this.handleLogout}
-            @navigate-to-list=${this.handleNavigateToList}
-            @toggle-sidebar=${this.handleToggleSidebar}
-            style="touch-action: none;"
-          ></app-header>
-          <div class="${this.showSplitView ? 'flex-1 sidebar-scroll-area' : 'flex-1'} bg-secondary">
-            <session-list
-              .sessions=${this.sessions}
-              .loading=${this.loading}
-              .hideExited=${this.hideExited}
-              .selectedSessionId=${this.selectedSessionId}
-              .activeSessionId=${this.selectedSessionId}
-              .compactMode=${showSplitView}
-              .collapsed=${this.sidebarCollapsed}
-              .authClient=${authClient}
-              @session-killed=${this.handleSessionKilled}
-              @refresh=${this.handleRefresh}
-              @error=${this.handleError}
-              @hide-exited-change=${this.handleHideExitedChange}
-              @kill-all-sessions=${this.handleKillAll}
-              @navigate-to-session=${this.handleNavigateToSession}
-              @open-file-browser=${this.handleOpenFileBrowser}
-              @open-create-dialog=${this.handleOpenCreateDialog}
-            ></session-list>
-          </div>
+      <!-- ShellOps V3 Layout -->
+      <div class="flex h-screen overflow-hidden" style="background: var(--color-bg);">
+        <!-- ShellOps Sidebar (72px) - Hidden on mobile -->
+        <div class="hidden sm:block flex-shrink-0">
+          <shellops-sidebar
+            .activeView=${this.shellopsNavView}
+            .userInitial=${(authClient.getCurrentUser()?.userId || 'A').charAt(0).toUpperCase()}
+            @nav-change=${this.handleShellopsNavChange}
+            @avatar-click=${this.handleLogout}
+          ></shellops-sidebar>
         </div>
 
-        <!-- Resize handle for sidebar -->
-        ${
-          this.shouldShowResizeHandle
-            ? html`
-              <div
-                class="w-1 bg-border hover:bg-accent-green cursor-ew-resize transition-colors ${
-                  this.isResizing ? 'bg-accent-green' : ''
-                }"
-                style="transition-duration: ${TRANSITIONS.RESIZE_HANDLE}ms;"
-                @mousedown=${this.handleResizeStart}
-                title="Drag to resize sidebar"
-              ></div>
-            `
-            : ''
-        }
-
-        <!-- Main content area -->
-        ${
-          showSplitView
-            ? html`
-              <div class="flex-1 relative sm:static transition-none">
-                ${keyed(
-                  this.selectedSessionId,
-                  html`
-                    <session-view
-                      .session=${selectedSession}
-                      .showBackButton=${false}
-                      .showSidebarToggle=${true}
-                      .sidebarCollapsed=${this.sidebarCollapsed}
-                      .disableFocusManagement=${this.hasActiveOverlay}
-                      .keyboardCaptureActive=${this.keyboardCaptureActive}
-                      @navigate-to-list=${this.handleNavigateToList}
-                      @toggle-sidebar=${this.handleToggleSidebar}
+        <!-- Main Content Area -->
+        <div
+          class="flex-1 flex flex-col overflow-hidden"
+          style="background: var(--color-bg-secondary); border-radius: 16px 0 0 16px;"
+        >
+          ${
+            this.shellopsNavView === 'settings'
+              ? html`
+                  <!-- ShellOps V3 Settings View -->
+                  <shellops-settings
+                    class="flex-1"
+                    @back=${() => {
+                      this.shellopsNavView = 'sessions';
+                    }}
+                  ></shellops-settings>
+                `
+              : this.selectedSessionId && showSplitView
+                ? html`
+                  <!-- Session View (Full Screen) -->
+                  <div class="flex-1 overflow-hidden">
+                    ${keyed(
+                      this.selectedSessionId,
+                      html`
+                        <session-view
+                          .session=${selectedSession}
+                          .showBackButton=${true}
+                          .showSidebarToggle=${false}
+                          .sidebarCollapsed=${false}
+                          .disableFocusManagement=${this.hasActiveOverlay}
+                          .keyboardCaptureActive=${this.keyboardCaptureActive}
+                          @navigate-to-list=${this.handleNavigateToList}
+                          @toggle-sidebar=${this.handleToggleSidebar}
+                          @create-session=${this.handleCreateSession}
+                          @session-status-changed=${this.handleSessionStatusChanged}
+                          @open-settings=${this.handleOpenSettings}
+                          @capture-toggled=${this.handleCaptureToggled}
+                        ></session-view>
+                      `
+                    )}
+                  </div>
+                `
+                : html`
+                  <!-- Sessions Dashboard -->
+                  <div class="flex-1 flex flex-col overflow-hidden p-4 sm:p-8 gap-4 sm:gap-8 pb-24 sm:pb-8">
+                    <!-- Header -->
+                    <shellops-header
+                      .title=${'Sessions'}
+                      .activeCount=${this.sessions.filter((s) => s.status === 'running').length}
                       @create-session=${this.handleCreateSession}
-                      @session-status-changed=${this.handleSessionStatusChanged}
-                      @open-settings=${this.handleOpenSettings}
-                      @capture-toggled=${this.handleCaptureToggled}
-                    ></session-view>
-                  `
-                )}
-              </div>
-            `
-            : ''
-        }
+                      @search=${(e: CustomEvent) => {
+                        // TODO: Implement search filtering
+                        logger.log('Search:', e.detail.query);
+                      }}
+                    ></shellops-header>
+
+                    <!-- Filter Bar -->
+                    <shellops-filter-bar
+                      .servers=${this.getUniqueServers()}
+                      .selectedServer=${null}
+                      .totalSessions=${this.sessions.length}
+                      .filteredSessions=${this.sessions.length}
+                      @filter-change=${(e: CustomEvent) => {
+                        // TODO: Implement server filtering
+                        logger.log('Filter:', e.detail.serverId);
+                      }}
+                    ></shellops-filter-bar>
+
+                    <!-- Session Grid -->
+                    <div class="flex-1 overflow-auto">
+                      <session-list
+                        .sessions=${this.sessions}
+                        .loading=${this.loading}
+                        .hideExited=${this.hideExited}
+                        .selectedSessionId=${this.selectedSessionId}
+                        .activeSessionId=${this.selectedSessionId}
+                        .compactMode=${false}
+                        .collapsed=${false}
+                        .authClient=${authClient}
+                        @session-killed=${this.handleSessionKilled}
+                        @refresh=${this.handleRefresh}
+                        @error=${this.handleError}
+                        @hide-exited-change=${this.handleHideExitedChange}
+                        @kill-all-sessions=${this.handleKillAll}
+                        @navigate-to-session=${this.handleNavigateToSession}
+                        @open-file-browser=${this.handleOpenFileBrowser}
+                        @open-create-dialog=${this.handleOpenCreateDialog}
+                      ></session-list>
+                    </div>
+                  </div>
+                `
+          }
+        </div>
+
+        <!-- Mobile Bottom Nav - Shown only on mobile -->
+        <div
+          class="sm:hidden fixed bottom-0 left-0 right-0 flex items-center justify-around py-3 px-5"
+          style="background: var(--color-bg-secondary); border-top: 1px solid rgba(255, 255, 255, 0.06); padding-bottom: env(safe-area-inset-bottom, 12px);"
+        >
+          <button
+            @click=${() => {
+              this.shellopsNavView = 'sessions';
+            }}
+            class="flex flex-col items-center gap-1 p-2"
+          >
+            <svg
+              class="w-6 h-6"
+              style="color: ${this.shellopsNavView === 'sessions' ? 'var(--color-primary)' : '#737373'};"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="m4 17 2-2-2-2m4 4h4m-8 4h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2z"
+              />
+            </svg>
+            <span
+              class="text-[10px] font-mono"
+              style="color: ${this.shellopsNavView === 'sessions' ? 'var(--color-primary)' : '#737373'};"
+            >
+              Sessions
+            </span>
+          </button>
+          <button
+            @click=${this.handleCreateSession}
+            class="flex items-center justify-center w-12 h-12 -mt-4 rounded-full"
+            style="background: var(--color-primary); box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);"
+          >
+            <svg class="w-6 h-6" style="color: var(--color-bg);" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </button>
+          <button
+            @click=${this.handleOpenSettings}
+            class="flex flex-col items-center gap-1 p-2"
+          >
+            <svg
+              class="w-6 h-6"
+              style="color: ${this.shellopsNavView === 'settings' ? 'var(--color-primary)' : '#737373'};"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"
+              />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+            </svg>
+            <span
+              class="text-[10px] font-mono"
+              style="color: ${this.shellopsNavView === 'settings' ? 'var(--color-primary)' : '#737373'};"
+            >
+              Settings
+            </span>
+          </button>
+        </div>
       </div>
       `
       }
