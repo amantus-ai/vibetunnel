@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =============================================================================
-# VibeTunnel Changelog to HTML Converter
+# ShellOps Changelog to HTML Converter
 # =============================================================================
 #
 # Converts specific version sections from CHANGELOG.md to HTML format for
@@ -118,9 +118,9 @@ if [ -z "$version_content" ]; then
     echo "Warning: No changelog section found for version $VERSION" >&2
     echo "Using default content..." >&2
     cat << EOF
-<h2>VibeTunnel $VERSION</h2>
-<p>Latest version of VibeTunnel with new features and improvements.</p>
-<p><a href="https://github.com/amantus-ai/vibetunnel/blob/main/CHANGELOG.md">View full changelog</a></p>
+<h2>ShellOps $VERSION</h2>
+<p>Latest version of ShellOps with new features and improvements.</p>
+<p><a href="https://github.com/amantus-ai/shellops/blob/main/CHANGELOG.md">View full changelog</a></p>
 EOF
     exit 0
 fi
@@ -156,4 +156,4 @@ if [ "$in_list" = true ]; then
 fi
 
 # Add link to full changelog
-echo "<p><a href=\"https://github.com/amantus-ai/vibetunnel/blob/main/CHANGELOG.md#${VERSION//./}-$(date +%Y%m%d)\">View full changelog</a></p>"
+echo "<p><a href=\"https://github.com/amantus-ai/shellops/blob/main/CHANGELOG.md#${VERSION//./}-$(date +%Y%m%d)\">View full changelog</a></p>"

@@ -155,7 +155,7 @@ describe('Tailscale Status Endpoint Unit Tests', () => {
       const mockStatus = {
         isRunning: false,
         port: undefined,
-        lastError: 'VibeTunnel server not responding',
+        lastError: 'ShellOps server not responding',
         startTime: undefined,
         isPermanentlyDisabled: false,
         funnelEnabled: false,
@@ -170,7 +170,7 @@ describe('Tailscale Status Endpoint Unit Tests', () => {
       const status = await mockTailscaleService.getStatus();
 
       expect(status.isRunning).toBe(false);
-      expect(status.lastError).toBe('VibeTunnel server not responding');
+      expect(status.lastError).toBe('ShellOps server not responding');
       expect(status.port).toBeUndefined();
     });
   });

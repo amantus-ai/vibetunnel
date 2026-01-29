@@ -74,7 +74,7 @@ describe.skip('MDNSService - skipped due to require() mocking complexity', () =>
       expect(MockBonjourConstructor).toHaveBeenCalledTimes(1);
       expect(mockBonjourInstance.publish).toHaveBeenCalledWith({
         name: 'test-hostname',
-        type: '_vibetunnel._tcp',
+        type: '_shellops._tcp',
         port: port,
         txt: {
           version: '1.0',
@@ -157,7 +157,7 @@ describe.skip('MDNSService - skipped due to require() mocking complexity', () =>
       // Then
       expect(mockBonjourInstance.publish).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: '_vibetunnel._tcp',
+          type: '_shellops._tcp',
         })
       );
     });

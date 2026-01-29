@@ -4,14 +4,14 @@
 import { spawn } from 'child_process';
 import { existsSync } from 'fs';
 import * as path from 'path';
-import { startVibeTunnelServer } from './server/server.js';
+import { startShellOpsServer } from './server/server.js';
 import { closeLogger, createLogger, initLogger, VerbosityLevel } from './server/utils/logger.js';
 import { parseVerbosityFromEnv } from './server/utils/verbosity-parser.js';
 import { VERSION } from './server/version.js';
 
 // Check for version command early - before logger initialization
 if (process.argv[2] === 'version') {
-  console.log(`VibeTunnel Server v${VERSION}`);
+  console.log(`ShellOps Server v${VERSION}`);
   process.exit(0);
 }
 
@@ -20,7 +20,7 @@ if (process.argv[2] === 'version') {
 const verbosityLevel = parseVerbosityFromEnv();
 
 // Check for legacy debug mode (for backward compatibility with initLogger)
-const debugMode = process.env.VIBETUNNEL_DEBUG === '1' || process.env.VIBETUNNEL_DEBUG === 'true';
+const debugMode = process.env.SHELLOPS_DEBUG === '1' || process.env.SHELLOPS_DEBUG === 'true';
 
 initLogger(debugMode, verbosityLevel);
 const logger = createLogger('cli');
@@ -29,16 +29,16 @@ const logger = createLogger('cli');
 
 // Prevent double execution in SEA context where require.main might be undefined
 // Use a global flag to ensure we only run once
-interface GlobalWithVibetunnel {
-  __vibetunnelStarted?: boolean;
+interface GlobalWithShellops {
+  __shellopsStarted?: boolean;
 }
 
-const globalWithVibetunnel = global as unknown as GlobalWithVibetunnel;
+const globalWithShellops = global as unknown as GlobalWithShellops;
 
-if (globalWithVibetunnel.__vibetunnelStarted) {
+if (globalWithShellops.__shellopsStarted) {
   process.exit(0);
 }
-globalWithVibetunnel.__vibetunnelStarted = true;
+globalWithShellops.__shellopsStarted = true;
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
@@ -61,38 +61,38 @@ process.on('unhandledRejection', (reason, promise) => {
  * Print help message with version and usage information
  */
 function printHelp(): void {
-  console.log(`VibeTunnel Server v${VERSION}`);
+  console.log(`ShellOps Server v${VERSION}`);
   console.log('');
   console.log('Usage:');
-  console.log('  vibetunnel [options]                    Start VibeTunnel server');
-  console.log('  vibetunnel fwd [options] <command>      Run command in a forwarded session');
-  console.log('  vibetunnel status                       Show server and follow mode status');
-  console.log('  vibetunnel follow [branch]              Enable Git follow mode');
-  console.log('  vibetunnel unfollow                     Disable Git follow mode');
-  console.log('  vibetunnel git-event                    Notify server of Git event');
-  console.log('  vibetunnel systemd [action]             Manage systemd service (Linux)');
-  console.log('  vibetunnel version                      Show version');
-  console.log('  vibetunnel help                         Show this help');
+  console.log('  shellops [options]                    Start ShellOps server');
+  console.log('  shellops fwd [options] <command>      Run command in a forwarded session');
+  console.log('  shellops status                       Show server and follow mode status');
+  console.log('  shellops follow [branch]              Enable Git follow mode');
+  console.log('  shellops unfollow                     Disable Git follow mode');
+  console.log('  shellops git-event                    Notify server of Git event');
+  console.log('  shellops systemd [action]             Manage systemd service (Linux)');
+  console.log('  shellops version                      Show version');
+  console.log('  shellops help                         Show this help');
   console.log('');
   console.log('Systemd Service Actions:');
-  console.log('  install   - Install VibeTunnel as systemd service (default)');
-  console.log('  uninstall - Remove VibeTunnel systemd service');
+  console.log('  install   - Install ShellOps as systemd service (default)');
+  console.log('  uninstall - Remove ShellOps systemd service');
   console.log('  status    - Check systemd service status');
   console.log('');
   console.log('Examples:');
-  console.log('  vibetunnel --port 8080 --no-auth');
-  console.log('  vibetunnel fwd --title-mode static bash');
-  console.log('  vibetunnel systemd');
-  console.log('  vibetunnel systemd uninstall');
+  console.log('  shellops --port 8080 --no-auth');
+  console.log('  shellops fwd --title-mode static bash');
+  console.log('  shellops systemd');
+  console.log('  shellops systemd uninstall');
   console.log('');
-  console.log('For more options, run: vibetunnel --help');
+  console.log('For more options, run: shellops --help');
 }
 
 /**
  * Print version information
  */
 function printVersion(): void {
-  console.log(`VibeTunnel Server v${VERSION}`);
+  console.log(`ShellOps Server v${VERSION}`);
 }
 
 /**
@@ -100,19 +100,19 @@ function printVersion(): void {
  */
 async function handleForwardCommand(): Promise<void> {
   const resolveForwarder = (): string | null => {
-    const envOverride = process.env.VIBETUNNEL_FWD_BIN;
+    const envOverride = process.env.SHELLOPS_FWD_BIN;
     if (envOverride && existsSync(envOverride)) {
       return envOverride;
     }
 
     const candidates: string[] = [];
     // Next to the current executable (SEA/app bundle)
-    candidates.push(path.join(path.dirname(process.execPath), 'vibetunnel-fwd'));
+    candidates.push(path.join(path.dirname(process.execPath), 'shellops-fwd'));
 
     // Next to this module (dev and npm installs)
     const moduleDir = __dirname;
-    candidates.push(path.resolve(moduleDir, '..', 'bin', 'vibetunnel-fwd'));
-    candidates.push(path.resolve(moduleDir, '..', 'native', 'vibetunnel-fwd'));
+    candidates.push(path.resolve(moduleDir, '..', 'bin', 'shellops-fwd'));
+    candidates.push(path.resolve(moduleDir, '..', 'native', 'shellops-fwd'));
 
     for (const candidate of candidates) {
       if (existsSync(candidate)) {
@@ -126,7 +126,7 @@ async function handleForwardCommand(): Promise<void> {
     const forwarder = resolveForwarder();
     if (!forwarder) {
       logger.error(
-        `vibetunnel-fwd not found. Set VIBETUNNEL_FWD_BIN or build it: cd web && node scripts/build-fwd-zig.js (cwd: ${process.cwd()})`
+        `shellops-fwd not found. Set SHELLOPS_FWD_BIN or build it: cd web && node scripts/build-fwd-zig.js (cwd: ${process.cwd()})`
       );
       closeLogger();
       process.exit(1);
@@ -178,7 +178,7 @@ async function handleSocketCommand(command: string): Promise<void> {
     switch (command) {
       case 'status': {
         const status = await client.getStatus();
-        console.log('VibeTunnel Server Status:');
+        console.log('ShellOps Server Status:');
         console.log(`  Running: ${status.running ? 'Yes' : 'No'}`);
         if (status.running) {
           console.log(`  Port: ${status.port || 'Unknown'}`);
@@ -264,9 +264,9 @@ async function handleSocketCommand(command: string): Promise<void> {
       }
     }
   } catch (error) {
-    if (error instanceof Error && error.message === 'VibeTunnel server is not running') {
-      console.error('Error: VibeTunnel server is not running');
-      console.error('Start the server first with: vibetunnel');
+    if (error instanceof Error && error.message === 'ShellOps server is not running') {
+      console.error('Error: ShellOps server is not running');
+      console.error('Start the server first with: shellops');
     } else {
       logger.error('Socket command failed:', error);
     }
@@ -276,14 +276,14 @@ async function handleSocketCommand(command: string): Promise<void> {
 }
 
 /**
- * Start the VibeTunnel server with optional startup logging
+ * Start the ShellOps server with optional startup logging
  */
 function handleStartServer(): void {
   // Show startup message at INFO level or when debug is enabled
   if (verbosityLevel !== undefined && verbosityLevel >= VerbosityLevel.INFO) {
-    logger.log('Starting VibeTunnel server...');
+    logger.log('Starting ShellOps server...');
   }
-  startVibeTunnelServer();
+  startShellOpsServer();
 }
 
 /**
@@ -335,7 +335,7 @@ function isMainModule(): boolean {
     !module.parent &&
     (require.main === module ||
       require.main === undefined ||
-      (require.main?.filename?.endsWith('/vibetunnel-cli') ?? false))
+      (require.main?.filename?.endsWith('/shellops-cli') ?? false))
   );
 }
 

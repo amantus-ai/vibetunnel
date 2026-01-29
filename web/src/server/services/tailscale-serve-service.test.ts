@@ -32,11 +32,11 @@ describe('TailscaleServeService Integration Tests', () => {
       // This test verifies the fix for the critical bug where exit code 0 was treated as failure
 
       // Mock environment to test exit code logic without actually starting Tailscale
-      const originalEnv = process.env.VIBETUNNEL_TAILSCALE_ERROR;
+      const originalEnv = process.env.SHELLOPS_TAILSCALE_ERROR;
 
       try {
         // Test successful status (no error environment variable)
-        delete process.env.VIBETUNNEL_TAILSCALE_ERROR;
+        delete process.env.SHELLOPS_TAILSCALE_ERROR;
 
         const status = await service.getStatus();
 
@@ -46,7 +46,7 @@ describe('TailscaleServeService Integration Tests', () => {
       } finally {
         // Restore original environment
         if (originalEnv !== undefined) {
-          process.env.VIBETUNNEL_TAILSCALE_ERROR = originalEnv;
+          process.env.SHELLOPS_TAILSCALE_ERROR = originalEnv;
         }
       }
     });
@@ -54,7 +54,7 @@ describe('TailscaleServeService Integration Tests', () => {
     it('handles error states correctly', async () => {
       // Test error simulation via environment variable
       const testError = 'Test error condition';
-      process.env.VIBETUNNEL_TAILSCALE_ERROR = testError;
+      process.env.SHELLOPS_TAILSCALE_ERROR = testError;
 
       try {
         const status = await service.getStatus();
@@ -62,7 +62,7 @@ describe('TailscaleServeService Integration Tests', () => {
         expect(status.isRunning).toBe(false);
         expect(status.lastError).toBe(testError);
       } finally {
-        delete process.env.VIBETUNNEL_TAILSCALE_ERROR;
+        delete process.env.SHELLOPS_TAILSCALE_ERROR;
       }
     });
   });
@@ -137,7 +137,7 @@ describe('TailscaleServeService Integration Tests', () => {
   describe('Error Recovery', () => {
     it('recovers from command failures', async () => {
       // Set up error condition
-      process.env.VIBETUNNEL_TAILSCALE_ERROR = 'Command not found';
+      process.env.SHELLOPS_TAILSCALE_ERROR = 'Command not found';
 
       try {
         const status1 = await service.getStatus();
@@ -145,13 +145,13 @@ describe('TailscaleServeService Integration Tests', () => {
         expect(status1.lastError).toBe('Command not found');
 
         // Clear error condition
-        delete process.env.VIBETUNNEL_TAILSCALE_ERROR;
+        delete process.env.SHELLOPS_TAILSCALE_ERROR;
 
         const status2 = await service.getStatus();
         // Should no longer report the simulated error
         expect(status2.lastError).not.toBe('Command not found');
       } finally {
-        delete process.env.VIBETUNNEL_TAILSCALE_ERROR;
+        delete process.env.SHELLOPS_TAILSCALE_ERROR;
       }
     });
 
@@ -243,8 +243,8 @@ describe('TailscaleServeService Integration Tests', () => {
       // This is tested indirectly through the start/stop operations
 
       // Mock environment to ensure we're not actually starting Tailscale
-      const originalEnv = process.env.VIBETUNNEL_SKIP_TAILSCALE;
-      process.env.VIBETUNNEL_SKIP_TAILSCALE = '1';
+      const originalEnv = process.env.SHELLOPS_SKIP_TAILSCALE;
+      process.env.SHELLOPS_SKIP_TAILSCALE = '1';
 
       try {
         // Start should not throw with new syntax
@@ -255,9 +255,9 @@ describe('TailscaleServeService Integration Tests', () => {
         expect(status).toBeDefined();
       } finally {
         if (originalEnv !== undefined) {
-          process.env.VIBETUNNEL_SKIP_TAILSCALE = originalEnv;
+          process.env.SHELLOPS_SKIP_TAILSCALE = originalEnv;
         } else {
-          delete process.env.VIBETUNNEL_SKIP_TAILSCALE;
+          delete process.env.SHELLOPS_SKIP_TAILSCALE;
         }
       }
     });
@@ -265,7 +265,7 @@ describe('TailscaleServeService Integration Tests', () => {
     it('recovers from "foreground already exists" errors', async () => {
       // Test that the service can recover from common Tailscale errors
       const testError = 'error: foreground already exists under this port';
-      process.env.VIBETUNNEL_TAILSCALE_ERROR = testError;
+      process.env.SHELLOPS_TAILSCALE_ERROR = testError;
 
       try {
         const status = await service.getStatus();
@@ -275,12 +275,12 @@ describe('TailscaleServeService Integration Tests', () => {
         expect(status.lastError).toContain(testError);
 
         // Clear error and verify recovery
-        delete process.env.VIBETUNNEL_TAILSCALE_ERROR;
+        delete process.env.SHELLOPS_TAILSCALE_ERROR;
 
         const recoveredStatus = await service.getStatus();
         expect(recoveredStatus.lastError).not.toBe(testError);
       } finally {
-        delete process.env.VIBETUNNEL_TAILSCALE_ERROR;
+        delete process.env.SHELLOPS_TAILSCALE_ERROR;
       }
     });
   });

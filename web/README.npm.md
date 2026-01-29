@@ -1,8 +1,8 @@
-# VibeTunnel - Web Terminal Server
+# ShellOps - Web Terminal Server
 
 Run terminal sessions in your browser. Perfect for remote access, Docker containers, and quick terminal sharing via ngrok.
 
-[![npm version](https://img.shields.io/npm/v/vibetunnel.svg)](https://www.npmjs.com/package/vibetunnel)
+[![npm version](https://img.shields.io/npm/v/shellops.svg)](https://www.npmjs.com/package/shellops)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 🚀 Quick Start
@@ -11,13 +11,13 @@ No installation needed - run instantly with npx:
 
 ```bash
 # Start local server (no auth)
-npx vibetunnel --no-auth
+npx shellops --no-auth
 
 # Start with ngrok tunnel for remote access
-npx vibetunnel --no-auth --ngrok
+npx shellops --no-auth --ngrok
 
 # Custom port
-npx vibetunnel --port 8080 --no-auth
+npx shellops --port 8080 --no-auth
 ```
 
 Then open http://localhost:4020 in your browser.
@@ -27,25 +27,25 @@ Then open http://localhost:4020 in your browser.
 ### Global Install
 
 ```bash
-npm install -g vibetunnel
+npm install -g shellops
 
 # Run the server
-vibetunnel --no-auth
+shellops --no-auth
 ```
 
 ### Docker
 
 ```bash
 # Build from source
-git clone https://github.com/amantus-ai/vibetunnel.git
-cd vibetunnel/web
-docker build -f Dockerfile.standalone -t vibetunnel .
+git clone https://github.com/amantus-ai/shellops.git
+cd shellops/web
+docker build -f Dockerfile.standalone -t shellops .
 
 # Mount your code and run with tunnel
-docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --ngrok
+docker run -v $(pwd):/workspace -p 4020:4020 shellops --ngrok
 
 # Or with Cloudflare tunnel
-docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --cloudflare
+docker run -v $(pwd):/workspace -p 4020:4020 shellops --cloudflare
 ```
 
 ## 🌐 Remote Access with Ngrok
@@ -54,14 +54,14 @@ Share your terminal with anyone on the internet:
 
 ```bash
 # With built-in Tailscale Serve  
-npx vibetunnel --no-auth --enable-tailscale-serve
+npx shellops --no-auth --enable-tailscale-serve
 
 # With external ngrok (run separately)
-npx vibetunnel --no-auth &
+npx shellops --no-auth &
 ngrok http 4020
 
 # With Cloudflare tunnel
-npx vibetunnel --no-auth &
+npx shellops --no-auth &
 cloudflared tunnel --url localhost:4020
 ```
 
@@ -93,7 +93,7 @@ Access any server's terminal through a browser:
 
 ```bash
 ssh remote-server
-npx vibetunnel --no-auth --ngrok
+npx shellops --no-auth --ngrok
 # Share the ngrok URL with your team
 ```
 
@@ -105,7 +105,7 @@ Add terminal access to any container:
 version: '3'
 services:
   app:
-    image: vibetunnel:latest
+    image: shellops:latest
     command: ["--ngrok"]
     ports:
       - "4020:4020"
@@ -123,7 +123,7 @@ containers:
   image: your-app:latest
 - name: terminal
   image: node:24-trixie-slim
-  command: ["npx", "vibetunnel", "--no-auth"]
+  command: ["npx", "shellops", "--no-auth"]
   ports:
   - containerPort: 4020
 ```
@@ -133,7 +133,7 @@ containers:
 Share your terminal for live coding sessions:
 
 ```bash
-npx vibetunnel --no-auth --ngrok
+npx shellops --no-auth --ngrok
 # Share URL with students
 ```
 
@@ -150,13 +150,13 @@ npx vibetunnel --no-auth --ngrok
 
 ```bash
 # With system authentication (uses PAM)
-vibetunnel
+shellops
 
 # With SSH keys only
-vibetunnel --enable-ssh-keys --disallow-user-password
+shellops --enable-ssh-keys --disallow-user-password
 
 # Behind reverse proxy (nginx/caddy)
-vibetunnel --bind 127.0.0.1
+shellops --bind 127.0.0.1
 ```
 
 ## 🛠️ Advanced Configuration
@@ -164,12 +164,12 @@ vibetunnel --bind 127.0.0.1
 ### Environment Variables
 
 - `PORT` - Default port (overrides 4020)
-- `VIBETUNNEL_DEBUG` - Enable debug logging
+- `SHELLOPS_DEBUG` - Enable debug logging
 - `NGROK_AUTHTOKEN` - Ngrok auth token
 
 ### Custom Configuration
 
-Create `~/.vibetunnel/config.json`:
+Create `~/.shellops/config.json`:
 
 ```json
 {
@@ -185,18 +185,18 @@ Create `~/.vibetunnel/config.json`:
 
 ## 📚 Full Documentation
 
-- [Standalone Usage Guide](https://github.com/amantus-ai/vibetunnel/blob/main/web/README.standalone.md)
-- [Main Repository](https://github.com/amantus-ai/vibetunnel)
-- [Report Issues](https://github.com/amantus-ai/vibetunnel/issues)
+- [Standalone Usage Guide](https://github.com/amantus-ai/shellops/blob/main/web/README.standalone.md)
+- [Main Repository](https://github.com/amantus-ai/shellops)
+- [Report Issues](https://github.com/amantus-ai/shellops/issues)
 
 ## 🤝 Contributing
 
-Contributions welcome! Please check the [main repository](https://github.com/amantus-ai/vibetunnel) for guidelines.
+Contributions welcome! Please check the [main repository](https://github.com/amantus-ai/shellops) for guidelines.
 
 ## 📄 License
 
-MIT - See [LICENSE](https://github.com/amantus-ai/vibetunnel/blob/main/LICENSE) for details.
+MIT - See [LICENSE](https://github.com/amantus-ai/shellops/blob/main/LICENSE) for details.
 
 ---
 
-**Note:** This is the standalone web server version of VibeTunnel. For the full macOS app experience with menu bar integration, see the [main project](https://github.com/amantus-ai/vibetunnel).
+**Note:** This is the standalone web server version of ShellOps. For the full macOS app experience with menu bar integration, see the [main project](https://github.com/amantus-ai/shellops).

@@ -51,7 +51,7 @@ export class ClipboardManager extends LitElement {
 
   private readonly MAX_HISTORY_ITEMS = 20;
   private readonly MAX_PREVIEW_LENGTH = 200;
-  private readonly STORAGE_KEY = 'vibetunnel-clipboard-history';
+  private readonly STORAGE_KEY = 'shellops-clipboard-history';
 
   connectedCallback() {
     super.connectedCallback();

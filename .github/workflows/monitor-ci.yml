@@ -75,7 +75,7 @@ jobs:
       with:
         issue-number: ${{ steps.check-status.outputs.pr_number }}
         comment-author: 'github-actions[bot]'
-        body-includes: '<!-- vibetunnel-ci-status -->'
+        body-includes: '<!-- shellops-ci-status -->'
     
     - name: Create or Update Comment
       if: steps.check-status.outputs.should_comment == 'true'
@@ -84,6 +84,6 @@ jobs:
         comment-id: ${{ steps.fc.outputs.comment-id }}
         issue-number: ${{ steps.check-status.outputs.pr_number }}
         body: |
-          <!-- vibetunnel-ci-status -->
+          <!-- shellops-ci-status -->
           ${{ steps.check-status.outputs.comment_body }}
         edit-mode: replace

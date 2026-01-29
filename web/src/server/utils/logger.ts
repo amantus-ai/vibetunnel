@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 // Log file path
-const LOG_DIR = path.join(os.homedir(), '.vibetunnel');
+const LOG_DIR = path.join(os.homedir(), '.shellops');
 let LOG_FILE = path.join(LOG_DIR, 'log.txt');
 
 /**

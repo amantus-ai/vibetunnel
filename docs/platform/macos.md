@@ -13,7 +13,7 @@
 cd mac
 
 # Debug build
-xcodebuild -project VibeTunnel.xcodeproj -scheme VibeTunnel
+xcodebuild -project ShellOps.xcodeproj -scheme ShellOps
 
 # Release build  
 ./scripts/build.sh
@@ -22,7 +22,7 @@ xcodebuild -project VibeTunnel.xcodeproj -scheme VibeTunnel
 ./scripts/build.sh --sign
 
 # Run directly
-open build/Release/VibeTunnel.app
+open build/Release/ShellOps.app
 ```
 
 ## Architecture
@@ -51,7 +51,7 @@ class ServerManager {
 **Protocol-Based Services**
 ```swift
 @MainActor
-protocol VibeTunnelServer: AnyObject {
+protocol ShellOpsServer: AnyObject {
     var isRunning: Bool { get }
     func start() async throws
     func stop() async
@@ -77,10 +77,10 @@ struct MenuBarView: View {
 
 ### Embedded Server
 ```
-VibeTunnel.app/
+ShellOps.app/
 └── Contents/
     ├── MacOS/
-    │   └── VibeTunnel         # Main executable
+    │   └── ShellOps         # Main executable
     └── Resources/
         └── server/
             └── bun-server     # Embedded Bun binary
@@ -127,11 +127,11 @@ struct SettingsView: View {
 ### App Lifecycle
 ```swift
 @main
-struct VibeTunnelApp: App {
+struct ShellOpsApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     var body: some Scene {
-        MenuBarExtra("VibeTunnel", systemImage: "terminal") {
+        MenuBarExtra("ShellOps", systemImage: "terminal") {
             MenuBarView()
         }
         .menuBarExtraStyle(.menu)
@@ -155,7 +155,7 @@ func updateStatusItem() {
 
 ### Entitlements
 ```xml
-<!-- VibeTunnel.entitlements -->
+<!-- ShellOps.entitlements -->
 <dict>
     <key>com.apple.security.network.client</key>
     <true/>
@@ -200,7 +200,7 @@ class UpdateManager {
 ```xml
 <!-- Info.plist -->
 <key>SUFeedURL</key>
-<string>https://vibetunnel.com/appcast.xml</string>
+<string>https://shellops.com/appcast.xml</string>
 <key>SUEnableAutomaticChecks</key>
 <true/>
 ```
@@ -215,7 +215,7 @@ os_log(.debug, log: .server, "Starting server on port %{public}@", port)
 ### View Logs
 ```bash
 # In Console.app
-# Filter: subsystem:com.steipete.VibeTunnel
+# Filter: subsystem:com.steipete.ShellOps
 
 # Or via script
 ./scripts/vtlog.sh -c ServerManager
@@ -226,19 +226,19 @@ os_log(.debug, log: .server, "Starting server on port %{public}@", port)
 ### Unit Tests
 ```bash
 xcodebuild test \
-  -project VibeTunnel.xcodeproj \
-  -scheme VibeTunnel \
+  -project ShellOps.xcodeproj \
+  -scheme ShellOps \
   -destination 'platform=macOS'
 ```
 
 ### UI Tests
 ```swift
-class VibeTunnelUITests: XCTestCase {
+class ShellOpsUITests: XCTestCase {
     func testServerStart() throws {
         let app = XCUIApplication()
         app.launch()
         
-        app.menuBarItems["VibeTunnel"].click()
+        app.menuBarItems["ShellOps"].click()
         app.menuItems["Start Server"].click()
         
         XCTAssertTrue(app.menuItems["Stop Server"].exists)

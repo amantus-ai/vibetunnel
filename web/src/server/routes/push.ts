@@ -152,10 +152,10 @@ export function createPushRoutes(options: CreatePushRoutesOptions): Router {
       const result = await pushNotificationService.sendNotification({
         type: 'test',
         title: '🔔 Test Notification',
-        body: message || 'This is a test notification from VibeTunnel',
+        body: message || 'This is a test notification from ShellOps',
         icon: '/apple-touch-icon.png',
         badge: '/favicon-32.png',
-        tag: 'vibetunnel-test',
+        tag: 'shellops-test',
         requireInteraction: false,
         actions: [
           {
@@ -172,9 +172,9 @@ export function createPushRoutes(options: CreatePushRoutesOptions): Router {
           sessionId: 'test-session',
           sessionName: 'Test Notification',
           timestamp: new Date().toISOString(),
-          message: message || 'This is a test notification from VibeTunnel',
+          message: message || 'This is a test notification from ShellOps',
           title: '🔔 Test Notification',
-          body: message || 'This is a test notification from VibeTunnel',
+          body: message || 'This is a test notification from ShellOps',
         };
         sessionMonitor.emit('notification', testEvent);
         logger.info('✅ Test notification also emitted through events');

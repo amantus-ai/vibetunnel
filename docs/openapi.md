@@ -1,8 +1,8 @@
-# OpenAPI Migration Plan for VibeTunnel
+# OpenAPI Migration Plan for ShellOps
 
 ## Overview
 
-This document outlines the plan to adopt OpenAPI 3.1 for VibeTunnel's REST API to achieve type safety and consistency between the TypeScript server and Swift clients.
+This document outlines the plan to adopt OpenAPI 3.1 for ShellOps's REST API to achieve type safety and consistency between the TypeScript server and Swift clients.
 
 ## Goals
 
@@ -38,7 +38,7 @@ Create `web/openapi/openapi.yaml`:
 ```yaml
 openapi: 3.1.0
 info:
-  title: VibeTunnel API
+  title: ShellOps API
   version: 1.0.0
   description: Terminal sharing and remote access API
 servers:

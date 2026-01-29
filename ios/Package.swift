@@ -2,22 +2,22 @@
 import PackageDescription
 
 let package = Package(
-    name: "VibeTunnelDependencies",
+    name: "ShellOpsDependencies",
     platforms: [
         .iOS(.v18),
         .macOS(.v13),
     ],
     products: [
         .library(
-            name: "VibeTunnelDependencies",
-            targets: ["VibeTunnelDependencies"]),
+            name: "ShellOpsDependencies",
+            targets: ["ShellOpsDependencies"]),
     ],
     dependencies: [
         .package(url: "https://github.com/mhdhejazi/Dynamic.git", from: "1.2.0"),
     ],
     targets: [
         .target(
-            name: "VibeTunnelDependencies",
+            name: "ShellOpsDependencies",
             dependencies: [
                 .product(name: "Dynamic", package: "Dynamic"),
             ],

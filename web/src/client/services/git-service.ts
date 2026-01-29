@@ -3,7 +3,7 @@
  *
  * Handles Git-related API calls including repository info, worktrees, and follow mode.
  * This service provides a client-side interface to interact with Git repositories
- * through the VibeTunnel server API.
+ * through the ShellOps server API.
  *
  * ## Main Features
  * - Repository detection and status checking
@@ -114,7 +114,7 @@ export interface WorktreeListResponse {
 
 /**
  * GitService provides client-side methods for interacting with Git repositories
- * through the VibeTunnel API. All methods require authentication via AuthClient.
+ * through the ShellOps API. All methods require authentication via AuthClient.
  *
  * The service handles:
  * - Error logging and propagation
@@ -352,7 +352,7 @@ export class GitService {
    * checkout that branch whenever any of its worktrees perform a checkout operation.
    *
    * This feature uses Git hooks (post-checkout, post-commit) and stores state in
-   * the Git config as `vibetunnel.followWorktree`.
+   * the Git config as `shellops.followWorktree`.
    *
    * **Important behaviors:**
    * - Only one branch can have follow mode enabled at a time

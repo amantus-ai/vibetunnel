@@ -3,7 +3,7 @@
 # =============================================================================
 # =============================================================================
 #
-# This script runs SwiftFormat and SwiftLint on the VibeTunnel iOS codebase
+# This script runs SwiftFormat and SwiftLint on the ShellOps iOS codebase
 # to ensure consistent code style and catch potential issues.
 #
 # USAGE:

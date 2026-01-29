@@ -7,10 +7,10 @@ const logger = createLogger('storage-utils');
  * Storage keys for session creation form
  */
 export const SESSION_FORM_STORAGE_KEYS = {
-  WORKING_DIR: 'vibetunnel_last_working_dir',
-  COMMAND: 'vibetunnel_last_command',
-  SPAWN_WINDOW: 'vibetunnel_spawn_window',
-  TITLE_MODE: 'vibetunnel_title_mode',
+  WORKING_DIR: 'shellops_last_working_dir',
+  COMMAND: 'shellops_last_command',
+  SPAWN_WINDOW: 'shellops_spawn_window',
+  TITLE_MODE: 'shellops_title_mode',
 } as const;
 
 /**

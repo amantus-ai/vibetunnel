@@ -250,7 +250,7 @@ export function createGitRoutes(): Router {
 
         // Get follow worktree setting from main repo
         const { stdout: followWorktreeOutput } = await execGit(
-          ['config', 'vibetunnel.followWorktree'],
+          ['config', 'shellops.followWorktree'],
           {
             cwd: mainRepoPath,
           }
@@ -412,7 +412,7 @@ export function createGitRoutes(): Router {
           logger.info('Branch switched in main repo, disabling follow mode');
 
           try {
-            await execGit(['config', '--local', '--unset', 'vibetunnel.followWorktree'], {
+            await execGit(['config', '--local', '--unset', 'shellops.followWorktree'], {
               cwd: repoPath,
             });
 

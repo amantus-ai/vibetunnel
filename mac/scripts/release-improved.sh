@@ -2,7 +2,7 @@
 #
 # Improved release script with better state tracking and progress indicators
 #
-# This script automates the entire release process for VibeTunnel:
+# This script automates the entire release process for ShellOps:
 # 1. Pre-flight checks
 # 2. Clean build directory
 # 3. Set version
@@ -180,7 +180,7 @@ else
 fi
 
 # Execute steps based on current progress
-echo -e "${BLUE}🚀 VibeTunnel Release Process${NC}"
+echo -e "${BLUE}🚀 ShellOps Release Process${NC}"
 echo "=================================="
 
 # Step 1: Pre-flight check
@@ -237,7 +237,7 @@ fi
 if [[ $(get_current_step) -le 5 ]]; then
     start_step 5 "Sign and notarize"
     
-    APP_PATH="$PROJECT_ROOT/build/Build/Products/Release/VibeTunnel.app"
+    APP_PATH="$PROJECT_ROOT/build/Build/Products/Release/ShellOps.app"
     
     # Sign and notarize with progress tracking
     "$SCRIPT_DIR/sign-and-notarize.sh" "$APP_PATH" &
@@ -254,8 +254,8 @@ fi
 if [[ $(get_current_step) -le 6 ]]; then
     start_step 6 "Create DMG and ZIP"
     
-    DMG_PATH="$PROJECT_ROOT/build/VibeTunnel-$RELEASE_VERSION.dmg"
-    ZIP_PATH="$PROJECT_ROOT/build/VibeTunnel-$RELEASE_VERSION.zip"
+    DMG_PATH="$PROJECT_ROOT/build/ShellOps-$RELEASE_VERSION.dmg"
+    ZIP_PATH="$PROJECT_ROOT/build/ShellOps-$RELEASE_VERSION.zip"
     
     # Create DMG
     "$SCRIPT_DIR/create-dmg.sh" "$APP_PATH" || fail_step 6 "Create DMG" "DMG creation failed"
@@ -279,7 +279,7 @@ if [[ $(get_current_step) -le 7 ]]; then
     
     # Create GitHub release
     gh release create "$TAG_NAME" \
-        --title "VibeTunnel $RELEASE_VERSION" \
+        --title "ShellOps $RELEASE_VERSION" \
         --notes "$RELEASE_NOTES" \
         $([[ "$RELEASE_TYPE" != "stable" ]] && echo "--prerelease") \
         "$DMG_PATH" \
@@ -293,8 +293,8 @@ if [[ $(get_current_step) -le 8 ]]; then
     start_step 8 "Update appcast"
     
     # Sign DMG for Sparkle
-    export SPARKLE_ACCOUNT="VibeTunnel"
-    SPARKLE_SIG=$(sign_update -f "$PROJECT_ROOT/private/sparkle_ed_private_key" "$DMG_PATH" --account VibeTunnel | grep -o 'sparkle:edSignature="[^"]*"' | cut -d'"' -f2)
+    export SPARKLE_ACCOUNT="ShellOps"
+    SPARKLE_SIG=$(sign_update -f "$PROJECT_ROOT/private/sparkle_ed_private_key" "$DMG_PATH" --account ShellOps | grep -o 'sparkle:edSignature="[^"]*"' | cut -d'"' -f2)
     
     if [[ -z "$SPARKLE_SIG" ]]; then
         fail_step 8 "Update appcast" "Failed to sign DMG for Sparkle"
@@ -328,7 +328,7 @@ echo ""
 echo -e "${GREEN}🎉 Release $RELEASE_VERSION completed successfully!${NC}"
 echo ""
 echo "Release artifacts:"
-echo "  - GitHub: https://github.com/amantus-ai/vibetunnel/releases/tag/$TAG_NAME"
+echo "  - GitHub: https://github.com/amantus-ai/shellops/releases/tag/$TAG_NAME"
 echo "  - DMG: $DMG_PATH"
 echo "  - ZIP: $ZIP_PATH"
 echo ""

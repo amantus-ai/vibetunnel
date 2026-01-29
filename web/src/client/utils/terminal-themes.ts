@@ -17,7 +17,7 @@ export const TERMINAL_THEMES: TerminalTheme[] = [
   {
     id: 'dark',
     name: 'Dark',
-    description: 'VibeTunnel default dark',
+    description: 'ShellOps default dark',
     colors: {
       background: '#000000',
       foreground: '#d4d4d4',

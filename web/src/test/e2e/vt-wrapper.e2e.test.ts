@@ -35,11 +35,11 @@ const itWithGit = hasGit ? it : it.skip;
 
 function resolveForwarderPath(): string {
   const candidates: string[] = [];
-  if (process.env.VIBETUNNEL_FWD_BIN) {
-    candidates.push(process.env.VIBETUNNEL_FWD_BIN);
+  if (process.env.SHELLOPS_FWD_BIN) {
+    candidates.push(process.env.SHELLOPS_FWD_BIN);
   }
-  candidates.push(path.join(process.cwd(), 'native', 'vibetunnel-fwd'));
-  candidates.push(path.join(process.cwd(), 'bin', 'vibetunnel-fwd'));
+  candidates.push(path.join(process.cwd(), 'native', 'shellops-fwd'));
+  candidates.push(path.join(process.cwd(), 'bin', 'shellops-fwd'));
 
   for (const candidate of candidates) {
     if (candidate && existsSync(candidate)) {
@@ -49,7 +49,7 @@ function resolveForwarderPath(): string {
   }
 
   throw new Error(
-    `vibetunnel-fwd not found. Run: node scripts/build-fwd-zig.js (cwd: ${process.cwd()})`
+    `shellops-fwd not found. Run: node scripts/build-fwd-zig.js (cwd: ${process.cwd()})`
   );
 }
 
@@ -57,10 +57,10 @@ function createShortHomeDir(): string {
   return mkdtempSync(path.join('/tmp', 'vth-'));
 }
 
-function createVibetunnelCliWrapper(homeDir: string): string {
+function createShellopsCliWrapper(homeDir: string): string {
   const cliPath = path.join(process.cwd(), 'src', 'cli.ts');
   const wrapperDir = path.join(homeDir, 'bin');
-  const wrapperPath = path.join(wrapperDir, 'vibetunnel');
+  const wrapperPath = path.join(wrapperDir, 'shellops');
 
   mkdirSync(wrapperDir, { recursive: true });
   writeFileSync(wrapperPath, `#!/usr/bin/env bash\nexec tsx "${cliPath}" "$@"\n`, 'utf-8');
@@ -159,16 +159,16 @@ describe('vt wrapper flows', () => {
   let server: ServerInstance | null = null;
   let homeDir = '';
   let controlDir = '';
-  let vibetunnelBin = '';
+  let shellopsBin = '';
 
   beforeAll(async () => {
     homeDir = createShortHomeDir();
-    controlDir = path.join(homeDir, '.vibetunnel', 'control');
-    vibetunnelBin = createVibetunnelCliWrapper(homeDir);
+    controlDir = path.join(homeDir, '.shellops', 'control');
+    shellopsBin = createShellopsCliWrapper(homeDir);
 
     server = await startTestServer({
       args: ['--port', '0', '--no-auth'],
-      env: { VIBETUNNEL_CONTROL_DIR: controlDir },
+      env: { SHELLOPS_CONTROL_DIR: controlDir },
       waitForHealth: true,
     });
 
@@ -184,7 +184,7 @@ describe('vt wrapper flows', () => {
     }
   });
 
-  it('runs via vibetunnel fwd wrapper (tsx cli.ts)', async () => {
+  it('runs via shellops fwd wrapper (tsx cli.ts)', async () => {
     const forwarderPath = resolveForwarderPath();
     const sessionId = `fwd_${Date.now()}`;
     const marker = `cli-fwd-ok-${Date.now()}`;
@@ -202,8 +202,8 @@ describe('vt wrapper flows', () => {
         env: {
           ...process.env,
           HOME: homeDir,
-          VIBETUNNEL_CONTROL_DIR: controlDir,
-          VIBETUNNEL_FWD_BIN: forwarderPath,
+          SHELLOPS_CONTROL_DIR: controlDir,
+          SHELLOPS_FWD_BIN: forwarderPath,
         },
         stdio: 'ignore',
       }
@@ -218,7 +218,7 @@ describe('vt wrapper flows', () => {
       child.on('exit', (code, signal) => {
         if (code !== 0) {
           exitError = new Error(
-            `vibetunnel fwd exited with code ${code ?? 'null'} signal ${signal ?? 'null'}`
+            `shellops fwd exited with code ${code ?? 'null'} signal ${signal ?? 'null'}`
           );
         }
         resolve();
@@ -249,7 +249,7 @@ describe('vt wrapper flows', () => {
       env: {
         ...process.env,
         HOME: homeDir,
-        VIBETUNNEL_CONTROL_DIR: controlDir,
+        SHELLOPS_CONTROL_DIR: controlDir,
       },
       stdio: 'ignore',
     });
@@ -283,10 +283,10 @@ describe('vt wrapper flows', () => {
       env: {
         ...process.env,
         HOME: homeDir,
-        VIBETUNNEL_CONTROL_DIR: controlDir,
-        VIBETUNNEL_SESSION_ID: sessionId,
-        VIBETUNNEL_FWD_BIN: forwarderPath,
-        VIBETUNNEL_BIN: vibetunnelBin,
+        SHELLOPS_CONTROL_DIR: controlDir,
+        SHELLOPS_SESSION_ID: sessionId,
+        SHELLOPS_FWD_BIN: forwarderPath,
+        SHELLOPS_BIN: shellopsBin,
       },
       stdio: 'ignore',
     });
@@ -339,9 +339,9 @@ describe('vt wrapper flows', () => {
       env: {
         ...process.env,
         HOME: homeDir,
-        VIBETUNNEL_CONTROL_DIR: controlDir,
-        VIBETUNNEL_FWD_BIN: forwarderPath,
-        VIBETUNNEL_BIN: vibetunnelBin,
+        SHELLOPS_CONTROL_DIR: controlDir,
+        SHELLOPS_FWD_BIN: forwarderPath,
+        SHELLOPS_BIN: shellopsBin,
       },
       stdio: 'ignore',
     });
@@ -370,9 +370,9 @@ describe('vt wrapper flows', () => {
       env: {
         ...process.env,
         HOME: homeDir,
-        VIBETUNNEL_CONTROL_DIR: controlDir,
-        VIBETUNNEL_BIN: vibetunnelBin,
-        VIBETUNNEL_SESSION_ID: 'already-in-session',
+        SHELLOPS_CONTROL_DIR: controlDir,
+        SHELLOPS_BIN: shellopsBin,
+        SHELLOPS_SESSION_ID: 'already-in-session',
       },
       stdio: ['ignore', 'ignore', 'pipe'],
     });
@@ -388,7 +388,7 @@ describe('vt wrapper flows', () => {
     });
 
     expect(code).not.toBe(0);
-    expect(stderr.join('')).toContain('Recursive VibeTunnel sessions are not supported');
+    expect(stderr.join('')).toContain('Recursive ShellOps sessions are not supported');
   });
 
   itWithGit(
@@ -401,7 +401,7 @@ describe('vt wrapper flows', () => {
 
       runGit(repoDir, ['init']);
       runGit(repoDir, ['config', 'user.email', 'test@example.com']);
-      runGit(repoDir, ['config', 'user.name', 'VibeTunnel Test']);
+      runGit(repoDir, ['config', 'user.name', 'ShellOps Test']);
       writeFileSync(path.join(repoDir, 'README.md'), `test-${Date.now()}\n`, 'utf-8');
       runGit(repoDir, ['add', 'README.md']);
       runGit(repoDir, ['commit', '-m', 'init']);
@@ -415,37 +415,37 @@ describe('vt wrapper flows', () => {
         env: {
           ...process.env,
           HOME: homeDir,
-          VIBETUNNEL_CONTROL_DIR: controlDir,
-          VIBETUNNEL_BIN: vibetunnelBin,
+          SHELLOPS_CONTROL_DIR: controlDir,
+          SHELLOPS_BIN: shellopsBin,
         },
         encoding: 'utf-8',
       });
       expect(follow.status).toBe(0);
 
-      const followWorktree = runGit(repoDir, ['config', '--local', 'vibetunnel.followWorktree']);
+      const followWorktree = runGit(repoDir, ['config', '--local', 'shellops.followWorktree']);
       expect(followWorktree.code).toBe(0);
       expect(realpathSync(followWorktree.stdout.trim())).toBe(realpathSync(worktreeDir));
 
       const hooksDir = path.join(repoDir, '.hooks');
       const postCommit = readFileSync(path.join(hooksDir, 'post-commit'), 'utf-8');
       const postCheckout = readFileSync(path.join(hooksDir, 'post-checkout'), 'utf-8');
-      expect(postCommit).toContain('VibeTunnel Git hook');
-      expect(postCheckout).toContain('VibeTunnel Git hook');
+      expect(postCommit).toContain('ShellOps Git hook');
+      expect(postCheckout).toContain('ShellOps Git hook');
 
       const unfollow = spawnSync(vtPath, ['unfollow'], {
         cwd: repoDir,
         env: {
           ...process.env,
           HOME: homeDir,
-          VIBETUNNEL_CONTROL_DIR: controlDir,
-          VIBETUNNEL_BIN: vibetunnelBin,
+          SHELLOPS_CONTROL_DIR: controlDir,
+          SHELLOPS_BIN: shellopsBin,
         },
         encoding: 'utf-8',
       });
       expect(unfollow.status).toBe(0);
       expect(unfollow.stdout).toContain('Disabled follow mode');
 
-      const followAfter = runGit(repoDir, ['config', '--local', 'vibetunnel.followWorktree']);
+      const followAfter = runGit(repoDir, ['config', '--local', 'shellops.followWorktree']);
       expect(followAfter.code).not.toBe(0);
 
       expect(existsSync(path.join(hooksDir, 'post-commit'))).toBe(false);

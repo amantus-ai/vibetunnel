@@ -1,10 +1,10 @@
-# Publishing VibeTunnel to npm
+# Publishing ShellOps to npm
 
-This guide helps the repository owner publish VibeTunnel to npm as a standalone package.
+This guide helps the repository owner publish ShellOps to npm as a standalone package.
 
 ## Prerequisites
 
-1. **npm account** with publish access to `vibetunnel`
+1. **npm account** with publish access to `shellops`
 2. **Node.js 22+** installed
 3. **Docker** installed (for Linux builds)
 
@@ -39,19 +39,19 @@ pnpm run build:npm
 # Test the package locally before publishing
 cd dist-npm/
 npm pack
-npm install -g vibetunnel-*.tgz
+npm install -g shellops-*.tgz
 
 # Test basic functionality
-vibetunnel --version
-vibetunnel --help
-vibetunnel --no-auth  # Test server starts
+shellops --version
+shellops --help
+shellops --no-auth  # Test server starts
 
 # Test with ngrok
-vibetunnel --no-auth --ngrok
+shellops --no-auth --ngrok
 
 # Cleanup
-npm uninstall -g vibetunnel
-rm vibetunnel-*.tgz
+npm uninstall -g shellops
+rm shellops-*.tgz
 cd ..
 ```
 
@@ -75,23 +75,23 @@ npm publish
 
 ```bash
 # Check it's published
-npm view vibetunnel
+npm view shellops
 
 # Test installation
-npx vibetunnel --version
+npx shellops --version
 
 # Test in a fresh directory
 cd /tmp
-npx vibetunnel --no-auth
+npx shellops --no-auth
 ```
 
 ## Package Configuration
 
 The package is configured with:
 
-- **Name**: `vibetunnel` (unscoped)
+- **Name**: `shellops` (unscoped)
 - **Main**: `lib/cli.js` (entry point)
-- **Bin**: `vibetunnel` command
+- **Bin**: `shellops` command
 - **Platforms**: macOS (x64, arm64) and Linux (x64, arm64)
 - **Node**: Requires Node.js 22+
 
@@ -100,7 +100,7 @@ The package is configured with:
 The npm package includes:
 - ✅ Compiled JavaScript (`lib/`)
 - ✅ Web UI files (`public/`)
-- ✅ CLI binary (`bin/vibetunnel`)
+- ✅ CLI binary (`bin/shellops`)
 - ✅ Prebuilt native binaries (`prebuilds/`)
 - ✅ README files (README.md, README.npm.md, README.standalone.md)
 - ✅ Dockerfile for containerization
@@ -164,7 +164,7 @@ npm version patch  # or minor/major
 
 After successful publication:
 
-1. **Test with npx**: `npx vibetunnel --version`
+1. **Test with npx**: `npx shellops --version`
 2. **Update documentation**: Add npm badge to main README
 3. **Create GitHub release**: Tag the version
 4. **Announce**: Twitter, Discord, etc.
@@ -199,5 +199,5 @@ jobs:
 
 For issues with publishing, check:
 - [npm documentation](https://docs.npmjs.com/cli/v10/commands/npm-publish)
-- [GitHub issues](https://github.com/amantus-ai/vibetunnel/issues)
+- [GitHub issues](https://github.com/amantus-ai/shellops/issues)
 - npm support: support@npmjs.com

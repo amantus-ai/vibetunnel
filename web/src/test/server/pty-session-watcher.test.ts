@@ -36,7 +36,7 @@ describe('PTY Session.json Watcher', () => {
     testSessionIds = [];
 
     // NEVER call ptyManager.shutdown() as it would kill ALL sessions
-    // including the VibeTunnel session running Claude Code
+    // including the ShellOps session running Claude Code
 
     // Clean up control directory
     try {

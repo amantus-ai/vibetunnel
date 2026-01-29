@@ -7,7 +7,7 @@ This is a vendored fork of [node-pty](https://github.com/microsoft/node-pty) v1.
 The original node-pty uses a shared pipe/socket architecture through `ConoutSocketWorker` that causes issues when used heavily:
 - All PTY instances write to the same shared pipe
 - This can overwhelm other Electron processes (like VS Code) that are also listening on the pipe
-- Heavy usage from VibeTunnel causes crashes in other applications
+- Heavy usage from ShellOps causes crashes in other applications
 
 ## What's Changed?
 

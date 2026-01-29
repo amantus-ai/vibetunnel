@@ -124,7 +124,7 @@ async def main():
     "dev": "vite"
   },
   "keywords": ["monaco", "editor", "test"],
-  "author": "VibeTunnel Team",
+  "author": "ShellOps Team",
   "license": "MIT"
 }`,
   };

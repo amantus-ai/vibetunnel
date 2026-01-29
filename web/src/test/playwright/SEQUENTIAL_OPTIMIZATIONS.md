@@ -1,11 +1,11 @@
 # Playwright Sequential Test Optimizations
 
-This document outlines the optimizations made for VibeTunnel's Playwright tests, designed to work efficiently with the single-server, system-wide session architecture.
+This document outlines the optimizations made for ShellOps's Playwright tests, designed to work efficiently with the single-server, system-wide session architecture.
 
 ## Architecture Constraints
 
-VibeTunnel's architecture requires sequential test execution because:
-- Sessions are stored system-wide in `~/.vibetunnel/control/`
+ShellOps's architecture requires sequential test execution because:
+- Sessions are stored system-wide in `~/.shellops/control/`
 - Server maintains shared in-memory state for all sessions
 - PTY processes and Unix sockets can conflict between parallel tests
 - No session isolation or namespacing mechanism exists

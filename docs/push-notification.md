@@ -1,6 +1,6 @@
-# Push Notifications in VibeTunnel
+# Push Notifications in ShellOps
 
-VibeTunnel provides real-time alerts for terminal events via native macOS notifications and web push notifications. The system is primarily driven by the **Session Monitor**, which tracks terminal activity and triggers alerts.
+ShellOps provides real-time alerts for terminal events via native macOS notifications and web push notifications. The system is primarily driven by the **Session Monitor**, which tracks terminal activity and triggers alerts.
 
 ## How It Works
 
@@ -8,7 +8,7 @@ The **Session Monitor** is the core of the notification system. It observes term
 
 ### Notification Settings Explained
 
-When you enable notifications in VibeTunnel, you can choose which events to be notified about:
+When you enable notifications in ShellOps, you can choose which events to be notified about:
 
 #### 1. Session starts ✓
 - **Notification**: "Session Started" with the session name
@@ -43,7 +43,7 @@ When you enable notifications in VibeTunnel, you can choose which events to be n
 
 ### System Overview
 
-The notification system in VibeTunnel follows a layered architecture:
+The notification system in ShellOps follows a layered architecture:
 
 ```
 Terminal Events → Session Monitor → Event Processing → Notification Service → OS/Browser
@@ -100,14 +100,14 @@ Terminal Events → Session Monitor → Event Processing → Notification Servic
 
 ## Native macOS Notifications
 
-The VibeTunnel macOS app provides the most reliable and feature-rich notification experience.
+The ShellOps macOS app provides the most reliable and feature-rich notification experience.
 
-- **Enable**: Go to `VibeTunnel Settings > General` and toggle **Show Session Notifications**.
+- **Enable**: Go to `ShellOps Settings > General` and toggle **Show Session Notifications**.
 - **Features**: Uses the native `UserNotifications` framework, respects Focus Modes, and works in the background.
 
 ## Web Push Notifications
 
-For non-macOS clients or remote access, VibeTunnel supports web push notifications.
+For non-macOS clients or remote access, ShellOps supports web push notifications.
 
 - **Enable**: Click the notification icon in the web UI and grant browser permission.
 - **Technology**: Uses Service Workers and the Web Push API.
@@ -122,14 +122,14 @@ For non-macOS clients or remote access, VibeTunnel supports web push notificatio
 
 ### Enabling HTTPS for Remote Access
 
-If you need web push notifications when accessing VibeTunnel remotely, you'll need to serve it over HTTPS. Here are some solutions:
+If you need web push notifications when accessing ShellOps remotely, you'll need to serve it over HTTPS. Here are some solutions:
 
 #### Tailscale Serve (Recommended)
 [Tailscale Serve](https://tailscale.com/kb/1242/tailscale-serve) is an excellent solution for automatically creating HTTPS connections within your network:
 
 ```bash
 # Install Tailscale and connect to your network
-# Then expose VibeTunnel with HTTPS:
+# Then expose ShellOps with HTTPS:
 tailscale serve https / http://localhost:4020
 ```
 
@@ -146,8 +146,8 @@ Benefits:
 
 ## Troubleshooting
 
-- **No Notifications**: Ensure they are enabled in both VibeTunnel settings and your OS/browser settings.
-- **Duplicate Notifications**: You can clear old or duplicate subscriptions by deleting `~/.vibetunnel/notifications/subscriptions.json`.
+- **No Notifications**: Ensure they are enabled in both ShellOps settings and your OS/browser settings.
+- **Duplicate Notifications**: You can clear old or duplicate subscriptions by deleting `~/.shellops/notifications/subscriptions.json`.
 - **Claude Notifications**: If Claude's "Your Turn" notifications aren't working, you can try forcing it to use the terminal bell:
   ```bash
   claude config set --global preferredNotifChannel terminal_bell

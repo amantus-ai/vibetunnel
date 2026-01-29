@@ -114,16 +114,16 @@ export function createAuthResult(options: CreateAuthResultOptions = {}): CreateA
 }
 
 /**
- * Creates localStorage data for vibe-tunnel
+ * Creates localStorage data for shell-ops
  */
 export function createLocalStorageData(commands: string[] = []): Record<string, string> {
   const defaultCommands =
     commands.length > 0 ? commands : ['npm run dev', 'git status', 'pnpm test'];
 
   return {
-    'vibe-tunnel-commands': JSON.stringify(defaultCommands),
-    'vibe-tunnel-token': 'test-auth-token',
-    'vibe-tunnel-user': 'testuser',
+    'shell-ops-commands': JSON.stringify(defaultCommands),
+    'shell-ops-token': 'test-auth-token',
+    'shell-ops-user': 'testuser',
   };
 }
 

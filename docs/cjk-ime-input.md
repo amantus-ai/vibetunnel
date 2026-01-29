@@ -1,8 +1,8 @@
-# VibeTunnel CJK IME Input Implementation
+# ShellOps CJK IME Input Implementation
 
 ## Overview
 
-VibeTunnel provides comprehensive Chinese, Japanese, and Korean (CJK) Input Method Editor (IME) support across both desktop and mobile platforms. The implementation uses platform-specific approaches to ensure optimal user experience:
+ShellOps provides comprehensive Chinese, Japanese, and Korean (CJK) Input Method Editor (IME) support across both desktop and mobile platforms. The implementation uses platform-specific approaches to ensure optimal user experience:
 
 - **Desktop**: Invisible input element with native browser IME integration
 - **Mobile**: Native virtual keyboard with direct input handling
@@ -77,7 +77,7 @@ The function includes comprehensive error handling and graceful fallbacks:
 ### Platform Detection
 **File**: `mobile-utils.ts`
 
-VibeTunnel automatically detects the platform and chooses the appropriate IME strategy:
+ShellOps automatically detects the platform and chooses the appropriate IME strategy:
 ```typescript
 export function detectMobile(): boolean {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -384,5 +384,5 @@ Comprehensive logging available in browser console:
 
 **Status**: ✅ Production Ready  
 **Platforms**: Desktop (Windows, macOS, Linux) and Mobile (iOS, Android)  
-**Version**: VibeTunnel Web v1.0.0-beta.16+  
+**Version**: ShellOps Web v1.0.0-beta.16+  
 **Last Updated**: 2025-12-19

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "Simple test of VibeTunnel npm package beta 15"
+echo "Simple test of ShellOps npm package beta 15"
 echo "============================================="
 
 # Create a temporary directory
@@ -11,32 +11,32 @@ cd "$TEMP_DIR"
 echo "Working in: $TEMP_DIR"
 
 # Initialize npm project
-echo '{"name": "test-vibetunnel", "version": "1.0.0"}' > package.json
+echo '{"name": "test-shellops", "version": "1.0.0"}' > package.json
 
-# Install VibeTunnel beta 15
-echo -e "\nInstalling vibetunnel@1.0.0-beta.15..."
-npm install vibetunnel@1.0.0-beta.15 --ignore-scripts --no-save 2>&1 | tail -20
+# Install ShellOps beta 15
+echo -e "\nInstalling shellops@1.0.0-beta.15..."
+npm install shellops@1.0.0-beta.15 --ignore-scripts --no-save 2>&1 | tail -20
 
 # Check what was installed
 echo -e "\nChecking installed package..."
 echo "Package version:"
-node -e "console.log(require('./node_modules/vibetunnel/package.json').version)"
+node -e "console.log(require('./node_modules/shellops/package.json').version)"
 
 echo -e "\nPackage files:"
-ls -la node_modules/vibetunnel/ | head -20
+ls -la node_modules/shellops/ | head -20
 
 echo -e "\nBinary file:"
-if [ -f "node_modules/vibetunnel/bin/vibetunnel" ]; then
-  echo "✅ Binary exists at node_modules/vibetunnel/bin/vibetunnel"
-  head -5 node_modules/vibetunnel/bin/vibetunnel
+if [ -f "node_modules/shellops/bin/shellops" ]; then
+  echo "✅ Binary exists at node_modules/shellops/bin/shellops"
+  head -5 node_modules/shellops/bin/shellops
 else
   echo "❌ Binary not found"
 fi
 
 echo -e "\nDist directory:"
-if [ -d "node_modules/vibetunnel/dist" ]; then
+if [ -d "node_modules/shellops/dist" ]; then
   echo "✅ Dist directory exists"
-  ls node_modules/vibetunnel/dist/
+  ls node_modules/shellops/dist/
 else
   echo "❌ Dist directory not found"
 fi

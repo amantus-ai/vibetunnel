@@ -3,9 +3,9 @@
 ## Installation
 
 ### Download & Install
-1. Download VibeTunnel.dmg from [Releases](https://github.com/steipete/vibetunnel/releases)
-2. Open DMG and drag VibeTunnel to Applications
-3. Launch VibeTunnel from Applications
+1. Download ShellOps.dmg from [Releases](https://github.com/steipete/shellops/releases)
+2. Open DMG and drag ShellOps to Applications
+3. Launch ShellOps from Applications
 4. Grant accessibility permissions when prompted
 
 ### First Terminal
@@ -37,7 +37,7 @@ The browser opens automatically at `http://localhost:4020`
 
 ### Settings Location
 ```
-~/Library/Preferences/com.steipete.VibeTunnel.plist
+~/Library/Preferences/com.steipete.ShellOps.plist
 ```
 
 ### Key Settings
@@ -50,7 +50,7 @@ The browser opens automatically at `http://localhost:4020`
 | Auto-start | Disabled | Enable at login |
 
 ### Enable LAN Access
-1. Click VibeTunnel menu bar icon
+1. Click ShellOps menu bar icon
 2. Select Preferences
 3. Toggle "Allow LAN Connections"
 4. Set password for security
@@ -59,7 +59,7 @@ The browser opens automatically at `http://localhost:4020`
 
 ### Using Development Server
 ```bash
-# Enable in VibeTunnel settings
+# Enable in ShellOps settings
 Settings → Debug → Use Development Server
 
 # Or run manually
@@ -77,7 +77,7 @@ Benefits:
 
 ### Monitor AI Agents
 ```bash
-# Start Claude Code in VibeTunnel
+# Start Claude Code in ShellOps
 vt --name "Claude Code"
 claude
 
@@ -133,9 +133,9 @@ lsof -i :4020
 # Kill existing process
 killall node
 
-# Restart VibeTunnel
-osascript -e 'quit app "VibeTunnel"'
-open -a VibeTunnel
+# Restart ShellOps
+osascript -e 'quit app "ShellOps"'
+open -a ShellOps
 ```
 
 ### Can't Connect
@@ -150,13 +150,13 @@ curl http://localhost:4020/api/health
 ### Permission Issues
 1. System Preferences → Security & Privacy
 2. Privacy → Accessibility
-3. Add VibeTunnel.app
-4. Restart VibeTunnel
+3. Add ShellOps.app
+4. Restart ShellOps
 
 ## Next Steps
 
 - [Development Setup](development.md) - Build from source
-- [API Reference](../core/api-reference.md) - Integrate with VibeTunnel
+- [API Reference](../core/api-reference.md) - Integrate with ShellOps
 - [iOS App Setup](../platform/ios.md) - Mobile access
 - [Security Guide](../features/authentication.md) - Secure your sessions
 
@@ -166,4 +166,4 @@ curl http://localhost:4020/api/health
 2. **Custom port**: Set `VT_PORT=8080` environment variable
 3. **Debug mode**: Hold Option while clicking menu bar icon
 4. **Force quit session**: `vt kill --force <id>`
-5. **Export recordings**: Sessions saved in `~/.vibetunnel/recordings/`
+5. **Export recordings**: Sessions saved in `~/.shellops/recordings/`

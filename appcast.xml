@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
     <channel>
-        <title>VibeTunnel Updates</title>
-        <link>https://github.com/amantus-ai/vibetunnel</link>
-        <description>VibeTunnel automatic updates feed</description>
+        <title>ShellOps Updates</title>
+        <link>https://github.com/amantus-ai/shellops</link>
+        <description>ShellOps automatic updates feed</description>
         <language>en</language>
     </channel>
 </rss>

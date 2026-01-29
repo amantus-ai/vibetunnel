@@ -45,7 +45,7 @@ export class BasePage {
     });
 
     // Wait for app to attach
-    await this.page.waitForSelector('vibetunnel-app', {
+    await this.page.waitForSelector('shellops-app', {
       state: 'attached',
       timeout: process.env.CI ? 10000 : 5000,
     });
@@ -53,7 +53,7 @@ export class BasePage {
 
   async waitForLoadComplete() {
     // Wait for the main app to be loaded
-    await this.page.waitForSelector('vibetunnel-app', {
+    await this.page.waitForSelector('shellops-app', {
       state: 'attached',
       timeout: process.env.CI ? 10000 : 5000,
     });

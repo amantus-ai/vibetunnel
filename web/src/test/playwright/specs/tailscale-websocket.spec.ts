@@ -155,7 +155,7 @@ test.describe('Tailscale WebSocket Authentication', () => {
 
     // Verify token is in localStorage
     const storedToken = await page.evaluate(() => {
-      return localStorage.getItem('vibetunnel_auth_token');
+      return localStorage.getItem('shellops_auth_token');
     });
 
     expect(storedToken).toBe('mock-tailscale-jwt-token-for-websocket-auth');
@@ -207,7 +207,7 @@ test.describe('Tailscale WebSocket Authentication', () => {
 
     // Verify no token is stored
     const storedToken = await page.evaluate(() => {
-      return localStorage.getItem('vibetunnel_auth_token');
+      return localStorage.getItem('shellops_auth_token');
     });
 
     expect(storedToken).toBeNull();
@@ -244,7 +244,7 @@ test.describe('Tailscale WebSocket Authentication', () => {
   test('should work with existing token in localStorage', async ({ page }) => {
     // Pre-populate localStorage with a token
     await page.addInitScript(() => {
-      localStorage.setItem('vibetunnel_auth_token', 'existing-token-123');
+      localStorage.setItem('shellops_auth_token', 'existing-token-123');
     });
 
     // Navigate to the app
@@ -263,7 +263,7 @@ test.describe('Tailscale WebSocket Authentication', () => {
 
     // Verify token was updated
     const storedToken = await page.evaluate(() => {
-      return localStorage.getItem('vibetunnel_auth_token');
+      return localStorage.getItem('shellops_auth_token');
     });
 
     expect(storedToken).toBe('mock-tailscale-jwt-token-for-websocket-auth');

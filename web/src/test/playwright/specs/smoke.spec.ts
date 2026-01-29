@@ -20,7 +20,7 @@ test.describe('Smoke Tests', () => {
     await page.goto('/');
 
     // Wait for the app to load (check for the actual app element)
-    await expect(page.locator('vibe-tunnel-app, app-root, body')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('shell-ops-app, app-root, body')).toBeVisible({ timeout: 5000 });
 
     // Check that basic elements are present
     await expect(page.locator('session-list')).toBeVisible({ timeout: 3000 });

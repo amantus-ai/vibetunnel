@@ -29,7 +29,7 @@ export class FullHeader extends HeaderBase {
             <terminal-icon size="24" class="flex-shrink-0"></terminal-icon>
             <div class="flex items-baseline gap-2 min-w-0">
               <h1 class="text-sm sm:text-xl font-bold text-primary font-mono group-hover:underline truncate">
-                <span class="hidden sm:inline">VibeTunnel</span>
+                <span class="hidden sm:inline">ShellOps</span>
                 <span class="sm:hidden">VT</span>
               </h1>
               <p class="text-text-muted text-xs font-mono flex-shrink-0">

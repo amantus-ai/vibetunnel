@@ -1,6 +1,6 @@
 # NPM Release Checklist
 
-This checklist ensures a smooth and error-free npm release process for VibeTunnel.
+This checklist ensures a smooth and error-free npm release process for ShellOps.
 
 ## Pre-Release Checklist
 
@@ -20,8 +20,8 @@ This checklist ensures a smooth and error-free npm release process for VibeTunne
 ### 3. Version Updates (CRITICAL - Must be synchronized!)
 - [ ] Update version in `web/package.json`
 - [ ] Update version in `web/package.npm.json` (must match!)
-- [ ] Update version in `mac/VibeTunnel/version.xcconfig` (MARKETING_VERSION)
-- [ ] Update version in `ios/VibeTunnel/version.xcconfig` (if applicable)
+- [ ] Update version in `mac/ShellOps/version.xcconfig` (MARKETING_VERSION)
+- [ ] Update version in `ios/ShellOps/version.xcconfig` (if applicable)
 - [ ] Ensure all versions match exactly
 
 ### 4. Changelog
@@ -32,14 +32,14 @@ This checklist ensures a smooth and error-free npm release process for VibeTunne
 ## Build Process
 
 ### 5. Clean Build
-- [ ] Clean previous builds: `rm -rf dist-npm/ vibetunnel-*.tgz`
+- [ ] Clean previous builds: `rm -rf dist-npm/ shellops-*.tgz`
 - [ ] Run build: `pnpm run build:npm`
 - [ ] Verify build output shows all platforms built successfully
 - [ ] Check for "✅ authenticate-pam listed as optional dependency" in output
 
 ### 6. Package Verification (CRITICAL)
-- [ ] Verify tarball exists: `ls -la vibetunnel-*.tgz`
-- [ ] Extract package.json: `tar -xf vibetunnel-*.tgz package/package.json`
+- [ ] Verify tarball exists: `ls -la shellops-*.tgz`
+- [ ] Extract package.json: `tar -xf shellops-*.tgz package/package.json`
 - [ ] Verify authenticate-pam is OPTIONAL:
   ```bash
   grep -A5 -B5 authenticate-pam package/package.json
@@ -49,11 +49,11 @@ This checklist ensures a smooth and error-free npm release process for VibeTunne
 - [ ] Check package size is reasonable (~8-15 MB)
 
 ### 7. Package Contents Verification
-- [ ] List package contents: `tar -tzf vibetunnel-*.tgz | head -50`
+- [ ] List package contents: `tar -tzf shellops-*.tgz | head -50`
 - [ ] Verify critical files are included:
-  - [ ] `package/lib/vibetunnel-cli`
+  - [ ] `package/lib/shellops-cli`
   - [ ] `package/lib/cli.js`
-  - [ ] `package/bin/vibetunnel`
+  - [ ] `package/bin/shellops`
   - [ ] `package/bin/vt`
   - [ ] `package/scripts/postinstall.js`
   - [ ] `package/scripts/install-vt-command.js`
@@ -64,20 +64,20 @@ This checklist ensures a smooth and error-free npm release process for VibeTunne
 ## Testing
 
 ### 8. Local Installation Test
-- [ ] Test installation: `npm install -g ./vibetunnel-*.tgz`
-- [ ] Verify version: `vibetunnel --version`
-- [ ] Start server: `vibetunnel`
+- [ ] Test installation: `npm install -g ./shellops-*.tgz`
+- [ ] Verify version: `shellops --version`
+- [ ] Start server: `shellops`
 - [ ] Access web UI: http://localhost:4020
 - [ ] Test vt command: `vt echo "test"`
-- [ ] Uninstall: `npm uninstall -g vibetunnel`
+- [ ] Uninstall: `npm uninstall -g shellops`
 
 ### 9. Docker Test (Linux Compatibility)
 - [ ] Create test Dockerfile:
   ```dockerfile
   FROM node:22-slim
-  COPY vibetunnel-*.tgz /tmp/
-  RUN npm install -g /tmp/vibetunnel-*.tgz
-  CMD ["vibetunnel", "--version"]
+  COPY shellops-*.tgz /tmp/
+  RUN npm install -g /tmp/shellops-*.tgz
+  CMD ["shellops", "--version"]
   ```
 - [ ] Build: `docker build -t vt-test .`
 - [ ] Run: `docker run --rm vt-test`
@@ -94,14 +94,14 @@ This checklist ensures a smooth and error-free npm release process for VibeTunne
 
 ### 11. Pre-Publish Checks
 - [ ] Ensure you're logged in to npm: `npm whoami`
-- [ ] Check current tags: `npm dist-tag ls vibetunnel`
+- [ ] Check current tags: `npm dist-tag ls shellops`
 - [ ] Verify no uncommitted changes: `git status`
 - [ ] Create git tag: `git tag v1.0.0-beta.X`
 
 ### 12. Publish (CRITICAL - Use tarball filename!)
-- [ ] Publish beta: `npm publish vibetunnel-*.tgz --tag beta`
-- [ ] Verify on npm: https://www.npmjs.com/package/vibetunnel
-- [ ] Test installation from npm: `npm install -g vibetunnel@beta`
+- [ ] Publish beta: `npm publish shellops-*.tgz --tag beta`
+- [ ] Verify on npm: https://www.npmjs.com/package/shellops
+- [ ] Test installation from npm: `npm install -g shellops@beta`
 
 ### 13. Post-Publish Verification
 - [ ] Check package page shows correct version
@@ -111,7 +111,7 @@ This checklist ensures a smooth and error-free npm release process for VibeTunne
 
 ### 14. Promotion to Latest (if stable)
 - [ ] Wait for user feedback (at least 24 hours)
-- [ ] If stable, promote: `npm dist-tag add vibetunnel@VERSION latest`
+- [ ] If stable, promote: `npm dist-tag add shellops@VERSION latest`
 - [ ] Update documentation to reference new version
 
 ## Post-Release
@@ -134,7 +134,7 @@ This checklist ensures a smooth and error-free npm release process for VibeTunne
 2. Check if authenticate-pam is a regular dependency (bad) or optional (good)
 3. If bad, deprecate immediately:
    ```bash
-   npm deprecate vibetunnel@VERSION "Installation issues on Linux. Use next version."
+   npm deprecate shellops@VERSION "Installation issues on Linux. Use next version."
    ```
 4. Increment version and republish following this checklist
 
@@ -168,18 +168,18 @@ pnpm update --interactive --latest
 pnpm run build:npm
 
 # Verify
-tar -xf vibetunnel-*.tgz package/package.json && \
+tar -xf shellops-*.tgz package/package.json && \
 grep -A5 optionalDependencies package/package.json && \
 rm -rf package/
 
 # Publish
-npm publish vibetunnel-*.tgz --tag beta
+npm publish shellops-*.tgz --tag beta
 
 # Promote to latest
-npm dist-tag add vibetunnel@VERSION latest
+npm dist-tag add shellops@VERSION latest
 
 # Check tags
-npm dist-tag ls vibetunnel
+npm dist-tag ls shellops
 ```
 
 ## Release Frequency

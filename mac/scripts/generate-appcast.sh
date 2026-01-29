@@ -33,7 +33,7 @@ if [[ -z "${GITHUB_USERNAME:-}" ]] || [[ -z "${GITHUB_REPO:-}" ]]; then
         GITHUB_REPO="${GITHUB_REPO:-${BASH_REMATCH[2]%.git}}"
     else
         GITHUB_USERNAME="${GITHUB_USERNAME:-amantus-ai}"
-        GITHUB_REPO="${GITHUB_REPO:-vibetunnel}"
+        GITHUB_REPO="${GITHUB_REPO:-shellops}"
     fi
 fi
 
@@ -309,18 +309,18 @@ create_appcast_item() {
         changelog_html=$("$changelog_script" "$version_for_changelog" 2>/dev/null || echo "")
         
         # If that fails and it's a pre-release, try with .0 added (e.g., "1.0.0-beta.2")
-        if [ -z "$changelog_html" ] || [[ "$changelog_html" == *"Latest version of VibeTunnel"* ]]; then
+        if [ -z "$changelog_html" ] || [[ "$changelog_html" == *"Latest version of ShellOps"* ]]; then
             if [[ "$version_for_changelog" =~ ^([0-9]+\.[0-9]+)(-.*)?$ ]]; then
                 local expanded_version="${BASH_REMATCH[1]}.0${BASH_REMATCH[2]}"
                 local temp_html=$("$changelog_script" "$expanded_version" 2>/dev/null || echo "")
-                if [ -n "$temp_html" ] && [[ "$temp_html" != *"Latest version of VibeTunnel"* ]]; then
+                if [ -n "$temp_html" ] && [[ "$temp_html" != *"Latest version of ShellOps"* ]]; then
                     changelog_html="$temp_html"
                 fi
             fi
         fi
         
         # If that fails, try with the base version for pre-releases
-        if [ -z "$changelog_html" ] || [[ "$changelog_html" == *"Latest version of VibeTunnel"* ]]; then
+        if [ -z "$changelog_html" ] || [[ "$changelog_html" == *"Latest version of ShellOps"* ]]; then
             if [[ "$version_for_changelog" =~ ^([0-9]+\.[0-9]+\.[0-9]+) ]]; then
                 local base_version="${BASH_REMATCH[1]}"
                 changelog_html=$("$changelog_script" "$base_version" 2>/dev/null || echo "")
@@ -329,7 +329,7 @@ create_appcast_item() {
     fi
     
     # Always use local changelog - it's the source of truth
-    if [ -n "$changelog_html" ] && [[ "$changelog_html" != *"Latest version of VibeTunnel"* ]]; then
+    if [ -n "$changelog_html" ] && [[ "$changelog_html" != *"Latest version of ShellOps"* ]]; then
         description+="<div>$changelog_html</div>"
     else
         # Version not found in CHANGELOG.md
@@ -412,9 +412,9 @@ main() {
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
     <channel>
-        <title>VibeTunnel Updates</title>
-        <link>https://github.com/amantus-ai/vibetunnel</link>
-        <description>VibeTunnel automatic updates feed</description>
+        <title>ShellOps Updates</title>
+        <link>https://github.com/amantus-ai/shellops</link>
+        <description>ShellOps automatic updates feed</description>
         <language>en</language>
 EOF
     
@@ -455,9 +455,9 @@ EOF
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
     <channel>
-        <title>VibeTunnel Pre-release Updates</title>
-        <link>https://github.com/amantus-ai/vibetunnel</link>
-        <description>VibeTunnel pre-release and beta updates feed</description>
+        <title>ShellOps Pre-release Updates</title>
+        <link>https://github.com/amantus-ai/shellops</link>
+        <description>ShellOps pre-release and beta updates feed</description>
         <language>en</language>
 EOF
     

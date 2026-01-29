@@ -34,7 +34,7 @@ describe('vt command', () => {
     expect(packageJson.bin).toBeDefined();
     // vt should NOT be in bin section to avoid conflicts with other tools
     expect(packageJson.bin.vt).toBeUndefined();
-    expect(packageJson.bin.vibetunnel).toBe('./bin/vibetunnel');
+    expect(packageJson.bin.shellops).toBe('./bin/shellops');
   });
 
   it('should show help when called with --help', (done) => {
@@ -60,13 +60,13 @@ describe('vt command', () => {
         expect(code).toBe(0);
 
         // Should contain help content
-        expect(stdout).toContain('vt - VibeTunnel TTY Forward Wrapper');
+        expect(stdout).toContain('vt - ShellOps TTY Forward Wrapper');
         expect(stdout).toContain('USAGE:');
         expect(stdout).toContain('EXAMPLES:');
         expect(stdout).toContain('OPTIONS:');
 
         // Should show binary path information
-        expect(stdout).toContain('VIBETUNNEL BINARY:');
+        expect(stdout).toContain('SHELLOPS BINARY:');
         expect(stdout).toContain('Path:');
 
         // Should not have errors
@@ -106,7 +106,7 @@ describe('vt command', () => {
         expect(code).toBe(0);
 
         // Should contain help content
-        expect(stdout).toContain('vt - VibeTunnel TTY Forward Wrapper');
+        expect(stdout).toContain('vt - ShellOps TTY Forward Wrapper');
         expect(stdout).toContain('USAGE:');
 
         done();
@@ -124,7 +124,7 @@ describe('vt command', () => {
     const child = spawn('bash', [vtScriptPath, 'title', 'test'], {
       cwd: projectRoot,
       stdio: 'pipe',
-      env: { ...process.env, VIBETUNNEL_SESSION_ID: '' }, // Ensure no session ID
+      env: { ...process.env, SHELLOPS_SESSION_ID: '' }, // Ensure no session ID
     });
 
     let _stdout = '';
@@ -144,7 +144,7 @@ describe('vt command', () => {
         expect(code).toBe(1);
 
         // Should show error message
-        expect(stderr).toContain("vt title' can only be used inside a VibeTunnel session");
+        expect(stderr).toContain("vt title' can only be used inside a ShellOps session");
 
         done();
       } catch (error) {
@@ -163,12 +163,12 @@ describe('vt command', () => {
     // Check for essential functions and structures
     expect(scriptContent).toContain('show_help()');
     expect(scriptContent).toContain('resolve_command()');
-    expect(scriptContent).toContain('VIBETUNNEL_BIN');
-    expect(scriptContent).toContain('exec "$VIBETUNNEL_BIN"');
+    expect(scriptContent).toContain('SHELLOPS_BIN');
+    expect(scriptContent).toContain('exec "$SHELLOPS_BIN"');
 
     // Check for critical conditionals
-    expect(scriptContent).toContain('if [ -z "$VIBETUNNEL_BIN" ]');
-    expect(scriptContent).toContain('if [ -n "$VIBETUNNEL_SESSION_ID" ]');
+    expect(scriptContent).toContain('if [ -z "$SHELLOPS_BIN" ]');
+    expect(scriptContent).toContain('if [ -n "$SHELLOPS_SESSION_ID" ]');
 
     // Check that follow command handling exists
     expect(scriptContent).toContain('if [[ "$1" == "follow" ]]');

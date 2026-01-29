@@ -83,17 +83,17 @@ const EnvDefaults = struct {
     verbosity: ?logger_mod.Level = null,
 
     fn load(self: *EnvDefaults) void {
-        if (std.posix.getenv("VIBETUNNEL_TITLE_MODE")) |val| {
+        if (std.posix.getenv("SHELLOPS_TITLE_MODE")) |val| {
             if (parseTitleMode(std.mem.sliceTo(val, 0))) |mode| {
                 self.title_mode = mode;
             }
         }
-        if (std.posix.getenv("VIBETUNNEL_LOG_LEVEL")) |val| {
+        if (std.posix.getenv("SHELLOPS_LOG_LEVEL")) |val| {
             if (logger_mod.parseLevel(std.mem.sliceTo(val, 0))) |level| {
                 self.verbosity = level;
             }
         }
-        if (std.posix.getenv("VIBETUNNEL_DEBUG")) |val| {
+        if (std.posix.getenv("SHELLOPS_DEBUG")) |val| {
             if (isTruthy(std.mem.sliceTo(val, 0))) {
                 self.verbosity = .debug;
             }
@@ -241,7 +241,7 @@ pub fn main() !void {
         .gitHasChanges = git_info.gitHasChanges,
         .gitIsWorktree = git_info.gitIsWorktree,
         .gitMainRepoPath = git_info.gitMainRepoPath,
-        .attachedViaVT = if (std.posix.getenv("VIBETUNNEL_SESSION_ID") != null) true else null,
+        .attachedViaVT = if (std.posix.getenv("SHELLOPS_SESSION_ID") != null) true else null,
     };
 
     try session_mod.writeSessionInfo(session_json_path, session_info, allocator);
@@ -450,8 +450,8 @@ fn parseArgs(args: []const []const u8, defaults: EnvDefaults) !ParsedArgs {
 
 fn showUsage() void {
     const out = std.fs.File.stdout().deprecatedWriter();
-    _ = out.writeAll("VibeTunnel Forward (vibetunnel-fwd)\n\n") catch {};
-    _ = out.writeAll("Usage:\n  vibetunnel-fwd [--session-id <id>] [--title-mode <mode>] [--verbosity <level>] <command> [args...]\n\n") catch {};
+    _ = out.writeAll("ShellOps Forward (shellops-fwd)\n\n") catch {};
+    _ = out.writeAll("Usage:\n  shellops-fwd [--session-id <id>] [--title-mode <mode>] [--verbosity <level>] <command> [args...]\n\n") catch {};
     _ = out.writeAll("Options:\n  --session-id <id>       Use a pre-generated session ID\n  --title-mode <mode>     none, filter, static\n  --update-title <title>  Update session title and exit (requires --session-id)\n  --verbosity <level>     silent, error, warn, info, verbose, debug\n  --log-file <path>       Override default log file path\n  -q/-v/-vv/-vvv          Quick verbosity\n") catch {};
 }
 
@@ -473,13 +473,13 @@ fn getHome() []const u8 {
 }
 
 fn defaultLogPath(allocator: std.mem.Allocator, home: []const u8) ![]const u8 {
-    if (home.len == 0) return allocator.dupe(u8, "./.vibetunnel/log.txt");
-    return std.fs.path.join(allocator, &.{ home, ".vibetunnel", "log.txt" });
+    if (home.len == 0) return allocator.dupe(u8, "./.shellops/log.txt");
+    return std.fs.path.join(allocator, &.{ home, ".shellops", "log.txt" });
 }
 
 fn controlPath(allocator: std.mem.Allocator, home: []const u8) ![]const u8 {
-    if (home.len == 0) return allocator.dupe(u8, "./.vibetunnel/control");
-    return std.fs.path.join(allocator, &.{ home, ".vibetunnel", "control" });
+    if (home.len == 0) return allocator.dupe(u8, "./.shellops/control");
+    return std.fs.path.join(allocator, &.{ home, ".shellops", "control" });
 }
 
 fn generateSessionId(allocator: std.mem.Allocator) ![]const u8 {
@@ -497,7 +497,7 @@ fn isValidSessionId(session_id: []const u8) bool {
 
 fn determineInitialSize() !SizeInfo {
     const stdout_fd = std.fs.File.stdout().handle;
-    const is_external = std.posix.getenv("VIBETUNNEL_SESSION_ID") != null;
+    const is_external = std.posix.getenv("SHELLOPS_SESSION_ID") != null;
 
     if (is_external) {
         std.Thread.sleep(100 * std.time.ns_per_ms);
@@ -562,7 +562,7 @@ fn buildExecEnv(allocator: std.mem.Allocator, command: []const []const u8, sessi
     var env_map = try std.process.getEnvMap(allocator);
     defer env_map.deinit();
     env_map.put("TERM", "xterm-256color") catch {};
-    env_map.put("VIBETUNNEL_SESSION_ID", session_id) catch {};
+    env_map.put("SHELLOPS_SESSION_ID", session_id) catch {};
 
     var arena = std.heap.ArenaAllocator.init(allocator);
     const arena_alloc = arena.allocator();

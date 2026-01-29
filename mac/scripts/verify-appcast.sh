@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Appcast Verification Script for VibeTunnel
+# Appcast Verification Script for ShellOps
 # Validates appcast XML files for common issues
 set -euo pipefail
 
@@ -13,7 +13,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-echo "🔍 VibeTunnel Appcast Verification"
+echo "🔍 ShellOps Appcast Verification"
 echo "================================="
 echo ""
 
@@ -78,7 +78,7 @@ validate_appcast() {
         if [[ -z "${URLS[$i]:-}" ]]; then
             echo -e "${RED}      ❌ Missing download URL${NC}"
             ((ISSUES++))
-        elif [[ "${URLS[$i]}" =~ ^https://github.com/amantus-ai/vibetunnel/releases/download/ ]]; then
+        elif [[ "${URLS[$i]}" =~ ^https://github.com/amantus-ai/shellops/releases/download/ ]]; then
             echo -e "${GREEN}      ✅ Valid GitHub release URL${NC}"
             
             # Check if release exists on GitHub

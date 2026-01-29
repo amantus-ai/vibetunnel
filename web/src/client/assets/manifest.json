@@ -1,6 +1,6 @@
 {
-  "name": "VibeTunnel",
-  "short_name": "VibeTunnel",
+  "name": "ShellOps",
+  "short_name": "ShellOps",
   "description": "Interactive terminal sessions in your browser with real-time streaming and mobile support",
   "start_url": "/",
   "display": "standalone",

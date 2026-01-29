@@ -5,7 +5,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 import { v4 as uuidv4 } from 'uuid';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getVibetunnelBinaryPath, getVtScriptPath } from '../helpers/vt-paths.js';
+import { getShellopsBinaryPath, getVtScriptPath } from '../helpers/vt-paths.js';
 
 const execAsync = promisify(exec);
 
@@ -29,7 +29,7 @@ function normalizeStderr(stderr: string): string {
 describe('vt title Command Integration', () => {
   let testControlDir: string;
   let vtScriptPath: string;
-  let vibetunnelPath: string;
+  let shellopsPath: string;
 
   beforeEach(async () => {
     // Create test control directory with shorter path
@@ -37,9 +37,9 @@ describe('vt title Command Integration', () => {
     testControlDir = path.join(os.tmpdir(), `vt-${shortId}`);
     await fs.mkdir(testControlDir, { recursive: true });
 
-    // Get path to vt script and vibetunnel binary
+    // Get path to vt script and shellops binary
     vtScriptPath = getVtScriptPath();
-    vibetunnelPath = getVibetunnelBinaryPath();
+    shellopsPath = getShellopsBinaryPath();
   });
 
   afterEach(async () => {
@@ -52,9 +52,9 @@ describe('vt title Command Integration', () => {
   });
 
   it('should show error when vt title is used outside a session', async () => {
-    // Test using vibetunnel directly with --update-title flag (which vt script would call)
+    // Test using shellops directly with --update-title flag (which vt script would call)
     try {
-      await execAsync(`${vibetunnelPath} fwd --update-title "Test Title"`);
+      await execAsync(`${shellopsPath} fwd --update-title "Test Title"`);
       // Should not reach here
       expect.fail('Command should have failed');
     } catch (error) {
@@ -87,26 +87,26 @@ describe('vt title Command Integration', () => {
     const sessionJsonPath = path.join(sessionDir, 'session.json');
     await fs.writeFile(sessionJsonPath, JSON.stringify(initialSessionInfo, null, 2));
 
-    // Set up environment as if we're inside a VibeTunnel session
+    // Set up environment as if we're inside a ShellOps session
     const env = {
       ...process.env,
-      VIBETUNNEL_SESSION_ID: sessionId,
+      SHELLOPS_SESSION_ID: sessionId,
       HOME: os.homedir(),
     };
 
     // Override HOME to use our test directory
     const mockHome = path.join(testControlDir, 'home');
-    await fs.mkdir(path.join(mockHome, '.vibetunnel', 'control'), { recursive: true });
+    await fs.mkdir(path.join(mockHome, '.shellops', 'control'), { recursive: true });
 
     // Create symlink from mock home to our test session
-    const mockControlDir = path.join(mockHome, '.vibetunnel', 'control');
+    const mockControlDir = path.join(mockHome, '.shellops', 'control');
     await fs.symlink(sessionDir, path.join(mockControlDir, sessionId));
 
     env.HOME = mockHome;
 
-    // Run vibetunnel directly with --update-title flag (what vt script would call)
+    // Run shellops directly with --update-title flag (what vt script would call)
     const { stderr } = await execAsync(
-      `${vibetunnelPath} fwd --update-title "Updated Title" --session-id "${sessionId}"`,
+      `${shellopsPath} fwd --update-title "Updated Title" --session-id "${sessionId}"`,
       { env }
     );
 
@@ -144,12 +144,12 @@ describe('vt title Command Integration', () => {
 
     // Set up environment
     const mockHome = path.join(testControlDir, 'home');
-    await fs.mkdir(path.join(mockHome, '.vibetunnel', 'control'), { recursive: true });
-    await fs.symlink(sessionDir, path.join(mockHome, '.vibetunnel', 'control', sessionId));
+    await fs.mkdir(path.join(mockHome, '.shellops', 'control'), { recursive: true });
+    await fs.symlink(sessionDir, path.join(mockHome, '.shellops', 'control', sessionId));
 
     const env = {
       ...process.env,
-      VIBETUNNEL_SESSION_ID: sessionId,
+      SHELLOPS_SESSION_ID: sessionId,
       HOME: mockHome,
     };
 
@@ -171,11 +171,11 @@ describe('vt title Command Integration', () => {
     ];
 
     for (const title of specialTitles) {
-      // Run vibetunnel directly
+      // Run shellops directly
       // Use single quotes for shell safety and escape any single quotes in the title
       const escapedTitle = title.replace(/'/g, "'\"'\"'");
       const { stderr } = await execAsync(
-        `${vibetunnelPath} fwd --update-title '${escapedTitle}' --session-id "${sessionId}"`,
+        `${shellopsPath} fwd --update-title '${escapedTitle}' --session-id "${sessionId}"`,
         { env }
       );
 
@@ -194,13 +194,13 @@ describe('vt title Command Integration', () => {
     // Set up environment without creating session.json
     const env = {
       ...process.env,
-      VIBETUNNEL_SESSION_ID: sessionId,
+      SHELLOPS_SESSION_ID: sessionId,
       HOME: testControlDir, // Use test dir as home
     };
 
-    // Run vibetunnel directly
+    // Run shellops directly
     try {
-      await execAsync(`${vibetunnelPath} fwd --update-title "Test" --session-id "${sessionId}"`, {
+      await execAsync(`${shellopsPath} fwd --update-title "Test" --session-id "${sessionId}"`, {
         env,
       });
       expect.fail('Should have failed');
@@ -233,19 +233,19 @@ describe('vt title Command Integration', () => {
 
     // Set up environment
     const mockHome = path.join(testControlDir, 'home');
-    await fs.mkdir(path.join(mockHome, '.vibetunnel', 'control'), { recursive: true });
-    await fs.symlink(sessionDir, path.join(mockHome, '.vibetunnel', 'control', sessionId));
+    await fs.mkdir(path.join(mockHome, '.shellops', 'control'), { recursive: true });
+    await fs.symlink(sessionDir, path.join(mockHome, '.shellops', 'control', sessionId));
 
     const env = {
       ...process.env,
-      VIBETUNNEL_SESSION_ID: sessionId,
+      SHELLOPS_SESSION_ID: sessionId,
       HOME: mockHome,
       PATH: '/usr/bin:/bin', // Minimal PATH that likely excludes jq
     };
 
-    // Run vibetunnel directly (fwd doesn't use jq/sed, it updates directly)
+    // Run shellops directly (fwd doesn't use jq/sed, it updates directly)
     const { stderr } = await execAsync(
-      `${vibetunnelPath} fwd --update-title "Sed Fallback Test" --session-id "${sessionId}"`,
+      `${shellopsPath} fwd --update-title "Sed Fallback Test" --session-id "${sessionId}"`,
       { env }
     );
 
@@ -276,21 +276,21 @@ describe('vt title Command Integration', () => {
 
     // Set up environment
     const mockHome = path.join(testControlDir, 'home');
-    await fs.mkdir(path.join(mockHome, '.vibetunnel', 'control'), { recursive: true });
-    await fs.symlink(sessionDir, path.join(mockHome, '.vibetunnel', 'control', sessionId));
+    await fs.mkdir(path.join(mockHome, '.shellops', 'control'), { recursive: true });
+    await fs.symlink(sessionDir, path.join(mockHome, '.shellops', 'control', sessionId));
 
     const env = {
       ...process.env,
-      VIBETUNNEL_SESSION_ID: sessionId,
+      SHELLOPS_SESSION_ID: sessionId,
       HOME: mockHome,
     };
 
-    // Run multiple vibetunnel commands concurrently
+    // Run multiple shellops commands concurrently
     const promises = [];
     for (let i = 0; i < 10; i++) {
       promises.push(
         execAsync(
-          `${vibetunnelPath} fwd --update-title "Concurrent Update ${i}" --session-id "${sessionId}"`,
+          `${shellopsPath} fwd --update-title "Concurrent Update ${i}" --session-id "${sessionId}"`,
           { env }
         )
       );
@@ -335,12 +335,12 @@ describe('vt title Command Integration', () => {
 
     // Set up environment
     const mockHome = path.join(testControlDir, 'home');
-    await fs.mkdir(path.join(mockHome, '.vibetunnel', 'control'), { recursive: true });
-    await fs.symlink(sessionDir, path.join(mockHome, '.vibetunnel', 'control', sessionId));
+    await fs.mkdir(path.join(mockHome, '.shellops', 'control'), { recursive: true });
+    await fs.symlink(sessionDir, path.join(mockHome, '.shellops', 'control', sessionId));
 
     const env = {
       ...process.env,
-      VIBETUNNEL_SESSION_ID: sessionId,
+      SHELLOPS_SESSION_ID: sessionId,
       HOME: mockHome,
     };
 

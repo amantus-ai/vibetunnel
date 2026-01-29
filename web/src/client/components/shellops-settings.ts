@@ -261,7 +261,7 @@ export class ShellOpsSettings extends LitElement {
       <div class="space-y-8">
         <div>
           <h2 class="text-xl font-bold font-mono mb-2" style="color: var(--color-text);">Appearance</h2>
-          <p class="text-sm font-mono" style="color: #737373;">Customize the look and feel of VibeTunnel.</p>
+          <p class="text-sm font-mono" style="color: #737373;">Customize the look and feel of ShellOps.</p>
         </div>
 
         <!-- Theme -->

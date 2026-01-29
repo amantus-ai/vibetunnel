@@ -21,7 +21,7 @@ export interface NotificationPreferences {
   vibrationEnabled: boolean;
 }
 
-export interface VibeTunnelConfig {
+export interface ShellOpsConfig {
   version: number;
   quickStartCommands: QuickStartCommand[];
   repositoryBasePath?: string;
@@ -94,7 +94,7 @@ export const RECOMMENDED_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   vibrationEnabled: false,
 };
 
-export const DEFAULT_CONFIG: VibeTunnelConfig = {
+export const DEFAULT_CONFIG: ShellOpsConfig = {
   version: 2,
   quickStartCommands: DEFAULT_QUICK_START_COMMANDS,
   repositoryBasePath: DEFAULT_REPOSITORY_BASE_PATH,

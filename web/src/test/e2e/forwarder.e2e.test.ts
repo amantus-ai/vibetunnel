@@ -14,11 +14,11 @@ import {
 
 function resolveForwarderPath(): string {
   const candidates: string[] = [];
-  if (process.env.VIBETUNNEL_FWD_BIN) {
-    candidates.push(process.env.VIBETUNNEL_FWD_BIN);
+  if (process.env.SHELLOPS_FWD_BIN) {
+    candidates.push(process.env.SHELLOPS_FWD_BIN);
   }
-  candidates.push(path.join(process.cwd(), 'native', 'vibetunnel-fwd'));
-  candidates.push(path.join(process.cwd(), 'bin', 'vibetunnel-fwd'));
+  candidates.push(path.join(process.cwd(), 'native', 'shellops-fwd'));
+  candidates.push(path.join(process.cwd(), 'bin', 'shellops-fwd'));
 
   for (const candidate of candidates) {
     if (candidate && existsSync(candidate)) {
@@ -28,7 +28,7 @@ function resolveForwarderPath(): string {
   }
 
   throw new Error(
-    `vibetunnel-fwd not found. Run: node scripts/build-fwd-zig.js (cwd: ${process.cwd()})`
+    `shellops-fwd not found. Run: node scripts/build-fwd-zig.js (cwd: ${process.cwd()})`
   );
 }
 
@@ -167,11 +167,11 @@ describe('Forwarder E2E', () => {
 
   beforeAll(async () => {
     homeDir = createShortHomeDir();
-    controlDir = path.join(homeDir, '.vibetunnel', 'control');
+    controlDir = path.join(homeDir, '.shellops', 'control');
 
     server = await startTestServer({
       args: ['--port', '0', '--no-auth'],
-      env: { VIBETUNNEL_CONTROL_DIR: controlDir },
+      env: { SHELLOPS_CONTROL_DIR: controlDir },
       waitForHealth: true,
     });
   });

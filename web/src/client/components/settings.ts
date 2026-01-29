@@ -334,7 +334,7 @@ export class Settings extends LitElement {
 
       // Step 5: Send test notification
       logger.debug('Step 5: Sending test notification');
-      await pushNotificationService.sendTestNotification('Test notification from VibeTunnel');
+      await pushNotificationService.sendTestNotification('Test notification from ShellOps');
 
       logger.log('✅ Test notification sent successfully');
       this.dispatchEvent(
@@ -387,11 +387,11 @@ export class Settings extends LitElement {
 
     try {
       // Show notification directly
-      await registration.showNotification('VibeTunnel Notifications Enabled', {
+      await registration.showNotification('ShellOps Notifications Enabled', {
         body: "You'll now receive notifications for session events",
         icon: '/apple-touch-icon.png',
         badge: '/favicon-32.png',
-        tag: 'vibetunnel-settings-welcome',
+        tag: 'shellops-settings-welcome',
         requireInteraction: false,
         silent: false,
       });
@@ -544,10 +544,10 @@ export class Settings extends LitElement {
                         ⚠️ Push notifications require a secure connection
                       </p>
                       <p class="text-xs text-status-warning opacity-80 mb-2">
-                        You're accessing VibeTunnel via ${window.location.protocol}//${window.location.hostname}
+                        You're accessing ShellOps via ${window.location.protocol}//${window.location.hostname}
                       </p>
                       <p class="text-xs text-status-info opacity-90">
-                        To enable notifications, access VibeTunnel using:
+                        To enable notifications, access ShellOps using:
                         <br>• https://${window.location.hostname}${window.location.port ? `:${window.location.port}` : ''}
                         <br>• http://localhost:${window.location.port || '4020'}
                         <br>• http://127.0.0.1:${window.location.port || '4020'}

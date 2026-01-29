@@ -12,7 +12,7 @@ export class ThemeToggle extends LitElement {
   @property({ type: Boolean })
   expanded = false;
 
-  private readonly STORAGE_KEY = 'vibetunnel-theme';
+  private readonly STORAGE_KEY = 'shellops-theme';
   private mediaQuery?: MediaQueryList;
 
   connectedCallback() {

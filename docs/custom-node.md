@@ -2,14 +2,14 @@
 
 ## Motivation
 
-VibeTunnel uses Node.js Single Executable Applications (SEA) to create a standalone terminal server. However, the standard Node.js binary is quite large:
+ShellOps uses Node.js Single Executable Applications (SEA) to create a standalone terminal server. However, the standard Node.js binary is quite large:
 
 - **Standard Node.js binary**: ~110MB
 - **Custom minimal Node.js**: ~43MB (61% reduction)
 - **Final executable size**: ~45MB (down from ~105MB)
 - **Final app size impact**: Reduces app from ~130MB to ~88MB
 
-We don't need many Node.js features for VibeTunnel:
+We don't need many Node.js features for ShellOps:
 - No internationalization (ICU) support needed
 - No npm package manager in the binary
 - No inspector/debugging protocol
@@ -115,7 +115,7 @@ Custom Node.js builds are stored in `web/.node-builds/` and are excluded from gi
 - Native executable builder: `web/build-native.js`
 - Xcode integration: `mac/scripts/build-web-frontend.sh`
 - Build output: `web/.node-builds/node-v*-minimal/`
-- Final executable: `web/native/vibetunnel`
+- Final executable: `web/native/shellops`
 
 ## Troubleshooting
 

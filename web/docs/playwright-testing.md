@@ -1,8 +1,8 @@
-# Playwright Testing Best Practices for VibeTunnel
+# Playwright Testing Best Practices for ShellOps
 
 ## Overview
 
-This guide documents best practices for writing reliable, non-flaky Playwright tests for VibeTunnel, based on official Playwright documentation and community best practices.
+This guide documents best practices for writing reliable, non-flaky Playwright tests for ShellOps, based on official Playwright documentation and community best practices.
 
 ## Core Principles
 
@@ -51,7 +51,7 @@ await page.getByText('Session Name').fill('My Session');
 await page.getByTestId('terminal-output').waitFor();
 ```
 
-## VibeTunnel-Specific Patterns
+## ShellOps-Specific Patterns
 
 ### Waiting for Terminal Ready
 
@@ -170,7 +170,7 @@ Each test should be independent:
 test.beforeEach(async ({ page }) => {
   // Fresh start for each test
   await page.goto('/');
-  await page.waitForSelector('vibetunnel-app', { state: 'attached' });
+  await page.waitForSelector('shellops-app', { state: 'attached' });
 });
 ```
 

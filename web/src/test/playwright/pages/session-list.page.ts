@@ -92,7 +92,7 @@ export class SessionListPage extends BasePage {
     // This ensures the form loads with the correct state
     await this.page.evaluate((shouldSpawnWindow) => {
       // Set the spawn window value we want
-      localStorage.setItem('vibetunnel_spawn_window', String(shouldSpawnWindow));
+      localStorage.setItem('shellops_spawn_window', String(shouldSpawnWindow));
     }, spawnWindow);
 
     // Dismiss any error messages
@@ -390,7 +390,7 @@ export class SessionListPage extends BasePage {
         await this.page.waitForFunction(
           ({ id }) => {
             // Check if the app has loaded this session
-            const app = document.querySelector('vibetunnel-app') as HTMLElement & {
+            const app = document.querySelector('shellops-app') as HTMLElement & {
               sessions?: Array<{ id: string }>;
             };
             if (app?.sessions) {

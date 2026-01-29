@@ -2,7 +2,7 @@
 #
 # Check for Node.js availability for the build process
 #
-# This script ensures Node.js is available for building VibeTunnel
+# This script ensures Node.js is available for building ShellOps
 #
 
 set -uo pipefail

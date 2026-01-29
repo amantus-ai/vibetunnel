@@ -1,8 +1,8 @@
-# VibeTunnel Mobile Terminal UI/UX Redesign Plan
+# ShellOps Mobile Terminal UI/UX Redesign Plan
 
 ## Executive Summary
 
-The current VibeTunnel mobile terminal experience suffers from viewport overlap issues, complex keyboard handling, and poor space utilization. This plan outlines a comprehensive redesign to create a mobile-first terminal experience that is intuitive, efficient, and respects device constraints.
+The current ShellOps mobile terminal experience suffers from viewport overlap issues, complex keyboard handling, and poor space utilization. This plan outlines a comprehensive redesign to create a mobile-first terminal experience that is intuitive, efficient, and respects device constraints.
 
 ### Key Goals
 - Eliminate all viewport overlaps on mobile devices
@@ -19,7 +19,7 @@ SessionView (Grid Container)
 ├── SessionHeader (Navigation/Controls)
 ├── Terminal Area
 │   ├── TerminalRenderer
-│   └── VibeTunnel Terminal (xterm.js)
+│   └── ShellOps Terminal (xterm.js)
 └── QuickKeys Area (Conditional)
 ```
 

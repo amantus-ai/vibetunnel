@@ -16,11 +16,11 @@ import { cleanupTestDirectories, sleep, startTestServer, stopServer } from '../u
 
 function resolveForwarderPath(): string {
   const candidates: string[] = [];
-  if (process.env.VIBETUNNEL_FWD_BIN) {
-    candidates.push(process.env.VIBETUNNEL_FWD_BIN);
+  if (process.env.SHELLOPS_FWD_BIN) {
+    candidates.push(process.env.SHELLOPS_FWD_BIN);
   }
-  candidates.push(path.join(process.cwd(), 'native', 'vibetunnel-fwd'));
-  candidates.push(path.join(process.cwd(), 'bin', 'vibetunnel-fwd'));
+  candidates.push(path.join(process.cwd(), 'native', 'shellops-fwd'));
+  candidates.push(path.join(process.cwd(), 'bin', 'shellops-fwd'));
 
   for (const candidate of candidates) {
     if (candidate && existsSync(candidate)) {
@@ -30,7 +30,7 @@ function resolveForwarderPath(): string {
   }
 
   throw new Error(
-    `vibetunnel-fwd not found. Run: node scripts/build-fwd-zig.js (cwd: ${process.cwd()})`
+    `shellops-fwd not found. Run: node scripts/build-fwd-zig.js (cwd: ${process.cwd()})`
   );
 }
 
@@ -38,10 +38,10 @@ function createShortHomeDir(): string {
   return mkdtempSync(path.join('/tmp', 'vth-'));
 }
 
-function createVibetunnelCliWrapper(homeDir: string): string {
+function createShellopsCliWrapper(homeDir: string): string {
   const cliPath = path.join(process.cwd(), 'src', 'cli.ts');
   const wrapperDir = path.join(homeDir, 'bin');
-  const wrapperPath = path.join(wrapperDir, 'vibetunnel');
+  const wrapperPath = path.join(wrapperDir, 'shellops');
 
   mkdirSync(wrapperDir, { recursive: true });
   writeFileSync(wrapperPath, `#!/usr/bin/env bash\nexec tsx "${cliPath}" "$@"\n`, 'utf-8');
@@ -99,12 +99,12 @@ describe('vt wrapper extra flows', () => {
   let server: ServerInstance | null = null;
   let homeDir = '';
   let controlDir = '';
-  let vibetunnelBin = '';
+  let shellopsBin = '';
 
   beforeAll(async () => {
     homeDir = createShortHomeDir();
-    controlDir = path.join(homeDir, '.vibetunnel', 'control');
-    vibetunnelBin = createVibetunnelCliWrapper(homeDir);
+    controlDir = path.join(homeDir, '.shellops', 'control');
+    shellopsBin = createShellopsCliWrapper(homeDir);
 
     server = await startTestServer({
       args: ['--port', '0', '--no-auth'],
@@ -137,9 +137,9 @@ describe('vt wrapper extra flows', () => {
         ...process.env,
         HOME: homeDir,
         SHELL: '/bin/bash',
-        VIBETUNNEL_CONTROL_DIR: controlDir,
-        VIBETUNNEL_FWD_BIN: forwarderPath,
-        VIBETUNNEL_BIN: vibetunnelBin,
+        SHELLOPS_CONTROL_DIR: controlDir,
+        SHELLOPS_FWD_BIN: forwarderPath,
+        SHELLOPS_BIN: shellopsBin,
       },
       stdio: ['ignore', 'ignore', 'pipe'],
     });
@@ -187,9 +187,9 @@ describe('vt wrapper extra flows', () => {
         PATH: `${binDir}:${process.env.PATH || ''}`,
         HOME: homeDir,
         SHELL: '/bin/bash',
-        VIBETUNNEL_CONTROL_DIR: controlDir,
-        VIBETUNNEL_FWD_BIN: forwarderPath,
-        VIBETUNNEL_BIN: vibetunnelBin,
+        SHELLOPS_CONTROL_DIR: controlDir,
+        SHELLOPS_FWD_BIN: forwarderPath,
+        SHELLOPS_BIN: shellopsBin,
       },
       stdio: ['ignore', 'ignore', 'pipe'],
     });
@@ -227,14 +227,14 @@ describe('vt wrapper extra flows', () => {
       env: {
         ...process.env,
         HOME: homeDir,
-        VIBETUNNEL_CONTROL_DIR: controlDir,
-        VIBETUNNEL_BIN: vibetunnelBin,
+        SHELLOPS_CONTROL_DIR: controlDir,
+        SHELLOPS_BIN: shellopsBin,
       },
       encoding: 'utf-8',
     });
 
     expect(result.status).toBe(0);
-    expect(String(result.stdout)).toContain('VibeTunnel Server Status:');
+    expect(String(result.stdout)).toContain('ShellOps Server Status:');
     expect(String(result.stdout)).toContain('Running: Yes');
   });
 
@@ -245,8 +245,8 @@ describe('vt wrapper extra flows', () => {
       env: {
         ...process.env,
         HOME: homeDir,
-        VIBETUNNEL_CONTROL_DIR: controlDir,
-        VIBETUNNEL_BIN: vibetunnelBin,
+        SHELLOPS_CONTROL_DIR: controlDir,
+        SHELLOPS_BIN: shellopsBin,
       },
       encoding: 'utf-8',
     });

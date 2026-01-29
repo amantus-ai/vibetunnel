@@ -122,7 +122,7 @@ export async function initializeMonaco(): Promise<void> {
     });
 
     // Add custom themes if needed
-    /*monaco.editor.defineTheme('vibetunnel-dark', {
+    /*monaco.editor.defineTheme('shellops-dark', {
       base: 'vs-dark',
       inherit: true,
       rules: [

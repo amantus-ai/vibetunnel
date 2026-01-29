@@ -1,10 +1,10 @@
-# Terminal Title Management in VibeTunnel
+# Terminal Title Management in ShellOps
 
-VibeTunnel provides terminal title management with three modes.
+ShellOps provides terminal title management with three modes.
 
 ## Title Modes
 
-VibeTunnel offers three terminal title management modes:
+ShellOps offers three terminal title management modes:
 
 ### 1. None Mode (Default)
 - **Behavior**: No title management - applications control their own titles
@@ -22,7 +22,7 @@ VibeTunnel offers three terminal title management modes:
 - **Format**: `~/path/to/project — command — session name`
 - **Use case**: Basic session identification
 - **Examples**:
-  - `~/Projects/vibetunnel5 — zsh`
+  - `~/Projects/shellops5 — zsh`
   - `~/Projects/app — npm — Dev Server`
 - **CLI**: `--title-mode static`
 
@@ -39,15 +39,15 @@ Terminal Title Mode: [Static ▼]
   - Static - Show path & command
 ```
 
-### Command Line (`vibetunnel-fwd`)
+### Command Line (`shellops-fwd`)
 
 ```bash
 # Explicitly set title mode
-vibetunnel-fwd --title-mode static bash
-vibetunnel-fwd --title-mode filter vim
+shellops-fwd --title-mode static bash
+shellops-fwd --title-mode filter vim
 
 # Using environment variable
-VIBETUNNEL_TITLE_MODE=static vibetunnel-fwd zsh
+SHELLOPS_TITLE_MODE=static shellops-fwd zsh
 ```
 
 ## Implementation Details
@@ -60,7 +60,7 @@ ESC ] 2 ; <title> BEL
 ```
 
 - **Filter mode**: Removes all OSC 0, 1, and 2 sequences
-- **Static mode**: Filter app sequences and inject VibeTunnel titles
+- **Static mode**: Filter app sequences and inject ShellOps titles
 - **Title injection**: Smart detection of shell prompts for natural updates
 
 ## Use Cases
@@ -84,7 +84,7 @@ If you have your own terminal title system (as described in [Commanding Your Cla
 # Your custom wrapper
 cly() {
     echo -ne "\033]0;${PWD/#$HOME/~} — Claude\007"
-    VIBETUNNEL_TITLE_MODE=filter command claude "$@"
+    SHELLOPS_TITLE_MODE=filter command claude "$@"
 }
 ```
 

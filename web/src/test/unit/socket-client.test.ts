@@ -1,5 +1,5 @@
 /**
- * Tests for the VibeTunnel socket client
+ * Tests for the ShellOps socket client
  */
 
 import * as fs from 'fs';
@@ -7,10 +7,10 @@ import * as net from 'net';
 import * as os from 'os';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { VibeTunnelSocketClient } from '../../server/pty/socket-client.js';
+import { ShellOpsSocketClient } from '../../server/pty/socket-client.js';
 import { frameMessage, MessageType } from '../../server/pty/socket-protocol.js';
 
-describe('VibeTunnelSocketClient', () => {
+describe('ShellOpsSocketClient', () => {
   let testDir: string;
   let socketPath: string;
   let server: net.Server;
@@ -18,7 +18,7 @@ describe('VibeTunnelSocketClient', () => {
 
   beforeEach(() => {
     // Create temp directory for test sockets
-    testDir = path.join(os.tmpdir(), `vibetunnel-test-${Date.now()}`);
+    testDir = path.join(os.tmpdir(), `shellops-test-${Date.now()}`);
     fs.mkdirSync(testDir, { recursive: true });
     socketPath = path.join(testDir, 'test.sock');
 
@@ -67,7 +67,7 @@ describe('VibeTunnelSocketClient', () => {
     it('should connect to a socket successfully', async () => {
       await createTestServer();
 
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
       await expect(client.connect()).resolves.toBeUndefined();
 
       expect(client.isConnected()).toBe(true);
@@ -76,7 +76,7 @@ describe('VibeTunnelSocketClient', () => {
     });
 
     it('should reject if socket does not exist', async () => {
-      const client = new VibeTunnelSocketClient('/nonexistent/socket');
+      const client = new ShellOpsSocketClient('/nonexistent/socket');
 
       await expect(client.connect()).rejects.toThrow();
       expect(client.isConnected()).toBe(false);
@@ -85,7 +85,7 @@ describe('VibeTunnelSocketClient', () => {
     it('should emit connect event', async () => {
       await createTestServer();
 
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
       const connectHandler = vi.fn();
 
       client.on('connect', connectHandler);
@@ -99,7 +99,7 @@ describe('VibeTunnelSocketClient', () => {
     it('should not connect twice', async () => {
       await createTestServer();
 
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
       await client.connect();
 
       // Second connect should resolve immediately
@@ -111,7 +111,7 @@ describe('VibeTunnelSocketClient', () => {
     it('should auto-reconnect if enabled', async () => {
       await createTestServer();
 
-      const client = new VibeTunnelSocketClient(socketPath, { autoReconnect: true });
+      const client = new ShellOpsSocketClient(socketPath, { autoReconnect: true });
       const connectHandler = vi.fn();
       const disconnectHandler = vi.fn();
 
@@ -149,7 +149,7 @@ describe('VibeTunnelSocketClient', () => {
     });
 
     it('should send stdin data', async () => {
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
       await client.connect();
 
       const testData = 'hello world';
@@ -172,7 +172,7 @@ describe('VibeTunnelSocketClient', () => {
     });
 
     it('should send resize command', async () => {
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
       await client.connect();
 
       const result = client.resize(120, 40);
@@ -192,7 +192,7 @@ describe('VibeTunnelSocketClient', () => {
     });
 
     it('should send kill command', async () => {
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
       await client.connect();
 
       client.kill('SIGTERM');
@@ -209,7 +209,7 @@ describe('VibeTunnelSocketClient', () => {
     });
 
     it('should send status update', async () => {
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
       await client.connect();
 
       client.sendStatus('claude', '✻ Thinking', { tokens: 1000 });
@@ -232,7 +232,7 @@ describe('VibeTunnelSocketClient', () => {
     });
 
     it('should return false when not connected', () => {
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
 
       expect(client.sendStdin('test')).toBe(false);
       expect(client.resize(80, 24)).toBe(false);
@@ -247,7 +247,7 @@ describe('VibeTunnelSocketClient', () => {
     });
 
     it('should receive and parse status updates', async () => {
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
       const statusHandler = vi.fn();
 
       client.on('STATUS_UPDATE', statusHandler);
@@ -271,7 +271,7 @@ describe('VibeTunnelSocketClient', () => {
     });
 
     it('should receive and parse error messages', async () => {
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
       const errorHandler = vi.fn();
 
       client.on('ERROR', errorHandler);
@@ -295,7 +295,7 @@ describe('VibeTunnelSocketClient', () => {
     });
 
     it('should handle heartbeat messages', async () => {
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
       await client.connect();
 
       // Wait a bit to have some elapsed time
@@ -317,7 +317,7 @@ describe('VibeTunnelSocketClient', () => {
     });
 
     it('should handle multiple messages in one chunk', async () => {
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
       const statusHandler = vi.fn();
 
       client.on('STATUS_UPDATE', statusHandler);
@@ -340,7 +340,7 @@ describe('VibeTunnelSocketClient', () => {
     });
 
     it('should handle partial messages', async () => {
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
       const statusHandler = vi.fn();
 
       client.on('STATUS_UPDATE', statusHandler);
@@ -371,7 +371,7 @@ describe('VibeTunnelSocketClient', () => {
     });
 
     it('should send heartbeats when configured', async () => {
-      const client = new VibeTunnelSocketClient(socketPath, {
+      const client = new ShellOpsSocketClient(socketPath, {
         heartbeatInterval: 100, // 100ms for testing
       });
 
@@ -391,7 +391,7 @@ describe('VibeTunnelSocketClient', () => {
     });
 
     it('should echo heartbeats back', async () => {
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
       await client.connect();
 
       let echoReceived = false;
@@ -420,7 +420,7 @@ describe('VibeTunnelSocketClient', () => {
     it('should emit error events', async () => {
       await createTestServer();
 
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
       const errorHandler = vi.fn();
 
       client.on('error', errorHandler);
@@ -441,7 +441,7 @@ describe('VibeTunnelSocketClient', () => {
     it('should handle malformed messages gracefully', async () => {
       await createTestServer();
 
-      const client = new VibeTunnelSocketClient(socketPath);
+      const client = new ShellOpsSocketClient(socketPath);
       await client.connect();
 
       // Send invalid JSON for a message type that expects JSON
@@ -466,7 +466,7 @@ describe('VibeTunnelSocketClient', () => {
     it('should clean up on disconnect', async () => {
       await createTestServer();
 
-      const client = new VibeTunnelSocketClient(socketPath, {
+      const client = new ShellOpsSocketClient(socketPath, {
         autoReconnect: true,
         heartbeatInterval: 100,
       });

@@ -69,21 +69,21 @@ jobs:
     - name: Resolve Dependencies
       working-directory: mac
       run: |
-        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace
+        xcodebuild -resolvePackageDependencies -workspace ShellOps.xcworkspace
     
     - name: Build Release (arm64)
       working-directory: mac
       run: |
         ./scripts/build.sh --configuration Release --arch arm64
-        mv build/Build/Products/Release/VibeTunnel.app build/Build/Products/Release/VibeTunnel-arm64.app
+        mv build/Build/Products/Release/ShellOps.app build/Build/Products/Release/ShellOps-arm64.app
     
     - name: Build Release (x86_64)
       working-directory: mac
       run: |
         # Clean build directory for x86_64 build
-        rm -rf build/Build/Products/Release/VibeTunnel.app
+        rm -rf build/Build/Products/Release/ShellOps.app
         ./scripts/build.sh --configuration Release --arch x86_64
-        mv build/Build/Products/Release/VibeTunnel.app build/Build/Products/Release/VibeTunnel-x86_64.app
+        mv build/Build/Products/Release/ShellOps.app build/Build/Products/Release/ShellOps-x86_64.app
     
     - name: Create DMGs and ZIPs
       working-directory: mac
@@ -92,12 +92,12 @@ jobs:
         VERSION="${VERSION#v}"  # Remove 'v' prefix if present
         
         # Create arm64 DMG and ZIP
-        ./scripts/create-dmg.sh "build/Build/Products/Release/VibeTunnel-arm64.app"
-        ./scripts/create-zip.sh "build/Build/Products/Release/VibeTunnel-arm64.app"
+        ./scripts/create-dmg.sh "build/Build/Products/Release/ShellOps-arm64.app"
+        ./scripts/create-zip.sh "build/Build/Products/Release/ShellOps-arm64.app"
         
         # Create Intel DMG and ZIP
-        ./scripts/create-dmg.sh "build/Build/Products/Release/VibeTunnel-x86_64.app"
-        ./scripts/create-zip.sh "build/Build/Products/Release/VibeTunnel-x86_64.app"
+        ./scripts/create-dmg.sh "build/Build/Products/Release/ShellOps-x86_64.app"
+        ./scripts/create-zip.sh "build/Build/Products/Release/ShellOps-x86_64.app"
         
         # List created files
         echo "Created files:"
@@ -141,14 +141,14 @@ jobs:
     - name: Resolve Dependencies
       working-directory: ios
       run: |
-        xcodebuild -resolvePackageDependencies -project VibeTunnel.xcodeproj
+        xcodebuild -resolvePackageDependencies -project ShellOps.xcodeproj
     
     - name: Build iOS Release
       working-directory: ios
       run: |
         xcodebuild build \
-          -project VibeTunnel.xcodeproj \
-          -scheme VibeTunnel \
+          -project ShellOps.xcodeproj \
+          -scheme ShellOps \
           -destination "generic/platform=iOS" \
           -configuration Release \
           CODE_SIGNING_ALLOWED=NO \

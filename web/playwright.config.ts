@@ -116,12 +116,12 @@ export default defineConfig({
     cwd: process.cwd(), // Ensure we're in the right directory
     env: (() => {
       const env = { ...process.env };
-      // Keep VIBETUNNEL_SEA if it's set in CI, as we now use the native executable for tests
+      // Keep SHELLOPS_SEA if it's set in CI, as we now use the native executable for tests
       // In local development, it will be undefined and tests will use TypeScript compilation
       return {
         ...env,
         NODE_ENV: 'test',
-        VIBETUNNEL_DISABLE_PUSH_NOTIFICATIONS: 'true',
+        SHELLOPS_DISABLE_PUSH_NOTIFICATIONS: 'true',
         SUPPRESS_CLIENT_ERRORS: 'true',
         SHELL: '/bin/bash',
         TERM: 'xterm',

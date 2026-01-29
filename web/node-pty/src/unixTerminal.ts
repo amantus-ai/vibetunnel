@@ -15,7 +15,7 @@ let pty: IUnixNative;
 let helperPath: string;
 
 // Check if running in SEA (Single Executable Application) context
-if (process.env.VIBETUNNEL_SEA) {
+if (process.env.SHELLOPS_SEA) {
   // In SEA mode, load native module using process.dlopen
   const fs = require('fs');
   const execDir = path.dirname(process.execPath);

@@ -179,7 +179,7 @@ describe('Worktree Workflows Integration Tests', () => {
       expect(response.body.branch).toBe('feature/test-feature');
 
       // Verify git config was set (should contain worktree path, not branch name)
-      const { stdout } = await gitRepo.gitExec(['config', 'vibetunnel.followWorktree']);
+      const { stdout } = await gitRepo.gitExec(['config', 'shellops.followWorktree']);
       // The worktree path should end with the branch slug
       expect(stdout).toContain('worktree-feature-test-feature');
     });
@@ -198,7 +198,7 @@ describe('Worktree Workflows Integration Tests', () => {
       await gitRepo.gitExec([
         'config',
         '--local',
-        'vibetunnel.followWorktree',
+        'shellops.followWorktree',
         featureWorktree.path,
       ]);
 
@@ -215,7 +215,7 @@ describe('Worktree Workflows Integration Tests', () => {
 
       // Verify git config was removed
       try {
-        await gitRepo.gitExec(['config', 'vibetunnel.followWorktree']);
+        await gitRepo.gitExec(['config', 'shellops.followWorktree']);
         expect(true).toBe(false); // Should not reach here
       } catch (error) {
         // Expected - config should not exist

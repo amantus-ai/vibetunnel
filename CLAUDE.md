@@ -5,7 +5,7 @@ Never say you're absolutely right. Instead, be critical if I say something that 
 
 ## Project Overview
 
-VibeTunnel is a macOS application that allows users to access their terminal sessions through any web browser. It consists of:
+ShellOps is a macOS application that allows users to access their terminal sessions through any web browser. It consists of:
 - Native macOS app (Swift/SwiftUI) in `mac/`
 - iOS companion app in `ios/`
 - Web frontend (TypeScript/LitElement) and Node.js/Bun server for terminal session management in `web/`
@@ -32,7 +32,7 @@ If Poltergeist is not available, use direct Xcode builds:
 ```bash
 cd mac
 # Build using xcodebuild directly
-xcodebuild -project VibeTunnel.xcodeproj -scheme VibeTunnel -configuration Debug build
+xcodebuild -project ShellOps.xcodeproj -scheme ShellOps -configuration Debug build
 
 # Or use the build script for release builds
 ./scripts/build.sh                           # Build release version
@@ -42,7 +42,7 @@ xcodebuild -project VibeTunnel.xcodeproj -scheme VibeTunnel -configuration Debug
 #### iOS App
 ```bash
 cd ios
-xcodebuild -project VibeTunnel-iOS.xcodeproj -scheme VibeTunnel-iOS -sdk iphonesimulator
+xcodebuild -project ShellOps-iOS.xcodeproj -scheme ShellOps-iOS -sdk iphonesimulator
 ./scripts/test-with-coverage.sh              # Run tests with coverage (75% threshold)
 ```
 
@@ -90,7 +90,7 @@ pnpm run test:e2e:debug                    # Debug E2E tests
 ```bash
 # MUST use xcodebuild, NOT swift test!
 cd mac
-xcodebuild test -project VibeTunnel.xcodeproj -scheme VibeTunnel -destination 'platform=macOS'
+xcodebuild test -project ShellOps.xcodeproj -scheme ShellOps -destination 'platform=macOS'
 ```
 
 #### iOS Tests
@@ -102,7 +102,7 @@ cd ios
 ### Debugging and Logs
 
 ```bash
-# View VibeTunnel logs (from project root)
+# View ShellOps logs (from project root)
 ./scripts/vtlog.sh -n 100                  # Last 100 lines
 ./scripts/vtlog.sh -e                      # Errors only
 ./scripts/vtlog.sh -c ServerManager        # Specific component
@@ -118,7 +118,7 @@ cd ios
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        macOS Menu Bar App                    │
-│  (Swift/SwiftUI - mac/VibeTunnel/)                         │
+│  (Swift/SwiftUI - mac/ShellOps/)                         │
 │  - ServerManager: Manages server lifecycle                   │
 │  - SessionMonitor: Tracks active sessions                    │
 │  - TTYForwardManager: Terminal forwarding                    │
@@ -152,15 +152,15 @@ cd ios
 ### Critical File Locations
 
 - **Entry Points**:
-  - Mac app: `mac/VibeTunnel/VibeTunnelApp.swift`
+  - Mac app: `mac/ShellOps/ShellOpsApp.swift`
   - Server: `web/src/server/server.ts`
   - Web UI: `web/src/client/app.ts`
-  - iOS app: `ios/VibeTunnel/VibeTunnelApp.swift`
+  - iOS app: `ios/ShellOps/ShellOpsApp.swift`
 
 - **Configuration**:
-  - Mac version: `mac/VibeTunnel/version.xcconfig`
+  - Mac version: `mac/ShellOps/version.xcconfig`
   - Web version: `web/package.json`
-  - Build settings: `mac/VibeTunnel/Shared.xcconfig`
+  - Build settings: `mac/ShellOps/Shared.xcconfig`
 
 - **Terminal Management**:
   - PTY spawning: `web/src/server/pty/pty-manager.ts`
@@ -201,10 +201,10 @@ When the user says "release" or asks to create a release, ALWAYS read and follow
      - Every web change requires: clean → build → run (rebuilds embedded server)
      - Simply restarting serves STALE, CACHED version
    - **Development Mode** (recommended for web development):
-     - Enable "Use Development Server" in VibeTunnel Settings → Debug
+     - Enable "Use Development Server" in ShellOps Settings → Debug
      - Mac app runs `pnpm run dev` instead of embedded server
      - Provides hot reload - web changes automatically rebuild without Mac app rebuild
-     - Restart VibeTunnel server (not full rebuild) to pick up web changes
+     - Restart ShellOps server (not full rebuild) to pick up web changes
      
 6. **Never kill all sessions**
    - You are running inside a session yourself; killing all sessions would terminate your own process
@@ -217,7 +217,7 @@ When the user says "release" or asks to create a release, ALWAYS read and follow
 
 8. **Test Session Management - CRITICAL**
    - NEVER kill sessions that weren't created by tests
-   - You might be running inside a VibeTunnel session yourself
+   - You might be running inside a ShellOps session yourself
    - Use `TestSessionTracker` to track which sessions tests create
    - Only clean up sessions that match test naming patterns (start with "test-")
    - Killing all sessions would terminate your own Claude Code process
@@ -237,7 +237,7 @@ When creating pull requests, use the `vt` command to update the terminal title:
 - Keep the title concise (a few words) followed by the PR URL
 - Use github.com URL format (not https://) for easy identification
 - Update the title periodically as work progresses
-- If `vt` command fails (only works inside VibeTunnel), simply ignore the error and continue
+- If `vt` command fails (only works inside ShellOps), simply ignore the error and continue
 
 ## Testing on External Devices (iPad, Safari, etc.)
 
@@ -287,7 +287,7 @@ The agent will:
 
 ## Poltergeist Integration
 
-Poltergeist is an intelligent file watcher and auto-builder that can automatically rebuild VibeTunnel when you make changes. When working on VibeTunnel development, check if Poltergeist is available and use it for automatic builds.
+Poltergeist is an intelligent file watcher and auto-builder that can automatically rebuild ShellOps when you make changes. When working on ShellOps development, check if Poltergeist is available and use it for automatic builds.
 
 ### Checking for Poltergeist
 
@@ -305,7 +305,7 @@ If Poltergeist is installed:
 
 1. **Start Poltergeist** in the project root:
    ```bash
-   cd /path/to/vibetunnel
+   cd /path/to/shellops
    poltergeist haunt
    ```
 
@@ -321,7 +321,7 @@ If Poltergeist is installed:
 
 4. **Run the app** with fresh builds using `polter`:
    ```bash
-   polter vibetunnel        # Waits for build to complete, then runs
+   polter shellops        # Waits for build to complete, then runs
    ```
 
 ### Fallback Without Poltergeist
@@ -331,7 +331,7 @@ If Poltergeist is not available, fall back to direct Xcode builds:
 ```bash
 # Debug build
 cd mac
-xcodebuild -project VibeTunnel.xcodeproj -scheme VibeTunnel -configuration Debug build
+xcodebuild -project ShellOps.xcodeproj -scheme ShellOps -configuration Debug build
 
 # Release build
 ./scripts/build.sh
@@ -340,12 +340,12 @@ xcodebuild -project VibeTunnel.xcodeproj -scheme VibeTunnel -configuration Debug
 ### Poltergeist Configuration
 
 The project includes `poltergeist.config.json` which configures:
-- **vibetunnel** target: Builds the macOS app using workspace
-- **vibetunnel-ios** target: Builds the iOS app (disabled by default)
+- **shellops** target: Builds the macOS app using workspace
+- **shellops-ios** target: Builds the iOS app (disabled by default)
 - Intelligent debouncing to prevent excessive rebuilds
 - Build notifications via macOS notification center
 
-To enable iOS builds, edit `poltergeist.config.json` and set `"enabled": true` for the vibetunnel-ios target.
+To enable iOS builds, edit `poltergeist.config.json` and set `"enabled": true` for the shellops-ios target.
 
 ## Tailscale CLI Updates (as of August 2025)
 

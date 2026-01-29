@@ -194,7 +194,7 @@ export class TestSessionManager {
   /**
    * Cleans up all tracked sessions
    * IMPORTANT: This only cleans up sessions that were explicitly tracked by this manager
-   * It will NOT kill sessions created outside of tests (like the VibeTunnel session running Claude Code)
+   * It will NOT kill sessions created outside of tests (like the ShellOps session running Claude Code)
    */
   async cleanupAllSessions(): Promise<void> {
     if (this.sessions.size === 0) return;
@@ -207,7 +207,7 @@ export class TestSessionManager {
     }
 
     // IMPORTANT: NEVER use Kill All button as it would kill ALL sessions including
-    // the VibeTunnel session that Claude Code is running in!
+    // the ShellOps session that Claude Code is running in!
     // Always use individual cleanup to only kill sessions we created
     const sessionNames = Array.from(this.sessions.keys());
     for (const sessionName of sessionNames) {

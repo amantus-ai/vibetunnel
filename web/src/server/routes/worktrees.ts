@@ -270,7 +270,7 @@ export function createWorktreeRoutes(): Router {
       // Get follow worktree if configured
       let followBranch: string | undefined;
       try {
-        const { stdout } = await execGit(['config', 'vibetunnel.followWorktree'], {
+        const { stdout } = await execGit(['config', 'shellops.followWorktree'], {
           cwd: absoluteRepoPath,
         });
         const followWorktreePath = stdout.trim();
@@ -599,7 +599,7 @@ export function createWorktreeRoutes(): Router {
         }
 
         // Set the follow worktree path (not branch name)
-        await execGit(['config', '--local', 'vibetunnel.followWorktree', worktree.path], {
+        await execGit(['config', '--local', 'shellops.followWorktree', worktree.path], {
           cwd: absoluteRepoPath,
         });
 
@@ -657,7 +657,7 @@ export function createWorktreeRoutes(): Router {
         });
       } else {
         // Unset the follow worktree config
-        await execGit(['config', '--local', '--unset', 'vibetunnel.followWorktree'], {
+        await execGit(['config', '--local', '--unset', 'shellops.followWorktree'], {
           cwd: absoluteRepoPath,
         });
 

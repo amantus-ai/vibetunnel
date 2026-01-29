@@ -1,12 +1,12 @@
 # Push Notification Implementation Plan
 
-This document outlines the comprehensive plan for improving VibeTunnel's notification system through two major initiatives:
+This document outlines the comprehensive plan for improving ShellOps's notification system through two major initiatives:
 1. Creating a dedicated Notifications tab in macOS settings
 2. Migrating SessionMonitor from the Mac app to the server for unified notifications
 
 ## Overview
 
-Currently, VibeTunnel has inconsistent notification implementations between the Mac and web clients. The Mac app has its own SessionMonitor while the web relies on server events. This leads to:
+Currently, ShellOps has inconsistent notification implementations between the Mac and web clients. The Mac app has its own SessionMonitor while the web relies on server events. This leads to:
 - Different notification behaviors between platforms
 - Missing features (e.g., notification settings parity between platforms)
 - Duplicate code and maintenance burden

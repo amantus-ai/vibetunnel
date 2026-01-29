@@ -50,8 +50,8 @@ interface SessionViewElement extends HTMLElement {
   } | null;
 }
 
-@customElement('vibetunnel-app')
-export class VibeTunnelApp extends LitElement {
+@customElement('shellops-app')
+export class ShellOpsApp extends LitElement {
   // Disable shadow DOM to use Tailwind
   createRenderRoot() {
     return this;
@@ -382,7 +382,7 @@ export class VibeTunnelApp extends LitElement {
       return;
     }
 
-    // VibeTunnel-specific shortcuts below this line
+    // ShellOps-specific shortcuts below this line
 
     // Handle Cmd+O / Ctrl+O to open file browser (only in list view)
     if ((e.metaKey || e.ctrlKey) && e.key === 'o' && this.currentView === 'list') {

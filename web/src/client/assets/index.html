@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes, interactive-widget=resizes-content"
     />
-    <title>VibeTunnel - Terminal Multiplexer</title>
+    <title>ShellOps - Terminal Multiplexer</title>
     <meta
       name="description"
       content="Interactive terminal sessions in your browser with real-time streaming and mobile support"
@@ -58,7 +58,7 @@
       }
 
       /* Ensure app takes full viewport */
-      vibetunnel-app {
+      shellops-app {
         display: block;
         width: 100%;
         min-height: 100%;
@@ -79,7 +79,7 @@
     <script>
       (function() {
         // Load saved theme preference or use system preference
-        const saved = localStorage.getItem('vibetunnel-theme');
+        const saved = localStorage.getItem('shellops-theme');
         const theme = saved || 'system';
         
         // Apply theme immediately
@@ -101,7 +101,7 @@
     </script>
   </head>
   <body class="m-0 p-0 bg-bg text-text">
-    <vibetunnel-app></vibetunnel-app>
+    <shellops-app></shellops-app>
 
     <!-- Mobile viewport height fix -->
     <script>

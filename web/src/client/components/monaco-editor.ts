@@ -5,7 +5,7 @@
  * - Normal code editing mode
  * - Diff mode with inline/side-by-side switching
  * - Automatic language detection
- * - Dark theme matching VibeTunnel's design
+ * - Dark theme matching ShellOps's design
  *
  * @fires save - When save is triggered (Cmd/Ctrl+S) in edit mode (detail: { content: string })
  * @fires content-changed - When content changes in edit mode (detail: { content: string })

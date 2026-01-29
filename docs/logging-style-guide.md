@@ -1,4 +1,4 @@
-# VibeTunnel Logging Style Guide
+# ShellOps Logging Style Guide
 
 ## Logging style
 

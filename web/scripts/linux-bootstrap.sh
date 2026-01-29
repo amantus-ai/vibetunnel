@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Ubuntu-focused bootstrap for VibeTunnel web build on Linux
+# Ubuntu-focused bootstrap for ShellOps web build on Linux
 
 SUDO=""
 if [ "$(id -u)" -ne 0 ]; then

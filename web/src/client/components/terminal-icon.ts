@@ -32,7 +32,7 @@ export class TerminalIcon extends LitElement {
     return html`
       <img
         src="/apple-touch-icon.png"
-        alt="VibeTunnel"
+        alt="ShellOps"
         style="width: ${this.size}px; height: ${this.size}px"
         class="terminal-icon"
       />

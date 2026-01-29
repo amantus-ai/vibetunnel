@@ -1,6 +1,6 @@
-# VibeTunnel Documentation Index
+# ShellOps Documentation Index
 
-This index provides a comprehensive overview of all documentation in the VibeTunnel project, organized by category and purpose.
+This index provides a comprehensive overview of all documentation in the ShellOps project, organized by category and purpose.
 
 ## 📚 Main Documentation
 

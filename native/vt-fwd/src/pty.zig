@@ -4,7 +4,7 @@ const posix = std.posix;
 
 comptime {
     if (builtin.os.tag == .windows) {
-        @compileError("vibetunnel-fwd does not support Windows.");
+        @compileError("shellops-fwd does not support Windows.");
     }
 }
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-VibeTunnel supports multiple authentication modes:
+ShellOps supports multiple authentication modes:
 - **None** (localhost only)
 - **Password** (simple shared secret)
 - **Token** (JWT-based)
@@ -26,8 +26,8 @@ VibeTunnel supports multiple authentication modes:
 Settings → Security → Enable Password
 
 // Via defaults
-defaults write com.steipete.VibeTunnel authEnabled -bool true
-defaults write com.steipete.VibeTunnel authPassword -string "secret"
+defaults write com.steipete.ShellOps authEnabled -bool true
+defaults write com.steipete.ShellOps authPassword -string "secret"
 ```
 
 ## Password Authentication

@@ -93,8 +93,8 @@ export function isClaudeInProcessTree(): boolean {
       }
     }
 
-    // Log tree for debugging if VIBETUNNEL_CLAUDE_DEBUG is set
-    if (process.env.VIBETUNNEL_CLAUDE_DEBUG === 'true') {
+    // Log tree for debugging if SHELLOPS_CLAUDE_DEBUG is set
+    if (process.env.SHELLOPS_CLAUDE_DEBUG === 'true') {
       logger.debug('Process tree:');
       tree.forEach((proc, index) => {
         logger.debug(`  ${' '.repeat(index * 2)}[${proc.pid}] ${proc.command}`);

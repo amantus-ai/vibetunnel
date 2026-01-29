@@ -22,7 +22,7 @@ ERRORS=0
 WARNINGS=0
 
 echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║      VibeTunnel Release Health Check       ║${NC}"
+echo -e "${BLUE}║      ShellOps Release Health Check       ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -73,7 +73,7 @@ echo -e "${BLUE}2. Environment Variables${NC}"
 if [[ -n "${SPARKLE_ACCOUNT:-}" ]]; then
     check_pass "SPARKLE_ACCOUNT is set"
 else
-    check_warn "SPARKLE_ACCOUNT not set (run: export SPARKLE_ACCOUNT=\"VibeTunnel\")"
+    check_warn "SPARKLE_ACCOUNT not set (run: export SPARKLE_ACCOUNT=\"ShellOps\")"
 fi
 
 if [[ -n "${APP_STORE_CONNECT_KEY_ID:-}" ]] && \
@@ -142,9 +142,9 @@ fi
 echo ""
 echo -e "${BLUE}5. Version Configuration${NC}"
 
-if [[ -f "$PROJECT_ROOT/VibeTunnel/version.xcconfig" ]]; then
-    MARKETING_VERSION=$(grep "MARKETING_VERSION" "$PROJECT_ROOT/VibeTunnel/version.xcconfig" | cut -d= -f2 | tr -d ' ')
-    BUILD_NUMBER=$(grep "CURRENT_PROJECT_VERSION" "$PROJECT_ROOT/VibeTunnel/version.xcconfig" | cut -d= -f2 | tr -d ' ')
+if [[ -f "$PROJECT_ROOT/ShellOps/version.xcconfig" ]]; then
+    MARKETING_VERSION=$(grep "MARKETING_VERSION" "$PROJECT_ROOT/ShellOps/version.xcconfig" | cut -d= -f2 | tr -d ' ')
+    BUILD_NUMBER=$(grep "CURRENT_PROJECT_VERSION" "$PROJECT_ROOT/ShellOps/version.xcconfig" | cut -d= -f2 | tr -d ' ')
     check_pass "Version config found: $MARKETING_VERSION (build $BUILD_NUMBER)"
     
     # Check web version sync

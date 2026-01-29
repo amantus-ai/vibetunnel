@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =============================================================================
-# VibeTunnel Release Changelog Fixer
+# ShellOps Release Changelog Fixer
 # =============================================================================
 #
 # This script updates existing GitHub releases to show only their own changelog
@@ -67,7 +67,7 @@ generate_release_notes() {
     fi
     
     # If we got HTML content, format it nicely for GitHub
-    if [[ -n "$changelog_html" ]] && [[ "$changelog_html" != *"Latest version of VibeTunnel"* ]]; then
+    if [[ -n "$changelog_html" ]] && [[ "$changelog_html" != *"Latest version of ShellOps"* ]]; then
         # Convert HTML back to Markdown for GitHub (basic conversion)
         echo "$changelog_html" | \
             sed 's/<h3>/### /g' | \

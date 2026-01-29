@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # =============================================================================
-# VibeTunnel Common Script Library
+# ShellOps Common Script Library
 # =============================================================================
 #
-# This file provides common functions and utilities for all VibeTunnel scripts
+# This file provides common functions and utilities for all ShellOps scripts
 # to ensure consistency in error handling, logging, and output formatting.
 #
 # USAGE:
@@ -250,12 +250,12 @@ version_compare() {
 
 # Safe temporary file/directory creation
 create_temp_file() {
-    local prefix="${1:-vibetunnel}"
+    local prefix="${1:-shellops}"
     mktemp -t "${prefix}.XXXXXX"
 }
 
 create_temp_dir() {
-    local prefix="${1:-vibetunnel}"
+    local prefix="${1:-shellops}"
     mktemp -d -t "${prefix}.XXXXXX"
 }
 

@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   DEFAULT_NOTIFICATION_PREFERENCES,
   type NotificationPreferences,
-  type VibeTunnelConfig,
+  type ShellOpsConfig,
 } from '../../types/config.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -79,10 +79,10 @@ const ConfigSchema = z.object({
 });
 
 /**
- * Service for managing VibeTunnel configuration with file persistence and live reloading.
+ * Service for managing ShellOps configuration with file persistence and live reloading.
  *
- * The ConfigService handles loading, saving, and watching the VibeTunnel configuration file
- * stored in the user's home directory at `~/.vibetunnel/config.json`. It provides validation
+ * The ConfigService handles loading, saving, and watching the ShellOps configuration file
+ * stored in the user's home directory at `~/.shellops/config.json`. It provides validation
  * using Zod schemas, automatic file watching for live reloading, and event-based notifications
  * when configuration changes occur.
  *
@@ -122,12 +122,12 @@ const ConfigSchema = z.object({
 export class ConfigService {
   private configDir: string;
   private configPath: string;
-  private config: VibeTunnelConfig = DEFAULT_CONFIG;
+  private config: ShellOpsConfig = DEFAULT_CONFIG;
   private watcher?: FSWatcher;
-  private configChangeCallbacks: Set<(config: VibeTunnelConfig) => void> = new Set();
+  private configChangeCallbacks: Set<(config: ShellOpsConfig) => void> = new Set();
 
   constructor() {
-    this.configDir = path.join(os.homedir(), '.vibetunnel');
+    this.configDir = path.join(os.homedir(), '.shellops');
     this.configPath = path.join(this.configDir, 'config.json');
     this.loadConfig();
   }
@@ -143,7 +143,7 @@ export class ConfigService {
     }
   }
 
-  private validateConfig(data: unknown): VibeTunnelConfig {
+  private validateConfig(data: unknown): ShellOpsConfig {
     try {
       return ConfigSchema.parse(data);
     } catch (error) {
@@ -251,7 +251,7 @@ export class ConfigService {
     }
   }
 
-  public onConfigChange(callback: (config: VibeTunnelConfig) => void): () => void {
+  public onConfigChange(callback: (config: ShellOpsConfig) => void): () => void {
     this.configChangeCallbacks.add(callback);
     // Return unsubscribe function
     return () => {
@@ -259,18 +259,18 @@ export class ConfigService {
     };
   }
 
-  public getConfig(): VibeTunnelConfig {
+  public getConfig(): ShellOpsConfig {
     return this.config;
   }
 
-  public updateConfig(config: VibeTunnelConfig): void {
+  public updateConfig(config: ShellOpsConfig): void {
     // Validate the config before updating
     this.config = this.validateConfig(config);
     this.saveConfig();
     this.notifyConfigChange();
   }
 
-  public updateQuickStartCommands(commands: VibeTunnelConfig['quickStartCommands']): void {
+  public updateQuickStartCommands(commands: ShellOpsConfig['quickStartCommands']): void {
     // Validate the entire config with updated commands
     const updatedConfig = { ...this.config, quickStartCommands: commands };
     this.config = this.validateConfig(updatedConfig);

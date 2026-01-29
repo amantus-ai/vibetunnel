@@ -16,7 +16,7 @@ export class MDNSService {
   private dnsSdProcess: ChildProcess | null = null;
 
   /**
-   * Start advertising the VibeTunnel service via mDNS/Bonjour
+   * Start advertising the ShellOps service via mDNS/Bonjour
    */
   async startAdvertising(port: number, instanceName?: string): Promise<void> {
     if (this.isAdvertising) {
@@ -24,7 +24,7 @@ export class MDNSService {
       return;
     }
 
-    const name = instanceName || os.hostname() || 'VibeTunnel Server';
+    const name = instanceName || os.hostname() || 'ShellOps Server';
 
     try {
       this.bonjour = new BonjourLib();
@@ -35,7 +35,7 @@ export class MDNSService {
       }
       this.service = this.bonjour.publish({
         name,
-        type: '_vibetunnel._tcp',
+        type: '_shellops._tcp',
         port,
         txt: {
           version: '1.0',
@@ -124,7 +124,7 @@ export class MDNSService {
     }
 
     try {
-      const dnsSdProcess = spawn('dns-sd', ['-R', name, '_vibetunnel._tcp', 'local.', `${port}`], {
+      const dnsSdProcess = spawn('dns-sd', ['-R', name, '_shellops._tcp', 'local.', `${port}`], {
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 

@@ -2,24 +2,24 @@
 
 # Deployment
 
-VibeTunnel deployment encompasses macOS app distribution, automatic updates via Sparkle, and CLI tool installation. The release process is highly automated with comprehensive signing, notarization, and update feed generation.
+ShellOps deployment encompasses macOS app distribution, automatic updates via Sparkle, and CLI tool installation. The release process is highly automated with comprehensive signing, notarization, and update feed generation.
 
 ## Package Types
 
-**macOS Application Bundle** - Main VibeTunnel.app bundle with embedded resources (mac/build/Build/Products/Release/VibeTunnel.app)
+**macOS Application Bundle** - Main ShellOps.app bundle with embedded resources (mac/build/Build/Products/Release/ShellOps.app)
 - Signed with Developer ID Application certificate
 - Notarized by Apple for Gatekeeper approval
 - Contains embedded Bun server executable and CLI binaries
 
-**DMG Distribution** - Disk image for user downloads (mac/build/VibeTunnel-{version}.dmg)
+**DMG Distribution** - Disk image for user downloads (mac/build/ShellOps-{version}.dmg)
 - Created by mac/scripts/create-dmg.sh
 - Signed and notarized by mac/scripts/notarize-dmg.sh
 - Contains app bundle and Applications symlink
 
 **CLI Tools Package** - Command line binaries installed to /usr/local/bin
-- vibetunnel binary (main CLI tool)
+- shellops binary (main CLI tool)
 - vt wrapper script/symlink (convenience command)
-- Installed via mac/VibeTunnel/Utilities/CLIInstaller.swift
+- Installed via mac/ShellOps/Utilities/CLIInstaller.swift
 
 ## Platform Deployment
 
@@ -35,7 +35,7 @@ VibeTunnel deployment encompasses macOS app distribution, automatic updates via 
 **Pre-flight Checks** - mac/scripts/preflight-check.sh validates:
 - Git repository state (clean working tree, on main branch)
 - Build environment (Xcode, certificates, tools)
-- Version configuration (mac/VibeTunnel/version.xcconfig)
+- Version configuration (mac/ShellOps/version.xcconfig)
 - Notarization credentials (environment variables)
 
 **Build and Signing** - mac/scripts/build.sh with mac/scripts/sign-and-notarize.sh:
@@ -60,7 +60,7 @@ VibeTunnel deployment encompasses macOS app distribution, automatic updates via 
 
 ### Sparkle Update System
 
-**Update Configuration** - mac/VibeTunnel/Core/Services/SparkleUpdaterManager.swift:
+**Update Configuration** - mac/ShellOps/Core/Services/SparkleUpdaterManager.swift:
 - Automatic update checking enabled (line 78)
 - Automatic downloads enabled (line 81)
 - 24-hour check interval (line 84)
@@ -72,13 +72,13 @@ VibeTunnel deployment encompasses macOS app distribution, automatic updates via 
 - Creates appcast.xml (stable only) and appcast-prerelease.xml
 - Embeds changelog from local CHANGELOG.md (lines 259-300)
 
-**Update Channels** - Configured in mac/VibeTunnel/Models/UpdateChannel.swift:
-- Stable: https://vibetunnel.sh/appcast.xml
-- Pre-release: https://vibetunnel.sh/appcast-prerelease.xml
+**Update Channels** - Configured in mac/ShellOps/Models/UpdateChannel.swift:
+- Stable: https://shellops.sh/appcast.xml
+- Pre-release: https://shellops.sh/appcast-prerelease.xml
 
 ### CLI Installation
 
-**Installation Manager** - mac/VibeTunnel/Utilities/CLIInstaller.swift:
+**Installation Manager** - mac/ShellOps/Utilities/CLIInstaller.swift:
 - Checks installation status (lines 41-123)
 - Handles version updates (lines 276-341)
 - Creates /usr/local/bin if needed (lines 407-411)
@@ -121,14 +121,14 @@ SIGN_IDENTITY                    # Override signing identity
 - **Notarization**: mac/scripts/notarize-app.sh, mac/scripts/notarize-dmg.sh
 - **DMG creation**: mac/scripts/create-dmg.sh
 - **Appcast generation**: mac/scripts/generate-appcast.sh
-- **Version management**: mac/VibeTunnel/version.xcconfig
+- **Version management**: mac/ShellOps/version.xcconfig
 - **Sparkle private key**: mac/private/sparkle_private_key
 
 ### Release Artifacts
-- **Application bundle**: mac/build/Build/Products/Release/VibeTunnel.app
-- **Signed DMG**: mac/build/VibeTunnel-{version}.dmg
+- **Application bundle**: mac/build/Build/Products/Release/ShellOps.app
+- **Signed DMG**: mac/build/ShellOps-{version}.dmg
 - **Update feeds**: appcast.xml, appcast-prerelease.xml (repository root)
-- **GitHub releases**: https://github.com/amantus-ai/vibetunnel/releases
+- **GitHub releases**: https://github.com/amantus-ai/shellops/releases
 
 ### Common Issues
 - **Notarization failures**: Check API credentials, ensure valid Developer ID certificate

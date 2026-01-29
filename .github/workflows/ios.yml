@@ -68,7 +68,7 @@ jobs:
       with:
         path: |
           ~/.swiftpm
-        key: ${{ runner.os }}-spm-${{ hashFiles('ios/VibeTunnel-iOS.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+        key: ${{ runner.os }}-spm-${{ hashFiles('ios/ShellOps-iOS.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
         restore-keys: |
           ${{ runner.os }}-spm-
     
@@ -128,7 +128,7 @@ jobs:
       run: |
         cd ios
         echo "Resolving iOS package dependencies..."
-        xcodebuild -resolvePackageDependencies -workspace ../VibeTunnel.xcworkspace -scheme VibeTunnel-iOS || echo "Dependency resolution completed"
+        xcodebuild -resolvePackageDependencies -workspace ../ShellOps.xcworkspace -scheme ShellOps-iOS || echo "Dependency resolution completed"
     
     # BUILD PHASE
     - name: Build iOS app
@@ -145,8 +145,8 @@ jobs:
         set -o pipefail
         # Try iOS first, fallback to Mac Catalyst if iOS not available
         if xcodebuild build \
-          -workspace ../VibeTunnel.xcworkspace \
-          -scheme VibeTunnel-iOS \
+          -workspace ../ShellOps.xcworkspace \
+          -scheme ShellOps-iOS \
           -destination "generic/platform=iOS" \
           -configuration Release \
           -showBuildTimingSummary \
@@ -161,8 +161,8 @@ jobs:
         else
           echo "iOS build failed, trying Mac Catalyst fallback..."
           xcodebuild build \
-            -workspace ../VibeTunnel.xcworkspace \
-            -scheme VibeTunnel-iOS \
+            -workspace ../ShellOps.xcworkspace \
+            -scheme ShellOps-iOS \
             -destination "platform=macOS,variant=Mac Catalyst" \
             -configuration Release \
             -showBuildTimingSummary \
@@ -218,7 +218,7 @@ jobs:
           echo "iOS runtimes found and ready, testing simulator creation..."
           
           # Generate unique simulator name to avoid conflicts
-          SIMULATOR_NAME="VibeTunnel-iOS-${GITHUB_RUN_ID}-${GITHUB_JOB}-${RANDOM}"
+          SIMULATOR_NAME="ShellOps-iOS-${GITHUB_RUN_ID}-${GITHUB_JOB}-${RANDOM}"
           echo "Simulator name: $SIMULATOR_NAME"
           
           # Cleanup function
@@ -231,9 +231,9 @@ jobs:
             fi
           }
           
-          # Pre-cleanup: Remove old VibeTunnel test simulators from previous runs
+          # Pre-cleanup: Remove old ShellOps test simulators from previous runs
           echo "Cleaning up old test simulators..."
-          xcrun simctl list devices | grep "VibeTunnel-iOS-" | grep -E "\(.*\)" | \
+          xcrun simctl list devices | grep "ShellOps-iOS-" | grep -E "\(.*\)" | \
             sed -n 's/.*(\(.*\)).*/\1/p' | while read -r old_sim_id; do
             cleanup_simulator "$old_sim_id"
           done
@@ -282,8 +282,8 @@ jobs:
             
             # Test if xcodebuild can actually use this simulator
             echo "Testing xcodebuild with simulator..."
-            if xcodebuild -workspace ../VibeTunnel.xcworkspace \
-                -scheme VibeTunnel-iOS \
+            if xcodebuild -workspace ../ShellOps.xcworkspace \
+                -scheme ShellOps-iOS \
                 -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
                 -showdestinations 2>&1 | grep -q "iOS Simulator.*$SIMULATOR_ID"; then
               echo "iOS simulator is working with xcodebuild, proceeding with simulator tests"
@@ -293,8 +293,8 @@ jobs:
             else
               echo "xcodebuild cannot use iOS simulator, falling back to Mac Catalyst"
               echo "xcodebuild destination check output:"
-              xcodebuild -workspace ../VibeTunnel.xcworkspace \
-                -scheme VibeTunnel-iOS \
+              xcodebuild -workspace ../ShellOps.xcworkspace \
+                -scheme ShellOps-iOS \
                 -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
                 -showdestinations 2>&1 | head -20
               cleanup_simulator "$SIMULATOR_ID"
@@ -372,8 +372,8 @@ jobs:
           
           echo "Running tests on iOS Simulator..."
           xcodebuild test \
-            -workspace ../VibeTunnel.xcworkspace \
-            -scheme VibeTunnel-iOS \
+            -workspace ../ShellOps.xcworkspace \
+            -scheme ShellOps-iOS \
             -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
             -resultBundlePath TestResults.xcresult \
             -enableCodeCoverage $ENABLE_COVERAGE \
@@ -391,8 +391,8 @@ jobs:
         else
           echo "Running tests on Mac Catalyst..."
           xcodebuild test \
-            -workspace ../VibeTunnel.xcworkspace \
-            -scheme VibeTunnel-iOS \
+            -workspace ../ShellOps.xcworkspace \
+            -scheme ShellOps-iOS \
             -destination "platform=macOS,variant=Mac Catalyst" \
             -resultBundlePath TestResults.xcresult \
             -enableCodeCoverage $ENABLE_COVERAGE \

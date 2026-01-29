@@ -62,7 +62,7 @@ Payload is the existing **VT snapshot v1** byte format (magic `VT`, version `1`)
 - Stdout source: `web/src/server/services/cast-output-hub.ts` (tails cast + pruning via `lastClearOffset`)
 - Git events: `web/src/server/services/git-status-hub.ts`
 - Web client transport: `web/src/client/services/terminal-socket-client.ts`
-- iOS transport: `ios/VibeTunnel/Services/BufferWebSocketClient.swift`
+- iOS transport: `ios/ShellOps/Services/BufferWebSocketClient.swift`
 
 ## HQ mode
 HQ uses the same `/ws` v3 frames.

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Release Checklist Script for VibeTunnel
+# Release Checklist Script for ShellOps
 # 
 # This script provides an interactive checklist to ensure all release
 # requirements are met before and during the release process.
@@ -77,12 +77,12 @@ dir_exists() {
 
 # Function to get current version from version.xcconfig
 get_current_version() {
-    grep "MARKETING_VERSION" "$PROJECT_ROOT/VibeTunnel/version.xcconfig" | cut -d'=' -f2 | tr -d ' '
+    grep "MARKETING_VERSION" "$PROJECT_ROOT/ShellOps/version.xcconfig" | cut -d'=' -f2 | tr -d ' '
 }
 
 # Function to get current build number
 get_current_build() {
-    grep "CURRENT_PROJECT_VERSION" "$PROJECT_ROOT/VibeTunnel/version.xcconfig" | cut -d'=' -f2 | tr -d ' '
+    grep "CURRENT_PROJECT_VERSION" "$PROJECT_ROOT/ShellOps/version.xcconfig" | cut -d'=' -f2 | tr -d ' '
 }
 
 # Function to check if on main branch
@@ -105,7 +105,7 @@ check_release_exists() {
 # Main checklist
 main() {
     echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║    VibeTunnel Release Checklist v1.0       ║${NC}"
+    echo -e "${BLUE}║    ShellOps Release Checklist v1.0       ║${NC}"
     echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
     
     # Get version info
@@ -288,7 +288,7 @@ main() {
     
     # Check version.xcconfig
     ((total_checks++))
-    if file_exists "$PROJECT_ROOT/VibeTunnel/version.xcconfig"; then
+    if file_exists "$PROJECT_ROOT/ShellOps/version.xcconfig"; then
         print_success "version.xcconfig exists"
         ((checks_passed++))
     else
@@ -313,10 +313,10 @@ main() {
     
     # Check for stuck DMG volumes
     ((total_checks++))
-    if ls /Volumes/VibeTunnel* >/dev/null 2>&1; then
+    if ls /Volumes/ShellOps* >/dev/null 2>&1; then
         print_warning "Stuck DMG volumes detected"
         if confirm "Unmount them?"; then
-            for volume in /Volumes/VibeTunnel*; do
+            for volume in /Volumes/ShellOps*; do
                 hdiutil detach "$volume" -force 2>/dev/null || true
             done
             print_success "Volumes unmounted"
@@ -338,7 +338,7 @@ main() {
         ((checks_passed++))
     else
         print_warning "SPARKLE_ACCOUNT not set"
-        print_info "Run: export SPARKLE_ACCOUNT=\"VibeTunnel\""
+        print_info "Run: export SPARKLE_ACCOUNT=\"ShellOps\""
         ((checks_passed++))
     fi
     
@@ -399,7 +399,7 @@ main() {
         print_success "All checks passed! Ready to release."
         echo
         echo "Next steps:"
-        echo "1. Run: export SPARKLE_ACCOUNT=\"VibeTunnel\""
+        echo "1. Run: export SPARKLE_ACCOUNT=\"ShellOps\""
         echo "2. Run: ./scripts/release.sh [release-type] [number]"
         echo "3. Monitor the release process"
         echo "4. If interrupted, use: ./scripts/release.sh --resume"
@@ -414,11 +414,11 @@ main() {
     # ========================================
     
     echo "# Set up environment:"
-    echo "export SPARKLE_ACCOUNT=\"VibeTunnel\""
+    echo "export SPARKLE_ACCOUNT=\"ShellOps\""
     echo
     echo "# Check versions:"
-    echo "grep MARKETING_VERSION VibeTunnel/version.xcconfig"
-    echo "grep CURRENT_PROJECT_VERSION VibeTunnel/version.xcconfig"
+    echo "grep MARKETING_VERSION ShellOps/version.xcconfig"
+    echo "grep CURRENT_PROJECT_VERSION ShellOps/version.xcconfig"
     echo
     echo "# Run release:"
     echo "./scripts/release.sh stable          # For stable release"
@@ -428,9 +428,9 @@ main() {
     echo
     echo "# If release fails, manual recovery:"
     echo "./scripts/build.sh --configuration Release"
-    echo "./scripts/sign-and-notarize.sh build/Build/Products/Release/VibeTunnel.app"
-    echo "./scripts/create-dmg.sh build/Build/Products/Release/VibeTunnel.app"
-    echo "gh release create \"v$VERSION\" --title \"VibeTunnel $VERSION\" --prerelease build/VibeTunnel-*.dmg"
+    echo "./scripts/sign-and-notarize.sh build/Build/Products/Release/ShellOps.app"
+    echo "./scripts/create-dmg.sh build/Build/Products/Release/ShellOps.app"
+    echo "gh release create \"v$VERSION\" --title \"ShellOps $VERSION\" --prerelease build/ShellOps-*.dmg"
     echo
 }
 

@@ -1,24 +1,24 @@
-# Fixing macOS Log Redaction for VibeTunnel
+# Fixing macOS Log Redaction for ShellOps
 
 ## Quick Fix: Configuration Profile (Recommended)
 
-We provide a ready-to-use configuration profile that enables full debug logging for VibeTunnel:
+We provide a ready-to-use configuration profile that enables full debug logging for ShellOps:
 
-**Location**: `apple/logging/VibeTunnel-Logging.mobileconfig`
+**Location**: `apple/logging/ShellOps-Logging.mobileconfig`
 
 ### Installing the Profile
 
 #### macOS
-1. Double-click `apple/logging/VibeTunnel-Logging.mobileconfig`
+1. Double-click `apple/logging/ShellOps-Logging.mobileconfig`
 2. System Settings will open to the Profiles section
 3. Click "Install..." and enter your password
-4. Restart VibeTunnel
+4. Restart ShellOps
 
 #### iOS
 1. AirDrop or email the profile to your device
 2. Open Settings → General → VPN & Device Management
-3. Install the "VibeTunnel Debug Logging" profile
-4. Restart the VibeTunnel app
+3. Install the "ShellOps Debug Logging" profile
+4. Restart the ShellOps app
 
 ### Verifying It Works
 ```bash
@@ -32,10 +32,10 @@ We provide a ready-to-use configuration profile that enables full debug logging 
 
 ## The Problem
 
-When viewing VibeTunnel logs using Apple's unified logging system, you'll see `<private>` instead of actual values:
+When viewing ShellOps logs using Apple's unified logging system, you'll see `<private>` instead of actual values:
 
 ```
-2025-07-05 08:40:08.062262+0100 VibeTunnel: Failed to connect to <private> after <private> seconds
+2025-07-05 08:40:08.062262+0100 ShellOps: Failed to connect to <private> after <private> seconds
 ```
 
 This makes debugging extremely difficult as you can't see session IDs, URLs, or other important debugging information.
@@ -88,13 +88,13 @@ sudo -n log show --last 1s
 
 1. **Normal log viewing** (redacted):
    ```bash
-   log show --predicate 'subsystem == "sh.vibetunnel.vibetunnel"'
+   log show --predicate 'subsystem == "sh.shellops.shellops"'
    # Shows: Connected to <private>
    ```
 
 2. **With sudo and --info flag** (reveals private data):
    ```bash
-   sudo log show --predicate 'subsystem == "sh.vibetunnel.vibetunnel"' --info
+   sudo log show --predicate 'subsystem == "sh.shellops.shellops"' --info
    # Shows: Connected to session-123abc
    ```
 
@@ -167,14 +167,14 @@ logger.info("Connected to \(sessionId, privacy: .public)")
 
 #### Method A: Plist File (Recommended)
 
-Create a plist file to enable private data logging for VibeTunnel:
+Create a plist file to enable private data logging for ShellOps:
 
 ```bash
 # Create the directory if it doesn't exist
 sudo mkdir -p /Library/Preferences/Logging/Subsystems
 
 # Create the plist file
-sudo tee /Library/Preferences/Logging/Subsystems/sh.vibetunnel.vibetunnel.plist > /dev/null << 'EOF'
+sudo tee /Library/Preferences/Logging/Subsystems/sh.shellops.shellops.plist > /dev/null << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -186,12 +186,12 @@ sudo tee /Library/Preferences/Logging/Subsystems/sh.vibetunnel.vibetunnel.plist 
 EOF
 
 # Verify it was created
-ls -la /Library/Preferences/Logging/Subsystems/sh.vibetunnel.vibetunnel.plist
+ls -la /Library/Preferences/Logging/Subsystems/sh.shellops.shellops.plist
 ```
 
 To remove:
 ```bash
-sudo rm /Library/Preferences/Logging/Subsystems/sh.vibetunnel.vibetunnel.plist
+sudo rm /Library/Preferences/Logging/Subsystems/sh.shellops.shellops.plist
 ```
 
 #### Method B: Configuration Profile
@@ -209,14 +209,14 @@ For managed environments or multiple subsystems, create a configuration profile:
             <key>PayloadType</key>
             <string>com.apple.system.logging</string>
             <key>PayloadIdentifier</key>
-            <string>com.example.logging.vibetunnel</string>
+            <string>com.example.logging.shellops</string>
             <key>PayloadUUID</key>
             <string>$(uuidgen)</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
             <key>Subsystems</key>
             <dict>
-                <key>sh.vibetunnel.vibetunnel</key>
+                <key>sh.shellops.shellops</key>
                 <dict>
                     <key>Enable-Private-Data</key>
                     <true/>
@@ -225,7 +225,7 @@ For managed environments or multiple subsystems, create a configuration profile:
         </dict>
     </array>
     <key>PayloadIdentifier</key>
-    <string>com.example.vibetunnel.logging</string>
+    <string>com.example.shellops.logging</string>
     <key>PayloadUUID</key>
     <string>$(uuidgen)</string>
     <key>PayloadType</key>

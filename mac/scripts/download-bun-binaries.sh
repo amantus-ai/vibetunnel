@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Download pre-built Bun binaries for ARM64
-# VibeTunnel only supports Apple Silicon Macs
+# ShellOps only supports Apple Silicon Macs
 #
 
 set -euo pipefail
@@ -62,9 +62,9 @@ download_bun() {
         return 1
     fi
     
-    # Copy to destination as vibetunnel
-    cp "$bun_binary" "$dest_dir/vibetunnel"
-    chmod +x "$dest_dir/vibetunnel"
+    # Copy to destination as shellops
+    cp "$bun_binary" "$dest_dir/shellops"
+    chmod +x "$dest_dir/shellops"
     
     # Clean up
     rm -f "$temp_zip"
@@ -81,4 +81,4 @@ echo -e "\n${BLUE}Note: You still need the native modules (pty.node and spawn-he
 echo "These must be built on Apple Silicon."
 echo ""
 echo "Current status:"
-ls -lh "$PREBUILTS_DIR"/arm64/vibetunnel 2>/dev/null && echo "  ✓ arm64 Bun binary downloaded" || echo "  ✗ arm64 Bun binary missing"
+ls -lh "$PREBUILTS_DIR"/arm64/shellops 2>/dev/null && echo "  ✓ arm64 Bun binary downloaded" || echo "  ✗ arm64 Bun binary missing"

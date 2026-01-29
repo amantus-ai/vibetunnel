@@ -8,16 +8,16 @@ const logger = createLogger('hq-client');
 /**
  * HQ Client
  *
- * Manages registration of a remote VibeTunnel server with a headquarters (HQ) server.
- * This enables distributed VibeTunnel architecture where multiple remote servers can
+ * Manages registration of a remote ShellOps server with a headquarters (HQ) server.
+ * This enables distributed ShellOps architecture where multiple remote servers can
  * connect to a central HQ server, allowing users to access terminal sessions across
  * different servers through a single entry point.
  *
  * ## Architecture Overview
  *
- * In HQ mode, VibeTunnel supports a distributed architecture:
+ * In HQ mode, ShellOps supports a distributed architecture:
  * - **HQ Server**: Central server that acts as a gateway and registry
- * - **Remote Servers**: Individual VibeTunnel instances that register with HQ
+ * - **Remote Servers**: Individual ShellOps instances that register with HQ
  * - **Session Routing**: HQ routes client requests to appropriate remote servers
  * - **WebSocket Aggregation**: HQ aggregates terminal buffers from all remotes
  *

@@ -135,7 +135,7 @@ export class ControlDirWatcher {
                 body: `${sessionName} has started.`,
                 icon: '/apple-touch-icon.png',
                 badge: '/favicon-32.png',
-                tag: `vibetunnel-session-start-${sessionId}`,
+                tag: `shellops-session-start-${sessionId}`,
                 requireInteraction: false,
                 data: {
                   type: 'session-start',

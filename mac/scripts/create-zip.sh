@@ -1,17 +1,17 @@
 #!/bin/bash
 
 # =============================================================================
-# VibeTunnel ZIP Creation Script
+# ShellOps ZIP Creation Script
 # =============================================================================
 #
-# This script creates a ZIP archive for VibeTunnel distribution.
+# This script creates a ZIP archive for ShellOps distribution.
 #
 # USAGE:
 #   ./scripts/create-zip.sh <app_path> [output_path]
 #
 # ARGUMENTS:
 #   app_path      Path to the .app bundle
-#   output_path   Path for output ZIP (optional, defaults to build/VibeTunnel-<version>-<arch>.zip)
+#   output_path   Path for output ZIP (optional, defaults to build/ShellOps-<version>-<arch>.zip)
 #
 # NOTE:
 #   The architecture suffix is automatically detected from the app bundle binary using lipo.
@@ -42,11 +42,11 @@ if [[ ! -d "$APP_PATH" ]]; then
 fi
 
 # Get app name and version info
-APP_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleName" "$APP_PATH/Contents/Info.plist" 2>/dev/null || echo "VibeTunnel")
+APP_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleName" "$APP_PATH/Contents/Info.plist" 2>/dev/null || echo "ShellOps")
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP_PATH/Contents/Info.plist")
 
 # Detect architecture from the app bundle binary
-EXECUTABLE_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$APP_PATH/Contents/Info.plist" 2>/dev/null || echo "VibeTunnel")
+EXECUTABLE_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$APP_PATH/Contents/Info.plist" 2>/dev/null || echo "ShellOps")
 ARCHS=$(lipo -archs "$APP_PATH/Contents/MacOS/$EXECUTABLE_NAME" 2>/dev/null || echo "")
 
 # Determine architecture suffix for filename

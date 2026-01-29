@@ -8,8 +8,8 @@ export function getVtScriptPath(): string {
 }
 
 /**
- * Get the path to the vibetunnel binary for testing
+ * Get the path to the shellops binary for testing
  */
-export function getVibetunnelBinaryPath(): string {
-  return path.join(process.cwd(), 'native', 'vibetunnel');
+export function getShellopsBinaryPath(): string {
+  return path.join(process.cwd(), 'native', 'shellops');
 }

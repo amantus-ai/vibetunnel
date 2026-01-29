@@ -216,7 +216,7 @@ export class TmuxManager {
   }
 
   /**
-   * Attach to a tmux session/window/pane through VibeTunnel
+   * Attach to a tmux session/window/pane through ShellOps
    */
   async attachToTmux(
     sessionName: string,
@@ -237,7 +237,7 @@ export class TmuxManager {
     const attachTarget = windowIndex !== undefined ? `${sessionName}:${windowIndex}` : sessionName;
     const tmuxCommand = ['tmux', 'attach-session', '-t', attachTarget];
 
-    // Create a new VibeTunnel session that runs tmux attach
+    // Create a new ShellOps session that runs tmux attach
     const sessionOptions: SessionCreateOptions = {
       name: `tmux: ${target}`,
       workingDir: options?.workingDir || process.env.HOME || '/',

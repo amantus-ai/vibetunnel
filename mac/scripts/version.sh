@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Version Management Script for VibeTunnel
+# Version Management Script for ShellOps
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,7 +10,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 usage() {
     echo "Usage: $0 [OPTIONS] [VERSION]"
     echo ""
-    echo "Manage VibeTunnel version numbers and prepare releases"
+    echo "Manage ShellOps version numbers and prepare releases"
     echo ""
     echo "OPTIONS:"
     echo "  --major              Bump major version (e.g., 0.1 -> 1.0)"
@@ -40,12 +40,12 @@ usage() {
 
 # Get current version from version.xcconfig
 get_current_version() {
-    grep 'MARKETING_VERSION' "$PROJECT_ROOT/VibeTunnel/version.xcconfig" | sed 's/.*MARKETING_VERSION = //'
+    grep 'MARKETING_VERSION' "$PROJECT_ROOT/ShellOps/version.xcconfig" | sed 's/.*MARKETING_VERSION = //'
 }
 
 # Get current build number from version.xcconfig
 get_current_build() {
-    grep 'CURRENT_PROJECT_VERSION' "$PROJECT_ROOT/VibeTunnel/version.xcconfig" | sed 's/.*CURRENT_PROJECT_VERSION = //'
+    grep 'CURRENT_PROJECT_VERSION' "$PROJECT_ROOT/ShellOps/version.xcconfig" | sed 's/.*CURRENT_PROJECT_VERSION = //'
 }
 
 # Update version in version.xcconfig
@@ -54,13 +54,13 @@ update_project_version() {
     local new_build="$2"
     
     # Create backup
-    cp "$PROJECT_ROOT/VibeTunnel/version.xcconfig" "$PROJECT_ROOT/VibeTunnel/version.xcconfig.bak"
+    cp "$PROJECT_ROOT/ShellOps/version.xcconfig" "$PROJECT_ROOT/ShellOps/version.xcconfig.bak"
     
     # Update marketing version
-    sed -i '' "s/MARKETING_VERSION = .*/MARKETING_VERSION = $new_version/" "$PROJECT_ROOT/VibeTunnel/version.xcconfig"
+    sed -i '' "s/MARKETING_VERSION = .*/MARKETING_VERSION = $new_version/" "$PROJECT_ROOT/ShellOps/version.xcconfig"
     
     # Update build number
-    sed -i '' "s/CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = $new_build/" "$PROJECT_ROOT/VibeTunnel/version.xcconfig"
+    sed -i '' "s/CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = $new_build/" "$PROJECT_ROOT/ShellOps/version.xcconfig"
     
     echo "✅ Updated version.xcconfig:"
     echo "   Version: $new_version"
@@ -70,7 +70,7 @@ update_project_version() {
 # Parse semantic version
 parse_version() {
     local version="$1"
-    # For VibeTunnel, handle both X.Y and X.Y.Z formats
+    # For ShellOps, handle both X.Y and X.Y.Z formats
     if echo "$version" | grep -qE '^[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
         echo "$version"
     else
@@ -213,7 +213,7 @@ main() {
     current_version=$(get_current_version)
     current_build=$(get_current_build)
     
-    echo "🏷️  VibeTunnel Version Management"
+    echo "🏷️  ShellOps Version Management"
     echo "📦 Current version: $current_version"
     echo "🔢 Current build: $current_build"
     echo ""
@@ -276,8 +276,8 @@ main() {
     echo "✅ Version updated successfully!"
     echo ""
     echo "📋 Next steps:"
-    echo "   1. Review the changes: git diff VibeTunnel/version.xcconfig"
-    echo "   2. Commit the version bump: git add VibeTunnel/version.xcconfig && git commit -m \"Bump version to $new_version\""
+    echo "   1. Review the changes: git diff ShellOps/version.xcconfig"
+    echo "   2. Commit the version bump: git add ShellOps/version.xcconfig && git commit -m \"Bump version to $new_version\""
     echo "   3. Create the release: ./scripts/release.sh stable"
     if [[ "$new_version" =~ -[a-z]+\.[0-9]+$ ]]; then
         echo "   3. Create the pre-release: ./scripts/release-auto.sh ${prerelease_type} ${new_version##*.}"
@@ -286,8 +286,8 @@ main() {
 }
 
 # Validate version.xcconfig exists
-if [[ ! -f "$PROJECT_ROOT/VibeTunnel/version.xcconfig" ]]; then
-    echo "❌ version.xcconfig not found in $PROJECT_ROOT/VibeTunnel"
+if [[ ! -f "$PROJECT_ROOT/ShellOps/version.xcconfig" ]]; then
+    echo "❌ version.xcconfig not found in $PROJECT_ROOT/ShellOps"
     exit 1
 fi
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =============================================================================
-# VibeTunnel Release Resume Script
+# ShellOps Release Resume Script
 # =============================================================================
 #
 # This script resumes a failed release process from where it left off.
@@ -40,11 +40,11 @@ if [[ -z "$RELEASE_TYPE" ]]; then
 fi
 
 # Load version information
-VERSION_CONFIG="$PROJECT_ROOT/VibeTunnel/version.xcconfig"
+VERSION_CONFIG="$PROJECT_ROOT/ShellOps/version.xcconfig"
 MARKETING_VERSION=$(grep "MARKETING_VERSION" "$VERSION_CONFIG" | cut -d' ' -f3)
 BUILD_NUMBER=$(grep "CURRENT_PROJECT_VERSION" "$VERSION_CONFIG" | cut -d' ' -f3)
 
-echo -e "${BLUE}🔄 VibeTunnel Release Resume${NC}"
+echo -e "${BLUE}🔄 ShellOps Release Resume${NC}"
 echo "============================"
 echo "Version: $MARKETING_VERSION"
 echo "Build: $BUILD_NUMBER"
@@ -59,7 +59,7 @@ TAG_NAME="v$RELEASE_VERSION"
 echo -e "${BLUE}🔍 Checking release state...${NC}"
 
 # Check 1: Is the app built and notarized?
-APP_PATH="$PROJECT_ROOT/build/Build/Products/Release/VibeTunnel.app"
+APP_PATH="$PROJECT_ROOT/build/Build/Products/Release/ShellOps.app"
 if [[ -d "$APP_PATH" ]] && xcrun stapler validate "$APP_PATH" 2>&1 | grep -q "The validate action worked"; then
     echo "✅ App is built and notarized"
     APP_DONE=true
@@ -69,7 +69,7 @@ else
 fi
 
 # Check 2: Does DMG exist and is it notarized?
-DMG_PATH="$PROJECT_ROOT/build/VibeTunnel-$RELEASE_VERSION.dmg"
+DMG_PATH="$PROJECT_ROOT/build/ShellOps-$RELEASE_VERSION.dmg"
 if [[ -f "$DMG_PATH" ]] && xcrun stapler validate "$DMG_PATH" 2>&1 | grep -q "The validate action worked"; then
     echo "✅ DMG exists and is notarized"
     DMG_DONE=true
@@ -79,7 +79,7 @@ else
 fi
 
 # Check 3: Does ZIP exist?
-ZIP_PATH="$PROJECT_ROOT/build/VibeTunnel-$RELEASE_VERSION.zip"
+ZIP_PATH="$PROJECT_ROOT/build/ShellOps-$RELEASE_VERSION.zip"
 if [[ -f "$ZIP_PATH" ]]; then
     echo "✅ ZIP exists"
     ZIP_DONE=true
@@ -143,19 +143,19 @@ if [[ "$GITHUB_DONE" == "false" ]]; then
     
     # Sign DMG for Sparkle
     echo "🔐 Signing DMG for Sparkle..."
-    DMG_SIGNATURE=$(sign_update "$DMG_PATH" --account VibeTunnel | grep "sparkle:edSignature" | cut -d'"' -f2)
+    DMG_SIGNATURE=$(sign_update "$DMG_PATH" --account ShellOps | grep "sparkle:edSignature" | cut -d'"' -f2)
     echo "   Signature: $DMG_SIGNATURE"
     
     # Create release
     if [[ "$RELEASE_TYPE" == "stable" ]]; then
         gh release create "$TAG_NAME" \
-            --title "VibeTunnel $RELEASE_VERSION" \
+            --title "ShellOps $RELEASE_VERSION" \
             --notes-file "$PROJECT_ROOT/../CHANGELOG.md" \
             "$DMG_PATH" \
             "$ZIP_PATH"
     else
         gh release create "$TAG_NAME" \
-            --title "VibeTunnel $RELEASE_VERSION" \
+            --title "ShellOps $RELEASE_VERSION" \
             --notes-file "$PROJECT_ROOT/../CHANGELOG.md" \
             --prerelease \
             "$DMG_PATH" \
@@ -167,7 +167,7 @@ fi
 
 if [[ "$APPCAST_DONE" == "false" ]]; then
     echo -e "${BLUE}📋 Updating appcast...${NC}"
-    export SPARKLE_ACCOUNT="VibeTunnel"
+    export SPARKLE_ACCOUNT="ShellOps"
     "$SCRIPT_DIR/generate-appcast.sh"
     
     # Commit and push appcast
@@ -184,10 +184,10 @@ echo ""
 echo -e "${GREEN}🎉 Release Resume Complete!${NC}"
 echo "========================="
 echo ""
-echo -e "${GREEN}✅ Successfully completed release of VibeTunnel $RELEASE_VERSION${NC}"
+echo -e "${GREEN}✅ Successfully completed release of ShellOps $RELEASE_VERSION${NC}"
 echo ""
 echo "Release details:"
 echo "  - Version: $RELEASE_VERSION"
 echo "  - Build: $BUILD_NUMBER"
 echo "  - Tag: $TAG_NAME"
-echo "  - GitHub: https://github.com/amantus-ai/vibetunnel/releases/tag/$TAG_NAME"
+echo "  - GitHub: https://github.com/amantus-ai/shellops/releases/tag/$TAG_NAME"

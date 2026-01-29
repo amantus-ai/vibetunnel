@@ -58,7 +58,7 @@ vi.mock('util', () => ({
 import { apiSocketServer as realApiSocketServer } from './api-socket-server.js';
 
 describe('ApiSocketServer', () => {
-  const testSocketPath = path.join(process.env.HOME || '/tmp', '.vibetunnel', 'api.sock');
+  const testSocketPath = path.join(process.env.HOME || '/tmp', '.shellops', 'api.sock');
 
   beforeEach(async () => {
     vi.clearAllMocks();

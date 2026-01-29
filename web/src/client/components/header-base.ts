@@ -104,7 +104,7 @@ export abstract class HeaderBase extends LitElement {
     super.connectedCallback();
     document.addEventListener('click', this.handleClickOutside);
     // Load saved theme preference
-    const saved = localStorage.getItem('vibetunnel-theme');
+    const saved = localStorage.getItem('shellops-theme');
     this.currentTheme = (saved as 'light' | 'dark' | 'system') || 'system';
   }
 

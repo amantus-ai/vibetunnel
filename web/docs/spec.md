@@ -1,14 +1,14 @@
-# VibeTunnel Web Architecture Specification
+# ShellOps Web Architecture Specification
 
-This document provides a comprehensive map of the VibeTunnel web application architecture, including server components, client structure, API specifications, and protocol details. Updated: 2025-07-01
+This document provides a comprehensive map of the ShellOps web application architecture, including server components, client structure, API specifications, and protocol details. Updated: 2025-07-01
 
 ## Key Files Quick Reference
 
 ### Server Core
-- **Entry Point**: `src/server/server.ts:912` - `startVibeTunnelServer()`
+- **Entry Point**: `src/server/server.ts:912` - `startShellOpsServer()`
 - **App Creation**: `src/server/server.ts:330` - `createApp()`
 - **Configuration**: `src/server/server.ts:57` - `Config` interface
-- **CLI Entry**: `src/server/cli.ts:51-56` - `vibetunnel fwd` command
+- **CLI Entry**: `src/server/cli.ts:51-56` - `shellops fwd` command
 
 ### Authentication
 - **Service**: `src/server/services/auth-service.ts:144-271` - SSH key verification
@@ -26,7 +26,7 @@ This document provides a comprehensive map of the VibeTunnel web application arc
 
 ### Client Core
 - **Entry Point**: `src/client/app-entry.ts:1-28` - App initialization
-- **Main Component**: `src/client/app.ts:44-1355` - `<vibetunnel-app>`
+- **Main Component**: `src/client/app.ts:44-1355` - `<shellops-app>`
 - **Terminal**: `src/client/components/terminal.ts:23-1567` - ghostty-web wrapper
 
 ## Server Architecture
@@ -75,7 +75,7 @@ The server provides a comprehensive API for terminal session management with sup
 **Session Lifecycle**:
 1. **Creation** (`src/server/routes/sessions.ts:134`):
    - Spawns PTY process using node-pty
-   - Creates session directory in `~/.vibetunnel/control/`
+   - Creates session directory in `~/.shellops/control/`
    - Saves metadata to `session.json`
 
 2. **Tracking**:
@@ -89,7 +89,7 @@ The server provides a comprehensive API for terminal session management with sup
 
 **Control Directory Structure**:
 ```
-~/.vibetunnel/control/
+~/.shellops/control/
 ├── [sessionId]/
 │   ├── session.json    # Session metadata
 │   ├── stdout          # Terminal output
@@ -102,7 +102,7 @@ The server provides a comprehensive API for terminal session management with sup
 ### Component Hierarchy
 
 ```
-<vibetunnel-app>                  # Main app orchestrator
+<shellops-app>                  # Main app orchestrator
 ├── <auth-login>                  # Login form
 ├── <session-list>                # Session listing
 │   └── <session-card>           # Individual session
@@ -196,11 +196,11 @@ Cell Type Byte:
 └── Bits 1-0: Character type (00=space, 01=ASCII, 10=Unicode)
 ```
 
-## vibetunnel-fwd (Zig forwarder)
+## shellops-fwd (Zig forwarder)
 
-The `vibetunnel-fwd` binary (`native/vt-fwd`) wraps any command in a VibeTunnel session:
+The `shellops-fwd` binary (`native/vt-fwd`) wraps any command in a ShellOps session:
 
-**Usage**: `vibetunnel-fwd [--session-id <id>] [--title-mode <mode>] [--verbosity <level>] <command> [args...]`
+**Usage**: `shellops-fwd [--session-id <id>] [--title-mode <mode>] [--verbosity <level>] <command> [args...]`
 
 **Options**:
 - `--session-id <id>`: Use a pre-generated session ID
@@ -255,7 +255,7 @@ See `socket-protocol.md` for IPC framing and message types.
 - Web Crypto API integration
 
 ### Native Terminal Spawning (macOS)
-- Unix socket at `/tmp/vibetunnel-terminal.sock`
+- Unix socket at `/tmp/shellops-terminal.sock`
 - Requests native Terminal.app windows
 - Falls back to web terminal
 
@@ -295,7 +295,7 @@ Git follow mode creates an intelligent synchronization between a main repository
 - **CLI Integration** (`web/bin/vt`): Smart command handling with path/branch detection
 
 **Configuration**:
-- Single config option: `vibetunnel.followWorktree` stores the worktree path being followed
+- Single config option: `shellops.followWorktree` stores the worktree path being followed
 - Config is stored in the main repository's `.git/config`
 - Follow mode is active when this config contains a valid worktree path
 

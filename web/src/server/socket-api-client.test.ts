@@ -23,7 +23,7 @@ vi.mock('./utils/logger.js', () => ({
   }),
 }));
 
-// Mock VibeTunnelSocketClient
+// Mock ShellOpsSocketClient
 const mockConnect = vi.fn();
 const mockDisconnect = vi.fn();
 const mockOn = vi.fn();
@@ -35,7 +35,7 @@ let _errorHandler: ((error: Error) => void) | null = null;
 let _dataHandler: ((data: Buffer) => void) | null = null;
 
 vi.mock('./pty/socket-client.js', () => ({
-  VibeTunnelSocketClient: vi.fn().mockImplementation(() => {
+  ShellOpsSocketClient: vi.fn().mockImplementation(() => {
     const clientInstance = {
       connect: mockConnect,
       disconnect: mockDisconnect,
@@ -58,7 +58,7 @@ vi.mock('./pty/socket-client.js', () => ({
 
 describe('SocketApiClient', () => {
   let client: SocketApiClient;
-  const _testSocketPath = path.join(process.env.HOME || '/tmp', '.vibetunnel', 'api.sock');
+  const _testSocketPath = path.join(process.env.HOME || '/tmp', '.shellops', 'api.sock');
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -176,7 +176,7 @@ describe('SocketApiClient', () => {
       };
 
       await expect(client.setFollowMode(request)).rejects.toThrow(
-        'VibeTunnel server is not running'
+        'ShellOps server is not running'
       );
     });
   });

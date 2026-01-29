@@ -5,7 +5,7 @@ import type { PtyManager } from '../../server/pty/pty-manager.js';
  *
  * CRITICAL: This helper ensures tests only kill sessions they create!
  * Never use sessionManager.listSessions() to kill all sessions
- * as this would kill sessions from other VibeTunnel instances.
+ * as this would kill sessions from other ShellOps instances.
  */
 export class SessionTestHelper {
   private createdSessionIds = new Set<string>();

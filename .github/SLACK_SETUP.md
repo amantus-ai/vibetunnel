@@ -10,7 +10,7 @@
 1. **Create a Slack Webhook**:
    - Go to https://api.slack.com/apps
    - Click "Create New App" > "From scratch"
-   - Name it "VibeTunnel CI" and select your workspace
+   - Name it "ShellOps CI" and select your workspace
    - Click "Incoming Webhooks" in the left sidebar
    - Toggle "Activate Incoming Webhooks" to ON
    - Click "Add New Webhook to Workspace"

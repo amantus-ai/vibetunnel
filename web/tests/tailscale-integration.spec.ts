@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Tailscale Integration E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to VibeTunnel
+    // Navigate to ShellOps
     await page.goto('http://localhost:4020');
     
     // Wait for app to load
@@ -135,7 +135,7 @@ test.describe('Tailscale Real Integration Tests', () => {
   test('can connect through Tailscale hostname', async ({ page }) => {
     // This test requires:
     // 1. Tailscale installed and running
-    // 2. VibeTunnel running with Tailscale Serve enabled
+    // 2. ShellOps running with Tailscale Serve enabled
     // 3. Access to the Tailscale hostname
     
     const diagnosticResponse = await page.request.get('/api/sessions/tailscale/test');
@@ -152,7 +152,7 @@ test.describe('Tailscale Real Integration Tests', () => {
 
   test('Tailscale Serve proxy forwards requests correctly', async ({ page }) => {
     // This test would verify that requests through Tailscale hostname
-    // actually reach the VibeTunnel server correctly
+    // actually reach the ShellOps server correctly
     
     const response = await page.request.get('/api/sessions');
     expect(response.ok()).toBeTruthy();

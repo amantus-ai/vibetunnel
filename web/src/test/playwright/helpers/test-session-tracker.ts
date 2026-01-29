@@ -1,6 +1,6 @@
 /**
  * Tracks sessions created during tests to ensure we only clean up what we create
- * This prevents accidentally killing the VibeTunnel session that Claude Code is running in
+ * This prevents accidentally killing the ShellOps session that Claude Code is running in
  */
 export class TestSessionTracker {
   private static instance: TestSessionTracker;

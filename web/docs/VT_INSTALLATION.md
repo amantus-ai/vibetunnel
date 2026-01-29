@@ -1,18 +1,18 @@
 # VT Command Installation Guide
 
-The `vt` command is VibeTunnel's convenient wrapper that allows you to run any command with terminal sharing enabled. This guide explains how the installation works and how to manage it.
+The `vt` command is ShellOps's convenient wrapper that allows you to run any command with terminal sharing enabled. This guide explains how the installation works and how to manage it.
 
 ## Installation Behavior
 
-When you install VibeTunnel via npm, the `vt` command installation follows these rules:
+When you install ShellOps via npm, the `vt` command installation follows these rules:
 
-### Global Installation (`npm install -g vibetunnel`)
+### Global Installation (`npm install -g shellops`)
 - **Checks for existing `vt` command** to avoid conflicts with other tools
 - If no `vt` command exists, creates it globally
 - If `vt` already exists, skips installation and shows a warning
-- You can still use `npx vt` or `vibetunnel fwd` as alternatives
+- You can still use `npx vt` or `shellops fwd` as alternatives
 
-### Local Installation (`npm install vibetunnel`)
+### Local Installation (`npm install shellops`)
 - Configures `vt` for local use only
 - Access via `npx vt` within your project
 
@@ -35,13 +35,13 @@ If you already have a `vt` command from another tool:
 ```bash
 # You'll see this warning during installation:
 ⚠️  A "vt" command already exists in your system
-   VibeTunnel's vt wrapper was not installed to avoid conflicts
-   You can still use "npx vt" or the full path to run VibeTunnel's vt
+   ShellOps's vt wrapper was not installed to avoid conflicts
+   You can still use "npx vt" or the full path to run ShellOps's vt
 ```
 
 **Alternatives:**
 - Use `npx vt` (works globally if installed with -g)
-- Use `vibetunnel fwd` directly
+- Use `shellops fwd` directly
 - Manually install to a different name (see below)
 
 ### Manual Installation
@@ -52,22 +52,22 @@ If automatic installation fails or you want to customize:
 npm config get prefix
 
 # On macOS/Linux, create symlink manually
-ln -s $(npm root -g)/vibetunnel/bin/vt /usr/local/bin/vt
+ln -s $(npm root -g)/shellops/bin/vt /usr/local/bin/vt
 
 # Or copy and rename to avoid conflicts
-cp $(npm root -g)/vibetunnel/bin/vt /usr/local/bin/vibetunnel-vt
-chmod +x /usr/local/bin/vibetunnel-vt
+cp $(npm root -g)/shellops/bin/vt /usr/local/bin/shellops-vt
+chmod +x /usr/local/bin/shellops-vt
 ```
 
 ### Force Reinstallation
-To force VibeTunnel to overwrite an existing `vt` command:
+To force ShellOps to overwrite an existing `vt` command:
 
 ```bash
 # Remove existing vt first
 rm -f $(which vt)
 
-# Then reinstall VibeTunnel
-npm install -g vibetunnel
+# Then reinstall ShellOps
+npm install -g shellops
 ```
 
 ## Troubleshooting
@@ -101,9 +101,9 @@ export PATH="$(npm config get prefix)/bin:$PATH"
 
 ## Uninstallation
 
-The `vt` command is removed automatically when you uninstall VibeTunnel:
+The `vt` command is removed automatically when you uninstall ShellOps:
 ```bash
-npm uninstall -g vibetunnel
+npm uninstall -g shellops
 ```
 
 If it persists, remove manually:

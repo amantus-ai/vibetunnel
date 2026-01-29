@@ -11,12 +11,12 @@ echo "::group::Release Build Verification"
 APP_PATH="$1"
 if [ -z "$APP_PATH" ]; then
     # Try to find it in common locations
-    if [ -f "build/VibeTunnel.app" ]; then
-        APP_PATH="build/VibeTunnel.app"
-    elif [ -f "mac/build/Release/VibeTunnel.app" ]; then
-        APP_PATH="mac/build/Release/VibeTunnel.app"
+    if [ -f "build/ShellOps.app" ]; then
+        APP_PATH="build/ShellOps.app"
+    elif [ -f "mac/build/Release/ShellOps.app" ]; then
+        APP_PATH="mac/build/Release/ShellOps.app"
     else
-        echo "::error::Could not find VibeTunnel.app. Please provide path as argument."
+        echo "::error::Could not find ShellOps.app. Please provide path as argument."
         exit 1
     fi
 fi

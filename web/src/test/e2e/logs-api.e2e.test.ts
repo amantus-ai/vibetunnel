@@ -12,7 +12,7 @@ describe.sequential
       server = await startTestServer({
         args: ['--port', '0', '--no-auth'],
         env: {
-          VIBETUNNEL_DEBUG: '1',
+          SHELLOPS_DEBUG: '1',
         },
         waitForHealth: true,
       });

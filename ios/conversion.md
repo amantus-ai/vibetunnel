@@ -1,4 +1,4 @@
-# VibeTunnel iOS Feature Parity Conversion Guide
+# ShellOps iOS Feature Parity Conversion Guide
 
 This document provides a comprehensive comparison between the web frontend and iOS app features, with recommendations for achieving feature parity while maintaining a native iOS experience.
 
@@ -253,6 +253,6 @@ The iOS app already implements most core functionality but lacks several feature
 
 ## Conclusion
 
-The iOS app has a strong foundation with excellent mobile-specific features like haptics, recording, and native UI patterns. The main gaps are in theme support, SSH key management, and some advanced terminal features. By implementing the recommended features while maintaining iOS design principles, VibeTunnel can achieve feature parity while providing a superior mobile experience.
+The iOS app has a strong foundation with excellent mobile-specific features like haptics, recording, and native UI patterns. The main gaps are in theme support, SSH key management, and some advanced terminal features. By implementing the recommended features while maintaining iOS design principles, ShellOps can achieve feature parity while providing a superior mobile experience.
 
 The focus should be on making the app feel completely native while matching the web's functionality. Features like biometric authentication, widgets, and Shortcuts integration could make the iOS app exceed the web version in mobile-specific scenarios.

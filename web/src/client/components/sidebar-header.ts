@@ -66,7 +66,7 @@ export class SidebarHeader extends HeaderBase {
               <h1
                 class="text-sm font-bold text-primary font-mono group-hover:underline truncate"
               >
-                VibeTunnel
+                ShellOps
               </h1>
               <p class="text-text-muted text-xs font-mono">
                 ${runningSessions.length} ${runningSessions.length === 1 ? 'session' : 'sessions'}

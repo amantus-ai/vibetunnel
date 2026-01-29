@@ -7,8 +7,8 @@
       "layers" : [
         {
           "glass" : true,
-          "image-name" : "vibe_tunnel_clean.png",
-          "name" : "vibe_tunnel_clean",
+          "image-name" : "shell_ops_clean.png",
+          "name" : "shell_ops_clean",
           "position" : {
             "scale" : 1.0,
             "translation-in-points" : [

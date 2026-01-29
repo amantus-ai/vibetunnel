@@ -12,8 +12,8 @@
 
 ```bash
 # Clone repository
-git clone https://github.com/steipete/vibetunnel
-cd vibetunnel
+git clone https://github.com/steipete/shellops
+cd shellops
 
 # Install dependencies
 cd web && pnpm install && cd ..
@@ -30,14 +30,14 @@ cd web && pnpm build
 ## Project Structure
 
 ```
-vibetunnel/
+shellops/
 ├── mac/                    # macOS app
-│   ├── VibeTunnel/        # Swift sources
+│   ├── ShellOps/        # Swift sources
 │   │   ├── Core/          # Business logic
 │   │   └── Presentation/  # UI layer
 │   └── scripts/           # Build scripts
 ├── ios/                    # iOS app
-│   └── VibeTunnel/        # Swift sources
+│   └── ShellOps/        # Swift sources
 └── web/                    # Server & frontend
     ├── src/
     │   ├── server/        # Node.js server
@@ -51,7 +51,7 @@ vibetunnel/
 
 **Observable Pattern**
 ```swift
-// mac/VibeTunnel/Core/Services/ServerManager.swift
+// mac/ShellOps/Core/Services/ServerManager.swift
 @MainActor
 @Observable
 class ServerManager {
@@ -62,9 +62,9 @@ class ServerManager {
 
 **Protocol-Oriented Design**
 ```swift
-// mac/VibeTunnel/Core/Protocols/VibeTunnelServer.swift
+// mac/ShellOps/Core/Protocols/ShellOpsServer.swift
 @MainActor
-protocol VibeTunnelServer: AnyObject {
+protocol ShellOpsServer: AnyObject {
     var isRunning: Bool { get }
     func start() async throws
     func stop() async
@@ -188,8 +188,8 @@ node --inspect dist/server/server.js
 
 ### Add New Menu Item
 
-1. Update `mac/VibeTunnel/Presentation/MenuBarView.swift`
-2. Add action in `mac/VibeTunnel/Core/Actions/`
+1. Update `mac/ShellOps/Presentation/MenuBarView.swift`
+2. Add action in `mac/ShellOps/Core/Actions/`
 3. Update settings if needed
 
 ### Modify Terminal Protocol
@@ -198,7 +198,7 @@ node --inspect dist/server/server.js
 2. Update server routing in `web/src/server/services/ws-v3-hub.ts`
 3. Update clients:
    - Web: `web/src/client/services/terminal-socket-client.ts`
-   - iOS: `ios/VibeTunnel/Services/BufferWebSocketClient.swift`
+   - iOS: `ios/ShellOps/Services/BufferWebSocketClient.swift`
 4. Add/adjust tests: `web/src/test/e2e/websocket-v3.e2e.test.ts`
 
 ## Build System

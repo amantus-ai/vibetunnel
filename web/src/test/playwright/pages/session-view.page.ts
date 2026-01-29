@@ -42,7 +42,7 @@ export class SessionViewPage extends BasePage {
     terminalBuffer: 'vibe-terminal-buffer',
     sessionHeader: 'session-header',
     backButton: 'button:has-text("Back")',
-    vibeTunnelLogo: 'button:has(h1:has-text("VibeTunnel"))',
+    shellOpsLogo: 'button:has(h1:has-text("ShellOps"))',
   };
 
   private terminalSelector = this.selectors.terminal;
@@ -169,7 +169,7 @@ export class SessionViewPage extends BasePage {
     // 2. Try clicking on the app title/logo to go home
     const appTitle = this.page
       .locator('h1, a')
-      .filter({ hasText: /VibeTunnel/i })
+      .filter({ hasText: /ShellOps/i })
       .first();
     if (await appTitle.isVisible({ timeout: 1000 })) {
       await appTitle.click();

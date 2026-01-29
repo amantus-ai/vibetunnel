@@ -22,10 +22,10 @@ MAC_DIR="$SCRIPT_DIR/.."
 WEB_DIR="$PROJECT_ROOT/web"
 PREBUILTS_DIR="$MAC_DIR/Resources/BunPrebuilts"
 
-# VibeTunnel only supports ARM64
+# ShellOps only supports ARM64
 CURRENT_ARCH=$(uname -m)
 if [ "$CURRENT_ARCH" != "arm64" ]; then
-    echo -e "${RED}Error: VibeTunnel requires Apple Silicon (ARM64)${NC}"
+    echo -e "${RED}Error: ShellOps requires Apple Silicon (ARM64)${NC}"
     exit 1
 fi
 ARCH_DIR="arm64"
@@ -40,7 +40,7 @@ build_current_arch() {
     cd "$WEB_DIR"
     
     # Build if native directory doesn't exist
-    if [ ! -f "native/vibetunnel" ]; then
+    if [ ! -f "native/shellops" ]; then
         echo "Building executable..."
         if command -v node &> /dev/null; then
             node build-native.js
@@ -56,12 +56,12 @@ build_current_arch() {
     
     # Copy binaries
     echo "Copying binaries to prebuilts directory..."
-    cp -f native/vibetunnel "$PREBUILTS_DIR/$ARCH_DIR/"
+    cp -f native/shellops "$PREBUILTS_DIR/$ARCH_DIR/"
     cp -f native/pty.node "$PREBUILTS_DIR/$ARCH_DIR/"
     cp -f native/spawn-helper "$PREBUILTS_DIR/$ARCH_DIR/"
     
     # Make executables executable
-    chmod +x "$PREBUILTS_DIR/$ARCH_DIR/vibetunnel"
+    chmod +x "$PREBUILTS_DIR/$ARCH_DIR/shellops"
     chmod +x "$PREBUILTS_DIR/$ARCH_DIR/spawn-helper"
     
     echo -e "${GREEN}✓ Copied $CURRENT_ARCH binaries to prebuilts${NC}"
@@ -73,11 +73,11 @@ check_status() {
     
     for arch in arm64; do
         echo -n "  $arch: "
-        if [ -f "$PREBUILTS_DIR/$arch/vibetunnel" ] && \
+        if [ -f "$PREBUILTS_DIR/$arch/shellops" ] && \
            [ -f "$PREBUILTS_DIR/$arch/pty.node" ] && \
            [ -f "$PREBUILTS_DIR/$arch/spawn-helper" ]; then
             echo -e "${GREEN}✓ Complete${NC}"
-            ls -lh "$PREBUILTS_DIR/$arch/" | grep -E "vibetunnel|pty.node|spawn-helper"
+            ls -lh "$PREBUILTS_DIR/$arch/" | grep -E "shellops|pty.node|spawn-helper"
         else
             echo -e "${YELLOW}⚠ Missing${NC}"
             if [ -d "$PREBUILTS_DIR/$arch" ]; then
@@ -112,4 +112,4 @@ case "${1:-build}" in
         ;;
 esac
 
-echo -e "\n${BLUE}Note:${NC} VibeTunnel requires Apple Silicon (M1/M2/M3) Macs."
+echo -e "\n${BLUE}Note:${NC} ShellOps requires Apple Silicon (M1/M2/M3) Macs."

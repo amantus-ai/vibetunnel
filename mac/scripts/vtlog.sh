@@ -89,7 +89,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Build predicate
-PREDICATE="subsystem == \"sh.vibetunnel.vibetunnel\""
+PREDICATE="subsystem == \"sh.shellops.shellops\""
 
 if [[ -n "$CATEGORY" ]]; then
     PREDICATE="$PREDICATE AND category == \"$CATEGORY\""

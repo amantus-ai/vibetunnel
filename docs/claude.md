@@ -14,15 +14,15 @@ npx @anthropic/claude-cli
 
 ## Basic Usage
 
-### Recommended: Use VibeTunnel for Better Visibility
+### Recommended: Use ShellOps for Better Visibility
 
-When working within VibeTunnel, use `vt claude` instead of `claude` directly. This provides better visibility into what Claude is doing:
+When working within ShellOps, use `vt claude` instead of `claude` directly. This provides better visibility into what Claude is doing:
 
 ```bash
 # Use vt claude for better monitoring
 vt claude "What is the capital of France?"
 
-# VibeTunnel will show Claude's activities in real-time
+# ShellOps will show Claude's activities in real-time
 vt claude -f src/*.js "Refactor this code"
 ```
 
@@ -276,6 +276,6 @@ vt claude --no-markdown      # Disable markdown formatting
 vt claude --json             # JSON output (if supported)
 ```
 
-**Note**: When not using VibeTunnel, replace `vt claude` with just `claude` in all commands above.
+**Note**: When not using ShellOps, replace `vt claude` with just `claude` in all commands above.
 
 Remember: Claude is designed to be a helpful assistant. This is usually what you want, but sometimes you need precise, limited actions. Plan accordingly!

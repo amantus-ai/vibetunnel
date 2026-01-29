@@ -50,14 +50,14 @@ export function createConfigRoutes(options: ConfigRouteOptions): Router {
    */
   router.get('/config', (_req, res) => {
     try {
-      const vibeTunnelConfig = configService.getConfig();
+      const shellOpsConfig = configService.getConfig();
       const repositoryBasePath =
-        vibeTunnelConfig.repositoryBasePath || DEFAULT_REPOSITORY_BASE_PATH;
+        shellOpsConfig.repositoryBasePath || DEFAULT_REPOSITORY_BASE_PATH;
 
       const config: AppConfig = {
         repositoryBasePath: repositoryBasePath,
         serverConfigured: true, // Always configured when server is running
-        quickStartCommands: vibeTunnelConfig.quickStartCommands,
+        quickStartCommands: shellOpsConfig.quickStartCommands,
         notificationPreferences: configService.getNotificationPreferences(),
       };
 

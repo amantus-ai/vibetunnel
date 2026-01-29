@@ -3,22 +3,22 @@
   "projectType": "swift",
   "targets": [
     {
-      "name": "vibetunnel",
+      "name": "shellops",
       "type": "app-bundle",
-      "buildCommand": "cd . && xcodebuild -workspace VibeTunnel.xcworkspace -scheme VibeTunnel -configuration Debug build",
-      "outputPath": "./mac/build/Build/Products/Debug/VibeTunnel.app",
-      "bundleId": "sh.vibetunnel.vibetunnel.debug",
+      "buildCommand": "cd . && xcodebuild -workspace ShellOps.xcworkspace -scheme ShellOps -configuration Debug build",
+      "outputPath": "./mac/build/Build/Products/Debug/ShellOps.app",
+      "bundleId": "sh.shellops.shellops.debug",
       "watchPaths": [
         "./**/*.{swift,xcconfig,entitlements,plist}",
         "./**/*.xcodeproj/**"
       ]
     },
     {
-      "name": "vibetunnel-ios",
+      "name": "shellops-ios",
       "type": "app-bundle",
-      "buildCommand": "cd ios && xcodebuild -project VibeTunnel-iOS.xcodeproj -scheme VibeTunnel-iOS -configuration Debug build",
-      "outputPath": "./ios/build/Build/Products/Debug-iphonesimulator/VibeTunnel.app",
-      "bundleId": "sh.vibetunnel.ios",
+      "buildCommand": "cd ios && xcodebuild -project ShellOps-iOS.xcodeproj -scheme ShellOps-iOS -configuration Debug build",
+      "outputPath": "./ios/build/Build/Products/Debug-iphonesimulator/ShellOps.app",
+      "bundleId": "sh.shellops.ios",
       "watchPaths": [
         "ios/**/*.{swift,xcconfig,entitlements,plist}",
         "ios/**/*.xcodeproj/**"

@@ -1,16 +1,16 @@
 # CLAUDE.md - iOS App
 
-This file provides guidance to Claude Code when working with the iOS companion app for VibeTunnel.
+This file provides guidance to Claude Code when working with the iOS companion app for ShellOps.
 
 ## Project Overview
 
-The iOS app is a companion application to VibeTunnel that allows viewing and managing terminal sessions from iOS devices.
+The iOS app is a companion application to ShellOps that allows viewing and managing terminal sessions from iOS devices.
 
 ## Development Setup
 
 1. Open the project in Xcode:
 ```bash
-open ios/VibeTunnel-iOS.xcodeproj
+open ios/ShellOps-iOS.xcodeproj
 ```
 
 2. Select your development team in project settings
@@ -24,7 +24,7 @@ open ios/VibeTunnel-iOS.xcodeproj
 
 ## Key Files
 
-- `VibeTunnelApp.swift` - Main app entry point
+- `ShellOpsApp.swift` - Main app entry point
 - `ContentView.swift` - Primary UI
 - `TerminalView.swift` - Terminal display component
 - `WebSocketClient.swift` - Server communication
@@ -33,17 +33,17 @@ open ios/VibeTunnel-iOS.xcodeproj
 
 ```bash
 # Build for simulator
-xcodebuild -project VibeTunnel-iOS.xcodeproj -scheme VibeTunnel -sdk iphonesimulator
+xcodebuild -project ShellOps-iOS.xcodeproj -scheme ShellOps -sdk iphonesimulator
 
 # Build for device
-xcodebuild -project VibeTunnel-iOS.xcodeproj -scheme VibeTunnel -sdk iphoneos
+xcodebuild -project ShellOps-iOS.xcodeproj -scheme ShellOps -sdk iphoneos
 ```
 
 ## Testing
 
 ```bash
 # Run tests
-xcodebuild test -project VibeTunnel-iOS.xcodeproj -scheme VibeTunnel -destination 'platform=iOS Simulator,name=iPhone 15'
+xcodebuild test -project ShellOps-iOS.xcodeproj -scheme ShellOps -destination 'platform=iOS Simulator,name=iPhone 15'
 ```
 
 ## Viewing Logs

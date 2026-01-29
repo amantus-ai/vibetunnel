@@ -121,13 +121,13 @@ const canEnableFollowMode = (
 Follow mode state is stored in Git config:
 ```bash
 # Enable follow mode for a branch
-git config vibetunnel.followBranch "feature/new-ui"
+git config shellops.followBranch "feature/new-ui"
 
 # Check current follow mode
-git config vibetunnel.followBranch
+git config shellops.followBranch
 
 # Disable follow mode
-git config --unset vibetunnel.followBranch
+git config --unset shellops.followBranch
 ```
 
 ### Synchronization Rules

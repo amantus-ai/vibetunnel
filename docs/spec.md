@@ -1,4 +1,4 @@
-# VibeTunnel Technical Specification
+# ShellOps Technical Specification
 
 ## Table of Contents
 
@@ -28,7 +28,7 @@
 
 ### Project Overview
 
-VibeTunnel is a macOS application that provides browser-based access to Mac terminals, designed to make terminal access as simple as opening a web page. The project specifically targets developers and engineers who need to monitor AI agents (like Claude Code) remotely.
+ShellOps is a macOS application that provides browser-based access to Mac terminals, designed to make terminal access as simple as opening a web page. The project specifically targets developers and engineers who need to monitor AI agents (like Claude Code) remotely.
 
 ### Key Features
 
@@ -148,7 +148,7 @@ VibeTunnel is a macOS application that provides browser-based access to Mac term
 
 ### ServerManager
 
-**Location**: `mac/VibeTunnel/Core/Services/ServerManager.swift`
+**Location**: `mac/ShellOps/Core/Services/ServerManager.swift`
 
 **Responsibilities**:
 - Manages Bun server process lifecycle (start/stop/restart)
@@ -173,7 +173,7 @@ func clearAuthCache() async
 
 ### BunServer
 
-**Location**: `mac/VibeTunnel/Core/Services/BunServer.swift`
+**Location**: `mac/ShellOps/Core/Services/BunServer.swift`
 
 **Responsibilities**:
 - Spawns and manages the Bun executable process
@@ -182,14 +182,14 @@ func clearAuthCache() async
 - Passes configuration via command-line arguments
 
 **Key Features**:
-- Embedded vibetunnel binary built with Bun
+- Embedded shellops binary built with Bun
 - Native PTY support via node-pty module
 - Automatic crash recovery
 - Log streaming to ServerManager
 
 ### SessionMonitor
 
-**Location**: `mac/VibeTunnel/Core/Services/SessionMonitor.swift`
+**Location**: `mac/ShellOps/Core/Services/SessionMonitor.swift`
 
 **Responsibilities**:
 - Polls server for active sessions
@@ -205,7 +205,7 @@ func clearAuthCache() async
 
 ### TerminalManager
 
-**Location**: `mac/VibeTunnel/Core/Services/TerminalManager.swift`
+**Location**: `mac/ShellOps/Core/Services/TerminalManager.swift`
 
 **Responsibilities**:
 - Integrates with macOS terminal applications
@@ -215,7 +215,7 @@ func clearAuthCache() async
 
 ### NgrokService
 
-**Location**: `mac/VibeTunnel/Core/Services/NgrokService.swift`
+**Location**: `mac/ShellOps/Core/Services/NgrokService.swift`
 
 **Responsibilities**:
 - Manages ngrok tunnel lifecycle
@@ -246,7 +246,7 @@ The server is built as a standalone Bun executable that embeds:
 **Key Components**:
 - `server.ts` - HTTP server initialization and lifecycle
 - `app.ts` - Express application setup and middleware
-- `native/vt-fwd` - External terminal forwarder (Zig, built as `vibetunnel-fwd`)
+- `native/vt-fwd` - External terminal forwarder (Zig, built as `shellops-fwd`)
 - `pty/pty-manager.ts` - Native PTY process management
 - `pty/session-manager.ts` - Terminal session lifecycle
 - `services/terminal-manager.ts` - High-level terminal operations
@@ -267,7 +267,7 @@ The server is built as a standalone Bun executable that embeds:
 ```bash
 # Build standalone executable
 cd web && node build-native.js
-# Creates web/native/vibetunnel (60MB Bun executable)
+# Creates web/native/shellops (60MB Bun executable)
 ```
 
 ## Web Frontend
@@ -330,14 +330,14 @@ web/src/client/
 
 ### Overview
 
-**Location**: `ios/VibeTunnel/` directory
+**Location**: `ios/ShellOps/` directory
 
 **Purpose**: Native iOS companion app for mobile terminal access
 
 ### Architecture
 
 **Key Components**:
-- `VibeTunnelApp.swift` - Main app entry and lifecycle
+- `ShellOpsApp.swift` - Main app entry and lifecycle
 - `BufferWebSocketClient.swift` - WebSocket client with binary protocol
 - `TerminalView.swift` - Native terminal rendering
 - `GhosttyWebView.swift` - Ghostty web renderer (WKWebView)
@@ -471,18 +471,18 @@ The `vt` command is installed as a wrapper script that automatically prepends 'f
 **Script Location**: `/usr/local/bin/vt`
 ```bash
 #!/bin/bash
-# VibeTunnel CLI wrapper for Bun server
-exec /usr/local/bin/vibetunnel fwd "$@"
+# ShellOps CLI wrapper for Bun server
+exec /usr/local/bin/shellops fwd "$@"
 ```
 
-### vibetunnel Binary
+### shellops Binary
 
-**Location**: Embedded in app bundle, copied to `/usr/local/bin/vibetunnel`
+**Location**: Embedded in app bundle, copied to `/usr/local/bin/shellops`
 
 **Commands**:
-- `vibetunnel serve` - Start server (used internally)
-- `vibetunnel fwd [command]` - Forward terminal session
-- `vibetunnel version` - Show version information
+- `shellops serve` - Start server (used internally)
+- `shellops fwd [command]` - Forward terminal session
+- `shellops version` - Show version information
 
 ### CLI Features
 
@@ -612,7 +612,7 @@ See `docs/websocket.md` (frame layout + message types).
 **Web Client** (`web/src/client/components/vibe-terminal-buffer.ts`):
 - Consumes `STDOUT` and `SNAPSHOT_VT` via `web/src/client/services/terminal-socket-client.ts`
 
-**iOS Client** (`ios/VibeTunnel/Services/BufferWebSocketClient.swift`):
+**iOS Client** (`ios/ShellOps/Services/BufferWebSocketClient.swift`):
 - Same `/ws` v3 framing + VT snapshot v1 decoding
 
 ## User Interface
@@ -707,7 +707,7 @@ cd mac && ./scripts/build.sh --configuration Release --sign
 poltergeist  # Automatic rebuilds on file changes
 
 # Or manual build
-cd mac && xcodebuild -project VibeTunnel.xcodeproj -scheme VibeTunnel -configuration Debug build
+cd mac && xcodebuild -project ShellOps.xcodeproj -scheme ShellOps -configuration Debug build
 ```
 
 **Build Phases**:
@@ -719,7 +719,7 @@ cd mac && xcodebuild -project VibeTunnel.xcodeproj -scheme VibeTunnel -configura
 
 ### Code Signing
 
-**Entitlements** (`mac/VibeTunnel/VibeTunnel.entitlements`):
+**Entitlements** (`mac/ShellOps/ShellOps.entitlements`):
 ```xml
 <key>com.apple.security.cs.allow-jit</key>
 <true/>
@@ -754,7 +754,7 @@ cd mac && xcodebuild -project VibeTunnel.xcodeproj -scheme VibeTunnel -configura
 
 **Test Organization**:
 ```
-mac/VibeTunnelTests/
+mac/ShellOpsTests/
 ├── ServerManagerTests.swift
 ├── SessionMonitorTests.swift
 ├── TerminalManagerTests.swift
@@ -919,7 +919,7 @@ web/src/test/
   "height": 24,
   "timestamp": 1704060000,
   "command": "/bin/zsh",
-  "title": "VibeTunnel Session"
+  "title": "ShellOps Session"
 }
 ```
 
@@ -935,7 +935,7 @@ Sessions are ephemeral and exist only in server memory. Recordings are stored te
 
 ## Conclusion
 
-VibeTunnel achieves its goal of simple, secure terminal access through a carefully architected system combining native macOS development with modern web technologies. The single Node.js/Bun server implementation provides excellent performance while maintaining simplicity.
+ShellOps achieves its goal of simple, secure terminal access through a carefully architected system combining native macOS development with modern web technologies. The single Node.js/Bun server implementation provides excellent performance while maintaining simplicity.
 
-The binary buffer protocol ensures efficient terminal streaming, while the clean architectural boundaries enable independent evolution of components. With careful attention to macOS platform conventions and user expectations, VibeTunnel delivers a professional-grade solution for terminal access needs.
-This specification serves as the authoritative reference for understanding, maintaining, and extending the VibeTunnel project.
+The binary buffer protocol ensures efficient terminal streaming, while the clean architectural boundaries enable independent evolution of components. With careful attention to macOS platform conventions and user expectations, ShellOps delivers a professional-grade solution for terminal access needs.
+This specification serves as the authoritative reference for understanding, maintaining, and extending the ShellOps project.

@@ -40,7 +40,7 @@ vi.mock('net', () => ({
 describe('SocketApiClient', () => {
   let SocketApiClient: any;
   let client: any;
-  const testSocketPath = path.join(process.env.HOME || '/tmp', '.vibetunnel', 'api.sock');
+  const testSocketPath = path.join(process.env.HOME || '/tmp', '.shellops', 'api.sock');
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -145,7 +145,7 @@ describe('SocketApiClient', () => {
         enable: true,
       };
 
-      await expect(client.setFollowMode(request)).rejects.toThrow('VibeTunnel server is not running');
+      await expect(client.setFollowMode(request)).rejects.toThrow('ShellOps server is not running');
     });
   });
 

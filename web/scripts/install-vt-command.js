@@ -38,8 +38,8 @@ const installGlobalVt = (vtSource, npmBinDir) => {
   // Check if vt already exists
   if (fs.existsSync(vtTarget) || (isWindows && fs.existsSync(vtTarget + '.cmd'))) {
     console.log('⚠️  A "vt" command already exists in your system');
-    console.log('   VibeTunnel\'s vt wrapper was not installed to avoid conflicts');
-    console.log('   You can still use "npx vt" or the full path to run VibeTunnel\'s vt');
+    console.log('   ShellOps\'s vt wrapper was not installed to avoid conflicts');
+    console.log('   You can still use "npx vt" or the full path to run ShellOps\'s vt');
     return true;
   }
   
@@ -56,7 +56,7 @@ const installGlobalVt = (vtSource, npmBinDir) => {
       fs.symlinkSync(vtSource, vtTarget);
       console.log('✓ vt command installed globally');
     }
-    console.log('  You can now use "vt" to wrap commands with VibeTunnel');
+    console.log('  You can now use "vt" to wrap commands with ShellOps');
     return true;
   } catch (symlinkError) {
     // If symlink fails on Unix, try copying the file
@@ -65,16 +65,16 @@ const installGlobalVt = (vtSource, npmBinDir) => {
         fs.copyFileSync(vtSource, vtTarget);
         fs.chmodSync(vtTarget, '755');
         console.log('✓ vt command installed globally (copied)');
-        console.log('  You can now use "vt" to wrap commands with VibeTunnel');
+        console.log('  You can now use "vt" to wrap commands with ShellOps');
         return true;
       } catch (copyError) {
         console.warn('⚠️  Could not install vt command globally:', copyError.message);
-        console.log('   Use "npx vt" or "vibetunnel fwd" instead');
+        console.log('   Use "npx vt" or "shellops fwd" instead');
         return false;
       }
     } else {
       console.warn('⚠️  Could not install vt command on Windows:', symlinkError.message);
-      console.log('   Use "npx vt" or "vibetunnel fwd" instead');
+      console.log('   Use "npx vt" or "shellops fwd" instead');
       return false;
     }
   }
@@ -84,7 +84,7 @@ const installGlobalVt = (vtSource, npmBinDir) => {
 const installVtCommand = (vtSource, isGlobalInstall) => {
   if (!fs.existsSync(vtSource)) {
     console.warn('⚠️  vt command script not found in package');
-    console.log('   Use "vibetunnel" command instead');
+    console.log('   Use "shellops" command instead');
     return false;
   }
   
@@ -108,7 +108,7 @@ const installVtCommand = (vtSource, isGlobalInstall) => {
     return installGlobalVt(vtSource, npmBinDir);
   } catch (error) {
     console.warn('⚠️  Could not configure vt command:', error.message);
-    console.log('   Use "vibetunnel" command instead');
+    console.log('   Use "shellops" command instead');
     return false;
   }
 };

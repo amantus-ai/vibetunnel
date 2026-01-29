@@ -85,7 +85,7 @@ async function globalSetup(config: FullConfig) {
       });
 
       // Wait for app to load with reduced timeout
-      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
+      await page.waitForSelector('shellops-app', { state: 'attached', timeout: 5000 });
 
       // Check if we have sessions
       const sessions = await page.evaluate(async () => {

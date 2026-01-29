@@ -9,7 +9,7 @@ import type { Page } from '@playwright/test';
  */
 export async function waitForAppReady(page: Page): Promise<void> {
   // Wait for app element - reduced timeout
-  await page.waitForSelector('vibetunnel-app', {
+  await page.waitForSelector('shellops-app', {
     state: 'attached',
     timeout: process.env.CI ? 3000 : 2000,
   });
@@ -177,7 +177,7 @@ export async function waitForSessionCard(
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       // First ensure the session list container is loaded
-      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
+      await page.waitForSelector('shellops-app', { state: 'attached', timeout: 5000 });
 
       // Wait for the session to appear in the DOM
       await page.waitForFunction(

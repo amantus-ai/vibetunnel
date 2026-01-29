@@ -40,7 +40,7 @@ export interface ServerInstance {
  * Default paths and timeouts
  */
 const CLI_PATH = path.join(process.cwd(), 'src', 'cli.ts');
-const BUILT_CLI_PATH = path.join(process.cwd(), 'dist', 'vibetunnel-cli');
+const BUILT_CLI_PATH = path.join(process.cwd(), 'dist', 'shellops-cli');
 const DEFAULT_TIMEOUT = 30000;
 const HEALTH_CHECK_INTERVAL = 100;
 const PROCESS_KILL_TIMEOUT = 5000;
@@ -52,10 +52,10 @@ const PROCESS_KILL_TIMEOUT = 5000;
  */
 export function extractPortFromOutput(output: string): number | null {
   const patterns = [
-    /VibeTunnel Server running on http:\/\/(?:localhost|[\d.]+):(\d+)/,
+    /ShellOps Server running on http:\/\/(?:localhost|[\d.]+):(\d+)/,
     /Server listening on port (\d+)/,
     // Also match when timestamp is present
-    /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+LOG\s+\[[\w-]+\]\s+VibeTunnel Server running on http:\/\/(?:localhost|[\d.]+):(\d+)/,
+    /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+LOG\s+\[[\w-]+\]\s+ShellOps Server running on http:\/\/(?:localhost|[\d.]+):(\d+)/,
   ];
 
   for (const pattern of patterns) {
@@ -131,7 +131,7 @@ export async function waitForServerHealth(
 }
 
 /**
- * Starts a VibeTunnel test server with standardized configuration
+ * Starts a ShellOps test server with standardized configuration
  * @param config - Server configuration options
  * @returns Server instance with process and port
  */
@@ -160,11 +160,11 @@ export async function startTestServer(config: ServerConfig = {}): Promise<Server
   // Merge environment variables
   const processEnv = {
     ...process.env,
-    VIBETUNNEL_CONTROL_DIR: controlDir,
+    SHELLOPS_CONTROL_DIR: controlDir,
     NODE_ENV: 'production',
     FORCE_COLOR: '0',
     // Ensure INFO verbosity for tests to see server startup messages
-    VIBETUNNEL_LOG_LEVEL: env.VIBETUNNEL_LOG_LEVEL || env.VIBETUNNEL_DEBUG ? undefined : 'info',
+    SHELLOPS_LOG_LEVEL: env.SHELLOPS_LOG_LEVEL || env.SHELLOPS_DEBUG ? undefined : 'info',
     ...env,
   };
 

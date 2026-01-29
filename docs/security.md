@@ -1,8 +1,8 @@
-# VibeTunnel Server Security Configuration
+# ShellOps Server Security Configuration
 
 ## Authentication Options
 
-VibeTunnel Server provides several authentication mechanisms to secure terminal access:
+ShellOps Server provides several authentication mechanisms to secure terminal access:
 
 ### 1. Standard Authentication
 
@@ -24,16 +24,16 @@ The `--allow-local-bypass` flag enables a special authentication mode that allow
 
 **Basic Local Bypass**
 ```bash
-vibetunnel-server --allow-local-bypass
+shellops-server --allow-local-bypass
 ```
 - Allows any connection from localhost (127.0.0.1, ::1) to access without authentication
 - No token required
 
 **Secured Local Bypass**
 ```bash
-vibetunnel-server --allow-local-bypass --local-auth-token <secret-token>
+shellops-server --allow-local-bypass --local-auth-token <secret-token>
 ```
-- Localhost connections must provide token via `X-VibeTunnel-Local` header
+- Localhost connections must provide token via `X-ShellOps-Local` header
 - Adds an additional security layer for local connections
 
 #### Security Implementation
@@ -53,7 +53,7 @@ The local bypass feature implements several security checks to prevent spoofing:
    - Additional layer of verification
 
 4. **Token Authentication** (when configured)
-   - Requires `X-VibeTunnel-Local` header to match configured token
+   - Requires `X-ShellOps-Local` header to match configured token
    - Provides shared secret authentication for local tools
 
 #### Security Implications
@@ -80,10 +80,10 @@ The local bypass feature implements several security checks to prevent spoofing:
 
 **Local Development Tools**
 ```javascript
-// Local tool accessing VibeTunnel without authentication
+// Local tool accessing ShellOps without authentication
 const response = await fetch('http://localhost:4020/api/sessions', {
   headers: {
-    'X-VibeTunnel-Local': 'my-secret-token' // Only if token configured
+    'X-ShellOps-Local': 'my-secret-token' // Only if token configured
   }
 });
 ```
@@ -91,10 +91,10 @@ const response = await fetch('http://localhost:4020/api/sessions', {
 **Automated Testing**
 ```bash
 # Start server with local bypass for tests
-vibetunnel-server --allow-local-bypass --local-auth-token test-token
+shellops-server --allow-local-bypass --local-auth-token test-token
 
 # Test script can now access without password
-curl -H "X-VibeTunnel-Local: test-token" http://localhost:4020/api/sessions
+curl -H "X-ShellOps-Local: test-token" http://localhost:4020/api/sessions
 ```
 
 ## Additional Security Considerations
@@ -110,7 +110,7 @@ curl -H "X-VibeTunnel-Local: test-token" http://localhost:4020/api/sessions
 - More secure than password authentication
 
 ### HTTPS/TLS
-- VibeTunnel does not provide built-in TLS
+- ShellOps does not provide built-in TLS
 - Use a reverse proxy (nginx, Caddy) for HTTPS
 - Or use secure tunnels (Tailscale, ngrok)
 

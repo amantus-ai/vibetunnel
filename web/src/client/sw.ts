@@ -5,8 +5,8 @@
 declare const self: ServiceWorkerGlobalScope;
 export {};
 
-// Notification tag prefix for VibeTunnel notifications
-const NOTIFICATION_TAG_PREFIX = 'vibetunnel-';
+// Notification tag prefix for ShellOps notifications
+const NOTIFICATION_TAG_PREFIX = 'shellops-';
 
 // Types for push notification payloads
 interface SessionExitData {
@@ -309,7 +309,7 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
 
   switch (data.type) {
     case 'CLEAR_NOTIFICATIONS': {
-      // Clear all VibeTunnel notifications
+      // Clear all ShellOps notifications
       clearAllNotifications();
       break;
     }
@@ -332,7 +332,7 @@ async function clearAllNotifications(): Promise<void> {
       }
     }
 
-    console.log('[SW] Cleared all VibeTunnel notifications');
+    console.log('[SW] Cleared all ShellOps notifications');
   } catch (error) {
     console.error('[SW] Failed to clear notifications:', error);
   }

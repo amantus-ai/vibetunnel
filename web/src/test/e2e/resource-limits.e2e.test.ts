@@ -27,8 +27,8 @@ describe.skip('Resource Limits and Concurrent Sessions', () => {
       controlDir: testDir,
       env: {
         // Set reasonable limits for testing
-        VIBETUNNEL_MAX_SESSIONS: '20',
-        VIBETUNNEL_MAX_WEBSOCKETS: '50',
+        SHELLOPS_MAX_SESSIONS: '20',
+        SHELLOPS_MAX_WEBSOCKETS: '50',
       },
       serverType: 'RESOURCE_TEST',
     });

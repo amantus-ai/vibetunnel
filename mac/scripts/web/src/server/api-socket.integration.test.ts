@@ -12,7 +12,7 @@ import {
 } from './pty/socket-protocol.js';
 
 describe('API Socket Integration Tests', () => {
-  const testSocketPath = path.join(process.env.HOME || '/tmp', '.vibetunnel-test', 'api.sock');
+  const testSocketPath = path.join(process.env.HOME || '/tmp', '.shellops-test', 'api.sock');
   let server: net.Server;
   
   beforeAll(async () => {

@@ -5,7 +5,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const exe = b.addExecutable(.{
-        .name = "vibetunnel-fwd",
+        .name = "shellops-fwd",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) void {
     exe.linkLibC();
 
     const options = b.addOptions();
-    const version = b.option([]const u8, "version", "VibeTunnel version") orelse "unknown";
+    const version = b.option([]const u8, "version", "ShellOps version") orelse "unknown";
     options.addOption([]const u8, "version", version);
     exe.root_module.addOptions("build_options", options);
 

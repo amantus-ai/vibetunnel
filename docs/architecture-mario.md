@@ -1,12 +1,12 @@
-# VibeTunnel Architecture Analysis - Mario's Technical Deep Dive
+# ShellOps Architecture Analysis - Mario's Technical Deep Dive
 
-This document contains comprehensive technical insights from Mario's debugging session about VibeTunnel's architecture, critical performance issues, and detailed solutions.
+This document contains comprehensive technical insights from Mario's debugging session about ShellOps's architecture, critical performance issues, and detailed solutions.
 
 ## Executive Summary
 
-Mario identified two critical issues causing performance problems in VibeTunnel:
+Mario identified two critical issues causing performance problems in ShellOps:
 
-1. **850MB Session Bug**: External terminal sessions (via `vibetunnel-fwd`) bypass the clear sequence truncation in `stream-watcher.ts`, sending entire gigabyte files instead of the last 2MB
+1. **850MB Session Bug**: External terminal sessions (via `shellops-fwd`) bypass the clear sequence truncation in `stream-watcher.ts`, sending entire gigabyte files instead of the last 2MB
 2. **Resize Loop**: Claude terminal app issues full clear sequence (`\x1b[2J`) and re-renders entire scroll buffer on every resize event, creating exponential data growth
 
 Note: A third issue with Node-PTY's shared pipe architecture causing Electron crashes has already been resolved with a custom PTY implementation.
@@ -35,7 +35,7 @@ sequenceDiagram
     participant WS as WebSocket
     participant Server as Node Server
     participant PTY as PTYManager
-    participant FWD as vibetunnel-fwd
+    participant FWD as shellops-fwd
     participant Proc as User Process
     
     UI->>WS: keystrokes
@@ -57,7 +57,7 @@ sequenceDiagram
 | `server.ts` | Main web server | HTTP endpoints, WebSocket handling |
 | `pty-manager.ts` | PTY lifecycle management | `createSession()`, `setupPtyHandlers()` |
 | `stream-watcher.ts` | Monitors ascinema files | `sendExistingContent()` - implements clear truncation |
-| `vibetunnel-fwd` | External terminal forwarding | Process spawning, **BYPASSES TRUNCATION** |
+| `shellops-fwd` | External terminal forwarding | Process spawning, **BYPASSES TRUNCATION** |
 | `terminal-manager.ts` | Binary buffer rendering | Converts ANSI to binary cells format |
 
 ### Data Flow Paths
@@ -102,7 +102,7 @@ Benefits:
 
 **Symptom**: Sessions with large output (850MB+) cause infinite loading and browser unresponsiveness.
 
-**Root Cause**: External terminal sessions via `vibetunnel-fwd` bypass the clear sequence truncation logic.
+**Root Cause**: External terminal sessions via `shellops-fwd` bypass the clear sequence truncation logic.
 
 **Technical Details**:
 ```javascript
@@ -157,7 +157,7 @@ This issue has been resolved by implementing a custom PTY solution without the s
 
 ## Ascinema Format Details
 
-VibeTunnel uses the ascinema format for recording terminal sessions:
+ShellOps uses the ascinema format for recording terminal sessions:
 
 ```javascript
 // Format: [timestamp, event_type, data]
@@ -185,7 +185,7 @@ function findLastClearSequence(buffer) {
 **Problem**: External terminal sessions don't use `sendExistingContent()` truncation.
 
 **Investigation Needed**:
-1. Trace how `vibetunnel-fwd` connects to client streams
+1. Trace how `shellops-fwd` connects to client streams
 2. Determine why it bypasses stream-watcher's truncation
 3. Ensure external terminals use same code path as server sessions
 4. Test with 980MB file to verify fix
@@ -289,7 +289,7 @@ npm run dev
 SESSION_ID=$(curl -X POST localhost:3000/api/sessions | jq -r .id)
 
 # Stop server, inject large file
-cp /path/to/850mb-test-file ~/.vibetunnel/sessions/$SESSION_ID/stdout
+cp /path/to/850mb-test-file ~/.shellops/sessions/$SESSION_ID/stdout
 
 # Restart and verify truncation works
 npm run dev
@@ -341,7 +341,7 @@ window.addEventListener('resize', () => {
 ## Action Plan Summary
 
 1. **Immediate (End of Week)**: Fix external terminal truncation bug
-   - Debug why `vibetunnel-fwd` bypasses `sendExistingContent()`
+   - Debug why `shellops-fwd` bypasses `sendExistingContent()`
    - Deploy fix for immediate user relief
 
 2. **Short Term**: Comprehensive resize fix
@@ -361,4 +361,4 @@ window.addEventListener('resize', () => {
 - "Es gibt keinen Grund, warum ich von da weg alles neu rendern muss" - There's no reason to re-render everything from the beginning
 - "Das ist known good" - Referring to battle-tested implementations
 
-This architecture analysis provides the technical foundation for fixing VibeTunnel's critical performance issues while maintaining its elegant simplicity.
+This architecture analysis provides the technical foundation for fixing ShellOps's critical performance issues while maintaining its elegant simplicity.

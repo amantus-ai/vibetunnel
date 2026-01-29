@@ -1,4 +1,4 @@
-# VibeTunnel Documentation
+# ShellOps Documentation
 
 ## Quick Navigation
 
@@ -62,7 +62,7 @@ Details: `docs/websocket.md`.
 ## Project Structure
 
 ```
-vibetunnel/
+shellops/
 ├── mac/           # macOS native app (Swift/SwiftUI)
 ├── ios/           # iOS companion app (Swift/SwiftUI)
 ├── web/           # Server & frontend (TypeScript)
@@ -78,11 +78,11 @@ vibetunnel/
 
 | File | Purpose |
 |------|---------|
-| `mac/VibeTunnel/ServerManager.swift` | Server lifecycle |
+| `mac/ShellOps/ServerManager.swift` | Server lifecycle |
 | `web/src/server/server.ts` | HTTP/WebSocket server |
 | `web/src/server/pty/pty-manager.ts` | Terminal management |
 | `web/src/client/app.ts` | Web UI entry point |
-| `ios/VibeTunnel/VibeTunnelApp.swift` | iOS app entry |
+| `ios/ShellOps/ShellOpsApp.swift` | iOS app entry |
 
 ## Common Tasks
 
@@ -122,7 +122,7 @@ vibetunnel/
 
 ## Quick Links
 
-- [GitHub Repository](https://github.com/steipete/vibetunnel)
+- [GitHub Repository](https://github.com/steipete/shellops)
 - [API Documentation](core/api-reference.md)
 - [Contributing Guide](CONTRIBUTING.md)
 - [License](../LICENSE)

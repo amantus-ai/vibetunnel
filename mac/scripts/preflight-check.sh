@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # =============================================================================
-# VibeTunnel Pre-flight Check Script
+# ShellOps Pre-flight Check Script
 # =============================================================================
 #
-# This script validates that everything is ready for a VibeTunnel release by
+# This script validates that everything is ready for a ShellOps release by
 # performing comprehensive checks on git status, build configuration, tools,
 # certificates, and the IS_PRERELEASE_BUILD system.
 #
@@ -57,7 +57,7 @@ NC='\033[0m' # No Color
 # Track if any checks fail
 CHECKS_PASSED=true
 
-echo "🔍 VibeTunnel Release Pre-flight Check"
+echo "🔍 ShellOps Release Pre-flight Check"
 echo "===================================="
 echo ""
 
@@ -108,7 +108,7 @@ echo ""
 
 # 2. Check version information
 echo "📌 Version Information:"
-VERSION_CONFIG="$PROJECT_ROOT/VibeTunnel/version.xcconfig"
+VERSION_CONFIG="$PROJECT_ROOT/ShellOps/version.xcconfig"
 if [[ -f "$VERSION_CONFIG" ]]; then
     MARKETING_VERSION=$(grep 'MARKETING_VERSION' "$VERSION_CONFIG" | sed 's/.*MARKETING_VERSION = //')
     BUILD_NUMBER=$(grep 'CURRENT_PROJECT_VERSION' "$VERSION_CONFIG" | sed 's/.*CURRENT_PROJECT_VERSION = //')
@@ -181,7 +181,7 @@ echo ""
 
 # Check if Xcode project uses version.xcconfig
 echo "📌 Xcode Project Configuration:"
-XCODEPROJ="$PROJECT_ROOT/VibeTunnel.xcodeproj/project.pbxproj"
+XCODEPROJ="$PROJECT_ROOT/ShellOps.xcodeproj/project.pbxproj"
 if [[ -f "$XCODEPROJ" ]]; then
     if grep -q "version.xcconfig" "$XCODEPROJ"; then
         check_pass "Xcode project references version.xcconfig"
@@ -279,7 +279,7 @@ echo ""
 echo "📌 Sparkle Configuration:"
 
 # Check public key
-PUBLIC_KEY_FILE="$PROJECT_ROOT/VibeTunnel/sparkle-public-ed-key.txt"
+PUBLIC_KEY_FILE="$PROJECT_ROOT/ShellOps/sparkle-public-ed-key.txt"
 if [[ -f "$PUBLIC_KEY_FILE" ]]; then
     PUBLIC_KEY=$(cat "$PUBLIC_KEY_FILE" | tr -d '\n')
     if [[ -n "$PUBLIC_KEY" ]]; then
@@ -330,14 +330,14 @@ echo ""
 echo "📌 IS_PRERELEASE_BUILD System:"
 
 # Check if IS_PRERELEASE_BUILD is configured in Info.plist
-if grep -q 'IS_PRERELEASE_BUILD' "$PROJECT_ROOT/VibeTunnel-Info.plist" || grep -q 'IS_PRERELEASE_BUILD' "$PROJECT_ROOT/VibeTunnel/Info.plist" 2>/dev/null; then
+if grep -q 'IS_PRERELEASE_BUILD' "$PROJECT_ROOT/ShellOps-Info.plist" || grep -q 'IS_PRERELEASE_BUILD' "$PROJECT_ROOT/ShellOps/Info.plist" 2>/dev/null; then
     check_pass "IS_PRERELEASE_BUILD flag configured in Info.plist"
 else
     check_warn "IS_PRERELEASE_BUILD flag not found in Info.plist (will be set at build time)"
 fi
 
 # Check if UpdateChannel.swift has the flag detection logic
-if grep -q "Bundle.main.object.*IS_PRERELEASE_BUILD" "$PROJECT_ROOT/VibeTunnel/Core/Models/UpdateChannel.swift"; then
+if grep -q "Bundle.main.object.*IS_PRERELEASE_BUILD" "$PROJECT_ROOT/ShellOps/Core/Models/UpdateChannel.swift"; then
     check_pass "UpdateChannel has IS_PRERELEASE_BUILD detection logic"
 else
     check_fail "UpdateChannel.swift missing IS_PRERELEASE_BUILD flag detection"
@@ -351,7 +351,7 @@ else
 fi
 
 # Check if AppBehaviorSettingsManager uses defaultChannel
-APP_BEHAVIOR_SETTINGS="$PROJECT_ROOT/VibeTunnel/Core/Services/Settings/AppBehaviorSettingsManager.swift"
+APP_BEHAVIOR_SETTINGS="$PROJECT_ROOT/ShellOps/Core/Services/Settings/AppBehaviorSettingsManager.swift"
 if [[ -f "$APP_BEHAVIOR_SETTINGS" ]]; then
     if grep -q "UpdateChannel.defaultChannel" "$APP_BEHAVIOR_SETTINGS"; then
         check_pass "AppBehaviorSettingsManager uses UpdateChannel.defaultChannel()"

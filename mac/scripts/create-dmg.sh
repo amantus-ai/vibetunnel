@@ -1,17 +1,17 @@
 #!/bin/bash
 
 # =============================================================================
-# VibeTunnel DMG Creation Script
+# ShellOps DMG Creation Script
 # =============================================================================
 #
-# This script creates a DMG disk image for VibeTunnel distribution.
+# This script creates a DMG disk image for ShellOps distribution.
 #
 # USAGE:
 #   ./scripts/create-dmg.sh <app_path> [output_path]
 #
 # ARGUMENTS:
 #   app_path      Path to the .app bundle
-#   output_path   Path for output DMG (optional, defaults to build/VibeTunnel-<version>-<arch>.dmg)
+#   output_path   Path for output DMG (optional, defaults to build/ShellOps-<version>-<arch>.dmg)
 #
 # NOTE:
 #   The architecture suffix is automatically detected from the app bundle binary using lipo.
@@ -45,11 +45,11 @@ if [[ ! -d "$APP_PATH" ]]; then
 fi
 
 # Get app name and version info
-APP_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleName" "$APP_PATH/Contents/Info.plist" 2>/dev/null || echo "VibeTunnel")
+APP_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleName" "$APP_PATH/Contents/Info.plist" 2>/dev/null || echo "ShellOps")
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP_PATH/Contents/Info.plist")
 
 # Detect architecture from the app bundle binary
-EXECUTABLE_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$APP_PATH/Contents/Info.plist" 2>/dev/null || echo "VibeTunnel")
+EXECUTABLE_NAME=$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$APP_PATH/Contents/Info.plist" 2>/dev/null || echo "ShellOps")
 ARCHS=$(lipo -archs "$APP_PATH/Contents/MacOS/$EXECUTABLE_NAME" 2>/dev/null || echo "")
 
 # Determine architecture suffix for filename
@@ -74,9 +74,9 @@ fi
 
 echo "Creating DMG: $DMG_NAME"
 
-# Clean up any stuck VibeTunnel volumes before starting
+# Clean up any stuck ShellOps volumes before starting
 echo "Checking for stuck DMG volumes..."
-for volume in /Volumes/VibeTunnel* "/Volumes/$DMG_VOLUME_NAME"*; do
+for volume in /Volumes/ShellOps* "/Volumes/$DMG_VOLUME_NAME"*; do
     if [ -d "$volume" ]; then
         echo "  Unmounting stuck volume: $volume"
         hdiutil detach "$volume" -force 2>/dev/null || true
@@ -85,9 +85,9 @@ for volume in /Volumes/VibeTunnel* "/Volumes/$DMG_VOLUME_NAME"*; do
 done
 
 # Also check for any DMG processes that might be stuck
-if pgrep -f "VibeTunnel.*\.dmg" > /dev/null; then
+if pgrep -f "ShellOps.*\.dmg" > /dev/null; then
     echo "  Found stuck DMG processes, killing them..."
-    pkill -f "VibeTunnel.*\.dmg" || true
+    pkill -f "ShellOps.*\.dmg" || true
     sleep 2
 fi
 
@@ -166,7 +166,7 @@ tell application "Finder"
         set label position of viewOptions to bottom
         
         -- Position items
-        set position of item "VibeTunnel.app" of container window to {125, 160}
+        set position of item "ShellOps.app" of container window to {125, 160}
         set position of item "Applications" of container window to {375, 160}
         
         -- Set extended attributes for better appearance

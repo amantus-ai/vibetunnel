@@ -9,8 +9,8 @@ echo "Running iOS tests using Xcode..."
 
 # Run tests for iOS simulator
 xcodebuild test \
-    -project VibeTunnel-iOS.xcodeproj \
-    -scheme VibeTunnel-iOS \
+    -project ShellOps-iOS.xcodeproj \
+    -scheme ShellOps-iOS \
     -destination 'platform=iOS Simulator,name=iPhone 16' \
     -quiet \
     | xcbeautify

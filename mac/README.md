@@ -1,13 +1,13 @@
-# VibeTunnel macOS App
+# ShellOps macOS App
 
-This directory contains the macOS version of VibeTunnel.
+This directory contains the macOS version of ShellOps.
 
 ## Quick Start
 
 ### Building
 ```bash
 # Using Xcode
-xcodebuild -workspace VibeTunnel.xcworkspace -scheme VibeTunnel build
+xcodebuild -workspace ShellOps.xcworkspace -scheme ShellOps build
 
 # Using build script
 ./scripts/build.sh
@@ -15,24 +15,24 @@ xcodebuild -workspace VibeTunnel.xcworkspace -scheme VibeTunnel build
 
 ### Running Tests
 ```bash
-xcodebuild -workspace VibeTunnel.xcworkspace -scheme VibeTunnel test
+xcodebuild -workspace ShellOps.xcworkspace -scheme ShellOps test
 ```
 
 ### Creating Release
 ```bash
 ./scripts/build.sh --configuration Release
-./scripts/create-dmg.sh build/Build/Products/Release/VibeTunnel.app
+./scripts/create-dmg.sh build/Build/Products/Release/ShellOps.app
 ```
 
 ## Project Structure
 
 ```
 mac/
-├── VibeTunnel/           # Source code
+├── ShellOps/           # Source code
 │   ├── Core/            # Core services and models
 │   ├── Presentation/    # Views and UI components
 │   └── Utilities/       # Helper utilities
-├── VibeTunnelTests/     # Unit tests
+├── ShellOpsTests/     # Unit tests
 ├── scripts/             # Build and release scripts
 ├── docs/                # macOS-specific documentation
 └── private/             # Signing keys (not in git)

@@ -1,8 +1,8 @@
-# VibeTunnel Socket Protocol
+# ShellOps Socket Protocol
 
 ## Overview
 
-VibeTunnel uses a binary framed message protocol over Unix domain sockets for all inter-process communication (IPC). This protocol replaces the previous file-based IPC system, providing better performance, real-time updates, and cleaner architecture.
+ShellOps uses a binary framed message protocol over Unix domain sockets for all inter-process communication (IPC). This protocol replaces the previous file-based IPC system, providing better performance, real-time updates, and cleaner architecture.
 
 ## Architecture
 
@@ -14,7 +14,7 @@ VibeTunnel uses a binary framed message protocol over Unix domain sockets for al
    - Manages PTY process I/O
    - Tracks session state
 
-2. **Socket Client** (`vibetunnel-fwd` and other clients)
+2. **Socket Client** (`shellops-fwd` and other clients)
    - Connects to session's Unix socket
    - Sends stdin data and control commands
    - Receives errors and server responses
@@ -132,10 +132,10 @@ VibeTunnel uses a binary framed message protocol over Unix domain sockets for al
 ### Example Usage
 
 ```typescript
-import { VibeTunnelSocketClient } from './socket-client.js';
+import { ShellOpsSocketClient } from './socket-client.js';
 
 // Connect to session
-const client = new VibeTunnelSocketClient('/path/to/session/ipc.sock', {
+const client = new ShellOpsSocketClient('/path/to/session/ipc.sock', {
   autoReconnect: true,
   heartbeatInterval: 30000 // 30 seconds
 });

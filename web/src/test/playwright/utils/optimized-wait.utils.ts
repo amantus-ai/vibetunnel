@@ -15,7 +15,7 @@ export namespace OptimizedWaitUtils {
    */
   export async function waitForAppReady(page: Page): Promise<void> {
     // Wait for app element to attach (reduced timeout)
-    await page.waitForSelector('vibetunnel-app', {
+    await page.waitForSelector('shellops-app', {
       state: 'attached',
       timeout: DEFAULT_TIMEOUT,
     });

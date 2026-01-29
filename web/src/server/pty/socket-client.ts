@@ -1,5 +1,5 @@
 /**
- * Client for connecting to VibeTunnel Unix sockets
+ * Client for connecting to ShellOps Unix sockets
  */
 
 import { EventEmitter } from 'events';
@@ -33,10 +33,10 @@ export interface SocketClientEvents {
 }
 
 /**
- * Unix socket client for communication between VibeTunnel web server and terminal processes.
+ * Unix socket client for communication between ShellOps web server and terminal processes.
  *
  * This class provides a robust client for connecting to Unix domain sockets with automatic
- * reconnection, heartbeat support, and message parsing using the VibeTunnel socket protocol.
+ * reconnection, heartbeat support, and message parsing using the ShellOps socket protocol.
  * It handles terminal control operations like stdin input, resizing, and process management.
  *
  * Key features:
@@ -49,7 +49,7 @@ export interface SocketClientEvents {
  * @example
  * ```typescript
  * // Create a client for a terminal session
- * const client = new VibeTunnelSocketClient('/tmp/vibetunnel/session-123.sock', {
+ * const client = new ShellOpsSocketClient('/tmp/shellops/session-123.sock', {
  *   autoReconnect: true,
  *   heartbeatInterval: 30000
  * });
@@ -67,7 +67,7 @@ export interface SocketClientEvents {
  *
  * @extends EventEmitter
  */
-export class VibeTunnelSocketClient extends EventEmitter {
+export class ShellOpsSocketClient extends EventEmitter {
   private socket?: net.Socket;
   private parser = new MessageParser();
   private connected = false;

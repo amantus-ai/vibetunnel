@@ -63,8 +63,8 @@ async function getHooksDirectory(repoPath: string): Promise<string> {
  */
 function createHookScript(hookType: 'post-commit' | 'post-checkout'): string {
   return `#!/bin/sh
-# VibeTunnel Git hook - ${hookType}
-# This hook notifies VibeTunnel when Git events occur
+# ShellOps Git hook - ${hookType}
+# This hook notifies ShellOps when Git events occur
 
 # Check if vt command is available
 if command -v vt >/dev/null 2>&1; then
@@ -101,7 +101,7 @@ async function installHook(
     }
 
     // If hook exists and is already ours, skip
-    if (existingHook?.includes('VibeTunnel Git hook')) {
+    if (existingHook?.includes('ShellOps Git hook')) {
       logger.debug(`${hookType} hook already installed`);
       return { success: true };
     }
@@ -118,8 +118,8 @@ async function installHook(
     // If there was an existing hook, chain it
     if (existingHook) {
       hookContent = `#!/bin/sh
-# VibeTunnel Git hook - ${hookType}
-# This hook notifies VibeTunnel when Git events occur
+# ShellOps Git hook - ${hookType}
+# This hook notifies ShellOps when Git events occur
 
 # Check if vt command is available
 if command -v vt >/dev/null 2>&1; then
@@ -172,7 +172,7 @@ async function uninstallHook(
     }
 
     // If it's not our hook, leave it alone
-    if (!existingHook.includes('VibeTunnel Git hook')) {
+    if (!existingHook.includes('ShellOps Git hook')) {
       logger.debug(`${hookType} hook is not ours, skipping uninstall`);
       return { success: true };
     }
@@ -207,7 +207,7 @@ async function uninstallHook(
 }
 
 /**
- * Install Git hooks for VibeTunnel follow mode
+ * Install Git hooks for ShellOps follow mode
  */
 export async function installGitHooks(repoPath: string): Promise<{
   success: boolean;
@@ -233,7 +233,7 @@ export async function installGitHooks(repoPath: string): Promise<{
 }
 
 /**
- * Uninstall Git hooks for VibeTunnel follow mode
+ * Uninstall Git hooks for ShellOps follow mode
  */
 export async function uninstallGitHooks(repoPath: string): Promise<{
   success: boolean;
@@ -270,7 +270,7 @@ export async function areHooksInstalled(repoPath: string): Promise<boolean> {
       const hookPath = path.join(hooksDir, hookType);
       try {
         const content = await fs.readFile(hookPath, 'utf8');
-        if (!content.includes('VibeTunnel Git hook')) {
+        if (!content.includes('ShellOps Git hook')) {
           return false;
         }
       } catch {

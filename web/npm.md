@@ -1,19 +1,19 @@
-# NPM Publishing Guide for VibeTunnel
+# NPM Publishing Guide for ShellOps
 
 ## Installation Guide
 
-### Installing VibeTunnel from NPM
+### Installing ShellOps from NPM
 
-VibeTunnel is published as an npm package that works on macOS and Linux. The package includes prebuilt binaries for common platforms to avoid compilation.
+ShellOps is published as an npm package that works on macOS and Linux. The package includes prebuilt binaries for common platforms to avoid compilation.
 
 #### Basic Installation
 
 ```bash
 # Install globally (recommended)
-npm install -g vibetunnel
+npm install -g shellops
 
 # Or install locally in a project
-npm install vibetunnel
+npm install shellops
 ```
 
 #### Platform-Specific Notes
@@ -38,10 +38,10 @@ npm install vibetunnel
 
 ```bash
 # Check version
-vibetunnel --version
+shellops --version
 
 # Run the server
-vibetunnel
+shellops
 
 # The server will start on http://localhost:4020
 ```
@@ -56,25 +56,25 @@ FROM node:20-slim
 # Optional: Install PAM headers for authentication support
 # RUN apt-get update && apt-get install -y libpam0g-dev
 
-# Install VibeTunnel
-RUN npm install -g vibetunnel
+# Install ShellOps
+RUN npm install -g shellops
 
 # Expose the default port
 EXPOSE 4020
 
-# Run VibeTunnel
-CMD ["vibetunnel"]
+# Run ShellOps
+CMD ["shellops"]
 ```
 
 #### Troubleshooting Installation
 
 1. **"Cannot find module '../build/Release/pty.node'"**
    - The package includes prebuilds, this shouldn't happen
-   - Try reinstalling: `npm uninstall -g vibetunnel && npm install -g vibetunnel`
+   - Try reinstalling: `npm uninstall -g shellops && npm install -g shellops`
 
 2. **PAM authentication not working on Linux**
    - Install PAM headers: `sudo apt-get install libpam0g-dev`
-   - Reinstall VibeTunnel to compile the PAM module
+   - Reinstall ShellOps to compile the PAM module
 
 3. **Permission errors during installation**
    - Use a Node.js version manager (nvm, fnm) instead of system Node.js
@@ -85,21 +85,21 @@ CMD ["vibetunnel"]
 1. **Update versions** in all 3 files:
    - `package.json`
    - `package.npm.json` 
-   - `../mac/VibeTunnel/version.xcconfig`
+   - `../mac/ShellOps/version.xcconfig`
 
 2. **Build**: `pnpm run build:npm`
 
 3. **Verify**: 
    ```bash
-   tar -xf vibetunnel-*.tgz package/package.json
+   tar -xf shellops-*.tgz package/package.json
    grep optionalDependencies package/package.json  # Must show authenticate-pam
    rm -rf package/
    ```
 
 4. **Publish tarball**:
    ```bash
-   npm publish vibetunnel-*.tgz --tag beta
-   npm dist-tag add vibetunnel@VERSION latest
+   npm publish shellops-*.tgz --tag beta
+   npm dist-tag add shellops@VERSION latest
    ```
 
 ⚠️ **NEVER** use `npm publish` without the tarball filename!
@@ -138,7 +138,7 @@ The build script (`scripts/build-npm.js`) checks for `package.npm.json` and uses
 2. Verify the package has the correct configuration:
    ```bash
    # Extract and check package.json from the tarball
-   tar -xf vibetunnel-*.tgz package/package.json
+   tar -xf shellops-*.tgz package/package.json
    cat package/package.json | grep -A5 -B5 authenticate-pam
    ```
 
@@ -151,8 +151,8 @@ The build script (`scripts/build-npm.js`) checks for `package.npm.json` and uses
 
 4. Publish the pre-built tarball:
    ```bash
-   npm publish vibetunnel-*.tgz --tag beta
-   npm dist-tag add vibetunnel@VERSION latest  # if needed
+   npm publish shellops-*.tgz --tag beta
+   npm dist-tag add shellops@VERSION latest  # if needed
    ```
 
 ## Correct Release Process
@@ -162,7 +162,7 @@ The build script (`scripts/build-npm.js`) checks for `package.npm.json` and uses
 # Update all three version files - MUST keep in sync!
 vim package.json          # Update version
 vim package.npm.json      # Update version to match
-vim ../mac/VibeTunnel/version.xcconfig  # Update MARKETING_VERSION
+vim ../mac/ShellOps/version.xcconfig  # Update MARKETING_VERSION
 ```
 
 ### 2. Build the Package
@@ -176,7 +176,7 @@ pnpm run build:npm
 ls -la *.tgz
 
 # Extract and verify authenticate-pam is optional
-tar -xf vibetunnel-*.tgz package/package.json
+tar -xf shellops-*.tgz package/package.json
 cat package/package.json | grep -A5 -B5 authenticate-pam
 
 # Should show:
@@ -192,17 +192,17 @@ rm -rf package/
 ```bash
 # Test on a system without PAM headers
 docker run --rm -it node:20 bash
-npm install /path/to/vibetunnel-*.tgz
+npm install /path/to/shellops-*.tgz
 # Should succeed even without libpam0g-dev
 ```
 
 ### 5. Publish
 ```bash
 # Publish the pre-built tarball with beta tag
-npm publish vibetunnel-*.tgz --tag beta
+npm publish shellops-*.tgz --tag beta
 
 # Also tag as latest if stable
-npm dist-tag add vibetunnel@VERSION latest
+npm dist-tag add shellops@VERSION latest
 ```
 
 ## Package Configuration Files
@@ -239,19 +239,19 @@ npm dist-tag add vibetunnel@VERSION latest
 # Test on Ubuntu without PAM headers
 docker run --rm -it ubuntu:22.04 bash
 apt update && apt install -y nodejs npm
-npm install vibetunnel@VERSION
+npm install shellops@VERSION
 # Should succeed without libpam0g-dev
 
 # Test with PAM headers
 apt install -y libpam0g-dev
-npm install vibetunnel@VERSION
+npm install shellops@VERSION
 # Should also succeed and include authenticate-pam
 ```
 
 ### Verify Installation
 ```bash
-# Check if vibetunnel works
-npx vibetunnel --version
+# Check if shellops works
+npx shellops --version
 
 # On Linux, check if PAM module loaded (optional)
 node -e "try { require('authenticate-pam'); console.log('PAM available'); } catch { console.log('PAM not available'); }"
@@ -263,7 +263,7 @@ If you accidentally published with wrong configuration:
 
 1. **Unpublish if within 72 hours** (not recommended):
    ```bash
-   npm unpublish vibetunnel@VERSION
+   npm unpublish shellops@VERSION
    ```
 
 2. **Publish a fix version**:
@@ -271,7 +271,7 @@ If you accidentally published with wrong configuration:
    - Follow correct process above
    - Deprecate the broken version:
    ```bash
-   npm deprecate vibetunnel@BROKEN_VERSION "Has installation issues on Linux. Please use VERSION or later."
+   npm deprecate shellops@BROKEN_VERSION "Has installation issues on Linux. Please use VERSION or later."
    ```
 
 ## Release History & Lessons Learned
@@ -301,7 +301,7 @@ If you accidentally published with wrong configuration:
 ### Version 11.5 (Good)
 - Published December 2024
 - Built with explicit `pnpm run build:npm`
-- Published pre-built tarball: `vibetunnel-1.0.0-beta.11.5.tgz`
+- Published pre-built tarball: `shellops-1.0.0-beta.11.5.tgz`
 - Verified `authenticate-pam` as optional dependency before publishing
 - Tagged as both `beta` and `latest`
 - **Process followed correctly**: All three version files updated, tarball verified, published with explicit filename
@@ -316,7 +316,7 @@ If you accidentally published with wrong configuration:
 ### Version 12.2 (Good - Latest)
 - Published July 17, 2025
 - Built with explicit `pnpm run build:npm`
-- Published pre-built tarball: `vibetunnel-1.0.0-beta.12.2.tgz`
+- Published pre-built tarball: `shellops-1.0.0-beta.12.2.tgz`
 - Verified `authenticate-pam` as optional dependency before publishing
 - Tagged with `beta` tag
 - **Process followed correctly**: All three version files updated (from beta.13 to beta.12.2), tarball verified, published with explicit filename

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =============================================================================
-# VibeTunnel Xcode Project Generation Script
+# ShellOps Xcode Project Generation Script
 # =============================================================================
 #
 # This script generates the Xcode project and workspace using Tuist, with
@@ -21,8 +21,8 @@
 #   - Xcode (for opening the workspace)
 #
 # FILES GENERATED:
-#   - VibeTunnel.xcodeproj/ (Xcode project)
-#   - VibeTunnel.xcworkspace/ (Xcode workspace)
+#   - ShellOps.xcodeproj/ (Xcode project)
+#   - ShellOps.xcworkspace/ (Xcode workspace)
 #   - Derived/ (generated sources and Info.plist files)
 #
 # EXAMPLES:

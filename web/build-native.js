@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
 /**
- * Build standalone vibetunnel executable using Node.js SEA (Single Executable Application)
+ * Build standalone shellops executable using Node.js SEA (Single Executable Application)
  *
- * This script creates a portable executable that bundles the VibeTunnel server into a single
+ * This script creates a portable executable that bundles the ShellOps server into a single
  * binary using Node.js's built-in SEA feature. The resulting executable can run on any machine
  * with the same OS/architecture without requiring Node.js to be installed.
  *
  * ## Output
  * Creates a `native/` directory with just 3 files:
- * - `vibetunnel` - The standalone executable (includes all JS code and sourcemaps)
+ * - `shellops` - The standalone executable (includes all JS code and sourcemaps)
  * - `pty.node` - Native binding for terminal emulation
  * - `spawn-helper` - Helper binary for spawning processes (Unix only)
  *
@@ -47,7 +47,7 @@ for (let i = 0; i < process.argv.length; i++) {
   }
 }
 
-console.log('Building standalone vibetunnel executable using Node.js SEA...');
+console.log('Building standalone shellops executable using Node.js SEA...');
 console.log(`System Node.js version: ${process.version}`);
 if (includeSourcemaps) {
   console.log('Including sourcemaps in build');
@@ -252,7 +252,7 @@ async function main() {
       --external:./build/Release/pty.node \\
       --define:process.env.BUILD_DATE='"${buildDate}"' \\
       --define:process.env.BUILD_TIMESTAMP='"${buildTimestamp}"' \\
-      --define:process.env.VIBETUNNEL_SEA='"true"'`;
+      --define:process.env.SHELLOPS_SEA='"true"'`;
     
     // Also inject git commit hash for version tracking
     try {
@@ -275,7 +275,7 @@ async function main() {
       }
     });
 
-    // 2b. Post-process bundle to ensure VIBETUNNEL_SEA is properly set
+    // 2b. Post-process bundle to ensure SHELLOPS_SEA is properly set
     console.log('\nPost-processing bundle for SEA compatibility...');
     let bundleContent = fs.readFileSync('build/bundle.js', 'utf8');
     
@@ -284,11 +284,11 @@ async function main() {
       bundleContent = bundleContent.substring(bundleContent.indexOf('\n') + 1);
     }
     
-    // Add VIBETUNNEL_SEA environment variable at the top of the bundle
+    // Add SHELLOPS_SEA environment variable at the top of the bundle
     // This ensures the patched node-pty knows it's running in SEA mode
-    const seaEnvSetup = `// Set VIBETUNNEL_SEA environment variable for SEA mode
+    const seaEnvSetup = `// Set SHELLOPS_SEA environment variable for SEA mode
 if (typeof process !== 'undefined' && process.versions && process.versions.node) {
-  process.env.VIBETUNNEL_SEA = 'true';
+  process.env.SHELLOPS_SEA = 'true';
 }
 
 `;
@@ -316,7 +316,7 @@ if (typeof process !== 'undefined' && process.versions && process.versions.node)
 
     // 5. Create executable
     console.log('\nCreating executable...');
-    const targetExe = process.platform === 'win32' ? 'native/vibetunnel.exe' : 'native/vibetunnel';
+    const targetExe = process.platform === 'win32' ? 'native/shellops.exe' : 'native/shellops';
 
     // Copy node binary
     fs.copyFileSync(nodeExe, targetExe);
@@ -412,7 +412,7 @@ if (typeof process !== 'undefined' && process.versions && process.versions.node)
 
     console.log('\n✅ Build complete!');
     console.log(`\nPortable executable created in native/ directory:`);
-    console.log(`  - vibetunnel (executable)`);
+    console.log(`  - shellops (executable)`);
     console.log(`  - pty.node`);
     if (process.platform === 'darwin') {
       console.log(`  - spawn-helper`);

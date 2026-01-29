@@ -244,13 +244,13 @@ describe('Auth Middleware', () => {
       // With wrong token
       const response2 = await request(app)
         .get('/api/test')
-        .set('x-vibetunnel-local', 'wrong-token');
+        .set('x-shellops-local', 'wrong-token');
       expect(response2.status).toBe(401);
 
       // With correct token
       const response3 = await request(app)
         .get('/api/test')
-        .set('x-vibetunnel-local', 'secret-token');
+        .set('x-shellops-local', 'secret-token');
       expect(response3.status).toBe(200);
     });
 

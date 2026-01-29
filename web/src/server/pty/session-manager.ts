@@ -1,7 +1,7 @@
 /**
  * SessionManager - Centralized management for terminal session lifecycle and persistence
  *
- * This class provides a comprehensive solution for managing terminal sessions in VibeTunnel.
+ * This class provides a comprehensive solution for managing terminal sessions in ShellOps.
  * It handles session directory structure, metadata persistence, process tracking, and
  * file operations while maintaining compatibility with the tty-fwd format.
  *
@@ -9,14 +9,14 @@
  * - **Session Lifecycle Management**: Create, track, and cleanup terminal sessions
  * - **Persistent Storage**: Store session metadata and I/O streams in filesystem
  * - **Process Tracking**: Monitor running processes and detect zombie sessions
- * - **Version Management**: Handle cleanup across VibeTunnel version upgrades
+ * - **Version Management**: Handle cleanup across ShellOps version upgrades
  * - **Unique Naming**: Ensure session names are unique with automatic suffix handling
  * - **Atomic Operations**: Use temp files and rename for safe metadata updates
  *
  * ## Directory Structure:
  * ```
- * ~/.vibetunnel/control/
- * ├── .version                    # VibeTunnel version tracking
+ * ~/.shellops/control/
+ * ├── .version                    # ShellOps version tracking
  * └── [session-id]/              # Per-session directory
  *     ├── session.json           # Session metadata
  *     ├── stdout                 # Process output stream
@@ -75,7 +75,7 @@ export class SessionManager {
   private static readonly SESSION_ID_REGEX = /^[a-zA-Z0-9_-]+$/;
 
   constructor(controlPath?: string) {
-    this.controlPath = controlPath || path.join(os.homedir(), '.vibetunnel', 'control');
+    this.controlPath = controlPath || path.join(os.homedir(), '.shellops', 'control');
     logger.debug(`initializing session manager with control path: ${this.controlPath}`);
     this.ensureControlDirectory();
   }
@@ -501,7 +501,7 @@ export class SessionManager {
   }
 
   /**
-   * Cleanup sessions from old VibeTunnel versions
+   * Cleanup sessions from old ShellOps versions
    * This is called during server startup to clean sessions when version changes
    */
   cleanupOldVersionSessions(): { versionChanged: boolean; cleanedCount: number } {
@@ -544,7 +544,7 @@ export class SessionManager {
       return { versionChanged: false, cleanedCount: 0 };
     }
 
-    logger.log(chalk.yellow(`VibeTunnel version changed from ${lastVersion} to ${currentVersion}`));
+    logger.log(chalk.yellow(`ShellOps version changed from ${lastVersion} to ${currentVersion}`));
     logger.log(chalk.yellow('cleaning up zombie sessions from old version...'));
 
     // First update zombie sessions to mark dead processes

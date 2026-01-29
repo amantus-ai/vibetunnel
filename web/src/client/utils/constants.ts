@@ -1,4 +1,4 @@
-// UI Constants for VibeTunnel
+// UI Constants for ShellOps
 
 export const BREAKPOINTS = {
   MOBILE: 768,

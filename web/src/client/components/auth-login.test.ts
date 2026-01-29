@@ -358,7 +358,7 @@ describe('AuthLogin', () => {
   describe('UI elements', () => {
     it('should show title', () => {
       const title = element.querySelector('h2')?.textContent;
-      expect(title).toContain('VibeTunnel');
+      expect(title).toContain('ShellOps');
     });
 
     it('should show login prompt', () => {

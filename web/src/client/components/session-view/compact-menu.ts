@@ -68,7 +68,7 @@ export class CompactMenu extends LitElement {
 
     // Update theme
     this.currentTheme = newTheme;
-    localStorage.setItem('vibetunnel-theme', newTheme);
+    localStorage.setItem('shellops-theme', newTheme);
 
     // Apply theme
     const root = document.documentElement;
@@ -131,7 +131,7 @@ export class CompactMenu extends LitElement {
     // Add keyboard support
     document.addEventListener('keydown', this.handleKeyDown);
     // Load saved theme preference
-    const saved = localStorage.getItem('vibetunnel-theme') as Theme | null;
+    const saved = localStorage.getItem('shellops-theme') as Theme | null;
     this.currentTheme = saved || 'system';
   }
 

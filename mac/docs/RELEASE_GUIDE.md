@@ -1,4 +1,4 @@
-# VibeTunnel Release Guide - Quick Reference
+# ShellOps Release Guide - Quick Reference
 
 This guide provides a streamlined release process based on lessons learned from beta.13.
 
@@ -9,7 +9,7 @@ This guide provides a streamlined release process based on lessons learned from 
 ./scripts/release-health-check.sh
 
 # 2. Set environment variables
-export SPARKLE_ACCOUNT="VibeTunnel"
+export SPARKLE_ACCOUNT="ShellOps"
 export CI=false
 export SKIP_NODE_CHECK=false
 
@@ -28,7 +28,7 @@ export SKIP_NODE_CHECK=false
 Before starting any release:
 
 ### 1. Version Numbers
-- [ ] Update `mac/VibeTunnel/version.xcconfig`:
+- [ ] Update `mac/ShellOps/version.xcconfig`:
   - `MARKETING_VERSION = 1.0.0-beta.14`
   - `CURRENT_PROJECT_VERSION = 203` (increment from last)
 - [ ] Update `web/package.json` to match
@@ -38,7 +38,7 @@ Before starting any release:
 ### 2. Environment Setup
 ```bash
 # Required environment variables
-export SPARKLE_ACCOUNT="VibeTunnel"
+export SPARKLE_ACCOUNT="ShellOps"
 export CI=false
 export SKIP_NODE_CHECK=false
 
@@ -99,16 +99,16 @@ If the release script fails after notarization:
 # 1. Create GitHub release manually
 ./scripts/generate-release-notes.sh 1.0.0-beta.14 > notes.md
 gh release create "v1.0.0-beta.14" \
-  --title "VibeTunnel 1.0.0-beta.14" \
+  --title "ShellOps 1.0.0-beta.14" \
   --notes-file notes.md \
   --prerelease \
-  build/VibeTunnel-*.dmg \
-  build/VibeTunnel-*.zip
+  build/ShellOps-*.dmg \
+  build/ShellOps-*.zip
 
 # 2. Sign DMG for Sparkle
 sign_update -f private/sparkle_ed_private_key \
-  build/VibeTunnel-1.0.0-beta.14.dmg \
-  --account VibeTunnel
+  build/ShellOps-1.0.0-beta.14.dmg \
+  --account ShellOps
 
 # 3. Update appcast manually
 # Add the signature to appcast-prerelease.xml
@@ -165,7 +165,7 @@ More robust Node.js detection:
 ## 📝 Version Management
 
 ### Version Files to Update
-1. `mac/VibeTunnel/version.xcconfig` - Source of truth
+1. `mac/ShellOps/version.xcconfig` - Source of truth
 2. `web/package.json` - Must match macOS version
 3. `web/package.npm.json` - For npm package release
 4. `CHANGELOG.md` - Release notes
@@ -193,10 +193,10 @@ More robust Node.js detection:
 ### DMG stuck volumes
 ```bash
 # List stuck volumes
-ls /Volumes/VibeTunnel*
+ls /Volumes/ShellOps*
 
 # Force unmount
-for vol in /Volumes/VibeTunnel*; do
+for vol in /Volumes/ShellOps*; do
   hdiutil detach "$vol" -force
 done
 ```

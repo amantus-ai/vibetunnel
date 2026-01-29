@@ -12,7 +12,7 @@ export class ThemeToggleIcon extends LitElement {
   @property({ type: String })
   theme: Theme = 'system';
 
-  private readonly STORAGE_KEY = 'vibetunnel-theme';
+  private readonly STORAGE_KEY = 'shellops-theme';
   private mediaQuery?: MediaQueryList;
 
   // Disable shadow DOM to use Tailwind
