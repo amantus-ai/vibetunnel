@@ -1,16 +1,16 @@
-# ShellOps Authentication System
+# VibeTunnel Authentication System
 
-ShellOps supports multiple authentication modes to balance security and convenience for different use cases.
+VibeTunnel supports multiple authentication modes to balance security and convenience for different use cases.
 
 ## Authentication Modes
 
 ### 1. Default Mode (Password Authentication)
 
-**Usage:** Start ShellOps without any auth flags
+**Usage:** Start VibeTunnel without any auth flags
 ```bash
 npm run dev
 # or
-./shellops
+./vibetunnel
 ```
 
 **Behavior:**
@@ -27,7 +27,7 @@ npm run dev
 ```bash
 npm run dev -- --enable-ssh-keys
 # or
-./shellops --enable-ssh-keys
+./vibetunnel --enable-ssh-keys
 ```
 
 **Behavior:**
@@ -43,9 +43,9 @@ npm run dev -- --enable-ssh-keys
 
 **Usage:** Disable password authentication, SSH keys only
 ```bash
-./shellops --disallow-user-password
+./vibetunnel --disallow-user-password
 # or
-./shellops --disallow-user-password --enable-ssh-keys  # redundant, auto-enabled
+./vibetunnel --disallow-user-password --enable-ssh-keys  # redundant, auto-enabled
 ```
 
 **Behavior:**
@@ -63,7 +63,7 @@ npm run dev -- --enable-ssh-keys
 ```bash
 npm run dev -- --no-auth
 # or
-./shellops --no-auth
+./vibetunnel --no-auth
 ```
 
 **Behavior:**
@@ -81,7 +81,7 @@ npm run dev -- --no-auth
 ```bash
 npm run dev -- --enable-tailscale-serve
 # or
-./shellops --enable-tailscale-serve
+./vibetunnel --enable-tailscale-serve
 ```
 
 **Behavior:**
@@ -108,7 +108,7 @@ npm run dev -- --enable-tailscale-serve
 
 ### macOS Integration
 
-On macOS, ShellOps automatically displays the user's system profile picture:
+On macOS, VibeTunnel automatically displays the user's system profile picture:
 
 - **Data Source:** Uses `dscl . -read /Users/$USER JPEGPhoto` to extract avatar
 - **Format:** Converts hex data to base64 JPEG
@@ -149,19 +149,19 @@ npm run dev
 npm run dev -- --enable-ssh-keys
 
 # SSH keys only (most secure)
-./shellops --disallow-user-password
+./vibetunnel --disallow-user-password
 
 # No authentication for local development (npm run dev uses this by default)
 npm run dev -- --no-auth
 
 # Production with SSH keys on custom port
-./shellops --enable-ssh-keys --port 8080
+./vibetunnel --enable-ssh-keys --port 8080
 
 # High-security production (SSH keys only)
-./shellops --disallow-user-password --port 8080
+./vibetunnel --disallow-user-password --port 8080
 
 # Tailscale Serve integration (secure remote access)
-./shellops --enable-tailscale-serve --port 4020
+./vibetunnel --enable-tailscale-serve --port 4020
 # No manual configuration needed - everything handled automatically
 ```
 
@@ -257,18 +257,18 @@ This allows the UI to:
 ### Key Setup Instructions
 
 **For Users:**
-1. Generate SSH key in ShellOps web interface
+1. Generate SSH key in VibeTunnel web interface
 2. Download public key file
 3. Add to server's authorized_keys:
    ```bash
    # Append public key to authorized_keys
-   cat shellops-key.pub >> ~/.ssh/authorized_keys
+   cat vibetunnel-key.pub >> ~/.ssh/authorized_keys
    
    # Set proper permissions
    chmod 600 ~/.ssh/authorized_keys
    chmod 700 ~/.ssh
    ```
-4. Test authentication through ShellOps login
+4. Test authentication through VibeTunnel login
 
 **Security Best Practices:**
 - Use password protection for private keys in shared environments
@@ -294,9 +294,9 @@ When a request comes through Tailscale Serve, these headers are added:
 
 ### Setup Instructions
 
-1. **Start ShellOps with integrated Tailscale Serve:**
+1. **Start VibeTunnel with integrated Tailscale Serve:**
    ```bash
-   ./shellops --enable-tailscale-serve --port 4020
+   ./vibetunnel --enable-tailscale-serve --port 4020
    ```
    
    Or use the macOS app and enable the toggle in Settings → Remote Access
@@ -308,9 +308,9 @@ When a request comes through Tailscale Serve, these headers are added:
 
 ### Security Model
 
-- ShellOps trusts identity headers ONLY from localhost connections
+- VibeTunnel trusts identity headers ONLY from localhost connections
 - Tailscale Serve ensures headers cannot be spoofed by external users
-- Direct access to ShellOps port would allow header forgery
+- Direct access to VibeTunnel port would allow header forgery
 - Always bind to `127.0.0.1` when using Tailscale authentication
 
 ### Integration with Other Auth Modes
@@ -318,10 +318,10 @@ When a request comes through Tailscale Serve, these headers are added:
 Tailscale Serve integration can be combined with other authentication modes:
 ```bash
 # Tailscale Serve + SSH keys as fallback
-./shellops --enable-tailscale-serve --enable-ssh-keys
+./vibetunnel --enable-tailscale-serve --enable-ssh-keys
 
 # Tailscale Serve + local bypass for scripts
-./shellops --enable-tailscale-serve --allow-local-bypass
+./vibetunnel --enable-tailscale-serve --allow-local-bypass
 ```
 
 **Note**: The `--enable-tailscale-serve` flag automatically manages both the Tailscale proxy and authentication.

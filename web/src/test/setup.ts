@@ -11,7 +11,7 @@ vi.mock('ghostty-web', () => ({
 }));
 
 // Disable SEA loader for tests
-process.env.SHELLOPS_SEA = '';
+process.env.VIBETUNNEL_SEA = '';
 
 // Polyfill crypto for Node.js environments
 if (!globalThis.crypto) {
@@ -268,7 +268,7 @@ if (typeof window !== 'undefined') {
 
 // Clean up any hanging processes before each test suite
 beforeAll(async () => {
-  // Kill any leftover shellops server processes
+  // Kill any leftover vibetunnel server processes
   try {
     const { exec } = await import('child_process');
     const { promisify } = await import('util');

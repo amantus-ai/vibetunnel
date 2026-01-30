@@ -44,9 +44,9 @@ EOF
 cc /tmp/vt-randout.c -o /tmp/vt-randout
 
 SESSION_ID="zigtest_$(date +%s)"
-CONTROL_DIR="$HOME/.shellops/control/$SESSION_ID"
+CONTROL_DIR="$HOME/.vibetunnel/control/$SESSION_ID"
 
-native/vt-fwd/zig-out/bin/shellops-fwd --session-id "$SESSION_ID" /tmp/vt-randout > /dev/null &
+native/vt-fwd/zig-out/bin/vibetunnel-fwd --session-id "$SESSION_ID" /tmp/vt-randout > /dev/null &
 FWD_PID=$!
 
 # wait for artifacts
@@ -102,5 +102,5 @@ cd ios
 ## Cleanup
 
 ```bash
-rm -rf "$HOME/.shellops/control/zigtest_*"
+rm -rf "$HOME/.vibetunnel/control/zigtest_*"
 ```

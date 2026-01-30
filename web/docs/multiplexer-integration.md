@@ -1,6 +1,6 @@
 # Terminal Multiplexer Integration
 
-ShellOps supports seamless integration with terminal multiplexers like tmux, Zellij, and GNU Screen, allowing you to attach to existing sessions and manage them through the web interface.
+VibeTunnel supports seamless integration with terminal multiplexers like tmux, Zellij, and GNU Screen, allowing you to attach to existing sessions and manage them through the web interface.
 
 ## Overview
 
@@ -146,7 +146,7 @@ The multiplexer integration consists of:
 ### Session Attachment
 
 When attaching to a multiplexer session:
-1. A new ShellOps PTY session is created
+1. A new VibeTunnel PTY session is created
 2. The session runs the appropriate attach command:
    - tmux: `tmux attach-session -t main`
    - Zellij: `zellij attach main`
@@ -160,7 +160,7 @@ When attaching to a multiplexer session:
 The system automatically detects installed multiplexers and only shows available options.
 
 #### Session Persistence
-Multiplexer sessions persist even when ShellOps is restarted, allowing you to maintain long-running processes.
+Multiplexer sessions persist even when VibeTunnel is restarted, allowing you to maintain long-running processes.
 
 #### Native Experience
 Once attached, you interact with the multiplexer using its native keybindings:

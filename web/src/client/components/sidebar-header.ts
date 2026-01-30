@@ -64,11 +64,11 @@ export class SidebarHeader extends HeaderBase {
             <terminal-icon size="20"></terminal-icon>
             <div class="min-w-0">
               <h1
-                class="text-sm font-bold text-primary font-mono group-hover:underline truncate"
+                class="text-sm font-bold text-primary font-ui group-hover:underline truncate"
               >
-                ShellOps
+                VibeTunnel
               </h1>
-              <p class="text-text-muted text-xs font-mono">
+              <p class="text-text-muted text-xs font-ui">
                 ${runningSessions.length} ${runningSessions.length === 1 ? 'session' : 'sessions'}
               </p>
             </div>
@@ -115,7 +115,7 @@ export class SidebarHeader extends HeaderBase {
     return html`
       <div class="user-menu-container relative">
         <button
-          class="font-mono text-xs px-2 py-1 text-text-muted hover:text-text rounded border border-border hover:bg-bg-tertiary transition-all duration-200"
+          class="font-ui text-xs px-2 py-1 text-text-muted hover:text-text rounded border border-border hover:bg-bg-tertiary transition-all duration-200"
           @click=${this.toggleUserMenu}
           title="User menu"
         >
@@ -132,12 +132,12 @@ export class SidebarHeader extends HeaderBase {
                 class="absolute right-0 top-full mt-1 bg-surface border border-border rounded-lg shadow-lg py-1 z-50 min-w-32"
               >
                 <div
-                  class="px-3 py-1.5 text-xs text-text-muted border-b border-border font-mono"
+                  class="px-3 py-1.5 text-xs text-text-muted border-b border-border font-ui"
                 >
                   ${this.currentUser}
                 </div>
                 <button
-                  class="w-full text-left px-3 py-1.5 text-xs font-mono text-status-warning hover:bg-bg-secondary hover:text-status-error"
+                  class="w-full text-left px-3 py-1.5 text-xs font-ui text-status-warning hover:bg-bg-secondary hover:text-status-error"
                   @click=${this.handleLogout}
                 >
                   Logout

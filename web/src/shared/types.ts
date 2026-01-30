@@ -73,7 +73,7 @@ export interface SessionInfo {
    * Used to quickly seek to the most recent content when replaying casts.
    */
   lastClearOffset?: number;
-  version?: string; // ShellOps version that created this session
+  version?: string; // VibeTunnel version that created this session
   gitRepoPath?: string; // Repository root path
   gitBranch?: string; // Current branch name
   gitAheadCount?: number; // Commits ahead of upstream
@@ -88,9 +88,9 @@ export interface SessionInfo {
   gitAddedCount?: number; // Number of added files
   gitDeletedCount?: number; // Number of deleted files
   /**
-   * Whether this session was spawned from within ShellOps itself.
-   * Used to distinguish between direct terminal sessions and nested ShellOps sessions.
-   * Sessions with attachedViaVT=true are spawned from within an existing ShellOps session.
+   * Whether this session was spawned from within VibeTunnel itself.
+   * Used to distinguish between direct terminal sessions and nested VibeTunnel sessions.
+   * Sessions with attachedViaVT=true are spawned from within an existing VibeTunnel session.
    */
   attachedViaVT?: boolean;
 }

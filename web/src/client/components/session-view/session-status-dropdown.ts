@@ -220,7 +220,7 @@ export class SessionStatusDropdown extends LitElement {
           isRunning
             ? html`
             <button
-              class="w-full text-left px-6 py-3 text-sm font-mono text-status-error hover:bg-bg-secondary flex items-center gap-3 ${
+              class="w-full text-left px-6 py-3 text-sm font-ui text-status-error hover:bg-bg-secondary flex items-center gap-3 ${
                 this.focusedIndex === menuItemIndex++ ? 'bg-bg-secondary' : ''
               }"
               @click=${() => this.handleAction(this.onTerminate)}
@@ -235,7 +235,7 @@ export class SessionStatusDropdown extends LitElement {
           `
             : html`
             <button
-              class="w-full text-left px-6 py-3 text-sm font-mono text-text-muted hover:bg-bg-secondary hover:text-primary flex items-center gap-3 ${
+              class="w-full text-left px-6 py-3 text-sm font-ui text-text-muted hover:bg-bg-secondary hover:text-primary flex items-center gap-3 ${
                 this.focusedIndex === menuItemIndex++ ? 'bg-bg-secondary text-primary' : ''
               }"
               @click=${() => this.handleAction(this.onClear)}

@@ -1,7 +1,7 @@
 /**
  * Session Service
  *
- * Handles terminal session creation through the ShellOps API. This service
+ * Handles terminal session creation through the VibeTunnel API. This service
  * provides the primary interface for creating new terminal sessions with various
  * configurations including Git integration, terminal dimensions, and title modes.
  *
@@ -98,7 +98,7 @@ export interface SessionCreateError {
 }
 
 /**
- * SessionService manages terminal session creation via the ShellOps API.
+ * SessionService manages terminal session creation via the VibeTunnel API.
  *
  * This service handles:
  * - API communication with proper authentication

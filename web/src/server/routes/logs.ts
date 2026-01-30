@@ -55,7 +55,7 @@ export function createLogRoutes(_config?: LogRoutesConfig): Router {
   // Get raw log file
   router.get('/logs/raw', (_req: Request, res: Response) => {
     try {
-      const logPath = path.join(os.homedir(), '.shellops', 'log.txt');
+      const logPath = path.join(os.homedir(), '.vibetunnel', 'log.txt');
 
       // Check if log file exists - if not, return empty content
       if (!fs.existsSync(logPath)) {
@@ -76,7 +76,7 @@ export function createLogRoutes(_config?: LogRoutesConfig): Router {
   // Get log stats/info
   router.get('/logs/info', (_req: Request, res: Response) => {
     try {
-      const logPath = path.join(os.homedir(), '.shellops', 'log.txt');
+      const logPath = path.join(os.homedir(), '.vibetunnel', 'log.txt');
 
       if (!fs.existsSync(logPath)) {
         return res.json({
@@ -105,7 +105,7 @@ export function createLogRoutes(_config?: LogRoutesConfig): Router {
   // Clear log file (for development/debugging)
   router.delete('/logs/clear', (_req: Request, res: Response) => {
     try {
-      const logPath = path.join(os.homedir(), '.shellops', 'log.txt');
+      const logPath = path.join(os.homedir(), '.vibetunnel', 'log.txt');
 
       if (fs.existsSync(logPath)) {
         fs.truncateSync(logPath, 0);

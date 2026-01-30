@@ -1,4 +1,4 @@
-console.log('Testing ShellOps beta 15 package...\n');
+console.log('Testing VibeTunnel beta 15 package...\n');
 
 // Check what's installed
 console.log('Package contents:');
@@ -7,21 +7,21 @@ console.log('=================');
 import { readdir, readFile } from 'fs/promises';
 import { join } from 'path';
 
-const shellopsPath = './node_modules/shellops';
+const vibetunnelPath = './node_modules/vibetunnel';
 
 try {
   // List files in the package
-  const files = await readdir(shellopsPath);
+  const files = await readdir(vibetunnelPath);
   console.log('Files:', files);
   
   // Check package.json
-  const packageJson = JSON.parse(await readFile(join(shellopsPath, 'package.json'), 'utf-8'));
+  const packageJson = JSON.parse(await readFile(join(vibetunnelPath, 'package.json'), 'utf-8'));
   console.log('\nPackage version:', packageJson.version);
   console.log('Package bin:', packageJson.bin);
   
   // Check if binary exists
-  if (packageJson.bin && packageJson.bin.shellops) {
-    const binPath = join(shellopsPath, packageJson.bin.shellops);
+  if (packageJson.bin && packageJson.bin.vibetunnel) {
+    const binPath = join(vibetunnelPath, packageJson.bin.vibetunnel);
     console.log('\nBinary path:', binPath);
     
     try {
@@ -33,9 +33,9 @@ try {
   }
   
   // Try to run the server directly
-  console.log('\nTrying to run ShellOps server...');
+  console.log('\nTrying to run VibeTunnel server...');
   try {
-    const { default: server } = await import('shellops/dist/server/server.js');
+    const { default: server } = await import('vibetunnel/dist/server/server.js');
     console.log('✅ Server module loaded successfully');
   } catch (e) {
     console.log('❌ Failed to load server module:', e.message);

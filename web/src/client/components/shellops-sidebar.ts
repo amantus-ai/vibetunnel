@@ -1,5 +1,5 @@
 /**
- * ShellOps V3 Sidebar Component - Expanded Design
+ * VibeTunnel V3 Sidebar Component - Expanded Design
  *
  * A 240px wide vertical sidebar with:
  * - Logo row with close/collapse button
@@ -13,8 +13,8 @@ import { customElement, property } from 'lit/decorators.js';
 
 type NavView = 'sessions' | 'endpoints' | 'settings' | 'ssh-keys';
 
-@customElement('shellops-sidebar')
-export class ShellOpsSidebar extends LitElement {
+@customElement('vibetunnel-sidebar')
+export class VibeTunnelSidebar extends LitElement {
   // Disable shadow DOM to use Tailwind
   createRenderRoot() {
     return this;
@@ -72,7 +72,7 @@ export class ShellOpsSidebar extends LitElement {
     active: boolean
   ) {
     const activeStyle = active
-      ? 'background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3);'
+      ? 'background: var(--color-primary-muted); border: 1px solid var(--color-primary-border);'
       : 'background: transparent; border: 1px solid transparent;';
     const iconColor = active ? 'var(--color-primary)' : '#737373';
     const textColor = active ? '#FFFFFF' : '#A3A3A3';
@@ -86,7 +86,7 @@ export class ShellOpsSidebar extends LitElement {
       >
         <span style="color: ${iconColor};">${icon}</span>
         <span
-          class="font-mono text-[13px] font-medium"
+          class="font-ui text-[13px] font-medium"
           style="color: ${textColor};"
           >${label}</span
         >
@@ -107,7 +107,7 @@ export class ShellOpsSidebar extends LitElement {
         title="${label}"
       >
         <span style="color: #737373;">${icon}</span>
-        <span class="font-mono text-[13px] font-medium" style="color: #A3A3A3;"
+        <span class="font-ui text-[13px] font-medium" style="color: #A3A3A3;"
           >${label}</span
         >
       </button>
@@ -235,7 +235,7 @@ export class ShellOpsSidebar extends LitElement {
   render() {
     return html`
       <div
-        class="shellops-sidebar flex flex-col justify-between h-full"
+        class="vibetunnel-sidebar flex flex-col justify-between h-full"
         style="width: 240px; background: #030303; border-right: 1px solid rgba(255, 255, 255, 0.04); padding: 24px 16px;"
       >
         <!-- Top Section -->
@@ -245,7 +245,7 @@ export class ShellOpsSidebar extends LitElement {
             <div class="flex items-center gap-3">
               <div
                 class="flex items-center justify-center w-10 h-10 rounded-xl"
-                style="background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%); box-shadow: 0 0 20px rgba(34, 197, 94, 0.5), 0 0 40px rgba(34, 197, 94, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2);"
+                style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%); box-shadow: 0 0 20px rgba(0, 210, 255, 0.5), 0 0 40px var(--color-primary-border), inset 0 1px 0 rgba(255, 255, 255, 0.2);"
               >
                 <svg
                   class="w-5 h-5"
@@ -261,9 +261,9 @@ export class ShellOpsSidebar extends LitElement {
                 </svg>
               </div>
               <span
-                class="font-mono text-[15px] font-bold tracking-tight"
+                class="font-ui text-[15px] font-bold tracking-tight"
                 style="color: #FFFFFF;"
-                >ShellOps</span
+                >VibeTunnel</span
               >
             </div>
             <button
@@ -292,7 +292,7 @@ export class ShellOpsSidebar extends LitElement {
           <!-- Navigation Section -->
           <div class="flex flex-col gap-1">
             <span
-              class="font-mono text-[10px] font-semibold mb-2 px-3"
+              class="font-ui text-[10px] font-semibold mb-2 px-3"
               style="color: #525252;"
               >NAVIGATION</span
             >
@@ -330,7 +330,7 @@ export class ShellOpsSidebar extends LitElement {
           <!-- Quick Actions Section -->
           <div class="flex flex-col gap-1">
             <span
-              class="font-mono text-[10px] font-semibold mb-2 px-3"
+              class="font-ui text-[10px] font-semibold mb-2 px-3"
               style="color: #525252;"
               >QUICK ACTIONS</span
             >
@@ -350,18 +350,18 @@ export class ShellOpsSidebar extends LitElement {
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <div
-                class="flex items-center justify-center w-9 h-9 rounded-full font-mono text-[13px] font-medium"
-                style="background: #1F1F1F; color: var(--color-primary); border: 1px solid rgba(34, 197, 94, 0.3);"
+                class="flex items-center justify-center w-9 h-9 rounded-full font-ui text-[13px] font-medium"
+                style="background: #1F1F1F; color: var(--color-primary); border: 1px solid var(--color-primary-border);"
               >
                 ${this.userInitial}
               </div>
               <div class="flex flex-col">
                 <span
-                  class="font-mono text-[13px] font-medium"
+                  class="font-ui text-[13px] font-medium"
                   style="color: #FFFFFF;"
                   >${this.userName}</span
                 >
-                <span class="font-mono text-[11px]" style="color: #525252;"
+                <span class="font-ui text-[11px]" style="color: #525252;"
                   >Local user</span
                 >
               </div>
@@ -383,6 +383,6 @@ export class ShellOpsSidebar extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'shellops-sidebar': ShellOpsSidebar;
+    'vibetunnel-sidebar': VibeTunnelSidebar;
   }
 }

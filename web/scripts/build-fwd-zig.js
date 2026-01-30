@@ -30,7 +30,7 @@ const pkgPath = path.join(webRoot, 'package.json');
 const pkg = fs.existsSync(pkgPath) ? JSON.parse(fs.readFileSync(pkgPath, 'utf8')) : {};
 const version = pkg.version || 'unknown';
 
-const zigOut = path.join(zigProject, 'zig-out', 'bin', 'shellops-fwd');
+const zigOut = path.join(zigProject, 'zig-out', 'bin', 'vibetunnel-fwd');
 const nativeOutDir = path.join(webRoot, 'native');
 const binOutDir = path.join(webRoot, 'bin');
 
@@ -58,15 +58,15 @@ execFileSync(
 );
 
 if (!fs.existsSync(zigOut)) {
-  console.error('ERROR: zig build did not produce shellops-fwd binary');
+  console.error('ERROR: zig build did not produce vibetunnel-fwd binary');
   process.exit(1);
 }
 
 ensureDir(nativeOutDir);
 ensureDir(binOutDir);
 
-const nativeDest = path.join(nativeOutDir, 'shellops-fwd');
-const binDest = path.join(binOutDir, 'shellops-fwd');
+const nativeDest = path.join(nativeOutDir, 'vibetunnel-fwd');
+const binDest = path.join(binOutDir, 'vibetunnel-fwd');
 
 fs.copyFileSync(zigOut, nativeDest);
 fs.copyFileSync(zigOut, binDest);

@@ -241,7 +241,7 @@ export class QuickStartEditor extends LitElement {
                 @input=${(e: Event) => this.handleCommandChange(index, (e.target as HTMLInputElement).value)}
                 placeholder="Command"
                 data-command-input
-                class="flex-1 min-w-0 bg-bg-secondary border border-border/30 rounded px-2 py-1 text-[10px] text-text font-mono focus:border-primary focus:outline-none"
+                class="flex-1 min-w-0 bg-bg-secondary border border-border/30 rounded px-2 py-1 text-[10px] text-text font-ui focus:border-primary focus:outline-none"
               />
               
               <button

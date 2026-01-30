@@ -1,9 +1,9 @@
 <!-- Generated: 2025-07-18 11:30:00 UTC -->
-# ShellOps Development Guide
+# VibeTunnel Development Guide
 
 ## Overview
 
-ShellOps follows modern Swift 6 and TypeScript development practices with a focus on async/await patterns, protocol-oriented design, and reactive UI architectures. The codebase is organized into three main components: macOS app (Swift/SwiftUI), iOS app (Swift/SwiftUI), and web dashboard (TypeScript/Lit).
+VibeTunnel follows modern Swift 6 and TypeScript development practices with a focus on async/await patterns, protocol-oriented design, and reactive UI architectures. The codebase is organized into three main components: macOS app (Swift/SwiftUI), iOS app (Swift/SwiftUI), and web dashboard (TypeScript/Lit).
 
 Key architectural principles:
 - **Protocol-oriented design** for flexibility and testability
@@ -15,7 +15,7 @@ Key architectural principles:
 
 ### Swift Conventions
 
-**Modern Swift 6 patterns** - From `mac/ShellOps/Core/Services/ServerManager.swift`:
+**Modern Swift 6 patterns** - From `mac/VibeTunnel/Core/Services/ServerManager.swift`:
 ```swift
 @MainActor
 @Observable
@@ -32,7 +32,7 @@ class ServerManager {
 }
 ```
 
-**Error handling** - From `mac/ShellOps/Core/Protocols/ShellOpsServer.swift`:
+**Error handling** - From `mac/VibeTunnel/Core/Protocols/VibeTunnelServer.swift`:
 ```swift
 enum ServerError: LocalizedError {
     case binaryNotFound(String)
@@ -51,7 +51,7 @@ enum ServerError: LocalizedError {
 }
 ```
 
-**SwiftUI view patterns** - From `mac/ShellOps/Presentation/Views/Settings/GeneralSettingsView.swift`:
+**SwiftUI view patterns** - From `mac/VibeTunnel/Presentation/Views/Settings/GeneralSettingsView.swift`:
 ```swift
 struct GeneralSettingsView: View {
     @AppStorage("autostart")
@@ -67,7 +67,7 @@ struct GeneralSettingsView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 4) {
                         Toggle("Launch at Login", isOn: launchAtLoginBinding)
-                        Text("Automatically start ShellOps when you log in.")
+                        Text("Automatically start VibeTunnel when you log in.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -119,9 +119,9 @@ export class VibeTerminalBuffer extends LitElement {
 
 **Protocol-based services** - Services define protocols for testability:
 ```swift
-// mac/ShellOps/Core/Protocols/ShellOpsServer.swift
+// mac/VibeTunnel/Core/Protocols/VibeTunnelServer.swift
 @MainActor
-protocol ShellOpsServer: AnyObject {
+protocol VibeTunnelServer: AnyObject {
     var isRunning: Bool { get }
     var port: String { get set }
     var logStream: AsyncStream<ServerLogEntry> { get }
@@ -134,16 +134,16 @@ protocol ShellOpsServer: AnyObject {
 
 **Singleton managers** - Core services use thread-safe singletons:
 ```swift
-// mac/ShellOps/Core/Services/ServerManager.swift:14
+// mac/VibeTunnel/Core/Services/ServerManager.swift:14
 @MainActor static let shared = ServerManager()
 
-// ios/ShellOps/Services/APIClient.swift:93
+// ios/VibeTunnel/Services/APIClient.swift:93
 static let shared = APIClient()
 ```
 
 ### Async/Await Patterns
 
-**Swift async operations** - From `ios/ShellOps/Services/APIClient.swift`:
+**Swift async operations** - From `ios/VibeTunnel/Services/APIClient.swift`:
 ```swift
 func getSessions() async throws -> [Session] {
     guard let url = makeURL(path: "/api/sessions") else {
@@ -170,7 +170,7 @@ func getSessions() async throws -> [Session] {
 
 **Swift error enums** - Comprehensive error types with localized descriptions:
 ```swift
-// ios/ShellOps/Services/APIClient.swift:4-70
+// ios/VibeTunnel/Services/APIClient.swift:4-70
 enum APIError: LocalizedError {
     case invalidURL
     case serverError(Int, String?)
@@ -206,7 +206,7 @@ try {
 
 ### State Management
 
-**SwiftUI Observable** - From `mac/ShellOps/Core/Services/ServerManager.swift`:
+**SwiftUI Observable** - From `mac/VibeTunnel/Core/Services/ServerManager.swift`:
 ```swift
 @Observable
 class ServerManager {
@@ -218,14 +218,14 @@ class ServerManager {
 
 **AppStorage for persistence**:
 ```swift
-// mac/ShellOps/Presentation/Views/Settings/GeneralSettingsView.swift:5
+// mac/VibeTunnel/Presentation/Views/Settings/GeneralSettingsView.swift:5
 @AppStorage("autostart") private var autostart = false
 @AppStorage("updateChannel") private var updateChannelRaw = UpdateChannel.stable.rawValue
 ```
 
 ### UI Patterns
 
-**SwiftUI form layouts** - From `mac/ShellOps/Presentation/Views/Settings/GeneralSettingsView.swift`:
+**SwiftUI form layouts** - From `mac/VibeTunnel/Presentation/Views/Settings/GeneralSettingsView.swift`:
 ```swift
 Form {
     Section {
@@ -255,7 +255,7 @@ Form {
 
 ### Adding a New Service
 
-1. **Define the protocol** in `mac/ShellOps/Core/Protocols/`:
+1. **Define the protocol** in `mac/VibeTunnel/Core/Protocols/`:
 ```swift
 @MainActor
 protocol MyServiceProtocol {
@@ -263,7 +263,7 @@ protocol MyServiceProtocol {
 }
 ```
 
-2. **Implement the service** in `mac/ShellOps/Core/Services/`:
+2. **Implement the service** in `mac/VibeTunnel/Core/Services/`:
 ```swift
 @MainActor
 class MyService: MyServiceProtocol {
@@ -275,7 +275,7 @@ class MyService: MyServiceProtocol {
 }
 ```
 
-3. **Add to environment** if needed in `mac/ShellOps/Core/Extensions/EnvironmentValues+Services.swift`
+3. **Add to environment** if needed in `mac/VibeTunnel/Core/Extensions/EnvironmentValues+Services.swift`
 
 ### Creating UI Components
 
@@ -305,7 +305,7 @@ export class MyComponent extends LitElement {
 
 ### Testing Patterns
 
-**Swift unit tests** - From `mac/ShellOpsTests/ServerManagerTests.swift`:
+**Swift unit tests** - From `mac/VibeTunnelTests/ServerManagerTests.swift`:
 ```swift
 @MainActor
 final class ServerManagerTests: XCTestCase {
@@ -339,11 +339,11 @@ describe('WsV3Hub', () => {
 ### File Organization
 
 **Swift packages**:
-- `mac/ShellOps/Core/` - Core business logic, protocols, services
-- `mac/ShellOps/Presentation/` - SwiftUI views and view models
-- `mac/ShellOps/Utilities/` - Helper classes and extensions
-- `ios/ShellOps/Services/` - iOS-specific services
-- `ios/ShellOps/Views/` - iOS UI components
+- `mac/VibeTunnel/Core/` - Core business logic, protocols, services
+- `mac/VibeTunnel/Presentation/` - SwiftUI views and view models
+- `mac/VibeTunnel/Utilities/` - Helper classes and extensions
+- `ios/VibeTunnel/Services/` - iOS-specific services
+- `ios/VibeTunnel/Views/` - iOS UI components
 
 **TypeScript modules**:
 - `web/src/client/` - Frontend components and utilities
@@ -355,7 +355,7 @@ describe('WsV3Hub', () => {
 
 **Swift**:
 - Services: `*Manager`, `*Service` (e.g., `ServerManager`, `APIClient`)
-- Protocols: `*Protocol`, `*able` (e.g., `ShellOpsServer`, `HTTPClientProtocol`)
+- Protocols: `*Protocol`, `*able` (e.g., `VibeTunnelServer`, `HTTPClientProtocol`)
 - Views: `*View` (e.g., `GeneralSettingsView`, `TerminalView`)
 - Errors: `*Error` enum (e.g., `ServerError`, `APIError`)
 
@@ -366,20 +366,20 @@ describe('WsV3Hub', () => {
 
 ### Common Issues
 
-**Port conflicts** - Handled in `mac/ShellOps/Core/Utilities/PortConflictResolver.swift`
-**Permission management** - See `mac/ShellOps/Core/Services/*PermissionManager.swift`
-**WebSocket reconnection** - Implemented in `ios/ShellOps/Services/BufferWebSocketClient.swift`
+**Port conflicts** - Handled in `mac/VibeTunnel/Core/Utilities/PortConflictResolver.swift`
+**Permission management** - See `mac/VibeTunnel/Core/Services/*PermissionManager.swift`
+**WebSocket reconnection** - Implemented in `ios/VibeTunnel/Services/BufferWebSocketClient.swift`
 **Terminal resizing** - Handled in both Swift and TypeScript terminal components
 
-### ShellOps CLI Wrapper (vt)
+### VibeTunnel CLI Wrapper (vt)
 
-The `vt` command is a bash wrapper script that allows users to run commands through ShellOps's terminal forwarding. It's installed at `/usr/local/bin/vt` when the Mac app is built.
+The `vt` command is a bash wrapper script that allows users to run commands through VibeTunnel's terminal forwarding. It's installed at `/usr/local/bin/vt` when the Mac app is built.
 
-**Source location**: `mac/ShellOps/vt`
+**Source location**: `mac/VibeTunnel/vt`
 
 **Usage**:
 ```bash
-# Run a command through ShellOps
+# Run a command through VibeTunnel
 vt ls -la
 
 # Run an aliased command (e.g., if 'claude' is an alias)
@@ -395,23 +395,23 @@ vt -S command
 ```
 
 **How it works**:
-1. Locates the ShellOps.app bundle (checks standard locations and uses Spotlight if needed)
-2. Finds the `shellops` binary within the app bundle's Resources
+1. Locates the VibeTunnel.app bundle (checks standard locations and uses Spotlight if needed)
+2. Finds the `vibetunnel` binary within the app bundle's Resources
 3. Determines if the command is a binary or alias/function
-4. For binaries: executes directly through `shellops fwd`
+4. For binaries: executes directly through `vibetunnel fwd`
 5. For aliases/functions: wraps in appropriate shell (`zsh -i -c` or `bash -c`) for proper resolution
 
 **Technical Details**:
 - The `--` separator should not be passed to `fwd` as it was being misinterpreted as a command
 - Aliases require interactive shell mode to be resolved properly
-- The script prevents recursive ShellOps sessions by checking `SHELLOPS_SESSION_ID`
+- The script prevents recursive VibeTunnel sessions by checking `VIBETUNNEL_SESSION_ID`
 - The `fwd` binary now properly handles `--` as an argument separator when needed
 
 ## Web Development
 
 ### Code Quality Tools
 
-ShellOps uses several tools to maintain code quality:
+VibeTunnel uses several tools to maintain code quality:
 
 #### Running All Checks
 

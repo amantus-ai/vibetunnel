@@ -6,7 +6,7 @@
  * - Quick action chips (Tab, Clear, History, Ctrl+C)
  * - Send button
  *
- * Matches ShellOps V3 mobile wireframe design.
+ * Matches VibeTunnel V3 mobile wireframe design.
  */
 
 import { html, LitElement } from 'lit';
@@ -96,28 +96,28 @@ export class MobileTerminalInput extends LitElement {
         <div class="flex items-center gap-2 mb-3 overflow-x-auto scrollbar-hide -mx-1 px-1">
           <button
             @click=${() => this.handleQuickAction('tab')}
-            class="flex-shrink-0 px-3 py-1.5 rounded-lg font-mono text-xs font-medium transition-all"
+            class="flex-shrink-0 px-3 py-1.5 rounded-lg font-ui text-xs font-medium transition-all"
             style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); color: #A3A3A3;"
           >
             Tab ⇥
           </button>
           <button
             @click=${() => this.handleQuickAction('clear')}
-            class="flex-shrink-0 px-3 py-1.5 rounded-lg font-mono text-xs font-medium transition-all"
+            class="flex-shrink-0 px-3 py-1.5 rounded-lg font-ui text-xs font-medium transition-all"
             style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); color: #A3A3A3;"
           >
             Clear ⌃L
           </button>
           <button
             @click=${() => this.handleQuickAction('history')}
-            class="flex-shrink-0 px-3 py-1.5 rounded-lg font-mono text-xs font-medium transition-all"
+            class="flex-shrink-0 px-3 py-1.5 rounded-lg font-ui text-xs font-medium transition-all"
             style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); color: #A3A3A3;"
           >
             History ↑
           </button>
           <button
             @click=${() => this.handleQuickAction('ctrl-c')}
-            class="flex-shrink-0 px-3 py-1.5 rounded-lg font-mono text-xs font-medium transition-all"
+            class="flex-shrink-0 px-3 py-1.5 rounded-lg font-ui text-xs font-medium transition-all"
             style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); color: #A3A3A3;"
           >
             ⌃C
@@ -139,7 +139,7 @@ export class MobileTerminalInput extends LitElement {
               @focus=${this.handleFocus}
               @blur=${this.handleBlur}
               ?disabled=${this.disabled}
-              class="flex-1 bg-transparent border-none outline-none font-mono text-sm"
+              class="flex-1 bg-transparent border-none outline-none font-ui text-sm"
               style="color: var(--color-text); caret-color: var(--color-primary);"
             />
           </div>

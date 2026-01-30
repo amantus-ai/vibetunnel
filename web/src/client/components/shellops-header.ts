@@ -1,5 +1,5 @@
 /**
- * ShellOps V3 Header Component
+ * VibeTunnel V3 Header Component
  *
  * Desktop header with:
  * - Title with active badge
@@ -10,8 +10,8 @@
 import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
-@customElement('shellops-header')
-export class ShellOpsHeader extends LitElement {
+@customElement('vibetunnel-header')
+export class VibeTunnelHeader extends LitElement {
   // Disable shadow DOM to use Tailwind
   createRenderRoot() {
     return this;
@@ -52,7 +52,7 @@ export class ShellOpsHeader extends LitElement {
             <!-- Logo icon - mobile only -->
             <div
               class="sm:hidden flex items-center justify-center w-9 h-9 rounded-[10px]"
-              style="background: var(--color-primary); box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);"
+              style="background: var(--color-primary); box-shadow: 0 0 10px rgba(0, 210, 255, 0.4);"
             >
               <svg
                 class="w-[18px] h-[18px]"
@@ -70,7 +70,7 @@ export class ShellOpsHeader extends LitElement {
               </svg>
             </div>
             <h1
-              class="text-lg sm:text-[32px] font-bold font-mono"
+              class="text-lg sm:text-[32px] font-bold font-ui"
               style="color: var(--color-text);"
             >
               ${this.title}
@@ -79,8 +79,8 @@ export class ShellOpsHeader extends LitElement {
               this.activeCount > 0
                 ? html`
                   <div
-                    class="flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full font-mono text-[10px] sm:text-[11px] font-medium"
-                    style="background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); color: var(--color-primary);"
+                    class="flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full font-ui text-[10px] sm:text-[11px] font-medium"
+                    style="background: var(--color-primary-muted); border: 1px solid var(--color-primary-border); color: var(--color-primary);"
                   >
                     <div
                       class="w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full"
@@ -97,7 +97,7 @@ export class ShellOpsHeader extends LitElement {
           <div class="hidden sm:flex items-center gap-3">
             <!-- Search -->
             <div
-              class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-[10px] font-mono text-[13px] cursor-text"
+              class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-[10px] font-ui text-[13px] cursor-text"
               style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1);"
             >
               <svg
@@ -130,8 +130,8 @@ export class ShellOpsHeader extends LitElement {
               @click=${this.handleNewClick}
               title="Create New Session (⌘K)"
               data-testid="create-session-button"
-              class="flex items-center gap-2 px-4 py-2.5 rounded-[10px] font-mono text-[13px] font-medium transition-all cursor-pointer"
-              style="background: var(--color-primary); color: var(--color-bg); box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);"
+              class="flex items-center gap-2 px-4 py-2.5 rounded-[10px] font-ui text-[13px] font-medium transition-all cursor-pointer"
+              style="background: var(--color-primary); color: var(--color-bg); box-shadow: 0 4px 16px var(--color-primary-border);"
             >
               <svg
                 class="w-4 h-4"
@@ -149,7 +149,7 @@ export class ShellOpsHeader extends LitElement {
 
         <!-- Search bar - mobile only (full width) -->
         <div
-          class="sm:hidden flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-mono text-sm"
+          class="sm:hidden flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-ui text-sm"
           style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);"
         >
           <svg
@@ -182,6 +182,6 @@ export class ShellOpsHeader extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'shellops-header': ShellOpsHeader;
+    'vibetunnel-header': VibeTunnelHeader;
   }
 }

@@ -11,7 +11,7 @@ const YELLOW = '\x1b[0;33m';
 const NC = '\x1b[0m'; // No Color
 
 // Configuration
-const SERVICE_LABEL = 'sh.shellops.server';
+const SERVICE_LABEL = 'sh.vibetunnel.server';
 const PLIST_FILE = `${SERVICE_LABEL}.plist`;
 
 // Get the current user (regular user only, no sudo/root)
@@ -39,13 +39,13 @@ function printWarning(message: string): void {
   console.log(`${YELLOW}[WARNING]${NC} ${message}`);
 }
 
-// Create a stable wrapper script that can find shellops regardless of node version manager
-function createShellopsWrapper(): string {
+// Create a stable wrapper script that can find vibetunnel regardless of node version manager
+function createVibeTunnelWrapper(): string {
   const { username, home } = getCurrentUser();
-  const wrapperPath = `${home}/.local/bin/shellops-launchd`;
+  const wrapperPath = `${home}/.local/bin/vibetunnel-launchd`;
   const wrapperContent = `#!/bin/bash
-# ShellOps LaunchAgent Wrapper Script
-# This script finds and executes shellops for user: ${username}
+# VibeTunnel LaunchAgent Wrapper Script
+# This script finds and executes vibetunnel for user: ${username}
 
 # Function to log messages
 log_info() {
@@ -60,12 +60,12 @@ log_error() {
 export HOME="${home}"
 export USER="${username}"
 
-# Try to find shellops in various ways
-find_shellops() {
-    # Method 1: Check if shellops is in PATH
-    if command -v shellops >/dev/null 2>&1; then
-        log_info "Found shellops in PATH"
-        shellops "$@"
+# Try to find vibetunnel in various ways
+find_vibetunnel() {
+    # Method 1: Check if vibetunnel is in PATH
+    if command -v vibetunnel >/dev/null 2>&1; then
+        log_info "Found vibetunnel in PATH"
+        vibetunnel "$@"
         return $?
     fi
     
@@ -74,9 +74,9 @@ find_shellops() {
         log_info "Checking nvm installation for user ${username}"
         export NVM_DIR="${home}/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-        if command -v shellops >/dev/null 2>&1; then
-            log_info "Found shellops via nvm"
-            shellops "$@"
+        if command -v vibetunnel >/dev/null 2>&1; then
+            log_info "Found vibetunnel via nvm"
+            vibetunnel "$@"
             return $?
         fi
     fi
@@ -85,15 +85,15 @@ find_shellops() {
     if [ -d "${home}/.local/share/fnm" ] && [ -x "${home}/.local/share/fnm/fnm" ]; then
         log_info "Checking fnm installation for user ${username}"
         export FNM_DIR="${home}/.local/share/fnm"
-        export PATH="${home}/.local/share/fnm:\$PATH"
+        export PATH="${home}/.local/share/fnm:$PATH"
         export SHELL="/bin/bash"  # Force shell for fnm
         # Initialize fnm with explicit shell and use the default node version
-        eval "\$("${home}/.local/share/fnm/fnm" env --shell bash)" 2>/dev/null || true
+        eval "$("${home}/.local/share/fnm/fnm" env --shell bash)" 2>/dev/null || true
         # Try to use the default node version or current version
         "${home}/.local/share/fnm/fnm" use default >/dev/null 2>&1 || "${home}/.local/share/fnm/fnm" use current >/dev/null 2>&1 || true
-        if command -v shellops >/dev/null 2>&1; then
-            log_info "Found shellops via fnm"
-            shellops "$@"
+        if command -v vibetunnel >/dev/null 2>&1; then
+            log_info "Found vibetunnel via fnm"
+            vibetunnel "$@"
             return $?
         fi
     fi
@@ -101,42 +101,42 @@ find_shellops() {
     # Method 4: Check for pnpm global installations
     if [ -d "${home}/Library/pnpm" ]; then
         log_info "Checking pnpm installation for user ${username}"
-        export PATH="${home}/Library/pnpm:\$PATH"
-        if command -v shellops >/dev/null 2>&1; then
-            log_info "Found shellops via pnpm"
-            shellops "$@"
+        export PATH="${home}/Library/pnpm:$PATH"
+        if command -v vibetunnel >/dev/null 2>&1; then
+            log_info "Found vibetunnel via pnpm"
+            vibetunnel "$@"
             return $?
         fi
     fi
     
     # Method 5: Check for Homebrew Node.js installation (common on macOS)
     if [ -d "/opt/homebrew/bin" ]; then
-        export PATH="/opt/homebrew/bin:\$PATH"
-        if command -v shellops >/dev/null 2>&1; then
-            log_info "Found shellops via Homebrew"
-            shellops "$@"
+        export PATH="/opt/homebrew/bin:$PATH"
+        if command -v vibetunnel >/dev/null 2>&1; then
+            log_info "Found vibetunnel via Homebrew"
+            vibetunnel "$@"
             return $?
         fi
     fi
     
     # Method 6: Check Intel Homebrew location
     if [ -d "/usr/local/bin" ]; then
-        export PATH="/usr/local/bin:\$PATH"
-        if command -v shellops >/dev/null 2>&1; then
-            log_info "Found shellops via /usr/local/bin"
-            shellops "$@"
+        export PATH="/usr/local/bin:$PATH"
+        if command -v vibetunnel >/dev/null 2>&1; then
+            log_info "Found vibetunnel via /usr/local/bin"
+            vibetunnel "$@"
             return $?
         fi
     fi
     
     # Method 7: Check common global npm locations
     for npm_bin in "/opt/homebrew/bin/npm" "/usr/local/bin/npm"; do
-        if [ -x "\$npm_bin" ]; then
-            log_info "Trying npm global with \$npm_bin"
-            NPM_PREFIX=\$("\$npm_bin" config get prefix 2>/dev/null)
-            if [ -n "\$NPM_PREFIX" ] && [ -x "\$NPM_PREFIX/bin/shellops" ]; then
-                log_info "Found shellops via npm global: \$NPM_PREFIX/bin/shellops"
-                "\$NPM_PREFIX/bin/shellops" "$@"
+        if [ -x "$npm_bin" ]; then
+            log_info "Trying npm global with $npm_bin"
+            NPM_PREFIX=$("$npm_bin" config get prefix 2>/dev/null)
+            if [ -n "$NPM_PREFIX" ] && [ -x "$NPM_PREFIX/bin/vibetunnel" ]; then
+                log_info "Found vibetunnel via npm global: $NPM_PREFIX/bin/vibetunnel"
+                "$NPM_PREFIX/bin/vibetunnel" "$@"
                 return $?
             fi
         fi
@@ -144,24 +144,24 @@ find_shellops() {
     
     # Method 8: Try to run with node directly using global npm package
     for node_bin in "/opt/homebrew/bin/node" "/usr/local/bin/node"; do
-        if [ -x "\$node_bin" ]; then
-            for script_path in "/opt/homebrew/lib/node_modules/shellops/dist/cli.js" "/usr/local/lib/node_modules/shellops/dist/cli.js"; do
-                if [ -f "\$script_path" ]; then
-                    log_info "Running shellops via node: \$node_bin \$script_path"
-                    "\$node_bin" "\$script_path" "$@"
+        if [ -x "$node_bin" ]; then
+            for script_path in "/opt/homebrew/lib/node_modules/vibetunnel/dist/cli.js" "/usr/local/lib/node_modules/vibetunnel/dist/cli.js"; do
+                if [ -f "$script_path" ]; then
+                    log_info "Running vibetunnel via node: $node_bin $script_path"
+                    "$node_bin" "$script_path" "$@"
                     return $?
                 fi
             done
         fi
     done
     
-    log_error "Could not find shellops installation for user ${username}"
-    log_error "Please ensure shellops is installed globally: npm install -g shellops"
+    log_error "Could not find vibetunnel installation for user ${username}"
+    log_error "Please ensure vibetunnel is installed globally: npm install -g vibetunnel"
     return 1
 }
 
 # Execute the function with all arguments
-find_shellops "$@"
+find_vibetunnel "$@"
 `;
 
   try {
@@ -184,26 +184,26 @@ find_shellops "$@"
   }
 }
 
-// Verify that shellops is accessible and return wrapper path
-function checkShellopsAndCreateWrapper(): string {
-  // First, verify that shellops is actually installed somewhere
+// Verify that vibetunnel is accessible and return wrapper path
+function checkVibeTunnelAndCreateWrapper(): string {
+  // First, verify that vibetunnel is actually installed somewhere
   try {
-    const shellopsPath = execSync('which shellops', { encoding: 'utf8', stdio: 'pipe' }).trim();
-    printInfo(`Found ShellOps at: ${shellopsPath}`);
+    const vibetunnelPath = execSync('which vibetunnel', { encoding: 'utf8', stdio: 'pipe' }).trim();
+    printInfo(`Found VibeTunnel at: ${vibetunnelPath}`);
   } catch (_error) {
-    printError('ShellOps is not installed or not accessible. Please install it first:');
-    console.log('  npm install -g shellops');
+    printError('VibeTunnel is not installed or not accessible. Please install it first:');
+    console.log('  npm install -g vibetunnel');
     process.exit(1);
   }
 
   // Create and return the wrapper script path
-  return createShellopsWrapper();
+  return createVibeTunnelWrapper();
 }
 
 // Remove wrapper script during uninstall
-function removeShellopsWrapper(): void {
+function removeVibeTunnelWrapper(): void {
   const { home } = getCurrentUser();
-  const wrapperPath = `${home}/.local/bin/shellops-launchd`;
+  const wrapperPath = `${home}/.local/bin/vibetunnel-launchd`;
   try {
     if (existsSync(wrapperPath)) {
       unlinkSync(wrapperPath);
@@ -215,9 +215,9 @@ function removeShellopsWrapper(): void {
 }
 
 // Get the LaunchAgent plist template
-function getPlistTemplate(shellopsPath: string): string {
+function getPlistTemplate(vibetunnelPath: string): string {
   const { home } = getCurrentUser();
-  const logDir = `${home}/Library/Logs/ShellOps`;
+  const logDir = `${home}/Library/Logs/VibeTunnel`;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -228,7 +228,7 @@ function getPlistTemplate(shellopsPath: string): string {
     
     <key>ProgramArguments</key>
     <array>
-        <string>${shellopsPath}</string>
+        <string>${vibetunnelPath}</string>
         <string>--port</string>
         <string>4020</string>
         <string>--bind</string>
@@ -245,16 +245,16 @@ function getPlistTemplate(shellopsPath: string): string {
     <string>${home}</string>
     
     <key>StandardOutPath</key>
-    <string>${logDir}/shellops.log</string>
+    <string>${logDir}/vibetunnel.log</string>
     
     <key>StandardErrorPath</key>
-    <string>${logDir}/shellops.error.log</string>
+    <string>${logDir}/vibetunnel.error.log</string>
     
     <key>EnvironmentVariables</key>
     <dict>
         <key>NODE_ENV</key>
         <string>production</string>
-        <key>SHELLOPS_LOG_LEVEL</key>
+        <key>VIBETUNNEL_LOG_LEVEL</key>
         <string>info</string>
         <key>HOME</key>
         <string>${home}</string>
@@ -277,7 +277,7 @@ function getPlistTemplate(shellopsPath: string): string {
 // Create log directory
 function createLogDirectory(): void {
   const { home } = getCurrentUser();
-  const logDir = `${home}/Library/Logs/ShellOps`;
+  const logDir = `${home}/Library/Logs/VibeTunnel`;
 
   try {
     if (!existsSync(logDir)) {
@@ -290,12 +290,12 @@ function createLogDirectory(): void {
 }
 
 // Install LaunchAgent plist
-function installLaunchAgent(shellopsPath: string): void {
+function installLaunchAgent(vibetunnelPath: string): void {
   printInfo('Installing LaunchAgent plist...');
 
   const { home } = getCurrentUser();
   const launchAgentsDir = `${home}/Library/LaunchAgents`;
-  const plistContent = getPlistTemplate(shellopsPath);
+  const plistContent = getPlistTemplate(vibetunnelPath);
   const plistPath = `${launchAgentsDir}/${PLIST_FILE}`;
 
   try {
@@ -361,13 +361,13 @@ function showUsage(): void {
   const { username, home } = getCurrentUser();
   const uid = execSync('id -u', { encoding: 'utf8', stdio: 'pipe' }).trim();
 
-  printSuccess('ShellOps LaunchAgent installation completed!');
+  printSuccess('VibeTunnel LaunchAgent installation completed!');
   console.log('');
   console.log('Usage:');
   console.log(`  launchctl start ${SERVICE_LABEL}        # Start the service`);
   console.log(`  launchctl stop ${SERVICE_LABEL}         # Stop the service`);
   console.log(`  launchctl kickstart -k gui/${uid}/${SERVICE_LABEL}  # Restart the service`);
-  console.log(`  shellops launchd status                 # Check service status`);
+  console.log(`  vibetunnel launchd status                 # Check service status`);
   console.log('');
   console.log('To unload (disable auto-start):');
   console.log(`  launchctl unload ~/Library/LaunchAgents/${PLIST_FILE}`);
@@ -376,15 +376,15 @@ function showUsage(): void {
   console.log(`  launchctl load ~/Library/LaunchAgents/${PLIST_FILE}`);
   console.log('');
   console.log('Logs:');
-  console.log(`  tail -f ~/Library/Logs/ShellOps/shellops.log        # Follow output logs`);
-  console.log(`  tail -f ~/Library/Logs/ShellOps/shellops.error.log  # Follow error logs`);
+  console.log(`  tail -f ~/Library/Logs/VibeTunnel/vibetunnel.log        # Follow output logs`);
+  console.log(`  tail -f ~/Library/Logs/VibeTunnel/vibetunnel.error.log  # Follow error logs`);
   console.log('');
   console.log('Configuration:');
   console.log('  Service runs on port 4020 by default');
   console.log('  Web interface: http://localhost:4020');
   console.log(`  Service runs as user: ${username}`);
   console.log(`  Working directory: ${home}`);
-  console.log(`  Wrapper script: ${home}/.local/bin/shellops-launchd`);
+  console.log(`  Wrapper script: ${home}/.local/bin/vibetunnel-launchd`);
   console.log('');
   console.log(`To customize the service, edit: ~/Library/LaunchAgents/${PLIST_FILE}`);
   console.log('Then run:');
@@ -394,7 +394,7 @@ function showUsage(): void {
 
 // Uninstall function
 function uninstallLaunchAgent(): void {
-  printInfo('Uninstalling ShellOps LaunchAgent...');
+  printInfo('Uninstalling VibeTunnel LaunchAgent...');
 
   const { home } = getCurrentUser();
   const plistPath = `${home}/Library/LaunchAgents/${PLIST_FILE}`;
@@ -416,16 +416,16 @@ function uninstallLaunchAgent(): void {
     }
 
     // Remove wrapper script
-    removeShellopsWrapper();
+    removeVibeTunnelWrapper();
 
     // Note about logs
-    const logDir = `${home}/Library/Logs/ShellOps`;
+    const logDir = `${home}/Library/Logs/VibeTunnel`;
     if (existsSync(logDir)) {
       printInfo(`Log directory retained at: ${logDir}`);
-      printInfo('To remove logs: rm -rf ~/Library/Logs/ShellOps');
+      printInfo('To remove logs: rm -rf ~/Library/Logs/VibeTunnel');
     }
 
-    printSuccess('ShellOps LaunchAgent uninstalled');
+    printSuccess('VibeTunnel LaunchAgent uninstalled');
   } catch (error) {
     printError(`Failed to uninstall LaunchAgent: ${error}`);
     process.exit(1);
@@ -437,7 +437,7 @@ function checkServiceStatus(): void {
   const { home } = getCurrentUser();
   const plistPath = `${home}/Library/LaunchAgents/${PLIST_FILE}`;
 
-  console.log('ShellOps LaunchAgent Status');
+  console.log('VibeTunnel LaunchAgent Status');
   console.log('===========================');
   console.log('');
 
@@ -446,7 +446,7 @@ function checkServiceStatus(): void {
     printWarning('LaunchAgent is not installed');
     console.log(`  Plist file not found at: ${plistPath}`);
     console.log('');
-    console.log('To install: shellops launchd install');
+    console.log('To install: vibetunnel launchd install');
     return;
   }
 
@@ -485,9 +485,9 @@ function checkServiceStatus(): void {
   // Show log file info
   console.log('');
   console.log('Log files:');
-  const logDir = `${home}/Library/Logs/ShellOps`;
-  const logFile = `${logDir}/shellops.log`;
-  const errorLogFile = `${logDir}/shellops.error.log`;
+  const logDir = `${home}/Library/Logs/VibeTunnel`;
+  const logFile = `${logDir}/vibetunnel.log`;
+  const errorLogFile = `${logDir}/vibetunnel.error.log`;
 
   if (existsSync(logFile)) {
     try {
@@ -558,7 +558,7 @@ function checkMacOS(): void {
   if (process.platform !== 'darwin') {
     printError('This installer is for macOS only!');
     printError(`Detected platform: ${process.platform}`);
-    printError('For Linux, use: shellops systemd');
+    printError('For Linux, use: vibetunnel systemd');
     process.exit(1);
   }
 }
@@ -567,7 +567,7 @@ function checkMacOS(): void {
 function checkNotRoot(): void {
   if (process.getuid && process.getuid() === 0) {
     printError('This installer must NOT be run as root!');
-    printError('ShellOps LaunchAgent should run as a regular user for security.');
+    printError('VibeTunnel LaunchAgent should run as a regular user for security.');
     printError('Please run this command as a regular user (without sudo).');
     process.exit(1);
   }
@@ -583,9 +583,9 @@ export function installLaunchdService(action: string = 'install'): void {
 
   switch (action) {
     case 'install': {
-      printInfo('Installing ShellOps LaunchAgent...');
+      printInfo('Installing VibeTunnel LaunchAgent...');
 
-      const wrapperPath = checkShellopsAndCreateWrapper();
+      const wrapperPath = checkVibeTunnelAndCreateWrapper();
       installLaunchAgent(wrapperPath);
       loadLaunchAgent();
       showUsage();
@@ -602,9 +602,9 @@ export function installLaunchdService(action: string = 'install'): void {
       break;
 
     default:
-      console.log('Usage: shellops launchd [install|uninstall|status]');
-      console.log('  install   - Install ShellOps LaunchAgent (default)');
-      console.log('  uninstall - Remove ShellOps LaunchAgent');
+      console.log('Usage: vibetunnel launchd [install|uninstall|status]');
+      console.log('  install   - Install VibeTunnel LaunchAgent (default)');
+      console.log('  uninstall - Remove VibeTunnel LaunchAgent');
       console.log('  status    - Check service status');
       process.exit(1);
   }

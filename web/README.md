@@ -1,24 +1,24 @@
-# ShellOps CLI
+# VibeTunnel CLI
 
-**Turn any browser into your terminal.** ShellOps proxies your terminals right into the browser, so you can vibe-code anywhere.
+**Turn any browser into your terminal.** VibeTunnel proxies your terminals right into the browser, so you can vibe-code anywhere.
 
 Full-featured terminal sharing server with web interface for macOS and Linux. Windows not yet supported.
 
-## Why ShellOps?
+## Why VibeTunnel?
 
-Ever wanted to check on your AI agents while you're away? Need to monitor that long-running build from your phone? Want to share a terminal session with a colleague without complex SSH setups? ShellOps makes it happen with zero friction.
+Ever wanted to check on your AI agents while you're away? Need to monitor that long-running build from your phone? Want to share a terminal session with a colleague without complex SSH setups? VibeTunnel makes it happen with zero friction.
 
 ## Installation
 
 ### From npm (Recommended)
 ```bash
-npm install -g shellops
+npm install -g vibetunnel
 ```
 
 ### From Source
 ```bash
-git clone https://github.com/amantus-ai/shellops.git
-cd shellops/web
+git clone https://github.com/arunsanna/vibetunnel.git
+cd vibetunnel/web
 pnpm install
 pnpm run build
 ```
@@ -28,7 +28,7 @@ pnpm run build
 **npm package**:
 - Pre-built binaries for common platforms (macOS x64/arm64, Linux x64/arm64)
 - Automatic fallback to source compilation if pre-built binaries unavailable
-- Global installation makes `shellops` command available system-wide
+- Global installation makes `vibetunnel` command available system-wide
 - Conditional `vt` command installation (see [VT Installation Guide](docs/VT_INSTALLATION.md))
 - Includes production dependencies only
 
@@ -50,22 +50,22 @@ pnpm run build
 
 ```bash
 # Start with default settings (port 4020)
-shellops
+vibetunnel
 
 # Start with custom port
-shellops --port 8080
+vibetunnel --port 8080
 
 # Start without authentication
-shellops --no-auth
+vibetunnel --no-auth
 
 # Bind to specific interface
-shellops --bind 127.0.0.1 --port 4020
+vibetunnel --bind 127.0.0.1 --port 4020
 
 # Enable SSH key authentication
-shellops --enable-ssh-keys
+vibetunnel --enable-ssh-keys
 
 # SSH keys only (no password auth)
-shellops --disallow-user-password
+vibetunnel --disallow-user-password
 ```
 
 Then open http://localhost:4020 in your browser to access the web interface.
@@ -73,7 +73,7 @@ Then open http://localhost:4020 in your browser to access the web interface.
 ### Command-line Options
 
 ```
-shellops [options]
+vibetunnel [options]
 
 Basic Options:
   --help, -h            Show help message
@@ -125,7 +125,7 @@ The `vt` command allows you to run commands with TTY forwarding:
 vt claude
 vt claude --dangerously-skip-permissions
 
-# Run commands with output visible in ShellOps
+# Run commands with output visible in VibeTunnel
 vt npm test
 vt python script.py
 vt top
@@ -157,57 +157,57 @@ vt -vvv npm build       # Debug mode
 
 ```bash
 # Basic usage
-shellops fwd <session-id> <command> [args...]
+vibetunnel fwd <session-id> <command> [args...]
 
 # Examples
-shellops fwd --session-id abc123 ls -la
-shellops fwd --session-id abc123 npm test
-shellops fwd --session-id abc123 python script.py
+vibetunnel fwd --session-id abc123 ls -la
+vibetunnel fwd --session-id abc123 npm test
+vibetunnel fwd --session-id abc123 python script.py
 ```
 
 ### Running as a Background Service
 
-ShellOps can run as a persistent background service that starts automatically:
+VibeTunnel can run as a persistent background service that starts automatically:
 
 **macOS (LaunchAgent):**
 ```bash
-shellops launchd              # Install and start
-shellops launchd status       # Check status
-shellops launchd uninstall    # Remove
+vibetunnel launchd              # Install and start
+vibetunnel launchd status       # Check status
+vibetunnel launchd uninstall    # Remove
 ```
 See [detailed launchd documentation](docs/launchd.md).
 
 **Linux (systemd):**
 ```bash
-shellops systemd              # Install and enable
-shellops systemd status       # Check status  
-shellops systemd uninstall    # Remove
+vibetunnel systemd              # Install and enable
+vibetunnel systemd status       # Check status  
+vibetunnel systemd uninstall    # Remove
 ```
 See [detailed systemd documentation](docs/systemd.md).
 
 ### Environment Variables
 
-ShellOps respects the following environment variables:
+VibeTunnel respects the following environment variables:
 
 ```bash
 PORT=8080                           # Default port if --port not specified
-SHELLOPS_USERNAME=myuser          # Username (for env-based auth, not CLI)
-SHELLOPS_PASSWORD=mypass          # Password (for env-based auth, not CLI)
-SHELLOPS_CONTROL_DIR=/path        # Control directory for session data
-SHELLOPS_SESSION_ID=abc123        # Current session ID (set automatically inside sessions)
-SHELLOPS_LOG_LEVEL=debug          # Log level: error, warn, info, verbose, debug
+VIBETUNNEL_USERNAME=myuser          # Username (for env-based auth, not CLI)
+VIBETUNNEL_PASSWORD=mypass          # Password (for env-based auth, not CLI)
+VIBETUNNEL_CONTROL_DIR=/path        # Control directory for session data
+VIBETUNNEL_SESSION_ID=abc123        # Current session ID (set automatically inside sessions)
+VIBETUNNEL_LOG_LEVEL=debug          # Log level: error, warn, info, verbose, debug
 PUSH_CONTACT_EMAIL=admin@example.com # Contact email for VAPID configuration
 ```
 
 ## Tailscale Integration
 
-ShellOps supports Tailscale Serve and Funnel for secure remote access:
+VibeTunnel supports Tailscale Serve and Funnel for secure remote access:
 
 ### Tailscale Serve (Private Access)
 Enable HTTPS access within your Tailnet:
 ```bash
 # Start with Tailscale Serve enabled
-shellops --enable-tailscale-serve
+vibetunnel --enable-tailscale-serve
 
 # Access via HTTPS within your Tailnet
 https://your-machine-name
@@ -219,7 +219,7 @@ https://your-machine-name
 Enable public internet access with valid SSL certificates:
 ```bash
 # Start with both Serve and Funnel enabled
-shellops --enable-tailscale-serve --enable-tailscale-funnel
+vibetunnel --enable-tailscale-serve --enable-tailscale-funnel
 
 # Access from anywhere on the internet
 https://your-machine-name.tail-scale.ts.net
@@ -243,7 +243,7 @@ https://your-machine-name.tail-scale.ts.net
 
 ### Git Worktree Integration
 
-ShellOps provides comprehensive Git worktree support, allowing you to:
+VibeTunnel provides comprehensive Git worktree support, allowing you to:
 - Work on multiple branches simultaneously without stashing changes
 - Create new worktrees directly from the session creation dialog
 - Smart branch switching with uncommitted change detection
@@ -255,8 +255,8 @@ For detailed information, see the [Git Worktree Management Guide](docs/worktree.
 ## Package Contents
 
 This npm package includes:
-- Full ShellOps server with web UI
-- Command-line tools (shellops, vt)
+- Full VibeTunnel server with web UI
+- Command-line tools (vibetunnel, vt)
 - Native PTY support for terminal emulation
 - Web interface with ghostty-web
 - Session management and forwarding
@@ -266,7 +266,7 @@ This npm package includes:
 
 - macOS (Intel and Apple Silicon)
 - Linux (x64 and ARM64)
-- Windows: Not yet supported ([#252](https://github.com/amantus-ai/shellops/issues/252))
+- Windows: Not yet supported ([#252](https://github.com/arunsanna/vibetunnel/issues/252))
 
 ## Troubleshooting
 
@@ -285,7 +285,7 @@ If you encounter issues during installation:
 
 2. **Permission Issues**: Use sudo for global installation
    ```bash
-   sudo npm install -g shellops
+   sudo npm install -g vibetunnel
    ```
 
 3. **Node Version**: Ensure Node.js 20+ is installed
@@ -312,7 +312,7 @@ Modern browsers (Chrome 60+, Firefox 75+) block the Web Crypto API when accessin
 
 1. **Use localhost (Recommended)**
    ```bash
-   # Access ShellOps via localhost
+   # Access VibeTunnel via localhost
    http://localhost:4020
    
    # If running on a remote server, use SSH tunneling:
@@ -330,7 +330,7 @@ Modern browsers (Chrome 60+, Firefox 75+) block the Web Crypto API when accessin
    - ⚠️ This reduces security - use only for development
 
 #### Why This Happens
-The Web Crypto API is restricted to secure contexts (HTTPS or localhost) to prevent man-in-the-middle attacks on cryptographic operations. This is a browser security feature, not a ShellOps limitation.
+The Web Crypto API is restricted to secure contexts (HTTPS or localhost) to prevent man-in-the-middle attacks on cryptographic operations. This is a browser security feature, not a VibeTunnel limitation.
 
 ### Development Setup
 
@@ -351,7 +351,7 @@ pnpm run build
 
 ## Documentation
 
-See the main repository for complete documentation: https://github.com/amantus-ai/shellops
+See the main repository for complete documentation: https://github.com/arunsanna/vibetunnel
 
 ## License
 

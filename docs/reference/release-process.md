@@ -13,7 +13,7 @@
 ./scripts/release.sh 1.0.0
 
 # 4. Create GitHub release
-gh release create v1.0.0 dist/ShellOps-1.0.0.dmg
+gh release create v1.0.0 dist/VibeTunnel-1.0.0.dmg
 
 # 5. Update Sparkle feed
 ./scripts/update-sparkle.sh
@@ -29,9 +29,9 @@ gh release create v1.0.0 dist/ShellOps-1.0.0.dmg
 ./scripts/update-version.sh NEW_VERSION
 
 # Files modified:
-# - mac/ShellOps/version.xcconfig
+# - mac/VibeTunnel/version.xcconfig
 # - web/package.json
-# - ios/ShellOps/Info.plist
+# - ios/VibeTunnel/Info.plist
 ```
 
 **Changelog**
@@ -88,10 +88,10 @@ cd web && pnpm test
 **Verification**
 ```bash
 # Check signature
-codesign -dv --verbose=4 dist/ShellOps.app
+codesign -dv --verbose=4 dist/VibeTunnel.app
 
 # Verify notarization
-spctl -a -v dist/ShellOps.app
+spctl -a -v dist/VibeTunnel.app
 ```
 
 ### 4. Distribution
@@ -100,9 +100,9 @@ spctl -a -v dist/ShellOps.app
 ```bash
 # Create release
 gh release create v$VERSION \
-  --title "ShellOps $VERSION" \
+  --title "VibeTunnel $VERSION" \
   --notes-file RELEASE_NOTES.md \
-  dist/ShellOps-$VERSION.dmg
+  dist/VibeTunnel-$VERSION.dmg
 
 # Upload additional assets
 gh release upload v$VERSION dist/checksums.txt
@@ -118,7 +118,7 @@ gh release upload v$VERSION dist/checksums.txt
   <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
   <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
   <enclosure 
-    url="https://github.com/steipete/shellops/releases/download/v1.0.0/ShellOps-1.0.0.dmg"
+    url="https://github.com/steipete/vibetunnel/releases/download/v1.0.0/VibeTunnel-1.0.0.dmg"
     sparkle:edSignature="..." 
     length="12345678" 
     type="application/octet-stream"/>

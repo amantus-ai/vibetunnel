@@ -68,33 +68,33 @@ jobs:
           cd /tmp/npm-test
           
           # Copy the built package
-          cp ${{ github.workspace }}/web/shellops-*.tgz .
+          cp ${{ github.workspace }}/web/vibetunnel-*.tgz .
           
           # Install the package globally
-          npm install -g shellops-*.tgz
+          npm install -g vibetunnel-*.tgz
           
           # Verify installation
           echo "=== Verifying installation ==="
-          which shellops || (echo "shellops not found" && exit 1)
+          which vibetunnel || (echo "vibetunnel not found" && exit 1)
           which vt || echo "vt command not installed (expected on Linux)"
           
           # Check if node-pty was extracted correctly
           echo "=== Checking node-pty extraction ==="
           # With the new build, node-pty is bundled directly in the package
-          ls -la $(npm root -g)/shellops/node-pty/ || echo "Checking node-pty structure..."
-          ls -la $(npm root -g)/shellops/node-pty/build/Release/pty.node || echo "node-pty prebuild will be extracted on postinstall"
+          ls -la $(npm root -g)/vibetunnel/node-pty/ || echo "Checking node-pty structure..."
+          ls -la $(npm root -g)/vibetunnel/node-pty/build/Release/pty.node || echo "node-pty prebuild will be extracted on postinstall"
           
           # Check package structure
           echo "=== Checking package structure ==="
-          ls -la $(npm root -g)/shellops/
-          ls -la $(npm root -g)/shellops/lib/
+          ls -la $(npm root -g)/vibetunnel/
+          ls -la $(npm root -g)/vibetunnel/lib/
           
           # Note: authenticate-pam is installed as a regular dependency now
           # It's not bundled in the new clean build approach
           
           # Test server startup
           echo "=== Testing server startup ==="
-          shellops --port 4020 --no-auth &
+          vibetunnel --port 4020 --no-auth &
           SERVER_PID=$!
           
           # Wait for server to start

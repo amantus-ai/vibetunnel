@@ -30,9 +30,9 @@ tests/
 ### Swift (XCTest)
 
 ```swift
-// mac/ShellOpsTests/ServerManagerTests.swift
+// mac/VibeTunnelTests/ServerManagerTests.swift
 import XCTest
-@testable import ShellOps
+@testable import VibeTunnel
 
 class ServerManagerTests: XCTestCase {
     func testServerStart() async throws {
@@ -173,11 +173,11 @@ test('complete terminal workflow', async ({ page }) => {
   await expect(terminal).toBeVisible();
   
   // Type command
-  await page.keyboard.type('echo "Hello, ShellOps"');
+  await page.keyboard.type('echo "Hello, VibeTunnel"');
   await page.keyboard.press('Enter');
   
   // Verify output
-  await expect(terminal).toContainText('Hello, ShellOps');
+  await expect(terminal).toContainText('Hello, VibeTunnel');
   
   // Close session
   await page.click('button[aria-label="Close terminal"]');
@@ -358,7 +358,7 @@ jobs:
 xcodebuild test -verbose
 
 # Debug specific test
-xcodebuild test -only-testing:ShellOpsTests/ServerManagerTests/testServerStart
+xcodebuild test -only-testing:VibeTunnelTests/ServerManagerTests/testServerStart
 ```
 
 ### Debug TypeScript Tests

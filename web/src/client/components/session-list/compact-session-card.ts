@@ -201,7 +201,7 @@ export class CompactSessionCard extends LitElement {
           ${
             this.sessionNumber
               ? html`
-            <span class="text-xs font-mono ${this.selected ? 'text-accent-primary' : 'text-text-muted'} min-w-[1.5rem] text-center">
+            <span class="text-xs font-ui ${this.selected ? 'text-accent-primary' : 'text-text-muted'} min-w-[1.5rem] text-center">
               ${this.sessionNumber}
             </span>
           `
@@ -218,7 +218,7 @@ export class CompactSessionCard extends LitElement {
         <!-- Session content -->
         <div class="flex-1 min-w-0">
           <!-- Row 1: Session name -->
-          <div class="text-sm font-mono truncate ${nameColorClass}">
+          <div class="text-sm font-ui truncate ${nameColorClass}">
             ${this.renderSessionName()}
           </div>
           
@@ -229,7 +229,7 @@ export class CompactSessionCard extends LitElement {
               session.gitBranch
                 ? html`
                   <span class="text-text-muted/50">·</span>
-                  <span class="text-status-success font-mono">[${session.gitBranch}]</span>
+                  <span class="text-status-success font-ui">[${session.gitBranch}]</span>
                   ${session.gitIsWorktree ? html`<span class="text-purple-400 ml-0.5">⎇</span>` : ''}
                   <!-- Git changes indicator after branch -->
                   ${this.renderGitChanges()}
@@ -248,13 +248,13 @@ export class CompactSessionCard extends LitElement {
               ? html`
                 <!-- Touch devices: Close button left of time -->
                 ${this.renderDeleteButton()}
-                <div class="text-xs text-text-${isExited ? 'dim' : 'muted'} font-mono">
+                <div class="text-xs text-text-${isExited ? 'dim' : 'muted'} font-ui">
                   ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
                 </div>
               `
               : html`
                 <!-- Desktop: Time that hides on hover -->
-                <div class="text-xs text-text-${isExited ? 'dim' : 'muted'} font-mono transition-opacity group-hover:opacity-0">
+                <div class="text-xs text-text-${isExited ? 'dim' : 'muted'} font-ui transition-opacity group-hover:opacity-0">
                   ${session.startedAt ? formatSessionDuration(session.startedAt, session.status === 'exited' ? session.lastModified : undefined) : ''}
                 </div>
                 

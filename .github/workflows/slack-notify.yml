@@ -100,7 +100,7 @@ jobs:
               title: title,
               title_link: data.runUrl,
               fields: fields,
-              footer: "ShellOps CI",
+              footer: "VibeTunnel CI",
               ts: Math.floor(Date.now() / 1000)
             }]
           };

@@ -19,7 +19,7 @@ PUBLIC_DIR="${WEB_DIR}/public"
 # Set destination directory
 if [ -z "${BUILT_PRODUCTS_DIR}" ]; then
     # Default for testing outside Xcode
-    DEST_DIR="/tmp/shellops-web-build"
+    DEST_DIR="/tmp/vibetunnel-web-build"
 else
     DEST_DIR="${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/Resources/web/public"
 fi
@@ -46,18 +46,18 @@ if [ "${CI}" = "true" ] && [ -f "${WEB_DIR}/dist/server/server.js" ]; then
     # Copy native executable and modules to app bundle if they exist
     NATIVE_DIR="${WEB_DIR}/native"
     
-    if [ -f "${NATIVE_DIR}/shellops" ]; then
+    if [ -f "${NATIVE_DIR}/vibetunnel" ]; then
         echo "Copying native executable to app bundle..."
-        cp "${NATIVE_DIR}/shellops" "${APP_RESOURCES}/"
-        chmod +x "${APP_RESOURCES}/shellops"
+        cp "${NATIVE_DIR}/vibetunnel" "${APP_RESOURCES}/"
+        chmod +x "${APP_RESOURCES}/vibetunnel"
     fi
 
-    if [ -f "${NATIVE_DIR}/shellops-fwd" ]; then
+    if [ -f "${NATIVE_DIR}/vibetunnel-fwd" ]; then
         echo "Copying zig forwarder to app bundle..."
-        cp "${NATIVE_DIR}/shellops-fwd" "${APP_RESOURCES}/"
-        chmod +x "${APP_RESOURCES}/shellops-fwd"
+        cp "${NATIVE_DIR}/vibetunnel-fwd" "${APP_RESOURCES}/"
+        chmod +x "${APP_RESOURCES}/vibetunnel-fwd"
     else
-        echo "error: Zig forwarder not found at ${NATIVE_DIR}/shellops-fwd"
+        echo "error: Zig forwarder not found at ${NATIVE_DIR}/vibetunnel-fwd"
         exit 1
     fi
     
@@ -101,7 +101,7 @@ if [ -f "${PREVIOUS_HASH_FILE}" ]; then
     PREVIOUS_HASH=$(cat "${PREVIOUS_HASH_FILE}")
     if [ "${CURRENT_HASH}" = "${PREVIOUS_HASH}" ]; then
         # Also check if the built files actually exist
-        if [ -d "${DEST_DIR}" ] && [ -f "${APP_RESOURCES}/shellops" ] && [ -f "${APP_RESOURCES}/pty.node" ] && [ -f "${APP_RESOURCES}/spawn-helper" ] && [ -f "${APP_RESOURCES}/shellops-fwd" ]; then
+        if [ -d "${DEST_DIR}" ] && [ -f "${APP_RESOURCES}/vibetunnel" ] && [ -f "${APP_RESOURCES}/pty.node" ] && [ -f "${APP_RESOURCES}/spawn-helper" ] && [ -f "${APP_RESOURCES}/vibetunnel-fwd" ]; then
             echo "Web content unchanged and build outputs exist. Skipping rebuild."
             NEED_REBUILD=0
         else
@@ -124,7 +124,7 @@ echo "Building web frontend..."
 # Setup Node.js PATH (Homebrew, nvm, Volta, fnm)
 SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
 # Set environment variable to use clean build environment
-export SHELLOPS_BUILD_CLEAN_ENV=true
+export VIBETUNNEL_BUILD_CLEAN_ENV=true
 source "${SCRIPT_DIR}/node-path-setup.sh"
 
 # Export CI to prevent interactive prompts
@@ -318,23 +318,23 @@ cp -R "${PUBLIC_DIR}/"* "${DEST_DIR}/"
 # Copy native executable and modules to app bundle
 NATIVE_DIR="${WEB_DIR}/native"
 
-if [ -f "${NATIVE_DIR}/shellops" ]; then
+if [ -f "${NATIVE_DIR}/vibetunnel" ]; then
     echo "Copying native executable to app bundle..."
-    EXEC_SIZE=$(ls -lh "${NATIVE_DIR}/shellops" | awk '{print $5}')
+    EXEC_SIZE=$(ls -lh "${NATIVE_DIR}/vibetunnel" | awk '{print $5}')
     echo "  Executable size: $EXEC_SIZE"
-    cp "${NATIVE_DIR}/shellops" "${APP_RESOURCES}/"
-    chmod +x "${APP_RESOURCES}/shellops"
+    cp "${NATIVE_DIR}/vibetunnel" "${APP_RESOURCES}/"
+    chmod +x "${APP_RESOURCES}/vibetunnel"
 else
-    echo "error: Native executable not found at ${NATIVE_DIR}/shellops"
+    echo "error: Native executable not found at ${NATIVE_DIR}/vibetunnel"
     exit 1
 fi
 
-if [ -f "${NATIVE_DIR}/shellops-fwd" ]; then
+if [ -f "${NATIVE_DIR}/vibetunnel-fwd" ]; then
     echo "Copying zig forwarder..."
-    cp "${NATIVE_DIR}/shellops-fwd" "${APP_RESOURCES}/"
-    chmod +x "${APP_RESOURCES}/shellops-fwd"
+    cp "${NATIVE_DIR}/vibetunnel-fwd" "${APP_RESOURCES}/"
+    chmod +x "${APP_RESOURCES}/vibetunnel-fwd"
 else
-    echo "error: Zig forwarder not found at ${NATIVE_DIR}/shellops-fwd"
+    echo "error: Zig forwarder not found at ${NATIVE_DIR}/vibetunnel-fwd"
     exit 1
 fi
 
@@ -380,9 +380,9 @@ echo "Performing final sanity check..."
 
 MISSING_FILES=()
 
-# Check for shellops executable
-if [ ! -f "${APP_RESOURCES}/shellops" ]; then
-    MISSING_FILES+=("shellops executable")
+# Check for vibetunnel executable
+if [ ! -f "${APP_RESOURCES}/vibetunnel" ]; then
+    MISSING_FILES+=("vibetunnel executable")
 fi
 
 # Check for pty.node
@@ -396,13 +396,13 @@ if [ ! -f "${APP_RESOURCES}/spawn-helper" ]; then
 fi
 
 # Check for zig forwarder
-if [ ! -f "${APP_RESOURCES}/shellops-fwd" ]; then
-    MISSING_FILES+=("shellops-fwd")
+if [ ! -f "${APP_RESOURCES}/vibetunnel-fwd" ]; then
+    MISSING_FILES+=("vibetunnel-fwd")
 fi
 
-# Check if shellops is executable
-if [ -f "${APP_RESOURCES}/shellops" ] && [ ! -x "${APP_RESOURCES}/shellops" ]; then
-    MISSING_FILES+=("shellops is not executable")
+# Check if vibetunnel is executable
+if [ -f "${APP_RESOURCES}/vibetunnel" ] && [ ! -x "${APP_RESOURCES}/vibetunnel" ]; then
+    MISSING_FILES+=("vibetunnel is not executable")
 fi
 
 # Check if spawn-helper is executable
@@ -410,9 +410,9 @@ if [ -f "${APP_RESOURCES}/spawn-helper" ] && [ ! -x "${APP_RESOURCES}/spawn-help
     MISSING_FILES+=("spawn-helper is not executable")
 fi
 
-# Check if shellops-fwd is executable
-if [ -f "${APP_RESOURCES}/shellops-fwd" ] && [ ! -x "${APP_RESOURCES}/shellops-fwd" ]; then
-    MISSING_FILES+=("shellops-fwd is not executable")
+# Check if vibetunnel-fwd is executable
+if [ -f "${APP_RESOURCES}/vibetunnel-fwd" ] && [ ! -x "${APP_RESOURCES}/vibetunnel-fwd" ]; then
+    MISSING_FILES+=("vibetunnel-fwd is not executable")
 fi
 
 # Check for vt script
@@ -434,23 +434,23 @@ if [ ${#MISSING_FILES[@]} -gt 0 ]; then
     echo "Build artifacts in ${NATIVE_DIR}:"
     ls -la "${NATIVE_DIR}" || echo "  Directory does not exist"
     echo "App resources in ${APP_RESOURCES}:"
-    ls -la "${APP_RESOURCES}/shellops" "${APP_RESOURCES}/pty.node" "${APP_RESOURCES}/spawn-helper" "${APP_RESOURCES}/vt" 2>/dev/null || true
+    ls -la "${APP_RESOURCES}/vibetunnel" "${APP_RESOURCES}/pty.node" "${APP_RESOURCES}/spawn-helper" "${APP_RESOURCES}/vt" 2>/dev/null || true
     exit 1
 fi
 
 # Verify the executable works
-echo "Verifying shellops executable..."
-echo "Full path: ${APP_RESOURCES}/shellops"
-if "${APP_RESOURCES}/shellops" version &>/dev/null; then
-    VERSION_OUTPUT=$("${APP_RESOURCES}/shellops" version 2>&1 | head -1)
-    echo "✓ ShellOps executable verified: $VERSION_OUTPUT"
+echo "Verifying vibetunnel executable..."
+echo "Full path: ${APP_RESOURCES}/vibetunnel"
+if "${APP_RESOURCES}/vibetunnel" version &>/dev/null; then
+    VERSION_OUTPUT=$("${APP_RESOURCES}/vibetunnel" version 2>&1 | head -1)
+    echo "✓ VibeTunnel executable verified: $VERSION_OUTPUT"
 else
-    echo "error: ShellOps executable failed verification (version command failed)"
-    echo "Full executable path: ${APP_RESOURCES}/shellops"
+    echo "error: VibeTunnel executable failed verification (version command failed)"
+    echo "Full executable path: ${APP_RESOURCES}/vibetunnel"
     echo "Checking if file exists and is executable:"
-    ls -la "${APP_RESOURCES}/shellops" || echo "File not found!"
+    ls -la "${APP_RESOURCES}/vibetunnel" || echo "File not found!"
     echo "Attempting to run with error output:"
-    "${APP_RESOURCES}/shellops" version 2>&1 || true
+    "${APP_RESOURCES}/vibetunnel" version 2>&1 || true
     exit 1
 fi
 

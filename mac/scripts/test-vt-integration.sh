@@ -7,9 +7,9 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="${PROJECT_DIR}/build/Build/Products/Debug"
-APP_PATH="${BUILD_DIR}/ShellOps.app"
+APP_PATH="${BUILD_DIR}/VibeTunnel.app"
 VT_PATH="${APP_PATH}/Contents/Resources/vt"
-SHELLOPS_BIN="${APP_PATH}/Contents/Resources/shellops"
+VIBETUNNEL_BIN="${APP_PATH}/Contents/Resources/vibetunnel"
 
 # Colors for output
 RED='\033[0;31m'
@@ -138,12 +138,12 @@ run_test "Command not found" \
 # Test 11: Test interactive shell launch
 run_test "Interactive shell (-i)" \
     "echo 'exit' | $VT_PATH -i 2>&1 | head -1" \
-    "shellops"
+    "vibetunnel"
 
 # Test 12: Test --shell flag
 run_test "Shell flag (--shell)" \
     "echo 'exit' | $VT_PATH --shell 2>&1 | head -1" \
-    "shellops"
+    "vibetunnel"
 
 # Cleanup
 rm -rf "$TEMP_ZSH_DIR" "$TEMP_BASH_DIR" "$TEMP_FUNC_DIR"

@@ -2,7 +2,7 @@
 
 ## Session Management Models
 
-ShellOps supports two distinct session management approaches, each with different performance characteristics:
+VibeTunnel supports two distinct session management approaches, each with different performance characteristics:
 
 ### 1. Server-Managed Sessions (API-initiated)
 

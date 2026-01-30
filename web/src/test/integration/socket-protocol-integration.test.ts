@@ -14,7 +14,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PtyManager } from '../../server/pty/pty-manager.js';
-import { ShellOpsSocketClient } from '../../server/pty/socket-client.js';
+import { VibeTunnelSocketClient } from '../../server/pty/socket-client.js';
 import { SessionTestHelper } from '../helpers/session-test-helper.js';
 
 describe('Socket Protocol Integration', () => {
@@ -41,7 +41,7 @@ describe('Socket Protocol Integration', () => {
   afterEach(async () => {
     await sessionHelper.killTrackedSessions();
     // NEVER call ptyManager.shutdown() as it would kill ALL sessions
-    // including the ShellOps session running Claude Code
+    // including the VibeTunnel session running Claude Code
     try {
       fs.rmSync(testDir, { recursive: true, force: true });
     } catch {
@@ -60,7 +60,7 @@ describe('Socket Protocol Integration', () => {
 
       // Connect socket client
       const socketPath = path.join(testDir, sessionId, 'ipc.sock');
-      const client = new ShellOpsSocketClient(socketPath);
+      const client = new VibeTunnelSocketClient(socketPath);
 
       // Wait for socket file to exist
       let attempts = 0;
@@ -121,7 +121,7 @@ describe('Socket Protocol Integration', () => {
 
       // Connect socket client
       const socketPath = path.join(testDir, sessionId, 'ipc.sock');
-      const client = new ShellOpsSocketClient(socketPath);
+      const client = new VibeTunnelSocketClient(socketPath);
 
       // Wait for socket file to exist
       let attempts = 0;
@@ -170,7 +170,7 @@ describe('Socket Protocol Integration', () => {
 
       // Connect socket client
       const socketPath = path.join(testDir, sessionId, 'ipc.sock');
-      const client = new ShellOpsSocketClient(socketPath);
+      const client = new VibeTunnelSocketClient(socketPath);
 
       // Wait for socket file to exist
       let attempts = 0;
@@ -200,7 +200,7 @@ describe('Socket Protocol Integration', () => {
       const fakeSessionId = 'non-existent-session';
       const socketPath = path.join(testDir, fakeSessionId, 'ipc.sock');
 
-      const client = new ShellOpsSocketClient(socketPath);
+      const client = new VibeTunnelSocketClient(socketPath);
 
       // Should fail to connect
       await expect(client.connect()).rejects.toThrow();
@@ -213,7 +213,7 @@ describe('Socket Protocol Integration', () => {
       });
 
       const socketPath = path.join(testDir, sessionId, 'ipc.sock');
-      const client = new ShellOpsSocketClient(socketPath);
+      const client = new VibeTunnelSocketClient(socketPath);
 
       // Wait for socket file to exist
       let attempts = 0;
@@ -246,7 +246,7 @@ describe('Socket Protocol Integration', () => {
       });
 
       const socketPath = path.join(testDir, sessionId, 'ipc.sock');
-      const client = new ShellOpsSocketClient(socketPath);
+      const client = new VibeTunnelSocketClient(socketPath);
 
       // Wait for socket file to exist
       let attempts = 0;

@@ -1,6 +1,6 @@
 # Build Requirements
 
-ShellOps for macOS now has a self-contained build system that automatically installs all required dependencies.
+VibeTunnel for macOS now has a self-contained build system that automatically installs all required dependencies.
 
 ## Requirements
 
@@ -10,7 +10,7 @@ ShellOps for macOS now has a self-contained build system that automatically inst
 
 ## Build Process
 
-When you build ShellOps in Xcode for the first time:
+When you build VibeTunnel in Xcode for the first time:
 
 1. **Install Build Dependencies** phase runs first
    - Downloads and installs Bun locally to `.build-tools/bun/`

@@ -1,10 +1,10 @@
 # Sparkle Updates with Stats.store Integration
 
-This document provides comprehensive documentation for ShellOps's automatic update system using Sparkle framework and Stats.store.
+This document provides comprehensive documentation for VibeTunnel's automatic update system using Sparkle framework and Stats.store.
 
 ## Overview
 
-ShellOps uses a sophisticated update system that combines:
+VibeTunnel uses a sophisticated update system that combines:
 - **Sparkle Framework** - Industry-standard macOS update framework for automatic updates
 - **Stats.store** - Privacy-first analytics backend that proxies appcast requests
 - **GitHub Releases** - Hosts the actual DMG files and appcast XML files
@@ -14,12 +14,12 @@ ShellOps uses a sophisticated update system that combines:
 ### Update Check Flow
 
 ```
-ShellOps App → Stats.store (Proxy) → GitHub (appcast.xml) → Stats.store → ShellOps App
+VibeTunnel App → Stats.store (Proxy) → GitHub (appcast.xml) → Stats.store → VibeTunnel App
                                                                     ↓
                                                              GitHub (DMG download)
 ```
 
-1. **App initiates update check**: ShellOps queries Stats.store endpoint
+1. **App initiates update check**: VibeTunnel queries Stats.store endpoint
 2. **Stats.store logs analytics**: Records anonymous data (OS version, CPU type, daily unique users)
 3. **Stats.store proxies request**: Fetches appcast.xml from GitHub
 4. **Appcast returned**: Stats.store returns the appcast to the app
@@ -45,18 +45,18 @@ Before Stats.store can serve your appcast files, you need to:
 
 ### Stats.store Registration
 
-**Important**: As of the beta 9 release, ShellOps shows "Application not found" when querying Stats.store, indicating the app may not be properly registered or configured.
+**Important**: As of the beta 9 release, VibeTunnel shows "Application not found" when querying Stats.store, indicating the app may not be properly registered or configured.
 
 To register your app with Stats.store:
 
 1. Visit [stats.store](https://stats.store) and create an account
 2. Add your application with:
-   - App name: `ShellOps`
-   - Bundle ID: `sh.shellops.shellops`
-   - GitHub repository: `amantus-ai/shellops`
+   - App name: `VibeTunnel`
+   - Bundle ID: `sh.vibetunnel.vibetunnel`
+   - GitHub repository: `arunsanna/vibetunnel`
 3. Configure the appcast URLs to proxy to:
-   - Stable: `https://raw.githubusercontent.com/amantus-ai/shellops/main/appcast.xml`
-   - Pre-release: `https://raw.githubusercontent.com/amantus-ai/shellops/main/appcast-prerelease.xml`
+   - Stable: `https://raw.githubusercontent.com/arunsanna/vibetunnel/main/appcast.xml`
+   - Pre-release: `https://raw.githubusercontent.com/arunsanna/vibetunnel/main/appcast-prerelease.xml`
 
 ### Verifying Configuration
 
@@ -64,7 +64,7 @@ Check if your app is properly configured:
 
 ```bash
 # This will fail with "Application not found" if not registered
-curl -H "User-Agent: ShellOps/1.0.0-beta.9 Sparkle/2.7.1" \
+curl -H "User-Agent: VibeTunnel/1.0.0-beta.9 Sparkle/2.7.1" \
      https://stats.store/api/v1/appcast/appcast-prerelease.xml
 
 # Check your app's stats page (replace with your app ID)
@@ -90,7 +90,7 @@ curl -H "User-Agent: ShellOps/1.0.0-beta.9 Sparkle/2.7.1" \
 Stats.store requires proper app identification via User-Agent header:
 
 ```
-User-Agent: ShellOps/1.0.0-beta.8 Sparkle/2.7.1
+User-Agent: VibeTunnel/1.0.0-beta.8 Sparkle/2.7.1
 ```
 
 Without this header, Stats.store returns:
@@ -116,7 +116,7 @@ To generate a signature for a DMG file:
 
 ```bash
 # ALWAYS use the -f flag with the correct private key file
-sign_update -f /path/to/private/sparkle_private_key /path/to/ShellOps-1.0.0-beta.8.dmg
+sign_update -f /path/to/private/sparkle_private_key /path/to/VibeTunnel-1.0.0-beta.8.dmg
 
 # Output format:
 # sparkle:edSignature="..." length="44748347"
@@ -132,9 +132,9 @@ sign_update -f /path/to/private/sparkle_private_key /path/to/ShellOps-1.0.0-beta
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
     <channel>
-        <title>ShellOps</title>
+        <title>VibeTunnel</title>
         <item>
-            <title>ShellOps 1.0.0-beta.8</title>
+            <title>VibeTunnel 1.0.0-beta.8</title>
             <sparkle:version>172</sparkle:version>
             <sparkle:shortVersionString>1.0.0-beta.8</sparkle:shortVersionString>
             <description><![CDATA[
@@ -142,7 +142,7 @@ sign_update -f /path/to/private/sparkle_private_key /path/to/ShellOps-1.0.0-beta
                 <!-- HTML formatted release notes -->
             ]]></description>
             <pubDate>Tue, 08 Jul 2025 10:18:00 +0100</pubDate>
-            <enclosure url="https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.8/ShellOps-1.0.0-beta.8.dmg" 
+            <enclosure url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.8/VibeTunnel-1.0.0-beta.8.dmg" 
                        sparkle:version="172" 
                        sparkle:shortVersionString="1.0.0-beta.8" 
                        length="44748347" 
@@ -170,11 +170,11 @@ sign_update -f /path/to/private/sparkle_private_key /path/to/ShellOps-1.0.0-beta
 curl https://stats.store/api/v1/appcast/appcast-prerelease.xml
 
 # Test with proper User-Agent (should return XML)
-curl -H "User-Agent: ShellOps/1.0.0-beta.8 Sparkle/2.7.1" \
+curl -H "User-Agent: VibeTunnel/1.0.0-beta.8 Sparkle/2.7.1" \
      https://stats.store/api/v1/appcast/appcast-prerelease.xml
 
 # Verify a specific signature
-sign_update -f private/sparkle_private_key ~/Downloads/ShellOps-1.0.0-beta.8.dmg
+sign_update -f private/sparkle_private_key ~/Downloads/VibeTunnel-1.0.0-beta.8.dmg
 ```
 
 ### Stats.store Caching
@@ -186,7 +186,7 @@ sign_update -f private/sparkle_private_key ~/Downloads/ShellOps-1.0.0-beta.8.dmg
 
 ## Current Release Signatures
 
-Complete signature reference for all ShellOps beta releases:
+Complete signature reference for all VibeTunnel beta releases:
 
 | Version | Build | File Size | Signature |
 |---------|-------|-----------|-----------|
@@ -213,11 +213,11 @@ Update `UpdateChannel.swift` to use GitHub directly:
 ```swift
 // Stable channel
 case .stable:
-    return URL(string: "https://raw.githubusercontent.com/amantus-ai/shellops/main/appcast.xml")!
+    return URL(string: "https://raw.githubusercontent.com/arunsanna/vibetunnel/main/appcast.xml")!
 
 // Pre-release channel
 case .preRelease:
-    return URL(string: "https://raw.githubusercontent.com/amantus-ai/shellops/main/appcast-prerelease.xml")!
+    return URL(string: "https://raw.githubusercontent.com/arunsanna/vibetunnel/main/appcast-prerelease.xml")!
 ```
 
 ### Implications of Direct URLs
@@ -275,16 +275,16 @@ This is the most common Stats.store integration issue. There are several potenti
 
 1. **App not registered with Stats.store**
    - **Solution**: Register at [stats.store](https://stats.store)
-   - Create account and add ShellOps as an application
+   - Create account and add VibeTunnel as an application
    - Configure GitHub repository URLs for appcast proxying
 
 2. **Incorrect User-Agent header**
-   - **Required format**: `ShellOps/VERSION Sparkle/VERSION`
-   - **Example**: `ShellOps/1.0.0-beta.9 Sparkle/2.7.1`
+   - **Required format**: `VibeTunnel/VERSION Sparkle/VERSION`
+   - **Example**: `VibeTunnel/1.0.0-beta.9 Sparkle/2.7.1`
    - **Fix**: Ensure Sparkle framework is properly integrated
 
 3. **Bundle ID mismatch**
-   - **Expected**: `sh.shellops.shellops`
+   - **Expected**: `sh.vibetunnel.vibetunnel`
    - **Check**: Verify in Info.plist that CFBundleIdentifier matches
 
 4. **Testing before registration**
@@ -308,7 +308,7 @@ This is the most common Stats.store integration issue. There are several potenti
 
 ```bash
 # Check current appcast
-curl -H "User-Agent: ShellOps/1.0.0-beta.8 Sparkle/2.7.1" \
+curl -H "User-Agent: VibeTunnel/1.0.0-beta.8 Sparkle/2.7.1" \
      https://stats.store/api/v1/appcast/appcast-prerelease.xml | xmllint --format -
 
 # Verify DMG signature
@@ -350,11 +350,11 @@ Two different Sparkle private keys existed:
 Used `sign_update` to test both keys:
 ```bash
 # Wrong way (uses keychain)
-sign_update ShellOps-1.0.0-beta.8.dmg
+sign_update VibeTunnel-1.0.0-beta.8.dmg
 # Result: XcdsjTw01IMbHGVnRVAq1cZ4ii4bY69CE+xqRHO/XXHP+05xzqndwlQ3cv22Ju083zbU2eu8W1J5AoCa75jLBw==
 
 # Correct way (uses file)
-sign_update -f private/sparkle_private_key ShellOps-1.0.0-beta.8.dmg
+sign_update -f private/sparkle_private_key VibeTunnel-1.0.0-beta.8.dmg
 # Result: /538z6L/qhhnHkfWU1hVoqeKvFdHubFRobfq6Vfmwz4UCpDVhJrqG+W28xW1wU4W9+xt41NMgei+DLJr1JV8Cg==
 ```
 

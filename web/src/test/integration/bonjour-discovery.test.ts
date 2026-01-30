@@ -24,9 +24,9 @@ describe.skip('Bonjour Discovery Integration - requires actual mDNS support', ()
     // Find an available port
     testPort = await getAvailablePort();
 
-    // Create a simple TCP server to simulate ShellOps
+    // Create a simple TCP server to simulate VibeTunnel
     mockServer = net.createServer((socket) => {
-      socket.write('ShellOps Mock Server\n');
+      socket.write('VibeTunnel Mock Server\n');
       socket.end();
     });
 
@@ -61,12 +61,12 @@ describe.skip('Bonjour Discovery Integration - requires actual mDNS support', ()
     // This test uses DNS-SD command line tool available on macOS/Linux
     // to verify the service is actually advertised
 
-    const serviceName = '_shellops._tcp';
+    const serviceName = '_vibetunnel._tcp';
     const discovered = await discoverService(serviceName);
 
     // Verify service was discovered
     expect(discovered).toBeTruthy();
-    expect(discovered).toContain('_shellops._tcp');
+    expect(discovered).toContain('_vibetunnel._tcp');
   }, 10000); // 10 second timeout for discovery
 
   it('should allow connection to discovered service', async () => {
@@ -79,7 +79,7 @@ describe.skip('Bonjour Discovery Integration - requires actual mDNS support', ()
   it('should include correct metadata in service advertisement', async () => {
     // This would require parsing the TXT records from DNS-SD
     // For now, we just verify the service is discoverable
-    const serviceName = '_shellops._tcp';
+    const serviceName = '_vibetunnel._tcp';
     const discovered = await discoverService(serviceName);
 
     expect(discovered).toBeTruthy();
@@ -134,7 +134,7 @@ async function discoverService(serviceType: string): Promise<string | null> {
       output += data.toString();
 
       // If we see our service type in the output, we found it
-      if (output.includes('_shellops._tcp')) {
+      if (output.includes('_vibetunnel._tcp')) {
         clearTimeout(timeout);
         proc.kill();
         resolve(output);

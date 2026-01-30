@@ -199,8 +199,8 @@ test.describe('Session Navigation', () => {
       await backButton.click();
       await expect(page).toHaveURL('/');
     } else {
-      // In sidebar view, click on ShellOps header to go home
-      const homeButton = page.locator('button').filter({ hasText: 'ShellOps' }).first();
+      // In sidebar view, click on VibeTunnel header to go home
+      const homeButton = page.locator('button').filter({ hasText: 'VibeTunnel' }).first();
       await homeButton.click();
       await expect(page).toHaveURL('/');
     }

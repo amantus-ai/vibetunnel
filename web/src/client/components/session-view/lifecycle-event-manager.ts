@@ -461,7 +461,7 @@ export class LifecycleEventManager extends ManagerEventEmitter {
           previousKeyboardHeight <= KEYBOARD_VISIBLE_THRESHOLD
         ) {
           window.dispatchEvent(
-            new CustomEvent('shellops:keyboard-shown', {
+            new CustomEvent('vibetunnel:keyboard-shown', {
               detail: { height: keyboardHeight },
             })
           );
@@ -470,7 +470,7 @@ export class LifecycleEventManager extends ManagerEventEmitter {
           previousKeyboardHeight > KEYBOARD_VISIBLE_THRESHOLD
         ) {
           window.dispatchEvent(
-            new CustomEvent('shellops:keyboard-hidden', {
+            new CustomEvent('vibetunnel:keyboard-hidden', {
               detail: { height: 0 },
             })
           );

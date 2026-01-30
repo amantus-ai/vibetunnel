@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =============================================================================
-# ShellOps Release Notes Generator
+# VibeTunnel Release Notes Generator
 # =============================================================================
 #
 # Generates markdown release notes for a specific version from CHANGELOG.md.
@@ -45,7 +45,7 @@ fi
 CHANGELOG_HTML=$("$SCRIPT_DIR/changelog-to-html.sh" "$VERSION" "$CHANGELOG_PATH" 2>/dev/null || echo "")
 
 # Check if we got valid content
-if [ -z "$CHANGELOG_HTML" ] || [[ "$CHANGELOG_HTML" == *"Latest version of ShellOps"* ]]; then
+if [ -z "$CHANGELOG_HTML" ] || [[ "$CHANGELOG_HTML" == *"Latest version of VibeTunnel"* ]]; then
     # Try with .0 added for pre-releases (e.g., 1.0-beta.2 -> 1.0.0-beta.2)
     if [[ "$VERSION" =~ ^([0-9]+\.[0-9]+)(-.*)?$ ]]; then
         EXPANDED_VERSION="${BASH_REMATCH[1]}.0${BASH_REMATCH[2]}"
@@ -54,7 +54,7 @@ if [ -z "$CHANGELOG_HTML" ] || [[ "$CHANGELOG_HTML" == *"Latest version of Shell
 fi
 
 # Convert HTML back to Markdown
-if [ -n "$CHANGELOG_HTML" ] && [[ "$CHANGELOG_HTML" != *"Latest version of ShellOps"* ]]; then
+if [ -n "$CHANGELOG_HTML" ] && [[ "$CHANGELOG_HTML" != *"Latest version of VibeTunnel"* ]]; then
     echo "$CHANGELOG_HTML" | \
         sed 's/<h3>/### /g' | \
         sed 's/<\/h3>//g' | \
@@ -76,9 +76,9 @@ if [ -n "$CHANGELOG_HTML" ] && [[ "$CHANGELOG_HTML" != *"Latest version of Shell
         sed '/^$/N;/^\n$/d'  # Remove multiple blank lines
 else
     # Fallback: Generate basic release notes
-    echo "## ShellOps $VERSION"
+    echo "## VibeTunnel $VERSION"
     echo ""
     echo "This release includes various improvements and bug fixes."
     echo ""
-    echo "For details, please see the [CHANGELOG](https://github.com/amantus-ai/shellops/blob/main/CHANGELOG.md)."
+    echo "For details, please see the [CHANGELOG](https://github.com/arunsanna/vibetunnel/blob/main/CHANGELOG.md)."
 fi

@@ -139,7 +139,7 @@ jobs:
     - name: Resolve Dependencies
       run: |
         echo "Resolving Swift package dependencies..."
-        xcodebuild -resolvePackageDependencies -workspace ShellOps.xcworkspace || echo "Dependency resolution completed"
+        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace || echo "Dependency resolution completed"
     
     # BUILD RELEASE CONFIGURATION
     - name: Build Release (Universal Binary)
@@ -148,11 +148,11 @@ jobs:
         echo "Building Release configuration with universal binary..."
         set -o pipefail && \
         xcodebuild build \
-          -workspace ShellOps.xcworkspace \
-          -scheme ShellOps \
+          -workspace VibeTunnel.xcworkspace \
+          -scheme VibeTunnel \
           -configuration Release \
           -destination "generic/platform=macOS" \
-          -archivePath build/ShellOps.xcarchive \
+          -archivePath build/VibeTunnel.xcarchive \
           -showBuildTimingSummary \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
@@ -174,8 +174,8 @@ jobs:
         echo "Running tests on Release configuration..."
         set -o pipefail && \
         xcodebuild test \
-          -workspace ShellOps.xcworkspace \
-          -scheme ShellOps \
+          -workspace VibeTunnel.xcworkspace \
+          -scheme VibeTunnel \
           -configuration Release \
           -destination "platform=macOS" \
           -enableCodeCoverage YES \
@@ -197,15 +197,15 @@ jobs:
     - name: Validate Release Binary
       run: |
         echo "=== Validating Release Binary ==="
-        ARCHIVE_PATH="build/ShellOps.xcarchive"
-        APP_PATH="$ARCHIVE_PATH/Products/Applications/ShellOps.app"
+        ARCHIVE_PATH="build/VibeTunnel.xcarchive"
+        APP_PATH="$ARCHIVE_PATH/Products/Applications/VibeTunnel.app"
         
         if [ -d "$APP_PATH" ]; then
-          echo "Found ShellOps.app at: $APP_PATH"
+          echo "Found VibeTunnel.app at: $APP_PATH"
           
           # Check binary architectures
           echo -e "\n=== Binary Architecture ==="
-          lipo -info "$APP_PATH/Contents/MacOS/ShellOps" || echo "Binary not found"
+          lipo -info "$APP_PATH/Contents/MacOS/VibeTunnel" || echo "Binary not found"
           
           # Check binary size
           echo -e "\n=== Binary Size ==="
@@ -214,7 +214,7 @@ jobs:
           # Check if optimizations were applied (Release should be smaller than Debug)
           echo -e "\n=== Optimization Check ==="
           # Look for debug symbols - Release builds should have minimal symbols
-          nm "$APP_PATH/Contents/MacOS/ShellOps" 2>/dev/null | grep -c "debug" || echo "No debug symbols found (good for Release)"
+          nm "$APP_PATH/Contents/MacOS/VibeTunnel" 2>/dev/null | grep -c "debug" || echo "No debug symbols found (good for Release)"
           
           # Verify entitlements
           echo -e "\n=== Entitlements ==="

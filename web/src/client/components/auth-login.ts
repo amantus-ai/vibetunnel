@@ -178,7 +178,7 @@ export class AuthLogin extends LitElement {
                 size="${this.isMobile ? '48' : '56'}"
                 style="filter: drop-shadow(0 0 15px rgb(var(--color-primary) / 0.4));"
               ></terminal-icon>
-              <h2 class="auth-title text-2xl sm:text-3xl mt-1 sm:mt-2">ShellOps</h2>
+              <h2 class="auth-title text-2xl sm:text-3xl mt-1 sm:mt-2">VibeTunnel</h2>
               <p class="auth-subtitle text-xs sm:text-sm">Please introduce password to continue</p>
             </div>
           </div>
@@ -187,7 +187,7 @@ export class AuthLogin extends LitElement {
             this.error
               ? html`
                 <div
-                  class="bg-status-error text-bg px-3 py-1.5 rounded mb-3 font-mono text-xs sm:text-sm"
+                  class="bg-status-error text-bg px-3 py-1.5 rounded mb-3 font-ui text-xs sm:text-sm"
                   data-testid="error-message"
                 >
                   ${this.error}
@@ -208,7 +208,7 @@ export class AuthLogin extends LitElement {
             this.success
               ? html`
                 <div
-                  class="bg-status-success text-bg px-3 py-1.5 rounded mb-3 font-mono text-xs sm:text-sm"
+                  class="bg-status-success text-bg px-3 py-1.5 rounded mb-3 font-ui text-xs sm:text-sm"
                 >
                   ${this.success}
                   <button
@@ -362,7 +362,7 @@ export class AuthLogin extends LitElement {
                     <div class="flex items-center justify-between mb-3 sm:mb-4">
                       <div class="flex items-center gap-2">
                         <div class="w-2 h-2 rounded-full bg-primary"></div>
-                        <span class="font-mono text-xs sm:text-sm">SSH Key Management</span>
+                        <span class="font-ui text-xs sm:text-sm">SSH Key Management</span>
                       </div>
                       <button
                         class="btn-ghost text-xs"

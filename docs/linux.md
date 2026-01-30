@@ -24,7 +24,7 @@ SEA builds are skipped on Linux unless explicitly enabled.
 
 Enable if you want to test SEA (not recommended on Linux):
 ```bash
-SHELLOPS_BUILD_SEA=1 npm run build
+VIBETUNNEL_BUILD_SEA=1 npm run build
 # or
 npm run build -- --build-sea
 ```
@@ -32,7 +32,7 @@ npm run build -- --build-sea
 ## PAM Authentication (optional)
 - `authenticate-pam` is an optional dependency.
 - If `libpam0g-dev` is present during install, PAM auth will be built and used.
-- If it’s missing, ShellOps still runs; auth falls back to env/SSH methods.
+- If it’s missing, VibeTunnel still runs; auth falls back to env/SSH methods.
 
 To force PAM after installing deps:
 ```bash
@@ -42,16 +42,16 @@ npm rebuild authenticate-pam
 
 ## npmjs (global install)
 ```bash
-npm install -g shellops@beta
-shellops --help
+npm install -g vibetunnel@beta
+vibetunnel --help
 ```
 
 Linux npm package runs the Node CLI wrapper (no SEA).
 Systemd support is available:
 ```bash
-shellops systemd install
-systemctl --user start shellops
-systemctl --user status shellops
+vibetunnel systemd install
+systemctl --user start vibetunnel
+systemctl --user status vibetunnel
 ```
 
 ## Troubleshooting

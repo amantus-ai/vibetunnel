@@ -1,6 +1,6 @@
-# ShellOps iOS
+# VibeTunnel iOS
 
-🚀 Beautiful native iOS/iPadOS client for ShellOps terminal multiplexer with a modern, terminal-inspired design.
+🚀 Beautiful native iOS/iPadOS client for VibeTunnel terminal multiplexer with a modern, terminal-inspired design.
 
 ## ✨ Features
 
@@ -30,7 +30,7 @@
 1. Open Xcode 16+
 2. Create a new project:
    - Choose **iOS** → **App**
-   - Product Name: `ShellOps`
+   - Product Name: `VibeTunnel`
    - Team: Select your development team
    - Organization Identifier: Your identifier (e.g., `com.yourcompany`)
    - Interface: **SwiftUI**
@@ -40,15 +40,15 @@
 
 ### 2. Add Project Files
 
-1. Delete the default `ContentView.swift` and `ShellOpsApp.swift`
-2. Drag the entire `ShellOps/` folder into Xcode
+1. Delete the default `ContentView.swift` and `VibeTunnelApp.swift`
+2. Drag the entire `VibeTunnel/` folder into Xcode
 3. Choose "Create groups" and ensure "Copy items if needed" is checked
 4. Make sure the target membership is set for all files
 
 ### 3. Bundle Ghostty Resources
 
-1. Ensure `ShellOps/Resources/ghostty/ghostty-web.js` is included in the target
-2. Ensure `ShellOps/Resources/ghostty/ghostty-vt.wasm` is included in the target
+1. Ensure `VibeTunnel/Resources/ghostty/ghostty-web.js` is included in the target
+2. Ensure `VibeTunnel/Resources/ghostty/ghostty-vt.wasm` is included in the target
 3. These files are vendored from `web/node_modules/ghostty-web/dist`
 
 ### 4. Configure Info.plist
@@ -81,19 +81,19 @@ For the best experience, add Fira Code font:
 #### Using xcodebuildmcp
 ```bash
 # Build the app
-xcodebuildmcp build -workspace ../ShellOps.xcworkspace -scheme ShellOps-iOS
+xcodebuildmcp build -workspace ../VibeTunnel.xcworkspace -scheme VibeTunnel-iOS
 
 # Run tests
-xcodebuildmcp test -workspace ../ShellOps.xcworkspace -scheme ShellOps-iOS
+xcodebuildmcp test -workspace ../VibeTunnel.xcworkspace -scheme VibeTunnel-iOS
 
 # Build for device
-xcodebuildmcp build -workspace ../ShellOps.xcworkspace -scheme ShellOps-iOS -destination "generic/platform=iOS"
+xcodebuildmcp build -workspace ../VibeTunnel.xcworkspace -scheme VibeTunnel-iOS -destination "generic/platform=iOS"
 ```
 
 ## 🏗️ Architecture
 
 ```
-ShellOps/
+VibeTunnel/
 ├── App/                    # App entry point and main views
 ├── Models/                 # Data models (Session, ServerConfig, etc.)
 ├── Views/                  # UI Components
@@ -113,7 +113,7 @@ ShellOps/
 ## 🚦 Usage
 
 1. **Connect to Server**
-   - Enter your ShellOps server IP/hostname
+   - Enter your VibeTunnel server IP/hostname
    - Default port is 3000
    - Optionally name your connection
 
@@ -147,7 +147,7 @@ ShellOps/
 Monitor app logs in real-time using `vtlog`:
 
 ```bash
-# Monitor all ShellOps logs
+# Monitor all VibeTunnel logs
 vtlog
 
 # Filter for specific components
@@ -159,7 +159,7 @@ vtlog | grep ServerConfig
 vtlog -v
 
 # Monitor specific subsystem
-vtlog --subsystem sh.shellops.ios
+vtlog --subsystem sh.vibetunnel.ios
 ```
 
 ### Code Quality
@@ -194,7 +194,7 @@ swiftlint
 
 ## 📄 License
 
-Same as ShellOps project.
+Same as VibeTunnel project.
 
 ---
 

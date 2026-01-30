@@ -24,7 +24,7 @@ export async function waitForSessionCards(
   const { timeout = process.env.CI ? 15000 : 5000 } = options || {};
 
   // First ensure the app is loaded
-  await page.waitForSelector('shellops-app', { state: 'attached', timeout: 5000 });
+  await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
 
   // Wait for either session cards or "no sessions" message
   await page.waitForFunction(
@@ -175,9 +175,9 @@ export async function waitForPageReady(page: Page): Promise<void> {
 
   // Wait for the main app component to be attached
   try {
-    await page.waitForSelector('shellops-app', { state: 'attached', timeout: 5000 });
+    await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
   } catch (_error) {
-    console.warn('shellops-app selector not found, continuing...');
+    console.warn('vibetunnel-app selector not found, continuing...');
   }
 
   // Also wait for app-specific ready state if available
@@ -192,8 +192,8 @@ export async function waitForPageReady(page: Page): Promise<void> {
 export async function navigateToHome(page: Page): Promise<void> {
   // Try multiple methods to navigate home
   const backButton = page.locator('button:has-text("Back")');
-  const shellOpsLogo = page.locator('button:has(h1:has-text("ShellOps"))').first();
-  const homeButton = page.locator('button').filter({ hasText: 'ShellOps' }).first();
+  const shellOpsLogo = page.locator('button:has(h1:has-text("VibeTunnel"))').first();
+  const homeButton = page.locator('button').filter({ hasText: 'VibeTunnel' }).first();
 
   try {
     if (await backButton.isVisible({ timeout: 1000 })) {
@@ -336,7 +336,7 @@ export async function waitForSessionListReady(page: Page, timeout = 10000): Prom
   try {
     await page.waitForFunction(
       () => {
-        const app = document.querySelector('shellops-app') as unknown as {
+        const app = document.querySelector('vibetunnel-app') as unknown as {
           loading?: boolean;
           currentView?: string;
           sessions?: unknown;
@@ -367,7 +367,7 @@ export async function waitForSessionListReady(page: Page, timeout = 10000): Prom
   } catch (error) {
     console.warn('waitForSessionListReady timed out');
     const state = await page.evaluate(() => {
-      const app = document.querySelector('shellops-app') as unknown as {
+      const app = document.querySelector('vibetunnel-app') as unknown as {
         loading?: boolean;
         currentView?: string;
         sessions?: unknown;

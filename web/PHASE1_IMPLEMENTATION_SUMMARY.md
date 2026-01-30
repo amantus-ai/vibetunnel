@@ -1,7 +1,7 @@
 # Phase 1 Mobile UI/UX Redesign - Implementation Summary
 
 ## Overview
-Successfully implemented Phase 1 of the mobile terminal UI/UX redesign for ShellOps, focusing on eliminating viewport overlap issues by removing CSS transforms and implementing a flexbox-based layout.
+Successfully implemented Phase 1 of the mobile terminal UI/UX redesign for VibeTunnel, focusing on eliminating viewport overlap issues by removing CSS transforms and implementing a flexbox-based layout.
 
 ## Key Changes Implemented
 

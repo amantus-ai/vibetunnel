@@ -1,6 +1,6 @@
-# Contributing to ShellOps
+# Contributing to VibeTunnel
 
-We love your input! We want to make contributing to ShellOps as easy and transparent as possible, whether it's:
+We love your input! We want to make contributing to VibeTunnel as easy and transparent as possible, whether it's:
 
 - Reporting a bug
 - Discussing the current state of the code
@@ -22,8 +22,8 @@ We love your input! We want to make contributing to ShellOps as easy and transpa
 
 1. **Fork and clone the repository**
    ```bash
-   git clone https://github.com/[your-username]/shellops.git
-   cd shellops
+   git clone https://github.com/[your-username]/vibetunnel.git
+   cd vibetunnel
    ```
 
 2. **Set up development environment**
@@ -39,7 +39,7 @@ We love your input! We want to make contributing to ShellOps as easy and transpa
 3. **Open the Xcode project**
    ```bash
    # From the root directory
-   open mac/ShellOps-Mac.xcodeproj
+   open mac/VibeTunnel-Mac.xcodeproj
    ```
 
 4. **Configure code signing (optional for development)**
@@ -79,15 +79,15 @@ pnpm run dev -- --port 4021
 
 ### Working with the macOS App
 
-1. Open `mac/ShellOps.xcworkspace` in Xcode
-2. Select the ShellOps scheme
+1. Open `mac/VibeTunnel.xcworkspace` in Xcode
+2. Select the VibeTunnel scheme
 3. Build and run (⌘R)
 
 The app will automatically use the development server running on `http://localhost:4020`.
 
 ### Working with the iOS App
 
-1. Open `ios/ShellOps.xcodeproj` in Xcode
+1. Open `ios/VibeTunnel.xcodeproj` in Xcode
 2. Select your target device/simulator
 3. Build and run (⌘R)
 
@@ -140,17 +140,17 @@ pnpm run typecheck   # Check TypeScript types only
 ## Project Structure
 
 ```
-shellops/
+vibetunnel/
 ├── mac/                    # macOS application
-│   ├── ShellOps/        # Swift source code
+│   ├── VibeTunnel/        # Swift source code
 │   │   ├── Core/          # Business logic
 │   │   ├── Presentation/  # UI components
 │   │   └── Utilities/     # Helper functions
-│   ├── ShellOpsTests/   # Unit tests
+│   ├── VibeTunnelTests/   # Unit tests
 │   └── scripts/           # Build and release scripts
 │
 ├── ios/                   # iOS companion app
-│   └── ShellOps/        # Swift source code
+│   └── VibeTunnel/        # Swift source code
 │
 ├── web/                   # Web server and frontend
 │   ├── src/
@@ -169,7 +169,7 @@ We use Swift Testing framework:
 
 ```bash
 # Run tests in Xcode
-xcodebuild test -workspace mac/ShellOps.xcworkspace -scheme ShellOps
+xcodebuild test -workspace mac/VibeTunnel.xcworkspace -scheme VibeTunnel
 
 # Or use Xcode UI (⌘U)
 ```
@@ -259,15 +259,15 @@ We follow conventional commits:
 ### Common Issues
 
 **"Port already in use"**
-- Another instance might be running (e.g., production ShellOps app)
-- Check Activity Monitor for `shellops` processes
+- Another instance might be running (e.g., production VibeTunnel app)
+- Check Activity Monitor for `vibetunnel` processes
 - Quick fix: `pnpm run dev:server --port 4021` (no -- needed!)
 - Or use environment variable: `PORT=4021 pnpm run dev`
 - See "Custom Port Configuration" section above for all options
 
 **"Binary not found"**
 - Run `cd web && node build-native.js` to build the Bun executable
-- Check that `web/native/shellops` exists
+- Check that `web/native/vibetunnel` exists
 
 **WebSocket connection failures**
 - Ensure the server is running (`pnpm run dev`)
@@ -293,7 +293,7 @@ When adding new features:
 
 ## Getting Help
 
-- Join our [Discord server](https://discord.gg/shellops) (if available)
+- Join our [Discord server](https://discord.gg/vibetunnel) (if available)
 - Check existing issues on GitHub
 - Read the [Technical Specification](spec.md)
 - Ask questions in pull requests
@@ -313,4 +313,4 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ## Thank You!
 
-Your contributions make ShellOps better for everyone. We appreciate your time and effort in improving the project! 🎉
+Your contributions make VibeTunnel better for everyone. We appreciate your time and effort in improving the project! 🎉

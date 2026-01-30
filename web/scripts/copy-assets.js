@@ -18,7 +18,7 @@ const destDir = 'public';
  * throws an exception that Node doesn't handle properly, resulting in:
  * - Signal: SIGABRT (Abort trap: 6)
  * - Random session exits when the asset watcher triggers
- * - Complete process termination affecting all ShellOps sessions
+ * - Complete process termination affecting all VibeTunnel sessions
  * 
  * This implementation manually handles directory recursion to avoid the buggy fs.cpSync.
  * 

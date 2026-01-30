@@ -216,7 +216,7 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
         try {
           await this.startFunnel(port);
           logger.info(
-            `✅ Funnel started successfully - ShellOps now accessible via public internet`
+            `✅ Funnel started successfully - VibeTunnel now accessible via public internet`
           );
         } catch (funnelError) {
           const errorMsg = funnelError instanceof Error ? funnelError.message : String(funnelError);
@@ -469,10 +469,10 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
     });
 
     // Debug mode: simulate errors based on environment variable
-    if (process.env.SHELLOPS_TAILSCALE_ERROR) {
+    if (process.env.VIBETUNNEL_TAILSCALE_ERROR) {
       return {
         isRunning: false,
-        lastError: process.env.SHELLOPS_TAILSCALE_ERROR,
+        lastError: process.env.VIBETUNNEL_TAILSCALE_ERROR,
       };
     }
 

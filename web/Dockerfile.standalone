@@ -79,8 +79,8 @@ COPY . .
 ARG VT_FWD_REF
 RUN if [ ! -d /app/native/vt-fwd ]; then \
       ref="${VT_FWD_REF:-v$(node -p "require('./package.json').version")}"; \
-      git clone --depth 1 --filter=blob:none --sparse --branch "$ref" https://github.com/amantus-ai/vibetunnel.git /tmp/vt-src \
-        || git clone --depth 1 --filter=blob:none --sparse https://github.com/amantus-ai/vibetunnel.git /tmp/vt-src; \
+      git clone --depth 1 --filter=blob:none --sparse --branch "$ref" https://github.com/arunsanna/vibetunnel.git /tmp/vt-src \
+        || git clone --depth 1 --filter=blob:none --sparse https://github.com/arunsanna/vibetunnel.git /tmp/vt-src; \
       git -C /tmp/vt-src sparse-checkout set native/vt-fwd; \
       mkdir -p /app/native; \
       cp -R /tmp/vt-src/native/vt-fwd /app/native/vt-fwd; \

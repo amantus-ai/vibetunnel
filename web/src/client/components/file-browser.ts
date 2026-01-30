@@ -494,7 +494,7 @@ export class FileBrowser extends LitElement {
     if (!this.diff) return html``;
     const lines = this.diff.diff.split('\n');
     return html`
-      <div class="overflow-auto h-full p-4 font-mono text-xs">
+      <div class="overflow-auto h-full p-4 font-ui text-xs">
         ${lines.map((line) => {
           let className = 'text-text-muted';
           if (line.startsWith('+')) className = 'text-status-success bg-status-success/10';
@@ -542,7 +542,7 @@ export class FileBrowser extends LitElement {
           >
             <div class="flex items-center gap-3 min-w-0 flex-1">
               <button
-                class="text-text-muted hover:text-primary font-mono text-xs px-2 py-1 flex-shrink-0 transition-colors flex items-center gap-1"
+                class="text-text-muted hover:text-primary font-ui text-xs px-2 py-1 flex-shrink-0 transition-colors flex items-center gap-1"
                 @click=${this.handleCancel}
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -566,13 +566,13 @@ export class FileBrowser extends LitElement {
                         @input=${this.handlePathInput}
                         @keydown=${this.handlePathKeyDown}
                         @blur=${this.handlePathBlur}
-                        class="bg-bg border border-border/50 rounded px-2 py-1 text-status-info text-xs sm:text-sm font-mono w-full min-w-0 focus:outline-none focus:border-primary"
+                        class="bg-bg border border-border/50 rounded px-2 py-1 text-status-info text-xs sm:text-sm font-ui w-full min-w-0 focus:outline-none focus:border-primary"
                         placeholder="Enter path and press Enter"
                       />
                     `
                     : html`
                       <div
-                        class="text-status-info text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap font-mono cursor-pointer hover:bg-light rounded px-1 py-1 -mx-1"
+                        class="text-status-info text-xs sm:text-sm overflow-hidden text-ellipsis whitespace-nowrap font-ui cursor-pointer hover:bg-light rounded px-1 py-1 -mx-1"
                         title="${
                           this.currentFullPath || this.currentPath || 'File Browser'
                         } (click to edit)"
@@ -585,7 +585,7 @@ export class FileBrowser extends LitElement {
                 ${
                   this.gitStatus?.branch
                     ? html`
-                      <span class="text-text-muted text-xs flex items-center gap-1 font-mono flex-shrink-0">
+                      <span class="text-text-muted text-xs flex items-center gap-1 font-ui flex-shrink-0">
                         ${UIIcons.git} ${this.gitStatus.branch}
                       </span>
                     `
@@ -622,7 +622,7 @@ export class FileBrowser extends LitElement {
               >
                 <div class="flex gap-2">
                   <button
-                    class="btn-secondary text-xs px-2 py-1 font-mono ${
+                    class="btn-secondary text-xs px-2 py-1 font-ui ${
                       this.gitFilter === 'changed' ? 'bg-primary text-bg' : ''
                     }"
                     @click=${this.toggleGitFilter}
@@ -631,7 +631,7 @@ export class FileBrowser extends LitElement {
                     Git Changes
                   </button>
                   <button
-                    class="btn-secondary text-xs px-2 py-1 font-mono ${
+                    class="btn-secondary text-xs px-2 py-1 font-ui ${
                       this.showHidden ? 'bg-primary text-bg' : ''
                     }"
                     @click=${this.toggleHidden}
@@ -778,7 +778,7 @@ export class FileBrowser extends LitElement {
                               : ''
                           }
                         </span>
-                        <span class="font-mono text-sm ${this.isMobile ? 'truncate' : ''}"
+                        <span class="font-ui text-sm ${this.isMobile ? 'truncate' : ''}"
                           >${this.selectedFile.name}${this.selectedFile.isSymlink ? ' →' : ''}</span
                         >
                         ${renderGitStatusBadge(this.selectedFile.gitStatus)}
@@ -792,7 +792,7 @@ export class FileBrowser extends LitElement {
                           this.selectedFile.type === 'file'
                             ? html`
                               <button
-                                class="btn-secondary text-xs px-2 py-1 font-mono"
+                                class="btn-secondary text-xs px-2 py-1 font-ui"
                                 @click=${() =>
                                   this.selectedFile &&
                                   this.handleCopyToClipboard(this.selectedFile.path)}
@@ -804,7 +804,7 @@ export class FileBrowser extends LitElement {
                                 this.mode === 'browse'
                                   ? html`
                                     <button
-                                      class="btn-primary text-xs px-2 py-1 font-mono"
+                                      class="btn-primary text-xs px-2 py-1 font-ui"
                                       @click=${this.insertPathIntoTerminal}
                                       title="Insert path into terminal (Enter)"
                                     >
@@ -820,7 +820,7 @@ export class FileBrowser extends LitElement {
                           this.selectedFile.gitStatus && this.selectedFile.gitStatus !== 'unchanged'
                             ? html`
                               <button
-                                class="btn-secondary text-xs px-2 py-1 font-mono ${
+                                class="btn-secondary text-xs px-2 py-1 font-ui ${
                                   this.showDiff ? 'bg-primary text-bg' : ''
                                 } ${
                                   this.isMobile &&
@@ -849,10 +849,10 @@ export class FileBrowser extends LitElement {
             this.mode === 'select'
               ? html`
                 <div class="p-4 border-t border-border/50 flex gap-4">
-                  <button class="btn-ghost font-mono flex-1" @click=${this.handleCancel}>
+                  <button class="btn-ghost font-ui flex-1" @click=${this.handleCancel}>
                     Cancel
                   </button>
-                  <button class="btn-primary font-mono flex-1" @click=${this.handleSelect}>
+                  <button class="btn-primary font-ui flex-1" @click=${this.handleSelect}>
                     Select Directory
                   </button>
                 </div>

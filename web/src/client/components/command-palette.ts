@@ -428,7 +428,7 @@ export class CommandPalette extends LitElement {
         .visible=${this.visible}
         .closeOnBackdrop=${true}
         .closeOnEscape=${true}
-        .contentClass=${`command-palette-modal font-mono text-sm w-full max-w-[90vw] sm:max-w-2xl ${this.isMobile ? 'max-h-[70vh]' : 'max-h-[70vh]'}`}
+        .contentClass=${`command-palette-modal font-ui text-sm w-full max-w-[90vw] sm:max-w-2xl ${this.isMobile ? 'max-h-[70vh]' : 'max-h-[70vh]'}`}
         .modalClass="command-palette-backdrop" 
         style="z-index: 1050;"
         ariaLabel="Command Palette"
@@ -505,7 +505,7 @@ export class CommandPalette extends LitElement {
                       ${
                         command.shortcut
                           ? html`
-                        <kbd class="hidden sm:inline-block px-2 py-1 text-xs bg-bg-tertiary border border-border rounded text-text-muted font-mono">
+                        <kbd class="hidden sm:inline-block px-2 py-1 text-xs bg-bg-tertiary border border-border rounded text-text-muted font-ui">
                           ${command.shortcut}
                         </kbd>
                       `

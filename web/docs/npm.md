@@ -1,23 +1,23 @@
-# ShellOps NPM Package Distribution
+# VibeTunnel NPM Package Distribution
 
-This document explains the npm package build process, native module handling, and prebuild system for ShellOps.
+This document explains the npm package build process, native module handling, and prebuild system for VibeTunnel.
 
 ## Overview
 
-ShellOps is distributed as an npm package that includes:
+VibeTunnel is distributed as an npm package that includes:
 - Full web server with terminal sharing capabilities
 - Native modules for terminal (PTY) and authentication (PAM) support
 - Cross-platform prebuilt binaries to avoid requiring build tools
-- Command-line tools (`shellops` and `vt`)
+- Command-line tools (`vibetunnel` and `vt`)
 
 ## Package Structure
 
 ```
-shellops/
+vibetunnel/
 ├── dist/                    # Compiled server code
 ├── public/                  # Web interface assets
 ├── bin/                     # CLI entry points
-│   ├── shellops          # Main server executable
+│   ├── vibetunnel          # Main server executable
 │   └── vt                  # Terminal wrapper command
 ├── node-pty/               # Vendored PTY implementation
 │   ├── lib/                # TypeScript compiled code
@@ -30,7 +30,7 @@ shellops/
 
 ## Native Modules
 
-ShellOps requires two native modules:
+VibeTunnel requires two native modules:
 
 ### 1. node-pty (Terminal Support)
 - **Purpose**: Provides pseudo-terminal (PTY) functionality
@@ -47,7 +47,7 @@ ShellOps requires two native modules:
   - `node_modules/authenticate-pam/`: Full module with package.json, binding.gyp, and source files
 - **Platforms**: Both macOS and Linux
 - **Dependencies**: System PAM libraries
-- **Note**: While macOS uses different authentication mechanisms internally (OpenDirectory), ShellOps attempts PAM authentication on both platforms as a fallback after SSH key authentication
+- **Note**: While macOS uses different authentication mechanisms internally (OpenDirectory), VibeTunnel attempts PAM authentication on both platforms as a fallback after SSH key authentication
 - **Critical**: The entire authenticate-pam module directory must be included in the npm package, not just the prebuilds
 
 ## Prebuild System
@@ -124,10 +124,10 @@ The build will fail with helpful error messages if Docker is not available.
 ## Installation Process
 
 ### For End Users
-1. **Install package**: `npm install -g shellops`
+1. **Install package**: `npm install -g vibetunnel`
 2. **Postinstall script runs**: Extracts appropriate prebuilt binaries
 3. **No compilation needed**: Prebuilds included for all supported platforms
-4. **Result**: Working ShellOps installation without build tools
+4. **Result**: Working VibeTunnel installation without build tools
 
 ### Key Improvements
 - **No symlinks**: node-pty is bundled directly, avoiding postinstall symlink issues
@@ -264,7 +264,7 @@ node scripts/build-npm.js --current-only
 npm pack
 
 # Verify package contents
-tar -tzf shellops-*.tgz | head -20
+tar -tzf vibetunnel-*.tgz | head -20
 ```
 
 ### Quality Checks
@@ -292,19 +292,19 @@ npm publish
 ### Installation
 ```bash
 # Install globally
-npm install -g shellops
+npm install -g vibetunnel
 ```
 
 ### Starting the Server
 ```bash
 # Start with default settings (port 4020)
-shellops
+vibetunnel
 
 # Start with custom port
-shellops --port 8080
+vibetunnel --port 8080
 
 # Start without authentication
-shellops --no-auth
+vibetunnel --no-auth
 ```
 
 Then open http://localhost:4020 in your browser to access the web interface.
@@ -315,7 +315,7 @@ Then open http://localhost:4020 in your browser to access the web interface.
 vt claude
 vt claude --dangerously-skip-permissions
 
-# Run commands with output visible in ShellOps
+# Run commands with output visible in VibeTunnel
 vt npm test
 vt python script.py
 vt top
@@ -331,12 +331,12 @@ vt title "My Project"
 ### Command Forwarding
 ```bash
 # Basic usage
-shellops fwd <session-id> <command> [args...]
+vibetunnel fwd <session-id> <command> [args...]
 
 # Examples
-shellops fwd --session-id abc123 ls -la
-shellops fwd --session-id abc123 npm test
-shellops fwd --session-id abc123 python script.py
+vibetunnel fwd --session-id abc123 ls -la
+vibetunnel fwd --session-id abc123 npm test
+vibetunnel fwd --session-id abc123 python script.py
 ```
 
 ## Coexistence with Mac App
@@ -345,14 +345,14 @@ The npm package works seamlessly alongside the Mac app:
 
 ### Command Routing
 - The `vt` command from npm automatically detects if the Mac app is installed
-- If Mac app found at `/Applications/ShellOps.app`, npm `vt` defers to it
+- If Mac app found at `/Applications/VibeTunnel.app`, npm `vt` defers to it
 - Ensures you always get the best available implementation
 
 ### Installation Behavior
 - Won't overwrite existing `/usr/local/bin/vt` from other tools
 - Provides helpful warnings if conflicts exist
 - Installation always succeeds, even if `vt` symlink can't be created
-- Use `shellops` or `npx vt` as alternatives
+- Use `vibetunnel` or `npx vt` as alternatives
 
 ## Build Process Validation
 
@@ -385,7 +385,7 @@ The npm package works seamlessly alongside the Mac app:
    ```bash
    # Create package and verify
    cd dist-npm && npm pack
-   tar -tzf shellops-*.tgz | grep authenticate-pam
+   tar -tzf vibetunnel-*.tgz | grep authenticate-pam
    # Should show: package/node_modules/authenticate-pam/...
    ```
 
@@ -436,7 +436,7 @@ The `copyAuthenticatePam()` function in `scripts/build-npm.js`:
 
 **Cause**: The `npm_config_prefix` environment variable overrides NVM's per-version npm configuration
 
-**Detection**: ShellOps's postinstall script will warn if this conflict is detected:
+**Detection**: VibeTunnel's postinstall script will warn if this conflict is detected:
 ```
 ⚠️  Detected npm_config_prefix conflict with NVM
    npm_config_prefix: /usr/local
@@ -465,13 +465,13 @@ unset npm_config_prefix
 ### Debugging Installation
 ```bash
 # Verbose npm install
-npm install -g shellops --verbose
+npm install -g vibetunnel --verbose
 
 # Check prebuild availability
 npx prebuild-install --list
 
 # Force source compilation
-npm install -g shellops --build-from-source
+npm install -g vibetunnel --build-from-source
 ```
 
 ## Architecture Decisions
@@ -488,7 +488,7 @@ npm install -g shellops --build-from-source
 - **Dependencies**: Proper PAM library versions for Linux
 
 ### Why Vendored node-pty?
-- **Control**: Custom modifications for ShellOps's needs
+- **Control**: Custom modifications for VibeTunnel's needs
 - **Reliability**: Avoid external dependency issues
 - **Optimization**: Minimal implementation without unnecessary features
 
@@ -503,7 +503,7 @@ npm install -g shellops --build-from-source
 
 ### Version 1.0.0-beta.14.1 (2025-07-21)
 
-**Published to npm**: Successfully published as both `shellops@beta` and `shellops@latest`
+**Published to npm**: Successfully published as both `vibetunnel@beta` and `vibetunnel@latest`
 
 **Critical Fix**:
 - Fixed missing authenticate-pam module that was excluded from the npm package in beta.14
@@ -518,13 +518,13 @@ npm install -g shellops --build-from-source
 **Installation**:
 ```bash
 # Install latest (now 1.0.0-beta.14.1 with the fix)
-npm install -g shellops
+npm install -g vibetunnel
 
 # Or install beta specifically
-npm install -g shellops@beta
+npm install -g vibetunnel@beta
 
 # Or install specific version
-npm install -g shellops@1.0.0-beta.14.1
+npm install -g vibetunnel@1.0.0-beta.14.1
 ```
 
 **Build Script Improvements**:
@@ -540,7 +540,7 @@ The build now includes clear output confirming authenticate-pam inclusion:
 
 ### Version 1.0.0-beta.13 (2025-07-19)
 
-**Published to npm**: Successfully published as both `shellops@beta` and `shellops@latest`
+**Published to npm**: Successfully published as both `vibetunnel@beta` and `vibetunnel@latest`
 
 **Key Features**:
 - All features from previous releases maintained
@@ -556,15 +556,15 @@ The build now includes clear output confirming authenticate-pam inclusion:
 **Installation**:
 ```bash
 # Install latest (now 1.0.0-beta.13)
-npm install -g shellops
+npm install -g vibetunnel
 
 # Or install beta specifically
-npm install -g shellops@beta
+npm install -g vibetunnel@beta
 ```
 
 ### Version 1.0.0-beta.11 (2025-07-16)
 
-**Published to npm**: Successfully published as `shellops@beta`
+**Published to npm**: Successfully published as `vibetunnel@beta`
 
 **Key Features**:
 - Cross-platform support for macOS (x64, arm64) and Linux (x64, arm64)
@@ -575,7 +575,7 @@ npm install -g shellops@beta
 **Release Process Learnings**:
 
 1. **Version Synchronization**:
-   - Must update version in both `web/package.json` and `mac/ShellOps/version.xcconfig`
+   - Must update version in both `web/package.json` and `mac/VibeTunnel/version.xcconfig`
    - Build process validates version sync to prevent mismatches
    - Version mismatch will cause build failure with clear error message
 
@@ -602,7 +602,7 @@ npm install -g shellops@beta
 
 **Installation**:
 ```bash
-npm install -g shellops@beta
+npm install -g vibetunnel@beta
 ```
 
 **Testing Commands Used**:
@@ -611,14 +611,14 @@ npm install -g shellops@beta
 cd web && pnpm run build:npm
 
 # Verify package contents
-tar -tzf shellops-1.0.0-beta.11.tgz | head -50
+tar -tzf vibetunnel-1.0.0-beta.11.tgz | head -50
 
 # Test with Docker
-docker build -t shellops-test .
-docker run --rm shellops-test
+docker build -t vibetunnel-test .
+docker run --rm vibetunnel-test
 
 # Test cross-platform
-docker run --rm --platform linux/amd64 shellops-test
+docker run --rm --platform linux/amd64 vibetunnel-test
 ```
 
 ### Version History
@@ -634,7 +634,7 @@ docker run --rm --platform linux/amd64 shellops-test
 
 ## NPM Distribution Tags
 
-ShellOps uses npm dist-tags to manage different release channels:
+VibeTunnel uses npm dist-tags to manage different release channels:
 
 ### Current Tags
 - **latest**: Points to the most stable release (currently 1.0.0-beta.14.1)
@@ -644,30 +644,30 @@ ShellOps uses npm dist-tags to manage different release channels:
 
 ```bash
 # View current tags
-npm dist-tag ls shellops
+npm dist-tag ls vibetunnel
 
 # Set a version as latest
-npm dist-tag add shellops@1.0.0-beta.13 latest
+npm dist-tag add vibetunnel@1.0.0-beta.13 latest
 
 # Add a new tag
-npm dist-tag add shellops@1.0.0-beta.14 next
+npm dist-tag add vibetunnel@1.0.0-beta.14 next
 
 # Remove a tag
-npm dist-tag rm shellops next
+npm dist-tag rm vibetunnel next
 ```
 
 ### Installation by Tag
 
 ```bash
 # Install latest stable (default)
-npm install -g shellops
+npm install -g vibetunnel
 
 # Install specific tag
-npm install -g shellops@beta
-npm install -g shellops@latest
+npm install -g vibetunnel@beta
+npm install -g vibetunnel@latest
 
 # Install specific version
-npm install -g shellops@1.0.0-beta.11.1
+npm install -g vibetunnel@1.0.0-beta.11.1
 ```
 
 ### Best Practices

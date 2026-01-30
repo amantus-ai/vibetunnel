@@ -258,8 +258,8 @@ export class FilePicker extends LitElement {
               ? html`
             <div class="mb-6">
               <div class="flex items-center justify-between mb-3">
-                <span class="text-sm text-text-muted font-mono">Uploading...</span>
-                <span class="text-sm text-primary font-mono font-medium">${Math.round(this.uploadProgress)}%</span>
+                <span class="text-sm text-text-muted font-ui">Uploading...</span>
+                <span class="text-sm text-primary font-ui font-medium">${Math.round(this.uploadProgress)}%</span>
               </div>
               <div class="w-full bg-bg-secondary rounded-full h-2 overflow-hidden">
                 <div 
@@ -279,7 +279,7 @@ export class FilePicker extends LitElement {
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-5L9 2H4z" clip-rule="evenodd"/>
                 </svg>
-                <span class="font-mono">Choose File</span>
+                <span class="font-ui">Choose File</span>
               </button>
             </div>
           `
@@ -289,7 +289,7 @@ export class FilePicker extends LitElement {
             <button
               id="file-picker-cancel-button"
               @click=${this.handleCancel}
-              class="w-full bg-bg-secondary border border-border/50 text-primary font-mono py-3 px-6 rounded-lg transition-all duration-200 hover:bg-surface hover:border-primary active:scale-95"
+              class="w-full bg-bg-secondary border border-border/50 text-primary font-ui py-3 px-6 rounded-lg transition-all duration-200 hover:bg-surface hover:border-primary active:scale-95"
               ?disabled=${this.uploading}
             >
               Cancel

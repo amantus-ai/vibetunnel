@@ -1089,7 +1089,7 @@ export class SessionView extends LitElement {
     if (!this.session) {
       return html`
         <div class="fixed inset-0 bg-bg flex items-center justify-center">
-          <div class="text-primary font-mono text-center">
+          <div class="text-primary font-ui text-center">
             <div class="text-2xl mb-2">${this.loadingAnimationManager.getLoadingText()}</div>
             <div class="text-sm text-text-muted">Waiting for session...</div>
           </div>
@@ -1300,7 +1300,7 @@ export class SessionView extends LitElement {
           -webkit-tap-highlight-color: transparent;
         }
       </style>
-      <!-- ShellOps V3 Background wrapper -->
+      <!-- VibeTunnel V3 Background wrapper -->
       <div style="background: var(--color-bg-secondary); padding-top: env(safe-area-inset-top);">
         <div
           class="session-view-grid"
@@ -1384,7 +1384,7 @@ export class SessionView extends LitElement {
                 <div
                   class="absolute inset-0 bg-bg/90 backdrop-filter backdrop-blur-sm flex items-center justify-center z-10 animate-fade-in"
                 >
-                  <div class="text-primary font-mono text-center">
+                  <div class="text-primary font-ui text-center">
                     <div class="text-2xl mb-3 text-primary animate-pulse-primary">${this.loadingAnimationManager.getLoadingText()}</div>
                     <div class="text-sm text-text-muted">Connecting to session...</div>
                   </div>
@@ -1557,25 +1557,25 @@ export class SessionView extends LitElement {
             <!-- First row: Arrow keys -->
             <div class="flex gap-2 mb-2">
               <button
-                class="flex-1 font-mono px-3 py-2 text-sm transition-all cursor-pointer quick-start-btn"
+                class="flex-1 font-ui px-3 py-2 text-sm transition-all cursor-pointer quick-start-btn"
                 @click=${() => this.handleSpecialKey('arrow_up')}
               >
                 <span class="text-xl">↑</span>
               </button>
               <button
-                class="flex-1 font-mono px-3 py-2 text-sm transition-all cursor-pointer quick-start-btn"
+                class="flex-1 font-ui px-3 py-2 text-sm transition-all cursor-pointer quick-start-btn"
                 @click=${() => this.handleSpecialKey('arrow_down')}
               >
                 <span class="text-xl">↓</span>
               </button>
               <button
-                class="flex-1 font-mono px-3 py-2 text-sm transition-all cursor-pointer quick-start-btn"
+                class="flex-1 font-ui px-3 py-2 text-sm transition-all cursor-pointer quick-start-btn"
                 @click=${() => this.handleSpecialKey('arrow_left')}
               >
                 <span class="text-xl">←</span>
               </button>
               <button
-                class="flex-1 font-mono px-3 py-2 text-sm transition-all cursor-pointer quick-start-btn"
+                class="flex-1 font-ui px-3 py-2 text-sm transition-all cursor-pointer quick-start-btn"
                 @click=${() => this.handleSpecialKey('arrow_right')}
               >
                 <span class="text-xl">→</span>
@@ -1585,45 +1585,45 @@ export class SessionView extends LitElement {
             <!-- Second row: Special keys -->
             <div class="flex gap-2">
               <button
-                class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
+                class="font-ui text-sm transition-all cursor-pointer w-16 quick-start-btn"
                 @click=${() => this.handleSpecialKey('escape')}
               >
                 ESC
               </button>
               <button
-                class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
+                class="font-ui text-sm transition-all cursor-pointer w-16 quick-start-btn"
                 @click=${() => this.handleSpecialKey('\t')}
               >
                 <span class="text-xl">⇥</span>
               </button>
               <button
-                class="flex-1 font-mono px-3 py-2 text-sm transition-all cursor-pointer quick-start-btn"
+                class="flex-1 font-ui px-3 py-2 text-sm transition-all cursor-pointer quick-start-btn"
                 @click=${this.handleMobileInputToggle}
               >
                 ABC123
               </button>
               <button
-                class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
+                class="font-ui text-sm transition-all cursor-pointer w-16 quick-start-btn"
                 @click=${() => this.fileOperationsManager.openFilePicker()}
                 title="Upload file"
               >
                 📷
               </button>
               <button
-                class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
+                class="font-ui text-sm transition-all cursor-pointer w-16 quick-start-btn"
                 @click=${this.toggleDirectKeyboard}
                 title="Switch to direct keyboard mode"
               >
                 ⌨️
               </button>
               <button
-                class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
+                class="font-ui text-sm transition-all cursor-pointer w-16 quick-start-btn"
                 @click=${() => this.uiStateManager.toggleCtrlAlpha()}
               >
                 CTRL
               </button>
               <button
-                class="font-mono text-sm transition-all cursor-pointer w-16 quick-start-btn"
+                class="font-ui text-sm transition-all cursor-pointer w-16 quick-start-btn"
                 @click=${() => this.handleSpecialKey('enter')}
               >
                 <span class="text-xl">⏎</span>

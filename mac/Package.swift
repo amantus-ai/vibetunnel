@@ -2,14 +2,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "ShellOps",
+    name: "VibeTunnel",
     platforms: [
         .macOS(.v14),
     ],
     products: [
         .library(
-            name: "ShellOps",
-            targets: ["ShellOps"]),
+            name: "VibeTunnel",
+            targets: ["VibeTunnel"]),
     ],
     dependencies: [
         .package(url: "https://github.com/realm/SwiftLint.git", from: "0.62.2"),
@@ -19,26 +19,26 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "ShellOps",
+            name: "VibeTunnel",
             dependencies: [
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "Sparkle", package: "Sparkle"),
             ],
-            path: "ShellOps",
+            path: "VibeTunnel",
             exclude: [
                 "Info.plist",
-                "ShellOps.entitlements",
+                "VibeTunnel.entitlements",
                 "Shared.xcconfig",
                 "version.xcconfig",
                 "version.xcconfig.bak",
                 "Local.xcconfig",
-                "ShellOps-Mac.xctestplan",
+                "VibeTunnel-Mac.xctestplan",
                 "sparkle-public-ed-key.txt",
                 "Assets.xcassets",
-                "ShellOpsApp.swift",
+                "VibeTunnelApp.swift",
             ]),
         .testTarget(
-            name: "ShellOpsTests",
-            dependencies: ["ShellOps"],
-            path: "ShellOpsTests"),
+            name: "VibeTunnelTests",
+            dependencies: ["VibeTunnel"],
+            path: "VibeTunnelTests"),
     ])

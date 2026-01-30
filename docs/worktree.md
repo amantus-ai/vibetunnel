@@ -1,11 +1,11 @@
-# Git Worktree Management in ShellOps
+# Git Worktree Management in VibeTunnel
 
-ShellOps provides comprehensive Git worktree support, allowing you to work on multiple branches simultaneously without the overhead of cloning repositories multiple times. This guide covers everything you need to know about using worktrees effectively in ShellOps.
+VibeTunnel provides comprehensive Git worktree support, allowing you to work on multiple branches simultaneously without the overhead of cloning repositories multiple times. This guide covers everything you need to know about using worktrees effectively in VibeTunnel.
 
 ## Table of Contents
 
 - [What are Git Worktrees?](#what-are-git-worktrees)
-- [ShellOps's Worktree Features](#shellopss-worktree-features)
+- [VibeTunnel's Worktree Features](#vibetunnels-worktree-features)
 - [Creating Sessions with Worktrees](#creating-sessions-with-worktrees)
 - [Branch Management](#branch-management)
 - [Worktree Operations](#worktree-operations)
@@ -23,9 +23,9 @@ Git worktrees allow you to have multiple working trees attached to the same repo
 - Quickly switch between tasks without stashing changes
 - Run tests on one branch while developing on another
 
-## ShellOps's Worktree Features
+## VibeTunnel's Worktree Features
 
-ShellOps enhances Git worktrees with:
+VibeTunnel enhances Git worktrees with:
 
 1. **Visual Worktree Management**: See all worktrees at a glance in the session list
 2. **Smart Branch Switching**: Automatically handle branch conflicts and uncommitted changes
@@ -37,7 +37,7 @@ ShellOps enhances Git worktrees with:
 
 ### Using the New Session Dialog
 
-When creating a new session in a Git repository, ShellOps provides intelligent branch and worktree selection:
+When creating a new session in a Git repository, VibeTunnel provides intelligent branch and worktree selection:
 
 1. **Base Branch Selection**
    - When no worktree is selected: "Switch to Branch" - attempts to switch the main repository to the selected branch
@@ -78,9 +78,9 @@ Example: `/Users/you/project` → `/Users/you/project-feature-awesome`
 
 ## Branch Management
 
-### Branch States in ShellOps
+### Branch States in VibeTunnel
 
-ShellOps shows rich Git information for each session:
+VibeTunnel shows rich Git information for each session:
 
 - **Branch Name**: Current branch with worktree indicator
 - **Ahead/Behind**: Commits ahead/behind the upstream branch
@@ -107,7 +107,7 @@ View all worktrees for a repository:
 ### Creating Worktrees via API
 
 ```bash
-# Using ShellOps's API
+# Using VibeTunnel's API
 curl -X POST http://localhost:4020/api/worktrees \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
@@ -148,7 +148,7 @@ Follow mode keeps your main repository synchronized with a specific worktree. Th
 Follow mode state is stored in the main repository's git config:
 ```bash
 # Check which worktree is being followed
-git config shellops.followWorktree
+git config vibetunnel.followWorktree
 
 # Returns the path to the followed worktree when active
 ```
@@ -187,7 +187,7 @@ The `vt follow` command is smart:
 
 ```bash
 # Check current follow mode in git config
-git config shellops.followBranch
+git config vibetunnel.followBranch
 
 # If output shows a branch name, follow mode is enabled for that branch
 # If no output, follow mode is disabled
@@ -318,7 +318,7 @@ vt unfollow
 **Solution**: 
 - Commit or stash your changes first
 - Use a worktree to work on the other branch
-- ShellOps will show a warning and stay on current branch
+- VibeTunnel will show a warning and stay on current branch
 
 ### "Worktree path already exists"
 
@@ -338,17 +338,17 @@ vt unfollow
 
 ### Worktree Not Showing in List
 
-**Problem**: Created worktree doesn't appear in ShellOps
+**Problem**: Created worktree doesn't appear in VibeTunnel
 **Solution**:
 - Ensure the worktree is within a discoverable path
 - Check that Git recognizes it: `git worktree list`
-- Refresh the repository discovery in ShellOps
+- Refresh the repository discovery in VibeTunnel
 
 ### Follow Mode Not Working
 
 **Problem**: Main repository doesn't follow worktree changes
 **Solution**:
-- Ensure you enabled follow mode: `git config shellops.followWorktree`
+- Ensure you enabled follow mode: `git config vibetunnel.followWorktree`
 - Check hooks are installed in both repos: `ls -la .git/hooks/post-*`
 - Verify worktree path is correct: `vt status`
 - Check for uncommitted changes in main repo blocking sync
@@ -364,7 +364,7 @@ You can create worktrees in custom locations:
 # Create in a specific directory
 git worktree add /custom/path/feature-branch feature/branch
 
-# ShellOps will still discover and manage it
+# VibeTunnel will still discover and manage it
 ```
 
 ### Bare Repositories
@@ -412,6 +412,6 @@ Key endpoints:
 
 ## Conclusion
 
-Git worktrees in ShellOps provide a powerful way to manage multiple branches and development tasks. By understanding the branch switching behavior, follow mode, and best practices, you can significantly improve your development workflow.
+Git worktrees in VibeTunnel provide a powerful way to manage multiple branches and development tasks. By understanding the branch switching behavior, follow mode, and best practices, you can significantly improve your development workflow.
 
 For implementation details and architecture, see the [Worktree Implementation Spec](./worktree-spec.md).

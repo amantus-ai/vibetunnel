@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Extract build number from a ShellOps DMG file
+# Extract build number from a VibeTunnel DMG file
 #
 # This script mounts a DMG, extracts the CFBundleVersion from the app's Info.plist,
 # and returns the build number for use in Sparkle appcast generation.

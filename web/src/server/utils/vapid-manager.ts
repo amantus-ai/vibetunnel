@@ -21,7 +21,7 @@ export interface VapidConfig {
  * Manages VAPID (Voluntary Application Server Identification) keys for web push notifications.
  *
  * This class handles the generation, storage, validation, and rotation of VAPID keys
- * used for authenticating push notifications sent from the ShellOps server to web clients.
+ * used for authenticating push notifications sent from the VibeTunnel server to web clients.
  * It provides a complete lifecycle management system for VAPID credentials with secure
  * file-based persistence.
  *
@@ -30,7 +30,7 @@ export interface VapidConfig {
  * - Key rotation support for security best practices
  * - Validation of keys and email format
  * - Integration with web-push library for sending notifications
- * - Persistent storage in ~/.shellops/vapid/keys.json
+ * - Persistent storage in ~/.vibetunnel/vapid/keys.json
  *
  * @example
  * ```typescript
@@ -60,7 +60,7 @@ export class VapidManager {
   private readonly keysFilePath: string;
 
   constructor(vapidDir?: string) {
-    this.vapidDir = vapidDir || path.join(os.homedir(), '.shellops/vapid');
+    this.vapidDir = vapidDir || path.join(os.homedir(), '.vibetunnel/vapid');
     this.keysFilePath = path.join(this.vapidDir, 'keys.json');
   }
 
@@ -80,7 +80,7 @@ export class VapidManager {
       logger.log('Using provided VAPID keys');
       this.config = {
         keyPair: { publicKey, privateKey },
-        contactEmail: contactEmail || 'noreply@shellops.local',
+        contactEmail: contactEmail || 'noreply@vibetunnel.local',
         enabled: true,
       };
       await this.saveKeys(this.config.keyPair);
@@ -94,7 +94,7 @@ export class VapidManager {
       logger.log('Using existing VAPID keys');
       this.config = {
         keyPair: existingKeys,
-        contactEmail: contactEmail || 'noreply@shellops.local',
+        contactEmail: contactEmail || 'noreply@vibetunnel.local',
         enabled: true,
       };
       this.configureWebPush();
@@ -107,7 +107,7 @@ export class VapidManager {
       const newKeys = this.generateKeys();
       this.config = {
         keyPair: newKeys,
-        contactEmail: contactEmail || 'noreply@shellops.local',
+        contactEmail: contactEmail || 'noreply@vibetunnel.local',
         enabled: true,
       };
       await this.saveKeys(this.config.keyPair);
@@ -119,7 +119,7 @@ export class VapidManager {
     logger.warn('No VAPID keys available and generation disabled');
     this.config = {
       keyPair: { publicKey: '', privateKey: '' },
-      contactEmail: contactEmail || 'noreply@shellops.local',
+      contactEmail: contactEmail || 'noreply@vibetunnel.local',
       enabled: false,
     };
     return this.config;
@@ -147,7 +147,7 @@ export class VapidManager {
     // Update config
     this.config = {
       keyPair: newKeys,
-      contactEmail: contactEmail || this.config?.contactEmail || 'noreply@shellops.local',
+      contactEmail: contactEmail || this.config?.contactEmail || 'noreply@vibetunnel.local',
       enabled: true,
     };
 

@@ -1,12 +1,12 @@
 /**
- * Socket API client for ShellOps control operations
+ * Socket API client for VibeTunnel control operations
  * Used by the vt command to communicate with the server via Unix socket
  */
 
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { ShellOpsSocketClient } from './pty/socket-client.js';
+import { VibeTunnelSocketClient } from './pty/socket-client.js';
 import {
   type GitEventAck,
   type GitEventNotify,
@@ -39,7 +39,7 @@ export class SocketApiClient {
 
   constructor() {
     // Use control directory from environment or default
-    this.controlDir = process.env.SHELLOPS_CONTROL_DIR || path.join(os.homedir(), '.shellops');
+    this.controlDir = process.env.VIBETUNNEL_CONTROL_DIR || path.join(os.homedir(), '.vibetunnel');
     // Use api.sock instead of control.sock to avoid conflicts with Mac app
     this.controlSocketPath = path.join(this.controlDir, 'api.sock');
 
@@ -68,10 +68,10 @@ export class SocketApiClient {
     timeout = 5000
   ): Promise<TResponse> {
     if (!this.isSocketAvailable()) {
-      throw new Error('ShellOps server is not running');
+      throw new Error('VibeTunnel server is not running');
     }
 
-    const client = new ShellOpsSocketClient(this.controlSocketPath);
+    const client = new VibeTunnelSocketClient(this.controlSocketPath);
 
     try {
       await client.connect();
@@ -79,7 +79,7 @@ export class SocketApiClient {
       return response as TResponse;
     } catch (error) {
       if (error instanceof Error && error.message.includes('ENOENT')) {
-        throw new Error('ShellOps server is not running');
+        throw new Error('VibeTunnel server is not running');
       }
       throw error;
     } finally {

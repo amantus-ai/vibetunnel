@@ -18,7 +18,7 @@ test.describe('Global Session Management', () => {
 
   // REMOVED: 'should kill all sessions at once' test
   // This test is permanently removed because it uses the Kill All button which would
-  // terminate ALL sessions including the ShellOps session running Claude Code.
+  // terminate ALL sessions including the VibeTunnel session running Claude Code.
   // Tests must NEVER kill sessions they didn't create themselves.
 
   test.skip('should filter sessions by status', async ({ page }) => {

@@ -136,7 +136,7 @@ export class KeyboardCaptureIndicator extends LitElement {
 
     // Use the same button styling as other header buttons
     const buttonClasses = `
-      bg-bg-tertiary border border-border rounded-lg p-2 font-mono 
+      bg-bg-tertiary border border-border rounded-lg p-2 font-ui 
       transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary 
       hover:shadow-sm flex-shrink-0
       ${this.active ? 'text-primary' : 'text-muted'}

@@ -1,5 +1,5 @@
 #!/bin/bash
-# sign-and-notarize.sh - Comprehensive code signing and notarization script for ShellOps
+# sign-and-notarize.sh - Comprehensive code signing and notarization script for VibeTunnel
 # 
 # This script handles the full process of:
 # 1. Code signing with hardened runtime
@@ -15,10 +15,10 @@ APP_DIR="$(cd "$SCRIPT_DIR/.." &> /dev/null && pwd)"
 cd "$APP_DIR" || { echo "Error: Failed to change directory to $APP_DIR"; exit 1; }
 
 # Initialize variables with defaults
-BUNDLE_DIR="build/Build/Products/Release/ShellOps.app"
+BUNDLE_DIR="build/Build/Products/Release/VibeTunnel.app"
 APP_BUNDLE_PATH="$APP_DIR/$BUNDLE_DIR"
-ZIP_PATH="$APP_DIR/build/ShellOps-notarize.zip"
-FINAL_ZIP_PATH="$APP_DIR/build/ShellOps-notarized.zip"
+ZIP_PATH="$APP_DIR/build/VibeTunnel-notarize.zip"
+FINAL_ZIP_PATH="$APP_DIR/build/VibeTunnel-notarized.zip"
 MAX_RETRIES=3
 RETRY_DELAY=30
 TIMEOUT_MINUTES=30
@@ -48,7 +48,7 @@ success() {
 
 # Print usage information
 print_usage() {
-    echo "Sign and Notarize Script for ShellOps Mac App"
+    echo "Sign and Notarize Script for VibeTunnel Mac App"
     echo ""
     echo "Usage: $0 [options]"
     echo ""
@@ -213,7 +213,7 @@ retry_operation() {
 
 # Function to perform code signing
 perform_signing() {
-    log "Starting code signing process for ShellOps..."
+    log "Starting code signing process for VibeTunnel..."
     
     # Check if the app bundle exists
     if [ ! -d "$APP_BUNDLE_PATH" ]; then
@@ -235,7 +235,7 @@ perform_signing() {
 
 # Function to perform app notarization
 perform_notarization() {
-    log "Starting notarization process for ShellOps..."
+    log "Starting notarization process for VibeTunnel..."
     
     # Check for authentication requirements
     MISSING_VARS=()
@@ -285,7 +285,7 @@ perform_notarization() {
 }
 
 # Main execution starts here
-log "Starting sign and notarize script for ShellOps..."
+log "Starting sign and notarize script for VibeTunnel..."
 
 # Read credentials from all possible sources
 read_credentials "$@"

@@ -187,7 +187,7 @@ export class OverlaysContainer extends LitElement {
                 <p class="text-sm text-text-muted mb-4">Files will be uploaded and the path sent to terminal</p>
                 <div class="inline-flex items-center gap-2 text-xs text-text-dim bg-bg-secondary px-4 py-2 rounded-lg">
                   <span class="opacity-75">Or press</span>
-                  <kbd class="px-2 py-1 bg-bg-tertiary border border-border rounded text-primary font-mono text-xs">⌘V</kbd>
+                  <kbd class="px-2 py-1 bg-bg-tertiary border border-border rounded text-primary font-ui text-xs">⌘V</kbd>
                   <span class="opacity-75">to paste from clipboard</span>
                 </div>
               </div>

@@ -28,7 +28,7 @@
         "module_path": "./node-pty/build/Release/",
         "remote_path": "{version}",
         "package_name": "{module_name}-v{version}-{node_abi}-{platform}-{arch}.tar.gz",
-        "host": "https://github.com/amantus-ai/vibetunnel/releases/download/"
+        "host": "https://github.com/arunsanna/vibetunnel/releases/download/"
       }
     }
   ]

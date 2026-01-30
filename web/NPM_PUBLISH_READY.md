@@ -1,14 +1,14 @@
-# ✅ ShellOps npm Package - Ready to Publish
+# ✅ VibeTunnel npm Package - Ready to Publish
 
-The standalone ShellOps server is now fully prepared for npm publishing!
+The standalone VibeTunnel server is now fully prepared for npm publishing!
 
 ## What's Been Prepared
 
 ### 📦 Package Configuration (`package.npm.json`)
-- **Package name**: `shellops` (unscoped package)
+- **Package name**: `vibetunnel` (unscoped package)
 - **Version**: 1.0.0-beta.16 (ready to increment)
 - **Entry point**: `lib/cli.js`
-- **Binary**: `shellops` command
+- **Binary**: `vibetunnel` command
 - **Keywords**: Added relevant keywords for discoverability
 - **Files**: Configured to include only necessary files
 
@@ -20,7 +20,7 @@ The standalone ShellOps server is now fully prepared for npm publishing!
    - Proper cleanup on shutdown
 
 2. **Enhanced CLI**
-   - Works with `npx shellops` out of the box
+   - Works with `npx vibetunnel` out of the box
    - All server configuration options preserved
    - Help text with examples
 
@@ -50,9 +50,9 @@ pnpm run build:npm
 # 2. Test locally
 cd dist-npm/
 npm pack
-npm install -g shellops-*.tgz
-shellops --version
-npm uninstall -g shellops
+npm install -g vibetunnel-*.tgz
+vibetunnel --version
+npm uninstall -g vibetunnel
 
 # 3. Publish
 npm login  # If not logged in
@@ -65,13 +65,13 @@ After publishing, users can:
 
 ```bash
 # Quick start - no installation
-npx shellops --no-auth
+npx vibetunnel --no-auth
 
 # With ngrok tunnel
-npx shellops --no-auth --ngrok
+npx vibetunnel --no-auth --ngrok
 
 # Docker
-docker run -p 4020:4020 shellops --no-auth --ngrok
+docker run -p 4020:4020 vibetunnel --no-auth --ngrok
 ```
 
 ## Key Benefits for Users

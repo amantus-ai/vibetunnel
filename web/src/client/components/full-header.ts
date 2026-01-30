@@ -28,11 +28,11 @@ export class FullHeader extends HeaderBase {
           >
             <terminal-icon size="24" class="flex-shrink-0"></terminal-icon>
             <div class="flex items-baseline gap-2 min-w-0">
-              <h1 class="text-sm sm:text-xl font-bold text-primary font-mono group-hover:underline truncate">
-                <span class="hidden sm:inline">ShellOps</span>
+              <h1 class="text-sm sm:text-xl font-bold text-primary font-ui group-hover:underline truncate">
+                <span class="hidden sm:inline">VibeTunnel</span>
                 <span class="sm:hidden">VT</span>
               </h1>
-              <p class="text-text-muted text-xs font-mono flex-shrink-0">
+              <p class="text-text-muted text-xs font-ui flex-shrink-0">
                 (${runningSessions.length})
               </p>
             </div>
@@ -95,7 +95,7 @@ export class FullHeader extends HeaderBase {
     return html`
       <div class="user-menu-container relative flex-shrink-0">
         <button
-          class="font-mono text-sm px-3 py-2 text-text border border-border hover:bg-bg-tertiary hover:text-text rounded-lg transition-all duration-200 flex items-center gap-2"
+          class="font-ui text-sm px-3 py-2 text-text border border-border hover:bg-bg-tertiary hover:text-text rounded-lg transition-all duration-200 flex items-center gap-2"
           @click=${this.toggleUserMenu}
           title="User menu"
         >
@@ -129,7 +129,7 @@ export class FullHeader extends HeaderBase {
                   ${this.authMethod || 'authenticated'}
                 </div>
                 <button
-                  class="w-full text-left px-3 py-2 text-sm font-mono text-status-warning hover:bg-bg-secondary hover:text-status-error"
+                  class="w-full text-left px-3 py-2 text-sm font-ui text-status-warning hover:bg-bg-secondary hover:text-status-error"
                   @click=${this.handleLogout}
                 >
                   Logout

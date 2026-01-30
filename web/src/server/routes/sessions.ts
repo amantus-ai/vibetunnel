@@ -77,7 +77,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
           ...status,
           lastError: 'Tailscale Serve is disabled on your tailnet',
           recommendation:
-            'ShellOps tried to enable Tailscale Serve but your tailnet requires admin approval. You can still use ShellOps normally - it will be accessible on your tailnet without the Serve proxy.',
+            'VibeTunnel tried to enable Tailscale Serve but your tailnet requires admin approval. You can still use VibeTunnel normally - it will be accessible on your tailnet without the Serve proxy.',
           fallbackMode: "Running in standard mode - accessible via your machine's tailnet IP",
           permanentlyDisabled: true,
         };
@@ -92,7 +92,7 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
           recommendation:
             'Contact your Tailscale admin or visit your tailnet admin panel to enable the Serve feature',
           fallbackMode:
-            'ShellOps is running in HTTP mode. You can still access it directly on your tailnet IP',
+            'VibeTunnel is running in HTTP mode. You can still access it directly on your tailnet IP',
         };
         res.json(enhancedStatus);
       } else {

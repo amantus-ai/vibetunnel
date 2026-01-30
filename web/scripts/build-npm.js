@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Clean npm build script for ShellOps
+ * Clean npm build script for VibeTunnel
  * Uses a separate dist-npm directory with its own package.json
  * Builds for all platforms by default with complete prebuild support
  * 
@@ -81,7 +81,7 @@ if (currentOnly) {
   }
 }
 
-console.log('🚀 Building ShellOps for npm distribution (clean approach)...\n');
+console.log('🚀 Building VibeTunnel for npm distribution (clean approach)...\n');
 
 if (currentOnly) {
   console.log(`📦 Legacy mode: Building for ${process.platform}/${process.arch} only\n`);
@@ -490,10 +490,10 @@ function validatePackageHybrid() {
   
   // Check critical files in dist-npm
   const criticalFiles = [
-    'lib/shellops-cli',
+    'lib/vibetunnel-cli',
     'lib/cli.js',
-    'bin/shellops',
-    'bin/shellops-fwd',
+    'bin/vibetunnel',
+    'bin/vibetunnel-fwd',
     'bin/vt',
     'scripts/postinstall.js',
     'public/index.html',
@@ -611,7 +611,7 @@ async function main() {
   
   const filesToCopy = [
     // Compiled CLI
-    { src: 'dist/shellops-cli', dest: 'lib/cli.js' },
+    { src: 'dist/vibetunnel-cli', dest: 'lib/cli.js' },
     { src: 'dist/tsconfig.server.tsbuildinfo', dest: 'lib/tsconfig.server.tsbuildinfo' },
     
     // Bin scripts
@@ -710,7 +710,7 @@ async function main() {
       
       // Bin scripts
       bin: {
-        shellops: './bin/shellops',
+        vibetunnel: './bin/vibetunnel',
         vt: './bin/vt'
       },
       
@@ -750,30 +750,30 @@ async function main() {
   // Step 6: Fix the CLI structure and bin scripts
   console.log('\n6️⃣ Fixing CLI structure and bin scripts...\n');
   
-  // The dist/shellops-cli was copied to lib/cli.js
+  // The dist/vibetunnel-cli was copied to lib/cli.js
   // We need to rename it and create a wrapper
   const cliPath = path.join(DIST_DIR, 'lib', 'cli.js');
-  const cliBundlePath = path.join(DIST_DIR, 'lib', 'shellops-cli');
+  const cliBundlePath = path.join(DIST_DIR, 'lib', 'vibetunnel-cli');
   
   // Rename the bundle
   fs.renameSync(cliPath, cliBundlePath);
   
   // Create a simple wrapper that requires the bundle
   const cliWrapperContent = `#!/usr/bin/env node
-require('./shellops-cli');
+require('./vibetunnel-cli');
 `;
   
   fs.writeFileSync(cliPath, cliWrapperContent, { mode: 0o755 });
   
   // Fix bin scripts to point to correct path
-  const binShellopsPath = path.join(DIST_DIR, 'bin', 'shellops');
-  const binShellopsContent = `#!/usr/bin/env node
+  const binVibeTunnelPath = path.join(DIST_DIR, 'bin', 'vibetunnel');
+  const binVibeTunnelContent = `#!/usr/bin/env node
 
 // Start the CLI - it handles all command routing including 'fwd'
 const { spawn } = require('child_process');
 const path = require('path');
 
-const cliPath = path.join(__dirname, '..', 'lib', 'shellops-cli');
+const cliPath = path.join(__dirname, '..', 'lib', 'vibetunnel-cli');
 const args = process.argv.slice(2);
 
 const child = spawn('node', [cliPath, ...args], {
@@ -795,8 +795,8 @@ child.on('exit', (code, signal) => {
   }
 });
 `;
-  fs.writeFileSync(binShellopsPath, binShellopsContent, { mode: 0o755 });
-  console.log('  ✓ Fixed bin/shellops path');
+  fs.writeFileSync(binVibeTunnelPath, binVibeTunnelContent, { mode: 0o755 });
+  console.log('  ✓ Fixed bin/vibetunnel path');
   
   // vt script doesn't need fixing - it dynamically finds the binary
   
@@ -881,7 +881,7 @@ child.on('exit', (code, signal) => {
   
   console.log('\n🎉 Hybrid npm build completed successfully!');
   console.log('\nNext steps:');
-  console.log('  - Test locally: npm pack && npm install -g shellops-*.tgz');
+  console.log('  - Test locally: npm pack && npm install -g vibetunnel-*.tgz');
   console.log('  - Test Linux compatibility: Check authenticate-pam and fallback compilation');
   console.log('  - Publish: npm publish');
 }

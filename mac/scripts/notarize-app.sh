@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # =============================================================================
-# ShellOps App Notarization Script
+# VibeTunnel App Notarization Script
 # =============================================================================
 #
-# This script handles complete notarization for ShellOps including:
+# This script handles complete notarization for VibeTunnel including:
 # - Hardened runtime signing
 # - Proper signing of all components (including Sparkle)
 # - Apple notarization submission and stapling
@@ -50,7 +50,7 @@ success() {
     echo "[$(date "+%Y-%m-%d %H:%M:%S")] ✅ $1"
 }
 
-APP_BUNDLE="${1:-build/Build/Products/Release/ShellOps.app}"
+APP_BUNDLE="${1:-build/Build/Products/Release/VibeTunnel.app}"
 # Use environment variable or detect from keychain
 SIGN_IDENTITY="${SIGN_IDENTITY:-$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | awk -F'"' '{print $2}')}"
 TIMEOUT_MINUTES=30
@@ -81,7 +81,7 @@ API_KEY_FILE=$(mktemp)
 echo "$APP_STORE_CONNECT_API_KEY_P8" | sed 's/\\n/\n/g' > "$API_KEY_FILE"
 
 cleanup() {
-    rm -f "$API_KEY_FILE" "/tmp/ShellOps_notarize.zip"
+    rm -f "$API_KEY_FILE" "/tmp/VibeTunnel_notarize.zip"
 }
 trap cleanup EXIT
 
@@ -120,8 +120,8 @@ EOF
     <true/>
     <key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
     <array>
-        <string>sh.shellops.shellops-spks</string>
-        <string>sh.shellops.shellops-spkd</string>
+        <string>sh.vibetunnel.vibetunnel-spks</string>
+        <string>sh.vibetunnel.vibetunnel-spkd</string>
     </array>
 EOF
     fi
@@ -136,13 +136,13 @@ EOF
 MAIN_ENTITLEMENTS="/tmp/main_entitlements.plist"
 XPC_ENTITLEMENTS="/tmp/xpc_entitlements.plist"
 
-# Use actual ShellOps entitlements for the main app
-if [ -f "ShellOps/ShellOps.entitlements" ]; then
-    cp "ShellOps/ShellOps.entitlements" "$MAIN_ENTITLEMENTS"
-elif [ -f "$PROJECT_ROOT/ShellOps/ShellOps.entitlements" ]; then
-    cp "$PROJECT_ROOT/ShellOps/ShellOps.entitlements" "$MAIN_ENTITLEMENTS"
+# Use actual VibeTunnel entitlements for the main app
+if [ -f "VibeTunnel/VibeTunnel.entitlements" ]; then
+    cp "VibeTunnel/VibeTunnel.entitlements" "$MAIN_ENTITLEMENTS"
+elif [ -f "$PROJECT_ROOT/VibeTunnel/VibeTunnel.entitlements" ]; then
+    cp "$PROJECT_ROOT/VibeTunnel/VibeTunnel.entitlements" "$MAIN_ENTITLEMENTS"
 else
-    log "Warning: ShellOps.entitlements not found, using default entitlements"
+    log "Warning: VibeTunnel.entitlements not found, using default entitlements"
     create_entitlements "$MAIN_ENTITLEMENTS" "false"
 fi
 
@@ -306,7 +306,7 @@ fi
 log "Using modern notarytool for notarization"
 
 # Create ZIP for notarization
-ZIP_PATH="/tmp/ShellOps_notarize.zip"
+ZIP_PATH="/tmp/VibeTunnel_notarize.zip"
 log "Creating ZIP archive for notarization..."
 if ! ditto -c -k --keepParent "$APP_BUNDLE" "$ZIP_PATH"; then
     error "Failed to create ZIP archive"

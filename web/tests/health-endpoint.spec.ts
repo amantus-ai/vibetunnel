@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Health Endpoint Tests', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to ShellOps
+    // Navigate to VibeTunnel
     await page.goto('http://localhost:4020');
     
     // Wait for app to load

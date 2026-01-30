@@ -68,7 +68,7 @@ test.describe('Terminal Interaction', () => {
     await page.waitForTimeout(1000);
 
     // Execute echo command with retry
-    await executeCommandWithRetry(page, 'echo "Hello ShellOps"', 'Hello ShellOps', 3);
+    await executeCommandWithRetry(page, 'echo "Hello VibeTunnel"', 'Hello VibeTunnel', 3);
   });
 
   test('should handle command with special characters', async ({ page }) => {
@@ -131,7 +131,7 @@ test.describe('Terminal Interaction', () => {
     await assertTerminalContains(page, 'More test content');
 
     // Clear terminal using the clear command
-    // Note: Ctrl+L is intercepted as a browser shortcut in ShellOps
+    // Note: Ctrl+L is intercepted as a browser shortcut in VibeTunnel
     await page.keyboard.type('clear');
     await page.keyboard.press('Enter');
 
@@ -216,7 +216,7 @@ test.describe('Terminal Interaction', () => {
 
   test('should handle environment variables', async ({ page }) => {
     const varName = 'TEST_VAR';
-    const varValue = 'ShellOps123'; // Simplified value without special chars
+    const varValue = 'VibeTunnel123'; // Simplified value without special chars
 
     // Wait for terminal to be properly ready - check for prompt
     await page.waitForFunction(

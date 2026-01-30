@@ -1,4 +1,4 @@
-# ShellOps CI/CD Workflows
+# VibeTunnel CI/CD Workflows
 
 This directory contains GitHub Actions workflows for continuous integration and testing.
 
@@ -63,7 +63,7 @@ Advanced workflow for testing Single Executable Application (SEA) builds with cu
    - Runs only on push events
 
 ### 4. Xcode SEA Test (`xcode-sea-test.yml`)
-Tests the macOS Xcode build with custom Node.js to ensure the ShellOps.app works correctly with SEA executables.
+Tests the macOS Xcode build with custom Node.js to ensure the VibeTunnel.app works correctly with SEA executables.
 
 **Features:**
 - Builds custom Node.js on macOS using self-hosted runners
@@ -81,7 +81,7 @@ Tests the macOS Xcode build with custom Node.js to ensure the ShellOps.app works
 2. **test-xcode-build**:
    - Builds SEA executable with custom Node.js
    - Copies SEA and native modules to app resources
-   - Builds ShellOps.app using Xcode
+   - Builds VibeTunnel.app using Xcode
    - Verifies SEA executable is correctly bundled
    - Tests basic app functionality
    - Uploads built app as artifact

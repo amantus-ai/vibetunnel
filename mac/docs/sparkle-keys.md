@@ -1,17 +1,17 @@
 # Sparkle Key Management Guide
 
-This guide covers the management of EdDSA keys used for signing ShellOps updates with the Sparkle framework.
+This guide covers the management of EdDSA keys used for signing VibeTunnel updates with the Sparkle framework.
 
 ## Overview
 
-ShellOps uses Sparkle's EdDSA (Ed25519) signatures for secure software updates. This system requires:
+VibeTunnel uses Sparkle's EdDSA (Ed25519) signatures for secure software updates. This system requires:
 - A **private key** (kept secret) for signing updates
 - A **public key** (distributed with the app) for verifying signatures
 
 ## Key Locations
 
 ### Public Key
-- **Location**: `ShellOps/sparkle-public-ed-key.txt`
+- **Location**: `VibeTunnel/sparkle-public-ed-key.txt`
 - **Status**: Committed to repository
 - **Usage**: Embedded in app via `SUPublicEDKey` in Info.plist
 - **Current Value**: `AGCY8w5vHirVfGGDGc8Szc5iuOqupZSh9pMj/Qs67XI=`
@@ -29,7 +29,7 @@ ShellOps uses Sparkle's EdDSA (Ed25519) signatures for secure software updates. 
 1. **Request Access**
    ```bash
    # Contact team lead for secure key transfer
-   # Keys are stored in: Dropbox/Backup/Sparkle-ShellOps/
+   # Keys are stored in: Dropbox/Backup/Sparkle-VibeTunnel/
    ```
 
 2. **Install Private Key**
@@ -74,7 +74,7 @@ ShellOps uses Sparkle's EdDSA (Ed25519) signatures for secure software updates. 
    echo "PRIVATE_KEY_BASE64" > private/sparkle_private_key
    
    # Save public key
-   echo "PUBLIC_KEY_BASE64" > ShellOps/sparkle-public-ed-key.txt
+   echo "PUBLIC_KEY_BASE64" > VibeTunnel/sparkle-public-ed-key.txt
    ```
 
 3. **Update App Configuration**
@@ -199,7 +199,7 @@ If private key is compromised:
 ```bash
 # Check public key in app
 /usr/libexec/PlistBuddy -c "Print :SUPublicEDKey" \
-  build/Build/Products/Release/ShellOps.app/Contents/Info.plist
+  build/Build/Products/Release/VibeTunnel.app/Contents/Info.plist
 
 # Check private key exists
 ls -la private/sparkle_private_key
@@ -215,7 +215,7 @@ grep "sparkle:edSignature" appcast-prerelease.xml
 
 # Manually verify a DMG
 ./build/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update \
-  build/ShellOps-1.0.0.dmg \
+  build/VibeTunnel-1.0.0.dmg \
   -f private/sparkle_private_key
 ```
 

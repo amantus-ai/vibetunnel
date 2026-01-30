@@ -9,10 +9,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Running ShellOps iOS Tests with Coverage${NC}"
+echo -e "${GREEN}Running VibeTunnel iOS Tests with Coverage${NC}"
 
 # Check if we're in the right directory
-if [ ! -f "ShellOps-iOS.xcodeproj/project.pbxproj" ]; then
+if [ ! -f "VibeTunnel-iOS.xcodeproj/project.pbxproj" ]; then
     echo -e "${RED}Error: Must run from ios/ directory${NC}"
     exit 1
 fi
@@ -39,8 +39,8 @@ echo -e "${GREEN}Using simulator: $SIMULATOR_ID${NC}"
 # Build and test with coverage
 echo -e "${YELLOW}Building and testing...${NC}"
 xcodebuild test \
-    -scheme ShellOps-iOS \
-    -project ShellOps-iOS.xcodeproj \
+    -scheme VibeTunnel-iOS \
+    -project VibeTunnel-iOS.xcodeproj \
     -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
     -enableCodeCoverage YES \
     -derivedDataPath build \

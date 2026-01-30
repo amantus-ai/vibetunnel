@@ -19,7 +19,7 @@ Each Swift file should declare its own logger at the top of the file:
 ```swift
 import os.log
 
-private let logger = Logger(subsystem: "sh.shellops.shellops", category: "CategoryName")
+private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "CategoryName")
 ```
 
 ### Log Levels
@@ -104,15 +104,15 @@ Examples:
 Task(description="Build web bundle", prompt="Run pnpm run build in the web directory and report if it succeeded or any errors")
 
 # Instead of: ./scripts/vtlog.sh -n 100
-Task(description="Check ShellOps logs", prompt="Run ./scripts/vtlog.sh -n 100 and summarize any errors or warnings")
+Task(description="Check VibeTunnel logs", prompt="Run ./scripts/vtlog.sh -n 100 and summarize any errors or warnings")
 
 # Instead of: multiple file reads
 Task(description="Analyze WebRTC implementation", prompt="Read WebRTCManager.swift and webrtc-handler.ts, then explain the offer/answer flow")
 ```
 
-## ShellOps Architecture Overview
+## VibeTunnel Architecture Overview
 
-ShellOps is a macOS application that provides terminal access through web browsers. It consists of three main components:
+VibeTunnel is a macOS application that provides terminal access through web browsers. It consists of three main components:
 
 ### 1. Mac App (Swift/SwiftUI)
 - Native macOS application that manages the entire system
@@ -135,7 +135,7 @@ ShellOps is a macOS application that provides terminal access through web browse
 
 ## Logging Architecture
 
-ShellOps has a sophisticated logging system that aggregates logs from all components:
+VibeTunnel has a sophisticated logging system that aggregates logs from all components:
 
 ### Log Flow
 ```
@@ -168,7 +168,7 @@ When viewing logs with `vtlog`, you can identify the source:
 
 ## Debugging and Logging
 
-The ShellOps Mac app uses the unified logging system with the subsystem `sh.shellops.shellops`. We provide a convenient `vtlog` script to simplify log access.
+The VibeTunnel Mac app uses the unified logging system with the subsystem `sh.vibetunnel.vibetunnel`. We provide a convenient `vtlog` script to simplify log access.
 
 ### Quick Start with vtlog
 
@@ -242,13 +242,13 @@ If you prefer using the native `log` command directly:
 
 ```bash
 # Stream logs
-log stream --predicate 'subsystem == "sh.shellops.shellops"' --level info
+log stream --predicate 'subsystem == "sh.vibetunnel.vibetunnel"' --level info
 
 # Show historical logs
-log show --predicate 'subsystem == "sh.shellops.shellops"' --info --last 30m
+log show --predicate 'subsystem == "sh.vibetunnel.vibetunnel"' --info --last 30m
 
 # Filter by category
-log stream --predicate 'subsystem == "sh.shellops.shellops" AND category == "ServerManager"'
+log stream --predicate 'subsystem == "sh.vibetunnel.vibetunnel" AND category == "ServerManager"'
 ```
 
 ### Tips
@@ -261,7 +261,7 @@ log stream --predicate 'subsystem == "sh.shellops.shellops" AND category == "Ser
 
 ## XcodeBuildMCP Usage Guide
 
-XcodeBuildMCP is an MCP (Model Context Protocol) server that provides comprehensive Xcode build and automation capabilities. It's the recommended way to build, test, and manage the ShellOps macOS project.
+XcodeBuildMCP is an MCP (Model Context Protocol) server that provides comprehensive Xcode build and automation capabilities. It's the recommended way to build, test, and manage the VibeTunnel macOS project.
 
 ### Installation
 
@@ -271,37 +271,37 @@ If XcodeBuildMCP is not already installed, add it to Claude Code:
 claude mcp add XcodeBuildMCP -- npx -y xcodebuildmcp@latest
 ```
 
-### Common XcodeBuildMCP Commands for ShellOps
+### Common XcodeBuildMCP Commands for VibeTunnel
 
 #### Project Discovery
 ```
 # Find Xcode projects in the repository
-discover_projs(workspaceRoot: "/Users/steipete/Projects/shellops")
+discover_projs(workspaceRoot: "/Users/steipete/Projects/vibetunnel")
 
 # List available schemes
-list_schems_proj(projectPath: "/Users/steipete/Projects/shellops/mac/ShellOps-Mac.xcodeproj")
+list_schems_proj(projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj")
 ```
 
 #### Building the Mac App
 ```
 # Build for Debug configuration
 build_mac_proj(
-    projectPath: "/Users/steipete/Projects/shellops/mac/ShellOps-Mac.xcodeproj",
-    scheme: "ShellOps-Mac",
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac",
     configuration: "Debug"
 )
 
 # Build for Release configuration
 build_mac_proj(
-    projectPath: "/Users/steipete/Projects/shellops/mac/ShellOps-Mac.xcodeproj",
-    scheme: "ShellOps-Mac",
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac",
     configuration: "Release"
 )
 
 # Build with code signing
 build_mac_proj(
-    projectPath: "/Users/steipete/Projects/shellops/mac/ShellOps-Mac.xcodeproj",
-    scheme: "ShellOps-Mac",
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac",
     configuration: "Release",
     extraArgs: ["CODE_SIGN_IDENTITY=Developer ID Application"]
 )
@@ -311,35 +311,35 @@ build_mac_proj(
 ```
 # Build and run in one step
 build_run_mac_proj(
-    projectPath: "/Users/steipete/Projects/shellops/mac/ShellOps-Mac.xcodeproj",
-    scheme: "ShellOps-Mac"
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac"
 )
 
 # Get the app bundle path after building
 get_mac_app_path_proj(
-    projectPath: "/Users/steipete/Projects/shellops/mac/ShellOps-Mac.xcodeproj",
-    scheme: "ShellOps-Mac"
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac"
 )
 
 # Get bundle identifier
-get_mac_bundle_id(appPath: "/path/to/ShellOps.app")
+get_mac_bundle_id(appPath: "/path/to/VibeTunnel.app")
 
 # Launch the app
-launch_mac_app(appPath: "/path/to/ShellOps.app")
+launch_mac_app(appPath: "/path/to/VibeTunnel.app")
 ```
 
 #### Testing
 ```
 # Run all tests
 test_macos_proj(
-    projectPath: "/Users/steipete/Projects/shellops/mac/ShellOps-Mac.xcodeproj",
-    scheme: "ShellOps-Mac"
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac"
 )
 
 # Run tests with specific configuration
 test_macos_proj(
-    projectPath: "/Users/steipete/Projects/shellops/mac/ShellOps-Mac.xcodeproj",
-    scheme: "ShellOps-Mac",
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac",
     configuration: "Debug"
 )
 ```
@@ -348,8 +348,8 @@ test_macos_proj(
 ```
 # Clean build artifacts
 clean_proj(
-    projectPath: "/Users/steipete/Projects/shellops/mac/ShellOps-Mac.xcodeproj",
-    scheme: "ShellOps-Mac"
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac"
 )
 ```
 
@@ -357,8 +357,8 @@ clean_proj(
 ```
 # Show build settings
 show_build_set_proj(
-    projectPath: "/Users/steipete/Projects/shellops/mac/ShellOps-Mac.xcodeproj",
-    scheme: "ShellOps-Mac"
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac"
 )
 ```
 
@@ -375,16 +375,16 @@ show_build_set_proj(
 #### Development Build & Run
 ```
 # Clean, build, and run for development
-clean_proj(projectPath: "/Users/steipete/Projects/shellops/mac/ShellOps-Mac.xcodeproj", scheme: "ShellOps-Mac")
-build_run_mac_proj(projectPath: "/Users/steipete/Projects/shellops/mac/ShellOps-Mac.xcodeproj", scheme: "ShellOps-Mac")
+clean_proj(projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj", scheme: "VibeTunnel-Mac")
+build_run_mac_proj(projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj", scheme: "VibeTunnel-Mac")
 ```
 
 #### Release Build
 ```
 # Build optimized release version
 build_mac_proj(
-    projectPath: "/Users/steipete/Projects/shellops/mac/ShellOps-Mac.xcodeproj",
-    scheme: "ShellOps-Mac",
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac",
     configuration: "Release",
     extraArgs: ["ENABLE_HARDENED_RUNTIME=YES"]
 )
@@ -394,10 +394,10 @@ build_mac_proj(
 ```
 # Build with derived data path for CI
 build_mac_proj(
-    projectPath: "/Users/steipete/Projects/shellops/mac/ShellOps-Mac.xcodeproj",
-    scheme: "ShellOps-Mac",
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac",
     configuration: "Release",
-    derivedDataPath: "/tmp/ShellOps-DerivedData"
+    derivedDataPath: "/tmp/VibeTunnel-DerivedData"
 )
 ```
 
@@ -408,7 +408,7 @@ build_mac_proj(
 **IMPORTANT**: macOS tests MUST be run using XcodeBuildMCP commands or xcodebuild, NOT with `swift test`:
 
 #### Why `swift test` Fails
-1. **Missing Server Binary**: The `shellops` SEA (Single Executable Application) binary is only created during the full Xcode build process. Tests expect this binary to be embedded in the app bundle's Resources folder.
+1. **Missing Server Binary**: The `vibetunnel` SEA (Single Executable Application) binary is only created during the full Xcode build process. Tests expect this binary to be embedded in the app bundle's Resources folder.
 2. **No Proper App Bundle**: `swift test` runs in a minimal test bundle environment without the full app structure
 3. **UserNotifications Framework**: Tests using UserNotifications will crash due to missing bundle configuration
 4. **Missing Build Phases**: The web frontend build and SEA creation only happen during Xcode builds
@@ -418,8 +418,8 @@ build_mac_proj(
 **Using XcodeBuildMCP (Recommended):**
 ```
 test_macos_proj(
-    projectPath: "/Users/steipete/Projects/shellops/mac/ShellOps-Mac.xcodeproj",
-    scheme: "ShellOps-Mac"
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac"
 )
 ```
 
@@ -427,8 +427,8 @@ test_macos_proj(
 ```bash
 cd mac
 xcodebuild test \
-    -project ShellOps-Mac.xcodeproj \
-    -scheme ShellOps-Mac \
+    -project VibeTunnel-Mac.xcodeproj \
+    -scheme VibeTunnel-Mac \
     -destination 'platform=macOS'
 ```
 
@@ -441,7 +441,7 @@ The test suite includes checks for the embedded server binary (`ServerBinaryAvai
 
 ### Testing the Web Interface
 
-The ShellOps server runs on localhost:4020 by default. To test the web interface:
+The VibeTunnel server runs on localhost:4020 by default. To test the web interface:
 
 1. Ensure the Mac app is running. The user does that. Do not start the mac app yourself!
 2. Access http://localhost:4020 in your browser

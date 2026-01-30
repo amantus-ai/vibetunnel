@@ -64,17 +64,17 @@ jobs:
         working-directory: ./web
         run: pnpm run build
         env:
-          SHELLOPS_SEA: "true"
+          VIBETUNNEL_SEA: "true"
           
       - name: Verify native executable
         working-directory: ./web
         run: |
           echo "Verifying native executable..."
           ls -la native/ || echo "Native directory not found"
-          if [ -f native/shellops ]; then
+          if [ -f native/vibetunnel ]; then
             echo "Native executable found"
-            file native/shellops
-            ldd native/shellops || echo "ldd failed"
+            file native/vibetunnel
+            ldd native/vibetunnel || echo "ldd failed"
             # Known issue: Node.js SEA executables segfault on ARM64 Linux
             # This affects both Node.js 20 and 24. The executable will be built
             # but we skip the version test and use TypeScript compilation for tests
@@ -106,9 +106,9 @@ jobs:
           CI: true
           TERM: xterm
           SHELL: /bin/bash
-          # Disable SHELLOPS_SEA on ARM64 Linux due to Node.js SEA segfault issues
+          # Disable VIBETUNNEL_SEA on ARM64 Linux due to Node.js SEA segfault issues
           # The test-server.js will fall back to TypeScript compilation
-          # SHELLOPS_SEA: "true"
+          # VIBETUNNEL_SEA: "true"
           
       - name: Upload test results
         uses: actions/upload-artifact@v4

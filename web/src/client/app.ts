@@ -31,10 +31,10 @@ import './components/settings.js';
 import './components/notification-status.js';
 import './components/auth-login.js';
 import './components/ssh-key-manager.js';
-import './components/shellops-sidebar.js';
-import './components/shellops-header.js';
-import './components/shellops-filter-bar.js';
-import './components/shellops-settings.js';
+import './components/vibetunnel-sidebar.js';
+import './components/vibetunnel-header.js';
+import './components/vibetunnel-filter-bar.js';
+import './components/vibetunnel-settings.js';
 
 import { authClient } from './services/auth-client.js';
 import { pushNotificationService } from './services/push-notification-service.js';
@@ -50,8 +50,8 @@ interface SessionViewElement extends HTMLElement {
   } | null;
 }
 
-@customElement('shellops-app')
-export class ShellOpsApp extends LitElement {
+@customElement('vibetunnel-app')
+export class VibeTunnelApp extends LitElement {
   // Disable shadow DOM to use Tailwind
   createRenderRoot() {
     return this;
@@ -76,7 +76,7 @@ export class ShellOpsApp extends LitElement {
   @state() private mediaState: MediaQueryState = responsiveObserver.getCurrentState();
   @state() private hasActiveOverlay = false;
   @state() private keyboardCaptureActive = true;
-  @state() private shellopsNavView: 'sessions' | 'endpoints' | 'settings' | 'ssh-keys' = 'sessions';
+  @state() private vibetunnelNavView: 'sessions' | 'endpoints' | 'settings' | 'ssh-keys' = 'sessions';
   private initialLoadComplete = false;
   private responsiveObserverInitialized = false;
   private initialRenderComplete = false;
@@ -382,7 +382,7 @@ export class ShellOpsApp extends LitElement {
       return;
     }
 
-    // ShellOps-specific shortcuts below this line
+    // VibeTunnel-specific shortcuts below this line
 
     // Handle Cmd+O / Ctrl+O to open file browser (only in list view)
     if ((e.metaKey || e.ctrlKey) && e.key === 'o' && this.currentView === 'list') {
@@ -1484,13 +1484,13 @@ export class ShellOpsApp extends LitElement {
   private handleCloseSettings = () => {
     this.showSettings = false;
     // Return to sessions view when closing settings
-    this.shellopsNavView = 'sessions';
+    this.vibetunnelNavView = 'sessions';
   };
 
-  private handleShellopsNavChange = (
+  private handleVibeTunnelNavChange = (
     e: CustomEvent<{ view: 'sessions' | 'endpoints' | 'settings' | 'ssh-keys' }>
   ) => {
-    this.shellopsNavView = e.detail.view;
+    this.vibetunnelNavView = e.detail.view;
     // When navigating away from sessions, clear any selected session
     if (e.detail.view !== 'sessions') {
       this.selectedSessionId = null;
@@ -1569,7 +1569,7 @@ export class ShellOpsApp extends LitElement {
         serverMap.set(serverId, {
           id: serverId,
           name: serverName,
-          color: hasActiveSession ? '#22C55E' : '#FBBF24',
+          color: hasActiveSession ? 'var(--color-primary)' : '#FBBF24',
         });
       }
     }
@@ -1731,7 +1731,7 @@ export class ShellOpsApp extends LitElement {
           ? html`
             <div class="fixed top-4 right-4" style="z-index: ${Z_INDEX.MODAL_BACKDROP};">
               <div
-                class="bg-status-error text-bg-elevated px-4 py-2 rounded shadow-lg font-mono text-sm"
+                class="bg-status-error text-bg-elevated px-4 py-2 rounded shadow-lg font-ui text-sm"
               >
                 ${this.errorMessage}
                 <button
@@ -1756,7 +1756,7 @@ export class ShellOpsApp extends LitElement {
           ? html`
             <div class="fixed top-4 right-4" style="z-index: ${Z_INDEX.MODAL_BACKDROP};">
               <div
-                class="bg-status-success text-bg-elevated px-4 py-2 rounded shadow-lg font-mono text-sm"
+                class="bg-status-success text-bg-elevated px-4 py-2 rounded shadow-lg font-ui text-sm"
               >
                 ${this.successMessage}
                 <button
@@ -1800,18 +1800,18 @@ export class ShellOpsApp extends LitElement {
               ></file-browser>
             `
             : html`
-      <!-- ShellOps V3 Layout -->
+      <!-- VibeTunnel V3 Layout -->
       <div class="flex h-screen overflow-hidden" style="background: var(--color-bg);">
-        <!-- ShellOps Sidebar (240px) - Hidden on mobile -->
+        <!-- VibeTunnel Sidebar (240px) - Hidden on mobile -->
         <div class="hidden sm:block flex-shrink-0">
-          <shellops-sidebar
-            .activeView=${this.shellopsNavView}
+          <vibetunnel-sidebar
+            .activeView=${this.vibetunnelNavView}
             .userInitial=${(authClient.getCurrentUser()?.userId || 'A').charAt(0).toUpperCase()}
             .userName=${authClient.getCurrentUser()?.userId || 'Admin'}
-            @nav-change=${this.handleShellopsNavChange}
+            @nav-change=${this.handleVibeTunnelNavChange}
             @quick-action=${this.handleSidebarQuickAction}
             @logout-click=${this.handleLogout}
-          ></shellops-sidebar>
+          ></vibetunnel-sidebar>
         </div>
 
         <!-- Main Content Area -->
@@ -1820,15 +1820,15 @@ export class ShellOpsApp extends LitElement {
           style="background: var(--color-bg-secondary); border-radius: 16px 0 0 16px;"
         >
           ${
-            this.shellopsNavView === 'settings'
+            this.vibetunnelNavView === 'settings'
               ? html`
-                  <!-- ShellOps V3 Settings View -->
-                  <shellops-settings
+                  <!-- VibeTunnel V3 Settings View -->
+                  <vibetunnel-settings
                     class="flex-1"
                     @back=${() => {
-                      this.shellopsNavView = 'sessions';
+                      this.vibetunnelNavView = 'sessions';
                     }}
-                  ></shellops-settings>
+                  ></vibetunnel-settings>
                 `
               : this.selectedSessionId && showSplitView
                 ? html`
@@ -1859,7 +1859,7 @@ export class ShellOpsApp extends LitElement {
                   <!-- Sessions Dashboard -->
                   <div class="flex-1 flex flex-col overflow-hidden p-4 sm:p-8 gap-4 sm:gap-8 pb-24 sm:pb-8">
                     <!-- Header -->
-                    <shellops-header
+                    <vibetunnel-header
                       .title=${'Sessions'}
                       .activeCount=${this.sessions.filter((s) => s.status === 'running').length}
                       @create-session=${this.handleCreateSession}
@@ -1867,10 +1867,10 @@ export class ShellOpsApp extends LitElement {
                         // TODO: Implement search filtering
                         logger.log('Search:', e.detail.query);
                       }}
-                    ></shellops-header>
+                    ></vibetunnel-header>
 
                     <!-- Filter Bar -->
-                    <shellops-filter-bar
+                    <vibetunnel-filter-bar
                       .servers=${this.getUniqueServers()}
                       .selectedServer=${null}
                       .totalSessions=${this.sessions.length}
@@ -1879,7 +1879,7 @@ export class ShellOpsApp extends LitElement {
                         // TODO: Implement server filtering
                         logger.log('Filter:', e.detail.serverId);
                       }}
-                    ></shellops-filter-bar>
+                    ></vibetunnel-filter-bar>
 
                     <!-- Session Grid -->
                     <div class="flex-1 overflow-auto">
@@ -1914,13 +1914,13 @@ export class ShellOpsApp extends LitElement {
         >
           <button
             @click=${() => {
-              this.shellopsNavView = 'sessions';
+              this.vibetunnelNavView = 'sessions';
             }}
             class="flex flex-col items-center gap-1 p-2"
           >
             <svg
               class="w-6 h-6"
-              style="color: ${this.shellopsNavView === 'sessions' ? 'var(--color-primary)' : '#737373'};"
+              style="color: ${this.vibetunnelNavView === 'sessions' ? 'var(--color-primary)' : '#737373'};"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -1933,8 +1933,8 @@ export class ShellOpsApp extends LitElement {
               />
             </svg>
             <span
-              class="text-[10px] font-mono"
-              style="color: ${this.shellopsNavView === 'sessions' ? 'var(--color-primary)' : '#737373'};"
+              class="text-[10px] font-ui"
+              style="color: ${this.vibetunnelNavView === 'sessions' ? 'var(--color-primary)' : '#737373'};"
             >
               Sessions
             </span>
@@ -1942,7 +1942,7 @@ export class ShellOpsApp extends LitElement {
           <button
             @click=${this.handleCreateSession}
             class="flex items-center justify-center w-12 h-12 -mt-4 rounded-full"
-            style="background: var(--color-primary); box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);"
+            style="background: var(--color-primary); box-shadow: 0 4px 16px var(--color-primary-border);"
           >
             <svg class="w-6 h-6" style="color: var(--color-bg);" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -1954,7 +1954,7 @@ export class ShellOpsApp extends LitElement {
           >
             <svg
               class="w-6 h-6"
-              style="color: ${this.shellopsNavView === 'settings' ? 'var(--color-primary)' : '#737373'};"
+              style="color: ${this.vibetunnelNavView === 'settings' ? 'var(--color-primary)' : '#737373'};"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -1968,8 +1968,8 @@ export class ShellOpsApp extends LitElement {
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
             </svg>
             <span
-              class="text-[10px] font-mono"
-              style="color: ${this.shellopsNavView === 'settings' ? 'var(--color-primary)' : '#737373'};"
+              class="text-[10px] font-ui"
+              style="color: ${this.vibetunnelNavView === 'settings' ? 'var(--color-primary)' : '#737373'};"
             >
               Settings
             </span>

@@ -83,7 +83,7 @@ export const mockAsciinemaHeader = {
 };
 
 export const mockAsciinemaEvents = [
-  [0, 'o', 'Welcome to ShellOps\\r\\n'],
+  [0, 'o', 'Welcome to VibeTunnel\\r\\n'],
   [0.5, 'o', '$ '],
   [1, 'i', 'ls'],
   [1.1, 'o', 'ls\\r\\n'],
@@ -257,7 +257,7 @@ export const mockRealWorldAsciinema = {
     [
       1362.29,
       'o',
-      '\u001b[38;2;215;119;87m│\u001b[39m   \u001b[38;2;153;153;153mcwd: /Users/badlogic/workspaces/shellops/web\u001b[39m  \u001b[38;2;215;119;87m│\u001b[39m\\r\\n',
+      '\u001b[38;2;215;119;87m│\u001b[39m   \u001b[38;2;153;153;153mcwd: /Users/badlogic/workspaces/vibetunnel/web\u001b[39m  \u001b[38;2;215;119;87m│\u001b[39m\\r\\n',
     ],
     [
       1362.29,

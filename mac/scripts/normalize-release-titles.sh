@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # =============================================================================
-# ShellOps Release Title Normalizer
+# VibeTunnel Release Title Normalizer
 # =============================================================================
 #
 # This script updates GitHub release titles to use a consistent format:
-# From: "ShellOps 1.0.0-beta.10"
-# To:   "ShellOps 1.0.0 Beta 10"
+# From: "VibeTunnel 1.0.0-beta.10"
+# To:   "VibeTunnel 1.0.0 Beta 10"
 #
 # USAGE:
 #   ./scripts/normalize-release-titles.sh [--dry-run]
@@ -36,9 +36,9 @@ normalize_title() {
     local title="$1"
     local normalized="$title"
     
-    # Pattern: ShellOps X.Y.Z-beta.N -> ShellOps X.Y.Z Beta N
-    # Also handle: ShellOps X.Y-beta.N -> ShellOps X.Y.0 Beta N
-    if [[ "$title" =~ ^(ShellOps[[:space:]]+)([0-9]+\.[0-9]+(\.[0-9]+)?)-beta\.([0-9]+)(.*)$ ]]; then
+    # Pattern: VibeTunnel X.Y.Z-beta.N -> VibeTunnel X.Y.Z Beta N
+    # Also handle: VibeTunnel X.Y-beta.N -> VibeTunnel X.Y.0 Beta N
+    if [[ "$title" =~ ^(VibeTunnel[[:space:]]+)([0-9]+\.[0-9]+(\.[0-9]+)?)-beta\.([0-9]+)(.*)$ ]]; then
         local prefix="${BASH_REMATCH[1]}"
         local version="${BASH_REMATCH[2]}"
         local beta_num="${BASH_REMATCH[4]}"
@@ -52,8 +52,8 @@ normalize_title() {
         normalized="${prefix}${version} Beta ${beta_num}${suffix}"
     fi
     
-    # Pattern: ShellOps X.Y.Z-alpha.N -> ShellOps X.Y.Z Alpha N
-    if [[ "$title" =~ ^(ShellOps[[:space:]]+)([0-9]+\.[0-9]+(\.[0-9]+)?)-alpha\.([0-9]+)(.*)$ ]]; then
+    # Pattern: VibeTunnel X.Y.Z-alpha.N -> VibeTunnel X.Y.Z Alpha N
+    if [[ "$title" =~ ^(VibeTunnel[[:space:]]+)([0-9]+\.[0-9]+(\.[0-9]+)?)-alpha\.([0-9]+)(.*)$ ]]; then
         local prefix="${BASH_REMATCH[1]}"
         local version="${BASH_REMATCH[2]}"
         local alpha_num="${BASH_REMATCH[4]}"
@@ -67,8 +67,8 @@ normalize_title() {
         normalized="${prefix}${version} Alpha ${alpha_num}${suffix}"
     fi
     
-    # Pattern: ShellOps X.Y.Z-rc.N -> ShellOps X.Y.Z RC N
-    if [[ "$title" =~ ^(ShellOps[[:space:]]+)([0-9]+\.[0-9]+(\.[0-9]+)?)-rc\.([0-9]+)(.*)$ ]]; then
+    # Pattern: VibeTunnel X.Y.Z-rc.N -> VibeTunnel X.Y.Z RC N
+    if [[ "$title" =~ ^(VibeTunnel[[:space:]]+)([0-9]+\.[0-9]+(\.[0-9]+)?)-rc\.([0-9]+)(.*)$ ]]; then
         local prefix="${BASH_REMATCH[1]}"
         local version="${BASH_REMATCH[2]}"
         local rc_num="${BASH_REMATCH[4]}"

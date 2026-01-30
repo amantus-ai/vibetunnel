@@ -8,7 +8,7 @@
  * @returns Base repository name without worktree suffixes
  *
  * Examples:
- * - /path/to/shellops-treetest -> shellops
+ * - /path/to/vibetunnel-treetest -> vibetunnel
  * - /path/to/myrepo-worktree -> myrepo
  * - /path/to/project-wt-feature -> project
  * - /path/to/normalrepo -> normalrepo

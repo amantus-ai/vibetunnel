@@ -1,5 +1,5 @@
 /**
- * ShellOps V3 Filter Bar Component
+ * VibeTunnel V3 Filter Bar Component
  *
  * Filter bar with:
  * - Server filter chips
@@ -16,8 +16,8 @@ export interface ServerFilter {
   color: string; // Dot color - green for active, amber for warning, etc.
 }
 
-@customElement('shellops-filter-bar')
-export class ShellOpsFilterBar extends LitElement {
+@customElement('vibetunnel-filter-bar')
+export class VibeTunnelFilterBar extends LitElement {
   // Disable shadow DOM to use Tailwind
   createRenderRoot() {
     return this;
@@ -71,7 +71,7 @@ export class ShellOpsFilterBar extends LitElement {
                 d="M21.75 17.25v-.228a4.5 4.5 0 0 0-.12-1.03l-2.268-9.64a3.375 3.375 0 0 0-3.285-2.602H7.923a3.375 3.375 0 0 0-3.285 2.602l-2.268 9.64a4.5 4.5 0 0 0-.12 1.03v.228m19.5 0a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3m19.5 0a3 3 0 0 0-3-3H5.25a3 3 0 0 0-3 3m16.5 0h.008v.008h-.008v-.008Zm-3 0h.008v.008h-.008v-.008Z"
               />
             </svg>
-            <span class="font-mono text-xs font-medium" style="color: #525252;">
+            <span class="font-ui text-xs font-medium" style="color: #525252;">
               Server:
             </span>
           </div>
@@ -79,10 +79,10 @@ export class ShellOpsFilterBar extends LitElement {
           <!-- All Chip -->
           <button
             @click=${() => this.handleFilterClick(null)}
-            class="flex-shrink-0 px-3 py-1.5 sm:py-1.5 rounded-lg sm:rounded-md font-mono text-xs sm:text-[11px] font-medium transition-all cursor-pointer"
+            class="flex-shrink-0 px-3 py-1.5 sm:py-1.5 rounded-lg sm:rounded-md font-ui text-xs sm:text-[11px] font-medium transition-all cursor-pointer"
             style="${
               this.selectedServer === null
-                ? 'background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); color: var(--color-primary);'
+                ? 'background: var(--color-primary-muted); border: 1px solid var(--color-primary-border); color: var(--color-primary);'
                 : 'background: rgba(255, 255, 255, 0.04); border: 1px solid transparent; color: #737373;'
             }"
           >
@@ -94,10 +94,10 @@ export class ShellOpsFilterBar extends LitElement {
             (server) => html`
               <button
                 @click=${() => this.handleFilterClick(server.id)}
-                class="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 sm:py-1.5 rounded-lg sm:rounded-md font-mono text-xs sm:text-[11px] font-medium transition-all cursor-pointer"
+                class="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 sm:py-1.5 rounded-lg sm:rounded-md font-ui text-xs sm:text-[11px] font-medium transition-all cursor-pointer"
                 style="${
                   this.selectedServer === server.id
-                    ? 'background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); color: var(--color-primary);'
+                    ? 'background: var(--color-primary-muted); border: 1px solid var(--color-primary-border); color: var(--color-primary);'
                     : 'background: rgba(255, 255, 255, 0.04); border: 1px solid transparent; color: #737373;'
                 }"
               >
@@ -113,7 +113,7 @@ export class ShellOpsFilterBar extends LitElement {
 
         <!-- Count and Clear - hidden on mobile, shown on desktop -->
         <div class="hidden sm:flex items-center gap-2 flex-shrink-0">
-          <span class="font-mono text-[11px]" style="color: #3B3B3B;">
+          <span class="font-ui text-[11px]" style="color: #3B3B3B;">
             Showing ${showingCount} session${showingCount !== 1 ? 's' : ''}
           </span>
           ${
@@ -121,7 +121,7 @@ export class ShellOpsFilterBar extends LitElement {
               ? html`
                 <button
                   @click=${this.handleClearFilters}
-                  class="flex items-center gap-1 px-2 py-1 rounded font-mono text-[11px] transition-all cursor-pointer hover:bg-white/5"
+                  class="flex items-center gap-1 px-2 py-1 rounded font-ui text-[11px] transition-all cursor-pointer hover:bg-white/5"
                   style="color: #525252;"
                 >
                   <svg
@@ -146,6 +146,6 @@ export class ShellOpsFilterBar extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'shellops-filter-bar': ShellOpsFilterBar;
+    'vibetunnel-filter-bar': VibeTunnelFilterBar;
   }
 }

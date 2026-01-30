@@ -81,7 +81,7 @@ export async function createTestGitRepo(options: CreateTestRepoOptions = {}): Pr
   } = options;
 
   // Create temporary directory
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'shellops-test-'));
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'vibetunnel-test-'));
   const repoPath = path.join(tmpDir, name);
   await fs.mkdir(repoPath, { recursive: true });
 

@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # =============================================================================
-# ShellOps Swift Linting and Formatting Script
+# VibeTunnel Swift Linting and Formatting Script
 # =============================================================================
 #
-# This script runs SwiftFormat and SwiftLint on the ShellOps codebase
+# This script runs SwiftFormat and SwiftLint on the VibeTunnel codebase
 # to ensure consistent code style and catch potential issues.
 #
 # USAGE:

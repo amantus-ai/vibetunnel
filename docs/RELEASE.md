@@ -1,10 +1,10 @@
-# ShellOps Release Documentation
+# VibeTunnel Release Documentation
 
-This guide provides comprehensive documentation for creating and publishing releases for ShellOps, a macOS menu bar application using Sparkle 2.x for automatic updates.
+This guide provides comprehensive documentation for creating and publishing releases for VibeTunnel, a macOS menu bar application using Sparkle 2.x for automatic updates.
 
 ## ✅ Standard Release Flow (RepoBar parity)
 1) **Version + changelog**
-   - Update `ShellOps/version.xcconfig` (`MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`).
+   - Update `VibeTunnel/version.xcconfig` (`MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`).
    - Sync `../web/package.json` version.
    - Finalize the top section in `CHANGELOG.md` (no “Unreleased”).
 
@@ -23,14 +23,14 @@ This guide provides comprehensive documentation for creating and publishing rele
 ### Standard Release Flow
 ```bash
 # 1. Update versions
-vim ShellOps/version.xcconfig  # Set MARKETING_VERSION and increment CURRENT_PROJECT_VERSION
+vim VibeTunnel/version.xcconfig  # Set MARKETING_VERSION and increment CURRENT_PROJECT_VERSION
 vim ../web/package.json          # Match version with MARKETING_VERSION
 
 # 2. Update changelog
 vim CHANGELOG.md                 # Add entry for new version
 
 # 3. Run release
-export SPARKLE_ACCOUNT="ShellOps"
+export SPARKLE_ACCOUNT="VibeTunnel"
 ./scripts/release.sh beta 5      # For beta.5
 ./scripts/release.sh stable      # For stable release
 
@@ -46,18 +46,18 @@ export SPARKLE_ACCOUNT="ShellOps"
 #### After Notarization Success
 ```bash
 # 1. Create DMG (if missing)
-./scripts/create-dmg.sh build/Build/Products/Release/ShellOps.app
+./scripts/create-dmg.sh build/Build/Products/Release/VibeTunnel.app
 
 # 2. Create GitHub release
 gh release create "v1.0.0-beta.5" \
-  --title "ShellOps 1.0.0-beta.5" \
+  --title "VibeTunnel 1.0.0-beta.5" \
   --prerelease \
   --notes-file RELEASE_NOTES.md \
-  build/ShellOps-*.dmg \
-  build/ShellOps-*.zip
+  build/VibeTunnel-*.dmg \
+  build/VibeTunnel-*.zip
 
 # 3. Get Sparkle signature (ALWAYS use -f flag!)
-sign_update -f private/sparkle_private_key build/ShellOps-*.dmg --account ShellOps
+sign_update -f private/sparkle_private_key build/VibeTunnel-*.dmg --account VibeTunnel
 
 # 4. Update appcast manually (add to appcast-prerelease.xml)
 # 5. Commit and push
@@ -68,7 +68,7 @@ git push
 
 ## 🎯 Release Process Overview
 
-ShellOps uses an automated release process that handles all the complexity of:
+VibeTunnel uses an automated release process that handles all the complexity of:
 - Building universal binaries containing both arm64 (Apple Silicon) and x86_64 (Intel)
 - Code signing and notarization with Apple
 - Creating DMG and ZIP files
@@ -80,7 +80,7 @@ ShellOps uses an automated release process that handles all the complexity of:
 ### Critical Version Rules
 
 1. **Version Configuration Source of Truth**
-   - ALL version information is stored in `ShellOps/version.xcconfig`
+   - ALL version information is stored in `VibeTunnel/version.xcconfig`
    - The Xcode project must reference these values using `$(MARKETING_VERSION)` and `$(CURRENT_PROJECT_VERSION)`
    - NEVER hardcode versions in the Xcode project
 
@@ -169,7 +169,7 @@ Before running ANY release commands, verify these items:
 ### Version Verification
 - [ ] **⚠️ CRITICAL: Version in version.xcconfig is EXACTLY what you want to release**
   ```bash
-  grep MARKETING_VERSION ShellOps/version.xcconfig
+  grep MARKETING_VERSION VibeTunnel/version.xcconfig
   # For beta.2 should show: MARKETING_VERSION = 1.0.0-beta.2
   # NOT: MARKETING_VERSION = 1.0.0
   ```
@@ -177,7 +177,7 @@ Before running ANY release commands, verify these items:
   
 - [ ] **Build number is incremented**
   ```bash
-  grep CURRENT_PROJECT_VERSION ShellOps/version.xcconfig
+  grep CURRENT_PROJECT_VERSION VibeTunnel/version.xcconfig
   # Must be higher than the last release
   ```
   
@@ -198,7 +198,7 @@ Before running ANY release commands, verify these items:
 ### Environment Variables
 - [ ] Set required environment variables:
   ```bash
-  export SPARKLE_ACCOUNT="ShellOps"
+  export SPARKLE_ACCOUNT="VibeTunnel"
   export APP_STORE_CONNECT_KEY_ID="YOUR_KEY_ID"
   export APP_STORE_CONNECT_ISSUER_ID="YOUR_ISSUER_ID"
   export APP_STORE_CONNECT_API_KEY_P8="-----BEGIN PRIVATE KEY-----
@@ -211,7 +211,7 @@ Before running ANY release commands, verify these items:
   ```bash
   ./scripts/clean.sh
   rm -rf build DerivedData
-  rm -rf ~/Library/Developer/Xcode/DerivedData/ShellOps-*
+  rm -rf ~/Library/Developer/Xcode/DerivedData/VibeTunnel-*
   ```
 
 ### File Verification
@@ -220,17 +220,17 @@ Before running ANY release commands, verify these items:
 - [ ] No stuck DMG volumes in /Volumes/
   ```bash
   # Check for stuck volumes
-  ls /Volumes/ShellOps*
+  ls /Volumes/VibeTunnel*
   # Unmount if needed
-  for volume in /Volumes/ShellOps*; do
+  for volume in /Volumes/VibeTunnel*; do
       hdiutil detach "$volume" -force
   done
   ```
 - [ ] **Check for unexpected files in the app bundle**
   ```bash
   # Check for node_modules or other development files
-  find build/Build/Products/Release/ShellOps.app -name "node_modules" -type d
-  find build/Build/Products/Release/ShellOps.app -name "*.jar" -type f
+  find build/Build/Products/Release/VibeTunnel.app -name "node_modules" -type d
+  find build/Build/Products/Release/VibeTunnel.app -name "*.jar" -type f
   # Should return empty - no development files in release build
   ```
 
@@ -253,7 +253,7 @@ These scripts validate your environment is ready for release.
 2. The release script will NOT add additional suffixes - it uses the version as-is
 3. Always verify the version before proceeding:
    ```bash
-   grep MARKETING_VERSION ShellOps/version.xcconfig
+   grep MARKETING_VERSION VibeTunnel/version.xcconfig
    # Should show: MARKETING_VERSION = 1.0.0-beta.2
    ```
 
@@ -261,12 +261,12 @@ These scripts validate your environment is ready for release.
 it will create `1.0.0-beta.2-beta.2` which is wrong!
 
 ### Step 3: Create/Update CHANGELOG.md
-Before creating any release, ensure the CHANGELOG.md file exists in the project root (`/shellops/CHANGELOG.md`) and contains a proper section for the version being released:
+Before creating any release, ensure the CHANGELOG.md file exists in the project root (`/vibetunnel/CHANGELOG.md`) and contains a proper section for the version being released:
 
 ```markdown
 # Changelog
 
-All notable changes to ShellOps will be documented in this file.
+All notable changes to VibeTunnel will be documented in this file.
 
 ## [1.0.0-beta.2] - 2025-06-19
 
@@ -278,7 +278,7 @@ All notable changes to ShellOps will be documented in this file.
 **CRITICAL**: The release process uses the CHANGELOG.md file in the project root as the single source of truth for release notes. The changelog must be updated with the new version section BEFORE running the release script.
 
 **Key Points**:
-- **Location**: CHANGELOG.md must be at `/shellops/CHANGELOG.md` (project root, NOT in `mac/`)
+- **Location**: CHANGELOG.md must be at `/vibetunnel/CHANGELOG.md` (project root, NOT in `mac/`)
 - **No RELEASE_NOTES.md files**: The release process does NOT use RELEASE_NOTES.md files
 - **Per-Version Extraction**: The release script automatically extracts ONLY the changelog section for the specific version being released
 - **GitHub Release**: Uses the extracted markdown content directly (via `generate-release-notes.sh`)
@@ -322,7 +322,7 @@ screen -S release
 - Version consistency verification
 - Notarization credential validation
 
-**IMPORTANT**: The release script does NOT automatically increment build numbers. You must manually update the build number in ShellOps.xcodeproj before running the script, or it will fail the pre-flight check.
+**IMPORTANT**: The release script does NOT automatically increment build numbers. You must manually update the build number in VibeTunnel.xcodeproj before running the script, or it will fail the pre-flight check.
 
 The script will:
 1. Validate build number is unique and incrementing
@@ -342,7 +342,7 @@ The script will:
 - **Monitor app size**: Verify the DMG size is reasonable (expected: ~42-44 MB)
   ```bash
   # Check DMG size
-  ls -lh build/ShellOps-*.dmg
+  ls -lh build/VibeTunnel-*.dmg
   # Compare with previous releases
   gh release list --limit 5 | grep -E "beta|stable"
   # Download and check sizes
@@ -357,7 +357,7 @@ The script will:
   ```bash
   # Download and verify the DMG signature
   curl -L -o test.dmg <github-dmg-url>
-  sign_update -f private/sparkle_private_key test.dmg --account ShellOps
+  sign_update -f private/sparkle_private_key test.dmg --account VibeTunnel
   # Compare with appcast sparkle:edSignature
   ```
 - Test updating from a previous version
@@ -369,7 +369,7 @@ The script will:
   - Run `./scripts/validate-sparkle-signature.sh` to verify all signatures
 - Verify Stats.store is serving the updated appcast (1-minute cache):
   ```bash
-  curl -H "User-Agent: ShellOps/X.X.X Sparkle/2.7.1" \
+  curl -H "User-Agent: VibeTunnel/X.X.X Sparkle/2.7.1" \
        https://stats.store/api/v1/appcast/appcast-prerelease.xml | \
        grep sparkle:edSignature
   ```
@@ -389,14 +389,14 @@ If the automated script fails, here's the manual process:
 ### 1. Update Version Numbers
 Edit version configuration files:
 
-**macOS App** (`ShellOps/version.xcconfig`):
+**macOS App** (`VibeTunnel/version.xcconfig`):
 - Update MARKETING_VERSION
 - Update CURRENT_PROJECT_VERSION (build number)
 
 **Web Frontend** (`../web/package.json`):
 - Update "version" field to match MARKETING_VERSION
 
-**Note**: The Xcode project file is named `ShellOps-Mac.xcodeproj`
+**Note**: The Xcode project file is named `VibeTunnel-Mac.xcodeproj`
 
 ### 2. Clean and Build Universal Binary
 ```bash
@@ -406,30 +406,30 @@ rm -rf build DerivedData
 
 ### 3. Sign and Notarize
 ```bash
-./scripts/sign-and-notarize.sh build/Build/Products/Release/ShellOps.app
+./scripts/sign-and-notarize.sh build/Build/Products/Release/VibeTunnel.app
 ```
 
 ### 4. Create DMG and ZIP
 ```bash
-./scripts/create-dmg.sh build/Build/Products/Release/ShellOps.app
-./scripts/create-zip.sh build/Build/Products/Release/ShellOps.app
+./scripts/create-dmg.sh build/Build/Products/Release/VibeTunnel.app
+./scripts/create-zip.sh build/Build/Products/Release/VibeTunnel.app
 ```
 
 ### 5. Sign DMG for Sparkle
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 # CRITICAL: Always use -f flag with private key file!
-sign_update -f private/sparkle_private_key build/ShellOps-X.X.X.dmg
+sign_update -f private/sparkle_private_key build/VibeTunnel-X.X.X.dmg
 ```
 
 ### 6. Create GitHub Release
 ```bash
 gh release create "v1.0.0-beta.1" \
-  --title "ShellOps 1.0.0-beta.1" \
+  --title "VibeTunnel 1.0.0-beta.1" \
   --notes "Beta release 1" \
   --prerelease \
-  build/ShellOps-*.dmg \
-  build/ShellOps-*.zip
+  build/VibeTunnel-*.dmg \
+  build/VibeTunnel-*.zip
 ```
 
 ### 7. Update Appcast
@@ -444,23 +444,23 @@ git push
 
 ```bash
 # Check release artifacts
-ls -la build/ShellOps-*.dmg
-ls -la build/ShellOps-*.zip
+ls -la build/VibeTunnel-*.dmg
+ls -la build/VibeTunnel-*.zip
 
 # Check GitHub release
 gh release view v1.0.0-beta.5
 
 # Verify Sparkle signature (ALWAYS use -f flag!)
 curl -L -o test.dmg [github-dmg-url]
-sign_update -f private/sparkle_private_key test.dmg --account ShellOps
+sign_update -f private/sparkle_private_key test.dmg --account VibeTunnel
 
 # Check appcast
 grep "1.0.0-beta.5" ../appcast-prerelease.xml
 
 # Verify app in DMG
 hdiutil attach test.dmg
-spctl -a -vv /Volumes/ShellOps/ShellOps.app
-hdiutil detach /Volumes/ShellOps
+spctl -a -vv /Volumes/VibeTunnel/VibeTunnel.app
+hdiutil detach /Volumes/VibeTunnel
 ```
 
 ## ⚠️ Critical Requirements
@@ -501,7 +501,7 @@ YOUR_PRIVATE_KEY_CONTENT
 
 **ALWAYS use the file-based private key for signing!**
 
-ShellOps uses EdDSA signatures for Sparkle updates. The correct private key is stored at:
+VibeTunnel uses EdDSA signatures for Sparkle updates. The correct private key is stored at:
 - `private/sparkle_ed_private_key` (clean key file - REQUIRED for sign_update)
 - `private/sparkle_private_key` (commented version for documentation)
 
@@ -514,10 +514,10 @@ ShellOps uses EdDSA signatures for Sparkle updates. The correct private key is s
 **ALWAYS use the `-f` flag when signing:**
 ```bash
 # ✅ CORRECT - Uses file-based key
-sign_update -f private/sparkle_ed_private_key build/ShellOps-*.dmg
+sign_update -f private/sparkle_ed_private_key build/VibeTunnel-*.dmg
 
 # ❌ WRONG - May use keychain key
-sign_update build/ShellOps-*.dmg
+sign_update build/VibeTunnel-*.dmg
 ```
 
 The public key in Info.plist is: `AGCY8w5vHirVfGGDGc8Szc5iuOqupZSh9pMj/Qs67XI=`
@@ -529,9 +529,9 @@ The public key in Info.plist is: `AGCY8w5vHirVfGGDGc8Szc5iuOqupZSh9pMj/Qs67XI=`
 
 ### Sparkle Requirements for Non-Sandboxed Apps
 
-ShellOps is not sandboxed, which simplifies Sparkle configuration:
+VibeTunnel is not sandboxed, which simplifies Sparkle configuration:
 
-#### 1. Entitlements (ShellOps.entitlements)
+#### 1. Entitlements (VibeTunnel.entitlements)
 ```xml
 <!-- App is NOT sandboxed -->
 <key>com.apple.security.app-sandbox</key>
@@ -559,12 +559,12 @@ The notarization script handles all signing correctly:
 The `notarize-app.sh` script should sign the app:
 ```bash
 # Sign the app WITHOUT --deep flag
-codesign --force --sign "Developer ID Application" --entitlements ShellOps.entitlements --options runtime ShellOps.app
+codesign --force --sign "Developer ID Application" --entitlements VibeTunnel.entitlements --options runtime VibeTunnel.app
 ```
 
 ### Architecture Support
 
-ShellOps uses universal binaries that include both architectures:
+VibeTunnel uses universal binaries that include both architectures:
 - **Apple Silicon (arm64)**: Optimized for M1+ Macs
 - **Intel (x86_64)**: For Intel-based Macs
 
@@ -576,7 +576,7 @@ The build system creates a single universal binary that works on all Mac archite
 
 ## 📋 Update Channels
 
-ShellOps supports two update channels:
+VibeTunnel supports two update channels:
 
 1. **Stable Channel** (`appcast.xml`)
    - Production releases only
@@ -616,7 +616,7 @@ ShellOps supports two update channels:
 **Cause**: Xcode project is not properly configured to use version.xcconfig values.
 
 **Solution**: 
-1. Open ShellOps.xcodeproj in Xcode
+1. Open VibeTunnel.xcodeproj in Xcode
 2. Select the project, then the target
 3. In Build Settings, ensure:
    - MARKETING_VERSION = `$(MARKETING_VERSION)`
@@ -644,19 +644,19 @@ ShellOps supports two update channels:
 **Solution**:
 ```bash
 # 1. Check app bundle contents
-find build/Build/Products/Release/ShellOps.app -name "node_modules" -type d
-find build/Build/Products/Release/ShellOps.app -name "*.jar" -type f
-find build/Build/Products/Release/ShellOps.app -type f -size +1M -ls
+find build/Build/Products/Release/VibeTunnel.app -name "node_modules" -type d
+find build/Build/Products/Release/VibeTunnel.app -name "*.jar" -type f
+find build/Build/Products/Release/VibeTunnel.app -type f -size +1M -ls
 
 # 2. Compare with previous release
 # Extract previous DMG
-hdiutil attach ShellOps-previous.dmg
-du -sh /Volumes/ShellOps/ShellOps.app/Contents/*
-hdiutil detach /Volumes/ShellOps
+hdiutil attach VibeTunnel-previous.dmg
+du -sh /Volumes/VibeTunnel/VibeTunnel.app/Contents/*
+hdiutil detach /Volumes/VibeTunnel
 
 # 3. Clean and rebuild
 ./scripts/clean.sh
-rm -rf ~/Library/Developer/Xcode/DerivedData/ShellOps-*
+rm -rf ~/Library/Developer/Xcode/DerivedData/VibeTunnel-*
 ./scripts/build.sh --configuration Release
 ```
 
@@ -676,7 +676,7 @@ rm -rf ~/Library/Developer/Xcode/DerivedData/ShellOps-*
 1. Update package.json to match version.xcconfig:
    ```bash
    # Check current versions
-   grep MARKETING_VERSION ShellOps/version.xcconfig
+   grep MARKETING_VERSION VibeTunnel/version.xcconfig
    grep "version" ../web/package.json
    
    # Update web version to match
@@ -718,18 +718,18 @@ git stash pop          # Restore changes
 
 **Symptoms**:
 - `hdiutil: create failed - Resource temporarily unavailable`
-- Multiple ShellOps volumes visible in Finder
+- Multiple VibeTunnel volumes visible in Finder
 - DMG creation fails repeatedly
 
 **Solution**:
 ```bash
-# Manually unmount all ShellOps volumes
-for volume in /Volumes/ShellOps*; do
+# Manually unmount all VibeTunnel volumes
+for volume in /Volumes/VibeTunnel*; do
     hdiutil detach "$volume" -force
 done
 
 # Kill any stuck DMG processes
-pkill -f "ShellOps.*\.dmg"
+pkill -f "VibeTunnel.*\.dmg"
 ```
 
 **Prevention**: Scripts now clean up volumes automatically before DMG creation.
@@ -742,7 +742,7 @@ pkill -f "ShellOps.*\.dmg"
    ```bash
    grep -E '<sparkle:version>[0-9]+</sparkle:version>' ../appcast*.xml
    ```
-2. Update `mac/ShellOps/version.xcconfig`:
+2. Update `mac/VibeTunnel/version.xcconfig`:
    ```
    CURRENT_PROJECT_VERSION = <new_unique_number>
    ```
@@ -788,7 +788,7 @@ xcrun notarytool log <submission-id> --key-id ...
 
 **Workaround**: 
 - Manually add entry to appcast-prerelease.xml
-- Use signature from: `sign_update [dmg] --account ShellOps`
+- Use signature from: `sign_update [dmg] --account VibeTunnel`
 - Follow existing entry format (see template below)
 
 ## 🔧 Troubleshooting Common Issues
@@ -804,23 +804,23 @@ If automated release fails after notarization:
 
 1. **Create DMG** (if missing):
    ```bash
-   ./scripts/create-dmg.sh build/Build/Products/Release/ShellOps.app
+   ./scripts/create-dmg.sh build/Build/Products/Release/VibeTunnel.app
    ```
 
 2. **Create GitHub Release**:
    ```bash
    gh release create "v$VERSION" \
-     --title "ShellOps $VERSION" \
+     --title "VibeTunnel $VERSION" \
      --notes-file RELEASE_NOTES.md \
      --prerelease \
-     build/ShellOps-*.dmg \
-     build/ShellOps-*.zip
+     build/VibeTunnel-*.dmg \
+     build/VibeTunnel-*.zip
    ```
 
 3. **Sign DMG for Sparkle**:
    ```bash
-   export SPARKLE_ACCOUNT="ShellOps"
-   sign_update build/ShellOps-$VERSION.dmg --account ShellOps
+   export SPARKLE_ACCOUNT="VibeTunnel"
+   sign_update build/VibeTunnel-$VERSION.dmg --account VibeTunnel
    ```
 
 4. **Update Appcast Manually**:
@@ -830,7 +830,7 @@ If automated release fails after notarization:
 ### "Update is improperly signed" Error
 **Problem**: Users see "The update is improperly signed and could not be validated."
 
-**Cause**: The DMG was signed with the wrong Sparkle key (default instead of ShellOps account).
+**Cause**: The DMG was signed with the wrong Sparkle key (default instead of VibeTunnel account).
 
 **Quick Fix**:
 ```bash
@@ -838,34 +838,34 @@ If automated release fails after notarization:
 curl -L -o fix.dmg <github-dmg-url>
 
 # 2. Generate correct signature
-sign_update fix.dmg --account ShellOps
+sign_update fix.dmg --account VibeTunnel
 
 # 3. Update appcast-prerelease.xml with the new sparkle:edSignature
 # 4. Commit and push
 ```
 
-**Prevention**: The updated scripts now always use `--account ShellOps`.
+**Prevention**: The updated scripts now always use `--account VibeTunnel`.
 
 ### Debug Sparkle Updates
 ```bash
-# Monitor ShellOps logs
-log stream --predicate 'process == "ShellOps"' --level debug
+# Monitor VibeTunnel logs
+log stream --predicate 'process == "VibeTunnel"' --level debug
 
 # Check XPC errors
-log stream --predicate 'process == "ShellOps"' | grep -i -E "(sparkle|xpc|installer)"
+log stream --predicate 'process == "VibeTunnel"' | grep -i -E "(sparkle|xpc|installer)"
 
 # Verify XPC services
-codesign -dvv "ShellOps.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc"
+codesign -dvv "VibeTunnel.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc"
 ```
 
 ### Verify Signing and Notarization
 ```bash
 # Check app signature
-./scripts/verify-app.sh build/ShellOps-1.0.0.dmg
+./scripts/verify-app.sh build/VibeTunnel-1.0.0.dmg
 
 # Verify XPC bundle IDs (should be org.sparkle-project.*)
 /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" \
-  "ShellOps.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc/Contents/Info.plist"
+  "VibeTunnel.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc/Contents/Info.plist"
 ```
 
 ### Appcast Issues
@@ -881,17 +881,17 @@ grep '<sparkle:version>' appcast-prerelease.xml
 
 ```xml
 <item>
-    <title>ShellOps VERSION</title>
-    <link>https://github.com/amantus-ai/shellops/releases/download/vVERSION/ShellOps-VERSION.dmg</link>
+    <title>VibeTunnel VERSION</title>
+    <link>https://github.com/arunsanna/vibetunnel/releases/download/vVERSION/VibeTunnel-VERSION.dmg</link>
     <sparkle:version>BUILD_NUMBER</sparkle:version>
     <sparkle:shortVersionString>VERSION</sparkle:shortVersionString>
     <description><![CDATA[
-        <h2>ShellOps VERSION</h2>
+        <h2>VibeTunnel VERSION</h2>
         <p><strong>Pre-release version</strong></p>
         <!-- Copy from CHANGELOG.md -->
     ]]></description>
     <pubDate>DATE</pubDate>
-    <enclosure url="https://github.com/amantus-ai/shellops/releases/download/vVERSION/ShellOps-VERSION.dmg" 
+    <enclosure url="https://github.com/arunsanna/vibetunnel/releases/download/vVERSION/VibeTunnel-VERSION.dmg" 
                sparkle:version="BUILD_NUMBER" 
                sparkle:shortVersionString="VERSION" 
                length="SIZE_IN_BYTES" 
@@ -915,7 +915,7 @@ grep '<sparkle:version>' appcast-prerelease.xml
 ### Wrong Sparkle Signature
 ```bash
 # 1. Get correct signature
-sign_update [dmg-url] --account ShellOps
+sign_update [dmg-url] --account VibeTunnel
 
 # 2. Update appcast-prerelease.xml with correct signature
 # 3. Commit and push immediately
@@ -925,7 +925,7 @@ sign_update [dmg-url] --account ShellOps
 ```bash
 # Users won't see update until appcast is fixed
 # Add entry manually following template above
-# Test with: curl https://raw.githubusercontent.com/amantus-ai/shellops/main/appcast-prerelease.xml
+# Test with: curl https://raw.githubusercontent.com/arunsanna/vibetunnel/main/appcast-prerelease.xml
 ```
 
 ### Build Number Conflict
@@ -941,12 +941,12 @@ sign_update [dmg-url] --account ShellOps
 **Important**: Files are not always where scripts expect them to be.
 
 **Key Locations**:
-- **Appcast files**: Located in project root (`/shellops/`), NOT in `mac/`
+- **Appcast files**: Located in project root (`/vibetunnel/`), NOT in `mac/`
   - `appcast.xml`
   - `appcast-prerelease.xml`
 - **CHANGELOG.md**: Can be in either:
   - `mac/CHANGELOG.md` (preferred by release script)
-  - Project root `/shellops/CHANGELOG.md` (common location)
+  - Project root `/vibetunnel/CHANGELOG.md` (common location)
 - **Sparkle private key**: Usually in `mac/private/sparkle_private_key`
 
 ## 📚 Helper Scripts
@@ -968,7 +968,7 @@ Reliably locates CHANGELOG.md from any directory:
 ```bash
 # Find the changelog file
 ./scripts/find-changelog.sh
-# Output: /path/to/shellops/CHANGELOG.md
+# Output: /path/to/vibetunnel/CHANGELOG.md
 ```
 
 #### `fix-release-changelogs.sh`
@@ -992,21 +992,21 @@ Updates existing GitHub releases to use per-version changelogs:
 find . -name sign_update -type f
 
 # Test signing with specific account
-./path/to/sign_update file.dmg -f private/sparkle_private_key -p --account ShellOps
+./path/to/sign_update file.dmg -f private/sparkle_private_key -p --account VibeTunnel
 ```
 
 ### Verify Appcast URLs
 ```bash
 # Check that appcast files are accessible
-curl -I https://raw.githubusercontent.com/amantus-ai/shellops/main/appcast.xml
-curl -I https://raw.githubusercontent.com/amantus-ai/shellops/main/appcast-prerelease.xml
+curl -I https://raw.githubusercontent.com/arunsanna/vibetunnel/main/appcast.xml
+curl -I https://raw.githubusercontent.com/arunsanna/vibetunnel/main/appcast-prerelease.xml
 ```
 
 ### Manual Appcast Generation
 ```bash
 # If automatic generation fails
 cd mac
-export SPARKLE_ACCOUNT="ShellOps"
+export SPARKLE_ACCOUNT="VibeTunnel"
 ./scripts/generate-appcast.sh
 ```
 
@@ -1020,10 +1020,10 @@ echo "Checking release status for v$VERSION..."
 
 # Check local artifacts
 echo -n "✓ Local DMG: "
-[ -f "build/ShellOps-$VERSION.dmg" ] && echo "EXISTS" || echo "MISSING"
+[ -f "build/VibeTunnel-$VERSION.dmg" ] && echo "EXISTS" || echo "MISSING"
 
 echo -n "✓ Local ZIP: "
-[ -f "build/ShellOps-$VERSION.zip" ] && echo "EXISTS" || echo "MISSING"
+[ -f "build/VibeTunnel-$VERSION.zip" ] && echo "EXISTS" || echo "MISSING"
 
 # Check GitHub
 echo -n "✓ GitHub Release: "
@@ -1178,7 +1178,7 @@ Where possible, run independent operations in parallel:
 
 ## Summary
 
-The ShellOps release process is complex but well-automated. The main challenges are:
+The VibeTunnel release process is complex but well-automated. The main challenges are:
 - Command timeouts during long operations (especially notarization)
 - Lack of resumability after failures
 - Missing progress indicators

@@ -334,7 +334,7 @@ export class Settings extends LitElement {
 
       // Step 5: Send test notification
       logger.debug('Step 5: Sending test notification');
-      await pushNotificationService.sendTestNotification('Test notification from ShellOps');
+      await pushNotificationService.sendTestNotification('Test notification from VibeTunnel');
 
       logger.log('✅ Test notification sent successfully');
       this.dispatchEvent(
@@ -387,11 +387,11 @@ export class Settings extends LitElement {
 
     try {
       // Show notification directly
-      await registration.showNotification('ShellOps Notifications Enabled', {
+      await registration.showNotification('VibeTunnel Notifications Enabled', {
         body: "You'll now receive notifications for session events",
         icon: '/apple-touch-icon.png',
         badge: '/favicon-32.png',
-        tag: 'shellops-settings-welcome',
+        tag: 'vibetunnel-settings-welcome',
         requireInteraction: false,
         silent: false,
       });
@@ -434,21 +434,21 @@ export class Settings extends LitElement {
     if (hasSubscription) {
       return html`
         <div class="flex items-center space-x-2">
-          <span class="text-status-success font-mono">✓</span>
+          <span class="text-status-success font-ui">✓</span>
           <span class="text-sm text-primary">Active</span>
         </div>
       `;
     } else if (this.permission === 'granted') {
       return html`
         <div class="flex items-center space-x-2">
-          <span class="text-status-warning font-mono">!</span>
+          <span class="text-status-warning font-ui">!</span>
           <span class="text-sm text-primary">Not subscribed</span>
         </div>
       `;
     } else {
       return html`
         <div class="flex items-center space-x-2">
-          <span class="text-status-error font-mono">✗</span>
+          <span class="text-status-error font-ui">✗</span>
           <span class="text-sm text-primary">Disabled</span>
         </div>
       `;
@@ -475,7 +475,7 @@ export class Settings extends LitElement {
     return html`
       <div class="modal-backdrop flex items-center justify-center" @click=${this.handleBackdropClick}>
         <div
-          class="modal-content font-mono text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-2xl mx-2 sm:mx-4 max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col"
+          class="modal-content font-ui text-sm w-full max-w-[calc(100vw-1rem)] sm:max-w-md lg:max-w-2xl mx-2 sm:mx-4 max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col"
         >
           <!-- Header -->
           <div class="p-4 pb-4 border-b border-border/50 relative flex-shrink-0">
@@ -500,7 +500,7 @@ export class Settings extends LitElement {
 
           <!-- Footer -->
           <div class="p-4 pt-3 border-t border-border/50 flex-shrink-0">
-            <div class="flex items-center justify-between text-xs font-mono">
+            <div class="flex items-center justify-between text-xs font-ui">
               <span class="text-muted">v${VERSION}</span>
               <a href="/logs" class="text-primary hover:text-primary-hover transition-colors" target="_blank">
                 View Logs
@@ -544,10 +544,10 @@ export class Settings extends LitElement {
                         ⚠️ Push notifications require a secure connection
                       </p>
                       <p class="text-xs text-status-warning opacity-80 mb-2">
-                        You're accessing ShellOps via ${window.location.protocol}//${window.location.hostname}
+                        You're accessing VibeTunnel via ${window.location.protocol}//${window.location.hostname}
                       </p>
                       <p class="text-xs text-status-info opacity-90">
-                        To enable notifications, access ShellOps using:
+                        To enable notifications, access VibeTunnel using:
                         <br>• https://${window.location.hostname}${window.location.port ? `:${window.location.port}` : ''}
                         <br>• http://localhost:${window.location.port || '4020'}
                         <br>• http://127.0.0.1:${window.location.port || '4020'}

@@ -16,7 +16,7 @@ window.addEventListener('notification-action', ((event: CustomEvent) => {
   const { action, data } = event.detail;
 
   // Dispatch the action to the main app component
-  const app = document.querySelector('shellops-app');
+  const app = document.querySelector('vibetunnel-app');
   if (app) {
     app.dispatchEvent(
       new CustomEvent('notification-action', {

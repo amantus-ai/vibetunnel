@@ -1,14 +1,14 @@
-# SwiftLint config: ShellOps
-# Base rules: Peekaboo defaults (../Peekaboo/.swiftlint.yml + ../Peekaboo/.swiftlint-ci.yml), adapted to ShellOps paths.
+# SwiftLint config: VibeTunnel
+# Base rules: Peekaboo defaults (../Peekaboo/.swiftlint.yml + ../Peekaboo/.swiftlint-ci.yml), adapted to VibeTunnel paths.
 
 included:
-  - ../mac/ShellOps
-  - ../ios/ShellOps
+  - ../mac/VibeTunnel
+  - ../ios/VibeTunnel
 
 excluded:
-  - ../mac/ShellOpsTests
-  - ../mac/ShellOpsUITests
-  - ../ios/ShellOpsTests
+  - ../mac/VibeTunnelTests
+  - ../mac/VibeTunnelUITests
+  - ../ios/VibeTunnelTests
   - ../mac/build
   - ../ios/build
   - ../mac/.build

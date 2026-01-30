@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =============================================================================
-# ShellOps Build Cleanup Script
+# VibeTunnel Build Cleanup Script
 # =============================================================================
 #
 # This script cleans up build artifacts and temporary files to free up disk space.
@@ -116,9 +116,9 @@ remove_item ".build" "Swift Package Manager build"
 # Clean user-specific Xcode DerivedData
 XCODE_DERIVED_DATA="$HOME/Library/Developer/Xcode/DerivedData"
 if [[ -d "$XCODE_DERIVED_DATA" ]]; then
-    for dir in "$XCODE_DERIVED_DATA"/ShellOps-*; do
+    for dir in "$XCODE_DERIVED_DATA"/VibeTunnel-*; do
         if [[ -d "$dir" ]]; then
-            remove_item "$dir" "Xcode DerivedData for ShellOps"
+            remove_item "$dir" "Xcode DerivedData for VibeTunnel"
         fi
     done
 fi

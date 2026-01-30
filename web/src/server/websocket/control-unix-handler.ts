@@ -27,7 +27,7 @@ class TerminalHandler implements MessageHandler {
       const request = message.payload as TerminalSpawnRequest;
 
       try {
-        // Build the command for launching terminal with ShellOps
+        // Build the command for launching terminal with VibeTunnel
         const args = ['launch'];
 
         if (request.workingDirectory) {
@@ -44,11 +44,11 @@ class TerminalHandler implements MessageHandler {
           args.push('--terminal', request.terminalPreference);
         }
 
-        // Execute shellops command
+        // Execute vibetunnel command
         logger.log(`Spawning terminal with args: ${args.join(' ')}`);
 
         // Use spawn to avoid shell injection
-        const vt = child_process.spawn('shellops', args, {
+        const vt = child_process.spawn('vibetunnel', args, {
           detached: true,
           stdio: 'ignore',
         });
@@ -95,7 +95,7 @@ class SystemHandler implements MessageHandler {
 }
 
 /**
- * Handles Unix domain socket communication between the ShellOps web server and macOS app.
+ * Handles Unix domain socket communication between the VibeTunnel web server and macOS app.
  *
  * This class manages a Unix socket server that provides bidirectional communication
  * between the web server and the native macOS application. It implements a message-based
@@ -149,7 +149,7 @@ export class ControlUnixHandler {
   constructor() {
     // Use control directory from environment or default
     const home = process.env.HOME || '/tmp';
-    const controlDir = process.env.SHELLOPS_CONTROL_DIR || path.join(home, '.shellops');
+    const controlDir = process.env.VIBETUNNEL_CONTROL_DIR || path.join(home, '.vibetunnel');
     const socketDir = controlDir;
 
     // Ensure directory exists

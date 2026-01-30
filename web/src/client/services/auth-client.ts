@@ -57,8 +57,8 @@ interface User {
  * @see web/src/server/routes/auth.ts - Server-side authentication endpoints
  */
 export class AuthClient {
-  private static readonly TOKEN_KEY = 'shellops_auth_token';
-  private static readonly USER_KEY = 'shellops_user_data';
+  private static readonly TOKEN_KEY = 'vibetunnel_auth_token';
+  private static readonly USER_KEY = 'vibetunnel_user_data';
 
   private currentUser: User | null = null;
   private sshAgent: BrowserSSHAgent;

@@ -6,7 +6,7 @@ set -euo pipefail
 echo "🧪 Running iOS tests..."
 
 # Check if we're in the right directory
-if [ ! -f "ShellOps-iOS.xcodeproj/project.pbxproj" ]; then
+if [ ! -f "VibeTunnel-iOS.xcodeproj/project.pbxproj" ]; then
     echo "❌ Error: Must run from ios/ directory"
     exit 1
 fi
@@ -31,13 +31,13 @@ rm -rf "$RESULT_BUNDLE_PATH"
 # Run tests with minimal output (but preserve xcodebuild exit code)
 set +e
 xcodebuild test \
-    -scheme ShellOps-iOS \
-    -project ShellOps-iOS.xcodeproj \
+    -scheme VibeTunnel-iOS \
+    -project VibeTunnel-iOS.xcodeproj \
     -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
     -enableCodeCoverage YES \
     -quiet \
     -resultBundlePath "$RESULT_BUNDLE_PATH" \
-    2>&1 | tee /tmp/shellops-ios-xcodebuild-test.log | grep -E "Test Suite|\\*\\* TEST|failed|error:"
+    2>&1 | tee /tmp/vibetunnel-ios-xcodebuild-test.log | grep -E "Test Suite|\\*\\* TEST|failed|error:"
 xcodebuild_status=${PIPESTATUS[0]}
 set -e
 
@@ -53,6 +53,6 @@ if [ "$xcodebuild_status" -eq 0 ]; then
 else
     echo "❌ Tests failed!"
     echo "Last xcodebuild output:"
-    tail -n 120 /tmp/shellops-ios-xcodebuild-test.log || true
+    tail -n 120 /tmp/vibetunnel-ios-xcodebuild-test.log || true
     exit 1
 fi

@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
     <channel>
-        <title>ShellOps Pre-release Updates</title>
-        <link>https://github.com/amantus-ai/shellops</link>
-        <description>ShellOps pre-release and beta updates feed</description>
+        <title>VibeTunnel Pre-release Updates</title>
+        <link>https://github.com/arunsanna/vibetunnel</link>
+        <description>VibeTunnel pre-release and beta updates feed</description>
         <language>en</language>
         <item>
-            <title>ShellOps 1.0.0-beta.15</title>
-            <link>https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.15/ShellOps-1.0.0-beta.15.dmg</link>
+            <title>VibeTunnel 1.0.0-beta.15</title>
+            <link>https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.15/VibeTunnel-1.0.0-beta.15.dmg</link>
             <sparkle:version>205</sparkle:version>
             <sparkle:shortVersionString>1.0.0-beta.15</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>ShellOps 1.0.0-beta.15</h2>
+                <h2>VibeTunnel 1.0.0-beta.15</h2>
                 <p><strong>Pre-release version</strong></p>
                 
                 <h3>✨ Major Features</h3>
@@ -26,9 +26,9 @@
                 
                 <h4><strong>Git Worktree Management & Follow Mode</strong> (#452)</h4>
                 <ul>
-                <li>Full worktree support: Create, manage, and delete Git worktrees directly from ShellOps</li>
-                <li>ShellOps intelligently follows Git worktrees instead of just branches, perfect for developers using worktrees for parallel development</li>
-                <li>When you switch branches in your editor/IDE, ShellOps automatically switches to the corresponding worktree terminal session</li>
+                <li>Full worktree support: Create, manage, and delete Git worktrees directly from VibeTunnel</li>
+                <li>VibeTunnel intelligently follows Git worktrees instead of just branches, perfect for developers using worktrees for parallel development</li>
+                <li>When you switch branches in your editor/IDE, VibeTunnel automatically switches to the corresponding worktree terminal session</li>
                 <li>The <code>vt follow</code> command works contextually - run it from either your main repository or a worktree to set up appropriate tracking</li>
                 </ul>
                 
@@ -42,8 +42,8 @@
                 <h4><strong>Terminal Multiplexer Integration</strong> (#460)</h4>
                 <ul>
                 <li>Full integration with tmux, Zellij, and GNU Screen terminal multiplexers for persistent sessions</li>
-                <li>Create, list, and attach to tmux/Zellij/Screen sessions directly from ShellOps interface</li>
-                <li>Sessions persist across ShellOps restarts - never lose your work</li>
+                <li>Create, list, and attach to tmux/Zellij/Screen sessions directly from VibeTunnel interface</li>
+                <li>Sessions persist across VibeTunnel restarts - never lose your work</li>
                 </ul>
                 
                 <h4><strong>Quick Session Switching</strong></h4>
@@ -67,7 +67,7 @@
                 <p>Additional contributors: @hjanuschka, @fal3, @hewigovens</p>
             ]]></description>
             <pubDate>Fri, 02 Aug 2025 00:19:31 +0000</pubDate>
-            <enclosure url="https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.15/ShellOps-1.0.0-beta.15.dmg" 
+            <enclosure url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.15/VibeTunnel-1.0.0-beta.15.dmg" 
                        sparkle:version="205" 
                        sparkle:shortVersionString="1.0.0-beta.15" 
                        length="35951408" 
@@ -75,12 +75,12 @@
                        sparkle:edSignature="s56J7oqLfnvIeOHNex1AvSy5vxDMk4KD2xj0PI9HFflUdba9frhYMHpPy9XDzU/+SnNft9i6zKZ7w/XNDaV9Dw=="/>
         </item>
         <item>
-            <title>ShellOps 1.0.0-beta.14</title>
-            <link>https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.14/ShellOps-1.0.0-beta.14.dmg</link>
+            <title>VibeTunnel 1.0.0-beta.14</title>
+            <link>https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.14/VibeTunnel-1.0.0-beta.14.dmg</link>
             <sparkle:version>203</sparkle:version>
             <sparkle:shortVersionString>1.0.0-beta.14</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>ShellOps 1.0.0-beta.14</h2>
+                <h2>VibeTunnel 1.0.0-beta.14</h2>
                 <p><strong>Pre-release version</strong></p>
                 
                 <h3>✨ Major Features</h3>
@@ -91,7 +91,7 @@
                 <li>Drag & drop reordering with smooth animations in macOS settings</li>
                 <li>Inline editing without popup dialogs</li>
                 <li>Reset to defaults button when you want the original set back</li>
-                <li>File-based persistence in <code>~/.shellops/config.json</code> shared between web and Mac apps</li>
+                <li>File-based persistence in <code>~/.vibetunnel/config.json</code> shared between web and Mac apps</li>
                 </ul>
                 
                 <h4><strong>New Session Path Autocomplete</strong> (#435)</h4>
@@ -129,7 +129,7 @@
                 
                 <h4><strong>Linux Systemd Support</strong> (#426)</h4>
                 <ul>
-                <li>Run ShellOps as a persistent service with <code>shellops systemd install</code></li>
+                <li>Run VibeTunnel as a persistent service with <code>vibetunnel systemd install</code></li>
                 <li>User-level service - no root required</li>
                 <li>Automatic startup on boot</li>
                 <li>Smart Node.js detection works with nvm, fnm, or global npm</li>
@@ -176,10 +176,10 @@
                 <li>Fixed OpenCode support for better integration with external apps</li>
                 </ul>
                 
-                <p><a href="https://github.com/amantus-ai/shellops/blob/main/CHANGELOG.md#100-beta14-20250721">View full changelog</a></p>
+                <p><a href="https://github.com/arunsanna/vibetunnel/blob/main/CHANGELOG.md#100-beta14-20250721">View full changelog</a></p>
             ]]></description>
             <pubDate>Mon, 21 Jul 2025 15:22:57 GMT</pubDate>
-            <enclosure url="https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.14/ShellOps-1.0.0-beta.14.dmg" 
+            <enclosure url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.14/VibeTunnel-1.0.0-beta.14.dmg" 
                        sparkle:version="203" 
                        sparkle:shortVersionString="1.0.0-beta.14" 
                        length="41684541" 
@@ -187,12 +187,12 @@
                        sparkle:edSignature="C8ozk/OXQUZL7aDm5EwrNWwyAWzQ0dPAvLGCWrcPFzZAEPFeXNpGtDb04iMiAQ/VHRUZPgn642BACylCnPj8DQ=="/>
         </item>
         <item>
-            <title>ShellOps 1.0.0-beta.13</title>
-            <link>https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.13/ShellOps-1.0.0-beta.13.dmg</link>
+            <title>VibeTunnel 1.0.0-beta.13</title>
+            <link>https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.13/VibeTunnel-1.0.0-beta.13.dmg</link>
             <sparkle:version>202</sparkle:version>
             <sparkle:shortVersionString>1.0.0-beta.13</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>ShellOps 1.0.0-beta.13</h2>
+                <h2>VibeTunnel 1.0.0-beta.13</h2>
                 <p><strong>Pre-release version</strong></p>
                 
                 <h3><strong>Terminal Performance Mode (Experimental) </strong></h3>
@@ -231,10 +231,10 @@
                 <li>Organized all documentation into logical categories with Mintlify</li>
                 </ul>
                 
-                <p><a href="https://github.com/amantus-ai/shellops/blob/main/CHANGELOG.md#100-beta13-20250719">View full changelog</a></p>
+                <p><a href="https://github.com/arunsanna/vibetunnel/blob/main/CHANGELOG.md#100-beta13-20250719">View full changelog</a></p>
             ]]></description>
             <pubDate>Sat, 19 Jul 2025 02:00:00 +0200</pubDate>
-            <enclosure url="https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.13/ShellOps-1.0.0-beta.13.dmg" 
+            <enclosure url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.13/VibeTunnel-1.0.0-beta.13.dmg" 
                        sparkle:version="202" 
                        sparkle:shortVersionString="1.0.0-beta.13" 
                        length="41475580" 
@@ -242,12 +242,12 @@
                        sparkle:edSignature="/2SJK3K5kG9NEVz3iOtQAVgmPESH5HV8DGVc828/wViunW2V7SZQYdBMvcHnZThJdGNu5DBho2F0Gd4mfwb0Cw=="/>
         </item>
         <item>
-            <title>ShellOps 1.0.0-beta.12</title>
-            <link>https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.12/ShellOps-1.0.0-beta.12.dmg</link>
+            <title>VibeTunnel 1.0.0-beta.12</title>
+            <link>https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.12/VibeTunnel-1.0.0-beta.12.dmg</link>
             <sparkle:version>201</sparkle:version>
             <sparkle:shortVersionString>1.0.0-beta.12</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>ShellOps 1.0.0-beta.12</h2>
+                <h2>VibeTunnel 1.0.0-beta.12</h2>
                 <p><strong>Pre-release version</strong></p>
                 
                 <h4>Welcome Screen Performance</h4>
@@ -260,7 +260,7 @@
                 <h4>SSH Agent Reliability</h4>
                 <ul>
                 <li>Fixed SSH key generation errors on non-localhost HTTP connections (#392)</li>
-                <li>SSH agent now works correctly when accessing ShellOps via ngrok or from another device</li>
+                <li>SSH agent now works correctly when accessing VibeTunnel via ngrok or from another device</li>
                 <li>Improved security and reliability for remote access scenarios</li>
                 </ul>
                 
@@ -290,7 +290,7 @@
                 </ul>
             ]]></description>
             <pubDate>Thu, 17 Jul 2025 19:35:43 +0200</pubDate>
-            <enclosure url="https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.12/ShellOps-1.0.0-beta.12.dmg" 
+            <enclosure url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.12/VibeTunnel-1.0.0-beta.12.dmg" 
                        sparkle:version="201" 
                        sparkle:shortVersionString="1.0.0-beta.12" 
                        length="51126870" 
@@ -298,12 +298,12 @@
                        sparkle:edSignature="anyeSJmQ36B3lPaQmsWbVPKZMbn9Fk+hBXHK1/ghHzOoEWGLO32DsreDdr5tmBBEwRIlI7019byHkcmAFYSxBg=="/>
         </item>
         <item>
-            <title>ShellOps 1.0.0-beta.11</title>
-            <link>https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.11/ShellOps-1.0.0-beta.11.dmg</link>
+            <title>VibeTunnel 1.0.0-beta.11</title>
+            <link>https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.11/VibeTunnel-1.0.0-beta.11.dmg</link>
             <sparkle:version>200</sparkle:version>
             <sparkle:shortVersionString>1.0.0-beta.11</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>ShellOps 1.0.0-beta.11</h2>
+                <h2>VibeTunnel 1.0.0-beta.11</h2>
                 <p><strong>Pre-release version</strong></p>
                 
                 <h4><strong>Better Settings Organization</strong></h4>
@@ -328,8 +328,8 @@
                 
                 <h4><strong>NPM Package Now Available</strong></h4>
                 <ul>
-                <li>shellops (server) is now available as an npm package for easy installation on macOS and Linux (#360, #377)</li>
-                <li>Install with <code>npm install -g shellops</code> - no build tools required!</li>
+                <li>vibetunnel (server) is now available as an npm package for easy installation on macOS and Linux (#360, #377)</li>
+                <li>Install with <code>npm install -g vibetunnel</code> - no build tools required!</li>
                 <li>Includes prebuilt binaries for Node.js 20, 22, 23, and 24</li>
                 <li>Supports macOS (Intel and Apple Silicon) and Linux (x64 and arm64) (#344)</li>
                 </ul>
@@ -342,7 +342,7 @@
                 <h4><strong>Improved <code>vt</code> Command</strong></h4>
                 <ul>
                 <li>Added verbosity control with <code>-q</code> (quiet), <code>-v</code> (verbose), <code>-vv</code> (extra verbose) flags (#356)</li>
-                <li>New <code>vt title</code> command to update session names from within a ShellOps session</li>
+                <li>New <code>vt title</code> command to update session names from within a VibeTunnel session</li>
                 </ul>
                 
                 <h3>🐛 Bug Fixes</h3>
@@ -356,7 +356,7 @@
                 </ul>
             ]]></description>
             <pubDate>Thu, 16 Jan 2025 23:30:00 +0000</pubDate>
-            <enclosure url="https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.11/ShellOps-1.0.0-beta.11.dmg" 
+            <enclosure url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.11/VibeTunnel-1.0.0-beta.11.dmg" 
                        sparkle:version="200" 
                        sparkle:shortVersionString="1.0.0-beta.11" 
                        length="51131803" 
@@ -364,12 +364,12 @@
                        sparkle:edSignature="JqMb4XkC55rQ0mLmvCGbVmH8HuGrRPhm2eAyYyEgtF7iPqWGpSd5gscYKEE9im+yRt8CN1jijauuBpy+Pw+dAw=="/>
         </item>
         <item>
-            <title>ShellOps 1.0.0-beta.10</title>
-            <link>https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.10/ShellOps-1.0.0-beta.10.dmg</link>
+            <title>VibeTunnel 1.0.0-beta.10</title>
+            <link>https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.10/VibeTunnel-1.0.0-beta.10.dmg</link>
             <sparkle:version>190</sparkle:version>
             <sparkle:shortVersionString>1.0.0-beta.10</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>ShellOps 1.0.0-beta.10</h2>
+                <h2>VibeTunnel 1.0.0-beta.10</h2>
                 <p><strong>Pre-release version</strong></p>
                 
                 <h3>🎯 Major Features</h3>
@@ -403,7 +403,7 @@
                 <ul>
                 <li>New "Development Server" mode in Debug Settings enables hot reload for web changes</li>
                 <li>Significantly faster iteration when developing the web interface</li>
-                <li>Hot reload works with full ShellOps functionality</li>
+                <li>Hot reload works with full VibeTunnel functionality</li>
                 </ul>
                 
                 <h3>🛠️ Bug Fixes & Improvements</h3>
@@ -437,10 +437,10 @@
                 <li>More comprehensive test suite with better coverage</li>
                 </ul>
                 
-                <p><a href="https://github.com/amantus-ai/shellops/blob/main/CHANGELOG.md#100-beta10-20250715">View full changelog</a></p>
+                <p><a href="https://github.com/arunsanna/vibetunnel/blob/main/CHANGELOG.md#100-beta10-20250715">View full changelog</a></p>
             ]]></description>
             <pubDate>Tue, 15 Jul 2025 09:38:40 +0200</pubDate>
-            <enclosure url="https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.10/ShellOps-1.0.0-beta.10.dmg" 
+            <enclosure url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.10/VibeTunnel-1.0.0-beta.10.dmg" 
                        sparkle:version="190" 
                        sparkle:shortVersionString="1.0.0-beta.10" 
                        length="50989458" 
@@ -448,12 +448,12 @@
                        sparkle:edSignature="adyG4vZSIVp9OfLxY50PEm7wRr+/l0bryvGL3xWELDIHO5Zy9pqyKQ5ohRZkqrEnzLg2It5uzUYCIU76E2GhBw=="/>
         </item>
         <item>
-            <title>ShellOps 1.0.0-beta.9</title>
-            <link>https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.9/ShellOps-1.0.0-beta.9.dmg</link>
+            <title>VibeTunnel 1.0.0-beta.9</title>
+            <link>https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.9/VibeTunnel-1.0.0-beta.9.dmg</link>
             <sparkle:version>173</sparkle:version>
             <sparkle:shortVersionString>1.0.0-beta.9</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>ShellOps 1.0.0-beta.9</h2>
+                <h2>VibeTunnel 1.0.0-beta.9</h2>
                 <p><strong>Pre-release version</strong></p>
                 
                 <h3>🛡️ Stability & Reliability</h3>
@@ -492,7 +492,7 @@
                 
                 <h4><strong>Git Repository Discovery</strong></h4>
                 <ul>
-                <li><strong>IMPROVED</strong>: Enhanced folder selection when creating new sessions - ShellOps now intelligently discovers Git repositories in your selected folder, making project navigation easier.</li>
+                <li><strong>IMPROVED</strong>: Enhanced folder selection when creating new sessions - VibeTunnel now intelligently discovers Git repositories in your selected folder, making project navigation easier.</li>
                 <li><strong>FIXED</strong>: Several bugs in repository discovery that could cause incorrect folder detection or errors.</li>
                 </ul>
                 
@@ -514,7 +514,7 @@
                 </ul>
             ]]></description>
             <pubDate>Fri, 11 Jul 2025 10:48:00 +0200</pubDate>
-            <enclosure url="https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.9/ShellOps-1.0.0-beta.9.dmg" 
+            <enclosure url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.9/VibeTunnel-1.0.0-beta.9.dmg" 
                        sparkle:version="173" 
                        sparkle:shortVersionString="1.0.0-beta.9" 
                        length="44821464" 
@@ -522,12 +522,12 @@
                        sparkle:edSignature="xAzHFZ1FYtncpZx1xKMAIMT9kDkEiZfH1uuY80weKzi7JE8Yd673/7919f3D3g4j/B7fTMs88TVlTxocL9zRCw=="/>
         </item>
         <item>
-            <title>ShellOps 1.0.0-beta.8</title>
-            <link>https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.8/ShellOps-1.0.0-beta.8.dmg</link>
+            <title>VibeTunnel 1.0.0-beta.8</title>
+            <link>https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.8/VibeTunnel-1.0.0-beta.8.dmg</link>
             <sparkle:version>172</sparkle:version>
             <sparkle:shortVersionString>1.0.0-beta.8</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>ShellOps 1.0.0-beta.8</h2>
+                <h2>VibeTunnel 1.0.0-beta.8</h2>
                 <p><strong>Pre-release version</strong></p>
                 
                 <h4><strong>Homebrew Library Dependencies</strong></h4>
@@ -543,7 +543,7 @@
                 </ul>
             ]]></description>
             <pubDate>Tue, 08 Jul 2025 10:18:00 +0100</pubDate>
-            <enclosure url="https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.8/ShellOps-1.0.0-beta.8.dmg" 
+            <enclosure url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.8/VibeTunnel-1.0.0-beta.8.dmg" 
                        sparkle:version="172" 
                        sparkle:shortVersionString="1.0.0-beta.8" 
                        length="44748347" 
@@ -551,12 +551,12 @@
                        sparkle:edSignature="/538z6L/qhhnHkfWU1hVoqeKvFdHubFRobfq6Vfmwz4UCpDVhJrqG+W28xW1wU4W9+xt41NMgei+DLJr1JV8Cg=="/>
         </item>
         <item>
-            <title>ShellOps 1.0.0-beta.7</title>
-            <link>https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.7/ShellOps-1.0.0-beta.7.dmg</link>
+            <title>VibeTunnel 1.0.0-beta.7</title>
+            <link>https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.7/VibeTunnel-1.0.0-beta.7.dmg</link>
             <sparkle:version>170</sparkle:version>
             <sparkle:shortVersionString>1.0.0-beta.7</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>ShellOps 1.0.0-beta.7</h2>
+                <h2>VibeTunnel 1.0.0-beta.7</h2>
                 <p><strong>Pre-release version</strong></p>
                 
                 <h3>🎯 Major Features</h3>
@@ -636,7 +636,7 @@
                 <h4><strong>Version Management</strong></h4>
                 <ul>
                 <li>Implemented hash-based vt script version detection</li>
-                <li>Delete old sessions automatically when ShellOps version changes</li>
+                <li>Delete old sessions automatically when VibeTunnel version changes</li>
                 <li>Better handling of version mismatches between components</li>
                 </ul>
                 
@@ -675,7 +675,7 @@
                 </ul>
             ]]></description>
             <pubDate>Tue, 08 Jul 2025 02:35:00 +0100</pubDate>
-            <enclosure url="https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.7/ShellOps-1.0.0-beta.7.dmg" 
+            <enclosure url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.7/VibeTunnel-1.0.0-beta.7.dmg" 
                        sparkle:version="170" 
                        sparkle:shortVersionString="1.0.0-beta.7" 
                        length="33195103" 
@@ -683,12 +683,12 @@
                        sparkle:edSignature="T8R0fG2cY7zyKDIOVAEGk02Su+mj7JKk//dyGBHmMC4o8QtUVCL24ASbKZiRa1fVey79+MCWdIVs79DG+sb7AQ=="/>
         </item>
         <item>
-            <title>ShellOps 1.0.0-beta.6</title>
-            <link>https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.6/ShellOps-1.0.0-beta.6.dmg</link>
+            <title>VibeTunnel 1.0.0-beta.6</title>
+            <link>https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.6/VibeTunnel-1.0.0-beta.6.dmg</link>
             <sparkle:version>160</sparkle:version>
             <sparkle:shortVersionString>1.0.0-beta.6</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>ShellOps 1.0.0-beta.6</h2><p><strong>Pre-release version</strong></p><div>
+                <h2>VibeTunnel 1.0.0-beta.6</h2><p><strong>Pre-release version</strong></p><div>
 <h3>✨ New Features</h3>
 
 <h4><strong>Git Repository Monitoring</strong> 🆕</h4>
@@ -747,20 +747,20 @@
 </div>
             ]]></description>
             <pubDate>Wed, 03 Jul 2025 00:46:29 +0100</pubDate>
-            <enclosure url="https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.6/ShellOps-1.0.0-beta.6.dmg" sparkle:version="160" sparkle:shortVersionString="1.0.0-beta.6" type="application/octet-stream" sparkle:edSignature="kFaJj5tSahAMZ1Sj5p3q7YkQ3n7G6yCLXpUAvcqjjOLV9r9vW2k4ByPUXdKQkHujuDmGhElk2oMucv/jp0QPDg==" length="35747713"/>
+            <enclosure url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.6/VibeTunnel-1.0.0-beta.6.dmg" sparkle:version="160" sparkle:shortVersionString="1.0.0-beta.6" type="application/octet-stream" sparkle:edSignature="kFaJj5tSahAMZ1Sj5p3q7YkQ3n7G6yCLXpUAvcqjjOLV9r9vW2k4ByPUXdKQkHujuDmGhElk2oMucv/jp0QPDg==" length="35747713"/>
         </item>
         <item>
-            <title>ShellOps 1.0.0-beta.5</title>
-            <link>https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.5/ShellOps-1.0.0-beta.5.dmg</link>
+            <title>VibeTunnel 1.0.0-beta.5</title>
+            <link>https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.5/VibeTunnel-1.0.0-beta.5.dmg</link>
             <sparkle:version>150</sparkle:version>
             <sparkle:shortVersionString>1.0.0-beta.5</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>ShellOps 1.0.0-beta.5</h2><p><strong>Pre-release version</strong></p><div>
+                <h2>VibeTunnel 1.0.0-beta.5</h2><p><strong>Pre-release version</strong></p><div>
 <h3>🎯 Features</h3>
 
 <p><strong>Real-time Claude Activity Monitoring</strong></p>
 <ul>
-<li><strong>See Claude's live status directly in the ShellOps sidebar</strong> - Know exactly what Claude is "Thinking", "Crafting", or "Searching" with real-time progress indicators showing duration and token counts.</li>
+<li><strong>See Claude's live status directly in the VibeTunnel sidebar</strong> - Know exactly what Claude is "Thinking", "Crafting", or "Searching" with real-time progress indicators showing duration and token counts.</li>
 <li><strong>Activity status persists across browser refreshes</strong> - Works seamlessly with external terminal sessions.</li>
 <li><strong>Faster sidebar updates</strong> - Sidebar now refreshes every second (previously 3 seconds) for more responsive activity tracking.</li>
 </ul>
@@ -780,8 +780,8 @@
 
 <h3>⌨️ Enhanced Terminal Experience</h3>
 <ul>
-<li><strong>Shell aliases now work properly</strong> - Commands like <code>claude</code>, <code>ll</code>, and other custom aliases from your <code>.zshrc</code>/<code>.bashrc</code> are now recognized when launching terminals through ShellOps.</li>
-<li><strong>Prevented recursive ShellOps sessions</strong> - Running <code>vt</code> inside a ShellOps session now shows a helpful error instead of creating confusing nested sessions.</li>
+<li><strong>Shell aliases now work properly</strong> - Commands like <code>claude</code>, <code>ll</code>, and other custom aliases from your <code>.zshrc</code>/<code>.bashrc</code> are now recognized when launching terminals through VibeTunnel.</li>
+<li><strong>Prevented recursive VibeTunnel sessions</strong> - Running <code>vt</code> inside a VibeTunnel session now shows a helpful error instead of creating confusing nested sessions.</li>
 <li><strong>Fixed critical race condition in terminal output</strong> - Terminal sessions now handle high-volume output without corruption or out-of-order text.</li>
 </ul>
 
@@ -799,15 +799,15 @@
 </div>
             ]]></description>
             <pubDate>Sun, 30 Jun 2025 03:26:47 +0000</pubDate>
-            <enclosure url="https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.5/ShellOps-1.0.0-beta.5.dmg" sparkle:version="150" sparkle:shortVersionString="1.0.0-beta.5" length="35714742" type="application/x-apple-diskimage" sparkle:edSignature="Kn1lcwGww8okqRz83fX3RpaFKXVbk2x7fV0mnuVzHRKvqJEcQeD7vQDoI+Yd5WAWyueVK9E+LPZ3ycjr5ufICw=="/>
+            <enclosure url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.5/VibeTunnel-1.0.0-beta.5.dmg" sparkle:version="150" sparkle:shortVersionString="1.0.0-beta.5" length="35714742" type="application/x-apple-diskimage" sparkle:edSignature="Kn1lcwGww8okqRz83fX3RpaFKXVbk2x7fV0mnuVzHRKvqJEcQeD7vQDoI+Yd5WAWyueVK9E+LPZ3ycjr5ufICw=="/>
         </item>
         <item>
-            <title>ShellOps 1.0.0-beta.4</title>
-            <link>https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.4/ShellOps-1.0.0-beta.4.dmg</link>
+            <title>VibeTunnel 1.0.0-beta.4</title>
+            <link>https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.4/VibeTunnel-1.0.0-beta.4.dmg</link>
             <sparkle:version>114</sparkle:version>
             <sparkle:shortVersionString>1.0.0-beta.4</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>ShellOps 1.0.0-beta.4</h2><p><strong>Pre-release version</strong></p><div><h3>✨ Highlights</h3>
+                <h2>VibeTunnel 1.0.0-beta.4</h2><p><strong>Pre-release version</strong></p><div><h3>✨ Highlights</h3>
 <ul>
 <li>Completely revamped mobile keyboard</li>
 <li>Mobile and Mac UI polish</li>
@@ -823,11 +823,11 @@
 <li>Fixed URL link detection for wrapped URLs on mobile terminals (#85)</li>
 <li>Split session view file for better code organization (#89)</li>
 </ul>
-<p><a href="https://github.com/amantus-ai/shellops/blob/main/CHANGELOG.md#100-beta4---2025-06-27">View full changelog</a></p></div>
+<p><a href="https://github.com/arunsanna/vibetunnel/blob/main/CHANGELOG.md#100-beta4---2025-06-27">View full changelog</a></p></div>
             ]]></description>
             <pubDate>Thu, 27 Jun 2025 00:31:41 +0000</pubDate>
             <enclosure 
-                url="https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.4/ShellOps-1.0.0-beta.4.dmg"
+                url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.4/VibeTunnel-1.0.0-beta.4.dmg"
                 length="35449335"
                 type="application/octet-stream"
                 sparkle:edSignature="dE/g2OqA2Gv/ZexRG43WudUWWhoKUi3XldlkZjR4kfgMaCIwvbtv4LyCVDRsJ094hqYZThomfGow6MgghsW6Dw=="
@@ -835,12 +835,12 @@
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
         </item>
         <item>
-            <title>ShellOps 1.0.0-beta.3</title>
-            <link>https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.3/ShellOps-1.0.0-beta.3.dmg</link>
+            <title>VibeTunnel 1.0.0-beta.3</title>
+            <link>https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.3/VibeTunnel-1.0.0-beta.3.dmg</link>
             <sparkle:version>110</sparkle:version>
             <sparkle:shortVersionString>1.0.0-beta.3</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>ShellOps 1.0.0-beta.3</h2><p><strong>Pre-release version</strong></p><div><h3>🎉 Beta 3 Release</h3>
+                <h2>VibeTunnel 1.0.0-beta.3</h2><p><strong>Pre-release version</strong></p><div><h3>🎉 Beta 3 Release</h3>
 <p>There's too much to list! This is the version you've been waiting for.</p>
 
 <h3>✨ Highlights</h3>
@@ -863,13 +863,13 @@
 <li>Special handling for Warp terminal with custom enter key behavior</li>
 <li>New dock menu with quick actions when right-clicking the app icon</li>
 <li>More resilient vt command-line tool with better error handling</li>
-<li>Ensured shellops server properly terminates when Mac app is killed</li>
+<li>Ensured vibetunnel server properly terminates when Mac app is killed</li>
 </ul>
-<p><a href="https://github.com/amantus-ai/shellops/blob/main/CHANGELOG.md#100-beta3---2025-06-23">View full changelog</a></p></div>
+<p><a href="https://github.com/arunsanna/vibetunnel/blob/main/CHANGELOG.md#100-beta3---2025-06-23">View full changelog</a></p></div>
             ]]></description>
             <pubDate>Sun, 23 Jun 2025 04:30:00 +0000</pubDate>
             <enclosure 
-                url="https://github.com/amantus-ai/shellops/releases/download/v1.0.0-beta.3/ShellOps-1.0.0-beta.3.dmg"
+                url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0.0-beta.3/VibeTunnel-1.0.0-beta.3.dmg"
                 length="20156342"
                 type="application/octet-stream"
                 sparkle:edSignature="d4G5pUTLuoRUMVg+SSHHaupV2QycU3fEXJhzFjXNSB79htcVo3mGn+oaABL1suvCMJTBK7shJJQS3mf7yDFQDg=="
@@ -877,12 +877,12 @@
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
         </item>
         <item>
-            <title>ShellOps 1.0.0-beta.2</title>
-            <link>https://github.com/amantus-ai/shellops/releases/download/v1.0-beta.2/ShellOps-1.0.0-beta.2.dmg</link>
+            <title>VibeTunnel 1.0.0-beta.2</title>
+            <link>https://github.com/arunsanna/vibetunnel/releases/download/v1.0-beta.2/VibeTunnel-1.0.0-beta.2.dmg</link>
             <sparkle:version>107</sparkle:version>
             <sparkle:shortVersionString>1.0-beta.2</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>ShellOps 1.0.0-beta.2</h2><p><strong>Pre-release version</strong></p><div><h3>🎨 Improvements</h3>
+                <h2>VibeTunnel 1.0.0-beta.2</h2><p><strong>Pre-release version</strong></p><div><h3>🎨 Improvements</h3>
 <ul>
 <li>Redesigned slick new web frontend</li>
 <li>Faster terminal rendering in the web frontend</li>
@@ -898,11 +898,11 @@
 <li>Fixed PTY service enhancements with proper async operations</li>
 <li>Fixed race condition in session creation that caused frontend to open previous session</li>
 </ul>
-<p><a href="https://github.com/amantus-ai/shellops/blob/main/CHANGELOG.md#100-beta2-20250619">View full changelog</a></p></div>
+<p><a href="https://github.com/arunsanna/vibetunnel/blob/main/CHANGELOG.md#100-beta2-20250619">View full changelog</a></p></div>
             ]]></description>
             <pubDate>Thu, 19 Jun 2025 12:50:59 +0200</pubDate>
             <enclosure 
-                url="https://github.com/amantus-ai/shellops/releases/download/v1.0-beta.2/ShellOps-1.0.0-beta.2.dmg"
+                url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0-beta.2/VibeTunnel-1.0.0-beta.2.dmg"
                 length="19720948"
                 type="application/octet-stream"
                 sparkle:edSignature="RozWTyloGPbgMZATl4QXzCmq5/dzSArV853syyn8JrGq+4lwgVoAXh7vBpDlJYKW3zJHvGNAjYZC4JVhoOyJAA=="
@@ -910,13 +910,13 @@
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
         </item>
         <item>
-            <title>ShellOps 1.0-beta.1</title>
-            <link>https://github.com/amantus-ai/shellops/releases/download/v1.0-beta.1/ShellOps-1.0-beta.1.dmg</link>
+            <title>VibeTunnel 1.0-beta.1</title>
+            <link>https://github.com/arunsanna/vibetunnel/releases/download/v1.0-beta.1/VibeTunnel-1.0-beta.1.dmg</link>
             <sparkle:version>103</sparkle:version>
             <sparkle:shortVersionString>1.0-beta.1</sparkle:shortVersionString>
             <description><![CDATA[
-                <h2>ShellOps 1.0-beta.1</h2><p><strong>Pre-release version</strong></p><div><h3>🎉 First Public Beta Release</h3>
-This is the first public beta release of ShellOps, ready for testing by early adopters.
+                <h2>VibeTunnel 1.0-beta.1</h2><p><strong>Pre-release version</strong></p><div><h3>🎉 First Public Beta Release</h3>
+This is the first public beta release of VibeTunnel, ready for testing by early adopters.
 <h3>✨ What's Included</h3>
 <ul>
 <li>Complete terminal session proxying to web browsers</li>
@@ -960,11 +960,11 @@ This is the first public beta release of ShellOps, ready for testing by early ad
 <li>Auto-update functionality is fully enabled</li>
 <li>All core features are stable and ready for daily use</li>
 </ul>
-<p><a href="https://github.com/amantus-ai/shellops/blob/main/CHANGELOG.md#100-beta1-20250619">View full changelog</a></p></div>
+<p><a href="https://github.com/arunsanna/vibetunnel/blob/main/CHANGELOG.md#100-beta1-20250619">View full changelog</a></p></div>
             ]]></description>
             <pubDate>Tue, 17 Jun 2025 01:09:18 +0200</pubDate>
             <enclosure 
-                url="https://github.com/amantus-ai/shellops/releases/download/v1.0-beta.1/ShellOps-1.0-beta.1.dmg"
+                url="https://github.com/arunsanna/vibetunnel/releases/download/v1.0-beta.1/VibeTunnel-1.0-beta.1.dmg"
                 length="17928597"
                 type="application/octet-stream"
                 sparkle:edSignature="9h7sCoJVawjj3PJePiyrIebQDNlMG3Kqp253QcMYdJEnXzWafTYBo5LUPNHosVisPW6dV3Gc0Il5bjGuizLXAw=="

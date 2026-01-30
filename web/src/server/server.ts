@@ -1,4 +1,4 @@
-// ShellOps server entry point
+// VibeTunnel server entry point
 import chalk from 'chalk';
 import compression from 'compression';
 import type { Response as ExpressResponse } from 'express';
@@ -144,9 +144,9 @@ interface Config {
 // Show help message
 function showHelp() {
   console.log(`
-ShellOps Server - Terminal Multiplexer
+VibeTunnel Server - Terminal Multiplexer
 
-Usage: shellops-server [options]
+Usage: vibetunnel-server [options]
 
 Options:
   --help                Show this help message
@@ -191,30 +191,30 @@ Remote Server Options:
 
 Environment Variables:
   PORT                  Default port if --port not specified
-  SHELLOPS_USERNAME   Default username if --username not specified
-  SHELLOPS_PASSWORD   Default password if --password not specified
-  SHELLOPS_CONTROL_DIR Control directory for session data
+  VIBETUNNEL_USERNAME   Default username if --username not specified
+  VIBETUNNEL_PASSWORD   Default password if --password not specified
+  VIBETUNNEL_CONTROL_DIR Control directory for session data
   PUSH_CONTACT_EMAIL    Contact email for VAPID configuration
   NGROK_AUTHTOKEN       Ngrok auth token (used with --ngrok)
 
 Examples:
   # Run a simple server with authentication
-  shellops-server --username admin --password secret
+  vibetunnel-server --username admin --password secret
 
   # Run with ngrok tunnel (no auth)
-  shellops-server --no-auth --ngrok
+  vibetunnel-server --no-auth --ngrok
 
   # Run with Cloudflare tunnel
-  shellops-server --no-auth --cloudflare
+  vibetunnel-server --no-auth --cloudflare
 
   # Run with ngrok and custom domain
-  shellops-server --ngrok --ngrok-auth TOKEN --ngrok-domain custom.ngrok.io
+  vibetunnel-server --ngrok --ngrok-auth TOKEN --ngrok-domain custom.ngrok.io
 
   # Run as HQ server
-  shellops-server --hq --username hq-admin --password hq-secret
+  vibetunnel-server --hq --username hq-admin --password hq-secret
 
   # Run as remote server registering with HQ
-  shellops-server --username local --password local123 \\
+  vibetunnel-server --username local --password local123 \\
     --hq-url https://hq.example.com \\
     --hq-username hq-admin --hq-password hq-secret \\
     --name remote-1
@@ -468,7 +468,7 @@ export async function createApp(): Promise<AppInstance> {
   // Check if version was requested
   if (config.showVersion) {
     const versionInfo = getVersionInfo();
-    console.log(`ShellOps Server v${versionInfo.version}`);
+    console.log(`VibeTunnel Server v${versionInfo.version}`);
     console.log(`Built: ${versionInfo.buildDate}`);
     console.log(`Platform: ${versionInfo.platform}/${versionInfo.arch}`);
     console.log(`Node: ${versionInfo.nodeVersion}`);
@@ -480,7 +480,7 @@ export async function createApp(): Promise<AppInstance> {
 
   validateConfig(config);
 
-  logger.log('Initializing ShellOps server components');
+  logger.log('Initializing VibeTunnel server components');
   const app = express();
   const server = createServer(app);
   const wss = new WebSocketServer({ noServer: true, perMessageDeflate: true });
@@ -509,7 +509,7 @@ export async function createApp(): Promise<AppInstance> {
 
   // Control directory for session data
   const CONTROL_DIR =
-    process.env.SHELLOPS_CONTROL_DIR || path.join(os.homedir(), '.shellops/control');
+    process.env.VIBETUNNEL_CONTROL_DIR || path.join(os.homedir(), '.vibetunnel/control');
 
   // Ensure control directory exists
   if (!fs.existsSync(CONTROL_DIR)) {
@@ -524,7 +524,7 @@ export async function createApp(): Promise<AppInstance> {
   const ptyManager = new PtyManager(CONTROL_DIR);
   logger.debug('Initialized PTY manager');
 
-  // Clean up sessions from old ShellOps versions
+  // Clean up sessions from old VibeTunnel versions
   const sessionManager = ptyManager.getSessionManager();
   const cleanupResult = sessionManager.cleanupOldVersionSessions();
   if (cleanupResult.versionChanged) {
@@ -574,7 +574,7 @@ export async function createApp(): Promise<AppInstance> {
       // Initialize VAPID manager with auto-generation
       vapidManager = new VapidManager();
       await vapidManager.initialize({
-        contactEmail: config.vapidEmail || 'noreply@shellops.local',
+        contactEmail: config.vapidEmail || 'noreply@vibetunnel.local',
         generateIfMissing: true, // Auto-generate keys if none exist
       });
 
@@ -663,7 +663,7 @@ export async function createApp(): Promise<AppInstance> {
             ...pushPayload,
             icon: '/apple-touch-icon.png',
             badge: '/favicon-32.png',
-            tag: `shellops-${pushPayload.type}`,
+            tag: `vibetunnel-${pushPayload.type}`,
             requireInteraction: pushPayload.type === 'command-error',
             actions: [
               {
@@ -752,16 +752,16 @@ export async function createApp(): Promise<AppInstance> {
     }
     // More precise npm package detection:
     // 1. Check if we're explicitly in an npm package structure
-    // 2. The file should be in node_modules/shellops/lib/
+    // 2. The file should be in node_modules/vibetunnel/lib/
     // 3. Or check for our specific package markers
     const isNpmPackage = (() => {
-      // Most reliable: check if we're in node_modules/shellops structure
-      if (__filename.includes(path.join('node_modules', 'shellops', 'lib'))) {
+      // Most reliable: check if we're in node_modules/vibetunnel structure
+      if (__filename.includes(path.join('node_modules', 'vibetunnel', 'lib'))) {
         return true;
       }
 
       // Check for Windows path variant
-      if (__filename.includes('node_modules\\shellops\\lib')) {
+      if (__filename.includes('node_modules\\vibetunnel\\lib')) {
         return true;
       }
 
@@ -773,7 +773,7 @@ export async function createApp(): Promise<AppInstance> {
         try {
           const packageJson = require(packageJsonPath);
           // Verify this is actually our package
-          return packageJson.name === 'shellops';
+          return packageJson.name === 'vibetunnel';
         } catch {
           // Not a valid npm package structure
           return false;
@@ -783,7 +783,7 @@ export async function createApp(): Promise<AppInstance> {
       return false;
     })();
 
-    if (process.env.SHELLOPS_BUNDLED === 'true' || process.env.BUILD_DATE || isNpmPackage) {
+    if (process.env.VIBETUNNEL_BUNDLED === 'true' || process.env.BUILD_DATE || isNpmPackage) {
       // In bundled/production/npm mode, find package root
       // When bundled, __dirname is /path/to/package/dist, so go up one level
       // When globally installed, we need to find the package root
@@ -809,7 +809,7 @@ export async function createApp(): Promise<AppInstance> {
       }
 
       // Fallback: try going up from the bundled CLI location
-      // The bundled CLI might be in node_modules/shellops/dist/
+      // The bundled CLI might be in node_modules/vibetunnel/dist/
       return path.join(__dirname, '..', 'public');
     } else {
       // In development mode, use current working directory
@@ -974,7 +974,7 @@ export async function createApp(): Promise<AppInstance> {
           body,
           icon: '/apple-touch-icon.png',
           badge: '/favicon-32.png',
-          tag: `shellops-${notificationType}-${sessionId}`,
+          tag: `vibetunnel-${notificationType}-${sessionId}`,
           requireInteraction: false,
           data: {
             type: notificationType,
@@ -1036,7 +1036,7 @@ export async function createApp(): Promise<AppInstance> {
           body: `${body} (${durationStr})`,
           icon: '/apple-touch-icon.png',
           badge: '/favicon-32.png',
-          tag: `shellops-command-${sessionId}-${Date.now()}`,
+          tag: `vibetunnel-command-${sessionId}-${Date.now()}`,
           requireInteraction: false,
           data: {
             type: notificationType,
@@ -1371,7 +1371,7 @@ export async function createApp(): Promise<AppInstance> {
           );
           logger.error(`  2. Use environment variable: ${chalk.cyan('PORT=4021 pnpm run dev')}`);
           logger.error(
-            '  3. Stop the existing server (check Activity Monitor for shellops processes)'
+            '  3. Stop the existing server (check Activity Monitor for vibetunnel processes)'
           );
         } else {
           logger.error(
@@ -1395,7 +1395,7 @@ export async function createApp(): Promise<AppInstance> {
       const actualPort =
         typeof address === 'string' ? requestedPort : address?.port || requestedPort;
       const displayAddress = bindAddress === '0.0.0.0' ? 'localhost' : bindAddress;
-      logger.log(chalk.green(`ShellOps Server running on http://${displayAddress}:${actualPort}`));
+      logger.log(chalk.green(`VibeTunnel Server running on http://${displayAddress}:${actualPort}`));
 
       // Update API socket server with actual port information
       apiSocketServer.setServerInfo(actualPort, `http://${displayAddress}:${actualPort}`);
@@ -1446,7 +1446,7 @@ export async function createApp(): Promise<AppInstance> {
           .catch((error) => {
             logger.error(chalk.red('❌ Failed to start Tailscale Serve:'), error.message);
             logger.warn(
-              chalk.yellow('⚠️ ShellOps will continue running, but Tailscale Serve is not available')
+              chalk.yellow('⚠️ VibeTunnel will continue running, but Tailscale Serve is not available')
             );
             logger.info(chalk.blue('💻 You can manually configure Tailscale Serve with:'));
             logger.info(chalk.gray(`  tailscale serve ${actualPort}`));
@@ -1470,13 +1470,13 @@ export async function createApp(): Promise<AppInstance> {
           .then((tunnel) => {
             logger.log(chalk.green('Ngrok tunnel: ENABLED'));
             logger.log(chalk.green(`Public URL: ${tunnel.publicUrl}`));
-            logger.log(chalk.gray('Your ShellOps server is now accessible from the internet'));
+            logger.log(chalk.gray('Your VibeTunnel server is now accessible from the internet'));
           })
           .catch((error) => {
             logger.error(chalk.red('Failed to start ngrok tunnel:'), error.message);
             logger.warn(
               chalk.yellow(
-                'ShellOps will continue running locally, but ngrok tunnel is not available'
+                'VibeTunnel will continue running locally, but ngrok tunnel is not available'
               )
             );
             if (!config.ngrokAuthToken) {
@@ -1499,14 +1499,14 @@ export async function createApp(): Promise<AppInstance> {
           .then((tunnel) => {
             logger.log(chalk.green('Cloudflare tunnel: ENABLED'));
             logger.log(chalk.green(`Public URL: ${tunnel.publicUrl}`));
-            logger.log(chalk.gray('Your ShellOps server is now accessible from the internet'));
+            logger.log(chalk.gray('Your VibeTunnel server is now accessible from the internet'));
             logger.log(chalk.gray('Note: Cloudflare Quick Tunnels have usage limits'));
           })
           .catch((error) => {
             logger.error(chalk.red('Failed to start Cloudflare tunnel:'), error.message);
             logger.warn(
               chalk.yellow(
-                'ShellOps will continue running locally, but Cloudflare tunnel is not available'
+                'VibeTunnel will continue running locally, but Cloudflare tunnel is not available'
               )
             );
             logger.log(
@@ -1621,7 +1621,7 @@ export async function createApp(): Promise<AppInstance> {
 let serverStarted = false;
 
 // Export a function to start the server
-export async function startShellOpsServer() {
+export async function startVibeTunnelServer() {
   // Initialize logger if not already initialized (preserves debug mode from CLI)
   initLogger();
 
@@ -1637,7 +1637,7 @@ export async function startShellOpsServer() {
   }
   serverStarted = true;
 
-  logger.debug('Creating ShellOps application instance');
+  logger.debug('Creating VibeTunnel application instance');
   // Create and configure the app
   const appInstance = await createApp();
   const {

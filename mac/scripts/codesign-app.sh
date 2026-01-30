@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# codesign-app.sh - Code signing script for ShellOps (Sparkle-safe; no --deep)
+# codesign-app.sh - Code signing script for VibeTunnel (Sparkle-safe; no --deep)
 
 set -euo pipefail
 
-APP_BUNDLE="${1:-build/Build/Products/Release/ShellOps.app}"
+APP_BUNDLE="${1:-build/Build/Products/Release/VibeTunnel.app}"
 SIGN_IDENTITY="${2:-${SIGN_IDENTITY:-}}"
 
 log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
@@ -58,10 +58,10 @@ if [[ -n "${KEYCHAIN_NAME:-}" ]]; then
   log "Using keychain: $KEYCHAIN_NAME"
 fi
 
-ENTITLEMENTS_FILE="ShellOps/ShellOps.entitlements"
-TMP_ENTITLEMENTS="$(mktemp -t shellops-entitlements.XXXXXX)"
+ENTITLEMENTS_FILE="VibeTunnel/VibeTunnel.entitlements"
+TMP_ENTITLEMENTS="$(mktemp -t vibetunnel-entitlements.XXXXXX)"
 
-BUNDLE_ID="$(defaults read "$APP_BUNDLE/Contents/Info.plist" CFBundleIdentifier 2>/dev/null || echo "sh.shellops.shellops")"
+BUNDLE_ID="$(defaults read "$APP_BUNDLE/Contents/Info.plist" CFBundleIdentifier 2>/dev/null || echo "sh.vibetunnel.vibetunnel")"
 log "Bundle identifier: $BUNDLE_ID"
 
 if [[ -f "$ENTITLEMENTS_FILE" ]]; then
@@ -108,21 +108,21 @@ if [[ -d "$APP_BUNDLE/Contents/Frameworks" ]]; then
 fi
 
 if [[ -d "$APP_BUNDLE/Contents/Resources" ]]; then
-  SHELLOPS_ENTITLEMENTS="$(dirname "$0")/../ShellOps/shellops-binary.entitlements"
+  VIBETUNNEL_ENTITLEMENTS="$(dirname "$0")/../VibeTunnel/vibetunnel-binary.entitlements"
 
-  if [[ -f "$APP_BUNDLE/Contents/Resources/shellops" ]]; then
-    log "Signing embedded shellops binary with JIT entitlements"
-    codesign --force --options runtime $TIMESTAMP_FLAG --sign "$SIGN_IDENTITY" --entitlements "$SHELLOPS_ENTITLEMENTS" $KEYCHAIN_OPTS "$APP_BUNDLE/Contents/Resources/shellops"
+  if [[ -f "$APP_BUNDLE/Contents/Resources/vibetunnel" ]]; then
+    log "Signing embedded vibetunnel binary with JIT entitlements"
+    codesign --force --options runtime $TIMESTAMP_FLAG --sign "$SIGN_IDENTITY" --entitlements "$VIBETUNNEL_ENTITLEMENTS" $KEYCHAIN_OPTS "$APP_BUNDLE/Contents/Resources/vibetunnel"
   fi
 
-  if [[ -f "$APP_BUNDLE/Contents/Resources/shellops-fwd" ]]; then
-    log "Signing shellops-fwd with entitlements"
-    codesign --force --options runtime $TIMESTAMP_FLAG --sign "$SIGN_IDENTITY" --entitlements "$SHELLOPS_ENTITLEMENTS" $KEYCHAIN_OPTS "$APP_BUNDLE/Contents/Resources/shellops-fwd"
+  if [[ -f "$APP_BUNDLE/Contents/Resources/vibetunnel-fwd" ]]; then
+    log "Signing vibetunnel-fwd with entitlements"
+    codesign --force --options runtime $TIMESTAMP_FLAG --sign "$SIGN_IDENTITY" --entitlements "$VIBETUNNEL_ENTITLEMENTS" $KEYCHAIN_OPTS "$APP_BUNDLE/Contents/Resources/vibetunnel-fwd"
   fi
 fi
 
 log "Signing main executable"
-sign_with_entitlements "$APP_BUNDLE/Contents/MacOS/ShellOps"
+sign_with_entitlements "$APP_BUNDLE/Contents/MacOS/VibeTunnel"
 
 log "Signing app bundle (no --deep)"
 sign_with_entitlements "$APP_BUNDLE"

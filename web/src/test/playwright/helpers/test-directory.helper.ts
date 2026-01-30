@@ -10,7 +10,7 @@ export function getTestWorkingDirectory(): string {
   // In CI, use temp directory to ensure we have a writable location
   if (process.env.CI) {
     const tempDir = os.tmpdir();
-    const testDir = path.join(tempDir, 'shellops-test-sessions');
+    const testDir = path.join(tempDir, 'vibetunnel-test-sessions');
 
     // Ensure directory exists
     if (!fs.existsSync(testDir)) {

@@ -1,10 +1,10 @@
-# Testing ShellOps on External Devices
+# Testing VibeTunnel on External Devices
 
-This guide explains how to test ShellOps development changes on external devices like iPads, iPhones, and other computers.
+This guide explains how to test VibeTunnel development changes on external devices like iPads, iPhones, and other computers.
 
 ## Overview
 
-When developing ShellOps's web interface, you may encounter browser-specific issues that only appear on certain devices (e.g., Safari on iPad). This guide shows you how to test your local development changes on these devices without deploying.
+When developing VibeTunnel's web interface, you may encounter browser-specific issues that only appear on certain devices (e.g., Safari on iPad). This guide shows you how to test your local development changes on these devices without deploying.
 
 ## Quick Start: Development Server Method
 
@@ -57,9 +57,9 @@ cd web
 pnpm run build
 ```
 
-### 2. Configure ShellOps for Network Access
+### 2. Configure VibeTunnel for Network Access
 
-1. Open ShellOps from the menu bar
+1. Open VibeTunnel from the menu bar
 2. Go to Settings → Dashboard Access
 3. Select "Network" mode
 4. Set a dashboard password (required for network access)
@@ -99,7 +99,7 @@ lsof -i :4021
 
 **For production build:**
 - You must rebuild after each change: `pnpm run build`
-- Restart the ShellOps server after building
+- Restart the VibeTunnel server after building
 - Clear browser cache on the external device
 
 ### Safari-Specific Issues
@@ -145,7 +145,7 @@ Test on multiple devices simultaneously:
 pnpm run dev --port 4021 --bind 0.0.0.0
 
 # Terminal 2: Production server (if needed)
-# ShellOps app handles this automatically
+# VibeTunnel app handles this automatically
 ```
 
 ## Security Considerations

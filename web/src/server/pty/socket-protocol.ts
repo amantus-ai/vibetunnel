@@ -1,5 +1,5 @@
 /**
- * Unix socket protocol for ShellOps IPC
+ * Unix socket protocol for VibeTunnel IPC
  *
  * Message format (binary):
  * [1 byte: message type]

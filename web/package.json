@@ -1,10 +1,10 @@
 {
-  "name": "shellops",
+  "name": "vibetunnel",
   "version": "1.0.0-beta.16",
   "description": "Terminal sharing server with web interface - supports macOS, Linux, and headless environments",
   "main": "dist/server/server.js",
   "bin": {
-    "shellops": "./bin/shellops"
+    "vibetunnel": "./bin/vibetunnel"
   },
   "files": [
     "dist/",
@@ -30,12 +30,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/amantus-ai/shellops.git",
+    "url": "https://github.com/arunsanna/vibetunnel.git",
     "directory": "web"
   },
-  "homepage": "https://shellops.sh",
+  "homepage": "https://vibetunnel.sh",
   "bugs": {
-    "url": "https://github.com/amantus-ai/shellops/issues"
+    "url": "https://github.com/arunsanna/vibetunnel/issues"
   },
   "scripts": {
     "clean": "node scripts/clean.js",

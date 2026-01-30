@@ -1,5 +1,5 @@
 /**
- * ESBuild configuration for ShellOps web client
+ * ESBuild configuration for VibeTunnel web client
  */
 const { monacoPlugin } = require('./monaco-plugin.js');
 const { version } = require('../package.json');

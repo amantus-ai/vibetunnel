@@ -1,10 +1,10 @@
 {
-  "name": "shellops",
+  "name": "vibetunnel",
   "version": "1.0.0-beta.16",
   "description": "Terminal sharing server with web interface - run terminals in your browser, with ngrok tunnel support for remote access",
   "main": "lib/cli.js",
   "bin": {
-    "shellops": "./bin/shellops"
+    "vibetunnel": "./bin/vibetunnel"
   },
   "files": [
     "lib/",
@@ -27,17 +27,17 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/amantus-ai/shellops.git",
+    "url": "https://github.com/arunsanna/vibetunnel.git",
     "directory": "web"
   },
-  "homepage": "https://shellops.sh",
+  "homepage": "https://vibetunnel.sh",
   "bugs": {
-    "url": "https://github.com/amantus-ai/shellops/issues"
+    "url": "https://github.com/arunsanna/vibetunnel/issues"
   },
   "scripts": {
     "postinstall": "node scripts/postinstall.js",
     "start": "node lib/cli.js",
-    "shellops": "node lib/cli.js"
+    "vibetunnel": "node lib/cli.js"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.1",
@@ -86,6 +86,6 @@
     "pty",
     "xterm"
   ],
-  "author": "Amantus AI",
+  "author": "Arun Sanna",
   "license": "MIT"
 }

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =============================================================================
-# ShellOps Changelog Finder
+# VibeTunnel Changelog Finder
 # =============================================================================
 #
 # Finds the CHANGELOG.md file from various possible locations.
@@ -29,8 +29,8 @@ find_changelog() {
         # From grandparent directory
         "../../CHANGELOG.md"
         # Absolute paths as fallback
-        "$HOME/Projects/shellops/CHANGELOG.md"
-        "/Users/runner/work/shellops/shellops/CHANGELOG.md"  # GitHub Actions
+        "$HOME/Projects/vibetunnel/CHANGELOG.md"
+        "/Users/runner/work/vibetunnel/vibetunnel/CHANGELOG.md"  # GitHub Actions
     )
     
     for path in "${search_paths[@]}"; do

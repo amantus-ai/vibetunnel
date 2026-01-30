@@ -1,4 +1,14 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+/* Space Grotesk UI Font */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: local('Space Grotesk');
+}
 
 /* JetBrains Mono Variable Font */
 @font-face {
@@ -11,36 +21,36 @@
 
 /* Define CSS variables first */
 :root {
-  /* ShellOps V3 Dark Theme (default) */
-  --color-bg: #050505;
-  --color-bg-secondary: #070707;
-  --color-bg-tertiary: #0A0A0A;
-  --color-bg-elevated: #0D0D0D;
-  --color-surface: #0D0D0D;
-  --color-surface-hover: #141414;
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-border-light: rgba(255, 255, 255, 0.06);
-  --color-border-focus: rgba(255, 255, 255, 0.12);
-  --color-text: #FFFFFF;
+  /* VibeTunnel V3 Dark Theme (default) */
+  --color-bg: #0B0B0B;
+  --color-bg-secondary: #121212;
+  --color-bg-tertiary: #171717;
+  --color-bg-elevated: #1C1C1C;
+  --color-surface: #141414;
+  --color-surface-hover: #1E1E1E;
+  --color-border: #2A2A2A;
+  --color-border-light: #202020;
+  --color-border-focus: #3A3A3A;
+  --color-text: #F5F7FA;
   --color-text-bright: #FFFFFF;
-  --color-text-muted: #737373;
-  --color-text-dim: #525252;
-  --color-primary: #22C55E;
-  --color-primary-hover: #16A34A;
-  --color-primary-dark: #15803D;
-  --color-primary-light: #4ADE80;
-  --color-primary-muted: rgba(34, 197, 94, 0.15);
-  --color-primary-glow: rgba(34, 197, 94, 0.3);
-  --color-primary-surface: rgba(34, 197, 94, 0.05);
-  --color-primary-border: rgba(34, 197, 94, 0.2);
+  --color-text-muted: #C7CBD1;
+  --color-text-dim: #9AA1A9;
+  --color-primary: #00D2FF;
+  --color-primary-hover: #00B8E6;
+  --color-primary-dark: #0092B8;
+  --color-primary-light: #4DE6FF;
+  --color-primary-muted: rgba(0, 210, 255, 0.16);
+  --color-primary-glow: rgba(0, 210, 255, 0.35);
+  --color-primary-surface: rgba(0, 210, 255, 0.08);
+  --color-primary-border: rgba(0, 210, 255, 0.35);
   --color-status-error: #EF4444;
   --color-status-warning: #FBBF24;
   --color-status-success: #22C55E;
-  --color-status-info: #3B82F6;
-  --color-warning-surface: rgba(245, 158, 11, 0.05);
-  --color-warning-border: rgba(245, 158, 11, 0.2);
-  --color-sidebar: #030303;
-  --color-terminal: #000000;
+  --color-status-info: #38BDF8;
+  --color-warning-surface: rgba(251, 191, 36, 0.12);
+  --color-warning-border: rgba(251, 191, 36, 0.35);
+  --color-sidebar: #0A0A0A;
+  --color-terminal: #060606;
 }
 
 /* Tailwind v4 Theme Configuration */
@@ -80,21 +90,22 @@
   --color-terminal: var(--color-terminal);
 
   /* Font Family */
+  --font-ui: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
 
-  /* Box Shadows - ShellOps V3 style */
-  --shadow-glow: 0 0 20px rgba(34, 197, 94, 0.3);
-  --shadow-glow-sm: 0 0 12px rgba(34, 197, 94, 0.2);
-  --shadow-glow-lg: 0 0 30px rgba(34, 197, 94, 0.4);
-  --shadow-glow-intense: 0 4px 16px rgba(34, 197, 94, 0.3);
-  --shadow-glow-error: 0 0 20px rgba(239, 68, 68, 0.3);
-  --shadow-glow-error-sm: 0 0 12px rgba(239, 68, 68, 0.2);
-  --shadow-glow-error-lg: 0 0 30px rgba(239, 68, 68, 0.4);
-  --shadow-glow-warning: 0 0 20px rgba(251, 191, 36, 0.3);
-  --shadow-glow-warning-sm: 0 0 12px rgba(251, 191, 36, 0.2);
-  --shadow-glow-warning-lg: 0 0 30px rgba(251, 191, 36, 0.4);
-  --shadow-card: 0 0 20px rgba(34, 197, 94, 0.08);
-  --shadow-card-hover: 0 0 30px rgba(34, 197, 94, 0.12);
+  /* Box Shadows - VibeTunnel V3 style */
+  --shadow-glow: 0 0 18px rgba(0, 210, 255, 0.22);
+  --shadow-glow-sm: 0 0 10px rgba(0, 210, 255, 0.18);
+  --shadow-glow-lg: 0 0 26px rgba(0, 210, 255, 0.28);
+  --shadow-glow-intense: 0 4px 16px rgba(0, 210, 255, 0.25);
+  --shadow-glow-error: 0 0 18px rgba(239, 68, 68, 0.3);
+  --shadow-glow-error-sm: 0 0 10px rgba(239, 68, 68, 0.2);
+  --shadow-glow-error-lg: 0 0 26px rgba(239, 68, 68, 0.35);
+  --shadow-glow-warning: 0 0 18px rgba(251, 191, 36, 0.3);
+  --shadow-glow-warning-sm: 0 0 10px rgba(251, 191, 36, 0.2);
+  --shadow-glow-warning-lg: 0 0 26px rgba(251, 191, 36, 0.35);
+  --shadow-card: 0 0 18px rgba(0, 210, 255, 0.08);
+  --shadow-card-hover: 0 0 24px rgba(0, 210, 255, 0.14);
   --shadow-elevated: 0 8px 60px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 0, 0, 0.3);
   --shadow-modal: 0 8px 60px rgba(0, 0, 0, 0.5), 0 0 10px rgba(255, 255, 255, 0.08);
 
@@ -172,7 +183,7 @@
   }
 }
 
-/* CSS Custom Properties for ShellOps constants */
+/* CSS Custom Properties for VibeTunnel constants */
 :root {
   /* Breakpoints */
   --vt-breakpoint-mobile: 768px;
@@ -224,7 +235,7 @@
   --color-terminal: rgb(245 245 245);
 }
 
-/* ShellOps V3 is dark by default - no system preference detection needed */
+/* VibeTunnel V3 is dark by default - no system preference detection needed */
 
 /* Global theme-aware styles */
 @layer base {
@@ -244,6 +255,8 @@
     overflow: hidden;
     /* Removed position:fixed as it can interfere with position:fixed children */
     width: 100%;
+    font-family: var(--font-ui);
+    letter-spacing: -0.01em;
   }
   
   /* Checkbox styling */
@@ -457,7 +470,7 @@
     @apply hover:text-text hover:bg-bg-tertiary;
   }
 
-  /* Enhanced card styles - ShellOps V3 */
+  /* Enhanced card styles - VibeTunnel V3 */
   .card {
     @apply bg-bg-elevated border rounded-xl p-0;
     @apply transition-all duration-300 ease-out;
@@ -475,7 +488,7 @@
     border-color: rgba(255, 255, 255, 0.12);
   }
 
-  /* Card glow effect for active sessions - ShellOps V3 style */
+  /* Card glow effect for active sessions - VibeTunnel V3 style */
   .card.card-active {
     border-color: var(--color-primary-border);
     box-shadow: 0 0 20px rgba(34, 197, 94, 0.08);
@@ -594,7 +607,7 @@
     @apply text-text-muted text-sm font-medium mb-2 flex items-center gap-2;
   }
 
-  /* Enhanced responsive session grid layout - ShellOps V3 style */
+  /* Enhanced responsive session grid layout - VibeTunnel V3 style */
   .session-flex-responsive {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -631,16 +644,16 @@
 
   /* Session card responsive styles */
   .session-card {
-    background: #000000;
+    background: var(--color-bg-elevated);
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--color-border);
   }
 
   /* Desktop card height handled by inner container */
   @media (min-width: 641px) {
     .session-card {
       border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--color-border);
     }
   }
 
@@ -671,13 +684,13 @@
   }
 
   .auth-title {
-    @apply text-3xl font-mono font-bold text-text-bright;
-    font-family: 'JetBrains Mono', monospace;
-    letter-spacing: -0.02em;
+    @apply text-3xl font-bold text-text-bright;
+    font-family: var(--font-ui);
+    letter-spacing: -0.03em;
   }
 
   .auth-subtitle {
-    @apply text-text-muted font-mono text-xs;
+    @apply text-text-muted text-sm;
   }
 
   .auth-form {
@@ -685,7 +698,7 @@
   }
 
   .auth-divider {
-    @apply relative text-center text-text-muted font-mono text-sm;
+    @apply relative text-center text-text-muted text-sm;
   }
 
   .auth-divider::before {
@@ -705,7 +718,7 @@
   }
 
   .badge {
-    @apply px-2 py-1 rounded text-xs font-mono font-semibold;
+    @apply px-2 py-1 rounded text-xs font-semibold;
   }
 
   .badge-rsa {
@@ -716,82 +729,85 @@
     @apply bg-primary text-bg-elevated;
   }
 
-  /* ===== ShellOps V3 Components ===== */
+  /* ===== VibeTunnel V3 Components ===== */
 
   /* Sidebar - 72px vertical nav */
-  .shellops-sidebar {
+  .vibetunnel-sidebar {
     width: 72px;
     background: var(--color-sidebar);
-    border-right: 1px solid rgba(255, 255, 255, 0.04);
+    border-right: 1px solid var(--color-border);
     @apply flex flex-col justify-between py-6;
     height: 100%;
   }
 
-  .shellops-sidebar-top,
-  .shellops-sidebar-bottom {
+  .vibetunnel-sidebar-top,
+  .vibetunnel-sidebar-bottom {
     @apply flex flex-col items-center gap-8;
   }
 
-  .shellops-sidebar-nav {
+  .vibetunnel-sidebar-nav {
     @apply flex flex-col items-center gap-2;
   }
 
   /* Logo */
-  .shellops-logo {
+  .vibetunnel-logo {
     @apply flex items-center justify-center rounded-xl;
     width: 40px;
     height: 40px;
     background: var(--color-primary);
-    box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+    box-shadow: 0 6px 16px rgba(0, 210, 255, 0.25);
   }
 
-  .shellops-logo-text {
-    @apply text-sm font-semibold font-mono;
+  .vibetunnel-logo-text {
+    @apply text-sm font-semibold;
+    font-family: var(--font-ui);
     color: var(--color-bg);
+    letter-spacing: 0.02em;
   }
 
   /* Nav items */
-  .shellops-nav-item {
+  .vibetunnel-nav-item {
     @apply flex items-center justify-center rounded-xl cursor-pointer;
     @apply transition-all duration-200;
     width: 44px;
     height: 44px;
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
   }
 
-  .shellops-nav-item:hover {
-    background: rgba(255, 255, 255, 0.08);
+  .vibetunnel-nav-item:hover {
+    background: var(--color-surface-hover);
   }
 
-  .shellops-nav-item.active {
+  .vibetunnel-nav-item.active {
     background: var(--color-primary-muted);
     border: 1px solid var(--color-primary-border);
   }
 
-  .shellops-nav-item.active svg,
-  .shellops-nav-item.active .nav-icon {
+  .vibetunnel-nav-item.active svg,
+  .vibetunnel-nav-item.active .nav-icon {
     color: var(--color-primary);
   }
 
-  .shellops-nav-item svg,
-  .shellops-nav-item .nav-icon {
+  .vibetunnel-nav-item svg,
+  .vibetunnel-nav-item .nav-icon {
     width: 20px;
     height: 20px;
     color: var(--color-text-muted);
   }
 
   /* Avatar */
-  .shellops-avatar {
-    @apply flex items-center justify-center rounded-full font-mono text-sm font-medium;
+  .vibetunnel-avatar {
+    @apply flex items-center justify-center rounded-full text-sm font-semibold;
     width: 36px;
     height: 36px;
-    background: #1F1F1F;
+    background: var(--color-surface);
     border: 1px solid var(--color-primary-border);
     color: var(--color-primary);
   }
 
   /* Main content area */
-  .shellops-main {
+  .vibetunnel-main {
     @apply flex-1 flex flex-col;
     background: var(--color-bg-secondary);
     border-radius: 16px 0 0 16px;
@@ -800,24 +816,25 @@
   }
 
   /* Header */
-  .shellops-header {
+  .vibetunnel-header {
     @apply flex items-center justify-between;
   }
 
-  .shellops-title {
-    @apply text-3xl font-bold font-mono text-text-bright;
-    letter-spacing: -0.02em;
+  .vibetunnel-title {
+    @apply text-3xl font-bold text-text-bright;
+    font-family: var(--font-ui);
+    letter-spacing: -0.03em;
   }
 
   /* Active badge */
-  .shellops-active-badge {
-    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium font-mono;
+  .vibetunnel-active-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium;
     background: var(--color-primary-muted);
     border: 1px solid var(--color-primary-border);
     color: var(--color-primary);
   }
 
-  .shellops-active-badge-dot {
+  .vibetunnel-active-badge-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
@@ -825,142 +842,144 @@
   }
 
   /* Search bar */
-  .shellops-search {
-    @apply flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl font-mono text-sm cursor-pointer;
+  .vibetunnel-search {
+    @apply flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm cursor-pointer;
     @apply transition-all duration-200;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: var(--color-text-dim);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
   }
 
-  .shellops-search:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.15);
+  .vibetunnel-search:hover {
+    background: var(--color-surface-hover);
+    border-color: var(--color-border-focus);
   }
 
-  .shellops-search-key {
+  .vibetunnel-search-key {
     @apply text-xs;
     color: var(--color-text-dim);
   }
 
   /* Primary button - New */
-  .shellops-btn-primary {
-    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-mono text-sm font-medium;
+  .vibetunnel-btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold;
     @apply transition-all duration-200;
     background: var(--color-primary);
-    color: var(--color-bg);
-    box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);
+    color: #041217;
+    box-shadow: 0 6px 18px rgba(0, 210, 255, 0.28);
   }
 
-  .shellops-btn-primary:hover {
+  .vibetunnel-btn-primary:hover {
     background: var(--color-primary-hover);
-    box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+    box-shadow: 0 8px 22px rgba(0, 210, 255, 0.35);
     transform: translateY(-1px);
   }
 
-  .shellops-btn-primary:active {
+  .vibetunnel-btn-primary:active {
     transform: translateY(0);
   }
 
   /* Filter bar */
-  .shellops-filter-bar {
+  .vibetunnel-filter-bar {
     @apply flex items-center justify-between gap-3;
   }
 
-  .shellops-filter-group {
+  .vibetunnel-filter-group {
     @apply flex items-center gap-2.5;
   }
 
-  .shellops-filter-label {
-    @apply flex items-center gap-1.5 text-xs font-mono font-medium;
+  .vibetunnel-filter-label {
+    @apply flex items-center gap-1.5 text-xs font-medium;
     color: var(--color-text-dim);
   }
 
-  .shellops-filter-chip {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-medium cursor-pointer;
+  .vibetunnel-filter-chip {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer;
     @apply transition-all duration-200;
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--color-surface);
     color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
   }
 
-  .shellops-filter-chip:hover {
-    background: rgba(255, 255, 255, 0.08);
+  .vibetunnel-filter-chip:hover {
+    background: var(--color-surface-hover);
+    border-color: var(--color-border-focus);
   }
 
-  .shellops-filter-chip.active {
+  .vibetunnel-filter-chip.active {
     background: var(--color-primary-muted);
     border: 1px solid var(--color-primary-border);
     color: var(--color-primary);
   }
 
-  .shellops-filter-chip-dot {
+  .vibetunnel-filter-chip-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
   }
 
-  .shellops-filter-chip-dot.online {
+  .vibetunnel-filter-chip-dot.online {
     background: var(--color-primary);
   }
 
-  .shellops-filter-chip-dot.warning {
+  .vibetunnel-filter-chip-dot.warning {
     background: var(--color-status-warning);
   }
 
-  .shellops-filter-count {
-    @apply text-xs font-mono;
+  .vibetunnel-filter-count {
+    @apply text-xs;
     color: var(--color-text-dim);
   }
 
   /* Session grid */
-  .shellops-session-grid {
+  .vibetunnel-session-grid {
     @apply grid gap-6;
     grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   }
 
   /* Session card */
-  .shellops-session-card {
+  .vibetunnel-session-card {
     @apply rounded-xl overflow-hidden;
     @apply transition-all duration-300;
     background: var(--color-bg-elevated);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--color-border);
   }
 
-  .shellops-session-card.active {
+  .vibetunnel-session-card.active {
     border-color: var(--color-primary-border);
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.08);
+    box-shadow: 0 0 20px rgba(0, 210, 255, 0.18);
   }
 
-  .shellops-session-card.warning {
+  .vibetunnel-session-card.warning {
     border-color: var(--color-warning-border);
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.08);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.18);
   }
 
-  .shellops-session-card:hover {
+  .vibetunnel-session-card:hover {
     transform: translateY(-2px);
   }
 
-  .shellops-session-card.active:hover {
-    box-shadow: 0 0 30px rgba(34, 197, 94, 0.12);
+  .vibetunnel-session-card.active:hover {
+    box-shadow: 0 0 30px rgba(0, 210, 255, 0.22);
   }
 
-  .shellops-session-card-header {
+  .vibetunnel-session-card-header {
     @apply flex items-center justify-between p-4;
   }
 
-  .shellops-session-card-header.active {
+  .vibetunnel-session-card-header.active {
     background: var(--color-primary-surface);
   }
 
-  .shellops-session-card-header.warning {
+  .vibetunnel-session-card-header.warning {
     background: var(--color-warning-surface);
   }
 
-  .shellops-session-card-header.default {
-    background: rgba(255, 255, 255, 0.02);
+  .vibetunnel-session-card-header.default {
+    background: var(--color-surface);
   }
 
-  .shellops-session-card-terminal {
+  .vibetunnel-session-card-terminal {
     @apply p-4;
     background: var(--color-terminal);
     height: 180px;
@@ -968,30 +987,31 @@
   }
 
   /* Status dot */
-  .shellops-status-dot {
+  .vibetunnel-status-dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
     flex-shrink: 0;
   }
 
-  .shellops-status-dot.online {
+  .vibetunnel-status-dot.online {
     background: var(--color-primary);
   }
 
-  .shellops-status-dot.warning {
+  .vibetunnel-status-dot.warning {
     background: var(--color-status-warning);
   }
 
-  .shellops-status-dot.offline {
+  .vibetunnel-status-dot.offline {
     background: var(--color-text-dim);
   }
 
   /* Server badge */
-  .shellops-server-badge {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono;
-    background: rgba(255, 255, 255, 0.06);
+  .vibetunnel-server-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium;
+    background: var(--color-surface);
     color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
   }
 }
 
@@ -1147,11 +1167,21 @@
   src: url('/fonts/HackNerdFontMono-Bold.ttf') format('truetype');
 }
 
-/* Override Tailwind's font-mono to use JetBrains Mono (ShellOps V3 style) */
+/* Override Tailwind's font-mono to use JetBrains Mono (VibeTunnel V3 style) */
 .font-mono {
   font-family:
     'JetBrains Mono', 'Hack Nerd Font Mono', 'Fira Code', ui-monospace, SFMono-Regular, 'SF Mono', Consolas,
     'Liberation Mono', Menlo, monospace !important;
+}
+
+.font-ui {
+  font-family: var(--font-ui) !important;
+}
+
+code,
+pre,
+kbd {
+  font-family: var(--font-mono);
 }
 
 /* Mobile scroll and touch behavior fixes */
@@ -2731,7 +2761,7 @@ vibe-terminal-binary,
 .mobile-action-key {
   @apply px-3 py-2 mx-1 rounded-md;
   @apply bg-bg-tertiary border border-border;
-  @apply text-text text-sm font-mono;
+  @apply text-text text-sm font-ui;
   @apply transition-all duration-150;
   @apply active:scale-95 active:bg-primary/20;
   touch-action: manipulation;

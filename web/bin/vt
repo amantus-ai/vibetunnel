@@ -1,5 +1,5 @@
 #!/bin/bash
-# Unified ShellOps CLI wrapper - compatible with both Mac app and npm installations
+# Unified VibeTunnel CLI wrapper - compatible with both Mac app and npm installations
 
 # Function to convert absolute paths to use ~
 prettify_path() {
@@ -18,7 +18,7 @@ APP_PATH=""
 # Only check for Mac app on macOS
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # Respect explicit overrides (tests/dev setups): don't auto-switch to app bundle.
-    if [ -z "$SHELLOPS_BIN" ]; then
+    if [ -z "$VIBETUNNEL_BIN" ]; then
     # macOS symlink resolution function using BSD readlink
     resolve_symlink_macos() {
         local target="$1"
@@ -36,10 +36,10 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     # Get the real path of this script to avoid infinite recursion
     SCRIPT_REAL_PATH="$(resolve_symlink_macos "${BASH_SOURCE[0]}")"
 
-    # Comprehensive Mac app search - order depends on SHELLOPS_PREFER_DERIVED_DATA
+    # Comprehensive Mac app search - order depends on VIBETUNNEL_PREFER_DERIVED_DATA
     APP_PATH=""
     
-    if [ -n "$SHELLOPS_PREFER_DERIVED_DATA" ]; then
+    if [ -n "$VIBETUNNEL_PREFER_DERIVED_DATA" ]; then
         # When preference is set, try DerivedData first
         for CANDIDATE in $(find ~/Library/Developer/Xcode/DerivedData -name "VibeTunnel.app" -type d 2>/dev/null | grep -v "\.dSYM" | grep -v "Index\.noindex" | sort -r); do
             if [ -f "$CANDIDATE/Contents/Resources/vibetunnel" ]; then
@@ -77,8 +77,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         done
     fi
     
-    # If not found in standard locations and SHELLOPS_PREFER_DERIVED_DATA wasn't set, search development builds
-    if [ -z "$APP_PATH" ] && [ -z "$SHELLOPS_PREFER_DERIVED_DATA" ]; then
+    # If not found in standard locations and VIBETUNNEL_PREFER_DERIVED_DATA wasn't set, search development builds
+    if [ -z "$APP_PATH" ] && [ -z "$VIBETUNNEL_PREFER_DERIVED_DATA" ]; then
         # Try DerivedData (for development)
         for CANDIDATE in $(find ~/Library/Developer/Xcode/DerivedData -name "VibeTunnel.app" -type d 2>/dev/null | grep -v "\.dSYM" | grep -v "Index\.noindex"); do
             if [ -f "$CANDIDATE/Contents/Resources/vibetunnel" ]; then
@@ -117,8 +117,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     
     # If we found a Mac app but couldn't use its vt script, use its binary directly
     if [ -n "$APP_PATH" ]; then
-        SHELLOPS_BIN="$APP_PATH/Contents/Resources/vibetunnel"
-        if [ -f "$SHELLOPS_BIN" ]; then
+        VIBETUNNEL_BIN="$APP_PATH/Contents/Resources/vibetunnel"
+        if [ -f "$VIBETUNNEL_BIN" ]; then
             # Found Mac app bundle - will use this binary
             # Silent operation - no message printed
             true  # No-op command to fix syntax error
@@ -127,45 +127,45 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     fi
 fi
 
-# If we get here without a Mac app, use the npm-installed shellops
-if [ -z "$SHELLOPS_BIN" ]; then
-    # First, try to find shellops in the same directory as this script
+# If we get here without a Mac app, use the npm-installed vibetunnel
+if [ -z "$VIBETUNNEL_BIN" ]; then
+    # First, try to find vibetunnel in the same directory as this script
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    if [ -f "$SCRIPT_DIR/shellops" ]; then
-        SHELLOPS_BIN="$SCRIPT_DIR/shellops"
+    if [ -f "$SCRIPT_DIR/vibetunnel" ]; then
+        VIBETUNNEL_BIN="$SCRIPT_DIR/vibetunnel"
     elif [ -f "$SCRIPT_DIR/vibetunnel" ]; then
         # Legacy: support old vibetunnel name
-        SHELLOPS_BIN="$SCRIPT_DIR/vibetunnel"
+        VIBETUNNEL_BIN="$SCRIPT_DIR/vibetunnel"
     else
-        # Try to find shellops in PATH
-        if command -v shellops >/dev/null 2>&1; then
-            SHELLOPS_BIN="$(command -v shellops)"
+        # Try to find vibetunnel in PATH
+        if command -v vibetunnel >/dev/null 2>&1; then
+            VIBETUNNEL_BIN="$(command -v vibetunnel)"
         elif command -v vibetunnel >/dev/null 2>&1; then
             # Legacy: support old vibetunnel name
-            SHELLOPS_BIN="$(command -v vibetunnel)"
+            VIBETUNNEL_BIN="$(command -v vibetunnel)"
         fi
     fi
 fi
 
-if [ -z "$SHELLOPS_BIN" ] || [ ! -f "$SHELLOPS_BIN" ]; then
-    echo "Error: shellops binary not found. Please ensure shellops is installed." >&2
-    echo "Install with: npm install -g shellops" >&2
+if [ -z "$VIBETUNNEL_BIN" ] || [ ! -f "$VIBETUNNEL_BIN" ]; then
+    echo "Error: vibetunnel binary not found. Please ensure vibetunnel is installed." >&2
+    echo "Install with: npm install -g vibetunnel" >&2
     exit 1
 fi
 
 # Prefer native forwarder binary when available
-if [ -z "$SHELLOPS_FWD_BIN" ]; then
+if [ -z "$VIBETUNNEL_FWD_BIN" ]; then
     if [ -n "$APP_PATH" ] && [ -f "$APP_PATH/Contents/Resources/vibetunnel-fwd" ]; then
-        SHELLOPS_FWD_BIN="$APP_PATH/Contents/Resources/vibetunnel-fwd"
+        VIBETUNNEL_FWD_BIN="$APP_PATH/Contents/Resources/vibetunnel-fwd"
     else
-        # Try shellops-fwd first, then fall back to vibetunnel-fwd
-        FWD_CANDIDATE="$(dirname "$SHELLOPS_BIN")/shellops-fwd"
+        # Try vibetunnel-fwd first, then fall back to vibetunnel-fwd
+        FWD_CANDIDATE="$(dirname "$VIBETUNNEL_BIN")/vibetunnel-fwd"
         if [ -f "$FWD_CANDIDATE" ]; then
-            SHELLOPS_FWD_BIN="$FWD_CANDIDATE"
+            VIBETUNNEL_FWD_BIN="$FWD_CANDIDATE"
         else
-            FWD_CANDIDATE="$(dirname "$SHELLOPS_BIN")/vibetunnel-fwd"
+            FWD_CANDIDATE="$(dirname "$VIBETUNNEL_BIN")/vibetunnel-fwd"
             if [ -f "$FWD_CANDIDATE" ]; then
-                SHELLOPS_FWD_BIN="$FWD_CANDIDATE"
+                VIBETUNNEL_FWD_BIN="$FWD_CANDIDATE"
             fi
         fi
     fi
@@ -178,10 +178,10 @@ if [[ "$1" == "title" || "$1" == "status" || "$1" == "--version" || "$1" == "ver
     SUPPRESS_OUTPUT=true
 fi
 
-# Log ShellOps binary info when SHELLOPS_PREFER_DERIVED_DATA is set
-if [ -n "$SHELLOPS_PREFER_DERIVED_DATA" ] && [ -n "$SHELLOPS_BIN" ] && [ "$SUPPRESS_OUTPUT" != "true" ]; then
+# Log VibeTunnel binary info when VIBETUNNEL_PREFER_DERIVED_DATA is set
+if [ -n "$VIBETUNNEL_PREFER_DERIVED_DATA" ] && [ -n "$VIBETUNNEL_BIN" ] && [ "$SUPPRESS_OUTPUT" != "true" ]; then
     # Get version and build info
-    VERSION_OUTPUT=$("$SHELLOPS_BIN" --version 2>&1)
+    VERSION_OUTPUT=$("$VIBETUNNEL_BIN" --version 2>&1)
     VERSION_LINE=$(echo "$VERSION_OUTPUT" | grep "^VibeTunnel Server" | head -n 1)
     BUILD_LINE=$(echo "$VERSION_OUTPUT" | grep "^Built:" | head -n 1)
     
@@ -191,7 +191,7 @@ if [ -n "$SHELLOPS_PREFER_DERIVED_DATA" ] && [ -n "$SHELLOPS_BIN" ] && [ "$SUPPR
     
     # Always log this info regardless of verbosity level
     # Shorten path by removing /Contents/Resources/vibetunnel suffix
-    DISPLAY_PATH=$(prettify_path "$SHELLOPS_BIN")
+    DISPLAY_PATH=$(prettify_path "$VIBETUNNEL_BIN")
     DISPLAY_PATH=${DISPLAY_PATH%/Contents/Resources/vibetunnel}
     echo -e "${GRAY}[VibeTunnel] ${DISPLAY_PATH}${RESET}"
     if [ -n "$VERSION_LINE" ] && [ -n "$BUILD_LINE" ]; then
@@ -205,11 +205,11 @@ fi
 # This must come BEFORE the session check to avoid the recursive session error
 if [[ "$1" == "status" || "$1" == "version" || "$1" == "--version" ]]; then
     # These commands can run safely inside or outside a session
-    exec "$SHELLOPS_BIN" "$@"
+    exec "$VIBETUNNEL_BIN" "$@"
 fi
 
-# Check if we're already inside a ShellOps session
-if [ -n "$SHELLOPS_SESSION_ID" ]; then
+# Check if we're already inside a VibeTunnel session
+if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
     # Special case: handle 'vt title' command inside a session
     if [[ "$1" == "title" ]]; then
         if [[ $# -lt 2 ]]; then
@@ -221,17 +221,17 @@ if [ -n "$SHELLOPS_SESSION_ID" ]; then
         TITLE="$*" # Get all remaining arguments as the title
         
         # Use native forwarder when available for --update-title
-        if [ -n "$SHELLOPS_FWD_BIN" ] && [ -x "$SHELLOPS_FWD_BIN" ]; then
-            exec "$SHELLOPS_FWD_BIN" --update-title "$TITLE" --session-id "$SHELLOPS_SESSION_ID"
+        if [ -n "$VIBETUNNEL_FWD_BIN" ] && [ -x "$VIBETUNNEL_FWD_BIN" ]; then
+            exec "$VIBETUNNEL_FWD_BIN" --update-title "$TITLE" --session-id "$VIBETUNNEL_SESSION_ID"
         else
-            exec "$SHELLOPS_BIN" fwd --update-title "$TITLE" --session-id "$SHELLOPS_SESSION_ID"
+            exec "$VIBETUNNEL_BIN" fwd --update-title "$TITLE" --session-id "$VIBETUNNEL_SESSION_ID"
         fi
         # If exec fails, exit with error
         exit 1
     fi
     
     # For all other commands, block recursive sessions
-    echo "Error: Already inside a ShellOps session (ID: $SHELLOPS_SESSION_ID). Recursive ShellOps sessions are not supported." >&2
+    echo "Error: Already inside a VibeTunnel session (ID: $VIBETUNNEL_SESSION_ID). Recursive VibeTunnel sessions are not supported." >&2
     echo "If you need to run commands, use them directly without the 'vt' prefix." >&2
     exit 1
 fi
@@ -256,7 +256,7 @@ json_escape() {
 # Function to show help
 show_help() {
     cat << 'EOF'
-vt - ShellOps TTY Forward Wrapper
+vt - VibeTunnel TTY Forward Wrapper
 
 USAGE:
     vt [command] [args...]
@@ -264,7 +264,7 @@ USAGE:
     vt -i [args...]
     vt --no-shell-wrap [command] [args...]
     vt -S [command] [args...]
-    vt title <new title>    # Inside a ShellOps session only
+    vt title <new title>    # Inside a VibeTunnel session only
     vt status              # Show server status and follow mode
     vt follow [branch]      # Enable follow mode for current or specified branch
     vt unfollow            # Disable follow mode
@@ -275,27 +275,27 @@ QUICK VERBOSITY:
     -q (quiet), -v (verbose), -vv (extra), -vvv (debug)
 
 DESCRIPTION:
-    This wrapper script allows ShellOps to see the output of commands by
-    forwarding TTY data through the shellops utility. When you run commands
-    through 'vt', ShellOps can monitor and display the command's output
+    This wrapper script allows VibeTunnel to see the output of commands by
+    forwarding TTY data through the vibetunnel utility. When you run commands
+    through 'vt', VibeTunnel can monitor and display the command's output
     in real-time.
 
     By default, commands are executed through your shell to resolve aliases,
     functions, and builtins. Use --no-shell-wrap to execute commands directly.
 
-    Inside a ShellOps session, use 'vt title' to update the session name.
+    Inside a VibeTunnel session, use 'vt title' to update the session name.
     
-    Follow mode automatically switches your ShellOps terminal to the Git
+    Follow mode automatically switches your VibeTunnel terminal to the Git
     worktree that matches the branch you're working on in your editor/IDE.
-    When you switch branches in your editor, ShellOps follows along.
+    When you switch branches in your editor, VibeTunnel follows along.
     
-    The 'vt git event' command is used by Git hooks to notify ShellOps
+    The 'vt git event' command is used by Git hooks to notify VibeTunnel
     of repository changes for automatic worktree switching.
 
 EXAMPLES:
-    vt top                  # Watch top with ShellOps monitoring
+    vt top                  # Watch top with VibeTunnel monitoring
     vt python script.py     # Run Python script with output forwarding
-    vt npm test             # Run tests with ShellOps visibility
+    vt npm test             # Run tests with VibeTunnel visibility
     vt --shell              # Launch current shell (equivalent to vt $SHELL)
     vt -i                   # Launch current shell (short form)
     vt -S ls -la            # List files without shell alias resolution
@@ -312,7 +312,7 @@ EXAMPLES:
     vt unfollow            # Disable follow mode
     
     # Git event command (typically called by Git hooks):
-    vt git event            # Notify ShellOps of Git changes
+    vt git event            # Notify VibeTunnel of Git changes
 
 OPTIONS:
     --shell, -i            Launch current shell (equivalent to vt $SHELL)
@@ -337,34 +337,34 @@ VERBOSITY:
     -vv           Show everything except debug messages
     -vvv          Show all messages including debug
 
-    You can also set SHELLOPS_LOG_LEVEL environment variable:
-    export SHELLOPS_LOG_LEVEL=error    # Default
-    export SHELLOPS_LOG_LEVEL=warn     # Show errors and warnings
-    export SHELLOPS_LOG_LEVEL=info     # Show errors, warnings, and info
-    export SHELLOPS_LOG_LEVEL=verbose  # All except debug
-    export SHELLOPS_LOG_LEVEL=debug    # Everything
+    You can also set VIBETUNNEL_LOG_LEVEL environment variable:
+    export VIBETUNNEL_LOG_LEVEL=error    # Default
+    export VIBETUNNEL_LOG_LEVEL=warn     # Show errors and warnings
+    export VIBETUNNEL_LOG_LEVEL=info     # Show errors, warnings, and info
+    export VIBETUNNEL_LOG_LEVEL=verbose  # All except debug
+    export VIBETUNNEL_LOG_LEVEL=debug    # Everything
 
 NOTE:
-    This script automatically detects and uses the best available ShellOps installation:
+    This script automatically detects and uses the best available VibeTunnel installation:
     - Mac app bundle (preferred on macOS)
     - npm package installation (fallback)
 EOF
     
     # Show path and version info
     echo
-    echo "SHELLOPS BINARY:"
-    echo "    Path: $SHELLOPS_BIN"
-    if [ -f "$SHELLOPS_BIN" ]; then
+    echo "VIBETUNNEL BINARY:"
+    echo "    Path: $VIBETUNNEL_BIN"
+    if [ -f "$VIBETUNNEL_BIN" ]; then
         # Try to get version from binary output first (works for both Mac app and npm)
-        VERSION_INFO=$("$SHELLOPS_BIN" --version 2>&1 | grep "^VibeTunnel Server" | head -n 1)
-        BUILD_INFO=$("$SHELLOPS_BIN" --version 2>&1 | grep "^Built:" | head -n 1)
-        PLATFORM_INFO=$("$SHELLOPS_BIN" --version 2>&1 | grep "^Platform:" | head -n 1)
+        VERSION_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^VibeTunnel Server" | head -n 1)
+        BUILD_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^Built:" | head -n 1)
+        PLATFORM_INFO=$("$VIBETUNNEL_BIN" --version 2>&1 | grep "^Platform:" | head -n 1)
         
         if [ -n "$VERSION_INFO" ]; then
             echo "    Version: ${VERSION_INFO#VibeTunnel Server }"
         else
             # Fallback to package.json for npm installations
-            PACKAGE_JSON="$(dirname "$(dirname "$SHELLOPS_BIN")")/package.json"
+            PACKAGE_JSON="$(dirname "$(dirname "$VIBETUNNEL_BIN")")/package.json"
             if [ -f "$PACKAGE_JSON" ]; then
                 VERSION=$(grep '"version"' "$PACKAGE_JSON" | head -1 | sed 's/.*"version".*:.*"\(.*\)".*/\1/')
                 echo "    Version: $VERSION"
@@ -379,11 +379,11 @@ EOF
         fi
         
         # Determine installation type
-        if [[ "$SHELLOPS_BIN" == */Applications/VibeTunnel.app/* ]]; then
+        if [[ "$VIBETUNNEL_BIN" == */Applications/VibeTunnel.app/* ]]; then
             echo "    Status: Mac app bundle"
-        elif [[ "$SHELLOPS_BIN" == */DerivedData/* ]]; then
+        elif [[ "$VIBETUNNEL_BIN" == */DerivedData/* ]]; then
             echo "    Status: Development build"
-        elif [[ "$SHELLOPS_BIN" == *npm* ]] || [[ "$SHELLOPS_BIN" == */bin/vibetunnel ]]; then
+        elif [[ "$VIBETUNNEL_BIN" == *npm* ]] || [[ "$VIBETUNNEL_BIN" == */bin/vibetunnel ]]; then
             echo "    Status: Installed via npm"
         else
             echo "    Status: Unknown installation"
@@ -416,7 +416,7 @@ exec_with_fallback() {
     # Check if it was killed by macOS (exit code 137 or very quick failure)
     if [[ $EXIT_CODE -eq 137 ]] || ([[ $EXIT_CODE -ne 0 ]] && [[ $DURATION -lt 100 ]]); then
         # Log the error
-        echo "[vt] ShellOps binary killed by macOS (exit code: $EXIT_CODE). Running command directly." >&2
+        echo "[vt] VibeTunnel binary killed by macOS (exit code: $EXIT_CODE). Running command directly." >&2
         
         # Extract the actual command (skip vibetunnel binary and forwarder)
         local FALLBACK_CMD=()
@@ -424,13 +424,13 @@ exec_with_fallback() {
         local IN_COMMAND=0
         local USING_FWD_BIN=false
 
-        if [[ -n "$SHELLOPS_FWD_BIN" && "${SAVED_CMD[0]}" == "$SHELLOPS_FWD_BIN" ]]; then
+        if [[ -n "$VIBETUNNEL_FWD_BIN" && "${SAVED_CMD[0]}" == "$VIBETUNNEL_FWD_BIN" ]]; then
             USING_FWD_BIN=true
         fi
         
         for arg in "${SAVED_CMD[@]}"; do
             # Skip the vibetunnel binary path
-            if [[ "$arg" == "$SHELLOPS_BIN" || "$arg" == "$SHELLOPS_FWD_BIN" ]]; then
+            if [[ "$arg" == "$VIBETUNNEL_BIN" || "$arg" == "$VIBETUNNEL_FWD_BIN" ]]; then
                 continue
             fi
             # Skip "fwd" when using vibetunnel binary
@@ -475,11 +475,11 @@ exec_with_fallback() {
 
 # Function to run the forwarder (prefer native zig binary when present)
 exec_fwd() {
-    if [ -n "$SHELLOPS_FWD_BIN" ] && [ -x "$SHELLOPS_FWD_BIN" ]; then
-        exec_with_fallback "$SHELLOPS_FWD_BIN" "$@"
+    if [ -n "$VIBETUNNEL_FWD_BIN" ] && [ -x "$VIBETUNNEL_FWD_BIN" ]; then
+        exec_with_fallback "$VIBETUNNEL_FWD_BIN" "$@"
     else
         # Fall back to vibetunnel fwd (which will exec vibetunnel-fwd if available)
-        exec_with_fallback "$SHELLOPS_BIN" fwd "$@"
+        exec_with_fallback "$VIBETUNNEL_BIN" fwd "$@"
     fi
 }
 
@@ -548,7 +548,7 @@ fi
 
 # Handle 'vt title' command when not inside a session
 if [[ "$1" == "title" ]]; then
-    echo "Error: 'vt title' can only be used inside a ShellOps session." >&2
+    echo "Error: 'vt title' can only be used inside a VibeTunnel session." >&2
     echo "Start a session first with 'vt' or 'vt <command>'" >&2
     exit 1
 fi
@@ -578,7 +578,7 @@ if [[ "$1" == "follow" ]]; then
         echo "Main repository ($(prettify_path "$MAIN_REPO")) will track this worktree"
         
         # Use vibetunnel CLI with worktree context
-        exec "$SHELLOPS_BIN" follow --from-worktree --worktree-path "$WORKTREE_PATH" --main-repo "$MAIN_REPO"
+        exec "$VIBETUNNEL_BIN" follow --from-worktree --worktree-path "$WORKTREE_PATH" --main-repo "$MAIN_REPO"
     else
         # We're in main repo
         MAIN_REPO=$(git rev-parse --show-toplevel 2>/dev/null)
@@ -632,7 +632,7 @@ if [[ "$1" == "follow" ]]; then
             echo "Enabling follow mode for branch: $CURRENT_BRANCH"
             echo "Following worktree: $(prettify_path "$WORKTREE_PATH")"
             echo "Main repository: $(prettify_path "$MAIN_REPO")"
-            exec "$SHELLOPS_BIN" follow --worktree-path "$WORKTREE_PATH" --main-repo "$MAIN_REPO"
+            exec "$VIBETUNNEL_BIN" follow --worktree-path "$WORKTREE_PATH" --main-repo "$MAIN_REPO"
             
         elif [[ -d "$ARG" ]] || [[ "$ARG" == /* ]] || [[ "$ARG" == ../* ]]; then
             # Path argument
@@ -643,7 +643,7 @@ if [[ "$1" == "follow" ]]; then
             fi
             echo "Enabling follow mode for worktree: $(prettify_path "$WORKTREE_PATH")"
             echo "Main repository: $(prettify_path "$MAIN_REPO")"
-            exec "$SHELLOPS_BIN" follow --worktree-path "$WORKTREE_PATH" --main-repo "$MAIN_REPO"
+            exec "$VIBETUNNEL_BIN" follow --worktree-path "$WORKTREE_PATH" --main-repo "$MAIN_REPO"
         else
             # Branch argument
             WORKTREE_PATH=$(git worktree list --porcelain | grep -B2 "branch refs/heads/$ARG" | grep "worktree" | cut -d' ' -f2 | grep -v "^$MAIN_REPO$" | head -n1)
@@ -657,7 +657,7 @@ if [[ "$1" == "follow" ]]; then
             echo "Enabling follow mode for branch: $ARG"
             echo "Following worktree: $(prettify_path "$WORKTREE_PATH")"
             echo "Main repository: $(prettify_path "$MAIN_REPO")"
-            exec "$SHELLOPS_BIN" follow --worktree-path "$WORKTREE_PATH" --main-repo "$MAIN_REPO"
+            exec "$VIBETUNNEL_BIN" follow --worktree-path "$WORKTREE_PATH" --main-repo "$MAIN_REPO"
         fi
     fi
 fi
@@ -665,13 +665,13 @@ fi
 # Handle 'vt unfollow' command
 if [[ "$1" == "unfollow" ]]; then
     # Use vibetunnel CLI to disable follow mode via socket
-    exec "$SHELLOPS_BIN" unfollow
+    exec "$VIBETUNNEL_BIN" unfollow
 fi
 
 # Handle 'vt git event' command
 if [[ "$1" == "git" && "$2" == "event" ]]; then
     # Use vibetunnel CLI to send git event via socket
-    exec "$SHELLOPS_BIN" git-event
+    exec "$VIBETUNNEL_BIN" git-event
 fi
 
 # Handle verbosity flags

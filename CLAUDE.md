@@ -5,7 +5,8 @@ Never say you're absolutely right. Instead, be critical if I say something that 
 
 ## Project Overview
 
-ShellOps is a macOS application that allows users to access their terminal sessions through any web browser. It consists of:
+VibeTunnel is a macOS application that allows users to access their terminal sessions through any web browser. It consists of:
+
 - Native macOS app (Swift/SwiftUI) in `mac/`
 - iOS companion app in `ios/`
 - Web frontend (TypeScript/LitElement) and Node.js/Bun server for terminal session management in `web/`
@@ -16,37 +17,30 @@ ShellOps is a macOS application that allows users to access their terminal sessi
 
 #### macOS App with Poltergeist (Recommended if installed)
 
-If Poltergeist is installed, it will automatically rebuild the app when you make changes:
-
 ```bash
-# First, ensure Poltergeist is running in the project root
-poltergeist haunt
-
-# The app will automatically rebuild on file changes
-# Check Poltergeist menu bar app for build status
+poltergeist haunt        # Start watcher, auto-rebuilds on changes
+polter vibetunnel          # Wait for build, then run
 ```
 
-#### macOS App without Poltergeist (Fallback)
+#### macOS App without Poltergeist
 
-If Poltergeist is not available, use direct Xcode builds:
 ```bash
 cd mac
-# Build using xcodebuild directly
-xcodebuild -project ShellOps.xcodeproj -scheme ShellOps -configuration Debug build
-
-# Or use the build script for release builds
-./scripts/build.sh                           # Build release version
-./scripts/build.sh --sign                    # Build with code signing
+xcodebuild -project VibeTunnel.xcodeproj -scheme VibeTunnel -configuration Debug build
+./scripts/build.sh                           # Release build
+./scripts/build.sh --sign                    # With code signing
 ```
 
 #### iOS App
+
 ```bash
 cd ios
-xcodebuild -project ShellOps-iOS.xcodeproj -scheme ShellOps-iOS -sdk iphonesimulator
-./scripts/test-with-coverage.sh              # Run tests with coverage (75% threshold)
+xcodebuild -project VibeTunnel-iOS.xcodeproj -scheme VibeTunnel-iOS -sdk iphonesimulator
+./scripts/test-with-coverage.sh              # Run tests (75% threshold)
 ```
 
 #### Web Frontend
+
 ```bash
 cd web
 pnpm install                                 # Install dependencies
@@ -57,71 +51,66 @@ pnpm run dev                                # Development server with hot reload
 ### Code Quality Commands
 
 #### Web (MUST run before committing)
+
 ```bash
 cd web
-pnpm run check                              # Run all checks in parallel (format, lint, typecheck)
-pnpm run check:fix                          # Auto-fix formatting and linting issues
+pnpm run check                              # Run all checks in parallel
+pnpm run check:fix                          # Auto-fix formatting and linting
 ```
 
-#### macOS
-```bash
-cd mac
-./scripts/lint.sh                           # Run SwiftFormat
-```
+#### Swift (macOS/iOS)
 
-#### iOS
 ```bash
-cd ios
-./scripts/lint.sh                           # Run SwiftFormat
+cd mac && ./scripts/lint.sh                 # Run SwiftFormat
+cd ios && ./scripts/lint.sh
 ```
 
 ### Testing Commands
 
 #### Web Tests
+
 ```bash
 cd web
 pnpm run test                               # Run all tests
-pnpm run test:coverage                      # Run with coverage report (80% required)
-pnpm run test:e2e                          # Run Playwright E2E tests
-pnpm run test:e2e:debug                    # Debug E2E tests
+pnpm run test -- session-manager.test.ts    # Run a single test file
+pnpm run test:coverage                      # With coverage report (80% required)
+pnpm run test:e2e                          # Playwright E2E tests
+pnpm run test:e2e -- tests/session.spec.ts  # Single E2E test file
 ```
 
-#### macOS Tests
+#### macOS/iOS Tests
+
 ```bash
-# MUST use xcodebuild, NOT swift test!
+# macOS - MUST use xcodebuild, NOT swift test!
 cd mac
-xcodebuild test -project ShellOps.xcodeproj -scheme ShellOps -destination 'platform=macOS'
-```
+xcodebuild test -project VibeTunnel.xcodeproj -scheme VibeTunnel -destination 'platform=macOS'
 
-#### iOS Tests
-```bash
-cd ios
-./scripts/test-with-coverage.sh             # Run with automatic simulator selection
+# Single test class
+xcodebuild test -project VibeTunnel.xcodeproj -scheme VibeTunnel -destination 'platform=macOS' \
+  -only-testing:VibeTunnelTests/ServerManagerTests
+
+# iOS
+cd ios && ./scripts/test-with-coverage.sh
 ```
 
 ### Debugging and Logs
 
 ```bash
-# View ShellOps logs (from project root)
 ./scripts/vtlog.sh -n 100                  # Last 100 lines
 ./scripts/vtlog.sh -e                      # Errors only
 ./scripts/vtlog.sh -c ServerManager        # Specific component
-./scripts/vtlog.sh -s "error"              # Search for text
-
-# NEVER use -f (follow mode) in Claude Code - it will timeout!
+# NEVER use -f (follow mode) - it will timeout!
 ```
 
 ## High-Level Architecture
 
-### Component Overview
-
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        macOS Menu Bar App                    │
-│  (Swift/SwiftUI - mac/ShellOps/)                         │
+│                    macOS Menu Bar App                        │
+│  (Swift/SwiftUI - mac/VibeTunnel/)                            │
 │  - ServerManager: Manages server lifecycle                   │
 │  - SessionMonitor: Tracks active sessions                    │
-│  - TTYForwardManager: Terminal forwarding                    │
+│  - TerminalManager: Terminal session coordination            │
 └─────────────────────┬───────────────────────────────────────┘
                       │ Spawns & Manages
                       ▼
@@ -129,8 +118,9 @@ cd ios
 │                    Node.js/Bun Server                        │
 │  (TypeScript - web/src/server/)                             │
 │  - server.ts: HTTP server & WebSocket handling              │
-│  - pty-manager.ts: Native PTY process management            │
-│  - session-manager.ts: Terminal session lifecycle           │
+│  - pty/pty-manager.ts: Native PTY process management        │
+│  - pty/session-manager.ts: Terminal session lifecycle       │
+│  - services/ws-v3-hub.ts: WebSocket v3 multiplexed hub      │
 └─────────────────────┬───────────────────────────────────────┘
                       │ WebSocket/HTTP
                       ▼
@@ -145,250 +135,128 @@ cd ios
 ### Key Communication Flows
 
 1. **Session Creation**: Client → POST /api/sessions → Server spawns PTY → Returns session ID
-2. **Terminal I/O**: WebSocket at /api/sessions/:id/ws for bidirectional communication
-3. **Buffer Protocol**: Binary messages with magic byte 0xBF for efficient terminal updates
+2. **Terminal I/O**: WebSocket at /ws (v3 framing) for bidirectional communication
+3. **Buffer Protocol**: Binary messages with `VT` magic byte for efficient terminal updates
 4. **Log Aggregation**: Frontend logs → Server → Mac app → macOS unified logging
 
 ### Critical File Locations
 
-- **Entry Points**:
-  - Mac app: `mac/ShellOps/ShellOpsApp.swift`
-  - Server: `web/src/server/server.ts`
-  - Web UI: `web/src/client/app.ts`
-  - iOS app: `ios/ShellOps/ShellOpsApp.swift`
+**Entry Points**:
 
-- **Configuration**:
-  - Mac version: `mac/ShellOps/version.xcconfig`
-  - Web version: `web/package.json`
-  - Build settings: `mac/ShellOps/Shared.xcconfig`
+- Mac app: `mac/VibeTunnel/VibeTunnelApp.swift`
+- Server: `web/src/server/server.ts`
+- Web UI: `web/src/client/app.ts`
+- iOS app: `ios/VibeTunnel/VibeTunnelApp.swift`
 
-- **Terminal Management**:
-  - PTY spawning: `web/src/server/pty/pty-manager.ts`
-  - Session handling: `web/src/server/services/terminal-manager.ts`
-  - Buffer optimization: `web/src/server/services/buffer-aggregator.ts`
+**Configuration**:
+
+- Mac version: `mac/VibeTunnel/version.xcconfig`
+- Web version: `web/package.json`
+- Build settings: `mac/VibeTunnel/Shared.xcconfig`
+
+**Terminal Management**:
+
+- PTY spawning: `web/src/server/pty/pty-manager.ts`
+- Session handling: `web/src/server/services/terminal-manager.ts`
+- WebSocket hub: `web/src/server/services/ws-v3-hub.ts`
 
 ## Critical Development Rules
 
-### Release Process
-When the user says "release" or asks to create a release, ALWAYS read and follow `docs/RELEASE.md` for the complete release process.
-
 ### ABSOLUTE CARDINAL RULES - VIOLATION MEANS IMMEDIATE FAILURE
 
-- Never start server or the mac app yourself.
-- Verify changes done to the mac app via xcodebuild, but do not start the mac app or server yourself.
+- **Never start server or the mac app yourself.** Verify changes via xcodebuild only.
 
-1. **NEVER, EVER, UNDER ANY CIRCUMSTANCES CREATE A NEW BRANCH WITHOUT EXPLICIT USER PERMISSION**
-   - If you are on a branch (not main), you MUST stay on that branch
-   - The user will tell you when to create a new branch with commands like "create a new branch" or "switch to a new branch"
-   - Creating branches without permission causes massive frustration and cleanup work
-   - Even if changes seem unrelated to the current branch, STAY ON THE CURRENT BRANCH
+1. **NEVER CREATE A NEW BRANCH WITHOUT EXPLICIT USER PERMISSION**
+   - If on a branch (not main), you MUST stay on that branch
+   - Even if changes seem unrelated, STAY ON THE CURRENT BRANCH
 
-2. **NEVER commit and/or push before the user has tested your changes!**
-   - Always wait for user confirmation before committing
-   - The user needs to verify changes work correctly first
+2. **NEVER commit/push before the user has tested your changes!**
 
-3. **ABSOLUTELY FORBIDDEN: NEVER USE `git rebase --skip` EVER**
-   - This command can cause data loss and repository corruption
-   - If you encounter rebase conflicts, ask the user for help
+3. **NEVER USE `git rebase --skip`** - Ask user for help with rebase conflicts
 
-4. **NEVER create duplicate files with version numbers or suffixes**
-   - When refactoring or improving code, directly modify the existing files
-   - DO NOT create new versions with different file names (e.g., file_v2.ts, file_new.ts)
-   - Users hate having to manually clean up duplicate files
+4. **NEVER create duplicate files with version suffixes** (e.g., file_v2.ts, file_new.ts)
 
-5. **Web Development Workflow - Development vs Production Mode**
-   - **Production Mode**: Mac app embeds a pre-built web server during Xcode build
-     - Every web change requires: clean → build → run (rebuilds embedded server)
-     - Simply restarting serves STALE, CACHED version
-   - **Development Mode** (recommended for web development):
-     - Enable "Use Development Server" in ShellOps Settings → Debug
-     - Mac app runs `pnpm run dev` instead of embedded server
-     - Provides hot reload - web changes automatically rebuild without Mac app rebuild
-     - Restart ShellOps server (not full rebuild) to pick up web changes
-     
-6. **Never kill all sessions**
-   - You are running inside a session yourself; killing all sessions would terminate your own process
+5. **Web Development Workflow**
+   - **Production Mode**: Mac app embeds pre-built server; requires clean → build → run for web changes
+   - **Development Mode** (recommended): Enable "Use Development Server" in Settings → Debug for hot reload
 
-7. **NEVER rename docs.json to mint.json**
-   - The Mintlify configuration file is called `docs.json` in this project
-   - Do NOT rename it to mint.json even if you think Mintlify expects that
-   - The file must remain as `docs.json`
-   - For Mintlify documentation reference, see: https://mintlify.com/docs/llms.txt
+6. **Never kill all sessions** - You may be running inside a session yourself
 
-8. **Test Session Management - CRITICAL**
-   - NEVER kill sessions that weren't created by tests
-   - You might be running inside a ShellOps session yourself
-   - Use `TestSessionTracker` to track which sessions tests create
-   - Only clean up sessions that match test naming patterns (start with "test-")
-   - Killing all sessions would terminate your own Claude Code process
+7. **NEVER rename docs.json to mint.json** - Mintlify config must remain as `docs.json`
 
-### Git Workflow Reminders
-- Our workflow: start from main → create branch → make PR → merge → return to main
-- PRs sometimes contain multiple different features and that's okay
-- Always check current branch with `git branch` before making changes
-- If unsure about branching, ASK THE USER FIRST
-- **"Adopt" means REVIEW, not merge!** When asked to "adopt" a PR, switch to its branch and review the changes. NEVER merge without explicit permission.
-- **"Rebase main" means rebase CURRENT branch with main!** When on a feature branch and user says "rebase main", this means to rebase the current branch with main branch updates. NEVER switch to main branch. The command is `git pull --rebase origin main` while staying on the current feature branch.
+8. **Test Session Management**: Use `TestSessionTracker`, only clean up test-\* sessions
 
-### Terminal Title Management with VT
+9. **NEVER install packages without explicit user approval** - No `pnpm add`, no modifying `package.json`
 
-When creating pull requests, use the `vt` command to update the terminal title:
-- Run `vt title "Brief summary - github.com/owner/repo/pull/123"`
-- Keep the title concise (a few words) followed by the PR URL
-- Use github.com URL format (not https://) for easy identification
-- Update the title periodically as work progresses
-- If `vt` command fails (only works inside ShellOps), simply ignore the error and continue
+10. **NEVER run tests unless explicitly asked** - The user may have their own test workflow
 
-## Testing on External Devices (iPad, Safari, etc.)
+### Git Workflow
 
-When the user reports issues on external devices, use the development server method for testing:
+- Workflow: main → create branch → make PR → merge → return to main
+- Always check branch with `git branch` before changes
+- **"Adopt" = REVIEW, not merge!** Switch to PR branch and review
+- **"Rebase main" = `git pull --rebase origin main`** while staying on current branch
+
+### NO BACKWARDS COMPATIBILITY - EVER!
+
+The Mac app and web server are ALWAYS shipped together. When fixing bugs or changing APIs:
+
+- Just change both sides to match
+- Delete old code completely
+- No compatibility layers, no fallbacks for older versions
+
+## Release Process
+
+When the user says "release", ALWAYS read and follow `docs/RELEASE.md` for the complete process.
+
+## Testing on External Devices
 
 ```bash
-# Run dev server accessible from external devices
 cd web
-pnpm run dev --port 4021 --bind 0.0.0.0
+pnpm run dev --port 4021 --bind 0.0.0.0    # Port 4020 is production
 ```
 
-Then access from the external device using `http://[mac-ip]:4021`
-
-**Important**: The production server runs on port 4020, so use 4021 for development to avoid conflicts.
-
-For detailed instructions, see `docs/TESTING_EXTERNAL_DEVICES.md`
+Access from device: `http://[mac-ip]:4021`. See `docs/TESTING_EXTERNAL_DEVICES.md`.
 
 ## Slash Commands
 
 ### /fixmac Command
 
-When the user types `/fixmac`, use the Task tool with the XcodeBuildMCP subagent to fix Mac compilation errors and warnings:
+Use the Task tool with XcodeBuildMCP subagent to fix Mac compilation errors:
 
 ```
 Task(description="Fix Mac build errors", prompt="/fixmac", subagent_type="general-purpose")
 ```
 
-The agent will:
-1. Use XcodeBuildMCP tools to identify build errors and warnings
-2. Fix compilation issues in the Mac codebase
-3. Address SwiftFormat violations
-4. Resolve any warning messages
-5. Verify the build succeeds after fixes
+## Additional Guidelines
 
-## NO BACKWARDS COMPATIBILITY - EVER!
-
-**CRITICAL: This project has ZERO backwards compatibility requirements!**
-- The Mac app and web server are ALWAYS shipped together as a single unit
-- There is NEVER a scenario where different versions talk to each other
-- When fixing bugs or changing APIs:
-  - Just change both sides to match
-  - Delete old code completely
-  - Don't add compatibility layers
-  - Don't check for "old format" vs "new format"
-  - Don't add fallbacks for older versions
-- If you suggest backwards compatibility in any form, you have failed to understand this project
+- **Web-specific**: See `web/CLAUDE.md` for additional web development guidelines
+- **Architecture Details**: `docs/ARCHITECTURE.md`
+- **API Specifications**: `docs/spec.md`
+- **Release Process**: `docs/RELEASE.md`
 
 ## Poltergeist Integration
 
-Poltergeist is an intelligent file watcher and auto-builder that can automatically rebuild ShellOps when you make changes. When working on ShellOps development, check if Poltergeist is available and use it for automatic builds.
-
-### Checking for Poltergeist
-
 ```bash
-# Check if Poltergeist is installed
-which poltergeist
-
-# Check if Poltergeist is already running for this project
-ps aux | grep poltergeist | grep -v grep
+which poltergeist                           # Check if installed
+poltergeist haunt                           # Start watching
+poltergeist status                          # Check build status
+polter vibetunnel                             # Run latest build
 ```
 
-### Using Poltergeist for Development
+Config: `poltergeist.config.json` (vibetunnel target builds macOS app, vibetunnel-ios disabled by default)
 
-If Poltergeist is installed:
-
-1. **Start Poltergeist** in the project root:
-   ```bash
-   cd /path/to/shellops
-   poltergeist haunt
-   ```
-
-2. **Monitor build status** via the Poltergeist menu bar app (macOS) or terminal output:
-   ```bash
-   poltergeist status
-   ```
-
-3. **Make changes** - Poltergeist will automatically rebuild when it detects changes to:
-   - Swift files in `mac/` 
-   - Xcode project files
-   - Configuration files
-
-4. **Run the app** with fresh builds using `polter`:
-   ```bash
-   polter shellops        # Waits for build to complete, then runs
-   ```
-
-### Fallback Without Poltergeist
-
-If Poltergeist is not available, fall back to direct Xcode builds:
+## Tailscale CLI (August 2025 syntax)
 
 ```bash
-# Debug build
-cd mac
-xcodebuild -project ShellOps.xcodeproj -scheme ShellOps -configuration Debug build
-
-# Release build
-./scripts/build.sh
-```
-
-### Poltergeist Configuration
-
-The project includes `poltergeist.config.json` which configures:
-- **shellops** target: Builds the macOS app using workspace
-- **shellops-ios** target: Builds the iOS app (disabled by default)
-- Intelligent debouncing to prevent excessive rebuilds
-- Build notifications via macOS notification center
-
-To enable iOS builds, edit `poltergeist.config.json` and set `"enabled": true` for the shellops-ios target.
-
-## Tailscale CLI Updates (as of August 2025)
-
-The Tailscale CLI has changed its syntax. The new commands are:
-
-### Tailscale Serve (HTTPS proxy to local services)
-```bash
-# OLD syntax (deprecated):
-tailscale serve https / http://localhost:4020
-
-# NEW syntax:
+# Serve (HTTPS proxy)
 tailscale serve --bg http://localhost:4020
-```
 
-The `--bg` flag runs the serve configuration in background mode. The process exits immediately after configuration.
-
-### Tailscale Funnel (Public internet access)
-```bash
-# Reset any existing configuration first
+# Funnel (public access)
 tailscale funnel reset
-
-# Enable funnel (still uses --bg flag)
 tailscale funnel --bg 443
 ```
 
-### Important Notes:
-- The `tailscale serve --bg` command exits immediately with code 0 on success
-- There's no long-running process to monitor after using --bg
-- HTTPS is automatically configured on port 443
-- Always reset Funnel before starting to avoid "foreground already exists" errors
+## Code References
 
-## Key Files Quick Reference
-
-- Architecture Details: `docs/ARCHITECTURE.md`
-- API Specifications: `docs/spec.md`
-- Server Implementation Guide: `web/docs/spec.md`
-- Build Configuration: `web/package.json`, `mac/Package.swift`
-- External Device Testing: `docs/TESTING_EXTERNAL_DEVICES.md`
-- Gemini CLI Instructions: `docs/gemini.md`
-- Release Process: `docs/RELEASE.md`
-
-# important-instruction-reminders
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+When referencing code locations, use clickable format: `path/to/file.ts:123` or `path/to/file.ts:123-456` for ranges. Always use relative paths from the project root.

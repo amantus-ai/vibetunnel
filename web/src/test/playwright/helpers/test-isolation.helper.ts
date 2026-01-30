@@ -84,7 +84,7 @@ export async function dismissAllErrors(page: Page): Promise<void> {
  */
 export async function waitForAppReady(page: Page): Promise<void> {
   // Wait for app to be attached
-  await page.waitForSelector('shellops-app', { state: 'attached', timeout: 5000 });
+  await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
 
   // Wait for create button to be visible (indicates app is ready)
   const createButton = page
@@ -130,7 +130,7 @@ export async function cleanupTestSessions(page: Page, sessionPrefix = 'test-'): 
       console.log(`Found ${count} test sessions to cleanup`);
 
       // NEVER use Kill All button as it would kill ALL sessions including
-      // the ShellOps session that Claude Code is running in!
+      // the VibeTunnel session that Claude Code is running in!
       // Always clean up test sessions individually
       for (let i = 0; i < count; i++) {
         const session = testSessions.nth(0); // Always get first as they get removed

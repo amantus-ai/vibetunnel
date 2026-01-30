@@ -41,7 +41,7 @@ test.describe('Advanced Session Management', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 10000 });
 
     // Wait for the page to be ready
-    await page.waitForSelector('shellops-app', { state: 'attached', timeout: 5000 });
+    await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
 
     // Ensure all sessions are visible (including exited ones)
     const { ensureAllSessionsVisible } = await import('../helpers/ui-state.helper');

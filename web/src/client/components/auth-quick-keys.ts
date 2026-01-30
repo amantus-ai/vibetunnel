@@ -39,7 +39,7 @@ export class AuthQuickKeys extends LitElement {
             ({ key, label }) => html`
               <button
                 type="button"
-                class="quick-key-btn px-3 py-1.5 bg-bg-tertiary text-primary text-xs font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap flex-shrink-0"
+                class="quick-key-btn px-3 py-1.5 bg-bg-tertiary text-primary text-xs font-ui rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap flex-shrink-0"
                 @click=${() => this.handleKeyPress(key)}
               >
                 ${label}

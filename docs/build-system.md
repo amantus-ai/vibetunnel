@@ -1,7 +1,7 @@
 <!-- Generated: 2025-06-21 16:24:00 UTC -->
 # Build System
 
-ShellOps uses platform-specific build systems for each component: Xcode for macOS and iOS applications, pnpm for the web frontend, and Bun for creating standalone executables. The build system supports both development and release builds with comprehensive automation scripts for code signing, notarization, and distribution.
+VibeTunnel uses platform-specific build systems for each component: Xcode for macOS and iOS applications, pnpm for the web frontend, and Bun for creating standalone executables. The build system supports both development and release builds with comprehensive automation scripts for code signing, notarization, and distribution.
 
 The main build orchestration happens through shell scripts in `mac/scripts/` that coordinate building native applications, bundling the web frontend, and packaging everything together. Release builds include code signing, notarization, DMG creation, and automated GitHub releases with Sparkle update support.
 
@@ -19,7 +19,7 @@ poltergeist
 **Development Build without Poltergeist**:
 ```bash
 cd mac
-xcodebuild -project ShellOps.xcodeproj -scheme ShellOps -configuration Debug build
+xcodebuild -project VibeTunnel.xcodeproj -scheme VibeTunnel -configuration Debug build
 ```
 
 **Release Build** - Full build with code signing:
@@ -32,7 +32,7 @@ cd mac
 - Builds Bun executable from web frontend
 - Compiles macOS app using xcodebuild
 - Handles code signing if requested
-- Verifies version consistency with `mac/ShellOps/version.xcconfig`
+- Verifies version consistency with `mac/VibeTunnel/version.xcconfig`
 
 ### Web Frontend Build
 
@@ -66,7 +66,7 @@ cd ios
 xcodegen generate
 ```
 
-**Build via Xcode** - Open `ios/ShellOps.xcodeproj` and build
+**Build via Xcode** - Open `ios/VibeTunnel.xcodeproj` and build
 
 **Key File**: `ios/project.yml` - XcodeGen configuration (lines 1-92)
 
@@ -104,7 +104,7 @@ cd mac
 
 **Configuration Files**:
 - `apple/Local.xcconfig` - Local development settings
-- `mac/ShellOps/version.xcconfig` - Version numbers
+- `mac/VibeTunnel/version.xcconfig` - Version numbers
 - `mac/Shared.xcconfig` - Shared build settings
 
 ### Web Frontend Requirements
@@ -118,7 +118,7 @@ cd mac
 - Platform-specific binaries in `web/native/`:
   - `pty.node` - Native PTY module
   - `spawn-helper` - Process spawning helper
-  - `shellops` - Bun executable
+  - `vibetunnel` - Bun executable
 
 ### Linux (Ubuntu) Requirements
 
@@ -149,8 +149,8 @@ web/scripts/linux-bootstrap.sh
 
 ### Build Targets
 
-**macOS Xcode Workspace** (`mac/ShellOps.xcworkspace`):
-- ShellOps scheme - Main application
+**macOS Xcode Workspace** (`mac/VibeTunnel.xcworkspace`):
+- VibeTunnel scheme - Main application
 - Debug configuration - Development builds
 - Release configuration - Distribution builds
 
@@ -185,10 +185,10 @@ web/scripts/linux-bootstrap.sh
 1. **Bun build fails** - Check `web/build-native.js` patches (lines 11-79)
 2. **Code signing errors** - Verify `apple/Local.xcconfig` settings
 3. **Notarization fails** - Check API keys in environment
-4. **Version mismatch** - Update `mac/ShellOps/version.xcconfig`
+4. **Version mismatch** - Update `mac/VibeTunnel/version.xcconfig`
 
 **Build Artifacts**:
-- macOS app: `mac/build/Build/Products/Release/ShellOps.app`
+- macOS app: `mac/build/Build/Products/Release/VibeTunnel.app`
 - Web bundles: `web/public/bundle/`
 - Native executables: `web/native/`
 - iOS app: `ios/build/`

@@ -1,43 +1,43 @@
-# ShellOps 🚇 - Turn any browser into your terminal; command agents from the road (vt.sh)
+# VibeTunnel 🚇 - Turn any browser into your terminal; command agents from the road (vt.sh)
 
 <!-- Generated: 2025-07-28 12:35:00 UTC -->
 <p align="center">
-  <img src="assets/banner.png" alt="ShellOps Banner" />
+  <img src="assets/banner.png" alt="VibeTunnel Banner" />
 </p>
 
 <p align="center">
   <strong>Turn any browser into your Mac terminal.</strong><br>
-  ShellOps proxies your terminals right into the browser, so you can vibe-code anywhere.
+  VibeTunnel proxies your terminals right into the browser, so you can vibe-code anywhere.
 </p>
 
 <p align="center">
-  <a href="https://github.com/amantus-ai/shellops/releases/latest"><img src="https://img.shields.io/badge/Download-macOS-blue" alt="Download"></a>
-  <a href="https://www.npmjs.com/package/shellops"><img src="https://img.shields.io/npm/v/shellops.svg" alt="npm version"></a>
-  <a href="https://formulae.brew.sh/cask/shellops"><img src="https://img.shields.io/homebrew/cask/v/shellops" alt="Homebrew"></a>
+  <a href="https://github.com/arunsanna/vibetunnel/releases/latest"><img src="https://img.shields.io/badge/Download-macOS-blue" alt="Download"></a>
+  <a href="https://www.npmjs.com/package/vibetunnel"><img src="https://img.shields.io/npm/v/vibetunnel.svg" alt="npm version"></a>
+  <a href="https://formulae.brew.sh/cask/vibetunnel"><img src="https://img.shields.io/homebrew/cask/v/vibetunnel" alt="Homebrew"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-22.12%2B-339933?logo=node.js" alt="Node.js 22.12+"></a>
   <a href="https://discord.gg/3Ub3EUwrcR"><img src="https://img.shields.io/discord/1394471066990280875?label=Discord&logo=discord" alt="Discord"></a>
-  <a href="https://twitter.com/shellops"><img src="https://img.shields.io/twitter/follow/shellops?style=social" alt="Twitter"></a>
+  <a href="https://twitter.com/vibetunnel"><img src="https://img.shields.io/twitter/follow/vibetunnel?style=social" alt="Twitter"></a>
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/shellops"><img src="https://img.shields.io/badge/Linux-Supported-brightgreen" alt="Linux Support"></a>
+  <a href="https://www.npmjs.com/package/vibetunnel"><img src="https://img.shields.io/badge/Linux-Supported-brightgreen" alt="Linux Support"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green" alt="License"></a>
   <a href="https://www.apple.com/macos/"><img src="https://img.shields.io/badge/macOS-14.0+-red" alt="macOS 14.0+"></a>
   <a href="https://support.apple.com/en-us/HT211814"><img src="https://img.shields.io/badge/Apple%20Silicon-Required-orange" alt="Apple Silicon"></a>
-  <a href="https://shellops.sh/#support"><img src="https://img.shields.io/badge/Support%20us-on%20Polar-purple" alt="Support us on Polar"></a>
-  <a href="https://deepwiki.com/amantus-ai/shellops"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+  <a href="https://vibetunnel.sh/#support"><img src="https://img.shields.io/badge/Support%20us-on%20Polar-purple" alt="Support us on Polar"></a>
+  <a href="https://deepwiki.com/arunsanna/vibetunnel"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
 <p align="center">
-  <a href="https://docs.shellops.sh">Documentation</a> •
-  <a href="https://github.com/amantus-ai/shellops/releases">Releases</a> •
+  <a href="https://docs.vibetunnel.sh">Documentation</a> •
+  <a href="https://github.com/arunsanna/vibetunnel/releases">Releases</a> •
   <a href="https://discord.gg/3Ub3EUwrcR">Discord</a> •
-  <a href="https://twitter.com/shellops">Twitter</a>
+  <a href="https://twitter.com/vibetunnel">Twitter</a>
 </p>
 
 ## Table of Contents
 
-- [Why ShellOps?](#why-shellops)
+- [Why VibeTunnel?](#why-vibetunnel)
 - [Installation Options](#installation-options)
 - [Quick Start](#quick-start)
 - [Features](#features)
@@ -53,13 +53,13 @@
 - [Documentation](#documentation)
 - [macOS Permissions](#macos-permissions)
 - [Contributing](#contributing)
-- [Support ShellOps](#support-shellops)
+- [Support VibeTunnel](#support-vibetunnel)
 - [Credits](#credits)
 - [License](#license)
 
-## Why ShellOps?
+## Why VibeTunnel?
 
-Ever wanted to check on your AI agents while you're away? Need to monitor that long-running build from your phone? Want to share a terminal session with a colleague without complex SSH setups? ShellOps makes it happen with zero friction.
+Ever wanted to check on your AI agents while you're away? Need to monitor that long-running build from your phone? Want to share a terminal session with a colleague without complex SSH setups? VibeTunnel makes it happen with zero friction.
 
 ## Installation Options
 
@@ -70,10 +70,10 @@ The native macOS app provides the best experience with menu bar integration and 
 For Linux servers, Docker containers, or headless macOS systems, install via npm:
 
 ```bash
-npm install -g shellops
+npm install -g vibetunnel
 ```
 
-This gives you the full ShellOps server with web UI, just without the macOS menu bar app. See the [npm Package section](#npm-package) for detailed usage.
+This gives you the full VibeTunnel server with web UI, just without the macOS menu bar app. See the [npm Package section](#npm-package) for detailed usage.
 
 ## Quick Start
 
@@ -81,28 +81,28 @@ This gives you the full ShellOps server with web UI, just without the macOS menu
 
 **macOS App**: Requires an Apple Silicon Mac (M1+). Intel Macs are not supported for the native app.
 
-**npm Package**: Works on any system with Node.js 22.12+, including Intel Macs and Linux. Windows is not yet supported ([#252](https://github.com/amantus-ai/shellops/issues/252)).
+**npm Package**: Works on any system with Node.js 22.12+, including Intel Macs and Linux. Windows is not yet supported ([#252](https://github.com/arunsanna/vibetunnel/issues/252)).
 
 ### 1. Download & Install
 
 #### Option 1: Direct Download
-[Download ShellOps](https://github.com/amantus-ai/shellops/releases/latest) and drag it to your Applications folder.
+[Download VibeTunnel](https://github.com/arunsanna/vibetunnel/releases/latest) and drag it to your Applications folder.
 
 #### Option 2: Homebrew
 ```bash
-brew install --cask shellops
+brew install --cask vibetunnel
 ```
 
-### 2. Launch ShellOps
+### 2. Launch VibeTunnel
 
-ShellOps lives in your menu bar. Click the icon to start the server.
+VibeTunnel lives in your menu bar. Click the icon to start the server.
 
 ### 3. Use the `vt` Command
 
-The `vt` command is a smart wrapper that forwards your terminal sessions through ShellOps:
+The `vt` command is a smart wrapper that forwards your terminal sessions through VibeTunnel:
 
 **How it works**:
-- `vt` is a bash script that internally calls `shellops fwd` to forward terminal output
+- `vt` is a bash script that internally calls `vibetunnel fwd` to forward terminal output
 - It provides additional features like shell alias resolution and session title management
 - Available from both the Mac app and npm package installations
 
@@ -112,9 +112,9 @@ The `vt` command is a smart wrapper that forwards your terminal sessions through
 
 **Smart detection**:
 When you run `vt` from the npm package, it:
-1. Checks if the Mac app is installed at `/Applications/ShellOps.app`
+1. Checks if the Mac app is installed at `/Applications/VibeTunnel.app`
 2. If found, forwards to the Mac app's `vt` for the best experience
-3. If not found, uses the npm-installed `shellops fwd`
+3. If not found, uses the npm-installed `vibetunnel fwd`
 4. This ensures `vt` always uses the best available implementation
 
 ```bash
@@ -140,7 +140,7 @@ vt unfollow       # Stop following
 
 ### Git Repository Scanning on First Session
 
-When opening a new session for the first time, ShellOps's working directory scanner will look for Git repositories. By default, this scans your home directory, which may trigger macOS permission prompts for accessing protected folders (like Desktop, Documents, Downloads, iCloud Drive, or external volumes).
+When opening a new session for the first time, VibeTunnel's working directory scanner will look for Git repositories. By default, this scans your home directory, which may trigger macOS permission prompts for accessing protected folders (like Desktop, Documents, Downloads, iCloud Drive, or external volumes).
 
 To avoid these prompts:
 - **Option 1**: Navigate to your actual projects directory before opening a session
@@ -171,7 +171,7 @@ Visit [http://localhost:4020](http://localhost:4020) to see all your terminal se
 
 ## Architecture
 
-ShellOps consists of three main components:
+VibeTunnel consists of three main components:
 
 1. **macOS Menu Bar App** - Native Swift application that manages the server lifecycle
 2. **Node.js Server** - High-performance TypeScript server handling terminal sessions
@@ -183,7 +183,7 @@ The server runs as a standalone Node.js executable with embedded modules, provid
 
 ### Option 1: Tailscale (Recommended)
 
-[Tailscale](https://tailscale.com) creates a secure peer-to-peer VPN network between your devices. It's the most secure option as traffic stays within your private network without exposing ShellOps to the public internet.
+[Tailscale](https://tailscale.com) creates a secure peer-to-peer VPN network between your devices. It's the most secure option as traffic stays within your private network without exposing VibeTunnel to the public internet.
 
 **How it works**: Tailscale creates an encrypted WireGuard tunnel between your devices, allowing them to communicate as if they were on the same local network, regardless of their physical location.
 
@@ -194,13 +194,13 @@ The server runs as a standalone Node.js executable with embedded modules, provid
    - **Android**: [Download from Google Play](https://play.google.com/store/apps/details?id=com.tailscale.ipn)
    - **Other platforms**: [All Downloads](https://tailscale.com/download)
 3. Sign in to both devices with the same account
-4. If using ShellOps's Tailscale Serve integration, ensure Tailscale Serve is enabled in your [tailnet settings](https://login.tailscale.com/f/serve)
+4. If using VibeTunnel's Tailscale Serve integration, ensure Tailscale Serve is enabled in your [tailnet settings](https://login.tailscale.com/f/serve)
 5. Find your Mac's Tailscale hostname in the Tailscale menu bar app (e.g., `my-mac.tailnet-name.ts.net`)
-6. Access ShellOps at `http://[your-tailscale-hostname]:4020`
+6. Access VibeTunnel at `http://[your-tailscale-hostname]:4020`
 
 #### Enhanced Tailscale Features
 
-ShellOps now supports advanced Tailscale integration with **Private** and **Public** access modes:
+VibeTunnel now supports advanced Tailscale integration with **Private** and **Public** access modes:
 
 ##### Private Mode (Default)
 - **What it does**: Provides secure HTTPS access within your Tailscale network only
@@ -209,7 +209,7 @@ ShellOps now supports advanced Tailscale integration with **Private** and **Publ
 - **Best for**: Personal use, accessing your terminals from your own devices
 
 ##### Public Mode (Tailscale Funnel)
-- **What it does**: Exposes ShellOps to the public internet via Tailscale Funnel
+- **What it does**: Exposes VibeTunnel to the public internet via Tailscale Funnel
 - **Access URL**: Same as Private mode but accessible from anywhere
 - **Security**: Still uses HTTPS encryption, but accessible without Tailscale login
 - **Best for**: Sharing terminal sessions with colleagues, temporary public access
@@ -229,15 +229,15 @@ To use Public mode, you need to enable Funnel on your tailnet:
    ],
    ```
 
-2. **Switch between modes** in ShellOps:
-   - Open ShellOps Settings → Remote Access
+2. **Switch between modes** in VibeTunnel:
+   - Open VibeTunnel Settings → Remote Access
    - Toggle between "Private (Tailnet Only)" and "Public (Internet)"
    - The UI will show the transition status and confirm when the mode is active
 
 #### HTTPS Support
 
 Both Private and Public modes automatically provide **HTTPS access**:
-- Tailscale Serve creates an HTTPS proxy to ShellOps's local server
+- Tailscale Serve creates an HTTPS proxy to VibeTunnel's local server
 - SSL certificates are managed automatically by Tailscale
 - No manual certificate configuration needed
 - WebSocket connections work seamlessly over HTTPS/WSS
@@ -252,25 +252,25 @@ Both Private and Public modes automatically provide **HTTPS access**:
 
 #### Troubleshooting
 
-**"Tailscale Serve unavailable - using fallback mode"**: This is normal if you don't have Tailscale admin permissions. ShellOps will work perfectly using direct HTTP access at `http://[your-tailscale-hostname]:4020`.
+**"Tailscale Serve unavailable - using fallback mode"**: This is normal if you don't have Tailscale admin permissions. VibeTunnel will work perfectly using direct HTTP access at `http://[your-tailscale-hostname]:4020`.
 
 **"Applying mode configuration..."**: When switching between Private and Public modes, it may take a few seconds for Tailscale to reconfigure. This is normal.
 
 **"Funnel requires admin permissions"**: You need to be a tailnet admin to enable Funnel. Contact your tailnet admin or create your own tailnet if needed.
 
-**WebSocket connections fail**: Make sure you're using the HTTPS URL when accessing ShellOps through Tailscale Serve. The WebSocket authentication tokens are automatically handled.
+**WebSocket connections fail**: Make sure you're using the HTTPS URL when accessing VibeTunnel through Tailscale Serve. The WebSocket authentication tokens are automatically handled.
 
 ### Option 2: ngrok
 
-[ngrok](https://ngrok.com) creates secure tunnels to your localhost, making ShellOps accessible via a public URL. Perfect for quick sharing or temporary access.
+[ngrok](https://ngrok.com) creates secure tunnels to your localhost, making VibeTunnel accessible via a public URL. Perfect for quick sharing or temporary access.
 
-**How it works**: ngrok establishes a secure tunnel from a public endpoint to your local ShellOps server, handling SSL/TLS encryption and providing a unique URL for access.
+**How it works**: ngrok establishes a secure tunnel from a public endpoint to your local VibeTunnel server, handling SSL/TLS encryption and providing a unique URL for access.
 
 **Setup Guide**:
 1. Create a free ngrok account: [Sign up for ngrok](https://dashboard.ngrok.com/signup)
 2. Copy your auth token from the [ngrok dashboard](https://dashboard.ngrok.com/get-started/your-authtoken)
-3. Add the token in ShellOps settings (Settings → Remote Access → ngrok)
-4. Enable ngrok tunneling in ShellOps
+3. Add the token in VibeTunnel settings (Settings → Remote Access → ngrok)
+4. Enable ngrok tunneling in VibeTunnel
 5. Share the generated `https://[random].ngrok-free.app` URL
 
 **Benefits**:
@@ -324,7 +324,7 @@ vt unfollow
 
 ### How It Works
 
-1. **Git Hooks**: ShellOps installs lightweight Git hooks (post-commit, post-checkout) in worktrees that detect branch changes
+1. **Git Hooks**: VibeTunnel installs lightweight Git hooks (post-commit, post-checkout) in worktrees that detect branch changes
 2. **Main Repo Sync**: When you switch branches in a worktree, the main repository automatically checks out to the same branch
 3. **Smart Handling**: If the main repo has uncommitted changes, follow mode pauses to prevent data loss
 4. **Development Continuity**: Your IDE, servers, and tools running on the main repo seamlessly follow your active work
@@ -351,7 +351,7 @@ cd ../project && vt follow
 Follow mode stores the worktree path in your main repository's Git config:
 ```bash
 # Check which worktree is being followed
-git config shellops.followWorktree
+git config vibetunnel.followWorktree
 
 # Follow mode is active when this returns a path
 # The config is managed by vt commands - manual editing not recommended
@@ -361,7 +361,7 @@ For more advanced Git worktree workflows, see our [detailed worktree documentati
 
 ## Terminal Title Management
 
-ShellOps provides terminal title management to help you track sessions:
+VibeTunnel provides terminal title management to help you track sessions:
 
 ### Title Modes
 
@@ -377,7 +377,7 @@ Activity indicators are based on recent input/output and drive active/idle UI st
 
 ## Authentication
 
-ShellOps provides multiple authentication modes to secure your terminal sessions:
+VibeTunnel provides multiple authentication modes to secure your terminal sessions:
 
 ### Authentication Modes
 
@@ -390,8 +390,8 @@ Uses your operating system's native authentication:
 #### 2. Environment Variable Authentication
 Simple authentication for deployments:
 ```bash
-export SHELLOPS_USERNAME=admin
-export SHELLOPS_PASSWORD=your-secure-password
+export VIBETUNNEL_USERNAME=admin
+export VIBETUNNEL_PASSWORD=your-secure-password
 npm run start
 ```
 
@@ -452,19 +452,19 @@ If SSH key generation fails with crypto errors, see the [detailed troubleshootin
 
 ## npm Package
 
-The ShellOps npm package provides the full server functionality for Linux, Docker, CI/CD environments, and headless macOS systems.
+The VibeTunnel npm package provides the full server functionality for Linux, Docker, CI/CD environments, and headless macOS systems.
 
 ### Installation
 
 ```bash
 # Install globally via npm
-npm install -g shellops
+npm install -g vibetunnel
 
 # Or with yarn
-yarn global add shellops
+yarn global add vibetunnel
 
 # Or with pnpm
-pnpm add -g shellops
+pnpm add -g vibetunnel
 ```
 
 **Requirements**: Node.js 22.12.0 or higher
@@ -473,37 +473,37 @@ pnpm add -g shellops
 
 ```bash
 # Start local server (no auth)
-npx -y shellops --no-auth
+npx -y vibetunnel --no-auth
 
 # Quick remote share (ngrok)
-npx -y shellops --no-auth --ngrok
+npx -y vibetunnel --no-auth --ngrok
 
 # One-shot vt wrapper
-npx -y --package shellops vt npm test
+npx -y --package vibetunnel vt npm test
 ```
 
-### Running the ShellOps Server
+### Running the VibeTunnel Server
 
 #### Basic Usage
 
 ```bash
 # Start with default settings (localhost:4020)
-shellops
+vibetunnel
 
 # Bind to all network interfaces
-shellops --bind 0.0.0.0
+vibetunnel --bind 0.0.0.0
 
 # Use a custom port
-shellops --port 8080
+vibetunnel --port 8080
 
 # With authentication
-SHELLOPS_USERNAME=admin SHELLOPS_PASSWORD=secure shellops --bind 0.0.0.0
+VIBETUNNEL_USERNAME=admin VIBETUNNEL_PASSWORD=secure vibetunnel --bind 0.0.0.0
 
 # Enable debug logging
-SHELLOPS_DEBUG=1 shellops
+VIBETUNNEL_DEBUG=1 vibetunnel
 
 # Run without authentication (trusted networks only!)
-shellops --no-auth
+vibetunnel --no-auth
 ```
 
 #### Using the `vt` Command
@@ -533,13 +533,13 @@ vt -vvv python app.py  # Debug mode - show everything
 # Shell aliases work automatically!
 vt claude-danger  # Your custom alias for claude --dangerously-skip-permissions
 
-# Update session title (inside a ShellOps session)
+# Update session title (inside a VibeTunnel session)
 vt title "My Project - Testing"
 ```
 
 ### The `vt` Forwarding Command
 
-The `vt` command is ShellOps's terminal forwarding wrapper that allows you to run any command while making its output visible in the browser. Under the hood, `vt` is a convenient shortcut for `shellops fwd` - it's a bash script that calls the full command with proper path resolution and additional features like shell alias support. The `vt` wrapper acts as a transparent proxy between your terminal and the command, forwarding all input and output through ShellOps's infrastructure.
+The `vt` command is VibeTunnel's terminal forwarding wrapper that allows you to run any command while making its output visible in the browser. Under the hood, `vt` is a convenient shortcut for `vibetunnel fwd` - it's a bash script that calls the full command with proper path resolution and additional features like shell alias support. The `vt` wrapper acts as a transparent proxy between your terminal and the command, forwarding all input and output through VibeTunnel's infrastructure.
 
 #### Command Syntax
 
@@ -564,29 +564,29 @@ vt [options] <command> [args...]
 **Other Options:**
 - `--shell, -i` - Launch your current shell interactively
 - `--no-shell-wrap, -S` - Execute command directly without shell interpretation
-- `--log-file <path>` - Override default log file location (defaults to `~/.shellops/log.txt`)
+- `--log-file <path>` - Override default log file location (defaults to `~/.vibetunnel/log.txt`)
 - `--help, -h` - Show help message with all options
 
 #### Verbosity Levels
 
-ShellOps uses a hierarchical logging system where each level includes all messages from more severe levels:
+VibeTunnel uses a hierarchical logging system where each level includes all messages from more severe levels:
 
 | Level | Flag | Environment Variable | Shows |
 |-------|------|---------------------|-------|
-| SILENT | `-q` | `SHELLOPS_LOG_LEVEL=silent` | No console output (file logging only) |
-| ERROR | (default) | `SHELLOPS_LOG_LEVEL=error` | Errors only |
-| WARN | - | `SHELLOPS_LOG_LEVEL=warn` | Errors and warnings |
-| INFO | `-v` | `SHELLOPS_LOG_LEVEL=info` | Errors, warnings, and informational messages |
-| VERBOSE | `-vv` | `SHELLOPS_LOG_LEVEL=verbose` | All messages except debug |
-| DEBUG | `-vvv` | `SHELLOPS_LOG_LEVEL=debug` | Everything including debug traces |
+| SILENT | `-q` | `VIBETUNNEL_LOG_LEVEL=silent` | No console output (file logging only) |
+| ERROR | (default) | `VIBETUNNEL_LOG_LEVEL=error` | Errors only |
+| WARN | - | `VIBETUNNEL_LOG_LEVEL=warn` | Errors and warnings |
+| INFO | `-v` | `VIBETUNNEL_LOG_LEVEL=info` | Errors, warnings, and informational messages |
+| VERBOSE | `-vv` | `VIBETUNNEL_LOG_LEVEL=verbose` | All messages except debug |
+| DEBUG | `-vvv` | `VIBETUNNEL_LOG_LEVEL=debug` | Everything including debug traces |
 
-**Note:** All logs are always written to `~/.shellops/log.txt` regardless of verbosity settings. The verbosity only controls terminal output.
+**Note:** All logs are always written to `~/.vibetunnel/log.txt` regardless of verbosity settings. The verbosity only controls terminal output.
 
 #### Examples
 
 ```bash
 # Basic command forwarding
-vt ls -la                    # List files with ShellOps monitoring
+vt ls -la                    # List files with VibeTunnel monitoring
 vt npm run dev              # Run development server
 vt python script.py         # Execute Python script
 
@@ -608,16 +608,16 @@ vt -S /usr/bin/python      # Run python directly without shell
 #### How It Works
 
 1. **Command Resolution**: The `vt` wrapper first checks if your command is an alias, shell function, or binary
-2. **Session Creation**: It creates a new ShellOps session with a unique ID
+2. **Session Creation**: It creates a new VibeTunnel session with a unique ID
 3. **PTY Allocation**: A pseudo-terminal is allocated to preserve terminal features (colors, cursor control, etc.)
 4. **I/O Forwarding**: All input/output is forwarded between your terminal and the browser in real-time
 5. **Process Management**: The wrapper monitors the process and handles signals, exit codes, and cleanup
 
 #### Environment Variables
 
-- `SHELLOPS_LOG_LEVEL` - Set default verbosity level (silent, error, warn, info, verbose, debug)
-- `SHELLOPS_TITLE_MODE` - Set default title mode (none, filter, static)
-- `SHELLOPS_DEBUG` - Legacy debug flag, equivalent to `SHELLOPS_LOG_LEVEL=debug`
+- `VIBETUNNEL_LOG_LEVEL` - Set default verbosity level (silent, error, warn, info, verbose, debug)
+- `VIBETUNNEL_TITLE_MODE` - Set default title mode (none, filter, static)
+- `VIBETUNNEL_DEBUG` - Legacy debug flag, equivalent to `VIBETUNNEL_LOG_LEVEL=debug`
 
 #### Special Features
 
@@ -627,7 +627,7 @@ alias gs='git status'
 vt gs  # Works as expected
 ```
 
-**Session Title Updates**: Inside a ShellOps session, use `vt title` to update the session name:
+**Session Title Updates**: Inside a VibeTunnel session, use `vt title` to update the session name:
 ```bash
 vt title "Building Production Release"
 ```
@@ -638,13 +638,13 @@ The npm package is designed to work seamlessly alongside the Mac app:
 
 #### Smart Command Routing
 - The `vt` command automatically detects if the Mac app is installed
-- If found at `/Applications/ShellOps.app`, it defers to the Mac app
+- If found at `/Applications/VibeTunnel.app`, it defers to the Mac app
 - If not found, it uses the npm-installed server
 - This ensures you always get the best available implementation
 
 #### Installation Behavior
 - If `/usr/local/bin/vt` already exists (from another tool), npm won't overwrite it
-- You'll see a helpful warning with alternatives: `shellops` or `npx vt`
+- You'll see a helpful warning with alternatives: `vibetunnel` or `npx vt`
 - The installation always succeeds, even if the `vt` symlink can't be created
 
 #### When to Use Each Version
@@ -656,8 +656,8 @@ The npm package is designed to work seamlessly alongside the Mac app:
 ### Package Contents
 
 The npm package includes:
-- Full ShellOps server with web UI
-- CLI tools (`shellops` and `vt` commands)
+- Full VibeTunnel server with web UI
+- CLI tools (`vibetunnel` and `vt` commands)
 - Native PTY support via node-pty
 - Pre-built binaries for common platforms
 - Complete feature parity with macOS app (minus menu bar)
@@ -709,20 +709,20 @@ npm publish
 
 ```bash
 # Clone the repository
-git clone https://github.com/amantus-ai/shellops.git
-cd shellops
+git clone https://github.com/arunsanna/vibetunnel.git
+cd vibetunnel
 
 # Set up code signing (required for macOS/iOS development)
 # Create Local.xcconfig files with your Apple Developer Team ID
 # Note: These files must be in the same directory as Shared.xcconfig
-cat > mac/ShellOps/Local.xcconfig << EOF
+cat > mac/VibeTunnel/Local.xcconfig << EOF
 // Local Development Configuration
 // DO NOT commit this file to version control
 DEVELOPMENT_TEAM = YOUR_TEAM_ID
 CODE_SIGN_STYLE = Automatic
 EOF
 
-cat > ios/ShellOps/Local.xcconfig << EOF
+cat > ios/VibeTunnel/Local.xcconfig << EOF
 // Local Development Configuration  
 // DO NOT commit this file to version control
 DEVELOPMENT_TEAM = YOUR_TEAM_ID
@@ -735,7 +735,7 @@ pnpm install
 pnpm run build
 
 # Optional: Build with custom Node.js for smaller binary (46% size reduction)
-# export SHELLOPS_USE_CUSTOM_NODE=YES
+# export VIBETUNNEL_USE_CUSTOM_NODE=YES
 # node build-custom-node.js  # Build optimized Node.js (one-time, ~20 min)
 # pnpm run build              # Will use custom Node.js automatically
 
@@ -746,17 +746,17 @@ cd ../mac
 
 ### Custom Node.js Builds
 
-ShellOps supports building with a custom Node.js for a 46% smaller executable (61MB vs 107MB):
+VibeTunnel supports building with a custom Node.js for a 46% smaller executable (61MB vs 107MB):
 
 ```bash
 # Build custom Node.js (one-time, ~20 minutes)
 node build-custom-node.js
 
 # Use environment variable for all builds
-export SHELLOPS_USE_CUSTOM_NODE=YES
+export VIBETUNNEL_USE_CUSTOM_NODE=YES
 
 # Or use in Xcode Build Settings
-# Add User-Defined Setting: SHELLOPS_USE_CUSTOM_NODE = YES
+# Add User-Defined Setting: VIBETUNNEL_USE_CUSTOM_NODE = YES
 ```
 
 See [Custom Node Build Flags](docs/custom-node-build-flags.md) for detailed optimization information.
@@ -766,14 +766,14 @@ See [Custom Node Build Flags](docs/custom-node-build-flags.md) for detailed opti
 For development setup and contribution guidelines, see [CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 ### Key Files
-- **macOS App**: `mac/ShellOps/ShellOpsApp.swift`
+- **macOS App**: `mac/VibeTunnel/VibeTunnelApp.swift`
 - **Server**: `web/src/server/` (TypeScript/Node.js)
 - **Web UI**: `web/src/client/` (Lit/TypeScript)
-- **iOS App**: `ios/ShellOps/`
+- **iOS App**: `ios/VibeTunnel/`
 
 ### Testing & Code Coverage
 
-ShellOps has comprehensive test suites with code coverage enabled for all projects:
+VibeTunnel has comprehensive test suites with code coverage enabled for all projects:
 
 ```bash
 # Run all tests with coverage
@@ -795,7 +795,7 @@ cd web && ./scripts/coverage-report.sh
 
 ### Development Server & Hot Reload
 
-ShellOps includes a development server with automatic rebuilding for faster iteration:
+VibeTunnel includes a development server with automatic rebuilding for faster iteration:
 
 #### Development Mode
 
@@ -846,7 +846,7 @@ When developing the web interface, you often need to test changes on external de
 
 ##### Pasting on Mobile Devices
 
-When using ShellOps on mobile browsers (Safari, Chrome), pasting works differently than on desktop:
+When using VibeTunnel on mobile browsers (Safari, Chrome), pasting works differently than on desktop:
 
 **To paste on mobile:**
 1. Press the paste button on the keyboard toolbar
@@ -867,13 +867,13 @@ For true hot module replacement without manual refresh, see our [Vite migration 
 
 #### Mac App Development Server Mode
 
-The ShellOps Mac app includes a special development server mode that integrates with the web development workflow:
+The VibeTunnel Mac app includes a special development server mode that integrates with the web development workflow:
 
 **Setup:**
-1. Open ShellOps Settings → Debug tab (enable Debug Mode first in General settings)
+1. Open VibeTunnel Settings → Debug tab (enable Debug Mode first in General settings)
 2. Enable "Use Development Server"
 3. Set the path to your `web/` directory
-4. Restart the ShellOps server
+4. Restart the VibeTunnel server
 
 **How it works:**
 - Instead of using the bundled production server, the Mac app runs `pnpm run dev` in your web directory
@@ -892,7 +892,7 @@ The ShellOps Mac app includes a special development server mode that integrates 
 If you prefer working outside the Mac app:
 
 1. Build the web project: `cd web && pnpm run build`
-2. In ShellOps settings, set Dashboard Access to "Network"
+2. In VibeTunnel settings, set Dashboard Access to "Network"
 3. Access from external device: `http://[your-mac-ip]:4020`
 
 Note: This requires rebuilding after each change, so the dev server mode above is preferred for rapid iteration.
@@ -903,46 +903,46 @@ Enable debug logging for troubleshooting:
 
 ```bash
 # Enable debug mode
-export SHELLOPS_DEBUG=1
+export VIBETUNNEL_DEBUG=1
 
 # Or use inline
-SHELLOPS_DEBUG=1 vt your-command
+VIBETUNNEL_DEBUG=1 vt your-command
 ```
 
-Debug logs are written to `~/.shellops/log.txt`.
+Debug logs are written to `~/.vibetunnel/log.txt`.
 
 ### Using Development Builds with vt
 
-When developing ShellOps, you can use the `SHELLOPS_PREFER_DERIVED_DATA` environment variable to make the `vt` command prefer development builds from Xcode's DerivedData folder:
+When developing VibeTunnel, you can use the `VIBETUNNEL_PREFER_DERIVED_DATA` environment variable to make the `vt` command prefer development builds from Xcode's DerivedData folder:
 
 ```bash
 # Enable DerivedData preference
-export SHELLOPS_PREFER_DERIVED_DATA=1
+export VIBETUNNEL_PREFER_DERIVED_DATA=1
 
-# vt will now search for and use the latest ShellOps build from DerivedData
+# vt will now search for and use the latest VibeTunnel build from DerivedData
 vt your-command
 ```
 
 When this environment variable is set, `vt` will:
-1. First search for ShellOps builds in `~/Library/Developer/Xcode/DerivedData`
+1. First search for VibeTunnel builds in `~/Library/Developer/Xcode/DerivedData`
 2. Use the most recently modified build found there
-3. Fall back to `/Applications/ShellOps.app` if no DerivedData build exists
+3. Fall back to `/Applications/VibeTunnel.app` if no DerivedData build exists
 4. Log the exact binary location, version, and build timestamp being used
 
 This is particularly useful for:
 - Testing changes without installing to `/Applications`
-- Working with multiple ShellOps builds simultaneously
+- Working with multiple VibeTunnel builds simultaneously
 - Quickly switching between development and production versions
-- Debugging which version of ShellOps is being used
+- Debugging which version of VibeTunnel is being used
 
 The version information is also:
 - Stored in `session.json` for each session
 - Displayed in `vt status` output
-- Shown in the initial log output when `SHELLOPS_PREFER_DERIVED_DATA` is set
+- Shown in the initial log output when `VIBETUNNEL_PREFER_DERIVED_DATA` is set
 
 ### Verbosity Control
 
-Control the amount of output from ShellOps commands:
+Control the amount of output from VibeTunnel commands:
 
 ```bash
 # Command-line flags
@@ -953,21 +953,21 @@ vt -vv cargo build           # Extra verbose - all except debug
 vt -vvv python script.py     # Debug mode - everything
 
 # Environment variable
-export SHELLOPS_LOG_LEVEL=error    # Default
-export SHELLOPS_LOG_LEVEL=warn     # Show errors and warnings
-export SHELLOPS_LOG_LEVEL=info     # Show errors, warnings, and info
-export SHELLOPS_LOG_LEVEL=verbose  # All except debug
-export SHELLOPS_LOG_LEVEL=debug    # Everything
+export VIBETUNNEL_LOG_LEVEL=error    # Default
+export VIBETUNNEL_LOG_LEVEL=warn     # Show errors and warnings
+export VIBETUNNEL_LOG_LEVEL=info     # Show errors, warnings, and info
+export VIBETUNNEL_LOG_LEVEL=verbose  # All except debug
+export VIBETUNNEL_LOG_LEVEL=debug    # Everything
 
 # Or use inline
-SHELLOPS_LOG_LEVEL=silent vt npm test
+VIBETUNNEL_LOG_LEVEL=silent vt npm test
 ```
 
-**Note**: All logs are always written to `~/.shellops/log.txt` regardless of verbosity level. The verbosity settings only control what's displayed in the terminal.
+**Note**: All logs are always written to `~/.vibetunnel/log.txt` regardless of verbosity level. The verbosity settings only control what's displayed in the terminal.
 
 ## Poltergeist Integration
 
-[Poltergeist](https://github.com/steipete/poltergeist) is an intelligent file watcher and auto-builder that can automatically rebuild ShellOps as you develop. This is particularly useful for native app development where manual rebuilds can interrupt your flow.
+[Poltergeist](https://github.com/steipete/poltergeist) is an intelligent file watcher and auto-builder that can automatically rebuild VibeTunnel as you develop. This is particularly useful for native app development where manual rebuilds can interrupt your flow.
 
 ### Setting Up Poltergeist
 
@@ -976,9 +976,9 @@ SHELLOPS_LOG_LEVEL=silent vt npm test
    npm install -g poltergeist
    ```
 
-2. **Start Poltergeist** in the ShellOps directory:
+2. **Start Poltergeist** in the VibeTunnel directory:
    ```bash
-   cd /path/to/shellops
+   cd /path/to/vibetunnel
    poltergeist
    ```
 
@@ -997,11 +997,11 @@ SHELLOPS_LOG_LEVEL=silent vt npm test
 
 ### Configuration
 
-ShellOps includes a `poltergeist.config.json` that configures:
-- **shellops** target: Builds the macOS app in Debug configuration
-- **shellops-ios** target: Builds the iOS app (disabled by default)
+VibeTunnel includes a `poltergeist.config.json` that configures:
+- **vibetunnel** target: Builds the macOS app in Debug configuration
+- **vibetunnel-ios** target: Builds the iOS app (disabled by default)
 
-To enable iOS builds, edit `poltergeist.config.json` and set `"enabled": true` for the shellops-ios target.
+To enable iOS builds, edit `poltergeist.config.json` and set `"enabled": true` for the vibetunnel-ios target.
 
 ## Documentation
 
@@ -1019,17 +1019,17 @@ macOS is finicky when it comes to permissions. The system will only remember the
 
 Important: You need to set your Developer ID in Local.xcconfig. If apps are signed Ad-Hoc, each new signing will count as a new app for macOS and the permissions have to be (deleted and) requested again.
 
-**Debug vs Release Bundle IDs**: The Debug configuration uses a different bundle identifier (`sh.shellops.shellops.debug`) than Release (`sh.shellops.shellops`). This allows you to have both versions installed simultaneously, but macOS treats them as separate apps for permissions. You'll need to grant permissions separately for each version.
+**Debug vs Release Bundle IDs**: The Debug configuration uses a different bundle identifier (`sh.vibetunnel.vibetunnel.debug`) than Release (`sh.vibetunnel.vibetunnel`). This allows you to have both versions installed simultaneously, but macOS treats them as separate apps for permissions. You'll need to grant permissions separately for each version.
 
 If that fails, use the terminal to reset:
 
 ```
 # This removes Accessibility permission for a specific bundle ID:
-sudo tccutil reset Accessibility sh.shellops.shellops
-sudo tccutil reset Accessibility sh.shellops.shellops.debug  # For debug builds
+sudo tccutil reset Accessibility sh.vibetunnel.vibetunnel
+sudo tccutil reset Accessibility sh.vibetunnel.vibetunnel.debug  # For debug builds
 
-sudo tccutil reset ScreenCapture sh.shellops.shellops
-sudo tccutil reset ScreenCapture sh.shellops.shellops.debug  # For debug builds
+sudo tccutil reset ScreenCapture sh.vibetunnel.vibetunnel
+sudo tccutil reset ScreenCapture sh.vibetunnel.vibetunnel.debug  # For debug builds
 
 # This removes all Automation permissions system-wide (cannot target specific apps):
 sudo tccutil reset AppleEvents
@@ -1037,22 +1037,22 @@ sudo tccutil reset AppleEvents
 
 ## Logging and Privacy
 
-ShellOps uses Apple's unified logging system with the subsystem `sh.shellops.shellops`. By default, macOS redacts sensitive runtime data in logs, showing `<private>` instead of actual values. This is a privacy feature to prevent accidental exposure of sensitive information.
+VibeTunnel uses Apple's unified logging system with the subsystem `sh.vibetunnel.vibetunnel`. By default, macOS redacts sensitive runtime data in logs, showing `<private>` instead of actual values. This is a privacy feature to prevent accidental exposure of sensitive information.
 
 ### Bundle Identifiers
 
-ShellOps uses the following bundle identifiers:
+VibeTunnel uses the following bundle identifiers:
 
 **Production:**
-- `sh.shellops.shellops` - Main macOS app and logging subsystem
-- `sh.shellops.shellops.debug` - Debug builds of the macOS app
+- `sh.vibetunnel.vibetunnel` - Main macOS app and logging subsystem
+- `sh.vibetunnel.vibetunnel.debug` - Debug builds of the macOS app
 
 **Testing:**
-- `sh.shellops.shellops.tests` - macOS test suite
-- `sh.shellops.ios.tests` - iOS test suite
+- `sh.vibetunnel.vibetunnel.tests` - macOS test suite
+- `sh.vibetunnel.ios.tests` - iOS test suite
 
 **iOS:**
-- `sh.shellops.ios` - iOS keychain service and URL scheme
+- `sh.vibetunnel.ios` - iOS keychain service and URL scheme
 
 ### Viewing Unredacted Logs
 
@@ -1061,9 +1061,9 @@ To see full log details for debugging, you have several options:
 1. **Install the Configuration Profile** (Recommended - easiest method):
    ```bash
    # Install the logging configuration profile
-   open apple/logging/ShellOps-Logging.mobileconfig
+   open apple/logging/VibeTunnel-Logging.mobileconfig
    
-   # This enables debug logging for all ShellOps components
+   # This enables debug logging for all VibeTunnel components
    # To remove later: System Settings → Privacy & Security → Profiles
    ```
 
@@ -1095,9 +1095,9 @@ To see full log details for debugging, you have several options:
 
 4. **Enable private data logging** using a plist file (alternative):
    ```bash
-   # Create the plist to enable private data for ShellOps
+   # Create the plist to enable private data for VibeTunnel
    sudo mkdir -p /Library/Preferences/Logging/Subsystems
-   sudo tee /Library/Preferences/Logging/Subsystems/sh.shellops.shellops.plist > /dev/null << 'EOF'
+   sudo tee /Library/Preferences/Logging/Subsystems/sh.vibetunnel.vibetunnel.plist > /dev/null << 'EOF'
    <?xml version="1.0" encoding="UTF-8"?>
    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
    <plist version="1.0">
@@ -1117,15 +1117,15 @@ For more detailed information about logging privacy and additional methods, see 
 
 ## Contributing
 
-We welcome contributions! ShellOps is a community-driven project and we'd love to have you join us.
+We welcome contributions! VibeTunnel is a community-driven project and we'd love to have you join us.
 
 ### Join Our Community
 
-Connect with the ShellOps team and other contributors on our [Discord server](https://discord.gg/3Ub3EUwrcR). It's the best place to:
+Connect with the VibeTunnel team and other contributors on our [Discord server](https://discord.gg/3Ub3EUwrcR). It's the best place to:
 - Discuss new features and ideas
 - Get help with development setup
 - Coordinate on larger changes
-- Share your ShellOps use cases
+- Share your VibeTunnel use cases
 
 ### How to Contribute
 
@@ -1134,13 +1134,13 @@ Connect with the ShellOps team and other contributors on our [Discord server](ht
 3. **Development Setup**: Follow our [Contributing Guide](docs/CONTRIBUTING.md) for detailed setup instructions
 4. **Submit PRs**: Fork the repo, create a branch, and submit your changes
 
-For technical details on building and developing ShellOps, see our [Contributing Guide](docs/CONTRIBUTING.md).
+For technical details on building and developing VibeTunnel, see our [Contributing Guide](docs/CONTRIBUTING.md).
 
-## Support ShellOps
+## Support VibeTunnel
 
-Love ShellOps? Help us keep the terminal vibes flowing! Your support helps us buy pizza and drinks while we keep hacking on your favorite AI agent orchestration platform.
+Love VibeTunnel? Help us keep the terminal vibes flowing! Your support helps us buy pizza and drinks while we keep hacking on your favorite AI agent orchestration platform.
 
-All donations go directly to the development team. Choose your own amount - one-time or monthly! Visit our [Polar page](https://shellops.sh/#support) to support us.
+All donations go directly to the development team. Choose your own amount - one-time or monthly! Visit our [Polar page](https://vibetunnel.sh/#support) to support us.
 
 ## Credits
 
@@ -1153,8 +1153,8 @@ Created with ❤️ by:
 
 ## License
 
-ShellOps is open source software licensed under the MIT License. See [LICENSE](LICENSE) for details.
+VibeTunnel is open source software licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
-**Ready to vibe?** [Download ShellOps](https://github.com/amantus-ai/shellops/releases/latest) and start tunneling!
+**Ready to vibe?** [Download VibeTunnel](https://github.com/arunsanna/vibetunnel/releases/latest) and start tunneling!

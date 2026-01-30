@@ -51,7 +51,7 @@ export class ClipboardManager extends LitElement {
 
   private readonly MAX_HISTORY_ITEMS = 20;
   private readonly MAX_PREVIEW_LENGTH = 200;
-  private readonly STORAGE_KEY = 'shellops-clipboard-history';
+  private readonly STORAGE_KEY = 'vibetunnel-clipboard-history';
 
   connectedCallback() {
     super.connectedCallback();
@@ -260,7 +260,7 @@ export class ClipboardManager extends LitElement {
         .visible=${this.visible}
         .closeOnBackdrop=${true}
         .closeOnEscape=${true}
-        .contentClass=${`clipboard-manager-modal font-mono text-sm w-full max-w-[90vw] sm:max-w-2xl ${this.isMobile ? 'max-h-[70vh]' : 'max-h-[75vh]'}`}
+        .contentClass=${`clipboard-manager-modal font-ui text-sm w-full max-w-[90vw] sm:max-w-2xl ${this.isMobile ? 'max-h-[70vh]' : 'max-h-[75vh]'}`}
         ariaLabel="Clipboard Manager"
         style="z-index: 1050;"
         @close=${this.handleClose}
@@ -343,7 +343,7 @@ export class ClipboardManager extends LitElement {
                     this.currentClipboard
                       ? html`
                     <div class="bg-bg-secondary border border-border rounded-lg p-3 mb-3">
-                      <pre class="text-sm text-text whitespace-pre-wrap break-all font-mono">${this.currentClipboard.length > 300 ? `${this.currentClipboard.substring(0, 300)}...` : this.currentClipboard}</pre>
+                      <pre class="text-sm text-text whitespace-pre-wrap break-all font-ui">${this.currentClipboard.length > 300 ? `${this.currentClipboard.substring(0, 300)}...` : this.currentClipboard}</pre>
                     </div>
                     
                     <button
@@ -428,7 +428,7 @@ export class ClipboardManager extends LitElement {
                                     : ''
                                 }
                               </div>
-                              <pre class="text-sm text-text whitespace-pre-wrap break-all font-mono leading-relaxed">${item.preview}</pre>
+                              <pre class="text-sm text-text whitespace-pre-wrap break-all font-ui leading-relaxed">${item.preview}</pre>
                             </div>
                           </div>
                           

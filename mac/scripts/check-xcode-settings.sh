@@ -83,7 +83,7 @@ fi
 # Check build configuration in project.pbxproj
 echo ""
 echo "5. Checking Release configuration..."
-PBXPROJ="$PROJECT_DIR/ShellOps.xcodeproj/project.pbxproj"
+PBXPROJ="$PROJECT_DIR/VibeTunnel.xcodeproj/project.pbxproj"
 
 if [ -f "$PBXPROJ" ]; then
     # This is a simple check - a more thorough check would parse the file properly

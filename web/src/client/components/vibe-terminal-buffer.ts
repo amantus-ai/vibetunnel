@@ -1,5 +1,5 @@
 /**
- * ShellOps Terminal Buffer Component
+ * VibeTunnel Terminal Buffer Component
  *
  * Displays a read-only terminal buffer snapshot with automatic resizing.
  * Subscribes to buffer updates via WebSocket and renders the terminal content.

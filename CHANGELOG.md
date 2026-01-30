@@ -34,9 +34,9 @@
 - Enhanced integration between web services and native Mac notification service
 
 #### **Git Worktree Management & Follow Mode** (#452)
-- Full worktree support: Create, manage, and delete Git worktrees directly from ShellOps
-- ShellOps intelligently follows Git worktrees instead of just branches, perfect for developers using worktrees for parallel development
-- When you switch branches in your editor/IDE, ShellOps automatically switches to the corresponding worktree terminal session
+- Full worktree support: Create, manage, and delete Git worktrees directly from VibeTunnel
+- VibeTunnel intelligently follows Git worktrees instead of just branches, perfect for developers using worktrees for parallel development
+- When you switch branches in your editor/IDE, VibeTunnel automatically switches to the corresponding worktree terminal session
 - The `vt follow` command works contextually - run it from either your main repository or a worktree to set up appropriate tracking
 - Visual indicators: Fork icon (⑂) shows worktree sessions, branch names displayed throughout UI
 - Follow mode displays worktree paths with `~` for your home directory, making them easier to read
@@ -52,11 +52,11 @@
 
 #### **Terminal Multiplexer Integration (tmux, Zellij & Screen)** (#460)
 - Full integration with tmux, Zellij, and GNU Screen terminal multiplexers for persistent sessions
-- Create, list, and attach to tmux/Zellij/Screen sessions directly from ShellOps interface
-- Sessions persist across ShellOps restarts - never lose your work
+- Create, list, and attach to tmux/Zellij/Screen sessions directly from VibeTunnel interface
+- Sessions persist across VibeTunnel restarts - never lose your work
 - Perfect for remote development: attach to the same session from multiple devices
 - Supports tmux panes and windows for advanced terminal workflows
-- Seamless switching between standard ShellOps sessions and multiplexer sessions
+- Seamless switching between standard VibeTunnel sessions and multiplexer sessions
 
 #### **Quick Session Switching with Number Keys**
 - When keyboard capture is active, use Cmd+1...9 (Mac) or Ctrl+1...9 (Linux) to instantly switch between sessions
@@ -142,7 +142,7 @@
 - Cleaner public API without brittle type casting
 
 #### **Developer Tools**
-- Added `SHELLOPS_PREFER_DERIVED_DATA` environment variable for faster Xcode builds
+- Added `VIBETUNNEL_PREFER_DERIVED_DATA` environment variable for faster Xcode builds
 - Version tracking in socket protocol for better debugging
 - Consolidated duplicate Git status implementations for maintainability
 - Enhanced error logging for session termination debugging
@@ -164,14 +164,14 @@
 
 Thank you to all the contributors who helped make this release possible!
 
-First-time contributors to ShellOps:
+First-time contributors to VibeTunnel:
 - [@jblwilliams](https://github.com/jblwilliams) - Removed unused ScreenCaptureKit import from ServerManager (#486)
 - [@lox](https://github.com/lox) - Added Tailscale Serve integration with automatic authentication (#472)
 - [@diegopetrucci](https://github.com/diegopetrucci) - Contributed push notifications onboarding screen (via #474)
 
 Additional contributors:
 - [@hjanuschka](https://github.com/hjanuschka) - Added tmux integration (#460), fixed iOS keyboard dismissal issue (#484), and fixed blinking cursor in binary terminal mode (#489)
-- [@fal3](https://github.com/fal3) - Fixed Test Notification Button to ShellOps Mac App (#483)
+- [@fal3](https://github.com/fal3) - Fixed Test Notification Button to VibeTunnel Mac App (#483)
 - [@hewigovens](https://github.com/hewigovens) - Fixed mobile keyboard layout and text sizing issues (#441) and contributed CJK (Chinese, Japanese, Korean) IME input support (#447, refined in #480)
 
 ## [1.0.0-beta.14] - 2025-07-21
@@ -184,7 +184,7 @@ Additional contributors:
 - Drag & drop reordering with smooth animations in macOS settings
 - Inline editing without popup dialogs
 - Reset to defaults button when you want the original set back
-- File-based persistence in `~/.shellops/config.json` shared between web and Mac apps
+- File-based persistence in `~/.vibetunnel/config.json` shared between web and Mac apps
 
 #### **New Session Path Autocomplete** (#435)
 - Intelligent path autocomplete when creating sessions with unified UI
@@ -211,7 +211,7 @@ Additional contributors:
 - Mobile-optimized UI with full-screen menu
 
 #### **Linux Systemd Support** (#426)
-- Run ShellOps as a persistent service with `shellops systemd install`
+- Run VibeTunnel as a persistent service with `vibetunnel systemd install`
 - User-level service - no root required
 - Automatic startup on boot
 - Smart Node.js detection works with nvm, fnm, or global npm
@@ -261,7 +261,7 @@ Additional contributors:
 - Improved type safety and maintainability across the codebase
 
 #### **Configuration System Overhaul** (#436)
-- New file-based configuration system with `~/.shellops/config.json`
+- New file-based configuration system with `~/.vibetunnel/config.json`
 - ConfigManager for synchronized settings between Mac and web
 - REST API at `/api/config` replacing WebSocket sync
 - Zod schema validation for all configuration data
@@ -282,7 +282,7 @@ Additional contributors:
 
 ### 👥 Contributors
 
-First-time contributors to ShellOps:
+First-time contributors to VibeTunnel:
 - [@gopikori](https://github.com/gopikori) - Made ngrok URLs clickable with copy button in Settings (#422)
 - [@claudemini](https://github.com/claudemini) - Improved theme toggle UI with better icon and tooltips (#438)
 
@@ -319,7 +319,7 @@ Additional contributors:
 - Organized all documentation into logical categories with Mintlify
 
 ### 👥 Contributors
-First-time contributors to ShellOps:
+First-time contributors to VibeTunnel:
 - [@hewigovens](https://github.com/hewigovens) - Added systemd service management for Linux deployments, refactored installer for user-level services with improved security (#419)
 
 ## [1.0.0-beta.12] - 2025-07-17
@@ -331,7 +331,7 @@ First-time contributors to ShellOps:
 
 #### **SSH Agent Reliability**
 - Fixed SSH key generation errors on non-localhost HTTP connections (#392)
-- SSH agent now works correctly when accessing ShellOps via ngrok or from another device
+- SSH agent now works correctly when accessing VibeTunnel via ngrok or from another device
 - Improved security and reliability for remote access scenarios
 
 #### **npm Package Stability**
@@ -355,7 +355,7 @@ First-time contributors to ShellOps:
 - Cleaned up duplicate and stray files from web directory
 
 ### 👥 Contributors
-First-time contributors to ShellOps:
+First-time contributors to VibeTunnel:
 - [@amazanov](https://github.com/amazanov) - Fixed PAM module and npm_config_prefix issues on Ubuntu, improving Linux compatibility (#380)
 
 ## [1.0.0-beta.11] - 2025-07-17
@@ -369,8 +369,8 @@ First-time contributors to ShellOps:
 - Spawn window toggle shows only when relevant (#357)
 
 #### **NPM Package Now Available**
-- shellops (server) is now available as an npm package for easy installation on macOS and Linux (#360, #377)
-- Install with `npm install -g shellops` - no build tools required!
+- vibetunnel (server) is now available as an npm package for easy installation on macOS and Linux (#360, #377)
+- Install with `npm install -g vibetunnel` - no build tools required!
 - Includes prebuilt binaries for Node.js 20, 22, 23, and 24
 - Supports macOS (Intel and Apple Silicon) and Linux (x64 and arm64) (#344)
 
@@ -379,7 +379,7 @@ First-time contributors to ShellOps:
 
 #### **Improved `vt` Command**
 - Added verbosity control with `-q` (quiet), `-v` (verbose), `-vv` (extra verbose) flags (#356)
-- New `vt title` command to update session names from within a ShellOps session (via @tarasenko)
+- New `vt title` command to update session names from within a VibeTunnel session (via @tarasenko)
 
 ### 🐛 Bug Fixes
 
@@ -390,7 +390,7 @@ First-time contributors to ShellOps:
 - Resolved Tailwind CSS performance warning
 
 ### 👥 Contributors
-First-time contributors to ShellOps:
+First-time contributors to VibeTunnel:
 - [@janremes](https://github.com/janremes) - Implemented Git repository discovery with folder selection and automatic repo detection (#274)
 - [@lukeswitz](https://github.com/lukeswitz) - Fixed duplicate session creation with intelligent detection logic (#345)
 
@@ -415,7 +415,7 @@ First-time contributors to ShellOps:
 #### **Development Server Mode**
 - New "Development Server" mode in Debug Settings enables hot reload (#316)
 - Significantly faster iteration when developing the web interface
-- Hot reload works with full ShellOps functionality
+- Hot reload works with full VibeTunnel functionality
 
 ### 🐛 Bug Fixes
 
@@ -428,7 +428,7 @@ First-time contributors to ShellOps:
 - Enhanced TypeScript configuration with better type safety
 
 ### 👥 Contributors
-First-time contributors to ShellOps:
+First-time contributors to VibeTunnel:
 - [@davidgomesdev](https://github.com/davidgomesdev) - Transformed SessionListView to clean MVVM architecture for better maintainability (#217)
 - [@jeffhurray](https://github.com/jeffhurray) - Consolidated z-index management to prevent UI layer conflicts (#291)
 - [@hewigovens](https://github.com/hewigovens) - Fixed SSH key manager modal layout and improved test compatibility (#325)
@@ -469,7 +469,7 @@ First-time contributors to ShellOps:
 - Improved file browser functionality with better click handling
 
 ### 👥 Contributors
-First-time contributors to ShellOps:
+First-time contributors to VibeTunnel:
 - [@claywarren](https://github.com/claywarren) - Fixed infinite scroll loop that could freeze the browser (#206)
 - [@luisnell](https://github.com/luisnell) - Added Apple Silicon Homebrew path check for VT tool installation
 
@@ -519,7 +519,7 @@ First-time contributors to ShellOps:
 - Preserve Swift package resolution for faster builds
 - Better Node.js detection handling fnm/homebrew conflicts (#246, #253)
 - Hash-based vt script version detection
-- Delete old sessions when ShellOps version changes (#254)
+- Delete old sessions when VibeTunnel version changes (#254)
 
 ### 🐛 Bug Fixes
 
@@ -534,7 +534,7 @@ First-time contributors to ShellOps:
 - Improved Unix socket handling with better error recovery
 
 ### 👥 Contributors
-First-time contributors to ShellOps:
+First-time contributors to VibeTunnel:
 - [@deveshseth](https://github.com/deveshseth) - Fixed responsive layout issues preventing proper desktop mode transition (#201)
 - [@raghavsethi](https://github.com/raghavsethi) - Added fish shell expansion support with proper syntax handling (#228, #242)
 - [@raghavsethi](https://github.com/raghavsethi) - Fixed Xcode Node.js detection issues with fnm/homebrew conflicts (#246, #253)
@@ -581,7 +581,7 @@ First-time contributors to ShellOps:
 - Streamlined connection UI
 
 ### 👥 Contributors
-First-time contributors to ShellOps:
+First-time contributors to VibeTunnel:
 - [@noppe](https://github.com/noppe) - Enabled scrolling in ConnectionView for narrow windows, improving UI accessibility
 - [@tarasenko](https://github.com/tarasenko) - Added title mode support and enhanced CLI installation verification (#153)
 
@@ -608,7 +608,7 @@ First-time contributors to ShellOps:
 - Cleaner logs when running in development mode
 
 ### 👥 Contributors
-First-time contributors to ShellOps:
+First-time contributors to VibeTunnel:
 - [@manuelmaly](https://github.com/manuelmaly) - Added gemini quick start button and slash commands for enhanced workflow (#128, #138)
 - [@billyb2](https://github.com/billyb2) - Fixed repeated screen recording permission dialogs for better user experience
 
@@ -624,7 +624,7 @@ First-time contributors to ShellOps:
 - More intuitive default settings for better out-of-box experience
 
 ### 👥 Contributors
-First-time contributors to ShellOps:
+First-time contributors to VibeTunnel:
 - [@hjanuschka](https://github.com/hjanuschka) - Implemented authentication system with SSH key management for better security (#43)
 - [@hjanuschka](https://github.com/hjanuschka) - Added screen sharing functionality with WebRTC (later removed in beta.13) (#209)
 - [@chrisreyn](https://github.com/chrisreyn) - Fixed double shell-wrapping issues for aliases in vt script (#132)
@@ -647,10 +647,10 @@ There's too much to list! This is the version you've been waiting for.
 - Special handling for Warp terminal with custom enter key behavior
 - New dock menu with quick actions when right-clicking the app icon
 - More resilient vt command-line tool with better error handling
-- Ensured shellops server properly terminates when Mac app is killed
+- Ensured vibetunnel server properly terminates when Mac app is killed
 
 ### 👥 Contributors
-First-time contributors to ShellOps:
+First-time contributors to VibeTunnel:
 - [@tarasenko](https://github.com/tarasenko) - Added Bonjour/mDNS service discovery for iOS app connectivity (#226)
 - [@PiotrBosak](https://github.com/PiotrBosak) - Updated README documentation for clarity
 - [@zhouzhuojie](https://github.com/zhouzhuojie) - Added Cloudflare Quick Tunnel as a new access option
@@ -672,14 +672,14 @@ First-time contributors to ShellOps:
 - Fixed race condition in session creation that caused frontend to open previous session
 
 ### 👥 Contributors
-First-time contributors to ShellOps:
+First-time contributors to VibeTunnel:
 - [@moffmann](https://github.com/moffmann) - Updated CONTRIBUTING.md documentation
 
 ## [1.0.0-beta.1] - 2025-06-17
 
 ### 🎉 First Public Beta Release
 
-This is the first public beta release of ShellOps, ready for testing by early adopters.
+This is the first public beta release of VibeTunnel, ready for testing by early adopters.
 
 ### ✨ What's Included
 - Complete terminal session proxying to web browsers
@@ -722,7 +722,7 @@ This is the first public beta release of ShellOps, ready for testing by early ad
 
 ### 🎉 Initial Release
 
-ShellOps is a native macOS application that proxies terminal sessions to web browsers, allowing you to monitor and control terminals from any device.
+VibeTunnel is a native macOS application that proxies terminal sessions to web browsers, allowing you to monitor and control terminals from any device.
 
 ### ✨ Core Features
 
@@ -748,7 +748,7 @@ ShellOps is a native macOS application that proxies terminal sessions to web bro
 - **Basic Authentication** - HTTP Basic Auth support for network access
 
 #### Remote Access Options
-- **Tailscale Integration** - Access ShellOps through your Tailscale network
+- **Tailscale Integration** - Access VibeTunnel through your Tailscale network
 - **ngrok Support** - Built-in ngrok tunneling for public access with authentication
 - **Network Mode** - Local network access with IP-based connections
 
@@ -789,7 +789,7 @@ ShellOps is a native macOS application that proxies terminal sessions to web bro
 ### 📦 Installation
 
 - Download DMG from GitHub releases
-- Drag ShellOps to Applications folder
+- Drag VibeTunnel to Applications folder
 - Launch from Applications or Spotlight
 - CLI tool (`vt`) automatically installed on first launch
 
@@ -816,13 +816,13 @@ Created by:
 - [@mitsuhiko](https://lucumr.pocoo.org/) - Armin Ronacher  
 - [@steipete](https://steipete.com/) - Peter Steinberger
 
-First-time contributors to ShellOps:
+First-time contributors to VibeTunnel:
 - [@hjanuschka](https://github.com/hjanuschka) - Implemented comprehensive authentication system with SSH key management and PAM support (#43)
 - [@hjanuschka](https://github.com/hjanuschka) - Added keyboard shortcut highlighter, fixed Japanese input duplication on iOS, and sleep prevention option (#114, #102, #146)
 
 ### 📄 License
 
-ShellOps is open source software licensed under the MIT License.
+VibeTunnel is open source software licensed under the MIT License.
 
 ---
 

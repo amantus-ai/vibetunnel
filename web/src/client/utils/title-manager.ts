@@ -1,5 +1,5 @@
 /**
- * Centralized title management for ShellOps
+ * Centralized title management for VibeTunnel
  */
 
 export class TitleManager {
@@ -20,7 +20,7 @@ export class TitleManager {
    * Set title for session view
    */
   setSessionTitle(sessionName: string): void {
-    document.title = `ShellOps - ${sessionName}`;
+    document.title = `VibeTunnel - ${sessionName}`;
   }
 
   /**
@@ -29,15 +29,15 @@ export class TitleManager {
   setListTitle(sessionCount: number): void {
     document.title =
       sessionCount > 0
-        ? `ShellOps - ${sessionCount} Session${sessionCount !== 1 ? 's' : ''}`
-        : 'ShellOps';
+        ? `VibeTunnel - ${sessionCount} Session${sessionCount !== 1 ? 's' : ''}`
+        : 'VibeTunnel';
   }
 
   /**
    * Set title for file browser
    */
   setFileBrowserTitle(): void {
-    document.title = 'ShellOps - File Browser';
+    document.title = 'VibeTunnel - File Browser';
   }
 
   /**

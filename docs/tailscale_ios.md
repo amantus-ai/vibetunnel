@@ -1,8 +1,8 @@
-# ShellOps Architecture Deep Dive
+# VibeTunnel Architecture Deep Dive
 
 ## 🏗️ High-Level Architecture
 
-ShellOps is a sophisticated terminal multiplexer ecosystem with native macOS/iOS apps and a powerful web interface. Here's the complete architectural breakdown:
+VibeTunnel is a sophisticated terminal multiplexer ecosystem with native macOS/iOS apps and a powerful web interface. Here's the complete architectural breakdown:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -48,7 +48,7 @@ ShellOps is a sophisticated terminal multiplexer ecosystem with native macOS/iOS
 │                          SYSTEM LAYER                                   │
 │  ┌──────────────┐  ┌─────────────────┐  ┌─────────────────────────┐   │
 │  │ PTY Processes│  │ File System     │  │ Unix Sockets           │   │
-│  │ (bash/zsh)   │  │ (~/.shellops) │  │ (IPC Communication)    │   │
+│  │ (bash/zsh)   │  │ (~/.vibetunnel) │  │ (IPC Communication)    │   │
 │  └──────────────┘  └─────────────────┘  └─────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -60,7 +60,7 @@ ShellOps is a sophisticated terminal multiplexer ecosystem with native macOS/iOS
 The native macOS app serves as the system orchestrator:
 
 ```
-mac/ShellOps/
+mac/VibeTunnel/
 ├── Core/
 │   ├── Services/
 │   │   ├── ServerManager.swift      # Central orchestrator
@@ -73,7 +73,7 @@ mac/ShellOps/
 │   │   ├── TunnelSession.swift      # Session data model
 │   │   └── AppConstants.swift       # Configuration
 │   └── Protocols/
-│       └── ShellOpsServer.swift   # Server interface
+│       └── VibeTunnelServer.swift   # Server interface
 └── Presentation/
     ├── Views/                       # SwiftUI views
     └── Components/                  # UI components
@@ -122,7 +122,7 @@ web/src/server/
 Mobile terminal client with full feature parity:
 
 ```
-ios/ShellOps/
+ios/VibeTunnel/
 ├── Services/
 │   ├── BufferWebSocketClient.swift  # Binary protocol client
 │   ├── SessionService.swift         # Session management
@@ -223,7 +223,7 @@ User Request
     │
     ├─→ TerminalManager.createTerminal()
     ├─→ PtyManager.spawn() → node-pty
-    ├─→ Create ~/.shellops/control/[sessionId]/
+    ├─→ Create ~/.vibetunnel/control/[sessionId]/
     ├─→ Start BufferAggregator
     │
     ▼
@@ -289,7 +289,7 @@ Registration → Session Discovery → Proxied Access
 ### **2. Remote Access (Tailscale/Ngrok)**
 
 ```
-Internet → Tailscale Funnel/Ngrok → localhost:4020 → ShellOps
+Internet → Tailscale Funnel/Ngrok → localhost:4020 → VibeTunnel
             ├─ HTTPS termination
             ├─ Authentication
             └─ Traffic routing
@@ -307,7 +307,7 @@ ActivityMonitor → Session idle > 5min → Mark inactive
 ## 📁 File System Structure
 
 ```
-~/.shellops/
+~/.vibetunnel/
 ├── control/                      # Session control files
 │   └── [sessionId]/
 │       ├── session.json         # Metadata

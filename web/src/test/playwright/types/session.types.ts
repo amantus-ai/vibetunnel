@@ -1,5 +1,5 @@
 /**
- * Type definitions for ShellOps sessions
+ * Type definitions for VibeTunnel sessions
  */
 
 export interface SessionInfo {

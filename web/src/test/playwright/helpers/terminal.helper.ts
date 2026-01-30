@@ -244,14 +244,14 @@ export function generateTestSessionName(): string {
 
 /**
  * Clean up all test sessions
- * IMPORTANT: Only cleans up sessions that start with "test-" to avoid killing the ShellOps session running Claude Code
+ * IMPORTANT: Only cleans up sessions that start with "test-" to avoid killing the VibeTunnel session running Claude Code
  */
 export async function cleanupSessions(page: Page): Promise<void> {
   try {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     // NEVER use Kill All button as it would kill ALL sessions including
-    // the ShellOps session that Claude Code is running in!
+    // the VibeTunnel session that Claude Code is running in!
     // Instead, find and kill only test sessions individually
     const testSessions = page.locator('session-card').filter({ hasText: /^test-/i });
     const count = await testSessions.count();

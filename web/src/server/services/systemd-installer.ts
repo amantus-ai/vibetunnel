@@ -11,8 +11,8 @@ const BLUE = '\x1b[0;34m';
 const NC = '\x1b[0m'; // No Color
 
 // Configuration
-const SERVICE_NAME = 'shellops';
-const SERVICE_FILE = 'shellops.service';
+const SERVICE_NAME = 'vibetunnel';
+const SERVICE_FILE = 'vibetunnel.service';
 
 // Get the current user (regular user only, no sudo/root)
 function getCurrentUser(): { username: string; home: string } {
@@ -35,13 +35,13 @@ function printError(message: string): void {
   console.log(`${RED}[ERROR]${NC} ${message}`);
 }
 
-// Create a stable wrapper script that can find shellops regardless of node version manager
-function createShellopsWrapper(): string {
+// Create a stable wrapper script that can find vibetunnel regardless of node version manager
+function createVibeTunnelWrapper(): string {
   const { username, home } = getCurrentUser();
-  const wrapperPath = `${home}/.local/bin/shellops-systemd`;
+  const wrapperPath = `${home}/.local/bin/vibetunnel-systemd`;
   const wrapperContent = `#!/bin/bash
-# ShellOps Systemd Wrapper Script
-# This script finds and executes shellops for user: ${username}
+# VibeTunnel Systemd Wrapper Script
+# This script finds and executes vibetunnel for user: ${username}
 
 # Function to log messages
 log_info() {
@@ -56,12 +56,12 @@ log_error() {
 export HOME="${home}"
 export USER="${username}"
 
-# Try to find shellops in various ways
-find_shellops() {
-    # Method 1: Check if shellops is in PATH
-    if command -v shellops >/dev/null 2>&1; then
-        log_info "Found shellops in PATH"
-        shellops "$@"
+# Try to find vibetunnel in various ways
+find_vibetunnel() {
+    # Method 1: Check if vibetunnel is in PATH
+    if command -v vibetunnel >/dev/null 2>&1; then
+        log_info "Found vibetunnel in PATH"
+        vibetunnel "$@"
         return $?
     fi
     
@@ -70,9 +70,9 @@ find_shellops() {
         log_info "Checking nvm installation for user ${username}"
         export NVM_DIR="${home}/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-        if command -v shellops >/dev/null 2>&1; then
-            log_info "Found shellops via nvm"
-            shellops "$@"
+        if command -v vibetunnel >/dev/null 2>&1; then
+            log_info "Found vibetunnel via nvm"
+            vibetunnel "$@"
             return $?
         fi
     fi
@@ -87,9 +87,9 @@ find_shellops() {
         eval "$("${home}/.local/share/fnm/fnm" env --shell bash)" 2>/dev/null || true
         # Try to use the default node version or current version
         "${home}/.local/share/fnm/fnm" use default >/dev/null 2>&1 || "${home}/.local/share/fnm/fnm" use current >/dev/null 2>&1 || true
-        if command -v shellops >/dev/null 2>&1; then
-            log_info "Found shellops via fnm"
-            shellops "$@"
+        if command -v vibetunnel >/dev/null 2>&1; then
+            log_info "Found vibetunnel via fnm"
+            vibetunnel "$@"
             return $?
         fi
     fi
@@ -99,9 +99,9 @@ find_shellops() {
         if [ -x "$npm_bin" ]; then
             log_info "Trying npm global with $npm_bin"
             NPM_PREFIX=$("$npm_bin" config get prefix 2>/dev/null)
-            if [ -n "$NPM_PREFIX" ] && [ -x "$NPM_PREFIX/bin/shellops" ]; then
-                log_info "Found shellops via npm global: $NPM_PREFIX/bin/shellops"
-                "$NPM_PREFIX/bin/shellops" "$@"
+            if [ -n "$NPM_PREFIX" ] && [ -x "$NPM_PREFIX/bin/vibetunnel" ]; then
+                log_info "Found vibetunnel via npm global: $NPM_PREFIX/bin/vibetunnel"
+                "$NPM_PREFIX/bin/vibetunnel" "$@"
                 return $?
             fi
         fi
@@ -110,9 +110,9 @@ find_shellops() {
     # Method 5: Try to run with node directly using global npm package
     for node_bin in "/usr/local/bin/node" "/usr/bin/node" "/opt/homebrew/bin/node"; do
         if [ -x "$node_bin" ]; then
-            for script_path in "/usr/local/lib/node_modules/shellops/dist/cli.js" "/usr/lib/node_modules/shellops/dist/cli.js"; do
+            for script_path in "/usr/local/lib/node_modules/vibetunnel/dist/cli.js" "/usr/lib/node_modules/vibetunnel/dist/cli.js"; do
                 if [ -f "$script_path" ]; then
-                    log_info "Running shellops via node: $node_bin $script_path"
+                    log_info "Running vibetunnel via node: $node_bin $script_path"
                     "$node_bin" "$script_path" "$@"
                     return $?
                 fi
@@ -120,13 +120,13 @@ find_shellops() {
         fi
     done
     
-    log_error "Could not find shellops installation for user ${username}"
-    log_error "Please ensure shellops is installed globally: npm install -g shellops"
+    log_error "Could not find vibetunnel installation for user ${username}"
+    log_error "Please ensure vibetunnel is installed globally: npm install -g vibetunnel"
     return 1
 }
 
 # Execute the function with all arguments
-find_shellops "$@"
+find_vibetunnel "$@"
 `;
 
   try {
@@ -149,26 +149,26 @@ find_shellops "$@"
   }
 }
 
-// Verify that shellops is accessible and return wrapper path
-function checkShellopsAndCreateWrapper(): string {
-  // First, verify that shellops is actually installed somewhere
+// Verify that vibetunnel is accessible and return wrapper path
+function checkVibeTunnelAndCreateWrapper(): string {
+  // First, verify that vibetunnel is actually installed somewhere
   try {
-    const shellopsPath = execSync('which shellops', { encoding: 'utf8', stdio: 'pipe' }).trim();
-    printInfo(`Found ShellOps at: ${shellopsPath}`);
+    const vibetunnelPath = execSync('which vibetunnel', { encoding: 'utf8', stdio: 'pipe' }).trim();
+    printInfo(`Found VibeTunnel at: ${vibetunnelPath}`);
   } catch (_error) {
-    printError('ShellOps is not installed or not accessible. Please install it first:');
-    console.log('  npm install -g shellops');
+    printError('VibeTunnel is not installed or not accessible. Please install it first:');
+    console.log('  npm install -g vibetunnel');
     process.exit(1);
   }
 
   // Create and return the wrapper script path
-  return createShellopsWrapper();
+  return createVibeTunnelWrapper();
 }
 
 // Remove wrapper script during uninstall
-function removeShellopsWrapper(): void {
+function removeVibeTunnelWrapper(): void {
   const { home } = getCurrentUser();
-  const wrapperPath = `${home}/.local/bin/shellops-systemd`;
+  const wrapperPath = `${home}/.local/bin/vibetunnel-systemd`;
   try {
     if (existsSync(wrapperPath)) {
       unlinkSync(wrapperPath);
@@ -182,19 +182,19 @@ function removeShellopsWrapper(): void {
 // No need to create users or directories - using current user
 
 // Get the systemd service template
-function getServiceTemplate(shellopsPath: string): string {
+function getServiceTemplate(vibetunnelPath: string): string {
   const { home } = getCurrentUser();
 
   return `[Unit]
-Description=ShellOps - Terminal sharing server with web interface
-Documentation=https://github.com/amantus-ai/shellops
+Description=VibeTunnel - Terminal sharing server with web interface
+Documentation=https://github.com/arunsanna/vibetunnel
 After=network.target
 Wants=network.target
 
 [Service]
 Type=simple
 WorkingDirectory=${home}
-ExecStart=${shellopsPath} --port 4020 --bind 0.0.0.0
+ExecStart=${vibetunnelPath} --port 4020 --bind 0.0.0.0
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -203,7 +203,7 @@ SyslogIdentifier=${SERVICE_NAME}
 
 # Environment - preserve user environment for node version managers
 Environment=NODE_ENV=production
-Environment=SHELLOPS_LOG_LEVEL=info
+Environment=VIBETUNNEL_LOG_LEVEL=info
 Environment=HOME=%h
 Environment=USER=%i
 
@@ -217,12 +217,12 @@ WantedBy=default.target`;
 }
 
 // Install systemd service
-function installService(shellopsPath: string): void {
+function installService(vibetunnelPath: string): void {
   printInfo('Installing user systemd service...');
 
   const { home } = getCurrentUser();
   const systemdDir = `${home}/.config/systemd/user`;
-  const serviceContent = getServiceTemplate(shellopsPath);
+  const serviceContent = getServiceTemplate(vibetunnelPath);
   const servicePath = join(systemdDir, SERVICE_FILE);
 
   try {
@@ -269,7 +269,7 @@ function configureService(): void {
 function showUsage(): void {
   const { username, home } = getCurrentUser();
 
-  printSuccess('ShellOps systemd service installation completed!');
+  printSuccess('VibeTunnel systemd service installation completed!');
   console.log('');
   console.log('Usage:');
   console.log(`  systemctl --user start ${SERVICE_NAME}     # Start the service`);
@@ -288,7 +288,7 @@ function showUsage(): void {
   console.log('  Web interface: http://localhost:4020');
   console.log(`  Service runs as user: ${username}`);
   console.log(`  Working directory: ${home}`);
-  console.log(`  Wrapper script: ${home}/.local/bin/shellops-systemd`);
+  console.log(`  Wrapper script: ${home}/.local/bin/vibetunnel-systemd`);
   console.log('');
   console.log(`To customize the service, edit: ${home}/.config/systemd/user/${SERVICE_FILE}`);
   console.log(
@@ -298,7 +298,7 @@ function showUsage(): void {
 
 // Uninstall function
 function uninstallService(): void {
-  printInfo('Uninstalling ShellOps user systemd service...');
+  printInfo('Uninstalling VibeTunnel user systemd service...');
 
   try {
     // Stop and disable user service
@@ -331,14 +331,14 @@ function uninstallService(): void {
     execSync('systemctl --user daemon-reload', { stdio: 'pipe' });
 
     // Remove wrapper script
-    removeShellopsWrapper();
+    removeVibeTunnelWrapper();
 
     // Optionally disable lingering (ask user)
     const { username } = getCurrentUser();
     printInfo('Note: User lingering is still enabled. To disable:');
     console.log(`  loginctl disable-linger ${username}`);
 
-    printSuccess('ShellOps user systemd service uninstalled');
+    printSuccess('VibeTunnel user systemd service uninstalled');
   } catch (error) {
     printError(`Failed to uninstall service: ${error}`);
     process.exit(1);
@@ -364,7 +364,7 @@ function checkServiceStatus(): void {
 function checkNotRoot(): void {
   if (process.getuid && process.getuid() === 0) {
     printError('This installer must NOT be run as root!');
-    printError('ShellOps systemd service should run as a regular user for security.');
+    printError('VibeTunnel systemd service should run as a regular user for security.');
     printError('Please run this command as a regular user (without sudo).');
     process.exit(1);
   }
@@ -377,9 +377,9 @@ export function installSystemdService(action: string = 'install'): void {
 
   switch (action) {
     case 'install': {
-      printInfo('Installing ShellOps user systemd service...');
+      printInfo('Installing VibeTunnel user systemd service...');
 
-      const wrapperPath = checkShellopsAndCreateWrapper();
+      const wrapperPath = checkVibeTunnelAndCreateWrapper();
       installService(wrapperPath);
       configureService();
       showUsage();
@@ -396,9 +396,9 @@ export function installSystemdService(action: string = 'install'): void {
       break;
 
     default:
-      console.log('Usage: shellops systemd [install|uninstall|status]');
-      console.log('  install   - Install ShellOps user systemd service (default)');
-      console.log('  uninstall - Remove ShellOps user systemd service');
+      console.log('Usage: vibetunnel systemd [install|uninstall|status]');
+      console.log('  install   - Install VibeTunnel user systemd service (default)');
+      console.log('  uninstall - Remove VibeTunnel user systemd service');
       console.log('  status    - Check service status');
       process.exit(1);
   }

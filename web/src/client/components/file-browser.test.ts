@@ -268,7 +268,7 @@ describe('FileBrowser', () => {
 
       // Start at a deep directory
       element.currentPath = '.';
-      element.currentFullPath = '/Users/steipete/Projects/shellops/web';
+      element.currentFullPath = '/Users/steipete/Projects/vibetunnel/web';
       element.visible = true;
       await element.updateComplete;
 

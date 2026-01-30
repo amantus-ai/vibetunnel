@@ -12,26 +12,26 @@
 - Server-managed PTY rewrite in this phase.
 
 ## Current State (vt / fwd)
-- `vt` wrapper → `shellops-fwd` (zig) → PTY + stdout + ipc.sock + session.json.
-- Writes `~/.shellops/control/<id>/session.json` + `stdout` (asciinema v2).
+- `vt` wrapper → `vibetunnel-fwd` (zig) → PTY + stdout + ipc.sock + session.json.
+- Writes `~/.vibetunnel/control/<id>/session.json` + `stdout` (asciinema v2).
 - IPC via `ipc.sock` with framed protocol (stdin/resize/kill/update-title).
 - Server derives session activity from recent input/output timestamps (UI active/idle).
 
 ## Target Architecture (per-process)
 ```
-vt -> shellops-fwd (zig) -> PTY + stdout file + ipc.sock + session.json
+vt -> vibetunnel-fwd (zig) -> PTY + stdout file + ipc.sock + session.json
                          ^ Node server watches control dir + sends IPC
 ```
 
 ## Compatibility Contracts
-- Control dir layout: `~/.shellops/control/<id>/`
+- Control dir layout: `~/.vibetunnel/control/<id>/`
   - `session.json`, `stdout` (asciinema v2), `stdin` (FIFO), `ipc.sock`.
 - Session JSON schema: `web/src/shared/types.ts` `SessionInfo`.
 - IPC framing: `web/src/server/pty/socket-protocol.ts`
   - 1 byte type + 4 byte BE length + payload.
   - `STDIN_DATA` raw bytes (utf8), `CONTROL_CMD` JSON.
 - CLI flags: `--session-id`, `--title-mode`, `--verbosity`, `--update-title`, `--log-file`, `--`.
-- Env: `SHELLOPS_SESSION_ID`, `SHELLOPS_TITLE_MODE`, `SHELLOPS_LOG_LEVEL`.
+- Env: `VIBETUNNEL_SESSION_ID`, `VIBETUNNEL_TITLE_MODE`, `VIBETUNNEL_LOG_LEVEL`.
 
 ## Claude Activity Detection Removal (explicit)
 Done:
@@ -47,14 +47,14 @@ Done:
   - `src/pty.zig` (POSIX branch only).
   - Keep MIT header + attribution.
 - Build outputs:
-  - `web/bin/shellops-fwd` (npm).
-  - `mac/ShellOps/Resources/shellops-fwd` (app bundle).
+  - `web/bin/vibetunnel-fwd` (npm).
+  - `mac/VibeTunnel/Resources/vibetunnel-fwd` (app bundle).
 
 ### Phase 1: Core PTY + Process Spawn
 - PTY open: `openpty`, `setsid`, `TIOCSCTTY`, `ioctl` for size.
 - Spawn command with PTY slave as stdio.
 - Capture master fd for read/write.
-- Env: set `TERM`, `SHELLOPS_SESSION_ID`.
+- Env: set `TERM`, `VIBETUNNEL_SESSION_ID`.
 - Graceful shutdown on SIGTERM/SIGINT.
 
 ### Phase 2: Session Files + Asciinema v2
@@ -88,8 +88,8 @@ Done:
 - Keep `vt title` semantics via `--update-title` client path.
 
 ### Phase 5: Integration + Switch
-- Update `web/bin/vt` to prefer `shellops-fwd` if present.
-- `shellops fwd` path: exec `shellops-fwd` directly (no Node fallback).
+- Update `web/bin/vt` to prefer `vibetunnel-fwd` if present.
+- `vibetunnel fwd` path: exec `vibetunnel-fwd` directly (no Node fallback).
 - Packaging:
   - `web/scripts/build-npm.js`: include Zig binary.
   - `mac/scripts/build-web-frontend.sh`: copy Zig binary into app bundle.
@@ -100,7 +100,7 @@ Done:
 ## Test Plan
 - Zig unit tests: frame parser, asciinema writer, PTY resize.
 - Integration:
-  - `shellops-fwd echo hi` → session.json + stdout + exit event.
+  - `vibetunnel-fwd echo hi` → session.json + stdout + exit event.
   - IPC stdin write → output appears.
   - Resize command → asciinema resize event.
 - Web server:

@@ -1,6 +1,6 @@
-# ShellOps Standalone Server
+# VibeTunnel Standalone Server
 
-Run ShellOps as a standalone web terminal server without the macOS app. Perfect for remote machines, Docker containers, and quick terminal sharing.
+Run VibeTunnel as a standalone web terminal server without the macOS app. Perfect for remote machines, Docker containers, and quick terminal sharing.
 
 ## Quick Start
 
@@ -8,48 +8,48 @@ Run ShellOps as a standalone web terminal server without the macOS app. Perfect 
 
 ```bash
 # Run with no authentication (demo/testing)
-npx shellops --no-auth
+npx vibetunnel --no-auth
 
 # Run with ngrok tunnel for instant sharing
-npx shellops --no-auth --ngrok
+npx vibetunnel --no-auth --ngrok
 
 # Run with Cloudflare tunnel (no auth needed)
-npx shellops --no-auth --cloudflare
+npx vibetunnel --no-auth --cloudflare
 
 # Run with Tailscale tunnel
-npx shellops --no-auth --enable-tailscale-serve
+npx vibetunnel --no-auth --enable-tailscale-serve
 
 # Run with custom port
-npx shellops --port 8080 --no-auth
+npx vibetunnel --port 8080 --no-auth
 ```
 
 ### Global Installation
 
 ```bash
 # Install globally
-npm install -g shellops
+npm install -g vibetunnel
 
 # Run the server
-shellops --no-auth
+vibetunnel --no-auth
 ```
 
 ### Docker
 
 ```bash
 # Build the image
-docker build -f Dockerfile.standalone -t shellops .
+docker build -f Dockerfile.standalone -t vibetunnel .
 
 # Mount your code and run with ngrok tunnel
-docker run -v $(pwd):/workspace -p 4020:4020 shellops --ngrok
+docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --ngrok
 
 # With Cloudflare tunnel (no auth needed)
-docker run -v $(pwd):/workspace -p 4020:4020 shellops --cloudflare
+docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --cloudflare
 
 # Local development (no tunnel)
-docker run -v $(pwd):/workspace -p 4020:4020 shellops --no-auth
+docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --no-auth
 
 # With ngrok auth token for custom domain
-docker run -v $(pwd):/workspace -p 4020:4020 shellops --ngrok --ngrok-auth YOUR_TOKEN
+docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --ngrok --ngrok-auth YOUR_TOKEN
 ```
 
 ## CLI Options
@@ -89,18 +89,18 @@ Access a remote server's terminal through a web browser:
 
 ```bash
 # Method 1: Built-in ngrok (easiest!)
-npx shellops --no-auth --ngrok
+npx vibetunnel --no-auth --ngrok
 # Output: Public URL: https://abc123.ngrok.io
 
 # Method 2: Built-in Cloudflare (no auth needed)
-npx shellops --no-auth --cloudflare  
+npx vibetunnel --no-auth --cloudflare  
 # Output: Public URL: https://random-words.trycloudflare.com
 
 # Method 3: With Tailscale (if configured)
-npx shellops --no-auth --enable-tailscale-serve
+npx vibetunnel --no-auth --enable-tailscale-serve
 
 # Method 4: With ngrok auth for custom domain
-npx shellops --no-auth --ngrok --ngrok-auth YOUR_TOKEN --ngrok-domain custom.ngrok.io
+npx vibetunnel --no-auth --ngrok --ngrok-auth YOUR_TOKEN --ngrok-domain custom.ngrok.io
 ```
 
 ### Docker Development Environment
@@ -109,10 +109,10 @@ Mount your project and get instant web terminal access:
 
 ```bash
 # Quick development container with tunnel
-docker run -v $(pwd):/workspace -p 4020:4020 shellops --ngrok
+docker run -v $(pwd):/workspace -p 4020:4020 vibetunnel --ngrok
 
 # Or for team development
-docker run -v /path/to/project:/workspace -p 4020:4020 shellops --cloudflare
+docker run -v /path/to/project:/workspace -p 4020:4020 vibetunnel --cloudflare
 
 # Your code is available at /workspace in the web terminal
 # Access via the tunnel URL from anywhere
@@ -124,18 +124,18 @@ Share your terminal session in one command:
 
 ```bash
 # Instant sharing with ngrok
-npx shellops --no-auth --ngrok
+npx vibetunnel --no-auth --ngrok
 
 # Or with Cloudflare (no signup needed)
-npx shellops --no-auth --cloudflare
+npx vibetunnel --no-auth --cloudflare
 
 # With Tailscale (if configured)
-npx shellops --no-auth --enable-tailscale-serve
+npx vibetunnel --no-auth --enable-tailscale-serve
 ```
 
 ### Kubernetes Pod Access
 
-Deploy ShellOps as a sidecar container for web-based pod access:
+Deploy VibeTunnel as a sidecar container for web-based pod access:
 
 ```yaml
 apiVersion: v1
@@ -146,12 +146,12 @@ spec:
   containers:
   - name: main-app
     image: your-app:latest
-  - name: shellops
-    image: shellops:latest
+  - name: vibetunnel
+    image: vibetunnel:latest
     ports:
     - containerPort: 4020
     env:
-    - name: SHELLOPS_NO_AUTH
+    - name: VIBETUNNEL_NO_AUTH
       value: "true"
 ```
 
@@ -171,16 +171,16 @@ For production use:
 ## Environment Variables
 
 - `PORT` - Default port if --port not specified
-- `SHELLOPS_DEBUG` - Enable debug logging
-- `SHELLOPS_CONTROL_DIR` - Control directory for session data
+- `VIBETUNNEL_DEBUG` - Enable debug logging
+- `VIBETUNNEL_CONTROL_DIR` - Control directory for session data
 - `NGROK_AUTHTOKEN` - Ngrok auth token (alternative to --ngrok-auth)
 
 ## Building from Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/amantus-ai/shellops.git
-cd shellops/web
+git clone https://github.com/arunsanna/vibetunnel.git
+cd vibetunnel/web
 
 # Install dependencies
 pnpm install

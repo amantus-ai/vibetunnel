@@ -395,7 +395,7 @@ export class SlashCommands extends LitElement {
         .visible=${this.visible}
         .closeOnBackdrop=${true}
         .closeOnEscape=${true}
-        .contentClass=${`slash-commands-modal font-mono text-sm w-full max-w-[90vw] sm:max-w-3xl ${this.isMobile ? 'max-h-[70vh]' : 'max-h-[80vh]'}`}
+        .contentClass=${`slash-commands-modal font-ui text-sm w-full max-w-[90vw] sm:max-w-3xl ${this.isMobile ? 'max-h-[70vh]' : 'max-h-[80vh]'}`}
         ariaLabel="Slash Commands"
         style="z-index: 1050;"
         @close=${this.handleClose}
@@ -495,7 +495,7 @@ export class SlashCommands extends LitElement {
                       <div class="flex items-start justify-between gap-4">
                         <div class="flex-1 min-w-0">
                           <div class="flex items-center gap-3 mb-2">
-                            <code class="bg-bg-tertiary px-2 py-1 rounded text-primary font-mono text-sm">
+                            <code class="bg-bg-tertiary px-2 py-1 rounded text-primary font-ui text-sm">
                               ${command.command}
                             </code>
                             <span class="text-xs ${this.getCategoryColor(command.category)} opacity-75">

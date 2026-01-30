@@ -146,8 +146,8 @@ export class SessionLifecycle {
       logger.debug(chalk.blue(`Creating PTY session with command: ${resolvedCommand.join(' ')}`));
       logger.debug(`Working directory: ${workingDir}`);
 
-      // Check if this session is being spawned from within ShellOps
-      const attachedViaVT = !!process.env.SHELLOPS_SESSION_ID;
+      // Check if this session is being spawned from within VibeTunnel
+      const attachedViaVT = !!process.env.VIBETUNNEL_SESSION_ID;
 
       // Create initial session info with resolved command
       const sessionInfo: SessionInfo = {
@@ -208,7 +208,7 @@ export class SessionLifecycle {
         const ptyEnv = {
           ...process.env,
           TERM: term,
-          SHELLOPS_SESSION_ID: sessionId,
+          VIBETUNNEL_SESSION_ID: sessionId,
         };
 
         logger.debug('PTY spawn parameters:', {

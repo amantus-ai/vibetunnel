@@ -78,15 +78,15 @@ export const test = base.extend<TestFixtures>({
 
           // IMPORTANT: Set spawn window to false by default for tests
           // This ensures sessions are created as web sessions, not native terminals
-          localStorage.setItem('shellops_spawn_window', 'false');
+          localStorage.setItem('vibetunnel_spawn_window', 'false');
 
           // Clear any saved command to ensure tests use the default
-          localStorage.removeItem('shellops_last_command');
-          localStorage.removeItem('shellops_last_working_dir');
+          localStorage.removeItem('vibetunnel_last_command');
+          localStorage.removeItem('vibetunnel_last_working_dir');
 
           // Clear IndexedDB if present
           if (typeof indexedDB !== 'undefined' && indexedDB.deleteDatabase) {
-            indexedDB.deleteDatabase('shellops-offline').catch(() => {});
+            indexedDB.deleteDatabase('vibetunnel-offline').catch(() => {});
           }
         })
         .catch(() => {});
@@ -115,7 +115,7 @@ export const test = base.extend<TestFixtures>({
       }
 
       // Wait for the app to be attached (fast)
-      await page.waitForSelector('shellops-app', { state: 'attached', timeout: 5000 });
+      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
 
       // For no-auth mode, wait for session list; for auth mode, wait for login
       try {

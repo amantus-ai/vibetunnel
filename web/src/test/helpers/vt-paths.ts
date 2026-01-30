@@ -20,7 +20,7 @@ export function isNativeBinaryWorking(): boolean {
     return _nativeBinaryWorking;
   }
 
-  const nativePath = path.join(process.cwd(), 'native', 'shellops');
+  const nativePath = path.join(process.cwd(), 'native', 'vibetunnel');
   if (!fs.existsSync(nativePath)) {
     _nativeBinaryWorking = false;
     return false;
@@ -38,21 +38,21 @@ export function isNativeBinaryWorking(): boolean {
 }
 
 /**
- * Get the path to the shellops binary for testing.
- * Returns the native binary path if working, otherwise the bin/shellops wrapper.
+ * Get the path to the vibetunnel binary for testing.
+ * Returns the native binary path if working, otherwise the bin/vibetunnel wrapper.
  */
-export function getShellopsBinaryPath(): string {
-  const nativePath = path.join(process.cwd(), 'native', 'shellops');
+export function getVibeTunnelBinaryPath(): string {
+  const nativePath = path.join(process.cwd(), 'native', 'vibetunnel');
 
   // Try native binary first
   if (isNativeBinaryWorking()) {
     return nativePath;
   }
 
-  // Fall back to bin/shellops which is the Node.js CLI wrapper
-  const binShellops = path.join(process.cwd(), 'bin', 'shellops');
-  if (fs.existsSync(binShellops)) {
-    return binShellops;
+  // Fall back to bin/vibetunnel which is the Node.js CLI wrapper
+  const binVibeTunnel = path.join(process.cwd(), 'bin', 'vibetunnel');
+  if (fs.existsSync(binVibeTunnel)) {
+    return binVibeTunnel;
   }
 
   // Last resort: return native path anyway (tests will fail with descriptive error)

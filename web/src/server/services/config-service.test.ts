@@ -2,11 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  DEFAULT_CONFIG,
-  type QuickStartCommand,
-  type ShellOpsConfig,
-} from '../../types/config.js';
+import { DEFAULT_CONFIG, type QuickStartCommand, type VibeTunnelConfig } from '../../types/config.js';
 import { ConfigService } from './config-service.js';
 
 // Mock modules
@@ -32,7 +28,7 @@ vi.mock('../utils/logger', () => ({
 describe('ConfigService', () => {
   let configService: ConfigService;
   const mockHomeDir = '/home/testuser';
-  const mockConfigDir = path.join(mockHomeDir, '.shellops');
+  const mockConfigDir = path.join(mockHomeDir, '.vibetunnel');
   const mockConfigPath = path.join(mockConfigDir, 'config.json');
 
   beforeEach(() => {
@@ -67,7 +63,7 @@ describe('ConfigService', () => {
         return false;
       });
 
-      const customConfig: ShellOpsConfig = {
+      const customConfig: VibeTunnelConfig = {
         version: 1,
         quickStartCommands: [{ command: 'custom' }],
       };
@@ -124,7 +120,7 @@ describe('ConfigService', () => {
       });
 
       // Invalid config - empty command
-      const invalidConfig: ShellOpsConfig = {
+      const invalidConfig: VibeTunnelConfig = {
         version: 1,
         quickStartCommands: [{ command: '' }],
       };
@@ -302,7 +298,7 @@ describe('ConfigService', () => {
 
   describe('updateConfig', () => {
     it('should update entire config and validate', () => {
-      const newConfig: ShellOpsConfig = {
+      const newConfig: VibeTunnelConfig = {
         version: 2,
         quickStartCommands: [{ command: 'python3' }, { name: 'Node.js', command: 'node' }],
       };
@@ -321,7 +317,7 @@ describe('ConfigService', () => {
       const invalidConfig = {
         version: 'not-a-number', // Should be number
         quickStartCommands: [{ command: 'test' }],
-      } as unknown as ShellOpsConfig;
+      } as unknown as VibeTunnelConfig;
 
       expect(() => {
         configService.updateConfig(invalidConfig);
@@ -338,7 +334,7 @@ describe('ConfigService', () => {
           { command: 'valid' },
           { notACommand: 'invalid' }, // Missing required 'command' field
         ],
-      } as unknown as ShellOpsConfig;
+      } as unknown as VibeTunnelConfig;
 
       expect(() => {
         configService.updateConfig(invalidConfig);
@@ -349,7 +345,7 @@ describe('ConfigService', () => {
       const invalidConfig = {
         version: 1,
         quickStartCommands: 'not-an-array',
-      } as unknown as ShellOpsConfig;
+      } as unknown as VibeTunnelConfig;
 
       expect(() => {
         configService.updateConfig(invalidConfig);

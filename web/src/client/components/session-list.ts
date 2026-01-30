@@ -534,7 +534,7 @@ export class SessionList extends LitElement {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
               d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
           </svg>
-          <span class="font-mono text-xs">${displayText}</span>
+          <span class="font-ui text-xs">${displayText}</span>
           ${
             isLoading
               ? html`<span class="animate-spin">⟳</span>`
@@ -556,7 +556,7 @@ export class SessionList extends LitElement {
                 class="w-full text-left px-3 py-2 text-xs hover:bg-bg-elevated transition-colors flex items-center justify-between"
                 @click=${() => this.handleFollowModeChange(repoPath, undefined)}
               >
-                <span class="font-mono ${!followMode ? 'text-accent-primary font-semibold' : ''}">Standalone</span>
+                <span class="font-ui ${!followMode ? 'text-accent-primary font-semibold' : ''}">Standalone</span>
                 ${!followMode ? html`<span class="text-accent-primary">✓</span>` : ''}
               </button>
               
@@ -567,7 +567,7 @@ export class SessionList extends LitElement {
                   @click=${() => this.handleFollowModeChange(repoPath, worktree.branch)}
                 >
                   <div class="flex flex-col gap-1">
-                    <span class="font-mono ${followMode === worktree.branch ? 'text-accent-primary font-semibold' : ''}">
+                    <span class="font-ui ${followMode === worktree.branch ? 'text-accent-primary font-semibold' : ''}">
                       Follow: ${worktree.branch.replace(/^refs\/heads\//, '')}
                     </span>
                     <span class="text-[10px] text-text-muted">${formatPathForDisplay(worktree.path)}</span>
@@ -669,7 +669,7 @@ export class SessionList extends LitElement {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
               d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
           </svg>
-          <span class="font-mono">${worktrees.length || 0}</span>
+          <span class="font-ui">${worktrees.length || 0}</span>
           ${
             isLoading
               ? html`<span class="animate-spin">⟳</span>`
@@ -701,7 +701,7 @@ export class SessionList extends LitElement {
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                                 d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.632 4.684C18.114 15.938 18 15.482 18 15c0-.482.114-.938.316-1.342m0 2.684a3 3 0 110-2.684M15 9a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
-                            <div class="font-mono text-sm truncate">
+                            <div class="font-ui text-sm truncate">
                               ${worktree.branch.replace(/^refs\/heads\//, '')}
                             </div>
                             ${
@@ -755,7 +755,7 @@ export class SessionList extends LitElement {
     let sessionIndex = 0;
 
     return html`
-      <div class="font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-bg-primary rounded-lg" data-testid="session-list-container">
+      <div class="font-ui text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-bg-primary rounded-lg" data-testid="session-list-container">
         ${this.renderActiveSessionInfo()}
         <div class="p-4 pt-5">
         ${
@@ -790,7 +790,7 @@ export class SessionList extends LitElement {
                             </div>
 
                             <div
-                              class="bg-bg-secondary p-4 rounded-lg font-mono text-xs space-y-2"
+                              class="bg-bg-secondary p-4 rounded-lg font-ui text-xs space-y-2"
                             >
                               <div class="text-status-success">vt pnpm run dev</div>
                               <div class="text-text-muted pl-4"># Monitor your dev server</div>
@@ -817,7 +817,7 @@ export class SessionList extends LitElement {
                               Haven't installed the CLI yet?
                             </div>
                             <div class="text-sm text-text-muted space-y-1">
-                              <div>→ Click the ShellOps menu bar icon</div>
+                              <div>→ Click the VibeTunnel menu bar icon</div>
                               <div>→ Go to Settings → Advanced → Install CLI Tools</div>
                             </div>
                           </div>
@@ -995,7 +995,7 @@ export class SessionList extends LitElement {
           <!-- Status group (left side) -->
           <div class="flex flex-wrap items-center gap-3 sm:gap-4">
             <!-- Session counts -->
-            <div class="flex items-center gap-2 sm:gap-3 font-mono text-xs">
+            <div class="flex items-center gap-2 sm:gap-3 font-ui text-xs">
               ${
                 runningSessions.length > 0
                   ? html`
@@ -1028,7 +1028,7 @@ export class SessionList extends LitElement {
                   id="show-exited-toggle"
                   data-testid="show-exited-toggle"
                 />
-                <span class="text-xs text-text-muted group-hover:text-text font-mono select-none">
+                <span class="text-xs text-text-muted group-hover:text-text font-ui select-none">
                   Show
                 </span>
               </label>
@@ -1044,7 +1044,7 @@ export class SessionList extends LitElement {
               !this.hideExited && exitedSessions.length > 0
                 ? html`
               <button
-                class="font-mono text-xs px-3 py-1.5 rounded-md border transition-all duration-200 border-status-warning bg-status-warning/10 text-status-warning hover:bg-status-warning/20 hover:shadow-glow-warning-sm active:scale-95 disabled:opacity-50"
+                class="font-ui text-xs px-3 py-1.5 rounded-md border transition-all duration-200 border-status-warning bg-status-warning/10 text-status-warning hover:bg-status-warning/20 hover:shadow-glow-warning-sm active:scale-95 disabled:opacity-50"
                 id="clean-exited-button"
                 @click=${this.handleCleanupExited}
                 ?disabled=${this.cleaningExited}
@@ -1070,7 +1070,7 @@ export class SessionList extends LitElement {
               runningSessions.length > 0
                 ? html`
               <button
-                class="font-mono text-xs px-3 py-1.5 rounded-md border transition-all duration-200 border-status-error bg-status-error/10 text-status-error hover:bg-status-error/20 hover:shadow-glow-error-sm active:scale-95"
+                class="font-ui text-xs px-3 py-1.5 rounded-md border transition-all duration-200 border-status-error bg-status-error/10 text-status-error hover:bg-status-error/20 hover:shadow-glow-error-sm active:scale-95"
                 id="kill-all-button"
                 @click=${() => this.dispatchEvent(new CustomEvent('kill-all-sessions'))}
                 data-testid="kill-all-button"

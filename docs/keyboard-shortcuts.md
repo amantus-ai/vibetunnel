@@ -1,10 +1,10 @@
-# ShellOps Keyboard Shortcuts
+# VibeTunnel Keyboard Shortcuts
 
-ShellOps provides a comprehensive set of keyboard shortcuts for efficient terminal session management. The app intelligently handles keyboard input to balance browser functionality with terminal control.
+VibeTunnel provides a comprehensive set of keyboard shortcuts for efficient terminal session management. The app intelligently handles keyboard input to balance browser functionality with terminal control.
 
 ## Keyboard Capture Modes
 
-ShellOps operates in two keyboard capture modes:
+VibeTunnel operates in two keyboard capture modes:
 
 ### 1. **Capture Active** (Default)
 - Most keyboard shortcuts are sent to the terminal
@@ -37,7 +37,7 @@ These shortcuts always work, regardless of keyboard capture state:
 | ⌘1-9 | Ctrl+1-9 | Switch to tab 1-9* |
 | ⌘0 | Ctrl+0 | Switch to last tab* |
 
-*When keyboard capture is active in session view, these shortcuts switch between ShellOps sessions instead of browser tabs
+*When keyboard capture is active in session view, these shortcuts switch between VibeTunnel sessions instead of browser tabs
 
 ### Window Management
 | macOS | Windows/Linux | Action |
@@ -64,7 +64,7 @@ These shortcuts always work, regardless of keyboard capture state:
 | F12 | F12 | Open DevTools |
 | ⌘⌥I | Ctrl+Shift+I | Open DevTools |
 
-## ShellOps-Specific Shortcuts
+## VibeTunnel-Specific Shortcuts
 
 ### Navigation
 | macOS | Windows/Linux | Action | Context |
@@ -80,7 +80,7 @@ These shortcuts always work, regardless of keyboard capture state:
 | ⌘1...9 | Ctrl+1...9 | Switch to session 1 to 9 | Session view with capture ON |
 | ⌘0 | Ctrl+0 | Switch to session 10 | Session view with capture ON |
 
-**Note**: When keyboard capture is active in session view, number shortcuts switch between ShellOps sessions instead of browser tabs. The session numbers correspond to the numbers shown in the session list. This allows quick navigation between active sessions without leaving the keyboard.
+**Note**: When keyboard capture is active in session view, number shortcuts switch between VibeTunnel sessions instead of browser tabs. The session numbers correspond to the numbers shown in the session list. This allows quick navigation between active sessions without leaving the keyboard.
 
 ## Terminal Shortcuts (When Capture Active)
 
@@ -192,6 +192,6 @@ The keyboard shortcut system is implemented in:
 
 The system uses a priority-based approach:
 1. Critical browser shortcuts (highest priority)
-2. ShellOps app shortcuts
+2. VibeTunnel app shortcuts
 3. Terminal shortcuts (when capture active)
 4. Browser defaults (when capture disabled)

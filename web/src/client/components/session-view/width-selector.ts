@@ -154,7 +154,7 @@ export class TerminalSettingsModal extends LitElement {
             <div class="grid grid-cols-[120px_1fr] gap-4 items-center">
               <label class="text-sm font-medium text-text-bright text-right">Width</label>
               <select
-                class="w-full bg-bg-secondary border border-border rounded-md pl-4 pr-10 py-3 text-sm font-mono text-text focus:border-primary focus:shadow-glow-sm cursor-pointer appearance-none"
+                class="w-full bg-bg-secondary border border-border rounded-md pl-4 pr-10 py-3 text-sm font-ui text-text focus:border-primary focus:shadow-glow-sm cursor-pointer appearance-none"
                 style="background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22${this.getArrowColor()}%22%3e%3cpath fill-rule=%22evenodd%22 d=%22M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z%22 clip-rule=%22evenodd%22/%3e%3c/svg%3e'); background-position: right 0.75rem center; background-repeat: no-repeat; background-size: 1.25em 1.25em;"
                 .value=${isCustomValue || this.showCustomInput ? 'custom' : String(this.terminalMaxCols)}
                 @click=${(e: Event) => e.stopPropagation()}
@@ -200,7 +200,7 @@ export class TerminalSettingsModal extends LitElement {
                     @input=${this.handleCustomWidthInput}
                     @keydown=${this.handleCustomWidthKeydown}
                     @click=${(e: Event) => e.stopPropagation()}
-                    class="flex-1 bg-bg-secondary border border-border rounded-md px-4 py-3 text-sm font-mono text-text placeholder:text-text-dim focus:border-primary focus:shadow-glow-sm transition-all"
+                    class="flex-1 bg-bg-secondary border border-border rounded-md px-4 py-3 text-sm font-ui text-text placeholder:text-text-dim focus:border-primary focus:shadow-glow-sm transition-all"
                     autofocus
                   />
                   <button
@@ -246,7 +246,7 @@ export class TerminalSettingsModal extends LitElement {
                     <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
                   </svg>
                 </button>
-                <span class="font-mono text-base font-medium text-text-bright min-w-[60px] text-center">
+                <span class="font-ui text-base font-medium text-text-bright min-w-[60px] text-center">
                   ${this.terminalFontSize}px
                 </span>
                 <button
@@ -273,7 +273,7 @@ export class TerminalSettingsModal extends LitElement {
               <label class="text-sm font-medium text-text-bright text-right">Theme</label>
               <select
                 id="theme-select"
-                class="w-full bg-bg-secondary border border-border rounded-md pl-4 pr-10 py-3 text-sm font-mono text-text focus:border-primary focus:shadow-glow-sm cursor-pointer appearance-none"
+                class="w-full bg-bg-secondary border border-border rounded-md pl-4 pr-10 py-3 text-sm font-ui text-text focus:border-primary focus:shadow-glow-sm cursor-pointer appearance-none"
                 style="background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22${this.getArrowColor()}%22%3e%3cpath fill-rule=%22evenodd%22 d=%22M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z%22 clip-rule=%22evenodd%22/%3e%3c/svg%3e'); background-position: right 0.75rem center; background-repeat: no-repeat; background-size: 1.25em 1.25em;"
                 @click=${(e: Event) => e.stopPropagation()}
                 @mousedown=${(e: Event) => e.stopPropagation()}

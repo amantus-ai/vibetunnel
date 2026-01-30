@@ -1,10 +1,10 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "name": "ShellOps",
+  "name": "VibeTunnel",
   "theme": "maple",
   "logo": {
-    "dark": "/docs/images/shellops-logo-dark.svg",
-    "light": "/docs/images/shellops-logo-light.svg"
+    "dark": "/docs/images/vibetunnel-logo-dark.svg",
+    "light": "/docs/images/vibetunnel-logo-light.svg"
   },
   "favicon": "/docs/images/favicon.svg",
   "colors": {
@@ -15,23 +15,23 @@
   "topbarLinks": [
     {
       "name": "Support",
-      "url": "https://discord.gg/shellops"
+      "url": "https://discord.gg/vibetunnel"
     }
   ],
   "topbarCtaButton": {
     "name": "Download",
-    "url": "https://shellops.com/download"
+    "url": "https://vibetunnel.com/download"
   },
   "anchors": [
     {
       "name": "GitHub",
       "icon": "github",
-      "url": "https://github.com/amantus-ai/shellops"
+      "url": "https://github.com/arunsanna/vibetunnel"
     },
     {
       "name": "Discord",
       "icon": "discord",
-      "url": "https://discord.gg/shellops"
+      "url": "https://discord.gg/vibetunnel"
     }
   ],
   "navigation": {
@@ -116,9 +116,9 @@
           {
             "group": "iOS Testing",
             "pages": [
-              "ios/ShellOpsTests/README",
-              "ios/ShellOpsTests/TestCoverage",
-              "ios/ShellOpsTests/TestingApproach"
+              "ios/VibeTunnelTests/README",
+              "ios/VibeTunnelTests/TestCoverage",
+              "ios/VibeTunnelTests/TestingApproach"
             ]
           },
           {
@@ -160,20 +160,20 @@
     ]
   },
   "footerSocials": {
-    "twitter": "https://twitter.com/shellops",
-    "github": "https://github.com/amantus-ai/shellops",
-    "discord": "https://discord.gg/shellops"
+    "twitter": "https://twitter.com/vibetunnel",
+    "github": "https://github.com/arunsanna/vibetunnel",
+    "discord": "https://discord.gg/vibetunnel"
   },
   "metadata": {
-    "og:title": "ShellOps Documentation",
+    "og:title": "VibeTunnel Documentation",
     "og:description": "Access your terminal sessions through any web browser",
-    "og:image": "/docs/images/shellops-logo-light.svg"
+    "og:image": "/docs/images/vibetunnel-logo-light.svg"
   },
   "seo": {
     "indexing": "all"
   },
   "search": {
-    "prompt": "Search ShellOps docs...",
+    "prompt": "Search VibeTunnel docs...",
     "placeholder": "Search documentation"
   }
 }

@@ -100,7 +100,7 @@ export class CtrlAlphaOverlay extends LitElement {
             ].map(
               (letter) => html`
                 <button
-                  class="font-mono text-xs transition-all cursor-pointer aspect-square flex items-center justify-center quick-start-btn py-2"
+                  class="font-ui text-xs transition-all cursor-pointer aspect-square flex items-center justify-center quick-start-btn py-2"
                   @click=${() => this.handleCtrlKey(letter)}
                 >
                   ${letter}
@@ -117,7 +117,7 @@ export class CtrlAlphaOverlay extends LitElement {
           <!-- Action buttons -->
           <div class="flex gap-2 justify-center">
             <button
-              class="font-mono px-4 py-2 text-sm transition-all cursor-pointer btn-ghost"
+              class="font-ui px-4 py-2 text-sm transition-all cursor-pointer btn-ghost"
               @click=${() => this.onCancel?.()}
             >
               CANCEL
@@ -126,13 +126,13 @@ export class CtrlAlphaOverlay extends LitElement {
               this.ctrlSequence.length > 0
                 ? html`
                   <button
-                    class="font-mono px-3 py-2 text-sm transition-all cursor-pointer btn-ghost"
+                    class="font-ui px-3 py-2 text-sm transition-all cursor-pointer btn-ghost"
                     @click=${() => this.onClearSequence?.()}
                   >
                     CLEAR
                   </button>
                   <button
-                    class="font-mono px-3 py-2 text-sm transition-all cursor-pointer btn-secondary"
+                    class="font-ui px-3 py-2 text-sm transition-all cursor-pointer btn-secondary"
                     @click=${() => this.onSendSequence?.()}
                   >
                     SEND

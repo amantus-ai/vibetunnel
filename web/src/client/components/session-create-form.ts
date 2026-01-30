@@ -1019,7 +1019,7 @@ export class SessionCreateForm extends LitElement {
     }
 
     return html`
-      <!-- ShellOps V3 Modal -->
+      <!-- VibeTunnel V3 Modal -->
       <div
         class="fixed inset-0 flex items-center justify-center z-[1000]"
         style="background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px);"
@@ -1028,7 +1028,7 @@ export class SessionCreateForm extends LitElement {
         aria-modal="true"
       >
         <div
-          class="font-mono text-[13px] w-full max-w-[520px] mx-4 overflow-hidden"
+          class="font-ui text-[13px] w-full max-w-[520px] mx-4 overflow-hidden"
           style="background: #0D0D0D; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.06); box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);"
           @click=${(e: Event) => e.stopPropagation()}
           data-testid="session-create-modal"
@@ -1079,7 +1079,7 @@ export class SessionCreateForm extends LitElement {
                 .value=${this.sessionName}
                 @input=${this.handleSessionNameChange}
                 @focus=${(e: Event) => {
-                  (e.target as HTMLInputElement).style.borderColor = 'rgba(34, 197, 94, 0.5)';
+                  (e.target as HTMLInputElement).style.borderColor = 'rgba(0, 210, 255, 0.5)';
                 }}
                 @blur=${(e: Event) => {
                   (e.target as HTMLInputElement).style.borderColor = 'rgba(255, 255, 255, 0.08)';
@@ -1100,7 +1100,7 @@ export class SessionCreateForm extends LitElement {
                 .value=${this.command}
                 @input=${this.handleCommandChange}
                 @focus=${(e: Event) => {
-                  (e.target as HTMLInputElement).style.borderColor = 'rgba(34, 197, 94, 0.5)';
+                  (e.target as HTMLInputElement).style.borderColor = 'rgba(0, 210, 255, 0.5)';
                 }}
                 @blur=${(e: Event) => {
                   (e.target as HTMLInputElement).style.borderColor = 'rgba(255, 255, 255, 0.08)';
@@ -1139,8 +1139,8 @@ export class SessionCreateForm extends LitElement {
                   style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); color: #737373;"
                   @click=${this.handleBrowse}
                   @mouseenter=${(e: Event) => {
-                    (e.target as HTMLButtonElement).style.borderColor = 'rgba(34, 197, 94, 0.5)';
-                    (e.target as HTMLButtonElement).style.color = '#22C55E';
+                    (e.target as HTMLButtonElement).style.borderColor = 'rgba(0, 210, 255, 0.5)';
+                    (e.target as HTMLButtonElement).style.color = 'var(--color-primary)';
                   }}
                   @mouseleave=${(e: Event) => {
                     (e.target as HTMLButtonElement).style.borderColor = 'rgba(255, 255, 255, 0.08)';
@@ -1161,13 +1161,13 @@ export class SessionCreateForm extends LitElement {
                   class="flex items-center justify-center w-10 h-10 rounded-lg transition-colors"
                   style="background: rgba(255, 255, 255, 0.06); border: 1px solid ${
                     this.showRepositoryDropdown || this.showCompletions
-                      ? 'rgba(34, 197, 94, 0.5)'
+                      ? 'rgba(0, 210, 255, 0.5)'
                       : 'rgba(255, 255, 255, 0.08)'
-                  }; color: ${this.showRepositoryDropdown || this.showCompletions ? '#22C55E' : '#737373'};"
+                  }; color: ${this.showRepositoryDropdown || this.showCompletions ? 'var(--color-primary)' : '#737373'};"
                   @click=${this.handleToggleAutocomplete}
                   @mouseenter=${(e: Event) => {
-                    (e.target as HTMLButtonElement).style.borderColor = 'rgba(34, 197, 94, 0.5)';
-                    (e.target as HTMLButtonElement).style.color = '#22C55E';
+                    (e.target as HTMLButtonElement).style.borderColor = 'rgba(0, 210, 255, 0.5)';
+                    (e.target as HTMLButtonElement).style.color = 'var(--color-primary)';
                   }}
                   @mouseleave=${(e: Event) => {
                     if (!this.showRepositoryDropdown && !this.showCompletions) {
@@ -1261,7 +1261,7 @@ export class SessionCreateForm extends LitElement {
           <div class="flex gap-3 p-5 border-t" style="border-color: rgba(255, 255, 255, 0.06);">
             <button
               id="session-cancel-button"
-              class="flex-1 px-4 py-2.5 rounded-lg font-mono text-[13px] font-medium transition-colors"
+              class="flex-1 px-4 py-2.5 rounded-lg font-ui text-[13px] font-medium transition-colors"
               style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); color: #E5E5E5;"
               @click=${this.handleCancel}
               @mouseenter=${(e: Event) => {
@@ -1276,20 +1276,20 @@ export class SessionCreateForm extends LitElement {
             </button>
             <button
               id="session-create-button"
-              class="flex-1 px-4 py-2.5 rounded-lg font-mono text-[13px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              style="background: #22C55E; color: #000000; box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);"
+              class="flex-1 px-4 py-2.5 rounded-lg font-ui text-[13px] font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              style="background: var(--color-primary); color: #000000; box-shadow: 0 4px 16px var(--color-primary-border);"
               @click=${this.handleCreate}
               @mouseenter=${(e: Event) => {
                 if (!(e.target as HTMLButtonElement).disabled) {
-                  (e.target as HTMLButtonElement).style.background = '#16A34A';
+                  (e.target as HTMLButtonElement).style.background = 'var(--color-primary-hover)';
                   (e.target as HTMLButtonElement).style.boxShadow =
-                    '0 4px 20px rgba(34, 197, 94, 0.4)';
+                    '0 4px 20px rgba(0, 210, 255, 0.4)';
                 }
               }}
               @mouseleave=${(e: Event) => {
-                (e.target as HTMLButtonElement).style.background = '#22C55E';
+                (e.target as HTMLButtonElement).style.background = 'var(--color-primary)';
                 (e.target as HTMLButtonElement).style.boxShadow =
-                  '0 4px 16px rgba(34, 197, 94, 0.3)';
+                  '0 4px 16px var(--color-primary-border)';
               }}
               ?disabled=${
                 this.disabled ||

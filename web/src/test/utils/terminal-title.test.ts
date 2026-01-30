@@ -88,9 +88,9 @@ describe('Terminal Title Utilities', () => {
     it('should use only custom session names that are not redundant', () => {
       const cwd = '/home/user/projects';
       const command = ['claude'];
-      const sessionName = 'Working on ShellOps';
+      const sessionName = 'Working on VibeTunnel';
       const result = generateTitleSequence(cwd, command, sessionName);
-      expect(result).toBe('\x1B]2;Working on ShellOps\x07');
+      expect(result).toBe('\x1B]2;Working on VibeTunnel\x07');
     });
 
     it('should handle empty session name', () => {

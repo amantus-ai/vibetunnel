@@ -329,7 +329,7 @@ export class WorktreeManager extends LitElement {
             : html`
           <div class="space-y-4">
             <div class="text-sm text-text-muted mb-4">
-              Repository: <span class="font-mono text-text break-all">${this.formatPath(this.repoPath)}</span>
+              Repository: <span class="font-ui text-text break-all">${this.formatPath(this.repoPath)}</span>
             </div>
             
             ${
@@ -344,7 +344,7 @@ export class WorktreeManager extends LitElement {
                   This repository only has the main worktree. You can create additional worktrees using the git worktree command in your terminal.
                 </div>
                 <div class="mt-6">
-                  <code class="text-xs bg-surface px-2 py-1 rounded font-mono text-text-muted">
+                  <code class="text-xs bg-surface px-2 py-1 rounded font-ui text-text-muted">
                     git worktree add ../feature-branch feature-branch
                   </code>
                 </div>
@@ -378,11 +378,11 @@ export class WorktreeManager extends LitElement {
                         </div>
                         
                         <div class="text-sm text-text-muted space-y-1">
-                          <div class="font-mono text-text-dim break-all">${this.formatPath(worktree.path)}</div>
+                          <div class="font-ui text-text-dim break-all">${this.formatPath(worktree.path)}</div>
                           ${
                             worktree.HEAD
                               ? html`
-                            <div class="text-text-muted">HEAD: <span class="font-mono">${worktree.HEAD.slice(0, 7)}</span></div>
+                            <div class="text-text-muted">HEAD: <span class="font-ui">${worktree.HEAD.slice(0, 7)}</span></div>
                           `
                               : ''
                           }
@@ -617,7 +617,7 @@ export class WorktreeManager extends LitElement {
               <h3 class="text-lg font-semibold mb-4 text-text">Confirm Delete</h3>
               <p class="text-text-muted mb-4">
                 Are you sure you want to delete the worktree for branch 
-                <span class="font-mono font-semibold text-text">${this.deleteTargetBranch}</span>?
+                <span class="font-ui font-semibold text-text">${this.deleteTargetBranch}</span>?
               </p>
               ${
                 this.deleteHasChanges

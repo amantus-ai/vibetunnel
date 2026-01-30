@@ -80,17 +80,17 @@ describe('AutocompleteManager', () => {
       const repositories: Repository[] = [
         {
           id: '1',
-          path: '/Users/test/Projects/shellops',
-          folderName: 'shellops',
+          path: '/Users/test/Projects/vibetunnel',
+          folderName: 'vibetunnel',
           lastModified: '2024-01-01',
-          relativePath: '~/Projects/shellops',
+          relativePath: '~/Projects/vibetunnel',
         },
         {
           id: '2',
-          path: '/Users/test/Projects/shellops2',
-          folderName: 'shellops2',
+          path: '/Users/test/Projects/vibetunnel2',
+          folderName: 'vibetunnel2',
           lastModified: '2024-01-02',
-          relativePath: '~/Projects/shellops2',
+          relativePath: '~/Projects/vibetunnel2',
         },
         {
           id: '3',
@@ -111,9 +111,9 @@ describe('AutocompleteManager', () => {
       const result = await manager.fetchCompletions('shell');
 
       expect(result).toHaveLength(2);
-      expect(result[0].name).toBe('shellops');
+      expect(result[0].name).toBe('vibetunnel');
       expect(result[0].isRepository).toBe(true);
-      expect(result[1].name).toBe('shellops2');
+      expect(result[1].name).toBe('vibetunnel2');
     });
 
     it('should merge filesystem and repository completions without duplicates', async () => {

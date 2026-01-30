@@ -1,12 +1,12 @@
 # HQ Mode Documentation
 
-HQ (Headquarters) mode allows multiple ShellOps servers to work together in a distributed setup, where one server acts as the central HQ and others register as remote servers.
+HQ (Headquarters) mode allows multiple VibeTunnel servers to work together in a distributed setup, where one server acts as the central HQ and others register as remote servers.
 
 ## Overview
 
 In HQ mode:
 - **HQ Server**: Acts as a central aggregator and router
-- **Remote Servers**: Individual ShellOps servers that register with the HQ
+- **Remote Servers**: Individual VibeTunnel servers that register with the HQ
 - **Clients**: Connect to the HQ server and can create/manage sessions on any remote
 
 ## How It Works
@@ -50,17 +50,17 @@ When a remote server starts with HQ configuration:
 
 ```bash
 # Basic HQ server
-shellops-server --hq --username admin --password secret
+vibetunnel-server --hq --username admin --password secret
 
 # HQ server on custom port
-shellops-server --hq --port 8080 --username admin --password secret
+vibetunnel-server --hq --port 8080 --username admin --password secret
 ```
 
 ### Running Remote Servers
 
 ```bash
 # Remote server registering with HQ
-shellops-server \
+vibetunnel-server \
   --username local-user \
   --password local-pass \
   --hq-url https://hq.example.com \
@@ -69,7 +69,7 @@ shellops-server \
   --name production-1
 
 # For local development (allow HTTP)
-shellops-server \
+vibetunnel-server \
   --hq-url http://localhost:4020 \
   --hq-username admin \
   --hq-password secret \

@@ -151,7 +151,7 @@ interface BufferSnapshot {
  *
  * @example
  * ```typescript
- * const manager = new TerminalManager('/var/run/shellops');
+ * const manager = new TerminalManager('/var/run/vibetunnel');
  *
  * // Get terminal for session
  * const terminal = await manager.getTerminal(sessionId);

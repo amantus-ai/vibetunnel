@@ -164,7 +164,7 @@ export function createAuthMiddleware(config: AuthConfig) {
     if (config.allowLocalBypass && isLocalRequest(req)) {
       // If a local auth token is configured, check for it
       if (config.localAuthToken) {
-        const providedToken = req.headers['x-shellops-local'] as string;
+        const providedToken = req.headers['x-vibetunnel-local'] as string;
         if (providedToken === config.localAuthToken) {
           logger.debug('Local request authenticated with token');
           req.authMethod = 'local-bypass';
@@ -248,7 +248,7 @@ export function createAuthMiddleware(config: AuthConfig) {
 
     // No valid auth provided
     logger.error(`Unauthorized request to ${req.method} ${req.path} from ${req.ip}`);
-    res.setHeader('WWW-Authenticate', 'Bearer realm="ShellOps"');
+    res.setHeader('WWW-Authenticate', 'Bearer realm="VibeTunnel"');
     res.status(401).json({ error: 'Authentication required' });
   };
 }

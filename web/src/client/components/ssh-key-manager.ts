@@ -187,7 +187,7 @@ export class SSHKeyManager extends LitElement {
           @click=${(e: Event) => e.stopPropagation()}
         >
           <div class="relative mb-8">
-            <h2 class="text-2xl font-mono text-primary text-center">🔑 SSH Key Manager</h2>
+            <h2 class="text-2xl font-ui text-primary text-center">🔑 SSH Key Manager</h2>
             <button 
               @click=${this.handleClose} 
               class="absolute top-0 right-0 w-8 h-8 flex items-center justify-center text-text-muted hover:text-primary hover:bg-surface rounded transition-colors"
@@ -200,7 +200,7 @@ export class SSHKeyManager extends LitElement {
           ${
             this.error
               ? html`
-                <div class="bg-status-error text-bg px-4 py-2 rounded mb-4 font-mono text-sm">
+                <div class="bg-status-error text-bg px-4 py-2 rounded mb-4 font-ui text-sm">
                   ${this.error}
                   <button
                     @click=${() => {
@@ -218,7 +218,7 @@ export class SSHKeyManager extends LitElement {
             this.success
               ? html`
                 <div
-                  class="bg-status-success text-bg px-4 py-2 rounded mb-4 font-mono text-sm"
+                  class="bg-status-success text-bg px-4 py-2 rounded mb-4 font-ui text-sm"
                 >
                   ${this.success}
                   <button
@@ -236,7 +236,7 @@ export class SSHKeyManager extends LitElement {
 
           <div class="mb-8">
             <div class="flex items-center justify-between mb-6 pb-3 border-b border-border">
-              <h3 class="font-mono text-xl text-primary">SSH Keys</h3>
+              <h3 class="font-ui text-xl text-primary">SSH Keys</h3>
               <button
                 @click=${() => {
                   this.showAddForm = !this.showAddForm;
@@ -254,7 +254,7 @@ export class SSHKeyManager extends LitElement {
                   <div class="space-y-6 mb-8">
                     <!-- Generate New Key Section -->
                     <div class="bg-surface border border-border rounded-lg p-6">
-                      <h4 class="text-primary font-mono text-lg mb-6 flex items-center gap-2 font-semibold">
+                      <h4 class="text-primary font-ui text-lg mb-6 flex items-center gap-2 font-semibold">
                         🔑 Generate New SSH Key
                       </h4>
 
@@ -312,7 +312,7 @@ export class SSHKeyManager extends LitElement {
 
                     <!-- Import Existing Key Section -->
                     <div class="bg-surface border border-border rounded-lg p-6">
-                      <h4 class="text-primary font-mono text-lg mb-6 flex items-center gap-2 font-semibold">
+                      <h4 class="text-primary font-ui text-lg mb-6 flex items-center gap-2 font-semibold">
                         📁 Import Existing SSH Key
                       </h4>
 
@@ -376,7 +376,7 @@ export class SSHKeyManager extends LitElement {
               ? html`
                 <div class="bg-surface border border-border rounded-lg p-6 mb-8">
                   <div class="flex items-center justify-between mb-6">
-                    <h4 class="text-primary font-mono text-lg font-semibold flex items-center gap-2">
+                    <h4 class="text-primary font-ui text-lg font-semibold flex items-center gap-2">
                       📋 Setup Instructions
                     </h4>
                     <button
@@ -396,7 +396,7 @@ export class SSHKeyManager extends LitElement {
                       </p>
                       <div class="relative">
                         <pre
-                          class="bg-secondary p-3 rounded-lg text-xs overflow-x-auto text-primary pr-20 font-mono"
+                          class="bg-secondary p-3 rounded-lg text-xs overflow-x-auto text-primary pr-20 font-ui"
                         >
 echo "${this.sshAgent.getPublicKey(this.instructionsKeyId)}" >> ~/.ssh/authorized_keys</pre
                         >
@@ -418,7 +418,7 @@ echo "${this.sshAgent.getPublicKey(this.instructionsKeyId)}" >> ~/.ssh/authorize
                       <p class="text-text-muted text-sm mb-3 font-medium">2. Or copy the public key:</p>
                       <div class="relative">
                         <pre
-                          class="bg-secondary p-3 rounded-lg text-xs overflow-x-auto text-primary pr-20 font-mono"
+                          class="bg-secondary p-3 rounded-lg text-xs overflow-x-auto text-primary pr-20 font-ui"
                         >
 ${this.sshAgent.getPublicKey(this.instructionsKeyId)}</pre
                         >
@@ -438,7 +438,7 @@ ${this.sshAgent.getPublicKey(this.instructionsKeyId)}</pre
                       </div>
                     </div>
                     <div class="bg-status-info/10 border border-status-info/30 rounded-lg p-3">
-                      <p class="text-status-info text-sm font-mono flex items-center gap-2">
+                      <p class="text-status-info text-sm font-ui flex items-center gap-2">
                         💡 <strong>Tip:</strong> Make sure ~/.ssh/authorized_keys has correct permissions (600)
                       </p>
                     </div>
@@ -455,7 +455,7 @@ ${this.sshAgent.getPublicKey(this.instructionsKeyId)}</pre
                 ? html`
                   <div class="text-center py-12 text-text-muted border border-border rounded-lg bg-surface">
                     <div class="text-4xl mb-4">🔑</div>
-                    <p class="font-mono text-lg mb-2 text-primary">No SSH keys found</p>
+                    <p class="font-ui text-lg mb-2 text-primary">No SSH keys found</p>
                     <p class="text-sm">Generate or import a key to get started</p>
                   </div>
                 `
@@ -465,7 +465,7 @@ ${this.sshAgent.getPublicKey(this.instructionsKeyId)}</pre
                       <div class="flex items-start justify-between">
                         <div class="flex-1">
                           <div class="flex items-center gap-2 mb-2">
-                            <h4 class="font-mono font-semibold text-primary">${key.name}</h4>
+                            <h4 class="font-ui font-semibold text-primary">${key.name}</h4>
                             <span class="badge badge-ed25519">${key.algorithm}</span>
                             ${
                               key.encrypted
@@ -473,7 +473,7 @@ ${this.sshAgent.getPublicKey(this.instructionsKeyId)}</pre
                                 : ''
                             }
                           </div>
-                          <div class="text-sm text-text-muted font-mono space-y-1">
+                          <div class="text-sm text-text-muted font-ui space-y-1">
                             <div>ID: ${key.id}</div>
                             <div>Fingerprint: ${key.fingerprint}</div>
                             <div>Created: ${new Date(key.createdAt).toLocaleString()}</div>

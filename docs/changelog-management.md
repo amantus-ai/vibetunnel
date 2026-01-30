@@ -1,6 +1,6 @@
 # Changelog Management Guide
 
-This guide explains how to maintain the CHANGELOG.md and GitHub releases for ShellOps.
+This guide explains how to maintain the CHANGELOG.md and GitHub releases for VibeTunnel.
 
 ## Overview
 
@@ -142,7 +142,7 @@ Example:
 - @hewigovens made their first contribution in #419
 
 ## Installation
-See [installation instructions](https://github.com/shellops/shellops#installation)
+See [installation instructions](https://github.com/vibetunnel/vibetunnel#installation)
 ```
 
 ### Updating Existing Releases
@@ -194,7 +194,7 @@ cat > release-notes.md << 'EOF'
 - @newcontributor made their first contribution in #123
 
 ## Installation
-See [installation instructions](https://github.com/shellops/shellops#installation)
+See [installation instructions](https://github.com/vibetunnel/vibetunnel#installation)
 EOF
 
 # 3. Create release

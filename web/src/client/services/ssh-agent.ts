@@ -23,7 +23,7 @@ interface SignatureResult {
 }
 
 export class BrowserSSHAgent {
-  private static readonly DEFAULT_STORAGE_KEY = 'shellops_ssh_keys';
+  private static readonly DEFAULT_STORAGE_KEY = 'vibetunnel_ssh_keys';
   private keys: Map<string, SSHKey> = new Map();
   private storageKey: string;
   private cryptoErrorShown = false;
@@ -71,7 +71,7 @@ export class BrowserSSHAgent {
           "Even though you're using HTTPS, browsers block the Web Crypto API on local network IPs.\n\n";
       } else {
         errorMessage +=
-          'This happens when accessing ShellOps over HTTP from non-localhost addresses.\n\n';
+          'This happens when accessing VibeTunnel over HTTP from non-localhost addresses.\n\n';
       }
       errorMessage += 'To fix this, use one of these methods:\n';
       errorMessage += '1. Access via http://localhost:4020 instead\n';

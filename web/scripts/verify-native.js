@@ -9,8 +9,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const nativeExe = path.join(__dirname, '..', 'native', 'shellops');
-const forwarderExe = path.join(__dirname, '..', 'native', 'shellops-fwd');
+const nativeExe = path.join(__dirname, '..', 'native', 'vibetunnel');
+const forwarderExe = path.join(__dirname, '..', 'native', 'vibetunnel-fwd');
 
 console.log('Verifying native executable...');
 console.log(`Path: ${nativeExe}`);

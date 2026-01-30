@@ -51,8 +51,7 @@ export function createConfigRoutes(options: ConfigRouteOptions): Router {
   router.get('/config', (_req, res) => {
     try {
       const shellOpsConfig = configService.getConfig();
-      const repositoryBasePath =
-        shellOpsConfig.repositoryBasePath || DEFAULT_REPOSITORY_BASE_PATH;
+      const repositoryBasePath = shellOpsConfig.repositoryBasePath || DEFAULT_REPOSITORY_BASE_PATH;
 
       const config: AppConfig = {
         repositoryBasePath: repositoryBasePath,

@@ -1,5 +1,5 @@
 /**
- * ShellOps V3 Settings Component
+ * VibeTunnel V3 Settings Component
  *
  * Full-page settings with left navigation panel.
  * Sections: Endpoints, General, Appearance, SSH Keys
@@ -23,8 +23,8 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'ssh-keys', label: 'SSH Keys', icon: 'key' },
 ];
 
-@customElement('shellops-settings')
-export class ShellOpsSettings extends LitElement {
+@customElement('vibetunnel-settings')
+export class VibeTunnelSettings extends LitElement {
   // Disable shadow DOM to use Tailwind
   createRenderRoot() {
     return this;
@@ -73,7 +73,7 @@ export class ShellOpsSettings extends LitElement {
   }
 
   private renderIcon(icon: string, isActive: boolean) {
-    const color = isActive ? '#22C55E' : '#525252';
+    const color = isActive ? 'var(--color-primary)' : '#525252';
 
     switch (icon) {
       case 'server':
@@ -111,10 +111,10 @@ export class ShellOpsSettings extends LitElement {
     return html`
       <button
         @click=${() => this.handleNavClick(item.id)}
-        class="flex items-center gap-3 w-full px-3.5 py-3 rounded-lg font-mono text-[13px] font-medium transition-all cursor-pointer"
+        class="flex items-center gap-3 w-full px-3.5 py-3 rounded-lg font-ui text-[13px] font-medium transition-all cursor-pointer"
         style="${
           isActive
-            ? 'background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); color: #22C55E;'
+            ? 'background: var(--color-primary-surface); border: 1px solid var(--color-primary-border); color: var(--color-primary);'
             : 'background: transparent; border: 1px solid transparent; color: #737373;'
         }"
       >
@@ -143,8 +143,8 @@ export class ShellOpsSettings extends LitElement {
     return html`
       <div class="space-y-8">
         <div>
-          <h2 class="text-xl font-bold font-mono mb-2" style="color: var(--color-text);">Endpoints</h2>
-          <p class="text-sm font-mono" style="color: #737373;">Manage your SSH endpoints and connections.</p>
+          <h2 class="text-xl font-bold font-ui mb-2" style="color: var(--color-text);">Endpoints</h2>
+          <p class="text-sm font-ui" style="color: #737373;">Manage your SSH endpoints and connections.</p>
         </div>
 
         <!-- Endpoint List Placeholder -->
@@ -155,17 +155,17 @@ export class ShellOpsSettings extends LitElement {
           >
             <div class="flex items-center justify-between mb-3">
               <div class="flex items-center gap-3">
-                <div class="w-2.5 h-2.5 rounded-full" style="background: #22C55E; box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);"></div>
-                <span class="font-mono text-sm font-medium" style="color: var(--color-text);">Local Machine</span>
+                <div class="w-2.5 h-2.5 rounded-full" style="background: var(--color-primary); box-shadow: 0 0 8px rgba(0, 210, 255, 0.6);"></div>
+                <span class="font-ui text-sm font-medium" style="color: var(--color-text);">Local Machine</span>
               </div>
-              <span class="font-mono text-xs px-2 py-1 rounded" style="background: rgba(34, 197, 94, 0.1); color: #22C55E;">Connected</span>
+              <span class="font-ui text-xs px-2 py-1 rounded" style="background: var(--color-primary-surface); color: var(--color-primary);">Connected</span>
             </div>
-            <p class="font-mono text-xs" style="color: #737373;">localhost</p>
+            <p class="font-ui text-xs" style="color: #737373;">localhost</p>
           </div>
 
           <!-- Add Endpoint Button -->
           <button
-            class="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-mono text-sm font-medium transition-all"
+            class="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-ui text-sm font-medium transition-all"
             style="background: rgba(255,255,255,0.04); border: 1px dashed rgba(255,255,255,0.1); color: #737373;"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -182,24 +182,24 @@ export class ShellOpsSettings extends LitElement {
     return html`
       <div class="space-y-8">
         <div>
-          <h2 class="text-xl font-bold font-mono mb-2" style="color: var(--color-text);">General</h2>
-          <p class="text-sm font-mono" style="color: #737373;">Configure general application settings.</p>
+          <h2 class="text-xl font-bold font-ui mb-2" style="color: var(--color-text);">General</h2>
+          <p class="text-sm font-ui" style="color: #737373;">Configure general application settings.</p>
         </div>
 
         <!-- Session Defaults -->
         <div class="space-y-4">
-          <h3 class="text-xs font-semibold font-mono uppercase tracking-wider" style="color: #A3A3A3;">Session Defaults</h3>
+          <h3 class="text-xs font-semibold font-ui uppercase tracking-wider" style="color: #A3A3A3;">Session Defaults</h3>
           <div
             class="p-4 rounded-xl space-y-4"
             style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);"
           >
             <div class="flex items-center justify-between">
               <div>
-                <label class="font-mono text-sm" style="color: var(--color-text);">Default Shell</label>
-                <p class="font-mono text-xs mt-0.5" style="color: #525252;">Shell used for new sessions</p>
+                <label class="font-ui text-sm" style="color: var(--color-text);">Default Shell</label>
+                <p class="font-ui text-xs mt-0.5" style="color: #525252;">Shell used for new sessions</p>
               </div>
               <select
-                class="px-3 py-2 rounded-lg font-mono text-sm"
+                class="px-3 py-2 rounded-lg font-ui text-sm"
                 style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--color-text);"
               >
                 <option value="zsh">zsh</option>
@@ -210,13 +210,13 @@ export class ShellOpsSettings extends LitElement {
 
             <div class="flex items-center justify-between">
               <div>
-                <label class="font-mono text-sm" style="color: var(--color-text);">Working Directory</label>
-                <p class="font-mono text-xs mt-0.5" style="color: #525252;">Default directory for new sessions</p>
+                <label class="font-ui text-sm" style="color: var(--color-text);">Working Directory</label>
+                <p class="font-ui text-xs mt-0.5" style="color: #525252;">Default directory for new sessions</p>
               </div>
               <input
                 type="text"
                 value="~"
-                class="px-3 py-2 rounded-lg font-mono text-sm w-32"
+                class="px-3 py-2 rounded-lg font-ui text-sm w-32"
                 style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--color-text);"
               />
             </div>
@@ -225,28 +225,28 @@ export class ShellOpsSettings extends LitElement {
 
         <!-- Connection -->
         <div class="space-y-4">
-          <h3 class="text-xs font-semibold font-mono uppercase tracking-wider" style="color: #A3A3A3;">Connection</h3>
+          <h3 class="text-xs font-semibold font-ui uppercase tracking-wider" style="color: #A3A3A3;">Connection</h3>
           <div
             class="p-4 rounded-xl space-y-4"
             style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);"
           >
             <div class="flex items-center justify-between">
               <div>
-                <label class="font-mono text-sm" style="color: var(--color-text);">Auto-reconnect</label>
-                <p class="font-mono text-xs mt-0.5" style="color: #525252;">Automatically reconnect on disconnect</p>
+                <label class="font-ui text-sm" style="color: var(--color-text);">Auto-reconnect</label>
+                <p class="font-ui text-xs mt-0.5" style="color: #525252;">Automatically reconnect on disconnect</p>
               </div>
               ${this.renderToggle(true)}
             </div>
 
             <div class="flex items-center justify-between">
               <div>
-                <label class="font-mono text-sm" style="color: var(--color-text);">Connection Timeout</label>
-                <p class="font-mono text-xs mt-0.5" style="color: #525252;">Timeout in seconds</p>
+                <label class="font-ui text-sm" style="color: var(--color-text);">Connection Timeout</label>
+                <p class="font-ui text-xs mt-0.5" style="color: #525252;">Timeout in seconds</p>
               </div>
               <input
                 type="number"
                 value="30"
-                class="px-3 py-2 rounded-lg font-mono text-sm w-20 text-center"
+                class="px-3 py-2 rounded-lg font-ui text-sm w-20 text-center"
                 style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--color-text);"
               />
             </div>
@@ -260,13 +260,13 @@ export class ShellOpsSettings extends LitElement {
     return html`
       <div class="space-y-8">
         <div>
-          <h2 class="text-xl font-bold font-mono mb-2" style="color: var(--color-text);">Appearance</h2>
-          <p class="text-sm font-mono" style="color: #737373;">Customize the look and feel of ShellOps.</p>
+          <h2 class="text-xl font-bold font-ui mb-2" style="color: var(--color-text);">Appearance</h2>
+          <p class="text-sm font-ui" style="color: #737373;">Customize the look and feel of VibeTunnel.</p>
         </div>
 
         <!-- Theme -->
         <div class="space-y-4">
-          <h3 class="text-xs font-semibold font-mono uppercase tracking-wider" style="color: #A3A3A3;">Theme</h3>
+          <h3 class="text-xs font-semibold font-ui uppercase tracking-wider" style="color: #A3A3A3;">Theme</h3>
           <div class="flex gap-3">
             ${this.renderThemeCard('dark', 'Dark', true)}
             ${this.renderThemeCard('light', 'Light', false)}
@@ -276,22 +276,22 @@ export class ShellOpsSettings extends LitElement {
 
         <!-- Font Settings -->
         <div class="space-y-4">
-          <h3 class="text-xs font-semibold font-mono uppercase tracking-wider" style="color: #A3A3A3;">Font Settings</h3>
+          <h3 class="text-xs font-semibold font-ui uppercase tracking-wider" style="color: #A3A3A3;">Font Settings</h3>
           <div
             class="p-4 rounded-xl space-y-4"
             style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);"
           >
             <div class="flex items-center justify-between">
               <div>
-                <label class="font-mono text-sm" style="color: var(--color-text);">Font Size</label>
-                <p class="font-mono text-xs mt-0.5" style="color: #525252;">Terminal font size</p>
+                <label class="font-ui text-sm" style="color: var(--color-text);">Font Size</label>
+                <p class="font-ui text-xs mt-0.5" style="color: #525252;">Terminal font size</p>
               </div>
               <div class="flex items-center gap-2">
                 <button
                   class="w-8 h-8 rounded-lg flex items-center justify-center"
                   style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #737373;"
                 >-</button>
-                <span class="font-mono text-sm w-8 text-center" style="color: var(--color-text);">14</span>
+                <span class="font-ui text-sm w-8 text-center" style="color: var(--color-text);">14</span>
                 <button
                   class="w-8 h-8 rounded-lg flex items-center justify-center"
                   style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #737373;"
@@ -301,11 +301,11 @@ export class ShellOpsSettings extends LitElement {
 
             <div class="flex items-center justify-between">
               <div>
-                <label class="font-mono text-sm" style="color: var(--color-text);">Font Family</label>
-                <p class="font-mono text-xs mt-0.5" style="color: #525252;">Terminal font family</p>
+                <label class="font-ui text-sm" style="color: var(--color-text);">Font Family</label>
+                <p class="font-ui text-xs mt-0.5" style="color: #525252;">Terminal font family</p>
               </div>
               <select
-                class="px-3 py-2 rounded-lg font-mono text-sm"
+                class="px-3 py-2 rounded-lg font-ui text-sm"
                 style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--color-text);"
               >
                 <option value="jetbrains-mono">JetBrains Mono</option>
@@ -323,8 +323,8 @@ export class ShellOpsSettings extends LitElement {
     return html`
       <div class="space-y-8">
         <div>
-          <h2 class="text-xl font-bold font-mono mb-2" style="color: var(--color-text);">SSH Keys</h2>
-          <p class="text-sm font-mono" style="color: #737373;">Manage your SSH keys for authentication.</p>
+          <h2 class="text-xl font-bold font-ui mb-2" style="color: var(--color-text);">SSH Keys</h2>
+          <p class="text-sm font-ui" style="color: #737373;">Manage your SSH keys for authentication.</p>
         </div>
 
         <!-- Key List -->
@@ -338,19 +338,19 @@ export class ShellOpsSettings extends LitElement {
                 <svg class="w-5 h-5" style="color: #737373;" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z" />
                 </svg>
-                <span class="font-mono text-sm font-medium" style="color: var(--color-text);">id_ed25519</span>
+                <span class="font-ui text-sm font-medium" style="color: var(--color-text);">id_ed25519</span>
               </div>
-              <button class="font-mono text-xs" style="color: #EF4444;">Remove</button>
+              <button class="font-ui text-xs" style="color: #EF4444;">Remove</button>
             </div>
             <div class="space-y-1">
-              <p class="font-mono text-xs" style="color: #525252;">SHA256:abc123...xyz789</p>
-              <p class="font-mono text-xs" style="color: #525252;">Added: Jan 15, 2026</p>
+              <p class="font-ui text-xs" style="color: #525252;">SHA256:abc123...xyz789</p>
+              <p class="font-ui text-xs" style="color: #525252;">Added: Jan 15, 2026</p>
             </div>
           </div>
 
           <!-- Add Key Button -->
           <button
-            class="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-mono text-sm font-medium transition-all"
+            class="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-ui text-sm font-medium transition-all"
             style="background: rgba(255,255,255,0.04); border: 1px dashed rgba(255,255,255,0.1); color: #737373;"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -369,7 +369,7 @@ export class ShellOpsSettings extends LitElement {
         role="switch"
         aria-checked="${checked}"
         class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-        style="background: ${checked ? '#22C55E' : 'rgba(255,255,255,0.1)'};"
+        style="background: ${checked ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)'};"
       >
         <span
           class="inline-block h-5 w-5 transform rounded-full transition-transform"
@@ -385,7 +385,7 @@ export class ShellOpsSettings extends LitElement {
         class="flex-1 p-4 rounded-xl text-center transition-all"
         style="${
           isActive
-            ? 'background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3);'
+            ? 'background: var(--color-primary-surface); border: 1px solid var(--color-primary-border);'
             : 'background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);'
         }"
       >
@@ -393,14 +393,14 @@ export class ShellOpsSettings extends LitElement {
           class="w-12 h-8 mx-auto mb-2 rounded"
           style="background: ${id === 'dark' ? '#0A0A0A' : id === 'light' ? '#F5F5F5' : 'linear-gradient(135deg, #0A0A0A 50%, #F5F5F5 50%)'}; border: 1px solid rgba(255,255,255,0.1);"
         ></div>
-        <span class="font-mono text-xs" style="color: ${isActive ? '#22C55E' : '#737373'};">${label}</span>
+        <span class="font-ui text-xs" style="color: ${isActive ? 'var(--color-primary)' : '#737373'};">${label}</span>
       </button>
     `;
   }
 
   render() {
     return html`
-      <div class="flex h-full font-mono" style="background: var(--color-bg-secondary);">
+      <div class="flex h-full font-ui" style="background: var(--color-bg-secondary);">
         <!-- Left Navigation (Desktop) -->
         <div
           class="hidden md:flex flex-col w-60 h-full"
@@ -445,6 +445,6 @@ export class ShellOpsSettings extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'shellops-settings': ShellOpsSettings;
+    'vibetunnel-settings': VibeTunnelSettings;
   }
 }

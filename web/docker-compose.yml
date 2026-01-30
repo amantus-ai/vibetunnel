@@ -1,14 +1,14 @@
 version: '3.8'
 
 services:
-  shellops-npm-beta:
+  vibetunnel-npm-beta:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: shellops-npm-beta-test
+    container_name: vibetunnel-npm-beta-test
     environment:
       - NODE_ENV=development
-      - SHELLOPS_NO_AUTH=true
+      - VIBETUNNEL_NO_AUTH=true
     volumes:
       # Mount source code for development
       - ./src:/app/src

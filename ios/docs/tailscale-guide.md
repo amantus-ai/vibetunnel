@@ -1,12 +1,12 @@
-# Tailscale Integration Guide for ShellOps iOS
+# Tailscale Integration Guide for VibeTunnel iOS
 
 ## Overview
 
-Tailscale integration allows you to securely connect to your ShellOps servers from anywhere without complex network configuration. This guide explains how to set up and use Tailscale with the ShellOps iOS app.
+Tailscale integration allows you to securely connect to your VibeTunnel servers from anywhere without complex network configuration. This guide explains how to set up and use Tailscale with the VibeTunnel iOS app.
 
 ## What is Tailscale?
 
-Tailscale creates a secure, private network (called a tailnet) between your devices using WireGuard encryption. With ShellOps's Tailscale integration, you can:
+Tailscale creates a secure, private network (called a tailnet) between your devices using WireGuard encryption. With VibeTunnel's Tailscale integration, you can:
 
 - Access your Mac's terminal sessions from anywhere
 - No port forwarding or firewall configuration needed
@@ -15,15 +15,15 @@ Tailscale creates a secure, private network (called a tailnet) between your devi
 
 ## Prerequisites
 
-Before setting up Tailscale in ShellOps iOS:
+Before setting up Tailscale in VibeTunnel iOS:
 
 1. **Tailscale Account**: Create a free account at [tailscale.com](https://tailscale.com)
-2. **Tailscale on Mac**: Install Tailscale on your Mac running ShellOps server
+2. **Tailscale on Mac**: Install Tailscale on your Mac running VibeTunnel server
 3. **OAuth Credentials**: You'll need to create OAuth client credentials (instructions below)
 
 ## Setting Up OAuth Client Credentials
 
-ShellOps iOS uses OAuth to securely access your Tailscale network. Here's how to create the required credentials:
+VibeTunnel iOS uses OAuth to securely access your Tailscale network. Here's how to create the required credentials:
 
 ### Step 1: Access Tailscale Admin Console
 
@@ -34,9 +34,9 @@ ShellOps iOS uses OAuth to securely access your Tailscale network. Here's how to
 
 1. Click **"Generate OAuth client"**
 2. Configure the client:
-   - **Description**: Enter "ShellOps iOS" (or any name you prefer)
+   - **Description**: Enter "VibeTunnel iOS" (or any name you prefer)
    - **Scopes**: Add `devices` scope with **Read** access
-   - This allows the app to discover ShellOps servers on your network
+   - This allows the app to discover VibeTunnel servers on your network
 
 ### Step 3: Save Your Credentials
 
@@ -46,11 +46,11 @@ After creating the client, you'll receive:
 
 ⚠️ **Important**: Save the Client Secret immediately - it's only shown once!
 
-## Configuring Tailscale in ShellOps iOS
+## Configuring Tailscale in VibeTunnel iOS
 
 ### Initial Setup
 
-1. Open ShellOps iOS app
+1. Open VibeTunnel iOS app
 2. Go to **Settings** → **Tailscale**
 3. Tap **"Configure Tailscale"**
 4. Enter your credentials:
@@ -58,7 +58,7 @@ After creating the client, you'll receive:
    - Paste your **Client Secret**
 5. Tap **Save**
 
-The app will verify your credentials and begin discovering ShellOps servers on your tailnet.
+The app will verify your credentials and begin discovering VibeTunnel servers on your tailnet.
 
 ### Connection Status Indicators
 
@@ -69,7 +69,7 @@ The Tailscale settings page shows:
 
 ## Understanding Server Connection Modes
 
-ShellOps servers can operate in two modes when accessed via Tailscale:
+VibeTunnel servers can operate in two modes when accessed via Tailscale:
 
 ### Public Mode (HTTPS with Tailscale Funnel)
 
@@ -102,7 +102,7 @@ The iOS app intelligently handles mode transitions:
 
 With Tailscale configured:
 
-1. The app automatically discovers ShellOps servers on your tailnet
+1. The app automatically discovers VibeTunnel servers on your tailnet
 2. Found servers appear in the **Discovered Servers** section
 3. Tap **Add** to save a server for quick access
 
@@ -128,8 +128,8 @@ With Tailscale configured:
 ### Understanding the Three Key Switches
 
 #### 1. Auto-Discover Servers (Default: ON)
-- **What it does**: Enables automatic discovery of ShellOps servers on your Tailscale network
-- **When ON**: The app uses Tailscale API to find servers running ShellOps
+- **What it does**: Enables automatic discovery of VibeTunnel servers on your Tailscale network
+- **When ON**: The app uses Tailscale API to find servers running VibeTunnel
 - **When OFF**: Tailscale discovery is disabled, but you can still manually add Tailscale servers
 - **Important**: This does NOT affect Bonjour discovery - local network discovery continues working
 
@@ -142,7 +142,7 @@ With Tailscale configured:
 
 #### 3. Auto-Refresh Discovery (Default: ON)
 - **What it does**: Automatically checks for new/changed servers every 30 seconds
-- **When ON**: Continuously monitors for new ShellOps servers joining your tailnet
+- **When ON**: Continuously monitors for new VibeTunnel servers joining your tailnet
 - **When OFF**: Only discovers servers when you manually refresh or open the app
 - **Requirement**: Auto-Discover Servers must be ON for this to work
 - **Battery Impact**: Minimal - uses efficient API polling
@@ -218,7 +218,7 @@ Both methods work simultaneously, giving you the best of both worlds!
 ### Discovery Problems
 
 **Problem**: No servers found
-- Ensure ShellOps server is running on your Mac
+- Ensure VibeTunnel server is running on your Mac
 - Verify Mac has Tailscale installed and connected
 - Check OAuth client has `devices:read` permission
 - Tap **Refresh Servers** to manually scan
@@ -250,7 +250,7 @@ Both methods work simultaneously, giving you the best of both worlds!
 ### Best Practices
 
 1. **Protect OAuth Credentials**: Never share Client Secret
-2. **Regular Updates**: Keep ShellOps and Tailscale updated
+2. **Regular Updates**: Keep VibeTunnel and Tailscale updated
 3. **Monitor Access**: Review connected devices in Tailscale admin
 4. **Use Strong Authentication**: Enable 2FA on Tailscale account
 
@@ -300,7 +300,7 @@ This will:
 A: The lock icon indicates HTTPS availability. It changes based on whether Tailscale Funnel is enabled on your Mac.
 
 **Q: Do I need the Tailscale app on my iPhone?**
-A: No, ShellOps iOS handles everything through the OAuth API. The Tailscale iOS app is not required.
+A: No, VibeTunnel iOS handles everything through the OAuth API. The Tailscale iOS app is not required.
 
 **Q: Can I use Tailscale and local network discovery together?**
 A: Yes! The app supports both Tailscale and Bonjour discovery simultaneously.
@@ -315,18 +315,18 @@ A: The app automatically refreshes tokens using your stored credentials. You'll 
 
 If you encounter issues not covered in this guide:
 
-1. Check the ShellOps Mac app is running
+1. Check the VibeTunnel Mac app is running
 2. Verify Tailscale status on both devices
 3. Review error messages in the app
 4. Check server logs using `vtlog.sh` on your Mac
 
 For additional support:
-- ShellOps Issues: [GitHub Issues](https://github.com/anthropics/shellops/issues)
+- VibeTunnel Issues: [GitHub Issues](https://github.com/anthropics/vibetunnel/issues)
 - Tailscale Documentation: [tailscale.com/kb](https://tailscale.com/kb)
 
 ## Summary
 
-Tailscale integration makes ShellOps incredibly powerful for remote access:
+Tailscale integration makes VibeTunnel incredibly powerful for remote access:
 
 - **Simple Setup**: Just OAuth credentials, no network configuration
 - **Automatic Discovery**: Finds your servers instantly

@@ -1,8 +1,8 @@
-# Building ShellOps for Different Architectures
+# Building VibeTunnel for Different Architectures
 
 ## Overview
 
-ShellOps now supports building separate binaries for arm64 (Apple Silicon) and x86_64 (Intel) architectures. This allows for optimized builds for each platform while maintaining smaller download sizes compared to universal binaries.
+VibeTunnel now supports building separate binaries for arm64 (Apple Silicon) and x86_64 (Intel) architectures. This allows for optimized builds for each platform while maintaining smaller download sizes compared to universal binaries.
 
 ## Local Development
 
@@ -25,10 +25,10 @@ The packaging scripts automatically detect the architecture from the built app:
 
 ```bash
 # Create DMG (architecture is auto-detected)
-./scripts/create-dmg.sh build/Build/Products/Release/ShellOps.app
+./scripts/create-dmg.sh build/Build/Products/Release/VibeTunnel.app
 
 # Create ZIP (architecture is auto-detected)
-./scripts/create-zip.sh build/Build/Products/Release/ShellOps.app
+./scripts/create-zip.sh build/Build/Products/Release/VibeTunnel.app
 ```
 
 ## Release Builds
@@ -37,15 +37,15 @@ The release workflow (`release.yml`) automatically:
 
 1. Builds separate binaries for arm64 and x86_64
 2. Creates DMG and ZIP files for each architecture
-3. Names files according to the pattern: `ShellOps-<version>-<arch>.<ext>`
+3. Names files according to the pattern: `VibeTunnel-<version>-<arch>.<ext>`
 
 ### Release Artifacts
 
 Each release produces 4 distribution files:
-- `ShellOps-<version>-arm64.dmg` - Apple Silicon DMG installer
-- `ShellOps-<version>-arm64.zip` - Apple Silicon ZIP archive
-- `ShellOps-<version>-intel.dmg` - Intel DMG installer
-- `ShellOps-<version>-intel.zip` - Intel ZIP archive
+- `VibeTunnel-<version>-arm64.dmg` - Apple Silicon DMG installer
+- `VibeTunnel-<version>-arm64.zip` - Apple Silicon ZIP archive
+- `VibeTunnel-<version>-intel.dmg` - Intel DMG installer
+- `VibeTunnel-<version>-intel.zip` - Intel ZIP archive
 
 ## Architecture Detection
 

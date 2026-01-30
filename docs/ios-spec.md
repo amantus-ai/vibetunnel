@@ -1,8 +1,8 @@
-# ShellOps iOS/iPadOS Native App Specification
+# VibeTunnel iOS/iPadOS Native App Specification
 
 ## Overview
 
-ShellOps iOS is a native SwiftUI application that provides a beautiful, native interface to the ShellOps terminal multiplexer backend. The app allows users to create, manage, and interact with terminal sessions on their Mac from their iOS/iPadOS devices.
+VibeTunnel iOS is a native SwiftUI application that provides a beautiful, native interface to the VibeTunnel terminal multiplexer backend. The app allows users to create, manage, and interact with terminal sessions on their Mac from their iOS/iPadOS devices.
 
 ## Target Platform
 
@@ -97,9 +97,9 @@ ShellOps iOS is a native SwiftUI application that provides a beautiful, native i
 ### 1. Project Structure
 ```
 ios/
-├── ShellOps/
+├── VibeTunnel/
 │   ├── App/
-│   │   ├── ShellOpsApp.swift
+│   │   ├── VibeTunnelApp.swift
 │   │   └── ContentView.swift
 │   ├── Models/
 │   │   ├── Session.swift
@@ -133,7 +133,7 @@ ios/
 │   └── Resources/
 │       ├── Assets.xcassets
 │       └── Info.plist
-└── ShellOps.xcodeproj
+└── VibeTunnel.xcodeproj
 ```
 
 ### 2. Data Models
@@ -334,7 +334,7 @@ SessionListView (main screen)
 
 ## Future Enhancements
 
-1. **Multiple Connections**: Support multiple ShellOps servers
+1. **Multiple Connections**: Support multiple VibeTunnel servers
 2. **Session Sharing**: Share terminal sessions with others
 3. **Recording**: Record and playback terminal sessions
 4. **Themes**: Additional color themes beyond VS Code
@@ -357,4 +357,4 @@ SessionListView (main screen)
 
 ## Conclusion
 
-This specification outlines a comprehensive native iOS/iPadOS client for ShellOps that leverages SwiftUI and ghostty-web to provide a superior terminal experience compared to the web interface. The app will be fast, responsive, and take full advantage of native iOS features while maintaining feature parity with the web frontend.
+This specification outlines a comprehensive native iOS/iPadOS client for VibeTunnel that leverages SwiftUI and ghostty-web to provide a superior terminal experience compared to the web interface. The app will be fast, responsive, and take full advantage of native iOS features while maintaining feature parity with the web frontend.

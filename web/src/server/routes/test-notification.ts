@@ -42,8 +42,8 @@ export function createTestNotificationRouter(options: TestNotificationOptions): 
         sessionId: 'test-session',
         sessionName: 'Test Notification',
         timestamp: new Date().toISOString(),
-        message: 'This is a test notification from ShellOps server',
-        title: `ShellOps Test v${versionInfo.version}`,
+        message: 'This is a test notification from VibeTunnel server',
+        title: `VibeTunnel Test v${versionInfo.version}`,
         body: `Server-side notifications are working correctly! Server version: ${versionInfo.version}`,
       };
 
@@ -63,10 +63,10 @@ export function createTestNotificationRouter(options: TestNotificationOptions): 
           pushResult = await pushNotificationService.sendNotification({
             type: 'test',
             title: testEvent.title || '🔔 Test Notification',
-            body: testEvent.body || 'This is a test notification from ShellOps',
+            body: testEvent.body || 'This is a test notification from VibeTunnel',
             icon: '/apple-touch-icon.png',
             badge: '/favicon-32.png',
-            tag: 'shellops-test',
+            tag: 'vibetunnel-test',
             requireInteraction: false,
             actions: [
               {

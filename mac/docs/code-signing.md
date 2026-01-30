@@ -1,6 +1,6 @@
-# Code Signing Guide for ShellOps
+# Code Signing Guide for VibeTunnel
 
-This comprehensive guide covers all aspects of code signing for ShellOps, from local development setup to release distribution.
+This comprehensive guide covers all aspects of code signing for VibeTunnel, from local development setup to release distribution.
 
 ## Table of Contents
 
@@ -13,7 +13,7 @@ This comprehensive guide covers all aspects of code signing for ShellOps, from l
 
 ### Initial Team Configuration
 
-ShellOps uses xcconfig files to manage developer team settings, allowing multiple developers to work without code signing conflicts.
+VibeTunnel uses xcconfig files to manage developer team settings, allowing multiple developers to work without code signing conflicts.
 
 1. **Copy the template file to create your local configuration:**
    ```bash
@@ -35,13 +35,13 @@ ShellOps uses xcconfig files to manage developer team settings, allowing multipl
 
 ### How xcconfig Works
 
-- `ShellOps/Shared.xcconfig` - Contains shared configuration and includes local settings
+- `VibeTunnel/Shared.xcconfig` - Contains shared configuration and includes local settings
 - `../apple/Local.xcconfig` - Your personal settings (ignored by git)
 - `../apple/Local.xcconfig.template` - Template for new developers
 
 ### Avoiding Keychain Dialogs During Development
 
-ShellOps stores dashboard passwords in the keychain, which can trigger repeated authorization dialogs during development.
+VibeTunnel stores dashboard passwords in the keychain, which can trigger repeated authorization dialogs during development.
 
 #### Debug Mode Behavior
 
@@ -121,10 +121,10 @@ APP_STORE_CONNECT_ISSUER_ID="12345678-1234-1234-1234-123456789012"
 #### Individual Scripts
 ```bash
 # Just code signing
-./scripts/codesign-app.sh build/Build/Products/Release/ShellOps.app
+./scripts/codesign-app.sh build/Build/Products/Release/VibeTunnel.app
 
 # Just notarization (requires signed app)
-./scripts/notarize-app.sh build/Build/Products/Release/ShellOps.app
+./scripts/notarize-app.sh build/Build/Products/Release/VibeTunnel.app
 ```
 
 ### Script Options
@@ -134,7 +134,7 @@ APP_STORE_CONNECT_ISSUER_ID="12345678-1234-1234-1234-123456789012"
 ./scripts/sign-and-notarize.sh --help
 
 # Sign and notarize with custom app path
-./scripts/sign-and-notarize.sh --app-path path/to/ShellOps.app --sign-and-notarize
+./scripts/sign-and-notarize.sh --app-path path/to/VibeTunnel.app --sign-and-notarize
 
 # Skip stapling (for CI environments)
 ./scripts/sign-and-notarize.sh --sign-and-notarize --skip-staple
@@ -198,13 +198,13 @@ The CI workflow automatically uses these for notarization when building on the m
 
 ```bash
 # Verify code signature
-codesign --verify --verbose=2 ShellOps.app
+codesign --verify --verbose=2 VibeTunnel.app
 
 # Test with Gatekeeper (should pass for notarized apps)
-spctl -a -t exec -vv ShellOps.app
+spctl -a -t exec -vv VibeTunnel.app
 
 # Check if notarization ticket is stapled
-stapler validate ShellOps.app
+stapler validate VibeTunnel.app
 ```
 
 ## Reference
@@ -219,9 +219,9 @@ stapler validate ShellOps.app
 
 ```
 build/
-├── Build/Products/Release/ShellOps.app  # Signed and notarized app
-├── ShellOps-notarized.zip               # Distributable archive
-└── ShellOps-1.0.0.dmg                   # DMG (if created)
+├── Build/Products/Release/VibeTunnel.app  # Signed and notarized app
+├── VibeTunnel-notarized.zip               # Distributable archive
+└── VibeTunnel-1.0.0.dmg                   # DMG (if created)
 ```
 
 ### Security Notes

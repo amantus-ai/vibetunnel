@@ -1,10 +1,10 @@
 # Git Worktree Implementation Specification
 
-This document describes the technical implementation of Git worktree support in ShellOps.
+This document describes the technical implementation of Git worktree support in VibeTunnel.
 
 ## Architecture Overview
 
-ShellOps's worktree support is built on three main components:
+VibeTunnel's worktree support is built on three main components:
 
 1. **Backend API** - Git operations and worktree management
 2. **Frontend UI** - Session creation and worktree visualization  
@@ -76,16 +76,16 @@ async function execGit(args: string[], options?: { cwd?: string }) {
 
 Follow mode uses Git hooks and git config for state management:
 
-1. **State Storage**: Git config `shellops.followWorktree`
+1. **State Storage**: Git config `vibetunnel.followWorktree`
    ```bash
    # Follow mode stores the worktree path in main repository
-   git config shellops.followWorktree "/path/to/worktree"
+   git config vibetunnel.followWorktree "/path/to/worktree"
    
    # Check follow mode status
-   git config shellops.followWorktree
+   git config vibetunnel.followWorktree
    
    # Disable follow mode
-   git config --unset shellops.followWorktree
+   git config --unset vibetunnel.followWorktree
    ```
 
 2. **Git Hooks**: Installed in BOTH main repo and worktree
@@ -194,8 +194,8 @@ The hook implementation uses the `vt` command:
 
 ```bash
 #!/bin/sh
-# ShellOps Git hook - post-checkout
-# This hook notifies ShellOps when Git events occur
+# VibeTunnel Git hook - post-checkout
+# This hook notifies VibeTunnel when Git events occur
 
 # Check if vt command is available
 if command -v vt >/dev/null 2>&1; then
@@ -220,7 +220,7 @@ The git event handler determines sync behavior based on event source:
 
 ```typescript
 // Get follow mode configuration
-const followWorktree = await getGitConfig(mainRepoPath, 'shellops.followWorktree');
+const followWorktree = await getGitConfig(mainRepoPath, 'vibetunnel.followWorktree');
 if (!followWorktree) return; // Follow mode not enabled
 
 // Determine if event is from main repo or worktree
@@ -249,7 +249,7 @@ if (isFromWorktree) {
   switch (event) {
     case 'checkout':
       // Branch switch in main = stop following
-      await unsetGitConfig(mainRepoPath, 'shellops.followWorktree');
+      await unsetGitConfig(mainRepoPath, 'vibetunnel.followWorktree');
       sendNotification('Follow mode disabled - switched branches in main repository');
       break;
     
@@ -475,7 +475,7 @@ git worktree add -b new-feature ../new-feature main
    - Proper error handling and validation
 
 2. **Follow Mode** - Complete implementation
-   - Git config storage (`shellops.followBranch`)
+   - Git config storage (`vibetunnel.followBranch`)
    - Automatic branch synchronization via hooks
    - UI controls in WorktreeManager and SessionCreateForm
 

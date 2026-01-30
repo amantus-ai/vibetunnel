@@ -535,7 +535,7 @@ export class TerminalQuickKeys extends LitElement {
                 <button
                   type="button"
                   tabindex="-1"
-                  class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && ((key === 'CtrlExpand' && this.showCtrlKeys) || (key === 'F' && this.showFunctionKeys)) ? 'active' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
+                  class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-ui rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${arrow ? 'arrow-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && ((key === 'CtrlExpand' && this.showCtrlKeys) || (key === 'F' && this.showFunctionKeys)) ? 'active' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
                   data-key="${key}"
                   ?data-modifier="${modifier}"
                   ?data-arrow="${arrow}"
@@ -582,7 +582,7 @@ export class TerminalQuickKeys extends LitElement {
                     <button
                       type="button"
                       tabindex="-1"
-                      class="ctrl-shortcut-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''}"
+                      class="ctrl-shortcut-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-ui rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${combo ? 'combo-key' : ''} ${special ? 'special-key' : ''}"
                       data-key="${key}"
                       ?data-combo="${combo}"
                       ?data-special="${special}"
@@ -608,7 +608,7 @@ export class TerminalQuickKeys extends LitElement {
                 <button
                   type="button"
                   tabindex="-1"
-                  class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
+                  class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-ui rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
                   data-key="${DONE_BUTTON.key}"
                   ?data-special="${DONE_BUTTON.special}"
                   @mousedown=${(e: Event) => {
@@ -639,7 +639,7 @@ export class TerminalQuickKeys extends LitElement {
                     <button
                       type="button"
                       tabindex="-1"
-                      class="func-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap"
+                      class="func-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-ui rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap"
                       data-key="${key}"
                       @mousedown=${(e: Event) => {
                         e.preventDefault();
@@ -663,7 +663,7 @@ export class TerminalQuickKeys extends LitElement {
                 <button
                   type="button"
                   tabindex="-1"
-                  class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
+                  class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-ui rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
                   data-key="${DONE_BUTTON.key}"
                   ?data-special="${DONE_BUTTON.special}"
                   @mousedown=${(e: Event) => {
@@ -693,7 +693,7 @@ export class TerminalQuickKeys extends LitElement {
                     <button
                       type="button"
                       tabindex="-1"
-                      class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && this.showFunctionKeys ? 'active' : ''}"
+                      class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-ui rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${toggle ? 'toggle-key' : ''} ${toggle && this.showFunctionKeys ? 'active' : ''}"
                       data-key="${key}"
                       ?data-modifier="${modifier}"
                       ?data-combo="${combo}"
@@ -724,7 +724,7 @@ export class TerminalQuickKeys extends LitElement {
                 <button
                   type="button"
                   tabindex="-1"
-                  class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
+                  class="quick-key-btn ${this.getButtonFontClass(DONE_BUTTON.label)} min-w-0 ${this.getButtonSizeClass(DONE_BUTTON.label)} bg-bg-tertiary text-primary font-ui rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap special-key"
                   data-key="${DONE_BUTTON.key}"
                   ?data-special="${DONE_BUTTON.special}"
                   @mousedown=${(e: Event) => {
@@ -755,7 +755,7 @@ export class TerminalQuickKeys extends LitElement {
                 <button
                   type="button"
                   tabindex="-1"
-                  class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
+                  class="quick-key-btn ${this.getButtonFontClass(label)} min-w-0 ${this.getButtonSizeClass(label)} bg-bg-tertiary text-primary font-ui rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap ${modifier ? 'modifier-key' : ''} ${combo ? 'combo-key' : ''} ${modifier && key === 'Option' && this.activeModifiers.has('Option') ? 'active' : ''}"
                   data-key="${key}"
                   ?data-modifier="${modifier}"
                   ?data-combo="${combo}"

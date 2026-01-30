@@ -245,7 +245,7 @@ export class ImageUploadMenu extends LitElement {
       <div class="relative">
         <vt-tooltip content="Upload Image (⌘U)" .show=${!this.isMobile}>
           <button
-            class="bg-bg-tertiary border border-border rounded-lg p-2 font-mono text-text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0"
+            class="bg-bg-tertiary border border-border rounded-lg p-2 font-ui text-text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0"
             @click=${this.toggleMenu}
             @keydown=${this.handleMenuButtonKeyDown}
             title="Upload Image"
@@ -281,7 +281,7 @@ export class ImageUploadMenu extends LitElement {
           const currentIndex = buttonIndex++;
           return html`
             <button
-              class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${
+              class="w-full text-left px-4 py-3 text-sm font-ui text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${
                 this.focusedIndex === currentIndex ? 'bg-secondary text-primary' : ''
               }"
               @click=${item.action}

@@ -70,7 +70,7 @@ async function build() {
       platform: 'node',
       target: 'node18',
       format: 'cjs',
-      outfile: 'dist/shellops-cli',
+      outfile: 'dist/vibetunnel-cli',
       plugins: [nodePtyPlugin],
       external: [
         // 'node-pty', // Removed - handled by plugin
@@ -95,7 +95,7 @@ async function build() {
     });
     
     // Read the file and ensure it has exactly one shebang
-    let content = fs.readFileSync('dist/shellops-cli', 'utf8');
+    let content = fs.readFileSync('dist/vibetunnel-cli', 'utf8');
     
     // Remove any existing shebangs
     content = content.replace(/^#!.*\n/gm, '');
@@ -104,10 +104,10 @@ async function build() {
     content = '#!/usr/bin/env node\n' + content;
     
     // Write the fixed content back
-    fs.writeFileSync('dist/shellops-cli', content);
+    fs.writeFileSync('dist/vibetunnel-cli', content);
     
     // Make the CLI executable
-    fs.chmodSync('dist/shellops-cli', '755');
+    fs.chmodSync('dist/vibetunnel-cli', '755');
     console.log('CLI bundle created successfully');
   } catch (error) {
     console.error('CLI bundling failed:', error);
@@ -121,13 +121,13 @@ async function build() {
 
 
   const shouldBuildSea =
-    process.env.SHELLOPS_BUILD_SEA === '1' ||
-    process.env.SHELLOPS_SEA === '1' ||
-    process.env.SHELLOPS_SEA === 'true' ||
+    process.env.VIBETUNNEL_BUILD_SEA === '1' ||
+    process.env.VIBETUNNEL_SEA === '1' ||
+    process.env.VIBETUNNEL_SEA === 'true' ||
     process.argv.includes('--build-sea');
   const isLinux = process.platform === 'linux';
   if (isLinux && !shouldBuildSea) {
-    console.log('Skipping native SEA build on Linux (set SHELLOPS_BUILD_SEA=1 or --build-sea to override).');
+    console.log('Skipping native SEA build on Linux (set VIBETUNNEL_BUILD_SEA=1 or --build-sea to override).');
     console.log('Build completed successfully!');
     return;
   }
@@ -137,13 +137,13 @@ async function build() {
 
   // Check if native binaries already exist (skip build for development)
   const nativeDir = path.join(__dirname, '..', 'native');
-  const shellopsPath = path.join(nativeDir, 'shellops');
+  const vibetunnelPath = path.join(nativeDir, 'vibetunnel');
   const ptyNodePath = path.join(nativeDir, 'pty.node');
   const spawnHelperPath = path.join(nativeDir, 'spawn-helper');
 
-  if (fs.existsSync(shellopsPath) && fs.existsSync(ptyNodePath) && fs.existsSync(spawnHelperPath)) {
+  if (fs.existsSync(vibetunnelPath) && fs.existsSync(ptyNodePath) && fs.existsSync(spawnHelperPath)) {
     console.log('✅ Native binaries already exist, skipping build...');
-    console.log('  - shellops executable: ✓');
+    console.log('  - vibetunnel executable: ✓');
     console.log('  - pty.node: ✓');
     console.log('  - spawn-helper: ✓');
   } else {

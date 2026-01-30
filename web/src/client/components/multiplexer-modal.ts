@@ -537,7 +537,7 @@ export class MultiplexerModal extends LitElement {
                                               }}
                                             >
                                               <div class="flex items-center gap-2">
-                                                <span class="font-mono text-sm text-text-muted">${window.index}:</span>
+                                                <span class="font-ui text-sm text-text-muted">${window.index}:</span>
                                                 <span>${window.name}</span>
                                               </div>
                                               <div class="flex items-center gap-2">
@@ -580,7 +580,7 @@ export class MultiplexerModal extends LitElement {
                                                           }}
                                                         >
                                                           <div class="flex items-center gap-2">
-                                                            <span class="font-mono text-xs text-text-muted">%${pane.index}</span>
+                                                            <span class="font-ui text-xs text-text-muted">%${pane.index}</span>
                                                             <span class="text-text">${this.formatPaneInfo(pane)}</span>
                                                           </div>
                                                           <div class="flex items-center gap-2">

@@ -2,7 +2,7 @@
 
 ## Terminal Transport (WebSocket v3)
 
-ShellOps uses a **single** WebSocket endpoint for terminal transport, multiplexing sessions over binary frames.
+VibeTunnel uses a **single** WebSocket endpoint for terminal transport, multiplexing sessions over binary frames.
 
 ### Connection Establishment
 ```javascript
@@ -94,7 +94,7 @@ Event types:
 
 ### Recording Storage
 ```
-~/.shellops/recordings/
+~/.vibetunnel/recordings/
 ├── session-uuid-1.cast
 ├── session-uuid-2.cast
 └── metadata.json
@@ -134,7 +134,7 @@ X-RateLimit-Reset: 1704067200
 
 ## Terminal Transport (WebSocket v3)
 
-ShellOps uses a single WebSocket endpoint for terminal transport:
+VibeTunnel uses a single WebSocket endpoint for terminal transport:
 - Endpoint: `GET /ws` (upgrade)
 - Binary framing: `"VT"` magic + version + type + sessionId + payload
 - Multiplexing: one socket can carry multiple sessions

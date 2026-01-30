@@ -33,7 +33,7 @@ const DEFAULT_PREFERENCES: TerminalPreferences = {
   theme: 'dark',
 };
 
-const STORAGE_KEY_TERMINAL_PREFS = 'shellops_terminal_preferences';
+const STORAGE_KEY_TERMINAL_PREFS = 'vibetunnel_terminal_preferences';
 
 export class TerminalPreferencesManager {
   private static instance: TerminalPreferencesManager;

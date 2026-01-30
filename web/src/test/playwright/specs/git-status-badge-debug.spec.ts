@@ -54,9 +54,9 @@ test.describe('Git Status Badge Debugging', () => {
       }
     });
 
-    console.log('Creating session in ShellOps git repository...');
+    console.log('Creating session in VibeTunnel git repository...');
 
-    // Create a session in the ShellOps git repository
+    // Create a session in the VibeTunnel git repository
     // Click the create session button
     await page.click('[data-testid="create-session-button"]');
 
@@ -66,7 +66,7 @@ test.describe('Git Status Badge Debugging', () => {
     // Set working directory - use the parent directory which should be the git repo
     const workingDirInput = page.locator('input[placeholder*="working directory"]');
     const gitRepoPath = process.env.CI
-      ? '/home/runner/_work/shellops/shellops'
+      ? '/home/runner/_work/vibetunnel/vibetunnel'
       : process.cwd().includes('/web')
         ? process.cwd().replace('/web', '')
         : process.cwd();

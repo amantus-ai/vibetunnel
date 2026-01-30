@@ -179,7 +179,7 @@ export class TitleManager {
     const newTitle = generateTitleSequence(
       currentDir,
       session.sessionInfo.command,
-      session.sessionInfo.name || 'ShellOps'
+      session.sessionInfo.name || 'VibeTunnel'
     );
 
     const currentTitle = this.currentTitles.get(session.id);

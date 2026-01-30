@@ -55,7 +55,7 @@ export class SessionCard extends LitElement {
 
     // Listen for storage changes to update theme reactively (cross-tab)
     this.storageListener = (e: StorageEvent) => {
-      if (e.key === 'shellops_terminal_preferences') {
+      if (e.key === 'vibetunnel_terminal_preferences') {
         this.loadThemeFromStorage();
       }
     };
@@ -303,7 +303,7 @@ export class SessionCard extends LitElement {
     // Determine status colors
     const isRunning = this.session.status === 'running';
     const isWarning = this.session.status === 'starting';
-    const statusColor = isRunning ? '#22C55E' : isWarning ? '#FBBF24' : '#525252';
+    const statusColor = isRunning ? 'var(--color-primary)' : isWarning ? '#FBBF24' : '#525252';
 
     return html`
       <div
@@ -329,7 +329,7 @@ export class SessionCard extends LitElement {
               class="w-2 h-2 rounded-full flex-shrink-0 ${isRunning ? 'animate-pulse' : ''}"
               style="background: ${statusColor}; box-shadow: 0 0 6px ${statusColor};"
             ></div>
-            <div class="font-mono text-sm font-medium truncate text-white flex-1" @click=${(e: Event) => e.stopPropagation()}>
+            <div class="font-ui text-sm font-medium truncate text-white flex-1" @click=${(e: Event) => e.stopPropagation()}>
               <inline-edit
                 .value=${this.session.name || this.session.command?.join(' ') || ''}
                 .placeholder=${this.session.command?.join(' ') || ''}
@@ -371,7 +371,7 @@ export class SessionCard extends LitElement {
             this.session.remoteName
               ? html`
                 <div
-                  class="flex items-center gap-1.5 px-2 py-1 rounded-md font-mono text-[11px] w-fit"
+                  class="flex items-center gap-1.5 px-2 py-1 rounded-md font-ui text-[11px] w-fit"
                   style="background: rgba(59, 130, 246, 0.1); color: #3B82F6;"
                 >
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -394,7 +394,7 @@ export class SessionCard extends LitElement {
               this.killing
                 ? html`
                   <div class="w-full h-full flex items-center justify-center" style="color: #EF4444;">
-                    <span class="font-mono text-sm">${this.getKillingText()} Terminating...</span>
+                    <span class="font-ui text-sm">${this.getKillingText()} Terminating...</span>
                   </div>
                 `
                 : html`
@@ -423,7 +423,7 @@ export class SessionCard extends LitElement {
               this.killing
                 ? html`
                   <div class="w-full h-full flex items-center justify-center" style="color: #EF4444;">
-                    <div class="text-center font-mono">
+                    <div class="text-center font-ui">
                       <div class="text-3xl mb-2">${this.getKillingText()}</div>
                       <div class="text-sm opacity-70">Terminating...</div>
                     </div>
@@ -507,7 +507,7 @@ export class SessionCard extends LitElement {
                 style="background: ${statusColor}; box-shadow: 0 0 8px ${statusColor};"
               ></div>
               <!-- Name -->
-              <div class="font-mono text-sm font-medium truncate text-white flex-1" @click=${(e: Event) => e.stopPropagation()}>
+              <div class="font-ui text-sm font-medium truncate text-white flex-1" @click=${(e: Event) => e.stopPropagation()}>
                 <inline-edit
                   .value=${this.session.name || this.session.command?.join(' ') || ''}
                   .placeholder=${this.session.command?.join(' ') || ''}
@@ -525,16 +525,16 @@ export class SessionCard extends LitElement {
                 this.session.remoteName
                   ? html`
                     <div
-                      class="flex items-center gap-1.5 px-2 py-1 rounded-full font-mono text-[10px] flex-shrink-0"
+                      class="flex items-center gap-1.5 px-2 py-1 rounded-full font-ui text-[10px] flex-shrink-0"
                       style="background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.7);"
                     >
-                      <div class="w-1.5 h-1.5 rounded-full" style="background: #22C55E;"></div>
+                      <div class="w-1.5 h-1.5 rounded-full" style="background: var(--color-primary);"></div>
                       ${this.session.remoteName}
                     </div>
                   `
                   : html`
                     <div
-                      class="px-2 py-1 rounded-full font-mono text-[10px] flex-shrink-0"
+                      class="px-2 py-1 rounded-full font-ui text-[10px] flex-shrink-0"
                       style="background: rgba(255, 255, 255, 0.06); color: rgba(255, 255, 255, 0.5);"
                     >
                       local

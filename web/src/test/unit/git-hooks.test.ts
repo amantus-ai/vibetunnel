@@ -74,11 +74,11 @@ describe('Git Hooks', () => {
       expect(mockWriteFile).toHaveBeenCalledTimes(2);
       expect(mockWriteFile).toHaveBeenCalledWith(
         '/home/user/project/.git/hooks/post-commit',
-        expect.stringContaining('ShellOps Git hook - post-commit')
+        expect.stringContaining('VibeTunnel Git hook - post-commit')
       );
       expect(mockWriteFile).toHaveBeenCalledWith(
         '/home/user/project/.git/hooks/post-checkout',
-        expect.stringContaining('ShellOps Git hook - post-checkout')
+        expect.stringContaining('VibeTunnel Git hook - post-checkout')
       );
 
       // Verify hooks were made executable
@@ -104,11 +104,11 @@ describe('Git Hooks', () => {
       // Verify both hooks were written
       expect(mockWriteFile).toHaveBeenCalledWith(
         '/home/user/project/.git/hooks/post-commit',
-        expect.stringContaining('ShellOps Git hook')
+        expect.stringContaining('VibeTunnel Git hook')
       );
       expect(mockWriteFile).toHaveBeenCalledWith(
         '/home/user/project/.git/hooks/post-checkout',
-        expect.stringContaining('ShellOps Git hook')
+        expect.stringContaining('VibeTunnel Git hook')
       );
     });
 
@@ -146,8 +146,8 @@ describe('Git Hooks', () => {
     it('should skip installation if hooks already installed', async () => {
       mockExecFile.mockRejectedValueOnce(new Error('key not found'));
 
-      // Mock existing ShellOps hook
-      mockReadFile.mockResolvedValue('#!/bin/sh\n# ShellOps Git hook - post-commit\n');
+      // Mock existing VibeTunnel hook
+      mockReadFile.mockResolvedValue('#!/bin/sh\n# VibeTunnel Git hook - post-commit\n');
 
       const result = await installGitHooks('/home/user/project');
 
@@ -178,8 +178,8 @@ describe('Git Hooks', () => {
 
       // Set up readFile mocks - both hooks are ours
       mockReadFile
-        .mockResolvedValueOnce('#!/bin/sh\n# ShellOps Git hook - post-commit\n')
-        .mockResolvedValueOnce('#!/bin/sh\n# ShellOps Git hook - post-checkout\n');
+        .mockResolvedValueOnce('#!/bin/sh\n# VibeTunnel Git hook - post-commit\n')
+        .mockResolvedValueOnce('#!/bin/sh\n# VibeTunnel Git hook - post-checkout\n');
 
       // Mock access checks - no backups exist
       mockAccess.mockRejectedValue(new Error('File not found'));
@@ -227,7 +227,7 @@ describe('Git Hooks', () => {
 
     it('should handle uninstall errors', async () => {
       mockExecFile.mockRejectedValueOnce(new Error('key not found'));
-      mockReadFile.mockResolvedValue('#!/bin/sh\n# ShellOps Git hook - post-commit\n');
+      mockReadFile.mockResolvedValue('#!/bin/sh\n# VibeTunnel Git hook - post-commit\n');
       mockAccess.mockRejectedValue(new Error('File not found'));
       mockUnlink.mockRejectedValueOnce(new Error('Permission denied'));
 
@@ -246,8 +246,8 @@ describe('Git Hooks', () => {
 
       // Mock both hooks exist and are ours
       mockReadFile
-        .mockResolvedValueOnce('#!/bin/sh\n# ShellOps Git hook - post-commit\n')
-        .mockResolvedValueOnce('#!/bin/sh\n# ShellOps Git hook - post-checkout\n');
+        .mockResolvedValueOnce('#!/bin/sh\n# VibeTunnel Git hook - post-commit\n')
+        .mockResolvedValueOnce('#!/bin/sh\n# VibeTunnel Git hook - post-checkout\n');
 
       const result = await areHooksInstalled('/home/user/project');
 
@@ -259,7 +259,7 @@ describe('Git Hooks', () => {
 
       // Mock first hook exists, second doesn't
       mockReadFile
-        .mockResolvedValueOnce('#!/bin/sh\n# ShellOps Git hook - post-commit\n')
+        .mockResolvedValueOnce('#!/bin/sh\n# VibeTunnel Git hook - post-commit\n')
         .mockRejectedValueOnce(new Error('File not found'));
 
       const result = await areHooksInstalled('/home/user/project');
@@ -273,7 +273,7 @@ describe('Git Hooks', () => {
       // Mock hooks exist but aren't ours
       mockReadFile
         .mockResolvedValueOnce('#!/bin/sh\necho "Different hook"')
-        .mockResolvedValueOnce('#!/bin/sh\n# ShellOps Git hook - post-checkout\n');
+        .mockResolvedValueOnce('#!/bin/sh\n# VibeTunnel Git hook - post-checkout\n');
 
       const result = await areHooksInstalled('/home/user/project');
 
@@ -287,8 +287,8 @@ describe('Git Hooks', () => {
       // When git command fails, we still check the default .git/hooks path
       // Mock hooks exist and are ours
       mockReadFile
-        .mockResolvedValueOnce('#!/bin/sh\n# ShellOps Git hook - post-commit\n')
-        .mockResolvedValueOnce('#!/bin/sh\n# ShellOps Git hook - post-checkout\n');
+        .mockResolvedValueOnce('#!/bin/sh\n# VibeTunnel Git hook - post-commit\n')
+        .mockResolvedValueOnce('#!/bin/sh\n# VibeTunnel Git hook - post-checkout\n');
 
       const result = await areHooksInstalled('/home/user/project');
 

@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Rebuild + restart ShellOps macOS app (signed build).
+# Rebuild + restart VibeTunnel macOS app (signed build).
 
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MAC_DIR="${ROOT_DIR}/mac"
-APP_NAME="ShellOps"
+APP_NAME="VibeTunnel"
 APP_PROCESS_PATTERN="${APP_NAME}.app/Contents/MacOS/${APP_NAME}"
 
 log() { printf '%s\n' "$*"; }
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
-kill_all_shellops() {
+kill_all_vibetunnel() {
   for _ in {1..10}; do
     pkill -f "${APP_PROCESS_PATTERN}" 2>/dev/null || true
     pkill -x "${APP_NAME}" 2>/dev/null || true
@@ -23,7 +23,7 @@ kill_all_shellops() {
 }
 
 log "==> Killing existing ${APP_NAME} instances"
-kill_all_shellops
+kill_all_vibetunnel
 
 log "==> Building (Debug, signed)"
 (

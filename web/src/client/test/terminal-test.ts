@@ -46,7 +46,7 @@ export class TerminalTest extends LitElement {
     const terminal = this.terminalRef.value;
     if (!terminal) return;
 
-    terminal.write('\x1b[1;36mShellOps Terminal Test\x1b[0m\r\n');
+    terminal.write('\x1b[1;36mVibeTunnel Terminal Test\x1b[0m\r\n');
     terminal.write('=====================================\r\n\r\n');
     terminal.write('This is a test environment for the terminal component.\r\n');
     terminal.write('Use the buttons above to test various features.\r\n\r\n');

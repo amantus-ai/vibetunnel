@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Run iOS tests for ShellOps using xcodebuild
+# Run iOS tests for VibeTunnel using xcodebuild
 # This script properly runs tests on iOS simulator using Swift Testing framework
 
 set -e
@@ -43,8 +43,8 @@ set -o pipefail
 if command -v xcbeautify &> /dev/null; then
     echo "Running tests with xcbeautify formatter..."
     xcodebuild test \
-        -workspace ../ShellOps.xcworkspace \
-        -scheme ShellOps-iOS \
+        -workspace ../VibeTunnel.xcworkspace \
+        -scheme VibeTunnel-iOS \
         -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
         -resultBundlePath TestResults.xcresult \
         CODE_SIGN_IDENTITY="" \
@@ -67,8 +67,8 @@ if command -v xcbeautify &> /dev/null; then
 else
     echo "Running tests without xcbeautify..."
     xcodebuild test \
-        -workspace ../ShellOps.xcworkspace \
-        -scheme ShellOps-iOS \
+        -workspace ../VibeTunnel.xcworkspace \
+        -scheme VibeTunnel-iOS \
         -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
         -resultBundlePath TestResults.xcresult \
         CODE_SIGN_IDENTITY="" \

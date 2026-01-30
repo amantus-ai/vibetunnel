@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Master script to run tests with coverage for all ShellOps projects
+# Master script to run tests with coverage for all VibeTunnel projects
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,7 +11,7 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-echo -e "${CYAN}=== ShellOps Test Coverage Report ===${NC}\n"
+echo -e "${CYAN}=== VibeTunnel Test Coverage Report ===${NC}\n"
 
 # Track overall status
 ALL_PASSED=true
@@ -37,8 +37,8 @@ if [ -d "mac" ]; then
     run_project_tests "macOS" "swift test --enable-code-coverage 2>&1 | grep -E 'Test.*passed|failed' | tail -5"
     
     # Extract macOS coverage
-    if [ -f ".build/arm64-apple-macosx/debug/codecov/ShellOps.json" ]; then
-        COVERAGE=$(cat .build/arm64-apple-macosx/debug/codecov/ShellOps.json | jq -r '.data[0].totals.lines.percent' 2>/dev/null | awk '{printf "%.1f", $1}')
+    if [ -f ".build/arm64-apple-macosx/debug/codecov/VibeTunnel.json" ]; then
+        COVERAGE=$(cat .build/arm64-apple-macosx/debug/codecov/VibeTunnel.json | jq -r '.data[0].totals.lines.percent' 2>/dev/null | awk '{printf "%.1f", $1}')
         echo -e "${BLUE}macOS Line Coverage: ${COVERAGE}%${NC}\n"
     fi
     cd ..
@@ -88,6 +88,6 @@ fi
 
 # Instructions for detailed reports
 echo -e "\n${YELLOW}For detailed coverage reports:${NC}"
-echo "- macOS: cd mac && xcrun xccov view --report .build/*/debug/codecov/ShellOps.json"
+echo "- macOS: cd mac && xcrun xccov view --report .build/*/debug/codecov/VibeTunnel.json"
 echo "- iOS: cd ios && ./scripts/test-with-coverage.sh"
 echo "- Web: cd web && ./scripts/coverage-report.sh"

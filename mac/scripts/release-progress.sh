@@ -55,7 +55,7 @@ fi
 clear
 
 echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     ShellOps Release Progress Monitor    ║${NC}"
+echo -e "${BLUE}║     VibeTunnel Release Progress Monitor    ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${CYAN}Version:${NC} $RELEASE_VERSION ($RELEASE_TYPE)"

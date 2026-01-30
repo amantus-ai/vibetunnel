@@ -14,7 +14,7 @@ const logger = createLogger('files');
 
 // Create uploads directory in the control directory
 const CONTROL_DIR =
-  process.env.SHELLOPS_CONTROL_DIR || path.join(os.homedir(), '.shellops/control');
+  process.env.VIBETUNNEL_CONTROL_DIR || path.join(os.homedir(), '.vibetunnel/control');
 const UPLOADS_DIR = path.join(CONTROL_DIR, 'uploads');
 
 // Ensure uploads directory exists

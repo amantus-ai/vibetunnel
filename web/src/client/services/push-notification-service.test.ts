@@ -581,19 +581,19 @@ describe('PushNotificationService', () => {
 
       expect(testNotificationHandler).toBeDefined();
       testNotificationHandler?.({
-        title: 'ShellOps Test',
+        title: 'VibeTunnel Test',
         body: 'Push notifications are working correctly!',
       });
 
       await testPromise;
 
       expect(mockServiceWorkerRegistration.showNotification).toHaveBeenCalledWith(
-        'ShellOps Test',
+        'VibeTunnel Test',
         expect.objectContaining({
           body: 'Push notifications are working correctly!',
           icon: '/apple-touch-icon.png',
           badge: '/favicon-32.png',
-          tag: 'shellops-test',
+          tag: 'vibetunnel-test',
         })
       );
     });

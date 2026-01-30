@@ -2,7 +2,7 @@
 #
 # Install Bun locally for the build process if not already available
 #
-# This script ensures Bun is available for building ShellOps without
+# This script ensures Bun is available for building VibeTunnel without
 # requiring any pre-installed tools except Xcode.
 #
 
@@ -90,7 +90,7 @@ fi
 
 # Check if prebuilts are available
 PREBUILTS_DIR="$PROJECT_DIR/Resources/BunPrebuilts"
-if [ -d "$PREBUILTS_DIR/arm64" ] && [ -f "$PREBUILTS_DIR/arm64/shellops" ]; then
+if [ -d "$PREBUILTS_DIR/arm64" ] && [ -f "$PREBUILTS_DIR/arm64/vibetunnel" ]; then
     echo -e "${YELLOW}No npx found, but prebuilt binaries are available${NC}"
     echo -e "${GREEN}✓ Build can proceed using prebuilt binaries${NC}"
     exit 0

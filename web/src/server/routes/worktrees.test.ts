@@ -356,12 +356,12 @@ branch refs/heads/main
     });
 
     it('should handle config unset when already disabled', async () => {
-      const error = new Error('error: key "shellops.followWorktree" not found') as Error & {
+      const error = new Error('error: key "vibetunnel.followWorktree" not found') as Error & {
         exitCode: number;
         stderr: string;
       };
       error.exitCode = 5;
-      error.stderr = 'error: key "shellops.followWorktree" not found';
+      error.stderr = 'error: key "vibetunnel.followWorktree" not found';
       mockExecFile.mockRejectedValueOnce(error);
 
       const response = await request(app).post('/api/worktrees/follow').send({

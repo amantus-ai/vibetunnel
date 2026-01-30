@@ -11,8 +11,8 @@ describe('macOS codesign config', () => {
     const entitlementsPath = path.join(
       repoRoot(),
       'mac',
-      'ShellOps',
-      'shellops-binary.entitlements'
+      'VibeTunnel',
+      'vibetunnel-binary.entitlements'
     );
 
     expect(existsSync(entitlementsPath)).toBe(true);
@@ -22,15 +22,15 @@ describe('macOS codesign config', () => {
     expect(entitlements).toContain('com.apple.security.cs.disable-library-validation');
   });
 
-  it('codesign script applies shellops-binary.entitlements to embedded binaries', () => {
+  it('codesign script applies vibetunnel-binary.entitlements to embedded binaries', () => {
     const scriptPath = path.join(repoRoot(), 'mac', 'scripts', 'codesign-app.sh');
 
     expect(existsSync(scriptPath)).toBe(true);
     const script = readFileSync(scriptPath, 'utf-8');
 
-    expect(script).toContain('shellops-binary.entitlements');
-    expect(script).toContain('/Contents/Resources/shellops"');
-    expect(script).toContain('/Contents/Resources/shellops-fwd"');
-    expect(script).toContain('--entitlements "$SHELLOPS_ENTITLEMENTS"');
+    expect(script).toContain('vibetunnel-binary.entitlements');
+    expect(script).toContain('/Contents/Resources/vibetunnel"');
+    expect(script).toContain('/Contents/Resources/vibetunnel-fwd"');
+    expect(script).toContain('--entitlements "$VIBETUNNEL_ENTITLEMENTS"');
   });
 });

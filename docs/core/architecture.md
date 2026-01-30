@@ -2,7 +2,7 @@
 
 ## System Design
 
-ShellOps consists of three main components working together:
+VibeTunnel consists of three main components working together:
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -40,10 +40,10 @@ ShellOps consists of three main components working together:
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| ServerManager | `mac/ShellOps/ServerManager.swift` | Server lifecycle, port management |
-| SessionMonitor | `mac/ShellOps/SessionMonitor.swift` | Track active sessions |
-| TTYForwardManager | `mac/ShellOps/TTYForwardManager.swift` | CLI integration |
-| MenuBarUI | `mac/ShellOps/MenuBarView.swift` | User interface |
+| ServerManager | `mac/VibeTunnel/ServerManager.swift` | Server lifecycle, port management |
+| SessionMonitor | `mac/VibeTunnel/SessionMonitor.swift` | Track active sessions |
+| TTYForwardManager | `mac/VibeTunnel/TTYForwardManager.swift` | CLI integration |
+| MenuBarUI | `mac/VibeTunnel/MenuBarView.swift` | User interface |
 
 ### Server Process
 

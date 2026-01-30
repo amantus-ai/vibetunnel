@@ -13,7 +13,7 @@ fi
 
 # Check if we're in a build context that needs to avoid Homebrew library contamination
 # This is set by build scripts that compile native code
-if [ "${SHELLOPS_BUILD_CLEAN_ENV:-}" = "true" ]; then
+if [ "${VIBETUNNEL_BUILD_CLEAN_ENV:-}" = "true" ]; then
     # For builds, add Homebrew at the END of PATH to avoid library contamination
     # This ensures system libraries are preferred during compilation
     export PATH="$HOME/.volta/bin:$HOME/Library/pnpm:$HOME/.bun/bin:$PATH:/opt/homebrew/bin:/usr/local/bin"
