@@ -183,7 +183,7 @@ export class SessionHeader extends LitElement {
           <div class="flex items-center gap-3 min-w-0 flex-1">
             <!-- Back Button -->
             <button
-              class="flex items-center justify-center w-10 h-10 rounded-xl transition-all flex-shrink-0"
+              class="flex items-center justify-center w-10 h-10 rounded-xl transition-all flex-shrink-0 header-action-btn"
               style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);"
               @click=${() => this.onBack?.()}
               title="Back"
@@ -195,7 +195,7 @@ export class SessionHeader extends LitElement {
             </button>
 
             <!-- Session Info -->
-            <div class="flex flex-col gap-0.5 min-w-0 flex-1">
+            <div class="flex flex-col gap-0.5 min-w-0 flex-1 session-info">
               <!-- Session Name -->
               <span class="font-ui text-sm font-semibold truncate" style="color: var(--color-text);">
                 ${this.session.name || (Array.isArray(this.session.command) ? this.session.command.join(' ') : this.session.command)}
@@ -217,10 +217,10 @@ export class SessionHeader extends LitElement {
           </div>
 
           <!-- Right: Minimal Actions -->
-          <div class="flex items-center gap-2 flex-shrink-0">
+          <div class="flex items-center gap-2 flex-shrink-0 header-actions">
             <!-- Chat mode toggle -->
             <button
-              class="flex items-center justify-center w-10 h-10 rounded-xl transition-all"
+              class="flex items-center justify-center w-10 h-10 rounded-xl transition-all header-action-btn"
               style="background: ${this.chatMode ? 'var(--color-primary)' : 'rgba(255,255,255,0.06)'}; border: 1px solid ${this.chatMode ? 'var(--color-primary)' : 'rgba(255,255,255,0.08)'}; color: ${this.chatMode ? 'var(--color-bg)' : '#A3A3A3'};"
               @click=${() => this.onToggleChatMode?.()}
               title="${this.chatMode ? 'Terminal' : 'Chat'}"

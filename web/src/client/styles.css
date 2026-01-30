@@ -1349,13 +1349,60 @@ body[data-keyboard-visible="true"] {
     max-width: 100% !important;
     overflow: hidden;
   }
-  
+
   /* Ensure card content doesn't overflow */
   .session-card .card-content,
   .session-card .terminal-container {
     width: 100%;
     max-width: 100%;
     overflow: hidden;
+  }
+}
+
+/* Extra-narrow screen support (< 450px) - Issue #580 */
+@media (max-width: 450px) {
+  /* Reduce session header button sizes on very narrow screens */
+  .session-header-container .header-action-btn {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+  }
+
+  .session-header-container .header-action-btn svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  /* Reduce gaps in mobile header */
+  .session-header-container .header-actions {
+    gap: 4px !important;
+  }
+
+  /* Reduce padding on very narrow screens */
+  .session-header-container {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  /* Ensure session info truncates properly */
+  .session-header-container .session-info {
+    max-width: calc(100vw - 140px);
+  }
+
+  /* Compact menu button - smaller on narrow screens */
+  compact-menu .relative {
+    width: 36px !important;
+  }
+
+  compact-menu button[aria-label="More actions menu"] {
+    width: 36px !important;
+    height: 36px !important;
+    padding: 6px !important;
+  }
+
+  compact-menu button[aria-label="More actions menu"] svg {
+    width: 18px !important;
+    height: 18px !important;
   }
 }
 
