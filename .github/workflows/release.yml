@@ -25,7 +25,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       
     - name: Select Xcode 16.3
       uses: maxim-lobanov/setup-xcode@v1
@@ -33,7 +33,7 @@ jobs:
         xcode-version: '16.4'
     
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: '24'
     
@@ -49,7 +49,7 @@ jobs:
         echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
     
     - name: Setup pnpm cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       continue-on-error: true
       with:
         path: ${{ env.STORE_PATH }}
@@ -104,7 +104,7 @@ jobs:
         ls -la build/*.dmg build/*.zip
     
     - name: Upload Release Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: mac-release
         path: |
@@ -131,7 +131,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       
     - name: Select Xcode 16.3
       uses: maxim-lobanov/setup-xcode@v1
@@ -157,7 +157,7 @@ jobs:
           -derivedDataPath build/DerivedData
     
     - name: Upload iOS Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: ios-release
         path: ios/build/DerivedData/Build/Products/Release-iphoneos/

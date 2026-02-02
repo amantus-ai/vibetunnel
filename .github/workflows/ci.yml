@@ -22,7 +22,7 @@ jobs:
       mac: ${{ steps.filter.outputs.mac }}
       ios: ${{ steps.filter.outputs.ios }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: dorny/paths-filter@v3
       id: filter
       with:
