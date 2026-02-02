@@ -9,6 +9,7 @@ import { spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { formatCommand } from '../../shared/utils/command-utils.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('process-utils');
@@ -334,7 +335,7 @@ export function resolveCommand(command: string[]): {
         // Non-interactive command execution
         return {
           command: userShell,
-          args: ['-c', command.join(' ')],
+          args: ['-c', formatCommand(command)],
           useShell: true,
           resolvedFrom: 'shell',
         };
@@ -342,7 +343,7 @@ export function resolveCommand(command: string[]): {
         // Interactive shell session
         return {
           command: userShell,
-          args: ['-i', '-c', command.join(' ')],
+          args: ['-i', '-c', formatCommand(command)],
           useShell: true,
           resolvedFrom: 'shell',
           isInteractive: true,
@@ -353,7 +354,7 @@ export function resolveCommand(command: string[]): {
       // Note: PowerShell aliases work differently than Unix aliases
       return {
         command: userShell,
-        args: ['-NoLogo', '-Command', command.join(' ')],
+        args: ['-NoLogo', '-Command', formatCommand(command)],
         useShell: true,
         resolvedFrom: 'shell',
       };
@@ -362,7 +363,7 @@ export function resolveCommand(command: string[]): {
       // Note: cmd.exe uses 'doskey' for aliases, not traditional aliases
       return {
         command: userShell,
-        args: ['/C', command.join(' ')],
+        args: ['/C', formatCommand(command)],
         useShell: true,
         resolvedFrom: 'shell',
       };
@@ -380,7 +381,7 @@ export function resolveCommand(command: string[]): {
         // The -l flag makes it a login shell, ensuring profile/rc files are sourced
         return {
           command: userShell,
-          args: ['-i', '-l', '-c', command.join(' ')],
+          args: ['-i', '-l', '-c', formatCommand(command)],
           useShell: true,
           resolvedFrom: 'alias',
         };
@@ -388,7 +389,7 @@ export function resolveCommand(command: string[]): {
         // No shell config found, use basic execution
         return {
           command: userShell,
-          args: ['-c', command.join(' ')],
+          args: ['-c', formatCommand(command)],
           useShell: true,
           resolvedFrom: 'shell',
         };
@@ -397,7 +398,7 @@ export function resolveCommand(command: string[]): {
       // Interactive shell session: use -i and -l for proper initialization
       return {
         command: userShell,
-        args: ['-i', '-l', '-c', command.join(' ')],
+        args: ['-i', '-l', '-c', formatCommand(command)],
         useShell: true,
         resolvedFrom: 'shell',
         isInteractive: true,

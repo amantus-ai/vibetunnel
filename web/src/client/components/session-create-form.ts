@@ -28,7 +28,7 @@ import { type GitRepoInfo, GitService } from '../services/git-service.js';
 import { RepositoryService } from '../services/repository-service.js';
 import { ServerConfigService } from '../services/server-config-service.js';
 import { type SessionCreateData, SessionService } from '../services/session-service.js';
-import { parseCommand } from '../utils/command-utils.js';
+import { parseCommand } from '../../shared/utils/command-utils.js';
 import { createLogger } from '../utils/logger.js';
 import { formatPathForDisplay } from '../utils/path-utils.js';
 import {
@@ -972,15 +972,14 @@ export class SessionCreateForm extends LitElement {
       <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none">
         <span class="text-[10px] sm:text-xs text-primary font-medium flex items-center gap-1">[${this.currentBranch}]
           ${this.gitRepoInfo.hasChanges ? html`<span class="text-yellow-500" title="Modified">●</span>` : ''}
-          ${
-            this.gitRepoInfo.isWorktree
-              ? html`
+          ${this.gitRepoInfo.isWorktree
+        ? html`
             <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" class="text-purple-400" title="Git worktree">
               <path d="M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z"/>
             </svg>
           `
-              : ''
-          }
+        : ''
+      }
         </span>
       </div>
     `;
@@ -1053,9 +1052,8 @@ export class SessionCreateForm extends LitElement {
 
           <div class="p-3 sm:p-4 overflow-y-auto flex-grow max-h-[calc(100vh-8rem)] sm:max-h-[calc(100vh-6rem)] lg:max-h-[calc(100vh-4rem)]">
             <!-- Branch Switch Warning -->
-            ${
-              this.branchSwitchWarning
-                ? html`
+            ${this.branchSwitchWarning
+        ? html`
                   <div class="mb-2 sm:mb-3 p-2 sm:p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                     <div class="flex items-start gap-2">
                       <svg class="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1067,8 +1065,8 @@ export class SessionCreateForm extends LitElement {
                     </div>
                   </div>
                 `
-                : nothing
-            }
+        : nothing
+      }
             
             <!-- Session Name -->
             <div class="mb-2 sm:mb-3">
@@ -1135,11 +1133,10 @@ export class SessionCreateForm extends LitElement {
                 </button>
                 <button
                   id="session-autocomplete-button"
-                  class="bg-bg-tertiary border border-border/50 rounded-lg p-1.5 sm:p-2 lg:p-3 font-mono text-text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary/50 hover:shadow-sm flex-shrink-0 ${
-                    this.showRepositoryDropdown || this.showCompletions
-                      ? 'text-primary border-primary/50'
-                      : ''
-                  }"
+                  class="bg-bg-tertiary border border-border/50 rounded-lg p-1.5 sm:p-2 lg:p-3 font-mono text-text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary/50 hover:shadow-sm flex-shrink-0 ${this.showRepositoryDropdown || this.showCompletions
+        ? 'text-primary border-primary/50'
+        : ''
+      }"
                   @click=${this.handleToggleAutocomplete}
                   ?disabled=${this.disabled || this.isCreating}
                   title="Choose from repositories or recent directories"
@@ -1234,12 +1231,11 @@ export class SessionCreateForm extends LitElement {
                 id="session-create-button"
                 class="flex-1 bg-primary text-text-bright px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 xl:px-6 xl:py-3 rounded-lg font-mono text-[10px] sm:text-xs lg:text-sm font-medium transition-all duration-200 hover:bg-primary-hover hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
                 @click=${this.handleCreate}
-                ?disabled=${
-                  this.disabled ||
-                  this.isCreating ||
-                  !this.workingDir?.trim() ||
-                  !this.command?.trim()
-                }
+                ?disabled=${this.disabled ||
+      this.isCreating ||
+      !this.workingDir?.trim() ||
+      !this.command?.trim()
+      }
                 data-testid="create-session-submit"
               >
                 ${this.isCreating ? 'Creating...' : 'Create'}
