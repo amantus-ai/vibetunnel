@@ -178,7 +178,7 @@ class ServerListViewModel: ServerListViewModelProtocol {
 
             // Check if server requires authentication
             let authConfig = try await authService.getAuthConfig()
-            connectionLogger.debug("🔗 Auth config: noAuth=\(authConfig.noAuth)")
+            connectionLogger.debug("🔗 Auth config: noAuth=\(authConfig.noAuth), tailscaleAuth=\(authConfig.tailscaleAuth ?? false)")
 
             if authConfig.noAuth {
                 // No auth required, test connection directly
@@ -191,9 +191,15 @@ class ServerListViewModel: ServerListViewModelProtocol {
                 return
             }
 
-            // Authentication required - attempt auto-login
-            // connectionLogger.info("🔗 Authentication required, attempting auto-login")
-            try await authService.attemptAutoLogin(profile: profile)
+            // Check for Tailscale identity authentication (via Tailscale Serve headers)
+            if authConfig.tailscaleAuth == true, let user = authConfig.authenticatedUser {
+                connectionLogger.info("🔗 Tailscale identity auth available for user: \(user)")
+                try await authService.authenticateWithTailscale(user: user)
+                connectionLogger.info("🔗 ✅ Tailscale auth successful")
+            } else {
+                // Standard authentication - attempt auto-login with stored credentials
+                try await authService.attemptAutoLogin(profile: profile)
+            }
             // connectionLogger.info("🔗 ✅ Auto-login successful")
 
             // Auto-login successful, test connection

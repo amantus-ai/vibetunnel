@@ -50,6 +50,8 @@ final class AuthenticationService: ObservableObject {
         let noAuth: Bool
         let enableSSHKeys: Bool
         let disallowUserPassword: Bool
+        let tailscaleAuth: Bool?
+        let authenticatedUser: String?
     }
 
     /// Authentication response from the server.
@@ -169,6 +171,27 @@ final class AuthenticationService: ObservableObject {
         } else {
             throw APIError.authenticationFailed(authResponse.error ?? "Authentication failed")
         }
+    }
+
+    /// Authenticate via Tailscale identity (Tailscale Serve auto-auth).
+    /// Tailscale Serve injects identity headers on every request, so no JWT token is needed.
+    /// We just mark the session as authenticated using the user info from /api/auth/config.
+    func authenticateWithTailscale(user: String) async throws {
+        // Verify Tailscale auth actually works by calling a protected endpoint
+        let url = self.serverConfig.apiURL(path: "/api/sessions")
+        let (_, response) = try await URLSession.shared.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw AuthenticationError.serverError("Tailscale identity auth failed - server rejected request")
+        }
+
+        // Tailscale Serve injects identity headers on every request,
+        // so no JWT token is needed - every request is auto-authenticated.
+        self.currentUser = user
+        self.authMethod = .noAuth
+        self.isAuthenticated = true
+
+        self.logger.info("Authenticated via Tailscale identity: \(user)")
     }
 
     /// Verify if current token is still valid

@@ -297,6 +297,32 @@ final class TailscaleDiscoveryService {
             await resolveHostname(hostname)
         }
 
+        // First, try direct HTTP probe on the standard port
+        if let server = await probeHTTP(
+            hostname: hostname,
+            resolvedIP: resolvedIP,
+            port: port
+        ) {
+            return server
+        }
+
+        // If direct probe failed, try HTTPS on port 443 via the hostname.
+        // This handles the case where Tailscale Serve is active — the server
+        // binds to localhost only, and Tailscale Serve proxies HTTPS 443 → localhost:4020.
+        logger.info("HTTP probe failed for \(hostname):\(port), trying HTTPS via Tailscale Serve on port 443")
+        if let server = await probeHTTPS(hostname: hostname, resolvedIP: resolvedIP) {
+            return server
+        }
+
+        return nil
+    }
+
+    /// Probes a server via plain HTTP on the given port
+    private func probeHTTP(
+        hostname: String,
+        resolvedIP: String?,
+        port: Int
+    ) async -> TailscaleServer? {
         // Construct URL for health check - VibeTunnel uses /api/health endpoint
         let urlString: String = if let resolvedIP {
             "http://\(resolvedIP):\(port)/api/health"
@@ -308,7 +334,44 @@ final class TailscaleDiscoveryService {
             return nil
         }
 
-        // Perform health check
+        return await performHealthProbe(
+            url: url,
+            hostname: hostname,
+            resolvedIP: resolvedIP,
+            port: port,
+            isHTTPS: false
+        )
+    }
+
+    /// Probes a server via HTTPS on port 443 (Tailscale Serve)
+    private func probeHTTPS(
+        hostname: String,
+        resolvedIP: String?
+    ) async -> TailscaleServer? {
+        // Tailscale Serve uses the MagicDNS hostname with HTTPS on port 443
+        let httpsUrlString = "https://\(hostname)/api/health"
+        guard let url = URL(string: httpsUrlString) else {
+            logger.debug("Invalid HTTPS URL for \(hostname)")
+            return nil
+        }
+
+        return await performHealthProbe(
+            url: url,
+            hostname: hostname,
+            resolvedIP: resolvedIP,
+            port: 443,
+            isHTTPS: true
+        )
+    }
+
+    /// Performs the actual health probe request and parses the response
+    private func performHealthProbe(
+        url: URL,
+        hostname: String,
+        resolvedIP: String?,
+        port: Int,
+        isHTTPS: Bool
+    ) async -> TailscaleServer? {
         do {
             let configuration = URLSessionConfiguration.default
             configuration.timeoutIntervalForRequest = Constants.probeTimeout
@@ -345,6 +408,12 @@ final class TailscaleDiscoveryService {
                         }
                     }
 
+                    // If we reached the server via HTTPS, use that as the httpsUrl
+                    if isHTTPS && httpsUrl == nil {
+                        httpsUrl = "https://\(hostname)"
+                        logger.info("Server reachable via Tailscale Serve HTTPS: \(httpsUrl!)")
+                    }
+
                     // Extract device name from hostname
                     let deviceName = hostname
                         .replacingOccurrences(of: ".ts.net", with: "")
@@ -356,7 +425,7 @@ final class TailscaleDiscoveryService {
                     return TailscaleServer(
                         hostname: hostname,
                         ip: resolvedIP,
-                        port: port,
+                        port: isHTTPS ? Constants.defaultPort : port,
                         deviceName: deviceName,
                         isReachable: true,
                         lastSeen: Date(),
@@ -366,7 +435,7 @@ final class TailscaleDiscoveryService {
                 }
             }
         } catch {
-            logger.debug("Failed to probe \(hostname): \(error.localizedDescription)")
+            logger.debug("Failed to probe \(hostname) (\(isHTTPS ? "HTTPS" : "HTTP")): \(error.localizedDescription)")
         }
 
         return nil
