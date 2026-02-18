@@ -686,7 +686,8 @@ class BufferWebSocketClient: NSObject {
     }
 
     private func sendV3Subscribe(sessionId: String) async throws {
-        let flags: UInt32 = V3SubscribeFlags.snapshots.rawValue | V3SubscribeFlags.events.rawValue
+        let flags: UInt32 = V3SubscribeFlags.stdout.rawValue | V3SubscribeFlags.snapshots.rawValue | V3SubscribeFlags
+            .events.rawValue
         var payload = Data(count: 12)
         payload.withUnsafeMutableBytes { bytes in
             bytes.storeBytes(of: flags.littleEndian, toByteOffset: 0, as: UInt32.self)

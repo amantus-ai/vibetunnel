@@ -59,6 +59,7 @@ struct GhosttyWebView: UIViewRepresentable {
         private var bufferRenderer = TerminalBufferRenderer()
         private var isReady = false
         private var pendingTerminalSize: TerminalSize?
+        private var pendingData: [(payload: String, followCursor: Bool)] = []
         private var lastTerminalSize: TerminalSize?
 
         init(_ parent: GhosttyWebView) {
@@ -233,10 +234,12 @@ struct GhosttyWebView: UIViewRepresentable {
             </html>
             """
 
+            // Try subdirectory first (folder reference), then bundle root (synchronized groups flatten)
             guard let ghosttyURL = Bundle.main.url(
                 forResource: "ghostty-web",
                 withExtension: "js",
                 subdirectory: "ghostty")
+                ?? Bundle.main.url(forResource: "ghostty-web", withExtension: "js")
             else {
                 self.logger.error("ghostty-web.js missing from bundle")
                 return
@@ -307,6 +310,14 @@ struct GhosttyWebView: UIViewRepresentable {
                 self.setTerminalSize(cols: size.cols, rows: size.rows)
                 self.pendingTerminalSize = nil
             }
+
+            // Flush any data that arrived before the terminal was ready
+            for item in self.pendingData {
+                self.webView?
+                    .evaluateJavaScript(
+                        "window.ghosttyAPI.writeToTerminal(\(item.payload), \(item.followCursor ? "true" : "false"))")
+            }
+            self.pendingData.removeAll()
         }
 
         func updateFontSize(_ size: CGFloat) {
@@ -329,6 +340,12 @@ struct GhosttyWebView: UIViewRepresentable {
         func feedData(_ data: String) {
             let followCursor = self.parent.viewModel?.isAutoScrollEnabled ?? true
             guard let payload = jsonString(data) else { return }
+
+            if !self.isReady {
+                self.pendingData.append((payload: payload, followCursor: followCursor))
+                return
+            }
+
             self.webView?
                 .evaluateJavaScript("window.ghosttyAPI.writeToTerminal(\(payload), \(followCursor ? "true" : "false"))")
         }
@@ -391,7 +408,7 @@ struct GhosttyWebView: UIViewRepresentable {
             return self.jsonString(fontFamily) ?? "\"monospace\""
         }
 
-        private func jsonString<T: Encodable>(_ value: T) -> String? {
+        private func jsonString(_ value: some Encodable) -> String? {
             guard let data = try? JSONEncoder().encode(value) else { return nil }
             return String(data: data, encoding: .utf8)
         }

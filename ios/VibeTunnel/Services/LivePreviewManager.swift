@@ -170,17 +170,8 @@ struct LivePreviewModifier: ViewModifier {
     }
 }
 
-/// Environment key for passing subscription down the view hierarchy.
-/// Enables child views to access the live preview subscription.
-private struct LivePreviewSubscriptionKey: EnvironmentKey {
-    static let defaultValue: LivePreviewSubscription? = nil
-}
-
 extension EnvironmentValues {
-    var livePreviewSubscription: LivePreviewSubscription? {
-        get { self[LivePreviewSubscriptionKey.self] }
-        set { self[LivePreviewSubscriptionKey.self] = newValue }
-    }
+    @Entry var livePreviewSubscription: LivePreviewSubscription?
 }
 
 extension View {

@@ -53,7 +53,6 @@ struct TerminalBufferPreview: View {
         .cornerRadius(Theme.CornerRadius.small)
     }
 
-    @ViewBuilder
     private func cellView(for cell: BufferCell) -> some View {
         Text(cell.char.isEmpty ? " " : cell.char)
             .font(Theme.Typography.terminalSystem(size: self.fontSize))

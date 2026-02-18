@@ -7,7 +7,7 @@ struct TerminalDataTests {
     // MARK: - TerminalEvent Tests
 
     @Test("Parse header event")
-    func parseHeaderEvent() throws {
+    func parseHeaderEvent() {
         let headerJSON = """
         {
             "version": 2,
@@ -40,7 +40,7 @@ struct TerminalDataTests {
     }
 
     @Test("Parse minimal header event")
-    func parseMinimalHeaderEvent() throws {
+    func parseMinimalHeaderEvent() {
         let headerJSON = """
         {
             "version": 2,
@@ -67,7 +67,7 @@ struct TerminalDataTests {
     }
 
     @Test("Parse output event")
-    func parseOutputEvent() throws {
+    func parseOutputEvent() {
         let outputJSON = "[1.5, \"o\", \"Hello, world!\\r\\n\"]"
 
         let event = TerminalEvent(from: outputJSON)
@@ -82,7 +82,7 @@ struct TerminalDataTests {
     }
 
     @Test("Parse resize event")
-    func parseResizeEvent() throws {
+    func parseResizeEvent() {
         let resizeJSON = "[2.5, \"r\", \"80x25\"]"
 
         let event = TerminalEvent(from: resizeJSON)
@@ -97,7 +97,7 @@ struct TerminalDataTests {
     }
 
     @Test("Parse exit event")
-    func parseExitEvent() throws {
+    func parseExitEvent() {
         let exitJSON = "[\"exit\", 0, \"test-session-123\"]"
 
         let event = TerminalEvent(from: exitJSON)
@@ -112,7 +112,7 @@ struct TerminalDataTests {
     }
 
     @Test("Parse exit event with non-zero code")
-    func parseExitEventNonZero() throws {
+    func parseExitEventNonZero() {
         let exitJSON = "[\"exit\", 127, \"error-session\"]"
 
         let event = TerminalEvent(from: exitJSON)
@@ -127,41 +127,41 @@ struct TerminalDataTests {
     }
 
     @Test("Invalid JSON returns nil")
-    func invalidJSON() throws {
+    func invalidJSON() {
         let invalidJSON = "not valid json"
         let event = TerminalEvent(from: invalidJSON)
         #expect(event == nil)
     }
 
     @Test("Invalid event type returns nil")
-    func invalidEventType() throws {
+    func invalidEventType() {
         let invalidEvent = "[1.0, \"x\", \"unknown type\"]"
         let event = TerminalEvent(from: invalidEvent)
         #expect(event == nil)
     }
 
     @Test("Missing array elements returns nil")
-    func missingArrayElements() throws {
+    func missingArrayElements() {
         let incompleteEvent = "[1.0, \"o\"]"
         let event = TerminalEvent(from: incompleteEvent)
         #expect(event == nil)
     }
 
     @Test("Wrong data types in array returns nil")
-    func wrongDataTypes() throws {
+    func wrongDataTypes() {
         let wrongTypes = "[\"not-a-number\", \"o\", \"data\"]"
         let event = TerminalEvent(from: wrongTypes)
         #expect(event == nil)
     }
 
     @Test("Empty string returns nil")
-    func emptyString() throws {
+    func emptyString() {
         let event = TerminalEvent(from: "")
         #expect(event == nil)
     }
 
     @Test("Array with wrong exit format returns nil")
-    func wrongExitFormat() throws {
+    func wrongExitFormat() {
         // Wrong first element
         let wrongExit1 = "[\"not-exit\", 0, \"session\"]"
         #expect(TerminalEvent(from: wrongExit1) == nil)
@@ -306,7 +306,7 @@ struct TerminalDataTests {
     }
 
     @Test("Edge cases for terminal dimensions")
-    func terminalDimensionEdgeCases() throws {
+    func terminalDimensionEdgeCases() {
         // Minimum dimensions
         let minResize = TerminalResize(cols: 1, rows: 1)
         #expect(minResize.cols == 1)

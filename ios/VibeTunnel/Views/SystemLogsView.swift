@@ -23,7 +23,9 @@ struct SystemLogsView: View {
         case log = "Log"
         case debug = "Debug"
 
-        var displayName: String { rawValue }
+        var displayName: String {
+            rawValue
+        }
 
         func matches(_ line: String) -> Bool {
             switch self {

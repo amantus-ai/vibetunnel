@@ -268,13 +268,18 @@ struct TerminalView: View {
             self.selectedTheme.background
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
+            ZStack {
+                // Always keep terminal rendered to preserve WKWebView/WASM state.
+                // Destroying and recreating GhosttyWebView loses all buffered terminal data.
+                self.terminalContent
+
+                // Overlay loading/error states on top of the terminal
                 if self.viewModel.isConnecting {
+                    self.selectedTheme.background
                     self.loadingView
                 } else if let error = viewModel.errorMessage {
+                    self.selectedTheme.background
                     self.errorView(error)
-                } else {
-                    self.terminalContent
                 }
             }
         }
@@ -643,32 +648,45 @@ class TerminalViewModel {
         self.connectionStatusTask?.cancel()
         self.connectionStatusTask = Task { [weak self] in
             guard let self else { return }
+            var hasConnectedOnce = false
+            var disconnectedAt: Date?
+            let disconnectGracePeriod: TimeInterval = 3.0
+
             while !Task.isCancelled {
                 let connected = self.bufferWebSocketClient.isConnected
-                await MainActor.run {
-                    self.isConnecting = false
-                    self.isConnected = connected
-                    if !connected {
-                        self.errorMessage = "WebSocket disconnected"
-                    } else {
+                let error = self.bufferWebSocketClient.connectionError
+
+                if connected {
+                    hasConnectedOnce = true
+                    disconnectedAt = nil
+                    await MainActor.run {
+                        self.isConnecting = false
+                        self.isConnected = true
                         self.errorMessage = nil
                     }
-                }
-                try? await Task.sleep(nanoseconds: 500_000_000) // Check every 0.5 seconds
-            }
-        }
-
-        // Monitor connection errors
-        self.connectionErrorTask?.cancel()
-        self.connectionErrorTask = Task { [weak self] in
-            guard let self else { return }
-            while !Task.isCancelled {
-                if let error = self.bufferWebSocketClient.connectionError {
+                } else if let error {
+                    disconnectedAt = nil
                     await MainActor.run {
-                        self.errorMessage = error.localizedDescription
                         self.isConnecting = false
+                        self.isConnected = false
+                        self.errorMessage = error.localizedDescription
+                    }
+                } else if hasConnectedOnce {
+                    // Brief disconnect — give auto-reconnect time before showing error
+                    if disconnectedAt == nil {
+                        disconnectedAt = Date()
+                    }
+                    if let since = disconnectedAt,
+                       Date().timeIntervalSince(since) > disconnectGracePeriod
+                    {
+                        await MainActor.run {
+                            self.isConnected = false
+                            self.errorMessage = "WebSocket disconnected"
+                        }
                     }
                 }
+                // Otherwise: still connecting initially, keep showing the loading spinner
+
                 try? await Task.sleep(nanoseconds: 500_000_000) // Check every 0.5 seconds
             }
         }

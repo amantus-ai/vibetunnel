@@ -235,7 +235,7 @@ struct WebSocketReconnectionTests {
     // MARK: - State Persistence
 
     @Test("Connection state persistence")
-    func statePersistence() {
+    func statePersistence() throws {
         struct ConnectionState: Codable {
             let url: String
             let sessionId: String?
@@ -258,7 +258,7 @@ struct WebSocketReconnectionTests {
         // Decode
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let decoded = try? decoder.decode(ConnectionState.self, from: data!)
+        let decoded = try? decoder.decode(ConnectionState.self, from: try #require(data))
 
         #expect(decoded?.url == state.url)
         #expect(decoded?.sessionId == state.sessionId)

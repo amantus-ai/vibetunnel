@@ -9,7 +9,7 @@ struct PerformanceTests {
     func stringConcatenation() {
         let iterations = 1000
 
-        // Test inefficient concatenation
+        /// Test inefficient concatenation
         func inefficientConcat() -> String {
             var result = ""
             for i in 0..<iterations {
@@ -18,7 +18,7 @@ struct PerformanceTests {
             return result
         }
 
-        // Test efficient concatenation
+        /// Test efficient concatenation
         func efficientConcat() -> String {
             var parts: [String] = []
             parts.reserveCapacity(iterations)
@@ -263,7 +263,7 @@ struct PerformanceTests {
     // MARK: - I/O Performance
 
     @Test("File I/O stress test")
-    func fileIO() {
+    func fileIO() throws {
         let tempDir = FileManager.default.temporaryDirectory
         let testFile = tempDir.appendingPathComponent("stress_test_\(UUID().uuidString).txt")
 
@@ -272,7 +272,7 @@ struct PerformanceTests {
         }
 
         let content = String(repeating: "Test data line\n", count: 1000)
-        let data = content.data(using: .utf8)!
+        let data = try #require(content.data(using: .utf8))
 
         // Write test
         do {
@@ -300,7 +300,7 @@ struct PerformanceTests {
     // MARK: - Network Simulation
 
     @Test("URL session task stress test")
-    func uRLSessionStress() {
+    func uRLSessionStress() throws {
         let session = URLSession(configuration: .ephemeral)
         let iterations = 10
         let group = DispatchGroup()
@@ -323,7 +323,7 @@ struct PerformanceTests {
             group.enter()
 
             // Create a data task with invalid URL to test error handling
-            let url = URL(string: "https://invalid-domain-\(i).test")!
+            let url = try #require(URL(string: "https://invalid-domain-\(i).test"))
             let task = session.dataTask(with: url) { _, _, error in
                 if error != nil {
                     Task {

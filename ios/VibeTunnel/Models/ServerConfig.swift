@@ -31,8 +31,8 @@ struct ServerConfig: Codable, Equatable {
         preferTailscale: Bool = false,
         httpsAvailable: Bool = false,
         isPublic: Bool = false,
-        preferSSL: Bool = true
-    ) {
+        preferSSL: Bool = true)
+    {
         self.host = host
         self.port = port
         self.name = name
@@ -54,10 +54,10 @@ struct ServerConfig: Codable, Equatable {
     /// a file URL as fallback to ensure non-nil return.
     var baseURL: URL {
         // Handle IPv6 addresses by wrapping in brackets
-        var formattedHost = host
+        var formattedHost = self.host
 
         // First, strip any existing brackets to normalize
-        if formattedHost.hasPrefix("[") && formattedHost.hasSuffix("]") {
+        if formattedHost.hasPrefix("["), formattedHost.hasSuffix("]") {
             formattedHost = String(formattedHost.dropFirst().dropLast())
         }
 
@@ -77,7 +77,7 @@ struct ServerConfig: Codable, Equatable {
 
         // This should always succeed with valid host and port
         // Fallback ensures we always have a valid URL
-        return URL(string: "http://\(formattedHost):\(port)") ?? URL(fileURLWithPath: "/")
+        return URL(string: "http://\(formattedHost):\(self.port)") ?? URL(fileURLWithPath: "/")
     }
 
     /// User-friendly display name for the server.
@@ -85,7 +85,7 @@ struct ServerConfig: Codable, Equatable {
     /// Returns the custom name if set, otherwise formats
     /// the host and port as "host:port".
     var displayName: String {
-        name ?? "\(host):\(port)"
+        self.name ?? "\(self.host):\(self.port)"
     }
 
     /// Creates a URL for an API endpoint path.
@@ -93,14 +93,14 @@ struct ServerConfig: Codable, Equatable {
     /// - Parameter path: The API path (e.g., "/api/sessions")
     /// - Returns: A complete URL for the API endpoint
     func apiURL(path: String) -> URL {
-        connectionURL().appendingPathComponent(path)
+        self.connectionURL().appendingPathComponent(path)
     }
 
     /// Unique identifier for this server configuration.
     ///
     /// Used for keychain storage and identifying server instances.
     var id: String {
-        "\(host):\(port)"
+        "\(self.host):\(self.port)"
     }
 
     /// Connection type available for this server
@@ -112,9 +112,9 @@ struct ServerConfig: Codable, Equatable {
 
     /// Determines available connection types based on configuration
     var availableConnectionTypes: ConnectionType {
-        if isTailscaleEnabled && tailscaleHostname != nil {
+        if self.isTailscaleEnabled, self.tailscaleHostname != nil {
             .both
-        } else if tailscaleHostname != nil {
+        } else if self.tailscaleHostname != nil {
             .tailscale
         } else {
             .local
@@ -125,11 +125,11 @@ struct ServerConfig: Codable, Equatable {
     /// - Parameter useTailscale: Force use of Tailscale connection if available
     /// - Returns: The best URL for connecting to the server
     func connectionURL(useTailscale: Bool? = nil) -> URL {
-        let shouldUseTailscale = useTailscale ?? preferTailscale
+        let shouldUseTailscale = useTailscale ?? self.preferTailscale
 
-        if shouldUseTailscale && isTailscaleEnabled {
+        if shouldUseTailscale, self.isTailscaleEnabled {
             // For Tailscale connections with HTTPS available
-            if httpsAvailable && preferSSL && tailscaleHostname != nil {
+            if self.httpsAvailable, self.preferSSL, tailscaleHostname != nil {
                 // Use HTTPS via Tailscale hostname (port 443 is implicit)
                 if let tailscaleHostname,
                    let url = URL(string: "https://\(tailscaleHostname)")
@@ -152,26 +152,26 @@ struct ServerConfig: Codable, Equatable {
         }
 
         // Fall back to regular connection
-        return baseURL
+        return self.baseURL
     }
 
     /// Display name with connection type indicator
     var displayNameWithConnectionType: String {
-        let baseName = displayName
+        let baseName = self.displayName
         var indicators: [String] = []
 
         // Add connection security indicator
-        if httpsAvailable && preferSSL {
+        if self.httpsAvailable, self.preferSSL {
             indicators.append("🔒") // HTTPS/SSL connection
         }
 
         // Add public/private indicator
-        if isPublic {
+        if self.isPublic {
             indicators.append("🌐") // Public (Funnel)
         }
 
         // Add Tailscale indicator if using Tailscale but not HTTPS
-        if isTailscaleEnabled && !(httpsAvailable && preferSSL) {
+        if self.isTailscaleEnabled, !(self.httpsAvailable && self.preferSSL) {
             indicators.append("🔗") // Tailscale network
         }
 

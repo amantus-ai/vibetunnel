@@ -12,15 +12,14 @@ struct ServerProfileTests {
             name: "Test Server",
             url: "https://test-machine.tail98c6a0.ts.net",
             host: "100.64.0.1",
-            port: 4_020,
+            port: 4020,
             tailscaleHostname: "test-machine.tail98c6a0.ts.net",
             tailscaleIP: "100.64.0.1",
             isTailscaleEnabled: true,
             preferTailscale: true,
             httpsAvailable: true,
             isPublic: false,
-            preferSSL: true
-        )
+            preferSSL: true)
 
         // Act
         let config = profile.toServerConfig()
@@ -51,8 +50,7 @@ struct ServerProfileTests {
         let profile = ServerProfile(
             id: UUID(),
             name: "Local Server",
-            url: "http://localhost:4020"
-        )
+            url: "http://localhost:4020")
 
         // Act
         let config = profile.toServerConfig()
@@ -62,7 +60,7 @@ struct ServerProfileTests {
         guard let config else { return }
 
         #expect(config.host == "localhost")
-        #expect(config.port == 4_020)
+        #expect(config.port == 4020)
         #expect(config.isTailscaleEnabled == false)
         #expect(config.httpsAvailable == false)
 
@@ -70,7 +68,7 @@ struct ServerProfileTests {
         let connectionUrl = config.connectionURL()
         #expect(connectionUrl.scheme == "http")
         #expect(connectionUrl.host == "localhost")
-        #expect(connectionUrl.port == 4_020)
+        #expect(connectionUrl.port == 4020)
     }
 
     @Test("Handles IPv6 addresses correctly")
@@ -79,8 +77,7 @@ struct ServerProfileTests {
         let profile = ServerProfile(
             id: UUID(),
             name: "IPv6 Server",
-            url: "http://[::1]:8080"
-        )
+            url: "http://[::1]:8080")
 
         // Act
         let config = profile.toServerConfig()
@@ -90,23 +87,21 @@ struct ServerProfileTests {
         guard let config else { return }
 
         #expect(config.host == "::1") // Brackets should be removed
-        #expect(config.port == 8_080)
+        #expect(config.port == 8080)
     }
 
     @Test("ServerProfile storage and retrieval")
-    func storageAndRetrieval() {
+    func storageAndRetrieval() throws {
         // Arrange
-        let testDefaults = UserDefaults(suiteName: "test.serverprofile")!
+        let testDefaults = try #require(UserDefaults(suiteName: "test.serverprofile"))
         testDefaults.removePersistentDomain(forName: "test.serverprofile")
 
         let profile1 = ServerProfile(
             name: "Server 1",
-            url: "http://localhost:4020"
-        )
+            url: "http://localhost:4020")
         let profile2 = ServerProfile(
             name: "Server 2",
-            url: "https://test.example.com"
-        )
+            url: "https://test.example.com")
 
         // Act - Save profiles
         ServerProfile.save(profile1, to: testDefaults)
@@ -131,15 +126,14 @@ struct ServerProfileTests {
     }
 
     @Test("Updates last connected time")
-    func updateLastConnectedTime() {
+    func updateLastConnectedTime() throws {
         // Arrange
-        let testDefaults = UserDefaults(suiteName: "test.serverprofile.time")!
+        let testDefaults = try #require(UserDefaults(suiteName: "test.serverprofile.time"))
         testDefaults.removePersistentDomain(forName: "test.serverprofile.time")
 
         let profile = ServerProfile(
             name: "Test Server",
-            url: "http://localhost:4020"
-        )
+            url: "http://localhost:4020")
         ServerProfile.save(profile, to: testDefaults)
 
         // Act

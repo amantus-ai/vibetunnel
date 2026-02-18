@@ -231,7 +231,7 @@ struct SessionCardView: View {
 
     // MARK: - View Components
 
-    @ViewBuilder private var commandInfoView: some View {
+    private var commandInfoView: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 4) {
                 Text("$")

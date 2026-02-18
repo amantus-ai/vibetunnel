@@ -8,7 +8,7 @@ struct TailscaleServiceTests {
 
     @Test("Save and load OAuth credentials")
     @MainActor
-    func saveAndLoadCredentials() async {
+    func saveAndLoadCredentials() {
         // Arrange
         let service = TailscaleService.shared
         service.clearCredentials()
@@ -31,7 +31,7 @@ struct TailscaleServiceTests {
 
     @Test("Clear credentials removes all data including tokens")
     @MainActor
-    func testClearCredentials() async {
+    func testClearCredentials() {
         // Arrange
         let service = TailscaleService.shared
         service.organization = "k4cdcxxxxxxxx" // clientId
@@ -173,8 +173,7 @@ struct TailscaleServiceTests {
             expires: nil,
             keyExpiryDisabled: nil,
             updateAvailable: nil,
-            clientVersion: nil
-        )
+            clientVersion: nil)
         #expect(macDevice.isVibeTunnelServer == true)
 
         // Test Darwin detection
@@ -194,8 +193,7 @@ struct TailscaleServiceTests {
             expires: nil,
             keyExpiryDisabled: nil,
             updateAvailable: nil,
-            clientVersion: nil
-        )
+            clientVersion: nil)
         #expect(darwinDevice.isVibeTunnelServer == true)
 
         // Test tag detection
@@ -215,8 +213,7 @@ struct TailscaleServiceTests {
             expires: nil,
             keyExpiryDisabled: nil,
             updateAvailable: nil,
-            clientVersion: nil
-        )
+            clientVersion: nil)
         #expect(taggedDevice.isVibeTunnelServer == true)
 
         // Test non-server device
@@ -236,8 +233,7 @@ struct TailscaleServiceTests {
             expires: nil,
             keyExpiryDisabled: nil,
             updateAvailable: nil,
-            clientVersion: nil
-        )
+            clientVersion: nil)
         #expect(iosDevice.isVibeTunnelServer == false)
     }
 
@@ -263,8 +259,7 @@ struct TailscaleServiceTests {
             expires: nil,
             keyExpiryDisabled: nil,
             updateAvailable: nil,
-            clientVersion: nil
-        )
+            clientVersion: nil)
         #expect(recentDevice.isOnline == true)
 
         // Device seen 10 minutes ago - should be offline
@@ -284,8 +279,7 @@ struct TailscaleServiceTests {
             expires: nil,
             keyExpiryDisabled: nil,
             updateAvailable: nil,
-            clientVersion: nil
-        )
+            clientVersion: nil)
         #expect(oldDevice.isOnline == false)
 
         // Device with no lastSeen - should be offline
@@ -305,8 +299,7 @@ struct TailscaleServiceTests {
             expires: nil,
             keyExpiryDisabled: nil,
             updateAvailable: nil,
-            clientVersion: nil
-        )
+            clientVersion: nil)
         #expect(noLastSeenDevice.isOnline == false)
     }
 }

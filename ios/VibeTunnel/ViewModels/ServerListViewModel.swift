@@ -47,17 +47,17 @@ class ServerListViewModel: ServerListViewModelProtocol {
         connectionManager: ConnectionManager = ConnectionManager.shared,
         networkMonitor: NetworkMonitoring = NetworkMonitor.shared,
         keychainService: KeychainServiceProtocol = KeychainService(),
-        userDefaults: UserDefaults = .standard
-    ) {
+        userDefaults: UserDefaults = .standard)
+    {
         self.connectionManager = connectionManager
         self.networkMonitor = networkMonitor
         self.keychainService = keychainService
         self.userDefaults = userDefaults
-        loadProfiles()
+        self.loadProfiles()
     }
 
     func loadProfiles() {
-        profiles = ServerProfile.loadAll(from: userDefaults).sorted { profile1, profile2 in
+        self.profiles = ServerProfile.loadAll(from: self.userDefaults).sorted { profile1, profile2 in
             // Sort by last connected (most recent first), then by name
             if let date1 = profile1.lastConnected, let date2 = profile2.lastConnected {
                 date1 > date2
@@ -72,60 +72,60 @@ class ServerListViewModel: ServerListViewModelProtocol {
     }
 
     func loadProfilesAndCheckHealth() {
-        loadProfiles()
+        self.loadProfiles()
 
         // Check health of all profiles in background
         Task {
-            await checkAndUpdateAllProfiles()
+            await self.checkAndUpdateAllProfiles()
         }
     }
 
     func addProfile(_ profile: ServerProfile, password: String? = nil) async throws {
-        ServerProfile.save(profile, to: userDefaults)
+        ServerProfile.save(profile, to: self.userDefaults)
 
         // Save password to keychain if provided
         if let password, !password.isEmpty {
-            try keychainService.savePassword(password, for: profile.id)
+            try self.keychainService.savePassword(password, for: profile.id)
         }
 
-        loadProfiles()
+        self.loadProfiles()
     }
 
     func updateProfile(_ profile: ServerProfile, password: String? = nil) async throws {
         var updatedProfile = profile
         updatedProfile.updatedAt = Date()
-        ServerProfile.save(updatedProfile, to: userDefaults)
+        ServerProfile.save(updatedProfile, to: self.userDefaults)
 
         // Handle password updates based on auth requirement
         if !profile.requiresAuth {
             // If profile doesn't require auth, remove any stored password
-            try? keychainService.deletePassword(for: profile.id)
+            try? self.keychainService.deletePassword(for: profile.id)
         } else if let password {
             if password.isEmpty {
                 // Delete password if empty string provided
-                try keychainService.deletePassword(for: profile.id)
+                try self.keychainService.deletePassword(for: profile.id)
             } else {
                 // Save new password
-                try keychainService.savePassword(password, for: profile.id)
+                try self.keychainService.savePassword(password, for: profile.id)
             }
         }
         // If password is nil and profile requires auth, leave existing password unchanged
 
-        loadProfiles()
+        self.loadProfiles()
     }
 
     func deleteProfile(_ profile: ServerProfile) async throws {
-        ServerProfile.delete(profile, from: userDefaults)
+        ServerProfile.delete(profile, from: self.userDefaults)
 
         // Delete password from keychain
-        try keychainService.deletePassword(for: profile.id)
+        try self.keychainService.deletePassword(for: profile.id)
 
-        loadProfiles()
+        self.loadProfiles()
     }
 
     func getPassword(for profile: ServerProfile) -> String? {
         do {
-            return try keychainService.getPassword(for: profile.id)
+            return try self.keychainService.getPassword(for: profile.id)
         } catch {
             // Password not found or error occurred
             return nil
@@ -134,7 +134,7 @@ class ServerListViewModel: ServerListViewModelProtocol {
 
     func connectToProfile(_ profile: ServerProfile) async throws {
         // connectionLogger.info("🔗 Starting connection to profile: \(profile.name) (id: \(profile.id))")
-        connectionLogger
+        self.connectionLogger
             .debug("🔗 Profile details: requiresAuth=\(profile.requiresAuth), username=\(profile.username ?? "nil")")
 
         // Log profile URL and connection details
@@ -142,14 +142,14 @@ class ServerListViewModel: ServerListViewModelProtocol {
         // connectionLogger.info("🔗 HTTPS Available: \(profile.httpsAvailable), Prefer SSL: \(profile.preferSSL)")
         // connectionLogger.info("🔗 Tailscale Hostname: \(profile.tailscaleHostname ?? "nil")")
 
-        isLoading = true
-        errorMessage = nil
-        showLoginView = false
+        self.isLoading = true
+        self.errorMessage = nil
+        self.showLoginView = false
         defer { isLoading = false }
 
         // Create server config
         guard var config = profile.toServerConfig() else {
-            connectionLogger.error("🔗 ❌ Failed to create server config")
+            self.connectionLogger.error("🔗 ❌ Failed to create server config")
             throw APIError.invalidURL
         }
         // connectionLogger.info("🔗 ✅ Created server config:")
@@ -166,45 +166,51 @@ class ServerListViewModel: ServerListViewModelProtocol {
 
         do {
             // Save connection - this sets up the AuthenticationService
-            connectionManager.saveConnection(config)
-            connectionLogger.debug("🔗 ✅ Saved connection to manager")
+            self.connectionManager.saveConnection(config)
+            self.connectionLogger.debug("🔗 ✅ Saved connection to manager")
 
             // Get auth service
             guard let authService = connectionManager.authenticationService else {
-                connectionLogger.error("🔗 ❌ No authentication service available")
+                self.connectionLogger.error("🔗 ❌ No authentication service available")
                 throw APIError.noServerConfigured
             }
-            connectionLogger.debug("🔗 ✅ Got authentication service")
+            self.connectionLogger.debug("🔗 ✅ Got authentication service")
 
             // Check if server requires authentication
             let authConfig = try await authService.getAuthConfig()
-            connectionLogger.debug("🔗 Auth config: noAuth=\(authConfig.noAuth)")
+            self.connectionLogger
+                .debug("🔗 Auth config: noAuth=\(authConfig.noAuth), tailscaleAuth=\(authConfig.tailscaleAuth ?? false)")
 
             if authConfig.noAuth {
                 // No auth required, test connection directly
                 // connectionLogger.info("🔗 No auth required, testing connection directly")
                 _ = try await APIClient.shared.getSessions()
-                connectionManager.isConnected = true
-                ServerProfile.updateLastConnected(for: profile.id, in: userDefaults)
-                loadProfiles()
+                self.connectionManager.isConnected = true
+                ServerProfile.updateLastConnected(for: profile.id, in: self.userDefaults)
+                self.loadProfiles()
                 // connectionLogger.info("🔗 ✅ Connection successful (no auth)")
                 return
             }
 
-            // Authentication required - attempt auto-login
-            // connectionLogger.info("🔗 Authentication required, attempting auto-login")
-            try await authService.attemptAutoLogin(profile: profile)
+            // Check for Tailscale identity authentication (via Tailscale Serve headers)
+            if authConfig.tailscaleAuth == true, let user = authConfig.authenticatedUser {
+                self.connectionLogger.info("🔗 Tailscale identity auth available for user: \(user)")
+                try await authService.authenticateWithTailscale(user: user)
+                self.connectionLogger.info("🔗 ✅ Tailscale auth successful")
+            } else {
+                // Standard authentication - attempt auto-login with stored credentials
+                try await authService.attemptAutoLogin(profile: profile)
+            }
             // connectionLogger.info("🔗 ✅ Auto-login successful")
 
             // Auto-login successful, test connection
             _ = try await APIClient.shared.getSessions()
-            connectionManager.isConnected = true
-            ServerProfile.updateLastConnected(for: profile.id, in: userDefaults)
-            loadProfiles()
+            self.connectionManager.isConnected = true
+            ServerProfile.updateLastConnected(for: profile.id, in: self.userDefaults)
+            self.loadProfiles()
             // connectionLogger.info("🔗 ✅ Connection fully established")
-            connectionLogger.debug(
-                "🔗 📊 ConnectionManager state: isConnected=\(connectionManager.isConnected), serverConfig=\(connectionManager.serverConfig != nil ? "✅" : "❌")"
-            )
+            self.connectionLogger.debug(
+                "🔗 📊 ConnectionManager state: isConnected=\(self.connectionManager.isConnected), serverConfig=\(self.connectionManager.serverConfig != nil ? "✅" : "❌")")
         } catch let authError as AuthenticationError {
             // Handle authentication errors first
             connectionLogger.error("🔗 ❌ Authentication error: \(authError)")
@@ -235,175 +241,91 @@ class ServerListViewModel: ServerListViewModelProtocol {
             // Throw the error to be caught in initiateConnectionToProfile
             throw authError
         } catch {
-            connectionLogger.error("🔗 ❌ Initial connection failed: \(error)")
+            self.connectionLogger.error("🔗 ❌ Initial connection failed: \(error)")
             // connectionLogger.info("🔗 Error type: \(String(describing: type(of: error)))")
 
             // Only attempt fallback for Tailscale servers that were using HTTPS
-            if profile.isTailscaleEnabled && config.httpsAvailable && config.preferSSL && !fallbackAttempted {
-                connectionLogger.warning("🔗 ⚠️ HTTPS connection failed, trying HTTP fallback")
-                // connectionLogger.info("🔗 Error type: \(String(describing: type(of: error)))")
+            if profile.isTailscaleEnabled, config.httpsAvailable, config.preferSSL, !fallbackAttempted {
+                self.connectionLogger
+                    .warning("🔗 ⚠️ HTTPS connection failed, trying HTTP fallback on port \(profile.port ?? 4020)")
 
-                connectionStatusMessage = "HTTPS unavailable, switching to HTTP..."
+                self.connectionStatusMessage = "HTTPS unavailable, switching to HTTP..."
                 fallbackAttempted = true
 
-                // First, do a health check to get current server state
-                if let healthProfile = await checkServerHealth(for: profile) {
-                    connectionLogger
-                        .info(
-                            "🔗 Health check result - HTTPS: \(healthProfile.httpsAvailable), Public: \(healthProfile.isPublic)"
-                        )
+                // Build an HTTP fallback config directly — do NOT save profile changes
+                // during fallback. The profile's stored flags (from discovery) remain authoritative.
+                var httpConfig = ServerConfig(
+                    host: config.tailscaleIP ?? config.tailscaleHostname ?? config.host,
+                    port: profile.port ?? 4020,
+                    name: config.name,
+                    tailscaleHostname: config.tailscaleHostname,
+                    tailscaleIP: config.tailscaleIP,
+                    isTailscaleEnabled: true,
+                    preferTailscale: true,
+                    httpsAvailable: false,
+                    isPublic: false,
+                    preferSSL: false)
 
-                    // Save the updated profile from health check
-                    ServerProfile.save(healthProfile, to: userDefaults)
+                self.connectionManager.saveConnection(httpConfig)
 
-                    // Create new config from health check results
-                    guard var newConfig = healthProfile.toServerConfig() else {
-                        connectionLogger.error("🔗 ❌ Failed to create config from health check")
-                        throw APIError.invalidURL
+                do {
+                    guard let authService = connectionManager.authenticationService else {
+                        throw APIError.noServerConfigured
                     }
 
-                    // Force HTTP for this attempt
-                    newConfig.httpsAvailable = false
-                    newConfig.preferSSL = false
+                    let authConfig = try await authService.getAuthConfig()
 
-                    // connectionLogger.info("🔗 Retrying with HTTP: \(newConfig.connectionURL())")
-
-                    // Save and retry with HTTP config
-                    connectionManager.saveConnection(newConfig)
-
-                    // Try connection again with updated config
-                    do {
-                        guard let authService = connectionManager.authenticationService else {
-                            throw APIError.noServerConfigured
-                        }
-
-                        let authConfig = try await authService.getAuthConfig()
-
-                        if authConfig.noAuth {
-                            _ = try await APIClient.shared.getSessions()
-                            connectionManager.isConnected = true
-                            ServerProfile.updateLastConnected(for: healthProfile.id, in: userDefaults)
-                            loadProfiles()
-                            // connectionLogger.info("🔗 ✅ HTTP fallback successful (no auth)")
-                            connectionStatusMessage = nil
-                            return
-                        } else {
-                            try await authService.attemptAutoLogin(profile: healthProfile)
-                            _ = try await APIClient.shared.getSessions()
-                            connectionManager.isConnected = true
-                            ServerProfile.updateLastConnected(for: healthProfile.id, in: userDefaults)
-                            loadProfiles()
-                            // connectionLogger.info("🔗 ✅ HTTP fallback successful (with auth)")
-                            connectionStatusMessage = nil
-                            return
-                        }
-                    } catch {
-                        connectionLogger.error("🔗 ❌ HTTP fallback also failed: \(error)")
+                    if authConfig.noAuth {
+                        _ = try await APIClient.shared.getSessions()
+                        self.connectionManager.isConnected = true
+                        ServerProfile.updateLastConnected(for: profile.id, in: self.userDefaults)
+                        self.loadProfiles()
+                        self.connectionStatusMessage = nil
+                        return
+                    } else if authConfig.tailscaleAuth == true, let user = authConfig.authenticatedUser {
+                        try await authService.authenticateWithTailscale(user: user)
+                        _ = try await APIClient.shared.getSessions()
+                        self.connectionManager.isConnected = true
+                        ServerProfile.updateLastConnected(for: profile.id, in: self.userDefaults)
+                        self.loadProfiles()
+                        self.connectionStatusMessage = nil
+                        return
+                    } else {
+                        try await authService.attemptAutoLogin(profile: profile)
+                        _ = try await APIClient.shared.getSessions()
+                        self.connectionManager.isConnected = true
+                        ServerProfile.updateLastConnected(for: profile.id, in: self.userDefaults)
+                        self.loadProfiles()
+                        self.connectionStatusMessage = nil
+                        return
                     }
-                } else {
-                    connectionLogger.warning("🔗 ⚠️ Health check failed, trying blind HTTP fallback")
-
-                    // Blind fallback without health check
-                    config.httpsAvailable = false
-                    config.preferSSL = false
-                    config.isPublic = false
-
-                    var updatedProfile = profile
-                    updatedProfile.httpsAvailable = false
-                    updatedProfile.preferSSL = false
-                    updatedProfile.isPublic = false
-                    ServerProfile.save(updatedProfile, to: userDefaults)
-
-                    connectionManager.saveConnection(config)
-
-                    // Try one more time with HTTP
-                    do {
-                        guard let authService = connectionManager.authenticationService else {
-                            throw APIError.noServerConfigured
-                        }
-
-                        let authConfig = try await authService.getAuthConfig()
-
-                        if authConfig.noAuth {
-                            _ = try await APIClient.shared.getSessions()
-                            connectionManager.isConnected = true
-                            ServerProfile.updateLastConnected(for: updatedProfile.id, in: userDefaults)
-                            loadProfiles()
-                            // connectionLogger.info("🔗 ✅ Blind HTTP fallback successful")
-                            connectionStatusMessage = nil
-                            return
-                        } else {
-                            try await authService.attemptAutoLogin(profile: updatedProfile)
-                            _ = try await APIClient.shared.getSessions()
-                            connectionManager.isConnected = true
-                            ServerProfile.updateLastConnected(for: updatedProfile.id, in: userDefaults)
-                            loadProfiles()
-                            // connectionLogger.info("🔗 ✅ Blind HTTP fallback successful (with auth)")
-                            connectionStatusMessage = nil
-                            return
-                        }
-                    } catch {
-                        connectionLogger.error("🔗 ❌ Blind HTTP fallback also failed: \(error)")
-                    }
-                }
-            }
-
-            // Only update Tailscale servers after failure (they might have switched modes)
-            if profile.isTailscaleEnabled {
-                // connectionLogger.info("🔗 📊 Updating Tailscale server UI after connection failure")
-                if let healthProfile = await checkServerHealth(for: profile) {
-                    connectionLogger
-                        .info(
-                            "🔗 📊 Server actual state - HTTPS: \(healthProfile.httpsAvailable), Public: \(healthProfile.isPublic)"
-                        )
-                    connectionLogger
-                        .info("🔗 📊 Profile was - HTTPS: \(profile.httpsAvailable), Public: \(profile.isPublic)")
-
-                    // Save the actual server state to update UI
-                    ServerProfile.save(healthProfile, to: userDefaults)
-
-                    // Force UI refresh to show correct lock/unlock icons
-                    await MainActor.run {
-                        loadProfiles()
-                    }
-
-                    // connectionLogger.info("🔗 ✅ UI updated to reflect server state change")
-                } else {
-                    connectionLogger.warning("🔗 ⚠️ Could not determine server state, updating profile to HTTP-only")
-                    // If we can't reach the server, assume HTTP only
-                    var fallbackProfile = profile
-                    fallbackProfile.httpsAvailable = false
-                    fallbackProfile.preferSSL = false
-                    fallbackProfile.isPublic = false
-                    ServerProfile.save(fallbackProfile, to: userDefaults)
-                    await MainActor.run {
-                        loadProfiles()
-                    }
+                } catch {
+                    self.connectionLogger.error("🔗 ❌ HTTP fallback also failed: \(error)")
                 }
             }
 
             // Clear status message
-            connectionStatusMessage = nil
+            self.connectionStatusMessage = nil
 
             // Handle specific error types for user feedback
             if let apiError = error as? APIError {
                 switch apiError {
                 case .serverError(401, _):
                     // Authentication required but no auto-login available
-                    showLoginView = true
+                    self.showLoginView = true
                     return
                 case .networkError:
-                    errorMessage = "Cannot connect to server. Please check the server is running and accessible."
-                    connectionLogger.error("🔗 ❌ Network error: Server not accessible")
+                    self.errorMessage = "Cannot connect to server. Please check the server is running and accessible."
+                    self.connectionLogger.error("🔗 ❌ Network error: Server not accessible")
                     // Don't throw - let user see error but don't block UI
                     return
                 default:
-                    errorMessage = "Connection failed. The server may have switched between public and private mode. Please tap refresh and try again."
+                    self.errorMessage = "Connection failed. The server may have switched between public and private mode. Please tap refresh and try again."
                     // Don't throw - let user see error but don't block UI
                     return
                 }
             } else {
-                errorMessage = "Connection failed: \(error.localizedDescription)"
+                self.errorMessage = "Connection failed: \(error.localizedDescription)"
                 // Don't throw - let user see error but don't block UI
                 return
             }
@@ -411,13 +333,13 @@ class ServerListViewModel: ServerListViewModelProtocol {
     }
 
     func testConnection(for profile: ServerProfile) async -> Bool {
-        let password = profile.requiresAuth ? getPassword(for: profile) : nil
+        let password = profile.requiresAuth ? self.getPassword(for: profile) : nil
         guard let config = profile.toServerConfig(password: password) else {
             return false
         }
 
         // Save the config temporarily to test using injected connection manager
-        connectionManager.saveConnection(config)
+        self.connectionManager.saveConnection(config)
 
         do {
             _ = try await APIClient.shared.getSessions()
@@ -434,7 +356,7 @@ class ServerListViewModel: ServerListViewModelProtocol {
         var updatedProfiles: [ServerProfile] = []
         var hasChanges = false
 
-        for profile in profiles {
+        for profile in self.profiles {
             // Only check health for Tailscale-enabled servers
             guard profile.isTailscaleEnabled else {
                 // connectionLogger.info("🔍 Skipping non-Tailscale profile: \(profile.name)")
@@ -442,27 +364,24 @@ class ServerListViewModel: ServerListViewModelProtocol {
                 continue
             }
 
-            connectionLogger
+            self.connectionLogger
                 .info(
-                    "🔍 Checking Tailscale profile: \(profile.name), current HTTPS: \(profile.httpsAvailable), Public: \(profile.isPublic)"
-                )
+                    "🔍 Checking Tailscale profile: \(profile.name), current HTTPS: \(profile.httpsAvailable), Public: \(profile.isPublic)")
 
             // Check each Tailscale profile's server health
             if let updatedProfile = await checkServerHealth(for: profile) {
-                connectionLogger
+                self.connectionLogger
                     .info(
-                        "🔍 Health check result for \(profile.name): HTTPS: \(updatedProfile.httpsAvailable), Public: \(updatedProfile.isPublic)"
-                    )
+                        "🔍 Health check result for \(profile.name): HTTPS: \(updatedProfile.httpsAvailable), Public: \(updatedProfile.isPublic)")
 
                 if updatedProfile.httpsAvailable != profile.httpsAvailable ||
                     updatedProfile.isPublic != profile.isPublic ||
                     updatedProfile.preferSSL != profile.preferSSL
                 {
                     hasChanges = true
-                    connectionLogger
+                    self.connectionLogger
                         .info(
-                            "🔍 Profile \(profile.name) updated - HTTPS: \(updatedProfile.httpsAvailable), Public: \(updatedProfile.isPublic), PreferSSL: \(updatedProfile.preferSSL)"
-                        )
+                            "🔍 Profile \(profile.name) updated - HTTPS: \(updatedProfile.httpsAvailable), Public: \(updatedProfile.isPublic), PreferSSL: \(updatedProfile.preferSSL)")
                 } else {
                     // connectionLogger.info("🔍 Profile \(profile.name) unchanged")
                 }
@@ -478,12 +397,12 @@ class ServerListViewModel: ServerListViewModelProtocol {
         if hasChanges {
             // connectionLogger.info("🔍 Saving \(updatedProfiles.count) updated profiles")
             for profile in updatedProfiles {
-                ServerProfile.save(profile, to: userDefaults)
+                ServerProfile.save(profile, to: self.userDefaults)
             }
             // Reload to refresh UI
             await MainActor.run {
                 // connectionLogger.info("🔍 Reloading profiles to refresh UI")
-                loadProfiles()
+                self.loadProfiles()
             }
         } else {
             // connectionLogger.info("🔍 No changes detected in any profiles")
@@ -494,11 +413,11 @@ class ServerListViewModel: ServerListViewModelProtocol {
     private func checkServerHealth(for profile: ServerProfile) async -> ServerProfile? {
         let probeHost = profile.host ?? URL(string: profile.url)?.host
         guard let probeHost else {
-            connectionLogger.error("🔍 No host found for profile \(profile.name)")
+            self.connectionLogger.error("🔍 No host found for profile \(profile.name)")
             return nil
         }
 
-        let httpUrl = "http://\(probeHost):\(profile.port ?? 4_020)/api/health"
+        let httpUrl = "http://\(probeHost):\(profile.port ?? 4020)/api/health"
         var updatedProfile = profile
 
         // connectionLogger.info("🔍 Probing health at: \(httpUrl)")
@@ -518,27 +437,38 @@ class ServerListViewModel: ServerListViewModelProtocol {
                     if let health = try? JSONDecoder().decode(HealthResponse.self, from: data),
                        let connections = health.connections
                     {
-                        // connectionLogger.info("🔍 Health data connections: \(connections)")
-
                         // Check for Tailscale info
                         if let tailscale = connections.tailscale {
-                            let httpsAvailable = tailscale.httpsAvailable ?? false
-                            let isPublic = tailscale.isPublic ?? false
+                            let healthHTTPS = tailscale.httpsAvailable ?? false
+                            let healthPublic = tailscale.isPublic ?? false
 
-                            // connectionLogger.info("🔍 Tailscale data - HTTPS: \(httpsAvailable), Public: \(isPublic)")
-
-                            updatedProfile.httpsAvailable = httpsAvailable
-                            updatedProfile.isPublic = isPublic
-                            updatedProfile.preferSSL = httpsAvailable
+                            // For Tailscale profiles: the health endpoint (HTTP on port 4020)
+                            // may not know about Tailscale Serve proxying HTTPS on 443.
+                            // Only upgrade HTTPS flags (false→true), never downgrade flags
+                            // that were set by discovery (which actually probed HTTPS).
+                            if healthHTTPS || !profile.isTailscaleEnabled {
+                                updatedProfile.httpsAvailable = healthHTTPS
+                                updatedProfile.preferSSL = healthHTTPS
+                            }
+                            // Always update public/funnel status — server knows about this
+                            updatedProfile.isPublic = healthPublic
 
                             return updatedProfile
                         }
 
-                        // Fallback to general connection info
+                        // No Tailscale section in health response — for Tailscale profiles,
+                        // preserve existing HTTPS flags (discovery is authoritative)
+                        if profile.isTailscaleEnabled {
+                            // Only update isPublic from general info if available
+                            updatedProfile.isPublic = connections.isPublic ?? profile.isPublic
+                            return updatedProfile
+                        }
+
+                        // For non-Tailscale profiles, use general connection info
                         let httpsAvailable = connections.sslAvailable ?? false
                         let isPublic = connections.isPublic ?? false
 
-                        connectionLogger
+                        self.connectionLogger
                             .info("🔍 General connection data - HTTPS: \(httpsAvailable), Public: \(isPublic)")
 
                         updatedProfile.httpsAvailable = httpsAvailable
@@ -550,7 +480,7 @@ class ServerListViewModel: ServerListViewModelProtocol {
                 }
             }
         } catch {
-            connectionLogger.debug("🔍 Health check failed for \(profile.name): \(error.localizedDescription)")
+            self.connectionLogger.debug("🔍 Health check failed for \(profile.name): \(error.localizedDescription)")
         }
 
         return nil
@@ -563,12 +493,12 @@ class ServerListViewModel: ServerListViewModelProtocol {
         // Try to probe using the stored Tailscale hostname if available
         let probeHost = profile.tailscaleHostname ?? profile.host ?? URL(string: profile.url)?.host
         guard let probeHost else {
-            connectionLogger.error("🔍 ❌ Cannot determine host for probing")
+            self.connectionLogger.error("🔍 ❌ Cannot determine host for probing")
             return nil
         }
 
         // First try HTTP health check (always available)
-        let httpUrl = "http://\(probeHost):\(profile.port ?? 4_020)/api/health"
+        let httpUrl = "http://\(probeHost):\(profile.port ?? 4020)/api/health"
         var updatedProfile = profile
         var httpsAvailable = false
         var isPublic = false
@@ -588,7 +518,7 @@ class ServerListViewModel: ServerListViewModelProtocol {
                 let session = URLSession(configuration: configuration)
 
                 if let url = URL(string: httpUrl) {
-                    connectionLogger.debug("🔍 Probing HTTP: \(url.absoluteString)")
+                    self.connectionLogger.debug("🔍 Probing HTTP: \(url.absoluteString)")
                     let (data, response) = try await session.data(from: url)
 
                     if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
@@ -614,44 +544,55 @@ class ServerListViewModel: ServerListViewModelProtocol {
                     }
                 }
             } catch {
-                connectionLogger.warning("🔍 ⚠️ Probe attempt \(attempt) failed: \(error.localizedDescription)")
+                self.connectionLogger.warning("🔍 ⚠️ Probe attempt \(attempt) failed: \(error.localizedDescription)")
                 // Continue to next attempt
             }
         }
 
         // After all attempts, handle failure case
         if !probeSuccess {
-            connectionLogger.warning("🔍 ⚠️ All probe attempts failed")
-            // If probe fails, assume server is offline or unreachable
-            // ALWAYS clear HTTPS/public flags when probe fails
+            self.connectionLogger.warning("🔍 ⚠️ All probe attempts failed")
+
+            // For Tailscale profiles, preserve HTTPS flags from discovery even if
+            // the HTTP health probe fails (server may only be reachable via Tailscale Serve)
+            if profile.isTailscaleEnabled {
+                self.connectionLogger.info("🔍 Probe failed but preserving Tailscale profile flags")
+                return profile
+            }
+
+            // For non-Tailscale profiles, clear flags when probe fails
             httpsAvailable = false
             isPublic = false
 
-            // Force update when probe fails - server might be transitioning
             if updatedProfile.httpsAvailable || updatedProfile.isPublic {
-                // connectionLogger.info("🔍 Probe failed - clearing HTTPS/public flags")
                 updatedProfile.httpsAvailable = false
                 updatedProfile.isPublic = false
                 updatedProfile.preferSSL = false
 
-                // Save updated profile
-                ServerProfile.save(updatedProfile, to: userDefaults)
-                loadProfiles()
+                ServerProfile.save(updatedProfile, to: self.userDefaults)
+                self.loadProfiles()
 
                 return updatedProfile
             }
         }
 
         // Update profile if capabilities changed
-        if updatedProfile.httpsAvailable != httpsAvailable || updatedProfile.isPublic != isPublic {
-            // connectionLogger.info("🔍 Server capabilities changed - updating profile")
-            updatedProfile.httpsAvailable = httpsAvailable
-            updatedProfile.isPublic = isPublic
-            updatedProfile.preferSSL = httpsAvailable // Prefer SSL if available
+        // For Tailscale profiles, only upgrade HTTPS flags (never downgrade)
+        let shouldUpdateHTTPS = if profile.isTailscaleEnabled {
+            httpsAvailable && !updatedProfile.httpsAvailable // only false→true
+        } else {
+            updatedProfile.httpsAvailable != httpsAvailable
+        }
 
-            // Save updated profile
-            ServerProfile.save(updatedProfile, to: userDefaults)
-            loadProfiles()
+        if shouldUpdateHTTPS || updatedProfile.isPublic != isPublic {
+            if shouldUpdateHTTPS {
+                updatedProfile.httpsAvailable = httpsAvailable
+                updatedProfile.preferSSL = httpsAvailable
+            }
+            updatedProfile.isPublic = isPublic
+
+            ServerProfile.save(updatedProfile, to: self.userDefaults)
+            self.loadProfiles()
 
             return updatedProfile
         }
@@ -662,40 +603,40 @@ class ServerListViewModel: ServerListViewModelProtocol {
     /// Initiate connection to a profile (replaces View logic)
     func initiateConnectionToProfile(_ profile: ServerProfile) async {
         // connectionLogger.info("🔗 initiateConnectionToProfile called for: \(profile.name)")
-        connectionLogger
-            .info("🔗 Profile details - URL: \(profile.url), HTTPS: \(profile.httpsAvailable), SSL: \(profile.preferSSL)"
-            )
+        self.connectionLogger
+            .info(
+                "🔗 Profile details - URL: \(profile.url), HTTPS: \(profile.httpsAvailable), SSL: \(profile.preferSSL)")
 
-        guard networkMonitor.isConnected else {
-            connectionLogger.error("🔗 ❌ No network connection")
-            errorMessage = "No internet connection available"
+        guard self.networkMonitor.isConnected else {
+            self.connectionLogger.error("🔗 ❌ No network connection")
+            self.errorMessage = "No internet connection available"
             return
         }
         // connectionLogger.info("🔗 Network connection available")
 
         // Store the current profile for potential login callback
-        currentConnectingProfile = profile
+        self.currentConnectingProfile = profile
 
         // Try to connect with the current profile settings
         // connectionLogger.info("🔗 Attempting connection with current profile settings")
 
         do {
             // connectionLogger.info("🔗 Calling connectToProfile...")
-            try await connectToProfile(profile)
+            try await self.connectToProfile(profile)
             // connectionLogger.info("🔗 ✅ Connection successful")
             // Connection successful - clear any error
-            errorMessage = nil
+            self.errorMessage = nil
         } catch {
-            connectionLogger.error("🔗 ❌ Connection failed: \(error)")
+            self.connectionLogger.error("🔗 ❌ Connection failed: \(error)")
 
             // If it was an auth error, show login view
             // Otherwise, show error to user
             if error is AuthenticationError {
                 // connectionLogger.info("🔗 🔐 Authentication error detected, showing login view")
-                showLoginView = true
-                currentConnectingProfile = profile
+                self.showLoginView = true
+                self.currentConnectingProfile = profile
             } else {
-                errorMessage = "Failed to connect to \(profile.name). The server may have changed its connection mode. Please tap the refresh button and try again."
+                self.errorMessage = "Failed to connect to \(profile.name). The server may have changed its connection mode. Please tap the refresh button and try again."
             }
         }
     }
@@ -703,58 +644,58 @@ class ServerListViewModel: ServerListViewModelProtocol {
     /// Handle successful login and save credentials
     func handleLoginSuccess(username: String, password: String) async throws {
         guard let profile = currentConnectingProfile else {
-            credentialsLogger.warning("⚠️ No current connecting profile found")
+            self.credentialsLogger.warning("⚠️ No current connecting profile found")
             throw AuthenticationError.invalidCredentials
         }
 
-        credentialsLogger.info("💾 Saving credentials after successful login for profile: \(profile.name)")
-        credentialsLogger.debug("💾 Username: \(username), Password length: \(password.count)")
+        self.credentialsLogger.info("💾 Saving credentials after successful login for profile: \(profile.name)")
+        self.credentialsLogger.debug("💾 Username: \(username), Password length: \(password.count)")
 
         // Save password to keychain with profile ID
         if !password.isEmpty {
-            try keychainService.savePassword(password, for: profile.id)
-            credentialsLogger.info("💾 Password saved to keychain successfully")
+            try self.keychainService.savePassword(password, for: profile.id)
+            self.credentialsLogger.info("💾 Password saved to keychain successfully")
         }
 
         // Update profile with correct username and auth requirement
         var updatedProfile = profile
         updatedProfile.requiresAuth = true
         updatedProfile.username = username
-        ServerProfile.save(updatedProfile, to: userDefaults)
-        credentialsLogger.info("💾 Profile updated with username: \(username)")
+        ServerProfile.save(updatedProfile, to: self.userDefaults)
+        self.credentialsLogger.info("💾 Profile updated with username: \(username)")
 
         // Mark connection as successful
-        connectionManager.isConnected = true
+        self.connectionManager.isConnected = true
 
         // Reload profiles to reflect changes
-        loadProfiles()
+        self.loadProfiles()
     }
 
     func connectToServer(config: ServerConfig) async {
-        guard networkMonitor.isConnected else {
-            errorMessage = "No internet connection available"
+        guard self.networkMonitor.isConnected else {
+            self.errorMessage = "No internet connection available"
             return
         }
 
-        isLoading = true
+        self.isLoading = true
         defer { isLoading = false }
 
         // Save connection temporarily
-        connectionManager.saveConnection(config)
+        self.connectionManager.saveConnection(config)
 
         do {
             // Try to get sessions to check if auth is required
             _ = try await APIClient.shared.getSessions()
             // Success - no auth required
-            connectionManager.isConnected = true
+            self.connectionManager.isConnected = true
         } catch {
             if case APIError.serverError(401, _) = error {
                 // Authentication required
                 // Authentication service is already set by saveConnection
-                showLoginView = true
+                self.showLoginView = true
             } else {
                 // Other error
-                errorMessage = "Failed to connect: \(error.localizedDescription)"
+                self.errorMessage = "Failed to connect: \(error.localizedDescription)"
             }
         }
     }
@@ -785,7 +726,6 @@ extension ServerListViewModel {
         return ServerProfile(
             name: suggestedName,
             url: cleanURL,
-            requiresAuth: false
-        )
+            requiresAuth: false)
     }
 }

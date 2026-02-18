@@ -7,7 +7,7 @@ struct FileSystemTests {
 
     @Test("Path normalization and resolution")
     func pathNormalization() {
-        // Test path normalization
+        /// Test path normalization
         func normalizePath(_ path: String) -> String {
             (path as NSString).standardizingPath
         }
@@ -126,7 +126,7 @@ struct FileSystemTests {
 
     @Test("Recursive directory size calculation")
     func directorySizeCalculation() {
-        // Simulate directory size calculation
+        /// Simulate directory size calculation
         func calculateDirectorySize(files: [(name: String, size: Int64)]) -> Int64 {
             files.reduce(0) { $0 + $1.size }
         }
@@ -140,7 +140,7 @@ struct FileSystemTests {
         let totalSize = calculateDirectorySize(files: files)
         #expect(totalSize == 7168)
 
-        // Test size formatting
+        /// Test size formatting
         func formatFileSize(_ bytes: Int64) -> String {
             let formatter = ByteCountFormatter()
             formatter.countStyle = .file
@@ -306,7 +306,7 @@ struct FileSystemTests {
 
     @Test("Text encoding detection")
     func textEncodingDetection() {
-        // Test BOM (Byte Order Mark) detection
+        /// Test BOM (Byte Order Mark) detection
         func detectEncoding(from bom: [UInt8]) -> String.Encoding? {
             if bom.starts(with: [0xEF, 0xBB, 0xBF]) {
                 return .utf8
@@ -341,7 +341,7 @@ struct FileSystemTests {
         #expect(filePathFromURL("file://localhost/Users/test/file.txt") == "/Users/test/file.txt")
         #expect(filePathFromURL("https://example.com/file.txt") == nil)
 
-        // Test path to URL conversion
+        /// Test path to URL conversion
         func fileURLFromPath(_ path: String) -> URL? {
             URL(fileURLWithPath: path)
         }

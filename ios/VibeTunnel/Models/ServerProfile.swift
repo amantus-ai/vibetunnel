@@ -44,8 +44,8 @@ struct ServerProfile: Identifiable, Codable, Equatable {
         preferTailscale: Bool = false,
         httpsAvailable: Bool = false,
         isPublic: Bool = false,
-        preferSSL: Bool = true
-    ) {
+        preferSSL: Bool = true)
+    {
         self.id = id
         self.name = name
 
@@ -56,17 +56,17 @@ struct ServerProfile: Identifiable, Codable, Equatable {
             if host == nil || port == nil {
                 if let urlComponents = URLComponents(string: url) {
                     self.host = host ?? urlComponents.host
-                    self.port = port ?? (urlComponents.port ?? 4_020)
+                    self.port = port ?? (urlComponents.port ?? 4020)
                 } else {
                     self.host = host
-                    self.port = port ?? 4_020
+                    self.port = port ?? 4020
                 }
             } else {
                 self.host = host
                 self.port = port
             }
         } else if let host {
-            let port = port ?? 4_020
+            let port = port ?? 4020
             self.host = host
             self.port = port
             self.url = "http://\(host):\(port)"
@@ -74,7 +74,7 @@ struct ServerProfile: Identifiable, Codable, Equatable {
             // Fallback to localhost
             self.url = "http://localhost:4020"
             self.host = "localhost"
-            self.port = 4_020
+            self.port = 4020
         }
 
         self.requiresAuth = requiresAuth
@@ -103,31 +103,28 @@ struct ServerProfile: Identifiable, Codable, Equatable {
         // Clean up the host - remove brackets from IPv6 addresses
         // URLComponents includes brackets in the host for IPv6, but we want clean IPs
         var cleanHost = host
-        if cleanHost.hasPrefix("[") && cleanHost.hasSuffix("]") {
+        if cleanHost.hasPrefix("["), cleanHost.hasSuffix("]") {
             cleanHost = String(cleanHost.dropFirst().dropLast())
         }
 
-        // Determine default port based on scheme
-        let defaultPort: Int = if let scheme = urlComponents.scheme?.lowercased() {
-            scheme == "https" ? 443 : 80
-        } else {
-            80
-        }
-
-        let port = urlComponents.port ?? defaultPort
+        // Use the stored port (set during profile creation/discovery) which reflects
+        // the actual VibeTunnel server port (typically 4020). Fall back to explicit URL
+        // port, then 4020. Do NOT derive from URL scheme — an HTTPS URL like
+        // https://hostname.ts.net uses Tailscale Serve on 443 but the underlying
+        // server port is still 4020.
+        let port = self.port ?? urlComponents.port ?? 4020
 
         return ServerConfig(
             host: cleanHost,
             port: port,
-            name: name,
-            tailscaleHostname: tailscaleHostname,
-            tailscaleIP: tailscaleIP,
-            isTailscaleEnabled: isTailscaleEnabled,
-            preferTailscale: preferTailscale,
-            httpsAvailable: httpsAvailable,
-            isPublic: isPublic,
-            preferSSL: preferSSL
-        )
+            name: self.name,
+            tailscaleHostname: self.tailscaleHostname,
+            tailscaleIP: self.tailscaleIP,
+            isTailscaleEnabled: self.isTailscaleEnabled,
+            preferTailscale: self.preferTailscale,
+            httpsAvailable: self.httpsAvailable,
+            isPublic: self.isPublic,
+            preferSSL: self.preferSSL)
     }
 }
 
@@ -139,45 +136,59 @@ extension ServerProfile {
     /// Load all saved profiles from UserDefaults
     static func loadAll(from userDefaults: UserDefaults = .standard) -> [ServerProfile] {
         guard let data = userDefaults.data(forKey: storageKey),
-              let profiles = try? JSONDecoder().decode([ServerProfile].self, from: data)
+              var profiles = try? JSONDecoder().decode([ServerProfile].self, from: data)
         else {
             return []
         }
+
+        // Migration: fix Tailscale profiles that have port 443 or 80 from old URL-scheme
+        // derivation bug. The actual VibeTunnel server port is always 4020.
+        var needsSave = false
+        for i in profiles.indices where profiles[i].isTailscaleEnabled {
+            if profiles[i].port == 443 || profiles[i].port == 80 || profiles[i].port == nil {
+                profiles[i].port = 4020
+                needsSave = true
+            }
+        }
+        if needsSave {
+            self.saveAll(profiles, to: userDefaults)
+        }
+
         return profiles
     }
 
     /// Save profiles to UserDefaults
     static func saveAll(_ profiles: [ServerProfile], to userDefaults: UserDefaults = .standard) {
         if let data = try? JSONEncoder().encode(profiles) {
-            userDefaults.set(data, forKey: storageKey)
+            userDefaults.set(data, forKey: self.storageKey)
         }
     }
 
     /// Add or update a profile
     static func save(_ profile: ServerProfile, to userDefaults: UserDefaults = .standard) {
-        var profiles = loadAll(from: userDefaults)
+        var profiles = self.loadAll(from: userDefaults)
         if let index = profiles.firstIndex(where: { $0.id == profile.id }) {
             profiles[index] = profile
         } else {
             profiles.append(profile)
         }
-        saveAll(profiles, to: userDefaults)
+        self.saveAll(profiles, to: userDefaults)
     }
 
     /// Delete a profile
     static func delete(_ profile: ServerProfile, from userDefaults: UserDefaults = .standard) {
-        var profiles = loadAll(from: userDefaults)
+        var profiles = self.loadAll(from: userDefaults)
         profiles.removeAll { $0.id == profile.id }
-        saveAll(profiles, to: userDefaults)
+        self.saveAll(profiles, to: userDefaults)
     }
 
     /// Update last connected time
     static func updateLastConnected(for profileId: UUID, in userDefaults: UserDefaults = .standard) {
-        var profiles = loadAll(from: userDefaults)
+        var profiles = self.loadAll(from: userDefaults)
         if let index = profiles.firstIndex(where: { $0.id == profileId }) {
             profiles[index].lastConnected = Date()
             profiles[index].updatedAt = Date()
-            saveAll(profiles, to: userDefaults)
+            self.saveAll(profiles, to: userDefaults)
         }
     }
 }

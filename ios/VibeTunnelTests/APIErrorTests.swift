@@ -115,7 +115,7 @@ struct APIErrorTests {
         ]
 
         for json in errorFormats {
-            let data = json.data(using: .utf8)!
+            let data = try #require(json.data(using: .utf8))
             let response = try JSONDecoder().decode(ErrorResponse.self, from: data)
 
             // Verify at least one error field is present
@@ -173,7 +173,7 @@ struct APIErrorTests {
             let startedAt: String
         }
 
-        let data = partialSession.data(using: .utf8)!
+        let data = try #require(partialSession.data(using: .utf8))
 
         #expect(throws: DecodingError.self) {
             try JSONDecoder().decode(Session.self, from: data)
@@ -337,7 +337,7 @@ struct APIErrorTests {
             {"error": "\(message.replacingOccurrences(of: "\"", with: "\\\""))"}
             """
 
-            let data = json.data(using: .utf8)!
+            let data = try #require(json.data(using: .utf8))
             let response = try JSONDecoder().decode(ErrorResponse.self, from: data)
             #expect(response.error == message)
         }

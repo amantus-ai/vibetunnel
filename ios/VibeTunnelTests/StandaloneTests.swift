@@ -7,8 +7,8 @@ import Testing
 @Suite("Standalone API Tests", .tags(.critical, .networking))
 struct StandaloneAPITests {
     @Test("URL construction for API endpoints")
-    func uRLConstruction() {
-        let baseURL = URL(string: "http://localhost:8888")!
+    func uRLConstruction() throws {
+        let baseURL = try #require(URL(string: "http://localhost:8888"))
 
         // Test session endpoints
         let sessionsURL = baseURL.appendingPathComponent("api/sessions")
@@ -63,7 +63,7 @@ struct StandaloneAPITests {
         }
         """
 
-        let data = errorJSON.data(using: .utf8)!
+        let data = try #require(errorJSON.data(using: .utf8))
         let decoder = JSONDecoder()
         let errorResponse = try decoder.decode(ErrorResponse.self, from: data)
 
@@ -136,7 +136,7 @@ struct ModelValidationTests {
     }
 
     @Test("Server config URL generation")
-    func serverConfigURLs() {
+    func serverConfigURLs() throws {
         struct ServerConfig {
             let host: String
             let port: Int
@@ -144,12 +144,12 @@ struct ModelValidationTests {
 
             var baseURL: URL {
                 let scheme = self.useSSL ? "https" : "http"
-                return URL(string: "\(scheme)://\(self.host):\(self.port)")!
+                return try #require(URL(string: "\(scheme)://\(self.host):\(self.port)"))
             }
 
             var websocketURL: URL {
                 let scheme = self.useSSL ? "wss" : "ws"
-                return URL(string: "\(scheme)://\(self.host):\(self.port)")!
+                return try #require(URL(string: "\(scheme)://\(self.host):\(self.port)"))
             }
         }
 
@@ -230,7 +230,7 @@ struct DateFormattingTests {
     }
 
     @Test("RFC3339 date formats")
-    func rFC3339Formats() throws {
+    func rFC3339Formats() {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
 

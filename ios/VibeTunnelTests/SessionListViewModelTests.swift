@@ -71,7 +71,7 @@ struct SessionListViewModelTests {
     // MARK: - Initialization Tests
 
     @Test("ViewModel initializes with correct default state")
-    func initialState() async {
+    func initialState() {
         let (viewModel, _) = self.createViewModel()
 
         #expect(viewModel.sessions.isEmpty)
@@ -375,7 +375,7 @@ struct SessionListViewModelTests {
     // MARK: - Network Connectivity Tests
 
     @Test("isNetworkConnected reflects network monitor state")
-    func networkConnectivity() async {
+    func networkConnectivity() {
         let mockNetworkMonitor = MockNetworkMonitor(isConnected: true)
         let (viewModel, _) = self.createViewModel(mockNetworkMonitor: mockNetworkMonitor)
 
@@ -529,7 +529,7 @@ struct SessionListViewModelTests {
     // MARK: - UI State Tests
 
     @Test("UI state properties can be modified")
-    func uIStateManagement() async {
+    func uIStateManagement() throws {
         let (viewModel, _) = self.createViewModel()
 
         // Test all UI state properties
@@ -549,7 +549,7 @@ struct SessionListViewModelTests {
         viewModel.showingCastImporter = true
         #expect(viewModel.showingCastImporter == true)
 
-        let mockCastFile = CastFileItem(url: URL(string: "file://test.cast")!)
+        let mockCastFile = try CastFileItem(url: #require(URL(string: "file://test.cast")))
         viewModel.importedCastFile = mockCastFile
         #expect(viewModel.importedCastFile?.url.absoluteString == "file://test.cast")
 

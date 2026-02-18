@@ -32,7 +32,7 @@ struct EdgeCaseTests {
 
         #expect(longString.count == maxReasonableLength)
 
-        // Test string truncation
+        /// Test string truncation
         func truncate(_ string: String, to maxLength: Int) -> String {
             if string.count <= maxLength {
                 return string
@@ -54,7 +54,7 @@ struct EdgeCaseTests {
         let maxInt = Int.max
         let minInt = Int.min
 
-        // Safe addition with overflow check
+        /// Safe addition with overflow check
         func safeAdd(_ a: Int, _ b: Int) -> Int? {
             let (result, overflow) = a.addingReportingOverflow(b)
             return overflow ? nil : result
@@ -92,7 +92,7 @@ struct EdgeCaseTests {
         #expect(infinity > 1_000_000)
         #expect(negInfinity < -1_000_000)
 
-        // Test safe division
+        /// Test safe division
         func safeDivide(_ a: Double, by b: Double) -> Double? {
             guard b != 0, !b.isNaN else { return nil }
             let result = a / b
@@ -117,7 +117,7 @@ struct EdgeCaseTests {
         #expect(emptyDict.isEmpty)
         #expect(emptySet.isEmpty)
 
-        // Safe array access
+        /// Safe array access
         func safeAccess<T>(_ array: [T], at index: Int) -> T? {
             guard index >= 0, index < array.count else { return nil }
             return array[index]
@@ -278,7 +278,7 @@ struct EdgeCaseTests {
         let megabyte = 1024 * 1024
         let size = 10 * megabyte // 10 MB
 
-        // Safely allocate memory
+        /// Safely allocate memory
         func safeAllocate(bytes: Int) -> Data? {
             guard bytes > 0, bytes < Int.max / 2 else { return nil }
             return Data(count: bytes)
@@ -332,7 +332,7 @@ struct EdgeCaseTests {
     // MARK: - JSON Edge Cases
 
     @Test("JSON encoding special cases")
-    func jSONEdgeCases() {
+    func jSONEdgeCases() throws {
         struct TestModel: Codable {
             let value: Any?
 
@@ -384,7 +384,7 @@ struct EdgeCaseTests {
         ]
 
         for (json, shouldSucceed) in edgeCases {
-            let data = json.data(using: .utf8)!
+            let data = try #require(json.data(using: .utf8))
             let decoded = try? JSONDecoder().decode(TestModel.self, from: data)
 
             if shouldSucceed {

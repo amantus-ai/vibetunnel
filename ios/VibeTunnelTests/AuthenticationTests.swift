@@ -7,7 +7,7 @@ struct AuthenticationTests {
 
     @Test("Password hashing and validation")
     func passwordHashing() {
-        // Test password requirements
+        /// Test password requirements
         func isValidPassword(_ password: String) -> Bool {
             password.count >= 8 &&
                 password.rangeOfCharacter(from: .uppercaseLetters) != nil &&
@@ -277,7 +277,7 @@ struct AuthenticationTests {
     // MARK: - Secure Storage
 
     @Test("Keychain storage security")
-    func keychainStorage() {
+    func keychainStorage() throws {
         struct KeychainItem {
             let service: String
             let account: String
@@ -299,10 +299,10 @@ struct AuthenticationTests {
             }
         }
 
-        let item = KeychainItem(
+        let item = try KeychainItem(
             service: "sh.vibetunnel.ios",
             account: "user-token",
-            data: "secret-token".data(using: .utf8)!,
+            data: #require("secret-token".data(using: .utf8)),
             accessGroup: nil)
 
         #expect(item.query[kSecClass as String] as? String == kSecClassGenericPassword as String)

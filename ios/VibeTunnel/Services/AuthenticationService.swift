@@ -42,6 +42,7 @@ final class AuthenticationService: ObservableObject {
         case password
         case sshKey = "ssh-key"
         case noAuth = "no-auth"
+        case tailscale
     }
 
     /// Server authentication configuration.
@@ -50,6 +51,8 @@ final class AuthenticationService: ObservableObject {
         let noAuth: Bool
         let enableSSHKeys: Bool
         let disallowUserPassword: Bool
+        let tailscaleAuth: Bool?
+        let authenticatedUser: String?
     }
 
     /// Authentication response from the server.
@@ -168,6 +171,51 @@ final class AuthenticationService: ObservableObject {
             self.logger.info("Successfully authenticated user: \(username)")
         } else {
             throw APIError.authenticationFailed(authResponse.error ?? "Authentication failed")
+        }
+    }
+
+    /// Authenticate via Tailscale identity (Tailscale Serve auto-auth).
+    /// Tailscale Serve injects identity headers on every proxied request, so HTTP API calls
+    /// are automatically authenticated. However, WebSocket connections need a JWT token
+    /// (passed as a query parameter) since header injection may not work for upgrades.
+    /// This method verifies Tailscale auth works, then requests a JWT token for WebSocket use.
+    func authenticateWithTailscale(user: String) async throws {
+        // Verify Tailscale auth actually works by calling a protected endpoint
+        let verifyURL = self.serverConfig.apiURL(path: "/api/sessions")
+        let (_, verifyResponse) = try await URLSession.shared.data(from: verifyURL)
+
+        guard let httpResponse = verifyResponse as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw AuthenticationError.serverError("Tailscale identity auth failed - server rejected request")
+        }
+
+        self.currentUser = user
+        self.authMethod = .tailscale
+        self.isAuthenticated = true
+
+        self.logger.info("Authenticated via Tailscale identity: \(user)")
+
+        // Request a JWT token for WebSocket authentication.
+        // The server's /api/auth/tailscale-token endpoint issues JWTs to Tailscale-authed users.
+        // Older servers may not have this endpoint (404) — WebSocket will rely on Tailscale headers.
+        do {
+            let tokenURL = self.serverConfig.apiURL(path: "/api/auth/tailscale-token")
+            var tokenRequest = URLRequest(url: tokenURL)
+            tokenRequest.httpMethod = "POST"
+            tokenRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            let (tokenData, tokenResponse) = try await URLSession.shared.data(for: tokenRequest)
+
+            if let tokenHTTP = tokenResponse as? HTTPURLResponse, tokenHTTP.statusCode == 200 {
+                let authResponse = try JSONDecoder().decode(AuthResponse.self, from: tokenData)
+                if authResponse.success, let token = authResponse.token {
+                    self.authToken = token
+                    self.logger.info("Obtained JWT token for WebSocket auth")
+                }
+            } else {
+                self.logger.info("Server does not support tailscale-token endpoint, WebSocket will use header auth")
+            }
+        } catch {
+            self.logger.warning("Failed to obtain JWT token for WebSocket: \(error.localizedDescription)")
         }
     }
 

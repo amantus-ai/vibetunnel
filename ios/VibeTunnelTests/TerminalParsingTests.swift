@@ -73,7 +73,7 @@ struct TerminalParsingTests {
         #expect(ANSIColor.red.brightVariant == 91)
         #expect(ANSIColor.red.backgroundVariant == 41)
 
-        // Test 256 color mode
+        /// Test 256 color mode
         func parse256Color(_ code: String) -> (r: Int, g: Int, b: Int)? {
             // ESC[38;5;Nm for foreground, ESC[48;5;Nm for background
             guard code.contains("38;5;") || code.contains("48;5;") else { return nil }
