@@ -32,7 +32,7 @@ struct TailscaleDiscoveryServiceTests {
 
     @Test("Stop discovery cancels active discovery")
     @MainActor
-    func stopDiscoveryCancelsActiveDiscovery() async {
+    func stopDiscoveryCancelsActiveDiscovery() {
         // Arrange
         let discoveryService = TailscaleDiscoveryService.shared
         let tailscaleService = TailscaleService.shared
@@ -196,20 +196,19 @@ struct TailscaleDiscoveryServiceTests {
         let tailscaleServer = TailscaleDiscoveryService.TailscaleServer(
             hostname: "test-mac.tailnet.ts.net",
             ip: "100.64.0.1",
-            port: 4_020,
+            port: 4020,
             deviceName: "test-mac",
             isReachable: true,
             lastSeen: Date(),
             httpsUrl: nil,
-            isPublic: false
-        )
+            isPublic: false)
 
         // Act
         let config = discoveryService.serverConfig(from: tailscaleServer)
 
         // Assert
         #expect(config.host == "100.64.0.1")
-        #expect(config.port == 4_020)
+        #expect(config.port == 4020)
         #expect(config.name == "test mac") // Note: displayName replaces - with space
         #expect(config.tailscaleHostname == "test-mac.tailnet.ts.net")
         #expect(config.tailscaleIP == "100.64.0.1")
@@ -225,13 +224,12 @@ struct TailscaleDiscoveryServiceTests {
         let tailscaleServer = TailscaleDiscoveryService.TailscaleServer(
             hostname: "test-mac.tailnet.ts.net",
             ip: nil,
-            port: 4_020,
+            port: 4020,
             deviceName: "test-mac",
             isReachable: true,
             lastSeen: Date(),
             httpsUrl: nil,
-            isPublic: false
-        )
+            isPublic: false)
 
         // Act
         let config = discoveryService.serverConfig(from: tailscaleServer)
@@ -250,13 +248,12 @@ struct TailscaleDiscoveryServiceTests {
         let server = TailscaleDiscoveryService.TailscaleServer(
             hostname: "test-machine.tail98c6a0.ts.net",
             ip: "100.64.0.1",
-            port: 4_020,
+            port: 4020,
             deviceName: "Test Machine",
             isReachable: true,
             lastSeen: Date(),
             httpsUrl: "https://test-machine.tail98c6a0.ts.net",
-            isPublic: false
-        )
+            isPublic: false)
 
         // Assert
         #expect(server.hostname == "test-machine.tail98c6a0.ts.net")
@@ -272,39 +269,36 @@ struct TailscaleDiscoveryServiceTests {
         let server1 = TailscaleDiscoveryService.TailscaleServer(
             hostname: "my-test-server.tailnet.ts.net",
             ip: nil,
-            port: 4_020,
+            port: 4020,
             deviceName: "my-test-server",
             isReachable: true,
             lastSeen: Date(),
             httpsUrl: nil,
-            isPublic: false
-        )
+            isPublic: false)
         #expect(server1.displayName == "my test server")
 
         // Test domain trimming
         let server2 = TailscaleDiscoveryService.TailscaleServer(
             hostname: "server.tailnet.ts.net",
             ip: nil,
-            port: 4_020,
+            port: 4020,
             deviceName: "server.tailnet",
             isReachable: true,
             lastSeen: Date(),
             httpsUrl: nil,
-            isPublic: false
-        )
+            isPublic: false)
         #expect(server2.displayName == "server")
 
         // Test fallback to device name
         let server3 = TailscaleDiscoveryService.TailscaleServer(
             hostname: "server",
             ip: nil,
-            port: 4_020,
+            port: 4020,
             deviceName: "fallback-name",
             isReachable: true,
             lastSeen: Date(),
             httpsUrl: nil,
-            isPublic: false
-        )
+            isPublic: false)
         #expect(server3.displayName == "fallback name")
     }
 }

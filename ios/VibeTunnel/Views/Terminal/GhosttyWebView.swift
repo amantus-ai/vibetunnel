@@ -32,7 +32,6 @@ struct GhosttyWebView: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = UIColor(self.theme.background)
         webView.scrollView.isScrollEnabled = false
-
         context.coordinator.webView = webView
         context.coordinator.loadTerminal()
 
@@ -59,6 +58,7 @@ struct GhosttyWebView: UIViewRepresentable {
         private var bufferRenderer = TerminalBufferRenderer()
         private var isReady = false
         private var pendingTerminalSize: TerminalSize?
+        private var pendingData: [(payload: String, followCursor: Bool)] = []
         private var lastTerminalSize: TerminalSize?
 
         init(_ parent: GhosttyWebView) {
@@ -126,8 +126,8 @@ struct GhosttyWebView: UIViewRepresentable {
                                 rows: 24,
                                 fontSize: initialFontSize,
                                 fontFamily,
-                                theme: initialTheme,
-                                cursorBlink: true,
+                                theme: Object.assign({}, initialTheme, { cursor: initialTheme.background, cursorAccent: initialTheme.background }),
+                                cursorBlink: false,
                                 scrollback: 10000,
                                 disableStdin: disableInput,
                                 ghostty
@@ -191,6 +191,8 @@ struct GhosttyWebView: UIViewRepresentable {
 
                     function updateTheme(theme) {
                         if (!term || !theme) return;
+                        theme.cursor = theme.background;
+                        theme.cursorAccent = theme.background;
                         term.options.theme = theme;
                     }
 
@@ -228,15 +230,100 @@ struct GhosttyWebView: UIViewRepresentable {
                             setTimeout(() => fitAddon.fit(), 100);
                         }
                     });
+
+                    // Touch scrolling for iOS
+                    (function() {
+                        var lastY = null;
+                        var startY = null;
+                        var isScrolling = false;
+                        var accumulator = 0;
+                        var velocity = 0;
+                        var momentumId = null;
+
+                        function getLineHeight() {
+                            if (!term || !term.rows) return 20;
+                            return document.getElementById('terminal').clientHeight / term.rows;
+                        }
+
+                        function stopMomentum() {
+                            if (momentumId) {
+                                cancelAnimationFrame(momentumId);
+                                momentumId = null;
+                            }
+                        }
+
+                        document.addEventListener('touchstart', function(e) {
+                            if (!term || e.touches.length !== 1) return;
+                            stopMomentum();
+                            startY = e.touches[0].clientY;
+                            lastY = startY;
+                            isScrolling = false;
+                            accumulator = 0;
+                            velocity = 0;
+                        }, { passive: true });
+
+                        document.addEventListener('touchmove', function(e) {
+                            if (!term || lastY === null || e.touches.length !== 1) return;
+                            var y = e.touches[0].clientY;
+
+                            if (!isScrolling) {
+                                if (Math.abs(y - startY) < 10) return;
+                                isScrolling = true;
+                            }
+
+                            var dy = lastY - y;
+                            lastY = y;
+
+                            var lh = getLineHeight();
+                            accumulator += dy;
+                            var lines = Math.trunc(accumulator / lh);
+                            if (lines !== 0) {
+                                term.scrollLines(lines);
+                                accumulator -= lines * lh;
+                            }
+                            velocity = dy;
+                            e.preventDefault();
+                        }, { passive: false });
+
+                        document.addEventListener('touchend', function() {
+                            if (!isScrolling) {
+                                lastY = null;
+                                return;
+                            }
+                            lastY = null;
+                            isScrolling = false;
+
+                            if (Math.abs(velocity) > 2) {
+                                var lh = getLineHeight();
+                                function tick() {
+                                    velocity *= 0.92;
+                                    if (Math.abs(velocity) < 0.5) {
+                                        momentumId = null;
+                                        return;
+                                    }
+                                    accumulator += velocity;
+                                    var lines = Math.trunc(accumulator / lh);
+                                    if (lines !== 0) {
+                                        term.scrollLines(lines);
+                                        accumulator -= lines * lh;
+                                    }
+                                    momentumId = requestAnimationFrame(tick);
+                                }
+                                momentumId = requestAnimationFrame(tick);
+                            }
+                        }, { passive: true });
+                    })();
                 </script>
             </body>
             </html>
             """
 
+            // Try subdirectory first (folder reference), then bundle root (synchronized groups flatten)
             guard let ghosttyURL = Bundle.main.url(
                 forResource: "ghostty-web",
                 withExtension: "js",
                 subdirectory: "ghostty")
+                ?? Bundle.main.url(forResource: "ghostty-web", withExtension: "js")
             else {
                 self.logger.error("ghostty-web.js missing from bundle")
                 return
@@ -307,6 +394,14 @@ struct GhosttyWebView: UIViewRepresentable {
                 self.setTerminalSize(cols: size.cols, rows: size.rows)
                 self.pendingTerminalSize = nil
             }
+
+            // Flush any data that arrived before the terminal was ready
+            for item in self.pendingData {
+                self.webView?
+                    .evaluateJavaScript(
+                        "window.ghosttyAPI.writeToTerminal(\(item.payload), \(item.followCursor ? "true" : "false"))")
+            }
+            self.pendingData.removeAll()
         }
 
         func updateFontSize(_ size: CGFloat) {
@@ -329,6 +424,16 @@ struct GhosttyWebView: UIViewRepresentable {
         func feedData(_ data: String) {
             let followCursor = self.parent.viewModel?.isAutoScrollEnabled ?? true
             guard let payload = jsonString(data) else { return }
+
+            if !self.isReady {
+                // Cap the queue to prevent unbounded growth during slow WASM init
+                if self.pendingData.count >= 1000 {
+                    self.pendingData.removeFirst()
+                }
+                self.pendingData.append((payload: payload, followCursor: followCursor))
+                return
+            }
+
             self.webView?
                 .evaluateJavaScript("window.ghosttyAPI.writeToTerminal(\(payload), \(followCursor ? "true" : "false"))")
         }
@@ -391,7 +496,7 @@ struct GhosttyWebView: UIViewRepresentable {
             return self.jsonString(fontFamily) ?? "\"monospace\""
         }
 
-        private func jsonString<T: Encodable>(_ value: T) -> String? {
+        private func jsonString(_ value: some Encodable) -> String? {
             guard let data = try? JSONEncoder().encode(value) else { return nil }
             return String(data: data, encoding: .utf8)
         }

@@ -78,7 +78,7 @@ struct BonjourDiscoveryServiceTests {
     struct ServiceResolution {
         @Test("Resolve service can handle server data")
         @MainActor
-        func resolveService() async {
+        func resolveService() {
             // Given
             let testServer = DiscoveredServer(
                 name: "TestServer",
@@ -99,7 +99,7 @@ struct BonjourDiscoveryServiceTests {
 
         @Test("Resolve service handles IPv6 addresses correctly")
         @MainActor
-        func resolveServiceIPv6() async {
+        func resolveServiceIPv6() {
             // Given
             let ipv6Host = "fe80::1%en0" // IPv6 with interface
 
@@ -120,7 +120,7 @@ struct BonjourDiscoveryServiceTests {
 
         @Test("Resolve service uses ID-based lookup to avoid race conditions")
         @MainActor
-        func resolveServiceRaceCondition() async {
+        func resolveServiceRaceCondition() {
             // Given
             let server1 = DiscoveredServer(name: "Server1", host: "192.168.1.1", port: 4020, metadata: [:])
             let server2 = DiscoveredServer(name: "Server2", host: "192.168.1.2", port: 4020, metadata: [:])
@@ -150,7 +150,7 @@ struct BonjourDiscoveryServiceTests {
     struct ErrorHandling {
         @Test("Service handles empty browse results")
         @MainActor
-        func emptyBrowseResults() async {
+        func emptyBrowseResults() {
             // Given
             let service = BonjourDiscoveryService.shared
 
@@ -164,7 +164,7 @@ struct BonjourDiscoveryServiceTests {
 
         @Test("Multiple start calls are idempotent")
         @MainActor
-        func multipleStartCalls() async {
+        func multipleStartCalls() {
             // Given
             let service = BonjourDiscoveryService.shared
             service.stopDiscovery() // Clean state

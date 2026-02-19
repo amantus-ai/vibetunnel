@@ -14,8 +14,8 @@ struct CastFileTests {
         [3.012, "o", "exit\\r\\n"]
         """
 
-        let data = castContent.data(using: .utf8)!
-        let player = CastPlayer(data: data)!
+        let data = try #require(castContent.data(using: .utf8))
+        let player = try #require(CastPlayer(data: data))
 
         // Verify header
         #expect(player.header.version == 2)
@@ -42,8 +42,8 @@ struct CastFileTests {
         [0.0, "o", "Starting..."]
         """
 
-        let data = castContent.data(using: .utf8)!
-        let player = CastPlayer(data: data)!
+        let data = try #require(castContent.data(using: .utf8))
+        let player = try #require(CastPlayer(data: data))
 
         #expect(player.header.version == 2)
         #expect(player.header.width == 120)
@@ -55,33 +55,33 @@ struct CastFileTests {
     }
 
     @Test("Parse malformed cast file")
-    func parseMalformedCastFile() {
+    func parseMalformedCastFile() throws {
         let malformedContent = "This is not a valid cast file"
-        let data = malformedContent.data(using: .utf8)!
+        let data = try #require(malformedContent.data(using: .utf8))
 
         let player = CastPlayer(data: data)
         #expect(player == nil)
     }
 
     @Test("Parse cast file with invalid header")
-    func parseInvalidHeader() {
+    func parseInvalidHeader() throws {
         let invalidHeader = """
         {"invalid": "header"}
         [0.0, "o", "test"]
         """
-        let data = invalidHeader.data(using: .utf8)!
+        let data = try #require(invalidHeader.data(using: .utf8))
 
         let player = CastPlayer(data: data)
         #expect(player == nil)
     }
 
     @Test("Parse cast file with invalid event")
-    func parseInvalidEvent() {
+    func parseInvalidEvent() throws {
         let invalidEvent = """
         {"version": 2, "width": 80, "height": 24}
         [0.0, "invalid", "test"]
         """
-        let data = invalidEvent.data(using: .utf8)!
+        let data = try #require(invalidEvent.data(using: .utf8))
 
         // Should still parse successfully, including invalid events
         let player = CastPlayer(data: data)
@@ -98,8 +98,8 @@ struct CastFileTests {
         [10.25, "o", "End"]
         """
 
-        let data = castContent.data(using: .utf8)!
-        let player = CastPlayer(data: data)!
+        let data = try #require(castContent.data(using: .utf8))
+        let player = try #require(CastPlayer(data: data))
 
         #expect(player.duration == 10.25)
     }
@@ -110,8 +110,8 @@ struct CastFileTests {
         {"version": 2, "width": 80, "height": 24}
         """
 
-        let data = emptyContent.data(using: .utf8)!
-        let player = CastPlayer(data: data)!
+        let data = try #require(emptyContent.data(using: .utf8))
+        let player = try #require(CastPlayer(data: data))
 
         #expect(player.events.isEmpty)
         #expect(player.duration == 0.0)
@@ -126,8 +126,8 @@ struct CastFileTests {
         [2.0, "o", "After resize"]
         """
 
-        let data = resizeContent.data(using: .utf8)!
-        let player = CastPlayer(data: data)!
+        let data = try #require(resizeContent.data(using: .utf8))
+        let player = try #require(CastPlayer(data: data))
 
         #expect(player.events.count == 3)
         #expect(player.events[1].type == "r")
@@ -145,8 +145,8 @@ struct CastFileTests {
         [4.0, "o", "Event 5"]
         """
 
-        let data = castContent.data(using: .utf8)!
-        let player = CastPlayer(data: data)!
+        let data = try #require(castContent.data(using: .utf8))
+        let player = try #require(CastPlayer(data: data))
 
         // Get events up to time 2.5
         let eventsUpTo2_5 = player.events.filter { $0.time <= 2.5 }
@@ -162,7 +162,7 @@ struct CastFileTests {
 
     @Test("Parse cast file from file URL")
     @MainActor
-    func parseCastFileFromURL() async throws {
+    func parseCastFileFromURL() throws {
         // Create a temporary file
         let tempDir = FileManager.default.temporaryDirectory
         let fileURL = tempDir.appendingPathComponent("test.cast")
@@ -176,7 +176,7 @@ struct CastFileTests {
 
         // Read from URL and parse
         let data = try Data(contentsOf: fileURL)
-        let player = CastPlayer(data: data)!
+        let player = try #require(CastPlayer(data: data))
 
         #expect(player.header.version == 2)
         #expect(player.events.count == 1)
@@ -188,7 +188,7 @@ struct CastFileTests {
 
     @Test("Cast recorder functionality")
     @MainActor
-    func castRecorderFunctionality() {
+    func castRecorderFunctionality() throws {
         let recorder = CastRecorder(sessionId: "test-session", width: 120, height: 40)
 
         // Initial state
@@ -224,7 +224,7 @@ struct CastFileTests {
         #expect(castData != nil)
 
         // Verify exported data can be parsed back
-        let player = CastPlayer(data: castData!)
+        let player = try CastPlayer(data: #require(castData))
         #expect(player != nil)
         #expect(player?.header.version == 2)
         #expect(player?.header.width == 120)
@@ -242,8 +242,8 @@ struct CastFileTests {
         [0.2, "o", "Third"]
         """
 
-        let data = castContent.data(using: .utf8)!
-        let player = CastPlayer(data: data)!
+        let data = try #require(castContent.data(using: .utf8))
+        let player = try #require(CastPlayer(data: data))
 
         actor EventCollector {
             private var events: [CastEvent] = []
@@ -278,8 +278,8 @@ struct CastFileTests {
         [0.0, "o", "Themed output"]
         """
 
-        let data = castContent.data(using: .utf8)!
-        let player = CastPlayer(data: data)!
+        let data = try #require(castContent.data(using: .utf8))
+        let player = try #require(CastPlayer(data: data))
 
         #expect(player.header.theme?.foreground == "#FFFFFF")
         #expect(player.header.theme?.background == "#000000")
@@ -288,7 +288,7 @@ struct CastFileTests {
 
     @Test("Recording with no output produces empty events")
     @MainActor
-    func recordingWithNoOutput() {
+    func recordingWithNoOutput() throws {
         let recorder = CastRecorder(sessionId: "empty-test")
 
         recorder.startRecording()
@@ -298,7 +298,7 @@ struct CastFileTests {
         let castData = recorder.exportCastFile()
         #expect(castData != nil)
 
-        let player = CastPlayer(data: castData!)
+        let player = try CastPlayer(data: #require(castData))
         #expect(player != nil)
         #expect(player?.events.isEmpty == true)
         #expect(player?.duration == 0.0)

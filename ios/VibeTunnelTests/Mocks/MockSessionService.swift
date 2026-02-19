@@ -51,8 +51,7 @@ class MockSessionService: SessionServiceProtocol {
         if self.shouldThrowError {
             throw self.thrownError
         }
-        let exitedIds = self.sessions.filter { !$0.isRunning }.map(\.id)
-        return exitedIds
+        return self.sessions.filter { !$0.isRunning }.map(\.id)
     }
 
     func killAllSessions() async throws {

@@ -51,7 +51,7 @@ final class BufferWebSocketClientTests {
         // Arrange - server with HTTPS available
         let httpsConfig = ServerConfig(
             host: "100.64.0.1",
-            port: 4_020,
+            port: 4020,
             name: "Test Server",
             tailscaleHostname: "test-machine.tailnet.ts.net",
             tailscaleIP: "100.64.0.1",
@@ -59,8 +59,7 @@ final class BufferWebSocketClientTests {
             preferTailscale: true,
             httpsAvailable: true,
             isPublic: false,
-            preferSSL: true
-        )
+            preferSSL: true)
         TestFixtures.saveServerConfig(httpsConfig)
 
         // Create new client to pick up the config
@@ -73,7 +72,7 @@ final class BufferWebSocketClientTests {
         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
 
         // Assert - should use WSS with HTTPS hostname
-        #expect(mockFactory.createdWebSockets.count == 1)
+        #expect(self.mockFactory.createdWebSockets.count == 1)
         let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
         #expect(mockWebSocket.lastConnectURL?.scheme == "wss")
         #expect(mockWebSocket.lastConnectURL?.host == "test-machine.tailnet.ts.net")

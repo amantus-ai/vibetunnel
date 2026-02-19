@@ -20,20 +20,20 @@ struct TailscaleSettingsContent: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.large) {
-            statusSection
-            settingsSection
-            discoverySection
-            aboutSection
-            if tailscaleService.isConfigured {
-                resetSection
+            self.statusSection
+            self.settingsSection
+            self.discoverySection
+            self.aboutSection
+            if self.tailscaleService.isConfigured {
+                self.resetSection
             }
             Spacer()
         }
         .task {
-            await refreshStatus()
+            await self.refreshStatus()
             // Start auto-refresh if enabled
-            if enableDiscovery && autoRefresh && tailscaleService.isRunning {
-                discoveryService.startAutoRefresh()
+            if self.enableDiscovery, self.autoRefresh, self.tailscaleService.isRunning {
+                self.discoveryService.startAutoRefresh()
             }
         }
         .onDisappear {
@@ -41,19 +41,18 @@ struct TailscaleSettingsContent: View {
             // because it should continue running in the background
         }
         .refreshable {
-            await refreshStatus()
+            await self.refreshStatus()
         }
-        .alert("Reset Tailscale Configuration", isPresented: $showingResetConfirmation) {
+        .alert("Reset Tailscale Configuration", isPresented: self.$showingResetConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Reset", role: .destructive) {
-                resetConfiguration()
+                self.resetConfiguration()
             }
         } message: {
             Text(
-                "This will remove your API credentials and clear all discovered servers. You'll need to reconfigure Tailscale to use it again."
-            )
+                "This will remove your API credentials and clear all discovered servers. You'll need to reconfigure Tailscale to use it again.")
         }
-        .sheet(isPresented: $showingCredentialsInput) {
+        .sheet(isPresented: self.$showingCredentialsInput) {
             NavigationStack {
                 Form {
                     Section {
@@ -100,7 +99,7 @@ struct TailscaleSettingsContent: View {
                     }
 
                     Section {
-                        TextField("k4cdcxxxxxxxx", text: $clientIdInput)
+                        TextField("k4cdcxxxxxxxx", text: self.$clientIdInput)
                             .textFieldStyle(.roundedBorder)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
@@ -113,7 +112,7 @@ struct TailscaleSettingsContent: View {
                     }
 
                     Section {
-                        SecureField("tskey-client-...", text: $clientSecretInput)
+                        SecureField("tskey-client-...", text: self.$clientSecretInput)
                             .textFieldStyle(.roundedBorder)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
@@ -136,7 +135,7 @@ struct TailscaleSettingsContent: View {
                     }
 
                     // Show loading state when saving
-                    if isSavingCredentials {
+                    if self.isSavingCredentials {
                         Section {
                             HStack {
                                 ProgressView()
@@ -167,53 +166,54 @@ struct TailscaleSettingsContent: View {
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button("Cancel") {
-                            showingCredentialsInput = false
+                            self.showingCredentialsInput = false
                         }
                     }
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button("Save") {
                             // Clear any previous error
-                            credentialSaveError = nil
+                            self.credentialSaveError = nil
 
                             // Save credentials (using legacy property names for compatibility)
-                            tailscaleService.organization = clientIdInput.isEmpty ? nil : clientIdInput
-                            tailscaleService.apiKey = clientSecretInput.isEmpty ? nil : clientSecretInput
+                            self.tailscaleService.organization = self.clientIdInput.isEmpty ? nil : self.clientIdInput
+                            self.tailscaleService.apiKey = self.clientSecretInput.isEmpty ? nil : self.clientSecretInput
 
                             // Start async task to validate and fetch data
                             Task {
                                 // Show loading state
-                                isSavingCredentials = true
+                                self.isSavingCredentials = true
 
                                 // Validate credentials and fetch devices
-                                await tailscaleService.refreshStatus()
+                                await self.tailscaleService.refreshStatus()
 
                                 // If successful, start discovery
-                                if tailscaleService.isRunning {
-                                    if enableDiscovery {
+                                if self.tailscaleService.isRunning {
+                                    if self.enableDiscovery {
                                         // Start discovery to find VibeTunnel servers
-                                        discoveryService.startDiscovery()
+                                        self.discoveryService.startDiscovery()
 
                                         // Wait a moment for discovery to complete
                                         try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
 
                                         // Start auto-refresh if enabled
-                                        if autoRefresh {
-                                            discoveryService.startAutoRefresh()
+                                        if self.autoRefresh {
+                                            self.discoveryService.startAutoRefresh()
                                         }
                                     }
 
                                     // Success! Clear loading state and dismiss
-                                    isSavingCredentials = false
-                                    showingCredentialsInput = false
+                                    self.isSavingCredentials = false
+                                    self.showingCredentialsInput = false
                                 } else {
                                     // If credentials are invalid, show error
-                                    isSavingCredentials = false
-                                    credentialSaveError = tailscaleService.statusError ?? "Failed to connect to Tailscale"
+                                    self.isSavingCredentials = false
+                                    self.credentialSaveError = self.tailscaleService.statusError ?? "Failed to connect to Tailscale"
                                 }
                             }
                         }
                         .fontWeight(.semibold)
-                        .disabled(clientIdInput.isEmpty || clientSecretInput.isEmpty || isSavingCredentials)
+                        .disabled(self.clientIdInput.isEmpty || self.clientSecretInput.isEmpty || self
+                            .isSavingCredentials)
                     }
                 }
             }
@@ -223,7 +223,6 @@ struct TailscaleSettingsContent: View {
 
     // MARK: - Sections
 
-    @ViewBuilder
     var statusSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             Text("Tailscale Configuration")
@@ -234,10 +233,10 @@ struct TailscaleSettingsContent: View {
                 HStack {
                     Label("Connection", systemImage: "network")
                     Spacer()
-                    statusView
+                    self.statusView
                 }
 
-                if tailscaleService.isRunning {
+                if self.tailscaleService.isRunning {
                     if let tailnet = tailscaleService.tailnetName {
                         HStack {
                             Label("Network", systemImage: "globe")
@@ -253,19 +252,19 @@ struct TailscaleSettingsContent: View {
                         Label("Devices", systemImage: "desktopcomputer")
                             .foregroundColor(.secondary)
                         Spacer()
-                        Text("\(tailscaleService.devices.count)")
+                        Text("\(self.tailscaleService.devices.count)")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
 
-                if !tailscaleService.isConfigured {
+                if !self.tailscaleService.isConfigured {
                     Divider()
 
                     Button {
-                        showingCredentialsInput = true
-                        clientIdInput = tailscaleService.organization ?? ""
-                        clientSecretInput = tailscaleService.apiKey ?? ""
+                        self.showingCredentialsInput = true
+                        self.clientIdInput = self.tailscaleService.organization ?? ""
+                        self.clientSecretInput = self.tailscaleService.apiKey ?? ""
                     } label: {
                         HStack {
                             Image(systemName: "key.fill")
@@ -288,9 +287,9 @@ struct TailscaleSettingsContent: View {
                             .font(.caption)
                             .foregroundColor(.green)
                         Button {
-                            showingCredentialsInput = true
-                            clientIdInput = tailscaleService.organization ?? ""
-                            clientSecretInput = tailscaleService.apiKey ?? ""
+                            self.showingCredentialsInput = true
+                            self.clientIdInput = self.tailscaleService.organization ?? ""
+                            self.clientSecretInput = self.tailscaleService.apiKey ?? ""
                         } label: {
                             Image(systemName: "pencil.circle")
                                 .font(.system(size: 16))
@@ -299,19 +298,19 @@ struct TailscaleSettingsContent: View {
                     }
 
                     // Add refresh button if not connected
-                    if !tailscaleService.isRunning {
+                    if !self.tailscaleService.isRunning {
                         Divider()
                         Button {
                             Task {
-                                isRefreshing = true
-                                await tailscaleService.refreshStatus()
-                                isRefreshing = false
+                                self.isRefreshing = true
+                                await self.tailscaleService.refreshStatus()
+                                self.isRefreshing = false
 
                                 // Start discovery if connected
-                                if tailscaleService.isRunning && enableDiscovery {
-                                    discoveryService.startDiscovery()
-                                    if autoRefresh {
-                                        discoveryService.startAutoRefresh()
+                                if self.tailscaleService.isRunning, self.enableDiscovery {
+                                    self.discoveryService.startDiscovery()
+                                    if self.autoRefresh {
+                                        self.discoveryService.startAutoRefresh()
                                     }
                                 }
                             }
@@ -322,14 +321,14 @@ struct TailscaleSettingsContent: View {
                                 Text("Retry Connection")
                                     .font(.system(size: 16))
                                 Spacer()
-                                if isRefreshing {
+                                if self.isRefreshing {
                                     ProgressView()
                                         .scaleEffect(0.8)
                                 }
                             }
                             .foregroundColor(.accentColor)
                         }
-                        .disabled(isRefreshing)
+                        .disabled(self.isRefreshing)
                     }
                 }
 
@@ -352,7 +351,6 @@ struct TailscaleSettingsContent: View {
         }
     }
 
-    @ViewBuilder
     var settingsSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             Text("Connection Preferences")
@@ -360,47 +358,47 @@ struct TailscaleSettingsContent: View {
                 .foregroundColor(Theme.Colors.terminalForeground)
 
             VStack(spacing: 0) {
-                Toggle(isOn: $enableDiscovery) {
+                Toggle(isOn: self.$enableDiscovery) {
                     Label("Auto-Discover Servers", systemImage: "magnifyingglass")
                 }
                 .toggleStyle(SwitchToggleStyle(tint: Theme.Colors.primaryAccent))
                 .padding()
-                .onChange(of: enableDiscovery) { _, newValue in
+                .onChange(of: self.enableDiscovery) { _, newValue in
                     if newValue {
                         Task {
-                            discoveryService.startDiscovery()
-                            if autoRefresh {
-                                discoveryService.startAutoRefresh()
+                            self.discoveryService.startDiscovery()
+                            if self.autoRefresh {
+                                self.discoveryService.startAutoRefresh()
                             }
                         }
                     } else {
-                        discoveryService.stopDiscovery()
-                        discoveryService.stopAutoRefresh()
+                        self.discoveryService.stopDiscovery()
+                        self.discoveryService.stopAutoRefresh()
                     }
                 }
 
                 Divider()
 
-                Toggle(isOn: $preferTailscale) {
+                Toggle(isOn: self.$preferTailscale) {
                     Label("Prefer Tailscale Connections", systemImage: "lock.shield")
                 }
                 .toggleStyle(SwitchToggleStyle(tint: Theme.Colors.primaryAccent))
                 .padding()
-                .disabled(!tailscaleService.isRunning)
+                .disabled(!self.tailscaleService.isRunning)
 
                 Divider()
 
-                Toggle(isOn: $autoRefresh) {
+                Toggle(isOn: self.$autoRefresh) {
                     Label("Auto-Refresh Discovery", systemImage: "arrow.triangle.2.circlepath")
                 }
                 .toggleStyle(SwitchToggleStyle(tint: Theme.Colors.primaryAccent))
                 .padding()
-                .disabled(!enableDiscovery)
-                .onChange(of: autoRefresh) { _, newValue in
-                    if newValue && enableDiscovery {
-                        discoveryService.startAutoRefresh()
+                .disabled(!self.enableDiscovery)
+                .onChange(of: self.autoRefresh) { _, newValue in
+                    if newValue, self.enableDiscovery {
+                        self.discoveryService.startAutoRefresh()
                     } else {
-                        discoveryService.stopAutoRefresh()
+                        self.discoveryService.stopAutoRefresh()
                     }
                 }
             }
@@ -412,7 +410,7 @@ struct TailscaleSettingsContent: View {
                     .font(.caption)
                     .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
 
-                if autoRefresh && enableDiscovery && discoveryService.isAutoRefreshing {
+                if self.autoRefresh, self.enableDiscovery, self.discoveryService.isAutoRefreshing {
                     Text("• Auto-refreshing every 30 seconds")
                         .font(.caption)
                         .foregroundColor(.green.opacity(0.8))
@@ -424,7 +422,7 @@ struct TailscaleSettingsContent: View {
 
     @ViewBuilder
     var discoverySection: some View {
-        if enableDiscovery && tailscaleService.isRunning {
+        if self.enableDiscovery, self.tailscaleService.isRunning {
             VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
                 HStack {
                     Text("Discovered Servers")
@@ -433,7 +431,7 @@ struct TailscaleSettingsContent: View {
 
                     Spacer()
 
-                    if discoveryService.isAutoRefreshing {
+                    if self.discoveryService.isAutoRefreshing {
                         HStack(spacing: 4) {
                             Image(systemName: "arrow.triangle.2.circlepath")
                                 .font(.caption)
@@ -446,7 +444,7 @@ struct TailscaleSettingsContent: View {
                 }
 
                 VStack(spacing: Theme.Spacing.small) {
-                    if discoveryService.isDiscovering {
+                    if self.discoveryService.isDiscovering {
                         HStack {
                             ProgressView()
                                 .scaleEffect(0.8)
@@ -454,13 +452,13 @@ struct TailscaleSettingsContent: View {
                                 .foregroundColor(.secondary)
                         }
                         .padding()
-                    } else if discoveryService.discoveredServers.isEmpty {
+                    } else if self.discoveryService.discoveredServers.isEmpty {
                         Text("No VibeTunnel servers found on Tailscale network")
                             .foregroundColor(.secondary)
                             .font(.caption)
                             .padding()
                     } else {
-                        ForEach(discoveryService.discoveredServers) { server in
+                        ForEach(self.discoveryService.discoveredServers) { server in
                             DiscoveredTailscaleServerRow(server: server)
                                 .padding(.horizontal)
                                 .padding(.vertical, 8)
@@ -469,19 +467,19 @@ struct TailscaleSettingsContent: View {
 
                     Button {
                         Task {
-                            await discoveryService.refresh()
+                            await self.discoveryService.refresh()
                         }
                     } label: {
                         Label("Refresh Servers", systemImage: "arrow.clockwise")
                     }
-                    .disabled(discoveryService.isDiscovering)
+                    .disabled(self.discoveryService.isDiscovering)
                     .padding()
                 }
                 .background(Theme.Colors.cardBackground)
                 .cornerRadius(Theme.CornerRadius.card)
 
-                if !discoveryService.discoveredServers.isEmpty {
-                    Text("\(discoveryService.discoveredServers.count) server(s) found on your Tailscale network")
+                if !self.discoveryService.discoveredServers.isEmpty {
+                    Text("\(self.discoveryService.discoveredServers.count) server(s) found on your Tailscale network")
                         .font(.caption)
                         .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
                         .padding(.horizontal)
@@ -490,7 +488,6 @@ struct TailscaleSettingsContent: View {
         }
     }
 
-    @ViewBuilder
     var aboutSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             Text("Resources")
@@ -530,15 +527,13 @@ struct TailscaleSettingsContent: View {
             .cornerRadius(Theme.CornerRadius.card)
 
             Text(
-                "Tailscale provides secure, private networking between your devices without port forwarding or complex configuration."
-            )
-            .font(.caption)
-            .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
-            .padding(.horizontal)
+                "Tailscale provides secure, private networking between your devices without port forwarding or complex configuration.")
+                .font(.caption)
+                .foregroundColor(Theme.Colors.terminalForeground.opacity(0.6))
+                .padding(.horizontal)
         }
     }
 
-    @ViewBuilder
     var resetSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
             Text("Danger Zone")
@@ -547,7 +542,7 @@ struct TailscaleSettingsContent: View {
 
             VStack(spacing: 0) {
                 Button {
-                    showingResetConfirmation = true
+                    self.showingResetConfirmation = true
                 } label: {
                     HStack {
                         Label("Reset Tailscale Configuration", systemImage: "trash")
@@ -564,8 +559,7 @@ struct TailscaleSettingsContent: View {
             .cornerRadius(Theme.CornerRadius.card)
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.CornerRadius.card)
-                    .stroke(Color.red.opacity(0.3), lineWidth: 1)
-            )
+                    .stroke(Color.red.opacity(0.3), lineWidth: 1))
 
             Text("Removes all Tailscale credentials and discovered servers")
                 .font(.caption)
@@ -578,14 +572,14 @@ struct TailscaleSettingsContent: View {
 
     @ViewBuilder
     var statusView: some View {
-        if isRefreshing {
+        if self.isRefreshing {
             ProgressView()
                 .scaleEffect(0.8)
-        } else if !tailscaleService.isConfigured {
+        } else if !self.tailscaleService.isConfigured {
             Label("Not Configured", systemImage: "xmark.circle.fill")
                 .foregroundColor(.red)
                 .font(.caption)
-        } else if tailscaleService.isRunning {
+        } else if self.tailscaleService.isRunning {
             Label("Connected", systemImage: "checkmark.circle.fill")
                 .foregroundColor(.green)
                 .font(.caption)
@@ -599,45 +593,45 @@ struct TailscaleSettingsContent: View {
     // MARK: - Methods
 
     func refreshStatus() async {
-        isRefreshing = true
-        await tailscaleService.refreshStatus()
+        self.isRefreshing = true
+        await self.tailscaleService.refreshStatus()
 
-        if enableDiscovery && tailscaleService.isRunning {
-            await discoveryService.refresh()
+        if self.enableDiscovery, self.tailscaleService.isRunning {
+            await self.discoveryService.refresh()
         }
 
-        isRefreshing = false
+        self.isRefreshing = false
     }
 
     private func resetConfiguration() {
         // Clear all Tailscale credentials
-        tailscaleService.clearCredentials()
+        self.tailscaleService.clearCredentials()
 
         // Reset discovery environment
-        discoveryService.resetEnvironment()
+        self.discoveryService.resetEnvironment()
 
         // Reset settings to defaults
-        enableDiscovery = true
-        preferTailscale = false
-        autoRefresh = true
+        self.enableDiscovery = true
+        self.preferTailscale = false
+        self.autoRefresh = true
 
         // Clear input fields
-        clientIdInput = ""
-        clientSecretInput = ""
+        self.clientIdInput = ""
+        self.clientSecretInput = ""
 
         // Force UI refresh by triggering state changes
         // This ensures the UI reflects the cleared state immediately
         Task { @MainActor in
             // Trigger a refresh to update UI
-            isRefreshing = true
+            self.isRefreshing = true
 
             // Small delay to ensure UI updates
             try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
 
-            isRefreshing = false
+            self.isRefreshing = false
         }
 
-        logger.info("Tailscale configuration reset completed")
+        self.logger.info("Tailscale configuration reset completed")
     }
 }
 
@@ -650,7 +644,7 @@ struct DiscoveredTailscaleServerRow: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading) {
-                Text(server.displayName)
+                Text(self.server.displayName)
                     .font(.body)
 
                 HStack {
@@ -659,7 +653,7 @@ struct DiscoveredTailscaleServerRow: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
-                    Text("Port \(String(server.port))")
+                    Text("Port \(String(self.server.port))")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -667,12 +661,12 @@ struct DiscoveredTailscaleServerRow: View {
 
             Spacer()
 
-            if isAdded {
+            if self.isAdded {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.green)
             } else {
                 Button {
-                    addServer()
+                    self.addServer()
                 } label: {
                     Text("Add")
                         .font(.caption)
@@ -684,21 +678,21 @@ struct DiscoveredTailscaleServerRow: View {
                 }
             }
         }
-        .opacity(server.isReachable ? 1.0 : 0.6)
+        .opacity(self.server.isReachable ? 1.0 : 0.6)
     }
 
     private func addServer() {
         // Convert to ServerConfig and save
-        _ = TailscaleDiscoveryService.shared.serverConfig(from: server)
+        _ = TailscaleDiscoveryService.shared.serverConfig(from: self.server)
 
         // Add to known servers
-        TailscaleDiscoveryService.shared.addKnownServer(hostname: server.hostname)
+        TailscaleDiscoveryService.shared.addKnownServer(hostname: self.server.hostname)
 
         // Use HTTPS URL if available, otherwise construct HTTP URL
         let url: String = if let httpsUrl = server.httpsUrl {
             httpsUrl
         } else {
-            "http://\(server.ip ?? server.hostname):\(server.port)"
+            "http://\(self.server.ip ?? self.server.hostname):\(self.server.port)"
         }
 
         // Save as a server profile with complete info using the ServerProfile static method
@@ -706,27 +700,26 @@ struct DiscoveredTailscaleServerRow: View {
             id: UUID(),
             name: server.displayName,
             url: url,
-            host: server.ip ?? server.hostname,
-            port: server.port,
-            tailscaleHostname: server.hostname,
-            tailscaleIP: server.ip,
+            host: self.server.ip ?? self.server.hostname,
+            port: self.server.port,
+            tailscaleHostname: self.server.hostname,
+            tailscaleIP: self.server.ip,
             isTailscaleEnabled: true,
             preferTailscale: true,
-            httpsAvailable: server.httpsUrl != nil,
-            isPublic: server.isPublic,
-            preferSSL: server.httpsUrl != nil
-        )
+            httpsAvailable: self.server.httpsUrl != nil,
+            isPublic: self.server.isPublic,
+            preferSSL: self.server.httpsUrl != nil)
 
         // Use the proper ServerProfile.save method to ensure it's saved correctly
         ServerProfile.save(profile)
 
         withAnimation {
-            isAdded = true
+            self.isAdded = true
         }
 
         // Dismiss the settings view after a brief delay to show the checkmark
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            dismissSettings()
+            self.dismissSettings()
         }
     }
 }
@@ -743,7 +736,7 @@ struct TailscaleSettingsView: View {
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button("Done") {
-                            dismiss()
+                            self.dismiss()
                         }
                     }
                 }

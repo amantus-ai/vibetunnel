@@ -6,7 +6,7 @@ import Testing
 @MainActor
 struct ConnectionManagerTests {
     @Test("Saves and loads server configuration")
-    func serverConfigPersistence() throws {
+    func serverConfigPersistence() {
         // Arrange
         let mockStorage = MockStorage()
         let manager = ConnectionManager.createForTesting(storage: mockStorage)
@@ -38,7 +38,7 @@ struct ConnectionManagerTests {
     }
 
     @Test("Saves connection timestamp")
-    func connectionTimestamp() throws {
+    func connectionTimestamp() {
         // Arrange
         let mockStorage = MockStorage()
         let manager = ConnectionManager.createForTesting(storage: mockStorage)
@@ -65,7 +65,7 @@ struct ConnectionManagerTests {
     }
 
     @Test("Restores connection within time window")
-    func connectionRestorationWithinWindow() throws {
+    func connectionRestorationWithinWindow() {
         // Arrange - Set up a recent connection
         let mockStorage = MockStorage()
         let config = TestFixtures.validServerConfig
@@ -84,7 +84,7 @@ struct ConnectionManagerTests {
     }
 
     @Test("Does not restore stale connection")
-    func staleConnectionNotRestored() throws {
+    func staleConnectionNotRestored() {
         // Arrange - Set up an old connection (2 hours ago)
         let mockStorage = MockStorage()
         let config = TestFixtures.validServerConfig
@@ -104,7 +104,7 @@ struct ConnectionManagerTests {
     }
 
     @Test("Disconnect clears connection state")
-    func disconnectClearsState() async throws {
+    func disconnectClearsState() async {
         // Arrange
         let mockStorage = MockStorage()
         let manager = ConnectionManager.createForTesting(storage: mockStorage)
@@ -141,7 +141,7 @@ struct ConnectionManagerTests {
     }
 
     @Test("CurrentServerConfig returns saved config")
-    func testCurrentServerConfig() throws {
+    func testCurrentServerConfig() {
         // Arrange
         let mockStorage = MockStorage()
         let manager = ConnectionManager.createForTesting(storage: mockStorage)
@@ -159,7 +159,7 @@ struct ConnectionManagerTests {
     }
 
     @Test("Creates authentication service on save connection")
-    func authenticationServiceCreation() throws {
+    func authenticationServiceCreation() {
         // Arrange
         let mockStorage = MockStorage()
         let manager = ConnectionManager.createForTesting(storage: mockStorage)
@@ -173,7 +173,7 @@ struct ConnectionManagerTests {
     }
 
     @Test("Restores authentication service on load")
-    func authenticationServiceRestoration() throws {
+    func authenticationServiceRestoration() {
         // Arrange - Save a config first
         let mockStorage = MockStorage()
         let config = TestFixtures.validServerConfig
@@ -190,7 +190,7 @@ struct ConnectionManagerTests {
     }
 
     @Test("Clears authentication service on disconnect")
-    func authenticationServiceCleanup() async throws {
+    func authenticationServiceCleanup() async {
         // Arrange
         let mockStorage = MockStorage()
         let manager = ConnectionManager.createForTesting(storage: mockStorage)
@@ -222,7 +222,7 @@ struct ConnectionManagerTests {
     }
 
     @Test("Connection state changes are observable")
-    func connectionStateObservation() async throws {
+    func connectionStateObservation() {
         // Arrange
         let mockStorage = MockStorage()
         let manager = ConnectionManager.createForTesting(storage: mockStorage)
@@ -245,7 +245,7 @@ struct ConnectionManagerTests {
     }
 
     @Test("Thread safety of shared instance")
-    func sharedInstanceThreadSafety() async throws {
+    func sharedInstanceThreadSafety() async {
         // Test that the shared instance is properly MainActor-isolated
         let shared = ConnectionManager.shared
 
@@ -279,7 +279,7 @@ struct ConnectionManagerTests {
     }
 
     @Test("Authentication service cleanup on failed logout")
-    func authServiceCleanupOnFailedLogout() async throws {
+    func authServiceCleanupOnFailedLogout() async {
         // Arrange
         let mockStorage = MockStorage()
         let manager = ConnectionManager.createForTesting(storage: mockStorage)
@@ -319,7 +319,7 @@ struct ConnectionManagerTests {
 @MainActor
 struct ConnectionManagerIntegrationTests {
     @Test("Full connection lifecycle", .timeLimit(.minutes(1)))
-    func fullConnectionLifecycle() async throws {
+    func fullConnectionLifecycle() async {
         // Arrange
         let mockStorage = MockStorage()
         let manager = ConnectionManager.createForTesting(storage: mockStorage)

@@ -24,7 +24,7 @@ struct SessionTests {
         """
 
         // Act
-        let data = json.data(using: .utf8)!
+        let data = try #require(json.data(using: .utf8))
         let session = try JSONDecoder().decode(Session.self, from: data)
 
         // Assert
@@ -60,7 +60,7 @@ struct SessionTests {
         """
 
         // Act
-        let data = json.data(using: .utf8)!
+        let data = try #require(json.data(using: .utf8))
         let session = try JSONDecoder().decode(Session.self, from: data)
 
         // Assert
@@ -85,7 +85,7 @@ struct SessionTests {
         """
 
         // Act
-        let data = json.data(using: .utf8)!
+        let data = try #require(json.data(using: .utf8))
         let session = try JSONDecoder().decode(Session.self, from: data)
 
         // Assert
@@ -140,7 +140,7 @@ struct SessionTests {
     }
 
     @Test("Formatted start time")
-    func testFormattedStartTime() throws {
+    func testFormattedStartTime() {
         // Test ISO8601 format
         let session = TestFixtures.validSession
         let formattedTime = session.formattedStartTime
@@ -156,7 +156,7 @@ struct SessionTests {
         let json = TestFixtures.sessionsJSON
 
         // Act
-        let data = json.data(using: .utf8)!
+        let data = try #require(json.data(using: .utf8))
         let sessions = try JSONDecoder().decode([Session].self, from: data)
 
         // Assert
@@ -178,7 +178,7 @@ struct SessionTests {
         """
 
         // Act & Assert
-        let data = json.data(using: .utf8)!
+        let data = try #require(json.data(using: .utf8))
         #expect(throws: Error.self) {
             try JSONDecoder().decode(Session.self, from: data)
         }

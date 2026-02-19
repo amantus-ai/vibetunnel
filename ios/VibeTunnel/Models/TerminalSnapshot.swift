@@ -76,7 +76,6 @@ extension TerminalSnapshot {
         let pattern = "\\x1B\\[[0-9;]*[mGKHf]"
         let regex = try? NSRegularExpression(pattern: pattern, options: [])
         let range = NSRange(location: 0, length: output.utf16.count)
-        let cleaned = regex?.stringByReplacingMatches(in: output, options: [], range: range, withTemplate: "") ?? output
-        return cleaned
+        return regex?.stringByReplacingMatches(in: output, options: [], range: range, withTemplate: "") ?? output
     }
 }

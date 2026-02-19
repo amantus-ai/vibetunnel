@@ -36,8 +36,8 @@ struct DiscoveredServer: Identifiable, Equatable {
         port: Int,
         type: String = "_vibetunnel._tcp",
         domain: String = "local",
-        metadata: [String: String]
-    ) {
+        metadata: [String: String])
+    {
         self.id = UUID()
         self.name = name
         self.host = host

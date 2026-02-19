@@ -225,8 +225,13 @@ class CastPlayerViewModel {
     var isSeeking = false
 
     var player: CastPlayer?
-    var header: CastFile? { self.player?.header }
-    var duration: TimeInterval { self.player?.duration ?? 0 }
+    var header: CastFile? {
+        self.player?.header
+    }
+
+    var duration: TimeInterval {
+        self.player?.duration ?? 0
+    }
 
     var onTerminalOutput: ((String) -> Void)?
     var onTerminalClear: (() -> Void)?

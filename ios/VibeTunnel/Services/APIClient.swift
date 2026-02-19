@@ -121,7 +121,7 @@ class APIClient: APIClientProtocol {
 
     /// Updates the base URL for API requests (used for Tailscale connections)
     func updateBaseURL(_ url: URL) {
-        overrideBaseURL = url
+        self.overrideBaseURL = url
     }
 
     // MARK: - Session Management

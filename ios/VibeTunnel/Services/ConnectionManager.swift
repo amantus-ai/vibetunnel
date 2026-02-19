@@ -14,7 +14,7 @@ final class ConnectionManager {
     // MARK: - Constants
 
     private enum Constants {
-        static let connectionRestorationWindow: TimeInterval = 3_600 // 1 hour
+        static let connectionRestorationWindow: TimeInterval = 3600 // 1 hour
         static let savedServerConfigKey = "savedServerConfig"
         static let connectionStateKey = "connectionState"
         static let lastConnectionTimeKey = "lastConnectionTime"
@@ -31,8 +31,8 @@ final class ConnectionManager {
 
     var isConnected: Bool = false {
         didSet {
-            guard oldValue != isConnected else { return }
-            storage.set(isConnected, forKey: Constants.connectionStateKey)
+            guard oldValue != self.isConnected else { return }
+            self.storage.set(self.isConnected, forKey: Constants.connectionStateKey)
         }
     }
 
@@ -45,17 +45,17 @@ final class ConnectionManager {
 
     private init(storage: PersistentStorage = UserDefaultsStorage()) {
         self.storage = storage
-        loadSavedConnection()
-        restoreConnectionState()
+        self.loadSavedConnection()
+        self.restoreConnectionState()
     }
 
     #if DEBUG
-        /// Test-only factory method for creating instances with mock storage
-        /// - Parameter storage: Mock storage for testing
-        /// - Returns: A new ConnectionManager instance for testing
-        static func createForTesting(storage: PersistentStorage) -> ConnectionManager {
-            ConnectionManager(storage: storage)
-        }
+    /// Test-only factory method for creating instances with mock storage
+    /// - Parameter storage: Mock storage for testing
+    /// - Returns: A new ConnectionManager instance for testing
+    static func createForTesting(storage: PersistentStorage) -> ConnectionManager {
+        ConnectionManager(storage: storage)
+    }
     #endif
 
     private func loadSavedConnection() {
@@ -65,10 +65,9 @@ final class ConnectionManager {
             self.serverConfig = config
 
             // Set up authentication service for restored connection
-            authenticationService = AuthenticationService(
+            self.authenticationService = AuthenticationService(
                 apiClient: APIClient.shared,
-                serverConfig: config
-            )
+                serverConfig: config)
 
             // Configure API client and WebSocket client with auth service
             if let authService = authenticationService {
@@ -80,18 +79,18 @@ final class ConnectionManager {
 
     private func restoreConnectionState() {
         // Restore connection state if app was terminated while connected
-        let wasConnected = storage.bool(forKey: Constants.connectionStateKey)
+        let wasConnected = self.storage.bool(forKey: Constants.connectionStateKey)
         if let lastConnectionData = storage.object(forKey: Constants.lastConnectionTimeKey) as? Date {
-            lastConnectionTime = lastConnectionData
+            self.lastConnectionTime = lastConnectionData
 
             // Only restore connection if it was within the last hour
             let timeSinceLastConnection = Date().timeIntervalSince(lastConnectionData)
-            if wasConnected && timeSinceLastConnection < Constants.connectionRestorationWindow && serverConfig != nil {
+            if wasConnected, timeSinceLastConnection < Constants.connectionRestorationWindow, self.serverConfig != nil {
                 // Attempt to restore connection
-                isConnected = true
+                self.isConnected = true
             } else {
                 // Clear stale connection state
-                isConnected = false
+                self.isConnected = false
             }
         }
     }
@@ -105,10 +104,9 @@ final class ConnectionManager {
             // Create and configure authentication service BEFORE saving config
             // This prevents race conditions where other components try to use
             // the API client before authentication is properly configured
-            authenticationService = AuthenticationService(
+            self.authenticationService = AuthenticationService(
                 apiClient: APIClient.shared,
-                serverConfig: config
-            )
+                serverConfig: config)
 
             // Configure API client and WebSocket client with auth service
             if let authService = authenticationService {
@@ -117,32 +115,32 @@ final class ConnectionManager {
             }
 
             // Now save the config and timestamp after auth is set up
-            storage.set(data, forKey: Constants.savedServerConfigKey)
+            self.storage.set(data, forKey: Constants.savedServerConfigKey)
             self.serverConfig = config
 
             // Save connection timestamp
-            lastConnectionTime = Date()
-            storage.set(lastConnectionTime, forKey: Constants.lastConnectionTimeKey)
+            self.lastConnectionTime = Date()
+            self.storage.set(self.lastConnectionTime, forKey: Constants.lastConnectionTimeKey)
 
             // Determine and save connection type
-            activeConnectionType = determineConnectionType(for: config)
-            storage.set(activeConnectionType.rawValue, forKey: Constants.connectionTypeKey)
+            self.activeConnectionType = self.determineConnectionType(for: config)
+            self.storage.set(self.activeConnectionType.rawValue, forKey: Constants.connectionTypeKey)
         }
     }
 
     func disconnect() async {
-        isConnected = false
-        activeConnectionType = .unknown
-        storage.removeObject(forKey: Constants.connectionStateKey)
-        storage.removeObject(forKey: Constants.lastConnectionTimeKey)
-        storage.removeObject(forKey: Constants.connectionTypeKey)
+        self.isConnected = false
+        self.activeConnectionType = .unknown
+        self.storage.removeObject(forKey: Constants.connectionStateKey)
+        self.storage.removeObject(forKey: Constants.lastConnectionTimeKey)
+        self.storage.removeObject(forKey: Constants.connectionTypeKey)
 
-        await authenticationService?.logout()
-        authenticationService = nil
+        await self.authenticationService?.logout()
+        self.authenticationService = nil
     }
 
     var currentServerConfig: ServerConfig? {
-        serverConfig
+        self.serverConfig
     }
 
     // MARK: - Tailscale Support
@@ -150,12 +148,12 @@ final class ConnectionManager {
     /// Determines the best connection type for a server config
     private func determineConnectionType(for config: ServerConfig) -> ActiveConnectionType {
         // Check if we're on the same local network
-        if isOnSameLocalNetwork(config: config) {
+        if self.isOnSameLocalNetwork(config: config) {
             return .local
         }
 
         // Check if Tailscale is available and configured
-        if config.isTailscaleEnabled && tailscaleService.isRunning {
+        if config.isTailscaleEnabled, self.tailscaleService.isRunning {
             return .tailscale
         }
 
@@ -180,7 +178,7 @@ final class ConnectionManager {
         var optimized = config
 
         // If Tailscale is available and we're not on local network, prefer it
-        if !isOnSameLocalNetwork(config: config) && tailscaleService.isRunning {
+        if !self.isOnSameLocalNetwork(config: config), self.tailscaleService.isRunning {
             optimized.preferTailscale = true
 
             // Try to get Tailscale details if not already set
@@ -200,12 +198,12 @@ final class ConnectionManager {
         // Re-evaluate the best connection method
         let optimized = await optimizeServerConfig(config)
         if optimized != config {
-            serverConfig = optimized
-            activeConnectionType = determineConnectionType(for: optimized)
+            self.serverConfig = optimized
+            self.activeConnectionType = self.determineConnectionType(for: optimized)
 
             // Update stored config
             if let data = try? JSONEncoder().encode(optimized) {
-                storage.set(data, forKey: Constants.savedServerConfigKey)
+                self.storage.set(data, forKey: Constants.savedServerConfigKey)
             }
 
             // Update API client base URL if needed

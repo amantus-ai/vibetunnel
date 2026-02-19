@@ -224,7 +224,7 @@ struct ServerConfigTests {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         let data = try encoder.encode(config)
-        let jsonString = String(data: data, encoding: .utf8)!
+        let jsonString = try #require(String(data: data, encoding: .utf8))
 
         // Assert
         #expect(jsonString.contains("\"host\":\"test.server\""))
@@ -237,7 +237,7 @@ struct ServerConfigTests {
         // Config with Tailscale HTTPS available
         let httpsConfig = ServerConfig(
             host: "10.0.0.1",
-            port: 4_020,
+            port: 4020,
             name: "VibeTunnel Server",
             tailscaleHostname: "my-machine.tailnet.ts.net",
             tailscaleIP: "100.64.0.1",
@@ -245,8 +245,7 @@ struct ServerConfigTests {
             preferTailscale: true,
             httpsAvailable: true,
             isPublic: false,
-            preferSSL: true
-        )
+            preferSSL: true)
 
         // Should use HTTPS URL when available and preferred
         let connectionUrl = httpsConfig.connectionURL()
@@ -266,25 +265,22 @@ struct ServerConfigTests {
         // Local only
         let localConfig = ServerConfig(
             host: "localhost",
-            port: 4_020
-        )
+            port: 4020)
         #expect(localConfig.availableConnectionTypes == .local)
 
         // Tailscale only
         let tailscaleOnlyConfig = ServerConfig(
             host: "100.64.0.1",
-            port: 4_020,
-            tailscaleHostname: "machine.ts.net"
-        )
+            port: 4020,
+            tailscaleHostname: "machine.ts.net")
         #expect(tailscaleOnlyConfig.availableConnectionTypes == .tailscale)
 
         // Both local and Tailscale
         let bothConfig = ServerConfig(
             host: "localhost",
-            port: 4_020,
+            port: 4020,
             tailscaleHostname: "machine.ts.net",
-            isTailscaleEnabled: true
-        )
+            isTailscaleEnabled: true)
         #expect(bothConfig.availableConnectionTypes == .both)
     }
 
@@ -293,7 +289,7 @@ struct ServerConfigTests {
         // Config with HTTPS available should use HTTPS for API calls
         let httpsConfig = ServerConfig(
             host: "100.64.0.1",
-            port: 4_020,
+            port: 4020,
             name: "Test Server",
             tailscaleHostname: "test-machine.tailnet.ts.net",
             tailscaleIP: "100.64.0.1",
@@ -301,8 +297,7 @@ struct ServerConfigTests {
             preferTailscale: true,
             httpsAvailable: true,
             isPublic: false,
-            preferSSL: true
-        )
+            preferSSL: true)
 
         // API URL should use HTTPS when available
         let apiUrl = httpsConfig.apiURL(path: "/api/sessions")
@@ -312,9 +307,8 @@ struct ServerConfigTests {
         // Config without HTTPS should use HTTP
         let httpConfig = ServerConfig(
             host: "localhost",
-            port: 4_020,
-            name: "Local Server"
-        )
+            port: 4020,
+            name: "Local Server")
 
         let httpApiUrl = httpConfig.apiURL(path: "/api/sessions")
         #expect(httpApiUrl.absoluteString == "http://localhost:4020/api/sessions")
@@ -326,41 +320,37 @@ struct ServerConfigTests {
         // HTTPS/SSL connection
         let httpsConfig = ServerConfig(
             host: "localhost",
-            port: 4_020,
+            port: 4020,
             name: "My Server",
             httpsAvailable: true,
-            preferSSL: true
-        )
+            preferSSL: true)
         #expect(httpsConfig.displayNameWithConnectionType.contains("🔒"))
 
         // Public (Funnel) connection
         let publicConfig = ServerConfig(
             host: "localhost",
-            port: 4_020,
+            port: 4020,
             name: "My Server",
-            isPublic: true
-        )
+            isPublic: true)
         #expect(publicConfig.displayNameWithConnectionType.contains("🌐"))
 
         // Tailscale without HTTPS
         let tailscaleConfig = ServerConfig(
             host: "100.64.0.1",
-            port: 4_020,
+            port: 4020,
             name: "My Server",
-            isTailscaleEnabled: true
-        )
+            isTailscaleEnabled: true)
         #expect(tailscaleConfig.displayNameWithConnectionType.contains("🔗"))
 
         // All indicators
         let allIndicatorsConfig = ServerConfig(
             host: "100.64.0.1",
-            port: 4_020,
+            port: 4020,
             name: "My Server",
             isTailscaleEnabled: true,
             httpsAvailable: true,
             isPublic: true,
-            preferSSL: true
-        )
+            preferSSL: true)
         let displayName = allIndicatorsConfig.displayNameWithConnectionType
         #expect(displayName.contains("🔒"))
         #expect(displayName.contains("🌐"))

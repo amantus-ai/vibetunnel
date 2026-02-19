@@ -113,20 +113,19 @@ struct ServerListViewModelTests {
 
     @Test("Connection status message shown during HTTPS fallback")
     func connectionStatusMessageDuringFallback() async throws {
-        let (viewModel, _) = createTestViewModel()
+        let (viewModel, _) = self.createTestViewModel()
 
         // Create profile with HTTPS that will fail
         let profile = ServerProfile(
             name: "Tailscale Server",
             url: "https://test-machine.tailnet.ts.net",
             host: "100.64.0.1",
-            port: 4_020,
+            port: 4020,
             tailscaleHostname: "test-machine.tailnet.ts.net",
             tailscaleIP: "100.64.0.1",
             httpsAvailable: true,
             isPublic: true,
-            preferSSL: true
-        )
+            preferSSL: true)
 
         try await viewModel.addProfile(profile)
 

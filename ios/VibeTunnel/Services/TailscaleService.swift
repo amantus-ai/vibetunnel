@@ -40,26 +40,26 @@ final class TailscaleService {
     var clientId: String? {
         get {
             do {
-                return try keychainService.loadPassword(for: Self.clientIdKey.uuidString)
+                return try self.keychainService.loadPassword(for: Self.clientIdKey.uuidString)
             } catch {
-                logger.debug("No client ID found in Keychain")
+                self.logger.debug("No client ID found in Keychain")
                 return nil
             }
         }
         set {
             do {
                 if let id = newValue {
-                    try keychainService.savePassword(id, for: Self.clientIdKey.uuidString)
+                    try self.keychainService.savePassword(id, for: Self.clientIdKey.uuidString)
                 } else {
-                    try keychainService.deletePassword(for: Self.clientIdKey.uuidString)
+                    try self.keychainService.deletePassword(for: Self.clientIdKey.uuidString)
                 }
                 // Clear cached token when credentials change
-                clearCachedToken()
+                self.clearCachedToken()
                 Task {
-                    await refreshStatus()
+                    await self.refreshStatus()
                 }
             } catch {
-                logger.error("Failed to save client ID to Keychain: \(error)")
+                self.logger.error("Failed to save client ID to Keychain: \(error)")
             }
         }
     }
@@ -68,26 +68,26 @@ final class TailscaleService {
     var clientSecret: String? {
         get {
             do {
-                return try keychainService.loadPassword(for: Self.clientSecretKey.uuidString)
+                return try self.keychainService.loadPassword(for: Self.clientSecretKey.uuidString)
             } catch {
-                logger.debug("No client secret found in Keychain")
+                self.logger.debug("No client secret found in Keychain")
                 return nil
             }
         }
         set {
             do {
                 if let secret = newValue {
-                    try keychainService.savePassword(secret, for: Self.clientSecretKey.uuidString)
+                    try self.keychainService.savePassword(secret, for: Self.clientSecretKey.uuidString)
                 } else {
-                    try keychainService.deletePassword(for: Self.clientSecretKey.uuidString)
+                    try self.keychainService.deletePassword(for: Self.clientSecretKey.uuidString)
                 }
                 // Clear cached token when credentials change
-                clearCachedToken()
+                self.clearCachedToken()
                 Task {
-                    await refreshStatus()
+                    await self.refreshStatus()
                 }
             } catch {
-                logger.error("Failed to save client secret to Keychain: \(error)")
+                self.logger.error("Failed to save client secret to Keychain: \(error)")
             }
         }
     }
@@ -96,7 +96,7 @@ final class TailscaleService {
     private var accessToken: String? {
         get {
             do {
-                return try keychainService.loadPassword(for: Self.accessTokenKey.uuidString)
+                return try self.keychainService.loadPassword(for: Self.accessTokenKey.uuidString)
             } catch {
                 return nil
             }
@@ -104,12 +104,12 @@ final class TailscaleService {
         set {
             do {
                 if let token = newValue {
-                    try keychainService.savePassword(token, for: Self.accessTokenKey.uuidString)
+                    try self.keychainService.savePassword(token, for: Self.accessTokenKey.uuidString)
                 } else {
-                    try keychainService.deletePassword(for: Self.accessTokenKey.uuidString)
+                    try self.keychainService.deletePassword(for: Self.accessTokenKey.uuidString)
                 }
             } catch {
-                logger.error("Failed to save access token to Keychain: \(error)")
+                self.logger.error("Failed to save access token to Keychain: \(error)")
             }
         }
     }
@@ -136,7 +136,7 @@ final class TailscaleService {
 
     /// Indicates if we have a valid OAuth token (for backward compatibility)
     var isInstalled: Bool {
-        isConfigured
+        self.isConfigured
     }
 
     /// Indicates if Tailscale API is accessible
@@ -176,7 +176,7 @@ final class TailscaleService {
         let clientVersion: String?
 
         var ipv4Address: String? {
-            addresses.first { $0.contains(".") && !$0.contains(":") }
+            self.addresses.first { $0.contains(".") && !$0.contains(":") }
         }
 
         var isOnline: Bool {
@@ -192,7 +192,7 @@ final class TailscaleService {
         var isVibeTunnelServer: Bool {
             // Check if device has VibeTunnel tag or is a macOS/Darwin device
             // The API might return "darwin", "macOS", "Darwin", etc.
-            if tags?.contains("vibetunnel") ?? false {
+            if self.tags?.contains("vibetunnel") ?? false {
                 return true
             }
             if let deviceOS = os?.lowercased() {
@@ -205,38 +205,38 @@ final class TailscaleService {
     // MARK: - Initialization
 
     private init() {
-        setupNotifications()
+        self.setupNotifications()
         Task {
-            await refreshStatus()
+            await self.refreshStatus()
         }
     }
 
     /// Sets up notification observers for app lifecycle
     private func setupNotifications() {
         #if os(iOS)
-            NotificationCenter.default.addObserver(
-                forName: UIApplication.willEnterForegroundNotification,
-                object: nil,
-                queue: .main
-            ) { _ in
-                Task { @MainActor in
-                    // Refresh token when app comes to foreground
-                    await self.refreshStatus()
-                }
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil,
+            queue: .main)
+        { _ in
+            Task { @MainActor in
+                // Refresh token when app comes to foreground
+                await self.refreshStatus()
             }
+        }
 
-            NotificationCenter.default.addObserver(
-                forName: UIApplication.didBecomeActiveNotification,
-                object: nil,
-                queue: .main
-            ) { _ in
-                Task { @MainActor in
-                    // Check token validity when app becomes active
-                    if self.isConfigured {
-                        _ = await self.ensureValidAccessToken()
-                    }
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main)
+        { _ in
+            Task { @MainActor in
+                // Check token validity when app becomes active
+                if self.isConfigured {
+                    _ = await self.ensureValidAccessToken()
                 }
             }
+        }
         #endif
     }
 
@@ -246,58 +246,58 @@ final class TailscaleService {
     func clearCredentials() {
         // Clear from Keychain
         do {
-            try keychainService.deletePassword(for: Self.clientIdKey.uuidString)
-            try keychainService.deletePassword(for: Self.clientSecretKey.uuidString)
-            try keychainService.deletePassword(for: Self.accessTokenKey.uuidString)
+            try self.keychainService.deletePassword(for: Self.clientIdKey.uuidString)
+            try self.keychainService.deletePassword(for: Self.clientSecretKey.uuidString)
+            try self.keychainService.deletePassword(for: Self.accessTokenKey.uuidString)
         } catch {
-            logger.error("Failed to delete credentials from Keychain: \(error)")
+            self.logger.error("Failed to delete credentials from Keychain: \(error)")
         }
 
         // Clear token expiry from UserDefaults
         UserDefaults.standard.removeObject(forKey: Self.tokenExpiryKey)
 
         // Clear in-memory values (will be cleared via property setters)
-        clientId = nil
-        clientSecret = nil
-        clearCachedToken()
+        self.clientId = nil
+        self.clientSecret = nil
+        self.clearCachedToken()
 
         // Clear discovered state
-        devices = []
-        tailnetName = nil
-        isRunning = false
-        statusError = nil
-        lastStatusCheck = nil
+        self.devices = []
+        self.tailnetName = nil
+        self.isRunning = false
+        self.statusError = nil
+        self.lastStatusCheck = nil
 
         // Post notification to update all views
         NotificationCenter.default.post(name: Notification.Name("TailscaleCredentialsCleared"), object: nil)
 
-        logger.info("Tailscale credentials and state cleared")
+        self.logger.info("Tailscale credentials and state cleared")
     }
 
     /// Clears the cached OAuth token
     private func clearCachedToken() {
-        accessToken = nil
-        tokenExpiry = nil
+        self.accessToken = nil
+        self.tokenExpiry = nil
     }
 
     /// Refreshes the Tailscale status by querying the API
     func refreshStatus() async {
-        guard isConfigured else {
-            isRunning = false
-            devices = []
-            tailnetName = nil
-            statusError = "No credentials configured"
-            logger.info("Tailscale credentials not configured")
+        guard self.isConfigured else {
+            self.isRunning = false
+            self.devices = []
+            self.tailnetName = nil
+            self.statusError = "No credentials configured"
+            self.logger.info("Tailscale credentials not configured")
             return
         }
 
         // Ensure we have a valid access token
-        if await ensureValidAccessToken() {
-            await fetchDevices()
+        if await self.ensureValidAccessToken() {
+            await self.fetchDevices()
         } else {
-            isRunning = false
-            devices = []
-            tailnetName = nil
+            self.isRunning = false
+            self.devices = []
+            self.tailnetName = nil
             // statusError is set by ensureValidAccessToken
         }
     }
@@ -305,17 +305,17 @@ final class TailscaleService {
     /// Ensures we have a valid access token, fetching a new one if needed
     private func ensureValidAccessToken() async -> Bool {
         // Check if we have a valid cached token
-        if accessToken != nil,
+        if self.accessToken != nil,
            let expiry = tokenExpiry,
            expiry > Date().addingTimeInterval(60)
         { // Still valid for at least 1 minute
-            logger.debug("Using cached token, expires at \(expiry)")
+            self.logger.debug("Using cached token, expires at \(expiry)")
             return true
         }
 
-        logger.info("Token expired or missing, fetching new token")
+        self.logger.info("Token expired or missing, fetching new token")
         // Fetch new token
-        return await fetchAccessToken()
+        return await self.fetchAccessToken()
     }
 
     /// Fetches a new OAuth access token using client credentials
@@ -323,23 +323,23 @@ final class TailscaleService {
         guard let clientId,
               let clientSecret
         else {
-            statusError = "Missing credentials"
+            self.statusError = "Missing credentials"
             return false
         }
 
         // Validate client ID and secret format
         if !clientId.hasPrefix("k") {
-            statusError = "Invalid Client ID format - should start with 'k'"
+            self.statusError = "Invalid Client ID format - should start with 'k'"
             return false
         }
 
         if !clientSecret.hasPrefix("tskey-client-") {
-            statusError = "Invalid Client Secret format - must start with 'tskey-client-'"
+            self.statusError = "Invalid Client Secret format - must start with 'tskey-client-'"
             return false
         }
 
         guard let url = URL(string: Self.oauthTokenEndpoint) else {
-            statusError = "Invalid OAuth endpoint"
+            self.statusError = "Invalid OAuth endpoint"
             return false
         }
 
@@ -353,7 +353,7 @@ final class TailscaleService {
             URLQueryItem(name: "client_id", value: clientId),
             URLQueryItem(name: "client_secret", value: clientSecret),
             URLQueryItem(name: "grant_type", value: "client_credentials"),
-            URLQueryItem(name: "scope", value: "devices:core:read")
+            URLQueryItem(name: "scope", value: "devices:core:read"),
         ]
         request.httpBody = components.percentEncodedQuery?.data(using: .utf8)
         request.timeoutInterval = Self.apiTimeoutInterval
@@ -362,19 +362,19 @@ final class TailscaleService {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                statusError = "Invalid response from OAuth endpoint"
+                self.statusError = "Invalid response from OAuth endpoint"
                 return false
             }
 
             if httpResponse.statusCode == 401 {
-                statusError = "Invalid client credentials"
-                logger.error("OAuth client credentials rejected with 401")
+                self.statusError = "Invalid client credentials"
+                self.logger.error("OAuth client credentials rejected with 401")
                 return false
             }
 
             guard httpResponse.statusCode == 200 else {
-                statusError = "OAuth error: HTTP \(httpResponse.statusCode)"
-                logger.error("OAuth endpoint returned status code: \(httpResponse.statusCode)")
+                self.statusError = "OAuth error: HTTP \(httpResponse.statusCode)"
+                self.logger.error("OAuth endpoint returned status code: \(httpResponse.statusCode)")
                 return false
             }
 
@@ -397,8 +397,8 @@ final class TailscaleService {
 
             // Validate the returned token
             if !tokenResponse.accessToken.hasPrefix("tskey-api-") {
-                logger.error("Invalid access token format returned: \(tokenResponse.accessToken.prefix(10))")
-                statusError = "Invalid access token format"
+                self.logger.error("Invalid access token format returned: \(tokenResponse.accessToken.prefix(10))")
+                self.statusError = "Invalid access token format"
                 return false
             }
 
@@ -406,11 +406,11 @@ final class TailscaleService {
             self.accessToken = tokenResponse.accessToken
             self.tokenExpiry = Date().addingTimeInterval(TimeInterval(tokenResponse.expiresIn))
 
-            logger.info("Successfully obtained OAuth access token, expires in \(tokenResponse.expiresIn) seconds")
+            self.logger.info("Successfully obtained OAuth access token, expires in \(tokenResponse.expiresIn) seconds")
             return true
         } catch {
-            logger.error("Failed to fetch OAuth access token: \(error)")
-            statusError = "Failed to get access token: \(error.localizedDescription)"
+            self.logger.error("Failed to fetch OAuth access token: \(error)")
+            self.statusError = "Failed to get access token: \(error.localizedDescription)"
             return false
         }
     }
@@ -418,7 +418,7 @@ final class TailscaleService {
     /// Fetches the list of devices from Tailscale API
     private func fetchDevices() async {
         guard let token = accessToken else {
-            statusError = "No access token available"
+            self.statusError = "No access token available"
             return
         }
 
@@ -428,9 +428,9 @@ final class TailscaleService {
         // Construct URL with - in the path (OAuth uses - instead of explicit tailnet)
         let urlString = "\(Self.tailscaleAPIEndpoint)/tailnet/\(tailnetIdentifier)/devices"
         guard let url = URL(string: urlString) else {
-            logger.error("Invalid Tailscale API URL: \(urlString)")
-            statusError = "Invalid API URL"
-            isRunning = false
+            self.logger.error("Invalid Tailscale API URL: \(urlString)")
+            self.statusError = "Invalid API URL"
+            self.isRunning = false
             return
         }
 
@@ -442,8 +442,8 @@ final class TailscaleService {
         request.timeoutInterval = Self.apiTimeoutInterval
 
         // Log complete request details
-        logger.debug("Tailscale API Request to: \(url.absoluteString)")
-        logger.debug("Using OAuth token: \(String(token.prefix(15)))...\(String(token.suffix(10)))")
+        self.logger.debug("Tailscale API Request to: \(url.absoluteString)")
+        self.logger.debug("Using OAuth token: \(String(token.prefix(15)))...\(String(token.suffix(10)))")
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -453,47 +453,47 @@ final class TailscaleService {
             }
 
             if httpResponse.statusCode == 401 {
-                statusError = "Invalid token - refreshing credentials"
-                isRunning = false
-                logger.error("OAuth token rejected with 401, clearing token")
-                clearCachedToken()
+                self.statusError = "Invalid token - refreshing credentials"
+                self.isRunning = false
+                self.logger.error("OAuth token rejected with 401, clearing token")
+                self.clearCachedToken()
                 // Try to refresh token once
-                if await fetchAccessToken() {
+                if await self.fetchAccessToken() {
                     // Retry with new token
-                    await fetchDevices()
+                    await self.fetchDevices()
                 }
                 return
             }
 
             if httpResponse.statusCode == 403 {
-                statusError = "Access denied - refreshing token"
-                isRunning = false
-                logger.error("403 Forbidden - attempting token refresh")
-                clearCachedToken()
+                self.statusError = "Access denied - refreshing token"
+                self.isRunning = false
+                self.logger.error("403 Forbidden - attempting token refresh")
+                self.clearCachedToken()
                 // Try to refresh token once
-                if await fetchAccessToken() {
+                if await self.fetchAccessToken() {
                     // Retry with new token
-                    await fetchDevices()
+                    await self.fetchDevices()
                 } else {
-                    statusError = "Access denied - check client credentials"
-                    logger.error("Failed to refresh token after 403")
+                    self.statusError = "Access denied - check client credentials"
+                    self.logger.error("Failed to refresh token after 403")
                 }
                 return
             }
 
             if httpResponse.statusCode == 500 {
-                statusError = "Tailscale API server error"
-                isRunning = false
-                logger.error("Tailscale API returned 500 error")
+                self.statusError = "Tailscale API server error"
+                self.isRunning = false
+                self.logger.error("Tailscale API returned 500 error")
                 return
             }
 
             guard httpResponse.statusCode == 200 else {
-                statusError = "API error: HTTP \(httpResponse.statusCode)"
-                isRunning = false
-                logger.error("Tailscale API returned status code: \(httpResponse.statusCode)")
+                self.statusError = "API error: HTTP \(httpResponse.statusCode)"
+                self.isRunning = false
+                self.logger.error("Tailscale API returned status code: \(httpResponse.statusCode)")
                 if let errorString = String(data: data, encoding: .utf8) {
-                    logger.error("Error response: \(errorString)")
+                    self.logger.error("Error response: \(errorString)")
                 }
                 return
             }
@@ -504,7 +504,7 @@ final class TailscaleService {
 
             // First log the raw response to debug JSON issues
             if let jsonString = String(data: data, encoding: .utf8) {
-                logger.info("Raw API response: \(jsonString)")
+                self.logger.info("Raw API response: \(jsonString)")
             }
 
             let decoder = JSONDecoder()
@@ -525,49 +525,49 @@ final class TailscaleService {
                     self.tailnetName = "Tailscale"
                 }
 
-                logger.info("Successfully fetched \(devices.count) devices from Tailscale")
+                self.logger.info("Successfully fetched \(self.devices.count) devices from Tailscale")
             } catch {
-                logger.error("Failed to decode devices response: \(error)")
+                self.logger.error("Failed to decode devices response: \(error)")
                 if let decodingError = error as? DecodingError {
                     switch decodingError {
-                    case .keyNotFound(let key, let context):
-                        logger.error("Missing key: \(key.stringValue) - \(context.debugDescription)")
-                    case .typeMismatch(let type, let context):
-                        logger.error("Type mismatch for type \(type) - \(context.debugDescription)")
-                    case .valueNotFound(let type, let context):
-                        logger.error("Value not found for type \(type) - \(context.debugDescription)")
-                    case .dataCorrupted(let context):
-                        logger.error("Data corrupted - \(context.debugDescription)")
+                    case let .keyNotFound(key, context):
+                        self.logger.error("Missing key: \(key.stringValue) - \(context.debugDescription)")
+                    case let .typeMismatch(type, context):
+                        self.logger.error("Type mismatch for type \(type) - \(context.debugDescription)")
+                    case let .valueNotFound(type, context):
+                        self.logger.error("Value not found for type \(type) - \(context.debugDescription)")
+                    case let .dataCorrupted(context):
+                        self.logger.error("Data corrupted - \(context.debugDescription)")
                     @unknown default:
-                        logger.error("Unknown decoding error")
+                        self.logger.error("Unknown decoding error")
                     }
                 }
-                statusError = "The data couldn't be read because it is missing."
-                isRunning = false
+                self.statusError = "The data couldn't be read because it is missing."
+                self.isRunning = false
             }
         } catch {
-            logger.error("Failed to fetch Tailscale devices: \(error)")
+            self.logger.error("Failed to fetch Tailscale devices: \(error)")
 
             // Provide more specific error messages
             if let urlError = error as? URLError {
                 switch urlError.code {
                 case .timedOut:
-                    statusError = "Request timed out"
+                    self.statusError = "Request timed out"
                 case .notConnectedToInternet:
-                    statusError = "No internet connection"
+                    self.statusError = "No internet connection"
                 case .cannotFindHost:
-                    statusError = "Cannot reach Tailscale API"
+                    self.statusError = "Cannot reach Tailscale API"
                 case .badServerResponse:
-                    statusError = "Invalid response from server"
+                    self.statusError = "Invalid response from server"
                 default:
-                    statusError = "Network error: \(urlError.code.rawValue)"
+                    self.statusError = "Network error: \(urlError.code.rawValue)"
                 }
             } else {
-                statusError = error.localizedDescription
+                self.statusError = error.localizedDescription
             }
 
-            isRunning = false
-            lastStatusCheck = Date()
+            self.isRunning = false
+            self.lastStatusCheck = Date()
         }
     }
 
@@ -575,7 +575,7 @@ final class TailscaleService {
     private func extractTailnetName(from hostname: String) -> String? {
         // Hostname format: device-name.tailnet-name.ts.net
         let components = hostname.split(separator: ".")
-        if components.count >= 3 && components.suffix(2).joined(separator: ".") == "ts.net" {
+        if components.count >= 3, components.suffix(2).joined(separator: ".") == "ts.net" {
             return String(components[components.count - 3])
         }
         return nil
@@ -585,14 +585,14 @@ final class TailscaleService {
 
     /// Legacy property for organization - maps to clientId
     var organization: String? {
-        get { clientId }
-        set { clientId = newValue }
+        get { self.clientId }
+        set { self.clientId = newValue }
     }
 
     /// Legacy property for API key - maps to clientSecret
     var apiKey: String? {
-        get { clientSecret }
-        set { clientSecret = newValue }
+        get { self.clientSecret }
+        set { self.clientSecret = newValue }
     }
 
     // MARK: - Compatibility Methods (for UI that expects these)
@@ -600,11 +600,11 @@ final class TailscaleService {
     /// Opens Tailscale configuration in settings
     func openTailscaleApp() {
         // This now opens our settings view instead
-        logger.info("Opening Tailscale configuration")
+        self.logger.info("Opening Tailscale configuration")
     }
 
     /// Opens App Store (no longer needed, but kept for compatibility)
     func openAppStore() {
-        logger.info("OAuth token configuration needed - no app required")
+        self.logger.info("OAuth token configuration needed - no app required")
     }
 }

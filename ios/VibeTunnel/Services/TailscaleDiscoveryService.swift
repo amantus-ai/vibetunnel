@@ -22,10 +22,10 @@ final class TailscaleDiscoveryService {
         let isPublic: Bool
 
         var displayName: String {
-            deviceName.replacingOccurrences(of: "-", with: " ")
+            self.deviceName.replacingOccurrences(of: "-", with: " ")
                 .split(separator: ".")
                 .first
-                .map(String.init) ?? deviceName
+                .map(String.init) ?? self.deviceName
         }
     }
 
@@ -57,6 +57,13 @@ final class TailscaleDiscoveryService {
     private var discoveryTask: Task<Void, Never>?
     private var refreshTimer: Timer?
 
+    /// Shared URLSession for health probes, reused across all probe calls
+    private let probeSession: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = 3.0
+        return URLSession(configuration: configuration)
+    }()
+
     /// The next scheduled refresh time
     private(set) var nextRefreshTime: Date?
 
@@ -66,7 +73,7 @@ final class TailscaleDiscoveryService {
     // MARK: - Constants
 
     private enum Constants {
-        static let defaultPort = 4_020
+        static let defaultPort = 4020
         static let probeTimeout: TimeInterval = 3.0
         static let discoveryInterval: TimeInterval = 30.0
     }
@@ -79,56 +86,56 @@ final class TailscaleDiscoveryService {
 
     /// Starts discovering Tailscale servers
     func startDiscovery() {
-        guard !isDiscovering else {
-            logger.debug("Discovery already in progress")
+        guard !self.isDiscovering else {
+            self.logger.debug("Discovery already in progress")
             return
         }
 
-        guard tailscaleService.isRunning else {
-            logger.info("Tailscale not running, skipping discovery")
-            lastError = "Tailscale is not running"
+        guard self.tailscaleService.isRunning else {
+            self.logger.info("Tailscale not running, skipping discovery")
+            self.lastError = "Tailscale is not running"
             return
         }
 
-        isDiscovering = true
-        lastError = nil
+        self.isDiscovering = true
+        self.lastError = nil
 
-        discoveryTask = Task {
-            await discoverServers()
+        self.discoveryTask = Task {
+            await self.discoverServers()
         }
     }
 
     /// Stops the discovery process
     func stopDiscovery() {
-        discoveryTask?.cancel()
-        discoveryTask = nil
-        isDiscovering = false
+        self.discoveryTask?.cancel()
+        self.discoveryTask = nil
+        self.isDiscovering = false
     }
 
     /// Starts the auto-refresh timer for periodic discovery
     func startAutoRefresh() {
         // Check if auto-refresh is enabled in settings
         guard UserDefaults.standard.bool(forKey: "tailscaleAutoRefresh") else {
-            logger.debug("Auto-refresh is disabled in settings")
+            self.logger.debug("Auto-refresh is disabled in settings")
             return
         }
 
         // Don't start if already running
-        guard refreshTimer == nil else {
-            logger.debug("Auto-refresh timer already running")
+        guard self.refreshTimer == nil else {
+            self.logger.debug("Auto-refresh timer already running")
             return
         }
 
         // Must have discovery enabled and Tailscale running
         guard UserDefaults.standard.bool(forKey: "enableTailscaleDiscovery"),
-              tailscaleService.isRunning
+              self.tailscaleService.isRunning
         else {
-            logger.info("Cannot start auto-refresh: discovery disabled or Tailscale not running")
+            self.logger.info("Cannot start auto-refresh: discovery disabled or Tailscale not running")
             return
         }
 
-        logger.info("Starting auto-refresh timer with \(Constants.discoveryInterval)s interval")
-        isAutoRefreshing = true
+        self.logger.info("Starting auto-refresh timer with \(Constants.discoveryInterval)s interval")
+        self.isAutoRefreshing = true
 
         // Schedule the timer on the main run loop
         DispatchQueue.main.async { [weak self] in
@@ -159,24 +166,24 @@ final class TailscaleDiscoveryService {
 
     /// Stops the auto-refresh timer
     func stopAutoRefresh() {
-        refreshTimer?.invalidate()
-        refreshTimer = nil
-        isAutoRefreshing = false
-        nextRefreshTime = nil
-        logger.info("Stopped auto-refresh timer")
+        self.refreshTimer?.invalidate()
+        self.refreshTimer = nil
+        self.isAutoRefreshing = false
+        self.nextRefreshTime = nil
+        self.logger.info("Stopped auto-refresh timer")
     }
 
     /// Adds a known server hostname for future discovery
     func addKnownServer(hostname: String) {
-        var known = knownHostnames
+        var known = self.knownHostnames
         known.insert(hostname)
-        knownHostnames = known
+        self.knownHostnames = known
 
         // Immediately probe this server
         Task {
             if let server = await probeServer(hostname: hostname) {
-                if !discoveredServers.contains(where: { $0.hostname == hostname }) {
-                    discoveredServers.append(server)
+                if !self.discoveredServers.contains(where: { $0.hostname == hostname }) {
+                    self.discoveredServers.append(server)
                 }
             }
         }
@@ -184,141 +191,213 @@ final class TailscaleDiscoveryService {
 
     /// Removes a server from known servers
     func removeKnownServer(hostname: String) {
-        var known = knownHostnames
+        var known = self.knownHostnames
         known.remove(hostname)
-        knownHostnames = known
+        self.knownHostnames = known
 
-        discoveredServers.removeAll { $0.hostname == hostname }
+        self.discoveredServers.removeAll { $0.hostname == hostname }
     }
 
     /// Manually refreshes the server list
     func refresh() async {
-        guard !isDiscovering else { return }
+        guard !self.isDiscovering else { return }
 
-        isDiscovering = true
-        defer { isDiscovering = false }
+        self.isDiscovering = true
+        defer { self.isDiscovering = false }
 
-        await discoverServers()
+        await self.discoverServers()
     }
 
     /// Resets the entire discovery environment, clearing all state
     func resetEnvironment() {
         // Stop any ongoing discovery
-        stopDiscovery()
-        stopAutoRefresh()
+        self.stopDiscovery()
+        self.stopAutoRefresh()
 
         // Clear discovered servers
-        discoveredServers = []
+        self.discoveredServers = []
 
         // Clear known hostnames from UserDefaults
-        knownHostnames = []
+        self.knownHostnames = []
 
         // Reset error states
-        lastError = nil
-        isDiscovering = false
+        self.lastError = nil
+        self.isDiscovering = false
 
-        logger.info("Tailscale discovery environment reset")
+        self.logger.info("Tailscale discovery environment reset")
     }
 
     // MARK: - Private Methods
 
     private func discoverServers() async {
-        logger.info("Starting Tailscale server discovery using API")
+        self.logger.info("Starting Tailscale server discovery using API")
 
         // Check if Tailscale is configured and running
-        guard tailscaleService.isConfigured else {
-            logger.warning("Tailscale OAuth token not configured")
-            lastError = "No OAuth token configured"
-            isDiscovering = false
+        guard self.tailscaleService.isConfigured else {
+            self.logger.warning("Tailscale OAuth token not configured")
+            self.lastError = "No OAuth token configured"
+            self.isDiscovering = false
             return
         }
 
         // Refresh device list from API
-        await tailscaleService.refreshStatus()
+        await self.tailscaleService.refreshStatus()
 
-        guard tailscaleService.isRunning else {
-            logger.warning("Tailscale API not accessible")
-            lastError = tailscaleService.statusError ?? "API not accessible"
-            isDiscovering = false
+        guard self.tailscaleService.isRunning else {
+            self.logger.warning("Tailscale API not accessible")
+            self.lastError = self.tailscaleService.statusError ?? "API not accessible"
+            self.isDiscovering = false
             return
         }
 
-        logger.info("Processing \(tailscaleService.devices.count) devices from Tailscale API")
+        self.logger.info("Processing \(self.tailscaleService.devices.count) devices from Tailscale API")
 
         // Filter devices that could be VibeTunnel servers
         var newServers: [TailscaleServer] = []
 
-        for device in tailscaleService.devices {
-            logger
+        for device in self.tailscaleService.devices {
+            self.logger
                 .info(
-                    "Checking device: \(device.name), OS: '\(device.os ?? "nil")', isOnline: \(device.isOnline), isVibeTunnelServer: \(device.isVibeTunnelServer), lastSeen: \(device.lastSeen ?? "nil")"
-                )
+                    "Checking device: \(device.name), OS: '\(device.os ?? "nil")', isOnline: \(device.isOnline), isVibeTunnelServer: \(device.isVibeTunnelServer), lastSeen: \(device.lastSeen ?? "nil")")
 
             // Only check online devices that could be servers
-            guard device.isOnline && device.isVibeTunnelServer else {
-                logger
+            guard device.isOnline, device.isVibeTunnelServer else {
+                self.logger
                     .info(
-                        "Skipping device \(device.name): online=\(device.isOnline), server=\(device.isVibeTunnelServer), OS='\(device.os ?? "nil")'"
-                    )
+                        "Skipping device \(device.name): online=\(device.isOnline), server=\(device.isVibeTunnelServer), OS='\(device.os ?? "nil")'")
                 continue
             }
 
-            logger.info("Probing VibeTunnel on \(device.name) (\(device.ipv4Address ?? "no IP"))")
+            self.logger.info("Probing VibeTunnel on \(device.name) (\(device.ipv4Address ?? "no IP"))")
 
             // Check if this device has VibeTunnel running on port 4020
             if let server = await probeServer(hostname: device.name, ip: device.ipv4Address) {
                 newServers.append(server)
-                logger.info("Found VibeTunnel server: \(device.name)")
+                self.logger.info("Found VibeTunnel server: \(device.name)")
             } else {
-                logger.info("No VibeTunnel response from \(device.name)")
+                self.logger.info("No VibeTunnel response from \(device.name)")
             }
         }
 
         // Update discovered servers
-        discoveredServers = newServers.sorted { $0.deviceName < $1.deviceName }
+        self.discoveredServers = newServers.sorted { $0.deviceName < $1.deviceName }
 
-        logger.info("Discovery complete. Found \(discoveredServers.count) VibeTunnel servers")
-        isDiscovering = false
+        self.logger.info("Discovery complete. Found \(self.discoveredServers.count) VibeTunnel servers")
+        self.isDiscovering = false
     }
 
     private func probeServer(
         hostname: String,
         ip: String? = nil,
-        port: Int = Constants.defaultPort
-    )
+        port: Int = Constants.defaultPort)
         async -> TailscaleServer?
     {
-        logger.debug("Probing server: \(hostname):\(port)")
+        self.logger.debug("Probing server: \(hostname):\(port)")
 
         // Use provided IP or try to resolve the hostname
         let resolvedIP: String? = if let providedIP = ip {
             providedIP
         } else {
-            await resolveHostname(hostname)
+            await self.resolveHostname(hostname)
         }
 
+        // Probe both HTTP and HTTPS in parallel. Prefer HTTPS when available
+        // because Tailscale Serve injects identity headers for automatic auth.
+        // Without HTTPS, connections go direct and require password login.
+        // Uses withTaskGroup so HTTPS success cancels the HTTP probe early.
+        let result = await withTaskGroup(of: (Bool, TailscaleServer?).self, returning: TailscaleServer?.self) { group in
+            // isHTTPS = true
+            group.addTask { await (true, self.probeHTTPS(hostname: hostname, resolvedIP: resolvedIP)) }
+            // isHTTPS = false
+            group.addTask { await (false, self.probeHTTP(hostname: hostname, resolvedIP: resolvedIP, port: port)) }
+
+            var httpResult: TailscaleServer?
+            for await (isHTTPS, server) in group {
+                if isHTTPS, let server {
+                    // HTTPS found — cancel remaining HTTP probe and return immediately
+                    group.cancelAll()
+                    self.logger.info("HTTPS probe succeeded for \(hostname) — using Tailscale Serve")
+                    return server
+                }
+                if !isHTTPS {
+                    httpResult = server
+                }
+            }
+
+            if httpResult != nil {
+                self.logger.info("HTTP probe succeeded for \(hostname) on port \(port)")
+            }
+            return httpResult
+        }
+
+        if result == nil {
+            self.logger.info("No VibeTunnel response from \(hostname) on HTTP or HTTPS")
+        }
+        return result
+    }
+
+    /// Probes a server via plain HTTP on the given port
+    private func probeHTTP(
+        hostname: String,
+        resolvedIP: String?,
+        port: Int) async -> TailscaleServer?
+    {
         // Construct URL for health check - VibeTunnel uses /api/health endpoint
-        let urlString: String = if let resolvedIP {
+        let urlString = if let resolvedIP {
             "http://\(resolvedIP):\(port)/api/health"
         } else {
             "http://\(hostname):\(port)/api/health"
         }
         guard let url = URL(string: urlString) else {
-            logger.debug("Invalid URL for \(hostname)")
+            self.logger.debug("Invalid URL for \(hostname)")
             return nil
         }
 
-        // Perform health check
-        do {
-            let configuration = URLSessionConfiguration.default
-            configuration.timeoutIntervalForRequest = Constants.probeTimeout
-            let session = URLSession(configuration: configuration)
+        return await self.performHealthProbe(
+            url: url,
+            hostname: hostname,
+            resolvedIP: resolvedIP,
+            port: port,
+            isHTTPS: false)
+    }
 
-            logger.debug("Probing URL: \(url.absoluteString)")
-            let (data, response) = try await session.data(from: url)
+    /// Probes a server via HTTPS on port 443 (Tailscale Serve).
+    /// Note: `resolvedIP` is not used in the URL because Tailscale Serve TLS certs
+    /// are issued for the MagicDNS hostname — connecting via IP would fail validation.
+    /// The IP is passed through to `performHealthProbe` for the returned server metadata.
+    private func probeHTTPS(
+        hostname: String,
+        resolvedIP: String?) async -> TailscaleServer?
+    {
+        // Tailscale Serve uses the MagicDNS hostname with HTTPS on port 443
+        let httpsUrlString = "https://\(hostname)/api/health"
+        guard let url = URL(string: httpsUrlString) else {
+            self.logger.debug("Invalid HTTPS URL for \(hostname)")
+            return nil
+        }
+
+        return await self.performHealthProbe(
+            url: url,
+            hostname: hostname,
+            resolvedIP: resolvedIP,
+            port: 443,
+            isHTTPS: true)
+    }
+
+    /// Performs the actual health probe request and parses the response
+    private func performHealthProbe(
+        url: URL,
+        hostname: String,
+        resolvedIP: String?,
+        port: Int,
+        isHTTPS: Bool) async -> TailscaleServer?
+    {
+        do {
+            self.logger.debug("Probing URL: \(url.absoluteString)")
+            let (data, response) = try await self.probeSession.data(from: url)
 
             if let httpResponse = response as? HTTPURLResponse {
-                logger.debug("Probe response from \(hostname): HTTP \(httpResponse.statusCode)")
+                self.logger.debug("Probe response from \(hostname): HTTP \(httpResponse.statusCode)")
                 if httpResponse.statusCode == 200 {
                     // Parse the health response to get Tailscale information
                     var httpsUrl: String?
@@ -328,7 +407,7 @@ final class TailscaleDiscoveryService {
                         // Check for Tailscale HTTPS URL
                         if let tailscaleUrl = health.tailscaleUrl {
                             httpsUrl = tailscaleUrl
-                            logger.info("Found Tailscale HTTPS URL: \(tailscaleUrl)")
+                            self.logger.info("Found Tailscale HTTPS URL: \(tailscaleUrl)")
                         }
 
                         // Check connections object for more details
@@ -340,9 +419,15 @@ final class TailscaleDiscoveryService {
                             // Check if Funnel (public access) is enabled
                             if let funnel = tailscale.funnel {
                                 isPublic = funnel
-                                logger.info("Tailscale Funnel enabled: \(funnel)")
+                                self.logger.info("Tailscale Funnel enabled: \(funnel)")
                             }
                         }
+                    }
+
+                    // If we reached the server via HTTPS, use that as the httpsUrl
+                    if isHTTPS, httpsUrl == nil {
+                        httpsUrl = "https://\(hostname)"
+                        self.logger.info("Server reachable via Tailscale Serve HTTPS: \(httpsUrl!)")
                     }
 
                     // Extract device name from hostname
@@ -356,17 +441,17 @@ final class TailscaleDiscoveryService {
                     return TailscaleServer(
                         hostname: hostname,
                         ip: resolvedIP,
-                        port: port,
+                        port: isHTTPS ? Constants.defaultPort : port,
                         deviceName: deviceName,
                         isReachable: true,
                         lastSeen: Date(),
                         httpsUrl: httpsUrl,
-                        isPublic: isPublic
-                    )
+                        isPublic: isPublic)
                 }
             }
         } catch {
-            logger.debug("Failed to probe \(hostname): \(error.localizedDescription)")
+            self.logger
+                .debug("Failed to probe \(hostname) (\(isHTTPS ? "HTTPS" : "HTTP")): \(error.localizedDescription)")
         }
 
         return nil
@@ -405,8 +490,8 @@ final class TailscaleDiscoveryService {
                     socklen_t(hostname.count),
                     nil,
                     0,
-                    NI_NUMERICHOST
-                ) == 0 {
+                    NI_NUMERICHOST) == 0
+                {
                     // Use the recommended String initializer to avoid deprecation warning
                     let hostnameData = hostname.withUnsafeBufferPointer { buffer in
                         guard let baseAddress = buffer.baseAddress else { return Data() }
@@ -434,7 +519,6 @@ final class TailscaleDiscoveryService {
             preferTailscale: true,
             httpsAvailable: tailscaleServer.httpsUrl != nil,
             isPublic: tailscaleServer.isPublic,
-            preferSSL: tailscaleServer.httpsUrl != nil
-        )
+            preferSSL: tailscaleServer.httpsUrl != nil)
     }
 }
