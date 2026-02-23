@@ -107,7 +107,7 @@ The `vt` command is a smart wrapper that forwards your terminal sessions through
 - Available from both the Mac app and npm package installations
 
 **Installation sources**:
-- **macOS App**: Creates `/usr/local/bin/vt` symlink during installation
+- **macOS App**: Installs the `vt` wrapper script at `/usr/local/bin/vt` during installation
 - **npm Package**: Installs `vt` globally, with intelligent Mac app detection
 
 **Smart detection**:
