@@ -12,6 +12,7 @@ export interface RemoteServer {
   registeredAt: Date;
   lastHeartbeat: Date;
   sessionIds: Set<string>; // Track which sessions belong to this remote
+  consecutiveFailures: number; // Consecutive health check failures
 }
 
 export class RemoteRegistry {
@@ -21,6 +22,7 @@ export class RemoteRegistry {
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private readonly HEALTH_CHECK_INTERVAL = 15000; // Check every 15 seconds
   private readonly HEALTH_CHECK_TIMEOUT = 5000; // 5 second timeout per check
+  private readonly MAX_CONSECUTIVE_FAILURES = 3;
 
   constructor() {
     this.startHealthChecker();
@@ -44,6 +46,7 @@ export class RemoteRegistry {
       registeredAt: now,
       lastHeartbeat: now,
       sessionIds: new Set<string>(),
+      consecutiveFailures: 0,
     };
 
     this.remotes.set(remote.id, registeredRemote);
@@ -171,6 +174,12 @@ export class RemoteRegistry {
       clearTimeout(timeoutId);
 
       if (response.ok) {
+        if (remote.consecutiveFailures > 0) {
+          logger.debug(
+            `remote ${remote.name} recovered after ${remote.consecutiveFailures} failed checks`
+          );
+        }
+        remote.consecutiveFailures = 0;
         remote.lastHeartbeat = new Date();
         logger.debug(`health check passed for ${remote.name}`);
       } else {
@@ -178,10 +187,22 @@ export class RemoteRegistry {
       }
     } catch (error) {
       // During shutdown, don't log errors or unregister remotes
-      if (!isShuttingDown()) {
-        logger.warn(`remote failed health check: ${remote.name} (${remote.id})`, error);
-        // Remove the remote if it fails health check
+      if (isShuttingDown()) {
+        return;
+      }
+
+      remote.consecutiveFailures++;
+      if (remote.consecutiveFailures >= this.MAX_CONSECUTIVE_FAILURES) {
+        logger.warn(
+          `remote ${remote.name} (${remote.id}) failed ${remote.consecutiveFailures}/${this.MAX_CONSECUTIVE_FAILURES} health checks, removing`,
+          error
+        );
         this.unregister(remote.id);
+      } else {
+        logger.warn(
+          `remote ${remote.name} failed health check (${remote.consecutiveFailures}/${this.MAX_CONSECUTIVE_FAILURES})`,
+          error instanceof Error ? error.message : String(error)
+        );
       }
     }
   }
