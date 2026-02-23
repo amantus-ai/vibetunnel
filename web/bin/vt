@@ -504,7 +504,7 @@ resolve_command() {
     case "$shell_name" in
         zsh)
             # For zsh, we need interactive mode to get aliases
-            exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
+            exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} "${TITLE_MODE_ARGS[@]}" "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
             ;;
         bash)
             # For bash, enable alias expansion before parsing the command string.
@@ -518,11 +518,11 @@ shopt -s expand_aliases
 source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true
 rm -f "$BASH_ENV"
 EOF
-            exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} /usr/bin/env BASH_ENV="$bash_env_file" "$user_shell" -c "$cmd_string"
+            exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} "${TITLE_MODE_ARGS[@]}" /usr/bin/env BASH_ENV="$bash_env_file" "$user_shell" -c "$cmd_string"
             ;;
         *)
             # Generic shell handling
-            exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
+            exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} "${TITLE_MODE_ARGS[@]}" "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
             ;;
     esac
 }
@@ -693,9 +693,9 @@ if [[ "$1" == "--no-shell-wrap" || "$1" == "-S" ]]; then
 fi
 
 # Handle --title-mode option
-TITLE_MODE_ARGS=""
+TITLE_MODE_ARGS=()
 if [[ "$1" == "--title-mode" && $# -gt 1 ]]; then
-    TITLE_MODE_ARGS="--title-mode $2"
+    TITLE_MODE_ARGS=(--title-mode "$2")
     shift 2
 fi
 
@@ -703,7 +703,7 @@ fi
 if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     if [[ "$NO_SHELL_WRAP" == "true" ]]; then
         # Execute directly without shell wrapper
-        exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
+        exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} "${TITLE_MODE_ARGS[@]}" "$@"
     else
         # Resolve binaries to absolute paths so the server uses the same executable
         cmd="$1"
@@ -711,11 +711,11 @@ if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
         cmd_args=("$@")
 
         if [[ "$cmd" == */* ]]; then
-            exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$cmd" "${cmd_args[@]}"
+            exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} "${TITLE_MODE_ARGS[@]}" "$cmd" "${cmd_args[@]}"
         else
             resolved_path="$(resolve_binary_path "$cmd" || true)"
             if [[ -n "$resolved_path" ]]; then
-                exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$resolved_path" "${cmd_args[@]}"
+                exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} "${TITLE_MODE_ARGS[@]}" "$resolved_path" "${cmd_args[@]}"
             else
                 # Not a real binary, try alias resolution
                 resolve_command "$cmd" "${cmd_args[@]}"
@@ -724,5 +724,5 @@ if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     fi
 else
     # Run with fwd command (original behavior for options)
-    exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
+    exec_fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} "${TITLE_MODE_ARGS[@]}" "$@"
 fi

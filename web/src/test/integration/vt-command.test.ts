@@ -1,5 +1,6 @@
 import { execSync, spawn } from 'child_process';
-import { existsSync } from 'fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
 import { join } from 'path';
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -178,5 +179,41 @@ describe('vt command', () => {
   it('should be included in npm package files', () => {
     const packageJson = JSON.parse(require('fs').readFileSync(packageJsonPath, 'utf8'));
     expect(packageJson.files).toContain('bin/');
+  });
+
+  it('should pass --title-mode as separate argv tokens', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'vt-title-mode-'));
+    const mockVibetunnelPath = join(tempDir, 'mock-vibetunnel.sh');
+    const argvOutputPath = join(tempDir, 'argv.txt');
+
+    try {
+      writeFileSync(
+        mockVibetunnelPath,
+        `#!/usr/bin/env bash
+printf "%s\n" "$@" > "$VT_ARGV_OUTPUT"
+`,
+        'utf8'
+      );
+      chmodSync(mockVibetunnelPath, 0o755);
+
+      execSync(`bash "${vtScriptPath}" -S --title-mode dynamic echo test`, {
+        cwd: projectRoot,
+        stdio: 'pipe',
+        env: {
+          ...process.env,
+          VIBETUNNEL_BIN: mockVibetunnelPath,
+          VT_ARGV_OUTPUT: argvOutputPath,
+        },
+      });
+
+      const argv = readFileSync(argvOutputPath, 'utf8')
+        .split('\n')
+        .filter((line) => line.length > 0);
+
+      expect(argv.slice(0, 5)).toEqual(['fwd', '--title-mode', 'dynamic', 'echo', 'test']);
+      expect(argv).not.toContain('--title-mode dynamic');
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 });
