@@ -233,6 +233,42 @@ describe('Terminal', () => {
         });
       }
     });
+
+    it('should not steal focus when clicking a terminal link', async () => {
+      const terminalRoot = element.querySelector('.terminal-root') as HTMLElement | null;
+      const pasteInput = element.querySelector(
+        '.terminal-paste-input'
+      ) as HTMLTextAreaElement | null;
+      expect(terminalRoot).toBeTruthy();
+      expect(pasteInput).toBeTruthy();
+
+      const focusSpy = vi.spyOn(pasteInput as HTMLTextAreaElement, 'focus');
+
+      const link = document.createElement('a');
+      link.href = 'https://example.com';
+      link.textContent = 'example';
+      link.className = 'terminal-link';
+      terminalRoot?.appendChild(link);
+
+      link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+      expect(focusSpy).not.toHaveBeenCalled();
+    });
+
+    it('should focus paste input when clicking non-link terminal area', async () => {
+      const terminalRoot = element.querySelector('.terminal-root') as HTMLElement | null;
+      const pasteInput = element.querySelector(
+        '.terminal-paste-input'
+      ) as HTMLTextAreaElement | null;
+      expect(terminalRoot).toBeTruthy();
+      expect(pasteInput).toBeTruthy();
+
+      const focusSpy = vi.spyOn(pasteInput as HTMLTextAreaElement, 'focus');
+
+      terminalRoot?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+      expect(focusSpy).toHaveBeenCalled();
+    });
   });
 
   describe('terminal sizing', () => {

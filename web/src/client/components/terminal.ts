@@ -465,8 +465,13 @@ export class Terminal extends LitElement {
     this.scrollToBottom();
   };
 
-  private handleClick = () => {
+  private handleClick = (e: MouseEvent) => {
     if (this.disableClick) return;
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('a[href]')) {
+      // Keep native link behavior (especially important on mobile browsers).
+      return;
+    }
     const selection = document.getSelection();
     if (selection && selection.toString().length > 0) return;
     this.focus();
