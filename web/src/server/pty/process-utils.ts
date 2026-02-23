@@ -67,6 +67,20 @@ function existsSync(filePath: string): boolean {
 }
 
 /**
+ * Quote argv entries into a single POSIX shell command string.
+ * Preserves spaces and shell-special characters when we must use `-c`.
+ */
+function formatPosixCommand(args: string[]): string {
+  return args
+    .map((arg) => {
+      if (arg.length === 0) return "''";
+      if (/^[A-Za-z0-9_@%+=:,./-]+$/.test(arg)) return arg;
+      return `'${arg.replace(/'/g, `'\"'\"'`)}'`;
+    })
+    .join(' ');
+}
+
+/**
  * Check if a process is currently running by PID
  * Uses platform-appropriate methods for reliable detection
  */
@@ -334,7 +348,7 @@ export function resolveCommand(command: string[]): {
         // Non-interactive command execution
         return {
           command: userShell,
-          args: ['-c', command.join(' ')],
+          args: ['-c', formatPosixCommand(command)],
           useShell: true,
           resolvedFrom: 'shell',
         };
@@ -342,7 +356,7 @@ export function resolveCommand(command: string[]): {
         // Interactive shell session
         return {
           command: userShell,
-          args: ['-i', '-c', command.join(' ')],
+          args: ['-i', '-c', formatPosixCommand(command)],
           useShell: true,
           resolvedFrom: 'shell',
           isInteractive: true,
@@ -380,7 +394,7 @@ export function resolveCommand(command: string[]): {
         // The -l flag makes it a login shell, ensuring profile/rc files are sourced
         return {
           command: userShell,
-          args: ['-i', '-l', '-c', command.join(' ')],
+          args: ['-i', '-l', '-c', formatPosixCommand(command)],
           useShell: true,
           resolvedFrom: 'alias',
         };
@@ -388,7 +402,7 @@ export function resolveCommand(command: string[]): {
         // No shell config found, use basic execution
         return {
           command: userShell,
-          args: ['-c', command.join(' ')],
+          args: ['-c', formatPosixCommand(command)],
           useShell: true,
           resolvedFrom: 'shell',
         };
@@ -397,7 +411,7 @@ export function resolveCommand(command: string[]): {
       // Interactive shell session: use -i and -l for proper initialization
       return {
         command: userShell,
-        args: ['-i', '-l', '-c', command.join(' ')],
+        args: ['-i', '-l', '-c', formatPosixCommand(command)],
         useShell: true,
         resolvedFrom: 'shell',
         isInteractive: true,

@@ -54,6 +54,26 @@ describe('ProcessUtils command parsing', () => {
       expect(result.args).toContain('myalias --some-flag');
     });
 
+    it('should preserve quoted args with spaces in shell fallback', () => {
+      const command = ['myalias', '--message', 'hello world'];
+      const result = ProcessUtils.resolveCommand(command);
+
+      expect(result.useShell).toBe(true);
+      expect(result.resolvedFrom).toBe('alias');
+      expect(result.args).toContain('-c');
+      expect(result.args).toContain("myalias --message 'hello world'");
+    });
+
+    it('should escape single quotes safely in shell fallback', () => {
+      const command = ['myalias', '--message', "it's done"];
+      const result = ProcessUtils.resolveCommand(command);
+
+      expect(result.useShell).toBe(true);
+      expect(result.resolvedFrom).toBe('alias');
+      expect(result.args).toContain('-c');
+      expect(result.args).toContain("myalias --message 'it'\"'\"'s done'");
+    });
+
     it('should handle regular binaries in PATH', () => {
       // Common commands that should exist in PATH
       const testCommands = [
