@@ -1154,11 +1154,11 @@ export class SessionView extends LitElement {
             -webkit-overflow-scrolling: touch;
           }
           
-          /* Desktop: Keep existing terminal behavior */
+          /* Desktop: Terminal fills available space */
           .terminal-area vibe-terminal,
           .terminal-area vibe-terminal-binary {
-            height: calc(100% + 50px) !important;
-            margin-bottom: -50px !important;
+            height: 100% !important;
+            margin-bottom: 0 !important;
           }
           
           /* Desktop: Keep transform for quick keys */
