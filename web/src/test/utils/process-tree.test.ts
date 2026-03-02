@@ -136,6 +136,33 @@ describe('process-tree', () => {
       expect(isClaudeInProcessTree()).toBe(true);
     });
 
+    it('should detect ollama launch claude', () => {
+      const mockOutput = `  PID  PPID COMMAND
+12345 67890 /usr/local/bin/ollama launch claude --model qwen3.5:397b-cloud -- --dangerously-skip-permissions`;
+
+      vi.mocked(execSync).mockReturnValueOnce(mockOutput);
+
+      expect(isClaudeInProcessTree()).toBe(true);
+    });
+
+    it('should detect ollama run claude', () => {
+      const mockOutput = `  PID  PPID COMMAND
+12345 67890 /usr/local/bin/ollama run claude --dangerously-skip-permissions`;
+
+      vi.mocked(execSync).mockReturnValueOnce(mockOutput);
+
+      expect(isClaudeInProcessTree()).toBe(true);
+    });
+
+    it('should detect claude-code binary directly', () => {
+      const mockOutput = `  PID  PPID COMMAND
+12345 67890 /usr/local/bin/claude-code --dangerously-skip-permissions`;
+
+      vi.mocked(execSync).mockReturnValueOnce(mockOutput);
+
+      expect(isClaudeInProcessTree()).toBe(true);
+    });
+
     it('should return false when claude is not in tree', () => {
       const mockOutput = `  PID  PPID COMMAND
 12345 67890 /usr/bin/node /path/to/other-app.js

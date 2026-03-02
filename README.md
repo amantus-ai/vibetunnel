@@ -156,7 +156,7 @@ Visit [http://localhost:4020](http://localhost:4020) to see all your terminal se
 
 - **🌐 Browser-Based Access** - Control your Mac terminal from any device with a web browser
 - **🚀 Zero Configuration** - No SSH keys, no port forwarding, no complexity
-- **🤖 AI Agent Friendly** - Perfect for monitoring Claude Code, ChatGPT, or any terminal-based AI tools
+- **🤖 AI Agent Friendly** - Perfect for monitoring Claude Code (including via Ollama), ChatGPT, or any terminal-based AI tools
 - **📊 Session Activity Indicators** - Real-time activity tracking shows which sessions are active or idle
 - **🔄 Git Follow Mode** - Terminal automatically follows your IDE's branch switching
 - **⌨️ Smart Keyboard Handling** - Intelligent shortcut routing with toggleable capture modes. When capture is active, use Cmd+1...9/0 (Mac) or Ctrl+1...9/0 (Linux) to quickly switch between sessions
