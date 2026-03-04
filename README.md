@@ -704,6 +704,7 @@ npm publish
 - macOS 14.0+ (Sonoma) on Apple Silicon (M1+)
 - Xcode 16.0+
 - Node.js 22.12+ (minimum supported version)
+- Zig 0.15.2 (for building vt-fwd binary; install via `brew install zig` or from ziglang.org)
 
 ### Build Steps
 
