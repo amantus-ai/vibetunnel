@@ -56,17 +56,106 @@ The current stack uses Tailscale as the networking foundation. Over time, each l
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Shadow ↔ Tailscale Mapping (Current → Future)
+### Multi-Dimensional Architecture Analysis
 
-| Shadow Layer | Role | Current Implementation | Future (Shadow Protocol) |
+The Shadow stack has **two axes** that need distinct layers. The original design is strong on the **connectivity axis** but thin on the **intelligence axis**. Both are required for ambient personal intelligence to work.
+
+```
+  CONNECTIVITY AXIS (how devices talk)     INTELLIGENCE AXIS (how data/compute lives)
+  ─────────────────────────────────────    ──────────────────────────────────────────
+
+  Shadow Fleet ── device enrollment         Shadow Memory ── distributed state/recall
+  Shadow Net ──── encrypted overlay         Shadow Vault ── data sovereignty & crypto
+  Shadow Mesh ─── peer topology             Shadow Mind ─── inference & reasoning
+  Shadow Port ─── service exposure          Shadow Sync ── consistency & conflict resolution
+  Shadow Weave ── request routing           Shadow Pulse ── presence & health
+  Shadow Loom ─── thread orchestration      Shadow Gate ── sharing & access boundaries
+```
+
+Without both axes, you get a well-connected mesh with nothing meaningful flowing through it — or rich intelligence with no way to distribute it.
+
+#### The Connectivity Axis (What You Have)
+
+This is well-defined. The layers map cleanly from Tailscale today to custom Shadow protocols tomorrow:
+
+| Shadow Layer | Role | Current (Tailscale) | Future (Shadow Protocol) |
 |---|---|---|---|
 | **Shadow Fleet** | Device enrollment & orchestration | Tailscale admin console + device auth | Custom fleet management with context-aware scheduling |
 | **Shadow Scale** | Fleet scaling & identity | Tailscale coordination server | Decentralized identity + self-organizing fleet |
 | **Shadow Net** | Private encrypted network | Tailscale tailnet (WireGuard) | Custom encrypted overlay network |
-| **Shadow Mesh** | Peer-to-peer topology | Tailscale mesh + DERP relay servers | Direct mesh with intelligent relay selection |
-| **Shadow Port** | Service exposure & tunneling | Tailscale Serve (private) + Funnel (public) | Identity-aware port forwarding with context narrowing |
+| **Shadow Mesh** | Peer-to-peer topology | Tailscale mesh + DERP relays | Direct mesh with intelligent relay selection |
+| **Shadow Port** | Service exposure & tunneling | Tailscale Serve + Funnel | Identity-aware port forwarding with context narrowing |
 | **Shadow Weave** | Request routing fabric | HTTP routing + auth middleware | Context-aware routing that follows the user |
 | **Shadow Loom** | Thread orchestration | WebSocket multiplexing | Distributed compute threading across fleet |
+
+#### The Intelligence Axis (What's Missing)
+
+These layers handle **state, reasoning, consistency, and trust** — the dimensions that make this "personal intelligence" rather than just "personal networking":
+
+| Shadow Layer | Role | Why It's Needed | Freenet Parallel |
+|---|---|---|---|
+| **Shadow Memory** | Distributed state & recall | Your terminal history, AI conversations, clipboard, context — must persist across devices and survive any single device going offline. Not just "sync" — it's the system's recall of what you were doing, where, and why. | Freenet's distributed data store (encrypted, redundant, device-local-first) |
+| **Shadow Vault** | Data sovereignty & encryption at rest | Every piece of data in Shadow Memory must be encrypted with keys YOU control. No cloud provider can read it. Selective sharing: you choose what to expose to which device or person. This is the Freenet principle that matters most. | Freenet's encrypted key-based store, where data is unreadable without the holder's key |
+| **Shadow Mind** | Inference & reasoning distribution | Where does AI processing happen? Your Mac has a GPU, your iPad doesn't. Shadow Mind routes inference to the right device — or splits it across devices. The "thinking" layer of personal intelligence. | No direct Freenet parallel — this is novel |
+| **Shadow Sync** | Consistency & conflict resolution | When you edit on iPad while Mac is asleep, then Mac wakes up — what happens? CRDTs? Event sourcing? Last-write-wins? This layer defines the truth model across your fleet. | Freenet's eventual consistency model for distributed content |
+| **Shadow Pulse** | Presence, health & state propagation | Which devices are online? What's their capacity? Battery? Network quality? Shadow Pulse is the heartbeat of the fleet — it's how the system knows where "you" are right now and which device should be primary. | Freenet's node announcement / peer discovery |
+| **Shadow Gate** | Sharing & access boundaries | When you want to share a terminal session, a file, or a context window with someone NOT in your fleet — how does trust extend? Shadow Gate controls the perimeter of your shadow: what leaks out, what stays private. Funnel is a crude version of this. | Freenet's capability-based access / key sharing |
+
+#### How the Axes Intersect
+
+```
+                    CONNECTIVITY AXIS
+                    (Shadow Fleet → Net → Mesh → Port → Weave → Loom)
+                    ════════════════════════════════════════════════►
+
+               ║  ┌──────────────────────────────────────────────────┐
+  INTELLIGENCE ║  │                                                  │
+     AXIS      ║  │  Shadow Pulse: "iPad is online, Mac is primary"  │
+               ║  │       │                                          │
+  Shadow       ║  │       ▼                                          │
+  Memory       ║  │  Shadow Memory: "You were editing server.ts"     │
+    ↓          ║  │       │                                          │
+  Shadow       ║  │       ▼                                          │
+  Vault        ║  │  Shadow Vault: decrypt context with device key   │
+    ↓          ║  │       │                                          │
+  Shadow       ║  │       ▼                                          │
+  Mind         ║  │  Shadow Mind: "Route inference to Mac GPU"       │
+    ↓          ║  │       │                                          │
+  Shadow       ║  │       ▼                                          │
+  Sync         ║  │  Shadow Sync: merge iPad edits + Mac state       │
+    ↓          ║  │       │                                          │
+  Shadow       ║  │       ▼                                          │
+  Pulse        ║  │  Shadow Gate: "Share this session? → scoped key" │
+    ↓          ║  │                                                  │
+  Shadow       ║  └──────────────────────────────────────────────────┘
+  Gate         ║
+               ▼
+```
+
+Every meaningful operation flows through BOTH axes:
+- **Connectivity** decides HOW to move data between devices
+- **Intelligence** decides WHAT data to move, WHERE to process it, and WHO can see it
+
+#### What Happens Without Each Layer
+
+| Missing Layer | Consequence |
+|---|---|
+| No Shadow Memory | You switch devices and lose all context. Back to square one every time. |
+| No Shadow Vault | Your data lives in plaintext on every device. One compromised device = everything leaked. |
+| No Shadow Mind | AI only works on the device with the GPU. Your phone is a dumb terminal. |
+| No Shadow Sync | Two devices edit the same thing → data loss or corruption. |
+| No Shadow Pulse | System doesn't know which devices are alive. Requests go to sleeping machines. |
+| No Shadow Gate | You can never share anything with anyone outside your fleet without exposing everything. |
+
+#### Freenet Principles at Work
+
+The Freenet DNA in this architecture shows up in three critical design decisions:
+
+1. **Local-first, network-optional**: Data exists on YOUR devices first. The mesh is for replication and availability, not primary storage. If every device goes offline except one, that one still works fully.
+
+2. **Encrypted by default, readable by intent**: Shadow Vault means data at rest is always encrypted. You don't "opt in" to privacy — you "opt in" to sharing. This inverts the cloud model.
+
+3. **Content-addressed, not location-addressed**: In the future Shadow protocol, you don't ask "get file from Mac." You ask "get this context" and the mesh finds it wherever it lives. The shadow follows the content, not the device.
 
 ### The Shadow Metaphor in Practice
 
@@ -451,58 +540,58 @@ flowchart TB
         Mac["Mac<br/>(VibeTunnel server)"]
         iPad["iPad<br/>(VibeTunnel client)"]
         Phone["Phone<br/>(VibeTunnel client)"]
-        Future["Future devices..."]
     end
 
-    subgraph ShadowNet["Shadow Net (Private Encrypted Network)"]
+    subgraph Connectivity["CONNECTIVITY AXIS"]
         direction TB
-        SN["WireGuard tunnels between all devices"]
+        ShadowNet["Shadow Net<br/>Encrypted overlay"]
+        ShadowMesh["Shadow Mesh<br/>Peer-to-peer topology"]
+        ShadowPort["Shadow Port<br/>Service exposure"]
+        ShadowWeave["Shadow Weave / Loom<br/>Routing & threading"]
     end
 
-    subgraph ShadowMesh["Shadow Mesh (Peer-to-Peer Topology)"]
+    subgraph Intelligence["INTELLIGENCE AXIS"]
         direction TB
-        SM["Every device can reach every other<br/>Direct connections + relay fallback"]
-    end
-
-    subgraph ShadowPort["Shadow Port (Service Exposure)"]
-        direction TB
-        Serve["Tailscale Serve<br/>(private to tailnet)"]
-        Funnel["Tailscale Funnel<br/>(public, authenticated)"]
-    end
-
-    subgraph ShadowWeave["Shadow Weave (Routing Fabric)"]
-        direction TB
-        Auth["Auth middleware<br/>Identity-aware routing"]
-        WS["WebSocket multiplexing<br/>Session threading"]
+        ShadowPulse["Shadow Pulse<br/>Presence & health"]
+        ShadowMemory["Shadow Memory<br/>Distributed state"]
+        ShadowVault["Shadow Vault<br/>Encryption & sovereignty"]
+        ShadowMind["Shadow Mind<br/>Inference routing"]
+        ShadowSync["Shadow Sync<br/>Consistency model"]
+        ShadowGate["Shadow Gate<br/>Sharing boundaries"]
     end
 
     subgraph App["VibeTunnel (Application)"]
         direction TB
-        Terminal["Terminal sessions<br/>Context + Memory + Compute"]
+        Terminal["Terminal sessions<br/>The user's ambient workspace"]
     end
 
-    ShadowFleet --> ShadowNet
-    ShadowNet --> ShadowMesh
-    ShadowMesh --> ShadowPort
-    ShadowPort --> ShadowWeave
-    ShadowWeave --> App
+    ShadowFleet --> Connectivity
+    ShadowFleet --> Intelligence
+    Connectivity --> App
+    Intelligence --> App
 
     style ShadowFleet fill:#1a1a2e,stroke:#e94560,color:#fff
-    style ShadowNet fill:#16213e,stroke:#e94560,color:#fff
-    style ShadowMesh fill:#0f3460,stroke:#e94560,color:#fff
-    style ShadowPort fill:#1a1a4e,stroke:#e94560,color:#fff
-    style ShadowWeave fill:#252550,stroke:#e94560,color:#fff
+    style Connectivity fill:#16213e,stroke:#0f3460,color:#fff
+    style Intelligence fill:#1a1a4e,stroke:#533483,color:#fff
     style App fill:#533483,stroke:#e94560,color:#fff
 ```
 
 ### The Key Insight
 
-The entire Shadow stack exists so that **applications like VibeTunnel don't need to think about networking at all**. VibeTunnel just binds to localhost and serves terminals. Shadow Fleet/Net/Mesh/Port/Weave handle everything else:
+The Shadow stack has two jobs:
 
-- **Who can connect?** Shadow Fleet (device identity)
-- **How do they connect?** Shadow Net + Shadow Mesh (encrypted paths)
-- **Where do they connect?** Shadow Port (service discovery & exposure)
-- **How is traffic routed?** Shadow Weave (context-aware threading)
-- **What do they see?** Shadow Loom (the right context, on the right device, at the right time)
+1. **Connectivity axis**: Make every device reachable, securely, without configuration. Applications bind to localhost and the shadow handles the rest.
+
+2. **Intelligence axis**: Make context, memory, and compute follow the user across devices. Applications don't manage state distribution — the shadow remembers, syncs, and reasons on their behalf.
+
+VibeTunnel today uses the connectivity axis (via Tailscale). The intelligence axis is what turns it from "remote terminal access" into "your terminal is always with you."
+
+**Who can connect?** Shadow Fleet (device identity)
+**How do they connect?** Shadow Net + Shadow Mesh (encrypted paths)
+**Where do they connect?** Shadow Port (service discovery & exposure)
+**How is traffic routed?** Shadow Weave (context-aware threading)
+**What do they remember?** Shadow Memory + Shadow Vault (encrypted, distributed, yours)
+**Where do they think?** Shadow Mind (inference routed to best device)
+**What do they see?** Shadow Loom (the right context, on the right device, at the right time)
 
 The application layer stays simple. The shadow does the work.
