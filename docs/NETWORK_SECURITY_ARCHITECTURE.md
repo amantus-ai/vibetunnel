@@ -2,6 +2,104 @@
 
 A visual guide to understanding how VibeTunnel's network layers, security boundaries, and Tailscale integration work together.
 
+---
+
+## Shadow Labs Vision: The Ambient Computing Stack
+
+VibeTunnel is one product within **Shadow Labs** — a broader vision for **ambient personal intelligence**. The idea: your computing environment is always with you but invisible, like a shadow. It narrows context to what's relevant, manages memory/data/compute across all your devices, and disappears when you don't need it.
+
+The current stack uses Tailscale as the networking foundation. Over time, each layer will be replaced by purpose-built Shadow technologies with different underlying protocols:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    SHADOW LABS TECHNOLOGY STACK                          │
+│                 "Ambient Computing for Personal Intelligence"            │
+│                                                                         │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │  SHADOW FLEET                                                    │   │
+│  │  Device orchestration & management                               │   │
+│  │  All your devices, unified as one compute surface                │   │
+│  │  (Currently: Tailscale device enrollment)                        │   │
+│  │                                                                  │   │
+│  │  ┌──────────────────────────────────────────────────────────┐   │   │
+│  │  │  SHADOW NET                                               │   │   │
+│  │  │  The private network connecting your fleet                │   │   │
+│  │  │  Always on, zero-config, encrypted by default             │   │   │
+│  │  │  (Currently: Tailscale tailnet / WireGuard)               │   │   │
+│  │  │                                                           │   │   │
+│  │  │  ┌───────────────────────────────────────────────────┐   │   │   │
+│  │  │  │  SHADOW MESH                                       │   │   │   │
+│  │  │  │  Peer-to-peer interconnection topology              │   │   │   │
+│  │  │  │  Every device can reach every other device          │   │   │   │
+│  │  │  │  (Currently: Tailscale mesh / DERP relays)          │   │   │   │
+│  │  │  │                                                     │   │   │   │
+│  │  │  │  ┌──────────────────────────────────────────────┐  │   │   │   │
+│  │  │  │  │  SHADOW PORT                                  │  │   │   │   │
+│  │  │  │  │  Transport protocol for service exposure      │  │   │   │   │
+│  │  │  │  │  Secure tunneling with identity-aware routing │  │   │   │   │
+│  │  │  │  │  (Currently: Tailscale Serve/Funnel)          │  │   │   │   │
+│  │  │  │  │                                               │  │   │   │   │
+│  │  │  │  │  ┌───────────────────────────────────────┐   │  │   │   │   │
+│  │  │  │  │  │  SHADOW WEAVE / SHADOW LOOM            │   │  │   │   │   │
+│  │  │  │  │  │  Threading & routing fabric             │   │  │   │   │   │
+│  │  │  │  │  │  Context-aware request routing          │   │  │   │   │   │
+│  │  │  │  │  │  Data/memory/compute distribution       │   │  │   │   │   │
+│  │  │  │  │  │  The "intelligence" layer that makes    │   │  │   │   │   │
+│  │  │  │  │  │  the shadow follow you                  │   │  │   │   │   │
+│  │  │  │  │  └───────────────────────────────────────┘   │  │   │   │   │
+│  │  │  │  └──────────────────────────────────────────────┘  │   │   │   │
+│  │  │  └───────────────────────────────────────────────────┘   │   │   │
+│  │  └──────────────────────────────────────────────────────────┘   │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                         │
+│  APPLICATIONS: VibeTunnel, [future Shadow products...]                  │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Shadow ↔ Tailscale Mapping (Current → Future)
+
+| Shadow Layer | Role | Current Implementation | Future (Shadow Protocol) |
+|---|---|---|---|
+| **Shadow Fleet** | Device enrollment & orchestration | Tailscale admin console + device auth | Custom fleet management with context-aware scheduling |
+| **Shadow Scale** | Fleet scaling & identity | Tailscale coordination server | Decentralized identity + self-organizing fleet |
+| **Shadow Net** | Private encrypted network | Tailscale tailnet (WireGuard) | Custom encrypted overlay network |
+| **Shadow Mesh** | Peer-to-peer topology | Tailscale mesh + DERP relay servers | Direct mesh with intelligent relay selection |
+| **Shadow Port** | Service exposure & tunneling | Tailscale Serve (private) + Funnel (public) | Identity-aware port forwarding with context narrowing |
+| **Shadow Weave** | Request routing fabric | HTTP routing + auth middleware | Context-aware routing that follows the user |
+| **Shadow Loom** | Thread orchestration | WebSocket multiplexing | Distributed compute threading across fleet |
+
+### The Shadow Metaphor in Practice
+
+```
+  "Casting Shadow" = Narrowing context to what's relevant
+
+  You're on your Mac working in a terminal session:
+
+    ┌─ Shadow knows ──────────────────────────────────────┐
+    │  • Which sessions are active                         │
+    │  • Which device you're on                            │
+    │  • What context/project you're in                    │
+    │  • Your authentication identity                      │
+    └──────────────────────────────────────────────────────┘
+
+  You pick up your iPad:
+
+    ┌─ Shadow follows ─────────────────────────────────────┐
+    │  • Same sessions, instantly available                  │
+    │  • Identity travels with you (Shadow Fleet)           │
+    │  • Encrypted path auto-established (Shadow Mesh)      │
+    │  • Context preserved across devices (Shadow Weave)    │
+    │  • No setup, no login, no URL to remember             │
+    │  • It's just... there. Like a shadow.                 │
+    └──────────────────────────────────────────────────────┘
+```
+
+---
+
+## Current Implementation: Tailscale Security Layers
+
+The diagrams below show how VibeTunnel works **today** using Tailscale as the Shadow Net foundation.
+
 ## The Big Picture
 
 ```
@@ -342,3 +440,69 @@ Here's exactly what happens, step by step:
    → Your entire LAN can reach port 4020
    → Use --bind 127.0.0.1 or enable Tailscale Serve
 ```
+
+---
+
+## Where VibeTunnel Sits in the Shadow Stack
+
+```mermaid
+flowchart TB
+    subgraph ShadowFleet["Shadow Fleet (All Your Devices)"]
+        Mac["Mac<br/>(VibeTunnel server)"]
+        iPad["iPad<br/>(VibeTunnel client)"]
+        Phone["Phone<br/>(VibeTunnel client)"]
+        Future["Future devices..."]
+    end
+
+    subgraph ShadowNet["Shadow Net (Private Encrypted Network)"]
+        direction TB
+        SN["WireGuard tunnels between all devices"]
+    end
+
+    subgraph ShadowMesh["Shadow Mesh (Peer-to-Peer Topology)"]
+        direction TB
+        SM["Every device can reach every other<br/>Direct connections + relay fallback"]
+    end
+
+    subgraph ShadowPort["Shadow Port (Service Exposure)"]
+        direction TB
+        Serve["Tailscale Serve<br/>(private to tailnet)"]
+        Funnel["Tailscale Funnel<br/>(public, authenticated)"]
+    end
+
+    subgraph ShadowWeave["Shadow Weave (Routing Fabric)"]
+        direction TB
+        Auth["Auth middleware<br/>Identity-aware routing"]
+        WS["WebSocket multiplexing<br/>Session threading"]
+    end
+
+    subgraph App["VibeTunnel (Application)"]
+        direction TB
+        Terminal["Terminal sessions<br/>Context + Memory + Compute"]
+    end
+
+    ShadowFleet --> ShadowNet
+    ShadowNet --> ShadowMesh
+    ShadowMesh --> ShadowPort
+    ShadowPort --> ShadowWeave
+    ShadowWeave --> App
+
+    style ShadowFleet fill:#1a1a2e,stroke:#e94560,color:#fff
+    style ShadowNet fill:#16213e,stroke:#e94560,color:#fff
+    style ShadowMesh fill:#0f3460,stroke:#e94560,color:#fff
+    style ShadowPort fill:#1a1a4e,stroke:#e94560,color:#fff
+    style ShadowWeave fill:#252550,stroke:#e94560,color:#fff
+    style App fill:#533483,stroke:#e94560,color:#fff
+```
+
+### The Key Insight
+
+The entire Shadow stack exists so that **applications like VibeTunnel don't need to think about networking at all**. VibeTunnel just binds to localhost and serves terminals. Shadow Fleet/Net/Mesh/Port/Weave handle everything else:
+
+- **Who can connect?** Shadow Fleet (device identity)
+- **How do they connect?** Shadow Net + Shadow Mesh (encrypted paths)
+- **Where do they connect?** Shadow Port (service discovery & exposure)
+- **How is traffic routed?** Shadow Weave (context-aware threading)
+- **What do they see?** Shadow Loom (the right context, on the right device, at the right time)
+
+The application layer stays simple. The shadow does the work.
