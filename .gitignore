@@ -145,6 +145,7 @@ web/playwright-videos/
 playwright-videos/
 *.png
 !src/**/*.png
+!web/src/**/*.png
 *.webm
 *.trace.zip
 trace.zip
