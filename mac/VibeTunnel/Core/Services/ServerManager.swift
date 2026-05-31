@@ -737,7 +737,9 @@ extension ServerManager {
                 message: errorData?.error ?? "Request failed with status \(httpResponse.statusCode)")
         }
 
-        return try JSONDecoder().decode(T.self, from: data)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(T.self, from: data)
     }
 
     /// Perform a network request that returns no body (void response)
