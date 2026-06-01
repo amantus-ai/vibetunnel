@@ -153,7 +153,7 @@ export class BrowserSSHAgent {
       };
 
       this.keys.set(keyId, sshKey);
-      this.saveKeysToStorage();
+      await this.saveKeysToStorage();
 
       return keyId;
     } catch (error) {
@@ -440,28 +440,33 @@ export class BrowserSSHAgent {
       return { seed: new Uint8Array(0), publicKey: new Uint8Array(0), encrypted: true };
     }
 
-    // Private key section
+    // Private key section — use a dedicated reader scoped to this sub-buffer
     const privSection = readString(offset);
     const priv = privSection.data;
-    const privView = new DataView(priv.buffer, priv.byteOffset);
+    const privDv = new DataView(priv.buffer, priv.byteOffset, priv.byteLength);
+
+    const readPrivString = (off: number): { data: Uint8Array; next: number } => {
+      const len = privDv.getUint32(off, false);
+      return { data: priv.slice(off + 4, off + 4 + len), next: off + 4 + len };
+    };
+
     let pOff = 8; // skip checkint1 + checkint2
 
-    const keyType = readString(pOff);
+    const keyType = readPrivString(pOff);
     pOff = keyType.next;
     const keyTypeName = new TextDecoder().decode(keyType.data);
     if (keyTypeName !== 'ssh-ed25519') {
       throw new Error(`Unsupported key type: ${keyTypeName}. Only Ed25519 is supported.`);
     }
 
-    const pubKeyData = readString(pOff);
+    const pubKeyData = readPrivString(pOff);
     pOff = pubKeyData.next;
-    const privKeyData = readString(pOff);
+    const privKeyData = readPrivString(pOff);
 
     // privKeyData is 64 bytes: 32-byte seed + 32-byte public key
     const seed = privKeyData.data.slice(0, 32);
     const publicKey = pubKeyData.data;
 
-    void privView; // suppress unused warning
     return { seed, publicKey, encrypted: false };
   }
 
