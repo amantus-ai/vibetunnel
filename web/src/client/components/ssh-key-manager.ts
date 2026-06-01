@@ -334,12 +334,12 @@ export class SSHKeyManager extends LitElement {
 
                       <div class="mb-4">
                         <label class="form-label"
-                          >Private Key (PEM format) <span class="text-accent-red">*</span></label
+                          >Private Key <span class="text-accent-red">*</span></label
                         >
                         <textarea
                           class="input-field"
                           rows="6"
-                          placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
+                          placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----&#10;&#10;or&#10;&#10;-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
                           .value=${this.importKeyContent}
                           @input=${(e: Event) => {
                             this.importKeyContent = (e.target as HTMLTextAreaElement).value;
@@ -347,8 +347,9 @@ export class SSHKeyManager extends LitElement {
                           ?disabled=${this.loading}
                         ></textarea>
                         <p class="text-text-muted text-xs mt-1">
-                          💡 If the key is password-protected, you'll be prompted for the password
-                          when using it for authentication.
+                          💡 Accepts OpenSSH format (<code>BEGIN OPENSSH PRIVATE KEY</code>) or
+                          PKCS#8 (<code>BEGIN PRIVATE KEY</code>). Only unencrypted Ed25519 keys
+                          are supported.
                         </p>
                       </div>
 

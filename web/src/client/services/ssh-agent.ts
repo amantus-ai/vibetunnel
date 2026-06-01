@@ -322,28 +322,159 @@ export class BrowserSSHAgent {
     fingerprint: string;
     encrypted: boolean;
   }> {
-    // Check if key is encrypted
-    const isEncrypted =
-      privateKeyPEM.includes('BEGIN ENCRYPTED PRIVATE KEY') ||
-      privateKeyPEM.includes('Proc-Type: 4,ENCRYPTED');
+    if (!cryptoSubtle) {
+      throw new Error('Web Crypto API is not available');
+    }
 
-    // Only support Ed25519 keys
-    if (
-      privateKeyPEM.includes('BEGIN PRIVATE KEY') ||
-      privateKeyPEM.includes('BEGIN ENCRYPTED PRIVATE KEY')
-    ) {
-      // For imported keys, we need to extract the public key
-      // This is a simplified implementation - in production use proper key parsing
-      const mockPublicKey = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIImported...';
+    if (privateKeyPEM.includes('BEGIN OPENSSH PRIVATE KEY')) {
+      const parsed = this.parseOpenSSHKey(privateKeyPEM);
+      if (parsed.encrypted) {
+        throw new Error(
+          'Encrypted OpenSSH keys are not supported. Remove the passphrase first:\n' +
+            'ssh-keygen -p -N "" -f <key-file>'
+        );
+      }
+      const publicKeySSH = this.convertEd25519ToSSHPublicKey(parsed.publicKey.buffer as ArrayBuffer);
       return {
-        publicKey: mockPublicKey,
+        publicKey: publicKeySSH,
         algorithm: 'Ed25519',
-        fingerprint: await this.generateFingerprint(mockPublicKey),
-        encrypted: isEncrypted,
+        fingerprint: await this.generateFingerprint(publicKeySSH),
+        encrypted: false,
       };
     }
 
-    throw new Error('Only Ed25519 private keys are supported');
+    if (privateKeyPEM.includes('BEGIN PRIVATE KEY')) {
+      const pemContents = privateKeyPEM
+        .replace('-----BEGIN PRIVATE KEY-----', '')
+        .replace('-----END PRIVATE KEY-----', '')
+        .replace(/\s/g, '');
+      const keyData = this.base64ToArrayBuffer(pemContents);
+
+      // Import as extractable so we can export JWK to get the actual public key
+      const privateKey = await cryptoSubtle.importKey(
+        'pkcs8',
+        keyData,
+        { name: 'Ed25519' },
+        true,
+        ['sign']
+      );
+
+      // JWK for Ed25519 contains 'x' (public key) and 'd' (seed)
+      const jwk = (await cryptoSubtle.exportKey('jwk', privateKey)) as JsonWebKey;
+      if (!jwk.x) {
+        throw new Error('Could not extract public key from Ed25519 private key');
+      }
+
+      // base64url → base64 → ArrayBuffer
+      const b64 = jwk.x.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = b64.padEnd(b64.length + ((4 - (b64.length % 4)) % 4), '=');
+      const publicKeySSH = this.convertEd25519ToSSHPublicKey(this.base64ToArrayBuffer(padded));
+
+      return {
+        publicKey: publicKeySSH,
+        algorithm: 'Ed25519',
+        fingerprint: await this.generateFingerprint(publicKeySSH),
+        encrypted: false,
+      };
+    }
+
+    if (privateKeyPEM.includes('BEGIN ENCRYPTED PRIVATE KEY')) {
+      throw new Error(
+        'Encrypted PKCS#8 keys are not supported. Remove the passphrase first:\n' +
+          'openssl pkcs8 -topk8 -nocrypt -in <key-file> -out <out-file>'
+      );
+    }
+
+    throw new Error(
+      'Unsupported key format. Accepted formats:\n' +
+        '• OpenSSH (-----BEGIN OPENSSH PRIVATE KEY-----)\n' +
+        '• PKCS#8  (-----BEGIN PRIVATE KEY-----)\n' +
+        'Only Ed25519 keys are supported.'
+    );
+  }
+
+  /**
+   * Parse an OpenSSH private key and extract the Ed25519 seed and public key.
+   * Throws if the key is encrypted or not Ed25519.
+   */
+  private parseOpenSSHKey(pem: string): { seed: Uint8Array; publicKey: Uint8Array; encrypted: boolean } {
+    const b64 = pem
+      .replace('-----BEGIN OPENSSH PRIVATE KEY-----', '')
+      .replace('-----END OPENSSH PRIVATE KEY-----', '')
+      .replace(/\s/g, '');
+    const buf = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const view = new DataView(buf.buffer);
+
+    // Verify magic header "openssh-key-v1\0"
+    const magic = new TextDecoder().decode(buf.slice(0, 15));
+    if (magic !== 'openssh-key-v1\0') {
+      throw new Error('Invalid OpenSSH private key format');
+    }
+
+    let offset = 15;
+
+    const readString = (off: number): { data: Uint8Array; next: number } => {
+      const len = view.getUint32(off, false);
+      return { data: buf.slice(off + 4, off + 4 + len), next: off + 4 + len };
+    };
+
+    const cipher = readString(offset);
+    offset = cipher.next;
+    const cipherName = new TextDecoder().decode(cipher.data);
+    const encrypted = cipherName !== 'none';
+
+    // Skip kdf name and options
+    const kdf = readString(offset);
+    offset = kdf.next;
+    const kdfopts = readString(offset);
+    offset = kdfopts.next;
+
+    // Number of keys (always 1 for standard keys)
+    offset += 4;
+
+    // Skip public key blob
+    const pubkeyBlob = readString(offset);
+    offset = pubkeyBlob.next;
+
+    if (encrypted) {
+      return { seed: new Uint8Array(0), publicKey: new Uint8Array(0), encrypted: true };
+    }
+
+    // Private key section
+    const privSection = readString(offset);
+    const priv = privSection.data;
+    const privView = new DataView(priv.buffer, priv.byteOffset);
+    let pOff = 8; // skip checkint1 + checkint2
+
+    const keyType = readString(pOff);
+    pOff = keyType.next;
+    const keyTypeName = new TextDecoder().decode(keyType.data);
+    if (keyTypeName !== 'ssh-ed25519') {
+      throw new Error(`Unsupported key type: ${keyTypeName}. Only Ed25519 is supported.`);
+    }
+
+    const pubKeyData = readString(pOff);
+    pOff = pubKeyData.next;
+    const privKeyData = readString(pOff);
+
+    // privKeyData is 64 bytes: 32-byte seed + 32-byte public key
+    const seed = privKeyData.data.slice(0, 32);
+    const publicKey = pubKeyData.data;
+
+    void privView; // suppress unused warning
+    return { seed, publicKey, encrypted: false };
+  }
+
+  /**
+   * Convert a 32-byte Ed25519 seed to PKCS#8 DER for use with Web Crypto importKey.
+   */
+  private seedToPKCS8Der(seed: Uint8Array): ArrayBuffer {
+    // SEQUENCE { INTEGER 0, SEQUENCE { OID id-Ed25519 }, OCTET STRING { OCTET STRING seed } }
+    const oid = new Uint8Array([0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70]);
+    const inner = new Uint8Array([0x04, 0x22, 0x04, 0x20, ...seed]);
+    const seq = new Uint8Array([0x02, 0x01, 0x00, ...oid, ...inner]);
+    const outer = new Uint8Array([0x30, seq.length, ...seq]);
+    return outer.buffer;
   }
 
   private async importPrivateKey(privateKeyPEM: string, _algorithm: 'Ed25519'): Promise<CryptoKey> {
@@ -351,23 +482,20 @@ export class BrowserSSHAgent {
       throw new Error('Crypto not available');
     }
 
-    // Remove PEM headers and decode
+    if (privateKeyPEM.includes('BEGIN OPENSSH PRIVATE KEY')) {
+      const parsed = this.parseOpenSSHKey(privateKeyPEM);
+      if (parsed.encrypted) {
+        throw new Error('Encrypted OpenSSH keys are not supported');
+      }
+      return cryptoSubtle.importKey('pkcs8', this.seedToPKCS8Der(parsed.seed), { name: 'Ed25519' }, false, ['sign']);
+    }
+
     const pemContents = privateKeyPEM
       .replace('-----BEGIN PRIVATE KEY-----', '')
       .replace('-----END PRIVATE KEY-----', '')
       .replace(/\s/g, '');
 
-    const keyData = this.base64ToArrayBuffer(pemContents);
-
-    return cryptoSubtle.importKey(
-      'pkcs8',
-      keyData,
-      {
-        name: 'Ed25519',
-      },
-      false,
-      ['sign']
-    );
+    return cryptoSubtle.importKey('pkcs8', this.base64ToArrayBuffer(pemContents), { name: 'Ed25519' }, false, ['sign']);
   }
 
   private convertEd25519ToSSHPublicKey(publicKeyBuffer: ArrayBuffer): string {
