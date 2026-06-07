@@ -87,7 +87,9 @@
   },
   "pnpm": {
     "overrides": {
-      "dompurify": "^3.4.2"
+      "dompurify": "^3.4.2",
+      "ws": ">=8.20.1",
+      "qs": ">=6.15.2"
     },
     "onlyBuiltDependencies": [
       "authenticate-pam",
