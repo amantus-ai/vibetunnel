@@ -985,9 +985,13 @@ body[data-keyboard-visible="true"] {
   pointer-events: none;
   touch-action: pan-y;
 }
-/* Terminal container scroll prevention */
+/* Terminal container scroll prevention.
+   touch-action must be none (not pan-y): the terminal is a fixed-size canvas with
+   overflow:hidden, so browser-native vertical panning has nowhere to scroll and just
+   swallows the gesture. We translate touch-pan into ghostty scrollback scroll in JS
+   (see terminal.ts touchmove handler), which needs the browser to NOT claim the pan. */
 #terminal-container {
-  touch-action: pan-y;
+  touch-action: none;
   overscroll-behavior: none;
 }
 

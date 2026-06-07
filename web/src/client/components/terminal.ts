@@ -192,6 +192,15 @@ export class Terminal extends LitElement {
     this.terminal?.scrollToBottom();
   }
 
+  /**
+   * Whether the viewport is at (or near) the bottom, i.e. auto-following new output.
+   * Becomes false when the user scrolls up to read history (incl. touch scroll), so
+   * callers can avoid yanking the view back to the bottom while the user is reading.
+   */
+  public isFollowingCursor(): boolean {
+    return this.followCursorEnabled;
+  }
+
   public scrollToPosition(position: number) {
     if (!this.terminal) return;
     const max = this.getMaxScrollPosition();
@@ -344,10 +353,16 @@ export class Terminal extends LitElement {
     let cols = this.computeConstrainedCols(proposed.cols);
     const rows = Math.max(6, Math.floor(proposed.rows));
 
+    // On mobile we used to freeze the column count after the first resize to avoid
+    // reflow churn when the keyboard opens/closes. But that left the terminal stuck at
+    // a stale width (text cut off on the right after rotation / viewport changes).
+    // Only keep the frozen width when the user explicitly pinned a width (maxCols > 0);
+    // in "fit to window" mode (maxCols === 0) always recompute so it adapts to the viewport.
     if (
       this.isMobile &&
       this.mobileWidthResizeComplete &&
       !this.userOverrideWidth &&
+      this.maxCols > 0 &&
       this.lastCols
     ) {
       cols = this.lastCols;
@@ -432,6 +447,41 @@ export class Terminal extends LitElement {
 
       this.terminal = term;
       this.fitAddon = fitAddon;
+
+      // Touch scroll: the ghostty-web canvas doesn't translate iOS touch-pan gestures
+      // into scrollback movement, so wire it up manually. NOTE: not gated on isMobile —
+      // at init time isMobile is still false (it's only detected later in fitTerminal),
+      // so gating here meant the handlers were never attached. touch* events only fire
+      // on touch devices anyway, so this is a no-op on mouse/desktop.
+      if (this.container) {
+        let lastTouchY = 0;
+        let touchScrolling = false;
+        this.container.addEventListener(
+          'touchstart',
+          (e: TouchEvent) => {
+            lastTouchY = e.touches[0]?.clientY ?? 0;
+            touchScrolling = false;
+          },
+          { passive: true }
+        );
+        // passive:false so we can preventDefault and own the vertical pan gesture.
+        this.container.addEventListener(
+          'touchmove',
+          (e: TouchEvent) => {
+            const currentY = e.touches[0]?.clientY ?? lastTouchY;
+            const deltaY = lastTouchY - currentY;
+            if (touchScrolling || Math.abs(deltaY) > 4) {
+              touchScrolling = true;
+              e.preventDefault();
+              const lines = Math.max(1, Math.round(Math.abs(deltaY) / 16));
+              // drag down → reveal history (scroll up); drag up → newer (scroll down)
+              this.terminal?.scrollLines(deltaY > 0 ? lines : -lines);
+              lastTouchY = currentY;
+            }
+          },
+          { passive: false }
+        );
+      }
 
       if (this.pendingOutput) {
         const pending = this.pendingOutput;
@@ -574,7 +624,10 @@ export class Terminal extends LitElement {
           height: 100%;
           overflow: hidden;
           font-family: ${TERMINAL_FONT_FAMILY};
-          touch-action: manipulation;
+          /* none (not manipulation) so the browser doesn't claim the vertical pan
+             gesture — we translate touch-pan into scrollback scroll ourselves on mobile.
+             touch-action only affects touch input, so mouse/trackpad scroll is unaffected. */
+          touch-action: none;
           -webkit-user-select: text;
           user-select: text;
         }
