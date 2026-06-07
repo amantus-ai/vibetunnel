@@ -108,6 +108,7 @@ export interface PtySession {
   processPollingInterval?: NodeJS.Timeout; // Interval for checking process state
   // Tmux attachment tracking
   isTmuxAttachment?: boolean; // True if this session is attached to tmux
+  tmuxSessionName?: string; // Name of the attached tmux session (for prefix-independent detach)
 }
 
 export class PtyError extends Error {

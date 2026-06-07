@@ -6,7 +6,7 @@
  */
 
 import chalk from 'chalk';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { EventEmitter, once } from 'events';
 import * as fs from 'fs';
 import * as net from 'net';
@@ -513,6 +513,17 @@ export class PtyManager extends EventEmitter {
             resolvedCommand.includes('a'))) ||
         sessionName.startsWith('tmux:');
 
+      // Capture the tmux session name (the value after `-t`) so we can detach later
+      // via `tmux detach-client -s <name>`, which is independent of the user's prefix key.
+      let tmuxSessionName: string | undefined;
+      if (isTmuxAttachment) {
+        const targetIndex = resolvedCommand.indexOf('-t');
+        if (targetIndex !== -1 && resolvedCommand[targetIndex + 1]) {
+          // Target may be "session" or "session:window[.pane]"; detach-client needs the session name
+          tmuxSessionName = resolvedCommand[targetIndex + 1].split(':')[0];
+        }
+      }
+
       const session: PtySession = {
         id: sessionId,
         sessionInfo,
@@ -528,6 +539,7 @@ export class PtyManager extends EventEmitter {
         currentWorkingDir: workingDir,
         titleFilter: new TitleSequenceFilter(),
         isTmuxAttachment,
+        tmuxSessionName,
       };
 
       this.sessions.set(sessionId, session);
@@ -1402,7 +1414,24 @@ export class PtyManager extends EventEmitter {
     try {
       logger.log(chalk.cyan(`Detaching from tmux session (${sessionId})`));
 
-      // Try the standard detach sequence first (Ctrl-B, d)
+      // Preferred: detach via the tmux server directly. This is independent of the
+      // user's prefix key (e.g. a remapped C-a) and never leaks keystrokes such as
+      // "d" or ":detach-client" into the underlying shell.
+      if (session.tmuxSessionName) {
+        try {
+          await this.execFileAsync('tmux', ['detach-client', '-s', session.tmuxSessionName]);
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          if (!ProcessUtils.isProcessRunning(session.ptyProcess.pid)) {
+            logger.log(chalk.green(`Successfully detached from tmux (${sessionId})`));
+            return true;
+          }
+        } catch (error) {
+          logger.debug(`tmux detach-client failed, falling back to key sequence: ${error}`);
+        }
+      }
+
+      // Fallback: standard prefix sequence (Ctrl-B, d) for default-prefix setups
+      // where the session name could not be determined.
       await this.sendInput(sessionId, { text: '\x02d' }); // \x02 is Ctrl-B
 
       // Wait for detachment
@@ -1411,21 +1440,6 @@ export class PtyManager extends EventEmitter {
       // Check if the process is still running
       if (!ProcessUtils.isProcessRunning(session.ptyProcess.pid)) {
         logger.log(chalk.green(`Successfully detached from tmux (${sessionId})`));
-        return true;
-      }
-
-      // If still running, try sending the detach-client command
-      logger.debug('First detach attempt failed, trying detach-client command');
-      await this.sendInput(sessionId, { text: ':detach-client\n' });
-
-      // Wait a bit longer
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Final check
-      if (!ProcessUtils.isProcessRunning(session.ptyProcess.pid)) {
-        logger.log(
-          chalk.green(`Successfully detached from tmux using detach-client (${sessionId})`)
-        );
         return true;
       }
 
@@ -2496,4 +2510,5 @@ export class PtyManager extends EventEmitter {
    * Import necessary exec function
    */
   private execAsync = promisify(exec);
+  private execFileAsync = promisify(execFile);
 }
