@@ -120,18 +120,19 @@ export class TerminalSettingsModal extends LitElement {
 
     return html`
       <!-- Backdrop to close on outside click -->
-      <div 
-        class="fixed inset-0 z-40" 
+      <div
+        class="fixed inset-0"
+        style="z-index: ${Z_INDEX.TERMINAL_SETTINGS_BACKDROP};"
         role="dialog"
         aria-modal="true"
         aria-labelledby="terminal-settings-title"
         @click=${() => this.handleClose()}
       ></div>
-      
+
       <!-- Terminal settings modal -->
       <div
         class="width-selector-container fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-surface border border-border rounded-lg shadow-elevated w-[400px] max-w-[90vw] animate-fade-in"
-        style="z-index: ${Z_INDEX.WIDTH_SELECTOR_DROPDOWN};"
+        style="z-index: ${Z_INDEX.TERMINAL_SETTINGS_MODAL};"
       >
         <div class="p-6">
           <div class="flex items-center justify-between mb-6">
