@@ -113,6 +113,14 @@ export class OverlaysContainer extends LitElement {
                 e.stopPropagation();
                 this.callbacks?.onKeyboardButtonClick();
               }}
+              @click=${(e: Event) => {
+                // The click that follows the tap must NOT bubble to session-view, whose
+                // click handler calls session-view.focus() and steals focus from the
+                // hidden input — which makes iOS immediately close the keyboard we just
+                // opened. (That was the random "TAP doesn't reopen the keyboard" bug.)
+                e.preventDefault();
+                e.stopPropagation();
+              }}
               title="${this.uiState.showQuickKeys ? 'Hide keyboard' : 'Show keyboard'}"
               role="button"
               aria-label="Toggle mobile keyboard"

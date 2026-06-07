@@ -99,6 +99,9 @@ export class SessionView extends LitElement {
 
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
   private _updateTerminalTransformTimeout: ReturnType<typeof setTimeout> | null = null;
+  // Measured height of the quick-keys bar; fed into --quickkeys-height so the terminal
+  // reserves space for it instead of letting it cover the bottom rows.
+  private quickKeysHeight = 0;
   private terminalOutputListeners: Set<(data: string) => void> = new Set();
 
   private createLifecycleEventManagerCallbacks(): LifecycleEventManagerCallbacks {
@@ -744,9 +747,11 @@ export class SessionView extends LitElement {
     // Update terminal transform immediately
     this.updateTerminalTransform();
 
-    // Focus the hidden input synchronously - critical for iOS Safari
-    // Must be called directly in the click handler without any delays
-    this.directKeyboardManager.focusHiddenInput();
+    // Focus the hidden input synchronously - critical for iOS Safari.
+    // forceRecreate=true: the user explicitly tapped TAP to (re)open the keyboard, so
+    // recreate the input so iOS reliably reopens it even if the soft keyboard was
+    // dismissed while the quick keys stayed open (avoids the intermittent race).
+    this.directKeyboardManager.focusHiddenInput(true);
 
     // Request update after all synchronous operations
     this.requestUpdate();
@@ -827,6 +832,16 @@ export class SessionView extends LitElement {
 
         // Notify terminal to resize
         requestAnimationFrame(() => {
+          // Reserve space for the quick-keys bar so it stops covering the terminal's
+          // bottom rows (which also made the top unreachable). Measure it and set the
+          // CSS var synchronously before fitTerminal recomputes the row count.
+          const grid = this.querySelector('.session-view-grid') as HTMLElement | null;
+          const qkEl = this.querySelector('.terminal-quick-keys-container') as HTMLElement | null;
+          const qkH =
+            state.showQuickKeys && qkEl ? Math.round(qkEl.getBoundingClientRect().height) : 0;
+          this.quickKeysHeight = qkH;
+          grid?.style.setProperty('--quickkeys-height', `${qkH}px`);
+
           const terminal = this.getTerminalElement();
           if (terminal) {
             // Notify terminal of size change
@@ -835,13 +850,23 @@ export class SessionView extends LitElement {
               terminalElement.fitTerminal();
             }
 
-            // If keyboard is visible, scroll to keep cursor visible
+            // If keyboard is visible, scroll to keep cursor visible.
+            // Wait for the iOS keyboard show/hide animation (~300ms) + layout reflow,
+            // otherwise the scroll happens before the viewport settles and the cursor
+            // stays hidden behind the keyboard.
             if (state.keyboardHeight > 0 || state.showQuickKeys) {
               setTimeout(() => {
-                if ('scrollToBottom' in terminal) {
-                  terminal.scrollToBottom();
+                // Only pin to the bottom if the user is still following output. If they
+                // scrolled up to read history (e.g. with the keyboard + quick keys open),
+                // don't yank them back down — that was the autoscroll bug.
+                const t = terminal as unknown as {
+                  scrollToBottom?: () => void;
+                  isFollowingCursor?: () => boolean;
+                };
+                if (t.scrollToBottom && (t.isFollowingCursor?.() ?? true)) {
+                  t.scrollToBottom();
                 }
-              }, 100);
+              }, 350);
             }
           }
         });
@@ -870,18 +895,23 @@ export class SessionView extends LitElement {
             terminalElement.fitTerminal();
           }
 
-          // If keyboard is visible, scroll to keep cursor visible
+          // If keyboard is visible, scroll to keep cursor visible — but only if the
+          // user is still following output (don't yank them down if they scrolled up).
           if (state.keyboardHeight > 0 || state.showQuickKeys) {
             // Small delay then scroll to bottom to keep cursor visible
             setTimeout(() => {
-              if ('scrollToBottom' in terminal) {
-                terminal.scrollToBottom();
-              }
+              const t = terminal as unknown as {
+                scrollToBottom?: () => void;
+                isFollowingCursor?: () => boolean;
+              };
+              if (t.scrollToBottom && (t.isFollowingCursor?.() ?? true)) {
+                t.scrollToBottom();
 
-              // Also ensure the terminal content is scrolled within its container
-              const terminalArea = this.querySelector('.terminal-area');
-              if (terminalArea) {
-                terminalArea.scrollTop = terminalArea.scrollHeight;
+                // Also ensure the terminal content is scrolled within its container
+                const terminalArea = this.querySelector('.terminal-area');
+                if (terminalArea) {
+                  terminalArea.scrollTop = terminalArea.scrollHeight;
+                }
               }
             }, 50);
           }
@@ -1175,16 +1205,16 @@ export class SessionView extends LitElement {
             margin-bottom: 0 !important;
           }
           
-          /* Desktop: Keep transform for quick keys */
+          /* Quick keys: the grid now reserves their height via --quickkeys-height, so the
+             old translateY/padding hacks are no longer needed and actually create gaps
+             (a 110px shift + a 70px canvas inset). Keep them neutralized. */
           .terminal-area[data-quickkeys-visible="true"] {
-            transform: translateY(-110px);
-            transition: transform 0.2s ease-out;
+            transform: none;
           }
-          
-          /* Desktop: Add padding when keyboard is visible */
+
           .terminal-area[data-quickkeys-visible="true"] vibe-terminal,
           .terminal-area[data-quickkeys-visible="true"] vibe-terminal-binary {
-            padding-bottom: 70px !important;
+            padding-bottom: 0 !important;
             box-sizing: border-box;
           }
           
@@ -1217,7 +1247,17 @@ export class SessionView extends LitElement {
             background-color: rgb(var(--color-bg)) !important;
             font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
           }
-          
+
+          /* Mobile: when the quick keys are up, shrink the grid so the terminal reserves
+             space for the fixed quick-keys bar instead of being covered (the bottom rows
+             were hidden and the top became unreachable). We subtract ONLY the quick-keys
+             height — NOT the keyboard height — because the viewport uses
+             interactive-widget=resizes-content, so 100dvh already shrinks with the iOS
+             keyboard; subtracting it again double-counted and left a large empty gap. */
+          .session-view-grid[data-keyboard-visible="true"] {
+            height: calc(100dvh - var(--quickkeys-height, 0px)) !important;
+          }
+
           .session-header-area {
             /* Use mobile-terminal-header styles */
             flex-shrink: 0 !important;
@@ -1264,7 +1304,22 @@ export class SessionView extends LitElement {
             bottom: 0 !important;
             z-index: 10 !important;
           }
-          
+
+          /* Mobile: <mobile-action-bar> renders its content as position:fixed, so the
+             host element must NOT occupy flex space — otherwise it leaves a black gap
+             between the terminal and the quick keys. Collapse the host to zero height
+             while letting its fixed-positioned content still render. (display:contents
+             is avoided here due to unreliable iOS Safari support.) */
+          mobile-action-bar {
+            flex-shrink: 0 !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            overflow: visible !important;
+          }
+
           /* Mobile: Overlay positioning */
           .overlay-container {
             position: absolute !important;
@@ -1293,7 +1348,7 @@ export class SessionView extends LitElement {
       <div class="bg-bg-secondary" style="padding-top: env(safe-area-inset-top);">
         <div
           class="session-view-grid"
-          style="outline: none !important; box-shadow: none !important; --keyboard-height: ${uiState.keyboardHeight}px; --quickkeys-height: 0px;"
+          style="outline: none !important; box-shadow: none !important; --keyboard-height: ${uiState.keyboardHeight}px; --quickkeys-height: ${uiState.showQuickKeys ? this.quickKeysHeight : 0}px;"
           data-keyboard-visible="${uiState.keyboardHeight > 0 || uiState.showQuickKeys ? 'true' : 'false'}"
         >
         <!-- Session Header Area -->
@@ -1436,7 +1491,7 @@ export class SessionView extends LitElement {
           uiState.isMobile
             ? html`
           <mobile-action-bar
-            .visible=${true}
+            .visible=${false}
             .session=${this.session}
             .keyboardVisible=${uiState.keyboardHeight > 0}
             .keyboardHeight=${uiState.keyboardHeight}
