@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Load nodenv if available
+if command -v nodenv >/dev/null 2>&1; then
+    eval "$(nodenv init -)" 2>/dev/null || true
+fi
+
 # Load fnm if available
 if command -v fnm >/dev/null 2>&1; then
     eval "$(fnm env)" 2>/dev/null || true

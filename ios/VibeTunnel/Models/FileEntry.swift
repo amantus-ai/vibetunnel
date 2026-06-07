@@ -25,7 +25,9 @@ struct FileEntry: Codable, Identifiable {
     let isGitTracked: Bool?
     let gitStatus: GitFileStatus?
 
-    var id: String { self.path }
+    var id: String {
+        self.path
+    }
 
     /// Creates a new FileEntry with the given parameters.
     ///
@@ -61,10 +63,10 @@ struct FileEntry: Codable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case name
         case path
-        case isDir = "is_dir"
+        case isDir = "type"
         case size
-        case mode
-        case modTime = "mod_time"
+        case mode = "permissions"
+        case modTime = "modified"
         case isGitTracked
         case gitStatus
     }
@@ -79,13 +81,14 @@ struct FileEntry: Codable, Identifiable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.name = try container.decode(String.self, forKey: .name)
         self.path = try container.decode(String.self, forKey: .path)
-        self.isDir = try container.decode(Bool.self, forKey: .isDir)
+        let typeValue = try container.decode(String.self, forKey: .isDir)
+        self.isDir = typeValue == "directory"
         self.size = try container.decode(Int64.self, forKey: .size)
         self.mode = try container.decode(String.self, forKey: .mode)
         self.isGitTracked = try container.decodeIfPresent(Bool.self, forKey: .isGitTracked)
         self.gitStatus = try container.decodeIfPresent(GitFileStatus.self, forKey: .gitStatus)
 
-        // Decode mod_time string as Date
+        // Decode modified string as Date
         let modTimeString = try container.decode(String.self, forKey: .modTime)
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

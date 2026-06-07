@@ -49,7 +49,6 @@ final class LivePreviewManager {
 
         // Set up WebSocket subscription with throttling
         var lastUpdateTime: Date = .distantPast
-        var pendingSnapshot: BufferSnapshot?
 
         self.bufferClient.subscribe(to: sessionId) { [weak self, weak subscription] event in
             guard let self, let subscription else { return }
@@ -63,20 +62,20 @@ final class LivePreviewManager {
                         subscription.latestSnapshot = snapshot
                         subscription.lastUpdate = now
                         lastUpdateTime = now
-                        pendingSnapshot = nil
+                        subscription.pendingSnapshot = nil
                     } else {
                         // Store pending update
-                        pendingSnapshot = snapshot
+                        subscription.pendingSnapshot = snapshot
 
                         // Schedule delayed update if not already scheduled
                         if self.updateTimers[sessionId] == nil {
                             let timer = Timer
                                 .scheduledTimer(withTimeInterval: self.updateInterval, repeats: false) { _ in
                                     Task { @MainActor in
-                                        if let pending = pendingSnapshot {
+                                        if let pending = subscription.pendingSnapshot {
                                             subscription.latestSnapshot = pending
                                             subscription.lastUpdate = Date()
-                                            pendingSnapshot = nil
+                                            subscription.pendingSnapshot = nil
                                         }
                                         self.updateTimers.removeValue(forKey: sessionId)
                                     }
@@ -139,6 +138,7 @@ final class LivePreviewSubscription {
     var lastUpdate = Date()
     var isSessionActive = true
     var referenceCount = 1
+    var pendingSnapshot: BufferSnapshot?
 
     init(sessionId: String) {
         self.sessionId = sessionId
@@ -170,17 +170,8 @@ struct LivePreviewModifier: ViewModifier {
     }
 }
 
-/// Environment key for passing subscription down the view hierarchy.
-/// Enables child views to access the live preview subscription.
-private struct LivePreviewSubscriptionKey: EnvironmentKey {
-    static let defaultValue: LivePreviewSubscription? = nil
-}
-
 extension EnvironmentValues {
-    var livePreviewSubscription: LivePreviewSubscription? {
-        get { self[LivePreviewSubscriptionKey.self] }
-        set { self[LivePreviewSubscriptionKey.self] = newValue }
-    }
+    @Entry var livePreviewSubscription: LivePreviewSubscription?
 }
 
 extension View {
