@@ -79,6 +79,32 @@ export function parseVerbosityLevel(value: string): VerbosityLevel | undefined {
 
 // File handle for log file
 let logFileHandle: fs.WriteStream | null = null;
+let bytesWritten = 0;
+const MAX_LOG_SIZE = 50 * 1024 * 1024; // 50MB
+
+function rotateLogFile(): void {
+  if (logFileHandle) {
+    logFileHandle.end();
+    logFileHandle = null;
+  }
+  try {
+    const backupPath = `${LOG_FILE}.1`;
+    if (fs.existsSync(backupPath)) {
+      fs.unlinkSync(backupPath);
+    }
+    if (fs.existsSync(LOG_FILE)) {
+      fs.renameSync(LOG_FILE, backupPath);
+    }
+  } catch {
+    // Ignore rotation errors
+  }
+  bytesWritten = 0;
+  try {
+    logFileHandle = fs.createWriteStream(LOG_FILE, { flags: 'a' });
+  } catch {
+    // Ignore errors
+  }
+}
 
 // ANSI color codes for stripping from file output
 // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences require control characters
@@ -211,7 +237,12 @@ function writeToFile(message: string): void {
     try {
       // Strip ANSI color codes from message
       const cleanMessage = message.replace(ANSI_PATTERN, '');
-      logFileHandle.write(`${cleanMessage}\n`);
+      const output = `${cleanMessage}\n`;
+      logFileHandle.write(output);
+      bytesWritten += Buffer.byteLength(output, 'utf8');
+      if (bytesWritten > MAX_LOG_SIZE) {
+        rotateLogFile();
+      }
     } catch {
       // Silently ignore file write errors
     }
