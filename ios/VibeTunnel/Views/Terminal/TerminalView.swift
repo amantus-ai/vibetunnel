@@ -604,7 +604,16 @@ class TerminalViewModel {
     private var resizeDebounceTask: Task<Void, Never>?
     private var hasPerformedInitialResize = false
     private var isPerformingInitialResize = false
-    weak var terminalCoordinator: (any TerminalCoordinating)?
+    weak var terminalCoordinator: (any TerminalCoordinating)? {
+        didSet {
+            if let coordinator = terminalCoordinator {
+                self.flushPendingData(to: coordinator)
+            }
+        }
+    }
+
+    private var pendingBufferSnapshot: BufferSnapshot?
+    private var pendingOutputData = [String]()
 
     init(session: Session) {
         self.session = session
@@ -698,15 +707,8 @@ class TerminalViewModel {
             if let coordinator = terminalCoordinator {
                 coordinator.feedData(data)
             } else {
-                // Queue the data to be fed once coordinator is ready
-                logger.warning("Terminal coordinator not ready, queueing data")
-                Task {
-                    // Wait a bit for coordinator to be initialized
-                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
-                    if let coordinator = self.terminalCoordinator {
-                        coordinator.feedData(data)
-                    }
-                }
+                // Queue data until coordinator is ready
+                self.pendingOutputData.append(data)
             }
             // Record output if recording
             self.castRecorder.recordOutput(data)
@@ -744,8 +746,7 @@ class TerminalViewModel {
             if let coordinator = terminalCoordinator {
                 coordinator.updateBuffer(from: snapshot)
             } else {
-                // Fallback: buffer updates not available yet
-                logger.warning("Direct buffer update not available")
+                self.pendingBufferSnapshot = snapshot
             }
 
         case .bell:
@@ -755,6 +756,19 @@ class TerminalViewModel {
         case let .alert(title, message):
             // Terminal alert - show notification
             self.handleTerminalAlert(title: title, message: message)
+        }
+    }
+
+    private func flushPendingData(to coordinator: any TerminalCoordinating) {
+        if let snapshot = pendingBufferSnapshot {
+            self.pendingBufferSnapshot = nil
+            coordinator.updateBuffer(from: snapshot)
+        }
+        if !self.pendingOutputData.isEmpty {
+            for data in self.pendingOutputData {
+                coordinator.feedData(data)
+            }
+            self.pendingOutputData.removeAll()
         }
     }
 

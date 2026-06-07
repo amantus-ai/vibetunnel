@@ -1,6 +1,20 @@
 import SwiftUI
 import WebKit
 
+/// WKWebView subclass that accepts first responder to receive keyboard events on iOS.
+final class TerminalWebView: WKWebView {
+    override var canBecomeFirstResponder: Bool {
+        true
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil {
+            becomeFirstResponder()
+        }
+    }
+}
+
 /// WebView-based terminal using ghostty-web (WASM + canvas).
 struct GhosttyWebView: UIViewRepresentable {
     struct TerminalSize: Equatable {
@@ -17,7 +31,7 @@ struct GhosttyWebView: UIViewRepresentable {
     var terminalSize: TerminalSize?
     var onReady: ((Coordinator) -> Void)?
 
-    func makeUIView(context: Context) -> WKWebView {
+    func makeUIView(context: Context) -> TerminalWebView {
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
         configuration.userContentController = WKUserContentController()
@@ -28,7 +42,7 @@ struct GhosttyWebView: UIViewRepresentable {
         configuration.userContentController.add(context.coordinator, name: "terminalScroll")
         configuration.userContentController.add(context.coordinator, name: "terminalLog")
 
-        let webView = WKWebView(frame: .zero, configuration: configuration)
+        let webView = TerminalWebView(frame: .zero, configuration: configuration)
         webView.isOpaque = false
         webView.backgroundColor = UIColor(self.theme.background)
         webView.scrollView.isScrollEnabled = false
@@ -36,10 +50,15 @@ struct GhosttyWebView: UIViewRepresentable {
         context.coordinator.webView = webView
         context.coordinator.loadTerminal()
 
+        // Become first responder to receive keyboard events on iOS
+        DispatchQueue.main.async {
+            webView.becomeFirstResponder()
+        }
+
         return webView
     }
 
-    func updateUIView(_ webView: WKWebView, context: Context) {
+    func updateUIView(_ webView: TerminalWebView, context: Context) {
         webView.backgroundColor = UIColor(self.theme.background)
         context.coordinator.updateFontSize(self.fontSize)
         context.coordinator.updateTheme(self.theme)
@@ -60,6 +79,7 @@ struct GhosttyWebView: UIViewRepresentable {
         private var isReady = false
         private var pendingTerminalSize: TerminalSize?
         private var lastTerminalSize: TerminalSize?
+        private var pendingBufferSnapshot: BufferSnapshot?
 
         init(_ parent: GhosttyWebView) {
             self.parent = parent
@@ -88,10 +108,17 @@ struct GhosttyWebView: UIViewRepresentable {
                     body { background: transparent; -webkit-user-select: none; -webkit-touch-callout: none; }
                     #terminal { width: 100vw; height: 100vh; }
                     canvas { display: block; }
+                    #kb-capture {
+                        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                        opacity: 0.01; font-size: 16px; caret-color: transparent;
+                        -webkit-user-select: text; background: transparent;
+                        border: none; outline: none; resize: none;
+                    }
                 </style>
             </head>
             <body>
                 <div id=\"terminal\"></div>
+                <textarea id=\"kb-capture\" autocomplete=\"off\" autocorrect=\"off\" autocapitalize=\"off\" spellcheck=\"false\"></textarea>
                 <script src=\"ghostty-web.js\"></script>
                 <script>
                     const initialTheme = \(themeJSON);
@@ -156,6 +183,7 @@ struct GhosttyWebView: UIViewRepresentable {
                             });
 
                             term.open(document.getElementById('terminal'));
+                            term.focus();
 
                             fitAddon.fit();
                             const dims = fitAddon.proposeDimensions();
@@ -222,6 +250,37 @@ struct GhosttyWebView: UIViewRepresentable {
                         setTerminalSize
                     };
 
+                    // iOS keyboard capture: use a hidden textarea to receive key events
+                    const kbCapture = document.getElementById('kb-capture');
+                    kbCapture.addEventListener('keydown', (e) => {
+                        if (!ready || !term || disableInput) return;
+                        let data = '';
+                        if (e.ctrlKey && e.key.length === 1) {
+                            const code = e.key.charCodeAt(0);
+                            data = String.fromCharCode(code & 31);
+                        } else if (e.key === 'Enter') { data = '\\r'; }
+                        else if (e.key === 'Backspace') { data = '\\x7f'; }
+                        else if (e.key === 'Tab') { data = '\\t'; }
+                        else if (e.key === 'Escape') { data = '\\x1b'; }
+                        else if (e.key === 'ArrowUp') { data = '\\x1b[A'; }
+                        else if (e.key === 'ArrowDown') { data = '\\x1b[B'; }
+                        else if (e.key === 'ArrowRight') { data = '\\x1b[C'; }
+                        else if (e.key === 'ArrowLeft') { data = '\\x1b[D'; }
+                        else if (e.key.length === 1 && !e.metaKey && !e.altKey) {
+                            data = e.key;
+                        }
+                        if (data) {
+                            post('terminalInput', data);
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }
+                    });
+                    kbCapture.addEventListener('input', () => { kbCapture.value = ''; });
+                    // Focus textarea on any touch on the terminal canvas
+                    document.getElementById('terminal').addEventListener('touchstart', () => {
+                        kbCapture.focus();
+                    }, { passive: true });
+
                     window.addEventListener('load', initTerminal);
                     window.addEventListener('resize', () => {
                         if (fitAddon) {
@@ -235,8 +294,7 @@ struct GhosttyWebView: UIViewRepresentable {
 
             guard let ghosttyURL = Bundle.main.url(
                 forResource: "ghostty-web",
-                withExtension: "js",
-                subdirectory: "ghostty")
+                withExtension: "js")
             else {
                 self.logger.error("ghostty-web.js missing from bundle")
                 return
@@ -277,7 +335,7 @@ struct GhosttyWebView: UIViewRepresentable {
 
             case "terminalLog":
                 if let log = message.body as? String {
-                    self.logger.debug(log)
+                    self.logger.info("JS: \(log)")
                 }
 
             default:
@@ -303,9 +361,17 @@ struct GhosttyWebView: UIViewRepresentable {
 
         func handleTerminalReady() {
             self.isReady = true
+            // Ensure keyboard focus on the WebView
+            self.webView?.becomeFirstResponder()
+            // Flush any pending terminal size
             if let size = pendingTerminalSize {
                 self.setTerminalSize(cols: size.cols, rows: size.rows)
                 self.pendingTerminalSize = nil
+            }
+            // Flush any pending buffer snapshot that arrived before ready
+            if let snapshot = pendingBufferSnapshot {
+                self.pendingBufferSnapshot = nil
+                self.applyBufferSnapshot(snapshot)
             }
         }
 
@@ -334,6 +400,14 @@ struct GhosttyWebView: UIViewRepresentable {
         }
 
         func updateBuffer(from snapshot: BufferSnapshot) {
+            guard self.isReady else {
+                self.pendingBufferSnapshot = snapshot
+                return
+            }
+            self.applyBufferSnapshot(snapshot)
+        }
+
+        private func applyBufferSnapshot(_ snapshot: BufferSnapshot) {
             let result = self.bufferRenderer.render(from: snapshot)
             if result.resized {
                 self.setTerminalSize(cols: result.cols, rows: result.rows)
@@ -391,7 +465,7 @@ struct GhosttyWebView: UIViewRepresentable {
             return self.jsonString(fontFamily) ?? "\"monospace\""
         }
 
-        private func jsonString<T: Encodable>(_ value: T) -> String? {
+        private func jsonString(_ value: some Encodable) -> String? {
             guard let data = try? JSONEncoder().encode(value) else { return nil }
             return String(data: data, encoding: .utf8)
         }
