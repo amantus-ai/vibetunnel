@@ -1,5 +1,13 @@
 import { spawnSync } from 'child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -15,6 +23,7 @@ function captureFallbackArgs(
 ): string[] {
   const tempHome = mkdtempSync(join(tmpdir(), 'vt-shell-fallback-'));
   const capturePath = join(tempHome, 'capture-args.sh');
+  const captureOutputPath = join(tempHome, 'captured-args');
   const originalHome = process.env.HOME;
   const originalShell = process.env.SHELL;
   const expectedArgs = [
@@ -29,7 +38,11 @@ function captureFallbackArgs(
   ];
 
   try {
-    writeFileSync(capturePath, '#!/bin/sh\nprintf \'%s\\000\' "$@"\n', 'utf8');
+    writeFileSync(
+      capturePath,
+      '#!/bin/sh\nprintf \'%s\\000\' "$@" > "$VT_CAPTURE_OUTPUT"\n',
+      'utf8'
+    );
     chmodSync(capturePath, 0o755);
     writeFileSync(
       join(tempHome, configName),
@@ -64,11 +77,11 @@ function captureFallbackArgs(
     const resolved = ProcessUtils.resolveCommand(['vt_test_alias', ...expectedArgs]);
     expect(resolved.resolvedFrom).toBe('alias');
     const result = spawnSync(resolved.command, resolved.args, {
-      env: { ...process.env, HOME: tempHome },
+      env: { ...process.env, HOME: tempHome, VT_CAPTURE_OUTPUT: captureOutputPath },
     });
 
     expect(result.status, result.stderr.toString('utf8')).toBe(0);
-    const actualArgs = result.stdout.toString('utf8').split('\0');
+    const actualArgs = readFileSync(captureOutputPath, 'utf8').split('\0');
     actualArgs.pop();
     expect(actualArgs).toEqual(expectedArgs);
     return actualArgs;
