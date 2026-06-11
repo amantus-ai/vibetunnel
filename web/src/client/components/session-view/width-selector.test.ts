@@ -2,7 +2,7 @@
 
 import { fixture } from '@open-wc/testing';
 import { html } from 'lit';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Z_INDEX } from '../../utils/constants.js';
 import './width-selector.js';
 import type { TerminalSettingsModal } from './width-selector.js';
@@ -32,9 +32,36 @@ describe('TerminalSettingsModal', () => {
 
     const widthSelect = document.querySelector('select') as HTMLSelectElement | null;
     expect(widthSelect).toBeTruthy();
+    expect(widthSelect?.value).toBe('80');
 
     const themeSelect = document.querySelector('#theme-select') as HTMLSelectElement | null;
     expect(themeSelect).toBeTruthy();
+  });
+
+  it('should restore the configured width when reopening', async () => {
+    element.visible = false;
+    await element.updateComplete;
+    element.terminalMaxCols = 120;
+    element.visible = true;
+    await element.updateComplete;
+
+    const widthSelect = element.querySelector('select') as HTMLSelectElement;
+    expect(widthSelect.value).toBe('120');
+  });
+
+  it('should select custom widths and allow switching to fit-to-window', async () => {
+    const onWidthSelect = vi.fn();
+    element.onWidthSelect = onWidthSelect;
+    element.terminalMaxCols = 123;
+    await element.updateComplete;
+
+    const widthSelect = element.querySelector('select') as HTMLSelectElement;
+    expect(widthSelect.value).toBe('custom');
+
+    widthSelect.value = '0';
+    widthSelect.dispatchEvent(new Event('change'));
+
+    expect(onWidthSelect).toHaveBeenCalledWith(0);
   });
 
   it('should not render legacy binary mode toggle', async () => {

@@ -89,6 +89,14 @@ export class TerminalSettingsModal extends LitElement {
     return getTextColorEncoded();
   }
 
+  private getSelectedWidthValue(): string {
+    const isCustomValue =
+      this.terminalMaxCols > 0 &&
+      !COMMON_TERMINAL_WIDTHS.find((width) => width.value === this.terminalMaxCols);
+
+    return isCustomValue || this.showCustomInput ? 'custom' : String(this.terminalMaxCols);
+  }
+
   // legacy binary-mode preference removed (v3 WS + ghostty is always-on)
 
   updated(changedProperties: Map<string | number | symbol, unknown>) {
@@ -106,24 +114,15 @@ export class TerminalSettingsModal extends LitElement {
       });
     }
 
-    // Same fix for the width select: when bound via Lit, the value can be applied
-    // before the dynamic <option>s exist, leaving the select stuck on its first
-    // option ("Fit to Window"). Force the correct value after the DOM is ready.
     if (
       changedProperties.has('terminalMaxCols') ||
       changedProperties.has('visible') ||
       changedProperties.has('showCustomInput')
     ) {
-      requestAnimationFrame(() => {
-        const widthSelect = this.querySelector('#width-select') as HTMLSelectElement;
-        if (widthSelect) {
-          const isCustomValue =
-            this.terminalMaxCols > 0 &&
-            !COMMON_TERMINAL_WIDTHS.find((w) => w.value === this.terminalMaxCols);
-          widthSelect.value =
-            isCustomValue || this.showCustomInput ? 'custom' : String(this.terminalMaxCols);
-        }
-      });
+      const widthSelect = this.querySelector('#width-select') as HTMLSelectElement | null;
+      if (widthSelect) {
+        widthSelect.value = this.getSelectedWidthValue();
+      }
     }
   }
 
@@ -134,9 +133,7 @@ export class TerminalSettingsModal extends LitElement {
     logger.debug('Dialog opening, terminal theme:', this.terminalTheme);
 
     // Check if we're showing a custom value that doesn't match presets
-    const isCustomValue =
-      this.terminalMaxCols > 0 &&
-      !COMMON_TERMINAL_WIDTHS.find((w) => w.value === this.terminalMaxCols);
+    const isCustomValue = this.getSelectedWidthValue() === 'custom';
 
     return html`
       <!-- Backdrop to close on outside click -->
@@ -178,7 +175,7 @@ export class TerminalSettingsModal extends LitElement {
                 id="width-select"
                 class="w-full bg-bg-secondary border border-border rounded-md pl-4 pr-10 py-3 text-sm font-mono text-text focus:border-primary focus:shadow-glow-sm cursor-pointer appearance-none"
                 style="background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22${this.getArrowColor()}%22%3e%3cpath fill-rule=%22evenodd%22 d=%22M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z%22 clip-rule=%22evenodd%22/%3e%3c/svg%3e'); background-position: right 0.75rem center; background-repeat: no-repeat; background-size: 1.25em 1.25em;"
-                .value=${isCustomValue || this.showCustomInput ? 'custom' : String(this.terminalMaxCols)}
+                .value=${this.getSelectedWidthValue()}
                 @click=${(e: Event) => e.stopPropagation()}
                 @mousedown=${(e: Event) => e.stopPropagation()}
                 @change=${(e: Event) => {

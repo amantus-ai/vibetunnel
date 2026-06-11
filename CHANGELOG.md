@@ -12,6 +12,7 @@
 
 ### 🐛 Bug Fixes
 - Fix session creation "data couldn't be read" error on Mac app (#500)
+- Restore the configured terminal width when reopening Terminal Settings (via [@Nachx639](https://github.com/Nachx639)) (#640)
 - Keep Terminal Settings and other interactive overlays above the exited-session badge (via [@Nachx639](https://github.com/Nachx639)) (#643)
 - Fix npm and Bun global installs exiting early by recognizing the `vibetunnel` bin entry point (via [@yv-was-taken](https://github.com/yv-was-taken)) (#583)
 - Fix desktop terminal content being clipped at the bottom (via [@ChimeraFlutter](https://github.com/ChimeraFlutter)) (#608)
@@ -23,7 +24,7 @@
 - Reset CLI outdated status after successful install and add regression coverage
 
 ### 👥 Contributors
-- Thanks [@Nachx639](https://github.com/Nachx639) for fixing exited-session overlay layering.
+- Thanks [@Nachx639](https://github.com/Nachx639) for fixing Terminal Settings width sync and exited-session overlay layering.
 - Thanks [@sourman](https://github.com/sourman) for documenting the Zig build prerequisite.
 - Thanks [@yv-was-taken](https://github.com/yv-was-taken) for fixing global npm and Bun installs.
 - Thanks [@ChimeraFlutter](https://github.com/ChimeraFlutter) for fixing desktop terminal clipping.
