@@ -66,6 +66,7 @@ export default defineConfig({
         '**/basic-session.spec.ts',
         '**/minimal-session.spec.ts',
         '**/session-navigation.spec.ts',
+        '**/session-header-responsive.spec.ts',
         '**/ui-features.spec.ts',
         '**/file-browser-basic.spec.ts',
         '**/terminal-basic.spec.ts',

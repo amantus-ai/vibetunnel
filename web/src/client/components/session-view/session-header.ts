@@ -165,23 +165,38 @@ export class SessionHeader extends LitElement {
     if (!this.session) return null;
 
     return html`
+      <style>
+        .session-header-container {
+          --vt-header-padding-left: max(1rem, env(safe-area-inset-left));
+          --vt-header-padding-right: max(1rem, env(safe-area-inset-right));
+          padding-left: var(--vt-header-padding-left);
+          padding-right: var(--vt-header-padding-right);
+        }
+
+        @media (max-width: 480px) {
+          .session-header-container {
+            --vt-header-padding-left: max(0.5rem, env(safe-area-inset-left));
+            --vt-header-padding-right: max(0.5rem, env(safe-area-inset-right));
+          }
+        }
+      </style>
       <!-- Header content -->
       <div
-        class="flex items-center justify-between border-b border-border text-sm min-w-0 max-w-[100vw] bg-bg-secondary px-4 py-2 session-header-container"
-        style="padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right));"
+        class="flex items-center justify-between border-b border-border text-sm min-w-0 max-w-[100vw] bg-bg-secondary py-2 session-header-container"
       >
-        <div class="flex items-center gap-3 min-w-0 flex-1 overflow-hidden flex-shrink">
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden flex-shrink">
           <!-- Sidebar Toggle (when sidebar is collapsed) - visible on all screen sizes -->
           ${
             this.showSidebarToggle && this.sidebarCollapsed
               ? html`
                 <button
-                  class="bg-bg-tertiary border border-border rounded-md p-2 text-primary transition-all duration-200 hover:bg-surface-hover hover:border-primary flex-shrink-0"
+                  class="bg-bg-tertiary border border-border rounded-md w-11 h-11 p-0 md:w-auto md:h-auto md:p-2 text-primary transition-all duration-200 hover:bg-surface-hover hover:border-primary flex items-center justify-center flex-shrink-0"
                   @click=${() => this.onSidebarToggle?.()}
                   title="Show sidebar (⌘B)"
                   aria-label="Show sidebar"
                   aria-expanded="false"
                   aria-controls="sidebar"
+                  data-testid="session-sidebar-toggle"
                 >
                   <!-- Right chevron icon to expand sidebar -->
                   <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
@@ -235,10 +250,20 @@ export class SessionHeader extends LitElement {
             this.showBackButton
               ? html`
                 <button
-                  class="bg-bg-tertiary border border-border rounded-md px-4 py-2.5 sm:px-3 sm:py-1.5 min-h-[44px] sm:min-h-0 flex items-center justify-center font-mono text-xs text-primary transition-all duration-200 hover:bg-surface-hover hover:border-primary flex-shrink-0"
+                  class="bg-bg-tertiary border border-border rounded-md w-11 h-11 p-0 md:w-auto md:h-auto md:px-3 md:py-1.5 flex items-center justify-center font-mono text-xs text-primary transition-all duration-200 hover:bg-surface-hover hover:border-primary flex-shrink-0"
                   @click=${() => this.onBack?.()}
+                  aria-label="Back"
+                  data-testid="session-back-button"
                 >
-                  Back
+                  ${
+                    this.isMobile
+                      ? html`
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M12.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 1.414L8.414 10l4.293 4.293a1 1 0 010 1.414z"/>
+                        </svg>
+                      `
+                      : 'Back'
+                  }
                 </button>
               `
               : ''
@@ -323,7 +348,7 @@ export class SessionHeader extends LitElement {
             </div>
           </div>
         </div>
-        <div class="flex items-center gap-2 text-xs flex-shrink-0 ml-2">
+        <div class="flex items-center gap-1 sm:gap-2 text-xs flex-shrink-0 ml-1 sm:ml-2">
           <!-- Keyboard capture indicator (always visible) -->
           <keyboard-capture-indicator
             .active=${this.keyboardCaptureActive}
@@ -344,12 +369,13 @@ export class SessionHeader extends LitElement {
             this.useCompactMenu || this.isMobile
               ? html`
               <!-- Compact menu for tight spaces or mobile -->
-              <div class="flex items-center gap-2 flex-shrink-0">
+              <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                 <!-- Chat mode toggle button (always visible outside menu) -->
                 <button
-                  class="bg-bg-tertiary border border-border rounded-md p-2 text-primary transition-all duration-200 hover:bg-surface-hover hover:border-primary flex-shrink-0 ${this.chatMode ? 'bg-primary text-white border-primary' : ''}"
+                  class="bg-bg-tertiary border border-border rounded-md w-11 h-11 p-0 md:w-auto md:h-auto md:p-2 text-primary transition-all duration-200 hover:bg-surface-hover hover:border-primary flex items-center justify-center flex-shrink-0 ${this.chatMode ? 'bg-primary text-white border-primary' : ''}"
                   @click=${() => this.onToggleChatMode?.()}
                   title="${this.chatMode ? 'Switch to Terminal Mode' : 'Switch to Chat Mode'}"
+                  aria-label="${this.chatMode ? 'Switch to Terminal Mode' : 'Switch to Chat Mode'}"
                   data-testid="chat-mode-toggle-button-compact"
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">

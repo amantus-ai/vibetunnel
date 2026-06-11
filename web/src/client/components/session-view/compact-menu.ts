@@ -216,7 +216,7 @@ export class CompactMenu extends LitElement {
     return html`
       <div class="relative w-[44px] flex-shrink-0">
         <button
-          class="p-2 bg-bg-tertiary border ${this.showMenu ? 'text-primary border-primary' : 'text-primary border-border'} hover:border-primary hover:text-primary hover:bg-surface-hover rounded-lg transition-all duration-200"
+          class="w-11 h-11 p-0 md:w-auto md:h-auto md:p-2 flex items-center justify-center bg-bg-tertiary border ${this.showMenu ? 'text-primary border-primary' : 'text-primary border-border'} hover:border-primary hover:text-primary hover:bg-surface-hover rounded-lg transition-all duration-200"
           @click=${this.toggleMenu}
           @keydown=${this.handleMenuButtonKeyDown}
           title="More actions"

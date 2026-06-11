@@ -13,6 +13,7 @@
 - Default macOS build script to universal binaries with optional arch override (via [@rothnic](https://github.com/rothnic)) (#557)
 
 ### 🐛 Bug Fixes
+- Keep mobile session header controls visible and comfortably tappable at narrow phone widths (via [@nikolasdehor](https://github.com/nikolasdehor)) (#605)
 - Jitter iOS reconnection backoff within its configured cap to spread retries after outages (via [@bianbiandashen](https://github.com/bianbiandashen)) (#593)
 - Keep `vt` git metadata alive for sessions in repositories without an upstream branch, preventing forwarder crashes (via [@ndraiman](https://github.com/ndraiman)) (#566)
 - Keep HQ remotes registered through transient health-check failures and remove them only after three consecutive failures (via [@bianbiandashen](https://github.com/bianbiandashen) and [@nikolasdehor](https://github.com/nikolasdehor)) (#594)
@@ -48,7 +49,7 @@
 - Thanks [@yv-was-taken](https://github.com/yv-was-taken) for fixing global npm and Bun installs.
 - Thanks [@ChimeraFlutter](https://github.com/ChimeraFlutter) for fixing desktop terminal clipping.
 - Thanks [@Ilakiancs](https://github.com/Ilakiancs) for identifying lost argument boundaries in shell fallback execution.
-- Thanks [@nikolasdehor](https://github.com/nikolasdehor) for fixing `vt --title-mode` and shell fallback argument forwarding, preserving terminal link taps, and adding remote health-check regression coverage.
+- Thanks [@nikolasdehor](https://github.com/nikolasdehor) for fixing narrow mobile session headers, `vt --title-mode`, and shell fallback argument forwarding, preserving terminal link taps, and adding remote health-check regression coverage.
 - Thanks [@rothnic](https://github.com/rothnic) for defaulting to universal macOS binaries.
 
 ## [1.0.0-beta.15] - 2025-08-02
