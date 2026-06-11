@@ -1,6 +1,7 @@
 const std = @import("std");
 
 pub const GitInfo = struct {
+    arena: std.heap.ArenaAllocator,
     gitRepoPath: ?[]const u8 = null,
     gitBranch: ?[]const u8 = null,
     gitAheadCount: ?i32 = null,
@@ -8,40 +9,42 @@ pub const GitInfo = struct {
     gitHasChanges: ?bool = null,
     gitIsWorktree: ?bool = null,
     gitMainRepoPath: ?[]const u8 = null,
+
+    pub fn deinit(self: *GitInfo) void {
+        self.arena.deinit();
+    }
 };
 
 pub fn detectGitInfo(allocator: std.mem.Allocator, working_dir: []const u8) GitInfo {
-    var info = GitInfo{};
-    var env = std.process.getEnvMap(allocator) catch return info;
-    defer env.deinit();
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    const arena_alloc = arena.allocator();
+    var info = GitInfo{ .arena = arena };
+
+    var env = std.process.getEnvMap(arena_alloc) catch return info;
     env.put("GIT_TERMINAL_PROMPT", "0") catch {};
 
-    const repo_path = runGit(allocator, working_dir, &env, &.{ "git", "rev-parse", "--show-toplevel" }) orelse return info;
-    defer allocator.free(repo_path);
+    const repo_path = runGit(arena_alloc, working_dir, &env, &.{ "git", "rev-parse", "--show-toplevel" }) orelse return info;
     info.gitRepoPath = repo_path;
 
-    if (runGit(allocator, working_dir, &env, &.{ "git", "branch", "--show-current" })) |branch| {
-        defer allocator.free(branch);
+    if (runGit(arena_alloc, working_dir, &env, &.{ "git", "branch", "--show-current" })) |branch| {
         info.gitBranch = branch;
     } else {
         info.gitBranch = "";
     }
 
-    const git_file_path = std.fs.path.join(allocator, &.{ working_dir, ".git" }) catch null;
+    const git_file_path = std.fs.path.join(arena_alloc, &.{ working_dir, ".git" }) catch null;
     if (git_file_path) |path| {
-        defer allocator.free(path);
         if (std.fs.cwd().statFile(path)) |stat| {
             if (stat.kind != .directory) {
                 info.gitIsWorktree = true;
-                if (getMainRepositoryPath(allocator, path)) |main| {
+                if (getMainRepositoryPath(arena_alloc, path)) |main| {
                     info.gitMainRepoPath = main;
                 }
             }
         } else |_| {}
     }
 
-    if (runGit(allocator, working_dir, &env, &.{ "git", "rev-list", "--left-right", "--count", "HEAD...@{upstream}" })) |counts| {
-        defer allocator.free(counts);
+    if (runGit(arena_alloc, working_dir, &env, &.{ "git", "rev-list", "--left-right", "--count", "HEAD...@{upstream}" })) |counts| {
         var parts = std.mem.splitScalar(u8, counts, '\t');
         if (parts.next()) |ahead| {
             info.gitAheadCount = std.fmt.parseInt(i32, ahead, 10) catch null;
@@ -51,7 +54,7 @@ pub fn detectGitInfo(allocator: std.mem.Allocator, working_dir: []const u8) GitI
         }
     }
 
-    if (runGitStatus(allocator, working_dir, &env)) |has_changes| {
+    if (runGitStatus(arena_alloc, working_dir, &env)) |has_changes| {
         info.gitHasChanges = has_changes;
     }
 

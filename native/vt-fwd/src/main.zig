@@ -220,7 +220,8 @@ pub fn main() !void {
 
     const session_name = try title_mod.generateSessionName(allocator, command, cwd, home);
     const started_at = try isoTimestamp(allocator);
-    const git_info = git_mod.detectGitInfo(allocator, cwd);
+    var git_info = git_mod.detectGitInfo(allocator, cwd);
+    defer git_info.deinit();
 
     var session_info = session_mod.SessionInfo{
         .id = session_id,
