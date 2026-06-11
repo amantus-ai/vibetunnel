@@ -1,5 +1,5 @@
 import { spawnSync } from 'child_process';
-import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -36,10 +36,33 @@ function captureFallbackArgs(
       aliasDefinition.replace('$CAPTURE', capturePath),
       'utf8'
     );
+
+    let testShellPath = shellPath;
+    if (shellPath === '/bin/bash') {
+      const binDir = join(tempHome, 'bin');
+      mkdirSync(binDir);
+      testShellPath = join(binDir, 'bash');
+      writeFileSync(
+        testShellPath,
+        [
+          '#!/bin/bash',
+          'args=()',
+          'for arg in "$@"; do',
+          '  [[ "$arg" == "-l" ]] || args+=("$arg")',
+          'done',
+          `exec /bin/bash --noprofile --rcfile "$HOME/.bashrc" "\${args[@]}"`,
+          '',
+        ].join('\n'),
+        'utf8'
+      );
+      chmodSync(testShellPath, 0o755);
+    }
+
     process.env.HOME = tempHome;
-    process.env.SHELL = shellPath;
+    process.env.SHELL = testShellPath;
 
     const resolved = ProcessUtils.resolveCommand(['vt_test_alias', ...expectedArgs]);
+    expect(resolved.resolvedFrom).toBe('alias');
     const result = spawnSync(resolved.command, resolved.args, {
       env: { ...process.env, HOME: tempHome },
     });
@@ -77,13 +100,16 @@ describe('ProcessUtils command parsing', () => {
       // The actual command is in the args after -c
       const cIndex = result.args.indexOf('-c');
       expect(cIndex).toBeGreaterThan(-1);
-      // ProcessUtils preserves the command string after -c
-      // In some environments this may include the full shell invocation
       const commandAfterC = result.args[cIndex + 1];
-      expect(commandAfterC).toMatch(/echo "hello"/);
-      // In some environments, ProcessUtils may resolve this as 'shell' instead of 'path'
-      expect(['path', 'shell']).toContain(result.resolvedFrom);
-      expect(result.useShell).toBe(result.resolvedFrom === 'shell');
+      if (result.resolvedFrom === 'path') {
+        expect(commandAfterC).toBe('echo "hello"');
+        expect(result.useShell).toBe(false);
+      } else {
+        expect(commandAfterC).toBe('/bin/zsh "$@"');
+        expect(result.args.slice(cIndex + 2)).toEqual(['--', '-i', '-c', 'echo "hello"']);
+        expect(['shell', 'alias']).toContain(result.resolvedFrom);
+        expect(result.useShell).toBe(true);
+      }
       expect(result.isInteractive).toBe(true);
     });
 
@@ -147,7 +173,7 @@ describe('ProcessUtils command parsing', () => {
     });
 
     itWithBash('should preserve arbitrary arguments through a Bash alias fallback', () => {
-      captureFallbackArgs('/bin/bash', '.bash_profile', "alias vt_test_alias='$CAPTURE'\n");
+      captureFallbackArgs('/bin/bash', '.bashrc', "alias vt_test_alias='$CAPTURE'\n");
     });
 
     itWithTcsh('should preserve arbitrary arguments through a tcsh alias fallback', () => {
@@ -215,13 +241,21 @@ describe('ProcessUtils command parsing', () => {
       // The actual command is preserved after -c
       const cIndex = result.args.indexOf('-c');
       expect(cIndex).toBeGreaterThan(-1);
-      // ProcessUtils preserves the command string after -c
-      // In some environments this may include the full shell invocation
       const commandAfterC = result.args[cIndex + 1];
-      expect(commandAfterC).toMatch(/claude --dangerously-skip-permissions/);
-      // In some environments, ProcessUtils may resolve this as 'shell' instead of 'path'
-      expect(['path', 'shell']).toContain(result.resolvedFrom);
-      expect(result.useShell).toBe(result.resolvedFrom === 'shell');
+      if (result.resolvedFrom === 'path') {
+        expect(commandAfterC).toBe('claude --dangerously-skip-permissions');
+        expect(result.useShell).toBe(false);
+      } else {
+        expect(commandAfterC).toBe('/bin/zsh "$@"');
+        expect(result.args.slice(cIndex + 2)).toEqual([
+          '--',
+          '-i',
+          '-c',
+          'claude --dangerously-skip-permissions',
+        ]);
+        expect(['shell', 'alias']).toContain(result.resolvedFrom);
+        expect(result.useShell).toBe(true);
+      }
       expect(result.isInteractive).toBe(true);
     });
 
