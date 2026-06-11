@@ -92,9 +92,10 @@ export class MockTerminal {
     element.appendChild(this.element);
   });
 
-  write = vi.fn((_data: string | Uint8Array) => {
+  write = vi.fn((_data: string | Uint8Array, callback?: () => void) => {
     // write() is for terminal output, should not trigger onData callback
     // onData is only for user input
+    callback?.();
   });
 
   writeln = vi.fn((data: string) => {
@@ -123,15 +124,26 @@ export class MockTerminal {
 
   dispose = vi.fn();
 
-  scrollToBottom = vi.fn();
+  scrollToBottom = vi.fn(() => {
+    this.buffer.active.viewportY = 0;
+    this._onScrollCallback?.(0);
+  });
 
   scrollToTop = vi.fn();
+
+  scrollLines = vi.fn((amount: number) => {
+    const max = Math.max(0, this.buffer.active.length - this.rows);
+    this.buffer.active.viewportY = Math.max(
+      0,
+      Math.min(max, this.buffer.active.viewportY - amount)
+    );
+    this._onScrollCallback?.(this.buffer.active.viewportY);
+  });
 
   scrollToLine = vi.fn((line: number) => {
     const max = Math.max(0, this.buffer.active.length - this.rows);
     const clamped = Math.max(0, Math.min(max, line));
-    // ghostty viewportY is "from bottom"
-    this.buffer.active.viewportY = max - clamped;
+    this.buffer.active.viewportY = clamped;
     if (this._onScrollCallback) this._onScrollCallback(this.buffer.active.viewportY);
   });
 
@@ -172,6 +184,11 @@ export class MockTerminal {
   // Simulate resize event
   simulateResize(cols: number, rows: number) {
     this.resize(cols, rows);
+  }
+
+  simulateScroll(viewportY: number) {
+    this.buffer.active.viewportY = viewportY;
+    this._onScrollCallback?.(viewportY);
   }
 }
 

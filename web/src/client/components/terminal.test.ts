@@ -1,7 +1,12 @@
 // @vitest-environment happy-dom
 import { fixture, html } from '@open-wc/testing';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { resetViewport, waitForCondition, waitForElement } from '@/test/utils/component-helpers';
+import {
+  resetViewport,
+  setViewport,
+  waitForCondition,
+  waitForElement,
+} from '@/test/utils/component-helpers';
 import { MockFitAddon, MockResizeObserver, MockTerminal } from '@/test/utils/terminal-mocks';
 
 // Mock ghostty-web before importing the component
@@ -527,8 +532,7 @@ describe('Terminal', () => {
 
       // Position might be clamped to valid range
       const position = element.getScrollPosition();
-      expect(position).toBeGreaterThanOrEqual(0);
-      expect(position).toBeLessThanOrEqual(element.getMaxScrollPosition());
+      expect(position).toBe(element.getMaxScrollPosition());
     });
 
     it('should get visible rows', () => {
@@ -554,6 +558,93 @@ describe('Terminal', () => {
         await waitForElement(element);
         expect(true).toBe(true);
       }
+    });
+
+    it('should expose whether output is following the cursor', () => {
+      expect(element.isFollowingCursor()).toBe(true);
+
+      mockTerminal?.simulateScroll(12);
+      expect(element.isFollowingCursor()).toBe(false);
+
+      mockTerminal?.simulateScroll(0);
+      expect(element.isFollowingCursor()).toBe(true);
+    });
+
+    it('should preserve the viewed scrollback position when output arrives', () => {
+      if (!mockTerminal) return;
+
+      mockTerminal.buffer.active.length = 100;
+      element.scrollToPosition(20);
+      expect(element.getScrollPosition()).toBe(20);
+
+      mockTerminal.write.mockImplementationOnce(() => {
+        mockTerminal.buffer.active.length = 101;
+        mockTerminal.simulateScroll(0);
+      });
+
+      element.write('new output');
+
+      // Restoration must happen before write() returns to avoid painting the live bottom.
+      expect(element.getScrollPosition()).toBe(20);
+      expect(element.isFollowingCursor()).toBe(false);
+    });
+
+    it('should keep initial replay dumps at the bottom', () => {
+      if (!mockTerminal) return;
+
+      mockTerminal.write.mockImplementationOnce(() => {
+        mockTerminal.buffer.active.length = 100;
+        mockTerminal.simulateScroll(0);
+      });
+
+      element.write('initial replay', false);
+
+      expect(element.getScrollPosition()).toBe(element.getMaxScrollPosition());
+      expect(element.isFollowingCursor()).toBe(true);
+    });
+
+    it('should preserve scrollback across a burst of output writes', () => {
+      if (!mockTerminal) return;
+
+      mockTerminal.buffer.active.length = 100;
+      element.scrollToPosition(20);
+      mockTerminal.write.mockImplementation(() => {
+        mockTerminal.buffer.active.length += 1;
+        mockTerminal.simulateScroll(0);
+      });
+
+      element.write('first');
+      expect(element.getScrollPosition()).toBe(20);
+      element.write('second');
+
+      expect(element.getScrollPosition()).toBe(20);
+      expect(element.isFollowingCursor()).toBe(false);
+    });
+
+    it('should translate vertical touch drags into terminal scroll lines', () => {
+      if (!mockTerminal) return;
+
+      const container = element.querySelector('.terminal-container') as HTMLElement;
+      const touchStart = new Event('touchstart', { bubbles: true, cancelable: true });
+      Object.defineProperty(touchStart, 'touches', {
+        value: [{ clientX: 50, clientY: 200 }],
+      });
+      container.dispatchEvent(touchStart);
+
+      const touchMove = new Event('touchmove', { bubbles: true, cancelable: true });
+      Object.defineProperty(touchMove, 'touches', {
+        value: [{ clientX: 52, clientY: 240 }],
+      });
+      container.dispatchEvent(touchMove);
+
+      expect(touchMove.defaultPrevented).toBe(true);
+      expect(mockTerminal.scrollLines).toHaveBeenCalledWith(expect.any(Number));
+      expect(mockTerminal.scrollLines.mock.calls[0]?.[0]).toBeLessThan(0);
+    });
+
+    it('should preserve pinch zoom while owning one-finger terminal scrolling', () => {
+      const container = element.querySelector('.terminal-container') as HTMLElement;
+      expect(getComputedStyle(container).touchAction).toBe('pinch-zoom');
     });
   });
 
@@ -603,11 +694,15 @@ describe('Terminal', () => {
     it('should clean up on disconnect', async () => {
       await element.firstUpdated();
       const terminal = (element as unknown as { terminal: MockTerminal }).terminal;
+      const container = element.querySelector('.terminal-container') as HTMLElement;
+      const removeEventListenerSpy = vi.spyOn(container, 'removeEventListener');
 
       element.disconnectedCallback();
 
       // Should dispose terminal
       expect(terminal?.dispose).toHaveBeenCalled();
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('touchstart', expect.any(Function));
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('touchmove', expect.any(Function));
     });
   });
 
@@ -692,6 +787,38 @@ describe('Terminal', () => {
       // This test is verifying internal behavior that may not exist in the component
       // Skip this test as the fitTerminal method doesn't exist on the component
       expect(true).toBe(true);
+    });
+
+    it('should recompute unlimited mobile width after the viewport changes', () => {
+      if (!mockTerminal) return;
+
+      const fitAddon = (element as unknown as { fitAddon: MockFitAddon }).fitAddon;
+      setViewport(390, 844);
+      element.maxCols = 0;
+
+      fitAddon.proposeDimensions.mockReturnValue({ cols: 40, rows: 24 });
+      element.fitTerminal('narrow');
+      expect(mockTerminal.resize).toHaveBeenLastCalledWith(40, 24);
+
+      fitAddon.proposeDimensions.mockReturnValue({ cols: 90, rows: 24 });
+      element.fitTerminal('wide');
+      expect(mockTerminal.resize).toHaveBeenLastCalledWith(90, 24);
+    });
+
+    it('should treat maxCols as a cap while mobile width changes', () => {
+      if (!mockTerminal) return;
+
+      const fitAddon = (element as unknown as { fitAddon: MockFitAddon }).fitAddon;
+      setViewport(390, 844);
+      element.maxCols = 80;
+
+      fitAddon.proposeDimensions.mockReturnValue({ cols: 40, rows: 24 });
+      element.fitTerminal('narrow');
+      expect(mockTerminal.resize).toHaveBeenLastCalledWith(40, 24);
+
+      fitAddon.proposeDimensions.mockReturnValue({ cols: 100, rows: 24 });
+      element.fitTerminal('wide');
+      expect(mockTerminal.resize).toHaveBeenLastCalledWith(80, 24);
     });
   });
 });

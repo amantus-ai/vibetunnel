@@ -854,8 +854,15 @@ export class SessionView extends LitElement {
             // If keyboard is visible, scroll to keep cursor visible
             if (state.keyboardHeight > 0 || state.showQuickKeys) {
               setTimeout(() => {
-                if ('scrollToBottom' in terminal) {
-                  terminal.scrollToBottom();
+                const scrollableTerminal = terminal as unknown as {
+                  scrollToBottom?: () => void;
+                  isFollowingCursor?: () => boolean;
+                };
+                if (
+                  scrollableTerminal.scrollToBottom &&
+                  (scrollableTerminal.isFollowingCursor?.() ?? true)
+                ) {
+                  scrollableTerminal.scrollToBottom();
                 }
               }, 100);
             }
@@ -890,14 +897,21 @@ export class SessionView extends LitElement {
           if (state.keyboardHeight > 0 || state.showQuickKeys) {
             // Small delay then scroll to bottom to keep cursor visible
             setTimeout(() => {
-              if ('scrollToBottom' in terminal) {
-                terminal.scrollToBottom();
-              }
+              const scrollableTerminal = terminal as unknown as {
+                scrollToBottom?: () => void;
+                isFollowingCursor?: () => boolean;
+              };
+              if (
+                scrollableTerminal.scrollToBottom &&
+                (scrollableTerminal.isFollowingCursor?.() ?? true)
+              ) {
+                scrollableTerminal.scrollToBottom();
 
-              // Also ensure the terminal content is scrolled within its container
-              const terminalArea = this.querySelector('.terminal-area');
-              if (terminalArea) {
-                terminalArea.scrollTop = terminalArea.scrollHeight;
+                // Also ensure the terminal content is scrolled within its container
+                const terminalArea = this.querySelector('.terminal-area');
+                if (terminalArea) {
+                  terminalArea.scrollTop = terminalArea.scrollHeight;
+                }
               }
             }, 50);
           }

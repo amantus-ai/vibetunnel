@@ -928,6 +928,7 @@ describe('SessionView', () => {
     let terminalElement: {
       fitTerminal: ReturnType<typeof vi.fn>;
       scrollToBottom: ReturnType<typeof vi.fn>;
+      isFollowingCursor: ReturnType<typeof vi.fn>;
     };
     let quickKeysElement: {
       getBoundingClientRect: ReturnType<typeof vi.fn>;
@@ -956,6 +957,7 @@ describe('SessionView', () => {
       terminalElement = {
         fitTerminal: vi.fn(),
         scrollToBottom: vi.fn(),
+        isFollowingCursor: vi.fn(() => true),
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
       };
@@ -1050,6 +1052,20 @@ describe('SessionView', () => {
       await element.updateComplete;
 
       expect(containerElement?.style.getPropertyValue('--quickkeys-height')).toBe('0px');
+    });
+
+    it('should not force scroll-to-bottom while the user is reading scrollback', async () => {
+      vi.useFakeTimers();
+      const testElement = element as SessionViewTestInterface;
+      terminalElement.isFollowingCursor.mockReturnValue(false);
+      testElement.uiStateManager.setIsMobile(true);
+      testElement.uiStateManager.setShowQuickKeys(true);
+
+      testElement.updateTerminalTransform();
+      await vi.runAllTimersAsync();
+
+      expect(fitTerminalSpy).toHaveBeenCalled();
+      expect(terminalElement.scrollToBottom).not.toHaveBeenCalled();
     });
 
     it.skip('should properly calculate terminal height with keyboard and quick keys', {
