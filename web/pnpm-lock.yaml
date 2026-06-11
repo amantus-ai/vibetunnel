@@ -6,8 +6,7 @@ settings:
 
 overrides:
   dompurify: ^3.4.2
-  ws: '>=8.20.1'
-  qs: '>=6.15.2'
+  qs: ^6.15.2
 
 importers:
 
@@ -95,7 +94,7 @@ importers:
         specifier: ^3.6.7
         version: 3.6.7
       ws:
-        specifier: '>=8.20.1'
+        specifier: ^8.21.0
         version: 8.21.0
       zod:
         specifier: ^4.4.3
@@ -3598,6 +3597,18 @@ packages:
   ws-mock@0.1.0:
     resolution: {integrity: sha512-mdw+vk3GRP9qW/Kh8V6U+ai2tkkS3oAH6tqYQrnxBxP6MKWU5ryJhWOzm5tFcXfaxfL8Cf8ssA0wRZzE3LgTvw==}
 
+  ws@7.5.11:
+    resolution: {integrity: sha512-zS54Oen9bITtp7kp2XM3AydrCIq1D+HwJOuH+c+e4LfpL/lotP5osijd+UoMnxwAam1GN8R4KtLAyIrIcBNpiA==}
+    engines: {node: '>=8.3.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: ^5.0.2
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
   ws@8.21.0:
     resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
     engines: {node: '>=10.0.0'}
@@ -4730,7 +4741,7 @@ snapshots:
       mime-types: 2.1.35
       parse5: 6.0.1
       picomatch: 2.3.2
-      ws: 8.21.0
+      ws: 7.5.11
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -6969,6 +6980,8 @@ snapshots:
   wrappy@1.0.2: {}
 
   ws-mock@0.1.0: {}
+
+  ws@7.5.11: {}
 
   ws@8.21.0: {}
 
