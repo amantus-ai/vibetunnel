@@ -53,7 +53,31 @@ describe('InputManager', () => {
   });
 
   afterEach(() => {
+    inputManager.cleanup();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
     vi.clearAllMocks();
+  });
+
+  it('cancels pending IME setup retries during cleanup', async () => {
+    inputManager.cleanup();
+    vi.useFakeTimers();
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('zh-CN');
+
+    const getTerminalElement = vi.fn().mockReturnValue(null);
+    inputManager = new InputManager();
+    inputManager.setCallbacks({
+      requestUpdate: vi.fn(),
+      getTerminalElement,
+    });
+    inputManager.setSession(mockSession);
+
+    expect(getTerminalElement).toHaveBeenCalledTimes(1);
+
+    inputManager.cleanup();
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(getTerminalElement).toHaveBeenCalledTimes(1);
   });
 
   describe('Option/Alt + Arrow key navigation', () => {

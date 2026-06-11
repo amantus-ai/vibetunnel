@@ -440,6 +440,10 @@ export class SessionView extends LitElement {
       this.lifecycleEventManager.cleanup();
     }
 
+    if (this.inputManager) {
+      this.inputManager.cleanup();
+    }
+
     // Clean up loading animation manager
     this.loadingAnimationManager.cleanup();
   }

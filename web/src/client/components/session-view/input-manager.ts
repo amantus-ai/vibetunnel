@@ -31,6 +31,7 @@ export class InputManager {
   private lastEscapeTime = 0;
   private readonly DOUBLE_ESCAPE_THRESHOLD = 500; // ms
   private imeInput: DesktopIMEInput | null = null;
+  private imeSetupRetryTimeout: ReturnType<typeof setTimeout> | null = null;
   private globalCompositionListener: ((e: CompositionEvent) => void) | null = null;
 
   // Track pending input (what user has typed before pressing Enter)
@@ -236,6 +237,11 @@ export class InputManager {
     const MAX_RETRIES = 10;
     const IME_SETUP_RETRY_DELAY_MS = 100;
 
+    if (this.imeSetupRetryTimeout) {
+      clearTimeout(this.imeSetupRetryTimeout);
+      this.imeSetupRetryTimeout = null;
+    }
+
     // Skip IME input setup on mobile devices (they have their own IME handling)
     if (detectMobile()) {
       logger.log('Skipping IME input setup on mobile device');
@@ -267,7 +273,11 @@ export class InputManager {
         `Terminal element not ready yet, deferring IME setup (retry ${retryCount + 1}/${MAX_RETRIES})`
       );
       // Retry after a short delay when terminal should be ready
-      setTimeout(() => {
+      this.imeSetupRetryTimeout = setTimeout(() => {
+        this.imeSetupRetryTimeout = null;
+        if (!this.session) {
+          return;
+        }
         this.setupIMEInput(retryCount + 1);
       }, IME_SETUP_RETRY_DELAY_MS);
       return;
@@ -668,6 +678,11 @@ export class InputManager {
   }
 
   cleanup(): void {
+    if (this.imeSetupRetryTimeout) {
+      clearTimeout(this.imeSetupRetryTimeout);
+      this.imeSetupRetryTimeout = null;
+    }
+
     // Cleanup IME input
     if (this.imeInput) {
       this.imeInput.cleanup();

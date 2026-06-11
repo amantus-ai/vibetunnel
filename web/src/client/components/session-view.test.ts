@@ -66,6 +66,9 @@ interface SessionViewTestInterface extends SessionView {
     getWidthTooltip: () => string;
     handleWidthSelect: (width: number) => void;
   };
+  inputManager: {
+    cleanup: () => void;
+  };
   updateTerminalTransform: () => void;
   _updateTerminalTransformTimeout: ReturnType<typeof setTimeout> | null;
 }
@@ -858,6 +861,10 @@ describe('SessionView', () => {
   describe('cleanup', () => {
     it('should cleanup on disconnect', async () => {
       const unsubscribeSpy = vi.fn();
+      const inputCleanupSpy = vi.spyOn(
+        (element as SessionViewTestInterface).inputManager,
+        'cleanup'
+      );
       terminalSocketClientMock.subscribe.mockReturnValueOnce(unsubscribeSpy);
 
       const mockSession = createMockSession();
@@ -881,6 +888,8 @@ describe('SessionView', () => {
       element.disconnectedCallback();
 
       expect(unsubscribeSpy).toHaveBeenCalled();
+      expect(inputCleanupSpy).toHaveBeenCalled();
+      inputCleanupSpy.mockRestore();
     });
   });
 
