@@ -513,17 +513,6 @@ export class PtyManager extends EventEmitter {
             resolvedCommand.includes('a'))) ||
         sessionName.startsWith('tmux:');
 
-      // Capture the tmux session name (the value after `-t`) so we can detach later
-      // via `tmux detach-client -s <name>`, which is independent of the user's prefix key.
-      let tmuxSessionName: string | undefined;
-      if (isTmuxAttachment) {
-        const targetIndex = resolvedCommand.indexOf('-t');
-        if (targetIndex !== -1 && resolvedCommand[targetIndex + 1]) {
-          // Target may be "session" or "session:window[.pane]"; detach-client needs the session name
-          tmuxSessionName = resolvedCommand[targetIndex + 1].split(':')[0];
-        }
-      }
-
       const session: PtySession = {
         id: sessionId,
         sessionInfo,
@@ -539,7 +528,6 @@ export class PtyManager extends EventEmitter {
         currentWorkingDir: workingDir,
         titleFilter: new TitleSequenceFilter(),
         isTmuxAttachment,
-        tmuxSessionName,
       };
 
       this.sessions.set(sessionId, session);
@@ -1414,40 +1402,45 @@ export class PtyManager extends EventEmitter {
     try {
       logger.log(chalk.cyan(`Detaching from tmux session (${sessionId})`));
 
-      // Preferred: detach via the tmux server directly. This is independent of the
-      // user's prefix key (e.g. a remapped C-a) and never leaks keystrokes such as
-      // "d" or ":detach-client" into the underlying shell.
-      if (session.tmuxSessionName) {
-        try {
-          await this.execFileAsync('tmux', ['detach-client', '-s', session.tmuxSessionName]);
-          await new Promise((resolve) => setTimeout(resolve, 300));
-          if (!ProcessUtils.isProcessRunning(session.ptyProcess.pid)) {
-            logger.log(chalk.green(`Successfully detached from tmux (${sessionId})`));
-            return true;
-          }
-        } catch (error) {
-          logger.debug(`tmux detach-client failed, falling back to key sequence: ${error}`);
-        }
+      const clientTty = await this.findTmuxClientTty(session.ptyProcess.pid);
+      if (!clientTty) {
+        logger.debug(`Could not find tmux client for PTY process ${session.ptyProcess.pid}`);
+        return false;
       }
 
-      // Fallback: standard prefix sequence (Ctrl-B, d) for default-prefix setups
-      // where the session name could not be determined.
-      await this.sendInput(sessionId, { text: '\x02d' }); // \x02 is Ctrl-B
+      // Target the VibeTunnel client only. Using `-s` would detach every client
+      // attached to the same tmux session.
+      await this.execFileAsync('tmux', ['detach-client', '-t', clientTty]);
 
-      // Wait for detachment
       await new Promise((resolve) => setTimeout(resolve, 300));
-
-      // Check if the process is still running
       if (!ProcessUtils.isProcessRunning(session.ptyProcess.pid)) {
         logger.log(chalk.green(`Successfully detached from tmux (${sessionId})`));
         return true;
       }
 
+      logger.debug(`tmux client ${clientTty} remained attached after detach-client`);
       return false;
     } catch (error) {
       logger.error(`Error detaching from tmux: ${error}`);
       return false;
     }
+  }
+
+  private async findTmuxClientTty(pid: number): Promise<string | undefined> {
+    const { stdout } = await this.execFileAsync('tmux', [
+      'list-clients',
+      '-F',
+      '#{client_pid}\t#{client_tty}',
+    ]);
+
+    for (const line of String(stdout).split(/\r?\n/)) {
+      const [clientPid, clientTty] = line.split('\t');
+      if (Number(clientPid) === pid && clientTty) {
+        return clientTty;
+      }
+    }
+
+    return undefined;
   }
 
   /**

@@ -13,6 +13,7 @@
 
 ### 🐛 Bug Fixes
 - Fix session creation "data couldn't be read" error on Mac app (#500)
+- Detach only the VibeTunnel tmux client without assuming the default prefix (via [@Nachx639](https://github.com/Nachx639)) (#644)
 - Update `ws` and `qs` to patched versions for GHSA-58qx-3vcg-4xpx and GHSA-q8mj-m7cp-5q26 (via [@Nachx639](https://github.com/Nachx639)) (#642)
 - Restore the configured terminal width when reopening Terminal Settings (via [@Nachx639](https://github.com/Nachx639)) (#640)
 - Keep Terminal Settings and other interactive overlays above the exited-session badge (via [@Nachx639](https://github.com/Nachx639)) (#643)
@@ -26,7 +27,7 @@
 - Reset CLI outdated status after successful install and add regression coverage
 
 ### 👥 Contributors
-- Thanks [@Nachx639](https://github.com/Nachx639) for adding log rotation and fixing dependency security, Terminal Settings width sync, and exited-session overlay layering.
+- Thanks [@Nachx639](https://github.com/Nachx639) for adding log rotation and fixing tmux detach behavior, dependency security, Terminal Settings width sync, and exited-session overlay layering.
 - Thanks [@sourman](https://github.com/sourman) for documenting the Zig build prerequisite.
 - Thanks [@yv-was-taken](https://github.com/yv-was-taken) for fixing global npm and Bun installs.
 - Thanks [@ChimeraFlutter](https://github.com/ChimeraFlutter) for fixing desktop terminal clipping.
