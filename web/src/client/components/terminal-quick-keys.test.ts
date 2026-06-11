@@ -3,6 +3,7 @@ import { TerminalQuickKeys } from './terminal-quick-keys.js';
 
 // Define interface for private methods we need to test
 interface TerminalQuickKeysPrivate extends TerminalQuickKeys {
+  getButtonSizeClass(label: string): string;
   handleKeyPress(
     key: string,
     isModifier?: boolean,
@@ -11,6 +12,7 @@ interface TerminalQuickKeysPrivate extends TerminalQuickKeys {
     event?: Event
   ): void;
   activeModifiers: Set<string>;
+  isLandscape: boolean;
 }
 
 describe('TerminalQuickKeys', () => {
@@ -142,6 +144,20 @@ describe('TerminalQuickKeys', () => {
       // Press ArrowLeft
       component.handleKeyPress('ArrowLeft', false, false, false);
       expect(requestUpdateSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('Touch target sizing', () => {
+    it('uses larger padding in portrait orientation', () => {
+      component.isLandscape = false;
+
+      expect(component.getButtonSizeClass('Esc')).toBe('px-1.5 py-2.5');
+    });
+
+    it('keeps compact padding in landscape orientation', () => {
+      component.isLandscape = true;
+
+      expect(component.getButtonSizeClass('Esc')).toBe('px-1 py-2');
     });
   });
 });

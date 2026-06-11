@@ -123,8 +123,7 @@ export class TerminalQuickKeys extends LitElement {
   }
 
   private getButtonSizeClass(_label: string): string {
-    // Taller tap targets for comfortable touch use (was px-0.5/py-1, too small to hit
-    // reliably). Kept moderate so three rows still leave room for the terminal.
+    // Increase touch area while preserving space for all three rows.
     return this.isLandscape ? 'px-1 py-2' : 'px-1.5 py-2.5';
   }
 

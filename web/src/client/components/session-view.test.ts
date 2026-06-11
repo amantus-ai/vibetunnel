@@ -321,6 +321,25 @@ describe('SessionView', () => {
       expect(badge?.classList.contains('min-w-0')).toBe(true);
       expect(badge?.classList.contains('max-w-[30%]')).toBe(true);
     });
+
+    it('uses a 44px mobile target for the back button', async () => {
+      const mockSession = createMockSession({ id: 'header-back-button' });
+
+      fetchMock.mockResponse('/api/sessions/header-back-button', mockSession);
+      element.session = mockSession;
+      element.showBackButton = true;
+      await element.updateComplete;
+      await waitForAsync();
+
+      const header = element.querySelector('session-header');
+      const backButton = Array.from(header?.querySelectorAll('button') ?? []).find(
+        (button) => button.textContent?.trim() === 'Back'
+      );
+
+      expect(backButton).toBeTruthy();
+      expect(backButton?.classList.contains('min-h-[44px]')).toBe(true);
+      expect(backButton?.classList.contains('sm:min-h-0')).toBe(true);
+    });
   });
 
   describe('terminal interaction', () => {
