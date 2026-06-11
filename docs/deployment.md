@@ -18,7 +18,7 @@ VibeTunnel deployment encompasses macOS app distribution, automatic updates via 
 
 **CLI Tools Package** - Command line binaries installed to /usr/local/bin
 - vibetunnel binary (main CLI tool)
-- vt wrapper script/symlink (convenience command)
+- vt wrapper script (convenience command)
 - Installed via mac/VibeTunnel/Utilities/CLIInstaller.swift
 
 ## Platform Deployment

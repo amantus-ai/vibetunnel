@@ -5,11 +5,11 @@ import Observation
 import os.log
 import SwiftUI
 
-/// Service responsible for creating symlinks to command line tools with sudo authentication.
+/// Service responsible for installing the vt wrapper script with sudo authentication.
 ///
 /// ## Overview
-/// This service creates symlinks from the application bundle's resources to system locations like /usr/local/bin
-/// to enable command line access to bundled tools. It handles sudo authentication through system dialogs.
+/// This service copies the wrapper script from the application bundle to /usr/local/bin to enable command line
+/// access to VibeTunnel. It handles sudo authentication through system dialogs.
 ///
 /// ## Usage
 /// ```swift
@@ -20,7 +20,7 @@ import SwiftUI
 /// ## Safety Considerations
 /// - Always prompts user before performing operations requiring sudo
 /// - Provides clear error messages and graceful failure handling
-/// - Checks for existing symlinks and handles conflicts appropriately
+/// - Replaces existing files or symlinks at the installation path
 /// - Logs all operations for debugging purposes
 @MainActor
 @Observable

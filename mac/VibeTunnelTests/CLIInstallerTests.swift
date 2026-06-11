@@ -292,26 +292,24 @@ struct CLIInstallerTests {
             echo "Created directory /usr/local/bin"
         fi
 
-        # Remove existing symlink if it exists
+        # Remove existing vt if it exists
         if [ -L "\(targetPath)" ] || [ -f "\(targetPath)" ]; then
             rm -f "\(targetPath)"
             echo "Removed existing file at \(targetPath)"
         fi
 
-        # Create the symlink
-        ln -s "\(sourcePath)" "\(targetPath)"
-        echo "Created symlink from \(sourcePath) to \(targetPath)"
-
-        # Make sure the symlink is executable
+        # Copy vt script from app bundle
+        cp "\(sourcePath)" "\(targetPath)"
         chmod +x "\(targetPath)"
-        echo "Set executable permissions on \(targetPath)"
+        echo "Installed vt script at \(targetPath)"
         """
 
         // Verify script structure
         #expect(expectedScript.contains("#!/bin/bash"))
         #expect(expectedScript.contains("set -e"))
         #expect(expectedScript.contains("mkdir -p"))
-        #expect(expectedScript.contains("ln -s"))
+        #expect(expectedScript.contains("cp "))
+        #expect(!expectedScript.contains("ln -s"))
         #expect(expectedScript.contains("chmod +x"))
     }
 
