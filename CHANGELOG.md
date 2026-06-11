@@ -13,6 +13,7 @@
 - Default macOS build script to universal binaries with optional arch override (via [@rothnic](https://github.com/rothnic)) (#557)
 
 ### 🐛 Bug Fixes
+- Prevent rapid iOS slash-command redraws from queuing redundant smooth terminal scrolling (via [@Ilakiancs](https://github.com/Ilakiancs)) (#590)
 - Keep mobile session header controls visible and comfortably tappable at narrow phone widths (via [@nikolasdehor](https://github.com/nikolasdehor)) (#605)
 - Jitter iOS reconnection backoff within its configured cap to spread retries after outages (via [@bianbiandashen](https://github.com/bianbiandashen)) (#593)
 - Keep `vt` git metadata alive for sessions in repositories without an upstream branch, preventing forwarder crashes (via [@ndraiman](https://github.com/ndraiman)) (#566)
@@ -48,7 +49,7 @@
 - Thanks [@sourman](https://github.com/sourman) for documenting the Zig build prerequisite.
 - Thanks [@yv-was-taken](https://github.com/yv-was-taken) for fixing global npm and Bun installs.
 - Thanks [@ChimeraFlutter](https://github.com/ChimeraFlutter) for fixing desktop terminal clipping.
-- Thanks [@Ilakiancs](https://github.com/Ilakiancs) for identifying lost argument boundaries in shell fallback execution.
+- Thanks [@Ilakiancs](https://github.com/Ilakiancs) for identifying lost shell fallback argument boundaries and redundant iOS terminal scrolling during slash-command redraws.
 - Thanks [@nikolasdehor](https://github.com/nikolasdehor) for fixing narrow mobile session headers, `vt --title-mode`, and shell fallback argument forwarding, preserving terminal link taps, and adding remote health-check regression coverage.
 - Thanks [@rothnic](https://github.com/rothnic) for defaulting to universal macOS binaries.
 

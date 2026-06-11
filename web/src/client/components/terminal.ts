@@ -172,7 +172,6 @@ export class Terminal extends LitElement {
     }
 
     const shouldPreserveScroll = !this.followCursorEnabled && this.preservedScrollPosition === null;
-    const shouldFollowCursor = followCursor && !shouldPreserveScroll;
     if (shouldPreserveScroll) {
       this.preservedScrollPosition = this.getScrollPosition();
     }
@@ -190,8 +189,8 @@ export class Terminal extends LitElement {
       return;
     }
 
+    // ghostty-web already follows output; another smooth scroll per write queues badly on iOS.
     this.terminal.write(data);
-    if (shouldFollowCursor) this.terminal.scrollToBottom();
   }
 
   public clear() {

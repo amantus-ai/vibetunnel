@@ -513,10 +513,12 @@ describe('Terminal', () => {
       // Set up some content
       if (mockTerminal) {
         mockTerminal.buffer.active.length = 100;
+        mockTerminal.scrollToBottom.mockClear();
       }
 
       element.scrollToBottom();
 
+      expect(mockTerminal?.scrollToBottom).toHaveBeenCalledOnce();
       // Check that we're at bottom (viewportY should be at max)
       const position = element.getScrollPosition();
       expect(position).toBeGreaterThanOrEqual(0);
@@ -619,6 +621,20 @@ describe('Terminal', () => {
 
       expect(element.getScrollPosition()).toBe(20);
       expect(element.isFollowingCursor()).toBe(false);
+    });
+
+    it('should not enqueue smooth scrolling for a burst while following output', () => {
+      if (!mockTerminal) return;
+
+      mockTerminal.scrollToBottom.mockClear();
+
+      for (let i = 0; i < 200; i++) {
+        element.write(`slash-redraw-${i}\r\n`);
+      }
+
+      expect(mockTerminal.write).toHaveBeenCalledTimes(200);
+      expect(mockTerminal.scrollToBottom).not.toHaveBeenCalled();
+      expect(element.isFollowingCursor()).toBe(true);
     });
 
     it('should translate vertical touch drags into terminal scroll lines', () => {

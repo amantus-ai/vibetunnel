@@ -116,6 +116,8 @@ describe('DirectKeyboardManager', () => {
     [' h', 'h'],
     ['h ', 'h'],
     ['hello world ', 'hello world'],
+    [' /', '/'],
+    [' /help', '/help'],
   ])('removes the placeholder space from %j', (inputValue, expected) => {
     const hiddenInput = getManagerState().hiddenInput;
     expect(hiddenInput).toBeTruthy();
