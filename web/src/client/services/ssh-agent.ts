@@ -6,6 +6,55 @@ if (globalThis.crypto?.subtle) {
   cryptoSubtle = globalThis.crypto.subtle;
 }
 
+const ED25519_KEY_TYPE = 'ssh-ed25519';
+const ED25519_PUBLIC_KEY_BYTES = 32;
+const ED25519_PRIVATE_KEY_BYTES = 64;
+const OPENSSH_MAGIC = new TextEncoder().encode('openssh-key-v1\0');
+
+class SSHBufferReader {
+  private offset = 0;
+
+  constructor(private readonly bytes: Uint8Array) {}
+
+  readUint32(label: string): number {
+    if (this.remaining < 4) {
+      throw new Error(`Invalid OpenSSH private key: truncated ${label}`);
+    }
+
+    const view = new DataView(this.bytes.buffer, this.bytes.byteOffset + this.offset, 4);
+    const value = view.getUint32(0, false);
+    this.offset += 4;
+    return value;
+  }
+
+  readString(label: string): Uint8Array {
+    const length = this.readUint32(`${label} length`);
+    if (length > this.remaining) {
+      throw new Error(`Invalid OpenSSH private key: truncated ${label}`);
+    }
+
+    const value = this.bytes.slice(this.offset, this.offset + length);
+    this.offset += length;
+    return value;
+  }
+
+  readRemaining(): Uint8Array {
+    const value = this.bytes.slice(this.offset);
+    this.offset = this.bytes.length;
+    return value;
+  }
+
+  expectEnd(label: string): void {
+    if (this.remaining !== 0) {
+      throw new Error(`Invalid OpenSSH private key: trailing ${label} data`);
+    }
+  }
+
+  private get remaining(): number {
+    return this.bytes.length - this.offset;
+  }
+}
+
 interface SSHKey {
   id: string;
   name: string;
@@ -326,50 +375,19 @@ export class BrowserSSHAgent {
       throw new Error('Web Crypto API is not available');
     }
 
-    if (privateKeyPEM.includes('BEGIN OPENSSH PRIVATE KEY')) {
-      const parsed = this.parseOpenSSHKey(privateKeyPEM);
+    const normalizedPEM = privateKeyPEM.trim();
+
+    if (normalizedPEM.startsWith('-----BEGIN OPENSSH PRIVATE KEY-----')) {
+      const parsed = await this.parseOpenSSHKey(normalizedPEM);
       if (parsed.encrypted) {
         throw new Error(
           'Encrypted OpenSSH keys are not supported. Remove the passphrase first:\n' +
             'ssh-keygen -p -N "" -f <key-file>'
         );
       }
-      const publicKeySSH = this.convertEd25519ToSSHPublicKey(parsed.publicKey.buffer as ArrayBuffer);
-      return {
-        publicKey: publicKeySSH,
-        algorithm: 'Ed25519',
-        fingerprint: await this.generateFingerprint(publicKeySSH),
-        encrypted: false,
-      };
-    }
-
-    if (privateKeyPEM.includes('BEGIN PRIVATE KEY')) {
-      const pemContents = privateKeyPEM
-        .replace('-----BEGIN PRIVATE KEY-----', '')
-        .replace('-----END PRIVATE KEY-----', '')
-        .replace(/\s/g, '');
-      const keyData = this.base64ToArrayBuffer(pemContents);
-
-      // Import as extractable so we can export JWK to get the actual public key
-      const privateKey = await cryptoSubtle.importKey(
-        'pkcs8',
-        keyData,
-        { name: 'Ed25519' },
-        true,
-        ['sign']
+      const publicKeySSH = this.convertEd25519ToSSHPublicKey(
+        parsed.publicKey.buffer as ArrayBuffer
       );
-
-      // JWK for Ed25519 contains 'x' (public key) and 'd' (seed)
-      const jwk = (await cryptoSubtle.exportKey('jwk', privateKey)) as JsonWebKey;
-      if (!jwk.x) {
-        throw new Error('Could not extract public key from Ed25519 private key');
-      }
-
-      // base64url → base64 → ArrayBuffer
-      const b64 = jwk.x.replace(/-/g, '+').replace(/_/g, '/');
-      const padded = b64.padEnd(b64.length + ((4 - (b64.length % 4)) % 4), '=');
-      const publicKeySSH = this.convertEd25519ToSSHPublicKey(this.base64ToArrayBuffer(padded));
-
       return {
         publicKey: publicKeySSH,
         algorithm: 'Ed25519',
@@ -378,11 +396,31 @@ export class BrowserSSHAgent {
       };
     }
 
-    if (privateKeyPEM.includes('BEGIN ENCRYPTED PRIVATE KEY')) {
+    if (normalizedPEM.startsWith('-----BEGIN ENCRYPTED PRIVATE KEY-----')) {
       throw new Error(
         'Encrypted PKCS#8 keys are not supported. Remove the passphrase first:\n' +
           'openssl pkcs8 -topk8 -nocrypt -in <key-file> -out <out-file>'
       );
+    }
+
+    if (normalizedPEM.startsWith('-----BEGIN PRIVATE KEY-----')) {
+      const keyData = this.decodePEM(normalizedPEM, 'PRIVATE KEY');
+      const privateKey = await cryptoSubtle.importKey(
+        'pkcs8',
+        keyData.buffer as ArrayBuffer,
+        { name: 'Ed25519' },
+        true,
+        ['sign']
+      );
+      const publicKey = await this.extractEd25519PublicKey(privateKey);
+      const publicKeySSH = this.convertEd25519ToSSHPublicKey(publicKey.buffer as ArrayBuffer);
+
+      return {
+        publicKey: publicKeySSH,
+        algorithm: 'Ed25519',
+        fingerprint: await this.generateFingerprint(publicKeySSH),
+        encrypted: false,
+      };
     }
 
     throw new Error(
@@ -397,75 +435,82 @@ export class BrowserSSHAgent {
    * Parse an OpenSSH private key and extract the Ed25519 seed and public key.
    * Throws if the key is encrypted or not Ed25519.
    */
-  private parseOpenSSHKey(pem: string): { seed: Uint8Array; publicKey: Uint8Array; encrypted: boolean } {
-    const b64 = pem
-      .replace('-----BEGIN OPENSSH PRIVATE KEY-----', '')
-      .replace('-----END OPENSSH PRIVATE KEY-----', '')
-      .replace(/\s/g, '');
-    const buf = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-    const view = new DataView(buf.buffer);
-
-    // Verify magic header "openssh-key-v1\0"
-    const magic = new TextDecoder().decode(buf.slice(0, 15));
-    if (magic !== 'openssh-key-v1\0') {
+  private async parseOpenSSHKey(pem: string): Promise<{
+    seed: Uint8Array;
+    publicKey: Uint8Array;
+    encrypted: boolean;
+  }> {
+    const bytes = this.decodePEM(pem, 'OPENSSH PRIVATE KEY');
+    if (
+      bytes.length < OPENSSH_MAGIC.length ||
+      !this.bytesEqual(bytes.slice(0, OPENSSH_MAGIC.length), OPENSSH_MAGIC)
+    ) {
       throw new Error('Invalid OpenSSH private key format');
     }
 
-    let offset = 15;
+    const reader = new SSHBufferReader(bytes.slice(OPENSSH_MAGIC.length));
+    const decoder = new TextDecoder();
+    const cipherName = decoder.decode(reader.readString('cipher name'));
+    const kdfName = decoder.decode(reader.readString('KDF name'));
+    const kdfOptions = reader.readString('KDF options');
+    const keyCount = reader.readUint32('key count');
+    if (keyCount !== 1) {
+      throw new Error(`Unsupported OpenSSH private key count: ${keyCount}`);
+    }
 
-    const readString = (off: number): { data: Uint8Array; next: number } => {
-      const len = view.getUint32(off, false);
-      return { data: buf.slice(off + 4, off + 4 + len), next: off + 4 + len };
-    };
+    const publicKeyBlob = reader.readString('public key');
+    const publicKeyReader = new SSHBufferReader(publicKeyBlob);
+    const publicKeyType = decoder.decode(publicKeyReader.readString('public key type'));
+    if (publicKeyType !== ED25519_KEY_TYPE) {
+      throw new Error(`Unsupported key type: ${publicKeyType}. Only Ed25519 is supported.`);
+    }
+    const outerPublicKey = publicKeyReader.readString('public key data');
+    publicKeyReader.expectEnd('public key');
+    this.validateByteLength(outerPublicKey, ED25519_PUBLIC_KEY_BYTES, 'OpenSSH Ed25519 public key');
 
-    const cipher = readString(offset);
-    offset = cipher.next;
-    const cipherName = new TextDecoder().decode(cipher.data);
     const encrypted = cipherName !== 'none';
-
-    // Skip kdf name and options
-    const kdf = readString(offset);
-    offset = kdf.next;
-    const kdfopts = readString(offset);
-    offset = kdfopts.next;
-
-    // Number of keys (always 1 for standard keys)
-    offset += 4;
-
-    // Skip public key blob
-    const pubkeyBlob = readString(offset);
-    offset = pubkeyBlob.next;
-
     if (encrypted) {
       return { seed: new Uint8Array(0), publicKey: new Uint8Array(0), encrypted: true };
     }
 
-    // Private key section — use a dedicated reader scoped to this sub-buffer
-    const privSection = readString(offset);
-    const priv = privSection.data;
-    const privDv = new DataView(priv.buffer, priv.byteOffset, priv.byteLength);
+    if (kdfName !== 'none' || kdfOptions.length !== 0) {
+      throw new Error('Invalid unencrypted OpenSSH private key KDF');
+    }
 
-    const readPrivString = (off: number): { data: Uint8Array; next: number } => {
-      const len = privDv.getUint32(off, false);
-      return { data: priv.slice(off + 4, off + 4 + len), next: off + 4 + len };
-    };
+    const privateSection = reader.readString('private key section');
+    reader.expectEnd('container');
+    const privateReader = new SSHBufferReader(privateSection);
+    const check1 = privateReader.readUint32('first check integer');
+    const check2 = privateReader.readUint32('second check integer');
+    if (check1 !== check2) {
+      throw new Error('Invalid OpenSSH private key check integers');
+    }
 
-    let pOff = 8; // skip checkint1 + checkint2
-
-    const keyType = readPrivString(pOff);
-    pOff = keyType.next;
-    const keyTypeName = new TextDecoder().decode(keyType.data);
+    const keyTypeName = decoder.decode(privateReader.readString('private key type'));
     if (keyTypeName !== 'ssh-ed25519') {
       throw new Error(`Unsupported key type: ${keyTypeName}. Only Ed25519 is supported.`);
     }
 
-    const pubKeyData = readPrivString(pOff);
-    pOff = pubKeyData.next;
-    const privKeyData = readPrivString(pOff);
+    const publicKey = privateReader.readString('private public key');
+    const privateKey = privateReader.readString('private key data');
+    privateReader.readString('key comment');
+    this.validateOpenSSHPadding(privateReader.readRemaining());
+    this.validateByteLength(publicKey, ED25519_PUBLIC_KEY_BYTES, 'OpenSSH Ed25519 public key');
+    this.validateByteLength(privateKey, ED25519_PRIVATE_KEY_BYTES, 'OpenSSH Ed25519 private key');
 
-    // privKeyData is 64 bytes: 32-byte seed + 32-byte public key
-    const seed = privKeyData.data.slice(0, 32);
-    const publicKey = pubKeyData.data;
+    const seed = privateKey.slice(0, ED25519_PUBLIC_KEY_BYTES);
+    const embeddedPublicKey = privateKey.slice(ED25519_PUBLIC_KEY_BYTES);
+    if (
+      !this.bytesEqual(outerPublicKey, publicKey) ||
+      !this.bytesEqual(publicKey, embeddedPublicKey)
+    ) {
+      throw new Error('OpenSSH private key public key fields do not match');
+    }
+
+    const derivedPublicKey = await this.deriveEd25519PublicKey(seed);
+    if (!this.bytesEqual(publicKey, derivedPublicKey)) {
+      throw new Error('OpenSSH private key seed does not match its public key');
+    }
 
     return { seed, publicKey, encrypted: false };
   }
@@ -474,6 +519,7 @@ export class BrowserSSHAgent {
    * Convert a 32-byte Ed25519 seed to PKCS#8 DER for use with Web Crypto importKey.
    */
   private seedToPKCS8Der(seed: Uint8Array): ArrayBuffer {
+    this.validateByteLength(seed, ED25519_PUBLIC_KEY_BYTES, 'Ed25519 seed');
     // SEQUENCE { INTEGER 0, SEQUENCE { OID id-Ed25519 }, OCTET STRING { OCTET STRING seed } }
     const oid = new Uint8Array([0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70]);
     const inner = new Uint8Array([0x04, 0x22, 0x04, 0x20, ...seed]);
@@ -487,25 +533,39 @@ export class BrowserSSHAgent {
       throw new Error('Crypto not available');
     }
 
-    if (privateKeyPEM.includes('BEGIN OPENSSH PRIVATE KEY')) {
-      const parsed = this.parseOpenSSHKey(privateKeyPEM);
+    const normalizedPEM = privateKeyPEM.trim();
+    if (normalizedPEM.startsWith('-----BEGIN OPENSSH PRIVATE KEY-----')) {
+      const parsed = await this.parseOpenSSHKey(normalizedPEM);
       if (parsed.encrypted) {
         throw new Error('Encrypted OpenSSH keys are not supported');
       }
-      return cryptoSubtle.importKey('pkcs8', this.seedToPKCS8Der(parsed.seed), { name: 'Ed25519' }, false, ['sign']);
+      return cryptoSubtle.importKey(
+        'pkcs8',
+        this.seedToPKCS8Der(parsed.seed),
+        { name: 'Ed25519' },
+        false,
+        ['sign']
+      );
     }
 
-    const pemContents = privateKeyPEM
-      .replace('-----BEGIN PRIVATE KEY-----', '')
-      .replace('-----END PRIVATE KEY-----', '')
-      .replace(/\s/g, '');
+    if (normalizedPEM.startsWith('-----BEGIN ENCRYPTED PRIVATE KEY-----')) {
+      throw new Error('Encrypted PKCS#8 keys are not supported');
+    }
 
-    return cryptoSubtle.importKey('pkcs8', this.base64ToArrayBuffer(pemContents), { name: 'Ed25519' }, false, ['sign']);
+    const keyData = this.decodePEM(normalizedPEM, 'PRIVATE KEY');
+    return cryptoSubtle.importKey(
+      'pkcs8',
+      keyData.buffer as ArrayBuffer,
+      { name: 'Ed25519' },
+      false,
+      ['sign']
+    );
   }
 
   private convertEd25519ToSSHPublicKey(publicKeyBuffer: ArrayBuffer): string {
     // Convert raw Ed25519 public key to SSH format
     const publicKeyBytes = new Uint8Array(publicKeyBuffer);
+    this.validateByteLength(publicKeyBytes, ED25519_PUBLIC_KEY_BYTES, 'Ed25519 public key');
 
     // SSH Ed25519 public key format:
     // string "ssh-ed25519" + string (32-byte public key)
@@ -532,6 +592,85 @@ export class BrowserSSHAgent {
     // Base64 encode the result
     const base64Key = this.arrayBufferToBase64(buffer);
     return `ssh-ed25519 ${base64Key}`;
+  }
+
+  private decodePEM(pem: string, label: string): Uint8Array {
+    const header = `-----BEGIN ${label}-----`;
+    const footer = `-----END ${label}-----`;
+    if (!pem.startsWith(header) || !pem.endsWith(footer)) {
+      throw new Error(`Invalid ${label} PEM encoding`);
+    }
+
+    const encoded = pem.slice(header.length, -footer.length).replace(/\s/g, '');
+    if (!encoded || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
+      throw new Error(`Invalid ${label} PEM encoding`);
+    }
+
+    try {
+      return Uint8Array.from(atob(encoded), (character) => character.charCodeAt(0));
+    } catch {
+      throw new Error(`Invalid ${label} PEM encoding`);
+    }
+  }
+
+  private async deriveEd25519PublicKey(seed: Uint8Array): Promise<Uint8Array> {
+    if (!cryptoSubtle) {
+      throw new Error('Crypto not available');
+    }
+
+    const privateKey = await cryptoSubtle.importKey(
+      'pkcs8',
+      this.seedToPKCS8Der(seed),
+      { name: 'Ed25519' },
+      true,
+      ['sign']
+    );
+    return this.extractEd25519PublicKey(privateKey);
+  }
+
+  private async extractEd25519PublicKey(privateKey: CryptoKey): Promise<Uint8Array> {
+    if (!cryptoSubtle) {
+      throw new Error('Crypto not available');
+    }
+
+    const jwk = (await cryptoSubtle.exportKey('jwk', privateKey)) as JsonWebKey;
+    if (!jwk.x) {
+      throw new Error('Could not extract public key from Ed25519 private key');
+    }
+
+    const base64 = jwk.x.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    const publicKey = new Uint8Array(this.base64ToArrayBuffer(padded));
+    this.validateByteLength(publicKey, ED25519_PUBLIC_KEY_BYTES, 'Ed25519 public key');
+    return publicKey;
+  }
+
+  private validateOpenSSHPadding(padding: Uint8Array): void {
+    if (padding.length > 8) {
+      throw new Error('Invalid OpenSSH private key padding');
+    }
+
+    for (let index = 0; index < padding.length; index++) {
+      if (padding[index] !== index + 1) {
+        throw new Error('Invalid OpenSSH private key padding');
+      }
+    }
+  }
+
+  private validateByteLength(value: Uint8Array, expected: number, label: string): void {
+    if (value.length !== expected) {
+      throw new Error(`Invalid ${label} length: expected ${expected}, got ${value.length}`);
+    }
+  }
+
+  private bytesEqual(left: Uint8Array, right: Uint8Array): boolean {
+    if (left.length !== right.length) return false;
+
+    let difference = 0;
+    for (let index = 0; index < left.length; index++) {
+      difference |= left[index] ^ right[index];
+    }
+    return difference === 0;
   }
 
   private async generateFingerprint(publicKey: string): Promise<string> {
