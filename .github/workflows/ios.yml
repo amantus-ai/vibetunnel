@@ -24,7 +24,7 @@ jobs:
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
-        xcode-version: '26.1'
+        xcode-version: '26.3'
     
     - name: Verify Xcode
       run: |
@@ -202,41 +202,46 @@ jobs:
         echo "Available runtimes:"
         xcrun simctl list runtimes available
 
+        SDK_VERSION=$(xcrun --sdk iphonesimulator --show-sdk-version)
+        RUNTIME_ID="com.apple.CoreSimulator.SimRuntime.iOS-${SDK_VERSION//./-}"
+        echo "Selecting a simulator for the active iOS $SDK_VERSION SDK"
+
         SIMULATOR=$(
-          xcrun simctl list devices available -j | jq -r '
+          xcrun simctl list devices available -j | jq -r --arg runtime "$RUNTIME_ID" '
             [
               .devices
               | to_entries[]
-              | select(.key | startswith("com.apple.CoreSimulator.SimRuntime.iOS-"))
-              | .key as $runtime
+              | select(.key == $runtime)
               | .value[]
               | select(.isAvailable == true and (.name | startswith("iPhone")))
               | {
                   udid,
                   name,
-                  runtime: $runtime,
-                  version: (
-                    $runtime
-                    | sub("com.apple.CoreSimulator.SimRuntime.iOS-"; "")
-                    | split("-")
-                    | map(tonumber)
+                  priority: (
+                    if .name == "iPhone 17 Pro" then 0
+                    elif .name == "iPhone 17" then 1
+                    elif .name == "iPhone 16 Pro" then 2
+                    elif .name == "iPhone 16" then 3
+                    elif (.name | contains("SE")) then 99
+                    else 10
+                    end
                   )
                 }
             ]
-            | sort_by(.version)
-            | (last // empty)
-            | [.udid, .name, .runtime]
+            | sort_by(.priority, .name)
+            | (first // empty)
+            | [.udid, .name]
             | @tsv
           '
         )
 
         if [ -z "$SIMULATOR" ]; then
-          echo "::error::No available iPhone simulator found"
+          echo "::error::No available iPhone simulator found for iOS $SDK_VERSION"
           exit 1
         fi
 
-        IFS=$'\t' read -r SIMULATOR_ID SIMULATOR_NAME RUNTIME <<< "$SIMULATOR"
-        echo "Using $SIMULATOR_NAME ($RUNTIME): $SIMULATOR_ID"
+        IFS=$'\t' read -r SIMULATOR_ID SIMULATOR_NAME <<< "$SIMULATOR"
+        echo "Using $SIMULATOR_NAME ($RUNTIME_ID): $SIMULATOR_ID"
 
         xcrun simctl boot "$SIMULATOR_ID" 2>/dev/null || true
         xcrun simctl bootstatus "$SIMULATOR_ID" -b
@@ -245,6 +250,7 @@ jobs:
         echo "simulator_id=$SIMULATOR_ID" >> "$GITHUB_OUTPUT"
     
     - name: Run iOS tests
+      timeout-minutes: 15
       env:
         # Workaround for Xcode beta actool version info issues
         ACTOOL_IGNORE_VERSION_CHECK: "1"
@@ -296,23 +302,30 @@ jobs:
         fi
 
         echo "Running tests on iOS Simulator..."
+        rm -rf TestResults.xcresult xcodebuild-test.log
+
+        set +e
         xcodebuild test \
           -workspace ../VibeTunnel.xcworkspace \
           -scheme VibeTunnel-iOS \
           -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
           -resultBundlePath TestResults.xcresult \
           -enableCodeCoverage $ENABLE_COVERAGE \
+          -parallel-testing-enabled NO \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
           COMPILER_INDEX_STORE_ENABLE=NO \
           ACTOOL_IGNORE_VERSION_CHECK=1 \
           IBTOOL_IGNORE_VERSION_CHECK=1 \
-          -quiet \
-          2>&1 || {
-            echo "::error::iOS simulator tests failed"
-            exit 1
-          }
+          2>&1 | tee xcodebuild-test.log | xcbeautify
+        TEST_STATUS=${PIPESTATUS[0]}
+        set -e
+
+        if [ "$TEST_STATUS" -ne 0 ]; then
+          echo "::error::iOS simulator tests failed with exit code $TEST_STATUS"
+          exit "$TEST_STATUS"
+        fi
         
         echo "Tests completed successfully"
 
@@ -330,7 +343,7 @@ jobs:
       run: |
         cd ios
         echo "=== Checking TestResults.xcresult ==="
-        if [ -f TestResults.xcresult ]; then
+        if [ -d TestResults.xcresult ]; then
           echo "TestResults.xcresult exists"
           ls -la TestResults.xcresult
           
@@ -349,7 +362,7 @@ jobs:
       id: coverage
       run: |
         cd ios
-        if [ -f TestResults.xcresult ]; then
+        if [ -d TestResults.xcresult ]; then
           # Try multiple extraction methods
           echo "=== Method 1: Standard extraction ==="
           COVERAGE_PCT=$(xcrun xccov view --report TestResults.xcresult --json 2>/dev/null | jq -r '.lineCoverage // 0' | awk '{printf "%.1f", $1 * 100}') || COVERAGE_PCT="0"
@@ -412,6 +425,7 @@ jobs:
         path: |
           ios/coverage-summary.json
           ios/TestResults.xcresult
+          ios/xcodebuild-test.log
         retention-days: 1
     
     # LINT REPORTING
