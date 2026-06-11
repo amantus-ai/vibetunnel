@@ -23,7 +23,7 @@ jobs:
       ios: ${{ steps.filter.outputs.ios }}
     steps:
     - uses: actions/checkout@v5
-    - uses: dorny/paths-filter@v3
+    - uses: dorny/paths-filter@v4
       id: filter
       with:
         filters: |

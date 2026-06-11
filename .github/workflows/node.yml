@@ -8,6 +8,9 @@ permissions:
   pull-requests: write
   issues: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   node-ci:
     name: Node.js CI - Lint, Build, Test, Type Check
@@ -25,7 +28,7 @@ jobs:
         node-version: '24'
 
     - name: Setup pnpm
-      uses: pnpm/action-setup@v4
+      uses: pnpm/action-setup@v6
       with:
         version: 10
         run_install: false

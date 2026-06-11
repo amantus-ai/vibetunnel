@@ -11,6 +11,9 @@ permissions:
   pull-requests: write
   issues: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   release-build-test:
     name: Build and Test Release Configuration
@@ -39,7 +42,7 @@ jobs:
         node-version: '24'
     
     - name: Setup pnpm
-      uses: pnpm/action-setup@v4
+      uses: pnpm/action-setup@v6
       with:
         version: 10
         dest: ~/pnpm-${{ github.run_id }}
