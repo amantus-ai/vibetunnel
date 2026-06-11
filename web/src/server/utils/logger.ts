@@ -11,11 +11,11 @@ let LOG_FILE = path.join(LOG_DIR, 'log.txt');
  * Set custom log file path
  */
 export function setLogFilePath(filePath: string): void {
-  // Close existing file handle if open
-  if (logFileHandle) {
-    logFileHandle.end();
-    logFileHandle = null;
-  }
+  closeLogFile();
+  loggerClosing = false;
+  closeAfterRotation = false;
+  pendingFileWrites = [];
+  rotationPromise = null;
 
   LOG_FILE = filePath;
 
@@ -25,12 +25,7 @@ export function setLogFilePath(filePath: string): void {
     fs.mkdirSync(dir, { recursive: true });
   }
 
-  // Re-open log file at new location
-  try {
-    logFileHandle = fs.createWriteStream(LOG_FILE, { flags: 'a' });
-  } catch (error) {
-    console.error('Failed to open log file at new location:', error);
-  }
+  openLogFile();
 }
 
 // Verbosity levels
@@ -80,29 +75,147 @@ export function parseVerbosityLevel(value: string): VerbosityLevel | undefined {
 // File handle for log file
 let logFileHandle: fs.WriteStream | null = null;
 let bytesWritten = 0;
-const MAX_LOG_SIZE = 50 * 1024 * 1024; // 50MB
+let loggerGeneration = 0;
+let loggerClosing = false;
+let closeAfterRotation = false;
+let pendingFileWrites: string[] = [];
+let rotationPromise: Promise<void> | null = null;
+let closePromise: Promise<void> | null = null;
+const MAX_LOG_SIZE = 50 * 1024 * 1024;
 
-function rotateLogFile(): void {
-  if (logFileHandle) {
-    logFileHandle.end();
+function getLogFileSize(filePath: string): number {
+  try {
+    return fs.statSync(filePath).size;
+  } catch {
+    return 0;
+  }
+}
+
+function openLogFile(
+  filePath: string = LOG_FILE,
+  generation: number = loggerGeneration,
+  initialSize: number = getLogFileSize(filePath)
+): void {
+  try {
+    const handle = fs.createWriteStream(filePath, { flags: 'a' });
+    handle.on('error', () => {
+      if (generation === loggerGeneration && logFileHandle === handle) {
+        logFileHandle = null;
+      }
+    });
+
+    if (generation !== loggerGeneration || loggerClosing) {
+      handle.end();
+      return;
+    }
+
+    logFileHandle = handle;
+    bytesWritten = initialSize;
+  } catch {
     logFileHandle = null;
   }
-  try {
-    const backupPath = `${LOG_FILE}.1`;
-    if (fs.existsSync(backupPath)) {
-      fs.unlinkSync(backupPath);
-    }
-    if (fs.existsSync(LOG_FILE)) {
-      fs.renameSync(LOG_FILE, backupPath);
-    }
-  } catch {
-    // Ignore rotation errors
+}
+
+function rotateLogFile(): void {
+  if (!logFileHandle || rotationPromise || loggerClosing) {
+    return;
   }
-  bytesWritten = 0;
+
+  const handle = logFileHandle;
+  const logPath = LOG_FILE;
+  const generation = loggerGeneration;
+  logFileHandle = null;
+
+  const rotation = new Promise<void>((resolve) => {
+    handle.once('close', () => {
+      try {
+        const backupPath = `${logPath}.1`;
+        if (fs.existsSync(backupPath)) {
+          fs.unlinkSync(backupPath);
+        }
+        if (fs.existsSync(logPath)) {
+          fs.renameSync(logPath, backupPath);
+        }
+      } catch {
+        // Retry after another 50 MB rather than interrupting logging.
+      }
+      resolve();
+    });
+    handle.end();
+  });
+
+  rotationPromise = rotation;
+  void rotation.finally(() => {
+    if (rotationPromise === rotation) {
+      rotationPromise = null;
+    }
+    if (generation !== loggerGeneration || loggerClosing) {
+      return;
+    }
+
+    openLogFile(logPath, generation, 0);
+    const queuedWrites = pendingFileWrites;
+    pendingFileWrites = [];
+    for (const output of queuedWrites) {
+      writeOutput(output, true);
+    }
+
+    if (closeAfterRotation && !rotationPromise) {
+      closeAfterRotation = false;
+      closeLogFile();
+    }
+  });
+}
+
+function writeOutput(output: string, allowWhileClosing: boolean = false): void {
+  if (loggerClosing || (closeAfterRotation && !allowWhileClosing)) {
+    return;
+  }
+
+  if (rotationPromise) {
+    pendingFileWrites.push(output);
+    return;
+  }
+  if (!logFileHandle) {
+    return;
+  }
+
+  const outputBytes = Buffer.byteLength(output, 'utf8');
   try {
-    logFileHandle = fs.createWriteStream(LOG_FILE, { flags: 'a' });
+    logFileHandle.write(output);
+    bytesWritten += outputBytes;
+    if (bytesWritten >= MAX_LOG_SIZE) {
+      rotateLogFile();
+    }
   } catch {
-    // Ignore errors
+    // Silently ignore file write errors.
+  }
+}
+
+function closeLogFile(): void {
+  loggerClosing = true;
+  loggerGeneration += 1;
+  closeAfterRotation = false;
+  pendingFileWrites = [];
+  rotationPromise = null;
+  bytesWritten = 0;
+  if (logFileHandle) {
+    const handle = logFileHandle;
+    logFileHandle = null;
+    const closing = new Promise<void>((resolve) => {
+      if (handle.closed) {
+        resolve();
+        return;
+      }
+      handle.once('close', resolve);
+      handle.end();
+    });
+    closePromise = closing;
+    void closing.finally(() => {
+      if (closePromise === closing) {
+        closePromise = null;
+      }
+    });
   }
 }
 
@@ -115,6 +228,8 @@ const ANSI_PATTERN = /\x1b\[[0-9;]*m/g;
  */
 export function initLogger(debug: boolean = false, verbosity?: VerbosityLevel): void {
   _debugMode = debug;
+  loggerClosing = false;
+  closeAfterRotation = false;
 
   // Set verbosity level
   if (verbosity !== undefined) {
@@ -145,8 +260,7 @@ export function initLogger(debug: boolean = false, verbosity?: VerbosityLevel): 
       // Don't log here as logger isn't fully initialized yet
     }
 
-    // Create new log file write stream
-    logFileHandle = fs.createWriteStream(LOG_FILE, { flags: 'a' });
+    openLogFile(LOG_FILE, loggerGeneration, 0);
   } catch (error) {
     // Don't throw, just log to console
     console.error('Failed to initialize log file:', error);
@@ -157,6 +271,13 @@ export function initLogger(debug: boolean = false, verbosity?: VerbosityLevel): 
  * Flush the log file buffer
  */
 export function flushLogger(): Promise<void> {
+  if (rotationPromise) {
+    return rotationPromise.then(() => flushLogger());
+  }
+  if (closePromise) {
+    return closePromise.then(() => flushLogger());
+  }
+
   return new Promise((resolve) => {
     if (logFileHandle && !logFileHandle.destroyed) {
       // Force a write of any buffered data
@@ -173,10 +294,11 @@ export function flushLogger(): Promise<void> {
  * Close the logger
  */
 export function closeLogger(): void {
-  if (logFileHandle) {
-    logFileHandle.end();
-    logFileHandle = null;
+  if (rotationPromise) {
+    closeAfterRotation = true;
+    return;
   }
+  closeLogFile();
 }
 
 /**
@@ -233,20 +355,8 @@ function formatMessage(
  * Write to log file
  */
 function writeToFile(message: string): void {
-  if (logFileHandle) {
-    try {
-      // Strip ANSI color codes from message
-      const cleanMessage = message.replace(ANSI_PATTERN, '');
-      const output = `${cleanMessage}\n`;
-      logFileHandle.write(output);
-      bytesWritten += Buffer.byteLength(output, 'utf8');
-      if (bytesWritten > MAX_LOG_SIZE) {
-        rotateLogFile();
-      }
-    } catch {
-      // Silently ignore file write errors
-    }
-  }
+  const cleanMessage = message.replace(ANSI_PATTERN, '');
+  writeOutput(`${cleanMessage}\n`);
 }
 
 /**

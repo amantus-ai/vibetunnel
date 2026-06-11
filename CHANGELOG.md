@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### ✨ Improvements
+- Rotate server logs at 50 MB while retaining one backup file (via [@Nachx639](https://github.com/Nachx639)) (#641)
 - Require Node.js 22.12+ for npm/native builds and generate maintained Node 22/24 prebuilds only.
 - Improve mobile session UI with action bar, clipboard manager, and quick keys (via [@Jerome2332](https://github.com/Jerome2332)) (#518)
 - Document Zig 0.15.2 as the `vt-fwd` build prerequisite (via [@sourman](https://github.com/sourman)) (#611)
@@ -25,7 +26,7 @@
 - Reset CLI outdated status after successful install and add regression coverage
 
 ### 👥 Contributors
-- Thanks [@Nachx639](https://github.com/Nachx639) for fixing dependency security, Terminal Settings width sync, and exited-session overlay layering.
+- Thanks [@Nachx639](https://github.com/Nachx639) for adding log rotation and fixing dependency security, Terminal Settings width sync, and exited-session overlay layering.
 - Thanks [@sourman](https://github.com/sourman) for documenting the Zig build prerequisite.
 - Thanks [@yv-was-taken](https://github.com/yv-was-taken) for fixing global npm and Bun installs.
 - Thanks [@ChimeraFlutter](https://github.com/ChimeraFlutter) for fixing desktop terminal clipping.
