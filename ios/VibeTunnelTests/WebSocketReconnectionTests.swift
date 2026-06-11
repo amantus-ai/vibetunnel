@@ -1,32 +1,28 @@
 import Foundation
 import Testing
+@testable import VibeTunnel
 
 @Suite("WebSocket Reconnection Tests", .tags(.critical, .websocket))
 struct WebSocketReconnectionTests {
     // MARK: - Reconnection Strategy Tests
 
-    @Test("Exponential backoff calculation", .disabled("Timing out in CI"))
+    @Test("Exponential backoff uses bounded jitter")
+    @MainActor
     func exponentialBackoff() {
-        // Test exponential backoff with jitter
-        let baseDelay = 1.0
-        let maxDelay = 60.0
+        let firstMinimum = ReconnectionManager.calculateBackoff(attempt: 1, randomUnit: 0)
+        let firstMaximum = ReconnectionManager.calculateBackoff(attempt: 1, randomUnit: 1)
+        let cappedMinimum = ReconnectionManager.calculateBackoff(attempt: 7, randomUnit: 0)
+        let cappedMaximum = ReconnectionManager.calculateBackoff(attempt: 7, randomUnit: 1)
+        let noJitter = ReconnectionManager.calculateBackoff(
+            attempt: 4,
+            jitterFactor: 0,
+            randomUnit: 0)
 
-        // Calculate delays for multiple attempts
-        var delays: [Double] = []
-        for attempt in 0..<10 {
-            let delay = min(baseDelay * pow(2.0, Double(attempt)), maxDelay)
-            let jitteredDelay = delay * (0.5 + Double.random(in: 0...0.5))
-            delays.append(jitteredDelay)
-
-            // Verify bounds
-            #expect(jitteredDelay >= baseDelay * 0.5)
-            #expect(jitteredDelay <= maxDelay)
-        }
-
-        // Verify progression (later delays should generally be larger)
-        for i in 1..<5 {
-            #expect(delays[i] >= delays[0])
-        }
+        #expect(abs(firstMinimum - 0.7) < 0.000_001)
+        #expect(firstMaximum == 1)
+        #expect(abs(cappedMinimum - 42) < 0.000_001)
+        #expect(cappedMaximum == 60)
+        #expect(noJitter == 8)
     }
 
     @Test("Maximum retry attempts")
