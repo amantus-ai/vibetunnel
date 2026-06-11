@@ -1,5 +1,62 @@
+import { spawnSync } from 'child_process';
+import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProcessUtils } from '../../server/pty/process-utils.js';
+
+const itWithBash = existsSync('/bin/bash') ? it : it.skip;
+const itWithTcsh = existsSync('/bin/tcsh') ? it : it.skip;
+
+function captureFallbackArgs(
+  shellPath: string,
+  configName: string,
+  aliasDefinition: string
+): string[] {
+  const tempHome = mkdtempSync(join(tmpdir(), 'vt-shell-fallback-'));
+  const capturePath = join(tempHome, 'capture-args.sh');
+  const originalHome = process.env.HOME;
+  const originalShell = process.env.SHELL;
+  const expectedArgs = [
+    'hello world',
+    "it's done",
+    '',
+    '$HOME; echo injected',
+    '-n',
+    'line1\nline2',
+    'double"quote',
+    'back\\slash',
+  ];
+
+  try {
+    writeFileSync(capturePath, '#!/bin/sh\nprintf \'%s\\000\' "$@"\n', 'utf8');
+    chmodSync(capturePath, 0o755);
+    writeFileSync(
+      join(tempHome, configName),
+      aliasDefinition.replace('$CAPTURE', capturePath),
+      'utf8'
+    );
+    process.env.HOME = tempHome;
+    process.env.SHELL = shellPath;
+
+    const resolved = ProcessUtils.resolveCommand(['vt_test_alias', ...expectedArgs]);
+    const result = spawnSync(resolved.command, resolved.args, {
+      env: { ...process.env, HOME: tempHome },
+    });
+
+    expect(result.status, result.stderr.toString('utf8')).toBe(0);
+    const actualArgs = result.stdout.toString('utf8').split('\0');
+    actualArgs.pop();
+    expect(actualArgs).toEqual(expectedArgs);
+    return actualArgs;
+  } finally {
+    if (originalHome === undefined) delete process.env.HOME;
+    else process.env.HOME = originalHome;
+    if (originalShell === undefined) delete process.env.SHELL;
+    else process.env.SHELL = originalShell;
+    rmSync(tempHome, { recursive: true, force: true });
+  }
+}
 
 describe('ProcessUtils command parsing', () => {
   beforeEach(() => {
@@ -46,32 +103,55 @@ describe('ProcessUtils command parsing', () => {
     it('should handle aliases that require shell resolution', () => {
       // Simulate a command that's not in PATH (like an alias)
       const command = ['myalias', '--some-flag'];
-      const result = ProcessUtils.resolveCommand(command);
+      const originalShell = process.env.SHELL;
+      process.env.SHELL = '/bin/bash';
 
-      expect(result.useShell).toBe(true);
-      expect(result.resolvedFrom).toBe('alias');
-      expect(result.args).toContain('-c');
-      expect(result.args).toContain('myalias --some-flag');
+      try {
+        const result = ProcessUtils.resolveCommand(command);
+        const commandIndex = result.args.indexOf('-c') + 1;
+
+        expect(result.useShell).toBe(true);
+        expect(result.resolvedFrom).toBe('alias');
+        expect(result.args[commandIndex]).toBe('myalias "$@"');
+        expect(result.args.slice(commandIndex + 1)).toEqual(['--', '--some-flag']);
+      } finally {
+        if (originalShell === undefined) delete process.env.SHELL;
+        else process.env.SHELL = originalShell;
+      }
     });
 
-    it('should preserve quoted args with spaces in shell fallback', () => {
-      const command = ['myalias', '--message', 'hello world'];
-      const result = ProcessUtils.resolveCommand(command);
+    it('should pass fish fallback arguments through $argv', () => {
+      const originalShell = process.env.SHELL;
+      process.env.SHELL = '/bin/fish';
 
-      expect(result.useShell).toBe(true);
-      expect(result.resolvedFrom).toBe('alias');
-      expect(result.args).toContain('-c');
-      expect(result.args).toContain("myalias --message 'hello world'");
+      try {
+        const commandArgs = ['hello world', "it's done", '', '-n'];
+        const result = ProcessUtils.resolveCommand(['myalias', ...commandArgs]);
+        const commandIndex = result.args.indexOf('-c') + 1;
+
+        expect(result.args[commandIndex]).toBe('myalias $argv');
+        expect(result.args.slice(commandIndex + 1)).toEqual(commandArgs);
+      } finally {
+        if (originalShell === undefined) delete process.env.SHELL;
+        else process.env.SHELL = originalShell;
+      }
     });
 
-    it('should escape single quotes safely in shell fallback', () => {
-      const command = ['myalias', '--message', "it's done"];
-      const result = ProcessUtils.resolveCommand(command);
+    it('should reject shell syntax in unresolved command names', () => {
+      expect(() =>
+        ProcessUtils.resolveCommand(['missing; touch /tmp/vt-shell-injection', '--flag'])
+      ).toThrow('Unsafe shell fallback command name');
+      expect(() => ProcessUtils.resolveCommand(['FOO=bar', 'echo', 'injected'])).toThrow(
+        'Unsafe shell fallback command name'
+      );
+    });
 
-      expect(result.useShell).toBe(true);
-      expect(result.resolvedFrom).toBe('alias');
-      expect(result.args).toContain('-c');
-      expect(result.args).toContain("myalias --message 'it'\"'\"'s done'");
+    itWithBash('should preserve arbitrary arguments through a Bash alias fallback', () => {
+      captureFallbackArgs('/bin/bash', '.bash_profile', "alias vt_test_alias='$CAPTURE'\n");
+    });
+
+    itWithTcsh('should preserve arbitrary arguments through a tcsh alias fallback', () => {
+      captureFallbackArgs('/bin/tcsh', '.tcshrc', "alias vt_test_alias '$CAPTURE \\!*'\n");
     });
 
     it('should handle regular binaries in PATH', () => {
@@ -165,11 +245,12 @@ describe('ProcessUtils command parsing', () => {
 
       const command = ['nonexistentcommand123', '--flag'];
       const result = ProcessUtils.resolveCommand(command);
+      const commandIndex = result.args.indexOf('-c') + 1;
 
       expect(result.useShell).toBe(true);
       expect(result.resolvedFrom).toBe('alias');
-      expect(result.args).toContain('-c');
-      expect(result.args).toContain('nonexistentcommand123 --flag');
+      expect(result.args[commandIndex]).toContain('nonexistentcommand123');
+      expect(result.args.slice(commandIndex + 1)).toContain('--flag');
     });
   });
 });
