@@ -25,6 +25,7 @@
 - Keep Terminal Settings and other interactive overlays above the exited-session badge (via [@Nachx639](https://github.com/Nachx639)) (#643)
 - Fix npm and Bun global installs exiting early by recognizing the `vibetunnel` bin entry point (via [@yv-was-taken](https://github.com/yv-was-taken)) (#583)
 - Fix desktop terminal content being clipped at the bottom (via [@ChimeraFlutter](https://github.com/ChimeraFlutter)) (#608)
+- Forward `vt --title-mode` as separate option and value arguments (via [@nikolasdehor](https://github.com/nikolasdehor)) (#602)
 - Preserve native terminal link taps by avoiding paste-input focus steal on anchors (via [@nikolasdehor](https://github.com/nikolasdehor)) (#606)
 - Add Nix per-user profile path for cloudflared discovery (via [@bkase](https://github.com/bkase)) (#533)
 - Fall back to dns-sd for macOS mDNS advertisement when Bonjour fails
@@ -40,7 +41,7 @@
 - Thanks [@sourman](https://github.com/sourman) for documenting the Zig build prerequisite.
 - Thanks [@yv-was-taken](https://github.com/yv-was-taken) for fixing global npm and Bun installs.
 - Thanks [@ChimeraFlutter](https://github.com/ChimeraFlutter) for fixing desktop terminal clipping.
-- Thanks [@nikolasdehor](https://github.com/nikolasdehor) for preserving terminal link taps.
+- Thanks [@nikolasdehor](https://github.com/nikolasdehor) for fixing `vt --title-mode` forwarding and preserving terminal link taps.
 - Thanks [@rothnic](https://github.com/rothnic) for defaulting to universal macOS binaries.
 
 ## [1.0.0-beta.15] - 2025-08-02

@@ -1,4 +1,4 @@
-import { execSync, spawn } from 'child_process';
+import { execSync, spawn, spawnSync } from 'child_process';
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -190,28 +190,36 @@ describe('vt command', () => {
       writeFileSync(
         mockVibetunnelPath,
         `#!/usr/bin/env bash
-printf "%s\n" "$@" > "$VT_ARGV_OUTPUT"
+printf '%s\n' "$@" > "$VT_ARGV_OUTPUT"
 `,
         'utf8'
       );
       chmodSync(mockVibetunnelPath, 0o755);
 
-      execSync(`bash "${vtScriptPath}" -S --title-mode dynamic echo test`, {
-        cwd: projectRoot,
-        stdio: 'pipe',
-        env: {
-          ...process.env,
-          VIBETUNNEL_BIN: mockVibetunnelPath,
-          VT_ARGV_OUTPUT: argvOutputPath,
-        },
-      });
+      const result = spawnSync(
+        'bash',
+        [vtScriptPath, '-S', '--title-mode', 'static', 'echo', 'test'],
+        {
+          encoding: 'utf8',
+          cwd: projectRoot,
+          env: {
+            ...process.env,
+            VIBETUNNEL_BIN: mockVibetunnelPath,
+            VIBETUNNEL_SESSION_ID: '',
+            VT_ARGV_OUTPUT: argvOutputPath,
+          },
+        }
+      );
 
-      const argv = readFileSync(argvOutputPath, 'utf8')
-        .split('\n')
-        .filter((line) => line.length > 0);
-
-      expect(argv.slice(0, 5)).toEqual(['fwd', '--title-mode', 'dynamic', 'echo', 'test']);
-      expect(argv).not.toContain('--title-mode dynamic');
+      expect(result.status).toBe(0);
+      expect(result.stderr).toBe('');
+      expect(readFileSync(argvOutputPath, 'utf8').trimEnd().split('\n')).toEqual([
+        'fwd',
+        '--title-mode',
+        'static',
+        'echo',
+        'test',
+      ]);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
