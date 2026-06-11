@@ -16,9 +16,8 @@ pub const GitInfo = struct {
 };
 
 pub fn detectGitInfo(allocator: std.mem.Allocator, working_dir: []const u8) GitInfo {
-    var arena = std.heap.ArenaAllocator.init(allocator);
-    const arena_alloc = arena.allocator();
-    var info = GitInfo{ .arena = arena };
+    var info = GitInfo{ .arena = std.heap.ArenaAllocator.init(allocator) };
+    const arena_alloc = info.arena.allocator();
 
     var env = std.process.getEnvMap(arena_alloc) catch return info;
     env.put("GIT_TERMINAL_PROMPT", "0") catch {};
