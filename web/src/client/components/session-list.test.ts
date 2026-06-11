@@ -140,6 +140,10 @@ describe('SessionList', () => {
       const bodyText = element.textContent;
       // The actual empty state message is "No terminal sessions yet!"
       expect(bodyText).toContain('No terminal sessions yet!');
+      expect(bodyText).toContain(
+        "Settings → General → Command Line Tool, click on Install 'vt' Command"
+      );
+      expect(bodyText).not.toContain('Settings → Advanced → Install CLI Tools');
     });
 
     it('should show loading state', async () => {

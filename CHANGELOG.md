@@ -14,6 +14,7 @@
 
 ### 🐛 Bug Fixes
 - Fix session creation "data couldn't be read" error on Mac app (#500)
+- Correct empty-session CLI setup instructions to point to Settings → General → Command Line Tool (via [@saqibameen](https://github.com/saqibameen)) (#582)
 - Import standard OpenSSH and PKCS#8 Ed25519 private keys with correct public-key derivation and strict integrity validation (via [@ye4241](https://github.com/ye4241)) (#638)
 - Persist JWT signing secrets across server restarts without weakening file permissions or concurrent startup safety (via [@matthias-scale](https://github.com/matthias-scale)) (#637)
 - Restore mobile terminal touch scrolling, responsive width fitting, pinch zoom, and scrollback retention during output and layout changes (via [@Nachx639](https://github.com/Nachx639)) (#645)
@@ -32,6 +33,7 @@
 - Reset CLI outdated status after successful install and add regression coverage
 
 ### 👥 Contributors
+- Thanks [@saqibameen](https://github.com/saqibameen) for correcting the CLI setup path shown to new users.
 - Thanks [@ye4241](https://github.com/ye4241) for fixing browser SSH private-key import and public-key derivation.
 - Thanks [@matthias-scale](https://github.com/matthias-scale) for preserving authenticated browser sessions across server restarts.
 - Thanks [@Nachx639](https://github.com/Nachx639) for adding log rotation, improving mobile keyboard behavior, terminal scrolling, and tap targets, and fixing tmux detach behavior, dependency security, Terminal Settings width sync, and exited-session overlay layering.
