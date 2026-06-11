@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### ✨ Improvements
+- Make the web app installable with correctly sized 192px and 512px manifest icons (via [@Tyoneva](https://github.com/Tyoneva)) (#615)
 - Enlarge mobile session navigation and terminal quick-key tap targets (via [@Nachx639](https://github.com/Nachx639)) (#647)
 - Rotate server logs at 50 MB while retaining one backup file (via [@Nachx639](https://github.com/Nachx639)) (#641)
 - Require Node.js 22.12+ for npm/native builds and generate maintained Node 22/24 prebuilds only.
@@ -40,6 +41,7 @@
 - Reset CLI outdated status after successful install and add regression coverage
 
 ### 👥 Contributors
+- Thanks [@Tyoneva](https://github.com/Tyoneva) for improving web app installation and icon support.
 - Thanks [@ndraiman](https://github.com/ndraiman) for fixing native forwarder crashes while collecting git metadata.
 - Thanks [@bianbiandashen](https://github.com/bianbiandashen) for preventing transient remote health-check failures from prematurely unregistering servers and spreading iOS reconnect attempts after outages.
 - Thanks [@saqibameen](https://github.com/saqibameen) for correcting the CLI setup path shown to new users.

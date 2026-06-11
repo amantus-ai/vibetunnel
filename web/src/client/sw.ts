@@ -302,11 +302,7 @@ async function handleNotificationClick(action: string, data: NotificationData): 
 
 // No offline notification handling needed
 
-// Fetch event handler - required for Chrome PWA installability
-// Pass through all requests to the network (no caching)
-self.addEventListener('fetch', (event: FetchEvent) => {
-  event.respondWith(fetch(event.request));
-});
+// No fetch event handler needed - we don't cache anything
 
 // Message handler for communication with main thread
 self.addEventListener('message', (event: ExtendableMessageEvent) => {
