@@ -4,13 +4,59 @@ import Testing
 
 @Suite("TailscaleService Tests", .tags(.networking))
 struct TailscaleServiceTests {
+    private final class InMemoryKeychainService: KeychainServiceProtocol {
+        private var storage: [String: String] = [:]
+
+        func savePassword(_ password: String, for profileId: UUID) throws {
+            self.storage[profileId.uuidString] = password
+        }
+
+        func getPassword(for profileId: UUID) throws -> String {
+            guard let password = storage[profileId.uuidString] else {
+                throw KeychainService.KeychainError.itemNotFound
+            }
+            return password
+        }
+
+        func deletePassword(for profileId: UUID) throws {
+            self.storage.removeValue(forKey: profileId.uuidString)
+        }
+
+        func deleteAllPasswords() throws {
+            self.storage.removeAll()
+        }
+
+        func savePassword(_ password: String, for key: String) throws {
+            self.storage[key] = password
+        }
+
+        func loadPassword(for key: String) throws -> String {
+            guard let password = storage[key] else {
+                throw KeychainService.KeychainError.itemNotFound
+            }
+            return password
+        }
+
+        func deletePassword(for key: String) throws {
+            self.storage.removeValue(forKey: key)
+        }
+    }
+
+    @MainActor
+    private func makeService() -> TailscaleService {
+        TailscaleService(
+            keychainService: InMemoryKeychainService(),
+            automaticallyRefresh: false
+        )
+    }
+
     // MARK: - Credential Management Tests
 
     @Test("Save and load OAuth credentials")
     @MainActor
     func saveAndLoadCredentials() async {
         // Arrange
-        let service = TailscaleService.shared
+        let service = self.makeService()
         service.clearCredentials()
 
         let testClientId = "k4cdcxxxxxxxx"
@@ -33,7 +79,7 @@ struct TailscaleServiceTests {
     @MainActor
     func testClearCredentials() async {
         // Arrange
-        let service = TailscaleService.shared
+        let service = self.makeService()
         service.organization = "k4cdcxxxxxxxx" // clientId
         service.apiKey = "tskey-client-k4cdcSQfcc11CNTRL-xxx" // clientSecret
 
@@ -52,7 +98,7 @@ struct TailscaleServiceTests {
     @MainActor
     func isConfiguredRequiresBothCredentials() {
         // Arrange
-        let service = TailscaleService.shared
+        let service = self.makeService()
         service.clearCredentials()
 
         // Assert - No credentials
@@ -80,7 +126,7 @@ struct TailscaleServiceTests {
     @MainActor
     func validClientCredentialFormats() async {
         // Arrange
-        let service = TailscaleService.shared
+        let service = self.makeService()
         service.clearCredentials()
 
         service.organization = "k4cdcxxxxxxxx" // Valid client ID
@@ -108,7 +154,7 @@ struct TailscaleServiceTests {
     @MainActor
     func invalidClientCredentialFormats(clientId: String, clientSecret: String) async {
         // Arrange
-        let service = TailscaleService.shared
+        let service = self.makeService()
         service.clearCredentials()
 
         service.organization = clientId
@@ -133,7 +179,7 @@ struct TailscaleServiceTests {
     @MainActor
     func missingClientIdError() async {
         // Arrange
-        let service = TailscaleService.shared
+        let service = self.makeService()
         service.clearCredentials()
 
         service.organization = nil // Missing client ID

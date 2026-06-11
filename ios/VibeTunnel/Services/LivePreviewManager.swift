@@ -1,6 +1,12 @@
 import Observation
 import SwiftUI
 
+@MainActor
+private final class LivePreviewThrottleState {
+    var lastUpdateTime: Date = .distantPast
+    var pendingSnapshot: BufferSnapshot?
+}
+
 /// Manages live terminal preview subscriptions for session cards.
 ///
 /// This service efficiently handles multiple WebSocket subscriptions
@@ -48,8 +54,7 @@ final class LivePreviewManager {
         }
 
         // Set up WebSocket subscription with throttling
-        var lastUpdateTime: Date = .distantPast
-        var pendingSnapshot: BufferSnapshot?
+        let throttleState = LivePreviewThrottleState()
 
         self.bufferClient.subscribe(to: sessionId) { [weak self, weak subscription] event in
             guard let self, let subscription else { return }
@@ -59,24 +64,24 @@ final class LivePreviewManager {
                 case let .bufferUpdate(snapshot):
                     // Throttle updates to prevent overwhelming the UI
                     let now = Date()
-                    if now.timeIntervalSince(lastUpdateTime) >= self.updateInterval {
+                    if now.timeIntervalSince(throttleState.lastUpdateTime) >= self.updateInterval {
                         subscription.latestSnapshot = snapshot
                         subscription.lastUpdate = now
-                        lastUpdateTime = now
-                        pendingSnapshot = nil
+                        throttleState.lastUpdateTime = now
+                        throttleState.pendingSnapshot = nil
                     } else {
                         // Store pending update
-                        pendingSnapshot = snapshot
+                        throttleState.pendingSnapshot = snapshot
 
                         // Schedule delayed update if not already scheduled
                         if self.updateTimers[sessionId] == nil {
                             let timer = Timer
                                 .scheduledTimer(withTimeInterval: self.updateInterval, repeats: false) { _ in
                                     Task { @MainActor in
-                                        if let pending = pendingSnapshot {
+                                        if let pending = throttleState.pendingSnapshot {
                                             subscription.latestSnapshot = pending
                                             subscription.lastUpdate = Date()
-                                            pendingSnapshot = nil
+                                            throttleState.pendingSnapshot = nil
                                         }
                                         self.updateTimers.removeValue(forKey: sessionId)
                                     }

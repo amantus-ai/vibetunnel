@@ -34,7 +34,8 @@ final class TailscaleService {
     private let logger = Logger(category: "TailscaleService")
 
     /// Keychain service for secure storage
-    private let keychainService = KeychainService()
+    private let keychainService: any KeychainServiceProtocol
+    private let automaticallyRefresh: Bool
 
     /// OAuth Client ID (stored securely in Keychain)
     var clientId: String? {
@@ -55,8 +56,10 @@ final class TailscaleService {
                 }
                 // Clear cached token when credentials change
                 clearCachedToken()
-                Task {
-                    await refreshStatus()
+                if automaticallyRefresh {
+                    Task {
+                        await refreshStatus()
+                    }
                 }
             } catch {
                 logger.error("Failed to save client ID to Keychain: \(error)")
@@ -83,8 +86,10 @@ final class TailscaleService {
                 }
                 // Clear cached token when credentials change
                 clearCachedToken()
-                Task {
-                    await refreshStatus()
+                if automaticallyRefresh {
+                    Task {
+                        await refreshStatus()
+                    }
                 }
             } catch {
                 logger.error("Failed to save client secret to Keychain: \(error)")
@@ -204,10 +209,18 @@ final class TailscaleService {
 
     // MARK: - Initialization
 
-    private init() {
-        setupNotifications()
-        Task {
-            await refreshStatus()
+    init(
+        keychainService: any KeychainServiceProtocol = KeychainService(),
+        automaticallyRefresh: Bool = true
+    ) {
+        self.keychainService = keychainService
+        self.automaticallyRefresh = automaticallyRefresh
+
+        if automaticallyRefresh {
+            setupNotifications()
+            Task {
+                await refreshStatus()
+            }
         }
     }
 

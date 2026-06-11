@@ -56,10 +56,12 @@ struct SessionListViewModelTests {
     }
 
     func createViewModel(
-        mockSessionService: MockSessionService = MockSessionService(),
-        mockNetworkMonitor: MockNetworkMonitor = MockNetworkMonitor())
+        mockSessionService: MockSessionService? = nil,
+        mockNetworkMonitor: MockNetworkMonitor? = nil)
         -> (SessionListViewModel, MockConnectionManager)
     {
+        let mockSessionService = mockSessionService ?? MockSessionService()
+        let mockNetworkMonitor = mockNetworkMonitor ?? MockNetworkMonitor()
         let mockConnectionManager = MockConnectionManager()
         let viewModel = TestableSessionListViewModel(
             sessionService: mockSessionService,

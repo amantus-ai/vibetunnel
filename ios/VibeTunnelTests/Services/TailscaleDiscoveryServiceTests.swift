@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import VibeTunnel
 
-@Suite("TailscaleDiscoveryService Tests", .tags(.networking))
+@Suite("TailscaleDiscoveryService Tests", .serialized, .tags(.networking))
 struct TailscaleDiscoveryServiceTests {
     // MARK: - Discovery Process Tests
 
