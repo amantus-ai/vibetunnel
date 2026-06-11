@@ -196,6 +196,19 @@ export class TerminalQuickKeys extends LitElement {
 
   updated(changedProperties: PropertyValues) {
     super.updated(changedProperties);
+    if (
+      changedProperties.has('visible') ||
+      changedProperties.has('showFunctionKeys') ||
+      changedProperties.has('showCtrlKeys') ||
+      changedProperties.has('isLandscape')
+    ) {
+      this.dispatchEvent(
+        new CustomEvent('quick-keys-layout-change', {
+          bubbles: true,
+          composed: true,
+        })
+      );
+    }
   }
 
   private handleKeyPress(

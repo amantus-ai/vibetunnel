@@ -145,6 +145,20 @@ describe('TerminalQuickKeys', () => {
       component.handleKeyPress('ArrowLeft', false, false, false);
       expect(requestUpdateSpy).toHaveBeenCalled();
     });
+
+    it('notifies the parent when expanded quick-key rows change', async () => {
+      const layoutChangeSpy = vi.fn();
+      component.addEventListener('quick-keys-layout-change', layoutChangeSpy);
+      document.body.append(component);
+      await component.updateComplete;
+      layoutChangeSpy.mockClear();
+
+      component.handleKeyPress('CtrlExpand', false, false, true);
+      await component.updateComplete;
+
+      expect(layoutChangeSpy).toHaveBeenCalledOnce();
+      component.remove();
+    });
   });
 
   describe('Touch target sizing', () => {

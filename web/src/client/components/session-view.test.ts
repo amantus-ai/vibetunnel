@@ -538,8 +538,24 @@ describe('SessionView', () => {
     it('should render mobile action bar', async () => {
       await element.updateComplete;
 
-      const mobileActionBar = element.querySelector('mobile-action-bar');
+      const mobileActionBar = element.querySelector('mobile-action-bar') as
+        | (HTMLElement & { visible: boolean })
+        | null;
+      const grid = element.querySelector<HTMLElement>('.session-view-grid');
       expect(mobileActionBar).toBeTruthy();
+      expect(mobileActionBar?.visible).toBe(true);
+      expect(grid?.dataset.mobile).toBe('true');
+    });
+
+    it('should hide the mobile action bar while quick keys are visible', async () => {
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setShowQuickKeys(true);
+      await element.updateComplete;
+
+      const mobileActionBar = element.querySelector('mobile-action-bar') as
+        | (HTMLElement & { visible: boolean })
+        | null;
+      expect(mobileActionBar?.visible).toBe(false);
     });
 
     it('should keep floating keyboard button available when quick keys are visible', async () => {
@@ -550,6 +566,20 @@ describe('SessionView', () => {
       const keyboardButton = element.querySelector('.mobile-keyboard-button');
       expect(keyboardButton).toBeTruthy();
       expect(keyboardButton?.classList.contains('quick-keys-visible')).toBe(true);
+    });
+  });
+
+  describe('quick-key layout', () => {
+    it('should keep the desktop terminal inside its grid row', async () => {
+      element.session = createMockSession();
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setIsMobile(false);
+      testElement.uiStateManager.setShowQuickKeys(true);
+      await element.updateComplete;
+
+      const terminalArea = element.querySelector<HTMLElement>('.terminal-area');
+      expect(terminalArea?.dataset.quickkeysVisible).toBe('true');
+      expect(getComputedStyle(terminalArea as HTMLElement).transform).toBe('none');
     });
   });
 
@@ -899,6 +929,9 @@ describe('SessionView', () => {
       fitTerminal: ReturnType<typeof vi.fn>;
       scrollToBottom: ReturnType<typeof vi.fn>;
     };
+    let quickKeysElement: {
+      getBoundingClientRect: ReturnType<typeof vi.fn>;
+    };
 
     beforeEach(async () => {
       // Mock matchMedia to handle all queries properly
@@ -926,11 +959,17 @@ describe('SessionView', () => {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
       };
+      quickKeysElement = {
+        getBoundingClientRect: vi.fn(() => ({ height: 112 })),
+      };
 
       fitTerminalSpy = terminalElement.fitTerminal;
 
       // Override querySelector to return appropriate mocks
       vi.spyOn(element, 'querySelector').mockImplementation((selector: string) => {
+        if (selector === '.terminal-quick-keys-container') {
+          return quickKeysElement as unknown as HTMLElement;
+        }
         if (selector === 'terminal-renderer') {
           // Return a mock terminal-renderer that also has querySelector
           return {
@@ -986,6 +1025,31 @@ describe('SessionView', () => {
       expect(fitTerminalSpy).toHaveBeenCalledTimes(1);
 
       vi.useRealTimers();
+    });
+
+    it('should reserve and reset the measured quick-key height on mobile', async () => {
+      vi.useFakeTimers();
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setIsMobile(true);
+      testElement.uiStateManager.setShowQuickKeys(true);
+
+      testElement.updateTerminalTransform();
+      await vi.advanceTimersByTimeAsync(20);
+      await element.updateComplete;
+
+      const containerElement = HTMLElement.prototype.querySelector.call(
+        element,
+        '.session-view-grid'
+      ) as HTMLElement | null;
+      expect(quickKeysElement.getBoundingClientRect).toHaveBeenCalledOnce();
+      expect(containerElement?.style.getPropertyValue('--quickkeys-height')).toBe('112px');
+
+      testElement.uiStateManager.setShowQuickKeys(false);
+      testElement.updateTerminalTransform();
+      await vi.advanceTimersByTimeAsync(20);
+      await element.updateComplete;
+
+      expect(containerElement?.style.getPropertyValue('--quickkeys-height')).toBe('0px');
     });
 
     it.skip('should properly calculate terminal height with keyboard and quick keys', {

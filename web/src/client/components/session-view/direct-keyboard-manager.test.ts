@@ -10,6 +10,14 @@ describe('DirectKeyboardManager', () => {
   let mockInputManager: Pick<InputManager, 'sendInputText'>;
   let originalRequestAnimationFrame: typeof requestAnimationFrame;
 
+  const getManagerState = () =>
+    manager as unknown as {
+      hiddenInput: HTMLInputElement | null;
+      focusRetentionInterval: number | null;
+      keyboardReopenTimeout: ReturnType<typeof setTimeout> | null;
+      reopeningKeyboard: boolean;
+    };
+
   beforeEach(() => {
     // Mock requestAnimationFrame
     originalRequestAnimationFrame = global.requestAnimationFrame;
@@ -41,6 +49,8 @@ describe('DirectKeyboardManager', () => {
   });
 
   afterEach(() => {
+    manager.cleanup();
+    vi.useRealTimers();
     // Restore requestAnimationFrame
     global.requestAnimationFrame = originalRequestAnimationFrame;
   });
@@ -49,5 +59,74 @@ describe('DirectKeyboardManager', () => {
     await manager.handleQuickKeyPress('Paste');
     expect(navigator.clipboard.readText).toHaveBeenCalled();
     expect(mockInputManager.sendInputText).toHaveBeenCalledWith('clipboard content');
+  });
+
+  it('recreates the hidden input only for an explicit keyboard reopen', () => {
+    const originalInput = getManagerState().hiddenInput;
+    expect(originalInput).toBeTruthy();
+
+    originalInput?.focus();
+    manager.ensureHiddenInputVisible();
+    expect(getManagerState().hiddenInput).toBe(originalInput);
+
+    vi.useFakeTimers();
+    manager.focusHiddenInput(true);
+
+    expect(getManagerState().hiddenInput).not.toBe(originalInput);
+    expect(getManagerState().reopeningKeyboard).toBe(true);
+    expect(getManagerState().focusRetentionInterval).toBeNull();
+
+    vi.advanceTimersByTime(500);
+
+    expect(getManagerState().reopeningKeyboard).toBe(false);
+    expect(getManagerState().focusRetentionInterval).not.toBeNull();
+  });
+
+  it('restarts the reopen window after repeated TAP presses', () => {
+    vi.useFakeTimers();
+
+    manager.focusHiddenInput(true);
+    vi.advanceTimersByTime(400);
+    manager.focusHiddenInput(true);
+    vi.advanceTimersByTime(100);
+
+    expect(getManagerState().reopeningKeyboard).toBe(true);
+    expect(getManagerState().focusRetentionInterval).toBeNull();
+
+    vi.advanceTimersByTime(400);
+
+    expect(getManagerState().reopeningKeyboard).toBe(false);
+    expect(getManagerState().focusRetentionInterval).not.toBeNull();
+  });
+
+  it('cancels a pending keyboard reopen during cleanup', () => {
+    vi.useFakeTimers();
+
+    manager.focusHiddenInput(true);
+    manager.cleanup();
+    vi.runAllTimers();
+
+    expect(getManagerState().hiddenInput).toBeNull();
+    expect(getManagerState().keyboardReopenTimeout).toBeNull();
+    expect(getManagerState().reopeningKeyboard).toBe(false);
+    expect(getManagerState().focusRetentionInterval).toBeNull();
+  });
+
+  it.each([
+    [' h', 'h'],
+    ['h ', 'h'],
+    ['hello world ', 'hello world'],
+  ])('removes the placeholder space from %j', (inputValue, expected) => {
+    const hiddenInput = getManagerState().hiddenInput;
+    expect(hiddenInput).toBeTruthy();
+
+    if (!hiddenInput) {
+      return;
+    }
+
+    hiddenInput.value = inputValue;
+    hiddenInput.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
+
+    expect(mockInputManager.sendInputText).toHaveBeenCalledWith(expected);
   });
 });

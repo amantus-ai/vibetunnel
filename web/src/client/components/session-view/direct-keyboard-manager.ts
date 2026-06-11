@@ -54,6 +54,7 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
   // focus handler, blur re-focus) so they don't make iOS think the field is already
   // focused and refuse to show the keyboard. Cleared shortly after the tap.
   private reopeningKeyboard = false;
+  private keyboardReopenTimeout: ReturnType<typeof setTimeout> | null = null;
   private inputManager: InputManager | null = null;
   private sessionViewElement: HTMLElement | null = null;
   private callbacks: DirectKeyboardCallbacks | null = null;
@@ -184,6 +185,8 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
       this.focusRetentionInterval = null;
     }
 
+    this.cancelKeyboardReopen();
+
     // Suppress automatic re-focus while iOS is showing the keyboard (TAP path only).
     if (forceRecreate) {
       this.reopeningKeyboard = true;
@@ -195,7 +198,8 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
     // Restart focus retention after the keyboard has had time to appear, so it doesn't
     // steal the moment iOS uses to show the keyboard.
     if (forceRecreate) {
-      setTimeout(() => {
+      this.keyboardReopenTimeout = setTimeout(() => {
+        this.keyboardReopenTimeout = null;
         this.reopeningKeyboard = false;
         if (this.keyboardMode && !this.focusRetentionInterval) {
           this.startFocusRetention();
@@ -212,9 +216,8 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
     // keyboard is dismissed while the quick keys stay open. That race made the TAP
     // button reopen the keyboard only intermittently. So when the user explicitly taps
     // TAP (forceRecreate), recreate the input unconditionally: iOS treats a brand-new
-    // field as fresh and reliably shows the keyboard. We also recreate if it happens to
-    // still be the focused element.
-    if (this.hiddenInput && (forceRecreate || document.activeElement === this.hiddenInput)) {
+    // field as fresh and reliably shows the keyboard.
+    if (this.hiddenInput && forceRecreate) {
       const stale = this.hiddenInput;
       // Null it first so the stale input's blur handler won't refocus it.
       this.hiddenInput = null;
@@ -784,6 +787,14 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
     }, 100) as unknown as number; // More frequent checks (100ms instead of 300ms)
   }
 
+  private cancelKeyboardReopen(): void {
+    if (this.keyboardReopenTimeout) {
+      clearTimeout(this.keyboardReopenTimeout);
+      this.keyboardReopenTimeout = null;
+    }
+    this.reopeningKeyboard = false;
+  }
+
   private delayedRefocusHiddenInput(): void {
     setTimeout(() => {
       const disableFocusManagement = this.callbacks?.getDisableFocusManagement() ?? false;
@@ -960,6 +971,7 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
     // Exit keyboard mode
     this.keyboardMode = false;
     this.keyboardModeTimestamp = 0;
+    this.cancelKeyboardReopen();
 
     // Remove capture click handler
     if (this.captureClickHandler) {
@@ -1000,6 +1012,7 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
 
   cleanup(): void {
     // Clear timers
+    this.cancelKeyboardReopen();
     if (this.focusRetentionInterval) {
       clearInterval(this.focusRetentionInterval);
       this.focusRetentionInterval = null;
@@ -1042,6 +1055,7 @@ export class DirectKeyboardManager extends ManagerEventEmitter {
     this.keyboardMode = false;
     this.keyboardModeTimestamp = 0;
     this.showQuickKeys = false;
+    this.cancelKeyboardReopen();
 
     // Stop focus retention interval - critical to prevent refocusing
     if (this.focusRetentionInterval) {
