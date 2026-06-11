@@ -122,7 +122,7 @@ export class TerminalSettingsModal extends LitElement {
       <!-- Backdrop to close on outside click -->
       <div
         class="fixed inset-0"
-        style="z-index: ${Z_INDEX.TERMINAL_SETTINGS_BACKDROP};"
+        style="z-index: ${Z_INDEX.MODAL_BACKDROP};"
         role="dialog"
         aria-modal="true"
         aria-labelledby="terminal-settings-title"
@@ -132,7 +132,7 @@ export class TerminalSettingsModal extends LitElement {
       <!-- Terminal settings modal -->
       <div
         class="width-selector-container fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-surface border border-border rounded-lg shadow-elevated w-[400px] max-w-[90vw] animate-fade-in"
-        style="z-index: ${Z_INDEX.TERMINAL_SETTINGS_MODAL};"
+        style="z-index: ${Z_INDEX.MODAL};"
       >
         <div class="p-6">
           <div class="flex items-center justify-between mb-6">
