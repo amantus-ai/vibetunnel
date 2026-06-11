@@ -395,6 +395,10 @@ export VIBETUNNEL_PASSWORD=your-secure-password
 npm run start
 ```
 
+JWT signing keys are generated once in `~/.vibetunnel/jwt-secret` with owner-only
+permissions, so browser sessions remain valid across server restarts. Set `JWT_SECRET`
+to use an operator-managed signing secret instead; rotating either value logs out clients.
+
 #### 3. SSH Key Authentication
 Use Ed25519 SSH keys from `~/.ssh/authorized_keys`:
 ```bash

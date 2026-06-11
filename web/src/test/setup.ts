@@ -12,6 +12,8 @@ vi.mock('ghostty-web', () => ({
 
 // Disable SEA loader for tests
 process.env.VIBETUNNEL_SEA = '';
+// Prevent spawned test servers from creating persistent signing material in the real home.
+process.env.JWT_SECRET ??= 'vibetunnel-test-only-jwt-secret';
 
 // Polyfill crypto for Node.js environments
 if (!globalThis.crypto) {

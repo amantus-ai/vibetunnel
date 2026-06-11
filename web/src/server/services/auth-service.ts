@@ -7,6 +7,9 @@ import { createLogger } from '../utils/logger.js';
 import { authenticate as pamAuthenticate } from './authenticate-pam-loader.js';
 
 const logger = createLogger('auth-service');
+const JWT_SECRET_BYTES = 64;
+const JWT_SECRET_PATTERN = new RegExp(`^[0-9a-f]{${JWT_SECRET_BYTES * 2}}$`);
+const JWT_SECRET_CREATE_ATTEMPTS = 3;
 
 interface AuthChallenge {
   challengeId: string;
@@ -48,7 +51,55 @@ export class AuthService {
   }
 
   private generateSecret(): string {
-    return crypto.randomBytes(64).toString('hex');
+    return crypto.randomBytes(JWT_SECRET_BYTES).toString('hex');
+  }
+
+  private hasFileErrorCode(error: unknown, code: string): error is NodeJS.ErrnoException {
+    return error instanceof Error && (error as NodeJS.ErrnoException).code === code;
+  }
+
+  private readPersistedSecret(secretPath: string): string | null {
+    try {
+      const existing = fs.readFileSync(secretPath, 'utf8').trim();
+      if (!JWT_SECRET_PATTERN.test(existing)) {
+        logger.warn('Persisted JWT secret is invalid; regenerating');
+        try {
+          fs.unlinkSync(secretPath);
+        } catch (error) {
+          if (!this.hasFileErrorCode(error, 'ENOENT')) throw error;
+        }
+        return null;
+      }
+
+      fs.chmodSync(secretPath, 0o600);
+      logger.debug('Loaded persisted JWT secret');
+      return existing;
+    } catch (error) {
+      if (this.hasFileErrorCode(error, 'ENOENT')) return null;
+      throw error;
+    }
+  }
+
+  private publishSecret(secretPath: string, secret: string): boolean {
+    const tempPath = `${secretPath}.${process.pid}.${crypto.randomUUID()}.tmp`;
+    try {
+      fs.writeFileSync(tempPath, secret, { flag: 'wx', mode: 0o600 });
+      try {
+        fs.linkSync(tempPath, secretPath);
+        return true;
+      } catch (error) {
+        if (this.hasFileErrorCode(error, 'EEXIST')) return false;
+        throw error;
+      }
+    } finally {
+      try {
+        fs.unlinkSync(tempPath);
+      } catch (error) {
+        if (!this.hasFileErrorCode(error, 'ENOENT')) {
+          logger.warn(`Failed to remove temporary JWT secret ${tempPath}:`, error);
+        }
+      }
+    }
   }
 
   /**
@@ -65,20 +116,20 @@ export class AuthService {
     const secretPath = path.join(secretDir, 'jwt-secret');
 
     try {
-      if (fs.existsSync(secretPath)) {
-        const existing = fs.readFileSync(secretPath, 'utf8').trim();
-        if (existing) {
-          logger.debug('Loaded persisted JWT secret');
-          return existing;
+      fs.mkdirSync(secretDir, { recursive: true });
+
+      for (let attempt = 0; attempt < JWT_SECRET_CREATE_ATTEMPTS; attempt++) {
+        const existing = this.readPersistedSecret(secretPath);
+        if (existing) return existing;
+
+        const secret = this.generateSecret();
+        if (this.publishSecret(secretPath, secret)) {
+          logger.log(`Generated and persisted new JWT secret at ${secretPath}`);
+          return secret;
         }
-        logger.warn('Persisted JWT secret file is empty; regenerating');
       }
 
-      const secret = this.generateSecret();
-      fs.mkdirSync(secretDir, { recursive: true });
-      fs.writeFileSync(secretPath, secret, { mode: 0o600 }); // owner-only
-      logger.log(`Generated and persisted new JWT secret at ${secretPath}`);
-      return secret;
+      throw new Error('JWT secret changed repeatedly during startup');
     } catch (error) {
       logger.error(
         'Failed to persist JWT secret; using in-memory secret (tokens will not survive a restart):',

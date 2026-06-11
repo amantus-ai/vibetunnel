@@ -175,6 +175,7 @@ VibeTunnel respects the following environment variables:
 PORT=8080                           # Default port if --port not specified
 VIBETUNNEL_USERNAME=myuser          # Username (for env-based auth, not CLI)
 VIBETUNNEL_PASSWORD=mypass          # Password (for env-based auth, not CLI)
+JWT_SECRET=long-random-secret        # Optional JWT signing key override
 VIBETUNNEL_CONTROL_DIR=/path        # Control directory for session data
 VIBETUNNEL_SESSION_ID=abc123        # Current session ID (set automatically inside sessions)
 VIBETUNNEL_LOG_LEVEL=debug          # Log level: error, warn, info, verbose, debug

@@ -95,6 +95,13 @@ export function generateToken(userId: string): string {
 }
 ```
 
+### Signing Secret Persistence
+
+When `JWT_SECRET` is unset, the server generates a 64-byte signing secret and stores it
+at `~/.vibetunnel/jwt-secret` with `0600` permissions. The same key is reused after a
+restart, keeping existing browser tokens valid. Set `JWT_SECRET` to supply an
+operator-managed key; rotating or deleting the active key invalidates existing tokens.
+
 ### Token Validation
 
 ```typescript
