@@ -831,7 +831,9 @@ class BufferWebSocketClient: NSObject {
     private func scheduleReconnect() {
         guard self.reconnectTask == nil else { return }
 
-        let delay = min(pow(2.0, Double(reconnectAttempts)), 30.0)
+        let delay = ReconnectionManager.calculateBackoff(
+            attempt: self.reconnectAttempts + 1,
+            maxDelay: 30.0)
         self.reconnectAttempts += 1
 
         self.logger.info("Reconnecting in \(delay)s (attempt \(self.reconnectAttempts))")

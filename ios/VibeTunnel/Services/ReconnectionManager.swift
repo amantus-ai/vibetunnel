@@ -88,8 +88,7 @@ class ReconnectionManager {
                 self.currentRetry += 1
 
                 if self.currentRetry < self.maxRetries {
-                    // Calculate exponential backoff
-                    let backoffSeconds = min(pow(2.0, Double(currentRetry - 1)), 60.0)
+                    let backoffSeconds = Self.calculateBackoff(attempt: self.currentRetry)
                     self.nextRetryTime = Date().addingTimeInterval(backoffSeconds)
 
                     try? await Task.sleep(for: .seconds(backoffSeconds))
@@ -110,15 +109,22 @@ class ReconnectionManager {
 // MARK: - Exponential Backoff Calculator
 
 extension ReconnectionManager {
-    /// Calculate the next retry delay using exponential backoff
+    /// Calculate the next retry delay using bounded exponential backoff jitter.
     static func calculateBackoff(
         attempt: Int,
         baseDelay: TimeInterval = 1.0,
-        maxDelay: TimeInterval = 60.0)
+        maxDelay: TimeInterval = 60.0,
+        jitterFactor: Double = 0.3,
+        randomUnit: Double = Double.random(in: 0...1))
         -> TimeInterval
     {
         let exponentialDelay = baseDelay * pow(2.0, Double(attempt - 1))
-        return min(exponentialDelay, maxDelay)
+        let cappedDelay = min(exponentialDelay, maxDelay)
+        let boundedJitterFactor = min(max(jitterFactor, 0), 1)
+        let boundedRandomUnit = min(max(randomUnit, 0), 1)
+        let minimumDelay = cappedDelay * (1 - boundedJitterFactor)
+
+        return minimumDelay + (cappedDelay - minimumDelay) * boundedRandomUnit
     }
 }
 
