@@ -14,6 +14,7 @@
 - Default macOS build script to universal binaries with optional arch override (via [@rothnic](https://github.com/rothnic)) (#557)
 
 ### 🐛 Bug Fixes
+- Keep Korean and other CJK IME composition events intact and position desktop candidate windows at the terminal cursor (via [@jiangwenhan](https://github.com/jiangwenhan)) (#617)
 - Prevent rapid iOS slash-command redraws from queuing redundant smooth terminal scrolling (via [@Ilakiancs](https://github.com/Ilakiancs)) (#590)
 - Keep mobile session header controls visible and comfortably tappable at narrow phone widths (via [@nikolasdehor](https://github.com/nikolasdehor)) (#605)
 - Jitter iOS reconnection backoff within its configured cap to spread retries after outages (via [@bianbiandashen](https://github.com/bianbiandashen)) (#593)
@@ -41,6 +42,7 @@
 - Reset CLI outdated status after successful install and add regression coverage
 
 ### 👥 Contributors
+- Thanks [@jiangwenhan](https://github.com/jiangwenhan) for improving Korean and CJK terminal input.
 - Thanks [@Tyoneva](https://github.com/Tyoneva) for improving web app installation and icon support.
 - Thanks [@ndraiman](https://github.com/ndraiman) for fixing native forwarder crashes while collecting git metadata.
 - Thanks [@bianbiandashen](https://github.com/bianbiandashen) for preventing transient remote health-check failures from prematurely unregistering servers and spreading iOS reconnect attempts after outages.

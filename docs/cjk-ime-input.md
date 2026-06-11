@@ -38,7 +38,7 @@ SessionView
 
 **File**: `cursor-position.ts`
 
-The cursor position tracking system uses a shared utility function for terminal renderers that expose cursor coordinates (currently the buffer-based terminal):
+The cursor position tracking system uses renderer-specific cursor coordinates:
 
 #### Coordinate System
 ```typescript
@@ -58,7 +58,7 @@ export function calculateCursorPosition(
 4. **IME Positioning**: Returns coordinates suitable for IME input placement
 
 #### Terminal Type Support
-- **Ghostty Terminal (`vibe-terminal`)**: Does not expose cursor coordinates yet; IME input falls back to a safe fixed position.
+- **Ghostty Terminal (`vibe-terminal`)**: Uses the active buffer cursor and renderer cell metrics.
 - **Buffer Terminal (`vibe-terminal-buffer`)**: Uses `buffer.cursorX/Y` from VT snapshot data.
 
 #### Key Features
@@ -238,7 +238,7 @@ input.placeholder = 'Type here...';
 ### Desktop Features
 - **Dynamic cursor positioning**: IME popup follows terminal cursor exactly
 - **Global paste handling**: Paste works anywhere in terminal area
-- **Composition state tracking**: Via `data-ime-composing` DOM attribute
+- **Composition state tracking**: Via native `KeyboardEvent.isComposing` plus the `data-ime-composing` DOM attribute
 - **Focus retention**: Active mechanism prevents accidental focus loss
 - **Invisible integration**: Zero visual footprint for users
 - **Performance optimized**: Minimal resource usage when not composing

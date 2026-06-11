@@ -585,6 +585,43 @@ export class Terminal extends LitElement {
   };
 
   /**
+   * Return the rendered cursor position relative to the session terminal.
+   * Desktop IME inputs use this to place the native candidate window at the cursor.
+   */
+  public getCursorInfo(): { x: number; y: number } | null {
+    if (!this.terminal || !this.container) return null;
+
+    try {
+      const renderer = this.terminal.renderer;
+      if (!renderer) return null;
+
+      const metrics = renderer.getMetrics();
+      const charWidth = metrics?.width || renderer.charWidth || 8;
+      const charHeight = metrics?.height || renderer.charHeight || this.fontSize * 1.2;
+      if (charWidth <= 0 || charHeight <= 0) return null;
+
+      const buffer = this.terminal.buffer.active;
+      const terminalRect = this.container.getBoundingClientRect();
+      const absoluteX = terminalRect.left + buffer.cursorX * charWidth;
+      const absoluteY = terminalRect.top + buffer.cursorY * charHeight;
+
+      const sessionTerminal = document.getElementById(TERMINAL_IDS.SESSION_TERMINAL);
+      if (!sessionTerminal) {
+        return { x: absoluteX, y: absoluteY };
+      }
+
+      const sessionRect = sessionTerminal.getBoundingClientRect();
+      return {
+        x: absoluteX - sessionRect.left,
+        y: absoluteY - sessionRect.top,
+      };
+    } catch (error) {
+      logger.warn('Failed to get terminal cursor position:', error);
+      return null;
+    }
+  }
+
+  /**
    * Get the current input line (text the user has typed on the current line).
    * Used to sync chat mode input with the terminal state.
    */

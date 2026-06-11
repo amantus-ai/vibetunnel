@@ -257,8 +257,8 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       }
     }
 
-    // Check if IME composition is active - InputManager handles this
-    if (document.body.getAttribute('data-ime-composing') === 'true') {
+    // Native composition state covers events that arrive before our DOM marker is updated.
+    if (e.isComposing || document.body.getAttribute('data-ime-composing') === 'true') {
       return;
     }
 

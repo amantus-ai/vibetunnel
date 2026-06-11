@@ -276,6 +276,63 @@ describe('Terminal', () => {
     });
   });
 
+  describe('IME cursor positioning', () => {
+    it('returns the rendered cursor position relative to the session terminal', () => {
+      if (!mockTerminal) return;
+
+      const terminalContainer = element.querySelector('#terminal-container') as HTMLElement | null;
+      expect(terminalContainer).toBeTruthy();
+
+      mockTerminal.buffer.active.cursorX = 4;
+      mockTerminal.buffer.active.cursorY = 3;
+      mockTerminal.renderer = {
+        getMetrics: () => ({ width: 9, height: 18 }),
+        charWidth: 9,
+        charHeight: 18,
+      };
+
+      vi.spyOn(terminalContainer as HTMLElement, 'getBoundingClientRect').mockReturnValue({
+        left: 100,
+        top: 200,
+        right: 900,
+        bottom: 600,
+        width: 800,
+        height: 400,
+        x: 100,
+        y: 200,
+        toJSON: () => ({}),
+      });
+
+      const sessionTerminal = document.createElement('div');
+      sessionTerminal.id = 'session-terminal';
+      vi.spyOn(sessionTerminal, 'getBoundingClientRect').mockReturnValue({
+        left: 40,
+        top: 50,
+        right: 940,
+        bottom: 650,
+        width: 900,
+        height: 600,
+        x: 40,
+        y: 50,
+        toJSON: () => ({}),
+      });
+      document.body.appendChild(sessionTerminal);
+
+      try {
+        expect(element.getCursorInfo()).toEqual({ x: 96, y: 204 });
+      } finally {
+        sessionTerminal.remove();
+      }
+    });
+
+    it('returns null when renderer cursor metrics are unavailable', () => {
+      if (!mockTerminal) return;
+      mockTerminal.renderer = null;
+
+      expect(element.getCursorInfo()).toBeNull();
+    });
+  });
+
   describe('terminal sizing', () => {
     beforeEach(async () => {
       await element.firstUpdated();

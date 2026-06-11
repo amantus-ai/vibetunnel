@@ -81,5 +81,49 @@ describe('LifecycleEventManager', () => {
       // Should not call consumeEvent for browser shortcuts
       expect(eventUtils.consumeEvent).not.toHaveBeenCalled();
     });
+
+    it('should leave native IME composition events to the browser', () => {
+      const mockCallbacks = {
+        getDisableFocusManagement: vi.fn().mockReturnValue(false),
+        getInputManager: vi.fn(),
+        handleKeyboardInput: vi.fn(),
+      };
+
+      manager.setCallbacks(mockCallbacks as Parameters<typeof manager.setCallbacks>[0]);
+      manager.setSession({
+        id: 'test-session',
+        status: 'running',
+      } as Parameters<typeof manager.setSession>[0]);
+
+      const composingEvent = new KeyboardEvent('keydown', { key: 'Process' });
+      Object.defineProperty(composingEvent, 'isComposing', { value: true });
+
+      manager.keyboardHandler(composingEvent);
+
+      expect(eventUtils.consumeEvent).not.toHaveBeenCalled();
+      expect(mockCallbacks.getInputManager).not.toHaveBeenCalled();
+      expect(mockCallbacks.handleKeyboardInput).not.toHaveBeenCalled();
+    });
+
+    it('should leave composition events marked by the desktop IME input untouched', () => {
+      const mockCallbacks = {
+        getDisableFocusManagement: vi.fn().mockReturnValue(false),
+        getInputManager: vi.fn(),
+        handleKeyboardInput: vi.fn(),
+      };
+
+      manager.setCallbacks(mockCallbacks as Parameters<typeof manager.setCallbacks>[0]);
+      document.body.setAttribute('data-ime-composing', 'true');
+
+      try {
+        manager.keyboardHandler(new KeyboardEvent('keydown', { key: 'a' }));
+      } finally {
+        document.body.removeAttribute('data-ime-composing');
+      }
+
+      expect(eventUtils.consumeEvent).not.toHaveBeenCalled();
+      expect(mockCallbacks.getInputManager).not.toHaveBeenCalled();
+      expect(mockCallbacks.handleKeyboardInput).not.toHaveBeenCalled();
+    });
   });
 });
