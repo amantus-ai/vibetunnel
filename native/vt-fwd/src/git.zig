@@ -151,3 +151,52 @@ fn getMainRepositoryPath(allocator: std.mem.Allocator, git_file_path: []const u8
 
     return null;
 }
+
+fn expectCommandSuccess(allocator: std.mem.Allocator, cwd: []const u8, argv: []const []const u8) !void {
+    const result = try std.process.Child.run(.{
+        .allocator = allocator,
+        .argv = argv,
+        .cwd = cwd,
+    });
+    defer allocator.free(result.stdout);
+    defer allocator.free(result.stderr);
+
+    switch (result.term) {
+        .Exited => |code| try std.testing.expectEqual(@as(u8, 0), code),
+        else => return error.CommandFailed,
+    }
+}
+
+test "detectGitInfo retains metadata without an upstream branch" {
+    const allocator = std.testing.allocator;
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+
+    const repo_path = try std.fs.path.join(allocator, &.{ ".zig-cache", "tmp", tmp.sub_path[0..] });
+    defer allocator.free(repo_path);
+    const absolute_repo_path = try std.fs.cwd().realpathAlloc(allocator, repo_path);
+    defer allocator.free(absolute_repo_path);
+
+    try expectCommandSuccess(allocator, absolute_repo_path, &.{ "git", "init", "-q", "-b", "main" });
+    try expectCommandSuccess(allocator, absolute_repo_path, &.{
+        "git",
+        "-c",
+        "user.name=VibeTunnel Test",
+        "-c",
+        "user.email=test@vibetunnel.local",
+        "commit",
+        "-q",
+        "--allow-empty",
+        "-m",
+        "initial",
+    });
+
+    var info = detectGitInfo(allocator, absolute_repo_path);
+    defer info.deinit();
+
+    try std.testing.expectEqualStrings(absolute_repo_path, info.gitRepoPath.?);
+    try std.testing.expectEqualStrings("main", info.gitBranch.?);
+    try std.testing.expectEqualStrings(absolute_repo_path, info.gitMainRepoPath.?);
+    try std.testing.expect(info.gitAheadCount == null);
+    try std.testing.expect(info.gitBehindCount == null);
+}

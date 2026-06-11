@@ -13,6 +13,7 @@
 - Default macOS build script to universal binaries with optional arch override (via [@rothnic](https://github.com/rothnic)) (#557)
 
 ### 🐛 Bug Fixes
+- Keep `vt` git metadata alive for sessions in repositories without an upstream branch, preventing forwarder crashes (via [@ndraiman](https://github.com/ndraiman)) (#566)
 - Keep HQ remotes registered through transient health-check failures and remove them only after three consecutive failures (via [@bianbiandashen](https://github.com/bianbiandashen) and [@nikolasdehor](https://github.com/nikolasdehor)) (#594)
 - Fix session creation "data couldn't be read" error on Mac app (#500)
 - Correct empty-session CLI setup instructions to point to Settings → General → Command Line Tool (via [@saqibameen](https://github.com/saqibameen)) (#582)
@@ -36,6 +37,7 @@
 - Reset CLI outdated status after successful install and add regression coverage
 
 ### 👥 Contributors
+- Thanks [@ndraiman](https://github.com/ndraiman) for fixing native forwarder crashes while collecting git metadata.
 - Thanks [@bianbiandashen](https://github.com/bianbiandashen) for preventing transient remote health-check failures from prematurely unregistering servers.
 - Thanks [@saqibameen](https://github.com/saqibameen) for correcting the CLI setup path shown to new users.
 - Thanks [@ye4241](https://github.com/ye4241) for fixing browser SSH private-key import and public-key derivation.
