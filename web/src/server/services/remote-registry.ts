@@ -12,19 +12,16 @@ export interface RemoteServer {
   registeredAt: Date;
   lastHeartbeat: Date;
   sessionIds: Set<string>; // Track which sessions belong to this remote
-  consecutiveFailures: number; // Track consecutive health check failures
 }
 
 export class RemoteRegistry {
   private remotes: Map<string, RemoteServer> = new Map();
   private remotesByName: Map<string, RemoteServer> = new Map();
   private sessionToRemote: Map<string, string> = new Map(); // sessionId -> remoteId
+  private healthCheckFailures: WeakMap<RemoteServer, number> = new WeakMap();
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private readonly HEALTH_CHECK_INTERVAL = 15000; // Check every 15 seconds
   private readonly HEALTH_CHECK_TIMEOUT = 5000; // 5 second timeout per check
-  // Number of consecutive failures before removing a remote.
-  // This provides tolerance for temporary network issues or server restarts.
-  // With 15s intervals, 3 failures = 45s of downtime tolerance.
   private readonly MAX_CONSECUTIVE_FAILURES = 3;
 
   constructor() {
@@ -49,7 +46,6 @@ export class RemoteRegistry {
       registeredAt: now,
       lastHeartbeat: now,
       sessionIds: new Set<string>(),
-      consecutiveFailures: 0,
     };
 
     this.remotes.set(remote.id, registeredRemote);
@@ -72,6 +68,7 @@ export class RemoteRegistry {
         this.sessionToRemote.delete(sessionId);
       }
 
+      this.healthCheckFailures.delete(remote);
       this.remotesByName.delete(remote.name);
       return this.remotes.delete(remoteId);
     }
@@ -160,9 +157,6 @@ export class RemoteRegistry {
     }
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.HEALTH_CHECK_TIMEOUT);
-
       // Use the token provided by the remote for authentication
       const headers: Record<string, string> = {
         Authorization: `Bearer ${remote.token}`,
@@ -171,19 +165,21 @@ export class RemoteRegistry {
       // Only check health endpoint - all remotes MUST have it
       const response = await fetch(`${remote.url}/api/health`, {
         headers,
-        signal: controller.signal,
+        signal: AbortSignal.timeout(this.HEALTH_CHECK_TIMEOUT),
       });
 
-      clearTimeout(timeoutId);
-
       if (response.ok) {
-        // Reset failure count on successful health check
-        if (remote.consecutiveFailures > 0) {
+        if (this.remotes.get(remote.id) !== remote) {
+          return;
+        }
+
+        const failedChecks = this.healthCheckFailures.get(remote) ?? 0;
+        if (failedChecks > 0) {
           logger.debug(
-            `remote ${remote.name} recovered after ${remote.consecutiveFailures} failed checks`
+            `remote ${remote.name} recovered after ${failedChecks} failed health checks`
           );
         }
-        remote.consecutiveFailures = 0;
+        this.healthCheckFailures.delete(remote);
         remote.lastHeartbeat = new Date();
         logger.debug(`health check passed for ${remote.name}`);
       } else {
@@ -195,21 +191,23 @@ export class RemoteRegistry {
         return;
       }
 
-      remote.consecutiveFailures++;
-      const failureCount = remote.consecutiveFailures;
+      if (this.remotes.get(remote.id) !== remote) {
+        return;
+      }
+
+      const failureCount = (this.healthCheckFailures.get(remote) ?? 0) + 1;
       const maxFailures = this.MAX_CONSECUTIVE_FAILURES;
+      this.healthCheckFailures.set(remote, failureCount);
 
       if (failureCount >= maxFailures) {
-        // Only remove after consecutive failures to tolerate temporary issues
         logger.warn(
           `remote ${remote.name} (${remote.id}) failed ${failureCount}/${maxFailures} health checks, removing`,
           error
         );
         this.unregister(remote.id);
       } else {
-        // Log warning but keep the remote registered
         logger.warn(
-          `remote ${remote.name} failed health check (${failureCount}/${maxFailures}):`,
+          `remote ${remote.name} (${remote.id}) failed health check ${failureCount}/${maxFailures}`,
           error instanceof Error ? error.message : String(error)
         );
       }

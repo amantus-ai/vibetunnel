@@ -13,6 +13,7 @@
 - Default macOS build script to universal binaries with optional arch override (via [@rothnic](https://github.com/rothnic)) (#557)
 
 ### 🐛 Bug Fixes
+- Keep HQ remotes registered through transient health-check failures and remove them only after three consecutive failures (via [@bianbiandashen](https://github.com/bianbiandashen) and [@nikolasdehor](https://github.com/nikolasdehor)) (#594)
 - Fix session creation "data couldn't be read" error on Mac app (#500)
 - Correct empty-session CLI setup instructions to point to Settings → General → Command Line Tool (via [@saqibameen](https://github.com/saqibameen)) (#582)
 - Import standard OpenSSH and PKCS#8 Ed25519 private keys with correct public-key derivation and strict integrity validation (via [@ye4241](https://github.com/ye4241)) (#638)
@@ -35,6 +36,7 @@
 - Reset CLI outdated status after successful install and add regression coverage
 
 ### 👥 Contributors
+- Thanks [@bianbiandashen](https://github.com/bianbiandashen) for preventing transient remote health-check failures from prematurely unregistering servers.
 - Thanks [@saqibameen](https://github.com/saqibameen) for correcting the CLI setup path shown to new users.
 - Thanks [@ye4241](https://github.com/ye4241) for fixing browser SSH private-key import and public-key derivation.
 - Thanks [@matthias-scale](https://github.com/matthias-scale) for preserving authenticated browser sessions across server restarts.
@@ -43,7 +45,7 @@
 - Thanks [@yv-was-taken](https://github.com/yv-was-taken) for fixing global npm and Bun installs.
 - Thanks [@ChimeraFlutter](https://github.com/ChimeraFlutter) for fixing desktop terminal clipping.
 - Thanks [@Ilakiancs](https://github.com/Ilakiancs) for identifying lost argument boundaries in shell fallback execution.
-- Thanks [@nikolasdehor](https://github.com/nikolasdehor) for fixing `vt --title-mode` and shell fallback argument forwarding and preserving terminal link taps.
+- Thanks [@nikolasdehor](https://github.com/nikolasdehor) for fixing `vt --title-mode` and shell fallback argument forwarding, preserving terminal link taps, and adding remote health-check regression coverage.
 - Thanks [@rothnic](https://github.com/rothnic) for defaulting to universal macOS binaries.
 
 ## [1.0.0-beta.15] - 2025-08-02
