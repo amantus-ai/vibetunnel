@@ -159,5 +159,18 @@ describe('TerminalQuickKeys', () => {
 
       expect(component.getButtonSizeClass('Esc')).toBe('px-1 py-2');
     });
+
+    it('applies the orientation padding to arrow keys', async () => {
+      document.body.append(component);
+      component.isLandscape = false;
+      component.requestUpdate();
+      await component.updateComplete;
+
+      const arrowKey = component.querySelector<HTMLButtonElement>('[data-key="ArrowUp"]');
+
+      expect(arrowKey?.classList.contains('px-1.5')).toBe(true);
+      expect(arrowKey?.classList.contains('py-2.5')).toBe(true);
+      component.remove();
+    });
   });
 });

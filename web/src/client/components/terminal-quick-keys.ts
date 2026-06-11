@@ -418,7 +418,6 @@ export class TerminalQuickKeys extends LitElement {
         /* Arrow key styling */
         .arrow-key {
           font-size: 1rem;
-          padding: 0.375rem 0.5rem;
         }
         
         /* Medium font for short character buttons */
