@@ -78,6 +78,46 @@ test.describe('Keyboard Input Tests', () => {
     await sessionViewPage.sendInterrupt();
   });
 
+  test('should handle a 600-line paste without hanging', async ({ page, sessionViewPage }) => {
+    await sessionManager.createTrackedSession(
+      sessionManager.generateSessionName('keyboard-large-paste'),
+      false,
+      'bash --noprofile --norc'
+    );
+
+    await sessionViewPage.waitForTerminalReady();
+    await sessionViewPage.typeCommand(
+      `python3 -c 'import sys; data=sys.stdin.read(); print("VT_PASTE_LINES="+str(len(data.splitlines())), flush=True)'`
+    );
+
+    const pastedText = `${Array.from(
+      { length: 600 },
+      (_, index) => `line-${String(index + 1).padStart(4, '0')}`
+    ).join('\n')}\n`;
+    await page.evaluate((text) => {
+      const pasteInput = document.querySelector(
+        'vibe-terminal .terminal-paste-input'
+      ) as HTMLTextAreaElement | null;
+      if (!pasteInput) throw new Error('Terminal paste input is unavailable');
+
+      const clipboardData = new DataTransfer();
+      clipboardData.setData('text/plain', text);
+      pasteInput.dispatchEvent(
+        new ClipboardEvent('paste', {
+          clipboardData,
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    }, pastedText);
+    await page.keyboard.press('Control+d');
+
+    await sessionViewPage.waitForOutput('VT_PASTE_LINES=600', { timeout: 15000 });
+    await sessionViewPage.typeCommand('echo "VT_STILL_RESPONSIVE"');
+    await sessionViewPage.waitForOutput('VT_STILL_RESPONSIVE', { timeout: 5000 });
+    await sessionViewPage.typeCommand('exit');
+  });
+
   test('should handle arrow key editing', async ({ page, sessionViewPage }) => {
     await sessionManager.createTrackedSession(
       sessionManager.generateSessionName('keyboard-arrows'),
