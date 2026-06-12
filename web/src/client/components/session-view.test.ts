@@ -206,40 +206,44 @@ describe('SessionView', () => {
         return originalMatchMedia(query);
       };
 
-      const mobileElement = await fixture<SessionView>(html` <session-view></session-view> `);
+      let mobileElement: SessionView | undefined;
+      try {
+        // The default fixture can own focus. Remove it so terminal-ready starts from
+        // the same neutral document focus as a newly opened mobile session.
+        element.remove();
+        mobileElement = await fixture<SessionView>(html` <session-view></session-view> `);
+        await mobileElement.updateComplete;
 
-      await mobileElement.updateComplete;
+        // Component detects mobile based on touch capabilities
+        const mobileTestElement = mobileElement as SessionViewTestInterface;
+        const uiState = mobileTestElement.uiStateManager.getState();
+        expect(uiState.isMobile).toBe(true);
+        expect(document.activeElement).not.toBe(mobileElement);
 
-      // Component detects mobile based on touch capabilities
-      const mobileTestElement = mobileElement as SessionViewTestInterface;
-      const uiState = mobileTestElement.uiStateManager.getState();
-      expect(uiState.isMobile).toBe(true);
-      expect(document.activeElement).not.toBe(mobileElement);
+        const mockSession = createMockSession({
+          id: 'mobile-hardware-keyboard-session',
+          status: 'running',
+        });
+        mobileElement.session = mockSession;
+        await mobileElement.updateComplete;
+        const terminal = mobileElement.querySelector('vibe-terminal');
+        await vi.waitFor(() => expect(terminal?.getAttribute('data-ready')).toBe('true'));
+        await vi.waitFor(() => expect(document.activeElement).toBe(mobileElement));
 
-      const mockSession = createMockSession({
-        id: 'mobile-hardware-keyboard-session',
-        status: 'running',
-      });
-      mobileElement.session = mockSession;
-      await mobileElement.updateComplete;
-      const terminal = mobileElement.querySelector('vibe-terminal');
-      await vi.waitFor(() => expect(terminal?.getAttribute('data-ready')).toBe('true'));
-      await vi.waitFor(() => expect(document.activeElement).toBe(mobileElement));
-
-      const terminalContainer = terminal?.querySelector('#terminal-container') as HTMLElement;
-      terminalContainer.focus();
-      terminalContainer.dispatchEvent(
-        new Event('touchend', { bubbles: true, composed: true, cancelable: true })
-      );
-      await vi.waitFor(() => expect(document.activeElement).toBe(mobileElement));
-      mobileElement.remove();
-
-      // Restore original values
-      Object.defineProperty(navigator, 'maxTouchPoints', {
-        value: originalMaxTouchPoints,
-        configurable: true,
-      });
-      window.matchMedia = originalMatchMedia;
+        const terminalContainer = terminal?.querySelector('#terminal-container') as HTMLElement;
+        terminalContainer.focus();
+        terminalContainer.dispatchEvent(
+          new Event('touchend', { bubbles: true, composed: true, cancelable: true })
+        );
+        await vi.waitFor(() => expect(document.activeElement).toBe(mobileElement));
+      } finally {
+        mobileElement?.remove();
+        Object.defineProperty(navigator, 'maxTouchPoints', {
+          value: originalMaxTouchPoints,
+          configurable: true,
+        });
+        window.matchMedia = originalMatchMedia;
+      }
     });
   });
 
