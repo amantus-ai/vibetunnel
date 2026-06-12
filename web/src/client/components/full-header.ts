@@ -12,6 +12,19 @@ import './theme-toggle-icon.js';
 
 @customElement('full-header')
 export class FullHeader extends HeaderBase {
+  private get authMethodLabel(): string {
+    switch (this.authMethod) {
+      case 'password':
+        return 'System Account';
+      case 'ssh-key':
+        return 'SSH Key';
+      case 'tailscale':
+        return 'Tailscale';
+      default:
+        return 'Authenticated';
+    }
+  }
+
   render() {
     const runningSessions = this.runningSessions;
 
@@ -125,8 +138,11 @@ export class FullHeader extends HeaderBase {
               <div
                 class="absolute right-0 top-full mt-1 bg-surface border border-border rounded-lg shadow-lg py-1 z-50 min-w-36"
               >
-                <div class="px-3 py-2 text-sm text-text-muted border-b border-border">
-                  ${this.authMethod || 'authenticated'}
+                <div
+                  class="px-3 py-2 text-sm text-text-muted border-b border-border"
+                  data-testid="auth-method-label"
+                >
+                  ${this.authMethodLabel}
                 </div>
                 <button
                   class="w-full text-left px-3 py-2 text-sm font-mono text-status-warning hover:bg-bg-secondary hover:text-status-error"
