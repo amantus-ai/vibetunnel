@@ -122,15 +122,18 @@ struct ModelTests {
         func dashboardaccessmodeValidation(mode: DashboardAccessMode) {
             // Each mode should have valid properties
             #expect(!mode.displayName.isEmpty)
-            #expect(!mode.bindAddress.isEmpty)
             #expect(!mode.description.isEmpty)
 
             // Verify bind addresses
             switch mode {
             case .localhost:
-                #expect(mode.bindAddress == "127.0.0.1")
+                #expect(mode.fixedBindAddress?.value == "127.0.0.1")
             case .network:
-                #expect(mode.bindAddress == "0.0.0.0")
+                #expect(mode.fixedBindAddress?.value == "0.0.0.0")
+            case .custom:
+                #expect(mode.fixedBindAddress == nil)
+                #expect(mode.resolvedBindAddress(customAddress: "::").value == "::")
+                #expect(mode.resolvedBindAddress(customAddress: "invalid").value == "127.0.0.1")
             }
         }
 
@@ -138,12 +141,14 @@ struct ModelTests {
         func dashboardaccessmodeRawValues() {
             #expect(DashboardAccessMode.localhost.rawValue == AppConstants.DashboardAccessModeRawValues.localhost)
             #expect(DashboardAccessMode.network.rawValue == AppConstants.DashboardAccessModeRawValues.network)
+            #expect(DashboardAccessMode.custom.rawValue == AppConstants.DashboardAccessModeRawValues.custom)
         }
 
         @Test
         func dashboardaccessmodeDescriptions() {
             #expect(DashboardAccessMode.localhost.description.contains("this Mac"))
             #expect(DashboardAccessMode.network.description.contains("other devices"))
+            #expect(DashboardAccessMode.custom.description.contains("IPv4 or IPv6"))
         }
 
         @Test
@@ -154,7 +159,7 @@ struct ModelTests {
             // Verify we can create a mode from the default
             let mode = DashboardAccessMode(rawValue: AppConstants.Defaults.dashboardAccessMode)
             #expect(mode == .network)
-            #expect(mode?.bindAddress == "0.0.0.0")
+            #expect(mode?.fixedBindAddress?.value == "0.0.0.0")
         }
 
         @Test
@@ -164,6 +169,53 @@ struct ModelTests {
 
             let emptyMode = DashboardAccessMode(rawValue: "")
             #expect(emptyMode == nil)
+        }
+    }
+
+    // MARK: - ServerBindAddress Tests
+
+    @Suite("ServerBindAddress Tests")
+    struct ServerBindAddressTests {
+        @Test(arguments: [
+            ("127.0.0.1", ServerBindAddress.Family.ipv4),
+            ("0.0.0.0", ServerBindAddress.Family.ipv4),
+            ("::1", ServerBindAddress.Family.ipv6),
+            ("::", ServerBindAddress.Family.ipv6),
+            ("2001:db8::1", ServerBindAddress.Family.ipv6),
+        ])
+        func acceptsIPv4AndIPv6(value: String, family: ServerBindAddress.Family) {
+            let address = ServerBindAddress(value)
+            #expect(address?.value == value)
+            #expect(address?.family == family)
+        }
+
+        @Test(arguments: ["", "localhost", "256.0.0.1", "192.168.1", "[::1]", "2001:db8:::1"])
+        func rejectsInvalidAddressLiterals(value: String) {
+            #expect(ServerBindAddress(value) == nil)
+        }
+
+        @Test
+        func trimsAddressWhitespace() {
+            #expect(ServerBindAddress("  ::1 \n")?.value == "::1")
+        }
+
+        @Test
+        func buildsBracketedIPv6URLs() {
+            let loopback = ServerBindAddress("::1")
+            #expect(loopback?.endpoint(port: "4020") == "[::1]:4020")
+            #expect(
+                loopback?.url(port: "4020", endpoint: "/api/health")?.absoluteString ==
+                    "http://[::1]:4020/api/health")
+        }
+
+        @Test
+        func mapsWildcardAddressesToUsableLoopbackURLs() {
+            let ipv4Wildcard = ServerBindAddress("0.0.0.0")
+            let ipv6Wildcard = ServerBindAddress("::")
+
+            #expect(ipv4Wildcard?.connectableAddress.value == "127.0.0.1")
+            #expect(ipv6Wildcard?.connectableAddress.value == "::1")
+            #expect(ipv6Wildcard?.connectableAddress.url(port: "4020")?.absoluteString == "http://[::1]:4020/")
         }
     }
 

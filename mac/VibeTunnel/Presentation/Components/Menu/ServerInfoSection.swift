@@ -164,14 +164,8 @@ struct ServerAddressRow: View {
             Button(action: {
                 if let providedUrl = url {
                     NSWorkspace.shared.open(providedUrl)
-                } else if self.computedAddress.starts(with: "127.0.0.1:") {
-                    // For localhost, use DashboardURLBuilder
-                    if let dashboardURL = DashboardURLBuilder.dashboardURL(port: serverManager.port) {
-                        NSWorkspace.shared.open(dashboardURL)
-                    }
-                } else if let url = URL(string: "http://\(computedAddress)") {
-                    // For other addresses (network IP, etc.), construct URL directly
-                    NSWorkspace.shared.open(url)
+                } else if let dashboardURL = serverManager.dashboardURL() {
+                    NSWorkspace.shared.open(dashboardURL)
                 }
             }, label: {
                 Text(self.computedAddress)
@@ -206,15 +200,7 @@ struct ServerAddressRow: View {
             return self.address
         }
 
-        // Default behavior for local server
-        let bindAddress = self.serverManager.bindAddress
-        if bindAddress == "127.0.0.1" {
-            return "127.0.0.1:\(self.serverManager.port)"
-        } else if let localIP = NetworkUtility.getLocalIPAddress() {
-            return "\(localIP):\(self.serverManager.port)"
-        } else {
-            return "0.0.0.0:\(self.serverManager.port)"
-        }
+        return self.serverManager.dashboardEndpoint
     }
 
     private var urlToCopy: String {
@@ -223,12 +209,7 @@ struct ServerAddressRow: View {
             return providedUrl.absoluteString
         }
 
-        // For local addresses, build the full URL
-        if self.computedAddress.starts(with: "127.0.0.1:") {
-            return "http://\(self.computedAddress)"
-        } else {
-            return "http://\(self.computedAddress)"
-        }
+        return self.serverManager.dashboardURL()?.absoluteString ?? "http://\(self.computedAddress)"
     }
 
     private func copyToClipboard() {

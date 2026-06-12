@@ -219,6 +219,7 @@ struct RemoteAccessSettingsView: View {
         Task {
             await ServerConfigurationHelpers.restartServerWithNewBindAddress(
                 accessMode: self.accessMode,
+                customAddress: self.serverManager.customBindAddress,
                 serverManager: self.serverManager)
         }
     }

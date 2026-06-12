@@ -1,9 +1,11 @@
+import type { NetworkInterfaceInfo } from 'node:os';
+import { networkInterfaces } from 'node:os';
 import type { NextFunction, Response } from 'express';
 import express from 'express';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AuthService } from '../services/auth-service.js';
-import { type AuthenticatedRequest, createAuthMiddleware } from './auth.js';
+import { type AuthenticatedRequest, createAuthMiddleware, isLocalMachineAddress } from './auth.js';
 
 // Mock the logger
 vi.mock('../utils/logger.js', () => ({
@@ -40,6 +42,7 @@ describe('Auth Middleware', () => {
 
     mockNext = vi.fn();
     mockRes = {
+      setHeader: vi.fn().mockReturnThis(),
       status: vi.fn().mockReturnThis(),
       json: vi.fn().mockReturnThis(),
     } as unknown as Response;
@@ -254,6 +257,62 @@ describe('Auth Middleware', () => {
       expect(response3.status).toBe(200);
     });
 
+    it('should accept a valid local token from a non-loopback interface', () => {
+      const localInterfaceAddress = Object.values(networkInterfaces())
+        .flatMap((addresses) => addresses ?? [])
+        .find((entry) => !entry.internal)?.address;
+      expect(localInterfaceAddress).toBeDefined();
+
+      const middleware = createAuthMiddleware({
+        allowLocalBypass: true,
+        localAuthToken: 'secret-token',
+        authService: mockAuthService,
+      });
+      const req = {
+        headers: {
+          host: localInterfaceAddress,
+          'x-vibetunnel-local': 'secret-token',
+        },
+        hostname: localInterfaceAddress?.includes(':')
+          ? `[${localInterfaceAddress}]`
+          : localInterfaceAddress,
+        socket: {
+          remoteAddress: localInterfaceAddress,
+        },
+        path: '/test',
+      } as unknown as AuthenticatedRequest;
+
+      middleware(req, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+      expect(req.authMethod).toBe('local-bypass');
+    });
+
+    it('should reject a valid local token from a remote address', () => {
+      const middleware = createAuthMiddleware({
+        allowLocalBypass: true,
+        localAuthToken: 'secret-token',
+        authService: mockAuthService,
+      });
+      const req = {
+        headers: {
+          host: 'localhost',
+          'x-vibetunnel-local': 'secret-token',
+        },
+        hostname: 'localhost',
+        socket: {
+          remoteAddress: '203.0.113.10',
+        },
+        query: {},
+        path: '/test',
+      } as unknown as AuthenticatedRequest;
+
+      middleware(req, mockRes, mockNext);
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+    });
+
     it('should reject requests with forwarded headers even from localhost', async () => {
       const middleware = createAuthMiddleware({
         allowLocalBypass: true,
@@ -374,6 +433,46 @@ describe('Auth Middleware', () => {
   });
 
   describe('IPv6 localhost handling', () => {
+    it('should recognize IPv4-mapped and scoped local interface addresses', () => {
+      const interfaces = {
+        en0: [
+          {
+            address: '192.0.2.10',
+            netmask: '255.255.255.0',
+            family: 'IPv4',
+            mac: '00:00:00:00:00:00',
+            internal: false,
+            cidr: '192.0.2.10/24',
+          },
+          {
+            address: 'fe80::1234%en0',
+            netmask: 'ffff:ffff:ffff:ffff::',
+            family: 'IPv6',
+            mac: '00:00:00:00:00:00',
+            internal: false,
+            cidr: 'fe80::1234/64',
+            scopeid: 4,
+          },
+          {
+            address: '2001:db8::1',
+            netmask: 'ffff:ffff:ffff:ffff::',
+            family: 'IPv6',
+            mac: '00:00:00:00:00:00',
+            internal: false,
+            cidr: '2001:db8::1/64',
+            scopeid: 0,
+          },
+        ],
+      } as unknown as NodeJS.Dict<NetworkInterfaceInfo[]>;
+
+      expect(isLocalMachineAddress('::ffff:192.0.2.10', interfaces)).toBe(true);
+      expect(isLocalMachineAddress('fe80::1234%en0', interfaces)).toBe(true);
+      expect(isLocalMachineAddress('[2001:0DB8:0000:0000:0000:0000:0000:0001]', interfaces)).toBe(
+        true
+      );
+      expect(isLocalMachineAddress('203.0.113.10', interfaces)).toBe(false);
+    });
+
     it('should accept ::1 as localhost for Tailscale auth', async () => {
       const middleware = createAuthMiddleware({
         allowTailscaleAuth: true,

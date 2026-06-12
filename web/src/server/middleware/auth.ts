@@ -1,3 +1,5 @@
+import { BlockList, isIP } from 'node:net';
+import { networkInterfaces } from 'node:os';
 import type { NextFunction, Request, Response } from 'express';
 import type { AuthService } from '../services/auth-service.js';
 import { createLogger } from '../utils/logger.js';
@@ -23,14 +25,46 @@ export interface AuthenticatedRequest extends Request {
   tailscaleUser?: TailscaleUser;
 }
 
-// Helper function to check if request is from localhost
-function isLocalRequest(req: Request): boolean {
-  // Get the real client IP
-  const clientIp = req.ip || req.socket.remoteAddress || '';
+const loopbackAddresses = new Set(['127.0.0.1', '::1', 'localhost']);
 
-  // Check for localhost IPs
-  const localIPs = ['127.0.0.1', '::1', '::ffff:127.0.0.1', 'localhost'];
-  const ipIsLocal = localIPs.includes(clientIp);
+function normalizeAddress(address: string): string {
+  const withoutBrackets =
+    address.startsWith('[') && address.endsWith(']') ? address.slice(1, -1) : address;
+  const withoutScope = withoutBrackets.split('%', 1)[0];
+  return withoutScope.startsWith('::ffff:') ? withoutScope.slice(7) : withoutScope;
+}
+
+export function isLocalMachineAddress(address: string, interfaces = networkInterfaces()): boolean {
+  const normalizedAddress = normalizeAddress(address);
+  if (loopbackAddresses.has(normalizedAddress)) {
+    return true;
+  }
+
+  const addressVersion = isIP(normalizedAddress);
+  if (addressVersion === 0) {
+    return false;
+  }
+
+  const localAddresses = new BlockList();
+  for (const addresses of Object.values(interfaces)) {
+    for (const entry of addresses ?? []) {
+      const localAddress = normalizeAddress(entry.address);
+      const localAddressVersion = isIP(localAddress);
+      if (localAddressVersion !== 0) {
+        localAddresses.addAddress(localAddress, localAddressVersion === 4 ? 'ipv4' : 'ipv6');
+      }
+    }
+  }
+
+  return localAddresses.check(normalizedAddress, addressVersion === 4 ? 'ipv4' : 'ipv6');
+}
+
+// Helper function to check if request is from localhost or, with a valid token, this machine.
+function isLocalRequest(req: Request, allowLocalInterface: boolean): boolean {
+  const clientIp = req.socket.remoteAddress || '';
+  const ipIsLocal =
+    loopbackAddresses.has(normalizeAddress(clientIp)) ||
+    (allowLocalInterface && isLocalMachineAddress(clientIp));
 
   // Additional security checks to prevent spoofing
   const noForwardedFor = !req.headers['x-forwarded-for'];
@@ -39,7 +73,8 @@ function isLocalRequest(req: Request): boolean {
 
   // Check hostname
   const hostIsLocal =
-    req.hostname === 'localhost' || req.hostname === '127.0.0.1' || req.hostname === '[::1]';
+    loopbackAddresses.has(normalizeAddress(req.hostname)) ||
+    (allowLocalInterface && isLocalMachineAddress(req.hostname));
 
   logger.debug(
     `Local request check - IP: ${clientIp}, Host: ${req.hostname}, ` +
@@ -161,11 +196,16 @@ export function createAuthMiddleware(config: AuthConfig) {
     }
 
     // Check for local bypass if enabled
-    if (config.allowLocalBypass && isLocalRequest(req)) {
+    const providedLocalToken = req.headers['x-vibetunnel-local'];
+    const hasValidLocalToken =
+      typeof providedLocalToken === 'string' &&
+      Boolean(config.localAuthToken) &&
+      providedLocalToken === config.localAuthToken;
+
+    if (config.allowLocalBypass && isLocalRequest(req, hasValidLocalToken)) {
       // If a local auth token is configured, check for it
       if (config.localAuthToken) {
-        const providedToken = req.headers['x-vibetunnel-local'] as string;
-        if (providedToken === config.localAuthToken) {
+        if (hasValidLocalToken) {
           logger.debug('Local request authenticated with token');
           req.authMethod = 'local-bypass';
           req.userId = 'local-user';

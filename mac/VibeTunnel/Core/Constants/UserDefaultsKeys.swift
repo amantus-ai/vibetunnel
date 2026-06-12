@@ -6,6 +6,7 @@ enum UserDefaultsKeys {
 
     static let serverPort = "serverPort"
     static let dashboardAccessMode = "dashboardAccessMode"
+    static let customBindAddress = "customBindAddress"
     static let cleanupOnStartup = "cleanupOnStartup"
     static let preventSleepWhenRunning = "preventSleepWhenRunning"
     static let useDevelopmentServer = "useDevelopmentServer"

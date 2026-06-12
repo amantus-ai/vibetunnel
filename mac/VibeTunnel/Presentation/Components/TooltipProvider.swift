@@ -25,15 +25,7 @@ enum TooltipProvider {
 
         // Server status
         if serverManager.isRunning {
-            let bindAddress = serverManager.bindAddress
-            if bindAddress == "127.0.0.1" {
-                tooltipParts.append("Server: 127.0.0.1:\(serverManager.port)")
-            } else if let localIP = NetworkUtility.getLocalIPAddress() {
-                tooltipParts.append("Server: \(localIP):\(serverManager.port)")
-            } else {
-                // Fallback when no local IP is found
-                tooltipParts.append("Server: 0.0.0.0:\(serverManager.port)")
-            }
+            tooltipParts.append("Server: \(serverManager.dashboardEndpoint)")
 
             // ngrok status
             if ngrokService.isActive, let publicURL = ngrokService.publicUrl {

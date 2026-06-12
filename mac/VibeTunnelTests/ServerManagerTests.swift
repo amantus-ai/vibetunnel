@@ -124,7 +124,7 @@ final class ServerManagerTests {
         UserDefaults.standard.set(mode.rawValue, forKey: "dashboardAccessMode")
 
         // Check bind address reflects the mode
-        #expect(self.manager.bindAddress == mode.bindAddress)
+        #expect(self.manager.bindAddress == mode.fixedBindAddress?.value)
 
         // Restore original mode
         UserDefaults.standard.set(originalMode, forKey: "dashboardAccessMode")
@@ -152,6 +152,21 @@ final class ServerManagerTests {
     func bindAddressSetter() {
         // Store original value
         let originalMode = UserDefaults.standard.string(forKey: "dashboardAccessMode")
+        let originalCustomAddress = UserDefaults.standard.string(forKey: UserDefaultsKeys.customBindAddress)
+
+        defer {
+            if let originalMode {
+                UserDefaults.standard.set(originalMode, forKey: "dashboardAccessMode")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "dashboardAccessMode")
+            }
+
+            if let originalCustomAddress {
+                UserDefaults.standard.set(originalCustomAddress, forKey: UserDefaultsKeys.customBindAddress)
+            } else {
+                UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.customBindAddress)
+            }
+        }
 
         // Test setting via bind address
         self.manager.bindAddress = "127.0.0.1"
@@ -166,16 +181,65 @@ final class ServerManagerTests {
                 .network)
         #expect(self.manager.bindAddress == "0.0.0.0")
 
-        // Test invalid bind address (should not change UserDefaults)
-        self.manager.bindAddress = "192.168.1.1"
-        #expect(self.manager.bindAddress == "0.0.0.0") // Should still be the last valid value
+        self.manager.bindAddress = "::"
+        #expect(
+            UserDefaults.standard.string(forKey: "dashboardAccessMode") == AppConstants.DashboardAccessModeRawValues
+                .custom)
+        #expect(UserDefaults.standard.string(forKey: UserDefaultsKeys.customBindAddress) == "::")
+        #expect(self.manager.bindAddress == "::")
 
-        // Restore original value
-        if let originalMode {
-            UserDefaults.standard.set(originalMode, forKey: "dashboardAccessMode")
-        } else {
-            UserDefaults.standard.removeObject(forKey: "dashboardAccessMode")
+        self.manager.bindAddress = "192.168.1.1"
+        #expect(self.manager.bindAddress == "192.168.1.1")
+
+        // Invalid bind addresses should not change the last valid configuration.
+        self.manager.bindAddress = "not-an-address"
+        #expect(self.manager.bindAddress == "192.168.1.1")
+    }
+
+    @Test
+    func customIPv6ConfigurationPersistsAndBuildsValidURLs() {
+        let originalMode = UserDefaults.standard.string(forKey: UserDefaultsKeys.dashboardAccessMode)
+        let originalCustomAddress = UserDefaults.standard.string(forKey: UserDefaultsKeys.customBindAddress)
+        let originalPort = self.manager.port
+
+        defer {
+            self.manager.port = originalPort
+            if let originalMode {
+                UserDefaults.standard.set(originalMode, forKey: UserDefaultsKeys.dashboardAccessMode)
+            } else {
+                UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.dashboardAccessMode)
+            }
+            if let originalCustomAddress {
+                UserDefaults.standard.set(originalCustomAddress, forKey: UserDefaultsKeys.customBindAddress)
+            } else {
+                UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.customBindAddress)
+            }
         }
+
+        self.manager.port = "4567"
+        #expect(self.manager.updateBindConfiguration(mode: .custom, customAddress: "::"))
+        #expect(self.manager.dashboardAccessMode == .custom)
+        #expect(self.manager.customBindAddress == "::")
+        #expect(self.manager.bindAddress == "::")
+        #expect(self.manager.buildURL(endpoint: "/api/health")?.absoluteString == "http://[::1]:4567/api/health")
+        #expect(self.manager.dashboardURL()?.absoluteString == "http://[::1]:4567/")
+        #expect(self.manager.dashboardEndpoint == "[::1]:4567")
+    }
+
+    @Test
+    func rejectsInvalidCustomConfiguration() {
+        let originalMode = UserDefaults.standard.string(forKey: UserDefaultsKeys.dashboardAccessMode)
+        defer {
+            if let originalMode {
+                UserDefaults.standard.set(originalMode, forKey: UserDefaultsKeys.dashboardAccessMode)
+            } else {
+                UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.dashboardAccessMode)
+            }
+        }
+
+        UserDefaults.standard.set(DashboardAccessMode.network.rawValue, forKey: UserDefaultsKeys.dashboardAccessMode)
+        #expect(!self.manager.updateBindConfiguration(mode: .custom, customAddress: "localhost"))
+        #expect(self.manager.dashboardAccessMode == .network)
     }
 
     @Test(

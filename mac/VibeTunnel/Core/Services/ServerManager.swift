@@ -69,30 +69,73 @@ class ServerManager {
         self.bunServer?.authMode ?? "os"
     }
 
+    var dashboardAccessMode: DashboardAccessMode {
+        let rawValue = UserDefaults.standard.string(forKey: UserDefaultsKeys.dashboardAccessMode) ?? AppConstants
+            .Defaults
+            .dashboardAccessMode
+        return DashboardAccessMode(rawValue: rawValue) ?? .network
+    }
+
+    var customBindAddress: String? {
+        UserDefaults.standard.string(forKey: UserDefaultsKeys.customBindAddress)
+    }
+
     var bindAddress: String {
         get {
-            // Get the raw value from UserDefaults, defaulting to the app default
-            let rawValue = UserDefaults.standard.string(forKey: UserDefaultsKeys.dashboardAccessMode) ?? AppConstants
-                .Defaults
-                .dashboardAccessMode
-            let mode = DashboardAccessMode(rawValue: rawValue) ?? .network
-
-            // Log for debugging
-            // logger
-            //     .debug(
-            //         "bindAddress getter: rawValue='\(rawValue)', mode=\(mode.rawValue),
-            //         bindAddress=\(mode.bindAddress)"
-            //     )
-
-            return mode.bindAddress
+            self.dashboardAccessMode.resolvedBindAddress(customAddress: self.customBindAddress).value
         }
         set {
-            // Find the mode that matches this bind address
-            if let mode = DashboardAccessMode.allCases.first(where: { $0.bindAddress == newValue }) {
-                UserDefaults.standard.set(mode.rawValue, forKey: UserDefaultsKeys.dashboardAccessMode)
-                self.logger.debug("bindAddress setter: set mode=\(mode.rawValue) for bindAddress=\(newValue)")
-            }
+            _ = self.updateBindConfiguration(address: newValue)
         }
+    }
+
+    @discardableResult
+    func updateBindConfiguration(address: String) -> Bool {
+        guard let bindAddress = ServerBindAddress(address) else {
+            return false
+        }
+
+        let mode: DashboardAccessMode = switch bindAddress.value {
+        case "127.0.0.1": .localhost
+        case "0.0.0.0": .network
+        default: .custom
+        }
+
+        return self.updateBindConfiguration(mode: mode, customAddress: bindAddress.value)
+    }
+
+    @discardableResult
+    func updateBindConfiguration(mode: DashboardAccessMode, customAddress: String? = nil) -> Bool {
+        if mode == .custom {
+            guard let customAddress, let bindAddress = ServerBindAddress(customAddress) else {
+                return false
+            }
+            UserDefaults.standard.set(bindAddress.value, forKey: UserDefaultsKeys.customBindAddress)
+        }
+
+        UserDefaults.standard.set(mode.rawValue, forKey: UserDefaultsKeys.dashboardAccessMode)
+        self.logger.debug("Updated bind configuration: mode=\(mode.rawValue), address=\(self.bindAddress)")
+        return true
+    }
+
+    var dashboardAddress: ServerBindAddress {
+        if self.dashboardAccessMode == .network,
+           let localAddress = NetworkUtility.getLocalIPAddress().flatMap(ServerBindAddress.init)
+        {
+            return localAddress
+        }
+
+        return self.dashboardAccessMode
+            .resolvedBindAddress(customAddress: self.customBindAddress)
+            .connectableAddress
+    }
+
+    var dashboardEndpoint: String {
+        self.dashboardAddress.endpoint(port: self.port)
+    }
+
+    func dashboardURL(endpoint: String = "/") -> URL? {
+        self.dashboardAddress.url(port: self.port, endpoint: endpoint)
     }
 
     private var cleanupOnStartup: Bool {
@@ -649,7 +692,10 @@ class ServerManager {
 
     /// Build a URL for the local server with the given endpoint
     func buildURL(endpoint: String) -> URL? {
-        URL(string: "\(URLConstants.localServerBase):\(self.port)\(endpoint)")
+        self.dashboardAccessMode
+            .resolvedBindAddress(customAddress: self.customBindAddress)
+            .connectableAddress
+            .url(port: self.port, endpoint: endpoint)
     }
 
     /// Build a URL for the local server with the given endpoint and query parameters

@@ -18,6 +18,7 @@ enum AppConstants {
         // Server Configuration
         static let serverPort = "serverPort"
         static let dashboardAccessMode = "dashboardAccessMode"
+        static let customBindAddress = "customBindAddress"
         static let cleanupOnStartup = "cleanupOnStartup"
         static let authenticationMode = "authenticationMode"
 
@@ -51,6 +52,7 @@ enum AppConstants {
     enum DashboardAccessModeRawValues {
         static let localhost = "localhost"
         static let network = "network"
+        static let custom = "custom"
     }
 
     /// Default values for UserDefaults

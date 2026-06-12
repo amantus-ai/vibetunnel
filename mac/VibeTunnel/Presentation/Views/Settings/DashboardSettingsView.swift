@@ -138,7 +138,6 @@ private struct ServerStatusSection: View {
 
     @State private var portConflict: PortConflict?
     @State private var isCheckingPort = false
-    @State private var localIPAddress: String?
     @State private var isShowingKillPortConflictConfirm = false
     @State private var isKillingPortConflictProcess = false
     @State private var killPortConflictErrorMessage: String?
@@ -191,8 +190,6 @@ private struct ServerStatusSection: View {
                     AccessModeView(
                         accessMode: self.accessMode,
                         accessModeString: self.$accessModeString,
-                        serverPort: self.serverPort,
-                        localIPAddress: self.localIPAddress,
                         restartServerWithNewBindAddress: self.restartServerWithNewBindAddress)
 
                     // Editable Port
@@ -207,13 +204,11 @@ private struct ServerStatusSection: View {
                     }
 
                     LabeledContent("Base URL") {
-                        let baseAddress = self.serverManager.bindAddress == "0.0.0.0" ? "127.0.0.1" : self.serverManager
-                            .bindAddress
-                        if let serverURL = URL(string: "http://\(baseAddress):\(serverPort)") {
-                            Link("http://\(baseAddress):\(self.serverPort)", destination: serverURL)
+                        if let serverURL = serverManager.dashboardURL() {
+                            Link(serverURL.absoluteString, destination: serverURL)
                                 .font(.system(.body, design: .monospaced))
                         } else {
-                            Text("http://\(baseAddress):\(self.serverPort)")
+                            Text("Unavailable")
                                 .font(.system(.body, design: .monospaced))
                         }
                     }
@@ -347,13 +342,9 @@ private struct ServerStatusSection: View {
             .padding(.vertical, 4)
             .task {
                 await self.checkPortAvailability()
-                await self.updateLocalIPAddress()
             }
             .task(id: self.serverPort) {
                 await self.checkPortAvailability()
-            }
-            .task(id: self.accessModeString) {
-                await self.updateLocalIPAddress()
             }
             .alert(
                 "Failed to kill process",
@@ -369,43 +360,18 @@ private struct ServerStatusSection: View {
             Text("Server Configuration")
                 .font(.headline)
         } footer: {
-            // Dashboard URL display
-            if self.accessMode == .localhost {
+            if let url = serverManager.dashboardURL() {
                 HStack(spacing: 5) {
                     Text("Dashboard available at")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                    if let url = DashboardURLBuilder.dashboardURL(port: serverPort) {
-                        Link(url.absoluteString, destination: url)
-                            .font(.caption)
-                            .foregroundStyle(.blue)
-                    }
+                    Link(url.absoluteString, destination: url)
+                        .font(.caption)
+                        .foregroundStyle(.blue)
                 }
                 .frame(maxWidth: .infinity)
                 .multilineTextAlignment(.center)
-            } else if self.accessMode == .network {
-                if let ip = localIPAddress {
-                    HStack(spacing: 5) {
-                        Text("Dashboard available at")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        if let url = URL(string: "http://\(ip):\(serverPort)") {
-                            Link(url.absoluteString, destination: url)
-                                .font(.caption)
-                                .foregroundStyle(.blue)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .multilineTextAlignment(.center)
-                } else {
-                    Text("Fetching local IP address...")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .multilineTextAlignment(.center)
-                }
             }
         }
     }
@@ -416,16 +382,13 @@ private struct ServerStatusSection: View {
         }
     }
 
-    private func restartServerWithNewBindAddress() {
+    private func restartServerWithNewBindAddress(_ mode: DashboardAccessMode, customAddress: String?) {
         Task {
             await ServerConfigurationHelpers.restartServerWithNewBindAddress(
-                accessMode: self.accessMode,
+                accessMode: mode,
+                customAddress: customAddress,
                 serverManager: self.serverManager)
         }
-    }
-
-    private func updateLocalIPAddress() async {
-        self.localIPAddress = await ServerConfigurationHelpers.updateLocalIPAddress(accessMode: self.accessMode)
     }
 
     private func checkPortAvailability() async {
