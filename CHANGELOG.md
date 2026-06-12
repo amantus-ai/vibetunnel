@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### ✨ Improvements
+- Pin CI actions, runner images, and downloaded build tools to immutable, checksum-verified versions (via [@davisbuilds](https://github.com/davisbuilds)) (#616)
 - Make the web app installable with correctly sized 192px and 512px manifest icons (via [@Tyoneva](https://github.com/Tyoneva)) (#615)
 - Enlarge mobile session navigation and terminal quick-key tap targets (via [@Nachx639](https://github.com/Nachx639)) (#647)
 - Rotate server logs at 50 MB while retaining one backup file (via [@Nachx639](https://github.com/Nachx639)) (#641)
@@ -45,6 +46,7 @@
 - Reset CLI outdated status after successful install and add regression coverage
 
 ### 👥 Contributors
+- Thanks [@davisbuilds](https://github.com/davisbuilds) for hardening CI workflows and build-tool bootstrap paths.
 - Thanks [@apex-skyner](https://github.com/apex-skyner) and [@yashiels](https://github.com/yashiels) for identifying the macOS session-creation timestamp decoding failure.
 - Thanks [@waxzce](https://github.com/waxzce) for adding configurable IPv4/IPv6 server binding and restoring reliable iOS terminal rendering and input echo.
 - Thanks [@jiangwenhan](https://github.com/jiangwenhan) for improving Korean and CJK terminal input.

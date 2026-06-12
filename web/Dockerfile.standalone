@@ -3,6 +3,8 @@
 
 FROM node:24-trixie-slim
 
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+
 # Install system dependencies and common development tools
 RUN apt-get update && apt-get install -y \
     python3 \
@@ -27,37 +29,67 @@ RUN apt-get update && apt-get install -y \
     && ln -sf /bin/dash /bin/sh \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Zig (latest stable) for vibetunnel-fwd build
+# Install the pinned Zig release for vibetunnel-fwd builds.
 SHELL ["/bin/bash", "-c"]
 ARG ZIG_VERSION=0.15.2
+ARG ZIG_AMD64_SHA256=02aa270f183da276e5b5920b1dac44a63f1a49e55050ebde3aecc9eb82f93239
+ARG ZIG_ARM64_SHA256=958ed7d1e00d0ea76590d27666efbf7a932281b3d7ba0c6b01b0ff26498f667f
+ARG PNPM_VERSION=10.15.0
+ARG TYPESCRIPT_VERSION=6.0.3
+ARG TS_NODE_VERSION=10.9.2
+ARG NODEMON_VERSION=3.1.14
+ARG NGROK_VERSION=3.39.7
+ARG NGROK_REPO_ASC_SHA256=8a57c28e1779e2a8e5bba3865fffd6805e15898988c235eae862f3069c3f2c28
+ARG CLOUDFLARED_VERSION=2026.6.0
+ARG CLOUDFLARED_AMD64_SHA256=08d27c4c5d3ed73ee3e98ef2ddceb4ad09fd4cfc28e243565a189538e8ccd706
+ARG CLOUDFLARED_ARM64_SHA256=8482ebf1e74a2a4a1a9f1e090e17e3de08423f94100ece6789287cb26fb9480f
 RUN set -euo pipefail; \
     arch="$(uname -m)"; \
     case "$arch" in \
-      aarch64|arm64) zig_arch="aarch64-linux";; \
-      x86_64|amd64) zig_arch="x86_64-linux";; \
+      aarch64|arm64) zig_arch="aarch64-linux"; zig_sha="$ZIG_ARM64_SHA256";; \
+      x86_64|amd64) zig_arch="x86_64-linux"; zig_sha="$ZIG_AMD64_SHA256";; \
       *) echo "unsupported arch: $arch" >&2; exit 1;; \
     esac; \
     zig_url="https://ziglang.org/download/${ZIG_VERSION}/zig-${zig_arch}-${ZIG_VERSION}.tar.xz"; \
     mkdir -p /usr/local/zig /usr/local/bin; \
-    curl -sL "$zig_url" -o /tmp/zig.tar.xz; \
+    curl -fsSL "$zig_url" -o /tmp/zig.tar.xz; \
+    echo "${zig_sha}  /tmp/zig.tar.xz" | sha256sum -c -; \
     tar -xf /tmp/zig.tar.xz -C /usr/local/zig --strip-components=1; \
     ln -sf /usr/local/zig/zig /usr/local/bin/zig; \
     zig version
 
-# Install ngrok
-RUN curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
-    && echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | tee /etc/apt/sources.list.d/ngrok.list \
-    && apt-get update \
-    && apt-get install -y ngrok \
-    || echo "Ngrok installation failed, continuing without it"
+# Install ngrok from its signed repository at an exact package version.
+RUN set -euo pipefail; \
+    curl -fsSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc -o /tmp/ngrok.asc; \
+    echo "${NGROK_REPO_ASC_SHA256}  /tmp/ngrok.asc" | sha256sum -c -; \
+    mkdir -p /etc/apt/keyrings; \
+    install -m 0644 /tmp/ngrok.asc /etc/apt/keyrings/ngrok.asc; \
+    echo "deb [signed-by=/etc/apt/keyrings/ngrok.asc] https://ngrok-agent.s3.amazonaws.com buster main" \
+      > /etc/apt/sources.list.d/ngrok.list; \
+    apt-get update; \
+    apt-get install -y "ngrok=${NGROK_VERSION}"; \
+    rm -rf /var/lib/apt/lists/* /tmp/ngrok.asc
 
-# Install cloudflared
-RUN curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared \
-    && chmod +x /usr/local/bin/cloudflared \
-    || echo "Cloudflared installation failed, continuing without it"
+# Install cloudflared from a pinned release.
+RUN set -euo pipefail; \
+    arch="$(uname -m)"; \
+    case "$arch" in \
+      aarch64|arm64) cloudflared_arch="arm64"; cloudflared_sha="$CLOUDFLARED_ARM64_SHA256";; \
+      x86_64|amd64) cloudflared_arch="amd64"; cloudflared_sha="$CLOUDFLARED_AMD64_SHA256";; \
+      *) echo "unsupported arch: $arch" >&2; exit 1;; \
+    esac; \
+    cloudflared_url="https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-${cloudflared_arch}"; \
+    curl -fsSL "$cloudflared_url" -o /usr/local/bin/cloudflared; \
+    echo "${cloudflared_sha}  /usr/local/bin/cloudflared" | sha256sum -c -; \
+    chmod +x /usr/local/bin/cloudflared
 
-# Install common dev tools
-RUN npm install -g pnpm typescript ts-node nodemon
+# Install the package manager and pinned development CLIs advertised by this image.
+RUN corepack enable \
+    && corepack prepare "pnpm@${PNPM_VERSION}" --activate \
+    && npm install --global \
+      "typescript@${TYPESCRIPT_VERSION}" \
+      "ts-node@${TS_NODE_VERSION}" \
+      "nodemon@${NODEMON_VERSION}"
 
 # Set working directory for VibeTunnel
 WORKDIR /app
@@ -75,13 +107,13 @@ RUN pnpm install --frozen-lockfile
 # Copy source code
 COPY . .
 
-# Ensure vt-fwd sources exist (for web-only context builds)
-ARG VT_FWD_REF
+# Ensure vt-fwd sources exist for web-only context builds.
+ARG VT_FWD_COMMIT=586a728d4138a96338b05943f05576a25f0679d7
 RUN if [ ! -d /app/native/vt-fwd ]; then \
-      ref="${VT_FWD_REF:-v$(node -p "require('./package.json').version")}"; \
-      git clone --depth 1 --filter=blob:none --sparse --branch "$ref" https://github.com/amantus-ai/vibetunnel.git /tmp/vt-src \
-        || git clone --depth 1 --filter=blob:none --sparse https://github.com/amantus-ai/vibetunnel.git /tmp/vt-src; \
-      git -C /tmp/vt-src sparse-checkout set native/vt-fwd; \
+      git init /tmp/vt-src; \
+      git -C /tmp/vt-src remote add origin https://github.com/amantus-ai/vibetunnel.git; \
+      git -C /tmp/vt-src fetch --depth 1 origin "$VT_FWD_COMMIT"; \
+      git -C /tmp/vt-src checkout --detach FETCH_HEAD; \
       mkdir -p /app/native; \
       cp -R /tmp/vt-src/native/vt-fwd /app/native/vt-fwd; \
       rm -rf /tmp/vt-src; \
@@ -100,6 +132,8 @@ EXPOSE 4020
 
 # Set environment variables
 ENV NODE_ENV=production
+ENV VIBETUNNEL_BUNDLED=true
+ENV BUILD_PUBLIC_PATH=/app/public
 ENV PORT=4020
 ENV PATH="/workspace/node_modules/.bin:${PATH}"
 

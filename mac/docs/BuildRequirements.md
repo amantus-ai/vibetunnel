@@ -13,7 +13,7 @@ VibeTunnel for macOS now has a self-contained build system that automatically in
 When you build VibeTunnel in Xcode for the first time:
 
 1. **Install Build Dependencies** phase runs first
-   - Downloads and installs Bun locally to `.build-tools/bun/`
+   - Downloads a pinned Bun release, verifies its checksum, and installs it locally to `.build-tools/bun/`
    - No system-wide installation required
    - Works on both Intel and Apple Silicon Macs
 

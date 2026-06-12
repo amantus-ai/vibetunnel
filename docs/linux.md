@@ -16,8 +16,8 @@ npm run build
 ## What the bootstrap does
 - Installs system deps: `curl`, `ca-certificates`, `xz-utils`, `python3`, `make`, `g++`, `git`
 - Installs `libpam0g-dev` for PAM auth native module
-- Installs Node.js 24.x (NodeSource) if missing or too old
-- Installs Zig (latest stable)
+- Installs checksum-verified Node.js 24.16.0 if missing or too old
+- Installs checksum-verified Zig 0.15.2
 
 ## SEA on Linux (disabled by default)
 SEA builds are skipped on Linux unless explicitly enabled.

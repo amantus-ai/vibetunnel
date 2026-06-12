@@ -26,8 +26,8 @@ BUILD_TOOLS_DIR="$PROJECT_DIR/.build-tools"
 BUN_DIR="$BUILD_TOOLS_DIR/bun"
 BUN_BINARY="$BUN_DIR/bin/bun"
 
-# Version management - update this to use a specific Bun version
-BUN_VERSION="latest"
+# Pinned release assets verified against provider-published checksums.
+BUN_VERSION="1.3.14"
 
 echo -e "${GREEN}Checking for Bun...${NC}"
 
@@ -40,16 +40,64 @@ install_bun() {
     
     # Download and install Bun to local directory
     echo "Downloading Bun..."
-    export BUN_INSTALL="$BUN_DIR"
-    
-    # Use curl to download the install script and execute it
-    if command -v curl &> /dev/null; then
-        curl -fsSL https://bun.sh/install | bash > /dev/null 2>&1
-    else
+    if ! command -v curl &> /dev/null; then
         echo -e "${RED}Error: curl is required to download Bun${NC}"
         echo "curl should be available on macOS by default"
         exit 1
     fi
+
+    if ! command -v unzip &> /dev/null; then
+        echo -e "${RED}Error: unzip is required to install Bun${NC}"
+        exit 1
+    fi
+
+    local arch bun_asset bun_sha tmp_dir bun_archive extracted_bun
+    arch="$(uname -m)"
+    case "$arch" in
+        arm64|aarch64)
+            bun_asset="bun-darwin-aarch64.zip"
+            bun_sha="d8b96221828ad6f97ac7ac0ab7e95872341af763001e8803e8267652c2652620"
+            ;;
+        x86_64|amd64)
+            bun_asset="bun-darwin-x64.zip"
+            bun_sha="4183df3374623e5bab315c547cfa0974533cd457d86b73b639f7a87974cd6633"
+            ;;
+        *)
+            echo -e "${RED}Error: Unsupported architecture: $arch${NC}"
+            exit 1
+            ;;
+    esac
+
+    tmp_dir="$(mktemp -d)"
+    bun_archive="$tmp_dir/$bun_asset"
+    if ! curl -fsSL \
+        "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/${bun_asset}" \
+        -o "$bun_archive"; then
+        rm -rf "$tmp_dir"
+        exit 1
+    fi
+
+    if ! echo "${bun_sha}  ${bun_archive}" | shasum -a 256 -c - >/dev/null 2>&1; then
+        echo -e "${RED}Error: Bun checksum verification failed${NC}"
+        rm -rf "$tmp_dir"
+        exit 1
+    fi
+
+    if ! unzip -q "$bun_archive" -d "$tmp_dir"; then
+        rm -rf "$tmp_dir"
+        exit 1
+    fi
+    extracted_bun="$tmp_dir/${bun_asset%.zip}/bun"
+    if [ ! -f "$extracted_bun" ]; then
+        echo -e "${RED}Error: Extracted Bun binary not found${NC}"
+        rm -rf "$tmp_dir"
+        exit 1
+    fi
+
+    mkdir -p "$BUN_DIR/bin"
+    cp "$extracted_bun" "$BUN_BINARY"
+    chmod +x "$BUN_BINARY"
+    rm -rf "$tmp_dir"
     
     # Verify installation
     if [ -f "$BUN_BINARY" ]; then
