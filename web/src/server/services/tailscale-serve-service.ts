@@ -386,27 +386,22 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
       }
     }
 
-    // Reset Serve configuration (since we're using --bg, there's no process to kill)
-    try {
-      logger.debug('Removing Tailscale Serve configuration...');
+    if (!this.serveProcess && this.currentPort === null) {
+      logger.debug('No Tailscale Serve configuration to stop');
+      this.cleanup();
+      return;
+    }
 
-      // Use 'reset' to completely clear all serve configuration
-      const resetProcess = spawn(this.tailscaleExecutable, ['serve', 'reset'], {
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-
-      await new Promise<void>((resolve) => {
-        resetProcess.on('exit', (code) => {
-          if (code === 0) {
-            logger.debug('Tailscale Serve configuration reset successfully');
-          }
-          resolve();
-        });
-        resetProcess.on('error', () => resolve());
-        setTimeout(resolve, 2000); // Timeout after 2 seconds
-      });
-    } catch (_error) {
-      logger.debug('Failed to reset serve config during stop');
+    // Reset Serve configuration (since --bg usually leaves no process to kill).
+    const resetSucceeded = await this.resetServeConfiguration();
+    if (!resetSucceeded) {
+      this.lastError = 'Failed to reset Tailscale Serve configuration';
+      logger.warn(this.lastError);
+      if (!this.serveProcess) {
+        return;
+      }
+    } else {
+      this.lastError = undefined;
     }
 
     if (!this.serveProcess) {
@@ -445,6 +440,56 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
       // Try graceful shutdown first
       this.serveProcess.kill('SIGTERM');
     });
+  }
+
+  private async resetServeConfiguration(): Promise<boolean> {
+    logger.debug('Removing Tailscale Serve configuration...');
+
+    try {
+      const resetProcess = spawn(this.tailscaleExecutable, ['serve', 'reset'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+
+      return await new Promise<boolean>((resolve) => {
+        let settled = false;
+
+        const settle = (succeeded: boolean) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          resolve(succeeded);
+        };
+
+        resetProcess.once('exit', (code) => {
+          if (code === 0) {
+            logger.debug('Tailscale Serve configuration reset successfully');
+            settle(true);
+          } else {
+            logger.warn(`Tailscale Serve reset exited with code ${code}`);
+            settle(false);
+          }
+        });
+        resetProcess.once('error', (error) => {
+          logger.warn(`Tailscale Serve reset failed: ${error.message}`);
+          settle(false);
+        });
+
+        const timeout = setTimeout(() => {
+          logger.warn('Tailscale Serve reset timed out');
+          if (!resetProcess.killed) {
+            try {
+              resetProcess.kill('SIGTERM');
+            } catch (error) {
+              logger.warn(`Failed to terminate timed-out Tailscale Serve reset: ${error}`);
+            }
+          }
+          settle(false);
+        }, 2000);
+      });
+    } catch (error) {
+      logger.warn(`Failed to reset Tailscale Serve configuration: ${error}`);
+      return false;
+    }
   }
 
   isRunning(): boolean {
