@@ -193,11 +193,7 @@ struct TerminalView: View {
         }
         .onKeyPress(keys: ["c"]) { press in
             if press.modifiers.contains(.command), !press.modifiers.contains(.shift) {
-                // Copy to clipboard
-                if let content = viewModel.getBufferContent() {
-                    UIPasteboard.general.string = content
-                    HapticFeedback.notification(.success)
-                }
+                self.viewModel.copyBuffer()
                 return .handled
             }
             return .ignored
@@ -247,17 +243,19 @@ struct TerminalView: View {
     // MARK: - Export Functions
 
     private func exportTerminalBuffer() {
-        guard let bufferContent = viewModel.getBufferContent() else { return }
+        Task { @MainActor in
+            guard let bufferContent = await viewModel.getBufferContent() else { return }
 
-        let fileName = "\(session.displayName)_\(Date().timeIntervalSince1970).txt"
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+            let fileName = "\(session.displayName)_\(Date().timeIntervalSince1970).txt"
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
 
-        do {
-            try bufferContent.write(to: tempURL, atomically: true, encoding: .utf8)
-            self.exportedFileURL = tempURL
-            self.showingExportSheet = true
-        } catch {
-            logger.error("Failed to export terminal buffer: \(error)")
+            do {
+                try bufferContent.write(to: tempURL, atomically: true, encoding: .utf8)
+                self.exportedFileURL = tempURL
+                self.showingExportSheet = true
+            } catch {
+                logger.error("Failed to export terminal buffer: \(error)")
+            }
         }
     }
 
@@ -584,6 +582,11 @@ struct TerminalView: View {
 @MainActor
 @Observable
 class TerminalViewModel {
+    private enum PendingTerminalRenderEvent {
+        case output(String)
+        case snapshot(BufferSnapshot)
+    }
+
     var isConnecting = true
     var isConnected = false
     var errorMessage: String?
@@ -604,7 +607,12 @@ class TerminalViewModel {
     private var resizeDebounceTask: Task<Void, Never>?
     private var hasPerformedInitialResize = false
     private var isPerformingInitialResize = false
-    weak var terminalCoordinator: (any TerminalCoordinating)?
+    private var pendingTerminalEvents: [PendingTerminalRenderEvent] = []
+    weak var terminalCoordinator: (any TerminalCoordinating)? {
+        didSet {
+            self.flushPendingTerminalEvents()
+        }
+    }
 
     init(session: Session) {
         self.session = session
@@ -630,10 +638,8 @@ class TerminalViewModel {
         self.errorMessage = nil
 
         // Subscribe to terminal events first (stores the handler)
-        self.bufferWebSocketClient.subscribe(to: self.session.id) { [weak self] event in
-            Task { @MainActor in
-                self?.handleWebSocketEvent(event)
-            }
+        self.bufferWebSocketClient.subscribe(to: self.session.id, mode: .stdout) { [weak self] event in
+            self?.handleWebSocketEvent(event)
         }
 
         // Connect to WebSocket - it will automatically subscribe to stored sessions
@@ -684,8 +690,12 @@ class TerminalViewModel {
     }
 
     @MainActor
-    private func handleWebSocketEvent(_ event: TerminalWebSocketEvent) {
+    func handleWebSocketEvent(_ event: TerminalWebSocketEvent) {
         switch event {
+        case .replayStarted:
+            self.pendingTerminalEvents.removeAll()
+            self.terminalCoordinator?.resetForReplay()
+
         case let .header(width, height):
             // Initial terminal setup
             logger.info("Terminal initialized: \(width)x\(height)")
@@ -694,20 +704,7 @@ class TerminalViewModel {
         // The terminal will be resized when created
 
         case let .output(_, data):
-            // Feed output data directly to the terminal
-            if let coordinator = terminalCoordinator {
-                coordinator.feedData(data)
-            } else {
-                // Queue the data to be fed once coordinator is ready
-                logger.warning("Terminal coordinator not ready, queueing data")
-                Task {
-                    // Wait a bit for coordinator to be initialized
-                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
-                    if let coordinator = self.terminalCoordinator {
-                        coordinator.feedData(data)
-                    }
-                }
-            }
+            self.renderTerminalEvent(.output(data))
             // Record output if recording
             self.castRecorder.recordOutput(data)
 
@@ -740,13 +737,7 @@ class TerminalViewModel {
             // Session has exited - no need to load additional content
 
         case let .bufferUpdate(snapshot):
-            // Update terminal buffer directly
-            if let coordinator = terminalCoordinator {
-                coordinator.updateBuffer(from: snapshot)
-            } else {
-                // Fallback: buffer updates not available yet
-                logger.warning("Direct buffer update not available")
-            }
+            self.renderTerminalEvent(.snapshot(snapshot))
 
         case .bell:
             // Terminal bell - play sound and/or haptic feedback
@@ -755,6 +746,36 @@ class TerminalViewModel {
         case let .alert(title, message):
             // Terminal alert - show notification
             self.handleTerminalAlert(title: title, message: message)
+        }
+    }
+
+    private func renderTerminalEvent(_ event: PendingTerminalRenderEvent) {
+        guard let coordinator = terminalCoordinator else {
+            self.pendingTerminalEvents.append(event)
+            return
+        }
+        self.renderTerminalEvent(event, on: coordinator)
+    }
+
+    private func flushPendingTerminalEvents() {
+        guard let coordinator = terminalCoordinator, !self.pendingTerminalEvents.isEmpty else { return }
+
+        let events = self.pendingTerminalEvents
+        self.pendingTerminalEvents.removeAll()
+        for event in events {
+            self.renderTerminalEvent(event, on: coordinator)
+        }
+    }
+
+    private func renderTerminalEvent(
+        _ event: PendingTerminalRenderEvent,
+        on coordinator: any TerminalCoordinating)
+    {
+        switch event {
+        case let .output(data):
+            coordinator.feedData(data)
+        case let .snapshot(snapshot):
+            coordinator.updateBuffer(from: snapshot)
         }
     }
 
@@ -906,15 +927,17 @@ class TerminalViewModel {
     }
 
     func copyBuffer() {
-        if let content = getBufferContent() {
-            UIPasteboard.general.string = content
-            HapticFeedback.notification(.success)
+        Task { @MainActor in
+            if let content = await getBufferContent() {
+                UIPasteboard.general.string = content
+                HapticFeedback.notification(.success)
+            }
         }
     }
 
-    func getBufferContent() -> String? {
+    func getBufferContent() async -> String? {
         // Get the current terminal buffer content
-        self.terminalCoordinator?.getBufferContent()
+        await self.terminalCoordinator?.getBufferContent()
     }
 
     @MainActor
@@ -989,7 +1012,8 @@ class TerminalViewModel {
 protocol TerminalCoordinating: AnyObject {
     func feedData(_ data: String)
     func updateBuffer(from snapshot: BufferSnapshot)
+    func resetForReplay()
     func scrollToBottom()
     func setMaxWidth(_ maxWidth: Int)
-    func getBufferContent() -> String?
+    func getBufferContent() async -> String?
 }

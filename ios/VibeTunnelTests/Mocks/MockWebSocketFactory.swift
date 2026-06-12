@@ -10,7 +10,7 @@ class MockBufferWebSocketClient: BufferWebSocketClient {
     var unsubscribeCalled = false
     var lastSubscribedSessionId: String?
 
-    private var eventHandlers: [String: (TerminalWebSocketEvent) -> Void] = [:]
+    private var eventHandlers: [String: @MainActor (TerminalWebSocketEvent) -> Void] = [:]
 
     override func connect() {
         self.connectCalled = true
@@ -24,11 +24,15 @@ class MockBufferWebSocketClient: BufferWebSocketClient {
         super.disconnect()
     }
 
-    override func subscribe(to sessionId: String, handler: @escaping (TerminalWebSocketEvent) -> Void) {
+    override func subscribe(
+        to sessionId: String,
+        mode: TerminalSubscriptionMode = .snapshots,
+        handler: @escaping @MainActor (TerminalWebSocketEvent) -> Void)
+    {
         self.subscribeCalled = true
         self.lastSubscribedSessionId = sessionId
         self.eventHandlers[sessionId] = handler
-        super.subscribe(to: sessionId, handler: handler)
+        super.subscribe(to: sessionId, mode: mode, handler: handler)
     }
 
     override func unsubscribe(from sessionId: String) {

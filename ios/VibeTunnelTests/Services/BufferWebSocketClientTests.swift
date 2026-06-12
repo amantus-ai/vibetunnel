@@ -51,7 +51,7 @@ final class BufferWebSocketClientTests {
         // Arrange - server with HTTPS available
         let httpsConfig = ServerConfig(
             host: "100.64.0.1",
-            port: 4_020,
+            port: 4020,
             name: "Test Server",
             tailscaleHostname: "test-machine.tailnet.ts.net",
             tailscaleIP: "100.64.0.1",
@@ -59,8 +59,7 @@ final class BufferWebSocketClientTests {
             preferTailscale: true,
             httpsAvailable: true,
             isPublic: false,
-            preferSSL: true
-        )
+            preferSSL: true)
         TestFixtures.saveServerConfig(httpsConfig)
 
         // Create new client to pick up the config
@@ -73,7 +72,7 @@ final class BufferWebSocketClientTests {
         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
 
         // Assert - should use WSS with HTTPS hostname
-        #expect(mockFactory.createdWebSockets.count == 1)
+        #expect(self.mockFactory.createdWebSockets.count == 1)
         let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
         #expect(mockWebSocket.lastConnectURL?.scheme == "wss")
         #expect(mockWebSocket.lastConnectURL?.host == "test-machine.tailnet.ts.net")
@@ -159,11 +158,80 @@ final class BufferWebSocketClientTests {
 
         // Assert - Check if subscribe frame was sent (v3 type 10)
         let frames = mockWebSocket.sentDataMessages().compactMap { TestFixtures.decodeV3Frame($0) }
-        #expect(frames.contains { $0.type == 10 && $0.sessionId == sessionId })
+        let subscribeFrame = try #require(frames.first { $0.type == 10 && $0.sessionId == sessionId })
+        #expect(subscribeFrame.payload.count == 12)
+
+        let flags = subscribeFrame.payload.withUnsafeBytes { bytes in
+            bytes.loadUnaligned(as: UInt32.self).littleEndian
+        }
+        #expect(flags == 0b110)
+    }
+
+    @Test("Interactive subscriptions request stdout without snapshots")
+    func interactiveSessionSubscription() async throws {
+        let sessionId = "interactive-session"
+
+        self.client.connect()
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
+        self.client.subscribe(to: sessionId, mode: .stdout) { _ in }
+        try await Task.sleep(nanoseconds: 200_000_000)
+
+        let frames = mockWebSocket.sentDataMessages().compactMap { TestFixtures.decodeV3Frame($0) }
+        let subscribeFrame = try #require(frames.first { $0.type == 10 && $0.sessionId == sessionId })
+        let flags = subscribeFrame.payload.withUnsafeBytes { bytes in
+            bytes.loadUnaligned(as: UInt32.self).littleEndian
+        }
+
+        #expect(flags == 0b101)
+    }
+
+    @Test("Interactive subscriptions decode header and resize events")
+    func interactiveSessionEvents() async throws {
+        let sessionId = "interactive-session-events"
+        var receivedEvents: [TerminalWebSocketEvent] = []
+
+        self.client.subscribe(to: sessionId, mode: .stdout) { event in
+            receivedEvents.append(event)
+        }
+        self.client.connect()
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        let mockWebSocket = try #require(mockFactory.lastCreatedWebSocket)
+        let headerPayload = try #require(
+            #"{"kind":"header","header":{"version":2,"width":132,"height":43}}"#.data(using: .utf8))
+        let resizePayload = try #require(
+            #"{"kind":"resize","dimensions":"100x30"}"#.data(using: .utf8))
+
+        mockWebSocket.simulateMessages([
+            .data(TestFixtures.wrappedV3Frame(sessionId: sessionId, type: 22, payload: headerPayload)),
+            .data(TestFixtures.wrappedV3Frame(sessionId: sessionId, type: 22, payload: resizePayload)),
+        ])
+        try await waitFor { receivedEvents.count == 2 }
+
+        guard case let .header(width, height) = receivedEvents[0] else {
+            Issue.record("Expected header event")
+            return
+        }
+        #expect(width == 132)
+        #expect(height == 43)
+
+        guard case let .resize(_, dimensions) = receivedEvents[1] else {
+            Issue.record("Expected resize event")
+            return
+        }
+        #expect(dimensions == "100x30")
     }
 
     @Test("Handles reconnection after disconnection", .timeLimit(.minutes(1)))
     func reconnection() async throws {
+        let sessionId = "reconnecting-session"
+        var receivedEvents: [TerminalWebSocketEvent] = []
+        self.client.subscribe(to: sessionId, mode: .stdout) { event in
+            receivedEvents.append(event)
+        }
+
         // Connect
         self.client.connect()
         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
@@ -182,6 +250,26 @@ final class BufferWebSocketClientTests {
         // Assert
         let secondWebSocket = try #require(mockFactory.lastCreatedWebSocket)
         #expect(secondWebSocket !== firstWebSocket)
+
+        try await waitFor {
+            secondWebSocket.sentDataMessages()
+                .compactMap { TestFixtures.decodeV3Frame($0) }
+                .contains { $0.type == 10 && $0.sessionId == sessionId }
+        }
+        let subscribeFrame = try #require(
+            secondWebSocket.sentDataMessages()
+                .compactMap { TestFixtures.decodeV3Frame($0) }
+                .first { $0.type == 10 && $0.sessionId == sessionId })
+        let flags = subscribeFrame.payload.withUnsafeBytes { bytes in
+            bytes.loadUnaligned(as: UInt32.self).littleEndian
+        }
+        #expect(flags == 0b101)
+        #expect(receivedEvents.contains { event in
+            if case .replayStarted = event {
+                return true
+            }
+            return false
+        })
     }
 
     @Test("Sends ping messages periodically", .disabled("Ping timing is unpredictable in tests"))

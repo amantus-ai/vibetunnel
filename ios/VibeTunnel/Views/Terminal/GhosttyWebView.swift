@@ -1,6 +1,51 @@
 import SwiftUI
 import WebKit
 
+struct TerminalWriteBuffer {
+    private(set) var isReady = false
+    private var pendingData = ""
+
+    mutating func receive(_ data: String) -> String? {
+        guard self.isReady else {
+            self.pendingData += data
+            return nil
+        }
+        return data
+    }
+
+    mutating func markReady() -> String? {
+        guard !self.isReady else { return nil }
+        self.isReady = true
+
+        guard !self.pendingData.isEmpty else { return nil }
+        defer { self.pendingData.removeAll() }
+        return self.pendingData
+    }
+
+    mutating func discardPending() {
+        self.pendingData.removeAll()
+    }
+}
+
+enum GhosttyResourceLocator {
+    static func scriptURL(in bundle: Bundle = .main) -> URL? {
+        self.scriptURL { subdirectory in
+            if let subdirectory {
+                bundle.url(
+                    forResource: "ghostty-web",
+                    withExtension: "js",
+                    subdirectory: subdirectory)
+            } else {
+                bundle.url(forResource: "ghostty-web", withExtension: "js")
+            }
+        }
+    }
+
+    static func scriptURL(using lookup: (String?) -> URL?) -> URL? {
+        lookup("ghostty") ?? lookup(nil)
+    }
+}
+
 /// WebView-based terminal using ghostty-web (WASM + canvas).
 struct GhosttyWebView: UIViewRepresentable {
     struct TerminalSize: Equatable {
@@ -57,7 +102,7 @@ struct GhosttyWebView: UIViewRepresentable {
         weak var webView: WKWebView?
         private let logger = Logger(category: "GhosttyWebView")
         private var bufferRenderer = TerminalBufferRenderer()
-        private var isReady = false
+        private var writeBuffer = TerminalWriteBuffer()
         private var pendingTerminalSize: TerminalSize?
         private var lastTerminalSize: TerminalSize?
 
@@ -202,6 +247,10 @@ struct GhosttyWebView: UIViewRepresentable {
                         if (term) term.clear();
                     }
 
+                    function reset() {
+                        if (term) term.reset();
+                    }
+
                     function resize() {
                         if (fitAddon) fitAddon.fit();
                     }
@@ -212,14 +261,39 @@ struct GhosttyWebView: UIViewRepresentable {
                         term.resize(cols, rows);
                     }
 
+                    function getBufferContent() {
+                        if (!term) return '';
+
+                        const buffer = term.buffer.active;
+                        const lines = [];
+                        for (let i = 0; i < buffer.length; i++) {
+                            const line = buffer.getLine(i);
+                            if (!line) continue;
+
+                            const text = line.translateToString(true);
+                            if (line.isWrapped && lines.length > 0) {
+                                lines[lines.length - 1] += text;
+                            } else {
+                                lines.push(text);
+                            }
+                        }
+
+                        while (lines.length > 0 && lines[lines.length - 1] === '') {
+                            lines.pop();
+                        }
+                        return lines.join('\\n');
+                    }
+
                     window.ghosttyAPI = {
                         writeToTerminal,
                         updateFontSize,
                         updateTheme,
                         scrollToBottom,
                         clear,
+                        reset,
                         resize,
-                        setTerminalSize
+                        setTerminalSize,
+                        getBufferContent
                     };
 
                     window.addEventListener('load', initTerminal);
@@ -233,11 +307,7 @@ struct GhosttyWebView: UIViewRepresentable {
             </html>
             """
 
-            guard let ghosttyURL = Bundle.main.url(
-                forResource: "ghostty-web",
-                withExtension: "js",
-                subdirectory: "ghostty")
-            else {
+            guard let ghosttyURL = GhosttyResourceLocator.scriptURL() else {
                 self.logger.error("ghostty-web.js missing from bundle")
                 return
             }
@@ -294,7 +364,7 @@ struct GhosttyWebView: UIViewRepresentable {
             if size == self.lastTerminalSize { return }
             self.lastTerminalSize = size
 
-            if self.isReady {
+            if self.writeBuffer.isReady {
                 self.setTerminalSize(cols: size.cols, rows: size.rows)
             } else {
                 self.pendingTerminalSize = size
@@ -302,10 +372,12 @@ struct GhosttyWebView: UIViewRepresentable {
         }
 
         func handleTerminalReady() {
-            self.isReady = true
             if let size = pendingTerminalSize {
                 self.setTerminalSize(cols: size.cols, rows: size.rows)
                 self.pendingTerminalSize = nil
+            }
+            if let pendingData = self.writeBuffer.markReady() {
+                self.feedData(pendingData)
             }
         }
 
@@ -327,6 +399,7 @@ struct GhosttyWebView: UIViewRepresentable {
         }
 
         func feedData(_ data: String) {
+            guard let data = writeBuffer.receive(data) else { return }
             let followCursor = self.parent.viewModel?.isAutoScrollEnabled ?? true
             guard let payload = jsonString(data) else { return }
             self.webView?
@@ -351,12 +424,25 @@ struct GhosttyWebView: UIViewRepresentable {
             self.webView?.evaluateJavaScript("window.ghosttyAPI.clear()")
         }
 
+        func resetForReplay() {
+            self.bufferRenderer = TerminalBufferRenderer()
+            self.writeBuffer.discardPending()
+            self.webView?.evaluateJavaScript("window.ghosttyAPI.reset()")
+        }
+
         func setMaxWidth(_ maxWidth: Int) {
             self.logger.info("Max width set to: \(maxWidth == 0 ? "unlimited" : "\(maxWidth) columns")")
         }
 
-        func getBufferContent() -> String? {
-            self.bufferRenderer.bufferContent()
+        func getBufferContent() async -> String? {
+            guard let webView else { return nil }
+
+            do {
+                return try await webView.evaluateJavaScript("window.ghosttyAPI.getBufferContent()") as? String
+            } catch {
+                self.logger.error("Failed to read terminal buffer: \(error)")
+                return nil
+            }
         }
 
         private func makeThemeJSON(_ theme: TerminalTheme) -> String {
@@ -391,7 +477,7 @@ struct GhosttyWebView: UIViewRepresentable {
             return self.jsonString(fontFamily) ?? "\"monospace\""
         }
 
-        private func jsonString<T: Encodable>(_ value: T) -> String? {
+        private func jsonString(_ value: some Encodable) -> String? {
             guard let data = try? JSONEncoder().encode(value) else { return nil }
             return String(data: data, encoding: .utf8)
         }

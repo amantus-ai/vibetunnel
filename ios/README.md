@@ -50,6 +50,7 @@
 1. Ensure `VibeTunnel/Resources/ghostty/ghostty-web.js` is included in the target
 2. Ensure `VibeTunnel/Resources/ghostty/ghostty-vt.wasm` is included in the target
 3. These files are vendored from `web/node_modules/ghostty-web/dist`
+4. Xcode may flatten the synchronized `ghostty` folder into the app bundle root; the runtime supports both layouts
 
 ### 4. Configure Info.plist
 
@@ -140,6 +141,7 @@ VibeTunnel/
 - **Minimum iOS**: 18.0 (uses latest SwiftUI features)
 - **Swift**: 6.0 compatible
 - **Dependencies**: ghostty-web resources for terminal emulation
+- **Terminal transport**: interactive terminals stream stdout for low-latency echo; session previews use canonical snapshots
 - **Architecture**: MVVM with SwiftUI and Combine
 
 ### Logging with vtlog

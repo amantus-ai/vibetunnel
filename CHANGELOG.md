@@ -14,6 +14,7 @@
 - Default macOS build script to universal binaries with optional arch override (via [@rothnic](https://github.com/rothnic)) (#557)
 
 ### 🐛 Bug Fixes
+- Restore iOS terminal rendering, preserve output received during Ghostty startup, and stream stdout for immediate input echo (via [@waxzce](https://github.com/waxzce)) (#577)
 - Keep Korean and other CJK IME composition events intact and position desktop candidate windows at the terminal cursor (via [@jiangwenhan](https://github.com/jiangwenhan)) (#617)
 - Prevent rapid iOS slash-command redraws from queuing redundant smooth terminal scrolling (via [@Ilakiancs](https://github.com/Ilakiancs)) (#590)
 - Keep mobile session header controls visible and comfortably tappable at narrow phone widths (via [@nikolasdehor](https://github.com/nikolasdehor)) (#605)
@@ -42,6 +43,7 @@
 - Reset CLI outdated status after successful install and add regression coverage
 
 ### 👥 Contributors
+- Thanks [@waxzce](https://github.com/waxzce) for restoring reliable iOS terminal rendering and input echo.
 - Thanks [@jiangwenhan](https://github.com/jiangwenhan) for improving Korean and CJK terminal input.
 - Thanks [@Tyoneva](https://github.com/Tyoneva) for improving web app installation and icon support.
 - Thanks [@ndraiman](https://github.com/ndraiman) for fixing native forwarder crashes while collecting git metadata.

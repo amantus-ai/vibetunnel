@@ -3,6 +3,7 @@ import Foundation
 /// Terminal event types that match the server's output.
 /// Represents various events that can occur during terminal interaction.
 enum TerminalWebSocketEvent {
+    case replayStarted
     case header(width: Int, height: Int)
     case output(timestamp: Double, data: String)
     case resize(timestamp: Double, dimensions: String)
@@ -10,6 +11,11 @@ enum TerminalWebSocketEvent {
     case bufferUpdate(snapshot: BufferSnapshot)
     case bell
     case alert(title: String?, message: String)
+}
+
+enum TerminalSubscriptionMode: Equatable {
+    case snapshots
+    case stdout
 }
 
 /// Binary buffer snapshot data.
@@ -90,11 +96,17 @@ class BufferWebSocketClient: NSObject {
         let payload: Data
     }
 
+    private struct Subscription {
+        let mode: TerminalSubscriptionMode
+        let handler: @MainActor (TerminalWebSocketEvent) -> Void
+    }
+
     private var webSocket: WebSocketProtocol?
     private let webSocketFactory: WebSocketFactory
-    private var subscriptions = [String: (TerminalWebSocketEvent) -> Void]()
+    private var subscriptions = [String: Subscription]()
     private var reconnectTask: Task<Void, Never>?
     private var reconnectAttempts = 0
+    private var hasConnected = false
     private var isConnecting = false
     private var pingTask: Task<Void, Never>?
     private(set) var authenticationService: AuthenticationService?
@@ -218,7 +230,7 @@ class BufferWebSocketClient: NSObject {
         switch type {
         case .snapshotVT:
             if let event = decodeTerminalEvent(from: payload),
-               let handler = subscriptions[sessionId]
+               let handler = subscriptions[sessionId]?.handler
             {
                 handler(event)
             }
@@ -227,9 +239,8 @@ class BufferWebSocketClient: NSObject {
             self.handleV3Event(sessionId: sessionId, payload: payload)
 
         case .stdout:
-            // Optional: map to output events if needed later.
             if let text = String(data: payload, encoding: .utf8),
-               let handler = subscriptions[sessionId]
+               let handler = subscriptions[sessionId]?.handler
             {
                 handler(.output(timestamp: Date().timeIntervalSince1970, data: text))
             }
@@ -237,7 +248,7 @@ class BufferWebSocketClient: NSObject {
         case .error:
             let message = String(data: payload, encoding: .utf8) ?? "Unknown error"
             self.logger.warning("Server error: \(message)")
-            if let handler = subscriptions[sessionId] {
+            if let handler = subscriptions[sessionId]?.handler {
                 handler(.alert(title: "Server Error", message: message))
             }
 
@@ -247,18 +258,31 @@ class BufferWebSocketClient: NSObject {
     }
 
     private func handleV3Event(sessionId: String, payload: Data) {
-        guard let handler = subscriptions[sessionId] else { return }
+        guard let handler = subscriptions[sessionId]?.handler else { return }
         struct V3Event: Decodable {
             let kind: String
             let exitCode: Int?
+            let dimensions: String?
+            let header: AsciinemaHeader?
         }
 
         guard let event = try? JSONDecoder().decode(V3Event.self, from: payload) else {
             return
         }
 
-        if event.kind == "exit" {
+        switch event.kind {
+        case "exit":
             handler(.exit(code: event.exitCode ?? 0))
+        case "header":
+            if let header = event.header {
+                handler(.header(width: header.width, height: header.height))
+            }
+        case "resize":
+            if let dimensions = event.dimensions {
+                handler(.resize(timestamp: Date().timeIntervalSince1970, dimensions: dimensions))
+            }
+        default:
+            break
         }
     }
 
@@ -313,7 +337,7 @@ class BufferWebSocketClient: NSObject {
         let hasBell = (flags & 0x01) != 0
         if hasBell {
             // Send bell event separately
-            if let handler = subscriptions.values.first {
+            if let handler = subscriptions.values.first?.handler {
                 handler(.bell)
             }
         }
@@ -653,22 +677,22 @@ class BufferWebSocketClient: NSObject {
         return 1
     }
 
-    func subscribe(to sessionId: String, handler: @escaping (TerminalWebSocketEvent) -> Void) {
+    func subscribe(
+        to sessionId: String,
+        mode: TerminalSubscriptionMode = .snapshots,
+        handler: @escaping @MainActor (TerminalWebSocketEvent) -> Void)
+    {
         Task { @MainActor [weak self] in
             guard let self else { return }
 
             // Store the handler
-            self.subscriptions[sessionId] = handler
+            self.subscriptions[sessionId] = Subscription(mode: mode, handler: handler)
 
             // Send subscription message immediately if connected
             if self.isConnected {
-                try? await self.sendV3Subscribe(sessionId: sessionId)
+                try? await self.sendV3Subscribe(sessionId: sessionId, mode: mode)
             }
         }
-    }
-
-    private func subscribe(to sessionId: String) async throws {
-        try await self.sendV3Subscribe(sessionId: sessionId)
     }
 
     func unsubscribe(from sessionId: String) {
@@ -685,8 +709,14 @@ class BufferWebSocketClient: NSObject {
         }
     }
 
-    private func sendV3Subscribe(sessionId: String) async throws {
-        let flags: UInt32 = V3SubscribeFlags.snapshots.rawValue | V3SubscribeFlags.events.rawValue
+    private func sendV3Subscribe(sessionId: String, mode: TerminalSubscriptionMode) async throws {
+        let streamFlag: UInt32 = switch mode {
+        case .snapshots:
+            V3SubscribeFlags.snapshots.rawValue
+        case .stdout:
+            V3SubscribeFlags.stdout.rawValue
+        }
+        let flags = streamFlag | V3SubscribeFlags.events.rawValue
         var payload = Data(count: 12)
         payload.withUnsafeMutableBytes { bytes in
             bytes.storeBytes(of: flags.littleEndian, toByteOffset: 0, as: UInt32.self)
@@ -859,6 +889,7 @@ class BufferWebSocketClient: NSObject {
 
         self.subscriptions.removeAll()
         self.isConnected = false
+        self.hasConnected = false
     }
 
     deinit {
@@ -872,6 +903,8 @@ class BufferWebSocketClient: NSObject {
 extension BufferWebSocketClient: WebSocketDelegate {
     func webSocketDidConnect(_ webSocket: WebSocketProtocol) {
         self.logger.info("Connected")
+        let isReconnect = self.hasConnected
+        self.hasConnected = true
         self.isConnected = true
         self.isConnecting = false
         self.reconnectAttempts = 0
@@ -881,9 +914,12 @@ extension BufferWebSocketClient: WebSocketDelegate {
         Task { @MainActor [weak self] in
             guard let self else { return }
 
-            let sessionIds = Array(self.subscriptions.keys)
-            for sessionId in sessionIds {
-                try? await self.sendV3Subscribe(sessionId: sessionId)
+            let subscriptions = self.subscriptions
+            for (sessionId, subscription) in subscriptions {
+                if isReconnect, subscription.mode == .stdout {
+                    subscription.handler(.replayStarted)
+                }
+                try? await self.sendV3Subscribe(sessionId: sessionId, mode: subscription.mode)
             }
         }
     }
