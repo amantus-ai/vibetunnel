@@ -114,17 +114,7 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
       });
 
       this.serveProcess.on('exit', (code, signal) => {
-        logger.info(`Tailscale Serve process exited with code ${code}, signal ${signal}`);
-        if (code !== 0) {
-          // Check if this is the common "Serve not enabled" error
-          if (this.lastError?.includes('Serve is not enabled on your tailnet')) {
-            // Keep the more user-friendly error message we set in stderr handler
-            logger.info('Tailscale Serve failed due to tailnet permissions');
-          } else {
-            this.lastError = `Process exited with code ${code}`;
-          }
-        }
-        this.cleanup();
+        this.handleServeProcessExit(code, signal);
       });
 
       // Log stdout/stderr
@@ -197,10 +187,9 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
               logger.info('Tailscale Serve configured successfully (exit code 0)');
               // The serve process is now running in background
               this.serveProcess = null; // Clear reference as process has exited
-              // Give the configuration a moment to take effect
-              setTimeout(() => {
-                settlePromise(true); // SUCCESS - proxy is configured
-              }, 500);
+              // Exit code 0 is the CLI's completion signal. Settle immediately so the
+              // startup timeout cannot clear the configured port before status polling.
+              settlePromise(true);
             } else {
               settlePromise(false, `Tailscale Serve failed with exit code ${code}`);
             }
@@ -415,6 +404,7 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
 
     if (!this.serveProcess) {
       logger.debug('No Tailscale Serve process to stop');
+      this.cleanup();
       return;
     }
 
@@ -928,6 +918,26 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
 
     logger.warn(`No proxy configuration found for port ${port} in Tailscale serve status`);
     return false;
+  }
+
+  private handleServeProcessExit(code: number | null, signal: NodeJS.Signals | null): void {
+    logger.info(`Tailscale Serve process exited with code ${code}, signal ${signal}`);
+
+    // `tailscale serve --bg` exits after successfully installing the persistent proxy.
+    // Keep the configured port so status checks verify the proxy instead of falling back to 4020.
+    if (code === 0) {
+      this.serveProcess = null;
+      return;
+    }
+
+    // Check if this is the common "Serve not enabled" error.
+    if (this.lastError?.includes('Serve is not enabled on your tailnet')) {
+      // Keep the more user-friendly error message we set in stderr handler.
+      logger.info('Tailscale Serve failed due to tailnet permissions');
+    } else {
+      this.lastError = `Process exited with code ${code}`;
+    }
+    this.cleanup();
   }
 
   private cleanup(): void {

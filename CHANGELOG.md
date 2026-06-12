@@ -15,6 +15,7 @@
 - Default macOS build script to universal binaries with optional arch override (via [@rothnic](https://github.com/rothnic)) (#557)
 
 ### 🐛 Bug Fixes
+- Report Tailscale Serve as running after its background setup command exits successfully, instead of leaving the macOS app stuck on “Starting…” (#556)
 - Guide macOS terminal-test permission failures to the correct Automation or Accessibility settings pane (#554)
 - Add Warp Preview as a selectable macOS terminal, including app detection and command launching. (#535)
 - Show friendly authentication labels in the web user menu instead of raw internal method names (#369)
