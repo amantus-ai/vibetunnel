@@ -14,6 +14,7 @@
 - Default macOS build script to universal binaries with optional arch override (via [@rothnic](https://github.com/rothnic)) (#557)
 
 ### 🐛 Bug Fixes
+- Decode macOS session-creation timestamps in the server's ISO 8601 wire format, preventing a false error after the terminal opens (via [@apex-skyner](https://github.com/apex-skyner) and [@yashiels](https://github.com/yashiels)) (#635)
 - Allow the macOS app to bind the server to validated custom IPv4 or IPv6 addresses, including dual-stack `::`, with correct IPv6 dashboard URLs (via [@waxzce](https://github.com/waxzce)) (#576)
 - Restore iOS terminal rendering, preserve output received during Ghostty startup, and stream stdout for immediate input echo (via [@waxzce](https://github.com/waxzce)) (#577)
 - Keep Korean and other CJK IME composition events intact and position desktop candidate windows at the terminal cursor (via [@jiangwenhan](https://github.com/jiangwenhan)) (#617)
@@ -44,6 +45,7 @@
 - Reset CLI outdated status after successful install and add regression coverage
 
 ### 👥 Contributors
+- Thanks [@apex-skyner](https://github.com/apex-skyner) and [@yashiels](https://github.com/yashiels) for identifying the macOS session-creation timestamp decoding failure.
 - Thanks [@waxzce](https://github.com/waxzce) for adding configurable IPv4/IPv6 server binding and restoring reliable iOS terminal rendering and input echo.
 - Thanks [@jiangwenhan](https://github.com/jiangwenhan) for improving Korean and CJK terminal input.
 - Thanks [@Tyoneva](https://github.com/Tyoneva) for improving web app installation and icon support.
