@@ -94,6 +94,7 @@ test.describe('Keyboard Input Tests', () => {
       { length: 600 },
       (_, index) => `line-${String(index + 1).padStart(4, '0')}`
     ).join('\n')}\n`;
+    // Dispatch on the rendered paste target to exercise the app handler deterministically.
     await page.evaluate((text) => {
       const pasteInput = document.querySelector(
         'vibe-terminal .terminal-paste-input'
