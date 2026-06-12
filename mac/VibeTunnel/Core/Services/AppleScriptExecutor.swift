@@ -234,6 +234,8 @@ enum AppleScriptError: LocalizedError {
                 switch code {
                 case -1743:
                     return "User permission is required to control other applications."
+                case 1002, -25211, -1719:
+                    return "Accessibility permission is required to send keystrokes."
                 case -1728:
                     return "The application is not running or cannot be controlled."
                 case -1708:
@@ -262,8 +264,20 @@ enum AppleScriptError: LocalizedError {
         }
     }
 
+    /// Checks if this error represents a denied System Events keystroke.
+    var isAccessibilityPermissionError: Bool {
+        guard case let .executionFailed(_, errorCode) = self else {
+            return false
+        }
+        return errorCode == 1002 || errorCode == -25211 || errorCode == -1719
+    }
+
     /// Converts this error to a TerminalLauncherError if appropriate
     func toTerminalLauncherError() -> TerminalLauncherError {
+        if self.isAccessibilityPermissionError {
+            return .accessibilityPermissionDenied
+        }
+
         if self.isPermissionError {
             return .appleScriptPermissionDenied
         }

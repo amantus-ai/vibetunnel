@@ -221,16 +221,8 @@ enum Terminal: String, CaseIterable {
             return """
             tell application "\(self.processName)"
                 activate
-                -- Wait longer if Ghostty wasn't already running
-                delay 0.2
-                set windowCount to 0
-                try
-                    set windowCount to count of windows
-                end try
-                if windowCount = 0 then
-                    -- No windows open, need extra time for UI initialization
-                    delay \(startupDelay)
-                end if
+                -- Ghostty's AppleScript window query can hang, so use process state for startup timing.
+                delay \(startupDelay)
                 tell application "System Events"
                     tell process "\(self.processName)"
                         -- Create new window

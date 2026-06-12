@@ -126,6 +126,51 @@ struct TerminalLaunchTests {
         #expect(Bool(true)) // No-throw test
     }
 
+    @Test(arguments: [1002, -25211, -1719])
+    func keystrokePermissionErrorsRequireAccessibility(errorCode: Int) {
+        let error = AppleScriptError.executionFailed(
+            message: "System Events is not allowed to send keystrokes",
+            errorCode: errorCode)
+
+        #expect(error.isAccessibilityPermissionError)
+        #expect(error.failureReason == "Accessibility permission is required to send keystrokes.")
+
+        guard case .accessibilityPermissionDenied = error.toTerminalLauncherError() else {
+            Issue.record("Expected accessibility permission error for AppleScript code \(errorCode)")
+            return
+        }
+    }
+
+    @Test
+    func automationPermissionErrorRemainsDistinct() {
+        let error = AppleScriptError.executionFailed(
+            message: "Not authorized to send Apple events",
+            errorCode: -1743)
+
+        #expect(error.isPermissionError)
+        #expect(!error.isAccessibilityPermissionError)
+
+        guard case .appleScriptPermissionDenied = error.toTerminalLauncherError() else {
+            Issue.record("Expected automation permission error")
+            return
+        }
+    }
+
+    @Test
+    func ghosttyLaunchDoesNotQueryAppleScriptWindows() {
+        let config = TerminalLaunchConfig(
+            command: "printf 'VibeTunnel Ghostty test'",
+            workingDirectory: nil,
+            terminal: .ghostty)
+        let script = Terminal.ghostty.unifiedAppleScript(for: config)
+
+        #expect(!script.contains("count of windows"))
+        #expect(script.contains("tell application \"System Events\""))
+        #expect(script.contains("keystroke \"n\" using {command down}"))
+        #expect(script.contains("keystroke \"v\" using {command down}"))
+        #expect(script.contains("key code 36"))
+    }
+
     // MARK: - Script File Tests
 
     @Test
