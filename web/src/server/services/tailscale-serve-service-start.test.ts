@@ -226,9 +226,10 @@ describe('TailscaleServeService startup', () => {
     expect(internals.currentPort).toBe(43213);
   });
 
-  it('terminates a tracked Serve child when reset fails', async () => {
+  it('terminates a tracked Serve child without hiding state when reset fails', async () => {
     const resetProcess = fakeProcess();
     const serveProcess = fakeProcess();
+    const startTime = new Date('2026-06-12T23:00:00.000Z');
     serveProcess.kill = vi.fn((signal) => {
       serveProcess.killed = true;
       queueMicrotask(() => serveProcess.emit('exit', null, signal));
@@ -237,11 +238,18 @@ describe('TailscaleServeService startup', () => {
     const internals = service as unknown as {
       currentPort: number | null;
       isStarting: boolean;
+      lastError: string | undefined;
       serveProcess: ChildProcess | null;
+      startTime: Date | undefined;
+      handleServeProcessExit(code: number | null, signal: NodeJS.Signals | null): void;
     };
     internals.currentPort = 43213;
     internals.isStarting = false;
     internals.serveProcess = serveProcess;
+    internals.startTime = startTime;
+    serveProcess.on('exit', (code, signal) => {
+      internals.handleServeProcessExit(code, signal);
+    });
 
     spawnMock.mockImplementationOnce(() => {
       queueMicrotask(() => resetProcess.emit('exit', 1, null));
@@ -251,7 +259,15 @@ describe('TailscaleServeService startup', () => {
     await expect(service.stop()).resolves.toBeUndefined();
     expect(serveProcess.kill).toHaveBeenCalledWith('SIGTERM');
     expect(internals.serveProcess).toBeNull();
-    expect(internals.currentPort).toBeNull();
-    expect(service.isRunning()).toBe(false);
+    expect(internals.currentPort).toBe(43213);
+    expect(internals.lastError).toBe('Failed to reset Tailscale Serve configuration');
+    expect(internals.startTime).toBe(startTime);
+    expect(service.isRunning()).toBe(true);
+    await expect(service.getStatus()).resolves.toMatchObject({
+      isRunning: true,
+      port: 43213,
+      lastError: undefined,
+      startTime,
+    });
   });
 });

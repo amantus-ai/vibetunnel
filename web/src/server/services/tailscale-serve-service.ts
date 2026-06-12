@@ -411,6 +411,13 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
     }
 
     logger.info('Stopping Tailscale Serve process...');
+    const stateToPreserve = resetSucceeded
+      ? null
+      : {
+          currentPort: this.currentPort,
+          lastError: this.lastError,
+          startTime: this.startTime,
+        };
 
     return new Promise<void>((resolve) => {
       if (!this.serveProcess) {
@@ -420,6 +427,11 @@ export class TailscaleServeServiceImpl implements TailscaleServeService {
 
       const cleanup = () => {
         this.cleanup();
+        if (stateToPreserve) {
+          this.currentPort = stateToPreserve.currentPort;
+          this.lastError = stateToPreserve.lastError;
+          this.startTime = stateToPreserve.startTime;
+        }
         resolve();
       };
 
