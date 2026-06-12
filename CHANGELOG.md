@@ -15,6 +15,7 @@
 - Default macOS build script to universal binaries with optional arch override (via [@rothnic](https://github.com/rothnic)) (#557)
 
 ### 🐛 Bug Fixes
+- Accept iOS hardware keyboard input without first opening the software keyboard (#491)
 - Keep iOS hardware Escape keys inside active terminal sessions (#492)
 - Keep the mobile terminal prompt visible when opening the software keyboard and quick keys (#544)
 - Stop reporting macOS Accessibility permission as granted when VibeTunnel can inspect only its own windows (#337)

@@ -152,22 +152,112 @@ describe('LifecycleEventManager', () => {
       expect(mockCallbacks.handleKeyboardInput).toHaveBeenCalledWith(escapeEvent);
     });
 
-    it('ignores other mobile hardware keys outside direct keyboard mode', () => {
+    it('routes ordinary mobile hardware keys to the running terminal', () => {
+      const mockCallbacks = {
+        getDisableFocusManagement: vi.fn().mockReturnValue(false),
+        getInputManager: vi.fn().mockReturnValue({
+          isKeyboardShortcut: vi.fn().mockReturnValue(false),
+        }),
+        handleKeyboardInput: vi.fn(),
+      };
+
+      manager.setCallbacks(mockCallbacks as Parameters<typeof manager.setCallbacks>[0]);
+      manager.setSession({
+        id: 'test-session',
+        status: 'running',
+      } as Parameters<typeof manager.setSession>[0]);
+
+      const keyEvent = new KeyboardEvent('keydown', { key: 'a' });
+      manager.mobileHardwareKeyboardHandler(keyEvent);
+
+      expect(eventUtils.consumeEvent).toHaveBeenCalledWith(keyEvent);
+      expect(mockCallbacks.handleKeyboardInput).toHaveBeenCalledWith(keyEvent);
+    });
+
+    it('leaves mobile keyboard events from editable controls untouched', () => {
       const mockCallbacks = {
         getDisableFocusManagement: vi.fn().mockReturnValue(false),
         getInputManager: vi.fn(),
         handleKeyboardInput: vi.fn(),
       };
+      const input = document.createElement('input');
+      document.body.appendChild(input);
 
       manager.setCallbacks(mockCallbacks as Parameters<typeof manager.setCallbacks>[0]);
-      manager.mobileHardwareKeyboardHandler(new KeyboardEvent('keydown', { key: 'a' }));
+      manager.setSession({
+        id: 'test-session',
+        status: 'running',
+      } as Parameters<typeof manager.setSession>[0]);
+
+      try {
+        input.addEventListener('keydown', manager.mobileHardwareKeyboardHandler);
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+      } finally {
+        input.remove();
+      }
 
       expect(eventUtils.consumeEvent).not.toHaveBeenCalled();
       expect(mockCallbacks.getInputManager).not.toHaveBeenCalled();
       expect(mockCallbacks.handleKeyboardInput).not.toHaveBeenCalled();
     });
 
-    it('registers and removes the mobile hardware Escape listener', () => {
+    it('leaves mobile keyboard events from Shadow DOM editors untouched', () => {
+      const mockCallbacks = {
+        getDisableFocusManagement: vi.fn().mockReturnValue(false),
+        getInputManager: vi.fn(),
+        handleKeyboardInput: vi.fn(),
+      };
+      const inlineEdit = document.createElement('inline-edit');
+      const shadowRoot = inlineEdit.attachShadow({ mode: 'open' });
+      const input = document.createElement('input');
+      shadowRoot.appendChild(input);
+      document.body.appendChild(inlineEdit);
+
+      manager.setCallbacks(mockCallbacks as Parameters<typeof manager.setCallbacks>[0]);
+      manager.setSession({
+        id: 'test-session',
+        status: 'running',
+      } as Parameters<typeof manager.setSession>[0]);
+
+      try {
+        document.addEventListener('keydown', manager.mobileHardwareKeyboardHandler);
+        input.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'a', bubbles: true, composed: true })
+        );
+      } finally {
+        document.removeEventListener('keydown', manager.mobileHardwareKeyboardHandler);
+        inlineEdit.remove();
+      }
+
+      expect(eventUtils.consumeEvent).not.toHaveBeenCalled();
+      expect(mockCallbacks.getInputManager).not.toHaveBeenCalled();
+      expect(mockCallbacks.handleKeyboardInput).not.toHaveBeenCalled();
+    });
+
+    it('leaves mobile browser shortcuts to the browser', () => {
+      const mockCallbacks = {
+        getDisableFocusManagement: vi.fn().mockReturnValue(false),
+        getInputManager: vi.fn().mockReturnValue({
+          isKeyboardShortcut: vi.fn().mockReturnValue(true),
+        }),
+        handleKeyboardInput: vi.fn(),
+      };
+
+      manager.setCallbacks(mockCallbacks as Parameters<typeof manager.setCallbacks>[0]);
+      manager.setSession({
+        id: 'test-session',
+        status: 'running',
+      } as Parameters<typeof manager.setSession>[0]);
+
+      manager.mobileHardwareKeyboardHandler(
+        new KeyboardEvent('keydown', { key: 'l', metaKey: true })
+      );
+
+      expect(eventUtils.consumeEvent).not.toHaveBeenCalled();
+      expect(mockCallbacks.handleKeyboardInput).not.toHaveBeenCalled();
+    });
+
+    it('registers and removes the mobile hardware keyboard listener', () => {
       const mockCallbacks = {
         getDisableFocusManagement: vi.fn().mockReturnValue(false),
         getInputManager: vi.fn().mockReturnValue({
@@ -186,12 +276,12 @@ describe('LifecycleEventManager', () => {
       } as Parameters<typeof manager.setSession>[0]);
       lifecycle.setupEventListeners(true);
 
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
       expect(mockCallbacks.handleKeyboardInput).toHaveBeenCalledTimes(1);
 
       manager.cleanup();
       vi.clearAllMocks();
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
 
       expect(mockCallbacks.handleKeyboardInput).not.toHaveBeenCalled();
     });

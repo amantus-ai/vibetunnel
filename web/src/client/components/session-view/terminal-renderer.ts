@@ -62,6 +62,7 @@ export class TerminalRenderer extends LitElement {
         .hideScrollButton=${this.hideScrollButton}
         class="w-full h-full p-0 m-0 terminal-container"
         @click=${(e: Event) => this.handleClick(e)}
+        @touchend=${(e: Event) => this.handleClick(e)}
         @terminal-input=${(e: Event) => this.handleTerminalInput(e)}
         @terminal-resize=${(e: Event) => this.handleTerminalResize(e)}
         @terminal-ready=${(e: Event) => this.handleTerminalReady(e)}

@@ -214,6 +214,25 @@ describe('SessionView', () => {
       const mobileTestElement = mobileElement as SessionViewTestInterface;
       const uiState = mobileTestElement.uiStateManager.getState();
       expect(uiState.isMobile).toBe(true);
+      expect(document.activeElement).not.toBe(mobileElement);
+
+      const mockSession = createMockSession({
+        id: 'mobile-hardware-keyboard-session',
+        status: 'running',
+      });
+      mobileElement.session = mockSession;
+      await mobileElement.updateComplete;
+      const terminal = mobileElement.querySelector('vibe-terminal');
+      await vi.waitFor(() => expect(terminal?.getAttribute('data-ready')).toBe('true'));
+      await vi.waitFor(() => expect(document.activeElement).toBe(mobileElement));
+
+      const terminalContainer = terminal?.querySelector('#terminal-container') as HTMLElement;
+      terminalContainer.focus();
+      terminalContainer.dispatchEvent(
+        new Event('touchend', { bubbles: true, composed: true, cancelable: true })
+      );
+      await vi.waitFor(() => expect(document.activeElement).toBe(mobileElement));
+      mobileElement.remove();
 
       // Restore original values
       Object.defineProperty(navigator, 'maxTouchPoints', {

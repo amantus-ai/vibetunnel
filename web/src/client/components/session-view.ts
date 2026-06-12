@@ -99,6 +99,7 @@ export class SessionView extends LitElement {
 
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
   private _updateTerminalTransformTimeout: ReturnType<typeof setTimeout> | null = null;
+  private mobileHardwareFocusTimeout: ReturnType<typeof setTimeout> | null = null;
   // Measured height of the quick-keys bar; fed into --quickkeys-height so the terminal
   // reserves space for it instead of letting it cover the bottom rows.
   private quickKeysHeight = 0;
@@ -435,6 +436,10 @@ export class SessionView extends LitElement {
     if (this._updateTerminalTransformTimeout) {
       clearTimeout(this._updateTerminalTransformTimeout);
       this._updateTerminalTransformTimeout = null;
+    }
+    if (this.mobileHardwareFocusTimeout) {
+      clearTimeout(this.mobileHardwareFocusTimeout);
+      this.mobileHardwareFocusTimeout = null;
     }
 
     // Use lifecycle event manager for teardown
@@ -774,8 +779,7 @@ export class SessionView extends LitElement {
       e.stopPropagation();
       e.preventDefault();
 
-      // Don't do anything - the hidden input should handle all interactions
-      // The click on the terminal is actually a click on the hidden input overlay
+      this.scheduleMobileHardwareFocus();
       return;
     }
   }
@@ -796,6 +800,33 @@ export class SessionView extends LitElement {
     logger.log('Terminal ready event received');
     // Terminal is ready, ensure it's properly initialized
     this.ensureTerminalInitialized();
+
+    this.scheduleMobileHardwareFocus();
+  }
+
+  private scheduleMobileHardwareFocus() {
+    if (!this.uiStateManager.getState().isMobile) {
+      return;
+    }
+
+    if (this.mobileHardwareFocusTimeout) {
+      clearTimeout(this.mobileHardwareFocusTimeout);
+    }
+    this.mobileHardwareFocusTimeout = setTimeout(() => {
+      this.mobileHardwareFocusTimeout = null;
+      const activeElement = document.activeElement;
+      const terminalOwnsFocus =
+        activeElement instanceof HTMLElement && activeElement.closest('vibe-terminal') !== null;
+      if (
+        this.isConnected &&
+        !this.disableFocusManagement &&
+        (activeElement === document.body ||
+          activeElement === document.documentElement ||
+          terminalOwnsFocus)
+      ) {
+        this.focus();
+      }
+    }, 0);
   }
 
   private handleTerminalOutput(data: string) {
