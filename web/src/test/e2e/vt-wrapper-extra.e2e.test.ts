@@ -128,7 +128,11 @@ describe('vt wrapper extra flows', () => {
     const marker = `vt-alias-ok-${Date.now()}`;
     const vtPath = path.join(process.cwd(), 'bin', 'vt');
 
-    writeFileSync(path.join(homeDir, '.bashrc'), `alias vttest='printf "${marker}\\n"'\n`, 'utf-8');
+    writeFileSync(
+      path.join(homeDir, '.bashrc'),
+      `alias vttest='printf "${marker}\\n"; sleep 1'\n`,
+      'utf-8'
+    );
 
     const before = new Set(listSessionDirs(controlDir));
 
@@ -147,7 +151,7 @@ describe('vt wrapper extra flows', () => {
     const stderr: string[] = [];
     child.stderr?.on('data', (data) => stderr.push(data.toString()));
 
-    await new Promise<void>((resolve, reject) => {
+    const exitPromise = new Promise<void>((resolve, reject) => {
       child.on('error', (error) =>
         reject(error instanceof Error ? error : new Error(String(error)))
       );
@@ -165,7 +169,7 @@ describe('vt wrapper extra flows', () => {
     }
 
     const sessionId = await waitForNewSessionDir(controlDir, before);
-    await waitForSessionText(server.port, sessionId, marker);
+    await Promise.all([waitForSessionText(server.port, sessionId, marker), exitPromise]);
   }, 20000);
 
   it('prefers client-resolved binary paths over server PATH', async () => {
