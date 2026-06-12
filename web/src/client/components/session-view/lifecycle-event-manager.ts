@@ -27,6 +27,11 @@ export type { LifecycleEventManagerCallbacks } from './interfaces.js';
 // Threshold for determining when keyboard is considered visible (in pixels)
 const KEYBOARD_VISIBLE_THRESHOLD = 50;
 
+function isFileBrowserShortcut(e: KeyboardEvent): boolean {
+  const hasSinglePrimaryModifier = e.metaKey !== e.ctrlKey;
+  return hasSinglePrimaryModifier && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'o';
+}
+
 export class LifecycleEventManager extends ManagerEventEmitter {
   private callbacks: LifecycleEventManagerCallbacks | null = null;
   private session: Session | null = null;
@@ -263,18 +268,17 @@ export class LifecycleEventManager extends ManagerEventEmitter {
       return;
     }
 
-    // Check if this is a browser shortcut we should allow FIRST before any other processing
-    const inputManager = this.callbacks.getInputManager();
-    if (inputManager?.isKeyboardShortcut(e)) {
-      // Let the browser handle this shortcut - don't call any preventDefault or stopPropagation
+    // App shortcuts take precedence over browser/system shortcut filtering.
+    if (isFileBrowserShortcut(e)) {
+      consumeEvent(e);
+      this.callbacks.setShowFileBrowser(true);
       return;
     }
 
-    // Handle Cmd+O / Ctrl+O to open file browser
-    if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
-      // Stop propagation to prevent parent handlers from interfering with our file browser
-      consumeEvent(e);
-      this.callbacks.setShowFileBrowser(true);
+    // Check if this is a browser shortcut we should allow before terminal input processing.
+    const inputManager = this.callbacks.getInputManager();
+    if (inputManager?.isKeyboardShortcut(e)) {
+      // Let the browser handle this shortcut - don't call any preventDefault or stopPropagation
       return;
     }
 
@@ -303,6 +307,12 @@ export class LifecycleEventManager extends ManagerEventEmitter {
   };
 
   mobileHardwareKeyboardHandler = (e: KeyboardEvent): void => {
+    // The hidden mobile keyboard input still needs to expose app-level hardware shortcuts.
+    if (isFileBrowserShortcut(e)) {
+      this.keyboardHandler(e);
+      return;
+    }
+
     // Mobile's hidden software-keyboard input owns its events. Route only hardware
     // keyboard events that originate outside editable or interactive controls.
     for (const target of e.composedPath()) {

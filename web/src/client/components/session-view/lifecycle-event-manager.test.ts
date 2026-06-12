@@ -86,6 +86,55 @@ describe('LifecycleEventManager', () => {
       expect(eventUtils.consumeEvent).not.toHaveBeenCalled();
     });
 
+    it('handles the file browser shortcut before browser shortcut filtering', () => {
+      const mockCallbacks = {
+        getDisableFocusManagement: vi.fn().mockReturnValue(false),
+        setShowFileBrowser: vi.fn(),
+        getInputManager: vi.fn().mockReturnValue({
+          isKeyboardShortcut: vi.fn().mockReturnValue(true),
+        }),
+        handleKeyboardInput: vi.fn(),
+      };
+
+      manager.setCallbacks(mockCallbacks as Parameters<typeof manager.setCallbacks>[0]);
+
+      const cmdOEvent = new KeyboardEvent('keydown', {
+        key: 'o',
+        metaKey: true,
+      });
+      manager.keyboardHandler(cmdOEvent);
+
+      expect(eventUtils.consumeEvent).toHaveBeenCalledWith(cmdOEvent);
+      expect(mockCallbacks.setShowFileBrowser).toHaveBeenCalledWith(true);
+      expect(mockCallbacks.getInputManager).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      { metaKey: true, shiftKey: true },
+      { ctrlKey: true, altKey: true },
+      { metaKey: true, ctrlKey: true },
+    ])('preserves modified browser O shortcuts: %o', (modifiers) => {
+      const isKeyboardShortcut = vi.fn().mockReturnValue(true);
+      const mockCallbacks = {
+        getDisableFocusManagement: vi.fn().mockReturnValue(false),
+        setShowFileBrowser: vi.fn(),
+        getInputManager: vi.fn().mockReturnValue({ isKeyboardShortcut }),
+        handleKeyboardInput: vi.fn(),
+      };
+
+      manager.setCallbacks(mockCallbacks as Parameters<typeof manager.setCallbacks>[0]);
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'o',
+        ...modifiers,
+      });
+      manager.keyboardHandler(event);
+
+      expect(isKeyboardShortcut).toHaveBeenCalledWith(event);
+      expect(eventUtils.consumeEvent).not.toHaveBeenCalled();
+      expect(mockCallbacks.setShowFileBrowser).not.toHaveBeenCalled();
+    });
+
     it('should leave native IME composition events to the browser', () => {
       const mockCallbacks = {
         getDisableFocusManagement: vi.fn().mockReturnValue(false),
@@ -197,6 +246,37 @@ describe('LifecycleEventManager', () => {
       }
 
       expect(eventUtils.consumeEvent).not.toHaveBeenCalled();
+      expect(mockCallbacks.getInputManager).not.toHaveBeenCalled();
+      expect(mockCallbacks.handleKeyboardInput).not.toHaveBeenCalled();
+    });
+
+    it('routes the mobile file browser shortcut from the hidden keyboard input', () => {
+      const mockCallbacks = {
+        getDisableFocusManagement: vi.fn().mockReturnValue(false),
+        setShowFileBrowser: vi.fn(),
+        getInputManager: vi.fn(),
+        handleKeyboardInput: vi.fn(),
+      };
+      const input = document.createElement('input');
+      document.body.appendChild(input);
+
+      manager.setCallbacks(mockCallbacks as Parameters<typeof manager.setCallbacks>[0]);
+
+      try {
+        input.addEventListener('keydown', manager.mobileHardwareKeyboardHandler);
+        input.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'o',
+            metaKey: true,
+            bubbles: true,
+          })
+        );
+      } finally {
+        input.remove();
+      }
+
+      expect(eventUtils.consumeEvent).toHaveBeenCalledTimes(1);
+      expect(mockCallbacks.setShowFileBrowser).toHaveBeenCalledWith(true);
       expect(mockCallbacks.getInputManager).not.toHaveBeenCalled();
       expect(mockCallbacks.handleKeyboardInput).not.toHaveBeenCalled();
     });
