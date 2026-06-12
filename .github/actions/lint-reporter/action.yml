@@ -52,27 +52,10 @@ runs:
           const result = ${{ toJSON(inputs.lint-result) }};
           const output = ${{ toJSON(inputs.lint-output) }};
           const existingCommentId = '${{ steps.fc.outputs.comment-id }}';
-          
-          const icon = result === 'success' ? '✅' : '❌';
-          const status = result === 'success' ? 'Passed' : 'Failed';
-          
-          // Create section content
-          let sectionContent = `### ${title} ${icon} **Status**: ${status}\n`;
-          
-          // Special formatting for coverage reports
-          if (title.includes('Coverage')) {
-            if (result === 'success' || (output && output.includes('%'))) {
-              // Show coverage metrics directly (not in details)
-              sectionContent += `\n${output}\n`;
-            } else if (output && output !== 'No output') {
-              sectionContent += `\n<details>\n<summary>Click to see details</summary>\n\n\`\`\`\n${output}\n\`\`\`\n\n</details>\n`;
-            }
-          } else {
-            // Regular lint output
-            if (result !== 'success' && output && output !== 'No output') {
-              sectionContent += `\n<details>\n<summary>Click to see details</summary>\n\n\`\`\`\n${output}\n\`\`\`\n\n</details>\n`;
-            }
-          }
+          const { renderSection, upsertSection } = require(
+            `${process.env.GITHUB_WORKSPACE}/.github/actions/lint-reporter/comment-body.cjs`
+          );
+          const sectionContent = renderSection({ title, result, output });
           
           let body;
           if (existingCommentId) {
@@ -84,37 +67,7 @@ runs:
             });
             
             const existingBody = comment.body;
-            const sectionHeader = `### ${title}`;
-            const nextSectionRegex = /^###\s/m;
-            
-            if (existingBody.includes(sectionHeader)) {
-              // Replace existing section
-              const lines = existingBody.split('\n');
-              let inSection = false;
-              let newLines = [];
-              
-              for (let i = 0; i < lines.length; i++) {
-                if (lines[i] === sectionHeader) {
-                  inSection = true;
-                  // Add the new section content
-                  newLines.push(...sectionContent.trim().split('\n'));
-                  continue;
-                }
-                
-                if (inSection && lines[i].match(nextSectionRegex)) {
-                  inSection = false;
-                }
-                
-                if (!inSection) {
-                  newLines.push(lines[i]);
-                }
-              }
-              
-              body = newLines.join('\n');
-            } else {
-              // Add new section at the end
-              body = existingBody + '\n\n' + sectionContent;
-            }
+            body = upsertSection(existingBody, title, sectionContent);
           } else {
             // Create new comment
             body = `## 🔍 Code Quality Report\n<!-- lint-results -->\n\nThis comment is automatically updated with linting results from CI.\n\n${sectionContent}`;

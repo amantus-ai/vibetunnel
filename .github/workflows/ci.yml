@@ -27,12 +27,15 @@ jobs:
       ios: ${{ steps.filter.outputs.ios }}
     steps:
     - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+    - name: Test CI helper scripts
+      run: node --test .github/actions/lint-reporter/comment-body.test.cjs
     - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
       id: filter
       with:
         filters: |
           web:
             - 'web/**'
+            - '.github/actions/lint-reporter/**'
             - '.github/workflows/node.yml'
             - '.github/workflows/web-ci.yml'
             - 'package.json'
