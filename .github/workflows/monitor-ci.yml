@@ -17,11 +17,15 @@ jobs:
     runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     
     steps:
-    - name: Check CI Status
+    - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+    - name: Report CI Status
       uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
-      id: check-status
       with:
         script: |
+          const path = require('node:path');
+          const { renderStatusComment, upsertStatusComment } = require(
+            path.join(process.env.GITHUB_WORKSPACE, '.github/actions/ci-status-comment/report.cjs')
+          );
           const workflow_run = context.payload.workflow_run;
           
           console.log(`Workflow ${workflow_run.name} completed with status: ${workflow_run.conclusion}`);
@@ -43,47 +47,28 @@ jobs:
             }
           }
           
-          // Report failures in PR comment if applicable
-          if (workflow_run.conclusion === 'failure' && workflow_run.pull_requests.length > 0) {
-            const pr = workflow_run.pull_requests[0];
-            const failedJobs = jobs.data.jobs.filter(j => j.conclusion === 'failure');
-            
-            let comment = '## ❌ CI Failed\n\n';
-            comment += `[View failed run](${workflow_run.html_url})\n\n`;
-            comment += '### Failed Jobs:\n';
-            
-            for (const job of failedJobs) {
-              comment += `- **${job.name}**\n`;
-              const failedStep = job.steps.find(s => s.conclusion === 'failure');
-              if (failedStep) {
-                comment += `  - Failed at: ${failedStep.name}\n`;
-              }
-            }
-            
-            // Store comment body for next step
-            core.setOutput('comment_body', comment);
-            core.setOutput('pr_number', pr.number.toString());
-            core.setOutput('should_comment', 'true');
-          } else {
-            core.setOutput('should_comment', 'false');
+          const pr = workflow_run.pull_requests[0];
+          if (!pr) {
+            console.log('No pull request associated with this run');
+            return;
           }
-    
-    - name: Find Comment
-      if: steps.check-status.outputs.should_comment == 'true'
-      uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad # v4
-      id: fc
-      with:
-        issue-number: ${{ steps.check-status.outputs.pr_number }}
-        comment-author: 'github-actions[bot]'
-        body-includes: '<!-- vibetunnel-ci-status -->'
-    
-    - name: Create or Update Comment
-      if: steps.check-status.outputs.should_comment == 'true'
-      uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5
-      with:
-        comment-id: ${{ steps.fc.outputs.comment-id }}
-        issue-number: ${{ steps.check-status.outputs.pr_number }}
-        body: |
-          <!-- vibetunnel-ci-status -->
-          ${{ steps.check-status.outputs.comment_body }}
-        edit-mode: replace
+
+          const comment = renderStatusComment({
+            conclusion: workflow_run.conclusion,
+            htmlUrl: workflow_run.html_url,
+            jobs: jobs.data.jobs,
+          });
+          if (!comment) {
+            console.log(`No status update needed for conclusion: ${workflow_run.conclusion}`);
+            return;
+          }
+
+          const operation = await upsertStatusComment({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issueNumber: pr.number,
+            body: comment,
+            createIfMissing: workflow_run.conclusion === 'failure',
+          });
+          console.log(`${operation} CI status comment on PR #${pr.number}`);
