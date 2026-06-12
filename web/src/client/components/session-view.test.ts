@@ -211,6 +211,10 @@ describe('SessionView', () => {
         // The default fixture can own focus. Remove it so terminal-ready starts from
         // the same neutral document focus as a newly opened mobile session.
         element.remove();
+        localStorage.setItem(
+          'vibetunnel_app_preferences',
+          JSON.stringify({ useDirectKeyboard: false })
+        );
         mobileElement = await fixture<SessionView>(html` <session-view></session-view> `);
         await mobileElement.updateComplete;
 
