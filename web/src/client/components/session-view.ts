@@ -793,9 +793,18 @@ export class SessionView extends LitElement {
   private handleTerminalClick(e: Event) {
     const uiState = this.uiStateManager.getState();
     if (uiState.isMobile) {
-      // Prevent the event from bubbling and default action
-      e.stopPropagation();
-      e.preventDefault();
+      const isLinkInteraction = e
+        .composedPath()
+        .some((target) => target instanceof Element && target.matches('a[href]'));
+      if (isLinkInteraction) {
+        return;
+      }
+
+      // Keep touchend observable by the document-level swipe-back handler.
+      if (e.type !== 'touchend') {
+        e.stopPropagation();
+        e.preventDefault();
+      }
 
       this.scheduleMobileHardwareFocus();
       return;

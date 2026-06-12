@@ -71,6 +71,7 @@ interface SessionViewTestInterface extends SessionView {
   };
   getTerminalElement: () => Terminal | null;
   ensureTerminalInitialized: () => void;
+  handleTerminalClick: (event: Event) => void;
   updateTerminalTransform: () => void;
   _updateTerminalTransformTimeout: ReturnType<typeof setTimeout> | null;
 }
@@ -239,7 +240,14 @@ describe('SessionView', () => {
         const terminalContainer = terminal?.querySelector('#terminal-container') as HTMLElement;
         terminalContainer.focus();
         terminalContainer.dispatchEvent(
-          new Event('touchend', { bubbles: true, composed: true, cancelable: true })
+          new TouchEvent('touchend', {
+            bubbles: true,
+            composed: true,
+            cancelable: true,
+            touches: [],
+            targetTouches: [],
+            changedTouches: [{ clientX: 10, clientY: 10 }] as unknown as Touch[],
+          })
         );
         await vi.waitFor(() => expect(document.activeElement).toBe(mobileElement));
       } finally {
@@ -274,6 +282,47 @@ describe('SessionView', () => {
         requestAnimationFrameSpy.mockRestore();
         vi.useRealTimers();
       }
+    });
+
+    it('leaves terminal touchend available to mobile swipe navigation', () => {
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setIsMobile(true);
+      const touchEnd = new Event('touchend', { bubbles: true, cancelable: true });
+      const stopPropagation = vi.spyOn(touchEnd, 'stopPropagation');
+      const preventDefault = vi.spyOn(touchEnd, 'preventDefault');
+
+      testElement.handleTerminalClick(touchEnd);
+
+      expect(stopPropagation).not.toHaveBeenCalled();
+      expect(preventDefault).not.toHaveBeenCalled();
+      expect(touchEnd.defaultPrevented).toBe(false);
+    });
+
+    it('leaves mobile terminal links to native navigation', () => {
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setIsMobile(true);
+      const anchor = document.createElement('a');
+      anchor.href = 'https://example.com';
+      const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+      vi.spyOn(click, 'composedPath').mockReturnValue([anchor]);
+      const stopPropagation = vi.spyOn(click, 'stopPropagation');
+      const preventDefault = vi.spyOn(click, 'preventDefault');
+
+      testElement.handleTerminalClick(click);
+
+      expect(stopPropagation).not.toHaveBeenCalled();
+      expect(preventDefault).not.toHaveBeenCalled();
+      expect(click.defaultPrevented).toBe(false);
+    });
+
+    it('still consumes ordinary mobile terminal clicks', () => {
+      const testElement = element as SessionViewTestInterface;
+      testElement.uiStateManager.setIsMobile(true);
+      const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+
+      testElement.handleTerminalClick(click);
+
+      expect(click.defaultPrevented).toBe(true);
     });
   });
 
