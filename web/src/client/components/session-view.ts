@@ -100,6 +100,8 @@ export class SessionView extends LitElement {
   private instanceId = `session-view-${Math.random().toString(36).substr(2, 9)}`;
   private _updateTerminalTransformTimeout: ReturnType<typeof setTimeout> | null = null;
   private mobileHardwareFocusTimeout: ReturnType<typeof setTimeout> | null = null;
+  private terminalInitializationTimeout: ReturnType<typeof setTimeout> | null = null;
+  private terminalInitializationFrame: number | null = null;
   // Measured height of the quick-keys bar; fed into --quickkeys-height so the terminal
   // reserves space for it instead of letting it cover the bottom rows.
   private quickKeysHeight = 0;
@@ -441,6 +443,14 @@ export class SessionView extends LitElement {
       clearTimeout(this.mobileHardwareFocusTimeout);
       this.mobileHardwareFocusTimeout = null;
     }
+    if (this.terminalInitializationTimeout) {
+      clearTimeout(this.terminalInitializationTimeout);
+      this.terminalInitializationTimeout = null;
+    }
+    if (this.terminalInitializationFrame !== null) {
+      cancelAnimationFrame(this.terminalInitializationFrame);
+      this.terminalInitializationFrame = null;
+    }
 
     // Use lifecycle event manager for teardown
     if (this.lifecycleEventManager) {
@@ -574,9 +584,17 @@ export class SessionView extends LitElement {
     const terminalElement = this.getTerminalElement();
     if (!terminalElement) {
       logger.log('Terminal element not found in DOM, deferring initialization');
+      if (this.terminalInitializationTimeout || this.terminalInitializationFrame !== null) {
+        return;
+      }
       // Retry after next render cycle with a small delay to ensure terminal-renderer has rendered
-      setTimeout(() => {
-        requestAnimationFrame(() => {
+      this.terminalInitializationTimeout = setTimeout(() => {
+        this.terminalInitializationTimeout = null;
+        this.terminalInitializationFrame = requestAnimationFrame(() => {
+          this.terminalInitializationFrame = null;
+          if (!this.isConnected) {
+            return;
+          }
           this.ensureTerminalInitialized();
         });
       }, 100);

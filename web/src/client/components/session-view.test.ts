@@ -69,6 +69,8 @@ interface SessionViewTestInterface extends SessionView {
   inputManager: {
     cleanup: () => void;
   };
+  getTerminalElement: () => Terminal | null;
+  ensureTerminalInitialized: () => void;
   updateTerminalTransform: () => void;
   _updateTerminalTransformTimeout: ReturnType<typeof setTimeout> | null;
 }
@@ -161,13 +163,13 @@ describe('SessionView', () => {
       const originalMatchMedia = window.matchMedia;
 
       Object.defineProperty(navigator, 'maxTouchPoints', {
-        value: 1,
+        value: 2,
         configurable: true,
       });
 
       // Mock matchMedia to simulate touch device
       window.matchMedia = (query: string) => {
-        if (query === '(any-pointer: coarse)') {
+        if (query === '(any-pointer: coarse)' || query === '(pointer: coarse)') {
           return {
             matches: true,
             media: query,
@@ -247,6 +249,30 @@ describe('SessionView', () => {
           configurable: true,
         });
         window.matchMedia = originalMatchMedia;
+      }
+    });
+
+    it('cancels deferred terminal initialization when disconnected', async () => {
+      vi.useFakeTimers();
+      const testElement = element as SessionViewTestInterface;
+      const getTerminalElementSpy = vi
+        .spyOn(testElement, 'getTerminalElement')
+        .mockReturnValue(null);
+      const requestAnimationFrameSpy = vi.spyOn(window, 'requestAnimationFrame');
+
+      try {
+        element.session = createMockSession({ status: 'running' });
+        testElement.ensureTerminalInitialized();
+        const frameCallsBeforeDisconnect = requestAnimationFrameSpy.mock.calls.length;
+
+        element.remove();
+        await vi.advanceTimersByTimeAsync(100);
+
+        expect(requestAnimationFrameSpy).toHaveBeenCalledTimes(frameCallsBeforeDisconnect);
+      } finally {
+        getTerminalElementSpy.mockRestore();
+        requestAnimationFrameSpy.mockRestore();
+        vi.useRealTimers();
       }
     });
   });
