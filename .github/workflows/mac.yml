@@ -226,8 +226,10 @@ jobs:
         # Only enable coverage on main branch
         if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
           ENABLE_COVERAGE="YES"
+          echo "coverage_enabled=true" >> "$GITHUB_OUTPUT"
         else
           ENABLE_COVERAGE="NO"
+          echo "coverage_enabled=false" >> "$GITHUB_OUTPUT"
         fi
         
         # Always use Debug for tests
@@ -251,7 +253,8 @@ jobs:
           echo "result=1" >> $GITHUB_OUTPUT
           # Try to get more detailed error information
           echo "=== Attempting to get test failure details ==="
-          xcrun xcresulttool get --path TestResults.xcresult --format json 2>/dev/null | jq '.issues._values[]? | select(.severity == "error")' 2>/dev/null || true
+          xcrun xcresulttool get test-results summary \
+            --path TestResults.xcresult 2>/dev/null | jq '.testFailures // []' 2>/dev/null || true
           exit 1
         }
         echo "result=0" >> $GITHUB_OUTPUT
@@ -266,11 +269,22 @@ jobs:
           echo "TestResults.xcresult exists"
           ls -la TestResults.xcresult
           
-          echo "\n=== Checking for coverage data in xcresult ==="
-          xcrun xcresulttool get --path TestResults.xcresult --format json 2>/dev/null | jq '.actions._values[].actionResult.coverage' 2>/dev/null | head -20 || echo "No coverage data found in xcresult"
+          printf '\n=== Test result summary ===\n'
+          xcrun xcresulttool get test-results summary \
+            --path TestResults.xcresult 2>/dev/null | jq '{
+              result,
+              totalTestCount,
+              passedTests,
+              failedTests,
+              skippedTests
+            }' || echo "Test result summary unavailable"
           
-          echo "\n=== Attempting direct coverage view ==="
-          xcrun xccov view --report TestResults.xcresult 2>&1 | head -20 || echo "Direct coverage view failed"
+          printf '\n=== Attempting direct coverage view ===\n'
+          if [[ "${{ steps.test-coverage.outputs.coverage_enabled }}" == "true" ]]; then
+            xcrun xccov view --report TestResults.xcresult 2>&1 | head -20 || echo "Direct coverage view failed"
+          else
+            echo "Coverage collection disabled for this event"
+          fi
         else
           echo "TestResults.xcresult not found"
           ls -la
@@ -281,48 +295,83 @@ jobs:
       id: coverage
       run: |
         if [ -d TestResults.xcresult ]; then
-          # Try multiple extraction methods
-          echo "=== Method 1: Standard extraction ==="
-          COVERAGE_PCT=$(xcrun xccov view --report TestResults.xcresult --json 2>/dev/null | jq -r '.lineCoverage // 0' | awk '{printf "%.1f", $1 * 100}') || COVERAGE_PCT="0"
-          
-          if [ "$COVERAGE_PCT" = "0" ] || [ -z "$COVERAGE_PCT" ]; then
-            echo "Method 1 failed, trying alternative methods"
-            
-            echo "\n=== Method 2: Without --json flag ==="
-            COVERAGE_LINE=$(xcrun xccov view --report TestResults.xcresult 2>&1 | grep -E "^[0-9]+\.[0-9]+%" | head -1) || true
-            if [ -n "$COVERAGE_LINE" ]; then
-              COVERAGE_PCT=$(echo "$COVERAGE_LINE" | sed 's/%.*//g')
-              echo "Extracted coverage from text output: $COVERAGE_PCT%"
-            fi
+          TEST_SUMMARY=$(xcrun xcresulttool get test-results summary \
+            --path TestResults.xcresult 2>/dev/null) || TEST_SUMMARY=""
+
+          TOTAL_TESTS=$(echo "$TEST_SUMMARY" | jq -r '.totalTestCount // 0' 2>/dev/null) || TOTAL_TESTS="0"
+          PASSED_TESTS=$(echo "$TEST_SUMMARY" | jq -r '.passedTests // 0' 2>/dev/null) || PASSED_TESTS="0"
+          FAILED_TESTS=$(echo "$TEST_SUMMARY" | jq -r '.failedTests // 0' 2>/dev/null) || FAILED_TESTS="0"
+          SKIPPED_TESTS=$(echo "$TEST_SUMMARY" | jq -r '.skippedTests // 0' 2>/dev/null) || SKIPPED_TESTS="0"
+          TOTAL_TESTS="${TOTAL_TESTS:-0}"
+          PASSED_TESTS="${PASSED_TESTS:-0}"
+          FAILED_TESTS="${FAILED_TESTS:-0}"
+          SKIPPED_TESTS="${SKIPPED_TESTS:-0}"
+
+          if [ "$TOTAL_TESTS" -le 0 ]; then
+            echo "::error::No tests were found in TestResults.xcresult"
+            jq -n \
+              --argjson totalTests 0 \
+              --argjson passedTests 0 \
+              --argjson failedTests 0 \
+              --argjson skippedTests 0 \
+              '{
+                coverage: null,
+                coverageEnabled: false,
+                totalTests: $totalTests,
+                passedTests: $passedTests,
+                failedTests: $failedTests,
+                skippedTests: $skippedTests,
+                error: "No tests found in result bundle"
+              }' > coverage-summary.json
+            echo "coverage_result=failure" >> "$GITHUB_OUTPUT"
+            exit 1
           fi
-          
-          if [ "$COVERAGE_PCT" = "0" ] || [ -z "$COVERAGE_PCT" ]; then
-            echo "\n=== Method 3: Check if tests ran ==="
-            if xcrun xcresulttool get --path TestResults.xcresult --format json 2>/dev/null | grep -q '"testsCount"' && \
-               xcrun xcresulttool get --path TestResults.xcresult --format json 2>/dev/null | jq -e '.metrics.testsCount > 0' >/dev/null 2>&1; then
-              echo "Tests ran but coverage extraction failed"
-              # Set to 0.1% to indicate tests ran but coverage couldn't be extracted
-              COVERAGE_PCT="0.1"
+
+          echo "Tests: $PASSED_TESTS passed, $FAILED_TESTS failed, $SKIPPED_TESTS skipped ($TOTAL_TESTS total)"
+
+          COVERAGE_ENABLED="${{ steps.test-coverage.outputs.coverage_enabled }}"
+          if [ "$COVERAGE_ENABLED" = "true" ]; then
+            COVERAGE_PCT=$(xcrun xccov view --report TestResults.xcresult --json 2>/dev/null |
+              jq -r '.lineCoverage // 0' |
+              awk '{printf "%.1f", $1 * 100}') || COVERAGE_PCT="0"
+
+            if [ "$COVERAGE_PCT" = "0" ] || [ -z "$COVERAGE_PCT" ]; then
+              echo "::error::Tests ran, but coverage extraction failed"
+              COVERAGE_RESULT="failure"
             else
-              echo "No tests were found or run"
-              COVERAGE_PCT="0"
+              echo "Coverage: ${COVERAGE_PCT}%"
+              COVERAGE_RESULT="success"
             fi
-          fi
-          
-          # Create minimal summary JSON
-          echo "{\"coverage\": \"$COVERAGE_PCT\"}" > coverage-summary.json
-          
-          echo "Final Coverage: ${COVERAGE_PCT}%"
-          
-          # Any coverage above 0% is acceptable for now
-          if (( $(echo "$COVERAGE_PCT > 0" | bc -l) )); then
-            echo "coverage_result=success" >> $GITHUB_OUTPUT
           else
-            echo "coverage_result=failure" >> $GITHUB_OUTPUT
+            echo "Coverage collection disabled for this event"
+            COVERAGE_PCT="null"
+            COVERAGE_RESULT="success"
+          fi
+
+          jq -n \
+            --arg coverage "$COVERAGE_PCT" \
+            --argjson coverageEnabled "$COVERAGE_ENABLED" \
+            --argjson totalTests "$TOTAL_TESTS" \
+            --argjson passedTests "$PASSED_TESTS" \
+            --argjson failedTests "$FAILED_TESTS" \
+            --argjson skippedTests "$SKIPPED_TESTS" \
+            '{
+              coverage: (if $coverage == "null" then null else $coverage end),
+              coverageEnabled: $coverageEnabled,
+              totalTests: $totalTests,
+              passedTests: $passedTests,
+              failedTests: $failedTests,
+              skippedTests: $skippedTests
+            }' > coverage-summary.json
+
+          echo "coverage_result=$COVERAGE_RESULT" >> "$GITHUB_OUTPUT"
+          if [ "$COVERAGE_RESULT" != "success" ]; then
+            exit 1
           fi
         else
           echo '{"error": "No test results bundle found"}' > coverage-summary.json
-          echo "coverage_result=failure" >> $GITHUB_OUTPUT
+          echo "coverage_result=failure" >> "$GITHUB_OUTPUT"
+          exit 1
         fi
     
     # ARTIFACT UPLOADS
