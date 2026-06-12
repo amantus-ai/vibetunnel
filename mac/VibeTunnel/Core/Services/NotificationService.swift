@@ -390,15 +390,40 @@ final class NotificationService: NSObject, @preconcurrency UNUserNotificationCen
 
     /// Open System Settings to the Notifications pane
     func openNotificationSettings() {
-        // Try to open directly to the app's settings
-        if let url =
-            URL(
-                string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=sh.vibetunnel.vibetunnel")
-        {
-            NSWorkspace.shared.open(url)
-        } else if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
-            NSWorkspace.shared.open(url)
+        Self.openNotificationSettings(bundleIdentifier: Bundle.main.bundleIdentifier) {
+            NSWorkspace.shared.open($0)
         }
+    }
+
+    static func openNotificationSettings(
+        bundleIdentifier: String?,
+        openURL: (URL) -> Bool)
+    {
+        if let bundleIdentifier,
+           !bundleIdentifier.isEmpty,
+           let appURL = notificationSettingsURL(bundleIdentifier: bundleIdentifier),
+           openURL(appURL)
+        {
+            return
+        }
+
+        if let settingsURL = Self.notificationSettingsURL(bundleIdentifier: nil) {
+            _ = openURL(settingsURL)
+        }
+    }
+
+    static func notificationSettingsURL(bundleIdentifier: String?) -> URL? {
+        guard var components =
+            URLComponents(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")
+        else {
+            return nil
+        }
+
+        if let bundleIdentifier, !bundleIdentifier.isEmpty {
+            components.queryItems = [URLQueryItem(name: "id", value: bundleIdentifier)]
+        }
+
+        return components.url
     }
 
     /// Update notification preferences

@@ -6,6 +6,45 @@ import UserNotifications
 struct NotificationServiceTests {
     @Test
     @MainActor
+    func notificationSettingsURLUsesCurrentBundleIdentifier() {
+        let bundleIdentifier = "sh.vibetunnel.vibetunnel.debug"
+        let url = NotificationService.notificationSettingsURL(bundleIdentifier: bundleIdentifier)
+        let components = url.flatMap { URLComponents(url: $0, resolvingAgainstBaseURL: false) }
+
+        #expect(components?.queryItems?.first(where: { $0.name == "id" })?.value == bundleIdentifier)
+    }
+
+    @Test
+    @MainActor
+    func notificationSettingsOpenFallsBackToGeneralPane() {
+        var openedURLs = [URL]()
+
+        NotificationService.openNotificationSettings(bundleIdentifier: "sh.vibetunnel.vibetunnel.debug") { url in
+            openedURLs.append(url)
+            return openedURLs.count == 2
+        }
+
+        #expect(openedURLs.count == 2)
+        #expect(openedURLs.first?.query?.contains("id=sh.vibetunnel.vibetunnel.debug") == true)
+        #expect(openedURLs.last?.query == nil)
+    }
+
+    @Test
+    @MainActor
+    func notificationSettingsOpenStopsAfterDirectSuccess() {
+        var openedURLs = [URL]()
+
+        NotificationService.openNotificationSettings(bundleIdentifier: "sh.vibetunnel.vibetunnel") { url in
+            openedURLs.append(url)
+            return true
+        }
+
+        #expect(openedURLs.count == 1)
+        #expect(openedURLs.first?.query?.contains("id=sh.vibetunnel.vibetunnel") == true)
+    }
+
+    @Test
+    @MainActor
     func notificationPreferencesAreLoadedCorrectlyFromConfigmanager() {
         // This test verifies that NotificationPreferences correctly loads values from ConfigManager
         let configManager = ConfigManager.shared
